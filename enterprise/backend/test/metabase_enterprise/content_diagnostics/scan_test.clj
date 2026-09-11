@@ -188,7 +188,7 @@
                     (is (contains? key? [:card original finding-type])
                         (str "original missing its " finding-type " finding"))))
                 (testing "neither card is duplicated - the copy leaves no dangling peer on the original"
-                  (is (not (contains? key? [:card original :duplicated]))))
+                  (is (not (contains? key? [:card original :duplicate_name]))))
                 (testing "the document roll-up survives, still naming the copy as its culprit"
                   (is (= [doc-card]
                          (->> rows
@@ -250,13 +250,13 @@
             (scan/scan!)
             (let [by-entity  (t2/select-fn->fn :entity_id :entity_collection_name
                                                :model/ContentDiagnosticsFinding
-                                               :finding_type :duplicated
+                                               :finding_type :duplicate_name
                                                :entity_id [:in [in-a in-b root-a root-b]])
                   ;; queried separately (entity_type-scoped) so a collection id can't collide with a card
                   ;; id from a different sequence
                   by-xf-coll (t2/select-fn->fn :entity_id :entity_collection_name
                                                :model/ContentDiagnosticsFinding
-                                               :finding_type :duplicated
+                                               :finding_type :duplicate_name
                                                :entity_type :collection
                                                :entity_id [:in [xf-a xf-b]])]
               (is (= coll-name (get by-entity in-a)))

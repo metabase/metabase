@@ -74,7 +74,7 @@
                                                      {:scan_id         "dup-round-trip"
                                                       :entity_type     :card
                                                       :entity_id       1
-                                                      :finding_type    :duplicated
+                                                      :finding_type    :duplicate_name
                                                       :duplicate_count 2
                                                       :details         details}))
             row     (t2/select-one :model/ContentDiagnosticsFinding :id fid)]

@@ -124,8 +124,9 @@
   ;; `finalize-finding` dispatches per row on the stored `finding_type` with NO permissive :default, so a
   ;; new finding type left unregistered fails here (and at dispatch), not by silently serving an unfinalized
   ;; row missing its native top-level column / details rewrite.
-  ;; This branch serves stale/slow/duplicated plus the imbalanced umbrella (empty/sparse/crowded).
-  (let [served-finding-types #{:stale :slow :duplicated :empty :sparse :crowded}]
+  ;; This branch serves stale/slow/duplicate_name plus the imbalanced umbrella (empty/sparse/crowded).
+  ;; These are the *stored* names - `duplicate_name` reaches clients as `duplicated`.
+  (let [served-finding-types #{:stale :slow :duplicate_name :empty :sparse :crowded}]
     (testing "every served finding-type resolves a method (registry completeness)"
       (doseq [ftype served-finding-types]
         (is (some? (get-method @#'api.common/finalize-finding ftype))
@@ -186,7 +187,7 @@
       (let [crumb (fn [coll-id]
                     (-> (api.common/hydrate-findings
                          [{:id           1
-                           :finding_type :duplicated
+                           :finding_type :duplicate_name
                            :entity_type  :collection
                            :entity_id    coll-id
                            :details      {}}]

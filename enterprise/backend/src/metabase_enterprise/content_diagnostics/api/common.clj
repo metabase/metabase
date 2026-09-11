@@ -33,14 +33,40 @@
   [entity-types]
   (into entity-types queries.schema/card-types))
 
+;;; ---------------------------------- finding-type wire aliases ---------------------------------------
+
+(def ^:private wire->stored-finding-type
+  "Client-facing finding-type names whose stored name has since been narrowed. `duplicated` is stored as
+  `duplicate_name`: the stored name says *which* kind of duplication was detected, leaving room for future
+  `duplicate_*` variants, while the client's vocabulary (its URL path, its response type) predates the
+  split. Names absent from this map are identical on both sides."
+  {"duplicated" "duplicate_name"})
+
+(def ^:private stored->wire-finding-type
+  (into {} (map (fn [[wire stored]] [(keyword stored) (keyword wire)])) wire->stored-finding-type))
+
+(defn stored-finding-type
+  "The stored `finding_type` for a client-facing finding-type name, as a string."
+  [finding-type]
+  (let [nm (name finding-type)]
+    (get wire->stored-finding-type nm nm)))
+
+(defn wire-finding-type
+  "The client-facing name of a stored `finding_type` keyword."
+  [finding-type]
+  (get stored->wire-finding-type finding-type finding-type))
+
 (defn valid-clause
   "Result set for one **or many** `finding-types` (an umbrella endpoint spans several): the latest
   finding per entity, excluding entities whose latest row is invalidated (an older valid row does not
-  resurface)."
+  resurface).
+
+  `finding-types` are client-facing names; each resolves to its stored name (see
+  [[stored-finding-type]]), so an endpoint and its callers never have to know that the two differ."
   [finding-types]
   [:and
    [:= :invalidated_at nil]
-   [:in :finding_type (u/one-or-many finding-types)]
+   [:in :finding_type (mapv stored-finding-type (u/one-or-many finding-types))]
    ;; latest finding per entity = MAX(id) per (entity_type, entity_id, finding_type). id is the recency
    ;; key (monotonic; scan_id is a random UUID). Latest-per-entity, not newest-scan-only, so an entity a
    ;; partial scan hasn't re-written yet still shows its last finding.
@@ -392,7 +418,7 @@
   (-> (merge base (select-keys row [:duration_ms]))
       (update :details with-slow-culprits culprits)))
 
-(defmethod finalize-finding :duplicated [_ base row {:keys [entities]}]
+(defmethod finalize-finding :duplicate_name [_ base row {:keys [entities]}]
   (-> (merge base (select-keys row [:duplicate_count]))
       (update :details with-duplicate-peers (:entity_type row) entities)))
 
@@ -469,7 +495,8 @@
                                     (when-some [view-count (:view_count entity)]
                                       {:view_count view-count}))
                   base       (cond-> {:id                  id
-                                      :finding_type        finding_type
+                                      ;; client-facing name; the stored one can be narrower
+                                      :finding_type        (wire-finding-type finding_type)
                                       :entity_type         entity_type
                                       :entity_id           entity_id
                                       :detected_at         detected_at
