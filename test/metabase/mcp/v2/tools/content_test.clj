@@ -961,7 +961,7 @@
 
 (deftest get-content-settings-include-test
   (testing "GHY-4511: a question's stored visualization_settings read back — through the
-            `settings` include, through `detailed`, and as a `fields` path. Without a read-back
+            `visualization_settings` include, through `detailed`, and as a `fields` path. Without a read-back
             an agent cannot check a goal line, a series binding or a hidden column it just wrote."
     (let [settings {:graph.show_goal true :graph.goal_value 50000}]
       (mt/with-temp [:model/Card {card-id :id} {:type                   :question
@@ -972,10 +972,10 @@
           (testing "the concise shape alone still leaves the blob out"
             (is (nil? (:visualization_settings
                        (content-one {:items [{:type "question" :id card-id}]})))))
-          (testing "include settings adds it to the concise shape"
+          (testing "the include adds it to the concise shape"
             (is (= settings (:visualization_settings
                              (content-one {:items   [{:type "question" :id card-id}]
-                                           :include ["settings"]})))))
+                                           :include ["visualization_settings"]})))))
           (testing "detailed carries it"
             (is (= settings (:visualization_settings
                              (content-one {:items           [{:type "question" :id card-id}]
@@ -990,7 +990,7 @@
         (mt/with-test-user :crowberto
           (is (= {} (:visualization_settings
                      (content-one {:items   [{:type "model" :id card-id}]
-                                   :include ["settings"]})))))))))
+                                   :include ["visualization_settings"]})))))))))
 
 (deftest get-content-named-field-with-no-value-answers-null-test
   (testing "GHY-4511: a `fields` path the card has no value for comes back null. The compact
