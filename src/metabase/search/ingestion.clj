@@ -1,10 +1,8 @@
 (ns metabase.search.ingestion
   (:require
    [clojure.string :as str]
-   [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
-   [metabase.app-db.core :as mdb]
    [metabase.collections.curation :as collections.curation]
    [metabase.lib-be.core :as lib-be]
    [metabase.search.db :as search.db]
@@ -16,7 +14,6 @@
    [metabase.util.log :as log]
    [metabase.util.performance :as perf]
    [metabase.util.queue :as queue]
-   [toucan2.core :as t2]
    [toucan2.realize :as t2.realize])
   (:import
    (java.util.concurrent DelayQueue)))
@@ -36,22 +33,6 @@
 (def ^:private listener-name
   "The name of the listener that consumes the queue"
   "search-index-update")
-
-(def max-searchable-value-length
-  "The maximum length of a searchable value. This is mostly driven by postgresql max-lengths on tsvector columns.
-  And is about half of postgresql's max, since we concat two values together often. That is likely aggressive, but being safe until we can better understand normal data shapes"
-  500000)
-
-(defn searchable-value-trim-sql
-  "Returns the honeysql expression to trim a searchable value to the max length.
-  The passed column should be a keyword that is qualified as needed.
-  Uses a slightly larger value that what will be stored in the db so we can better use word boundaries on the actual end"
-  [column]
-  (if (#{:postgres :h2} (mdb/db-type))
-    [:left
-     column
-     [:cast (+ max-searchable-value-length 100) :integer]]
-    column))
 
 (defn- searchable-text [m]
   ;; For now, we never index the native query content
@@ -93,11 +74,6 @@
                                   (str (name k) ": " (str/trim (str v))))))
                             field-keys)]
     (str header "\n" (str/join "\n" fields))))
-
-(defn- search-term-columns
-  "Extract column names from search-terms spec for SQL query generation"
-  [search-terms]
-  (if (map? search-terms) (keys search-terms) search-terms))
 
 (defn- display-data [m]
   (perf/select-keys m [:name :display_name :description :collection_name]))
@@ -152,58 +128,11 @@
            :legacy_input (json/encode (assoc (apply dissoc m search.spec/legacy-input-excluded-keys)
                                              :curated curated)))))
 
-(defn- attrs->select-items [attrs]
-  (for [[k v] attrs
-        :when (and v (not (search.spec/function-attr? v)))]
-    (let [as (keyword (u/->snake_case_en (name k)))]
-      (if (true? v) as [v as]))))
-
-(defn- spec-index-query*
-  [_db-type search-model]
-  (let [spec         (search.spec/spec search-model)
-        fn-deps      (search.spec/collect-fn-attr-req-fields spec)
-        fn-selects   (map (fn [field]
-                            [(keyword (str "this." (name field))) field])
-                          fn-deps)
-        search-terms (set (search-term-columns (:search-terms spec)))]
-    (u/remove-nils
-     {:select    (search.spec/qualify-columns :this
-                                              (concat
-                                               (map (fn [term] [(searchable-value-trim-sql (keyword (str "this." (name term))))
-                                                                term])
-                                                    search-terms)
-                                               (mapcat (fn [k] (attrs->select-items
-                                                                (->> (get spec k)
-                                                                     (remove (comp search-terms key)))))
-                                                       [:attrs :render-terms])
-                                               fn-selects))
-      :from      [[(t2/table-name (:model spec)) :this]]
-      :where     (:where spec [:= [:inline 1] [:inline 1]])
-      :left-join (when (:joins spec)
-                   (into []
-                         cat
-                         (for [[join-alias [join-model join-condition]] (:joins spec)]
-                           [[(t2/table-name join-model) join-alias]
-                            join-condition])))})))
-
-(def ^:private spec-index-query-memo (memoize spec-index-query*))
-
-(defn- spec-index-query
-  ;; Memoized per db-type since the generated HoneySQL varies by database engine
-  ;; (e.g. searchable-value-trim-sql emits LEFT/CAST only for postgres and h2).
-  [search-model]
-  (spec-index-query-memo (mdb/db-type) search-model))
-
-(defn- spec-index-query-where [search-model where-clause]
-  (-> (spec-index-query search-model)
-      (sql.helpers/where where-clause)))
-
 (defn- spec-index-reducible [search-model & [where-clause]]
   ;; Joins in the spec (e.g. card → revision on most_recent = true) can produce duplicate rows when the
   ;; joined side has its own integrity violations. Downstream upserts hit a unique constraint on
   ;; (model, model_id), so dedup here at the streaming boundary — bounded by per-model row count.
-  (->> (spec-index-query-where search-model where-clause)
-       mdb/streaming-reducible-query
+  (->> (search.db/spec-index-reducible-rows search-model where-clause)
        (eduction (comp (map #(assoc % :model search-model))
                        (m/distinct-by (juxt :id :model))))))
 
@@ -222,11 +151,7 @@
   (if-not (contains? (set search.spec/search-models) search-model)
     :no-spec
     (let [spec      (search.spec/spec search-model)
-          indexed?  (-> (spec-index-query-where search-model [:= :this.id id])
-                        (assoc :select [[[:inline 1] :one]] :limit 1)
-                        search.db/spec-index-rows
-                        seq
-                        boolean)]
+          indexed?  (some? (search.db/spec-index-row search-model id))]
       (cond
         indexed?                              :indexable
         (search.db/entity-exists? (:model spec) id)     :excluded
@@ -274,11 +199,7 @@
   "Returns a count of all searchable items in the database."
   []
   (->> (for [model search.spec/search-models]
-         (-> (spec-index-query-where model nil)
-             (assoc :select [[:%count.* :count]])
-             search.db/spec-index-rows
-             first
-             :count))
+         (search.db/spec-index-count model))
        (filter some?)
        (reduce + 0)))
 

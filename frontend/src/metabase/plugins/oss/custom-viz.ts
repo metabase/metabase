@@ -4,6 +4,7 @@ import type { ToastArgs } from "metabase/common/hooks";
 import type { IconData } from "metabase/common/utils/icon";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { Dispatch } from "metabase/redux/store";
+import type { CustomVizSettingWidgetProps } from "metabase/viz-core";
 import type {
   CustomVizPluginId,
   CustomVizPluginRuntime,
@@ -11,6 +12,8 @@ import type {
   WidgetMount,
 } from "metabase-types/api";
 import { isCustomVizDisplay } from "metabase-types/guards";
+
+import { definePluginSlot } from "../slot";
 
 export type LoadCustomVizPluginForDisplayResult =
   | { status: "loaded"; display: VisualizationDisplay }
@@ -84,19 +87,14 @@ const getDefaultPluginCustomViz = () => ({
   /**
    *  Always false in OSS as there is no plugin to produce a mount handle.
    */
-  isWidgetMount: (_value: unknown): _value is WidgetMount => false,
+  isWidgetMount: (
+    _value: unknown,
+  ): _value is WidgetMount<CustomVizSettingWidgetProps> => false,
 
   CustomVizSettingWidget: PluginPlaceholder<{
-    mount: WidgetMount;
-    widgetProps: Record<string, unknown>;
+    mount: WidgetMount<CustomVizSettingWidgetProps>;
+    widgetProps: CustomVizSettingWidgetProps;
   }>,
 });
 
-export const PLUGIN_CUSTOM_VIZ = getDefaultPluginCustomViz();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(PLUGIN_CUSTOM_VIZ, getDefaultPluginCustomViz());
-}
+export const PLUGIN_CUSTOM_VIZ = definePluginSlot(getDefaultPluginCustomViz);

@@ -35,7 +35,7 @@ metabase/modules/drivers/sqlite/resources/metabase-plugin.yaml     ; <- plugin m
 metabase/modules/drivers/sqilte/src/metabase/driver/sqlite.clj     ; <- main driver namespace
 ```
 
-So you'll create a new directory and file to house your text extension method implementations.
+So you'll create a new directory and file to house your test extension method implementations.
 
 ```clj
 metabase/modules/drivers/sqlite/test/metabase/test/data/sqlite.clj   ; <- test extensions
@@ -106,7 +106,7 @@ DRIVERS=mysql clojure -X:dev:drivers:drivers-dev:test`.
 
 1.  Metabase will check and see if test extensions for `:mysql` are loaded. If not, it will `(require 'metabase.test.data.mysql)`.
 2.  Metabase will check to see if the default `test-data` database has been created for MySQL, loaded with data, and synced. If not, it will call the test extension method `tx/load-data!` to create the `test-data` database and load data into it. After loading the data, Metabase syncs the test database. (This is discussed in more detail below.)
-3.  Metabase runs an MBQL query against the `venues` table of the MySQL `test-data` database. The `run-mbql-query` macro is a helper for writing tests that looks up Field IDs based on names for symbols that have `$` in from of them. Don't worry too much about that right now; just know the actual query that is ran will look something like:
+3.  Metabase runs an MBQL query against the `venues` table of the MySQL `test-data` database. The `run-mbql-query` macro is a helper for writing tests that looks up Field IDs based on names for symbols that have `$` in front of them. Don't worry too much about that right now; just know the actual query that is run will look something like:
     ```clj
     {:database 100 ; ID of MySQL test-data database
      :type :query
@@ -114,7 +114,7 @@ DRIVERS=mysql clojure -X:dev:drivers:drivers-dev:test`.
              :filter [:ends-with [:field-id 555] "Restaurant"] ; Field 555 = MySQL test-data.venues.name
              :order-by [[:asc [:field-id 556]]]}} ; Field 556 = MySQL test-data.venues.id
     ```
-4.  The results are ran through helper functions `rows` and `formatted-venues-rows` which return only the parts of the query results we care about
+4.  The results are run through helper functions `rows` and `formatted-venues-rows` which return only the parts of the query results we care about
 5.  Those results are compared against the expected results.
 
 That's about as much as you'd need to know about the internals of how Metabase tests work; now that we've covered that, let's take a look at how we can empower Metabase to do what it needs to do.
@@ -162,7 +162,7 @@ Let's take a look at what's going on here.
 - When creating a database,
 - And when loading data into one and syncing.
 
-Most databases won't let you connect to a database that hasn't been created yet, meaning something like a `CREATE DATABASE "test-data";` statement would have to be ran _without_ specifying `test-data` as part of the connection. Thus, the `context` parameter. `context` is either `:server`, meaning "give me details for connecting to the DBMS server, but not to a specific database", or `:db`, meaning "give me details for connecting to a specific database". In MySQL's case, it adds the `:db` connection property whenever context is `:db`.
+Most databases won't let you connect to a database that hasn't been created yet, meaning something like a `CREATE DATABASE "test-data";` statement would have to be run _without_ specifying `test-data` as part of the connection. Thus, the `context` parameter. `context` is either `:server`, meaning "give me details for connecting to the DBMS server, but not to a specific database", or `:db`, meaning "give me details for connecting to a specific database". In MySQL's case, it adds the `:db` connection property whenever context is `:db`.
 
 ### Getting connection properties from env vars
 
@@ -174,7 +174,7 @@ You'll almost certainly be running your database in a local Docker container. Ra
 
 Tells Metabase to look for the environment variable `MB_MYSQL_TEST_USER`; if not found, default to `"root"`. The name of the environment variable follows the pattern `MB_<driver>_TEST_<property>`, as passed into the function as first and second args, respectively. You don't need to specify a default value for `tx/db-test-env-var`; perhaps `user` is an optional parameter; and if `MB_MYSQL_TEST_USER` isn't specified, you don't need to specify it in the connection details.
 
-But what about properties you want to require, but do not have sane defaults? In those cases, you can use `tx/db-test-env-var-or-throw`. It the corresponding environment variable isn't set, these will throw an Exception, ultimately causing tests to fail.
+But what about properties you want to require, but do not have sane defaults? In those cases, you can use `tx/db-test-env-var-or-throw`. If the corresponding environment variable isn't set, these will throw an Exception, ultimately causing tests to fail.
 
 ```clj
 ;; If MB_SQLSERVER_TEST_USER is unset, the test suite will quit with a message saying something like
@@ -235,4 +235,4 @@ be-tests-postgres-latest-ee:
         junit-name: "be-tests-postgres-latest-ee"
 ```
 
-For more on what it is you're doing here and how all this works, see [Workflow syntax for GitHub Actions](https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions).
+For more on what it is you're doing here and how all this works, see [Workflow syntax for GitHub Actions](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax).

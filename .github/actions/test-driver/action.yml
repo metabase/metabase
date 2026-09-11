@@ -20,8 +20,6 @@ inputs:
     required: false
     default: "ee"
     description: Edition to test (oss or ee)
-  quarantine-engine:
-    required: false
   granular-rerun:
     required: false
     default: "true"
@@ -199,4 +197,4 @@ runs:
       with:
         adapter: backend
         test-suite: ${{ inputs.junit-name }}
-        enforce-quarantine: ${{ inputs.quarantine-engine == 'ci-conductor' }}
+        enforce-quarantine: "true"

@@ -3,20 +3,37 @@
   (:require
    [clojure.string :as str]
    [metabase.config.core :as config]
+   [metabase.llm.provider :as llm.provider]
+   [metabase.llm.provider.settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :refer [defsetting]]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru tru]])
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [potemkin :as p])
   (:import
-   (java.net MalformedURLException URL)
-   (software.amazon.awssdk.regions Region)))
+   (java.net MalformedURLException URL)))
 
 (set! *warn-on-reflection* true)
 
-(def known-aws-regions
-  "The set of AWS region ids known to the bundled AWS SDK, e.g. `\"us-east-1\"`.
-  Used to validate [[llm-bedrock-region]]."
-  (into #{} (map str) (Region/regions)))
+;; kept on this namespace so callers are unaffected by the split
+(p/import-vars
+ [metabase.llm.provider.settings
+  google-global-api-base-url
+  known-aws-regions
+  llm-allowed-networks
+  llm-network-policy-error?
+  llm-providers
+  llm-providers!
+  llm-proxy-base-url
+  llm-proxy-base-url!
+  llm-request-opts
+  llm-url-problem
+  llm-url-syntax-problem
+  network-policy
+  rethrow-if-llm-network-policy-error!
+  set-llm-providers!
+  valid-google-location?
+  valid-google-project-id?])
 
 (def ^:private loopback-hosts
   "Hostnames that resolve to the local machine. `URL.getHost` returns IPv6 hosts
@@ -44,18 +61,17 @@
 ;; TODO (Chris 2026-08-17) -- BOT-2005: generate-sql and semantic search read these settings directly, so
 ;; deleting the connection they key off turns those features off. They should name a connection instead.
 (defn- connection-field-getter
-  "Getter for a per-provider credential setting whose value lives on the `llm-providers` connection list.
-  Resolved late: [[metabase.llm.provider]] requires this namespace."
+  "Getter for a per-provider credential setting whose value lives on the `llm-providers` connection list."
   [setting-kw]
   (fn []
-    ((requiring-resolve 'metabase.llm.provider/single-provider-setting-value) setting-kw)))
+    (llm.provider/single-provider-setting-value setting-kw)))
 
 (defn- connection-field-setter
   "Setter counterpart of [[connection-field-getter]], writing through to the connection list so `config.yml`
   provisioning and code that has always written these settings keep working."
   [setting-kw]
   (fn [new-value]
-    ((requiring-resolve 'metabase.llm.provider/set-single-provider-setting!) setting-kw new-value)))
+    (llm.provider/set-single-provider-setting! setting-kw new-value)))
 
 ;;; ------------------------------------------------- Anthropic -------------------------------------------------
 
@@ -266,36 +282,6 @@
   :setter      (connection-field-setter :llm-google-oauth-access-token)
   :doc         "Backed by the google connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
 
-(def ^:private google-project-id-pattern
-  "Matches a Google Cloud project ID: 6 to 30 characters of lowercase letters, digits and hyphens, starting with a
-  letter and not ending with a hyphen.
-  https://docs.cloud.google.com/resource-manager/docs/creating-managing-projects"
-  #"[a-z][a-z0-9-]{4,28}[a-z0-9]")
-
-(defn valid-google-project-id?
-  "True if `project-id` looks like a valid google project id."
-  [project-id]
-  (boolean (and (string? project-id)
-                (re-matches google-project-id-pattern project-id))))
-
-(def ^:private google-location-pattern
-  "Matches a Google Cloud location ID, e.g. `us-central1`: hyphen-separated segments of lowercase letters and digits,
-  the first of which starts with a letter."
-  #"[a-z][a-z0-9]*(?:-[a-z0-9]+)*")
-
-(def ^:private google-location-max-length
-  "The longest location that still leaves a legal DNS label in `{location}-aiplatform.googleapis.com`.
-  A label holds 63 characters and the `-aiplatform` suffix takes 11 of them."
-  52)
-
-(defn valid-google-location?
-  "True if `location` can be spliced into a Gemini Enterprise Agent Platform request host.
-  A location becomes a DNS label of that host, so a value that is not one cannot be sent.
-  https://docs.cloud.google.com/gemini-enterprise-agent-platform/resources/locations"
-  [location]
-  (boolean (and (<= (count location) google-location-max-length)
-                (re-matches google-location-pattern location))))
-
 (defsetting llm-google-project-id
   (deferred-tru "The Google Cloud project ID for the Gemini Enterprise Agent Platform.")
   :encryption  :no
@@ -313,12 +299,6 @@
   :getter      (connection-field-getter :llm-google-location)
   :setter      (connection-field-setter :llm-google-location)
   :doc         "Backed by the google connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
-
-(def google-global-api-base-url
-  "Google's global Gemini Enterprise Agent Platform host, and the default for [[llm-google-api-base-url]].
-  It serves only the `global` location. A regional location uses `https://{location}-aiplatform.googleapis.com`, and
-  the `us` and `eu` multi-region locations use `https://aiplatform.{location}.rep.googleapis.com`."
-  "https://aiplatform.googleapis.com")
 
 (defsetting llm-google-api-base-url
   (deferred-tru "The Gemini Enterprise Agent Platform API base URL. Leave unset to derive it from the location.")
@@ -436,39 +416,12 @@
   :visibility :settings-manager
   :export?    false)
 
-;;; ---------------------------------------------- Provider connections ------------------------------------------
-
 ;;; The per-provider credential settings above are read-only at runtime: they configure a connection only when set
 ;;; by an environment variable, which [[metabase.llm.provider/connections]] resolves on every read. Editing one in
 ;;; the app DB would not reach the connection serving requests, so a write is rejected rather than silently ignored.
 ;;; Connections are managed through the `/api/llm/providers` endpoints instead.
 
-(defsetting llm-providers
-  (deferred-tru "JSON array of configured LLM provider connections. Each entry has a `key` (a URL-safe slug identifying the connection), a `type` (the provider type, e.g. `anthropic`), a display `name`, and a `config` map of that provider type''s credential fields.")
-  :type       :json
-  :default    []
-  :encryption :when-encryption-key-set
-  :sensitive? true
-  :visibility :settings-manager
-  :export?    false
-  :audit      :no-value
-  :doc        "Connections are normally managed from the admin AI settings page. Setting this environment variable puts the whole list under environment control and makes it read-only in the UI.
-
-Configuring a provider through the single-provider variables (`MB_LLM_ANTHROPIC_API_KEY` and friends) is equally supported, and is the simpler option when you only need one connection per provider and would rather not hand-write JSON. Each such provider becomes a read-only connection whose key is the provider type, resolved from the environment on every read, so editing one of those variables is picked up on the next restart. A provider configured this way takes precedence over a stored connection with the same key.")
-
 ;;; --------------------------------------------------- Proxy ---------------------------------------------------
-
-(defsetting llm-proxy-base-url
-  (deferred-tru "Base URL for the LLM proxy. When set, requests to the managed Metabase AI service are routed through this proxy and authenticated with the instance token instead of a provider API key. Harbormaster adds /llm component into the url.")
-  ;; For details on llm component see the https://github.com/metabase/metabase/pull/74526#discussion_r3282553435.
-  :enabled?         #(or (premium-features/has-feature? :metabase-ai-managed)
-                         (premium-features/has-feature? :offer-metabase-ai-managed)
-                         (premium-features/has-feature? :metabot-v3))
-  :encryption       :when-encryption-key-set
-  :visibility       :internal
-  :default          nil
-  :export?          false
-  :doc              false)
 
 (defsetting ai-service-base-url
   (deferred-tru "Base URL for the managed Metabase AI service.")

@@ -79,7 +79,7 @@
           (update-legacy-refs-or-names [refs-or-names]
             (into [] (keep update-legacy-ref-or-name) refs-or-names))
           (column-setting-ref [#::vs{:keys [field-id field-metadata]}]
-            (-> [:field (or field-metadata {}) field-id]
+            (-> (lib/normalize :mbql.clause/field [:field (or field-metadata {}) field-id])
                 lib/ensure-uuid))
           (update-column-setting [k v]
             (or (when (::vs/field-id k)

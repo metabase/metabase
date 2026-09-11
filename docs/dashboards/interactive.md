@@ -21,7 +21,7 @@ To configure this interactivity, you'll use the **click behavior** option on a d
 
 From your dashboard, first click on the **pencil** icon to enter dashboard edit mode.
 
-If you hover over the card that contains question you want to customize, Metabase will display a menu at the top right of that card containing these options, from left to right:
+If you hover over the card that contains the question you want to customize, Metabase will display a menu at the top right of that card containing these options, from left to right:
 
 - **Visualization options**: This icon looks like a painter's palette.
 - **Click behavior**: This is the icon with the mouse cursor clicking on a card.
@@ -80,7 +80,7 @@ Once you select the column that contains the value you want to pass, the sidebar
 
 In the example above, when a user clicks on the **Orders by product category** card, Metabase will pass the clicked `Product -> Category` to the destination dashboard ("Interactive Dashboard"), which will then filter its cards by that `Category`.
 
-You can also send the currently selected value of a dashboard filter on the current dashboard to the destination. In [some plans](https://www.metabase.com/pricing/), you can pass a user attribute provided by SSO to the destination, too. Those user attributes will show up as options when you click on one of the destination's filters (provided the values are compatible with that filter).
+You can also send the currently selected value of a dashboard filter on the current dashboard to the destination. In [some plans](https://www.metabase.com/pricing), you can pass a user attribute provided by SSO to the destination, too. Those user attributes will show up as options when you click on one of the destination's filters (provided the values are compatible with that filter).
 
 When displaying questions as tables, you can select different click behaviors for different columns in the table. You can also modify the contents of the cells in a given column, replacing the value with custom text. For example, if you had a column that listed categories, you could change the text in the cell to read: "Click for details about {% raw %}{{Category}}{% endraw %}", where `Category` is the name of your column.
 
@@ -108,7 +108,7 @@ To learn more, check out [Custom destinations: choose what happens when people c
 
 If your dashboard contains at least one filter, you can set things up so that clicking on a chart in the dashboard will update a filter.
 
-When a user clicks on, say, a bar in a bar chart, you could send the value of the clicked bar to the filter, and update cards across the dashboard. We call this functionality **cross-filtering**. You can use this cross-filtering to make a chart behave as kind of "navigation question" that filters data across other cards.
+When a user clicks on, say, a bar in a bar chart, you could send the value of the clicked bar to the filter, and update cards across the dashboard. We call this functionality **cross-filtering**. You can use this cross-filtering to make a chart behave as a kind of "navigation question" that filters data across other cards.
 
 For example, clicking on the `Widget` bar will update the current dashboard's **category** filter to filter for `Widget`:
 
