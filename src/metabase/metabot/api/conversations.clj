@@ -125,7 +125,7 @@
    [:metabot_chart_id        ms/NonBlankString]])
 
 (def ^:private SaveDashboardTile
-  [:map
+  [:map {:closed true}
    [:title         ms/NonBlankString]
    [:display       ms/NonBlankString]
    [:dataset_query ::lib-be.schema/maybe-legacy-query]
@@ -133,14 +133,14 @@
    [:col           ms/IntGreaterThanOrEqualToZero]
    [:size_x        ms/PositiveInt]
    [:size_y        ms/PositiveInt]
-   [:visualization_settings {:optional true} [:maybe ms/Map]]
+   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
    [:chart_id      {:optional true} [:maybe [:and ms/NonBlankString [:string {:max 36}]]]]
    [:card_id       {:optional true} [:maybe ms/PositiveInt]]])
 
 (def ^:private SaveDashboardBody
-  [:map
+  [:map {:closed true}
    [:dashboard_id [:and ms/NonBlankString [:string {:max 36}]]]
-   [:dashboard    [:map
+   [:dashboard    [:map {:closed true}
                    [:name          ms/NonBlankString]
                    [:description   {:optional true} [:maybe :string]]
                    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
