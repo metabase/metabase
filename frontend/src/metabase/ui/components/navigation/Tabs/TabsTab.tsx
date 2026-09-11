@@ -40,6 +40,7 @@ export const TabsTab = forwardRef<HTMLButtonElement, TabsTabProps>(
   ) {
     const handleCloseClick = useCallback(
       (event: MouseEvent<HTMLSpanElement>) => {
+        event.preventDefault();
         event.stopPropagation();
         onClose?.(value);
       },

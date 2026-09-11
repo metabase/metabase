@@ -55,6 +55,18 @@ describe("Tabs.Tab", () => {
       expect(onChange).not.toHaveBeenCalled();
     });
 
+    it("does not trigger the root's default action when the root is a link", async () => {
+      const { tab, onClose } = setup({
+        closable: true,
+        renderRoot: (props) => <a href="#two" {...props} />,
+      });
+
+      await userEvent.click(within(tab).getByTestId("tab-close"));
+
+      expect(onClose).toHaveBeenCalledWith("one");
+      expect(window.location.hash).toBe("");
+    });
+
     it.each(["{Delete}", "{Backspace}"])(
       "calls onClose when %s is pressed on the focused tab",
       async (key) => {
