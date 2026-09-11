@@ -1217,12 +1217,13 @@
         (u/group-by :source_card_id :id conj #{} deps)))))
 
 (defn- dependent-cards-to-update
-  "Cards to rewrite when `root-card-id` moves off `old-db-id`, source cards before the cards that select from them.
-  A card's `database_id` is taken from its source card's row, so a dependent rewritten first keeps the old id."
+  "Cards to rewrite when `root-card-id` moves off `old-db-id`, source cards before the cards that select from them."
   [root-card-id old-db-id]
   (let [all-dep-ids (graph/transitive (->SourceCardDependentsGraph) [root-card-id])]
     (when (seq all-dep-ids)
       (let [id->card (m/index-by :id (queries.db/card-queries all-dep-ids))]
+        ;; `database_id` is derived from the source card's row, so a source has to be rewritten before anything that
+        ;; selects from it. A card has one source card, so the level order the walk returns is already parent-first.
         (into []
               (keep (fn [dep-id]
                       (let [{:keys [dataset_query] :as card} (id->card dep-id)]
