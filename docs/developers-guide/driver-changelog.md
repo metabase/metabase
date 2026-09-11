@@ -227,7 +227,7 @@ title: Driver interface changelog
   `:metabase.driver.sql.query-processor.like-escape-char-built-in/like-escape-char-built-in` as a parent of your driver.
   See `metabase.driver.mysql` for an example of using the abstract driver.
 
-## Metabase 0.58.x
+## Metabase 0.58.34
 
 - `metabase.driver.util/audience-schema` `[driver]` -- new multimethod. A Malli schema for the connection-detail
   fields a stored credential is bound to: the ones that decide where the credential is sent (`host`, `port`,

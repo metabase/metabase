@@ -183,7 +183,10 @@
 ;;;      only on data already in hand, so there is always a place for it ahead of the risky part; a refusal swallowed
 ;;;      by such a handler is reported as a connection failure instead of the 400 it is.
 ;;;   2. Where the sink is itself called from inside such a handler -- as `git-source` is, from the remote-sync
-;;;      test-connection endpoint -- that handler must call `u.secret/rethrow-if-audience-mismatch!` first.
+;;;      endpoints -- that handler must not overwrite the deliberate API error underneath it: either pass through an
+;;;      exception that already carries a `:status-code`, or carry its message and `:error-code` into the wrapper.
+;;;      That rule is not about secrets: a refusal is just one of the authored errors a catch-all would otherwise
+;;;      replace with a guess.
 ;;;
 ;;; Either way the sink needs a test that a Secret bound elsewhere is refused *and the refusal propagates*, which is
 ;;; the property these rules exist to protect.

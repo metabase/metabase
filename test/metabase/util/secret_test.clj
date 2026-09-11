@@ -270,40 +270,6 @@
                                       {:url "https://embed.example.com"}
                                       {:url "https://EMBED.example.com"})))))
 
-;;; ------------------------------------------- surviving a catch-all ------------------------------------------------
-
-(defn- refusal
-  "The exception `expose` throws for an audience the secret is not bound to."
-  []
-  (try
-    (u.secret/expose (u.secret/secret "hunter2" {:audience-schema [:map [:host {:optional true} :string]]
-                                                 :audience        {:host "db.example.com"}})
-                     {:host "evil.example.com"})
-    (catch clojure.lang.ExceptionInfo e e)))
-
-(defn- rethrown!
-  "What [[u.secret/rethrow-if-audience-mismatch!]] throws for `e`, or nil when it returns instead."
-  [e]
-  (try
-    (u.secret/rethrow-if-audience-mismatch! e)
-    (catch Throwable t t)))
-
-(deftest rethrow-if-audience-mismatch!-test
-  (testing "the refusal itself is rethrown, not the wrapper: it carries the message and status the client should see"
-    (let [thrown (rethrown! (ex-info "Could not reach the server" {:status-code 500} (refusal)))]
-      (is (= "This secret is not bound to the requested audience." (ex-message thrown)))
-      (is (= 400 (:status-code (ex-data thrown))))))
-  (testing "a bare refusal is rethrown as-is"
-    (is (= :secret-audience-mismatch (:error-code (ex-data (rethrown! (refusal)))))))
-  (testing "even when the wrapper carries an :error-code of its own, which a merged view of the chain would hide"
-    (is (= :secret-audience-mismatch
-           (:error-code (ex-data (rethrown! (ex-info "Could not reach the server"
-                                                     {:error-code :connection-failed}
-                                                     (refusal))))))))
-  (testing "an unrelated exception passes through, so the caller's own handling continues"
-    (is (nil? (rethrown! (ex-info "Wrong host or port" {:status-code 400}))))
-    (is (nil? (rethrown! (java.io.IOException. "boom"))))))
-
 (deftest ^:parallel maybe-derive-with-test
   (testing "a Secret is derived from without the plaintext becoming a caller binding"
     (is (= 7 (u.secret/maybe-derive-with (u.secret/secret "hunter2") count))))

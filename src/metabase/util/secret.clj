@@ -259,38 +259,12 @@
   The shape every sink wants: a credential the caller just typed is a plain String and goes wherever they said, while
   a stored one is a bound Secret and opens only to the destination it is bound to.
 
-  Call this *outside* any `try` that would translate an exception into a message of its own. The refusal depends only
-  on data already in hand, never on the network, so every sink has a place for it ahead of the risky part. Where the
-  sink is itself called from inside such a `try`, that handler must call [[rethrow-if-audience-mismatch!]] first."
+  A refusal is a 400 carrying its own message and `:error-code :secret-audience-mismatch`. Call this *outside* any
+  `try` that would translate an exception into a message of its own: the refusal depends only on data already in
+  hand, never on the network, so every sink has a place for it ahead of the risky part."
   [v audience]
   (cond-> v
     (secret? v) (expose audience)))
-
-(defn- audience-mismatch
-  "The refusal in `e`'s cause chain, if any: the exception [[expose]] threw for an audience the secret is not bound to.
-
-  Walks the chain rather than merging it (as `u/all-ex-data` would), because a wrapping exception with an
-  `:error-code` of its own would otherwise hide the refusal underneath it. Returns the refusal itself, so a caller
-  rethrows the exception carrying the right message and status rather than the wrapper."
-  [e]
-  (some (fn [t]
-          (when (= :secret-audience-mismatch (:error-code (ex-data t)))
-            t))
-        (take-while some? (iterate ex-cause e))))
-
-(defn rethrow-if-audience-mismatch!
-  "Rethrow the refusal in `e` if there is one; return nil otherwise.
-
-  A refused audience is a client naming a destination the stored credential is not bound to. It carries its own
-  message and 400, and must not be reported as whatever failure the surrounding handler exists to describe. Call this
-  first in any `catch` that translates exceptions into a message of its own and could see a secret being opened
-  beneath it.
-
-  Prefer arranging the sink so this is unnecessary: open the secret ahead of the `try`, as [[maybe-expose]] says.
-  This is for the case where that is not possible because the sink itself is called from inside such a handler."
-  [e]
-  (when-let [refusal (audience-mismatch e)]
-    (throw refusal)))
 
 (defn maybe-derive-with
   "[[derive-with]] when `v` is a Secret; apply `f` to `v` directly otherwise.
