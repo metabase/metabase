@@ -28,7 +28,7 @@ For each attribute's or prop's type and description, see:
 
 The parameter attributes take JSON: an object keyed by slug, or for `hidden-parameters`, an array of slugs.
 
-Attribute values are parsed as [JSON5](https://json5.org/), so single quotes, unquoted keys, and trailing commas all work. Only values that start with `{` or `[` are parsed as JSON. Other values stay strings, except `true`, `false`, and bare numbers, which become booleans and numbers. So wrap even a single slug in `hidden-parameters` in `[]`: without the brackets, the embed won't render at all. A value that starts with `{` or `[`, but that doesn't parse, stays a string, and Metabase logs an error.
+Attribute values are parsed as [JSON5](https://json5.org/), so single quotes, unquoted keys, and trailing commas all work. Only values that start with `{` or `[` are parsed as JSON. Other values stay strings, except `true`, `false`, and bare numbers, which become booleans and numbers. So wrap even a single slug in `hidden-parameters` in `[]`: without the brackets, the embed won't render at all, and the console shows a `TypeError` rather than a message about the attribute. A value that starts with `{` or `[`, but that doesn't parse, stays a string, and Metabase logs an error.
 
 Changing `initial-parameters`, `initial-sql-parameters`, or `hidden-parameters` _after_ the embed has loaded re-renders the embed from scratch with the new values. Changing `parameters` or `sql-parameters` pushes the new values without a reload.
 
@@ -50,7 +50,7 @@ The [change callback](#change-payload) hands values back as arrays: push `4` and
 
 The two-element between formats work with dashboard filters connected to a column or a field filter. A plain SQL variable can only be connected to an equal-to filter, so a between value never reaches one; put the comparison in the SQL instead.
 
-In the `params` of a signed token or in a URL, `[10, null]` and `[null, 20]` give a between filter an open end. Through attributes and props, pass a closed range: the embed drops the `null` and applies the remaining number as a lower bound.
+In the `params` of a signed token or in a URL, `[10, null]` and `[null, 20]` give a between filter an open end. Through attributes and props, pass a closed range: the embed drops the `null` and applies the remaining number as a lower bound. So `[null, 20]` doesn't mean up to 20; it's applied as 20 and up. Pass `[0, 20]` instead.
 
 ### Date formats
 
@@ -76,7 +76,7 @@ The quickest way to get these values is to set the filter in Metabase and copy i
 | `exclude-months-Jan-Dec`                                      | Exclude months, using `Jan` through `Dec`.                                                                                 |
 | `exclude-quarters-1-4`                                        | Exclude quarters, `1` through `4`.                                                                                         |
 
-A plain SQL date variable takes a single date, like `2024-01-02`, with an optional time. Every other format in this table needs a dashboard filter connected to a column, or a [field filter](../questions/native-editor/field-filters.md).
+A plain SQL date variable takes a single date, like `2024-01-02`, with an optional time. A month like `2024-04` is read as the first day of that month, not the whole month. Every other format in this table needs a dashboard filter connected to a column, or a [field filter](../questions/native-editor/field-filters.md).
 
 In an embed, the filter widget shows no label for the `last…` values, but the filter still applies.
 
@@ -127,7 +127,7 @@ Other rules:
 - Pass values as arrays, one element per value: `{ category: ["Gadget", "Gizmo"] }`. A bare value like `{ category: "Gadget" }` works too, but arrays behave consistently everywhere, including in the dropdown values of editable widgets.
 - For a locked filter connected to a plain variable in a SQL question, Metabase substitutes the values as a comma-separated list. That works inside `{% raw %} IN ({{variable}}) {% endraw %}`, but after `=` it's a SQL error from your database, not a Metabase error. So, unless the query is written for a list, pass one element. To deal with several values, connect the filter to a [field filter](../questions/native-editor/field-filters.md) instead, which expands to `IN (...)` on its own, and wrap the tag in `[[ ]]` so `[]` turns the clause off.
 - An empty array, `[]`, means "no value" and turns the filter off for that token.
-- A blank string, `""`, counts as no value at all. On a locked parameter that's the same as leaving it out, so the token is rejected.
+- A blank string, `""`, or `null` counts as no value at all. On a locked parameter that's the same as leaving the parameter out, so the token is rejected.
 - Metabase substitutes token values into text cards on the server, so a [text card variable that's connected to the filter](../dashboards/filters.md#wiring-up-dashboard-filters-to-text-cards) shows the value even though the browser never receives it.
 
 For a walkthrough, check out [Restrict data on guest embeds](./parameters.md#restrict-data-on-guest-embeds). For how to sign and refresh the token, check out [Guest embeds](./guest-embedding.md).

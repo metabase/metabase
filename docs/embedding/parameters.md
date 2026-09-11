@@ -48,13 +48,14 @@ Say you want each customer to see only their own rows. On an embed with guest au
 {% include_file "{{ dirname }}/snippets/parameters/dashboards/locked-parameters-token.ts" snippet="example" %}
 ```
 
-Then pass the token to the component, as the `token` attribute on `<metabase-dashboard>` or the `token` prop on `StaticDashboard` in the SDK, or have the embed fetch it from your server. On a legacy [static embed](./introduction.md#static-embedding-is-deprecated), the token goes in the iframe URL instead. The dashboard shows only customer 13's rows, with no **Customer ID** widget. For fetching and refreshing the token, check out [Guest embeds](./guest-embedding.md#refreshing-or-initializing-the-jwt-from-your-server).
+Then pass the token to the component, as the `token` attribute on `<metabase-dashboard>` or the `token` prop on `StaticDashboard` in the SDK, or have the embed fetch it from your server. The dashboard shows only customer 13's rows, with no **Customer ID** widget. On a legacy [static embed](./introduction.md#static-embedding-is-deprecated), the token goes in the iframe URL instead. For fetching and refreshing the token, check out [Guest embeds](./guest-embedding.md#refreshing-or-initializing-the-jwt-from-your-server).
 
 Some notes on locked parameters:
 
 - **Every token has to include every locked parameter.** Leave out a parameter, and Metabase refuses the request. The dashboard still renders its frame and widgets, and each card shows `You must specify a value for :slug in the JWT.` in place of its chart.
 - **A locked value narrows the options in editable widgets.** Lock **State** to Vermont, and an editable **City** filter on the same dashboard only lists Vermont cities (like [linked filters](../dashboards/filters.md#linking-filters)).
-- **Multiple locked parameters combine with AND.** To skip a locked parameter for a given token, pass `[]` as its value.
+- **Multiple locked parameters combine with AND.**
+- **To turn a locked parameter off for a given token, pass `[]` as its value.** The token still has to name the parameter; the filter just doesn't apply.
 - **The key in `params` is the filter's slug.** If you rename a locked dashboard filter, update the key in your server code to match. Locked parameters connected to a [SQL variable](../questions/native-editor/sql-parameters.md) keep the variable's name, so renaming the widget doesn't affect them.
 - **A locked filter only restricts the cards it's connected to.** A dashboard filter with no connected cards still shows up in the wizard, still has to be in the token, but it won't do anything. The embed renders fine, so nothing in the browser tells you.
 - **Pass one value to a locked filter that's connected to a plain SQL variable.** Metabase substitutes several values as a comma-separated list, which only works if the query is written for one, like `{% raw %}IN ({{variable}}){% endraw %}`. To send several values, connect the filter to a [field filter](../questions/native-editor/field-filters.md) instead.
@@ -63,7 +64,9 @@ See [params in a signed token](./parameters-reference.md#params-in-a-signed-toke
 
 ## Set starting values
 
-To open an embed with some filters already applied, pass starting values keyed by slug. People can still change them in the widgets.
+To open an embed with some filters already applied, pass starting values keyed by slug. On a dashboard, people can still change them in the widgets. A SQL question in an SSO embed [doesn't show widgets for its variables](#hide-parameter-widgets), so there the starting values are the values people get.
+
+Without starting values, an SSO embed of a dashboard opens with the values the signed-in person last applied to that dashboard, so two people can see different starting values. Pass starting values, or [controlled values](#control-values-from-your-app), when the embed should open the same way for everyone.
 
 If instead you want your app to be able to push values, or see when people change a widget's values, use [controlled values](#control-values-from-your-app).
 
@@ -167,7 +170,9 @@ You must update your state from the callback. If you don't, the embed reverts to
 
 ## Hide parameter widgets
 
-On an [SSO embed](./introduction.md#components-with-sso-authentication), every parameter shows a widget by default. To hide a parameter's widget without disabling the parameter, list its slug in `hidden-parameters` (web component) or `hiddenParameters` (SDK). Both work on dashboards and SQL questions.
+On an [SSO embed](./introduction.md#components-with-sso-authentication), every dashboard filter shows a widget by default. To hide a filter's widget without disabling the filter, list its slug in `hidden-parameters` (web component) or `hiddenParameters` (SDK).
+
+SQL questions work differently. In an SSO embed, a SQL question doesn't show widgets for its variables, so there's nothing to hide: the values come from `initial-sql-parameters` or `sql-parameters`, or from the variables' defaults. On a guest embed, a SQL question shows a widget for each **Editable** variable, and `hidden-parameters` hides it. In the SDK, you can add the widgets to an SSO embed yourself with `InteractiveQuestion.SqlParametersList` in a [custom layout](./question-reference.md#customize-the-layout-of-an-interactive-chart), and `hiddenParameters` applies to that list too.
 
 On a [guest embed](./guest-embedding.md), only **Editable** parameters get a widget in the first place, so the embed wizard won't generate `hidden-parameters` for you. To remove a widget in a guest embed, set the parameter to **Disabled** or **Locked** in the wizard. You can still add `hidden-parameters` by hand to hide a widget for a parameter you've made editable.
 
@@ -194,7 +199,7 @@ Hiding a widget doesn't restrict anything: the value is still set from the brows
 {% include_file "{{ dirname }}/snippets/parameters/dashboards/hidden-parameters.tsx" snippet="example" %}
 ```
 
-The same prop works on `StaticQuestion` and `InteractiveQuestion`.
+The same prop works on `StaticQuestion` and `InteractiveQuestion`, wherever a SQL question shows variable widgets: on a guest embed, or in a custom layout that includes `SqlParametersList`.
 
 ## Build your own filter UI
 
@@ -244,7 +249,7 @@ Pass your widget's value in `parameters`, and hide Metabase's widget with `hidde
 {% include_file "{{ dirname }}/snippets/parameters/dashboards/custom-filter-ui.tsx" snippet="example" %}
 ```
 
-If you'd rather keep Metabase's SQL widgets, the SDK's `InteractiveQuestion.SqlParametersList` renders them wherever you put them in a [custom layout](./question-reference.md#customize-the-layout-of-an-interactive-chart).
+If you'd rather use Metabase's own widgets for a SQL question's variables, the SDK's `InteractiveQuestion.SqlParametersList` renders them wherever you put them in a [custom layout](./question-reference.md#customize-the-layout-of-an-interactive-chart). That's also the only way to get variable widgets on a SQL question in an SSO embed, since the default layout leaves them out.
 
 ### Change a locked value from your page
 
