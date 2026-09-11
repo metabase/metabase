@@ -363,12 +363,12 @@
     (is (= {:entity-type "metric", :name "M", :description nil}
            (spec/project :osi-context {:entity_type "metric" :entity_local_id 2 :type :metric :name "M"
                                        :description nil :card-type "metric"})))
-    (is (= {:entity-type "measure", :name "Rev", :description "r"}
+    (is (= {:entity-type "measure", :name "Rev", :description "r", :table {:name "invoices"}}
            (spec/project :osi-context {:entity_type "measure" :entity_local_id 3 :name "Rev"
-                                       :description "r"})))
-    (is (= {:entity-type "segment", :name "Big", :description nil}
+                                       :description "r" :table {:name "invoices"}})))
+    (is (= {:entity-type "segment", :name "Big", :description nil, :table nil}
            (spec/project :osi-context {:entity_type "segment" :entity_local_id 4 :name "Big"
-                                       :description nil}))))
+                                       :description nil :table nil}))))
   (testing "projecting an unhydrated table throws (:field-names, :measures and :segments are declared)"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"missing declared hydration keys"
                           (spec/project :osi-context {:entity_type "table" :entity_local_id 1
@@ -438,6 +438,30 @@
                 :field-names nil :measures nil :segments nil}
                (spec/project :osi-context (merge hydrated {:name "t" :display_name nil
                                                            :description nil :field-names nil}))))))))
+
+(deftest parent-table-hydration-test
+  (testing "a measure and a segment carry their parent table's name, display name and description —
+           the context that makes a generic child name interpretable"
+    (mt/with-temp [:model/Database {db-id :id}    {}
+                   :model/Table    {table-id :id} {:db_id        db-id
+                                                   :name         "invoices"
+                                                   :display_name "Invoices"
+                                                   :description  "One row per issued invoice."}
+                   :model/Measure  {measure-id :id} {:table_id table-id :name "Revenue"}
+                   :model/Segment  {segment-id :id} {:table_id table-id :name "Big"}]
+      (let [parent   {:name "invoices" :display-name "Invoices" :description "One row per issued invoice."}
+            hydrated (spec/hydrate :osi-context
+                                   [{:entity_type "measure" :entity_local_id measure-id :table_id table-id}
+                                    {:entity_type "segment" :entity_local_id segment-id :table_id table-id}])]
+        (is (= [parent parent] (mapv :table hydrated)))
+        (testing "and it reaches the projection"
+          (is (= {:entity-type "measure" :name "Revenue" :description nil :table parent}
+                 (spec/project :osi-context (merge (first hydrated)
+                                                   {:name "Revenue" :description nil}))))))))
+  (testing "a child whose parent table is gone hydrates to nil rather than throwing"
+    (is (= [nil]
+           (mapv :table (spec/hydrate :osi-context
+                                      [{:entity_type "measure" :entity_local_id 1 :table_id Integer/MAX_VALUE}]))))))
 
 (deftest via-parent-without-parent-projection-test
   (testing "a via-parent model whose parent declares no projection has no members: member-entity agrees

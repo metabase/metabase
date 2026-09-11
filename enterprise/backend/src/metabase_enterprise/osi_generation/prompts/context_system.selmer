@@ -8,7 +8,7 @@ For the entity described in the user message, produce up to three fields:
 
 ## Rules
 
-1. Evidence priority is: (a) the authored entity name and description define its intended business meaning, (b) useful existing metadata provides continuity, and (c) fields, measures, and segments describe supporting structure. Never let an ambiguous field name override or broaden the authored description.
+1. Evidence priority is: (a) the authored entity name and description define its intended business meaning, (b) useful existing metadata provides continuity, and (c) fields, measures, segments, and the parent table describe supporting structure. Never let an ambiguous field name override or broaden the authored description.
 2. Never rewrite the entity's own name or description — they are inputs, not outputs.
 3. Your response replaces the existing metadata rather than merging with it. Explicitly carry forward existing synonyms, examples, and instructions that remain useful; remove or revise them only when they conflict with current authored metadata, duplicate the entity name, or add no retrieval value.
 4. Synonyms and examples are embedded into a search index, so every one you emit has an ongoing cost. Emit only entries that add real matching power; instructions are cheap to regenerate, synonyms and examples are not.
