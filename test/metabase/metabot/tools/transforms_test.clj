@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.tools.dependencies :as deps]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.transforms :as agent-transforms]
@@ -50,9 +51,41 @@
             (is (not-any? #(and (map? %) (contains? % "lib/metadata"))
                           (tree-seq coll? seq exported)))))))))
 
+(defn- query-transform-details!
+  "`get_transform_details` output for a transform whose source is `query`, read as rasta with query
+  access to the whole database - so `transforms/get-transform` passes and whatever happens to the
+  source is the export gate's doing."
+  [query]
+  (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
+    (mt/with-temp [:model/Transform {transform-id :id}
+                   {:name "Orders Rollup" :source {:type "query" :query query}}]
+      (mt/with-data-analyst-role! (mt/user->id :rasta)
+        (mt/with-current-user (mt/user->id :rasta)
+          (:output (agent-transforms/get-transform-details-tool {:transform_id transform-id})))))))
+
+(deftest get-transform-details-sandboxed-field-test
+  (testing "a source query naming a field the user's sandbox hides renders without its query, since
+           exporting it would resolve that field's id to a name"
+    (let [query (-> (lib/query (mt/metadata-provider)
+                               (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))
+                    (lib/filter (lib/> (lib.metadata/field (mt/metadata-provider) (mt/id :venues :price)) 1)))]
+      (is (str/includes? (query-transform-details! query) "<query>"))
+      (with-redefs [metabot.perms/sandbox-restricted-fields (fn [_table-ids] {(mt/id :venues) #{}})]
+        (is (not (str/includes? (query-transform-details! query) "<query>")))))))
+
+(deftest get-transform-details-unpermissionable-source-test
+  (testing "a source query whose permissions cannot be calculated at all still renders, since that is
+           not a refusal - it just renders unresolved, naming nothing the user may not see"
+    (let [output (query-transform-details! {:database (mt/id)
+                                           :type     :query
+                                           :query    {:source-table "card__13371337"}})]
+      (is (str/includes? output "<query>"))
+      (is (str/includes? output ":source-card 13371337")
+          "the card id is still a number, so nothing was resolved to a name"))))
+
 (deftest get-transform-details-source-permission-test
-  (testing "the tool refuses a transform whose stored query the user cannot run, even with query
-           access to another table in its database"
+  (testing "transforms/get-transform refuses a transform whose stored query the user cannot run, even
+           with query access to another table in its database, so the tool never reaches the source"
     (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
       (mt/with-temp [:model/Transform {transform-id :id}
                      {:name   "Orders Rollup"

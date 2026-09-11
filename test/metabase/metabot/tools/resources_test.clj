@@ -485,8 +485,8 @@
                   (read-resource/read-resource {:uris ["metabase://transform/99999"]}))))))))
 
 (deftest read-transform-resource-source-permission-test
-  (testing "a transform whose stored query the user cannot run is refused, even with query access to
-           another table in its database"
+  (testing "transforms/get-transform refuses a transform whose stored query the user cannot run, even
+           with query access to another table in its database, so the resource never reaches the source"
     (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/with-temp [:model/Transform {transform-id :id}
                      {:name   "Orders Rollup"
