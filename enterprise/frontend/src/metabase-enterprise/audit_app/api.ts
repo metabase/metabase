@@ -5,7 +5,7 @@ export interface ExportAnalyticsResponse {
   filename: string;
 }
 
-// Shared between the trigger button and the status widget so both read the same mutation lifecycle.
+// Passed as fixedCacheKey so every useExportAnalyticsMutation call shares one mutation result.
 export const ANALYTICS_EXPORT_CACHE_KEY = "analytics-export";
 
 export const analyticsExportApi = EnterpriseApi.injectEndpoints({
