@@ -93,13 +93,15 @@ const MetabotMentionSuggestionComponent = forwardRef<
     },
   }));
 
-  const searchModelsReal = searchModels?.filter(
+  const miniPickerModels = (searchModels ?? []).filter(
     (model) =>
-      model !== "database" &&
       model !== "action" &&
       model !== "segment" &&
       model !== "user" &&
       model !== "measure",
+  );
+  const entityPickerModels = miniPickerModels.filter(
+    (model) => model !== "database",
   );
 
   const shouldHide = useMemo(() => {
@@ -142,7 +144,7 @@ const MetabotMentionSuggestionComponent = forwardRef<
         opened
         searchQuery={query}
         shouldShowLibrary
-        models={searchModelsReal ?? []}
+        models={miniPickerModels}
         closeOnClickOutside={false}
         onChange={onSelectEntity}
         onClose={onClose}
@@ -170,7 +172,7 @@ const MetabotMentionSuggestionComponent = forwardRef<
                 }
               : undefined
           }
-          models={searchModelsReal ?? []}
+          models={entityPickerModels}
           options={{
             hasDatabases: true,
             hasRootCollection: true,
