@@ -4,6 +4,7 @@ import { useInitSdkTracker } from "embedding-sdk-bundle/analytics/tracker";
 import { PLUGIN_EMBEDDING_SDK_AUTH } from "embedding-sdk-bundle/plugins/auth";
 import { refreshTokenAsync } from "embedding-sdk-bundle/store/auth";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
+import { enterSdkMode } from "metabase/embedding-sdk/lib/enter-sdk-mode";
 import { reinitialize } from "metabase/plugins";
 import { initializePlugins } from "sdk-ee-plugins";
 
@@ -59,6 +60,7 @@ jest.mock("sdk-ee-plugins", () => ({ initializePlugins: jest.fn() }));
 describe("ComponentProvider plugin reset lifecycle", () => {
   beforeEach(() => {
     reinitialize();
+    enterSdkMode();
     jest.mocked(initializePlugins).mockImplementation(() => {
       PLUGIN_EMBEDDING_SDK_AUTH.refreshTokenAsync = async () => ({
         id: "sdk-session",
@@ -84,6 +86,7 @@ describe("ComponentProvider plugin reset lifecycle", () => {
     unmountFirst();
 
     reinitialize();
+    enterSdkMode();
 
     const { store: secondStore, unmount: unmountSecond } =
       renderWithSDKProviders(<div />, {

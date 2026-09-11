@@ -5,7 +5,6 @@ import {
   isDataApp,
   isEmbeddingSdk,
 } from "metabase/embedding-sdk/config";
-import { enterSdkMode } from "metabase/embedding-sdk/lib/enter-sdk-mode";
 import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
 
 import { setEmbedPreviewHeader } from "./lib/auth/set-embed-preview-header";
@@ -51,7 +50,6 @@ export function setDataApp(
 ) {
   const sdkPackageVersion = getSdkPackageVersion();
 
-  enterSdkMode();
   EMBEDDING_SDK_CONFIG.isDataApp = true;
   EMBEDDING_SDK_CONFIG.isDataAppDev = isDev;
   EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader = "data-app";
