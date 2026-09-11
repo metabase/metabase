@@ -156,6 +156,7 @@
    [metabase.permissions.core :as perms]
    [metabase.query-processor.util :as qp.util]
    [metabase.segments.schema :as segments.schema]
+   [metabase.types.core :as types]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru trun]]
    [metabase.util.log :as log]
@@ -397,7 +398,7 @@
     (->> dashboard-templates
          (filter (fn [{:keys [applies_to]}]
                    (let [[entity-type field-type] applies_to]
-                     (and (isa? table-type entity-type)
+                     (and (isa? types/entity-hierarchy table-type entity-type)
                           (or (nil? field-type)
                               (magic.util/field-isa? entity field-type))))))
          (sort-by :specificity >))))

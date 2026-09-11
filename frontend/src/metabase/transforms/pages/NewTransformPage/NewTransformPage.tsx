@@ -14,7 +14,7 @@ import {
   PaneHeaderActions,
   PaneHeaderInput,
 } from "metabase/common/data-studio/components/PaneHeader";
-import { useMetadataProviderFactory } from "metabase/metadata-store";
+import { useMetadataProvider } from "metabase/metadata-store";
 import { loadQueryEditorWithParameters } from "metabase/parameters/components/QueryEditorWithParameters";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
@@ -112,7 +112,9 @@ function NewTransformPageBody({
   } = useSourceState({ initialSource });
   const [name, setName] = useState(suggestedTransform?.name ?? "");
   const [uiState, setUiState] = useState(getInitialUiState);
-  const getMetadataProvider = useMetadataProviderFactory();
+  const metadataProvider = useMetadataProvider(
+    source.type === "query" ? source.query.database : null,
+  );
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
   const [isLeaveWarningOpen, setIsLeaveWarningOpen] = useState(false);
@@ -122,14 +124,9 @@ function NewTransformPageBody({
 
   const validationResult = useMemo(() => {
     return source.type === "query"
-      ? getValidationResult(
-          Lib.fromJsQuery(
-            getMetadataProvider(source.query.database),
-            source.query,
-          ),
-        )
+      ? getValidationResult(Lib.fromJsQuery(metadataProvider, source.query))
       : PLUGIN_TRANSFORMS_PYTHON.getPythonSourceValidationResult(source);
-  }, [source, getMetadataProvider]);
+  }, [source, metadataProvider]);
 
   const isSavedRef = useRef(false);
 

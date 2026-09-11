@@ -12,7 +12,7 @@ To give you an idea of how Metabase and Prometheus would work in your production
 
 ## Start up Metabase with `MB_PROMETHEUS_SERVER_PORT`
 
-Download the latest [Metabase JAR](https://www.metabase.com/start/oss/), and run Metabase using an environment variable to specify the Prometheus server port:
+Download the latest [Metabase JAR](https://www.metabase.com/start/oss), and run Metabase using an environment variable to specify the Prometheus server port:
 
 ```sh
 MB_PROMETHEUS_SERVER_PORT=9191 java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
@@ -39,7 +39,7 @@ You can view your locally running Metabase at `http://localhost:3000`.
 
 ## Download and configure Prometheus
 
-[Download Prometheus](https://prometheus.io/download), and extract the files.
+[Download Prometheus](https://prometheus.io/download/), and extract the files.
 
 Change into the Prometheus directory, and add the following YAML file to configure your Prometheus:
 

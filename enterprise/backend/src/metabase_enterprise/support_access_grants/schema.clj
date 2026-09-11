@@ -19,7 +19,7 @@
 
 (mr/def ::create-grant-request
   "Schema for POST /api/ee/support-access-grants request body."
-  [:map
+  [:map {:closed true}
    [:grant_duration_minutes [:int {:min 1 :max max-grant-duration-minutes}]]
    [:ticket_number {:optional true} [:maybe [:string {:min 1 :max 100}]]]
    [:notes {:optional true} [:maybe [:string {:min 1 :max 255}]]]])

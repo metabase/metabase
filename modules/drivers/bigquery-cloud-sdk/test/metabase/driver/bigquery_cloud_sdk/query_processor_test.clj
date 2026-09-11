@@ -158,7 +158,7 @@
                              "  `avg` ASC,"
                              "  `v4_test_data.venues`.`price` ASC"]
                 :params     nil
-                :table-name "venues"
+                :qp/table-name "venues"
                 :mbql?      true})
              (-> (mt/mbql-query venues
                    {:aggregation [[:avg $category_id]]
@@ -1101,7 +1101,7 @@
                                  "LIMIT"
                                  "  1"]
                     :params     nil
-                    :table-name "checkins"
+                    :qp/table-name "checkins"
                     :mbql?      true})
                  (-> (qp.compile/compile query)
                      (update :query #(str/split-lines (driver/prettify-native-form :bigquery-cloud-sdk %)))))))))))
@@ -1171,7 +1171,7 @@
                                  "LIMIT"
                                  "  2"]
                     :params     nil
-                    :table-name "__mb_source"
+                    :qp/table-name "__mb_source"
                     :mbql?      true})
                  (-> (qp.compile/compile query)
                      (update :query #(str/split-lines (driver/prettify-native-form :bigquery-cloud-sdk %))))))
@@ -1185,7 +1185,7 @@
       (testing "Arguments to custom aggregation expression functions have backticks applied properly"
         (is (= {:mbql?      true
                 :params     nil
-                :table-name "orders"
+                :qp/table-name "orders"
                 :query      (for [line ["SELECT"
                                         "  APPROX_QUANTILES("
                                         "    `v4_sample_dataset.orders`.`quantity`,"
@@ -1225,7 +1225,7 @@
                              "ORDER BY"
                              "  `source` ASC"]
                 :params     nil
-                :table-name "__mb_source"
+                :qp/table-name "__mb_source"
                 :mbql?      true}
                (-> (qp.compile/compile query)
                    (update :query #(str/split-lines (driver/prettify-native-form :bigquery-cloud-sdk %))))))
