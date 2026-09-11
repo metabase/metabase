@@ -62,17 +62,7 @@
   [card-ids :- [:set ::lib.schema.id/card]]
   (t2/select :model/Card :id [:in card-ids] :archived false))
 
-(mu/defn fields
-  "The Fields with `field-ids`."
-  [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select :model/Field :id [:in field-ids]))
-
 (mu/defn field-names-and-tables
   "The id, name, and Table id of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
   (t2/select [:model/Field :id :name :table_id] :id [:in field-ids]))
-
-(mu/defn field-fingerprints
-  "A map of Field id to fingerprint for the Fields with `field-ids`."
-  [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select-pk->fn :fingerprint :model/Field :id [:in field-ids]))

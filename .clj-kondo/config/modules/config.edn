@@ -1296,24 +1296,19 @@
            metabase.llm.provider
            metabase.llm.settings
            metabase.llm.startup}
-   :uses #{analytics
-           api
+   :uses #{api
            config
-           driver
            lib
            lib-be
            metabot
            models
-           parameters
            permissions
            premium-features
            request
            settings
            setup
            sql-tools
-           sync
-           util
-           warehouse-schema}
+           util}
    :model-imports #{:model/Card
                     :model/Database
                     :model/Field

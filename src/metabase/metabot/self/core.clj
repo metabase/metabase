@@ -1088,7 +1088,7 @@
   never block the caller forever. The timeouts default to the operator-tunable
   [[metabase.llm.settings/llm-connection-timeout-ms]] and
   [[metabase.llm.settings/llm-request-timeout-ms]] settings (read
-  at call time), the same knobs `metabase.llm.anthropic` uses. Callers can
+  at call time). Callers can
   override either timeout per request by passing `:connection-timeout` /
   `:socket-timeout` in `req`.
 

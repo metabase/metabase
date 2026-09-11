@@ -61,16 +61,6 @@
       (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://env-only.example"]
         (is (= "https://env-only.example" (llm.settings/llm-anthropic-api-base-url)))))))
 
-;;; ------------------------------------------- llm-anthropic-api-key Tests -------------------------------------------
-
-(deftest llm-anthropic-api-key-configured?-test
-  (testing "returns false when no API key is set"
-    (mt/with-dynamic-fn-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
-      (is (false? (llm.settings/llm-anthropic-api-key-configured?)))))
-  (testing "returns true when API key is set"
-    (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-test"]
-      (is (true? (llm.settings/llm-anthropic-api-key-configured?))))))
-
 ;;; ------------------------------------------- Google credential validation -------------------------------------------
 
 (deftest valid-google-project-id?-test
@@ -426,19 +416,3 @@
   (testing "can be overridden"
     (mt/with-temporary-setting-values [llm-connection-timeout-ms 3000]
       (is (= 3000 (llm.settings/llm-connection-timeout-ms))))))
-
-(deftest llm-rate-limit-per-user-test
-  (testing "default value is 20 requests per minute"
-    (mt/with-temporary-setting-values [llm-rate-limit-per-user nil]
-      (is (= 20 (llm.settings/llm-rate-limit-per-user)))))
-  (testing "can be overridden"
-    (mt/with-temporary-setting-values [llm-rate-limit-per-user 50]
-      (is (= 50 (llm.settings/llm-rate-limit-per-user))))))
-
-(deftest llm-rate-limit-per-ip-test
-  (testing "default value is 100 requests per minute"
-    (mt/with-temporary-setting-values [llm-rate-limit-per-ip nil]
-      (is (= 100 (llm.settings/llm-rate-limit-per-ip)))))
-  (testing "can be overridden"
-    (mt/with-temporary-setting-values [llm-rate-limit-per-ip 200]
-      (is (= 200 (llm.settings/llm-rate-limit-per-ip))))))
