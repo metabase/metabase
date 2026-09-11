@@ -270,6 +270,13 @@ cljs:
   - ".github/workflows/cljs.yml"
   - "shadow-cljs.edn"
 
+build_scripts:
+  - ".github/actions/prepare-backend/**"
+  - ".github/file-paths.yaml"
+  - ".github/workflows/build-scripts.yml"
+  - "bin/**"
+  - "deps.edn"
+
 embedder_plugin:
   - ".github/actions/prepare-backend/**"
   - ".github/file-paths.yaml"
