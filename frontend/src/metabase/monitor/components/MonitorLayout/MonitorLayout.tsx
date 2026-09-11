@@ -25,9 +25,14 @@ import * as Urls from "metabase/urls";
 
 import { MonitorContent } from "./MonitorContent";
 
-function getActiveSection(pathname: string): MonitorSection | null {
+// `"api-key-usage"` isn't tracked through `trackMonitorSectionClicked` (see the `AreaTab` below),
+// so it's kept out of the shared `MonitorSection` analytics union and only added here, where it's
+// used solely to drive which nav tab is highlighted.
+type ActiveSection = MonitorSection | "api-key-usage" | null;
+
+function getActiveSection(pathname: string): ActiveSection {
   return match(pathname)
-    .returnType<MonitorSection | null>()
+    .returnType<ActiveSection>()
     .with(
       P.string.startsWith(Urls.dependencyDiagnostics()),
       () => "diagnostics",
@@ -44,6 +49,7 @@ function getActiveSection(pathname: string): MonitorSection | null {
       P.string.startsWith(Urls.monitorModelPersistenceLog()),
       () => "model-caching",
     )
+    .with(P.string.startsWith(Urls.monitorApiKeyUsage()), () => "api-key-usage")
     .with(
       P.string.startsWith(Urls.monitorAiAuditingMcp()),
       () => "ai-auditing-mcp",
@@ -168,6 +174,14 @@ export function MonitorLayout() {
             isSelected={activeSection === "model-caching"}
             showLabel={isNavbarOpened}
             onClick={() => trackMonitorSectionClicked("model-caching")}
+          />
+          <AreaTab
+            label={t`API key usage`}
+            icon="key"
+            to={Urls.monitorApiKeyUsage()}
+            isSelected={activeSection === "api-key-usage"}
+            showLabel={isNavbarOpened}
+            isGated={!hasAuditAppFeature}
           />
         </AreaTabGroup>
       )}
