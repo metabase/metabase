@@ -62,7 +62,7 @@
 (mu/defn tables-of-database-in-id-order
   "The `:id`, `:name`, `:schema`, and `:active` of the Tables of the Database with `database-id`, in ID order."
   [database-id :- ::lib.schema.id/database]
-  (t2/select [:model/Table :id :name :schema :active] :db_id database-id {:from [(warehouse-schema-overlay/table-query)]
+  (t2/select [:model/Table :id :name :schema :active] :db_id database-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]
                                                                           :order-by [[:id :asc]]}))
 
 (mu/defn active-public-table-exists?
@@ -76,14 +76,14 @@
   [database-id :- ::lib.schema.id/database]
   (mapv :id
         (t2/query {:select [:table.id]
-                   :from      [(warehouse-schema-overlay/table-query {:alias :table})]
+                   :from      [(warehouse-schema-overlay/table-query {:alias :table, :user-settings? false})]
                    :where  [:and [:= :table.db_id database-id]
                             ;; Exclude DATABASECHANGELOG, DATABASECHANGELOGLOCK, and QRTZ_* tables, they are not metabase managed
                             [:not= :table.name "DATABASECHANGELOG"]
                             [:not= :table.name "DATABASECHANGELOGLOCK"] ;; new instances do not get this file, but existing instances may have it
                             [:not [:like :table.name "QRTZ_%"]]
                             [:not [:exists ^:allow-subquery {:select [1]
-                                                             :from   [(warehouse-schema-overlay/table-query {:alias :self_table})]
+                                                             :from   [(warehouse-schema-overlay/table-query {:alias :self_table, :user-settings? false})]
                                                              :where  [:and
                                                                       [:= :self_table.db_id :table.db_id]
                                                                       [:or
@@ -163,7 +163,7 @@
 (mu/defn field-names-of-table
   "The `:id` and `:name` of the Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select [:model/Field :id :name] :table_id table-id {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select [:model/Field :id :name] :table_id table-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn card-result-metadata-reducible
   "Reducible raw `:id` and `:result_metadata` rows of the Cards of the Database with `database-id`."

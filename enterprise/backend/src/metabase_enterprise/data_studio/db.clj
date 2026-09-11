@@ -52,9 +52,9 @@
                           [:not [:in output-table-id tables]])]
     (t2/reducible-query {:select [[output-table-id :table_id]]
                          :from   [[(t2/table-name :model/Dimension) :dim]]
-                         :join   [(warehouse-schema-overlay/field-query {:alias :source_field})
+                         :join   [(warehouse-schema-overlay/field-query {:alias :source_field, :user-settings? false})
                                   [:= :dim.field_id :source_field.id]
-                                  (warehouse-schema-overlay/field-query {:alias :target_field})
+                                  (warehouse-schema-overlay/field-query {:alias :target_field, :user-settings? false})
                                   [:= :dim.human_readable_field_id :target_field.id]]
                          :where  [:and
                                   [:= :dim.type "external"]

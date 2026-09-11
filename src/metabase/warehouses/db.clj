@@ -131,7 +131,7 @@
 (mu/defn active-table-ids-for-database
   "The ids of the active Tables of the Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-pks-set :model/Table, :db_id database-id, :active true {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-pks-set :model/Table, :db_id database-id, :active true {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn pk-fields-for-tables
   "The primary-key Fields of the Tables with `table-ids`."
@@ -159,4 +159,4 @@
 (mu/defn table-database-id
   "The Database id of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table, :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one-fn :db_id :model/Table, :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))

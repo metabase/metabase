@@ -443,7 +443,7 @@
 (mu/defn table-database-id
   "The Database ID of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one-fn :db_id :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn tables-by-id
   "A map of ID to Table for `table-ids`."
@@ -458,7 +458,7 @@
 (mu/defn table-schema-rows
   "The ID, name, schema, and Database ID of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :name :schema :db_id] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select [:model/Table :id :name :schema :db_id] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn table-curation-rows
   "The ID, published flag, data layer, and data authority of the Tables with `table-ids`."
@@ -574,7 +574,7 @@
   "The distinct `:schema` rows of the active Tables in the Database with `database-id`, ordered by schema."
   [database-id :- ::lib.schema.id/database]
   (t2/query {:select-distinct [:schema]
-             :from            [(warehouse-schema-overlay/table-query)]
+             :from            [(warehouse-schema-overlay/table-query {:user-settings? false})]
              :where           [:and [:= :db_id database-id] [:= :active true]]
              :order-by        [[:schema :asc]]}))
 
@@ -618,7 +618,7 @@
    table :- :string]
   (t2/select-one :model/QueryTable
                  {:select [[:t.id :table-id] [:t.name :table] [:t.schema :schema]]
-                  :from      [(warehouse-schema-overlay/table-query {:alias :t})]
+                  :from      [(warehouse-schema-overlay/table-query {:alias :t, :user-settings? false})]
                   :where  [:and
                            [:= :t.db_id db-id]
                            (table-match-clause {:schema schema :table table})]}))
@@ -633,7 +633,7 @@
                            [:table :string]]]]
   (t2/select :model/QueryTable
              {:select [[:t.id :table-id] [:t.name :table] [:t.schema :schema]]
-              :from      [(warehouse-schema-overlay/table-query {:alias :t})]
+              :from      [(warehouse-schema-overlay/table-query {:alias :t, :user-settings? false})]
               :where  [:and
                        [:= :t.db_id db-id]
                        (into [:or] (map table-match-clause) tables)]}))
@@ -648,12 +648,12 @@
 (mu/defn field-fingerprint
   "The fingerprint of the Field with `field-id`."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :fingerprint :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select-one-fn :fingerprint :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn field-table-ids
   "A map of Field ID to Table ID for `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select-fn->fn :id :table_id [:model/Field :id :table_id] :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select-fn->fn :id :table_id [:model/Field :id :table_id] :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 ;;; -------------------------------------------------- Cards --------------------------------------------------
 

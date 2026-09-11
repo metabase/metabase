@@ -16,7 +16,7 @@
 (mu/defn table-field-names
   "The names of the Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-fn-vec :name [:model/Field :name] :table_id table-id {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select-fn-vec :name [:model/Field :name] :table_id table-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn database-connection-details
   "The engine and connection details of the Database with `database-id`, or nil."

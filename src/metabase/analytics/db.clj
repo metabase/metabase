@@ -163,7 +163,7 @@
   "The Database id and schema of the Tables of the non-internal Databases."
   []
   (t2/query {:select [:t.db_id :t.schema]
-             :from      [(warehouse-schema-overlay/table-query {:alias :t})]
+             :from      [(warehouse-schema-overlay/table-query {:alias :t, :user-settings? false})]
              :join   [[(t2/table-name :model/Database) :d] [:= :d.id :t.db_id]]
              :where  (mi/exclude-internal-content-hsql :model/Database :table-alias :d)}))
 

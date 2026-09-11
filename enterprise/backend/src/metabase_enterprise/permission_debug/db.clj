@@ -21,7 +21,7 @@
 (defn- blocked-tables-select
   [user-id tables-expr permissions-blocking permissions-granting]
   {:select [[:db.name :db_name] :blocked.schema [:blocked.name :table_name] [:pg.name :group_name]]
-   :from   [(warehouse-schema-overlay/table-query {:alias :blocked})]
+   :from   [(warehouse-schema-overlay/table-query {:alias :blocked, :user-settings? false})]
    :join   [[(perms/select-tables-and-groups-granting-perm
               {:user-id user-id :is-superuser? false}
               permissions-blocking) :perm_grant] [:= :blocked.id :perm_grant.id]

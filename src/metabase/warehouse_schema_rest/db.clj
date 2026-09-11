@@ -159,7 +159,7 @@
 (mu/defn field-ids-for-table
   "The ids of the Fields of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-pks-set :model/Field :table_id table-id {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select-pks-set :model/Field :table_id table-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn active-fields-targeting
   "The active Fields whose FK target, as users see it, is one of `field-ids`."
