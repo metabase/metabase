@@ -2,7 +2,8 @@
  ;; we put path as bin, and everything is in the ./mage subdirectory,
  ;; so the namespaces are mage.cli, mage.format, etc.
  ;; dev/src is here for tasks whose logic is shared with JVM tests (e.g. dev.kondo-ratchet)
- :paths ["mage/src" "mage/test" "bin/lint-migrations-file/src" "dev/src"]
+ ;; Let Mage use the same module-resolution rules as the Kondo hooks.
+ :paths ["mage/src" "mage/test" "bin/lint-migrations-file/src" "dev/src" ".clj-kondo/src"]
  ;; use Git version of dep temporarily until a new release > 0.16.4 is cut
  :deps {dev.weavejester/cljfmt {:git/sha "075eae26e3c8dad433b88f05927bcd50e3571328"
                                 :git/url "https://github.com/weavejester/cljfmt"} ;; run cljfmt from bb
@@ -259,6 +260,16 @@
    :arg-schema [:or [:tuple] [:tuple [:string {:name "git-ref"}]]]
    :requires [[mage.modules]]
    :task (task! (mage.modules/cli-print-affected-modules (:arguments parsed)))}
+
+  modules-tree
+  {:doc "Print the module hierarchy, nesting enterprise extensions under their OSS module"
+   :examples [["./bin/mage modules-tree" "Print the full tree; * marks a custom :ns-prefix"]
+              ["./bin/mage modules-tree --nested-only" "Print only roots with nested modules"]
+              ["./bin/mage modules-tree --prefixes" "Show custom prefixes instead of *"]]
+   :options [["-n" "--nested-only" "Only print modules that have nested children"]
+             ["-p" "--prefixes" "Print the :ns-prefix instead of the star"]]
+   :requires [[mage.modules]]
+   :task (task! (mage.modules/cli-print-module-tree parsed))}
 
   can-skip-driver-tests
   {:doc "Can we skip driver tests for this branch?"
