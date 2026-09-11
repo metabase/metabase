@@ -9,13 +9,18 @@ import {
 } from "react";
 import { t } from "ttag";
 
+import { mbProtocolModelToSuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/suggestionUtils";
 import { ActionIcon, CopyButton, Icon, Tooltip } from "metabase/ui";
 import { parseMetabaseProtocolLink } from "metabase/urls";
 
 import S from "./AIMarkdown.module.css";
 import { StreamingMarkdown } from "./StreamingMarkdown";
 import { InternalLink } from "./components/InternalLink";
-import { MarkdownSmartLink } from "./components/MarkdownSmartLink";
+import {
+  MarkdownSmartLink,
+  type MarkdownSmartLinkTarget,
+} from "./components/MarkdownSmartLink";
+import { parseEntityPath } from "./parseEntityPath";
 
 type AIMarkdownProps = {
   children: string;
@@ -75,6 +80,27 @@ const MarkdownCodeBlock = ({
   );
 };
 
+const parseEntityLink = (
+  href: string | undefined,
+): MarkdownSmartLinkTarget | undefined => {
+  if (!href) {
+    return undefined;
+  }
+
+  const protocolLink = parseMetabaseProtocolLink(href);
+  if (protocolLink) {
+    return protocolLink.model === "chart"
+      ? protocolLink
+      : {
+          id: protocolLink.id,
+          model: mbProtocolModelToSuggestionModel(protocolLink.model),
+        };
+  }
+
+  const path = parseEntityPath(href);
+  return path && { ...path, href };
+};
+
 const getComponents = ({
   onInternalLinkClick,
 }: Pick<AIMarkdownProps, "onInternalLinkClick">) => ({
@@ -89,13 +115,13 @@ const getComponents = ({
     node?: any;
     [key: string]: any;
   }) => {
-    const parsed = parseMetabaseProtocolLink(node.properties.href);
-    if (parsed) {
+    const entity = parseEntityLink(node.properties.href);
+    if (entity) {
       return (
         <MarkdownSmartLink
           onInternalLinkClick={onInternalLinkClick}
           name={String(node.children?.[0]?.value ?? "")}
-          {...parsed}
+          {...entity}
         />
       );
     }
