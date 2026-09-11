@@ -55,8 +55,10 @@ jobs:
       e2e_infra: ${{ steps.changes.outputs.e2e_infra }}
       backend_all: ${{ steps.changes.outputs.backend_all }}
       frontend_all: ${{ steps.changes.outputs.frontend_all }}
+      frontend_ci: ${{ steps.changes.outputs.frontend_ci }}
       frontend_sources: ${{ steps.changes.outputs.frontend_sources }}
       frontend_unit_infra: ${{ steps.changes.outputs.frontend_unit_infra }}
+      frontend_loki_ci: ${{ steps.changes.outputs.frontend_loki_ci }}
       frontend_loki_infra: ${{ steps.changes.outputs.frontend_loki_infra }}
       shared_sources: ${{ steps.changes.outputs.shared_sources }}
       documentation: ${{ steps.changes.outputs.documentation }}
@@ -286,6 +288,20 @@ jobs:
       skip-custom-viz: >-
         ${{ needs.should-run.outputs.verdict != 'force-run' &&
         needs.files-changed.outputs.custom_viz_all != 'true' }}
+
+  loki-tests:
+    needs: [should-run, files-changed]
+    if: |
+      !cancelled() &&
+      (needs.should-run.outputs.verdict == 'force-run' ||
+      needs.files-changed.result == 'success')
+    uses: ./.github/workflows/loki.yml
+    with:
+      skip: >-
+        ${{ needs.should-run.outputs.verdict != 'force-run' &&
+        needs.files-changed.outputs.frontend_ci != 'true' &&
+        needs.files-changed.outputs.frontend_sources != 'true' &&
+        needs.files-changed.outputs.frontend_loki_ci != 'true' }}
 
   e2e-tests:
     needs: [should-run, files-changed, uberjar]
