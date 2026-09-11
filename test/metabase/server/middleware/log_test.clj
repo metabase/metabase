@@ -40,7 +40,8 @@
 (def ^:private api-key-request
   {:request-method        :get
    :uri                   "/api/card/1"
-   :headers               {"user-agent" "metabase-cli/1.2.3", "x-metabase-client" "embedding-sdk-react"}
+   :headers               {"user-agent" "metabase-cli/1.2.3", "x-metabase-client" "embedding-sdk-react"
+                           "x-metabase-embed-referrer" "https://example.com/app"}
    :remote-addr           "203.0.113.7"
    :embedding/auth-method "api-key"
    :api-key-id            7
@@ -83,12 +84,13 @@
                :status           200
                :user-agent       "metabase-cli/1.2.3"
                :ip-address       "203.0.113.7"
-               :embedding-client "embedding-sdk-react"}
+               :embedding-client "embedding-sdk-react"
+               :embedding-hostname "example.com"}
               recorded-request))
       (testing "duration is measured, and nothing from the URI or query string is recorded"
         (is (int? (:duration-ms recorded-request)))
         (is (= #{:api-key-id :user-id :tenant-id :route-template :http-method :status :duration-ms
-                 :user-agent :ip-address :embedding-client}
+                 :user-agent :ip-address :embedding-client :embedding-hostname}
                (set (keys recorded-request))))))))
 
 (deftest log-api-call-embedding-client-absent-test
@@ -97,6 +99,13 @@
           (run-log-api-call! (update api-key-request :headers dissoc "x-metabase-client")
                              "/api/card/:id" {:status 200, :body "ok"})]
       (is (nil? (:embedding-client recorded-request))))))
+
+(deftest log-api-call-embedding-hostname-absent-test
+  (testing "embedding-hostname is nil when the referrer header is absent"
+    (let [{:keys [recorded-request]}
+          (run-log-api-call! (update api-key-request :headers dissoc "x-metabase-embed-referrer")
+                             "/api/card/:id" {:status 200, :body "ok"})]
+      (is (nil? (:embedding-hostname recorded-request))))))
 
 (deftest log-api-call-records-nothing-for-other-auth-methods-test
   (testing "session-authenticated requests are untouched"
