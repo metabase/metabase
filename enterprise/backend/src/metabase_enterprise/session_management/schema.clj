@@ -20,6 +20,13 @@
    [:last-active-before {:optional true} [:maybe ms/TemporalInstant]]
    [:last-active-after  {:optional true} [:maybe ms/TemporalInstant]]])
 
+(mr/def ::revocation
+  "What [[metabase-enterprise.session-management.db/revoke-live-sessions!]] reports about a revoke."
+  [:map {:closed true}
+   [:revoked          ms/IntGreaterThanOrEqualToZero]
+   [:user-ids         [:sequential ::lib.schema.id/user]]
+   [:current-revoked? :boolean]])
+
 (mr/def ::session-sort-column
   "Columns the session list can be sorted by. `:last_active_at` sorts on the same
   `COALESCE(last_active_at, created_at)` the idle-timeout predicate uses, so a session that has never been touched
