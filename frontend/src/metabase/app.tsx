@@ -62,7 +62,7 @@ import { OverlayStackProvider } from "./ui/components/overlays/overlay-stack";
 
 setBasename(window.MetabaseRoot);
 
-initializePlugins();
+const pluginsInitialized = initializePlugins();
 
 type Store = ReturnType<typeof getStore>;
 
@@ -85,7 +85,8 @@ function isLocationChangeAction(
 }
 
 function _init(
-  reducers: Parameters<typeof getStore>[0],
+  // A factory, so that reducers enterprise plugins register are included.
+  getReducers: () => Parameters<typeof getStore>[0],
   getRoutes: (store: Store) => RouteObject[],
   callback?: (store: Store) => void,
 ) {
@@ -109,7 +110,7 @@ function _init(
     });
   }
 
-  const store = getStore(reducers, undefined, extraMiddlewares);
+  const store = getStore(getReducers(), undefined, extraMiddlewares);
   const routes = getRoutes(store);
   const mirrorLocation = createLocationMirror(store.dispatch);
 
@@ -170,12 +171,20 @@ function _init(
   }
 }
 
+function whenDocumentReady() {
+  return new Promise<void>((resolve) => {
+    if (document.readyState !== "loading") {
+      resolve();
+    } else {
+      document.addEventListener("DOMContentLoaded", () => resolve());
+    }
+  });
+}
+
 export function init(...args: Parameters<typeof _init>) {
-  if (document.readyState !== "loading") {
-    _init(...args);
-  } else {
-    document.addEventListener("DOMContentLoaded", () => _init(...args));
-  }
+  Promise.all([pluginsInitialized, whenDocumentReady()]).then(() =>
+    _init(...args),
+  );
 }
 
 captureConsoleErrors();
