@@ -79,7 +79,7 @@
                         (-> (mt/mbql-query venues {:order-by [[:asc $id]]})
                             qp/userland-query
                             (assoc :constraints {:max-results-bare-rows 5
-                                                 :max-result            10})))
+                                                 :max-results           10})))
         rows-truncated-info (select-keys (:data result) [:rows_truncated])]
     (is (= {:rows_truncated 5}
            (if (seq rows-truncated-info)

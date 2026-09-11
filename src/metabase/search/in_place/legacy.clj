@@ -158,7 +158,7 @@
 (mu/defn- add-table-db-id-clause
   "Add a WHERE clause to only return tables with the given DB id.
   Used in data picker for joins because we can't join across DB's."
-  [query :- ms/Map id :- [:maybe ms/PositiveInt]]
+  [query :- :map id :- [:maybe ms/PositiveInt]]
   (if (some? id)
     (sql.helpers/where query [:= id :db_id])
     query))
@@ -166,7 +166,7 @@
 (mu/defn- add-card-db-id-clause
   "Add a WHERE clause to only return cards with the given DB id.
   Used in data picker for joins because we can't join across DB's."
-  [query :- ms/Map id :- [:maybe ms/PositiveInt]]
+  [query :- :map id :- [:maybe ms/PositiveInt]]
   (if (some? id)
     (sql.helpers/where query [:= id :database_id])
     query))

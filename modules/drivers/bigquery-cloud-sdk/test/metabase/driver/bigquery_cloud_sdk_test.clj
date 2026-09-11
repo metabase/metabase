@@ -1580,8 +1580,8 @@
               (mt/run-mbql-query bigthings
                 {:aggregation [[:count]]
                  :breakout [[:field %bigthings.bd
-                             {:type :type/Decimal
-                              :binning {:strategy "default"}}]]})))))))
+                             {:base-type :type/Decimal
+                              :binning   {:strategy :default}}]]})))))))
 
 (deftest bigquery-process-stop-test
   (mt/test-driver

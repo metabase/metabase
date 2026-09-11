@@ -5,7 +5,6 @@ import type { ModalComponentProps } from "metabase/common/components/ModalRoute"
 import { PluginPlaceholder } from "../components/PluginPlaceholder";
 import { definePluginSlot } from "../slot";
 
-
 const getDefaultPluginSupport = () => ({
   isEnabled: false,
   SupportSettings: PluginPlaceholder,
