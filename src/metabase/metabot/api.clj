@@ -192,9 +192,10 @@
 
   `:assistant-msg-id` is the PK of the placeholder assistant row created by
   [[metabot.persistence/start-turn!]]; the finally block UPDATEs that row.
-  `:external-id` is the assistant row's `external_id`, emitted as the SSE
-  `start` event's `messageId` so the client can correlate streamed messages
-  with feedback. `:user-external-id` is the turn's user row `external_id`,
+  `:external-id` is the assistant row's `external_id` — the client-minted
+  `assistant_message_id` when the request supplied one — echoed as the SSE
+  `start` event's `messageId` so a client that omitted one can still tell what
+  was persisted. `:user-external-id` is the turn's user row `external_id`,
   emitted as the `start` event's `messageMetadata.userMessageId`.
   `:state` is the reconstructed [[metabot.persistence/conversation-state]] —
   it seeds the agent loop as the immutable baseline for this turn's state."
@@ -370,7 +371,7 @@
 
 (mu/defn- upgrade-viewing-queries
   "Update queries of items in viewing context vector. Handles following item types: adhoc, question, model, metric"
-  [viewing :- [:vector metabot.context/ViewingItemSchema]]
+  [viewing :- [:vector :map]]
   (letfn [(update-items-query [item] (m/update-existing item :query legacy->modern-query))
           (maybe-update-item [item] (cond-> item
                                       (contains? upgradable-item-types (:type item))
@@ -386,7 +387,7 @@
   "Send a chat message to the LLM via the AI Proxy."
   [_route-params
    _query-params
-   body :- [:map
+   body :- [:map {:closed true}
             [:profile_id {:optional true} :string]
             [:metabot_id {:optional true} :string]
             [:message ms/NonBlankString]
@@ -419,7 +420,7 @@
   "Persist Metabot feedback."
   [_route-params
    _query-params
-   body :- [:map
+   body :- [:map {:closed true}
             [:metabot_id        ms/PositiveInt]
             [:message_id        ms/NonBlankString]
             [:positive          :boolean]
@@ -435,7 +436,7 @@
   "Persist Metabot source feedback."
   [_route-params
    _query-params
-   body :- [:map
+   body :- [:map {:closed true}
             [:metabot_id   ms/PositiveInt]
             [:message_id   ms/NonBlankString]
             [:source_id    ms/PositiveInt]

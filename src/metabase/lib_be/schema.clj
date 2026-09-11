@@ -4,6 +4,7 @@
    [metabase.lib-be.models.transforms :as lib-be.transforms]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.middleware-options :as lib.schema.middleware-options]
    [metabase.lib.util :as lib.util]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli.registry :as mr]
@@ -32,12 +33,13 @@
    [:ref ::lib.schema/query]])
 
 (mr/def ::internal-query
-  [:map
+  [:map {:closed true}
    [:type   [:= {:decode/normalize keyword} :internal]]
    [:fn     :string]
-   [:args   {:optional true} [:maybe [:sequential :any]]]
+   [:args   {:optional true} [:maybe [:sequential [:maybe [:or :string number? :boolean]]]]]
    [:limit  {:optional true} [:maybe :int]]
-   [:offset {:optional true} [:maybe :int]]])
+   [:offset {:optional true} [:maybe :int]]
+   [:middleware {:optional true} [:ref ::lib.schema.middleware-options/middleware-options]]])
 
 (mr/def ::maybe-legacy-or-internal-query
   [:multi {:dispatch    (fn [query] (and (map? query) (= (lib.util/normalized-query-type query) :internal)))

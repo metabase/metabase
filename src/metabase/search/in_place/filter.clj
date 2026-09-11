@@ -34,7 +34,7 @@
 (def ^:private max-document-search-length
   "Cap the number of characters of a document's prose-mirror body that the legacy engine LIKE-scans.
   A leading-wildcard LIKE can't use an index, so this bounds the worst case for pathologically large
-  documents. Mirrors the appdb engine's `metabase.search.ingestion/max-searchable-value-length`."
+  documents. Mirrors the appdb engine's `metabase.search.ingestion.query/max-searchable-value-length`."
   500000)
 
 ;; ------------------------------------------------------------------------------------------------;;

@@ -27,10 +27,10 @@
   regardless if a `:table_id` or `:table_name` is passed.
   This endpoint is secured by an API key that needs to be passed as a `X-METABASE-APIKEY` header which needs to be defined in
   the `MB_API_KEY` [environment variable](https://www.metabase.com/docs/latest/configuring-metabase/environment-variables.html#mb_api_key)"
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [table_id table_name scan synchronous?]} :- [:map
+   {:keys [table_id table_name scan synchronous?]} :- [:map {:closed true}
                                                        [:table_id   {:optional true} [:maybe ms/PositiveInt]]
                                                        [:table_name {:optional true} [:maybe ms/NonBlankString]]
                                                        [:scan       {:optional true} [:maybe [:enum "full" "schema"]]]
@@ -84,7 +84,7 @@
   - synchronous?: is a boolean value to indicate if this should block on the result."
   [_route-params
    _query-params
-   {:keys [table_name schema_name synchronous?]} :- [:map
+   {:keys [table_name schema_name synchronous?]} :- [:map {:closed true}
                                                      [:table_name   {:optional true} [:maybe ms/NonBlankString]]
                                                      [:schema_name  {:optional true} [:maybe string?]]
                                                      [:synchronous? {:default false} [:maybe ms/BooleanValue]]]]
@@ -107,10 +107,10 @@
 (api.macros/defendpoint :post "/db/:id/new-table"
   "Sync a new table without running a full database sync. Requires `schema_name` and `table_name`. Will throw an error
   if the table already exists in Metabase or cannot be found."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [schema_name table_name]} :- [:map
+   {:keys [schema_name table_name]} :- [:map {:closed true}
                                         [:schema_name ms/NonBlankString]
                                         [:table_name  ms/NonBlankString]]]
   (api/let-404 [database (sync.db/database id)]

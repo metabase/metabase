@@ -44,7 +44,7 @@ In general, Metabase will try to close hanging connections to your database afte
 
 ## Clearing queued queries
 
-1. Stop the process (e.g., a script, or a dashboard with [too many cards](./my-dashboard-is-slow.md#dashboard-has-over-10-cards) that's launching a lot of queries at once.
+1. Stop the process (e.g., a script, or a dashboard with [too many cards](./my-dashboard-is-slow.md#dashboard-has-over-10-cards) that's launching a lot of queries at once).
 2. Go to your database server and stop all queries (from Metabase) that are in progress.
 3. Optional: Increase the [number of connections to your database](../configuring-metabase/environment-variables.md#mb_jdbc_data_warehouse_max_connection_pool_size).
 
