@@ -4,6 +4,7 @@ import fetchMock from "fetch-mock";
 import type { PropsWithChildren } from "react";
 import { useMount } from "react-use";
 
+import { setupTimelinesEndpoints } from "__support__/server-mocks";
 import { setupCollectionByIdEndpoint } from "__support__/server-mocks/collection";
 import {
   createMockApiState,
@@ -16,6 +17,7 @@ import { getTimelineEventCheckbox } from "__support__/timelines";
 import {
   act,
   getTestStoreAndWrapper,
+  mockGetBoundingClientRect,
   renderWithProviders,
   screen,
   waitFor,
@@ -27,6 +29,7 @@ import {
   selectTimelineEvents,
   setDashCardTimelineEventsVisibility,
 } from "metabase/dashboard/actions";
+import { DashCard } from "metabase/dashboard/components/DashCard/DashCard";
 import { DashboardEventsSidebar } from "metabase/dashboard/components/DashboardEventsSidebar/DashboardEventsSidebar";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
@@ -115,6 +118,8 @@ function setup({
   dashcardTabId = null,
   withSidebar = false,
   dashcards,
+  withCharts = false,
+  seedTimelines = true,
 }: {
   savedVisibility?: VisualizationSettings;
   withTimelineEvents?: boolean;
@@ -122,6 +127,8 @@ function setup({
   dashcardTabId?: DashboardTabId | null;
   withSidebar?: boolean;
   dashcards?: QuestionDashboardCard[];
+  withCharts?: boolean;
+  seedTimelines?: boolean;
 } = {}) {
   setupCollectionByIdEndpoint({
     collections: [
@@ -145,9 +152,31 @@ function setup({
       dashboardId={DASHBOARD_ID}
       withTimelineEvents={withTimelineEvents}
     >
-      {/* two charts report, the dashboard is tracked once */}
-      <DashCardChart dashcard={dashcard} />
-      <DashCardChart dashcard={dashcard} />
+      {withCharts ? (
+        allDashcards.map((dashcard) => (
+          <DashCard
+            key={dashcard.id}
+            dashcard={dashcard}
+            gridItemWidth={4}
+            totalNumGridCols={24}
+            isTrashedOnRemove={false}
+            autoScroll={false}
+            onRemove={jest.fn()}
+            onReplaceCard={jest.fn()}
+            markNewCardSeen={jest.fn()}
+            onReplaceAllDashCardVisualizationSettings={jest.fn()}
+            onUpdateVisualizationSettings={jest.fn()}
+            showClickBehaviorSidebar={jest.fn()}
+            onEditVisualization={jest.fn()}
+          />
+        ))
+      ) : (
+        <>
+          {/* two charts report, the dashboard is tracked once */}
+          <DashCardChart dashcard={dashcard} />
+          <DashCardChart dashcard={dashcard} />
+        </>
+      )}
       {withSidebar && <DashboardEventsSidebar />}
     </MockDashboardContext>,
     {
@@ -174,13 +203,15 @@ function setup({
             ]),
           ),
         }),
-        "metabase-api": seedApiQueryCache(createMockApiState(), [
-          {
-            endpointName: "listTimelines",
-            arg: { include: "events" },
-            value: [TIMELINE],
-          },
-        ]),
+        ...(seedTimelines && {
+          "metabase-api": seedApiQueryCache(createMockApiState(), [
+            {
+              endpointName: "listTimelines",
+              arg: { include: "events" },
+              value: [TIMELINE],
+            },
+          ]),
+        }),
       }),
     },
   );
@@ -278,6 +309,31 @@ describe("dashboard timeline events", () => {
       await screen.findByTestId("dashboard-events-empty-state"),
     ).toBeInTheDocument();
     expect(screen.queryByText(EVENT.name)).not.toBeInTheDocument();
+  });
+
+  it("loads the timelines once however many charts show the event", async () => {
+    mockGetBoundingClientRect({ width: 500, height: 300 });
+    setupTimelinesEndpoints([TIMELINE]);
+    const question = createMockCard({
+      display: "line",
+      visualization_settings: EVENTS_RECORDED,
+    });
+    const dashcards = [3, 4, 5].map((id) =>
+      createMockDashboardCard({
+        id,
+        dashboard_id: DASHBOARD_ID,
+        card: question,
+      }),
+    );
+
+    setup({ dashcards, withCharts: true, seedTimelines: false });
+
+    await waitFor(() =>
+      expect(screen.getAllByTestId("timeline-events-band")).toHaveLength(
+        dashcards.length,
+      ),
+    );
+    expect(fetchMock.callHistory.calls("path:/api/timeline")).toHaveLength(1);
   });
 
   describe.each([
