@@ -16,7 +16,7 @@ const ExampleControlled = () => {
   const handleParametersChange = (payload: ParameterChangePayload) => {
     // Sync your local state on every applied change. `payload.source` is one of:
     //   "initial-state" — post-load snapshot, fired once per dashboard load
-    //   "manual-change" — user edited a parameter widget
+    //   "manual-change" — someone changed a filter widget
     //   "auto-change"   — your push was normalized; re-sync from `payload.parameters`
     setParameters(payload.parameters);
   };

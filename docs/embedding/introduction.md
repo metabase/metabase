@@ -106,7 +106,7 @@ If you'd like to share your data with the good people of the internet, admins ca
 
 Static embeds (also called signed embeds) put a signed JWT in an iframe URL, like `/embed/dashboard/YOUR_JWT_TOKEN`. Static embedding is deprecated in favor of [guest embeds](./guest-embedding.md), which use the same secret key and the same signed token, but render a web component instead of an iframe.
 
-Existing static embeds keep working. For items published with static embedding, the embed modal still offers **Use static embedding instead**. Their hash parameters are the same as the ones for public embeds, so check out [Appearance parameters](./public-links.md#appearance-parameters) if you need to tweak one.
+Existing static embeds keep working. For items published with static embedding, the embed modal still offers **Use static embedding instead**. Their hash parameters are the same as the ones for public embeds, so check out [Appearance parameters](./public-links.md#appearance-parameters) if you need to tweak one. For filter values in the URL, check out [Parameters in iframe embeds](./parameters.md#parameters-in-iframe-embeds).
 
 To migrate a static embed to a guest embed:
 

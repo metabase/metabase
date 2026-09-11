@@ -9,22 +9,26 @@ const Example = () => {
   // Render the first token yourself, for example from your server-rendered page props.
   const [token, setToken] = useState(INITIAL_SIGNED_TOKEN);
 
-  async function onRegionChange(region: string) {
-    // Your endpoint checks that this user may see `region`,
-    // then signs a token with params: { region: [region] }
-    const response = await fetch(`/api/metabase-token?region=${region}`);
+  async function onCustomerChange(customerId: string) {
+    // Your endpoint checks that this viewer may see `customerId`,
+    // then signs a token with params: { customer_id: [customerId] }
+    const response = await fetch(
+      `/api/metabase-token?customer_id=${encodeURIComponent(customerId)}`,
+    );
     const { jwt } = await response.json();
     setToken(jwt);
   }
 
   return (
     <>
-      <select onChange={(event) => onRegionChange(event.target.value)}>
-        <option value="us-east">US East</option>
-        <option value="us-west">US West</option>
+      <select onChange={(event) => onCustomerChange(event.target.value)}>
+        <option value="13">Customer 13</option>
+        <option value="14">Customer 14</option>
+        <option value="15">Customer 15</option>
       </select>
 
-      <StaticDashboard token={token} />
+      {/* `key` remounts the dashboard when the token changes, so it re-queries with the new locked value. */}
+      <StaticDashboard key={token} token={token} />
     </>
   );
   // [<endsnippet example>]

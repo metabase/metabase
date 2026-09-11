@@ -1,6 +1,6 @@
 ---
 title: Embedding parameters reference
-summary: "Reference for parameters in modular embeds: which attribute or prop to use for each task, how web components parse parameter attributes, the value formats each filter type accepts, the change callback's source values, and the rules for params in a signed token."
+summary: "Which attribute or prop to use, the value formats each filter type accepts, the change callback payload, and the rules for params in a signed token."
 ---
 
 # Embedding parameters reference
@@ -28,7 +28,7 @@ For each attribute's or prop's type and description, see:
 
 The parameter attributes take JSON: an object keyed by slug, or for `hidden-parameters`, an array of slugs.
 
-Attribute values are parsed as [JSON5](https://json5.org/), so single quotes, unquoted keys, and trailing commas all work. Only values that start with `{` or `[` are parsed as JSON, so wrap even a single slug in `hidden-parameters` in `[]`. A value that starts with `{` or `[`, but that doesn't parse, will stay as a string, and Metabase will log an error.
+Attribute values are parsed as [JSON5](https://json5.org/), so single quotes, unquoted keys, and trailing commas all work. Only values that start with `{` or `[` are parsed as JSON. Other values stay strings, except `true`, `false`, and bare numbers, which become booleans and numbers. So wrap even a single slug in `hidden-parameters` in `[]`: without the brackets, the embed won't render at all. A value that starts with `{` or `[`, but that doesn't parse, stays a string, and Metabase logs an error.
 
 Changing `initial-parameters`, `initial-sql-parameters`, or `hidden-parameters` _after_ the embed has loaded re-renders the embed from scratch with the new values. Changing `parameters` or `sql-parameters` pushes the new values without a reload.
 
@@ -36,19 +36,21 @@ Changing `initial-parameters`, `initial-sql-parameters`, or `hidden-parameters` 
 
 These formats apply wherever you pass a value: web component attributes, SDK props, and the `params` object in a [signed token](#params-in-a-signed-token).
 
-| Parameter type     | Accepts                                                                                                            | Examples                                  |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------- |
-| Text, category, ID | A string, or an array of strings for multi-select filters.                                                         | `"Gizmo"`, `["Gizmo", "Gadget"]`          |
-| Number             | A number, a numeric string, or an array of either. Two-element arrays for between filters; `null` for an open end. | `50`, `"50"`, `[10, 20]`, `[10, null]`    |
-| Boolean            | `true` or `false`, or the strings `"true"` and `"false"`.                                                          | `true`                                    |
-| Date               | A string in one of the formats below.                                                                              | `"past30days"`, `"2024-01-01~2024-03-31"` |
-| Time grouping      | A unit name.                                                                                                       | `"month"`, `"week"`, `"quarter"`          |
+| Parameter type     | Accepts                                                                                    | Examples                                  |
+| ------------------ | ------------------------------------------------------------------------------------------ | ----------------------------------------- |
+| Text, category, ID | A string, or an array of strings for multi-select filters.                                 | `"Gizmo"`, `["Gizmo", "Gadget"]`          |
+| Number             | A number, a numeric string, or an array of either. Two-element arrays for between filters. | `50`, `"50"`, `[10, 20]`                  |
+| Boolean            | `true` or `false`, or the strings `"true"` and `"false"`.                                  | `true`                                    |
+| Date               | A string in one of the formats below.                                                      | `"past30days"`, `"2024-01-01~2024-03-31"` |
+| Time grouping      | A unit name.                                                                               | `"month"`, `"week"`, `"quarter"`          |
 
 To clear a filter, pass `null` for its slug. To reset it to its default, leave the slug out.
 
 The [change callback](#change-payload) hands values back as arrays: push `4` and you get `[4]`. Date and time grouping values are the exception and stay strings.
 
 The two-element between formats work with dashboard filters connected to a column or a field filter. A plain SQL variable can only be connected to an equal-to filter, so a between value never reaches one; put the comparison in the SQL instead.
+
+In the `params` of a signed token or in a URL, `[10, null]` and `[null, 20]` give a between filter an open end. Through attributes and props, pass a closed range: the embed drops the `null` and applies the remaining number as a lower bound.
 
 ### Date formats
 
@@ -74,17 +76,19 @@ The quickest way to get these values is to set the filter in Metabase and copy i
 | `exclude-months-Jan-Dec`                                      | Exclude months, using `Jan` through `Dec`.                                                                                 |
 | `exclude-quarters-1-4`                                        | Exclude quarters, `1` through `4`.                                                                                         |
 
-The `exclude-` formats work with dashboard filters and field filters. A plain SQL variable can't take them, because Metabase substitutes a variable with a date range, and an exclusion isn't one.
+A plain SQL date variable takes a single date, like `2024-01-02`, with an optional time. Every other format in this table needs a dashboard filter connected to a column, or a [field filter](../questions/native-editor/field-filters.md).
+
+In an embed, the filter widget shows no label for the `last…` values, but the filter still applies.
 
 ## Change payload
 
-`onParametersChange` (SDK) and the `parameters-change` event (web component, as `event.detail`) both deliver the same object, a [`ParameterChangePayload`](./sdk/api/ParameterChangePayload.html). Every field is keyed by parameter slug and lists every parameter on the item, with `null` where there's no value.
+`onParametersChange` (SDK) and the `parameters-change` event (web component, as `event.detail`) both deliver the same object, a [`ParameterChangePayload`](./sdk/api/ParameterChangePayload.html). `parameters`, `defaultParameters`, and `lastUsedParameters` are each keyed by parameter slug and list every parameter on the item, with `null` where there's no value.
 
-| Field                | What it holds                                                                   |
-| -------------------- | ------------------------------------------------------------------------------- |
-| `parameters`         | The values currently applied to the embed.                                      |
-| `defaultParameters`  | Each parameter's default value.                                                 |
-| `lastUsedParameters` | The values this person last applied on this dashboard. Dashboards only.         |
+| Field                | What it holds                                                                    |
+| -------------------- | -------------------------------------------------------------------------------- |
+| `parameters`         | The values currently applied to the embed.                                       |
+| `defaultParameters`  | Each parameter's default value.                                                  |
+| `lastUsedParameters` | The values this person last applied on this dashboard. Dashboards only.          |
 | `source`             | Why the callback fired. See [When the callback fires](#when-the-callback-fires). |
 
 SQL questions deliver a [`SqlParameterChangePayload`](./sdk/api/SqlParameterChangePayload.html) through `onSqlParametersChange` or `sql-parameters-change`. It's the same object without `lastUsedParameters`.
@@ -93,11 +97,11 @@ SQL questions deliver a [`SqlParameterChangePayload`](./sdk/api/SqlParameterChan
 
 The [`source`](./sdk/api/ParameterChangeSource.html) field says which of these happened:
 
-| `source`        | Fires when                                                                                                                                                                                   |
-| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `initial-state` | The embed finishes loading. Once per load.                                                                                                                                                   |
-| `manual-change` | Someone applies a value with one of Metabase's filter widgets. On a dashboard with auto-apply turned off, editing a widget doesn't count; clicking **Apply** does.                            |
-| `auto-change`   | You pushed values and Metabase applied something different. The payload carries what was actually applied.                                                                                   |
+| `source`        | Fires when                                                                                                                                                         |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `initial-state` | The embed finishes loading. Once per load.                                                                                                                         |
+| `manual-change` | Someone applies a value with one of Metabase's filter widgets. On a dashboard with auto-apply turned off, editing a widget doesn't count; clicking **Apply** does. |
+| `auto-change`   | You pushed values and Metabase applied something different. The payload carries what was actually applied.                                                         |
 
 Metabase normalizes values before applying them, so `auto-change` usually means one of two things:
 
@@ -108,11 +112,13 @@ Metabase normalizes values before applying them, so `auto-change` usually means 
 
 On guest embeds, your server passes parameter values in the `params` object of the JWT it signs. What Metabase does with them depends on the visibility you chose for each parameter in the embed wizard.
 
-| Wizard setting | Token sets it                                               | Page sets it (`initial-parameters`, widget, or URL)                                                          | Widget shows |
-| -------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------ |
-| **Disabled**   | Rejected: `You're not allowed to specify a value for slug.` | Rejected, same error.                                                                                        | No           |
-| **Editable**   | Allowed. The widget disappears for that token.              | Allowed, unless the token also sets it: `You can't specify a value for slug if it's already set in the JWT.` | Yes          |
-| **Locked**     | Required: `You must specify a value for :slug in the JWT.`  | Rejected: `You can only specify a value for slug in the JWT.`                                                | No           |
+| Wizard setting | Token sets it                                                | Page sets it (`initial-parameters`, widget, or URL)                                                           | Widget shows |
+| -------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- | ------------ |
+| **Disabled**   | Rejected: `You're not allowed to specify a value for :slug.` | Rejected, same error.                                                                                         | No           |
+| **Editable**   | Allowed. The widget disappears for that token.               | Allowed, unless the token also sets it: `You can't specify a value for :slug if it's already set in the JWT.` | Yes          |
+| **Locked**     | Required: `You must specify a value for :slug in the JWT.`   | Rejected: `You can only specify a value for :slug in the JWT.`                                                | No           |
+
+Metabase checks these rules when a card runs its query, not when the dashboard loads. A rejected token still renders the dashboard's frame and widgets, and each card shows the error in place of its chart.
 
 Other rules:
 

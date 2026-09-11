@@ -388,7 +388,7 @@ const payload = {
 const token = jwt.sign(payload, METABASE_SECRET_KEY);
 ```
 
-A locked filter also narrows the options in every editable filter on the same dashboard, the way [linked filters](../dashboards/filters.md#linking-filters) do. And if the locked filter feeds a plain variable in a SQL question anywhere on the dashboard, pass one value (unless that query uses `IN ({{variable}})`). See [Locked parameters](./parameters.md#restrict-data-on-guest-embeds).
+A locked filter also narrows the options in every editable filter on the same dashboard, the way [linked filters](../dashboards/filters.md#linking-filters) do. And if the locked filter feeds a plain variable in a SQL question anywhere on the dashboard, pass one value (unless that query uses `{% raw %}IN ({{variable}}){% endraw %}`). See [Locked parameters](./parameters.md#restrict-data-on-guest-embeds).
 
 ### Use permissions on an SSO embed
 

@@ -269,7 +269,7 @@ Embeds with **SSO** don't need to lock parameters. Since Metabase knows who's vi
 
 ## Control question parameters from your app
 
-To drive a question's [SQL parameters](../questions/native-editor/sql-parameters.md) from your app's own code, pass values keyed by variable name. You can [set starting values](./parameters.md#set-starting-values) that people can still change, [hold the values in your app](./parameters.md#control-values-from-your-app) and get a callback whenever they change, and [hide Metabase's widgets](./parameters.md#hide-parameter-widgets) when your app supplies [its own](./parameters.md#build-your-own-filter-ui). Check out [Embedding parameters](./parameters.md) for all of it.
+To drive a question's [SQL parameters](../questions/native-editor/sql-parameters.md) from your app's own code, pass values keyed by variable name. You can [set starting values](./parameters.md#set-starting-values) that people can still change, [hold the values in your app](./parameters.md#control-values-from-your-app) and get a callback whenever they change, and [hide Metabase's widgets](./parameters.md#hide-parameter-widgets) when your app supplies [its own filter UI](./parameters.md#build-your-own-filter-ui). Check out [Embedding parameters](./parameters.md) for all of it.
 
 Your app sets these values in the browser, and people can change them, so they don't restrict what anyone can query. To restrict the data itself, see [Show people only their own data](#show-people-only-their-own-data).
 

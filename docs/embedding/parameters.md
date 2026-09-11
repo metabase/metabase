@@ -40,7 +40,7 @@ Say you want each customer to see only their own rows. On an embed with guest au
 
 1. Visit the dashboard or question, click the **Share** icon, and select **Embed**.
 2. Under **Parameters**, set the parameter to **Locked**.
-3. Optional: pick a value under **Preview locked parameters**. The wizard writes it into the server code it generates, so you can see the exact format Metabase expects.
+3. Optional: pick a value under **Previewing locked parameters**. The wizard writes it into the server code it generates, so you can see the exact format Metabase expects.
 4. Click **Publish**.
 5. On your server, put the value in the `params` object when you sign the token:
 
@@ -52,18 +52,18 @@ Then pass the token to the component, as the `token` attribute on `<metabase-das
 
 Some notes on locked parameters:
 
-- **Every token has to include every locked parameter.** Leave out a parameter, and Metabase refuses the request.
+- **Every token has to include every locked parameter.** Leave out a parameter, and Metabase refuses the request. The dashboard still renders its frame and widgets, and each card shows `You must specify a value for :slug in the JWT.` in place of its chart.
 - **A locked value narrows the options in editable widgets.** Lock **State** to Vermont, and an editable **City** filter on the same dashboard only lists Vermont cities (like [linked filters](../dashboards/filters.md#linking-filters)).
 - **Multiple locked parameters combine with AND.** To skip a locked parameter for a given token, pass `[]` as its value.
 - **The key in `params` is the filter's slug.** If you rename a locked dashboard filter, update the key in your server code to match. Locked parameters connected to a [SQL variable](../questions/native-editor/sql-parameters.md) keep the variable's name, so renaming the widget doesn't affect them.
 - **A locked filter only restricts the cards it's connected to.** A dashboard filter with no connected cards still shows up in the wizard, still has to be in the token, but it won't do anything. The embed renders fine, so nothing in the browser tells you.
-- **Connect a locked filter to a field filter if your server may send more than one value.** A plain SQL variable can't take a list.
+- **Pass one value to a locked filter that's connected to a plain SQL variable.** Metabase substitutes several values as a comma-separated list, which only works if the query is written for one, like `{% raw %}IN ({{variable}}){% endraw %}`. To send several values, connect the filter to a [field filter](../questions/native-editor/field-filters.md) instead.
 
 See [params in a signed token](./parameters-reference.md#params-in-a-signed-token).
 
 ## Set starting values
 
-To open an embed with some set-and-forget filters already applied, pass starting values keyed by slug. From there, people can change the value via the filter widgets.
+To open an embed with some filters already applied, pass starting values keyed by slug. People can still change them in the widgets.
 
 If instead you want your app to be able to push values, or see when people change a widget's values, use [controlled values](#control-values-from-your-app).
 
@@ -104,15 +104,15 @@ SQL questions take `initialSqlParameters`:
 
 ## Control values from your app
 
-> _Don't_ combine controlled values with starting values: if you pass both, the embed uses the controlled values and logs a warning to the console.
+When your app needs to be the source of truth for filter values, use the `parameters` attribute on the web component or the `parameters` prop in the SDK (`sql-parameters` and `sqlParameters` for SQL questions). They work like a controlled `<input>` in React: you hold the values, the embed applies whatever you hand it, and it calls you back whenever someone changes the value in the filter widget. Use controlled values when you want to [build your own filter widgets](#build-your-own-filter-ui).
 
-When your app needs to be the source of truth for filter values, use the controlled attribute (web component) or prop (SDK). They work like a controlled `<input>` in React: you hold the values, the embed applies whatever you hand it, and it calls you back whenever someone changes the value in the filter widget. Use controlled values when you want to [build your own filter widgets](#build-your-own-filter-ui).
+> _Don't_ combine controlled values with starting values: if you pass both, the embed uses the controlled values and logs a warning to the console.
 
 Controlled values work with either authentication method. On a [guest embed](./guest-embedding.md), they apply to parameters you've set to **Editable** in the embed wizard. To restrict data rather than just set a value, [lock the parameter](#restrict-data-on-guest-embeds) instead.
 
 The [callback's payload](./parameters-reference.md#change-payload) includes the applied values, each parameter's default, and a `source` that says why it fired. For what each parameter type accepts, and how to clear or reset a value, see [Value formats by parameter type](./parameters-reference.md#value-formats-by-parameter-type).
 
-Push values as arrays, even single ones: `{ min_rating: [4] }`. Metabase stores dashboard values as arrays and hands them back that way.
+Metabase stores dashboard values as arrays and hands them back that way. Push arrays, like `{ min_rating: [4] }`, if you want the callback's payload to match what you sent. A bare value works too, but Metabase normalizes it and reports the change with `source: "auto-change"`.
 
 - [Web component](#web-component-controlled-values)
 - [React SDK](#react-sdk-controlled-values)
@@ -200,10 +200,10 @@ The same prop works on `StaticQuestion` and `InteractiveQuestion`.
 
 If Metabase's widgets don't fit your app, you can hide them and make your own. How you push values to the charts depends on what the parameter is for. If your widget just sets a value that anyone could set, control the value from the page. That works on SSO embeds and on guest embeds where the parameter is **Editable**.
 
-- [Editable parameters](#editable-parameters-control-the-values-and-hide-the-widgets)
+- [Editable parameters](#control-editable-parameters-from-your-own-widgets)
 - [Change a locked value from your page](#change-a-locked-value-from-your-page)
 
-### Editable parameters: control the values and hide the widgets
+### Control editable parameters from your own widgets
 
 Hold the values in your app with the [controlled props](#control-values-from-your-app), hide Metabase's widgets, and the embed re-queries whenever your widget changes the value. On a guest embed, the parameter has to be **Editable** in the embed wizard.
 
@@ -255,16 +255,20 @@ Because the parameter is locked, your server should check that the viewer is all
 #### Web component re-signed token
 
 ```html
+<!-- Render this token on your server for each page load. Don't let
+     guestEmbedProviderUri fetch the first one; see below. -->
 <metabase-dashboard
   id="my-dashboard"
   token="INITIAL_SIGNED_TOKEN"
 ></metabase-dashboard>
 
 <script>
-  async function onRegionChange(region) {
-    // Your endpoint checks that this user may see `region`,
-    // then signs a token with params: { region: [region] }
-    const response = await fetch(`/api/metabase-token?region=${region}`);
+  async function onCustomerChange(customerId) {
+    // Your endpoint checks that this viewer may see `customerId`,
+    // then signs a token with params: { customer_id: [customerId] }
+    const response = await fetch(
+      `/api/metabase-token?customer_id=${encodeURIComponent(customerId)}`,
+    );
     const { jwt } = await response.json();
     document.getElementById("my-dashboard").setAttribute("token", jwt);
   }
@@ -273,11 +277,13 @@ Because the parameter is locked, your server should check that the viewer is all
 
 Render the first token into the `token` attribute yourself rather than letting [`guestEmbedProviderUri`](./guest-embedding.md#refreshing-or-initializing-the-jwt-from-your-server) fetch it. An embed that starts without a token fetches one on load, and that token would overwrite the value your widget just set.
 
-The same thing happens when a token expires. If you've set `guestEmbedProviderUri`, the embed asks that endpoint for a fresh token, and the request carries only the resource id and the `custom-context` attribute, not the value your widget picked. Unless the endpoint can work the value out on its own, from `custom-context` or from your app's session, the locked value snaps back to whatever the endpoint signs by default. The `/api/metabase-token` endpoint in the example above is separate from the provider endpoint: one signs a token for a value your page passes, the other signs the token the embed asks for when it needs one. Check out [Sending custom context](./guest-embedding.md#sending-custom-context) for the shape the provider endpoint receives.
+There are two endpoints in play. The `/api/metabase-token` endpoint in the example is yours: it signs a token for a value your page passes. The [`guestEmbedProviderUri`](./guest-embedding.md#refreshing-or-initializing-the-jwt-from-your-server) endpoint, if you've set one, signs the token the embed fetches on its own: on load when there's no `token` attribute, and after the current token expires.
+
+That second case is the trap. Once the token expires, the embed asks the provider endpoint for a fresh one the next time it needs data, like when someone changes a filter. That request carries only the resource id and the `custom-context` attribute, not the value your widget picked. So unless the endpoint can work the value out on its own, from `custom-context` or from your app's session, the locked value snaps back to whatever the endpoint signs by default. Check out [Sending custom context](./guest-embedding.md#sending-custom-context) for the shape the provider endpoint receives.
 
 #### React SDK re-signed token
 
-Hold the token in state and pass it to the `token` prop on `StaticDashboard`. The SDK doesn't fetch or refresh guest tokens with `guestEmbedProviderUri`, so the caveats in the web component section don't apply: your app is the only thing that sets the token, including when it expires. Guest embeds in the SDK need `isGuest: true` in the `MetabaseProvider` auth config, and a page can use only one authentication method. Check out [Using guest embeds with the SDK](./guest-embedding.md#using-guest-embeds-with-the-sdk).
+Hold the token in state, pass it to the `token` prop on `StaticDashboard`, and set `key={token}` so the component remounts when the token changes. Without the key, the new token is stored but the dashboard doesn't re-query. Guest token refresh with `guestEmbedProviderUri` isn't supported in the SDK, so the caveats in the web component section don't apply: your app is the only thing that sets the token, including when it expires. Guest embeds in the SDK need `isGuest: true` in the `MetabaseProvider` auth config, and a page can use only one authentication method. Check out [Using guest embeds with the SDK](./guest-embedding.md#using-guest-embeds-with-the-sdk).
 
 ```typescript
 {% include_file "{{ dirname }}/snippets/parameters/dashboards/guest-locked-token.tsx" snippet="example" %}
@@ -288,7 +294,7 @@ Hold the token in state and pass it to the `token` prop on `StaticDashboard`. Th
 Everything above applies to [modular embeds](./modular-embedding.md). The iframe-based embeds set parameters through the URL instead:
 
 - **[Public links and public embeds](./public-links.md#public-embed-parameters)**: add `?slug=value` to set a filter, and `#hide_parameters=slug` to hide its widget. Anyone can edit the URL, so these don't restrict data.
-- **[Static embeds](./introduction.md#static-embedding-is-deprecated)** (deprecated): same token and rules as guest embeds. Set a parameter to **Locked** and pass its value in `params`. Editable parameters get a widget in the iframe, and take starting values from the URL with the same syntax as public embeds.
+- **[Static embeds](./introduction.md#static-embedding-is-deprecated)** (deprecated): same token and rules as guest embeds. Set a parameter to **Locked** and pass its value in `params`. Editable parameters get a widget in the iframe, and take starting values from the URL with the same syntax as public embeds. Hide a widget with `#hide_parameters=slug`, and set appearance with the same [hash parameters as public embeds](./public-links.md#appearance-parameters).
 - **[Full app embedding](./full-app-embedding.md)**: filter values go in the Metabase URL you load in the iframe, the same way as in Metabase itself.
 
 ## Further reading

@@ -214,7 +214,7 @@ You can hide multiple filter widgets by separating the filter names with commas,
 /dashboard/42#hide_parameters=id,customer_name
 ```
 
-To pass several values to one filter, repeat it:
+To pass several values to a multi-select filter, repeat it:
 
 ```
 /dashboard/42?category=Gadget&category=Gizmo
@@ -226,15 +226,15 @@ Note that the name of the filter in the URL should be specified in lower case, a
 /dashboard/42?filter_for_user_zip_code=02116
 ```
 
-Values are case-sensitive and have to match your data. URL-encode values that contain spaces or other special characters, like `Hash%20browns`. For the date formats a date filter accepts, check out the [Parameters reference](./parameters-reference.md#date-formats).
+Values are passed to your database as typed, so they're case-sensitive and have to match your data. URL-encode values that contain spaces or other special characters, like `Hash%20browns`. For the date formats a date filter accepts, check out the [Parameters reference](./parameters-reference.md#date-formats).
 
 For filter values that people can't remove from the URL, check out [locked parameters](./parameters.md#restrict-data-on-guest-embeds) on a guest or static embed.
 
 ### Maximum URL length
 
-The maximum length of an embedding URL (including all parameters) is determined by your [`MB_JETTY_REQUEST_HEADER_SIZE`](../configuring-metabase/environment-variables.md#mb_jetty_request_header_size) environment variable. The default is 8192 bytes.
+The maximum length of an embedding URL (including all parameters) is determined by your [`MB_JETTY_REQUEST_HEADER_SIZE`](../configuring-metabase/environment-variables.md#mb_jetty_request_header_size) environment variable. When it's unset, Metabase's web server defaults to 8192 bytes.
 
-If your URL exceeds the maximum header size, you'll see a log message like `URI too long`. You can update the environment variable to accept larger headers. If you're using a proxy server, you may need to set a corresponding property on the server as well.
+If your URL exceeds the maximum header size, the request fails with an HTTP `414 URI Too Long` response before it reaches Metabase, so nothing shows up in Metabase's log. You can set the environment variable to accept larger headers. If you're using a proxy server, you may need to set a corresponding property on the server as well.
 
 ## Disable public sharing
 
