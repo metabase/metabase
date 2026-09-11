@@ -326,11 +326,8 @@
   :default    :external-only
   :export?    false
   :deprecated-name :http-channel-host-strategy
-  :setter     (fn [new-value]
-                (when (some? new-value)
-                  (assert (#{:external-only :allow-private :allow-all} (keyword new-value))
-                          (tru "Invalid http-channel-allowed-networks! Only values of external-only, allow-private, and allow-all are allowed.")))
-                (setting/set-value-of-type! :keyword :http-channel-allowed-networks new-value)))
+  :value-validator #{:external-only :allow-private :allow-all}
+  :sysadmin-only? true)
 
 (defsetting slack-configured?
   "Is Slack integration configured?"

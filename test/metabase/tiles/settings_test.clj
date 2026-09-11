@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.premium-features.test-util :as premium-features.tu]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.tiles.settings :as tiles.settings]))
 
@@ -94,6 +95,27 @@
         (testing "the scheme is still checked"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid map tile server URL"
                                 (tiles.settings/map-tile-server-url! "file:///etc/passwd"))))))
-    (testing "only the three known values are accepted"
-      (is (thrown-with-msg? java.lang.AssertionError #"Invalid map-tile-server-allowed-networks"
-                            (tiles.settings/map-tile-server-allowed-networks! :allow-everything))))))
+    (testing "only the three known values are accepted; anything else fails closed"
+      (mt/with-temporary-setting-values [map-tile-server-allowed-networks :allow-everything]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"MB_MAP_TILE_SERVER_ALLOWED_NETWORKS: \"allow-everything\" is not a valid value for setting map-tile-server-allowed-networks"
+                              (tiles.settings/map-tile-server-allowed-networks)))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid map tile server URL"
+                              (tiles.settings/map-tile-server-url! "https://8.8.8.8/{z}/{x}/{y}.png")))))))
+
+(deftest map-tile-server-allowed-networks-is-sysadmin-only-test
+  (testing "the allowlist the map-tile-server-url setter checks against cannot be widened by a Metabase admin"
+    (is (setting/sysadmin-only? :map-tile-server-allowed-networks))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"can only be set by the MB_MAP_TILE_SERVER_ALLOWED_NETWORKS environment variable"
+                          (setting/set! :map-tile-server-allowed-networks :allow-all))))
+  (testing "a value that reached the application database some other way is ignored"
+    (mt/with-temporary-raw-setting-values [map-tile-server-allowed-networks "allow-all"]
+      (mt/with-temp-env-var-value! [mb-map-tile-server-allowed-networks nil]
+        (premium-features.tu/with-premium-features #{}
+          (is (= :allow-private (tiles.settings/map-tile-server-allowed-networks))))
+        (premium-features.tu/with-premium-features #{:hosting}
+          (is (= :external-only (tiles.settings/map-tile-server-allowed-networks)))))))
+  (testing "the environment sets it"
+    (mt/with-temp-env-var-value! [mb-map-tile-server-allowed-networks "allow-all"]
+      (is (= :allow-all (tiles.settings/map-tile-server-allowed-networks))))))

@@ -78,7 +78,8 @@
   Primarily used in test to disable retired setting check."
   false)
 
-(declare admin-writable-site-wide-settings get-value-of-type set-value-of-type!)
+(declare admin-writable-site-wide-settings db-or-cache-value env-var-name get-value-of-type registered? string->boolean
+         sysadmin-only? set-value-of-type!)
 
 (methodical/defmethod t2/table-name :model/Setting [_model] :setting)
 
@@ -101,7 +102,10 @@
   (get-value-of-type :string (keyword id)))
 
 (defmethod serdes/load-one! "Setting" [{:keys [key value]} _]
-  (set-value-of-type! :string key value))
+  (if (and (registered? key) (sysadmin-only? key))
+    (log/warnf "Skipping import of sysadmin-only setting %s; it can only be set by the %s environment variable."
+               (name key) (env-var-name key))
+    (set-value-of-type! :string key value)))
 
 (def ^:private Type
   [:fn
@@ -147,7 +151,7 @@
         (throw (ex-info (format "Cannot resolve :tag %s to a class. Is it fully qualified?" (pr-str tag))
                         {:tag klass}
                         (when (instance? Throwable klass) klass))))
-      (when-not (instance? klass default)
+      (when-not (or (fn? default) (instance? klass default))
         (throw (ex-info (format "Wrong :default type: got ^%s %s, but expected a %s"
                                 (.getCanonicalName (class default))
                                 (pr-str default)
@@ -228,6 +232,12 @@
    [:user-local     LocalOption]
    ;; should this setting be read from env vars?
    [:can-read-from-env? :boolean]
+   ;; a predicate over the setting's typed value (the shape its getter returns). A write through `set!` of a value it
+   ;; rejects throws a 400; an env var value it rejects makes every read throw. (default: nil)
+   [:value-validator [:maybe ifn?]]
+   ;; can this setting ONLY be set by whoever administers the host Metabase runs on? When true, the value comes from
+   ;; the env var, then the default -- never the application database, which nothing may write it to. (default: false)
+   [:sysadmin-only? :boolean]
    ;; called whenever setting value changes, whether from update-setting! or a cache refresh. used to handle cases
    ;; where a change to the cache necessitates a change to some value outside the cache, like when a change the
    ;; `:site-locale` setting requires a call to `java.util.Locale/setDefault`
@@ -472,6 +482,62 @@
     (or (@env-var-translation-cache sname)
         ((swap! env-var-translation-cache assoc sname (keyword (str "mb-" (munge-setting-name sname)))) sname))))
 
+(def ^:private type->parse-fn
+  "How the raw string of a Setting of each `:type` is parsed into the value its getter returns: the parse the
+  `get-value-of-type` method for that type uses, and the shape a `:value-validator` is handed."
+  {:string           identity
+   :boolean          #(string->boolean %)
+   :integer          #(Long/parseLong ^String %)
+   :positive-integer #(Long/parseLong ^String %)
+   :double           #(Double/parseDouble ^String %)
+   :keyword          keyword
+   :timestamp        u.date/parse
+   :json             json/decode+kw
+   :csv              (comp first csv/read-csv)})
+
+(defn- valid-value?
+  "Does `v` pass `setting`'s `:value-validator`? `v` may be the typed value or its raw string (an env var, or what the
+  API sends); a string is parsed the way the getter would parse it first. A string the type cannot parse at all is
+  counted as valid here so that the parse error the getter produces -- and [[validate-settings-formatting!]] reports at
+  startup -- is what surfaces, not a validator warning. Settings without a validator accept everything."
+  [setting v]
+  (if-let [validator (:value-validator setting)]
+    (let [typed (if (and (string? v) (not= (:type setting) :string))
+                  (try ((core/get type->parse-fn (:type setting) identity) v)
+                       (catch Throwable _ ::unparseable))
+                  v)]
+      (or (= typed ::unparseable)
+          (boolean (validator typed))))
+    true))
+
+(defn- invalid-value-message
+  "The message for a value `setting`'s `:value-validator` rejected. Names the value unless the setting is sensitive."
+  [setting v]
+  (if (:sensitive? setting)
+    (tru "That is not a valid value for setting {0}." (setting-name setting))
+    (tru "{0} is not a valid value for setting {1}." (pr-str v) (setting-name setting))))
+
+(def ^:private env-value-validation-cache
+  "`[setting-name raw-env-value]` -> whether the `:value-validator` accepted it, so a validator runs once per distinct
+  env value rather than on every read."
+  (atom {}))
+
+(defn- check-env-value!
+  "Throw unless the raw env var string `v` passes `setting`'s `:value-validator`. `env-name` is the env var `v` came
+  from -- the setting's own, or its `:deprecated-name`'s -- so the error points at the variable that is actually set."
+  [setting env-name ^String v]
+  (when (:value-validator setting)
+    (let [k      [(setting-name setting) v]
+          valid? (if-some [cached (core/get @env-value-validation-cache k)]
+                   cached
+                   (u/prog1 (valid-value? setting v)
+                     (swap! env-value-validation-cache assoc k <>)))]
+      (when-not valid?
+        (throw (ex-info (str env-name ": " (invalid-value-message setting v))
+                        {:setting            (setting-name setting)
+                         :env-name           env-name
+                         ::invalid-env-value true}))))))
+
 (defn env-var-value
   "Get the value of `setting-definition-or-name` from the corresponding env var, if any.
    The name of the Setting is converted to uppercase and dashes to underscores; for example, a setting named
@@ -481,17 +547,27 @@
 
   When the primary env var is truly absent (nil from environ) and the setting has a `:deprecated-name`, the env var
   derived from that name is checked as a fallback. An empty string for the primary env var means \"explicitly unset\"
-  and blocks the fallback."
+  and blocks the fallback. A value the setting's `:value-validator` rejects throws (see [[check-env-value!]])."
   ^String [setting-definition-or-name]
-  (let [setting (resolve-setting setting-definition-or-name)]
+  (let [setting  (resolve-setting setting-definition-or-name)
+        accepted (fn [env-name ^String v]
+                   (when-let [v (not-empty v)]
+                     (check-env-value! setting env-name v)
+                     v))]
     (when (and (allows-site-wide-values? setting)
                (allows-setting-via-env? setting))
       (if-let [v (env/env (setting-env-map-name setting))]
         ;; primary env var is set — return it only if non-empty
-        (not-empty v)
+        (accepted (env-var-name setting) v)
         ;; primary env var is absent — try deprecated name
         (when-let [deprecated-name (:deprecated-name setting)]
-          (not-empty (env/env (setting-env-map-name deprecated-name))))))))
+          (accepted (env-var-name deprecated-name) (env/env (setting-env-map-name deprecated-name))))))))
+
+(defn sysadmin-only?
+  "Whether `setting-definition-or-name` can only be set by whoever administers the host Metabase runs on -- through
+  its env var."
+  [setting-definition-or-name]
+  (boolean (:sysadmin-only? (resolve-setting setting-definition-or-name))))
 
 (defn log-deprecated-env-var-usage!
   "Log warnings for any settings currently using a deprecated env var name.
@@ -581,9 +657,38 @@
   "Return the raw value persisted in the DB/cache for `setting-definition-or-name`, or nil if none.
 
   Unlike [[get-raw-value]], this does not consult user-local values, database-local values, env vars, defaults, or
-  init functions."
+  init functions. Always nil for a sysadmin-only setting, whose stored value -- if a row exists at all -- is ignored."
   ^String [setting-definition-or-name]
-  (db-or-cache-value setting-definition-or-name))
+  (let [setting (resolve-setting setting-definition-or-name)]
+    (when-not (:sysadmin-only? setting)
+      (db-or-cache-value setting))))
+
+(defn log-ignored-sysadmin-db-values!
+  "Log a warning for every sysadmin-only setting that has a value in the application database but no env var: the
+  stored value -- written by an older version's admin API, a serialization import, or by hand -- is ignored, and the
+  sysadmin who meant it should move it to the env var. Should be called during startup after all settings are
+  registered."
+  []
+  (doseq [[_ setting] @registered-settings
+          :when (:sysadmin-only? setting)
+          :when (nil? (env-var-value setting))
+          :when (db-is-set-up?)
+          ;; read the rows directly rather than through [[db-or-cache-value]]: its "rename the deprecated key" advice
+          ;; is wrong here, as a row under either key is ignored
+          :let  [[stored-key stored] (some (fn [k]
+                                             (when-let [v (not-empty (db-or-cache-value* (setting-name k)))]
+                                               [(setting-name k) v]))
+                                           (remove nil? [setting (:deprecated-name setting)]))]
+          :when (some? stored)]
+    (log/warnf "Setting %s has a value in the application database%s, which is ignored: it can only be set by the %s environment variable. Set %s to keep it, or delete the row from the setting table."
+               (setting-name setting)
+               (if (= stored-key (setting-name setting))
+                 ""
+                 (str " under its deprecated key " stored-key))
+               (env-var-name setting)
+               (if (:sensitive? setting)
+                 (env-var-name setting)
+                 (str (env-var-name setting) "=" stored)))))
 
 (defonce ^:private ^ReentrantLock init-lock (ReentrantLock.))
 
@@ -612,11 +717,20 @@
     (dorun (map realize value)))
   value)
 
+(defn- resolve-default
+  "The `:default` of `setting`: a plain value as given, or, when it is a function, whatever calling it returns now. A
+  function default is for values that depend on the running instance -- whether it is hosted, say -- which a value
+  computed once when the namespace loads, before the app DB is up, cannot express."
+  [setting]
+  (let [default (:default setting)]
+    (if (fn? default)
+      (default)
+      default)))
+
 (defn default-value
-  "Get the `:default` value of `setting-definition-or-name` if one was specified."
+  "Get the `:default` value of `setting-definition-or-name` if one was specified. A fn-valued `:default` is called."
   [setting-definition-or-name]
-  (let [{:keys [default]} (resolve-setting setting-definition-or-name)]
-    default))
+  (resolve-default (resolve-setting setting-definition-or-name)))
 
 (defmacro ^:private or-some [& clauses]
   ;; Like `clojure.core/or` but for the first non-nil value.
@@ -635,6 +749,9 @@
   4. From the application database (i.e., set via the admin panel) (excluding empty string values)
   5. The default value, if one was specified
 
+  `:sysadmin-only?` Settings use a shorter chain: the env var, then the default. The application database is never
+  consulted for them, and neither are user- or database-local values.
+
   !!!!!!!!!! The value returned MAY OR MAY NOT be a String depending on the source !!!!!!!!!!
 
   This is the underlying function powering all the other getters such as methods of [[get-value-of-type]]. These
@@ -645,13 +762,16 @@
   conditions values can be returned directly (`pred`) -- see [[get-value-of-type]] for `:boolean` for example usage."
   ([setting-definition-or-name]
    (let [setting (resolve-setting setting-definition-or-name)]
-     (or-some (user-local-value setting)
-              (database-local-value setting)
-              (env-var-value setting)
-              (db-or-cache-value setting)
-              (:default setting)
-              (when (and (:init setting) (not *disable-init*))
-                (init! setting)))))
+     (if (:sysadmin-only? setting)
+       (or-some (env-var-value setting)
+                (resolve-default setting))
+       (or-some (user-local-value setting)
+                (database-local-value setting)
+                (env-var-value setting)
+                (db-or-cache-value setting)
+                (resolve-default setting)
+                (when (and (:init setting) (not *disable-init*))
+                  (init! setting))))))
 
   ([setting-definition-or-name pred parse-fn]
    (let [parse     (fn [v]
@@ -673,13 +793,18 @@
   Priority order is specified in `get-raw-value`."
   ([setting-definition-or-name]
    (let [setting (resolve-setting setting-definition-or-name)]
-     (cond
-       (some? (user-local-value setting)) :user-local
-       (some? (database-local-value setting)) :database-local
-       (some? (env-var-value setting)) :env
-       (some? (db-or-cache-value setting)) :database
-       (some? (:default setting)) :default
-       :else nil))))
+     (if (:sysadmin-only? setting)
+       (cond
+         (some? (env-var-value setting)) :env
+         (some? (resolve-default setting)) :default
+         :else nil)
+       (cond
+         (some? (user-local-value setting)) :user-local
+         (some? (database-local-value setting)) :database-local
+         (some? (env-var-value setting)) :env
+         (some? (db-or-cache-value setting)) :database
+         (some? (resolve-default setting)) :default
+         :else nil)))))
 
 (defmulti get-value-of-type
   "Get the value of `setting-definition-or-name` as a value of type `setting-type`. This is used as the default getter
@@ -724,35 +849,35 @@
 ;; * Otherwise, throw an Exception.
 (defmethod get-value-of-type :boolean
   [_setting-type setting-definition-or-name]
-  (get-raw-value setting-definition-or-name boolean? string->boolean))
+  (get-raw-value setting-definition-or-name boolean? (type->parse-fn :boolean)))
 
 (defmethod get-value-of-type :integer
   [_setting-type setting-definition-or-name]
-  (get-raw-value setting-definition-or-name integer? #(Long/parseLong ^String %)))
+  (get-raw-value setting-definition-or-name integer? (type->parse-fn :integer)))
 
 (defmethod get-value-of-type :positive-integer
   [_setting-type setting-definition-or-name]
-  (get-raw-value setting-definition-or-name pos-int? #(Long/parseLong ^String %)))
+  (get-raw-value setting-definition-or-name pos-int? (type->parse-fn :positive-integer)))
 
 (defmethod get-value-of-type :double
   [_setting-type setting-definition-or-name]
-  (get-raw-value setting-definition-or-name double? #(Double/parseDouble ^String %)))
+  (get-raw-value setting-definition-or-name double? (type->parse-fn :double)))
 
 (defmethod get-value-of-type :keyword
   [_setting-type setting-definition-or-name]
-  (get-raw-value setting-definition-or-name keyword? keyword))
+  (get-raw-value setting-definition-or-name keyword? (type->parse-fn :keyword)))
 
 (defmethod get-value-of-type :timestamp
   [_setting-type setting-definition-or-name]
-  (get-raw-value setting-definition-or-name #(instance? Temporal %) u.date/parse))
+  (get-raw-value setting-definition-or-name #(instance? Temporal %) (type->parse-fn :timestamp)))
 
 (defmethod get-value-of-type :json
   [_setting-type setting-definition-or-name]
-  (get-raw-value setting-definition-or-name coll? json/decode+kw))
+  (get-raw-value setting-definition-or-name coll? (type->parse-fn :json)))
 
 (defmethod get-value-of-type :csv
   [_setting-type setting-definition-or-name]
-  (get-raw-value setting-definition-or-name sequential? (comp first csv/read-csv)))
+  (get-raw-value setting-definition-or-name sequential? (type->parse-fn :csv)))
 
 (defn- default-getter-for-type [setting-type]
   (partial get-value-of-type (keyword setting-type)))
@@ -789,7 +914,7 @@
     (if (or (and feature (not (has-feature? feature)))
             (and enabled? (not (enabled?)))
             (and *database* (disabled-for-db-reasons? setting-def *database*)))
-      (:default setting-def)
+      (resolve-default setting-def)
       (if (= config/*disable-setting-cache* disable-cache?) ;; Optimization: only bind dynvar if necessary.
         (getter)
         (binding [config/*disable-setting-cache* disable-cache?]
@@ -1078,7 +1203,17 @@
         new-value                    (cond-> new-value
                                        (and (= (:type setting) :json) (coll? new-value))
                                        walk/keywordize-keys)]
+    (when (:sysadmin-only? setting)
+      (throw (ex-info (tru "Setting {0} can only be set by the {1} environment variable."
+                           (setting-name setting) (env-var-name setting))
+                      {:status-code 400
+                       :setting     (setting-name setting)
+                       :env-name    (env-var-name setting)})))
     (validate-settable! setting bypass-read-only?)
+    (when (and (some? new-value) (not (valid-value? setting new-value)))
+      (throw (ex-info (invalid-value-message setting new-value)
+                      {:status-code 400
+                       :setting     (setting-name setting)})))
     (binding [config/*disable-setting-cache* (not cache?)]
       (set-with-audit-logging! setting new-value bypass-read-only?))))
 
@@ -1104,6 +1239,8 @@
    ;; if a setting is `:sensitive?`, default to encrypting it
    (when (:sensitive? setting)
      :when-encryption-key-set)
+   (when (:sysadmin-only? setting)
+     :no)
    ;; if the setting isn't a type likely to contain secrets, default to plaintext
    (when (contains? #{:boolean :integer :positive-integer :double :keyword :timestamp} (:type setting))
      :no)
@@ -1130,7 +1267,9 @@
                  :default            default
                  :on-change          nil
                  :getter             (partial (default-getter-for-type setting-type) setting-name)
-                 :setter             (partial (default-setter-for-type setting-type) setting-name)
+                 :setter             (if (:sysadmin-only? setting)
+                                       :none
+                                       (partial (default-setter-for-type setting-type) setting-name))
                  :init               nil
                  :tag                (default-tag-for-type setting-type)
                  :visibility         :admin
@@ -1147,6 +1286,8 @@
                  :deprecated         nil
                  :enabled?           nil
                  :can-read-from-env? true
+                 :value-validator    nil
+                 :sysadmin-only?     false
                  :include-in-list?   true
                  ;; Disable auditing by default for user- or database-local settings
                  :audit              (if (site-wide-only? setting) :no-value :never)}
@@ -1182,6 +1323,27 @@
         (throw (ex-info (tru "Setting {0} uses both :default and :init options, which are mutually exclusive"
                              setting-name)
                         {:setting setting})))
+      (when (:sysadmin-only? setting)
+        (when (or (allows-user-local-values? setting) (allows-database-local-values? setting))
+          (throw (ex-info (tru "Setting {0} cannot be sysadmin-only and user-local or database-local"
+                               setting-name)
+                          {:setting setting})))
+        (when (false? (:can-read-from-env? setting))
+          (throw (ex-info (tru "Setting {0} is sysadmin-only; it must allow reading from env vars"
+                               setting-name)
+                          {:setting setting})))
+        (when (and (contains? setting :setter) (not= :none (:setter setting)))
+          (throw (ex-info (tru "Setting {0} is sysadmin-only and must not have a :setter (it is always :none)"
+                               setting-name)
+                          {:setting setting})))
+        (when (:init setting)
+          (throw (ex-info (tru "Setting {0} is sysadmin-only and cannot use :init"
+                               setting-name)
+                          {:setting setting})))
+        (when (:export? setting)
+          (throw (ex-info (tru "Setting {0} cannot be sysadmin-only and exported by serialization"
+                               setting-name)
+                          {:setting setting}))))
       (when (and (:enabled? setting) (:feature setting))
         (throw (ex-info (tru "Setting {0} uses both :enabled? and :feature options, which are mutually exclusive"
                              setting-name)
@@ -1221,7 +1383,9 @@
    \newline
    (format "    (%s! nil)\n"                                             (setting-name setting))
    \newline
-   (format "Its default value is `%s`."                                  (pr-str default))))
+   (if (fn? default)
+     "Its default value is computed at runtime."
+     (format "Its default value is `%s`."                                (pr-str default)))))
 
 (defn setting-fn-metadata
   "Impl for [[defsetting]]. Create metadata for [[setting-fn]]."
@@ -1317,6 +1481,11 @@
 
   The default value of the setting. This must be of the same type as the Setting type, e.g. the default for an
   `:integer` setting must be some sort of integer. (default: `nil`)
+
+  A function of no arguments is called on every read instead, for a default that depends on the running instance --
+  `(fn [] (if (premium-features/is-hosted?) :external-only :allow-all))` -- which a value computed once when the
+  namespace loads, before the app DB is up, cannot express. Prefer this to a `:getter` that only exists to supply
+  such a default.
 
   ###### `:init`
 
@@ -1455,6 +1624,28 @@
 
   Boolean that determines if this setting can be configured from an environment variable.
   If false, a value set in an environment variable will be ignored.
+
+  ##### `:value-validator`
+
+  A predicate over the Setting's value in the shape its getter returns (a keyword for a `:keyword` Setting, and so
+  on); a set works. A value it rejects cannot be written through [[set!]] -- the settings API gets a 400 -- and an env
+  var value it rejects fails closed: every read throws and startup refuses to proceed, rather than the Setting
+  quietly falling back to its default. Prefer it to validating in a custom `:setter` (which an env var never goes
+  through) or in a `:getter` (which runs on every read). `nil` is never validated; it clears the Setting.
+
+  ##### `:sysadmin-only?`
+
+  Boolean (default: `false`). When true, this Setting is configured by whoever administers the host Metabase runs
+  on, never by a Metabase admin. Its value is the env var, else the `:default`; the application database is never
+  read for it, so a value that reached the `setting` table some other way -- an older version's admin API, a
+  serialization import, a direct write -- is ignored (and warned about at startup by
+  [[log-ignored-sysadmin-db-values!]]). Use it for the network-policy and similar settings that defend the host
+  against the people who administer Metabase.
+
+  It is always `:setter :none`; a custom setter is refused. Every write through [[set!]] -- the settings API,
+  [[set-many!]], a `config.yml` entry -- throws a 400, `nil` and `:bypass-read-only?` included, and serialization
+  import skips it. In tests, `mt/with-temporary-setting-values` binds the env var for these settings instead of
+  writing. Sysadmin-only settings cannot be user-local, database-local, `:init`ed, or exported by serialization.
   "
   {:style/indent 1}
   [setting-symbol description & {:as options}]
@@ -1524,11 +1715,11 @@
   convert the setting to the appropriate type; you can use `(partial get-value-of-type :string)` to get all string
   values of Settings, for example."
   [setting-definition-or-name & {:keys [getter], :or {getter get}}]
-  (let [{:keys [sensitive? visibility default], k :name, :as setting} (resolve-setting setting-definition-or-name)
-        unparsed-value                                                (get-value-of-type :string k)
-        parsed-value                                                  (getter k)
-        ;; `default` and `env-var-value` are probably still in serialized form so compare
-        value-is-default?                                             (= parsed-value default)
+  (let [{:keys [sensitive? visibility], k :name, :as setting} (resolve-setting setting-definition-or-name)
+        unparsed-value                                        (get-value-of-type :string k)
+        parsed-value                                          (getter k)
+        ;; `env-var-value` is probably still in serialized form so compare
+        value-is-default?                                     (= parsed-value (resolve-default setting))
         value-is-from-env-var?                                        (some-> (env-var-value setting) (= unparsed-value))]
     (cond
       (not (current-user-can-access-setting? setting))
@@ -1547,8 +1738,16 @@
       :else
       parsed-value)))
 
-(defn- set-via-env-var? [setting]
-  (some? (env-var-value setting)))
+(defn- set-via-env-var?
+  "Is `setting`'s value coming from its env var? A value the `:value-validator` rejects still counts: it is set, just
+  not to anything usable."
+  [setting]
+  (try
+    (some? (env-var-value setting))
+    (catch ExceptionInfo e
+      (if (::invalid-env-value (ex-data e))
+        true
+        (throw e)))))
 
 (defn export?
   "Whether the Setting with `setting-name` should be exported."
@@ -1556,7 +1755,7 @@
   (:export? (core/get @registered-settings (keyword setting-name))))
 
 (defn- user-facing-info
-  [{:keys [default description], k :name, :as setting} & {:as options}]
+  [{:keys [description], k :name, :as setting} & {:as options}]
   (let [from-env? (set-via-env-var? setting)]
     {:key            k
      :value          (try
@@ -1568,7 +1767,7 @@
      :description    (str (description))
      :default        (if from-env?
                        (tru "Using value of env var {0}" (str \$ (env-var-name setting)))
-                       default)}))
+                       (resolve-default setting))}))
 
 (defn current-user-readable-visibilities
   "Returns a set of setting visibilities that the current user has read access to."
@@ -1709,8 +1908,10 @@
               ;; err on the side of caution
               true)))
 
-(defn- redact-sensitive-tokens [ex raw-value]
-  (if (may-contain-raw-token? ex raw-value)
+(defn- redact-sensitive-tokens [ex setting]
+  (if (and (may-contain-raw-token? ex setting)
+           ;; a validator rejection's message already omits the value of a `:sensitive?` setting
+           (not (::invalid-env-value (ex-data ex))))
     (redact-parse-ex ex)
     ex))
 
