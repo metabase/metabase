@@ -68,6 +68,8 @@ jobs:
     name: containerize (${{ inputs.edition }})
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
+    outputs:
+      full_image: ${{ steps.image.outputs.full_image }}
     env:
       AWS_REGION: us-east-1
     steps:
@@ -98,6 +100,7 @@ jobs:
         edition: ${{ inputs.edition }}
         aws-account-id: ${{ secrets.PR_ENV_AWS_ACCOUNT_ID }}
         aws-region: ${{ env.AWS_REGION }}
+        dockerhub-owner: ${{ vars.DOCKERHUB_OWNER }}
 
     - name: Configure AWS credentials
       if: ${{ inputs.registry == 'ecr' }}
@@ -156,3 +159,50 @@ jobs:
           ```bash
           docker pull ${{ steps.image.outputs.full_image }}
           ```
+
+  verify-docker-pull-amd64: 
+    needs: containerize
+    if: >- 
+      inputs.release == 'true' && 
+      inputs.registry != 'ecr'
+    name: verify-docker-pull-amd64 (${{ inputs.edition }})
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 15
+    steps:
+    - name: Login to Docker Hub
+      uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+      with:
+        username: ${{ inputs.release && secrets.DOCKERHUB_RELEASE_USERNAME || secrets.DOCKERHUB_USERNAME }}
+        password: ${{ inputs.release && secrets.DOCKERHUB_RELEASE_TOKEN || secrets.DOCKERHUB_TOKEN }}
+    - name: Pull the container image
+      run: docker pull ${{ needs.containerize.outputs.full_image }}
+    - name: Launch container
+      run: docker run --rm -dp 3000:3000 ${{ needs.containerize.outputs.full_image }}
+      timeout-minutes: 5
+    - name: Wait for Metabase to start
+      run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+      timeout-minutes: 5
+
+  verify-docker-pull-arm:
+    needs: containerize
+    if: >-
+      inputs.release == 'true' && 
+      inputs.registry != 'ecr' && 
+      contains(inputs.platforms, 'linux/arm64')
+    name: verify-docker-pull-arm (${{ inputs.edition }})
+    runs-on: arm-ubuntu-24-2core
+    timeout-minutes: 15
+    steps:
+    - name: Login to Docker Hub
+      uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+      with:
+        username: ${{ inputs.release && secrets.DOCKERHUB_RELEASE_USERNAME || secrets.DOCKERHUB_USERNAME }}
+        password: ${{ inputs.release && secrets.DOCKERHUB_RELEASE_TOKEN || secrets.DOCKERHUB_TOKEN }}
+    - name: Pull the container image
+      run: docker pull ${{ needs.containerize.outputs.full_image }}
+    - name: Launch container
+      run: docker run --rm -dp 3000:3000 ${{ needs.containerize.outputs.full_image }}
+      timeout-minutes: 5
+    - name: Wait for Metabase to start
+      run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+      timeout-minutes: 5
