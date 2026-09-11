@@ -46,8 +46,14 @@ export function EventsPanel({
 
   const handleUpdateVisibility = useCallback(
     (update: TimelineEventsVisibilityUpdate) =>
-      dispatch(updateDashCardsTimelineEventsVisibility(dashcardIds, update)),
-    [dispatch, dashcardIds],
+      dispatch(
+        updateDashCardsTimelineEventsVisibility(
+          dashcardIds,
+          update,
+          selectionDashcardId != null ? "dashcard" : "dashboard",
+        ),
+      ),
+    [dispatch, dashcardIds, selectionDashcardId],
   );
   const handleSelectEvents = useCallback(
     (events: TimelineEvent[]) =>
@@ -73,6 +79,7 @@ export function EventsPanel({
       selectedEventIds={selectedEventIds}
       focusedEventIds={focusedEventIds}
       xAxis={xAxis}
+      eventSource="dashboard"
       onUpdateVisibility={handleUpdateVisibility}
       onSelectEvents={handleSelectEvents}
       onDeselectEvents={handleDeselectEvents}

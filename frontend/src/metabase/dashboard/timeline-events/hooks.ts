@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { type RefObject, useCallback, useEffect, useState } from "react";
 
 import { useListTimelinesQuery } from "metabase/api";
 import { useDashboardContext } from "metabase/dashboard/context";
@@ -7,6 +7,7 @@ import {
   isStaticEmbedding,
 } from "metabase/embedding/config";
 import { useDispatch, useSelector } from "metabase/redux";
+import resizeObserver from "metabase/utils/resize-observer";
 import { getRecordedTimelineEventsVisibility } from "metabase/visualizations/lib/timeline-events-visibility";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type {
@@ -30,6 +31,7 @@ import {
   getDashCardTimeseriesXAxis,
   getTimelineEventsDashCardIds,
 } from "./selectors";
+import { hasSupportedTimelineEventsSize } from "./utils";
 
 // keeps the timelines loaded for the events sidebar; charts load their own
 export const useDashboardTimelines = () => {
@@ -71,15 +73,44 @@ const DISABLED: DashCardTimelineEvents = {
   timelineEventsVisibility: NO_TIMELINE_EVENTS,
 };
 
+const useHasSupportedTimelineEventsSize = (
+  containerRef?: RefObject<HTMLElement>,
+) => {
+  const [hasSupportedSize, setHasSupportedSize] = useState(true);
+
+  useEffect(() => {
+    const element = containerRef?.current;
+    if (!element) {
+      return;
+    }
+    const update = () => {
+      const { width, height } = element.getBoundingClientRect();
+      // not laid out yet
+      if (width === 0 && height === 0) {
+        return;
+      }
+      setHasSupportedSize(hasSupportedTimelineEventsSize({ width, height }));
+    };
+    update();
+    resizeObserver.subscribe(element, update);
+    return () => resizeObserver.unsubscribe(element, update);
+  }, [containerRef]);
+
+  return hasSupportedSize;
+};
+
 export const useDashCardTimelineEvents = (
   dashcard: DashboardCard,
+  containerRef?: RefObject<HTMLElement>,
 ): DashCardTimelineEvents => {
   const dispatch = useDispatch();
   const { withTimelineEvents = false } = useDashboardContext();
   const dashcardId: DashCardId = dashcard.id;
-  const canDisplayEvents = useSelector(
+  const hasSupportedSize = useHasSupportedTimelineEventsSize(containerRef);
+  const hasTimeseriesXAxis = useSelector(
     (state) => getDashCardTimeseriesXAxis(state, dashcardId) != null,
   );
+  const canDisplayEvents = hasSupportedSize && hasTimeseriesXAxis;
   const isEnabled = withTimelineEvents && canDisplayEvents;
 
   const timelineEventsVisibility = useSelector((state) => {
@@ -100,7 +131,9 @@ export const useDashCardTimelineEvents = (
 
   const onOpenTimelines = useCallback(
     (eventIds?: TimelineEventId[]) =>
-      dispatch(openEventsSidebar({ dashcardId, focusedEventIds: eventIds })),
+      dispatch(
+        openEventsSidebar({ dashcardId, focusedEventIds: eventIds }, "chart"),
+      ),
     [dispatch, dashcardId],
   );
   const onSelectTimelineEvents = useCallback(

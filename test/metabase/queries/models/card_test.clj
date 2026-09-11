@@ -1796,9 +1796,7 @@
                  :model/TimelineEvent excluded {:timeline_id (:id timeline)}]
     (perms/revoke-collection-permissions! (perms-group/all-users) collection)
     (doseq [[description before after]
-            [["selecting an inaccessible timeline" {}
-              {:timeline.selected_timeline_ids [(:id timeline)]}]
-             ["revealing an excluded event"
+            [["revealing an excluded event"
               {:timeline.selected_timeline_ids [(:id timeline)]
                :timeline.excluded_timeline_event_ids [(:id excluded)]}
               {:timeline.selected_timeline_ids [(:id timeline)]

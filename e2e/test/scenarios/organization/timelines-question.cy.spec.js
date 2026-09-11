@@ -578,7 +578,7 @@ describe("scenarios > organization > timelines > question", () => {
       H.timelineEventChip("Summer party").should("be.visible");
     });
 
-    it("should collapse close events into a count chip and focus the sidebar on the group from 'See all'", () => {
+    it("should collapse close events into a count chip and focus the sidebar on the group from 'See all' or the chip", () => {
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [
@@ -648,46 +648,13 @@ describe("scenarios > organization > timelines > question", () => {
       cy.findByTestId("sidebar-content")
         .findByText("Other")
         .should("be.visible");
-    });
 
-    it("should focus the sidebar on the group when a grouped chip is clicked directly", () => {
-      H.createTimelineWithEvents({
-        timeline: { name: "Releases" },
-        events: [
-          { name: "Alpha", timestamp: "2027-10-03T00:00:00Z" },
-          { name: "Beta", timestamp: "2027-10-10T00:00:00Z" },
-        ],
-      });
-      H.createTimelineWithEvents({
-        timeline: { name: "Other" },
-        events: [{ name: "Outsider", timestamp: "2028-01-15T00:00:00Z" }],
-      });
-
-      H.visitQuestionAdhoc({
-        dataset_query: {
-          type: "query",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["count"]],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-            ],
-          },
-          database: SAMPLE_DB_ID,
-        },
-        display: "line",
-      });
-
-      cy.log("clicking a grouped chip focuses the sidebar on its events");
-      H.timelineEventChip("2 events").should("be.visible").click();
-
+      cy.log("clicking the grouped chip directly focuses the group again");
+      H.timelineEventChip("4 events").click();
       cy.findByTestId("sidebar-content").within(() => {
         H.timelineEventCard("Alpha").should("be.visible");
-        H.timelineEventCard("Beta").should("be.visible");
+        cy.findByText("Other").should("not.exist");
       });
-      cy.findByTestId("sidebar-content")
-        .findByText("Other")
-        .should("not.exist");
     });
 
     it("should select a single event and open the full sidebar when its chip is clicked", () => {
