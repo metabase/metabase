@@ -1,4 +1,4 @@
-import { resetPluginSlots } from "metabase/plugins/slot";
+import { resetPluginSlots } from "metabase/plugin-slots";
 
 import {
   captureClickModifierKeys,

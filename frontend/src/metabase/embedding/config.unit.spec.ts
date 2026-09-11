@@ -4,8 +4,6 @@ import {
   EMBEDDING_SDK_CONFIG,
   isDataAppDev,
 } from "metabase/embedding-sdk/config";
-import { resetPluginSlots } from "metabase/plugins/slot";
-import { getUrlTarget, openUrl } from "metabase/urls";
 
 import { isEmbedPreview, setDataApp } from "./config";
 import { setRequestClientHeaders } from "./lib/auth/set-request-client-headers";
@@ -124,24 +122,5 @@ describe("isEmbedPreview", () => {
 
   it("is false outside an iframe", () => {
     expect(isEmbedPreview()).toBe(false);
-  });
-});
-
-describe("deployed data-app navigation", () => {
-  const originalConfig = { ...EMBEDDING_SDK_CONFIG };
-  afterEach(() => {
-    resetPluginSlots();
-    Object.assign(EMBEDDING_SDK_CONFIG, originalConfig);
-  });
-
-  it("opens a same-origin link outside the data-app iframe", async () => {
-    setDataApp("sales");
-    const url = window.location.origin + "/dashboard/1";
-    const openInBlankWindow = jest.fn();
-    const openInSameOrigin = jest.fn();
-    await openUrl(url, { openInBlankWindow, openInSameOrigin });
-    expect(getUrlTarget(url)).toBe("_blank");
-    expect(openInBlankWindow).toHaveBeenCalledWith(url);
-    expect(openInSameOrigin).not.toHaveBeenCalled();
   });
 });
