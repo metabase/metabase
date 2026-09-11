@@ -1,13 +1,14 @@
-const fs = require("fs");
-const os = require("os");
-const path = require("path");
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 
-const filter = require("./jest-test-paths-filter");
+// eslint-disable-next-line @typescript-eslint/no-require-imports, import/no-commonjs -- Match Jest's direct CommonJS loading contract.
+const filter = require("../../frontend/test/jest-test-paths-filter");
 
 describe("jest-test-paths-filter", () => {
   const originalPathsFile = process.env.JEST_TEST_PATHS_FILE;
-  let tempDir;
-  let pathsFile;
+  let tempDir: string;
+  let pathsFile: string;
 
   beforeEach(() => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "jest-test-paths-"));

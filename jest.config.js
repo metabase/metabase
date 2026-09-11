@@ -149,7 +149,7 @@ const config = {
   testTimeout: 30000,
   // CI narrows a run to the plan's spec files by pointing this at a JSON list.
   ...(process.env.JEST_TEST_PATHS_FILE && {
-    filter: "<rootDir>/frontend/test/jest-test-paths-filter.js",
+    filter: "<rootDir>/frontend/test/jest-test-paths-filter.ts",
   }),
   projects: [
     {

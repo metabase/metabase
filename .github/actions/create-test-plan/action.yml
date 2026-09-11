@@ -28,15 +28,9 @@ outputs:
   stats:
     description: FE Affected Tests stats row (JSON).
     value: ${{ steps.compute.outputs.stats }}
-  fe_unit_specs_to_run:
-    description: Unit specs to run (JSON array).
-    value: ${{ steps.compute.outputs.fe_unit_specs_to_run }}
-  loki_stories_to_run:
-    description: Loki stories to run (JSON array).
-    value: ${{ steps.compute.outputs.loki_stories_to_run }}
-  e2e_specs_to_run:
-    description: E2E specs to run (JSON array).
-    value: ${{ steps.compute.outputs.e2e_specs_to_run }}
+  artifact-id:
+    description: Artifact containing test-plan.json for this run.
+    value: ${{ steps.upload.outputs.artifact-id }}
 
 runs:
   using: composite
@@ -77,6 +71,15 @@ runs:
         # stdout is the plan JSON; the planner's own info logs go to stderr.
         # The planner writes this step's GITHUB_OUTPUT entries.
         bun .github/scripts/create-test-plan.ts > test-plan.json
+
+    - name: Upload test plan
+      id: upload
+      uses: actions/upload-artifact@v7
+      with:
+        name: test-plan-${{ github.run_id }}-${{ github.run_attempt }}
+        path: test-plan.json
+        if-no-files-found: error
+        retention-days: 7
 
     - name: Report test plan
       shell: bash

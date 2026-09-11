@@ -11,12 +11,17 @@ type Filter = string | Filter[] | { [changeType: string]: Filter };
 // A filter is a list of patterns, and an entry may name the change types it applies to as
 // { "added|modified": pattern }. Either way the patterns are what matters here.
 const patterns = (value: Filter): string[] => {
-  if (typeof value === "string") return [value];
-  if (Array.isArray(value)) return value.flatMap(patterns);
+  if (typeof value === "string") {
+    return [value];
+  }
+  if (Array.isArray(value)) {
+    return value.flatMap(patterns);
+  }
   return Object.values(value).flatMap(patterns);
 };
 
 describe("file-paths.yaml", () => {
+  // js-yaml returns an untyped value; this repository file defines named path filters.
   const filters = load(readFileSync(FILTERS, "utf8")) as Record<string, Filter>;
 
   // dorny/paths-filter matches with picomatch, which micromatch wraps, so this asks the same
@@ -48,6 +53,10 @@ describe("file-paths.yaml", () => {
       expect(matches(name, ".clj-kondo/config/modules/config.edn")).toBe(true);
     },
   );
+
+  it("runs CI script tests when the Node version changes", () => {
+    expect(matches("ci_scripts", ".nvmrc")).toBe(true);
+  });
 
   it("runs the ratchet check on the ratchets file", () => {
     expect(matches("project_ratchet_checks", ".clj-kondo/ratchets.edn")).toBe(
