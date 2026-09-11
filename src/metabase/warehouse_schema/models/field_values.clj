@@ -385,7 +385,8 @@
              ::lib.schema.metadata/column]]
   (try
     (let [field  (cond-> field
-                   (t2/model field) (lib-be/instance->metadata :metadata/column))
+                   ;; a caller may hand us a Field hydrated with its Table, which is not part of column metadata
+                   (t2/model field) (-> (dissoc :table) (lib-be/instance->metadata :metadata/column)))
           result ((requiring-resolve 'metabase.warehouse-schema.metadata-from-qp/table-query)
                   (:table-id field)
                   (fn [query]

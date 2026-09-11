@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
 import { PaneHeaderActions } from "metabase/common/data-studio/components/PaneHeader";
-import { useMetadataProviderFactory } from "metabase/metadata-store";
+import { useMetadataProvider } from "metabase/metadata-store";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import * as Lib from "metabase-lib";
 import type { DraftTransformSource, Transform } from "metabase-types/api";
@@ -31,14 +31,13 @@ export const TransformPaneHeaderActions = (props: Props) => {
     transform,
     readOnly,
   } = props;
-  const getMetadataProvider = useMetadataProviderFactory();
+  const metadataProvider = useMetadataProvider(
+    source.type === "query" ? source.query.database : null,
+  );
 
   const { validationResult, isNative } = useMemo(() => {
     if (source.type === "query") {
-      const libQuery = Lib.fromJsQuery(
-        getMetadataProvider(source.query.database),
-        source.query,
-      );
+      const libQuery = Lib.fromJsQuery(metadataProvider, source.query);
       const validationResult = getValidationResult(libQuery);
       return {
         validationResult,
@@ -51,7 +50,7 @@ export const TransformPaneHeaderActions = (props: Props) => {
         PLUGIN_TRANSFORMS_PYTHON.getPythonSourceValidationResult(source),
       isNative: false,
     };
-  }, [source, getMetadataProvider]);
+  }, [source, metadataProvider]);
   const isPythonTransform = source.type === "python";
 
   if (!readOnly && !isPythonTransform && !isNative && !isEditMode) {
