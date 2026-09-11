@@ -2,6 +2,8 @@ import { DatePickerInput } from "@mantine/dates";
 
 import Styles from "../Calendar/Calendar.module.css";
 
+import DatePickerInputStyles from "./DatePickerInput.module.css";
+
 export const datePickerInputOverrides = {
   DatePickerInput: DatePickerInput.extend({
     defaultProps: {
@@ -27,6 +29,8 @@ export const datePickerInputOverrides = {
       calendarHeaderControl: Styles.calendarHeaderControl,
       input: Styles.input,
       error: Styles.error,
+      placeholder: DatePickerInputStyles.placeholder,
+      section: DatePickerInputStyles.section,
     },
     styles: {
       levelsGroup: {
