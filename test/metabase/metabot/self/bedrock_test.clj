@@ -48,7 +48,7 @@
       (is (not (contains? bedrock/supported-models id)) id))))
 
 (deftest list-models-filters-to-whitelist-test
-  (mt/with-dynamic-fn-redefs [bedrock/list-all-models (constantly fake-catalog)]
+  (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body {:data fake-catalog}})]
     (testing "only whitelisted models survive sorted by id"
       (is (= {:models [{:id "anthropic.claude-fable-5" :display_name "Claude Fable 5"}
                        {:id "anthropic.claude-haiku-4-5" :display_name "Claude Haiku 4.5"}
@@ -59,20 +59,31 @@
 
 (deftest list-models-filters-unavailable-models-test
   (mt/with-dynamic-fn-redefs
-    [bedrock/list-all-models
+    [http/request
      (constantly
-      [{:id             "anthropic.claude-fable-5"
-        :object         "model"
-        :status         "unavailable"
-        :status_reason  "This model is not available under data retention mode 'default'."
-        :data_retention {:allowed_modes ["provider_data_share"] :mode "default" :source "model_default"}}
-       {:id             "anthropic.claude-sonnet-5"
-        :object         "model"
-        :status         "available"
-        :data_retention {:allowed_modes ["default" "provider_data_share" "none"] :mode "default" :source "model_default"}}])]
+      {:status 200
+       :body
+       {:data
+        [{:id             "anthropic.claude-fable-5"
+          :object         "model"
+          :status         "unavailable"
+          :status_reason  "This model is not available under data retention mode 'default'."
+          :data_retention {:allowed_modes ["provider_data_share"] :mode "default" :source "model_default"}}
+         {:id             "anthropic.claude-sonnet-5"
+          :object         "model"
+          :status         "available"
+          :data_retention {:allowed_modes ["default" "provider_data_share" "none"] :mode "default" :source "model_default"}}]}})]
     (testing "whitelisted models whose catalog status is not \"available\" are excluded"
       (is (= {:models [{:id "anthropic.claude-sonnet-5" :display_name "Claude Sonnet 5"}]}
              (bedrock/list-models {:credentials credentials}))))))
+
+(deftest list-models-malformed-catalog-throws-test
+  (testing "a 2xx whose body carries no model list throws instead of reporting an empty catalog"
+    (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body {:object "list"}})]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"AWS Bedrock returned an unexpected model list response"
+           (bedrock/list-models {:credentials credentials}))))))
 
 (deftest list-models-missing-credentials-uses-default-chain-test
   (testing "a connection with no credentials signs with the AWS default chain rather than picking up the single-provider settings"

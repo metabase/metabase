@@ -35,7 +35,7 @@
 (def Capability
   "What a registry row can answer about a provider. Closed, so a lookup for a capability that does not
   exist is a compile-time-checkable mistake rather than a nil that reads as \"this provider has none\"."
-  [:enum :stream :list-models :supported-models :context-window :ai-proxy? :reasoning? :fast-mode?])
+  [:enum :stream :list-models :supported-models :context-window :reasoning? :fast-mode?])
 
 (def AdapterRow
   "One provider's row. Closed for the same reason [[Capability]] is: a mistyped key in the table below would
@@ -45,7 +45,6 @@
    [:list-models      {:optional true} [:maybe ifn?]]
    [:supported-models {:optional true} [:maybe ifn?]]
    [:context-window   {:optional true} [:maybe ifn?]]
-   [:ai-proxy?        {:optional true} [:maybe :boolean]]
    [:reasoning?       {:optional true} [:maybe ifn?]]
    [:fast-mode?       {:optional true} [:maybe ifn?]]])
 
@@ -62,9 +61,11 @@
                         whatever the operator loaded (vLLM), names its own deployment (Azure), or has a
                         catalog fixed in `metabase.llm.provider` (Google, and the managed connection).
     :context-window   - model -> its input context window in tokens.
-    :ai-proxy?        - whether the Metabase Cloud AI proxy can serve this provider. Anthropic only, which
-                        the managed connection's own fixed catalog independently agrees with.
     :reasoning?       - resolved model ref -> whether it streams its reasoning back to us.
+
+  Whether the Metabase Cloud AI proxy can serve a provider is deliberately not a row here: it is declared on
+  the provider's own descriptor, which is what [[metabase.metabot.self.adapter/reject-ai-proxy!]] enforces on
+  every request. A second copy in this table would read as authoritative while changing nothing.
     :fast-mode?       - resolved model ref -> whether it can be served in Anthropic fast mode.
 
   The two capability fns take the whole resolved ref rather than a model string because they do not all
@@ -75,7 +76,6 @@
                  :list-models      #'claude/list-models
                  :supported-models #'claude/supported-models
                  :context-window   #'claude/context-window-tokens
-                 :ai-proxy?        true
                  :reasoning?       #'claude/streams-reasoning?
                  :fast-mode?       #'claude/supports-fast-mode?}
    "azure"      {:stream           #'azure/azure
@@ -138,8 +138,8 @@
   "The `capability` of `provider`, which every provider that serves requests must have.
 
   No return schema: what a capability yields depends on which one was asked for — a var holding a fn for
-  `:stream`, a var holding a map for `:supported-models`, a boolean for `:ai-proxy?`. Naming that would
-  mean a getter per capability rather than one generic lookup."
+  `:stream`, a var holding a map for `:supported-models`. Naming that would mean a getter per capability
+  rather than one generic lookup."
   [provider   :- ProviderType
    capability :- Capability]
   (or (get (adapter provider) capability)

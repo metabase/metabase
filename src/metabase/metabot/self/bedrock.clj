@@ -218,19 +218,6 @@
 
 ;;; ------------------------------------------------ Model listing ----------------------------------------------
 
-(defn- list-all-models
-  "Fetch the full mantle model catalog (`GET /v1/models`), every vendor included."
-  [{:keys [credentials ai-proxy?]}]
-  (try
-    (let [res (adapter/request! provider {:method      :get
-                                          :path        "/v1/models"
-                                          :as          :json
-                                          :credentials credentials
-                                          :ai-proxy?   ai-proxy?})]
-      (get-in res [:body :data]))
-    (catch Exception e
-      (adapter/rethrow! provider e))))
-
 (def supported-models
   "Bedrock models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the mantle `/v1/models` catalog.
@@ -267,7 +254,8 @@
   credentials chain resolves; Metabase Cloud requires the pair."
   ([] (list-models {}))
   ([opts]
-   (adapter/listing supported-models (filter available-model? (list-all-models opts)))))
+   (adapter/listing supported-models
+                    (filter available-model? (adapter/fetch-catalog provider opts "/v1/models")))))
 
 ;;; --------------------------------------------- API family dispatch -------------------------------------------
 
