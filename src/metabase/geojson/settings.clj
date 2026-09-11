@@ -73,12 +73,23 @@
   [^URL url]
   (#{"http" "https"} (.getProtocol url)))
 
+(defn- external-host?
+  "True only when `url`'s host resolves and *every* resolved address is a public, externally-routable
+  unicast address (see [[metabase.util.http/address-allowed-for-network-policy?]]). Unlike
+  [[metabase.util.http/host-allowed-for-network-policy?]] this rejects a host that does not resolve,
+  matching geojson's stricter set-time validation -- a bad URL should fail to save.
+  The fetch itself will still re-check the security at each request to handle changes in settings."
+  [^URL url]
+  (boolean
+   (when-let [addrs (http/host->inet-addresses (.getHost url))]
+     (every? #(http/address-allowed-for-network-policy? :external-only %) addrs))))
+
 (defn- valid-url?
   [url-string]
   (try
     (let [url (.toURL (URI. url-string))]
       (and (valid-protocol? url)
-           (http/valid-host? :external-only url)))
+           (external-host? url)))
     (catch Throwable _ false)))
 
 (defn valid-geojson-resource-path?
