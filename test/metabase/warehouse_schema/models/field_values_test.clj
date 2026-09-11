@@ -328,7 +328,9 @@
                                                                        @release))
                              (catch Throwable _ ::threw)))]
       @started
-      (let [stalled-future @(:future-ref (get @registry ::stalled))]
+      ;; the registry entry exists before the fetch starts, but its future is stored just after
+      ;; submission, so `started` can fire before :future-ref is populated
+      (let [stalled-future (tu/poll-until 10000 @(:future-ref (get @registry ::stalled)))]
         ;; backdate the entry's timer so the next call through detached-fetch! sees it as stalled.
         ;; Backdating this one entry rather than shortening the max age keeps the sweep from
         ;; touching fetches other tests may have in flight.

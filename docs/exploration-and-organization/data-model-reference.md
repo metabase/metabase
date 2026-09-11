@@ -26,7 +26,7 @@ You can open the data reference from:
 
 You can also visit `https://[your metabase here]/reference`.
 
-Admins and [Data Analysts](../people-and-groups/managing.md#data-analysts) can get a more comfortable view of data reference in [Data Studio](../data-studio/overview.md).
+Admins and [Data Analysts](../people-and-groups/managing.md#data-analysts) can get a more comfortable view of data reference in [Data Studio](../data-modeling/data-studio.md).
 
 ## Databases
 
@@ -47,19 +47,17 @@ For each table, you can view:
 - Questions about this table (if you have permission to view them)
 - Option to create an X-ray of the table
 
-Admins can edit the metadata in this reference by clicking the **Edit** button in the upper right. Admins can also edit metabadata in the [Admin](../data-modeling/metadata-editing.md).
+Admins can edit the metadata in this reference by clicking the **Edit** button in the upper right. Admins can also edit metabadata in the [Admin](../data-modeling/metadata/metadata-editing.md).
 
 ## Glossary
 
-The glossary is a place where anyone can define terms relevant to your data. To add a new term, click **+ New term**. Add the term name and its definitions, then click the checkmark to save the term to the glossary.
-
-The glossary is particularly useful for [Metabot](../ai/metabot.md). When Metabot gets a prompt, it can look up glossary terms to understand your request. For example, if you define "MRR" as "Monthly Recurring Revenue" in your glossary, Metabot will know what you mean when you ask "What's our MRR for Q4?"
+See [Glossary](../data-modeling/semantic-layer/glossary.md)
 
 ## Segments
 
 ![Segments browser](./images/segments-browser.png)
 
-If your admins have created any [segments](../data-modeling/segments.md), you can browse them in this section.
+If your admins have created any [segments](../data-modeling/semantic-layer/segments.md), you can browse them in this section.
 
 ## Data reference in the native editor
 
@@ -67,7 +65,7 @@ Sometimes when you're writing a query, you might forget the exact names of diffe
 
 To bring up the data reference panel in the native/SQL editor, click on the open book icon.
 
-This panel lists all the databases you have access to, and the [models](../data-modeling/models.md) and tables, and the fields inside of them.
+This panel lists all the databases you have access to, and the [models](../data-modeling/models/models.md) and tables, and the fields inside of them.
 
 ![Data reference sidebar](./images/DataReference.png)
 
@@ -79,4 +77,4 @@ If you click on a column you’re interested in, you’ll see a description of i
 
 In the data reference sidebar in the native editor, under **Connections**, you can find a list of table relationships (defined by [foreign keys](https://www.metabase.com/glossary/foreign-key)).
 
-If a foreign key relationship exists in your database, but doesn't show up in your Metabase, your admin will need to update your [Metabase table metadata](../data-modeling/metadata-editing.md).
+If a foreign key relationship exists in your database, but doesn't show up in your Metabase, your admin will need to update your [Metabase table metadata](../data-modeling/metadata/metadata-editing.md).
