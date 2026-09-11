@@ -572,8 +572,8 @@ export function filterNullDimensionValues(
   return filteredDataset;
 }
 
-// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-export const NO_X_AXIS_VALUES_ERROR_MESSAGE = t`There is no data to display. Check the query to ensure there are non-null x-axis values.`;
+export const getNoXAxisValuesErrorMessage = () =>
+  t`There is no data to display. Check the query to ensure there are non-null x-axis values.`;
 
 export function replaceZeroesForLogScale(
   dataset: ChartDataset,
@@ -803,7 +803,7 @@ export const applyVisualizationSettingsDataTransformations = (
   ) {
     dataset = filterNullDimensionValues(dataset, showWarning);
     if (dataset.length === 0) {
-      throw new Error(NO_X_AXIS_VALUES_ERROR_MESSAGE);
+      throw new Error(getNoXAxisValuesErrorMessage());
     }
   }
 

@@ -55,8 +55,7 @@ import {
 
 import S from "./EditSandboxingModal.module.css";
 
-// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-const ERROR_MESSAGE = t`An error occurred.`;
+const getErrorMessage = () => t`An error occurred.`;
 
 const getNormalizedPolicy = (
   policy: GroupTableAccessPolicy | GroupTableAccessPolicyDraft,
@@ -343,7 +342,7 @@ const EditSandboxingModal = ({
             {typeof error === "string"
               ? error
               : // @ts-expect-error provide correct type for error
-                (error.data.message ?? ERROR_MESSAGE)}
+                (error.data.message ?? getErrorMessage())}
           </div>
         )}
       </div>
