@@ -1,5 +1,6 @@
 import { PLUGIN_API } from "metabase/api/client";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+import { getUrlTarget, openUrl } from "metabase/urls";
 
 jest.mock("react-dom/client", () => ({
   createRoot: () => ({ render: jest.fn() }),
@@ -36,5 +37,18 @@ describe("data-app iframe entry", () => {
         data: {},
       }),
     ).toBeUndefined();
+  });
+
+  it("should open a same-origin link outside the data-app iframe", async () => {
+    await import("./app-data-app");
+
+    const url = window.location.origin + "/dashboard/1";
+    const openInBlankWindow = jest.fn();
+    const openInSameOrigin = jest.fn();
+    await openUrl(url, { openInBlankWindow, openInSameOrigin });
+
+    expect(getUrlTarget(url)).toBe("_blank");
+    expect(openInBlankWindow).toHaveBeenCalledWith(url);
+    expect(openInSameOrigin).not.toHaveBeenCalled();
   });
 });
