@@ -138,6 +138,36 @@
             (is (= 255 (count (:embedding_client (row-for route)))))
             (finally (t2/delete! :model/ApiKeyUsageLog :route_template route))))))))
 
+(deftest record-api-key-request!-embedding-hostname-test
+  (testing "embedding_hostname carries the parsed hostname, never gated"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temporary-setting-values [synchronous-batch-updates       true
+                                         analytics-pii-retention-enabled false]
+        (let [route (unique-route)]
+          (try
+            (usage/record-api-key-request! (request-info route :embedding-hostname "example.com"))
+            (is (= "example.com" (:embedding_hostname (row-for route))))
+            (finally (t2/delete! :model/ApiKeyUsageLog :route_template route)))))))
+  (testing "absent when not passed"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temporary-setting-values [synchronous-batch-updates true]
+        (let [route (unique-route)]
+          (try
+            (usage/record-api-key-request! (request-info route))
+            (is (nil? (:embedding_hostname (row-for route))))
+            (finally (t2/delete! :model/ApiKeyUsageLog :route_template route))))))))
+
+(deftest record-api-key-request!-truncates-embedding-hostname-test
+  (testing "an over-long embedding_hostname is truncated to the column width so the row still records"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temporary-setting-values [synchronous-batch-updates true]
+        (let [route (unique-route)
+              long-value (apply str (repeat 600 \x))]
+          (try
+            (usage/record-api-key-request! (request-info route :embedding-hostname long-value))
+            (is (= 512 (count (:embedding_hostname (row-for route)))))
+            (finally (t2/delete! :model/ApiKeyUsageLog :route_template route))))))))
+
 (deftest record-api-key-request!-unrecognized-user-agent-is-other-test
   (testing "an unrecognized or absent User-Agent classifies as \"other\""
     (mt/with-premium-features #{:audit-app}

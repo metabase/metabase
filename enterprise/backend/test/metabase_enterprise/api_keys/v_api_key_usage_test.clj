@@ -59,6 +59,7 @@
                                                           :duration_ms      42
                                                           :client_name      "metabase-cli"
                                                           :embedding_client "embedding-sdk-react"
+                                                          :embedding_hostname "example.com"
                                                           :ip_address       "10.0.0.7"
                                                           :user_agent       "metabase-cli/1.2.3"})]
       (is (=? {:route_template      "/api/card/:id"
@@ -75,6 +76,7 @@
                :client_name         "metabase-cli"
                :client_display_name "Metabase CLI"
                :embedding_client    "embedding-sdk-react"
+               :embedding_hostname  "example.com"
                :ip_address          "10.0.0.7"
                :user_agent          "metabase-cli/1.2.3"}
               (find-row (query-view [log-id]) log-id))))))
