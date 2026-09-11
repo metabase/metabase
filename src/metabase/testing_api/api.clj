@@ -3,8 +3,10 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [java-time.api :as t]
    [java-time.clock]
+   [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -14,12 +16,15 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.llm.provider :as llm.provider]
+   [metabase.llm.settings :as llm.settings]
    [metabase.mcp.usage :as mcp.usage]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.core :as search]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.task.search-index :as task.search-index]
+   [metabase.security-center.schema :as security-center.schema]
    [metabase.session.api :as session.api]
    [metabase.testing-api.db :as testing-api.db]
    [metabase.util.date-2 :as u.date]
@@ -35,6 +40,24 @@
 (set! *warn-on-reflection* true)
 
 ;; EVERYTHING BELOW IS FOR H2 ONLY.
+
+(def ^:private llm-provider-fixture-schema
+  ;; Keep the outer map closed; config keys are allowlisted below before persistence.
+  [:map {:closed true}
+   [:key ms/NonBlankString]
+   [:type ms/NonBlankString]
+   [:name ms/NonBlankString]
+   [:config (ms/string-keyed-map [:maybe :string])]])
+
+(defn- validate-llm-provider-fixture!
+  [{:keys [type config]}]
+  (let [provider-type (llm.provider/provider-type type)
+        known-fields  (into (set (:stored-config-fields provider-type)) (map :key) (:fields provider-type))
+        unknown-fields (remove known-fields (keys config))]
+    (api/check-400 provider-type (str "Unknown provider type " (pr-str type) "."))
+    (api/check-400 (empty? unknown-fields)
+                   (str "Unknown " type " provider config fields: " (pr-str (vec unknown-fields)) "."))
+    (llm.provider/validate-config! type config)))
 
 (defn- assert-h2 [app-db]
   (assert (= (:db-type app-db) :h2)
@@ -60,7 +83,7 @@
 ;;
 (api.macros/defendpoint :post "/snapshot/:name"
   "Snapshot the database for testing purposes."
-  [{snapshot-name :name} :- [:map
+  [{snapshot-name :name} :- [:map {:closed true}
                              [:name ms/NonBlankString]]]
   (task.search-index/wait-for-init!)
   (search.ingestion/wait-for-idle!)
@@ -135,7 +158,7 @@
 ;;
 (api.macros/defendpoint :post "/restore/:name"
   "Restore a database snapshot for testing purposes."
-  [{snapshot-name :name} :- [:map
+  [{snapshot-name :name} :- [:map {:closed true}
                              [:name ms/NonBlankString]]]
   ;; reset the system clock, in case `/set-time` was called without cleanup
   (alter-var-root #'java-time.clock/*clock* (constantly nil))
@@ -150,9 +173,9 @@
 (api.macros/defendpoint :post "/echo"
   "Simple echo handler. Fails when you POST with `?fail=true`."
   [_route-params
-   {:keys [fail]} :- [:map
+   {:keys [fail]} :- [:map {:closed true}
                       [:fail {:default false} ms/BooleanValue]]
-   body :- ms/Map]
+   body :- ms/OpaqueJSONObject]
   (if fail
     {:status 400
      :body {:error-code "oops"}}
@@ -166,7 +189,7 @@
   "Make java-time see world at exact time."
   [_route-params
    _query-params
-   {:keys [time add-ms]} :- [:map
+   {:keys [time add-ms]} :- [:map {:closed true}
                              [:time   {:optional true} [:maybe ms/TemporalString]]
                              [:add-ms {:optional true} [:maybe ms/Int]]]]
   (let [clock (when-let [time' (cond
@@ -185,9 +208,9 @@
 (api.macros/defendpoint :get "/echo"
   "Simple echo handler. Fails when you GET with `?fail=true`."
   [_route-params
-   {:keys [fail body]} :- [:map
+   {:keys [fail body]} :- [:map {:closed true}
                            [:fail {:default false} ms/BooleanValue]
-                           [:body ms/JSONString]]]
+                           [:body :string]]]
   (if fail
     {:status 400
      :body {:error-code "oops"}}
@@ -203,7 +226,7 @@
   transform is stale once it was created before the cutoff with no later run. Intended only for E2E tests."
   [_route-params
    _query-params
-   {:keys [id model date-str]} :- [:map
+   {:keys [id model date-str]} :- [:map {:closed true}
                                    [:id       ms/PositiveInt]
                                    [:model    :string]
                                    [:date-str {:optional true} [:maybe :string]]]]
@@ -278,6 +301,17 @@
   (reset-mfa-throttlers-for-testing!)
   {:success true})
 
+(api.macros/defendpoint :put "/llm-providers" :- :nil
+  "Replace the stored LLM provider connections without probing their credentials. E2E tests use fake credentials and
+  mock provider responses, so they cannot seed their fixtures through the production provider API."
+  [_route-params
+   _query-params
+   {:keys [value]} :- [:map {:closed true} [:value [:sequential llm-provider-fixture-schema]]]]
+  (let [value (mapv #(update % :config update-keys keyword) value)]
+    (run! validate-llm-provider-fixture! value)
+    (llm.settings/set-llm-providers! value))
+  nil)
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -290,54 +324,42 @@
   "Creates a query from a test query spec."
   [_route-params
    _query-params
-   {:keys [database], :as query-spec} :- [:map
-                                          ;; open: clients send the spec in camelCase and `lib/test-query` re-parses
-                                          ;; it with its own coercer, which kebab-cases the keys and validates the
-                                          ;; result. Declaring `::lib.schema.test-spec/test-query-spec` here would
-                                          ;; strip every camelCase key before that coercer ever saw it.
-                                          {:closed false}
-                                          [:database ::lib.schema.id/database]]]
-  (-> (lib-be/application-database-metadata-provider database)
-      (lib/test-query query-spec)))
+   query-spec :- (ms/string-keyed-object ["database" ::lib.schema.id/database])]
+  (-> (lib-be/application-database-metadata-provider (get query-spec "database"))
+      (lib/test-query (walk/keywordize-keys query-spec))))
 
 (def ^:private TestAdvisory
   "Schema for a single advisory in the testing seed endpoint."
-  [:map
+  [:map {:closed true}
    [:advisory_id       ms/NonBlankString]
    [:title             ms/NonBlankString]
    [:severity          [:enum "critical" "high" "medium" "low"]]
    [:description       ms/NonBlankString]
    [:advisory_url      {:optional true} [:maybe ms/NonBlankString]]
    [:remediation       ms/NonBlankString]
-   [:affected_versions [:sequential [:map [:min :string] [:fixed :string]]]]
-   [:download_jar_urls {:optional true} [:maybe [:sequential [:map [:version :string] [:url :string]]]]]
-   [:matching_query    {:optional true} [:maybe [:map-of :keyword :string]]]
+   [:affected_versions [:sequential [:map {:closed true} [:min :string] [:fixed :string]]]]
+   [:download_jar_urls {:optional true} [:maybe [:sequential [:map {:closed true} [:version :string] [:url :string]]]]]
+   [:matching_query    {:optional true} [:maybe ::security-center.schema/matching-query]]
    [:match_status      [:enum "unknown" "active" "resolved" "not_affected" "error"]]
-   [:published_at      :any]
-   [:updated_at        :any]])
+   [:published_at      [:maybe :string]]
+   [:updated_at        [:maybe :string]]])
 
 (api.macros/defendpoint :post "/security-advisories"
   "Nuke all existing security advisories and insert the provided ones."
   [_route-params
    _query-params
-   {:keys [advisories]} :- [:map
+   {:keys [advisories]} :- [:map {:closed true}
                             [:advisories [:sequential TestAdvisory]]]]
   (testing-api.db/delete-all-security-advisories!)
-  (testing-api.db/insert-security-advisories! advisories))
+  (testing-api.db/insert-security-advisories! (mapv #(m/update-existing % :matching_query walk/keywordize-keys) advisories)))
 
 (api.macros/defendpoint :post "/native-query" :- ::lib.schema/query
   "Creates a native query from a test query spec."
   [_route-params
    _query-params
-   {:keys [database], :as native-query-spec} :- [:map
-                                                 ;; open, for the same reason as `POST /query` above:
-                                                 ;; `lib/test-native-query` re-parses and validates the spec itself,
-                                                 ;; and it is the only thing that understands the camelCase keys
-                                                 ;; (`templateTags`, ...) clients send.
-                                                 {:closed false}
-                                                 [:database ::lib.schema.id/database]]]
-  (-> (lib-be/application-database-metadata-provider database)
-      (lib/test-native-query native-query-spec)))
+   native-query-spec :- (ms/string-keyed-object ["database" ::lib.schema.id/database])]
+  (-> (lib-be/application-database-metadata-provider (get native-query-spec "database"))
+      (lib/test-native-query (walk/keywordize-keys native-query-spec))))
 
 ;;;; Metabot AI usage seeding
 
@@ -558,7 +580,7 @@
   cache so limit checks re-evaluate immediately.  Intended only for E2E tests."
   [_route-params
    _query-params
-   {:keys [user_id count]} :- [:map
+   {:keys [user_id count]} :- [:map {:closed true}
                                [:user_id ms/PositiveInt]
                                [:count   ms/PositiveInt]]]
   (dotimes [_ count]
@@ -578,7 +600,7 @@
   clear the metabot limit cache.  Intended only for E2E tests."
   [_route-params
    _query-params
-   {:keys [user_id]} :- [:map
+   {:keys [user_id]} :- [:map {:closed true}
                          [:user_id ms/PositiveInt]]]
   (let [deleted (testing-api.db/delete-ai-usage-logs-for-user-and-source! user_id e2e-usage-source)]
     (clear-metabot-limit-cache!)
@@ -591,7 +613,7 @@
   "Seed deterministic Metabot conversation, message, and token usage rows for the usage auditing E2E charts."
   [_route-params
    _query-params
-   {:keys [user_id second_user_id tenant_id second_tenant_id]} :- [:map
+   {:keys [user_id second_user_id tenant_id second_tenant_id]} :- [:map {:closed true}
                                                                    [:user_id ms/PositiveInt]
                                                                    [:second_user_id ms/PositiveInt]
                                                                    [:tenant_id {:optional true} [:maybe ms/PositiveInt]]
@@ -609,7 +631,7 @@
   [_route-params
    _query-params
    {:keys [user_id tool_name client_name client_version status error_code error_message duration_ms]}
-   :- [:map
+   :- [:map {:closed true}
        [:user_id        ms/PositiveInt]
        [:tool_name       {:optional true} [:maybe ms/NonBlankString]]
        [:client_name     {:optional true} [:maybe ms/NonBlankString]]

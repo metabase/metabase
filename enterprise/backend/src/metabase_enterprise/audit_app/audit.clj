@@ -67,8 +67,8 @@
   ;; one transaction so a crash can't commit the database row yet skip the permissions guard below —
   ;; the next boot would see the database and no-op, leaving the stale permissions with no re-run path
   (t2/with-transaction [_conn]
-    (audit-app.db/insert-database! {:is_audit         true
-                                    :id               id
+    (audit-app.db/insert-database! id
+                                   {:is_audit         true
                                     :name             default-db-name
                                     :description      "Internal Audit DB used to power metabase analytics."
                                     :engine           engine

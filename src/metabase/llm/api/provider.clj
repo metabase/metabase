@@ -17,7 +17,8 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -81,9 +82,6 @@
     [:type :string]
     [:models [:sequential llm-model-response-schema]]
     [:error {:optional true} [:maybe :string]]]])
-
-(def ^:private config-schema
-  [:map-of :keyword [:maybe :string]])
 
 (def ^:private connection-key-schema
   [:string {:api/regex #"[a-z0-9][a-z0-9-]*"}])
@@ -404,11 +402,11 @@
   "Create a provider connection. The credentials are verified before the connection is saved."
   [_route-params
    _query-params
-   {:keys [type name key config model]} :- [:map
+   {:keys [type name key config model]} :- [:map {:closed true}
                                             [:type :string]
                                             [:name {:optional true} [:maybe :string]]
                                             [:key {:optional true} [:maybe :string]]
-                                            [:config {:optional true} [:maybe config-schema]]
+                                            [:config {:optional true} [:maybe (ms/string-keyed-map [:maybe :string])]]
                                             [:model {:optional true} [:maybe :string]]]]
   (perms/check-has-application-permission :setting)
   (refresh-settings!)
@@ -434,7 +432,7 @@
                                       (not= llm.provider/managed-connection-key conn-key))
                                   (tru "The {0} connection key is reserved for the Metabase AI service."
                                        (pr-str llm.provider/managed-connection-key)))
-          config   (without-blank-values config)
+          config   (without-blank-values (update-keys config keyword))
           conn     {:key    conn-key
                     :type   type
                     :name   (or (not-empty name) (str (:label provider-type)))
@@ -454,16 +452,17 @@
 (api.macros/defendpoint :put "/providers/:key"
   :- connection-response-schema
   "Update a provider connection. Secret fields the client echoes back masked keep their stored value."
-  [{conn-key :key} :- [:map [:key connection-key-schema]]
+  [{conn-key :key} :- [:map {:closed true} [:key connection-key-schema]]
    _query-params
-   {:keys [name config model]} :- [:map
+   {:keys [name config model]} :- [:map {:closed true}
                                    [:name {:optional true} [:maybe :string]]
-                                   [:config {:optional true} [:maybe config-schema]]
+                                   [:config {:optional true} [:maybe (ms/string-keyed-map [:maybe :string])]]
                                    [:model {:optional true} [:maybe :string]]]]
   (perms/check-has-application-permission :setting)
   (refresh-settings!)
   (check-connections-not-env-managed!)
-  (let [stored     (llm.provider/stored-connections)
+  (let [config     (some-> config (update-keys keyword))
+        stored     (llm.provider/stored-connections)
         idx        (first (keep-indexed (fn [i c] (when (= (:key c) conn-key) i)) stored))
         _          (api/check-404 idx)
         existing   (nth stored idx)
@@ -481,6 +480,11 @@
                      (not-empty name)   (assoc :name name))
         ;; what the connection will actually run on: the stored config with the environment layered back over it
         effective  (merge (:config merged) env-config)]
+    ;; Before validation probes the new URL with the effective credentials, require proof that the caller holds every
+    ;; secret that would travel there. Omitted and masked secrets were merged from storage; env-owned ones cannot be
+    ;; re-supplied through this API at all.
+    (llm.provider/assert-base-url-change-authorized! (:type merged) (:config live) effective config
+                                                     (:env-fields live))
     (llm.provider/validate-config! (:type merged) effective)
     (let [{:keys [learned-config] :as listed}
           (verify-credentials! merged effective (or model (selected-model conn-key)))
@@ -493,7 +497,7 @@
 
 (api.macros/defendpoint :delete "/providers/:key" :- :nil
   "Delete a provider connection."
-  [{conn-key :key} :- [:map [:key connection-key-schema]]]
+  [{conn-key :key} :- [:map {:closed true} [:key connection-key-schema]]]
   (perms/check-has-application-permission :setting)
   (refresh-settings!)
   (check-connections-not-env-managed!)

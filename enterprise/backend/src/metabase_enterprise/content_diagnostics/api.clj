@@ -345,7 +345,7 @@
     :or   {include-personal-collections false
            sort-column                   :detected-at
            sort-direction                :asc}}
-   :- [:map
+   :- [:map {:closed true}
        [:include-personal-collections {:optional true} :boolean]
        [:sort-column    {:optional true} (ms/enum-decode-keyword (keys stale-sort-column->field))]
        [:sort-direction {:optional true} (ms/enum-decode-keyword api.common/sort-directions)]
@@ -389,7 +389,7 @@
     :or   {include-personal-collections false
            sort-column                   :detected-at
            sort-direction                :asc}}
-   :- [:map
+   :- [:map {:closed true}
        [:include-personal-collections {:optional true} :boolean]
        [:sort-column     {:optional true} (ms/enum-decode-keyword (keys slow-sort-column->field))]
        [:sort-direction  {:optional true} (ms/enum-decode-keyword api.common/sort-directions)]
@@ -428,7 +428,7 @@
     :or   {include-personal-collections false
            sort-column                   :detected-at
            sort-direction                :asc}}
-   :- [:map
+   :- [:map {:closed true}
        [:include-personal-collections {:optional true} :boolean]
        [:sort-column       {:optional true} (ms/enum-decode-keyword (keys imbalanced-sort-column->field))]
        [:sort-direction    {:optional true} (ms/enum-decode-keyword api.common/sort-directions)]
@@ -475,7 +475,7 @@
     :or   {include-personal-collections false
            sort-column                   :detected-at
            sort-direction                :asc}}
-   :- [:map
+   :- [:map {:closed true}
        [:include-personal-collections {:optional true} :boolean]
        [:sort-column         {:optional true} (ms/enum-decode-keyword (keys duplicated-sort-column->field))]
        [:sort-direction      {:optional true} (ms/enum-decode-keyword api.common/sort-directions)]

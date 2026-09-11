@@ -2,6 +2,8 @@ import type { ButtonHTMLAttributes } from "react";
 
 import type { ActionIconProps } from "metabase/ui";
 
+import { definePluginSlot } from "../slot";
+
 export type DashboardSubscriptionsButtonProps = ActionIconProps &
   ButtonHTMLAttributes<HTMLButtonElement>;
 
@@ -19,11 +21,6 @@ function getDefaultPluginNotificationsSdk() {
   };
 }
 
-export const PLUGIN_NOTIFICATIONS_SDK = getDefaultPluginNotificationsSdk();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(PLUGIN_NOTIFICATIONS_SDK, getDefaultPluginNotificationsSdk());
-}
+export const PLUGIN_NOTIFICATIONS_SDK = definePluginSlot(
+  getDefaultPluginNotificationsSdk,
+);

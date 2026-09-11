@@ -16,7 +16,7 @@ Admins can update the localization settings for the instance:
 
 These localization settings allow you to set global language and formatting defaults for dates, times, numbers, and currencies.
 
-People can also override these localization options for specific fields or questions. For more info, see [Formatting](../data-modeling/formatting.md).
+People can also override these localization options for specific fields or questions. For more info, see [Formatting](../data-modeling/metadata/formatting.md).
 
 ## Instance settings
 
@@ -28,7 +28,7 @@ You can set the default language (also called the "instance language") across yo
 
 People can override these settings in their personal [account settings](../people-and-groups/account-settings.md).
 
-To set the instance-wider language:
+To set the instance-wide language:
 
 1. Go to **Admin > Settings > Localization**.
 2. Under **Instance language**, pick the language for your instance.
@@ -79,7 +79,7 @@ This setting doesn't affect [SQL queries](../questions/native-editor/writing-sql
 
 You can configure the default formatting for dates and times. 
 
-Note that people can also override these localization options for specific fields or questions. For more info, see [Formatting](../data-modeling/formatting.md).
+Note that people can also override these localization options for specific fields or questions. For more info, see [Formatting](../data-modeling/metadata/formatting.md).
 
 To configure default date and time format settings:
 
@@ -96,7 +96,7 @@ _Admin > Settings > Localization_
 
 Some people use commas to separate thousands places, and others use periods. You can configure which camp you belong to.
 
-Note that people can also override these localization options for specific fields or questions. For more info, see [Formatting](../data-modeling/formatting.md).
+Note that people can also override these localization options for specific fields or questions. For more info, see [Formatting](../data-modeling/metadata/formatting.md).
 
 To configure default separator settings:
 
@@ -107,7 +107,7 @@ To configure default separator settings:
 
 _Admin > Settings > Localization_
 
-You can choose how currency fields should be displayed by default (you can configure _which_ fields should be displayed as currency in table metadata or in question formatting setting, see [Formatting](../data-modeling/formatting.md))
+You can choose how currency fields should be displayed by default (you can configure _which_ fields should be displayed as currency in table metadata or in question formatting setting, see [Formatting](../data-modeling/metadata/formatting.md))
 
 Note that people can also override these localization options for specific fields or questions.
 

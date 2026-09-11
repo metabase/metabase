@@ -2,7 +2,6 @@
   (:require
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
-   [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -12,7 +11,6 @@
    [metabase.transforms.models.transform-run-cancelation :as cancel]
    [metabase.transforms.models.util :as transforms.models.u]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -26,6 +24,16 @@
 (methodical/defmethod t2/table-name :model/TransformRun [_model] :transform_run)
 
 (derive :model/TransformRun :metabase/model)
+
+(def ^:private terminal-statuses
+  #{:succeeded :failed :canceled :timeout})
+
+(t2/define-before-update :model/TransformRun
+  [run]
+  (let [changes (t2/changes run)]
+    (cond-> run
+      (and (contains? terminal-statuses (keyword (:status changes))) (not (contains? changes :end_time)))
+      (assoc :end_time (mi/now)))))
 
 (t2/deftransforms :model/TransformRun
   {:status     mi/transform-keyword
@@ -83,8 +91,7 @@
   ([run-id properties]
    (u/prog1 (transforms.db/finish-active-run! run-id
                                               (merge properties
-                                                     {:end_time  :%now
-                                                      :status    :succeeded
+                                                     {:status    :succeeded
                                                       :is_active nil}))
      (cancel/delete-cancelation! run-id))))
 
@@ -93,8 +100,7 @@
   [run-id properties]
   (u/prog1 (transforms.db/finish-active-run! run-id
                                              (merge properties
-                                                    {:end_time  :%now
-                                                     :status    :failed
+                                                    {:status    :failed
                                                      :is_active nil}))
     (cancel/delete-cancelation! run-id)))
 
@@ -105,8 +111,7 @@
   ([run-id properties]
    (u/prog1 (transforms.db/finish-active-run! run-id
                                               (merge properties
-                                                     {:end_time  :%now
-                                                      :status    :canceled
+                                                     {:status    :canceled
                                                       :is_active nil}))
      (cancel/delete-cancelation! run-id))))
 
@@ -128,8 +133,7 @@
   ([run-id properties]
    (u/prog1 (transforms.db/finish-active-run! run-id
                                               (merge properties
-                                                     {:end_time  :%now
-                                                      :message   "Timed out"
+                                                     {:message   "Timed out"
                                                       :status    :timeout
                                                       :is_active nil}))
      (cancel/delete-cancelation! run-id)
@@ -145,8 +149,8 @@
   (let [end-time (OffsetDateTime/now ZoneOffset/UTC)
         reaped   (rt/reap-orphaned!
                   {:model    :model/TransformRun
-                   :active   [:= :is_active true]
-                   :stale    [:< stale-column (rt/cutoff age unit)]
+                   :active   [:is_active true]
+                   :stale    [{:column stale-column :age age :unit unit}]
                    :terminal {:status "timeout" :end_time :%now :is_active nil :message message}
                    :metrics  {:total-metric   :metabase-transforms/timeouts-total
                               :latency-metric :metabase-transforms/timeout-detection-latency-ms
@@ -171,7 +175,7 @@
 (defn heartbeat-runs!
   "Stamp `last_heartbeat = now` on the given still-active `run-ids`."
   [run-ids]
-  (rt/heartbeat-ids! :model/TransformRun [:= :is_active true] :last_heartbeat run-ids))
+  (rt/heartbeat-ids! :model/TransformRun [:is_active true] :last_heartbeat run-ids))
 
 (defn reap-orphaned-runs!
   "Time out active runs whose `last_heartbeat` is older than `stale-minutes` (their owning process is
@@ -190,9 +194,8 @@
   the lock set and are not reported."
   [age unit]
   (t2/with-transaction [_conn]
-    (let [cutoff (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)
-          times  (into {} (map (juxt :run_id :time))
-                       (transforms.db/cancelations-requested-before cutoff))
+    (let [times  (into {} (map (juxt :run_id :time))
+                       (transforms.db/cancelations-requested-before age unit))
           locked (when (seq times)
                    (transforms.db/lock-active-runs (keys times)))]
       (when (seq locked)

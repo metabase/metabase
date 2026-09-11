@@ -3,7 +3,6 @@ import { useEffect } from "react";
 import { usePrevious } from "react-use";
 
 import CS from "metabase/css/core/index.css";
-import { getMetadata } from "metabase/metadata-store";
 import { connect, useDispatch, useSelector } from "metabase/redux";
 import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import FieldDetail from "metabase/reference/databases/FieldDetail";
@@ -41,9 +40,6 @@ function FieldDetailContainer(props: FieldDetailContainerProps) {
   const field = useSelector((state) => getField(state, { params }));
   const tableId = useSelector((state) => getTableId(state, { params }));
   const isEditing = useSelector(getIsEditing);
-  // `FieldDetail` reads `metadata` but doesn't select it itself.
-  const metadata = useSelector(getMetadata);
-
   const { loading, loadingError } = useReferenceFetch(() =>
     fetchTableData(dispatch, tableId),
   );
@@ -64,7 +60,6 @@ function FieldDetailContainer(props: FieldDetailContainerProps) {
     >
       <FieldDetail
         params={params}
-        metadata={metadata}
         loading={loading}
         loadingError={loadingError}
       />

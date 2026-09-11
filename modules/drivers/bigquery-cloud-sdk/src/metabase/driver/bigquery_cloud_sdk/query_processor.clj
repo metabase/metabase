@@ -997,9 +997,9 @@
   (let [parent-method (get-method driver/mbql->native :sql)
         compiled      (parent-method driver outer-query)]
     (assoc compiled
-           :table-name (or (when-let [source-table-id (-> outer-query :stages last :source-table)]
-                             (:name (driver-api/table (driver-api/metadata-provider) source-table-id)))
-                           sql.qp/source-query-alias)
+           :qp/table-name (or (when-let [source-table-id (-> outer-query :stages last :source-table)]
+                                (:name (driver-api/table (driver-api/metadata-provider) source-table-id)))
+                              sql.qp/source-query-alias)
            :mbql?      true)))
 
 (defn- format-current-moment

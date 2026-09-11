@@ -11,7 +11,9 @@
    [metabase.comments.models.comment :as comment]
    [metabase.comments.models.comment-reaction :as comment-reaction]
    [metabase.comments.render :as comments.render]
+   [metabase.comments.schema :as comments.schema]
    [metabase.events.core :as events]
+   [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.models.interface :as mi]
    [metabase.request.core :as request]
    [metabase.util :as u]
@@ -57,7 +59,7 @@
    [:and
     {:error/message "Comment content must be valid JSON"
      :json-schema   {:type "object"}}
-    ms/Map]
+    ::comments.schema/prose-mirror-node]
    (deferred-tru "Comment content must be valid JSON.")))
 
 (def ^:private CommentHighlight
@@ -69,7 +71,7 @@
    [:dimensions {:optional true}
     [:maybe [:sequential [:map {:closed true}
                           [:columnName {:optional true} [:maybe :string]]
-                          [:value      {:optional true} :any]]]]]])
+                          [:value      {:optional true} [:ref ::lib.schema.literal/literal]]]]]]])
 
 (def CommentContext
   "Context stored alongside a comment"
@@ -86,7 +88,7 @@
 
 (def CreateComment
   "Schema for creating a new comment"
-  [:map
+  [:map {:closed true}
    [:target_type TargetType]
    [:target_id   ms/PositiveInt]
    [:content     CommentContent]
@@ -96,7 +98,7 @@
 
 (def UpdateComment
   "Schema for updating a comment"
-  [:map
+  [:map {:closed true}
    [:content {:optional true} CommentContent]
    [:is_resolved {:optional true} :boolean]])
 
@@ -136,7 +138,7 @@
 (api.macros/defendpoint :get "/"
   "Get comments for an entity"
   [_route-params
-   {:keys [target_type target_id]} :- [:map
+   {:keys [target_type target_id]} :- [:map {:closed true}
                                        [:target_type TargetType]
                                        [:target_id ms/PositiveInt]]
    _body
@@ -239,7 +241,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:comment-id"
   "Update a comment"
-  [{:keys [comment-id]} :- [:map [:comment-id ms/PositiveInt]]
+  [{:keys [comment-id]} :- [:map {:closed true} [:comment-id ms/PositiveInt]]
    _query-params
    {:keys [content is_resolved]} :- UpdateComment]
   (let [comment (api/check-404 (comments.db/comment-by-id comment-id))
@@ -273,7 +275,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:comment-id"
   "Soft delete a comment"
-  [{:keys [comment-id]} :- [:map [:comment-id ms/PositiveInt]]
+  [{:keys [comment-id]} :- [:map {:closed true} [:comment-id ms/PositiveInt]]
    _query-params]
   (let [comment (api/check-404 (comments.db/comment-by-id comment-id))]
     (-> (api/read-check (type->model (:target_type comment)) (:target_id comment))
@@ -297,9 +299,9 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:comment-id/reaction"
   "Toggle a reaction on a comment"
-  [{:keys [comment-id]} :- [:map [:comment-id ms/PositiveInt]]
+  [{:keys [comment-id]} :- [:map {:closed true} [:comment-id ms/PositiveInt]]
    _query-params
-   {:keys [emoji]} :- [:map [:emoji [:string {:min 1 :max 10}]]]]
+   {:keys [emoji]} :- [:map {:closed true} [:emoji [:string {:min 1 :max 10}]]]]
   (let [comment (api/check-404 (comments.db/comment-by-id comment-id))]
     (api/check-400 (not (:deleted_at comment))
                    "Cannot react to deleted comments")

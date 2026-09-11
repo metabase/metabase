@@ -32,7 +32,7 @@
 (defn- create-slack-message-blocks
   "Create blocks for the Slack message with diagnostic information"
   [diagnostic-info file-info]
-  (let [version-info (get-in diagnostic-info [:bugReportDetails :metabase-info :version])
+  (let [version-info (get-in diagnostic-info [:bugReportDetails "metabase-info" "version"])
         description (get diagnostic-info :description)
         reporter (get diagnostic-info :reporter)
         file-url (if (string? file-info)
@@ -97,7 +97,7 @@
   [_route-params
    _query-params
    {:keys [slack-app-token slack-bug-report-channel] :as body}
-   :- [:map
+   :- [:map {:closed true}
        [:slack-app-token          {:optional true} [:maybe ms/NonBlankString]]
        [:slack-bug-report-channel {:optional true} [:maybe :string]]]]
   (perms/check-has-application-permission :setting)
@@ -261,15 +261,15 @@
    [:url                 {:optional true} [:maybe :string]]
    [:description         {:optional true} [:maybe :string]]
    [:frontendErrors      {:optional true} [:maybe [:sequential :string]]]
-   [:backendErrors       {:optional true} [:maybe [:sequential ms/Map]]]
-   [:userLogs            {:optional true} [:maybe [:sequential ms/Map]]]
-   [:logs                {:optional true} [:maybe [:sequential ms/Map]]]
+   [:backendErrors       {:optional true} [:maybe [:sequential ms/OpaqueJSONObject]]]
+   [:userLogs            {:optional true} [:maybe [:sequential ms/OpaqueJSONObject]]]
+   [:logs                {:optional true} [:maybe [:sequential ms/OpaqueJSONObject]]]
    [:entityName          {:optional true} [:maybe :string]]
    [:localizedEntityName {:optional true} [:maybe :string]]
-   [:entityInfo          {:optional true} [:maybe ms/Map]]
-   [:queryResults        {:optional true} [:maybe ms/Map]]
-   [:bugReportDetails    {:optional true} [:maybe ms/Map]]
-   [:browserInfo         {:optional true} [:maybe ms/Map]]])
+   [:entityInfo          {:optional true} [:maybe ms/OpaqueJSONObject]]
+   [:queryResults        {:optional true} [:maybe ms/OpaqueJSONObject]]
+   [:bugReportDetails    {:optional true} [:maybe ms/OpaqueJSONObject]]
+   [:browserInfo         {:optional true} [:maybe ms/OpaqueJSONObject]]])
 
 (defn- current-user-reporter
   "Name and email of the user making the request, for attributing a bug report."

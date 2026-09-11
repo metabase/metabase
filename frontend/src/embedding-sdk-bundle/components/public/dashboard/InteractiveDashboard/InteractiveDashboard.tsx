@@ -12,7 +12,7 @@ import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
 import { PublicOrEmbeddedDashCardMenu } from "metabase/dashboard/components/DashCard/PublicOrEmbeddedDashCardMenu";
 import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
-import { isQuestionCard } from "metabase/utils/dashboard";
+import { isQuestionDashCard } from "metabase/utils/dashboard";
 
 import {
   SdkDashboard,
@@ -77,7 +77,7 @@ export const InteractiveDashboardContent = (
       ],
       dashcardMenu: ({ dashcard, result, downloadsEnabled }) =>
         downloadsEnabled?.results &&
-        isQuestionCard(dashcard.card) &&
+        isQuestionDashCard(dashcard) &&
         !!result?.data &&
         !result?.error && (
           <PublicOrEmbeddedDashCardMenu result={result} dashcard={dashcard} />

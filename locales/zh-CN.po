@@ -7,7 +7,7 @@ msgstr ""
 "Plural-Forms: nplurals=1; plural=0;\n"
 "Project-Id-Version: metabase-i18n\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2026-08-26 19:37+0000\n"
+"POT-Creation-Date: 2026-09-01 05:46+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -18,7 +18,7 @@ msgstr ""
 "X-Crowdin-File-ID: 2\n"
 "Language-Team: Chinese Simplified\n"
 "Language: zh_CN\n"
-"PO-Revision-Date: 2026-09-01 05:39\n"
+"PO-Revision-Date: 2026-09-08 05:41\n"
 
 #: /home/runner/work/metabase/metabase/src/metabase/analyze/fingerprint/fingerprinters.clj
 msgid "Error generating fingerprint for {0}"
@@ -248,12 +248,14 @@ msgstr "编辑连接"
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsPageLayout.tsx
 #: frontend/src/metabase/comments/components/Comments/Comments.tsx
 #: frontend/src/metabase/common/components/ErrorPages/ErrorDiagnosticModal.tsx
+#: frontend/src/metabase/common/components/SidebarHeader/SidebarHeader.tsx
 #: frontend/src/metabase/common/components/Sidesheet/Sidesheet.tsx
 #: frontend/src/metabase/common/components/Toaster/Toaster.tsx
 #: frontend/src/metabase/common/components/upsells/components/UpgradeModal/UpgradeModalError.tsx
 #: frontend/src/metabase/dashboard/components/ActionSidebar/ActionSidebar.tsx
 #: frontend/src/metabase/dashboard/components/DashboardSubscriptionsSidebar/PulsesListSidebar.tsx
 #: frontend/src/metabase/detail-view/components/DetailViewSidesheet/Sidesheet/Sidesheet.tsx
+#: frontend/src/metabase/explorations/components/ExplorationVisualization/ExplorationComments.tsx
 #: frontend/src/metabase/explorations/components/ExplorationVisualization/TimelineEventsSidebar.tsx
 #: frontend/src/metabase/metrics-viewer/components/DimensionPickerSidebar/DimensionPickerSidebar.tsx
 #: frontend/src/metabase/monitor/tools/components/JobInfoApp/JobTriggersSidebar.tsx
@@ -433,6 +435,7 @@ msgstr "取消"
 #: frontend/src/metabase/data-studio/segments/pages/SegmentDetailPage/SegmentDetailPage.tsx
 #: frontend/src/metabase/databases/components/DatabaseForm/DatabaseFormFooter.tsx
 #: frontend/src/metabase/documents/components/DocumentHeader.tsx
+#: frontend/src/metabase/explorations/components/ExplorationSummary/ExplorationSummary.tsx
 #: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/ProviderConnectionForm.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotInlineChart.tsx
 #: frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/CustomMappingModal/CustomMappingModal.tsx
@@ -1777,11 +1780,11 @@ msgstr "编辑默认策略（当前：{0}）"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/DatabaseCachingEditor.tsx
 msgid "Reset all to default?"
-msgstr ""
+msgstr "全部重置为默认值？"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/DatabaseCachingEditor.tsx
 msgid "This will reset all database caching policies to their default values."
-msgstr ""
+msgstr "这将把所有数据库缓存策略重置为其默认值。"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/DatabaseCachingEditor.tsx
 msgid "Reset all to default"
@@ -1789,7 +1792,7 @@ msgstr "全部重置为默认值"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/DatabaseCachingEditor.tsx
 msgid "Could not reset the caching policies."
-msgstr ""
+msgstr "无法重置缓存策略。"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/DatabaseCachingEditor.tsx
 #: frontend/src/metabase/admin/performance/components/StrategyEditorForDatabases.tsx
@@ -1804,11 +1807,11 @@ msgstr "数据缓存设置"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/DatabaseCachingEditor.tsx
 msgid "Speed up queries by caching results with a global policy or database-specific policies."
-msgstr ""
+msgstr "通过全局策略或按数据库的策略缓存结果，加速查询。"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/DatabaseCachingEditor.tsx
 msgid "Search by name or policy…"
-msgstr ""
+msgstr "按名称或策略搜索…"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/DatabaseCachingEditor.tsx
 msgid "Untitled database"
@@ -1873,11 +1876,11 @@ msgstr "缓存"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PolicySidePanel/PolicySidePanel.tsx
 msgid "Previous item"
-msgstr ""
+msgstr "上一项"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PolicySidePanel/PolicySidePanel.tsx
 msgid "Next item"
-msgstr ""
+msgstr "下一项"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PolicyTable/PolicyTable.tsx
 #: enterprise/frontend/src/metabase-enterprise/clean_up/CleanupCollectionModal/CleanupCollectionTable.tsx
@@ -1943,7 +1946,7 @@ msgstr "策略"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PolicyTable/PolicyTable.tsx
 msgid "Caching policies"
-msgstr ""
+msgstr "缓存策略"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PreemptiveCachingSwitch.tsx
 msgid "Refresh cache automatically"
@@ -1974,7 +1977,7 @@ msgstr "何时获取新结果"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/CachingPoliciesFilters.tsx
 msgid "Caching policy"
-msgstr ""
+msgstr "缓存策略"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/CachingPoliciesFilters.tsx
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/IllustrationWidget/IllustrationWidget.tsx
@@ -1997,11 +2000,11 @@ msgstr "类型"
 #: enterprise/frontend/src/metabase-enterprise/dependencies/utils.ts
 #: frontend/src/embedding-sdk-bundle/components/private/PublicComponentWrapper/SdkError.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/HomepageSetting.tsx
-#: frontend/src/metabase/common/components/NewItemMenu/NewItemMenuView.tsx
 #: frontend/src/metabase/common/utils/model-names.ts
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar/LinkOptions/LinkOptions.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/constants.ts
 #: frontend/src/metabase/monitor/tools/utils.ts
+#: frontend/src/metabase/nav/components/NewItemMenu/NewItemMenuView.tsx
 #: metabase/revisions/models/revision/diff.clj
 msgid "Dashboard"
 msgstr "仪表板"
@@ -2013,11 +2016,11 @@ msgstr "仪表板"
 #: frontend/src/embedding-sdk-bundle/components/private/SdkQuestion/context/SdkQuestionProvider.tsx
 #: frontend/src/embedding-sdk-bundle/components/public/dashboard/SdkDashboard.tsx
 #: frontend/src/metabase/common/components/MoveQuestionsIntoDashboardsModal/ConfirmMoveDashboardQuestionCandidatesModal.tsx
-#: frontend/src/metabase/common/components/NewItemMenu/NewItemMenuView.tsx
 #: frontend/src/metabase/common/utils/model-names.ts
 #: frontend/src/metabase/home/components/Onboarding/items/QueryItem.tsx
 #: frontend/src/metabase/monitor/tools/notifications/NotificationDetailSidebar/DetailsSection.tsx
 #: frontend/src/metabase/monitor/tools/notifications/NotificationsTable/NotificationsTable.tsx
+#: frontend/src/metabase/nav/components/NewItemMenu/NewItemMenuView.tsx
 #: frontend/src/metabase/query_builder/containers/QueryBuilder.tsx
 msgid "Question"
 msgstr "问题"
@@ -2029,11 +2032,11 @@ msgstr "仪表板和问题缓存"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/StrategyEditorForQuestionsAndDashboards.tsx
 msgid "These dashboards and questions have custom caching policies that override default or database-level policies."
-msgstr ""
+msgstr "这些仪表板和问题有自定义缓存策略，会覆盖默认策略或数据库级策略。"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/StrategyEditorForQuestionsAndDashboards.tsx
 msgid "Search by name or collection…"
-msgstr ""
+msgstr "按名称或集合搜索…"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/StrategyEditorForQuestionsAndDashboards.tsx
 msgid "No dashboards or questions have their own caching policies yet."
@@ -2041,7 +2044,7 @@ msgstr "目前还没有任何仪表板或问题设置了自己的缓存策略。
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/StrategyEditorForQuestionsAndDashboards.tsx
 msgid "Untitled dashboard"
-msgstr ""
+msgstr "未命名仪表板"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/StrategyEditorForQuestionsAndDashboards.tsx
 #: enterprise/frontend/src/metabase-enterprise/caching/components/utils.tsx
@@ -2859,14 +2862,14 @@ msgstr "数据未能正确获取：{0}"
 #: frontend/src/metabase/querying/notebook/components/NotebookStep/utils.ts
 #: frontend/src/metabase/querying/segments/components/SegmentEditor/DataStep/DataStep.tsx
 #: frontend/src/metabase/visualizations/components/ChartSettings/BaseChartSettings/hooks.ts
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/lib/settings/validation.ts
 #: frontend/src/metabase/visualizations/visualizations/Funnel/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/Map/definition.tsx
 #: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/TreemapChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/lib/settings/validation.ts
 #: metabase/collections/models/collection.clj
 msgid "Data"
 msgstr "数据"
@@ -2879,7 +2882,6 @@ msgstr "数据"
 #: frontend/src/metabase/browse/metrics/BrowseMetrics.tsx
 #: frontend/src/metabase/common/components/Pickers/MiniPicker/components/MiniPickerItemList.tsx
 #: frontend/src/metabase/data-studio/guide/pages/GuidePage/GuidePage.tsx
-#: frontend/src/metabase/explorations/components/NewExplorationData/NewExplorationData.tsx
 #: frontend/src/metabase/home/components/Onboarding/items/DataStudioItem.tsx
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/BrowseNavSection.tsx
 #: frontend/src/metabase/nav/containers/MainNavbar/NavbarLibrarySection/NavbarLibrarySection.tsx
@@ -3303,7 +3305,7 @@ msgstr "字段"
 #: frontend/src/metabase/reference/segments/SegmentFieldSidebar.tsx
 #: frontend/src/metabase/reference/segments/SegmentList/SegmentList.tsx
 #: frontend/src/metabase/reference/segments/SegmentSidebar.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "Segments"
 msgstr "细分"
 
@@ -3690,10 +3692,9 @@ msgstr "选择要复制的 schema"
 
 #: enterprise/frontend/src/metabase-enterprise/database_replication/DatabaseReplicationForm.tsx
 #: frontend/src/metabase/explorations/components/ExplorationSidebar/utils.ts
-#: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddDimensionsModal.tsx
 #: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddMetricsModal.tsx
 #: frontend/src/metabase/parameters/components/TemporalUnitSettings/TemporalUnitSettings.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 #: metabase/driver/redshift.clj metabase/driver/util.clj
 msgid "All"
 msgstr "全部"
@@ -4170,6 +4171,7 @@ msgstr "筛选"
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/displayGroups.ts
 #: enterprise/frontend/src/metabase-enterprise/replacement/pages/MigrateModelsPage/PageHeader/PageHeader.tsx
 #: enterprise/frontend/src/metabase-enterprise/transforms-python/pages/PythonLibraryEditorPage/PythonLibraryEditorHeader.tsx
+#: frontend/src/metabase/common/components/Pickers/EntityPicker/hooks/utils.ts
 #: frontend/src/metabase/common/components/TransformCollectionName.tsx
 #: frontend/src/metabase/data-studio/app/pages/TransformsSectionLayout/TransformsSectionLayout.tsx
 #: frontend/src/metabase/data-studio/guide/pages/GuidePage/GuidePage.tsx
@@ -4178,7 +4180,6 @@ msgstr "筛选"
 #: frontend/src/metabase/transforms/components/TransformsHeader/TransformsHeader.tsx
 #: frontend/src/metabase/transforms/pages/JobRunListPage/JobRunSidebar/JobRunSidebar.tsx
 #: frontend/src/metabase/transforms/pages/TransformGraphRunListPage/TransformGraphRunSidebar/TransformGraphRunSidebar.tsx
-#: frontend/src/metabase/transforms/utils.ts
 #: metabase/collections/models/collection/root.clj
 msgid "Transforms"
 msgstr "转换"
@@ -4500,14 +4501,16 @@ msgid "Transform"
 msgstr "转换"
 
 #: enterprise/frontend/src/metabase-enterprise/dependencies/utils.ts
-#: frontend/src/metabase/common/components/NewItemMenu/NewItemMenuView.tsx
 #: frontend/src/metabase/common/utils/model-names.ts
+#: frontend/src/metabase/nav/components/NewItemMenu/NewItemMenuView.tsx
 #: metabase/revisions/models/revision/diff.clj
 msgid "Document"
 msgstr "文档"
 
 #: enterprise/frontend/src/metabase-enterprise/dependencies/utils.ts
 #: frontend/src/metabase/common/utils/model-names.ts
+#: frontend/src/metabase/explorations/constants.ts
+#: metabase/explorations/composite.clj
 #: metabase/revisions/models/revision/diff.clj
 msgid "Segment"
 msgstr "细分"
@@ -5336,14 +5339,13 @@ msgstr "CLI 分析"
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/ConversationsByDayChart.tsx
 #: frontend/src/metabase/common/utils/fields.ts
 #: frontend/src/metabase/embedding/mcp/McpFeedbackArea.tsx
-#: frontend/src/metabase/explorations/components/NewExplorationData/utils.ts
 #: frontend/src/metabase/metabot/components/MetabotChat/feedback-issue-types.ts
 #: frontend/src/metabase/metadata/components/SemanticTypePicker/SemanticTypePicker.tsx
 #: frontend/src/metabase/metrics/components/MetricDimensions/utils.ts
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingSeriesOrder.tsx
-#: frontend/src/metabase/visualizations/echarts/cartesian/model/other-series.ts
-#: frontend/src/metabase/visualizations/echarts/pie/constants.ts
-#: frontend/src/metabase/visualizations/echarts/tooltip/utils.ts
+#: frontend/src/metabase/viz-core/echarts/cartesian/model/other-series.ts
+#: frontend/src/metabase/viz-core/echarts/pie/constants.ts
+#: frontend/src/metabase/viz-core/echarts/tooltip/utils.ts
 msgid "Other"
 msgstr "其他"
 
@@ -5597,7 +5599,7 @@ msgid "Submitted by {0}"
 msgstr "由 {0} 提交"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationDetailPage/ConversationDetailPage.tsx
-#: frontend/src/metabase/common/components/NewItemMenu/NewItemMenuView.tsx
+#: frontend/src/metabase/nav/components/NewItemMenu/NewItemMenuView.tsx
 #: frontend/src/metabase/transforms/pages/TransformListPage/CreateTransformMenu/CreateTransformMenu.tsx
 msgid "SQL query"
 msgstr "SQL 查询"
@@ -5737,7 +5739,7 @@ msgstr "过去 30 天"
 #: frontend/src/metabase/monitor/tools/components/TaskRunStartedAtPicker/TaskRunDatePicker.tsx
 #: frontend/src/metabase/querying/common/components/DatePicker/DateShortcutPicker/constants.ts
 #: frontend/src/metabase/transforms/pages/JobRunListPage/JobRunListPage.tsx
-#: frontend/src/metabase/visualizations/lib/trend-helpers.ts
+#: frontend/src/metabase/viz-core/lib/trend-helpers.ts
 #: metabase/lib/temporal_bucket.cljc
 msgid "Previous month"
 msgstr "上个月"
@@ -6039,8 +6041,8 @@ msgstr "未找到对话"
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationsPage/ConversationsTable.tsx
 #: frontend/src/metabase-lib/query/clauses/clauses.ts
 #: frontend/src/metabase/common/utils/fields.ts
-#: frontend/src/metabase/visualizations/lib/settings/visualization.ts
 #: frontend/src/metabase/visualizations/visualizations/List/components/ListView/ListViewConfiguration.tsx
+#: frontend/src/metabase/viz-core/lib/settings/visualization.ts
 msgid "Title"
 msgstr "标题"
 
@@ -6061,7 +6063,6 @@ msgstr "个人资料"
 #: frontend/src/metabase/actions/constants.ts
 #: frontend/src/metabase/admin/ai/OAuthAuthorizationsPage.tsx
 #: frontend/src/metabase/dashboard/utils/dashboard-options.ts
-#: frontend/src/metabase/explorations/components/NewExplorationData/utils.ts
 #: frontend/src/metabase/metrics/components/MetricDimensions/utils.ts
 #: frontend/src/metabase/querying/common/components/DatePicker/SpecificDatePicker/SingleDatePicker/SingleDatePickerBody/SingleDatePickerBody.tsx
 #: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
@@ -6186,7 +6187,7 @@ msgstr "信息"
 #: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx
 #: frontend/src/metabase/timelines/common/components/TimelineForm/TimelineForm.tsx
 #: frontend/src/metabase/transforms/components/CreateTransformCollectionModal/CreateTransformCollectionModal.tsx
-#: frontend/src/metabase/visualizations/lib/settings/visualization.ts
+#: frontend/src/metabase/viz-core/lib/settings/visualization.ts
 msgid "Description"
 msgstr "描述"
 
@@ -7581,6 +7582,9 @@ msgstr "要使此选项生效，你的用户需要有一些属性"
 
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/EditSandboxingModal/EditSandboxingModal.tsx
 #: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
+#: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationTreeNode.tsx
+#: frontend/src/metabase/explorations/components/ExplorationSidebar/utils.ts
+#: frontend/src/metabase/explorations/components/ExplorationSummary/ExplorationSummary.tsx
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "Summary"
 msgstr "摘要"
@@ -8843,8 +8847,7 @@ msgstr "和"
 #: frontend/src/metabase/common/hooks/use-set-collection.ts
 #: frontend/src/metabase/querying/components/DataReference/DatabasePane.tsx
 msgid "table"
-msgid_plural "tables"
-msgstr[0] ""
+msgstr "表"
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #, javascript-format
@@ -8985,10 +8988,10 @@ msgstr "关闭标签页"
 #: frontend/src/metabase/query_builder/components/DatasetEditor/EditorTabs/EditorTabs.tsx
 #: frontend/src/metabase/transforms/pages/TransformIndexesPage/TransformIndexTable/columns.tsx
 #: frontend/src/metabase/visualizations/components/ChartSettings/BaseChartSettings/hooks.ts
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
 #: frontend/src/metabase/visualizations/visualizations/PivotTable/partitions.tsx
 #: frontend/src/metabase/visualizations/visualizations/PivotTable/settings.ts
 #: frontend/src/metabase/visualizations/visualizations/Table/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
 #: metabase/driver/common.clj metabase/driver/redshift.clj
 msgid "Columns"
 msgstr "列"
@@ -10046,10 +10049,10 @@ msgstr "重置"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ChartColorSettings/ChartColorSettings.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/MetabotLayoutSetting.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
 #: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
 msgid "Auto"
 msgstr "自动"
 
@@ -10576,7 +10579,7 @@ msgstr "在一个分组中跨行滚动相加某列。"
 #: frontend/src/metabase-lib/query/clauses/clauses.ts
 #: frontend/src/metabase/dashboard/components/ClickMappings/ClickMappingsTargetWithSource.tsx
 #: frontend/src/metabase/dashboard/components/ClickMappings/utils.ts
-#: frontend/src/metabase/visualizations/lib/errors.ts
+#: frontend/src/metabase/viz-core/lib/errors.ts
 msgid "column"
 msgstr "列"
 
@@ -10608,16 +10611,16 @@ msgstr "要从其他行获取的值。"
 #: frontend/src/metabase-lib/query/clauses/clauses.ts
 #: frontend/src/metabase/static-viz/components/TreemapChart/legend.ts
 #: frontend/src/metabase/visualizations/components/ChartTooltip/TooltipRow/TooltipRow.tsx
-#: frontend/src/metabase/visualizations/echarts/cartesian/model/other-series.ts
-#: frontend/src/metabase/visualizations/echarts/cartesian/waterfall/model/axis.ts
-#: frontend/src/metabase/visualizations/echarts/cartesian/waterfall/model/dataset.ts
-#: frontend/src/metabase/visualizations/echarts/graph/sankey/option/tooltip.tsx
-#: frontend/src/metabase/visualizations/echarts/graph/treemap/model/tooltip.ts
-#: frontend/src/metabase/visualizations/echarts/pie/constants.ts
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
 #: frontend/src/metabase/visualizations/visualizations/CartesianChart/events.ts
 #: frontend/src/metabase/visualizations/visualizations/PieChart/use-chart-events.ts
 #: frontend/src/metabase/visualizations/visualizations/TreemapChart/TreemapBreadcrumb.tsx
+#: frontend/src/metabase/viz-core/echarts/cartesian/model/other-series.ts
+#: frontend/src/metabase/viz-core/echarts/cartesian/waterfall/model/axis.ts
+#: frontend/src/metabase/viz-core/echarts/cartesian/waterfall/model/dataset.ts
+#: frontend/src/metabase/viz-core/echarts/graph/sankey/option/tooltip.tsx
+#: frontend/src/metabase/viz-core/echarts/graph/treemap/model/tooltip.ts
+#: frontend/src/metabase/viz-core/echarts/pie/constants.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "Total"
 msgstr "总计"
 
@@ -11572,7 +11575,6 @@ msgstr "要检查的列或值。"
 
 #: frontend/src/metabase-lib/query/clauses/clauses.ts
 #: frontend/src/metabase/common/utils/fields.ts
-#: frontend/src/metabase/explorations/components/NewExplorationData/utils.ts
 #: frontend/src/metabase/metrics-viewer/utils/dimension-breakouts.ts
 #: frontend/src/metabase/metrics/components/MetricDimensions/utils.ts
 #: frontend/src/metabase/querying/drills/utils/pivot-drill.tsx
@@ -12743,7 +12745,7 @@ msgid "An audit log of MCP and Agent API client registrations and the authorizat
 msgstr "MCP 和 Agent API 客户端注册及用户批准或拒绝的授权决策的审计日志。"
 
 #: frontend/src/metabase/admin/ai/OAuthAuthorizationsPage.tsx
-#: frontend/src/metabase/query_builder/components/view/sidebars/TimelineSidebar/TimelineSidebar.tsx
+#: frontend/src/metabase/timelines/questions/components/TimelineSidebar/TimelineSidebar.tsx
 msgid "All events"
 msgstr "所有事件"
 
@@ -13931,7 +13933,7 @@ msgstr "已保存"
 
 #: frontend/src/metabase/admin/performance/components/StrategyForm.tsx
 msgid "Cache invalidation policy"
-msgstr ""
+msgstr "缓存失效策略"
 
 #: frontend/src/metabase/admin/performance/components/StrategyForm.tsx
 msgid "This determines how long cached results will be stored."
@@ -14120,6 +14122,7 @@ msgstr "该组可以查看、保存、编辑、置顶和归档集合中的项目
 #: frontend/src/metabase/admin/permissions/components/CollectionPermissionsHelp/CollectionPermissionsHelp.tsx
 #: frontend/src/metabase/admin/permissions/constants/collections-permissions.ts
 #: frontend/src/metabase/archive/hooks/use-restore.ts
+#: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
 #: frontend/src/metabase/explorations/pages/ExplorationPage.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotInlineChart.tsx
 #: frontend/src/metabase/models/components/ModelActions/ModelActionDetails/ModelActionListItem.tsx
@@ -15143,7 +15146,7 @@ msgstr "您可能需要将此设置更改为{0}。"
 #: frontend/src/metabase/parameters/components/ValuesSourceModal/ValuesSourceTypeModal.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/MappedFieldPicker/MappedFieldPicker.tsx
 #: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetTypeSelect.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "None"
 msgstr "无"
 
@@ -15891,17 +15894,17 @@ msgid "Dates and times"
 msgstr "日期和时间"
 
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
 msgid "Date style"
 msgstr "日期样式"
 
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
 msgid "Abbreviate days and months"
 msgstr "缩写日期和月份"
 
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
 msgid "Time style"
 msgstr "时间样式"
 
@@ -15910,23 +15913,23 @@ msgid "Numbers"
 msgstr "数字"
 
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
 msgid "Separator style"
 msgstr "分隔符样式"
 
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
 #: frontend/src/metabase/common/utils/fields.ts
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
 msgid "Currency"
 msgstr "货币"
 
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
 msgid "Unit of currency"
 msgstr "货币单位"
 
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
 msgid "Currency label style"
 msgstr "货币标签样式"
 
@@ -17162,9 +17165,10 @@ msgid "Edit permissions"
 msgstr "编辑权限"
 
 #: frontend/src/metabase/collections/components/CollectionHeader/CollectionTimeline.tsx
+#: frontend/src/metabase/documents/components/editor-extensions/CardEmbed/CardEmbedMenuDropdown.tsx
 #: frontend/src/metabase/query_builder/components/view/QuestionTimelineWidget/QuestionTimelineWidget.tsx
-#: frontend/src/metabase/query_builder/components/view/sidebars/TimelineSidebar/TimelineSidebar.tsx
 #: frontend/src/metabase/timelines/collections/components/TimelineListModal/TimelineListModal.tsx
+#: frontend/src/metabase/timelines/questions/components/TimelineSidebar/TimelineSidebar.tsx
 msgid "Events"
 msgstr "事件"
 
@@ -18157,7 +18161,7 @@ msgstr "正在获取不重复值..."
 
 #: frontend/src/metabase/common/components/MetadataInfo/QueryColumnFingerprintInfo/NumberFingerprint.tsx
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingMaxCategories.tsx
-#: frontend/src/metabase/visualizations/echarts/cartesian/model/other-series.ts
+#: frontend/src/metabase/viz-core/echarts/cartesian/model/other-series.ts
 #: metabase/lib/schema/aggregation.cljc
 msgid "Average"
 msgstr "平均值"
@@ -18169,9 +18173,9 @@ msgstr "平均值"
 #: frontend/src/metabase/querying/filters/components/FilterPicker/NumberFilterPicker/NumberFilterPicker.tsx
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingMaxCategories.tsx
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingSegmentsEditor/ChartSettingSegmentsEditor.tsx
-#: frontend/src/metabase/visualizations/echarts/cartesian/model/other-series.ts
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/echarts/cartesian/model/other-series.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 #: metabase/lib/schema/aggregation.cljc
 msgid "Min"
 msgstr "最小值"
@@ -18183,9 +18187,9 @@ msgstr "最小值"
 #: frontend/src/metabase/querying/filters/components/FilterPicker/NumberFilterPicker/NumberFilterPicker.tsx
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingMaxCategories.tsx
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingSegmentsEditor/ChartSettingSegmentsEditor.tsx
-#: frontend/src/metabase/visualizations/echarts/cartesian/model/other-series.ts
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/echarts/cartesian/model/other-series.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 #: metabase/lib/schema/aggregation.cljc
 msgid "Max"
 msgstr "最大值"
@@ -18245,13 +18249,6 @@ msgstr "预览更改"
 #: frontend/src/metabase/common/components/MoveQuestionsIntoDashboardsModal/MoveQuestionsIntoDashboardsModal.tsx
 msgid "The questions were successfully moved into their dashboards"
 msgstr "问题已成功移入其仪表板"
-
-#: frontend/src/metabase/common/components/NewItemMenu/NewItemMenuView.tsx
-#: frontend/src/metabase/home/components/Onboarding/items/QueryItem.tsx
-#: metabase/lib/stage.cljc metabase/xrays/automagic_dashboards/core.clj
-#: resources/automagic_dashboards/table/example.yaml
-msgid "Native query"
-msgstr "原生查询"
 
 #: frontend/src/metabase/common/components/NoDatabasesEmptyState/NoDatabasesEmptyState.tsx
 #, javascript-format
@@ -18793,7 +18790,7 @@ msgstr "AM/PM"
 #: frontend/src/metabase/notifications/utils.ts
 #: metabase/lib/temporal_bucket.cljc
 msgid "Minute"
-msgid_plural "Minutes"
+msgid_plural "{0} Minutes"
 msgstr[0] "{0} 分钟"
 
 #: frontend/src/metabase/common/components/SendTestPulse/SendTestPulse.tsx
@@ -19054,6 +19051,14 @@ msgstr "获取此功能及其他 Pro 功能的 14 天免费试用"
 msgid "You have unsaved changes."
 msgstr "你有未保存的更改。"
 
+#: frontend/src/metabase/common/hooks/use-metadata-toasts.ts
+msgid "Couldn't undo"
+msgstr "无法撤销"
+
+#: frontend/src/metabase/common/hooks/use-metadata-toasts.ts
+msgid "Change undone"
+msgstr "更改已撤销"
+
 #: frontend/src/metabase/common/hooks/use-set-collection.ts
 #: frontend/src/metabase/dashboard/actions/trash.ts
 #: frontend/src/metabase/timelines/common/hooks/use-set-timeline.ts
@@ -19273,7 +19278,6 @@ msgid "Income"
 msgstr "收入"
 
 #: frontend/src/metabase/common/utils/fields.ts
-#: frontend/src/metabase/explorations/components/NewExplorationData/utils.ts
 msgid "Numeric"
 msgstr "数值"
 
@@ -19708,10 +19712,6 @@ msgstr "此模型没有操作"
 #: frontend/src/metabase/dashboard/components/ActionViz/ActionViz.tsx
 #: frontend/src/metabase/dashboard/visualizations/Text/index.ts
 #: frontend/src/metabase/visualizations/components/ChartSettings/BaseChartSettings/hooks.ts
-#: frontend/src/metabase/visualizations/lib/settings/goal.ts
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/lib/settings/nested.ts
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
 #: frontend/src/metabase/visualizations/visualizations/Funnel/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/Progress/definition.ts
@@ -19721,6 +19721,10 @@ msgstr "此模型没有操作"
 #: frontend/src/metabase/visualizations/visualizations/Table/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/TreemapChart/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/WaterfallChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/goal.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/lib/settings/nested.ts
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
 msgid "Display"
 msgstr "显示"
 
@@ -19739,10 +19743,10 @@ msgstr "按钮"
 #: frontend/src/metabase/dashboard/components/ActionViz/ActionViz.tsx
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingSegmentsEditor/ChartSettingSegmentsEditor.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/SettingsComponents/AnotherColumnForm.tsx
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/SettingsComponents/StaticNumberForm.tsx
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "Label"
 msgstr "标签"
 
@@ -20907,9 +20911,9 @@ msgstr "刷新倒计时"
 
 #: frontend/src/metabase/dashboard/components/RefreshWidget/options.ts
 #: frontend/src/metabase/monitor/tools/components/ModelPersistenceLogJobs/ModelPersistenceLogJobs.tsx
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
 #: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
 msgid "Off"
 msgstr "关闭"
 
@@ -21177,10 +21181,10 @@ msgid "Horizontal Alignment"
 msgstr "水平对齐"
 
 #: frontend/src/metabase/dashboard/visualizations/Text/index.ts
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
 #: frontend/src/metabase/visualizations/visualizations/List/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/Table/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
 msgid "Left"
 msgstr "左对齐"
 
@@ -21189,10 +21193,10 @@ msgid "Center"
 msgstr "居中"
 
 #: frontend/src/metabase/dashboard/visualizations/Text/index.ts
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
 #: frontend/src/metabase/visualizations/visualizations/List/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/Table/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
 msgid "Right"
 msgstr "右对齐"
 
@@ -21287,6 +21291,7 @@ msgid "View your database connections"
 msgstr "查看你的数据库连接"
 
 #: frontend/src/metabase/data-studio/common/components/EntityDetailTabs/EntityDetailTabs.tsx
+#: frontend/src/metabase/explorations/components/ExplorationSummary/ExplorationSummary.tsx
 #: frontend/src/metabase/reference/segments/SegmentSidebar.tsx
 msgid "Revision history"
 msgstr "修订历史"
@@ -22023,8 +22028,8 @@ msgstr "抱歉，我们找不到此数据源。请改为上传 CSV 格式的数�
 #: frontend/src/metabase/databases/components/DatabaseFormError/DatabaseFormError.tsx
 #: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationTreeNode.tsx
 #: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "Hide"
 msgstr "隐藏"
 
@@ -22429,23 +22434,6 @@ msgid "Remove public link"
 msgstr "移除公开链接"
 
 #: frontend/src/metabase/documents/components/DocumentPage.tsx
-#, javascript-format
-msgid "Untitled document - {0}"
-msgstr "无标题文档 - {0}"
-
-#: frontend/src/metabase/documents/components/DocumentPage.tsx
-msgid "Document created"
-msgstr "文档已创建"
-
-#: frontend/src/metabase/documents/components/DocumentPage.tsx
-msgid "Document saved"
-msgstr "文档已保存"
-
-#: frontend/src/metabase/documents/components/DocumentPage.tsx
-msgid "Error saving document"
-msgstr "保存文档出错"
-
-#: frontend/src/metabase/documents/components/DocumentPage.tsx
 msgid "Where should we save this document?"
 msgstr "我们应该将此文档保存到哪里？"
 
@@ -22476,6 +22464,14 @@ msgstr "加载问题失败"
 #: frontend/src/metabase/documents/components/EmbedQuestionSettingsSidebar.tsx
 msgid "Visualize as"
 msgstr "可视化为"
+
+#: frontend/src/metabase/documents/components/EmbedTimelineSidebar.tsx
+msgid "Loading timeline events..."
+msgstr "正在加载时间线事件……"
+
+#: frontend/src/metabase/documents/components/EmbedTimelineSidebar.tsx
+msgid "Failed to load timeline events"
+msgstr "加载时间线事件失败"
 
 #: frontend/src/metabase/documents/components/editor-extensions/CardEmbed/CardEmbedMenuDropdown.tsx
 msgid "Add supporting text"
@@ -22548,6 +22544,23 @@ msgstr "新建问题"
 #: frontend/src/metabase/documents/components/editor-extensions/CardEmbed/modals/NativeQueryModal.tsx
 msgid "Edit SQL Query"
 msgstr "编辑 SQL 查询"
+
+#: frontend/src/metabase/documents/hooks/use-document-editor.ts
+#, javascript-format
+msgid "Untitled document - {0}"
+msgstr "无标题文档 - {0}"
+
+#: frontend/src/metabase/documents/hooks/use-document-editor.ts
+msgid "Document created"
+msgstr "文档已创建"
+
+#: frontend/src/metabase/documents/hooks/use-document-editor.ts
+msgid "Document saved"
+msgstr "文档已保存"
+
+#: frontend/src/metabase/documents/hooks/use-document-editor.ts
+msgid "Error saving document"
+msgstr "保存文档出错"
 
 #: frontend/src/metabase/embedding/components/ArchiveButton.tsx
 msgctxt "button that opens an actions dropdown e.g. Move this item to trash"
@@ -23586,7 +23599,9 @@ msgid "Embed an entire dashboard with multiple charts and filters"
 msgstr "嵌入整个仪表板，包含多个图表和筛选器"
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/constants.ts
+#: frontend/src/metabase/explorations/components/ExplorationVisualization/utils.ts
 #: frontend/src/metabase/rich_text_editing/tiptap/extensions/Command/utils.ts
+#: metabase/explorations/models/exploration_query_result.clj
 msgid "Chart"
 msgstr "图表"
 
@@ -23781,8 +23796,8 @@ msgstr "分组操作"
 
 #: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationTreeNode.tsx
 #: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "Show"
 msgstr "显示"
 
@@ -23890,6 +23905,10 @@ msgstr "讨论"
 msgid "No discussions yet."
 msgstr "暂无讨论。"
 
+#: frontend/src/metabase/explorations/components/ExplorationSummary/ExplorationSummary.tsx
+msgid "Document your research findings here. You can add interesting charts to this summary by clicking \"Add to Summary\" from the chart's page..."
+msgstr "在这里记录你的研究发现。你可以在图表页面点击“添加到摘要”，将有趣的图表添加到此摘要中……"
+
 #: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
 msgid "Failed to update star"
 msgstr "更新星标失败"
@@ -23902,6 +23921,16 @@ msgstr "更新可见性失败"
 #, javascript-format
 msgid "\"{0}\" hidden"
 msgstr "\"{0}\" 已隐藏"
+
+#: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
+msgid "Failed to add to Summary"
+msgstr "添加到 Summary 失败"
+
+#: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
+#, javascript-format
+msgctxt "{0} is the document name"
+msgid "Added to {0}"
+msgstr "已添加到 {0}"
 
 #: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
 #: frontend/src/metabase/querying/common/components/DatePicker/DateOperatorPicker/constants.ts
@@ -23933,6 +23962,10 @@ msgstr "取消星标"
 msgid "Add comment"
 msgstr "添加评论"
 
+#: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
+msgid "Add to Summary"
+msgstr "添加到摘要"
+
 #: frontend/src/metabase/explorations/components/ExplorationVisualization/ExplorationGroupVisualization.tsx
 msgid "No charts in this group."
 msgstr "此分组中没有图表。"
@@ -23959,7 +23992,7 @@ msgid "Hide comments"
 msgstr "隐藏评论"
 
 #: frontend/src/metabase/explorations/components/ExplorationVisualization/TimelineEventCard.tsx
-#: frontend/src/metabase/query_builder/components/timelines/components/EventCard/EventCard.tsx
+#: frontend/src/metabase/timelines/questions/components/EventCard/EventCard.tsx
 msgid "Timeline event card"
 msgstr "时间轴事件卡片"
 
@@ -23971,10 +24004,6 @@ msgstr "时间轴事件卡片"
 msgid "{0} event"
 msgid_plural "{0} events"
 msgstr[0] "{0} 事件"
-
-#: frontend/src/metabase/explorations/components/ExplorationVisualization/utils.ts
-msgid "(All)"
-msgstr "（全部）"
 
 #: frontend/src/metabase/explorations/components/NewExplorationChat/NewExplorationChat.tsx
 msgid "Failed to add research groups"
@@ -24024,20 +24053,6 @@ msgstr "移除区域"
 msgid "Modify which dimensions to see this metric by"
 msgstr "修改用于查看该指标的维度"
 
-#: frontend/src/metabase/explorations/components/NewExplorationData/EntityBlock.tsx
-#: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
-#: metabase/lib_metric/display_info.cljc
-msgid "Dimension"
-msgstr "维度"
-
-#: frontend/src/metabase/explorations/components/NewExplorationData/EntityBlock.tsx
-msgid "Modify which metrics to look at for this dimension"
-msgstr "修改要为该维度查看的指标"
-
-#: frontend/src/metabase/explorations/components/NewExplorationData/EntityBlock.tsx
-msgid "No related metrics."
-msgstr "没有相关指标。"
-
 #: frontend/src/metabase/explorations/components/NewExplorationData/NewExplorationData.tsx
 msgid "Failed to start research"
 msgstr "启动研究失败"
@@ -24047,15 +24062,8 @@ msgid "Research plan"
 msgstr "研究计划"
 
 #: frontend/src/metabase/explorations/components/NewExplorationData/NewExplorationData.tsx
-msgid "+ Data"
-msgstr "+ 数据"
-
-#: frontend/src/metabase/explorations/components/NewExplorationData/NewExplorationData.tsx
-#: frontend/src/metabase/metrics-viewer/components/DimensionPickerSidebar/DimensionPickerSidebar.tsx
-#: frontend/src/metabase/metrics/components/MetricHeader/MetricTabs/MetricTabs.tsx
-#: frontend/src/metabase/visualizer/components/VisualizationCanvas/wells/VerticalWell/PieVerticalWell.tsx
-msgid "Dimensions"
-msgstr "维度"
+msgid "+ Metrics"
+msgstr "+ 指标"
 
 #: frontend/src/metabase/explorations/components/NewExplorationData/NewExplorationData.tsx
 msgid "Add events"
@@ -24090,14 +24098,6 @@ msgstr "你想研究什么？"
 msgid "Research mode helps automate running and inspecting combinations of metrics, dimensions, and timelines so you can use your brain for analysis, not busy work."
 msgstr "研究模式可自动运行并检查指标、维度和时间线的组合，让你把精力用在分析上，而不是重复劳动。"
 
-#: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddDimensionsModal.tsx
-msgid "Add dimensions of interest to your research plan"
-msgstr "将关注的维度添加到你的研究计划"
-
-#: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddDimensionsModal.tsx
-msgid "Search for a dimension"
-msgstr "搜索维度"
-
 #: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddMetricsModal.tsx
 msgid "Add metrics to your research plan"
 msgstr "将指标添加到你的研究计划"
@@ -24113,10 +24113,6 @@ msgstr "将事件添加到你的研究计划"
 #: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddTimelinesModal.tsx
 msgid "Search for a timeline"
 msgstr "搜索时间线"
-
-#: frontend/src/metabase/explorations/components/NewExplorationData/utils.ts
-msgid "Geo"
-msgstr "地理"
 
 #: frontend/src/metabase/explorations/components/NewExplorationEntry/NewExplorationEntry.tsx
 msgid "Manual setup"
@@ -24148,6 +24144,11 @@ msgstr "所有项目"
 #, javascript-format
 msgid "New research - {0}"
 msgstr "新研究 - {0}"
+
+#: frontend/src/metabase/explorations/constants.ts
+#: metabase/explorations/composite.clj
+msgid "(All)"
+msgstr "（全部）"
 
 #: frontend/src/metabase/explorations/hooks/useCopyLink.ts
 msgid "Couldn't copy link"
@@ -24636,6 +24637,13 @@ msgstr "+ 新建"
 #: frontend/src/metabase/metabot/components/NewMenuItemAIExploration.tsx
 msgid "AI exploration"
 msgstr "AI 探索"
+
+#: frontend/src/metabase/home/components/Onboarding/items/QueryItem.tsx
+#: frontend/src/metabase/nav/components/NewItemMenu/NewItemMenuView.tsx
+#: metabase/lib/stage.cljc metabase/xrays/automagic_dashboards/core.clj
+#: resources/automagic_dashboards/table/example.yaml
+msgid "Native query"
+msgstr "原生查询"
 
 #: frontend/src/metabase/home/components/Onboarding/use-checklist-items.ts
 msgid "Set things up"
@@ -25941,14 +25949,6 @@ msgstr "选择是否展开 JSON"
 msgid "Pick someone, or type an email"
 msgstr "选择一个人，或输入邮箱"
 
-#: frontend/src/metabase/metadata/hooks/useMetadataToasts.ts
-msgid "Couldn't undo"
-msgstr "无法撤销"
-
-#: frontend/src/metabase/metadata/hooks/useMetadataToasts.ts
-msgid "Change undone"
-msgstr "更改已撤销"
-
 #: frontend/src/metabase/metadata/pages/DataModelV1/components/TablePicker/components/Search.tsx
 msgid "No results."
 msgstr "没有结果."
@@ -25970,6 +25970,12 @@ msgstr "不分箱"
 #: frontend/src/metabase/metrics-viewer/components/FilterPopover/FilterPopoverContent.tsx
 msgid "No dimensions found"
 msgstr "未找到维度"
+
+#: frontend/src/metabase/metrics-viewer/components/DimensionPickerSidebar/DimensionPickerSidebar.tsx
+#: frontend/src/metabase/metrics/components/MetricHeader/MetricTabs/MetricTabs.tsx
+#: frontend/src/metabase/visualizer/components/VisualizationCanvas/wells/VerticalWell/PieVerticalWell.tsx
+msgid "Dimensions"
+msgstr "维度"
 
 #: frontend/src/metabase/metrics-viewer/components/DimensionPickerSidebar/DimensionPickerSidebar.tsx
 msgid "No shared dimensions found"
@@ -26051,9 +26057,9 @@ msgid "X-axis controls"
 msgstr "X 轴控件"
 
 #: frontend/src/metabase/metrics-viewer/components/MetricControls/CenterControls/CenterControls.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
 #: frontend/src/metabase/visualizations/visualizations/RowChart/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "X-axis"
 msgstr "X 轴"
 
@@ -26246,7 +26252,6 @@ msgid "true"
 msgstr "true"
 
 #: frontend/src/metabase/metrics/components/MetricDimensionGrid/MetricDimensionGrid.tsx
-#: metabase/explorations/blocks.clj
 #, javascript-format
 msgid "By {0}"
 msgstr "作者：{0}"
@@ -26899,7 +26904,7 @@ msgstr "没有可用对象"
 #: frontend/src/metabase/monitor/tools/components/TaskRunStartedAtPicker/TaskRunDatePicker.tsx
 #: frontend/src/metabase/querying/common/components/DatePicker/DateShortcutPicker/constants.ts
 #: frontend/src/metabase/transforms/pages/JobRunListPage/JobRunListPage.tsx
-#: frontend/src/metabase/visualizations/lib/trend-helpers.ts
+#: frontend/src/metabase/viz-core/lib/trend-helpers.ts
 #: metabase/lib/temporal_bucket.cljc
 msgid "Previous week"
 msgstr "上一周"
@@ -28091,7 +28096,7 @@ msgid "We don’t have any cached values for the connected fields. Try one of th
 msgstr "我们没有连接字段的缓存值。请尝试其他选项之一，或将此小部件更改为搜索框。"
 
 #: frontend/src/metabase/parameters/components/ValuesSourceModal/ValuesSourceTypeModal.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "Values"
 msgstr "值"
 
@@ -28367,8 +28372,8 @@ msgstr "仅详情视图"
 #: frontend/src/metabase/rich_text_editing/tiptap/components/EditorBubbleMenu/LinkEditor.tsx
 #: frontend/src/metabase/rich_text_editing/tiptap/extensions/Command/utils.ts
 #: frontend/src/metabase/visualizations/components/ChartSettings/BaseChartSettings/hooks.ts
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
 #: frontend/src/metabase/visualizations/visualizations/Scalar/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
 msgid "Formatting"
 msgstr "格式"
 
@@ -28476,67 +28481,6 @@ msgstr "这是该可视化的开发版本"
 #: frontend/src/metabase/query_builder/components/chart-type-selector/ChartTypeOption/ChartTypeOption.tsx
 msgid "Dev"
 msgstr "开发版"
-
-#: frontend/src/metabase/query_builder/components/timelines/components/EventCard/EventCard.tsx
-#: frontend/src/metabase/timelines/collections/components/EventCard/EventCard.tsx
-msgid "Event menu"
-msgstr "事件菜单"
-
-#: frontend/src/metabase/query_builder/components/timelines/components/EventCard/EventCard.tsx
-#: frontend/src/metabase/timelines/collections/components/EventCard/EventCard.tsx
-#: frontend/src/metabase/timelines/common/components/EditEventModal/EditEventModal.tsx
-msgid "Edit event"
-msgstr "编辑事件"
-
-#: frontend/src/metabase/query_builder/components/timelines/components/EventCard/EventCard.tsx
-#: frontend/src/metabase/timelines/collections/components/EventCard/EventCard.tsx
-msgid "Move event"
-msgstr "移动事件"
-
-#: frontend/src/metabase/query_builder/components/timelines/components/EventCard/EventCard.tsx
-#: frontend/src/metabase/timelines/collections/components/EventCard/EventCard.tsx
-#: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx
-msgid "Archive event"
-msgstr "归档事件"
-
-#: frontend/src/metabase/query_builder/components/timelines/components/TimelineCard/TimelineCard.tsx
-msgid "Timeline card header"
-msgstr "时间轴卡片标题"
-
-#: frontend/src/metabase/query_builder/components/timelines/components/TimelineEmptyState/TimelineEmptyState.tsx
-#: frontend/src/metabase/timelines/collections/components/TimelineEmptyState/TimelineEmptyState.tsx
-msgid "Collection event illustration"
-msgstr "集合事件插图"
-
-#: frontend/src/metabase/query_builder/components/timelines/components/TimelineEmptyState/TimelineEmptyState.tsx
-#: frontend/src/metabase/timelines/collections/components/TimelineEmptyState/TimelineEmptyState.tsx
-msgid "Add context to your time series charts"
-msgstr "为你的时间序列图添加上下文"
-
-#: frontend/src/metabase/query_builder/components/timelines/components/TimelineEmptyState/TimelineEmptyState.tsx
-#, javascript-format
-msgid "Add events to {0} to show important milestones, launches, or anything else, right alongside your data."
-msgstr "向 {0} 添加事件，以便将重要里程碑、发布或其他任何内容与你的数据一起显示。"
-
-#: frontend/src/metabase/query_builder/components/timelines/components/TimelineEmptyState/TimelineEmptyState.tsx
-#, javascript-format
-msgid "Events in {0} let you see important milestones, launches, or anything else, right alongside your data."
-msgstr "{0} 中的事件让你可以将重要里程碑、发布或其他任何内容与你的数据一起查看。"
-
-#: frontend/src/metabase/query_builder/components/timelines/components/TimelineEmptyState/TimelineEmptyState.tsx
-#: frontend/src/metabase/query_builder/components/timelines/components/TimelinePanel/TimelinePanel.tsx
-#: frontend/src/metabase/timelines/collections/components/TimelineDetailsModal/TimelineDetailsModal.tsx
-#: frontend/src/metabase/timelines/collections/components/TimelineEmptyState/TimelineEmptyState.tsx
-msgid "Create event"
-msgstr "创建事件"
-
-#: frontend/src/metabase/query_builder/components/timelines/containers/EditEventModal/EditEventModal.tsx
-msgid "Updated event"
-msgstr "已更新事件"
-
-#: frontend/src/metabase/query_builder/components/timelines/containers/NewEventModal/NewEventModal.tsx
-msgid "Created event"
-msgstr "已创建事件"
 
 #: frontend/src/metabase/query_builder/components/view/ExecutionTime/ExecutionTime.tsx
 msgid "How long this query took"
@@ -28853,7 +28797,7 @@ msgid "Most"
 msgstr "大多数"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/DatasetManagementSection/DatasetMetadataStrengthIndicator/DatasetMetadataStrengthIndicator.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "Some"
 msgstr "部分"
 
@@ -28992,21 +28936,6 @@ msgstr "分组依据"
 msgid "Summarize by"
 msgstr "汇总依据"
 
-#: frontend/src/metabase/query_builder/components/view/sidebars/TimelineSidebar/TimelineSidebar.tsx
-#, javascript-format
-msgid "Events between {0} and {1}"
-msgstr "{0} 到 {1} 之间的事件"
-
-#: frontend/src/metabase/query_builder/components/view/sidebars/TimelineSidebar/TimelineSidebar.tsx
-#, javascript-format
-msgid "Events in {0}"
-msgstr "{0}中的事件"
-
-#: frontend/src/metabase/query_builder/components/view/sidebars/TimelineSidebar/TimelineSidebar.tsx
-#, javascript-format
-msgid "Events on {0}"
-msgstr "{0}当天的事件"
-
 #: frontend/src/metabase/query_builder/containers/QueryBuilder.tsx
 msgid "All Set! Your question is ready."
 msgstr "搞定！你的问题已就绪。"
@@ -29056,8 +28985,8 @@ msgstr "当前"
 #: frontend/src/metabase/querying/common/components/DatePicker/DateOperatorPicker/constants.ts
 #: frontend/src/metabase/querying/common/components/DatePicker/SpecificDatePicker/constants.ts
 #: frontend/src/metabase/querying/drills/utils/quick-filter-drill.tsx
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
 msgid "On"
 msgstr "在"
 
@@ -29902,7 +29831,7 @@ msgid "Avg"
 msgstr "平均值"
 
 #: frontend/src/metabase/querying/drills/utils/summarize-column-drill.ts
-#: frontend/src/metabase/visualizations/echarts/cartesian/model/other-series.ts
+#: frontend/src/metabase/viz-core/echarts/cartesian/model/other-series.ts
 #: metabase/lib/schema/aggregation.cljc
 #: resources/automagic_dashboards/field/Country.yaml
 #: resources/automagic_dashboards/field/DateTime.yaml
@@ -31283,6 +31212,28 @@ msgid "Export in progress. Are you sure you want to leave?"
 msgstr "导出进行中。确定要离开吗？"
 
 #: frontend/src/metabase/timelines/collections/components/EventCard/EventCard.tsx
+#: frontend/src/metabase/timelines/questions/components/EventCard/EventCard.tsx
+msgid "Event menu"
+msgstr "事件菜单"
+
+#: frontend/src/metabase/timelines/collections/components/EventCard/EventCard.tsx
+#: frontend/src/metabase/timelines/common/components/EditEventModal/EditEventModal.tsx
+#: frontend/src/metabase/timelines/questions/components/EventCard/EventCard.tsx
+msgid "Edit event"
+msgstr "编辑事件"
+
+#: frontend/src/metabase/timelines/collections/components/EventCard/EventCard.tsx
+#: frontend/src/metabase/timelines/questions/components/EventCard/EventCard.tsx
+msgid "Move event"
+msgstr "移动事件"
+
+#: frontend/src/metabase/timelines/collections/components/EventCard/EventCard.tsx
+#: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx
+#: frontend/src/metabase/timelines/questions/components/EventCard/EventCard.tsx
+msgid "Archive event"
+msgstr "归档事件"
+
+#: frontend/src/metabase/timelines/collections/components/EventCard/EventCard.tsx
 msgid "Unarchive event"
 msgstr "取消归档事件"
 
@@ -31328,6 +31279,13 @@ msgid "Search for an event"
 msgstr "搜索事件"
 
 #: frontend/src/metabase/timelines/collections/components/TimelineDetailsModal/TimelineDetailsModal.tsx
+#: frontend/src/metabase/timelines/collections/components/TimelineEmptyState/TimelineEmptyState.tsx
+#: frontend/src/metabase/timelines/questions/components/TimelineEmptyState/TimelineEmptyState.tsx
+#: frontend/src/metabase/timelines/questions/components/TimelinePanel/TimelinePanel.tsx
+msgid "Create event"
+msgstr "创建事件"
+
+#: frontend/src/metabase/timelines/collections/components/TimelineDetailsModal/TimelineDetailsModal.tsx
 #: frontend/src/metabase/timelines/collections/components/TimelineListModal/TimelineListModal.tsx
 msgid "New timeline"
 msgstr "新建时间线"
@@ -31352,6 +31310,16 @@ msgstr "查看已归档时间线"
 #: frontend/src/metabase/timelines/collections/components/TimelineEmptyState/TimelineEmptyState.tsx
 msgid "Launch of v2.0"
 msgstr "v2.0 发布"
+
+#: frontend/src/metabase/timelines/collections/components/TimelineEmptyState/TimelineEmptyState.tsx
+#: frontend/src/metabase/timelines/questions/components/TimelineEmptyState/TimelineEmptyState.tsx
+msgid "Collection event illustration"
+msgstr "集合事件插图"
+
+#: frontend/src/metabase/timelines/collections/components/TimelineEmptyState/TimelineEmptyState.tsx
+#: frontend/src/metabase/timelines/questions/components/TimelineEmptyState/TimelineEmptyState.tsx
+msgid "Add context to your time series charts"
+msgstr "为你的时间序列图添加上下文"
 
 #: frontend/src/metabase/timelines/collections/components/TimelineEmptyState/TimelineEmptyState.tsx
 #, javascript-format
@@ -31433,6 +31401,43 @@ msgstr "默认图标"
 #: frontend/src/metabase/timelines/common/components/TimelineForm/TimelineForm.tsx
 msgid "Archive timeline and all events"
 msgstr "归档时间线及其所有事件"
+
+#: frontend/src/metabase/timelines/questions/components/TimelineCard/TimelineCard.tsx
+msgid "Timeline card header"
+msgstr "时间轴卡片标题"
+
+#: frontend/src/metabase/timelines/questions/components/TimelineEmptyState/TimelineEmptyState.tsx
+#, javascript-format
+msgid "Add events to {0} to show important milestones, launches, or anything else, right alongside your data."
+msgstr "向 {0} 添加事件，以便将重要里程碑、发布或其他任何内容与你的数据一起显示。"
+
+#: frontend/src/metabase/timelines/questions/components/TimelineEmptyState/TimelineEmptyState.tsx
+#, javascript-format
+msgid "Events in {0} let you see important milestones, launches, or anything else, right alongside your data."
+msgstr "{0} 中的事件让你可以将重要里程碑、发布或其他任何内容与你的数据一起查看。"
+
+#: frontend/src/metabase/timelines/questions/components/TimelineSidebar/TimelineSidebar.tsx
+#, javascript-format
+msgid "Events between {0} and {1}"
+msgstr "{0} 到 {1} 之间的事件"
+
+#: frontend/src/metabase/timelines/questions/components/TimelineSidebar/TimelineSidebar.tsx
+#, javascript-format
+msgid "Events in {0}"
+msgstr "{0}中的事件"
+
+#: frontend/src/metabase/timelines/questions/components/TimelineSidebar/TimelineSidebar.tsx
+#, javascript-format
+msgid "Events on {0}"
+msgstr "{0}当天的事件"
+
+#: frontend/src/metabase/timelines/questions/containers/EditEventModal/EditEventModal.tsx
+msgid "Updated event"
+msgstr "已更新事件"
+
+#: frontend/src/metabase/timelines/questions/containers/NewEventModal/NewEventModal.tsx
+msgid "Created event"
+msgstr "已创建事件"
 
 #: frontend/src/metabase/transforms/components/CreateTransformCollectionModal/CreateTransformCollectionModal.tsx
 msgid "Failed to create collection"
@@ -33090,8 +33095,8 @@ msgid "{0} this question to drill-through."
 msgstr "{0}此问题以进行下钻查看。"
 
 #: frontend/src/metabase/visualizations/components/ChartSettings/BaseChartSettings/hooks.ts
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "Axes"
 msgstr "坐标轴"
 
@@ -33440,14 +33445,14 @@ msgid "Aggregation method for Other group"
 msgstr "Other 分组的聚合方法"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingMaxCategories.tsx
-#: frontend/src/metabase/visualizations/echarts/boxplot/events.ts
-#: frontend/src/metabase/visualizations/echarts/cartesian/model/other-series.ts
+#: frontend/src/metabase/viz-core/echarts/boxplot/events.ts
+#: frontend/src/metabase/viz-core/echarts/cartesian/model/other-series.ts
 #: metabase/lib/schema/aggregation.cljc
 msgid "Median"
 msgstr "中位数"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingMaxCategories.tsx
-#: frontend/src/metabase/visualizations/echarts/cartesian/model/other-series.ts
+#: frontend/src/metabase/viz-core/echarts/cartesian/model/other-series.ts
 msgid "Standard deviation"
 msgstr "标准差"
 
@@ -33469,7 +33474,7 @@ msgid "Add a range"
 msgstr "添加范围"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingSeriesOrder.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "Add another series"
 msgstr "添加其他系列"
 
@@ -33661,94 +33666,10 @@ msgstr "为真"
 msgid "is false"
 msgstr "为假"
 
-#: frontend/src/metabase/visualizations/echarts/boxplot/events.ts
-msgid "Upper whisker"
-msgstr "上须"
-
-#: frontend/src/metabase/visualizations/echarts/boxplot/events.ts
-msgid "Q3 (75th percentile)"
-msgstr "Q3（第 75 百分位）"
-
-#: frontend/src/metabase/visualizations/echarts/boxplot/events.ts
-msgid "Mean"
-msgstr "均值"
-
-#: frontend/src/metabase/visualizations/echarts/boxplot/events.ts
-msgid "Q1 (25th percentile)"
-msgstr "Q1（第 25 百分位）"
-
-#: frontend/src/metabase/visualizations/echarts/boxplot/events.ts
-msgid "Lower whisker"
-msgstr "下须"
-
-#: frontend/src/metabase/visualizations/echarts/boxplot/events.ts
-msgid "outlier"
-msgstr "异常值"
-
-#: frontend/src/metabase/visualizations/echarts/cartesian/model/dataset.ts
-msgid "There is no data to display. Check the query to ensure there are non-null x-axis values."
-msgstr "没有可显示的数据。请检查查询，确保 x 轴值不为 null。"
-
-#: frontend/src/metabase/visualizations/echarts/graph/sankey/model/index.ts
-msgid "Columns selection is invalid"
-msgstr "列选择无效"
-
-#: frontend/src/metabase/visualizations/lib/errors.ts
-#, javascript-format
-msgid "Doh! The data from your query doesn't fit the chosen display choice. This visualization requires at least {0} {1} of data."
-msgstr "哎呀！你的查询数据不符合所选的显示方式。此可视化至少需要 {0} 个{1}数据。"
-
-#: frontend/src/metabase/visualizations/lib/errors.ts
-#, javascript-format
-msgid "No dice. We have {0} data {1} to show and that's not enough for this visualization."
-msgstr "不行。我们只有 {0} 个数据{1}可显示，这不足以绘制此可视化。"
-
-#: frontend/src/metabase/visualizations/lib/errors.ts
-msgid "point"
-msgid_plural "points"
-msgstr[0] "个数据点"
-
-#: frontend/src/metabase/visualizations/lib/errors.ts
-msgid "Bummer. We can't actually do a pin map for this data because we require both a latitude and longitude column."
-msgstr "真遗憾。我们无法为这份数据绘制针点地图，因为必须同时有纬度列和经度列。"
-
-#: frontend/src/metabase/visualizations/lib/errors.ts
-msgid "Please configure this chart in the chart settings"
-msgstr "请在图表设置中配置此图表"
-
-#: frontend/src/metabase/visualizations/lib/errors.ts
-msgid "Edit Settings"
-msgstr "编辑设置"
-
-#: frontend/src/metabase/visualizations/lib/errors.ts
-msgid "There was a problem displaying this chart."
-msgstr "显示此图表时出现问题。"
-
-#: frontend/src/metabase/visualizations/lib/errors.ts
-msgid "Sorry, you don't have permission to see this card."
-msgstr "抱歉，你没有权限查看此卡片。"
-
 #: frontend/src/metabase/visualizations/lib/exports-branding-utils.tsx
 #: metabase/channel/render/pdf.clj
 msgid "Made with"
 msgstr "制作于"
-
-#: frontend/src/metabase/visualizations/lib/registry.ts
-msgid "Visualization is null"
-msgstr "Visualization 为 null"
-
-#: frontend/src/metabase/visualizations/lib/registry.ts
-msgid "Visualization must define an 'identifier' static variable: "
-msgstr "Visualization 必须定义一个静态变量 'identifier'："
-
-#: frontend/src/metabase/visualizations/lib/registry.ts
-msgid "Visualization with that identifier is already registered: "
-msgstr "具有该 identifier 的 Visualization 已注册："
-
-#: frontend/src/metabase/visualizations/lib/registry.ts
-#, javascript-format
-msgid "No visualization for {0}"
-msgstr "没有用于 {0} 的 Visualization"
 
 #: frontend/src/metabase/visualizations/lib/save-dashboard-pdf.ts
 msgid "Export tab as PDF"
@@ -33757,458 +33678,6 @@ msgstr "将标签页导出为 PDF"
 #: frontend/src/metabase/visualizations/lib/save-dashboard-pdf.ts
 msgid "Export as PDF"
 msgstr "导出为 PDF"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "HH:MM"
-msgstr "HH:MM"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "HH:MM:SS"
-msgstr "HH:MM:SS"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "HH:MM:SS.MS"
-msgstr "HH:MM:SS.MS"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "Date separators"
-msgstr "日期分隔符"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "Show the time"
-msgstr "显示时间"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-#: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
-#: frontend/src/metabase/visualizations/visualizations/TreemapChart/definition.ts
-#: metabase/driver/redshift.clj
-msgid "Style"
-msgstr "样式"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "Normal"
-msgstr "普通"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "Percent"
-msgstr "百分比"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "Scientific"
-msgstr "科学计数法"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "Where to display the unit of currency"
-msgstr "货币单位显示位置"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "In the column heading"
-msgstr "在列标题中"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "In every table cell"
-msgstr "在每个表格单元格中"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-#: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
-msgid "Number of decimal places"
-msgstr "小数位数"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "Multiply by a number"
-msgstr "乘以一个数字"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "Add a prefix"
-msgstr "添加前缀"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "Add a suffix"
-msgstr "添加后缀"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "dollars"
-msgstr "美元"
-
-#: frontend/src/metabase/visualizations/lib/settings/goal.ts
-msgid "Goal line"
-msgstr "目标线"
-
-#: frontend/src/metabase/visualizations/lib/settings/goal.ts
-msgid "Goal value"
-msgstr "目标值"
-
-#: frontend/src/metabase/visualizations/lib/settings/goal.ts
-msgid "Goal label"
-msgstr "目标标签"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Add series breakout"
-msgstr "添加序列突破"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/definition.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Y-axis"
-msgstr "Y 轴"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizer/components/VisualizationCanvas/wells/ScatterFloatingWell/ScatterFloatingWell.tsx
-msgid "Bubble size"
-msgstr "气泡大小"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Stacking"
-msgstr "堆叠"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Don't stack"
-msgstr "不堆叠"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Stack"
-msgstr "堆叠"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Stack - 100%"
-msgstr "堆叠 - 100%"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Stack series"
-msgstr "堆叠数据系列"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Additional tooltip columns"
-msgstr "额外的 tooltip 列"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Enter column names"
-msgstr "输入列名"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Trend line"
-msgstr "趋势线"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Show values on data points"
-msgstr "在数据点上显示数值"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Values to show"
-msgstr "要显示的值"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Stack values to show"
-msgstr "堆叠值显示"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
-msgid "Both"
-msgstr "两者"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Stack value format"
-msgstr "堆叠值格式"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Percentages"
-msgstr "百分比"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
-msgid "Auto formatting"
-msgstr "自动格式"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-#: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
-msgid "Compact"
-msgstr "紧凑"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-#: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
-msgid "Full"
-msgstr "完整"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Scale"
-msgstr "刻度"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/shared/settings/cartesian-chart.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Linear"
-msgstr "线性"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/shared/settings/cartesian-chart.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Power"
-msgstr "幂"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/shared/settings/cartesian-chart.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Log"
-msgstr "对数"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Show lines and tick marks"
-msgstr "显示轴线和刻度"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Rotate 45°"
-msgstr "旋转 45°"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Rotate 90°"
-msgstr "旋转 90°"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Unpin from zero"
-msgstr "不再固定为从 0 开始"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Auto y-axis range"
-msgstr "自动 y 轴范围"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Split y-axis when necessary"
-msgstr "必要时拆分y轴"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Show label"
-msgstr "显示标签"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Number of tick marks"
-msgstr "刻度数量"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Hide overlapping labels"
-msgstr "隐藏重叠标签"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Whiskers extend to"
-msgstr "须延伸到"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "1.5 × interquartile range"
-msgstr "1.5 × 四分位距"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Min/Max"
-msgstr "最小/最大"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Show points"
-msgstr "显示点"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Outliers only"
-msgstr "仅异常值"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "All points"
-msgstr "所有点"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Show mean"
-msgstr "显示均值"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Values to display"
-msgstr "要显示的值"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Median only"
-msgstr "仅中位数"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Display type"
-msgstr "显示类型"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Line shape"
-msgstr "线条形状"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Line style"
-msgstr "线条样式"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Line size"
-msgstr "线条大小"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Show dots on lines"
-msgstr "在线条上显示点"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Replace missing values with"
-msgstr "将缺失值替换为"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Zero"
-msgstr "0"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Nothing"
-msgstr "不替换"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Linear Interpolated"
-msgstr "线性插值"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Y-axis position"
-msgstr "Y轴位置"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Show trend line for this series"
-msgstr "为此数据系列显示趋势线"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Show values for this series"
-msgstr "显示此数据系列的值"
-
-#: frontend/src/metabase/visualizations/lib/settings/validation.ts
-msgid "Which fields do you want to use for the X and Y axes?"
-msgstr "你想用哪些字段作为 X 轴和 Y 轴？"
-
-#: frontend/src/metabase/visualizations/lib/settings/validation.ts
-#: frontend/src/metabase/visualizations/visualizations/Funnel/definition.ts
-msgid "Choose fields"
-msgstr "选择字段"
-
-#: frontend/src/metabase/visualizations/lib/settings/validation.ts
-msgid "No breakouts are enabled"
-msgstr "未启用任何突破"
-
-#: frontend/src/metabase/visualizations/lib/settings/validation.ts
-msgid "It is not possible to use the Log scale for a stacked percentage chart"
-msgstr "无法为堆叠百分比图使用对数刻度"
-
-#: frontend/src/metabase/visualizations/lib/settings/validation.ts
-#, javascript-format
-msgid "This chart type doesn't support more than {0} series of data."
-msgstr "此图表类型不支持超过 {0} 个数据系列。"
-
-#: frontend/src/metabase/visualizations/lib/settings/visualization.ts
-msgid "Hide this card if there are no results"
-msgstr "如果没有结果则隐藏此卡片"
-
-#: frontend/src/metabase/visualizations/lib/trend-helpers.ts
-#, javascript-format
-msgid "compared to {0}"
-msgstr "与{0}相比"
-
-#: frontend/src/metabase/visualizations/lib/trend-helpers.ts
-msgid "compared to previous value"
-msgstr "与上一值相比"
-
-#: frontend/src/metabase/visualizations/lib/trend-helpers.ts
-#: metabase/lib/temporal_bucket.cljc
-msgid "Previous minute"
-msgstr "上一分钟"
-
-#: frontend/src/metabase/visualizations/lib/trend-helpers.ts
-#: metabase/lib/temporal_bucket.cljc
-msgid "Previous hour"
-msgstr "上一小时"
-
-#: frontend/src/metabase/visualizations/lib/trend-helpers.ts
-msgid "Previous day"
-msgstr "前一天"
-
-#: frontend/src/metabase/visualizations/lib/trend-helpers.ts
-#: metabase/lib/temporal_bucket.cljc
-msgid "Previous quarter"
-msgstr "上一季度"
-
-#: frontend/src/metabase/visualizations/lib/trend-helpers.ts
-#: metabase/lib/temporal_bucket.cljc
-msgid "Previous year"
-msgstr "上一年"
-
-#: frontend/src/metabase/visualizations/lib/warnings.ts
-msgid "Data includes missing dimension values."
-msgstr "数据包含缺失的维度值。"
-
-#: frontend/src/metabase/visualizations/lib/warnings.ts
-#, javascript-format
-msgid "We encountered an invalid date: \"{0}\""
-msgstr "检测到无效日期：“{0}”"
-
-#: frontend/src/metabase/visualizations/lib/warnings.ts
-#, javascript-format
-msgid "\"{0}\" is an unaggregated field: if it has more than one value at a point on the {1}-axis, the values will be summed."
-msgstr "\"{0}\" 是一个未聚合的字段：如果在 {1} 轴上的某个点具有多个值，则这些值将被相加。"
-
-#: frontend/src/metabase/visualizations/lib/warnings.ts
-#, javascript-format
-msgid "\"{0}\" is an unaggregated field: if it has more than one row with the same value, their measure values will be summed."
-msgstr "“{0}”是未聚合字段：如果它有多行相同值，对应的度量值将被求和。"
-
-#: frontend/src/metabase/visualizations/lib/warnings.ts
-#, javascript-format
-msgid "{0} are unaggregated fields: if there is more than one row with the same values, their measure values will be summed."
-msgstr "{0} 是未聚合字段：如果有多行具有相同的值，它们的度量值将被求和。"
-
-#: frontend/src/metabase/visualizations/lib/warnings.ts
-#, javascript-format
-msgid "The query for this chart was run in {0} rather than {1} due to database or driver constraints."
-msgstr "由于数据库或驱动程序限制，此图表的查询是在 {0} 中运行的，而不是在 {1} 中运行。"
-
-#: frontend/src/metabase/visualizations/lib/warnings.ts
-#, javascript-format
-msgid "This chart contains queries run in multiple timezones: {0}"
-msgstr "此图表包含在多个时区运行的查询：{0}"
-
-#: frontend/src/metabase/visualizations/lib/warnings.ts
-msgid "Negative values in measure column have been omitted from pie chart."
-msgstr "度量列中的负值已从饼图中省略。"
-
-#: frontend/src/metabase/visualizations/lib/warnings.ts
-msgid "Negative values in measure column have been omitted from treemap chart."
-msgstr "树状图已忽略度量列中的负值。"
-
-#: frontend/src/metabase/visualizations/shared/settings/cartesian-chart.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Ordinal"
-msgstr "序数"
-
-#: frontend/src/metabase/visualizations/shared/settings/cartesian-chart.ts
-msgid "Timeseries"
-msgstr "时间序列"
-
-#: frontend/src/metabase/visualizations/shared/settings/cartesian-chart.ts
-msgid "Histogram"
-msgstr "直方图"
-
-#: frontend/src/metabase/visualizations/shared/settings/cartesian-chart.ts
-#: frontend/src/metabase/visualizations/visualizations/Progress/definition.ts
-msgid "Goal"
-msgstr "目标"
-
-#: frontend/src/metabase/visualizations/shared/utils/data.ts
-#, javascript-format
-msgid "All values ({0})"
-msgstr "所有值（{0}）"
-
-#: frontend/src/metabase/visualizations/shared/utils/data.ts
-#, javascript-format
-msgid "Other ({0})"
-msgstr "其他（{0}）"
 
 #: frontend/src/metabase/visualizations/visualizations/AreaChart/definition.ts
 msgid "Area"
@@ -34257,6 +33726,11 @@ msgstr "漏斗图"
 #: frontend/src/metabase/visualizations/visualizations/Funnel/definition.ts
 msgid "Which fields do you want to use?"
 msgstr "你想使用哪些字段？"
+
+#: frontend/src/metabase/visualizations/visualizations/Funnel/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/validation.ts
+msgid "Choose fields"
+msgstr "选择字段"
 
 #: frontend/src/metabase/visualizations/visualizations/Funnel/definition.ts
 msgid "Column with steps"
@@ -34468,6 +33942,19 @@ msgid "Which columns do you want to use?"
 msgstr "你想使用哪些列？"
 
 #: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
+#: metabase/lib_metric/display_info.cljc
+msgid "Dimension"
+msgstr "维度"
+
+#: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
+#: frontend/src/metabase/visualizations/visualizations/TreemapChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+#: metabase/driver/redshift.clj
+msgid "Style"
+msgstr "样式"
+
+#: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
 msgid "Show legend"
 msgstr "显示图例"
 
@@ -34491,6 +33978,16 @@ msgstr "在图例中"
 #: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
 msgid "On the chart"
 msgstr "在图表上"
+
+#: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Both"
+msgstr "两者"
+
+#: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Number of decimal places"
+msgstr "小数位数"
 
 #: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
 msgid "Minimum slice percentage"
@@ -34562,6 +34059,11 @@ msgstr "进度"
 msgid "Progress visualization requires at least one numeric column."
 msgstr "进度可视化需要至少一个数值列。"
 
+#: frontend/src/metabase/visualizations/visualizations/Progress/definition.ts
+#: frontend/src/metabase/viz-core/shared/settings/cartesian-chart.ts
+msgid "Goal"
+msgstr "目标"
+
 #: frontend/src/metabase/visualizations/visualizations/Progress/utils.ts
 #: frontend/src/metabase/visualizations/visualizations/Progress/utils.unit.spec.ts
 msgid "No data available"
@@ -34595,6 +34097,60 @@ msgstr "条形图"
 msgid "row chart"
 msgstr "条形图"
 
+#: frontend/src/metabase/visualizations/visualizations/RowChart/definition.ts
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Y-axis"
+msgstr "Y 轴"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Stacking"
+msgstr "堆叠"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Don't stack"
+msgstr "不堆叠"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Stack"
+msgstr "堆叠"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Stack - 100%"
+msgstr "堆叠 - 100%"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Scale"
+msgstr "刻度"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/shared/settings/cartesian-chart.ts
+msgid "Ordinal"
+msgstr "序数"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/shared/settings/cartesian-chart.ts
+msgid "Linear"
+msgstr "线性"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/shared/settings/cartesian-chart.ts
+msgid "Power"
+msgstr "幂"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/shared/settings/cartesian-chart.ts
+msgid "Log"
+msgstr "对数"
+
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
 msgid "Show lines and marks"
 msgstr "显示线条和标记"
@@ -34604,8 +34160,30 @@ msgid "Auto x-axis range"
 msgstr "自动x轴范围"
 
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Show label"
+msgstr "显示标签"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Show values on data points"
+msgstr "在数据点上显示数值"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
 msgid "Value labels formatting"
 msgstr "值标签格式"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Compact"
+msgstr "紧凑"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Full"
+msgstr "完整"
 
 #: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
 msgid "Justify"
@@ -34614,6 +34192,11 @@ msgstr "两端对齐"
 #: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
 msgid "Show edge labels"
 msgstr "显示连线标签"
+
+#: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Auto formatting"
+msgstr "自动格式"
 
 #: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
 msgid "Edge color"
@@ -34747,7 +34330,7 @@ msgstr "仅按时间字段分组，以查看其随时间的变化"
 
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/definition.ts
 msgid "Add a metric to see how it's changed over time"
-msgstr ""
+msgstr "添加一个指标，以查看它随时间如何变化"
 
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/utils.ts
 msgid "Value from another column…"
@@ -34953,6 +34536,11 @@ msgstr "可视化将显示在这里"
 msgid "View as table"
 msgstr "以表格查看"
 
+#: frontend/src/metabase/visualizer/components/VisualizationCanvas/wells/ScatterFloatingWell/ScatterFloatingWell.tsx
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Bubble size"
+msgstr "气泡大小"
+
 #: frontend/src/metabase/visualizer/components/VisualizerModal/VisualizerModal.tsx
 msgid "Are you sure you want to leave?"
 msgstr "确定要离开吗？"
@@ -34960,6 +34548,428 @@ msgstr "确定要离开吗？"
 #: frontend/src/metabase/visualizer/components/VisualizerModal/VisualizerModal.tsx
 msgid "Any unsaved changes will be lost."
 msgstr "所有未保存的更改都会丢失。"
+
+#: frontend/src/metabase/viz-core/echarts/boxplot/events.ts
+msgid "Upper whisker"
+msgstr "上须"
+
+#: frontend/src/metabase/viz-core/echarts/boxplot/events.ts
+msgid "Q3 (75th percentile)"
+msgstr "Q3（第 75 百分位）"
+
+#: frontend/src/metabase/viz-core/echarts/boxplot/events.ts
+msgid "Mean"
+msgstr "均值"
+
+#: frontend/src/metabase/viz-core/echarts/boxplot/events.ts
+msgid "Q1 (25th percentile)"
+msgstr "Q1（第 25 百分位）"
+
+#: frontend/src/metabase/viz-core/echarts/boxplot/events.ts
+msgid "Lower whisker"
+msgstr "下须"
+
+#: frontend/src/metabase/viz-core/echarts/boxplot/events.ts
+msgid "outlier"
+msgstr "异常值"
+
+#: frontend/src/metabase/viz-core/echarts/cartesian/model/dataset.ts
+msgid "There is no data to display. Check the query to ensure there are non-null x-axis values."
+msgstr "没有可显示的数据。请检查查询，确保 x 轴值不为 null。"
+
+#: frontend/src/metabase/viz-core/echarts/graph/sankey/model/index.ts
+msgid "Columns selection is invalid"
+msgstr "列选择无效"
+
+#: frontend/src/metabase/viz-core/lib/errors.ts
+#, javascript-format
+msgid "Doh! The data from your query doesn't fit the chosen display choice. This visualization requires at least {0} {1} of data."
+msgstr "哎呀！你的查询数据不符合所选的显示方式。此可视化至少需要 {0} 个{1}数据。"
+
+#: frontend/src/metabase/viz-core/lib/errors.ts
+#, javascript-format
+msgid "No dice. We have {0} data {1} to show and that's not enough for this visualization."
+msgstr "不行。我们只有 {0} 个数据{1}可显示，这不足以绘制此可视化。"
+
+#: frontend/src/metabase/viz-core/lib/errors.ts
+msgid "point"
+msgid_plural "points"
+msgstr[0] "个数据点"
+
+#: frontend/src/metabase/viz-core/lib/errors.ts
+msgid "Bummer. We can't actually do a pin map for this data because we require both a latitude and longitude column."
+msgstr "真遗憾。我们无法为这份数据绘制针点地图，因为必须同时有纬度列和经度列。"
+
+#: frontend/src/metabase/viz-core/lib/errors.ts
+msgid "Please configure this chart in the chart settings"
+msgstr "请在图表设置中配置此图表"
+
+#: frontend/src/metabase/viz-core/lib/errors.ts
+msgid "Edit Settings"
+msgstr "编辑设置"
+
+#: frontend/src/metabase/viz-core/lib/errors.ts
+msgid "There was a problem displaying this chart."
+msgstr "显示此图表时出现问题。"
+
+#: frontend/src/metabase/viz-core/lib/errors.ts
+msgid "Sorry, you don't have permission to see this card."
+msgstr "抱歉，你没有权限查看此卡片。"
+
+#: frontend/src/metabase/viz-core/lib/registry.ts
+msgid "Visualization is null"
+msgstr "Visualization 为 null"
+
+#: frontend/src/metabase/viz-core/lib/registry.ts
+msgid "Visualization must define an 'identifier' static variable: "
+msgstr "Visualization 必须定义一个静态变量 'identifier'："
+
+#: frontend/src/metabase/viz-core/lib/registry.ts
+msgid "Visualization with that identifier is already registered: "
+msgstr "具有该 identifier 的 Visualization 已注册："
+
+#: frontend/src/metabase/viz-core/lib/registry.ts
+#, javascript-format
+msgid "No visualization for {0}"
+msgstr "没有用于 {0} 的 Visualization"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "HH:MM"
+msgstr "HH:MM"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "HH:MM:SS"
+msgstr "HH:MM:SS"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "HH:MM:SS.MS"
+msgstr "HH:MM:SS.MS"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Date separators"
+msgstr "日期分隔符"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Show the time"
+msgstr "显示时间"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Normal"
+msgstr "普通"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Percent"
+msgstr "百分比"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Scientific"
+msgstr "科学计数法"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Where to display the unit of currency"
+msgstr "货币单位显示位置"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "In the column heading"
+msgstr "在列标题中"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "In every table cell"
+msgstr "在每个表格单元格中"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Multiply by a number"
+msgstr "乘以一个数字"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Add a prefix"
+msgstr "添加前缀"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Add a suffix"
+msgstr "添加后缀"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "dollars"
+msgstr "美元"
+
+#: frontend/src/metabase/viz-core/lib/settings/goal.ts
+msgid "Goal line"
+msgstr "目标线"
+
+#: frontend/src/metabase/viz-core/lib/settings/goal.ts
+msgid "Goal value"
+msgstr "目标值"
+
+#: frontend/src/metabase/viz-core/lib/settings/goal.ts
+msgid "Goal label"
+msgstr "目标标签"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Add series breakout"
+msgstr "添加序列突破"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Stack series"
+msgstr "堆叠数据系列"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Additional tooltip columns"
+msgstr "额外的 tooltip 列"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Enter column names"
+msgstr "输入列名"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Trend line"
+msgstr "趋势线"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Values to show"
+msgstr "要显示的值"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Stack values to show"
+msgstr "堆叠值显示"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Stack value format"
+msgstr "堆叠值格式"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Percentages"
+msgstr "百分比"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Show lines and tick marks"
+msgstr "显示轴线和刻度"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Rotate 45°"
+msgstr "旋转 45°"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Rotate 90°"
+msgstr "旋转 90°"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Unpin from zero"
+msgstr "不再固定为从 0 开始"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Auto y-axis range"
+msgstr "自动 y 轴范围"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Split y-axis when necessary"
+msgstr "必要时拆分y轴"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Number of tick marks"
+msgstr "刻度数量"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Hide overlapping labels"
+msgstr "隐藏重叠标签"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Whiskers extend to"
+msgstr "须延伸到"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "1.5 × interquartile range"
+msgstr "1.5 × 四分位距"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Min/Max"
+msgstr "最小/最大"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Show points"
+msgstr "显示点"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Outliers only"
+msgstr "仅异常值"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "All points"
+msgstr "所有点"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Show mean"
+msgstr "显示均值"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Values to display"
+msgstr "要显示的值"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Median only"
+msgstr "仅中位数"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Display type"
+msgstr "显示类型"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Line shape"
+msgstr "线条形状"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Line style"
+msgstr "线条样式"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Line size"
+msgstr "线条大小"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Show dots on lines"
+msgstr "在线条上显示点"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Replace missing values with"
+msgstr "将缺失值替换为"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Zero"
+msgstr "0"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Nothing"
+msgstr "不替换"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Linear Interpolated"
+msgstr "线性插值"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Y-axis position"
+msgstr "Y轴位置"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Show trend line for this series"
+msgstr "为此数据系列显示趋势线"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Show values for this series"
+msgstr "显示此数据系列的值"
+
+#: frontend/src/metabase/viz-core/lib/settings/validation.ts
+msgid "Which fields do you want to use for the X and Y axes?"
+msgstr "你想用哪些字段作为 X 轴和 Y 轴？"
+
+#: frontend/src/metabase/viz-core/lib/settings/validation.ts
+msgid "No breakouts are enabled"
+msgstr "未启用任何突破"
+
+#: frontend/src/metabase/viz-core/lib/settings/validation.ts
+msgid "It is not possible to use the Log scale for a stacked percentage chart"
+msgstr "无法为堆叠百分比图使用对数刻度"
+
+#: frontend/src/metabase/viz-core/lib/settings/validation.ts
+#, javascript-format
+msgid "This chart type doesn't support more than {0} series of data."
+msgstr "此图表类型不支持超过 {0} 个数据系列。"
+
+#: frontend/src/metabase/viz-core/lib/settings/visualization.ts
+msgid "Hide this card if there are no results"
+msgstr "如果没有结果则隐藏此卡片"
+
+#: frontend/src/metabase/viz-core/lib/trend-helpers.ts
+#, javascript-format
+msgid "compared to {0}"
+msgstr "与{0}相比"
+
+#: frontend/src/metabase/viz-core/lib/trend-helpers.ts
+msgid "compared to previous value"
+msgstr "与上一值相比"
+
+#: frontend/src/metabase/viz-core/lib/trend-helpers.ts
+#: metabase/lib/temporal_bucket.cljc
+msgid "Previous minute"
+msgstr "上一分钟"
+
+#: frontend/src/metabase/viz-core/lib/trend-helpers.ts
+#: metabase/lib/temporal_bucket.cljc
+msgid "Previous hour"
+msgstr "上一小时"
+
+#: frontend/src/metabase/viz-core/lib/trend-helpers.ts
+msgid "Previous day"
+msgstr "前一天"
+
+#: frontend/src/metabase/viz-core/lib/trend-helpers.ts
+#: metabase/lib/temporal_bucket.cljc
+msgid "Previous quarter"
+msgstr "上一季度"
+
+#: frontend/src/metabase/viz-core/lib/trend-helpers.ts
+#: metabase/lib/temporal_bucket.cljc
+msgid "Previous year"
+msgstr "上一年"
+
+#: frontend/src/metabase/viz-core/lib/warnings.ts
+msgid "Data includes missing dimension values."
+msgstr "数据包含缺失的维度值。"
+
+#: frontend/src/metabase/viz-core/lib/warnings.ts
+#, javascript-format
+msgid "We encountered an invalid date: \"{0}\""
+msgstr "检测到无效日期：“{0}”"
+
+#: frontend/src/metabase/viz-core/lib/warnings.ts
+#, javascript-format
+msgid "\"{0}\" is an unaggregated field: if it has more than one value at a point on the {1}-axis, the values will be summed."
+msgstr "\"{0}\" 是一个未聚合的字段：如果在 {1} 轴上的某个点具有多个值，则这些值将被相加。"
+
+#: frontend/src/metabase/viz-core/lib/warnings.ts
+#, javascript-format
+msgid "\"{0}\" is an unaggregated field: if it has more than one row with the same value, their measure values will be summed."
+msgstr "“{0}”是未聚合字段：如果它有多行相同值，对应的度量值将被求和。"
+
+#: frontend/src/metabase/viz-core/lib/warnings.ts
+#, javascript-format
+msgid "{0} are unaggregated fields: if there is more than one row with the same values, their measure values will be summed."
+msgstr "{0} 是未聚合字段：如果有多行具有相同的值，它们的度量值将被求和。"
+
+#: frontend/src/metabase/viz-core/lib/warnings.ts
+#, javascript-format
+msgid "The query for this chart was run in {0} rather than {1} due to database or driver constraints."
+msgstr "由于数据库或驱动程序限制，此图表的查询是在 {0} 中运行的，而不是在 {1} 中运行。"
+
+#: frontend/src/metabase/viz-core/lib/warnings.ts
+#, javascript-format
+msgid "This chart contains queries run in multiple timezones: {0}"
+msgstr "此图表包含在多个时区运行的查询：{0}"
+
+#: frontend/src/metabase/viz-core/lib/warnings.ts
+msgid "Negative values in measure column have been omitted from pie chart."
+msgstr "度量列中的负值已从饼图中省略。"
+
+#: frontend/src/metabase/viz-core/lib/warnings.ts
+msgid "Negative values in measure column have been omitted from treemap chart."
+msgstr "树状图已忽略度量列中的负值。"
+
+#: frontend/src/metabase/viz-core/shared/settings/cartesian-chart.ts
+msgid "Timeseries"
+msgstr "时间序列"
+
+#: frontend/src/metabase/viz-core/shared/settings/cartesian-chart.ts
+msgid "Histogram"
+msgstr "直方图"
+
+#: frontend/src/metabase/viz-core/shared/utils/data.ts
+#, javascript-format
+msgid "All values ({0})"
+msgstr "所有值（{0}）"
+
+#: frontend/src/metabase/viz-core/shared/utils/data.ts
+#, javascript-format
+msgid "Other ({0})"
+msgstr "其他（{0}）"
 
 #: metabase/actions/actions.clj
 msgid "Unknown Action {0}. Valid Actions are: {1}"
@@ -35603,7 +35613,7 @@ msgstr "你必须配置 site-url，Slack 集成才能正常工作。"
 
 #: metabase/channel/api/slack.clj
 msgid "Bug reporting is not enabled."
-msgstr ""
+msgstr "未启用 Bug 报告。"
 
 #: metabase/channel/email.clj
 msgid "SMTP host is not set."
@@ -36060,6 +36070,10 @@ msgstr "未找到使用邮箱地址 ''{0}'' 的用户。"
 #: metabase/cmd/reset_password.clj
 msgid "Please check the spelling and try again."
 msgstr "请检查拼写并重试。"
+
+#: metabase/cmd/reset_password.clj
+msgid "Cannot reset the password for the deactivated user ''{0}''. Please reactivate the account and try again."
+msgstr "无法为已停用的用户“{0}”重置密码。请重新启用该账号后再试。"
 
 #: metabase/cmd/reset_password.clj
 msgid "Resetting password for {0}..."
@@ -36709,6 +36723,26 @@ msgstr "你没有权限从此数据库删除数据。"
 msgid "Killed MySQL process id {0} due to timeout."
 msgstr "由于超时，已终止 MySQL 进程 id {0}。"
 
+#: metabase/driver/oracle.clj
+msgid "host"
+msgstr "主机"
+
+#: metabase/driver/oracle.clj
+msgid "port"
+msgstr "端口"
+
+#: metabase/driver/oracle.clj
+msgid "Oracle system ID (SID)"
+msgstr "Oracle 系统 ID (SID)"
+
+#: metabase/driver/oracle.clj
+msgid "Oracle service name"
+msgstr "Oracle 服务名"
+
+#: metabase/driver/oracle.clj
+msgid "Invalid {0}: it must be a plain value, not a URL or an Oracle connect descriptor."
+msgstr "{0} 无效：必须是纯值，而不是 URL 或 Oracle 连接描述符。"
+
 #: metabase/driver/postgres.clj
 msgid "SSL Mode"
 msgstr "SSL 模式"
@@ -36967,7 +37001,7 @@ msgstr "更新行时出错<b>(</b>。"
 
 #: metabase/driver/sql_jdbc/connection.clj
 msgid "Cannot open a connection for an analytics-dev database unless analytics dev mode is enabled."
-msgstr ""
+msgstr "除非启用 analytics dev mode，否则无法为 analytics-dev 数据库打开连接。"
 
 #: metabase/driver/sql_jdbc/connection.clj
 msgid "Not a valid Database/Database ID/JDBC spec"
@@ -36975,7 +37009,7 @@ msgstr "不是有效的 Database/Database ID/JDBC spec"
 
 #: metabase/driver/sql_jdbc/connection.clj
 msgid "Cannot connect to an analytics-dev database unless analytics dev mode is enabled."
-msgstr ""
+msgstr "除非启用 analytics dev mode，否则无法连接到 analytics-dev 数据库。"
 
 #: metabase/driver/sql_jdbc/execute.clj
 msgid "Too many queries are running. Please try again in a moment."
@@ -37326,6 +37360,18 @@ msgstr "{0} 按 {1} {2}"
 #: metabase/xrays/automagic_dashboards/names.clj
 msgid "{0} by {1}"
 msgstr "按 {1} 的 {0}"
+
+#: metabase/explorations/composite.clj
+msgid "Series"
+msgstr "数据系列"
+
+#: metabase/explorations/models/exploration_query_result.clj
+msgid "Cannot combine these results: a source result has no recorded data-access context."
+msgstr "无法合并这些结果：某个源结果没有记录的数据访问上下文。"
+
+#: metabase/explorations/models/exploration_query_result.clj
+msgid "Cannot combine these results: they were computed under different data-access contexts."
+msgstr "无法合并这些结果：它们是在不同的数据访问上下文下计算的。"
 
 #: metabase/explorations/query_plan/variants.clj
 #: metabase_enterprise/transforms_inspector/lens/column_comparison.clj
@@ -39634,6 +39680,10 @@ msgid "Invalid Google model {0} — expected a publisher-qualified ID like \"goo
 msgstr "无效的 Google 模型 {0} — 需要类似 \"google/gemini-3.5-flash\" 这样的带发布者前缀 ID"
 
 #: metabase/metabot/self/google.clj
+msgid "Unsupported Google model {0}. Only google/* and anthropic/* models are supported."
+msgstr "不支持的 Google 模型 {0}。仅支持 google/* 和 anthropic/* 模型。"
+
+#: metabase/metabot/self/google.clj
 msgid "Invalid Google model {0} — a publisher and model ID can hold only letters, digits, and the characters \".\", \"_\", \"-\" and \"@\""
 msgstr "无效的 Google 模型 {0} — 发布者和模型 ID 只能包含字母、数字，以及字符 \".\"、\"_\"、\"-\" 和 \"@\""
 
@@ -39990,6 +40040,10 @@ msgid "Invalid Azure model {0}. Expected format: <connection>/<family>/<deployme
 msgstr "无效的 Azure 模型 {0}。预期格式：<connection>/<family>/<deployment-name>，其中 <family> 必须是以下之一：{1}"
 
 #: metabase/metabot/settings.clj
+msgid "Invalid Google model {0}. Expected format: <connection>/<publisher>/<model> where <publisher> is one of: {1}"
+msgstr "无效的 Google 模型 {0}。期望格式：<connection>/<publisher>/<model>，其中 <publisher> 必须为以下之一：{1}"
+
+#: metabase/metabot/settings.clj
 msgid "Unsupported model {0} for Metabase managed AI. Supported models: {1}"
 msgstr "Metabase 托管 AI 不支持模型 {0}。支持的模型：{1}"
 
@@ -40107,12 +40161,20 @@ msgid "A `document_id` is required when saving to a document."
 msgstr "保存到文档时需要 `document_id`。"
 
 #: metabase/metabot/tools/sql/common.clj
+msgid "You do not have permission to write SQL queries against this database. Native query permissions are required."
+msgstr "你没有权限针对此数据库编写 SQL 查询。需要原生查询权限。"
+
+#: metabase/metabot/tools/sql/common.clj
 msgid "Unsupported query format"
 msgstr "不支持的查询格式"
 
 #: metabase/metabot/tools/sql/create.clj
 msgid "Database {0} not found"
 msgstr "未找到数据库 {0}"
+
+#: metabase/metabot/tools/sql/create.clj
+msgid "You do not have access to this database."
+msgstr "你无权访问此数据库。"
 
 #: metabase/metabot/tools/sql/edit.clj
 msgid "Each edit must include old_string and new_string"
@@ -40514,6 +40576,10 @@ msgstr "已存在同名群组。"
 msgid "You cannot edit or delete the ''{0}'' permissions group!"
 msgstr "你不能编辑或删除 ''{0}'' 权限组！"
 
+#: metabase/permissions/models/permissions_group.clj
+msgid "Tenant groups are not editable while the Tenants feature is disabled."
+msgstr "在未启用“租户”功能时，无法编辑租户组。"
+
 #: metabase/permissions/models/permissions_group_membership.clj
 msgid "You cannot remove the last member of the ''Admin'' group!"
 msgstr "你不能移除 ''Admin'' 组的最后一名成员！"
@@ -40567,6 +40633,10 @@ msgstr "只有在你拥有带 advanced-permissions 功能的高级 token 时，�
 #: metabase/permissions_rest/api.clj metabase_enterprise/sandbox/api/routes.clj
 msgid "Sandboxes"
 msgstr "沙盒"
+
+#: metabase/permissions_rest/api.clj
+msgid "Tenant groups cannot be created while the Tenants feature is disabled."
+msgstr "在未启用“租户”功能时，无法创建租户组。"
 
 #: metabase/permissions_rest/api.clj
 msgid "Admin cannot be a group manager."
@@ -40876,6 +40946,10 @@ msgstr "无效的parameterized_object_type"
 #: metabase/queries/models/query_execution.clj
 msgid "Invalid query execution context: {0}"
 msgstr "无效的查询执行上下文：{0}"
+
+#: metabase/queries/models/stored_result_use.clj
+msgid "This card has no cached results."
+msgstr "此卡片没有缓存结果。"
 
 #: metabase/queries_rest/api/card.clj
 msgid "value must be a sequence of positive integers"
@@ -41893,6 +41967,10 @@ msgstr "服务器端口，通常是 389；如果使用 SSL 则通常是 636。"
 #: metabase/sso/settings.clj
 msgid "Use SSL, TLS or plain text."
 msgstr "使用 SSL、TLS 或纯文本。"
+
+#: metabase/sso/settings.clj
+msgid "Path to a JKS trust store of CA certificates used to validate the LDAP server''s TLS certificate. Leave blank to use the JVM default trust store."
+msgstr "用于验证 LDAP 服务器 TLS 证书的 CA 证书的 JKS 信任库路径。留空将使用 JVM 默认信任库。"
 
 #: metabase/sso/settings.clj
 msgid "The Distinguished Name to bind as (if any), this user will be used to lookup information about other users."
@@ -43219,7 +43297,7 @@ msgstr "转换 Python"
 
 #: metabase_enterprise/audit_app/analytics_dev.clj
 msgid "Analytics dev mode is not enabled."
-msgstr ""
+msgstr "未启用 analytics dev mode。"
 
 #: metabase_enterprise/audit_app/interface.clj
 msgid "Unable to run internal query function: cannot resolve {0}"
@@ -44117,6 +44195,10 @@ msgstr "是否在有人通过 LDAP 登录时同步用户属性？"
 #: metabase_enterprise/sso/settings.clj
 msgid "Comma-separated list of user attributes to skip syncing for LDAP users."
 msgstr "要对 LDAP 用户跳过同步的用户属性逗号分隔列表。"
+
+#: metabase_enterprise/sso/settings.clj
+msgid "Comma-separated list of user attributes to sync for LDAP users. Only these attributes are synced; leave blank to sync none."
+msgstr "要为 LDAP 用户同步的用户属性的逗号分隔列表。只会同步这些属性；留空则不同步任何属性。"
 
 #: metabase_enterprise/sso/settings.clj
 msgid "Group membership lookup filter. The placeholders '{dn}' and '{uid}' will be replaced by the user''s Distinguished Name and UID, respectively."

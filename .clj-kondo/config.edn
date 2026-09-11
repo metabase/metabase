@@ -72,6 +72,7 @@
   :metabase/namespace-name                                   {:level :warning}
   :metabase/no-jsqlparser-imports                            {:level :warning}
   :metabase/prefer-with-dynamic-fn-redefs                    {:level :warning}
+  :metabase/t2-query-namespace                               {:level :warning}
   :metabase/toucan-model-ns                                  {:level :warning}
   :metabase/require-shape-checker                            {:level :warning}
   :metabase/tests-must-live-in-known-modules                 {:level :warning}
@@ -633,6 +634,45 @@
    metabase.lib.schema.mbql-clause/define-tuple-mbql-clause                                                                  hooks.metabase.lib.schema.mbql-clause/define-mbql-clause
    methodical.core/defmethod                                                                                                 hooks.metabase.toucan.table-name/lint-defmethod
    methodical.macros/defmethod                                                                                               hooks.metabase.toucan.table-name/lint-defmethod
+   metabase.app-db.core/query                                                                                                hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.app-db.core/streaming-reducible-query                                                                            hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.app-db.core/select-or-insert!                                                                                    hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.app-db.core/update-or-insert!                                                                                    hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.app-db.core/current-timestamp-string                                                                             hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.app-db.query/query                                                                                               hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.app-db.query/streaming-reducible-query                                                                           hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.app-db.query/select-or-insert!                                                                                   hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.app-db.query/update-or-insert!                                                                                   hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.app-db.query/current-timestamp-string                                                                            hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/count                                                                                                        hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/delete!                                                                                                      hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/exists?                                                                                                      hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/insert!                                                                                                      hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/insert-returning-instance!                                                                                   hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/insert-returning-instances!                                                                                  hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/insert-returning-pk!                                                                                         hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/insert-returning-pks!                                                                                        hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/query                                                                                                        hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/query-one                                                                                                    hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/reducible-query                                                                                              hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/reducible-select                                                                                             hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/reducible-update                                                                                             hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/reducible-update-returning-pks                                                                               hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/save!                                                                                                        hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select                                                                                                       hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-fn->fn                                                                                                hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-fn->pk                                                                                                hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-fn-reducible                                                                                          hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-fn-set                                                                                                hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-fn-vec                                                                                                hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-one                                                                                                   hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-one-fn                                                                                                hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-one-pk                                                                                                hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-pk->fn                                                                                                hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-pks-set                                                                                               hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-pks-vec                                                                                               hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/update!                                                                                                      hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/update-returning-pks!                                                                                        hooks.metabase.toucan.db-ns/lint-query-call
    metabase.lib.test-util.macros/$ids                                                                                        hooks.metabase.test.data/$ids
    metabase.lib.test-util.macros/mbql-query                                                                                  hooks.metabase.test.data/mbql-query
    metabase.lib.test-util.macros/mbql-5-query                                                                                hooks.metabase.test.data/mbql-query
@@ -841,7 +881,13 @@
   {:pattern "^metabase(?:((?:-enterprise\\.sandbox)?\\.query-processor)|(?:\\.driver\\.sql(?!server)(?!ite))).*-test$"
    :name    general-qp-and-driver-test-namespaces}
   {:pattern "(?:^mage.*)"
-   :name    mage-namespaces}]
+   :name    mage-namespaces}
+  ;;
+  ;; the app-db module is the application database layer itself (connections, migrations, encryption), so it gets to
+  ;; run Toucan 2 queries anywhere.
+  ;;
+  {:pattern "^metabase\\.app-db\\..*"
+   :name    app-db-namespaces}]
 
  :config-in-ns
  {test-namespaces
@@ -851,12 +897,16 @@
     :private-call                                        {:level :off}
     :metabase/defsetting-must-specify-export             {:level :off}
     :metabase/defsetting-namespace                       {:level :off}
+    :metabase/t2-query-namespace                         {:level :off}
     :metabase/test-helpers-use-non-thread-safe-functions {:level :warning} ; more config in `.clj-kondo/config/test-helpers/config.edn`
 
     :discouraged-var
     {metabase.driver/database-supports? {:level :off}
      metabase.lib.convert/->legacy-MBQL {:level :off}
      metabase.lib.core/->legacy-MBQL    {:level :off}}}}
+
+  app-db-namespaces
+  {:linters {:metabase/t2-query-namespace {:level :off}}}
 
   ;; .cljc tests run in both Clojure and ClojureScript — `with-dynamic-fn-redefs` is JVM-only,
   ;; so leave these alone.
