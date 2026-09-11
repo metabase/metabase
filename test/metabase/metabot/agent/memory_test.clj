@@ -4,7 +4,9 @@
    [clojure.test :refer :all]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.memory :as memory]
-   [metabase.metabot.tools.shared :as shared]))
+   [metabase.metabot.schema :as metabot.schema]
+   [metabase.metabot.tools.shared :as shared]
+   [metabase.util.malli.registry :as mr]))
 
 (deftest ^:parallel initialize-test
   (testing "seeds the working state and starts an empty turn-state"
@@ -94,6 +96,15 @@
   (testing "turn-state is nil until this turn writes something"
     (let [mem (memory/initialize [] {:queries {"q1" {:id "q1"}}})]
       (is (nil? (memory/turn-state mem))))))
+
+(deftest ^:parallel client-ids-survive-the-app-db-round-trip-test
+  (testing "JSON has no sets, so state read back out of metabot_message carries a vector here. It
+            has to validate in that shape, since the agent entry point checks it before memory is
+            initialized, and it has to arrive as a set."
+    (let [persisted {:client-ids ["seeded-q"]}]
+      (is (mr/validate ::metabot.schema/state persisted))
+      (is (= #{"seeded-q"}
+             (get-in (memory/initialize [] persisted) [:state :client-ids]))))))
 
 (deftest ^:parallel add-client-ids-test
   (testing "ids accumulate across turns and are written to the persisted delta, so a query a tool
