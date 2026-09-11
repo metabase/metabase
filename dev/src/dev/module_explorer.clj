@@ -6,7 +6,6 @@
   which API namespaces each consumer uses.
   Babashka loads this namespace too, which is why it resolves `dev.deps-graph` only inside [[open!]]."
   (:require
-   [cheshire.core :as json]
    [clojure.edn :as edn]
    [clojure.java.browse :as browse]
    [clojure.java.io :as io]
@@ -44,36 +43,52 @@
        "src/"
        (-> ns-prefix (str/replace "." "/") (str/replace "-" "_"))))
 
-(defn- set-field->strings
-  "Sort and stringify a set-valued config field, spelling out the `:any` and `:bypass` sentinels."
+(defn- set->strings
+  "Sort and stringify a set-valued config field."
   [x]
-  (cond
-    (= x :any)    ["∗any"]
-    (= x :bypass) ["∗bypass"]
-    (set? x)      (vec (sort (map str x)))
-    :else         []))
+  (if (set? x)
+    (vec (sort (map str x)))
+    []))
+
+(defn- build-module->uses
+  "Known module dependencies.
+
+  Namespace edges provide observed dependencies. Without them, use the declared sets and leave `:uses :any`
+  unresolved instead of treating it as a dependency on every module."
+  [modules-config ns-edges]
+  (if (some? ns-edges)
+    (let [known-modules (set (keys modules-config))]
+      (reduce (fn [acc [consumer producer _namespace]]
+                (let [consumer (symbol (str consumer))
+                      producer (symbol (str producer))]
+                  (if (and (not= consumer producer)
+                           (contains? known-modules consumer)
+                           (contains? known-modules producer))
+                    (update acc consumer conj producer)
+                    acc)))
+              (zipmap known-modules (repeat #{}))
+              ns-edges))
+    (into {}
+          (map (fn [[module {:keys [uses]}]]
+                 [module (if (set? uses) uses #{})]))
+          modules-config)))
 
 (defn- used-by-index
-  "Reverse of every module's `:uses`: `module-string -> #{modules that :use it}`.
-  A `:uses :any` module counts as using every other module."
-  [modules-config]
-  (let [all-modules (keys modules-config)]
-    (reduce-kv (fn [acc m {:keys [uses]}]
-                 (let [targets (cond
-                                 (= uses :any) (remove #(= % m) all-modules)
-                                 (set? uses)   uses
-                                 :else         nil)]
-                   (reduce (fn [a used] (update a (str used) (fnil conj #{}) (str m))) acc targets)))
-               {} modules-config)))
+  "Reverse `module -> #{dependencies}` into `module -> #{dependents}`."
+  [module->uses]
+  (reduce-kv (fn [acc module uses]
+               (reduce (fn [index used]
+                         (update index used (fnil conj #{}) module))
+                       acc
+                       uses))
+             {}
+             module->uses))
 
 (defn- module-node
   "One module's config as the plain data the page consumes."
-  [modules-config used-by module]
+  [modules-config module->uses used-by module]
   (let [{:keys [api uses friends] :as entry} (get modules-config module)
-        effective-uses (if (= uses :any)
-                         (disj (set (keys modules-config)) module)
-                         uses)
-        source-dir     (ns-prefix->source-dir (modules/module-ns-prefix modules-config module))]
+        source-dir (ns-prefix->source-dir (modules/module-ns-prefix modules-config module))]
     {:id                   (str module)
      :enterprise           (= (namespace module) "enterprise")
      :team                 (modules/module-team modules-config module)
@@ -81,22 +96,30 @@
      :ns-prefix            (explicit-ns-prefix modules-config module)
      :source               (when (.isDirectory (io/file source-dir)) source-dir)
      :api-any              (= api :any)
-     :api                  (set-field->strings api)
+     :api                  (set->strings (modules/module-api-namespaces modules-config module))
      :uses-any             (= uses :any)
-     :uses                 (if (set? effective-uses) (vec (sort (map str effective-uses))) [])
-     :used-by              (vec (sort (get used-by (str module))))
-     :friends              (set-field->strings friends)
-     :module-exports       (set-field->strings (:module-exports entry))
-     :model-exports        (set-field->strings (:model-exports entry))
+     :uses                 (set->strings (get module->uses module))
+     :used-by              (set->strings (get used-by module))
+     :friends              (set->strings friends)
+     :module-exports       (set->strings (:module-exports entry))
+     :model-exports        (set->strings (:model-exports entry))
      :model-imports-bypass (= (:model-imports entry) :bypass)
-     :model-imports        (set-field->strings (:model-imports entry))}))
+     :model-imports        (set->strings (:model-imports entry))}))
 
 ;;; Per-module source metrics, from tracked files and git history.
 
 (def ^:private source-dirs ["src" "enterprise/backend/src" "test" "enterprise/backend/test" "modules/drivers"])
 
+(defn- git-output!
+  "Run Git and return stdout, or throw with its stderr when it fails."
+  [& args]
+  (let [{:keys [exit out err]} (apply shell/sh "git" args)]
+    (when-not (zero? exit)
+      (throw (ex-info (str "Git failed: " err) {:args args, :exit exit, :stderr err})))
+    out))
+
 (defn- tracked-source-files []
-  (->> (:out (apply shell/sh "git" "ls-files" "--" source-dirs))
+  (->> (apply git-output! "ls-files" "--" source-dirs)
        str/split-lines
        (filter #(re-find #"\.clj[cs]?$" %))))
 
@@ -134,7 +157,7 @@
 (defn- module->commit-count
   "Distinct commits that touched each module's files, from one `git log` pass."
   [file->module*]
-  (let [log (:out (apply shell/sh "git" "log" "--format=%H" "--name-only" "--" source-dirs))]
+  (let [log (apply git-output! "log" "--format=%H" "--name-only" "--" source-dirs)]
     (loop [[line & more :as lines] (str/split-lines log)
            commit                  nil
            acc                     {}]
@@ -173,11 +196,12 @@
   `:stats?` adds per-module source metrics, which take a few seconds.
   `:ns-edges` is a seq of `[consumer producer namespace]` string triples."
   [modules-config {:keys [stats? ns-edges]}]
-  (let [used-by (used-by-index modules-config)
-        files   (when (or stats? ns-edges) (tracked-source-files))
-        stats   (when stats? (module-stats modules-config files))]
+  (let [module->uses (build-module->uses modules-config ns-edges)
+        used-by      (used-by-index module->uses)
+        files        (when (or stats? ns-edges) (tracked-source-files))
+        stats        (when stats? (module-stats modules-config files))]
     {:modules  (mapv (fn [m]
-                       (cond-> (module-node modules-config used-by m)
+                       (cond-> (module-node modules-config module->uses used-by m)
                          stats? (assoc :stats (get stats m))))
                      (sort (keys modules-config)))
      :ns-edges (some-> ns-edges vec)
@@ -190,14 +214,22 @@
                                      [ns-str f]))))
                          files)))}))
 
+(defn- explorer-resource [filename]
+  (slurp (or (io/resource (str "dev/" filename))
+             (io/file "dev/resources/dev" filename))))
+
+(defn- generate-json [data]
+  ;; Mage runs under Babashka, where Cheshire is bundled and metabase.util.json is not on the classpath.
+  ((requiring-resolve 'cheshire.core/generate-string) data))
+
 (defn page
   "The explorer as one HTML document with `data` embedded."
   [data]
-  (str/replace (slurp (or (io/resource "dev/module_explorer.html")
-                          (io/file "dev/resources/dev/module_explorer.html")))
-               "/*DATA*/null"
-               ;; a `</` in the JSON would close the script element early
-               (str/replace (json/generate-string data) "</" "<\\/")))
+  (-> (explorer-resource "module_explorer.html")
+      (str/replace "/*STATE-CODEC*/" (explorer-resource "module_explorer_state.js"))
+      (str/replace "/*DATA*/null"
+                   ;; a `</` in the JSON would close the script element early
+                   (str/replace (generate-json data) "</" "<\\/"))))
 
 (defn- ns-edges
   "Distinct `[consumer producer namespace]` triples from the source scan."

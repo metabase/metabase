@@ -2,6 +2,7 @@
   "Tests for driver decision logic.
    Run `mage -driver-decisions -h` to see the priority order."
   (:require
+   [clojure.java.shell :as shell]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [dev.module-explorer :as module-explorer]
@@ -377,10 +378,9 @@
                  enterprise/gadget    {:uses #{gadget}}
                  enterprise/cloud     {:uses #{}}}
         modules (into {} (map (juxt :id identity)) (:modules (module-explorer/explorer-data config {})))]
-    (testing "a :uses :any module uses, and is used by, every other module"
-      (is (= ["enterprise/cloud" "enterprise/gadget" "gadget" "gadget.part" "widget"]
-             (get-in modules ["core" :uses])))
-      (is (= ["core" "enterprise/gadget" "gadget.part" "widget"]
+    (testing ":uses :any remains unresolved without source data"
+      (is (empty? (get-in modules ["core" :uses])))
+      (is (= ["enterprise/gadget" "gadget.part" "widget"]
              (get-in modules ["gadget" :used-by]))))
     (testing "teams are inherited from the nearest ancestor"
       (is (= "Gadgets" (get-in modules ["gadget.part" :team])))
@@ -391,7 +391,23 @@
       (is (= ["enterprise/cloud"] (get-in modules ["enterprise/cloud" :path]))))
     (testing "only custom prefixes are reported"
       (is (= "metabase.gizmo" (get-in modules ["gadget" :ns-prefix])))
-      (is (nil? (get-in modules ["widget" :ns-prefix]))))))
+      (is (nil? (get-in modules ["widget" :ns-prefix]))))
+    (testing "an omitted :api uses the same defaults as the module linter"
+      (is (= ["metabase.gizmo.api" "metabase.gizmo.core" "metabase.gizmo.init"]
+             (get-in modules ["gadget" :api]))))))
+
+(deftest explorer-data-with-namespace-edges-test
+  (let [config '{core   {:uses :any}
+                 widget {:uses #{gadget}}
+                 gadget {:uses #{}}}
+        edges  [["core" "gadget" "metabase.gadget.core"]
+                ["widget" "gadget" "metabase.gadget.core"]]
+        modules (into {}
+                      (map (juxt :id identity))
+                      (:modules (module-explorer/explorer-data config {:ns-edges edges})))]
+    (testing "observed namespace edges resolve unrestricted and reverse dependencies"
+      (is (= ["gadget"] (get-in modules ["core" :uses])))
+      (is (= ["core" "widget"] (get-in modules ["gadget" :used-by]))))))
 
 (deftest explorer-file->module-test
   (let [file->module   #'module-explorer/file->module
@@ -406,9 +422,18 @@
 
 (deftest explorer-page-test
   (let [html (module-explorer/page {:modules [{:id "</script>"}]})]
-    (testing "the data replaces the placeholder, and cannot close the script element"
+    (testing "the data and state codec replace their placeholders"
       (is (not (str/includes? html "/*DATA*/null")))
+      (is (not (str/includes? html "/*STATE-CODEC*/")))
       (is (str/includes? html "<\\/script>")))))
+
+(deftest explorer-git-failure-test
+  (is (thrown-with-msg? Exception #"Git failed:"
+                        (#'module-explorer/git-output! "not-a-real-git-subcommand"))))
+
+(deftest explorer-state-codec-test
+  (let [{:keys [exit out err]} (shell/sh "node" "mage/test/mage/module_explorer_state_test.js")]
+    (is (zero? exit) (str out err))))
 
 (deftest dotted-module-files-mark-correct-module-changes
   (testing "dotted module files resolve to the dotted module when its prefix exists"

@@ -248,14 +248,20 @@ kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:1
 <script>const DATA = /*DATA*/null;</script>
 <script>
 'use strict';
+/*STATE-CODEC*/
 const MODULES = DATA.modules;
 const byId = Object.fromEntries(MODULES.map(m => [m.id, m]));
 const GITHUB = 'https://github.com/metabase/metabase/';
 // team -> color (stable palette, assigned in first-seen order over sorted teams)
 const TEAMS = [...new Set(MODULES.map(m => m.team).filter(Boolean))].sort();
+const VALID_IDS = new Set(MODULES.map(m => m.id));
+const VALID_TEAMS = new Set(TEAMS);
 const PALETTE = ['#4a6fe8','#e8892b','#2fa36b','#c0468a','#7d5fe0','#2fa8c0','#d0443b','#b0952f','#5a7a3a','#8a5a3a','#607080'];
 const teamColor = {}; TEAMS.forEach((t,i)=>teamColor[t]=PALETTE[i%PALETTE.length]);
 const teamCount = {}; MODULES.forEach(m=>{ if(m.team) teamCount[m.team]=(teamCount[m.team]||0)+1; });
+const NS_EDGES = DATA['ns-edges'];
+const NS_FILES = DATA['ns-files'] || {};
+const HAS_ACTUAL_EDGES = Array.isArray(NS_EDGES);
 
 // ---- build the display tree from each module's `path` --------------------
 function makeNode(seg){ return {seg, children:new Map(), module:null}; }
@@ -312,7 +318,7 @@ for(const t of TEAMS){
   const el = document.createElement('span');
   el.className='tchip'; el.dataset.team=t; el.title='Show only this team';
   el.innerHTML=`<span class=dot style='background:${teamColor[t]}'></span>${t}<span class=ct>${teamCount[t]}</span>`;
-  el.onclick=()=>{ focusTeams.has(t)?focusTeams.delete(t):focusTeams.add(t); refreshTeamChips(); render(); };
+  el.onclick=()=>{ focusTeams.has(t)?focusTeams.delete(t):focusTeams.add(t); refreshTeamChips(); render(); syncHash(true); };
   legend.appendChild(el);
 }
 
@@ -326,6 +332,8 @@ function matches(m){
   if(!query) return true;
   return m.id.toLowerCase().includes(query) || (m.team||'').toLowerCase().includes(query);
 }
+function outCount(m){ return m['uses-any'] && !HAS_ACTUAL_EDGES ? null : m.uses.length; }
+function totalCount(m){ const out=outCount(m); return out===null ? null : m['used-by'].length+out; }
 // precompute, for an active filter, the set of node-keys that must remain visible
 function visibleKeys(){
   if(!query && !debtOnly) return null;
@@ -372,9 +380,12 @@ function makeName(m, label, extraClass){
 function appendCounts(row, m){
   const c=document.createElement('span'); c.className='mini';
   const inN=document.createElement('span'); inN.className='cnt-in'; inN.textContent=m['used-by'].length;
-  const outN=document.createElement('span'); outN.className='cnt-out'; outN.textContent=m.uses.length;
+  const out=outCount(m);
+  const outN=document.createElement('span'); outN.className='cnt-out'; outN.textContent=out===null?'any':out;
   c.append(inN, ' used by · ', outN, ' uses');
-  c.title=`${m['used-by'].length} modules depend on it · it depends on ${m.uses.length}`; row.appendChild(c);
+  c.title=`${m['used-by'].length} known modules depend on it · `+
+    (out===null?'its unrestricted dependencies are unknown':`it depends on ${out}`);
+  row.appendChild(c);
 }
 // Build a row's shared content (caret slot, team dot, name, badges, counts, dep-marks).
 function buildRow(m, label, hasKids){
@@ -438,25 +449,29 @@ function render(){
   treeEl.scrollTop = scroll;
 }
 
-// Flat coupling view: rank modules by direct dependency counts. All edges come from the module
-// config, so a hotspot is a graph-coupling fact, not a code-quality judgement.
+// Flat coupling view: rank modules by known dependency counts. A hotspot is a graph-coupling fact,
+// not a code-quality judgement. Config-only data cannot resolve the dependencies behind `:uses :any`.
 const SORTS = {
   'used-by': {label:'dependents (fan-in)',
               metric:m=>m['used-by'].length,
-              desc:'how many modules depend on it directly — a change here has the widest blast radius'},
+              desc:HAS_ACTUAL_EDGES
+                ? 'how many modules depend on it in the source scan — a change here has the widest blast radius'
+                : 'how many modules declare it directly — unrestricted consumers are not inferred'},
   'uses':    {label:'dependencies (fan-out)',
-              metric:m=>m.uses.length,
-              desc:'how many modules it depends on directly — the most entangled consumers in the graph'},
+              metric:outCount,
+              desc:HAS_ACTUAL_EDGES
+                ? 'how many modules it depends on in the source scan — the most entangled consumers in the graph'
+                : 'how many modules it declares directly — unrestricted modules sort after known counts'},
   'coupling':{label:'total coupling (in + out)',
-              metric:m=>m['used-by'].length+m.uses.length,
-              desc:'dependents plus dependencies — modules that are both load-bearing and entangled'},
+              metric:totalCount,
+              desc:'known dependents plus dependencies — modules that are both load-bearing and entangled'},
 };
 function renderHotspots(){
   const scroll = treeEl.scrollTop;
   treeEl.innerHTML='';
   const s = SORTS[sortBy];
   const list = MODULES.filter(m => matches(m) && teamOk(m))
-    .sort((a,b) => s.metric(b)-s.metric(a) || a.id.localeCompare(b.id));
+    .sort((a,b) => (s.metric(b)??-1)-(s.metric(a)??-1) || a.id.localeCompare(b.id));
 
   const bar=document.createElement('div'); bar.className='viewbar';
   const ttl=document.createElement('b'); ttl.textContent='Ranked by'; bar.appendChild(ttl);
@@ -472,7 +487,7 @@ function renderHotspots(){
   treeEl.appendChild(bar);
   if(debtOnly) treeEl.appendChild(debtNotice());
 
-  const maxTotal = Math.max(1, ...list.map(m=>m['used-by'].length+m.uses.length));
+  const maxTotal = Math.max(1, ...list.map(m=>m['used-by'].length+(outCount(m)??0)));
   const frag = document.createDocumentFragment();
   list.forEach((m,i)=>{
     const row=document.createElement('div');
@@ -489,13 +504,14 @@ function renderHotspots(){
     const track=document.createElement('span'); track.className='track';
     const inSeg=document.createElement('span'); inSeg.className='in';
     inSeg.style.width=(m['used-by'].length/maxTotal*100)+'%'; track.appendChild(inSeg);
+    const out=outCount(m);
     const outSeg=document.createElement('span'); outSeg.className='out';
-    outSeg.style.width=(m.uses.length/maxTotal*100)+'%'; track.appendChild(outSeg);
-    track.title=`${m['used-by'].length} dependents · ${m.uses.length} dependencies`;
+    outSeg.style.width=((out??0)/maxTotal*100)+'%'; track.appendChild(outSeg);
+    track.title=`${m['used-by'].length} known dependents · ${out===null?'unrestricted dependencies':out+' dependencies'}`;
     row.appendChild(track);
     const c=document.createElement('span'); c.className='hcounts';
     const inN=document.createElement('span'); inN.className='cnt-in'; inN.textContent=m['used-by'].length;
-    const outN=document.createElement('span'); outN.className='cnt-out'; outN.textContent=m.uses.length;
+    const outN=document.createElement('span'); outN.className='cnt-out'; outN.textContent=out===null?'any':out;
     c.append(inN, ' used by · ', outN, ' uses'); row.appendChild(c);
     appendDepMarks(row,m);
     row.onclick=(e)=>{ e.stopPropagation(); select(m.id); };
@@ -509,9 +525,7 @@ function renderHotspots(){
 // ---- graph view ------------------------------------------------------------
 // Edges are [consumer, producer, namespace]. With namespace data (dev.module-explorer/open!) they come from the
 // source scan; otherwise from each module's :uses, and a `:uses :any` module draws none rather than one to everything.
-const NS_EDGES = DATA['ns-edges'];
-const NS_FILES = DATA['ns-files'] || {};
-const EDGES = NS_EDGES || MODULES.flatMap(m => m['uses-any'] ? [] : m.uses.map(u => [m.id, u, null]));
+const EDGES = HAS_ACTUAL_EDGES ? NS_EDGES : MODULES.flatMap(m => m.uses.map(u => [m.id, u, null]));
 const edgesByMod = {};
 for(const e of EDGES){ (edgesByMod[e[0]] ||= []).push(e); if(e[1]!==e[0]) (edgesByMod[e[1]] ||= []).push(e); }
 const GRAPH_LIBS = ['https://unpkg.com/cytoscape@3.30.1/dist/cytoscape.min.js',
@@ -766,34 +780,22 @@ function nsUsage(m){
 }
 function expandAncestors(id){ const p=byId[id]&&byId[id].path; if(!p) return; for(let i=1;i<p.length;i++) open.add(p.slice(0,i).join('/')); }
 function scrollToSelected(){ if(!selected) return; const el=treeEl.querySelector('[data-id='+JSON.stringify(selected)+']'); if(el) el.scrollIntoView({block:'center'}); }
-// The hash holds the selection and the graph state, so reloads and deep links restore the same view.
+// The hash holds selection, filters, and graph state, so reloads and deep links restore the same view.
 function stateHash(){
-  const p=new URLSearchParams();
-  if(selected) p.set('m', selected);
-  if(view!=='tree') p.set('view', view);
-  if(focus.size) p.set('focus', [...focus].join(','));
-  if(degree!==1) p.set('deg', degree);
-  if(expanded.size) p.set('exp', [...expanded].join(','));
-  if(hidden.size) p.set('hide', [...hidden].join(','));
-  if(hideRe) p.set('hre', hideRe);
-  const s=p.toString();
+  const s=encodeExplorerState({selected, view, focus, degree, expanded, hidden, hideRe, teams:focusTeams});
   return s ? '#'+s : location.pathname+location.search;
 }
 function syncHash(push){ (push ? history.pushState : history.replaceState).call(history, null, '', stateHash()); }
 function applyHash(){
-  const h=location.hash.slice(1);
-  const p=new URLSearchParams(h.includes('=') ? h : (h ? 'm='+h : ''));   // a bare #module is a selection
-  const ids=k=>(p.get(k)||'').split(',').filter(id=>byId[id]);
-  view = ['hotspots','graph'].includes(p.get('view')) ? p.get('view') : 'tree';
-  focus = new Set(ids('focus')); expanded = new Set(ids('exp')); hidden = new Set(ids('hide'));
-  degree = Math.min(3, Math.max(1, parseInt(p.get('deg'))||1));
-  hideRe = p.get('hre')||'';
-  const m = byId[p.get('m')] ? p.get('m') : null;
-  if(view==='graph' && !focus.size && m) focus.add(m);
+  const state=decodeExplorerState(location.hash, VALID_IDS, VALID_TEAMS);
+  view=state.view; focus=state.focus; degree=state.degree; expanded=state.expanded; hidden=state.hidden; hideRe=state.hideRe;
+  focusTeams.clear(); state.teams.forEach(team=>focusTeams.add(team));
+  if(view==='graph' && !state.focusSpecified && state.selected) focus.add(state.selected);
+  refreshTeamChips();
   syncView();
   endKbRun();
   if(view==='graph') render();
-  applySelected(m);
+  applySelected(state.selected);
 }
 function applySelected(id){   // id may be null; updates the view + detail, never touches history
   selected = id;
@@ -859,11 +861,12 @@ function renderDetail(){
     body.appendChild(st);
   }
   const api = m['api-any']?['(any — no API namespace yet)']:m.api;
+  const uses = m['uses-any']
+    ? (HAS_ACTUAL_EDGES ? (m.uses.length ? m.uses : ['(none observed)']) : ['(any — actual dependencies require a dev REPL)'])
+    : m.uses;
   const secs=[
     section('API namespaces', api),
-    m['uses-any']
-      ? section('Uses', ['(any — unrestricted)'])
-      : section('Uses', m.uses, {link:true, swatch:'var(--uses)'}),
+    section(m['uses-any']?'Uses (unrestricted)':'Uses', uses, {link:true, swatch:'var(--uses)'}),
     section('Used by', m['used-by'], {link:true, swatch:'var(--usedby)'}),
     NS_EDGES && nsUsage(m),
     section('Friends', m.friends, {link:true}),

@@ -151,11 +151,11 @@
   [config ns-symb]
   (resolve-module (prefix->module config) ns-symb))
 
-(defn- module-api-namespaces
+(defn module-api-namespaces
   "Set of API namespace symbols for a given module. `:any` means you can use anything, there are no API namespaces for
-  this module (yet). If unspecified, the default is just the `<module>.core` namespace."
-  [config module]
-  (let [module-config (get-in config [:metabase/modules module :api])]
+  this module (yet). If unspecified, the defaults are `<prefix>.api`, `<prefix>.core`, and `<prefix>.init`."
+  [modules module]
+  (let [module-config (get-in modules [module :api])]
     (cond
       (= module-config :any)
       nil
@@ -164,7 +164,7 @@
       module-config
 
       :else
-      (let [ns-prefix (module-ns-prefix (:metabase/modules config) module)]
+      (let [ns-prefix (module-ns-prefix modules module)]
         #{(symbol (str ns-prefix ".api"))
           (symbol (str ns-prefix ".core"))
           (symbol (str ns-prefix ".init"))}))))
@@ -187,7 +187,7 @@
 
 (defn- allowed-module-namespace? [config current-module ns-symb]
   (let [module                (module config ns-symb)
-        module-api-namespaces (module-api-namespaces config module)
+        module-api-namespaces (module-api-namespaces (:metabase/modules config) module)
         module-friends        (module-friends config module)]
     (or (nil? module-api-namespaces)
         (contains? module-api-namespaces ns-symb)
