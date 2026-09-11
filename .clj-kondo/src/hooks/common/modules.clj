@@ -89,9 +89,14 @@
   [modules module ancestor]
   (boolean (some #{ancestor} (take-while some? (iterate #(parent-module modules %) module)))))
 
+(defn- rest-module? [module]
+  (re-find #"[.-]rest$" (str module)))
+
 (defn- exports-child?
   [modules parent child]
   (or (contains? (set (get-in modules [parent :module-exports])) child)
+      ;; A `.rest` child is its parent's public HTTP surface.
+      (rest-module? child)
       ;; OSS module `X` implicitly exports its `enterprise/X` companion.
       (and (not= (namespace parent) (namespace child))
            (contains? modules child))))
@@ -183,9 +188,6 @@
         (contains? module-friends current-module)
         ;; a child may use its ancestors' internals; a parent still goes through its child's `:api`
         (descendant-of? (:metabase/modules config) current-module module))))
-
-(defn- rest-module? [module]
-  (re-find #"[.-]rest$" (str module)))
 
 (defn- routes-module? [module]
   (str/ends-with? module "-routes"))

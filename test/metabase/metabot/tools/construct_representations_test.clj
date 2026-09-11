@@ -10,6 +10,7 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [clojure.walk :as walk]
+   [metabase.agent-lib.representations.repair :as repr.repair]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.convert :as lib.convert]
@@ -1671,3 +1672,22 @@
               (is (= 1 (count (get-in structured [:query :stages 0 :joins]))))
               (is (some #(= 301 (:field_id %)) (:result-columns structured))
                   "CAMPAIGNS.NAME resolves from the surfaced artifacts"))))))))
+
+(deftest repair-runs-with-refusal-auditing-off-test
+  (testing "repair's source-card lookups are best-effort and the query is resolved for real afterwards,
+            so a refusal in there must not be audited as an access attempt"
+    (let [seen   (atom ::never-called)
+          repair repr.repair/repair]
+      (with-redefs [repr.repair/repair (fn [& args]
+                                         (reset! seen resolve.mp/*audit-refusals?*)
+                                         (apply repair args))]
+        (with-mp-and-stubs!
+          (fn []
+            (construct/execute-representations-query
+             (query-data
+              {"lib/type" "mbql/query"
+               "database" "Sample"
+               "stages"   [{"lib/type"     "mbql.stage/mbql"
+                            "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                            "aggregation"  [["count" {}]]}]})))))
+      (is (false? @seen)))))

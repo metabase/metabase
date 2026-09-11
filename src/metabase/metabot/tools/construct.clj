@@ -174,9 +174,9 @@
 
 (def ^:private permission-aware-content-store
   "ContentStore for agent query construction. Alias for
-  [[shared.content-store/default-store]] — the chokepoint wrapper applies `api/read-check` to
-  every lookup whenever `api/*current-user-id*` is bound, symmetrically across all six
-  ContentStore methods. The unchecked underlying store rejects non-NanoID entity-id values."
+  [[shared.content-store/default-store]], which permission-checks every lookup whenever
+  `api/*current-user-id*` is bound; see that namespace for the audited/unaudited split between the
+  two lookup directions. The unchecked underlying store rejects non-NanoID entity-id values."
   shared.content-store/default-store)
 
 (defn- portable-field-fk-table
@@ -715,7 +715,11 @@
     ;; etc.). Wrap the whole rest of the pipeline in a single `:agent-error?` relay so any of
     ;; them reach the tool wrapper with the flag set.
     (try
-      (let [repaired      (repr.repair/repair mp parsed permission-aware-content-store)
+      (let [;; Repair's mini-resolve lookups are best-effort - a failure is logged at debug and the
+            ;; clause left alone - and `resolve-query` below resolves the query for real. A refusal
+            ;; in there reaches nobody, so it must not go into the audit trail as an access attempt.
+            repaired      (binding [resolve.mp/*audit-refusals?* false]
+                            (repr.repair/repair mp parsed permission-aware-content-store))
             _perms        (check-source-table-query-permissions! mp repaired checked)
             _validated    (repr/validate-query repaired)
             pmbql-query   (repr.resolve/resolve-query mp repaired permission-aware-content-store)

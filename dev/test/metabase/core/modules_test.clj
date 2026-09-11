@@ -8,6 +8,7 @@
    [dev.deps-graph]
    [dev.model-boundary-config]
    [hooks.common.modules :as modules]
+   [metabase.test-runner]
    [metabase.util.json :as json]
    [rewrite-clj.node :as n]
    [rewrite-clj.parser :as r.parser]
@@ -242,6 +243,22 @@
 (defn- rest-module? [module]
   (re-find #"[.-]rest$" (str module)))
 
+(deftest ^:parallel rest-modules-are-nested-test
+  (testing "every REST module uses the `.rest` child convention that makes it implicitly exported"
+    (let [modules (sort (filter rest-module? (keys (dev.deps-graph/kondo-config))))]
+      (is (seq modules) "no REST modules, so the check below would hold vacuously")
+      (doseq [module modules]
+        (testing (str "\n" module)
+          (is (str/ends-with? (name module) ".rest")
+              (format "Rename REST module %s as a `.rest` child of the module it serves." module)))))))
+
+(deftest ^:parallel test-runner-module-folders-test
+  (testing "`:module` resolves through each module's :ns-prefix, so dotted and renamed modules find their tests"
+    (is (= ["test/metabase/lib/schema"
+            "test/metabase/actions_rest"
+            "enterprise/backend/test/metabase_enterprise/transforms_python"]
+           (metabase.test-runner/module-folders '[lib.schema actions.rest enterprise/transforms.python])))))
+
 (deftest do-not-use-rest-modules-in-other-modules-test
   (doseq [[module {:keys [uses], :as _config}] (dev.deps-graph/kondo-config)
           :when                                (not (rest-module? module))
@@ -329,3 +346,34 @@
          (testing (format "\n'%s' module :model-imports" module)
            (is (= (sort imports)
                   imports))))))))
+
+;;;; Module boundary analysis
+
+(deftest ^:parallel strongly-connected-components-test
+  (let [graph {:a #{:b}
+               :b #{:a :c}
+               :c #{}
+               :d #{:e}
+               :e #{:f}
+               :f #{:d}
+               :g #{:h}}]
+    (is (= #{#{:a :b} #{:c} #{:d :e :f} #{:g} #{:h}}
+           (set (dev.deps-graph/strongly-connected-components graph))))
+    (is (= [#{:d :e :f} #{:a :b}]
+           (dev.deps-graph/cyclic-components graph)))))
+
+(deftest ^:parallel module-boundary-config-values-have-valid-types-test
+  (testing "Module boundary keys have the shapes the ratchet counts expect"
+    (doseq [[module config] (dev.deps-graph/kondo-config)]
+      (testing (format "\n%s" module)
+        (is (or (nil? (:api config))
+                (set? (:api config))
+                (= :any (:api config)))
+            ":api must be omitted, a set, or :any")
+        (is (or (nil? (:uses config))
+                (set? (:uses config))
+                (= :any (:uses config)))
+            ":uses must be omitted, a set, or :any")
+        (is (or (nil? (:friends config))
+                (set? (:friends config)))
+            ":friends must be a set when present")))))
