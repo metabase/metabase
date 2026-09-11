@@ -84,10 +84,6 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
         data,
         datasetQuery: card.dataset_query,
       }),
-      getWrapperStyle: () => ({
-        marginLeft: 0,
-        marginRight: 0,
-      }),
     },
   },
 };

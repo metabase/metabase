@@ -240,6 +240,7 @@ export {
   needsGraphGoalResolution,
   resolveGoalSegments,
   resolveGoalValue,
+  resolveOpenEndedGoalSegments,
   toReferencedEntity,
 } from "./lib/dynamic-goals";
 export type {
@@ -247,6 +248,7 @@ export type {
   GoalRefError,
   GoalValueResult,
   ResolvedGoalSegment,
+  ResolvedOpenEndedGoalSegment,
 } from "./lib/dynamic-goals";
 export type { GoalSettingKind } from "./lib/dynamic-goal-settings";
 export {
@@ -424,7 +426,6 @@ export {
   getDefaultPivotColumn,
   isSameSeries,
   MAX_SERIES,
-  segmentIsValid,
 } from "./lib/utils";
 export { DEFAULT_VIZ_ORDER } from "./lib/viz-order";
 export {

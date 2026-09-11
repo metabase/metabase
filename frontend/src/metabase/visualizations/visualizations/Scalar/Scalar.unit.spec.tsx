@@ -1,16 +1,12 @@
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 
-import {
-  fireEvent,
-  render,
-  renderWithProviders,
-  screen,
-  within,
-} from "__support__/ui";
+import { setupCardDataset } from "__support__/server-mocks";
+import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
+import { color } from "metabase/ui/utils/colors";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import { registerVisualizations } from "metabase/visualizations/register";
-import type { Series } from "metabase-types/api";
+import type { DatasetData, ScalarSegment, Series } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
@@ -41,7 +37,7 @@ const settings = {
 
 describe("Scalar", () => {
   it("shouldn't render compact when the value fits the card", () => {
-    render(
+    renderWithProviders(
       <Scalar
         {...mockedProps}
         series={series(12345.6)}
@@ -55,7 +51,7 @@ describe("Scalar", () => {
   });
 
   it("should render compact when the value doesn't fit the card", () => {
-    render(
+    renderWithProviders(
       <Scalar
         {...mockedProps}
         series={series(12345.6)}
@@ -69,7 +65,7 @@ describe("Scalar", () => {
   });
 
   it("should show one tooltip at a time on the smallest cards", async () => {
-    render(
+    renderWithProviders(
       <Scalar
         {...mockedProps}
         showTitle
@@ -94,7 +90,7 @@ describe("Scalar", () => {
 
   it("should navigate to the question when the title is clicked", async () => {
     const onChangeCardAndRun = jest.fn();
-    render(
+    renderWithProviders(
       <Scalar
         {...mockedProps}
         showTitle
@@ -119,7 +115,7 @@ describe("Scalar", () => {
 
   it("should render the real title link from the start so middle-click and copy-link never see a placeholder", () => {
     const getHref = jest.fn(() => "/question/42");
-    render(
+    renderWithProviders(
       <Scalar
         {...mockedProps}
         showTitle
@@ -144,7 +140,7 @@ describe("Scalar", () => {
 
   it("should navigate from a visualizer card with a single underlying question", async () => {
     const onChangeCardAndRun = jest.fn();
-    render(
+    renderWithProviders(
       <Scalar
         {...mockedProps}
         showTitle
@@ -172,7 +168,7 @@ describe("Scalar", () => {
 
   it("should not navigate from a visualizer card with several underlying questions", async () => {
     const onChangeCardAndRun = jest.fn();
-    render(
+    renderWithProviders(
       <Scalar
         {...mockedProps}
         showTitle
@@ -194,7 +190,7 @@ describe("Scalar", () => {
   });
 
   it("should show the description in a tooltip on the title info icon", async () => {
-    render(
+    renderWithProviders(
       <Scalar
         {...mockedProps}
         showTitle
@@ -213,7 +209,7 @@ describe("Scalar", () => {
   });
 
   it("should open the description tooltip with keyboard navigation", async () => {
-    render(
+    renderWithProviders(
       <Scalar
         {...mockedProps}
         showTitle
@@ -233,7 +229,7 @@ describe("Scalar", () => {
   });
 
   it("should not show the info icon while editing a dashboard", () => {
-    render(
+    renderWithProviders(
       <Scalar
         {...mockedProps}
         showTitle
@@ -252,7 +248,7 @@ describe("Scalar", () => {
   });
 
   it("should render null", () => {
-    render(
+    renderWithProviders(
       <Scalar
         {...mockedProps}
         isDashboard // displays title
@@ -267,7 +263,7 @@ describe("Scalar", () => {
   });
 
   it("should not apply text-overflow ellipsis to the container", () => {
-    render(
+    renderWithProviders(
       <Scalar
         {...mockedProps}
         series={series(1234567)}
@@ -285,7 +281,7 @@ describe("Scalar", () => {
   });
 
   it("lets Unicode subscript descenders render past the line box (metabase#72443)", () => {
-    render(
+    renderWithProviders(
       <Scalar
         {...mockedProps}
         series={series(344)}
@@ -302,7 +298,7 @@ describe("Scalar", () => {
 
   it("should call onVisualizationClick with the clicked element when clickable", async () => {
     const onVisualizationClick = jest.fn();
-    render(
+    renderWithProviders(
       <Scalar
         {...mockedProps}
         series={series(12345)}
@@ -326,7 +322,7 @@ describe("Scalar", () => {
   });
 
   it("should fall back to the first column when scalar.field matches no column", () => {
-    render(
+    renderWithProviders(
       <Scalar
         {...mockedProps}
         series={series(12345)}
@@ -339,6 +335,158 @@ describe("Scalar", () => {
 
     expect(screen.getByText("12,345")).toBeInTheDocument();
   });
+});
+
+describe("Scalar conditional colors", () => {
+  const GOAL_REF = { type: "card", id: 9, column: "goal" } as const;
+  const UNRESOLVED_MESSAGE =
+    "Couldn't load a value one of this chart's ranges depends on.";
+
+  function setup(series: Series, segments: ScalarSegment[]) {
+    renderWithProviders(
+      <Scalar
+        {...mockedProps}
+        actionButtons={<button>Download</button>}
+        height={200}
+        rawSeries={series}
+        series={series}
+        settings={{ ...settings, "scalar.segments": segments }}
+        showTitle
+        visualizationIsClickable={() => false}
+        width={230}
+      />,
+    );
+  }
+
+  it("colors the value by the open-ended static range containing it", async () => {
+    setup(createScalarSeries(), [
+      { min: null, max: 100, color: "red", label: "low" },
+      { min: 10000, max: null, color: "green", label: "high" },
+    ]);
+
+    expect(screen.getByText("12,345")).toBeInTheDocument();
+    expect(getValueColor()).toBe("green");
+
+    await userEvent.hover(screen.getByTestId("scalar-value"));
+    expect(await screen.findByText("≥ 10000")).toBeInTheDocument();
+    expect(screen.getByText("≤ 100")).toBeInTheDocument();
+  });
+
+  it("colors the value by a range bound the dataset already answers", async () => {
+    setup(createScalarSeries(createReferencedEntitiesAnswer(10000)), [
+      { min: GOAL_REF, max: null, color: "green", label: "above goal" },
+    ]);
+
+    expect(getValueColor()).toBe("green");
+
+    await userEvent.hover(screen.getByTestId("scalar-value"));
+    expect(await screen.findByText("≥ 10000")).toBeInTheDocument();
+    expect(screen.getByText("above goal")).toBeInTheDocument();
+  });
+
+  it("keeps the default color when the value misses the resolved range", () => {
+    setup(createScalarSeries(createReferencedEntitiesAnswer(20000)), [
+      { min: GOAL_REF, max: null, color: "green", label: "above goal" },
+    ]);
+
+    expect(getValueColor()).toBe(color("text-primary"));
+  });
+
+  it("shows a loader until an unanswered reference is fetched, then colors the value", async () => {
+    setupCardDataset({
+      dataset: {
+        data: createMockDatasetData(createReferencedEntitiesAnswer(10000)),
+      },
+    });
+
+    setup(createScalarSeries(), [
+      { min: GOAL_REF, max: null, color: "green", label: "above goal" },
+    ]);
+
+    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+    expect(screen.queryByTestId("scalar-value")).not.toBeInTheDocument();
+    expect(screen.getByTestId("scalar-title")).toHaveTextContent(
+      "Scalar Title",
+    );
+    expect(
+      screen.getByRole("button", { name: "Download" }),
+    ).toBeInTheDocument();
+
+    expect(await screen.findByText("12,345")).toBeInTheDocument();
+    expect(getValueColor()).toBe("green");
+  });
+
+  it("explains instead of rendering when a self-column range's cell is null", () => {
+    setup(createScalarSeries({ rows: [[null]] }), [
+      { min: "count", max: null, color: "green", label: "above goal" },
+    ]);
+
+    expect(screen.getByText(UNRESOLVED_MESSAGE)).toBeInTheDocument();
+    expect(screen.queryByTestId("scalar-value")).not.toBeInTheDocument();
+  });
+
+  it("explains instead of rendering when a self-column range's question returned no rows", () => {
+    setup(createScalarSeries({ rows: [] }), [
+      { min: "count", max: null, color: "green", label: "above goal" },
+    ]);
+
+    expect(screen.getByText(UNRESOLVED_MESSAGE)).toBeInTheDocument();
+    expect(screen.queryByTestId("scalar-value")).not.toBeInTheDocument();
+  });
+
+  it("explains instead of rendering when a range's bound failed to load", () => {
+    setup(
+      createScalarSeries({
+        referenced_entities: {
+          card: { [GOAL_REF.id]: { status: "failed", error: "boom" } },
+        },
+      }),
+      [{ min: GOAL_REF, max: null, color: "green", label: "above goal" }],
+    );
+
+    expect(screen.getByText(UNRESOLVED_MESSAGE)).toBeInTheDocument();
+    expect(screen.queryByTestId("scalar-value")).not.toBeInTheDocument();
+    expect(screen.getByTestId("scalar-title")).toHaveTextContent(
+      "Scalar Title",
+    );
+    expect(
+      screen.getByRole("button", { name: "Download" }),
+    ).toBeInTheDocument();
+  });
+
+  function createScalarSeries(data: Partial<DatasetData> = {}): Series {
+    return [
+      createMockSingleSeries(createMockCard({ display: "scalar" }), {
+        data: createMockDatasetData({
+          cols: [createMockColumn({ name: "count" })],
+          rows: [[12345]],
+          ...data,
+        }),
+      }),
+    ];
+  }
+
+  function createReferencedEntitiesAnswer(goal: number): Partial<DatasetData> {
+    return {
+      referenced_entities: {
+        card: {
+          [GOAL_REF.id]: {
+            status: "completed",
+            data: {
+              cols: [createMockColumn({ name: GOAL_REF.column })],
+              rows: [[goal]],
+            },
+          },
+        },
+      },
+    };
+  }
+
+  function getValueColor() {
+    return screen
+      .getByTestId("scalar-value")
+      .style.getPropertyValue("--scalar-value-color");
+  }
 });
 
 describe("scalar viz settings", () => {

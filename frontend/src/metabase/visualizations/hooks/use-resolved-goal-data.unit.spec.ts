@@ -2,14 +2,14 @@ import fetchMock from "fetch-mock";
 
 import { setupCardDataset } from "__support__/server-mocks";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
-import type { DatasetData, GoalSegment } from "metabase-types/api";
+import type { DatasetData, GoalValue } from "metabase-types/api";
 import {
   createMockColumn,
   createMockDatasetData,
   createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 
-import { useResolvedGoalSegments } from "./use-resolved-goal-segments";
+import { useResolvedGoalData } from "./use-resolved-goal-data";
 
 const DATASET_QUERY = createMockStructuredDatasetQuery();
 
@@ -18,63 +18,38 @@ const DATA = createMockDatasetData({
   rows: [[50]],
 });
 
-const STATIC_SEGMENTS: GoalSegment[] = [
-  { min: 0, max: 100, color: "red", label: "" },
-];
+const GOAL_REF: GoalValue = { type: "card", id: 9, column: "goal" };
 
-const DYNAMIC_SEGMENTS: GoalSegment[] = [
-  {
-    min: 0,
-    max: { type: "card", id: 9, column: "goal" },
-    color: "red",
-    label: "",
-  },
-];
-
-function setup(data: DatasetData, segments: GoalSegment[]) {
+function setup(data: DatasetData, goalValues: (GoalValue | null)[]) {
   return renderHookWithProviders(
-    () => useResolvedGoalSegments(DATASET_QUERY, data, segments),
+    () => useResolvedGoalData(DATASET_QUERY, data, goalValues),
     {},
   );
 }
 
-describe("useResolvedGoalSegments", () => {
-  it("resolves answered segments without fetching", () => {
-    const { result } = setup(DATA, STATIC_SEGMENTS);
+describe("useResolvedGoalData", () => {
+  it("resolves static values, self-column names and empty bounds without fetching", () => {
+    const { result } = setup(DATA, [0, 100, "count", null]);
 
-    expect(result.current).toEqual({
-      status: "resolved",
-      segments: [{ min: 0, max: 100, color: "red", label: "" }],
-    });
+    expect(result.current).toEqual({ status: "resolved", data: DATA });
     expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
   });
 
   it("answers references the dataset can't by re-running the query with them attached", async () => {
     setupCardDataset({
-      dataset: {
-        data: createMockDatasetData({
-          referenced_entities: {
-            card: {
-              9: {
-                status: "completed",
-                data: {
-                  cols: [createMockColumn({ name: "goal" })],
-                  rows: [[250]],
-                },
-              },
-            },
-          },
-        }),
-      },
+      dataset: { data: createReferencedEntitiesAnswer(250) },
     });
 
-    const { result } = setup(DATA, DYNAMIC_SEGMENTS);
+    const { result } = setup(DATA, [0, GOAL_REF]);
     expect(result.current).toEqual({ status: "resolving" });
 
     await waitFor(() =>
-      expect(result.current).toEqual({
+      expect(result.current).toMatchObject({
         status: "resolved",
-        segments: [{ min: 0, max: 250, color: "red", label: "" }],
+        data: {
+          rows: DATA.rows,
+          referenced_entities: { card: { 9: { data: { rows: [[250]] } } } },
+        },
       }),
     );
 
@@ -92,7 +67,14 @@ describe("useResolvedGoalSegments", () => {
       },
     });
 
-    const { result } = setup(data, DYNAMIC_SEGMENTS);
+    const { result } = setup(data, [0, GOAL_REF]);
+
+    expect(result.current).toEqual({ status: "failed" });
+    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+  });
+
+  it("fails without fetching when a self-column name matches no column", () => {
+    const { result } = setup(DATA, ["missing", 100]);
 
     expect(result.current).toEqual({ status: "failed" });
     expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
@@ -100,24 +82,10 @@ describe("useResolvedGoalSegments", () => {
 
   it("fails when the fresh answer still lacks the referenced column", async () => {
     setupCardDataset({
-      dataset: {
-        data: createMockDatasetData({
-          referenced_entities: {
-            card: {
-              9: {
-                status: "completed",
-                data: {
-                  cols: [createMockColumn({ name: "other" })],
-                  rows: [[1]],
-                },
-              },
-            },
-          },
-        }),
-      },
+      dataset: { data: createReferencedEntitiesAnswer(1, "other") },
     });
 
-    const { result } = setup(DATA, DYNAMIC_SEGMENTS);
+    const { result } = setup(DATA, [0, GOAL_REF]);
 
     await waitFor(() => expect(result.current).toEqual({ status: "failed" }));
   });
@@ -125,7 +93,7 @@ describe("useResolvedGoalSegments", () => {
   it("fails when the resolving query fails", async () => {
     setupCardDataset({ status: 500 });
 
-    const { result } = setup(DATA, DYNAMIC_SEGMENTS);
+    const { result } = setup(DATA, [0, GOAL_REF]);
 
     await waitFor(() => expect(result.current).toEqual({ status: "failed" }));
   });
@@ -141,7 +109,7 @@ describe("useResolvedGoalSegments", () => {
       },
     });
 
-    const { result } = setup(DATA, DYNAMIC_SEGMENTS);
+    const { result } = setup(DATA, [0, GOAL_REF]);
 
     await waitFor(() => expect(result.current).toEqual({ status: "failed" }));
   });
@@ -170,36 +138,31 @@ describe("useResolvedGoalSegments", () => {
     });
 
     const { result, rerender } = renderHookWithProviders(
-      ({ segments }: { segments: GoalSegment[] }) =>
-        useResolvedGoalSegments(DATASET_QUERY, DATA, segments),
-      { initialProps: { segments: DYNAMIC_SEGMENTS } },
+      ({ goalValues }: { goalValues: GoalValue[] }) =>
+        useResolvedGoalData(DATASET_QUERY, DATA, goalValues),
+      { initialProps: { goalValues: [GOAL_REF] } },
     );
 
     await waitFor(() =>
-      expect(result.current).toEqual({
+      expect(result.current).toMatchObject({
         status: "resolved",
-        segments: [{ min: 0, max: 250, color: "red", label: "" }],
+        data: {
+          referenced_entities: { card: { 9: { data: { rows: [[250]] } } } },
+        },
       }),
     );
 
-    rerender({
-      segments: [
-        {
-          min: 0,
-          max: { type: "card", id: 10, column: "goal" },
-          color: "red",
-          label: "",
-        },
-      ],
-    });
+    rerender({ goalValues: [{ type: "card", id: 10, column: "goal" }] });
 
     // the previous question's answer must not read as a failure for this one
     expect(result.current).toEqual({ status: "resolving" });
 
     await waitFor(() =>
-      expect(result.current).toEqual({
+      expect(result.current).toMatchObject({
         status: "resolved",
-        segments: [{ min: 0, max: 500, color: "red", label: "" }],
+        data: {
+          referenced_entities: { card: { 10: { data: { rows: [[500]] } } } },
+        },
       }),
     );
   });
@@ -216,39 +179,38 @@ describe("useResolvedGoalSegments", () => {
         },
       },
     });
-    const segments: GoalSegment[] = [
-      {
-        min: { type: "measure", id: 4, column: "sum" },
-        max: { type: "card", id: 9, column: "goal" },
-        color: "red",
-        label: "",
-      },
-    ];
     setupCardDataset({
-      dataset: {
-        data: createMockDatasetData({
-          referenced_entities: {
-            card: {
-              9: {
-                status: "completed",
-                data: {
-                  cols: [createMockColumn({ name: "goal" })],
-                  rows: [[250]],
-                },
-              },
-            },
-          },
-        }),
-      },
+      dataset: { data: createReferencedEntitiesAnswer(250) },
     });
 
-    const { result } = setup(data, segments);
+    const { result } = setup(data, [
+      { type: "measure", id: 4, column: "sum" },
+      GOAL_REF,
+    ]);
 
     await waitFor(() =>
-      expect(result.current).toEqual({
+      expect(result.current).toMatchObject({
         status: "resolved",
-        segments: [{ min: 10, max: 250, color: "red", label: "" }],
+        data: {
+          referenced_entities: {
+            measure: { 4: { data: { rows: [[10]] } } },
+            card: { 9: { data: { rows: [[250]] } } },
+          },
+        },
       }),
     );
   });
 });
+
+function createReferencedEntitiesAnswer(goal: number, column = "goal") {
+  return createMockDatasetData({
+    referenced_entities: {
+      card: {
+        9: {
+          status: "completed",
+          data: { cols: [createMockColumn({ name: column })], rows: [[goal]] },
+        },
+      },
+    },
+  });
+}
