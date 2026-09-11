@@ -1265,6 +1265,76 @@
             (is (=? {:min {:name "min" :type "number"}}
                     (:template_tags (content-one {:items [{:type "question" :id (:id card)}]}))))))))))
 
+(defn- native-card-query
+  "A stored native `:dataset_query` over the test database, in the legacy shape."
+  [sql]
+  {:database (mt/id) :type :native :native {:query sql}})
+
+(deftest native-question-summary-shows-the-query-head-test
+  (testing "GHY-4518: a native question's query_summary is the head of its own query text. Lib's
+            native-stage display name is the placeholder \"Native query\", which tells a caller
+            reading the row nothing about what the card does."
+    (mt/with-current-user (mt/user->id :crowberto)
+      (testing "the SQL itself, collapsed onto one line"
+        (mt/with-temp [:model/Card {card-id :id}
+                       {:query_type    :native
+                        :dataset_query (native-card-query "select date_trunc('month', placed_at)\n  from orders\n group by 1")}]
+          (is (= "SQL: select date_trunc('month', placed_at) from orders group by 1"
+                 (:query_summary (content-one {:items [{:type "question" :id card-id}]}))))))
+      (testing "a long query is truncated to a bounded head, marked with an ellipsis"
+        (let [sql (str "select " (str/join ", " (repeat 100 "a_fairly_long_column_name")) " from orders")]
+          (mt/with-temp [:model/Card {card-id :id}
+                         {:query_type :native :dataset_query (native-card-query sql)}]
+            (let [summary (:query_summary (content-one {:items [{:type "question" :id card-id}]}))]
+              (is (str/starts-with? summary "SQL: select a_fairly_long_column_name"))
+              (is (str/ends-with? summary "…"))
+              (is (< (count summary) 320)
+                  "the summary stays a summary — a whole query belongs in include: definition")))))
+      (testing "an MBQL question keeps the Lib description"
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query (venues-count-query)}]
+          (let [summary (:query_summary (content-one {:items [{:type "question" :id card-id}]}))]
+            (is (some? summary))
+            (is (not (str/starts-with? summary "SQL: ")))))))))
+
+(deftest native-question-summary-still-withholds-unreadable-source-cards-test
+  (testing "GHY-4518 must not reopen GHY-4510: a native query names its source card in a template
+            tag, so the SQL head goes behind the same gate the Lib description sits behind."
+    (mt/with-temp [:model/Collection {locked-id :id} {}
+                   :model/Card {secret-id :id} {:collection_id locked-id
+                                                :name          "SECRET-SourceCard-NORTHWIND"
+                                                :dataset_query (venues-query)}]
+      (mt/with-temp [:model/Card {wrapper-id :id}
+                     {:query_type    :native
+                      :dataset_query {:database (mt/id)
+                                      :type     :native
+                                      :native   {:query "select * from {{#card}}"
+                                                 :template-tags
+                                                 {"card" {:id           "3f3c6e10-1bbb-4a2e-9b6e-2a2d3c4e5f60"
+                                                          :name         "card"
+                                                          :display-name "card"
+                                                          :type         :card
+                                                          :card-id      secret-id}}}}}]
+        (mt/with-non-admin-groups-no-collection-perms locked-id
+          (testing "an admin, who can read the source, gets the SQL head"
+            (mt/with-test-user :crowberto
+              (is (str/starts-with? (:query_summary (content-one {:items [{:type "question" :id wrapper-id}]}))
+                                    "SQL: select * from"))))
+          (testing "a caller who cannot read the source gets no summary at all"
+            (mt/with-test-user :rasta
+              (let [row (content-one {:items [{:type "question" :id wrapper-id}]})]
+                (is (nil? (:error row)) "the wrapper itself is readable")
+                (is (nil? (:query_summary row)))))))))))
+
+(deftest question-carries-its-database-name-test
+  (testing "GHY-4518: a question read names its database, so turning `database_id` into a name does
+            not cost a second search call"
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (venues-query)}]
+      (mt/with-test-user :crowberto
+        (let [row (content-one {:items [{:type "question" :id card-id}]})]
+          (is (= (t2/select-one-fn :name :model/Database :id (mt/id)) (:database_name row)))
+          (is (= (mt/id) (:database_id row))
+              "the id stays — the name is additional, not a replacement"))))))
+
 (deftest get-content-not-found-parity-across-types-test
   (testing "the not-found collapse holds for every type, not just question: a nonexistent id and an
             existing-but-unreadable one are indistinguishable apart from the id. Each type has its

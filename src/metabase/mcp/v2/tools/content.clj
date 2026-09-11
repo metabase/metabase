@@ -89,6 +89,30 @@
                  (every? mi/can-read? cards)))))
     (catch Exception _ false)))
 
+(def ^:private max-native-summary-length
+  "Character budget for the query text rendered into a native card's `query_summary`."
+  300)
+
+(defn- native-query-summary
+  "A one-line summary of a native `query`: the head of the query text itself, whitespace-collapsed
+   and truncated to [[max-native-summary-length]]. nil when the stage holds no text or holds a
+   non-string one — Mongo and friends store a map — leaving the caller on the generic
+   Lib description."
+  [query]
+  (let [sql (try (lib/raw-native-query query) (catch Exception _ nil))]
+    (when (string? sql)
+      (let [one-line (str/trim (str/replace sql #"\s+" " "))]
+        (when-not (str/blank? one-line)
+          (str "SQL: " (u/truncate one-line max-native-summary-length)
+               (when (> (count one-line) max-native-summary-length) "…")))))))
+
+(defn- database-name
+  "The name of the database `mp` provides metadata for, or nil when that database is gone. Read off
+   the provider the row already built rather than with a second query."
+  [mp]
+  (when mp
+    (try (:name (lib.metadata/database mp)) (catch Exception _ nil))))
+
 (defn- card-content-row
   [card]
   (let [dataset-query (:dataset_query card)
@@ -100,8 +124,15 @@
            ;; wanted to state that had to spend a second call resolving the collection — search
            ;; already returns the same path on its rows.
            :collection_path (v2.resolve/collection-path (:collection_id card))
+           ;; Lib's native-stage display name is the bare placeholder "Native query" — enough in
+           ;; the UI, where the SQL renders beside it, and nothing at all to a caller holding only
+           ;; this row (GHY-4518). Both branches stay behind the source-card gate: a native query
+           ;; can name a Card in a template tag as readily as an MBQL stage can.
            :query_summary (when (and query (source-cards-readable? query))
-                            (try (lib/describe-query query) (catch Exception _ nil)))
+                            (or (when native? (native-query-summary query))
+                                (try (lib/describe-query query) (catch Exception _ nil))))
+           ;; `database_id` alone made naming the source cost a second `search` call.
+           :database_name (database-name mp)
            :template_tags (when native? (raw-template-tags dataset-query))
            ;; The materialized parameter list — for native cards it is derived from the raw
            ;; template tags above (same data, two views), for MBQL cards it is the stored array.
@@ -632,7 +663,7 @@
              "concise" "detailed"]]]])
 
 (registry/deftool get-content
-  "Fetch content by {type, id} — the typed read for anything found via search or browse_collection. Batch up to 10 items of mixed types; each is permission-checked independently and a bad item returns {type, id, error} without failing the batch. Types: question, model, metric, measure, dashboard, document, collection, snippet, segment, alert, subscription, transform. Ids: numeric or 21-char entity_id. Concise shapes are task-focused: a question carries its source (database/table/source card), display, one-line query summary, raw template_tags (in the stored shape question_write accepts back verbatim — read-modify-write round-trips), and materialized parameters (the same tags viewed as parameters, not a second concept); a dashboard returns the editing skeleton (tabs, parameters with wired dashcard ids, one summary row per dashcard with position/size/series/inline parameters), never the raw REST dashcards; a document returns its body text as content_markdown — the same field name document_write takes and returns, so a read-modify-write needs no renaming (a body holding a block with no Markdown form returns content_markdown_unavailable in its place instead: that document cannot be edited or rewritten as Markdown); alerts and subscriptions return condition, schedule, channels, recipients (redacted for non-admins); a transform returns source type, target, latest run. include adds sections on demand — definition returns the stored query (numeric ids), the same shape execute_query and question_write accept, so read-modify-write round-trips; visualization_settings returns a question's or model's stored chart settings, the same property question_write takes back, so a chart can be read back and patched; comments returns a document's threads, each anchored to the exact character range of its block in the returned markdown."
+  "Fetch content by {type, id} — the typed read for anything found via search or browse_collection. Batch up to 10 items of mixed types; each is permission-checked independently and a bad item returns {type, id, error} without failing the batch. Types: question, model, metric, measure, dashboard, document, collection, snippet, segment, alert, subscription, transform. Ids: numeric or 21-char entity_id. Concise shapes are task-focused: a question carries its source (database id and name, table, source card), display, a one-line query summary — for a native question the head of its query text rather than a placeholder — raw template_tags (in the stored shape question_write accepts back verbatim — read-modify-write round-trips), and materialized parameters (the same tags viewed as parameters, not a second concept); a dashboard returns the editing skeleton (tabs, parameters with wired dashcard ids, one summary row per dashcard with position/size/series/inline parameters), never the raw REST dashcards; a document returns its body text as content_markdown — the same field name document_write takes and returns, so a read-modify-write needs no renaming (a body holding a block with no Markdown form returns content_markdown_unavailable in its place instead: that document cannot be edited or rewritten as Markdown); alerts and subscriptions return condition, schedule, channels, recipients (redacted for non-admins); a transform returns source type, target, latest run. include adds sections on demand — definition returns the stored query (numeric ids), the same shape execute_query and question_write accept, so read-modify-write round-trips; visualization_settings returns a question's or model's stored chart settings, the same property question_write takes back, so a chart can be read back and patched; comments returns a document's threads, each anchored to the exact character range of its block in the returned markdown."
   {:name         "get_content"
    :scope        metabot.scope/agent-content-read
    :annotations  {:readOnlyHint true :idempotentHint true}
