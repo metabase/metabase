@@ -71,6 +71,7 @@
    [metabase.documents.core :as documents]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
@@ -119,13 +120,51 @@
      :page  page
      :pages pages}))
 
+(def ^:private ^:dynamic *curated-only?*
+  "Whether this read is restricted to curated content (the session's Metabot has `use_verified_content` on). Bound
+   once per [[read-resource]] call."
+  false)
+
+(def ^:private item-type->curation-model
+  "List-item `:type` -> the model [[curation/curated-ids]] judges it as, for data-bearing items that carry a
+   curation signal."
+  {"table"     "table"
+   "model"     "card"
+   "question"  "card"
+   "metric"    "card"
+   "dashboard" "dashboard"})
+
+(def ^:private uncuratable-item-types
+  "Data-bearing list-item types that can never be curated, so they're hidden under [[*curated-only?*]]."
+  #{"transform"})
+
+(defn- curation-key
+  "The `[curation-model id]` pair [[curation/curated-ids]] judges `item` by, or nil for items without a curation
+   signal."
+  [{:keys [type id]}]
+  (when-let [model (item-type->curation-model type)]
+    [model id]))
+
+(defn- curated-items
+  "Keep the `items` a curated-only read may show: curated tables/cards/dashboards, plus navigation items (databases,
+   schemas, collections, documents, dashcards without a card, ...) that carry no data of their own."
+  [items]
+  (let [curated (curation/curated-ids (keep curation-key items))]
+    (filterv (fn [item]
+               (if-let [k (curation-key item)]
+                 (contains? curated k)
+                 (not (uncuratable-item-types (:type item)))))
+             items)))
+
 (defn- list-result
   "Build a structured-output map for a list of items.
    `list-type` is a keyword like :databases, :collection-items, :recents, etc.
-   `query-params` is the parsed URI query-param map; `:page` selects the page (1-indexed string)."
+   `query-params` is the parsed URI query-param map; `:page` selects the page (1-indexed string).
+   Under [[*curated-only?*]], uncurated items are dropped before paginating so totals stay accurate."
   ([list-type items] (list-result list-type items nil))
   ([list-type items query-params]
-   (let [{:keys [items total page pages]} (paginate-list items (:page query-params))]
+   (let [items (cond-> items *curated-only?* curated-items)
+         {:keys [items total page pages]} (paginate-list items (:page query-params))]
      {:structured-output
       {:result-type :metabot-list
        :list-type   list-type
@@ -385,12 +424,22 @@
                     (mapv present-card))]
     (list-result :database-models models query-params)))
 
+(defn- curated-table-schemas
+  "The schemas of the Database with `db-id` that hold at least one curated active Table."
+  [db-id]
+  (let [tables  (metabot.db/active-tables-for-database db-id)
+        curated (curation/curated-ids (map (fn [{:keys [id]}] ["table" id]) tables))]
+    (into #{}
+          (comp (filter (fn [{:keys [id]}] (contains? curated ["table" id])))
+                (keep :schema))
+          tables)))
+
 (defn- fetch-database-schemas [id-str query-params]
   (let [db-id   (parse-long id-str)
         _       (warehouses/get-database db-id)
         rows    (metabot.db/active-schemas-for-database db-id)
-        schemas (->> rows
-                     (keep :schema)
+        schemas (->> (cond->> (keep :schema rows)
+                       *curated-only?* (filter (curated-table-schemas db-id)))
                      (mapv (fn [s]
                              {:type        "schema"
                               :name        s
@@ -782,6 +831,36 @@
              :uri          uri
              :id-segment   id-seg}))))
 
+(defn- curation-subject
+  "What a single-entity URI must be curated as under [[*curated-only?*]]: a `[curation-model id]` pair, `::never` for
+   entity types that can't be curated, or nil when the URI isn't gated — navigation, collections, dashboards,
+   documents, conversation state, and `table/{id}/derived` (whose listing is filtered instead), plus measures and
+   segments that don't exist (left to their handler's 404)."
+  [[type-seg id-seg aspect]]
+  (let [id (some-> id-seg parse-long)]
+    (when (and id (pos? id))
+      (case type-seg
+        "table"                       (when-not (= aspect "derived") ["table" id])
+        ("model" "question" "metric") ["card" id]
+        "measure"                     (some->> (metabot.db/measure-table-id id) (vector "table"))
+        "segment"                     (some->> (metabot.db/segment-table-id id) (vector "table"))
+        "transform"                   ::never
+        nil))))
+
+(defn- check-curated-uri!
+  "Under [[*curated-only?*]], reject a URI naming an entity that isn't curated, without naming the entity."
+  [uri segments]
+  (when *curated-only?*
+    (when-let [subject (curation-subject segments)]
+      (when (or (= subject ::never)
+                (empty? (curation/curated-ids [subject])))
+        (throw (ex-info (str "`" uri "` is not available: this Metabot only uses curated content (verified, "
+                             "official, or Library content). Use `search` to find curated tables, models, or "
+                             "metrics instead.")
+                        {:agent-error? true
+                         :status-code  403
+                         :uri          uri}))))))
+
 (defn- dispatch
   "Route a parsed URI to the right fetch handler. The match-one table is the canonical
    list of supported URI shapes — adding a new URI = adding a clause here + a handler.
@@ -791,6 +870,7 @@
   [uri]
   (let [{:keys [segments query-params]} (parse-uri uri)]
     (check-numeric-id-segment! uri segments)
+    (check-curated-uri! uri segments)
     (->> (match/match-one segments
            ;; Navigation
            ["databases"]                                    (fetch-databases-list query-params)
@@ -1002,7 +1082,8 @@
             {:uri-count (count uris) :max max-concurrent-uris})))
 
   ;; Fetch all URIs (sequentially for now, could parallelize with pmap)
-  (let [resources (mapv fetch-single-uri uris)
+  (let [resources (binding [*curated-only?* (curation/curated-content-only? shared/*metabot-id* shared/*profile-id*)]
+                    (mapv fetch-single-uri uris))
         formatted (format-resources resources)
         labels    (into []
                         (comp (filter :content)
