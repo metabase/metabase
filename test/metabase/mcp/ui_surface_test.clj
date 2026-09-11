@@ -1,5 +1,6 @@
 (ns metabase.mcp.ui-surface-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.macros.scope :as scope]
    [metabase.mcp.session :as mcp.session]
@@ -126,3 +127,60 @@
                                  403))))
       (is (= 202 (:status (post! (mcp.session/issue-ui-credential session-id user-id #{"agent:query:run"})
                                  202)))))))
+
+;;; ---------------------------------------- declared-scope collision guard ----------------------------------------
+
+(def ^:private surface-probes
+  "One probe per route on the surface: `[[method uri] body]`, where `uri` carries the `/api/` prefix so it can be
+   matched against [[mcp.ui-surface/request-surface]]'s keys.
+
+   The bodies are deliberately minimal rather than valid. The probe only has to reach the handler — what the
+   handler then does with a thin body is not what is under test."
+  {[:get  "/api/embed-mcp/bootstrap"]         nil
+   [:post "/api/embed-mcp/feedback"]          {}
+   [:post "/api/embed-mcp/drills"]            {:encodedQuery "ZW5jb2RlZA=="}
+   [:post "/api/dataset"]                     {}
+   [:post "/api/dataset/pivot"]               {}
+   [:post "/api/dataset/query_metadata"]      {}
+   [:post "/api/dataset/parameter/remapping"] {}})
+
+(def ^:private scope-rejections
+  "The two error codes the endpoint scope layer answers with: [[scope/enforce-scope]] refusing a granted set that
+   does not satisfy a declared `:scope`, and [[scope/ensure-scopes-checked]] refusing a scoped credential on an
+   endpoint that declares none."
+  #{"unsupported_scope" "scope_not_permitted"})
+
+(deftest every-surface-route-survives-the-endpoint-scope-layer-test
+  (testing "GHY-4400: a route the credential is allowed to authenticate must not then be refused by the endpoint
+            scope layer. The two confinement mechanisms are independent — `request-surface` decides what the
+            credential may authenticate, a `defendpoint`'s `:scope` decides what a granted scope set may reach —
+            and the credential carries `::scope/mcp-ui`, which satisfies no declared `:scope` by design.
+
+            So declaring a `:scope` on any route of this surface makes the iframe's request 403 while every other
+            caller is unaffected: an ordinary session carries `::scope/unrestricted` and passes. That is invisible
+            in review (the surface and the endpoint live in different modules, and the change merges clean) and
+            invisible at runtime (the iframe simply stops rendering). This is the test that sees it.
+
+            If this goes red, do NOT widen the credential to whatever scope was declared. Name the shared
+            capability, tag the route with it, and mint it into the credential's request-time `:token-scopes` —
+            the grant side of `scope-matches?` is already a set."
+    (testing "every route on the surface has a probe, so adding one cannot silently skip this check"
+      (is (= (set (keys mcp.ui-surface/request-surface))
+             (set (keys surface-probes)))))
+    (let [user-id    (mt/user->id :crowberto)
+          session-id (mcp.session/create! user-id)
+          ;; the scope the whole surface costs, so nothing here is refused by `ui-surface` itself —
+          ;; `dataset-routes-cost-the-query-scope-test` above is what covers that gate
+          credential (mcp.session/issue-ui-credential session-id user-id #{"agent:query:run"})
+          probe!     (fn [[method uri] body]
+                       (let [url (str/replace-first uri #"^/api/" "")]
+                         (apply client/client-full-response method url
+                                {:request-options {:headers {"x-metabase-mcp-ui-auth" credential
+                                                             "mcp-session-id" session-id}}}
+                                (when body [body]))))]
+      (doseq [[route body] (concat surface-probes
+                                   [[[:get (str "/api/embed-mcp/queries/" (random-uuid))] nil]])]
+        (testing (str (first route) " " (second route))
+          (let [{:keys [body]} (probe! route body)]
+            (is (not (contains? scope-rejections (:error body)))
+                "refused by the endpoint scope layer — see this test's docstring")))))))
