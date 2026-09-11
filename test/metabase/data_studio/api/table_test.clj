@@ -56,7 +56,7 @@
       (is (= :metabase-transform (t2/select-one-fn :data_source :model/Table :id table-id))))))
 
 (deftest data-analyst-can-access-endpoints-test
-  (testing "Data analysts (members of Data Analysts group) can access data studio endpoints"
+  (testing "Data analysts (members of Data Analysts group) can access data studio endpoints with advanced-permissions"
     (let [data-analyst-group-id (:id (perms-group/data-analyst))]
       (mt/with-temp [:model/User {analyst-id :id} {:first_name "Data"
                                                    :last_name "Analyst"
@@ -65,13 +65,20 @@
                      :model/PermissionsGroupMembership _ {:user_id analyst-id :group_id data-analyst-group-id}
                      :model/Database {db-id :id} {}
                      :model/Table {table-id :id} {:db_id db-id}]
-        (testing "data analyst can edit tables"
-          (is (= {} (mt/user-http-request analyst-id :post 200 "data-studio/table/edit"
-                                          {:table_ids [table-id]
-                                           :data_layer "final"}))))
-        (testing "data analyst can get selection info"
-          (is (map? (mt/user-http-request analyst-id :post 200 "data-studio/table/selection"
-                                          {:table_ids [table-id]}))))))))
+        (mt/when-ee-evailable
+         (mt/with-premium-features #{:advanced-permissions}
+           (testing "data analyst can edit tables"
+             (is (= {} (mt/user-http-request analyst-id :post 200 "data-studio/table/edit"
+                                             {:table_ids [table-id]
+                                              :data_layer "final"}))))
+           (testing "data analyst can get selection info"
+             (is (map? (mt/user-http-request analyst-id :post 200 "data-studio/table/selection"
+                                             {:table_ids [table-id]}))))))
+        (mt/with-premium-features #{}
+          (testing "without advanced-permissions the data analyst is refused"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request analyst-id :post 403 "data-studio/table/selection"
+                                         {:table_ids [table-id]})))))))))
 
 (deftest regular-user-cannot-access-data-studio-test
   (testing "Regular users (not in Data Analysts group) cannot access data studio endpoints"

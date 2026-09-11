@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.scim.api :as scim]
    [metabase-enterprise.scim.v2.api :as scim-api]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -436,3 +437,101 @@
                                          {:where [:in :id #{(:id (perms-group/admin)) (:id (perms-group/all-users))}]})]
         (doseq [entity-id entity-ids]
           (scim-client :delete 404 (format "ee/scim/v2/Groups/%s" entity-id)))))))
+
+;;; ------------------------- Data Analysts group: additions gated, removals never -------------------------
+
+(defn- data-analyst-scim-group-update
+  "A SCIM Group PUT body setting the Data Analysts group's members to `user-ids`."
+  [user-ids]
+  (let [group (perms-group/data-analyst)]
+    {:schemas     ["urn:ietf:params:scim:schemas:core:2.0:Group"]
+     :id          (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id group))
+     :displayName (:name group)
+     :members     (for [user-id user-ids]
+                    {:value (t2/select-one-fn :entity_id :model/User :id user-id)})}))
+
+(defn- data-analyst-group-member-ids []
+  (set (t2/select-fn-set :user_id :model/PermissionsGroupMembership
+                         :group_id (:id (perms-group/data-analyst)))))
+
+(defn- put-data-analyst-group! [expected-status user-ids]
+  (let [entity-id (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id (perms-group/data-analyst)))]
+    (scim-client :put expected-status (format "ee/scim/v2/Groups/%s" entity-id)
+                 (data-analyst-scim-group-update user-ids))))
+
+(deftest scim-data-analyst-group-add-requires-advanced-permissions-test
+  (testing "PUT /Groups/:id cannot add a new member to the Data Analysts group without :advanced-permissions"
+    (mt/with-temp [:model/User {existing-id :id} {:email (format "scim-analyst-%s@metabase.com" (random-uuid))}
+                   :model/User {new-id :id}      {:email (format "scim-analyst-%s@metabase.com" (random-uuid))}]
+      (mt/with-premium-features #{:advanced-permissions}
+        (perms/add-user-to-group! existing-id (:id (perms-group/data-analyst))))
+      (mt/with-premium-features #{}
+        (with-scim-setup!
+          (let [before   (data-analyst-group-member-ids)
+                response (put-data-analyst-group! 402 [existing-id new-id])]
+            (testing "the error names the required feature, so provisioning drift is visible at the IdP"
+              (is (= (str perms/fail-to-add-data-analyst-msg) response)))
+            (testing "and the push rolls back, leaving existing memberships untouched"
+              (is (= before (data-analyst-group-member-ids)))
+              (is (contains? (data-analyst-group-member-ids) existing-id))
+              (is (not (contains? (data-analyst-group-member-ids) new-id))))))))))
+
+(deftest scim-data-analyst-group-removal-only-put-is-not-gated-test
+  (testing "PUT /Groups/:id can remove a member of the Data Analysts group without :advanced-permissions"
+    (mt/with-temp [:model/User {keep-id :id} {:email (format "scim-analyst-%s@metabase.com" (random-uuid))}
+                   :model/User {drop-id :id} {:email (format "scim-analyst-%s@metabase.com" (random-uuid))}]
+      (mt/with-premium-features #{:advanced-permissions}
+        (perms/add-user-to-group! keep-id (:id (perms-group/data-analyst)))
+        (perms/add-user-to-group! drop-id (:id (perms-group/data-analyst))))
+      (mt/with-premium-features #{}
+        (with-scim-setup!
+          (put-data-analyst-group! 200 [keep-id])
+          (let [members (data-analyst-group-member-ids)]
+            (is (contains? members keep-id))
+            (is (not (contains? members drop-id))))
+          (testing "and the removed member loses the is_data_analyst flag"
+            (is (not (t2/select-one-fn :is_data_analyst :model/User :id drop-id)))))))))
+
+(deftest scim-data-analyst-group-idempotent-resync-is-not-gated-test
+  (testing "PUT /Groups/:id with an unchanged member list succeeds without :advanced-permissions"
+    (mt/with-temp [:model/User {user-id :id} {:email (format "scim-analyst-%s@metabase.com" (random-uuid))}]
+      (mt/with-premium-features #{:advanced-permissions}
+        (perms/add-user-to-group! user-id (:id (perms-group/data-analyst))))
+      (mt/with-premium-features #{}
+        (with-scim-setup!
+          (let [before (data-analyst-group-member-ids)]
+            (put-data-analyst-group! 200 [user-id])
+            (is (= before (data-analyst-group-member-ids)))
+            (is (contains? (data-analyst-group-member-ids) user-id))
+            (is (true? (boolean (t2/select-one-fn :is_data_analyst :model/User :id user-id))))))))))
+
+(deftest scim-data-analyst-group-add-with-advanced-permissions-test
+  (testing "PUT /Groups/:id can add members to the Data Analysts group with :advanced-permissions"
+    (mt/with-temp [:model/User {user-id :id} {:email (format "scim-analyst-%s@metabase.com" (random-uuid))}]
+      (mt/with-premium-features #{:advanced-permissions}
+        (with-scim-setup!
+          (put-data-analyst-group! 200 [user-id])
+          (is (contains? (data-analyst-group-member-ids) user-id))
+          (is (true? (boolean (t2/select-one-fn :is_data_analyst :model/User :id user-id)))))))))
+
+(deftest scim-group-put-is-diff-based-test
+  (testing "PUT /Groups/:id leaves untouched members' rows alone rather than deleting and recreating them"
+    (with-scim-setup!
+      (mt/with-temp [:model/PermissionsGroup group {:name (format "Test SCIM group %s" (random-uuid))}
+                     :model/User {keep-id :id} {}
+                     :model/User {drop-id :id} {}]
+        (mt/with-premium-features #{:advanced-permissions}
+          (perms/add-user-to-group! keep-id (:id group))
+          (perms/add-user-to-group! drop-id (:id group)))
+        (let [membership-id #(t2/select-one-pk :model/PermissionsGroupMembership
+                                               :group_id (:id group) :user_id keep-id)
+              original-id   (membership-id)
+              entity-id     (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id group))]
+          (scim-client :put 200 (format "ee/scim/v2/Groups/%s" entity-id)
+                       {:schemas     ["urn:ietf:params:scim:schemas:core:2.0:Group"]
+                        :id          entity-id
+                        :displayName (:name group)
+                        :members     [{:value (t2/select-one-fn :entity_id :model/User :id keep-id)}]})
+          (is (= original-id (membership-id)))
+          (is (not (t2/exists? :model/PermissionsGroupMembership
+                               :group_id (:id group) :user_id drop-id))))))))

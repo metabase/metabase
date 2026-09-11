@@ -9,7 +9,7 @@ import {
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { dayjs } from "metabase/dayjs";
 import { Route } from "metabase/router";
-import type { HelpLinkSetting } from "metabase-types/api";
+import type { HelpLinkSetting, TokenFeatures } from "metabase-types/api";
 import {
   createMockMetabaseInfo,
   createMockTokenFeatures,
@@ -50,18 +50,22 @@ const adminNavItem = {
 
 async function setup({
   isAdmin = false,
+  isAnalyst = false,
   isHosted = false,
   isPaidPlan = true,
   helpLinkSetting = "metabase",
   helpLinkCustomDestinationSetting = "https://custom-destination.com/help",
   instanceCreationDate = dayjs().toISOString(),
+  tokenFeatures = {},
 }: {
   isAdmin?: boolean;
+  isAnalyst?: boolean;
   isHosted?: boolean;
   isPaidPlan?: boolean;
   helpLinkSetting?: HelpLinkSetting;
   helpLinkCustomDestinationSetting?: string;
   instanceCreationDate?: string;
+  tokenFeatures?: Partial<TokenFeatures>;
 } = {}) {
   setupBugReportingDetailsEndpoint();
 
@@ -71,7 +75,7 @@ async function setup({
     "help-link": helpLinkSetting,
     "help-link-custom-destination": helpLinkCustomDestinationSetting,
     "instance-creation": instanceCreationDate,
-    "token-features": createMockTokenFeatures(),
+    "token-features": createMockTokenFeatures(tokenFeatures),
   });
 
   const admin = createMockAdminState({
@@ -92,7 +96,11 @@ async function setup({
       storeInitialState: {
         admin,
         settings,
-        currentUser: { ...USER, is_superuser: isAdmin },
+        currentUser: {
+          ...USER,
+          is_superuser: isAdmin,
+          is_data_analyst: isAnalyst,
+        },
       },
     },
   );
@@ -207,6 +215,34 @@ describe("ProfileLink", () => {
       WITH_AREAS.forEach((title) => {
         expect(screen.getByText(title)).toBeInTheDocument();
       });
+    });
+
+    it("should show data studio for analysts when advanced-permissions is available", async () => {
+      await setup({
+        isAnalyst: true,
+        tokenFeatures: { advanced_permissions: true },
+      });
+
+      expect(screen.getByText("Data studio")).toBeInTheDocument();
+    });
+
+    it("should hide data studio from analysts when advanced-permissions is absent", async () => {
+      await setup({
+        isAnalyst: true,
+        tokenFeatures: { advanced_permissions: false },
+      });
+
+      expect(screen.queryByText("Data studio")).not.toBeInTheDocument();
+      expect(screen.getByText("Monitor")).toBeInTheDocument();
+    });
+
+    it("should show data studio for admins when advanced-permissions is absent", async () => {
+      await setup({
+        isAdmin: true,
+        tokenFeatures: { advanced_permissions: false },
+      });
+
+      expect(screen.getByText("Data studio")).toBeInTheDocument();
     });
 
     it("tracks opening Monitor from the app switcher", async () => {

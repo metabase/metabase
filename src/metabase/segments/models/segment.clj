@@ -94,7 +94,7 @@
    (let [table (or (:table instance)
                    (segments.db/table (:table_id instance)))]
      (and (or (mi/superuser?)
-              (and api/*is-data-analyst?*
+              (and (api/entitled-data-analyst?)
                    (perms/user-has-permission-for-table?
                     api/*current-user-id*
                     :perms/view-data
@@ -114,7 +114,7 @@
   (let [table (or (:table instance)
                   (segments.db/table (:table_id instance)))]
     (and (or (mi/superuser?)
-             (and api/*is-data-analyst?*
+             (and (api/entitled-data-analyst?)
                   (perms/user-has-permission-for-table?
                    api/*current-user-id*
                    :perms/view-data

@@ -220,7 +220,7 @@
 
 (defn- check-can-publish-tables-to-collection!
   [tables collection-id]
-  (api/check-data-analyst)
+  (api/check-data-studio-access)
   (let [collection (api/check-404 (warehouse-schema-rest.db/collection collection-id))]
     (api/check-400 (= (:type collection) collections/library-data-collection-type)
                    (tru "Tables can only be published to Library/Data collections."))

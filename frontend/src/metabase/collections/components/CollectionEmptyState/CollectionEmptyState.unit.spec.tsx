@@ -47,7 +47,10 @@ async function setup({
 
   const state = createMockState({
     settings: mockSettings({
-      "token-features": createMockTokenFeatures({ library: true }),
+      "token-features": createMockTokenFeatures({
+        library: true,
+        advanced_permissions: isAnalyst,
+      }),
     }),
     currentUser: createMockUser({
       is_superuser: isAdmin,

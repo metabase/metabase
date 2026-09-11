@@ -69,7 +69,7 @@
                                                          :name     "gadget_products"
                                                          :database (mt/id)}}))))))
             (testing "with transforms-python feature flag"
-              (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
+              (mt/with-premium-features #{:advanced-permissions :transforms-basic :transforms-python :hosting}
                 (with-transform-cleanup! [table-name "gadget_products"]
                   (let [transform         (create-transform!)]
                     (is (= "print('hello chris')"

@@ -17,14 +17,28 @@
                                                     [:= :user_id manager-user-id]
                                                     [:= :is_group_manager true]]}]))
 
+(defn- data-analyst-visibility-clause
+  "Clause over a `permissions_group` query keeping every group except the data-analyst magic group, plus that group
+  when it has at least one active member."
+  []
+  [:or
+   [:= nil :magic_group_type]
+   [:not= "data-analyst" :magic_group_type]
+   [:exists ^:allow-subquery {:select [1]
+                              :from   [[:permissions_group_membership :pgm]]
+                              :join   [[:core_user :member] [:= :member.id :pgm.user_id]]
+                              :where  [:and
+                                       [:= :pgm.group_id :permissions_group.id]
+                                       [:= :member.is_active true]]}]])
+
 (mu/defn permissions-groups
   "Up to `limit` PermissionsGroups starting at `offset` (both optional), ordered by lower-cased name.
 
   `tenancy` (\"external\"/\"internal\"/nil) narrows to tenant/non-tenant groups (nil returns both); when
   `tenancy` is \"external\" and `tenants-enabled?` is false, no groups are returned. `manager-user-id`, when given,
   restricts to the groups that User manages. `advanced-permissions-enabled?` false excludes the data-analyst magic
-  group. `tenants-enabled?` false also excludes tenant groups outright, independent of `tenancy`.
-  `exclude-data-app-groups?` excludes groups that a data app manages."
+  group unless it has at least one active member. `tenants-enabled?` false also excludes tenant groups outright,
+  independent of `tenancy`. `exclude-data-app-groups?` excludes groups that a data app manages."
   [limit  :- [:maybe ms/PositiveInt]
    offset :- [:maybe ms/IntGreaterThanOrEqualToZero]
    {:keys [tenancy manager-user-id tenants-enabled? advanced-permissions-enabled?
@@ -39,8 +53,7 @@
                     (managed-groups-clause :id manager-user-id)
                     (when exclude-data-app-groups? [:not :is_data_app_group])
                     (when-not tenants-enabled? [:not :is_tenant_group])
-                    (when-not advanced-permissions-enabled?
-                      [:or [:= nil :magic_group_type] [:not= "data-analyst" :magic_group_type]])]
+                    (when-not advanced-permissions-enabled? (data-analyst-visibility-clause))]
         where (case tenancy
                 "external" (if tenants-enabled?
                              [:and base-where [:= :is_tenant_group true]]
@@ -86,18 +99,15 @@
 
 (mu/defn group-memberships
   "The membership id, group id, user id, and group manager flag of every PermissionsGroupMembership, optionally
-  restricted to the groups `manager-user-id` manages, excluding `excluded-group-id`, and excluding tenant groups
-  when `exclude-tenant-groups?`."
-  [{:keys [manager-user-id excluded-group-id exclude-tenant-groups?]}
+  restricted to the groups `manager-user-id` manages, and excluding tenant groups when `exclude-tenant-groups?`."
+  [{:keys [manager-user-id exclude-tenant-groups?]}
    :- [:map {:closed true}
        [:manager-user-id          {:optional true} [:maybe ::lib.schema.id/user]]
-       [:excluded-group-id        {:optional true} [:maybe ms/PositiveInt]]
        [:exclude-tenant-groups?   {:optional true} :boolean]]]
   (t2/select [:model/PermissionsGroupMembership [:id :membership_id] :group_id :user_id :is_group_manager]
              {:where (into [:and]
                            (keep identity)
                            [(managed-groups-clause :group_id manager-user-id)
-                            (when excluded-group-id [:not= :group_id excluded-group-id])
                             (when exclude-tenant-groups?
                               [:not-in :group_id ^:allow-subquery {:select [:id]
                                                                    :from   [:permissions_group]

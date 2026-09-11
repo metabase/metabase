@@ -106,45 +106,46 @@
             (is (not (mi/can-read? reloaded)))
             (is (not (mi/can-write? reloaded)))))))))
 
-(deftest native-transform-requires-query-builder-and-native-test
-  (testing "Writing a native-query transform requires \"Query builder and native\" on the source database, even if the
-            group was misconfigured with transforms permission but only query-builder access (no native)."
-    (mt/with-premium-features #{:transforms-basic :hosting}
-      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
-                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}
-                     :model/Transform native-transform
-                     {:name   "Native Transform"
-                      :source {:type  "query"
-                               :query {:database (mt/id)
-                                       :type     "native"
-                                       :native   {:query "SELECT 1"}}}}
-                     :model/Transform mbql-transform
-                     {:name   "MBQL Transform"
-                      :source {:type  "query"
-                               :query (lib/query (mt/metadata-provider)
-                                                 (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))}}]
-        (let [native (t2/select-one :model/Transform (:id native-transform))
-              mbql   (t2/select-one :model/Transform (:id mbql-transform))]
-          (mt/with-data-analyst-role! (mt/user->id :rasta)
-            (mt/with-restored-data-perms!
-              ;; Remove native access granted to All Users by default so the user's only path to native would be
-              ;; the (mis)configured transforms group.
-              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
-              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
-              (testing "transforms granted, but create-queries only query-builder (no native) — preexisting misconfiguration"
-                (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :unrestricted)
-                (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :query-builder)
-                (data-perms/set-database-permission! group-id (mt/id) :perms/transforms :yes)
-                (mt/with-current-user (mt/user->id :rasta)
-                  (testing "native transform cannot be written"
-                    (is (not (mi/can-write? native))))
-                  (testing "non-native (MBQL) transform is unaffected"
-                    (is (mi/can-write? mbql)))))
-              (testing "with query-builder-and-native, native transform can be written"
-                (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :query-builder-and-native)
-                (data-perms/set-database-permission! group-id (mt/id) :perms/transforms :yes)
-                (mt/with-current-user (mt/user->id :rasta)
-                  (is (mi/can-write? native)))))))))))
+(mt/when-ee-evailable
+ (deftest native-transform-requires-query-builder-and-native-test
+   (testing "Writing a native-query transform requires \"Query builder and native\" on the source database, even if the
+             group was misconfigured with transforms permission but only query-builder access (no native)."
+     (mt/with-premium-features #{:transforms-basic :hosting :advanced-permissions}
+       (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                      :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}
+                      :model/Transform native-transform
+                      {:name   "Native Transform"
+                       :source {:type  "query"
+                                :query {:database (mt/id)
+                                        :type     "native"
+                                        :native   {:query "SELECT 1"}}}}
+                      :model/Transform mbql-transform
+                      {:name   "MBQL Transform"
+                       :source {:type  "query"
+                                :query (lib/query (mt/metadata-provider)
+                                                  (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))}}]
+         (let [native (t2/select-one :model/Transform (:id native-transform))
+               mbql   (t2/select-one :model/Transform (:id mbql-transform))]
+           (mt/with-data-analyst-role! (mt/user->id :rasta)
+             (mt/with-restored-data-perms!
+               ;; Remove native access granted to All Users by default so the user's only path to native would be
+               ;; the (mis)configured transforms group.
+               (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+               (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
+               (testing "transforms granted, but create-queries only query-builder (no native) — preexisting misconfiguration"
+                 (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :unrestricted)
+                 (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :query-builder)
+                 (data-perms/set-database-permission! group-id (mt/id) :perms/transforms :yes)
+                 (mt/with-current-user (mt/user->id :rasta)
+                   (testing "native transform cannot be written"
+                     (is (not (mi/can-write? native))))
+                   (testing "non-native (MBQL) transform is unaffected"
+                     (is (mi/can-write? mbql)))))
+               (testing "with query-builder-and-native, native transform can be written"
+                 (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :query-builder-and-native)
+                 (data-perms/set-database-permission! group-id (mt/id) :perms/transforms :yes)
+                 (mt/with-current-user (mt/user->id :rasta)
+                   (is (mi/can-write? native))))))))))))
 
 (deftest execute-fails-clearly-when-source-db-deleted-test
   (testing "running a query transform whose source database has been deleted fails with a clear error"
@@ -218,45 +219,73 @@
                                     :query    {:source-table (mt/id :people)}}}})
       (is (nil? (stored-deps id))))))
 
-(deftest source-references-gate-transform-permissions-test
-  (testing "A Card the source query names is required to read, write or create the transform"
-    (mt/with-premium-features #{:transforms-basic :hosting}
-      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
-                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}
-                     :model/Collection collection {}
-                     :model/Card {card-id :id}
-                     {:collection_id (:id collection)
-                      :database_id   (mt/id)
-                      :dataset_query (lib/query (mt/metadata-provider)
-                                                (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))}
-                     :model/Transform transform
-                     {:name   "Reads a Card"
-                      :source {:type  "query"
-                               :query {:database (mt/id)
-                                       :type     "native"
-                                       :native   {:query         (format "SELECT * FROM {{#%d}} AS c" card-id)
-                                                  :template-tags {(str "#" card-id)
-                                                                  {:id           (str "#" card-id)
-                                                                   :name         (str "#" card-id)
-                                                                   :display-name (str "#" card-id)
-                                                                   :type         :card
-                                                                   :card-id      card-id}}}}}}]
-        (mt/with-non-admin-groups-no-collection-perms collection
-          (let [stored (t2/select-one :model/Transform (:id transform))
-                body   (into {} stored)]
-            (mt/with-data-analyst-role! (mt/user->id :rasta)
-              (mt/with-restored-data-perms!
-                (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :unrestricted)
-                (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :query-builder-and-native)
-                (data-perms/set-database-permission! group-id (mt/id) :perms/transforms :yes)
-                (testing "while the Card is unreadable"
-                  (mt/with-current-user (mt/user->id :rasta)
-                    (is (not (mi/can-read? stored)))
-                    (is (not (mi/can-write? stored)))
-                    (is (not (mi/can-create? :model/Transform body)))))
-                (perms/grant-collection-read-permissions! group-id collection)
-                (testing "once the Card is readable"
-                  (mt/with-current-user (mt/user->id :rasta)
-                    (is (mi/can-read? stored))
-                    (is (mi/can-write? stored))
-                    (is (mi/can-create? :model/Transform body))))))))))))
+(mt/when-ee-evailable
+ (deftest source-references-gate-transform-permissions-test
+   (testing "A Card the source query names is required to read, write or create the transform"
+     (mt/with-premium-features #{:transforms-basic :hosting :advanced-permissions}
+       (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                      :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}
+                      :model/Collection collection {}
+                      :model/Card {card-id :id}
+                      {:collection_id (:id collection)
+                       :database_id   (mt/id)
+                       :dataset_query (lib/query (mt/metadata-provider)
+                                                 (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))}
+                      :model/Transform transform
+                      {:name   "Reads a Card"
+                       :source {:type  "query"
+                                :query {:database (mt/id)
+                                        :type     "native"
+                                        :native   {:query         (format "SELECT * FROM {{#%d}} AS c" card-id)
+                                                   :template-tags {(str "#" card-id)
+                                                                   {:id           (str "#" card-id)
+                                                                    :name         (str "#" card-id)
+                                                                    :display-name (str "#" card-id)
+                                                                    :type         :card
+                                                                    :card-id      card-id}}}}}}]
+         (mt/with-non-admin-groups-no-collection-perms collection
+           (let [stored (t2/select-one :model/Transform (:id transform))
+                 body   (into {} stored)]
+             (mt/with-data-analyst-role! (mt/user->id :rasta)
+               (mt/with-restored-data-perms!
+                 (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :unrestricted)
+                 (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :query-builder-and-native)
+                 (data-perms/set-database-permission! group-id (mt/id) :perms/transforms :yes)
+                 (testing "while the Card is unreadable"
+                   (mt/with-current-user (mt/user->id :rasta)
+                     (is (not (mi/can-read? stored)))
+                     (is (not (mi/can-write? stored)))
+                     (is (not (mi/can-create? :model/Transform body)))))
+                 (perms/grant-collection-read-permissions! group-id collection)
+                 (testing "once the Card is readable"
+                   (mt/with-current-user (mt/user->id :rasta)
+                     (is (mi/can-read? stored))
+                     (is (mi/can-write? stored))
+                     (is (mi/can-create? :model/Transform body)))))))))))))
+
+(deftest data-analyst-access-follows-the-advanced-permissions-feature-test
+  (testing "a data analyst reads and writes transforms only while advanced-permissions is available"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}
+                   :model/Transform transform
+                   {:name   "MBQL Transform"
+                    :source {:type  "query"
+                             :query (lib/query (mt/metadata-provider)
+                                               (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))}}]
+      (let [stored (t2/select-one :model/Transform (:id transform))]
+        (mt/with-data-analyst-role! (mt/user->id :rasta)
+          (mt/with-restored-data-perms!
+            (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :unrestricted)
+            (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :query-builder-and-native)
+            (data-perms/set-database-permission! group-id (mt/id) :perms/transforms :yes)
+            (mt/with-current-user (mt/user->id :rasta)
+              (mt/when-ee-evailable
+               (mt/with-premium-features #{:transforms-basic :hosting :advanced-permissions}
+                 (is (mi/can-read? stored))
+                 (is (mi/can-write? stored))
+                 (is (mi/can-create? :model/Transform (into {} stored)))))
+              (testing "and none once the feature is gone"
+                (mt/with-premium-features #{:transforms-basic :hosting}
+                  (is (not (mi/can-read? stored)))
+                  (is (not (mi/can-write? stored)))
+                  (is (not (mi/can-create? :model/Transform (into {} stored)))))))))))))

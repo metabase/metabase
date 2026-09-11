@@ -225,7 +225,7 @@
     [:end-time {:optional true} [:maybe ms/NonBlankString]]
     [:run-methods {:optional true} [:maybe (ms/QueryVectorOf [:enum "manual" "cron"])]]
     [:user-id {:optional true} [:maybe ms/PositiveInt]]]]
-  (api/check-data-analyst)
+  (api/check-data-studio-access)
   (-> (transforms.core/paged-runs (assoc query-params
                                          :offset (request/offset)
                                          :limit  (request/limit)))
@@ -274,7 +274,7 @@
     [:transform-ids {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
     [:sort-column {:optional true} [:maybe [:enum "start_time" "end_time"]]]
     [:sort-direction {:optional true} [:maybe [:enum "asc" "desc"]]]]]
-  (api/check-data-analyst)
+  (api/check-data-studio-access)
   (-> (transforms.core/paged-run-summaries (assoc query-params
                                                   :types  (map keyword (:types query-params))
                                                   :offset (request/offset)
@@ -285,7 +285,7 @@
   "Get a transform run by ID."
   [{:keys [run-id]} :- [:map {:closed true}
                         [:run-id ms/PositiveInt]]]
-  (api/check-data-analyst)
+  (api/check-data-studio-access)
   (-> (api/read-check :model/TransformRun run-id)
       (t2/hydrate [:transform :collection :transform_tag_ids])
       transforms-base.u/present-run))

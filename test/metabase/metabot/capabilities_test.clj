@@ -42,8 +42,26 @@
   (testing "a superuser keeps every claimed capability"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-current-user (mt/user->id :crowberto)
-        (is (= claimed-capabilities
-               (capabilities/enforce-permissions claimed-capabilities)))))))
+        (mt/with-premium-features #{:advanced-permissions}
+          (is (= claimed-capabilities
+                 (capabilities/enforce-permissions claimed-capabilities))))
+        (testing "including without the advanced-permissions feature"
+          (mt/with-premium-features #{}
+            (is (= claimed-capabilities
+                   (capabilities/enforce-permissions claimed-capabilities)))))))))
+
+(deftest enforce-permissions-transforms-claim-follows-the-token-test
+  (testing "a data analyst keeps permission:write_transforms only while advanced-permissions is available"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-data-analyst-role! (mt/user->id :rasta)
+        (mt/with-current-user (mt/user->id :rasta)
+          (mt/when-ee-evailable
+           (mt/with-premium-features #{:advanced-permissions}
+             (is (contains? (capabilities/enforce-permissions claimed-capabilities)
+                            "permission:write_transforms"))))
+          (mt/with-premium-features #{}
+            (is (not (contains? (capabilities/enforce-permissions claimed-capabilities)
+                                "permission:write_transforms")))))))))
 
 (deftest enforce-permissions-passes-through-unrecognized-capabilities-test
   (testing "capabilities outside the permission namespace are never clamped"
