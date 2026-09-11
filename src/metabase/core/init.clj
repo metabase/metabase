@@ -44,6 +44,7 @@
    [metabase.login-history.init]
    [metabase.mcp.init]
    [metabase.metabot.init]
+   [metabase.mfa.init]
    [metabase.model-persistence.init]
    [metabase.models.init]
    [metabase.mq.init]

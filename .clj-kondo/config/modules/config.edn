@@ -1583,7 +1583,7 @@
 
   mfa
   {:team "UX West"
-   :api  #{metabase.mfa.settings}
+   :api  #{metabase.mfa.init metabase.mfa.settings}
    :uses #{premium-features
            settings
            util}}
@@ -2412,7 +2412,6 @@
            channel
            events
            lib.schema
-           mfa
            premium-features
            request
            settings
