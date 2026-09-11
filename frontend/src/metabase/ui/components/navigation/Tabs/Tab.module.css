@@ -77,9 +77,22 @@
     color: var(--mb-color-text-disabled);
     opacity: 1;
   }
+}
 
-  &[data-closable] {
-    --tab-padding-inline: var(--mantine-spacing-sm);
+.tab[data-closable] {
+  --tab-close-size: 1rem;
+  --tab-close-transition: 150ms ease;
+
+  transition: padding-inline var(--tab-close-transition);
+
+  &:hover,
+  &:active,
+  &:focus-visible {
+    padding-inline: calc(var(--tab-padding-inline) - var(--tab-close-size) / 2);
+  }
+
+  &:disabled {
+    padding-inline: var(--tab-padding-inline);
   }
 }
 
@@ -115,8 +128,6 @@
   text-align: center;
 }
 
-/* The gap sits between a section and its neighbour; an icon-only tab has no
- * neighbour, so it keeps the inline padding symmetric. */
 .tabSection {
   &[data-position="left"]:not(:last-child) {
     margin-inline-end: var(--tab-section-gap);
@@ -127,23 +138,25 @@
   }
 }
 
-.tab[data-closable] .tabSection[data-position="right"] {
+.tabSection[data-position="right"]:has(> .tabClose:only-child) {
   margin-inline-start: 0;
 }
 
 .tabClose {
   display: inline-flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  width: 1rem;
-  height: 1rem;
+  width: 0;
+  height: var(--tab-close-size);
+  overflow: hidden;
   border-radius: var(--mantine-radius-xxs);
   cursor: pointer;
-  visibility: hidden;
-
-  &:not(:first-child) {
-    margin-inline-start: var(--mantine-spacing-xxs);
-  }
+  opacity: 0;
+  transition:
+    width var(--tab-close-transition),
+    margin-inline-start var(--tab-close-transition),
+    opacity var(--tab-close-transition);
 
   &:hover {
     background-color: var(--mb-color-background_surface-primary-hover);
@@ -153,11 +166,24 @@
 .tab:hover .tabClose,
 .tab:active .tabClose,
 .tab:focus-visible .tabClose {
-  visibility: visible;
+  width: var(--tab-close-size);
+  opacity: 1;
+
+  &:not(:first-child) {
+    margin-inline-start: var(--mantine-spacing-xxs);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab[data-closable],
+  .tabClose {
+    transition: none;
+  }
 }
 
 .tab:disabled .tabClose {
-  visibility: hidden;
+  width: 0;
+  opacity: 0;
 }
 
 .list[data-variant="pills"] .tab[data-active="true"] .tabClose:hover {
