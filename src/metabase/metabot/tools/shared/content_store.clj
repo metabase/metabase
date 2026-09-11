@@ -29,45 +29,74 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- maybe-read-check
-  "Apply `api/read-check` when `*current-user-id*` is bound; otherwise return the row
-  unchanged. Returning `nil` propagates through (no row → nothing to check; the
-  per-model resolver functions translate `nil` into a clean `:unknown-…` agent error)."
-  [row]
+(def ^:dynamic *last-lookup-refused?*
+  "Set to `true` by [[read-checked]] when a lookup was refused on permissions rather than simply
+  missing.
+
+  The two are deliberately indistinguishable to the *agent* — same status, same error key, so a
+  guessable id cannot be used to probe for hidden content. Some internal callers still need to
+  tell them apart: `llm-shape/export-query-for-llm` renders nothing at all for a refusal but
+  falls back to pretty-printed EDN for a genuine export failure, and without this it would print
+  the raw query for a card the caller may not read. Bind it per lookup and read it after; it says
+  nothing about *which* row was refused, so it cannot itself become an oracle."
+  (atom false))
+
+(defn- permission-checked
+  "Permission-check `row`, or return it unchanged when `api/*current-user-id*` is unbound. `nil`
+  propagates (no row → nothing to check; the per-model resolvers turn `nil` into a clean
+  `:unknown-…` agent error).
+
+  Two independent axes, because two fixes to this function wanted different things and both were
+  right:
+
+  `audited?` picks the check. `api/read-check` writes an audit entry for the refusal;
+  `api/check-403` does not. Refusals on `-by-entity-id` are always audited, and `-by-id` refusals
+  are audited when the caller asked for it (BOT-1956).
+
+  `collapse-denial?` picks what the *caller* sees, and the two surfaces want opposite things:
+
+  - **By numeric id** (`collapse-denial?` true): return `nil`, so \"exists but you may not read
+    it\" and \"does not exist\" reach the caller as the same `:unknown-…` error. Numeric ids are
+    sequential and trivially guessable, so a distinguishable denial is an existence oracle.
+  - **By entity_id** (`collapse-denial?` false): let the 403 through. A 21-character NanoID is
+    not guessable, so there is nothing to enumerate, and callers rely on the accurate status —
+    `POST /api/agent/v2/construct-query` returns 403 for a metric whose card the caller cannot
+    read, and `llm-shape/export-query-for-llm` suppresses its EDN fallback on one.
+
+  The axes do not trade off against each other: a collapsed denial is still audited, so the
+  refusal stays silent to the agent and visible to the audit log.
+
+  Either way the refusal is recorded in [[*last-lookup-refused?*]] for callers that need to know
+  a denial happened without depending on the status."
+  [{:keys [audited? collapse-denial?]} row]
   (cond
     (nil? row)              nil
-    api/*current-user-id*   (api/read-check row)
+    api/*current-user-id*   (try
+                              (if (and audited? resolve.mp/*audit-refusals?*)
+                                (api/read-check row)
+                                (do (api/check-403 (mi/can-read? row)) row))
+                              (catch clojure.lang.ExceptionInfo e
+                                (if (= 403 (:status-code (ex-data e)))
+                                  (do (reset! *last-lookup-refused?* true)
+                                      (when-not collapse-denial? (throw e)))
+                                  (throw e))))
     :else                   row))
-
-(defn- maybe-check-403
-  "Like [[maybe-read-check]], but throws a bare 403 rather than an audited one."
-  [row]
-  (cond
-    (nil? row)              nil
-    api/*current-user-id*   (do (api/check-403 (mi/can-read? row)) row)
-    :else                   row))
-
-(defn- checked
-  "Permission-check `row`, auditing a refusal only when `audited?` and
-  [[resolve.mp/*audit-refusals?*]] both hold."
-  [audited? row]
-  (if (and audited? resolve.mp/*audit-refusals?*)
-    (maybe-read-check row)
-    (maybe-check-403 row)))
 
 (defn read-checked
-  "Wrap `store` so every lookup permission-checks its row when `api/*current-user-id*` is bound,
-  throwing a 403 when the current user cannot read it. Refusals on the `-by-entity-id` methods are
-  audited; `audited-by-id?` audits the `-by-id` methods too."
+  "Wrap `store` so every lookup permission-checks its row when `api/*current-user-id*` is bound.
+  Symmetric across all six `ContentStore` methods; see [[permission-checked]] for what a refusal
+  costs on each. `audited-by-id?` audits the `-by-id` refusals too."
   ([store] (read-checked store false))
   ([store audited-by-id?]
-   (reify resolve.mp/ContentStore
-     (card-by-entity-id    [_ eid] (checked true            (resolve.mp/card-by-entity-id    store eid)))
-     (measure-by-entity-id [_ eid] (checked true            (resolve.mp/measure-by-entity-id store eid)))
-     (segment-by-entity-id [_ eid] (checked true            (resolve.mp/segment-by-entity-id store eid)))
-     (card-by-id           [_ id]  (checked audited-by-id?  (resolve.mp/card-by-id           store id)))
-     (measure-by-id        [_ id]  (checked audited-by-id?  (resolve.mp/measure-by-id        store id)))
-     (segment-by-id        [_ id]  (checked audited-by-id?  (resolve.mp/segment-by-id        store id))))))
+   (let [by-eid {:audited? true            :collapse-denial? false}
+         by-id  {:audited? audited-by-id?  :collapse-denial? true}]
+     (reify resolve.mp/ContentStore
+       (card-by-entity-id    [_ eid] (permission-checked by-eid (resolve.mp/card-by-entity-id    store eid)))
+       (measure-by-entity-id [_ eid] (permission-checked by-eid (resolve.mp/measure-by-entity-id store eid)))
+       (segment-by-entity-id [_ eid] (permission-checked by-eid (resolve.mp/segment-by-entity-id store eid)))
+       (card-by-id           [_ id]  (permission-checked by-id  (resolve.mp/card-by-id           store id)))
+       (measure-by-id        [_ id]  (permission-checked by-id  (resolve.mp/measure-by-id        store id)))
+       (segment-by-id        [_ id]  (permission-checked by-id  (resolve.mp/segment-by-id        store id)))))))
 
 (def default-store
   "[[resolve.mp/unchecked-app-db-content-store]] under [[read-checked]]. The store for any agent

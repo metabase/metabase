@@ -437,7 +437,7 @@
 
   bookmarks
   {:team "UX West"
-   :api  #{metabase.bookmarks.api}
+   :api  #{metabase.bookmarks.api metabase.bookmarks.db}
    :uses #{api
            app-db
            collections
@@ -570,7 +570,8 @@
 
   collections
   {:team "UX West"
-   :api  #{metabase.collections.core
+   :api  #{metabase.collections.children
+           metabase.collections.core
            metabase.collections.curation
            metabase.collections.init
            metabase.collections.models.collection
@@ -581,12 +582,20 @@
            app-db
            audit-app
            events
+           lib.be
            lib.schema
            models
+           notification
            permissions
            premium-features
+           queries
            remote-sync
+           request
+           revisions
            search
+           tracing
+           transforms
+           upload
            util
            util.config}
    :model-exports #{:model/Collection}
@@ -612,33 +621,17 @@
    :api  #{metabase.collections-rest.api}
    :uses #{api
            api.eid-translation
-           app-db
            collections
            documents
            events
-           lib.be
            lib.schema
            models
-           notification
            permissions
            premium-features
            queries
            request
-           revisions
-           tracing
-           transforms
-           upload
            util}
-   :model-imports #{:model/Card
-                    :model/Collection
-                    :model/Dashboard
-                    :model/Document
-                    :model/Exploration
-                    :model/NativeQuerySnippet
-                    :model/Pulse
-                    :model/Table
-                    :model/Timeline
-                    :model/Transform}}
+   :model-imports #{:model/Card :model/Collection}}
 
   comments
   {:team "UX West"
@@ -731,8 +724,10 @@
            metabase.dashboards.models.dashboard-card
            metabase.dashboards.models.dashboard-tab
            metabase.dashboards.schema
-           metabase.dashboards.settings}
-   :uses #{api
+           metabase.dashboards.settings
+           metabase.dashboards.write}
+   :uses #{analytics
+           api
            app-db
            audit-app
            collections
@@ -744,6 +739,7 @@
            parameters
            permissions
            public-sharing
+           pulse
            queries
            query-permissions
            query-processor
@@ -762,6 +758,7 @@
                     :model/Collection
                     :model/DashboardBookmark
                     :model/ModerationReview
+                    :model/ParameterCard
                     :model/Pulse
                     :model/PulseCard
                     :model/Revision
@@ -778,7 +775,6 @@
            app-db
            channel
            collections
-           collections.rest
            dashboards
            embedding
            events
@@ -864,6 +860,7 @@
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
+                    :model/Database
                     :model/Table
                     :model/User}}
 
@@ -1270,28 +1267,66 @@
   mcp
   {:team "Metabot"
    :module-exports #{mcp.oauth-server}
-   :api  #{metabase.mcp.api
-           metabase.mcp.callback-api
+   :api  #{metabase.mcp.callback-api
            metabase.mcp.core
            metabase.mcp.init
-           metabase.mcp.usage}
+           metabase.mcp.usage
+           metabase.mcp.v2.api}
    :model-exports #{:model/McpSessionLog :model/McpToolCallLog}
-   :uses #{ai-tracing
+   :uses #{activity-feed
+           ai-tracing
            api
+           api.eid-translation
            app-db
+           bookmarks
+           channel
+           collections
+           comments
+           dashboards
+           documents
+           lib
+           lib.be
+           lib.metadata
            lib.schema
            mcp.oauth-server
            metabot
            metabot.agent-api
            metabot.llm
+           metrics
+           models
+           notification
+           parameters
+           permissions
            premium-features
+           pulse
+           queries
+           query-processor
            request
            server
            session
            settings
            system
+           task
+           transforms
+           users
            util
-           util.config}}
+           util.config
+           warehouses.schema}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Database
+                    :model/Document
+                    :model/Field
+                    :model/Measure
+                    :model/NativeQuerySnippet
+                    :model/Notification
+                    :model/Pulse
+                    :model/Segment
+                    :model/Table
+                    :model/Transform
+                    :model/TransformTag
+                    :model/User}}
 
   mcp.oauth-server
   {:team "UX West"
@@ -1342,10 +1377,13 @@
               metabase.metabot.persistence
               metabase.metabot.schema
               metabase.metabot.schema.v2
+              metabase.metabot.scope
               metabase.metabot.self
               metabase.metabot.settings
               metabase.metabot.tools
-              metabase.metabot.tools.entity-details}
+              metabase.metabot.tools.construct
+              metabase.metabot.tools.entity-details
+              metabase.metabot.tools.search}
    :module-exports #{metabot.agent-api
                      metabot.llm
                      metabot.slackbot}
@@ -1425,7 +1463,9 @@
    :ns-prefix "metabase.agent-api"
    :api     #{metabase.agent-api.api
               metabase.agent-api.init
+              metabase.agent-api.query-guards
               metabase.agent-api.schema
+              metabase.agent-api.settings
               metabase.agent-api.usage}
    :uses    #{ai-tracing
               api
@@ -1632,6 +1672,7 @@
   notification
   {:team "Gadget"
    :api  #{metabase.notification.api
+           metabase.notification.card
            metabase.notification.core
            metabase.notification.init
            metabase.notification.models
@@ -1702,6 +1743,7 @@
            metabase.parameters.field
            metabase.parameters.field-values
            metabase.parameters.init
+           metabase.parameters.mapping-targets
            metabase.parameters.params
            metabase.parameters.schema
            metabase.parameters.shared}
@@ -1867,6 +1909,7 @@
   pulse
   {:team "Gadget"
    :api  #{metabase.pulse.api
+           metabase.pulse.broken-subscriptions
            metabase.pulse.core
            metabase.pulse.init}
    :uses #{api
@@ -3083,7 +3126,10 @@
            search
            sync.analyze
            util
-           warehouses}
+           util.classloader
+           util.config
+           warehouses
+           enterprise/permissions}
    :model-exports #{:model/Dimension
                     :model/Field
                     :model/FieldUserSettings
