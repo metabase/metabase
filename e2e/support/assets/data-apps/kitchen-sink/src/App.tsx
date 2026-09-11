@@ -67,7 +67,10 @@ function Overview() {
       <h2 style={{ margin: "0 0 8px" }}>All orders</h2>
       <div style={{ height: 400 }}>
         {ordersQuery.query ? (
-          <InteractiveQuestion card={{ query: ordersQuery.query }} />
+          <InteractiveQuestion
+            card={{ query: ordersQuery.query }}
+            withDownloads
+          />
         ) : (
           <div>…</div>
         )}
