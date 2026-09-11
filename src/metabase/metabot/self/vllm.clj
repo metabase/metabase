@@ -477,16 +477,16 @@
     (throw (missing-model-ex)))
   (let [timeout-ms (llm/llm-vllm-request-timeout-ms)]
     (adapter/stream! provider opts
-                     {:path     "/chat/completions"
-                      :body     (vllm-request-body opts)
-                      :request  (inference-timeouts)
-                      :wrap     #(io-guarded % timeout-ms)
+                     {:path             "/chat/completions"
+                      :body             (vllm-request-body opts)
+                      :request-options  (inference-timeouts)
+                      :wrap-stream      #(io-guarded % timeout-ms)
                       ;; clj-http raises an `IOException` only when there is no response at all, so the
                       ;; IO branch cannot swallow a failure the provider's own messages would have translated.
-                      :on-error (fn [e]
-                                  (if (instance? IOException e)
-                                    (throw (request-io-ex e (:base-url credentials) timeout-ms))
-                                    (adapter/rethrow! provider e)))})))
+                      :on-request-error (fn [e]
+                                          (if (instance? IOException e)
+                                            (throw (request-io-ex e (:base-url credentials) timeout-ms))
+                                            (adapter/rethrow! provider e)))})))
 
 (defn vllm->aisdk-chunks-xf
   "Translates vLLM Chat Completions streaming chunks into AI SDK v5 protocol chunks.

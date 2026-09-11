@@ -548,17 +548,17 @@
         res->msg (google-res->msg creds)
         opts   (assoc opts :model model :credentials creds)]
     (adapter/stream! provider opts
-                     {:path       (str (model-resource-path creds model)
-                                       (case family
-                                         :anthropic raw-predict-method
-                                         :google    generate-content-method))
-                      :body       (case family
-                                    :anthropic (raw-predict/request-body (model-id model) opts)
-                                    ;; `opts` carries the defaulted model: the thinking directive keys off it
-                                    :google    (stream-generate-content/request-body opts))
-                      :span-attrs {:family family}
-                      :error-msg  res->msg
-                      :on-error   #(rethrow-google-api-error! creds %)})))
+                     {:path             (str (model-resource-path creds model)
+                                             (case family
+                                               :anthropic raw-predict-method
+                                               :google    generate-content-method))
+                      :body             (case family
+                                          :anthropic (raw-predict/request-body (model-id model) opts)
+                                          ;; `opts` carries the defaulted model: the thinking directive keys off it
+                                          :google    (stream-generate-content/request-body opts))
+                      :span-attrs       {:family family}
+                      :error-msg        res->msg
+                      :on-request-error #(rethrow-google-api-error! creds %)})))
 
 (defn google
   "Call the Gemini Enterprise Agent Platform, return AISDK stream."
