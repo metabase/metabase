@@ -77,6 +77,15 @@
               (#'self/parse-provider-model "deepseek/deepseek-v4-flash")))
       (is (=? {:provider "google" :model "google/gemini-3.5-flash" :ai-proxy? false}
               (#'self/parse-provider-model "google/google/gemini-3.5-flash"))))
+    (testing "resolves the provider type, not the admin's name for the connection"
+      ;; Every case above uses a connection whose key equals its type, so the two are
+      ;; indistinguishable there and nothing catches a provider read off the key.
+      (llm.tu/with-connections [{:key    "openrouter-1"
+                                 :type   "openrouter"
+                                 :name   "openrouter-1"
+                                 :config {:api-key "sk-or-v1-test"}}]
+        (is (=? {:provider "openrouter" :model "anthropic/claude-sonnet-4.6" :ai-proxy? false}
+                (#'self/parse-provider-model "openrouter-1/anthropic/claude-sonnet-4.6")))))
     (testing "a vLLM served model is often a Hugging Face repo id, so the model segment keeps its slashes"
       (llm.tu/with-connections [(llm.tu/connection "vllm")]
         (is (=? {:provider "vllm" :model "mlx-community/Qwen3-14B-4bit" :ai-proxy? false}
@@ -1358,7 +1367,7 @@
   (llm.tu/with-default-connections
     (mt/with-prometheus-system! [_ system]
       (mt/with-dynamic-fn-redefs [self/retry-delay-ms (constantly 0)]
-        (let [labels {:model "openrouter/test-model" :source "metabot_agent"}]
+        (let [labels {:model "openrouter/test-model" :source "metabot_agent" :provider "openrouter"}]
           (testing "increments llm-requests and observes duration on success"
             (mt/with-dynamic-fn-redefs [openrouter/openrouter (constantly (test-util/mock-llm-response [{:type :start :id "m1"}]))]
               (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"})))
@@ -1460,7 +1469,7 @@
   (llm.tu/with-default-connections
     (mt/with-prometheus-system! [_ system]
       (mt/with-dynamic-fn-redefs [self/retry-delay-ms (constantly 0)]
-        (let [labels        {:model "openrouter/test-model" :source "metabot_agent"}
+        (let [labels        {:model "openrouter/test-model" :source "metabot_agent" :provider "openrouter"}
               success-mock  (test-util/mock-llm-response
                              [{:type :start :id "m1"}
                               {:type :tool-input :id "call-1" :function "json"

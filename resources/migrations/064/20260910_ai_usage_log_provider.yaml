@@ -11,7 +11,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: provider
-                  remarks: 'Provider type that served the call, e.g. openrouter. Null on rows written before this column existed'
+                  remarks: 'Provider type that served the call, e.g. openrouter. A managed-proxy call records the wire family it was served as, so it reads anthropic and is told apart by ai_proxied'
                   type: varchar(100)
                   constraints:
                     nullable: true

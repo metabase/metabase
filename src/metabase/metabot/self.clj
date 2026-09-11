@@ -276,6 +276,7 @@
            (analytics/inc! :metabase-metabot/llm-errors
                            {:model      (:model tracking-opts "unknown")
                             :source     (:tag tracking-opts "none")
+                            :provider   (:provider tracking-opts "unknown")
                             :error-type "llm-sse-error"}))
          part)))
 
@@ -371,7 +372,9 @@
   ([tracking-opts thunk]
    (with-retries tracking-opts thunk (constantly true)))
   ([tracking-opts thunk retry?]
-   (let [labels {:model (:model tracking-opts) :source (:tag tracking-opts)}]
+   (let [labels {:model    (:model tracking-opts)
+                 :source   (:tag tracking-opts)
+                 :provider (:provider tracking-opts "unknown")}]
      (loop [attempt 1]
        (analytics/inc! :metabase-metabot/llm-requests labels)
        (let [timer  (u/start-timer)

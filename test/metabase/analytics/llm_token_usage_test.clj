@@ -126,6 +126,16 @@
         (is (= 100.0 (mt/metric-value system :metabase-metabot/llm-input-tokens
                                       (assoc labels :provider "unknown")))))
       (clear-llm-metrics!)
+      (testing "the provider label separates series that would otherwise share a model and source"
+        (llm-token-usage/track-prometheus! {:model-id          "anthropic/claude-haiku-4-5"
+                                            :provider          "openrouter"
+                                            :tag               "test-tag"
+                                            :prompt-tokens     100
+                                            :completion-tokens 50})
+        (is (zero? (mt/metric-value system :metabase-metabot/llm-input-tokens labels)))
+        (is (= 100.0 (mt/metric-value system :metabase-metabot/llm-input-tokens
+                                      (assoc labels :provider "openrouter")))))
+      (clear-llm-metrics!)
       (testing "zero / nil cache token fields do not increment their counters"
         (llm-token-usage/track-prometheus! {:model-id              "anthropic/claude-haiku-4-5"
                                             :provider              "anthropic"

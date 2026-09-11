@@ -746,16 +746,16 @@
    ;; metabot / LLM agent metrics
    (prometheus/counter :metabase-metabot/llm-requests
                        {:description "LLM provider API requests"
-                        :labels [:model :source]})
+                        :labels [:model :source :provider]})
    (prometheus/counter :metabase-metabot/llm-retries
                        {:description "LLM provider retry attempts"
-                        :labels [:model :source]})
+                        :labels [:model :source :provider]})
    (prometheus/counter :metabase-metabot/llm-errors
                        {:description "LLM provider API errors (excluding retries)"
-                        :labels [:model :source :error-type]})
+                        :labels [:model :source :provider :error-type]})
    (prometheus/histogram :metabase-metabot/llm-duration-ms
                          {:description "LLM request duration (ms)"
-                          :labels [:model :source]
+                          :labels [:model :source :provider]
                           ;; 100 ms -> 2 minutes
                           :buckets [100 500 1000 2000 5000 10000 20000 30000 60000 120000]})
    (prometheus/counter :metabase-metabot/llm-input-tokens

@@ -151,7 +151,7 @@
   (mt/with-prometheus-system! [_ system]
     (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                        llm-metabot-provider "openrouter/test-model"]
-      (let [labels {:model "openrouter/test-model" :source "example-question-generation"}]
+      (let [labels {:model "openrouter/test-model" :source "example-question-generation" :provider "openrouter"}]
         (testing "increments llm-requests and observes duration on success"
           (mt/with-dynamic-fn-redefs [openrouter/openrouter
                                       (constantly (test-util/mock-llm-response
