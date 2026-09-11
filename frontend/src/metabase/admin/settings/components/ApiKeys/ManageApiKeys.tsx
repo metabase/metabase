@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import ApiKeysEmptyIllustration from "assets/img/api-keys-empty.svg?component";
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { SettingsPageWrapper } from "metabase/settings-components";
 import {
@@ -23,6 +24,7 @@ import {
   useTreeTableInstance,
 } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
+import * as Urls from "metabase/urls";
 import { formatDateTimeWithUnit } from "metabase/value-formatting";
 import type { ApiKey } from "metabase-types/api";
 
@@ -263,9 +265,19 @@ export const ManageApiKeys = () => {
             {t`Create API keys to let users authenticate API calls or make them programmatically.`}
           </Text>
         </Box>
-        <Button variant="filled" onClick={() => setModal("create")}>
-          {t`Create an API key`}
-        </Button>
+        <Group gap="sm">
+          <Button
+            variant="subtle"
+            component={ForwardRefLink}
+            to={Urls.monitorApiKeyUsage()}
+            leftSection={<Icon name="key" />}
+          >
+            {t`View API key usage`}
+          </Button>
+          <Button variant="filled" onClick={() => setModal("create")}>
+            {t`Create an API key`}
+          </Button>
+        </Group>
       </Group>
       <Card withBorder radius="sm" p={0} style={{ overflow: "hidden" }}>
         {showLoadingOrError ? (
