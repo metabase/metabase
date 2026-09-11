@@ -1798,6 +1798,11 @@
            (legacy-json-wire {"expressions" [["datetime-add" {"lib/expression-name" "Ship Date"} created-at 3 "day"]]
                               "filters"     [["=" {} ["expression" {} "Ship Date"] (abs-dt "2025-01-01" "month")]]
                               "aggregation" [["count" {}]]})))
+        (testing "a bucketed literal inside a `case` under `expressions`"
+          (assert-survives-json-hop!
+           (legacy-json-wire {"expressions" [["case" {"lib/expression-name" "Jan"}
+                                              [[["=" {} created-at (abs-dt "2025-01-01" "month")] 1]] 0]]
+                              "aggregation" [["count" {}]]})))
         (testing "a post-aggregation filter, which repair moves into a second stage"
           (assert-survives-json-hop!
            (legacy-json-wire {"aggregation" [["max" {} created-at]]
