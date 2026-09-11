@@ -1,6 +1,6 @@
 name: Build Uberjar
 
-# This workflow builds and containerizes an uberjar and pushes it to dockerhub.
+# This workflow builds the uberjar.
 
 concurrency:
   group: uberjar-${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
@@ -14,22 +14,12 @@ on:
         type: string
         default: ''
         required: false
-      containerize:
-        description: "Set if the uberjar should be containerized and pushed to Dockerhub."
-        type: boolean
-        default: false
-        required: false
   workflow_call:
     inputs:
       commit:
         description: "Optional full-length commit SHA-1 hash"
         type: string
         default: ''
-        required: false
-      containerize:
-        description: "Set if the uberjar should be containerized and pushed to Dockerhub."
-        type: boolean
-        default: false
         required: false
 
 jobs:
@@ -101,14 +91,15 @@ jobs:
     if: ${{ needs.setup.outputs.build_editions != '[]' }}
     name: build (${{ matrix.edition }})
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 15
+    timeout-minutes: 20
     strategy:
       matrix:
         edition: ${{ fromJson(needs.setup.outputs.build_editions) }}
     env:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
-      SKIP_LICENSES: ${{ github.event_name == 'pull_request' && !inputs.containerize }}  # faster builds for dev
+      # Faster builds for devs
+      SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}
       # Emit bundle stats on trunk/release builds (tracked over time) and on PRs
       # (the bundle-size check reads them for both the PR head and its base ref).
       EMIT_BUNDLE_STATS: ${{ (github.ref_name == 'master' || startsWith(github.ref_name, 'release-') || github.event_name == 'pull_request') && 'true' || 'false' }}
@@ -135,6 +126,19 @@ jobs:
           name: metabase-bundle-stats-${{ matrix.edition }}-${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
           path: target/bundle-stats
           if-no-files-found: warn
+      - name: Verify license files are present in uberjar
+        if: ${{ env.SKIP_LICENSES != 'true' }}
+        run: |
+          echo "Checking for license files in uberjar..."
+          unzip -l ./target/uberjar/metabase.jar | grep -q "license-backend-third-party.txt" || (echo "ERROR: license-backend-third-party.txt not found in uberjar" && exit 1)
+          unzip -l ./target/uberjar/metabase.jar | grep -q "license-frontend-third-party.txt" || (echo "ERROR: license-frontend-third-party.txt not found in uberjar" && exit 1)
+          echo "Both license files found in uberjar"
+      - name: Launch uberjar
+        run: >-
+          java --add-opens java.base/java.nio=ALL-UNNAMED -jar ./target/uberjar/metabase.jar &
+      - name: Wait for Metabase to start
+        timeout-minutes: 5
+        run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
       - name: Mark with the commit hash
         run: git rev-parse --short HEAD > COMMIT-ID
         shell: bash
@@ -145,62 +149,9 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           # Same key the artifact lookups use, so a build for an explicitly dispatched commit
-          # uploads where `setup` and `jar-healthcheck` go looking for it.
+          # uploads where `setup` and the containerize workflow go looking for it.
           name: metabase-${{ matrix.edition }}-${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}-uberjar
           path: |
             ./target/uberjar/metabase.jar
             ./COMMIT-ID
             ./SHA256.sum
-
-  jar-healthcheck:
-    needs: [setup, build]
-    # Health-check whatever we are about to containerize, plus every build on master and release.
-    if: ${{ !failure() && !cancelled() && (inputs.containerize || github.ref_name == 'master' || startsWith(github.ref_name, 'release-')) }}
-    name:  jar-healthcheck (${{ matrix.edition }})
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 10
-    strategy:
-      matrix:
-        edition: [ee, oss]
-    steps:
-      - name: Check out the code
-        uses: actions/checkout@v6
-      - name: Prepare JRE (Java Run-time Environment)
-        uses: actions/setup-java@v5.2.0
-        with:
-          java-package: jre
-          java-version: ${{ needs.setup.outputs.java_version || 25 }}
-          distribution: "temurin"
-      - run: java -version
-      - name: Retrieve uberjar artifact
-        uses: ./.github/actions/fetch-artifact
-        with:
-          commit: ${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
-          edition: ${{ matrix.edition }}
-      - name: Verify license files are present in uberjar
-        run: |
-          echo "Checking for license files in uberjar..."
-          unzip -l ./metabase.jar | grep -q "license-backend-third-party.txt" || (echo "ERROR: license-backend-third-party.txt not found in uberjar" && exit 1)
-          unzip -l ./metabase.jar | grep -q "license-frontend-third-party.txt" || (echo "ERROR: license-frontend-third-party.txt not found in uberjar" && exit 1)
-          echo "Both license files found in uberjar"
-      - name: Launch uberjar
-        run: >-
-          java --add-opens java.base/java.nio=ALL-UNNAMED -jar ./metabase.jar &
-      - name: Wait for Metabase to start
-        run: while ! curl 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
-
-  containerize:
-    needs: [build, jar-healthcheck]
-    if: ${{ inputs.containerize && !failure() && !cancelled() }}
-    name: containerize (${{ matrix.edition }})
-    strategy:
-      matrix:
-        edition: [ee, oss]
-    uses: ./.github/workflows/containerize-jar.yml
-    secrets: inherit
-    with:
-      edition: ${{ matrix.edition }}
-      commit: ${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
-      release: false
-      build-args: |
-        GIT_COMMIT_SHA=${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}

@@ -252,7 +252,7 @@ jobs:
     with:
       edition: oss
       commit: ${{ inputs.commit }}
-      repo: ${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_STAGING_REPO }}
+      repo: ${{ vars.DOCKERHUB_STAGING_REPO }}
       tag: ${{ needs.release-artifact.outputs.oss_version }}-${{ inputs.commit }}
       release: true
 
@@ -263,7 +263,7 @@ jobs:
     with:
       edition: ee
       commit: ${{ inputs.commit }}
-      repo: ${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_STAGING_REPO }}
+      repo: ${{ vars.DOCKERHUB_STAGING_REPO }}
       tag: ${{ needs.release-artifact.outputs.ee_version }}-${{ inputs.commit }}
       release: true
 
