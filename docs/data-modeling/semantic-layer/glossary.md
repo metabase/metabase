@@ -9,7 +9,7 @@ The glossary is a place where anyone can define terms relevant to your data,
 
 ## Use the glossary to give Metabot context
 
-The glossary is particularly useful for [Metabot](../ai/metabot.md). When Metabot gets a prompt, it can look up glossary terms to understand your request. For example, if you define "MRR" as "Monthly Recurring Revenue" in your glossary, Metabot will know what you mean when you ask "What's our MRR for Q4?"
+The glossary is particularly useful for [Metabot](../../ai/metabot.md). When Metabot gets a prompt, it can look up glossary terms to understand your request. For example, if you define "MRR" as "Monthly Recurring Revenue" in your glossary, Metabot will know what you mean when you ask "What's our MRR for Q4?"
 
 ![Metabot using the glossary](images/glossary.png)
 
