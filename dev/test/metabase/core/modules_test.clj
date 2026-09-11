@@ -8,6 +8,7 @@
    [dev.deps-graph]
    [dev.model-boundary-config]
    [hooks.common.modules :as modules]
+   [metabase.test-runner]
    [metabase.util.json :as json]
    [rewrite-clj.node :as n]
    [rewrite-clj.parser :as r.parser]
@@ -248,6 +249,13 @@
               :let  [parent (modules/parent-module config child)]]
         (testing (str "\n" child)
           (is (contains? (set (get-in config [parent :module-exports])) child)))))))
+
+(deftest ^:parallel test-runner-module-folders-test
+  (testing "`:module` resolves through each module's :ns-prefix, so dotted and renamed modules find their tests"
+    (is (= ["test/metabase/lib/schema"
+            "test/metabase/actions_rest"
+            "enterprise/backend/test/metabase_enterprise/transforms_python"]
+           (metabase.test-runner/module-folders '[lib.schema actions.rest enterprise/transforms.python])))))
 
 (defn- rest-module? [module]
   (re-find #"[.-]rest$" (str module)))
