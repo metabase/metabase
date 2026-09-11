@@ -134,18 +134,18 @@
             field-id->table-id)))
 
 (defn- readable?
-  "Whether the current user can read `target`, either a row or a model and an id; with `audited?`
-  a refusal leaves the [[api/read-check]] audit trail."
-  [audited? & target]
+  "Whether the current user can read the row; with `audited?` a refusal leaves the
+  [[api/read-check]] audit trail."
+  [audited? model id]
   (if audited?
     (try
-      (apply api/read-check target)
+      (api/read-check model id)
       true
       (catch clojure.lang.ExceptionInfo e
         (if (= 403 (:status-code (ex-data e)))
           false
           (throw e))))
-    (apply mi/can-read? target)))
+    (mi/can-read? model id)))
 
 (defn- runnable-normalized-query
   "`resolved` normalized, when the current user may run it and see every table and field it
@@ -192,12 +192,13 @@
 
 (defn query-for-export
   "`[query mp]` for [[metabase.metabot.tools.shared.llm-shape/export-query-for-llm]] when the
-  current user can read the query's database and run it, else nil. The query comes back
-  normalized with a provider over its database; one carrying no `:database` passes through
-  untouched and without a provider, since it only ever pprints. With `audited?` the database and
-  saved-question refusals are audited; for client-supplied queries, where the ids are the
-  caller's own. A database that no longer exists passes, since there is no metadata behind it to
-  leak; one we can't resolve does not."
+  current user may run `query`, else nil. The query comes back normalized with a provider over
+  its database; one carrying no `:database` passes through untouched and without a provider,
+  since it only ever pprints. With `audited?` the saved-question refusals are audited; for
+  client-supplied queries, where the ids are the caller's own. Run permission is the whole rule:
+  reading the database is not enough, and a saved question the user can read authorizes a query
+  over a database they cannot. A database that no longer exists passes, since there is no
+  metadata behind it to leak; one we can't resolve does not."
   [query audited?]
   (if-not (and (map? query) (:database query))
     [query nil]
@@ -205,12 +206,7 @@
      [query audited?]
      (fn []
        (when-let [resolved (resolve-effective-database query)]
-         ;; one fetch: read-checking by id would look the Database up again, and a deletion
-         ;; landing between the two turns the missing-database pass into an escaping 404
-         (let [database (metabot.db/database (:database resolved))]
-           (cond
-             (nil? database)                     [resolved nil]
-             (not (readable? audited? database)) nil
-             :else
-             (when-let [normalized (runnable-normalized-query audited? resolved)]
-               [normalized (lib-be/application-database-metadata-provider (:database normalized))]))))))))
+         (if (metabot.db/database-exists? (:database resolved))
+           (when-let [normalized (runnable-normalized-query audited? resolved)]
+             [normalized (lib-be/application-database-metadata-provider (:database normalized))])
+           [resolved nil]))))))

@@ -290,18 +290,23 @@
     (mt/with-temp [:model/Card {card-id :id}
                    {:dataset_query (lib/query (mt/metadata-provider)
                                               (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))}]
-      (mt/with-no-data-perms-for-all-users!
-        (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/manage-table-metadata :yes)
-        (mt/with-test-user :rasta
-          (let [query {:database (mt/id)
-                       :type     :query
-                       :query    {:source-table (str "card__" card-id)}}]
-            (is (mi/can-read? :model/Database (mt/id))
-                "precondition: metadata access makes the database readable")
+      (let [query {:database (mt/id)
+                   :type     :query
+                   :query    {:source-table (str "card__" card-id)}}]
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/manage-table-metadata :yes)
+          (mt/with-test-user :rasta
             (is (not (mi/can-query? :model/Database (mt/id)))
                 "precondition: nothing grants query access to the database")
             (doseq [audited? [true false]]
-              (is (some? (shared.content-store/query-for-export query audited?))))))))))
+              (is (some? (shared.content-store/query-for-export query audited?))))))
+        (testing "and with no permission on that database at all, since running the card is what authorizes it"
+          (mt/with-no-data-perms-for-all-users!
+            (mt/with-test-user :rasta
+              (is (not (mi/can-read? :model/Database (mt/id)))
+                  "precondition: the database is not even readable")
+              (doseq [audited? [true false]]
+                (is (some? (shared.content-store/query-for-export query audited?)))))))))))
 
 ;;; ============================================================
 ;;; default-store integration shape
