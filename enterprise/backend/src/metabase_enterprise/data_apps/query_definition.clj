@@ -115,7 +115,8 @@
    [:ref ::metric]])
 
 (mr/def ::stage
-  [:map {:closed true :decode/normalize {:compile query-map-decoder}}
+  [:map {:closed true :decode/normalize {:compile query-map-decoder}
+         ::sdk-metadata [:enabled]}
    [:source       ::table-source]
    [:fields       {:optional true} [:maybe [:sequential ::column]]]
    [:filters      {:optional true} [:maybe [:sequential [:or ::expression ::segment]]]]

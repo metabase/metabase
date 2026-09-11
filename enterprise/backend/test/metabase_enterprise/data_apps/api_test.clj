@@ -187,6 +187,18 @@
         (is (=? {:dataset_query {:stages [{:aggregation [["count" {}]]}]}}
                 response))))))
 
+(deftest query-definition-ignores-the-enabled-option-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (create-app!)
+      (let [table-id (mt/id :venues)
+            response (mt/user-http-request
+                      :crowberto :post 200 "apps/demo/query"
+                      {:stages [{:source {:type "table" :id table-id}
+                                 :enabled false}]})]
+        (is (=? {:dataset_query {:stages [{:source-table table-id}]}}
+                response))))))
+
 (deftest query-definition-rejects-unsupported-fields-over-http-test
   (mt/with-premium-features #{:data-apps-preview}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
