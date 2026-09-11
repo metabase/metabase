@@ -339,6 +339,8 @@ describe("Scalar", () => {
 
 describe("Scalar conditional colors", () => {
   const GOAL_REF = { type: "card", id: 9, column: "goal" } as const;
+  const UNRESOLVED_MESSAGE =
+    "Couldn't load a value one of this chart's ranges depends on.";
 
   function setup(series: Series, segments: ScalarSegment[]) {
     renderWithProviders(
@@ -414,6 +416,24 @@ describe("Scalar conditional colors", () => {
     expect(getValueColor()).toBe("green");
   });
 
+  it("explains instead of rendering when a self-column range's cell is null", () => {
+    setup(createScalarSeries({ rows: [[null]] }), [
+      { min: "count", max: null, color: "green", label: "above goal" },
+    ]);
+
+    expect(screen.getByText(UNRESOLVED_MESSAGE)).toBeInTheDocument();
+    expect(screen.queryByTestId("scalar-value")).not.toBeInTheDocument();
+  });
+
+  it("explains instead of rendering when a self-column range's question returned no rows", () => {
+    setup(createScalarSeries({ rows: [] }), [
+      { min: "count", max: null, color: "green", label: "above goal" },
+    ]);
+
+    expect(screen.getByText(UNRESOLVED_MESSAGE)).toBeInTheDocument();
+    expect(screen.queryByTestId("scalar-value")).not.toBeInTheDocument();
+  });
+
   it("explains instead of rendering when a range's bound failed to load", () => {
     setup(
       createScalarSeries({
@@ -424,11 +444,7 @@ describe("Scalar conditional colors", () => {
       [{ min: GOAL_REF, max: null, color: "green", label: "above goal" }],
     );
 
-    expect(
-      screen.getByText(
-        "Couldn't load a value one of this chart's ranges depends on.",
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByText(UNRESOLVED_MESSAGE)).toBeInTheDocument();
     expect(screen.queryByTestId("scalar-value")).not.toBeInTheDocument();
     expect(screen.getByTestId("scalar-title")).toHaveTextContent(
       "Scalar Title",
