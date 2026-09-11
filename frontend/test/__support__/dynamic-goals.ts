@@ -2,10 +2,16 @@ import type { GoalSettingKey } from "metabase/viz-core/lib/dynamic-goal-settings
 import * as dynamicGoalSettings from "metabase/viz-core/lib/dynamic-goal-settings";
 import type { VisualizationDisplay } from "metabase-types/api";
 
-/** The graph displays that resolve `graph.goal_value`; extend it as charts gain dynamic goals. */
-export const DYNAMIC_GOAL_GRAPH_DISPLAYS = [
+/** The cartesian displays that resolve `graph.goal_value`; extend it as charts gain dynamic goals. */
+export const DYNAMIC_GOAL_CARTESIAN_DISPLAYS = [
   "line",
   "bar",
+] as const satisfies readonly VisualizationDisplay[];
+
+/** Every graph display that resolves `graph.goal_value`, including the non-cartesian row chart. */
+export const DYNAMIC_GOAL_GRAPH_DISPLAYS = [
+  ...DYNAMIC_GOAL_CARTESIAN_DISPLAYS,
+  "row",
 ] as const satisfies readonly VisualizationDisplay[];
 
 /**

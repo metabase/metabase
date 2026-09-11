@@ -953,6 +953,8 @@ describe("dynamic goal settings per display", () => {
     expect(isDynamicGoalSetting("gauge", "graph.goal_value")).toBe(false);
     expect(isDynamicGoalSetting("line", "graph.goal_value")).toBe(true);
     expect(isDynamicGoalSetting("line", "gauge.segments")).toBe(false);
+    expect(isDynamicGoalSetting("row", "graph.goal_value")).toBe(true);
+    expect(isDynamicGoalSetting("row", "gauge.segments")).toBe(false);
     expect(isDynamicGoalSetting("scalar", "scalar.segments")).toBe(true);
     expect(isDynamicGoalSetting("scalar", "gauge.segments")).toBe(false);
     expect(isDynamicGoalSetting(undefined, "graph.goal_value")).toBe(false);

@@ -1,4 +1,4 @@
-import { DYNAMIC_GOAL_GRAPH_DISPLAYS } from "__support__/dynamic-goals";
+import { DYNAMIC_GOAL_CARTESIAN_DISPLAYS } from "__support__/dynamic-goals";
 import { SERIES_SETTING_KEY } from "metabase/viz-core";
 import type {
   DatasetData,
@@ -28,7 +28,7 @@ describe("definition", () => {
   describe("checkRenderable", () => {
     const { checkRenderable } = getCartesianChartDefinition({});
 
-    describe.each(DYNAMIC_GOAL_GRAPH_DISPLAYS)(
+    describe.each(DYNAMIC_GOAL_CARTESIAN_DISPLAYS)(
       "goal line of a %s chart",
       (display) => {
         it("accepts a static goal value", () => {
