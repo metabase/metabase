@@ -45,7 +45,7 @@ export const ChartSettingSegmentsEditor = ({
   const canRemove = segments.length > 1 || canRemoveAll;
 
   const referencedEntities =
-    data != null
+    data !== undefined
       ? getUnansweredGoalEntities(data, getGoalSegmentBounds(segments))
       : [];
 

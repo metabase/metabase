@@ -26,7 +26,7 @@ const DYNAMIC_GOAL_SETTINGS_BY_DISPLAY: Partial<
 export function getDynamicGoalSettingKeys(
   display: VisualizationDisplay | undefined,
 ): GoalSettingKey[] {
-  return display != null
+  return display !== undefined
     ? (DYNAMIC_GOAL_SETTINGS_BY_DISPLAY[display] ?? [])
     : [];
 }

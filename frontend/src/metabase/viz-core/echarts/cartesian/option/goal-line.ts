@@ -60,7 +60,7 @@ export function getGoalLineSeriesOption(
 ): CustomSeriesOption | null {
   const goalValue = getNumericGoalValue(settings);
 
-  if (!settings["graph.show_goal"] || goalValue == null) {
+  if (!settings["graph.show_goal"] || goalValue === null) {
     return null;
   }
 

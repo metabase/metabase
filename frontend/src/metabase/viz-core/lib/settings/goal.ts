@@ -23,7 +23,7 @@ export const getChartGoal = (
   const goalValue =
     settings["graph.goal_value"] == null ? 0 : getNumericGoalValue(settings);
 
-  if (goalValue == null) {
+  if (goalValue === null) {
     return null;
   }
 

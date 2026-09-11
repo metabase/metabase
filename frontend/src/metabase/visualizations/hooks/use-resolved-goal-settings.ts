@@ -46,7 +46,7 @@ function getGoalResolutionStatus({
     return "resolving";
   }
 
-  if (error != null) {
+  if (error !== undefined) {
     return "failed";
   }
 

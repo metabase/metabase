@@ -59,20 +59,20 @@ export function useAnsweredGoalData(
   }
 
   // no query to re-run, so the references can never be answered
-  if (datasetQuery == null) {
+  if (datasetQuery === undefined) {
     return { status: "failed" };
   }
 
-  if (isError || freshDataset?.error != null) {
+  if (isError || freshDataset?.error !== undefined) {
     return { status: "failed" };
   }
 
-  if (freshDataset?.data == null) {
+  if (freshDataset?.data === undefined) {
     return { status: "resolving" };
   }
 
   // completed, but the response has no answer
-  if (answeredData == null) {
+  if (answeredData === null) {
     return { status: "failed" };
   }
 
