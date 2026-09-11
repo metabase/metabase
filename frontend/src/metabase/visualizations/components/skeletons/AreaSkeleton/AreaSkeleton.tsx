@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import { SkeletonImage } from "./AreaSkeleton.styled";
 
 const AreaSkeleton = (): JSX.Element => {

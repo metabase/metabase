@@ -1,5 +1,5 @@
 import { useDndContext } from "@dnd-kit/core";
-import { useCallback, useLayoutEffect, useState } from "react";
+import { type JSX, useCallback, useLayoutEffect, useState } from "react";
 
 import { Box, Popover } from "metabase/ui";
 import { PreventPopoverExitProvider } from "metabase/ui/components/utils/PreventPopoverExit";

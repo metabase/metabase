@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { HTMLAttributes } from "react";
+import type { HTMLAttributes, JSX } from "react";
 
 import { Box } from "metabase/ui";
 import VisualizationS from "metabase/visualizations/components/Visualization/Visualization.module.css";

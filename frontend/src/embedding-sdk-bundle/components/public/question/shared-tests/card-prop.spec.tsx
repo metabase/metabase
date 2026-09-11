@@ -28,7 +28,7 @@ import { TEST_COLUMN, TEST_DB, TEST_TABLE } from "./constants.spec";
 export function addCardPropTests({
   Component,
 }: {
-  Component: (props: { card: string | MetabaseCard }) => React.ReactNode;
+  Component: React.ComponentType<{ card: string | MetabaseCard }>;
 }) {
   describe("card prop", () => {
     const DATASET_QUERY = {
@@ -151,7 +151,8 @@ export function addCardPropTests({
 
       expect(screen.getByTestId("query-visualization-root")).toBeVisible();
       // The `bar` visualization is honored (and locked), so a chart renders...
-      expect(screen.getByTestId("chart-container")).toBeInTheDocument();
+      // React 19 paints the chart after the loader clears, so wait for it.
+      expect(await screen.findByTestId("chart-container")).toBeInTheDocument();
       expect(screen.queryByTestId("table-root")).not.toBeInTheDocument();
     });
   });

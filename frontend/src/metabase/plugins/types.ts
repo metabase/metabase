@@ -1,4 +1,4 @@
-import type { ComponentType } from "react";
+import type { ComponentType, JSX } from "react";
 
 import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import type { ConfirmationState } from "metabase/common/hooks/use-confirmation";

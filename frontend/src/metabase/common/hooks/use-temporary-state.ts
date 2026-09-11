@@ -13,7 +13,7 @@ export function useTemporaryState<T>(
   ms: number,
 ): [T, (newValue: T) => void] {
   const [value, setValue] = useState(baseValue);
-  const timeoutIdRef = useRef<number>();
+  const timeoutIdRef = useRef<number>(undefined);
 
   const changeValue = useCallback(
     (newValue: T) => {

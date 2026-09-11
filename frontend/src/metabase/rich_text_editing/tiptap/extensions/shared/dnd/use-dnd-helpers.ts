@@ -17,7 +17,7 @@ export const useDndHelpers = ({
     isDraggedOver: boolean;
     side: "left" | "right" | null;
   }>({ isDraggedOver: false, side: null });
-  const draggedOverTimeoutRef = useRef<number | undefined>();
+  const draggedOverTimeoutRef = useRef<number | undefined>(undefined);
   const dragElRef = useRef<HTMLDivElement | null>(null);
   const isMountedRef = useRef(false);
 

@@ -28,8 +28,8 @@ export function calculateFillerHeight(
 }
 
 function resizeFillerArea(
-  scrollContainerRef: RefObject<HTMLElement>,
-  fillerRef: RefObject<HTMLElement>,
+  scrollContainerRef: RefObject<HTMLElement | null>,
+  fillerRef: RefObject<HTMLElement | null>,
 ) {
   const scrollContainerEl = scrollContainerRef.current;
   const fillerEl = fillerRef.current;
@@ -51,8 +51,8 @@ export function useScrollManager(hasMessages: boolean, conversationId: string) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const fillerRef = useRef<HTMLDivElement>(null);
 
-  const resizeRafRef = useRef<number>();
-  const scrollToPromptRafRef = useRef<number>();
+  const resizeRafRef = useRef<number>(undefined);
+  const scrollToPromptRafRef = useRef<number>(undefined);
 
   const scheduleFillerResize = useCallback(() => {
     // only schedule if nothing has been for this frame

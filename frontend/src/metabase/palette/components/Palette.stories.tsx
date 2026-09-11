@@ -1,10 +1,10 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
 import type { Store } from "@reduxjs/toolkit";
-import type { StoryFn } from "@storybook/react";
 import { expect, userEvent, within } from "@storybook/test";
 import { KBarProvider, VisualState, useKBar } from "kbar";
 import { HttpResponse, http } from "msw";
+import type { ComponentType } from "react";
 
 import { getCommonStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
@@ -36,7 +36,7 @@ registerVisualization(Table);
 // Unjustified type cast. FIXME
 const store = getCommonStore(storeInitialState) as unknown as Store<State>;
 
-const ReduxDecorator = (Story: StoryFn) => {
+const ReduxDecorator = (Story: ComponentType) => {
   return (
     <MetabaseReduxProvider store={store}>
       <KBarProvider>

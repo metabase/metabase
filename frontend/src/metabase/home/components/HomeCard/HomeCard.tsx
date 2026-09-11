@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 
 import { Link } from "metabase/common/components/Link";
 import { Card, Flex } from "metabase/ui";
