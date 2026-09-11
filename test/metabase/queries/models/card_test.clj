@@ -13,6 +13,7 @@
    [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.queries.db :as queries.db]
    [metabase.queries.models.card :as card]
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.schema :as queries.schema]
@@ -1671,29 +1672,33 @@
 
 (deftest cascade-database-change-to-transitive-dependents-test
   (testing "Recursive cascade through chains of dependent cards (#74561)"
-    (mt/with-temp [:model/Database {db1-id :id} {:name "db1" :engine :h2}
-                   :model/Database {db2-id :id} {:name "db2" :engine :h2}
-                   :model/Card     model        {:type          :model
-                                                 :database_id   db1-id
-                                                 :dataset_query {:lib/type :mbql/query
-                                                                 :database db1-id
-                                                                 :stages   [{:lib/type :mbql.stage/native
-                                                                             :native   "SELECT 1"}]}}
-                   :model/Card     question1    (dependent-card db1-id model)
-                   :model/Card     question2    (dependent-card db1-id model)
-                   :model/Card     question3    (dependent-card db1-id question1)
-                   :model/Card     question4    (dependent-card db1-id question2)
-                   :model/Card     question5    (dependent-card db1-id question4)]
-      (mt/with-test-user :crowberto
-        (card/update-card! {:card-before-update model
-                            :card-updates       {:dataset_query {:lib/type :mbql/query
-                                                                 :database db2-id
-                                                                 :stages   [{:lib/type :mbql.stage/native
-                                                                             :native   "SELECT 1"}]}}}))
-      (doseq [question [question1 question2 question3 question4 question5]]
-        (let [updated-card (t2/select-one :model/Card :id (:id question))]
-          (is (= db2-id (get-in updated-card [:dataset_query :database])))
-          (is (= db2-id (:database_id updated-card))))))))
+    ;; No app DB promises row order without an ORDER BY, so run the cascade over a reversed select too.
+    (doseq [[order-name reorder] [["natural order" identity] ["reversed order" reverse]]]
+      (testing order-name
+        (mt/with-temp [:model/Database {db1-id :id} {:name "db1" :engine :h2}
+                       :model/Database {db2-id :id} {:name "db2" :engine :h2}
+                       :model/Card     model        {:type          :model
+                                                     :database_id   db1-id
+                                                     :dataset_query {:lib/type :mbql/query
+                                                                     :database db1-id
+                                                                     :stages   [{:lib/type :mbql.stage/native
+                                                                                 :native   "SELECT 1"}]}}
+                       :model/Card     question1    (dependent-card db1-id model)
+                       :model/Card     question2    (dependent-card db1-id model)
+                       :model/Card     question3    (dependent-card db1-id question1)
+                       :model/Card     question4    (dependent-card db1-id question2)
+                       :model/Card     question5    (dependent-card db1-id question4)]
+          (mt/with-dynamic-fn-redefs [queries.db/card-queries (comp reorder (mt/original-fn #'queries.db/card-queries))]
+            (mt/with-test-user :crowberto
+              (card/update-card! {:card-before-update model
+                                  :card-updates       {:dataset_query {:lib/type :mbql/query
+                                                                       :database db2-id
+                                                                       :stages   [{:lib/type :mbql.stage/native
+                                                                                   :native   "SELECT 1"}]}}})))
+          (doseq [question [question1 question2 question3 question4 question5]]
+            (let [updated-card (t2/select-one :model/Card :id (:id question))]
+              (is (= db2-id (get-in updated-card [:dataset_query :database])))
+              (is (= db2-id (:database_id updated-card))))))))))
 
 (deftest find-stale-query-test
   (testing "the Card `find-stale-query` method selects stale cards and applies the model's own exclusions"
