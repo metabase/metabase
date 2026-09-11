@@ -30,6 +30,38 @@
       (is (str/includes? prompt "Sample Database"))
       (is (not (re-find #"\[Sample\s*," prompt))))))
 
+(deftest ^:parallel metric-source-guidance-is-carried-by-every-surface-test
+  ;; "A metric only works on the source it was defined on" is taught in three places that cannot share text: the
+  ;; canonical .md served as an MCP resource, the advanced skill split out of it, and the aggregation catalog. Get
+  ;; it wrong in any one and the agent builds `source-table: <base table>` for a metric defined on a saved question,
+  ;; which the QP rejects. The gate in `metabase.metabot.tools.construct` and the tag attributes in
+  ;; `metabase.metabot.tools.shared.llm-shape` are the other two halves; this pins the prose half.
+  (let [surfaces {"prompts/tools/construct_notebook_query.md"
+                  (slurp (io/resource "metabot/prompts/tools/construct_notebook_query.md"))
+                  "skills/construct-notebook-query-advanced.md"
+                  (slurp (io/resource "metabot/skills/construct-notebook-query-advanced.md"))}]
+    (doseq [[path doc] surfaces]
+      (testing path
+        (testing "names both source attributes the `<metric>` tag can carry"
+          (is (str/includes? doc "base_table_fully_qualified_name"))
+          (is (str/includes? doc "source_card_portable_entity_id")))
+        (testing "and the marker for a metric whose source cannot be offered"
+          (is (str/includes? doc "source_unavailable")))
+        (testing "and states the rule that makes the choice between them conditional"
+          ;; Positive assertion: checking that old wording is absent goes vacuous the first time anyone
+          ;; rephrases it, and would pass on a surface teaching the base table unconditionally in other words.
+          (is (str/includes? doc "only works on the source it was defined on")))))
+    (testing "the aggregation catalogs describe the metric clause the same way"
+      (doseq [path ["metabot/prompts/tools/construct_notebook_query.md"
+                    "metabot/skills/construct-notebook-query-operators.md"]]
+        (testing path
+          (let [line (->> (str/split-lines (slurp (io/resource path)))
+                          (filter #(str/starts-with? % "- `[\"metric\", {}, "))
+                          first)]
+            (is (some? line) "the catalog lists a `metric` aggregation clause")
+            (is (str/includes? line "base_table_fully_qualified_name"))
+            (is (str/includes? line "source_card_portable_entity_id"))))))))
+
 (deftest ^:parallel render-system-prompt-test
   (testing "renders template with variables"
     (let [template "Hello {{name}}, today is {{day}}"
