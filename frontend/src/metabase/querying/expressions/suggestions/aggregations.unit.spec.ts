@@ -1,9 +1,3 @@
-import { createMockMetadata } from "__support__/metadata";
-import * as Lib from "metabase-lib";
-import {
-  DEFAULT_TEST_QUERY,
-  createMetadataProvider,
-} from "metabase-lib/test-helpers";
 import type { DatabaseFeature } from "metabase-types/api";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
@@ -17,19 +11,9 @@ describe("suggestAggregations", () => {
   }: Partial<Options> & {
     features?: DatabaseFeature[];
   }) {
-    const metadata = createMockMetadata({
-      databases: [
-        createSampleDatabase({
-          features,
-        }),
-      ],
-    });
-    const provider = createMetadataProvider({ metadata });
-    const query = Lib.createTestQuery(provider, DEFAULT_TEST_QUERY);
     const source = suggestAggregations({
       expressionMode,
-      query,
-      metadata,
+      database: createSampleDatabase({ features }),
     });
 
     return function (doc: string) {
