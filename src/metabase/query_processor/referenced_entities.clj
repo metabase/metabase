@@ -32,9 +32,14 @@
   {"card"    {:model :model/Card,    :query-key :dataset_query}
    "measure" {:model :model/Measure, :query-key :definition}})
 
+(def ^:private max-specs
+  "Cap on how many entities one request can ask for. A chart needs a handful; anything past this is a client bug
+  or an attempt to fan one request out into many warehouse queries."
+  20)
+
 (def specs-schema
   "Schema for the `referenced_entities` request param."
-  [:maybe [:sequential
+  [:maybe [:sequential {:max max-specs}
            [:map
             [:type (into [:enum] (keys entity-types))]
             [:id :int]
@@ -117,6 +122,20 @@
         {:status "failed"
          :error  (or (ex-message e) (tru "Failed to run referenced query"))}))))
 
+(defn- dedupe-specs
+  "One spec per entity. Results are keyed by entity, so a client naming the same one twice would otherwise run it
+  twice and throw the first result away."
+  [specs]
+  (perf/mapv (fn [[[entity-type id] ss]]
+               {:type     entity-type
+                :id       id
+                ;; a spec with no :columns wants them all, so it wins over one that narrows
+                :columns  (when (perf/every? (comp seq :columns) ss)
+                            (vec (distinct (mapcat :columns ss))))
+                :max_rows (when-let [ms (seq (keep :max_rows ss))]
+                            (apply max ms))})
+             (group-by (juxt :type :id) specs)))
+
 (defn- referenced-entities-result
   "Run each spec and return `{type-string {id-string result}}`, nil when there are none. Must run before the main
   query's QP store is bound."
@@ -128,7 +147,7 @@
                (assoc-in acc [entity-type (str id)] (run-referenced-entity spec max-rows)))
              {}
              ;; don't start the next one if the client already hung up
-             (take-while (fn [_] (not (qp.pipeline/canceled?))) specs)))))
+             (take-while (fn [_] (not (qp.pipeline/canceled?))) (dedupe-specs specs))))))
 
 (defn- inject-referenced-entities
   [rff result]
@@ -160,22 +179,40 @@
     (inject-referenced-entities rff result)
     rff))
 
-(defn viz-settings->goal-specs
-  "Extract referenced-entity specs from merged viz settings; nil when there are none."
-  [viz]
-  (when-let [sources (not-empty
-                      (into []
-                            (comp (keep dynamic-goals/goal-source)
-                                  ;; a goal pointing at something we can't run is dropped rather than failing the request
-                                  (filter (comp entity-types :type)))
-                            (dynamic-goals/shown-goal-values viz)))]
+(defn- goal-sources
+  "Runnable goal references in `viz-settings`, with toggles read from `effective-settings`."
+  [viz-settings effective-settings]
+  (into []
+        (comp (keep dynamic-goals/goal-source)
+              ;; a goal pointing at something we can't run is dropped rather than failing the request
+              (filter (comp entity-types :type)))
+        (dynamic-goals/shown-goal-values viz-settings effective-settings)))
+
+(defn- sources->specs
+  "One spec per referenced entity, carrying every column any goal asked it for."
+  [sources]
+  (when (seq sources)
     (perf/mapv (fn [[[entity-type id] ss]]
                  {:type    entity-type
                   :id      id
                   :columns (vec (distinct (map :column ss)))})
                (group-by (juxt :type :id) sources))))
 
+(defn viz-settings->goal-specs
+  "Referenced-entity specs for the goals in `viz-settings-maps`; nil when there are none. Toggles come from
+  `effective-settings`, defaulting to the single map.
+
+  Takes every settings map a renderer might read rather than their merge: renderers disagree about which half
+  they consult (a gauge reads the card's, a line chart the dashcard's), so a goal on the losing half of the
+  merge still has to run or resolving it at render time throws."
+  ([viz-settings]
+   (viz-settings->goal-specs [viz-settings] viz-settings))
+  ([viz-settings-maps effective-settings]
+   (sources->specs (mapcat #(goal-sources % effective-settings) viz-settings-maps))))
+
 (defn maybe-wrap-qp-for-goals
-  "Derive specs from a card's merged `viz` settings and wrap `qp` to inject their values."
-  [qp viz]
-  (maybe-wrap-qp qp (viz-settings->goal-specs viz) goal-max-rows))
+  "Derive specs from a card's and its dashcard's viz settings and wrap `qp` to inject their values."
+  [qp card-viz dash-viz]
+  (maybe-wrap-qp qp
+                 (viz-settings->goal-specs [card-viz dash-viz] (merge card-viz dash-viz))
+                 goal-max-rows))

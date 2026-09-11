@@ -7,13 +7,17 @@ import { applyParameters } from "metabase/common/utils/card";
 import { fetchDataOrError } from "metabase/dashboard/utils";
 import { LocaleProvider } from "metabase/embedding/LocaleProvider";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
-import { getMetadata, paramFieldsFetched } from "metabase/metadata-store";
+import {
+  getMetadata,
+  paramFieldsFetched,
+  selectQuestionFromCardBuilder,
+} from "metabase/metadata-store";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
 import { useEmbedFrameOptions } from "metabase/public/hooks";
 import { usePublicEndpoints } from "metabase/public/hooks/use-public-endpoints";
 import { useSetEmbedFont } from "metabase/public/hooks/use-set-embed-font";
 import { makePivotAwareQueryRunner } from "metabase/querying/api/query-endpoints";
-import { useDispatch, useSelector } from "metabase/redux";
+import { useDispatch, useSelector, useStore } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import { useLocation, useParams } from "metabase/router";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
@@ -36,6 +40,7 @@ export const PublicOrEmbeddedQuestion = () => {
   const { uuid, token } = useParams<{ uuid: string; token: EntityToken }>();
 
   const dispatch = useDispatch();
+  const store = useStore();
   const metadata = useSelector(getMetadata);
   // we cannot use `metadata` directly otherwise hooks will re-run on every metadata change
   const metadataRef = useLatest(metadata);
@@ -133,8 +138,7 @@ export const PublicOrEmbeddedQuestion = () => {
         // embeds apply parameter values server-side
         resultPromise = runQuery(
           embedApi.endpoints.getEmbedCardQuery,
-          card,
-          metadataRef.current,
+          selectQuestionFromCardBuilder(store.getState())(card),
           {
             token,
             parameters: JSON.stringify(
@@ -153,8 +157,7 @@ export const PublicOrEmbeddedQuestion = () => {
         );
         resultPromise = runQuery(
           publicApi.endpoints.getPublicCardQuery,
-          card,
-          metadataRef.current,
+          selectQuestionFromCardBuilder(store.getState())(card),
           {
             uuid,
             parameters: JSON.stringify(datasetQuery.parameters),
@@ -180,7 +183,7 @@ export const PublicOrEmbeddedQuestion = () => {
       console.error("error", error);
       dispatch(setErrorPage(error));
     }
-  }, [card, metadataRef, dispatch, parameterValues, token, uuid]);
+  }, [card, metadataRef, store, dispatch, parameterValues, token, uuid]);
 
   useEffect(() => {
     run();

@@ -20,8 +20,9 @@ export const BOXPLOT_CHART_DEFINITION: VisualizationDefinition = {
   getUiName: () => t`Box Plot`,
   identifier: "boxplot",
   iconName: "boxplot",
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  noun: t`box plot`,
+  get noun() {
+    return t`box plot`;
+  },
   minSize: getMinSize("boxplot"),
   defaultSize: getDefaultSize("boxplot"),
   maxMetricsSupported: Infinity,

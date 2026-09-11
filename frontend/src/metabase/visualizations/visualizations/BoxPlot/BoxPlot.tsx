@@ -3,6 +3,7 @@ import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 import { useSet } from "react-use";
 
 import { isReducedMotionPreferred } from "metabase/utils/dom";
+import { assignLazily } from "metabase/utils/merge-lazily";
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import { GoalResolutionState } from "metabase/visualizations/components/GoalResolutionState";
@@ -253,7 +254,4 @@ function BoxPlotComponent(props: VisualizationProps) {
   );
 }
 
-export const BoxPlot = Object.assign(
-  BoxPlotComponent,
-  BOXPLOT_CHART_DEFINITION,
-);
+export const BoxPlot = assignLazily(BoxPlotComponent, BOXPLOT_CHART_DEFINITION);

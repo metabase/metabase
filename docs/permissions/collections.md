@@ -92,7 +92,7 @@ People in groups with Curate access to a collection can pin items in the collect
 
 To pin an item, select the **pin icon** next to the item's name.
 
-Note that collections themselves can't be pinned. If you're running on a [Pro or Enterprise plan](https://www.metabase.com/pricing/), admins can designate [Official Collections][official-collections].
+Note that collections themselves can't be pinned. If you're running on a [Pro or Enterprise plan](https://www.metabase.com/pricing), admins can designate [Official Collections][official-collections].
 
 ## Special collections
 
@@ -114,7 +114,7 @@ A personal collection works just like any other collection except that its permi
 
 ### Library collection
 
-See [Permissions for the Library and its subcollections](../data-studio/library.md#library-permissions).
+See [Permissions for the Library and its subcollections](../data-modeling/semantic-layer/library.md#library-permissions).
 
 Do not use collection permissions for **Library > Data** to control access to data in published tables. Use [Data permissions](data.md) instead.
 
