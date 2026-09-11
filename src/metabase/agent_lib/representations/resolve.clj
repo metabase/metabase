@@ -152,31 +152,109 @@
   "A string that looks like an ISO-8601 date, with or without a time portion."
   #"\d{4}-\d{2}-\d{2}.*")
 
+(defn- operand-types
+  "The types describing MBQL clause `x`, as a set — empty or `nil` when nothing here describes it.
+
+    [:field {:base-type :type/Text} 43]                       => #{:type/DateTime} (43 is a datetime)
+    [:expression {:base-type      :type/DateTime,
+                  :effective-type :type/Integer} \"Ship\"]      => #{:type/DateTime :type/Integer}
+
+  For a resolved `[:field opts <id>]` the metadata provider is authoritative and the answer is one
+  type. A type in `opts` is not evidence about the column: [[annotate-field-types]] stamps only a ref
+  that has no `:base-type`, so a wrong model-authored stamp survives while the column stays whatever
+  the provider says it is. Excusing a literal on that stamp buys one of two bad endings, both
+  measured: a non-retryable `:type :qp` from `wrap-value-literals` wherever something upstream buckets
+  the ref off the column (every `between`; `=` on a clean `yyyy-MM-dd`), and otherwise a filter that
+  compiles, runs, and matches nothing for ever — `= <a timestamp column> \"2024-01-01 batch A\"`
+  returns zero rows.
+
+  Every other clause has only its own options, where `:base-type` and `:effective-type` can disagree:
+  a bucket stamps an extraction type over a temporal column, a coercion stamps a temporal type over a
+  text one. Returning both leaves that choice to the callers, which read the set with opposite
+  quantifiers."
+  [metadata-provider x]
+  (when (and (vector? x) (map? (nth x 1 nil)))
+    (let [id (nth x 2 nil)]
+      (if (and (= :field (nth x 0)) (pos-int? id))
+        ;; `pos-int?` is load-bearing, not decoration: `field` is a `mu/defn` whose input check throws
+        ;; on `0` and on a negative id rather than answering `nil` the way an unknown id does.
+        (when-let [field (lib.metadata.protocols/field metadata-provider id)]
+          (when-let [t (or (:effective-type field) (:base-type field))]
+            #{t}))
+        (into #{} (keep (nth x 1)) [:effective-type :base-type])))))
+
+(defn- operand-temporality
+  "Whether MBQL clause `x` is `:temporal`, `:non-temporal`, or `:unknown` when nothing here types it.
+
+  Three-valued on purpose: the two comparison walks below start from opposite defaults, so \"nothing
+  types it\" has to stay distinguishable from \"typed, and not temporal\"."
+  [metadata-provider x]
+  (let [ts (operand-types metadata-provider x)]
+    (cond
+      ;; `some`, not `every?`: a coerced column is described by *both* its storage type and its
+      ;; coercion result — `#{:type/Text :type/DateTime}` for an ISO-8601 string column — and the
+      ;; temporal one is the type the QP compares a literal against.
+      (some #(isa? % :type/Temporal) ts) :temporal
+      (seq ts)                           :non-temporal
+      :else                              :unknown)))
+
+(def ^:private temporal-comparison-heads
+  "Comparison heads whose operands can be a temporal ref next to bare temporal string literals.
+  `:between` is absent: it has its own walk, with the opposite default. `during` is absent because it
+  never arrives — Pass 2.95 rewrites a filter-position `during` into the `=`-on-a-bucketed-ref form
+  this set does cover, and Pass 6's
+  [[metabase.agent-lib.representations.repair/unencodable-temporal-clause-error!]] rejects the rest."
+  #{:= :!= :< :<= :> :>= :in :not-in})
+
 (defn- validate-temporal-literals
   "Validate (without coercing) the temporal string literals the model wrote, so malformed input fails
   fast here — where the agent sees it and can correct — instead of surviving to query execution: the
-  literal of every `:absolute-datetime` clause, and any bare `between` bound that looks like an ISO
-  date (the shape the query builder's own date filter writes).
+  literal of every `:absolute-datetime` clause, any bare `between` bound that looks like an ISO date,
+  and any such string compared against a temporal operand by one of [[temporal-comparison-heads]] —
+  the shape Pass 2.95's bucket hoist makes canonical and Pass 6's message tells the model to write.
+
+  The two bare-literal walks start from opposite defaults, which is the point. A `between` bound is
+  checked unless the compared column is *known* non-temporal, because it is checked today and a
+  column we cannot type is not a reason to stop: `[\"between\" {} <STATUS> \"2024-01-01 batch A\"
+  \"2024-06-01 batch Z\"]` is a legal text range and must pass, but a bound next to an untyped custom
+  column must still be checked. The other heads are checked only when some operand is *known*
+  temporal and none is known non-temporal, because they are not checked today and
+  `[\"=\" {} <STATUS> \"2024-01-01 batch A\"]` is a perfectly good text comparison.
 
   The actual string → `java.time` coercion is intentionally NOT done here: it happens later in the
   QP's `wrap-value-literals`, where the comparison field's type and the report timezone are
   available. This pass only rejects literals that can't possibly parse. Returns the query unchanged."
-  [pmbql-query]
+  [pmbql-query metadata-provider]
   ;; `match/match-many`, not `lib.walk/walk-clauses`: the latter is a `mu/defn` that validates its
   ;; whole-query argument against `::lib.schema/query`, so under test instrumentation it would throw a
   ;; raw "Invalid input" on an otherwise-malformed query (e.g. an `:offset` in `:expressions`) here,
   ;; pre-empting the friendlier not-runnable gate downstream. We only need to inspect literals, and
   ;; matching a bare `[:absolute-datetime _ s _]` vector suffices — the same shape check the sibling
-  ;; `annotate-field-types` pass uses. Two walks rather than one with two patterns: `match-many` does
-  ;; not descend into a form it matched, so a wrapped bound inside a `between` must be seen by the first.
+  ;; `annotate-field-types` pass uses. Separate walks rather than one with several patterns:
+  ;; `match-many` does not descend into a form it matched, so a wrapped literal inside a comparison
+  ;; has to be reached by a walk that did not match the comparison.
   (match/match-many pmbql-query
     [:absolute-datetime _ (s :guard string?) _]
     (assert-parseable-temporal-literal! s))
   (match/match-many pmbql-query
-    [:between _ _ lo hi]
-    (doseq [s [lo hi]
-            :when (and (string? s) (re-matches iso-date-shaped-pattern s))]
-      (assert-parseable-temporal-literal! s)))
+    [:between _ ref lo hi]
+    (when-not (= :non-temporal (operand-temporality metadata-provider ref))
+      (doseq [s [lo hi]
+              :when (and (string? s) (re-matches iso-date-shaped-pattern s))]
+        (assert-parseable-temporal-literal! s))))
+  ;; The operand test lives in the *pattern*, not in the body: a head-only pattern matches an inert
+  ;; comparison too, and `match-many` would then stop and never see a checkable comparison nested
+  ;; inside it. A failing guard leaves the form unmatched, so the walk descends. `match-many` rejects
+  ;; a lambda guard, and this one must close over `metadata-provider`, so it is bound to a name first.
+  (let [checkable-operands? (fn [args]
+                              (let [ts (map #(operand-temporality metadata-provider %) args)]
+                                (and (some #{:temporal} ts)
+                                     (not-any? #{:non-temporal} ts))))]
+    (match/match-many pmbql-query
+      [(_ :guard temporal-comparison-heads) _ & (args :guard checkable-operands?)]
+      (doseq [s args
+              :when (and (string? s) (re-matches iso-date-shaped-pattern s))]
+        (assert-parseable-temporal-literal! s))))
   pmbql-query)
 
 (defn resolve-query
@@ -199,7 +277,7 @@
      (-> (lib.normalize/normalize ::lib.schema/query with-mp)
          (annotate-field-types metadata-provider)
          annotate-metric-and-measure-ref-types
-         validate-temporal-literals))))
+         (validate-temporal-literals metadata-provider)))))
 
 ;;; ============================================================
 ;;; Export final MBQL 5 back to portable representations
