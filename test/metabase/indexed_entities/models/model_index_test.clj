@@ -309,5 +309,5 @@
           (model-index/add-values! mi)
           (let [bad-attempt (t2/select-one :model/ModelIndex :id (u/the-id mi))]
             (is (=? {:state "error"
-                     :error #"(?s)Error executing query.*"}
+                     :error #"Invalid field ref for indexing"}
                     bad-attempt))))))))
