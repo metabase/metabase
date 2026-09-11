@@ -210,14 +210,17 @@
       (str/join " / " (map :name chain)))))
 
 (defn- card-response
-  "The card fields the create and (eventually) update responses share."
+  "The card fields the create and update responses share. `visualization_settings` is
+   echoed as stored — a write that names it is otherwise unverifiable without a second read, and an
+   update that leaves it alone still reports what the chart is drawing from."
   [card]
-  {:id              (:id card)
-   :name            (:name card)
-   :display         (name (:display card))
-   :collection_id   (:collection_id card)
-   :collection_path (collection-path (:collection_id card))
-   :description     (:description card)})
+  {:id                     (:id card)
+   :name                   (:name card)
+   :display                (name (:display card))
+   :collection_id          (:collection_id card)
+   :collection_path        (collection-path (:collection_id card))
+   :description            (:description card)
+   :visualization_settings (or (:visualization_settings card) {})})
 
 (def ^:private visibility-type-strs
   "String form of `::lib.schema.metadata/column.visibility-type`'s enum — the args schema and the

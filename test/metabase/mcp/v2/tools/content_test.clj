@@ -959,6 +959,51 @@
           (is (re-find #"does not apply to type question" error))
           (is (re-find #"available for: dashboard, document" error)))))))
 
+(deftest get-content-settings-include-test
+  (testing "GHY-4511: a question's stored visualization_settings read back — through the
+            `visualization_settings` include, through `detailed`, and as a `fields` path. Without a read-back
+            an agent cannot check a goal line, a series binding or a hidden column it just wrote."
+    (let [settings {:graph.show_goal true :graph.goal_value 50000}]
+      (mt/with-temp [:model/Card {card-id :id} {:type                   :question
+                                                :display                :line
+                                                :dataset_query          (venues-count-query)
+                                                :visualization_settings settings}]
+        (mt/with-test-user :crowberto
+          (testing "the concise shape alone still leaves the blob out"
+            (is (nil? (:visualization_settings
+                       (content-one {:items [{:type "question" :id card-id}]})))))
+          (testing "the include adds it to the concise shape"
+            (is (= settings (:visualization_settings
+                             (content-one {:items   [{:type "question" :id card-id}]
+                                           :include ["visualization_settings"]})))))
+          (testing "detailed carries it"
+            (is (= settings (:visualization_settings
+                             (content-one {:items           [{:type "question" :id card-id}]
+                                           :response_format "detailed"})))))
+          (testing "and `visualization_settings` is a valid fields path"
+            (is (= {:visualization_settings settings}
+                   (content-one {:items [{:type   "question" :id card-id
+                                          :fields ["visualization_settings"]}]})))))))
+    (testing "a card with nothing stored answers {} — an omitted section would read as
+              \"not available\" rather than \"not set\""
+      (mt/with-temp [:model/Card {card-id :id} {:type :model :dataset_query (venues-query)}]
+        (mt/with-test-user :crowberto
+          (is (= {} (:visualization_settings
+                     (content-one {:items   [{:type "model" :id card-id}]
+                                   :include ["visualization_settings"]})))))))))
+
+(deftest get-content-named-field-with-no-value-answers-null-test
+  (testing "GHY-4511: a `fields` path the card has no value for comes back null. The compact
+            projection drops nils, so an empty object was the only answer either way and a
+            caller could not tell an unset cache_ttl from a field get_content cannot read."
+    (mt/with-temp [:model/Card {unset-id :id} {:dataset_query (venues-query)}
+                   :model/Card {set-id :id}   {:dataset_query (venues-query) :cache_ttl 100}]
+      (mt/with-test-user :crowberto
+        (is (= {:cache_ttl nil}
+               (content-one {:items [{:type "question" :id unset-id :fields ["cache_ttl"]}]})))
+        (is (= {:cache_ttl 100}
+               (content-one {:items [{:type "question" :id set-id :fields ["cache_ttl"]}]})))))))
+
 (deftest get-content-dimensions-include-does-not-write-test
   (testing "GHY-4140: the dimensions include computes on read but never persists, so the tool's
             readOnlyHint holds — unlike GET /api/metric/:id, which syncs to the DB"

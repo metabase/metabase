@@ -241,8 +241,14 @@
     (map? node)        (into {}
                              (keep (fn [[seg subtree]]
                                      (let [k (keyword seg)]
-                                       (when (contains? node k)
-                                         [k (select-tree (get node k) subtree)]))))
+                                       (cond
+                                         (contains? node k) [k (select-tree (get node k) subtree)]
+                                         ;; A named leaf answers even when the compact projection
+                                         ;; dropped it as nil: `{"cache_ttl": null}` says "not set",
+                                         ;; where `{}` reads as "not a readable field". A deeper
+                                         ;; path stays dropped — answering `last_run.status` with
+                                         ;; `{"last_run": {"status": null}}` would claim a run.
+                                         (= ::all subtree) [k nil]))))
                              tree)
     :else              node))
 
@@ -255,8 +261,9 @@
 (defn select-fields
   "Narrow `response-map` (the permission-filtered built response for one item of `type`,
    never a raw model row) to the requested `fields` dot-paths. Paths are validated against
-   `type`'s catalog; an unknown path is a teaching error naming the nearest valid paths.
-   `fields` is mutually exclusive with `response_format` and `include` — the caller passes
+   `type`'s catalog; an unknown path is a teaching error naming the nearest valid paths. A valid
+   path the row has no value for comes back as null, so the answer never reads as an unsupported
+   field. `fields` is mutually exclusive with `response_format` and `include` — the caller passes
    what was present and combining them is a teaching error."
   ([type response-map fields]
    (select-fields type response-map fields nil))
