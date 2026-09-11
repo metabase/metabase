@@ -215,6 +215,59 @@
             (testing "and so is an unreadable series entry"
               (is (= [{:id hidden-series}] (:series (get refs open-dc)))))))))))
 
+(defn- link-card-settings
+  "Stored `visualization_settings` for a link dashcard pointing at `model`/`id`, carrying the
+   cached entity name the frontend writes alongside the reference."
+  [model id cached-name]
+  {:virtual_card {:name nil :display "link" :visualization_settings {} :archived false}
+   :link         {:entity {:model model :id id :name cached-name}}})
+
+(defn- layout-links
+  "dashcard id -> the `:link` visualization setting the `layout` include returns for it."
+  [dash-id]
+  (into {}
+        (map (juxt :id (comp :link :visualization_settings)))
+        (:dashcards (:layout (content-one {:items   [{:type "dashboard" :id dash-id}]
+                                           :include ["layout"]})))))
+
+(deftest get-content-dashboard-layout-link-entity-test
+  (testing "GHY-4512: the layout include returns a link card's entity reference behind a read
+            check. Dropping it outright left an entity link reading back as `link: {}` —
+            indistinguishable from an empty card, and impossible to round-trip through
+            patch_dashcard."
+    (mt/with-temp [:model/Collection    {locked-id :id}     {}
+                   :model/Dashboard     {open-target :id}   {:name "Open Target"}
+                   :model/Dashboard     {hidden-target :id} {:name          "Hidden Target"
+                                                             :collection_id locked-id}
+                   :model/Dashboard     {dash-id :id}       {}
+                   :model/DashboardCard {open-dc :id}       {:dashboard_id dash-id :row 0 :col 0
+                                                             :visualization_settings
+                                                             (link-card-settings "dashboard" open-target
+                                                                                 "Stale Open Name")}
+                   :model/DashboardCard {hidden-dc :id}     {:dashboard_id dash-id :row 1 :col 0
+                                                             :visualization_settings
+                                                             (link-card-settings "dashboard" hidden-target
+                                                                                 "SECRET-Hidden-Target")}
+                   :model/DashboardCard {url-dc :id}        {:dashboard_id dash-id :row 2 :col 0
+                                                             :visualization_settings
+                                                             {:virtual_card {:name                   nil
+                                                                             :display                "link"
+                                                                             :visualization_settings {}
+                                                                             :archived               false}
+                                                              :link         {:url "https://example.com"}}}]
+      (mt/with-non-admin-groups-no-collection-perms locked-id
+        (mt/with-test-user :rasta
+          (let [links (layout-links dash-id)]
+            (testing "a readable target reads back as the stored reference, the shape patch_dashcard takes verbatim"
+              (is (= {:entity {:model "dashboard" :id open-target}} (get links open-dc))))
+            (testing "an unreadable target is marked restricted rather than silently dropped"
+              (is (= {:entity {:restricted true}} (get links hidden-dc))))
+            (testing "the cached name stored beside the reference never rides along — no read check stands behind it"
+              (is (not (str/includes? (json/encode links) "Stale Open Name")))
+              (is (not (str/includes? (json/encode links) "SECRET-Hidden-Target"))))
+            (testing "a url link is untouched"
+              (is (= {:url "https://example.com"} (get links url-dc))))))))))
+
 (deftest query-summary-does-not-name-an-unreadable-source-card-test
   (testing "GHY-4510: a readable wrapper's query_summary must not name a source card the caller cannot read"
     (mt/with-temp [:model/Collection {locked-id :id} {:name "Project Falcon (confidential)"}
