@@ -59,7 +59,8 @@
      :channel         channel
      :recipients      (channel-recipients pulse-channel)
      :attachment_only (boolean (get-in pulse-channel [:details :attachment_only]))
-     :include_pdf     (boolean (get-in pulse-channel [:details :include_pdf]))}))
+     :include_pdf     (boolean (get-in pulse-channel [:details :include_pdf]))
+     :include_text    (boolean (get-in pulse-channel [:details :include_text]))}))
 
 (defn- maybe-name [x] (some-> x name))
 

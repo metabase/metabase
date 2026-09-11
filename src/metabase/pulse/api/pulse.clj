@@ -130,6 +130,7 @@
   [:map {:closed true}
    [:attachment_only {:optional true} [:maybe :boolean]]
    [:include_pdf     {:optional true} [:maybe :boolean]]
+   [:include_text    {:optional true} [:maybe :boolean]]
    [:channel         {:optional true} [:maybe :string]]
    [:channels        {:optional true} [:maybe :string]]
    [:channel_id      {:optional true} [:maybe :string]]

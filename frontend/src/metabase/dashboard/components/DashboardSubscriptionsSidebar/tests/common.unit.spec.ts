@@ -303,6 +303,30 @@ describe("DashboardSubscriptionsSidebar", () => {
       expect(payload.channels[0].details.channel).toBe("#general");
       expect(payload.channels[0].details.include_pdf).toBe(true);
     });
+
+    it("should send the include_text channel detail to the backend when the text switch is on", async () => {
+      setup({ isAdmin: false, email: false, slack: true });
+
+      await screen.findByText("Send this dashboard to Slack");
+
+      await userEvent.type(
+        await screen.findByPlaceholderText("Pick a user or channel..."),
+        "#general",
+      );
+
+      await userEvent.click(
+        await screen.findByRole("switch", {
+          name: /Send data as text/,
+        }),
+      );
+
+      await userEvent.click(await screen.findByText("Send to Slack now"));
+
+      const lastCall = fetchMock.callHistory.lastCall("path:/api/pulse/test");
+      const payload = await lastCall?.request?.json();
+      expect(payload.channels[0].details.channel).toBe("#general");
+      expect(payload.channels[0].details.include_text).toBe(true);
+    });
   });
 
   describe("Email Subscription sidebar", () => {
