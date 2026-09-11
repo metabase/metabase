@@ -2827,9 +2827,10 @@
 
   The carve-out is per *clause*, not per query: a query holding an unparseable literal alongside any
   other offender still reports that other offender, because E7 throws on the first match anywhere.
-  Deferring the whole query instead would be a worse trade -- `validate-temporal-literals` only walks
-  `absolute-datetime` clauses and bare `between` bounds, so an unparseable literal in a position it
-  does not inspect would silence E7 with nothing to replace it, reopening the silent-deletion hole
+  Deferring the whole query instead would be a worse trade -- `validate-temporal-literals` does not
+  inspect every position, since a bare literal on a comparison head is checked only when an operand
+  is *known* temporal, so an unparseable literal in a position it does not inspect would silence E7
+  with nothing to replace it, reopening the silent-deletion hole
   Pass 2.95 and this detector exist to close. The model fixes what E7 named and sees the literal
   complaint on the next turn."
   [node]
