@@ -124,8 +124,6 @@ Metabase, so the user should log in with the account whose access they want the 
 
 Once configured, the client should be able to list MCP tools provided by Metabase. The tools include `search`, `browse_data`, `get_content`, `execute_query`, and `learn`. If those appear in the client's tool list, the connection is working. Clients that can render MCP Apps also see `visualize_query`; its absence elsewhere is expected and not a sign of a broken connection.
 
-For a one-call check, call the `ping_v2` tool with no arguments. It returns `{"ok": true, "message": "pong"}` when the connection and login are working.
-
 If the tool list is empty or the client reports an authentication error, re-check that:
 
 - The URL is exactly `{METABASE_URL}/api/metabase-mcp` with no trailing slash and no extra path segments.

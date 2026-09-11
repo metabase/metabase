@@ -6,15 +6,15 @@
    [metabase.api.macros.scope :as scope]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.usage :as mcp.usage]
-   ;; Registers the placeholder `ping_v2` tool the assertions below drive.
-   [metabase.mcp.v2.api :as v2.api]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.registry :as registry]
+   ;; Registers the test-only `test_echo` tool the assertions below drive.
+   [metabase.mcp.v2.test-util :as v2.tu]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
-(comment v2.api/keep-me)
+(comment v2.tu/keep-me)
 
 ;; not ^:parallel: the kondo deftest lint treats the `!` suffix of `register-tool!` as destructive
 (deftest registration-requires-scope-test
@@ -23,27 +23,36 @@
                           (registry/register-tool! {:name        "no_scope"
                                                     :description "x"
                                                     :args        [:map]
+                                                    :handler     (fn [_ _] nil)}))))
+  (testing "a set-valued :scope is rejected too — `:scope` is a single string, even though `mcp.scope/matches?`
+            would honor a set, because `registered-scopes` would otherwise collect the set itself rather than
+            its members"
+    (is (thrown-with-msg? Exception #"registered without a :scope string"
+                          (registry/register-tool! {:name        "set_scope_probe"
+                                                    :scope       #{"agent:content:read" "agent:query:run"}
+                                                    :description "probe: never registers"
+                                                    :args        [:map]
                                                     :handler     (fn [_ _] nil)})))))
 
 (deftest ^:parallel list-tools-scope-filtering-test
   (testing "tools/list filters on token scopes"
-    (is (some #(= "ping_v2" (:name %)) (registry/list-tools #{"agent:content:read"})))
-    (is (not (some #(= "ping_v2" (:name %)) (registry/list-tools #{"agent:metadata:read"})))))
+    (is (some #(= "test_echo" (:name %)) (registry/list-tools #{"agent:content:read"})))
+    (is (not (some #(= "test_echo" (:name %)) (registry/list-tools #{"agent:metadata:read"})))))
   (testing "the unrestricted sentinel (cookie sessions) sees every tool"
-    (is (some #(= "ping_v2" (:name %)) (registry/list-tools #{::scope/unrestricted})))))
+    (is (some #(= "test_echo" (:name %)) (registry/list-tools #{::scope/unrestricted})))))
 
 (deftest ^:parallel call-tool-scope-check-test
   (testing "tools/call re-checks scope even for a tool that exists"
-    (let [{:keys [error]} (registry/call-tool #{"agent:metadata:read"} nil "ping_v2" {})]
+    (let [{:keys [error]} (registry/call-tool #{"agent:metadata:read"} nil "test_echo" {})]
       (is (= common/error-code-invalid-request (:code error)))
-      (is (= (str "Insufficient scope to call tool: ping_v2. Requires "
-                  (:scope (get @@#'registry/tools* "ping_v2"))
+      (is (= (str "Insufficient scope to call tool: test_echo. Requires "
+                  (:scope (get @@#'registry/tools* "test_echo"))
                   "; your token holds agent:metadata:read.")
              (:message error))))))
 
 (deftest ^:parallel call-tool-success-test
   (testing "a valid call dispatches to the handler; top-level nils are stripped first"
-    (let [{:keys [result]} (registry/call-tool #{"agent:content:read"} nil "ping_v2" {:message nil})]
+    (let [{:keys [result]} (registry/call-tool #{"agent:content:read"} nil "test_echo" {:message nil})]
       (is (not (:isError result)))
       (is (= {:ok true :message "pong"} (:structuredContent result)))
       (testing "the internal error-code marker never reaches the client"
@@ -51,20 +60,20 @@
 
 (deftest ^:parallel call-tool-validation-test
   (testing "malli validation failures surface as JSON-RPC invalid-params errors"
-    (let [{:keys [error]} (registry/call-tool nil nil "ping_v2" {:message 42})]
+    (let [{:keys [error]} (registry/call-tool nil nil "test_echo" {:message 42})]
       (is (= common/error-code-invalid-params (:code error)))
       (is (str/starts-with? (:message error) "Invalid arguments"))))
   (testing "non-object arguments are invalid params, not an internal error"
-    (let [{:keys [error]} (registry/call-tool nil nil "ping_v2" [1 2 3])]
+    (let [{:keys [error]} (registry/call-tool nil nil "test_echo" [1 2 3])]
       (is (= {:code common/error-code-invalid-params
               :message "Invalid arguments: expected a JSON object."}
              error)))))
 
 (deftest ^:parallel call-tool-teaching-error-test
   (testing "a handler's teaching error surfaces its message, not a stack trace"
-    (mt/with-dynamic-fn-redefs [v2.api/ping-v2 (fn [_ _]
-                                                 (common/throw-teaching-error "Use `fields` OR `response_format`, not both."))]
-      (let [{:keys [result]} (registry/call-tool nil nil "ping_v2" {})]
+    (mt/with-dynamic-fn-redefs [v2.tu/test-echo (fn [_ _]
+                                                  (common/throw-teaching-error "Use `fields` OR `response_format`, not both."))]
+      (let [{:keys [result]} (registry/call-tool nil nil "test_echo" {})]
         (is (:isError result))
         (is (= "Use `fields` OR `response_format`, not both." (-> result :content first :text)))))))
 
@@ -76,20 +85,20 @@
                             ["JDBC SQLException"      (java.sql.SQLException. "relation \"secret_accounts\" does not exist")]
                             ["ex-info with no status" (ex-info "SELECT ssn FROM secret_accounts" {:query {}})]]]
       (testing label
-        (mt/with-dynamic-fn-redefs [v2.api/ping-v2 (fn [_ _] (throw thrown))]
-          (let [{:keys [result]} (registry/call-tool #{"agent:content:read"} nil "ping_v2" {})]
+        (mt/with-dynamic-fn-redefs [v2.tu/test-echo (fn [_ _] (throw thrown))]
+          (let [{:keys [result]} (registry/call-tool #{"agent:content:read"} nil "test_echo" {})]
             (is (:isError result))
             (is (= "Internal error" (-> result :content first :text))
                 "the raw exception message must not reach the client")))))))
 
 (deftest disabled-tools-test
-  (mt/with-temporary-setting-values [mcp.settings/mcp-v2-disabled-tools ["ping_v2"]]
+  (mt/with-temporary-setting-values [mcp.settings/mcp-v2-disabled-tools ["test_echo"]]
     (testing "a disabled tool is hidden from tools/list"
-      (is (not (some #(= "ping_v2" (:name %)) (registry/list-tools nil)))))
+      (is (not (some #(= "test_echo" (:name %)) (registry/list-tools nil)))))
     (testing "and rejected by tools/call as unknown"
-      (let [{:keys [error]} (registry/call-tool nil nil "ping_v2" {})]
+      (let [{:keys [error]} (registry/call-tool nil nil "test_echo" {})]
         (is (= {:code common/error-code-method-not-found
-                :message "Unknown tool: ping_v2"}
+                :message "Unknown tool: test_echo"}
                error))))))
 
 (deftest ^:parallel registered-scopes-test
@@ -128,21 +137,21 @@
 (deftest usage-logging-contract-test
   (testing "every tools/call outcome writes exactly one usage record with the right status/error-code"
     (testing "success → status \"success\", no error"
-      (let [records (capture-usage-records! #(registry/call-tool #{"agent:content:read"} nil "ping_v2" {}))]
+      (let [records (capture-usage-records! #(registry/call-tool #{"agent:content:read"} nil "test_echo" {}))]
         (is (= 1 (count records)))
         (let [r (first records)]
-          (is (= "ping_v2" (:tool-name r)))
+          (is (= "test_echo" (:tool-name r)))
           (is (= "success" (:status r)))
           (is (nil? (:error-code r)))
           (is (nil? (:error-message r))))))
     (testing "scope denied → status \"error\", invalid-request code"
-      (let [records (capture-usage-records! #(registry/call-tool #{"agent:metadata:read"} nil "ping_v2" {}))]
+      (let [records (capture-usage-records! #(registry/call-tool #{"agent:metadata:read"} nil "test_echo" {}))]
         (is (= 1 (count records)))
         (let [r (first records)]
-          (is (= "ping_v2" (:tool-name r)))
+          (is (= "test_echo" (:tool-name r)))
           (is (= "error" (:status r)))
           (is (= common/error-code-invalid-request (:error-code r)))
-          (is (str/starts-with? (:error-message r) "Insufficient scope to call tool: ping_v2.")))))
+          (is (str/starts-with? (:error-message r) "Insufficient scope to call tool: test_echo.")))))
     (testing "unknown tool → status \"error\", method-not-found code"
       (let [records (capture-usage-records! #(registry/call-tool nil nil "does_not_exist" {}))]
         (is (= 1 (count records)))
@@ -152,10 +161,10 @@
           (is (= common/error-code-method-not-found (:error-code r)))
           (is (= "Unknown tool: does_not_exist" (:error-message r))))))
     (testing "validation failure → status \"error\", invalid-params code"
-      (let [records (capture-usage-records! #(registry/call-tool #{"agent:content:read"} nil "ping_v2" {:message 42}))]
+      (let [records (capture-usage-records! #(registry/call-tool #{"agent:content:read"} nil "test_echo" {:message 42}))]
         (is (= 1 (count records)))
         (let [r (first records)]
-          (is (= "ping_v2" (:tool-name r)))
+          (is (= "test_echo" (:tool-name r)))
           (is (= "error" (:status r)))
           (is (= common/error-code-invalid-params (:error-code r)))
           (is (some? (:error-message r))))))))
@@ -165,7 +174,7 @@
   (testing "the same-name guard compares the handler var's fully-qualified symbol, not the var object: a
             tools.namespace reload re-interns the same symbol (accepted), while a same-named var from a
             different namespace is a genuinely different handler (refused)"
-    (let [existing (get @@#'registry/tools* "ping_v2")
+    (let [existing (get @@#'registry/tools* "test_echo")
           handler  (:handler existing)
           ;; What a namespace reload leaves behind: a different var object carrying the same
           ;; fully-qualified name. Built in a throwaway namespace so the live handler is untouched.
@@ -177,7 +186,7 @@
         (is (thrown-with-msg? Exception #"already registered"
                               (registry/register-tool! (assoc existing :handler reloaded)))
             "a same-NAMED var from another namespace is still a different handler and is refused")
-        (is (= "ping_v2" (registry/register-tool! existing))
+        (is (= "test_echo" (registry/register-tool! existing))
             "and the genuine handler var re-registers cleanly")
         (finally
           (remove-ns (ns-name reload-ns))
@@ -214,11 +223,11 @@
 (deftest registration-rejects-a-name-claimed-by-another-handler-test
   (testing "a second definition claiming a registered name fails loudly, so load order cannot decide which
             handler `tools/call` reaches; the registered handler itself re-registers cleanly"
-    (let [existing (get @@#'registry/tools* "ping_v2")]
-      (is (some? existing) "ping_v2 must be registered for this to prove anything")
+    (let [existing (get @@#'registry/tools* "test_echo")]
+      (is (some? existing) "test_echo must be registered for this to prove anything")
       (is (thrown-with-msg? Exception #"already registered"
                             (registry/register-tool! (assoc existing :handler (fn [_ _] nil)))))
-      (is (= "ping_v2" (registry/register-tool! existing))))))
+      (is (= "test_echo" (registry/register-tool! existing))))))
 
 ;; not ^:parallel: exercises register-tool!'s load-time guards
 (deftest registration-validates-required-fields-test

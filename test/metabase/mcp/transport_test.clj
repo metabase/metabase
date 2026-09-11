@@ -8,6 +8,8 @@
    [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.transport :as mcp.transport]
    [metabase.mcp.v2.common :as v2.common]
+   ;; Registers the test-only `test_echo` tool the call tests below drive.
+   [metabase.mcp.v2.test-util]
    [metabase.oauth-server.test-util :as oauth-server.tu]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.server.streaming-response.thread-pool :as thread-pool]
@@ -277,7 +279,7 @@
   {:jsonrpc "2.0" :method method :params {}})
 
 (defn- ping-call []
-  (jsonrpc-request "tools/call" {:name "ping_v2" :arguments {}}))
+  (jsonrpc-request "tools/call" {:name "test_echo" :arguments {}}))
 
 (defn- initialize!
   "Run the `initialize` handshake as `username` and return the issued `Mcp-Session-Id`."

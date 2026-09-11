@@ -54,7 +54,7 @@ Access tokens are scoped to limit what tools a client can use:
 
 | Scope | Tools it grants |
 | ----- | --------------- |
-| `agent:content:read` | `browse_collection`, `browse_data`, `get_content`, `get_parameter_values`, `learn`, `ping_v2`, `search` |
+| `agent:content:read` | `browse_collection`, `browse_data`, `get_content`, `get_parameter_values`, `learn`, `search` |
 | `agent:content:write` | `bookmark_content`, `collection_write`, `dashboard_write`, `document_write`, `duplicate_content`, `measure_write`, `metric_write`, `question_write`, `segment_write`, `transform_write` |
 | `agent:delivery:write` | `alert_write`, `subscription_write` |
 | `agent:query:run` | `execute_query`, `refresh_ui_credential`, `render_drill_through`, `run_saved_question`, `visualize_query` |
@@ -92,7 +92,6 @@ token missing it neither sees the tool in `tools/list` nor may call it.
 | `learn` | `agent:content:read` | Read this server's task docs (skills) for the write dialects the schemas can't fully describe. |
 | `measure_write` | `agent:content:write` | Create or update a measure: a named, reusable MBQL aggregation attached to one table, referenced inside another query's aggregation as ["measure", id]. |
 | `metric_write` | `agent:content:write` | Create or update a metric: a saved, reusable aggregation that lives in a collection and can be queried on its own or referenced from other queries. |
-| `ping_v2` | `agent:content:read` | Health-check tool for the MCP surface. |
 | `question_write` | `agent:content:write` | Create, update, or archive a saved question or model. |
 | `refresh_ui_credential` | `agent:query:run` | Refresh the scoped credential used by a Metabase MCP App. |
 | `render_drill_through` | `agent:query:run` | Render the drill-through visualization the user just navigated into. |

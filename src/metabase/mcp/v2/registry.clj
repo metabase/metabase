@@ -96,9 +96,9 @@
 (defmacro deftool
   "Define and register a v2 MCP tool.
 
-    (deftool ping-v2
-      \"Health-check tool for the v2 MCP surface.\"
-      {:name        \"ping_v2\"
+    (deftool echo
+      \"Echo the message back.\"
+      {:name        \"echo\"
        :scope       metabot.scope/agent-content-read
        :annotations {:readOnlyHint true}
        :args        [:map …]}
