@@ -83,6 +83,18 @@
    filters  :- ::sm.schema/session-filters]
   (into [:and] cat [(session/live-session-conditions liveness) (filters->where filters)]))
 
+(mu/defn revoke-where :- :any
+  "The predicates a `core_session` row must satisfy to be revoked by these criteria: live, matching `filters`, and —
+  when `exclude-current?` — not the session `current-key-hash` identifies. The hash is only ever compared in SQL, so
+  `key_hashed` never leaves the database."
+  [liveness         :- ::session.schema/liveness-params
+   filters          :- ::sm.schema/session-filters
+   current-key-hash :- [:maybe :string]
+   exclude-current? :- :boolean]
+  (cond-> (session-where liveness filters)
+    (and exclude-current? current-key-hash)
+    (conj [:not= :session.key_hashed current-key-hash])))
+
 (defn session-order-by
   "The `:order-by` for the session list."
   [sort-column sort-direction]
