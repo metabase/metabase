@@ -1001,6 +1001,24 @@
        (sort-by (fn [component] [(- (count component)) (str (first (sort component)))]))
        vec))
 
+(defn model-import-dependencies
+  "Module => the modules defining the models it imports. This is real coupling that the `:uses` graph does not
+  carry: a module can depend on another module's row shapes without requiring any of its namespaces, so cycles
+  that only exist through models are invisible in the require graph.
+
+  `ownership` maps each model to its defining module, as [[model-ownership]] does.
+  A module imports its `:model-imports` set, or with `:model-imports :any` every model in its `references`
+  entry, as [[model-references-by-module]] builds them.
+  A `:bypass` module contributes no edges; the `:model-imports-bypass` module ratchet counts those instead."
+  [config ownership references]
+  (into (sorted-map)
+        (map (fn [[module {:keys [model-imports]}]]
+               (let [imports (cond
+                               (set? model-imports)   model-imports
+                               (= :any model-imports) (get references module))]
+                 [module (into (sorted-set) (comp (keep ownership) (remove #{module})) imports)])))
+        config))
+
 (defn- cyclic-component-sizes
   "Module and namespace counts for each [[cyclic-components]] cluster."
   [graph node->namespace-count]

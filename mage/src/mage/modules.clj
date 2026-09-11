@@ -7,6 +7,7 @@
    [hooks.common.modules :as modules]
    [mage.be-dev :as be-dev]
    [mage.color :as c]
+   [mage.shell :as shell]
    [mage.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -421,6 +422,16 @@
     (printf "\nFinished in %.1fs\n" (/ (u/since-ms timer) 1000.0))
     (flush)
     (u/exit (or exit 0))))
+
+(defn cli-fix-module-cycles
+  "CLI entry point: record the shrinks, splits and dissolutions of the cyclic module clusters.
+  Always a fresh JVM rather than the dev REPL, so a refused regression exits nonzero, which the shrink
+  workflow relies on."
+  [{:keys [options] :as _parsed}]
+  (let [{:keys [exit], :or {exit -1}}
+        (apply shell/sh* "clojure" "-X:dev" "dev.module-cycle-scan/fix!"
+               (when (:seed options) [":seed" "true"]))]
+    (u/exit exit)))
 
 ;;;; =============================================================================
 ;;;; Driver test decisions - consolidated logic for which drivers to run
