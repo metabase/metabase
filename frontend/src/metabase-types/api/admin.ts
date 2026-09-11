@@ -15,6 +15,8 @@ export type ApiKey = {
     id: number;
     common_name: string;
   };
+  /** Throttled liveness timestamp, stamped on each authenticated request. Null until first use. */
+  last_used_at?: string | null;
 };
 
 export type CreateApiKeyRequest = {
