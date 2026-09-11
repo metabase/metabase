@@ -1,5 +1,7 @@
+import { addLocale, useLocale } from "ttag";
+
 import { color } from "metabase/ui/colors";
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { NULL_DIMENSION_KEY } from "metabase/utils/constants";
 import type { PieRow, RawSeries } from "metabase-types/api";
 import {
   createMockColumn,
@@ -9,8 +11,8 @@ import {
 import { getAggregatedRows, getColors, getKeyFromDimensionValue } from "./pie";
 
 describe("getKeyFromDimensionValue", () => {
-  it("should return NULL_DISPLAY_VALUE for null", () => {
-    expect(getKeyFromDimensionValue(null)).toBe(NULL_DISPLAY_VALUE);
+  it("should return NULL_DIMENSION_KEY for null", () => {
+    expect(getKeyFromDimensionValue(null)).toBe(NULL_DIMENSION_KEY);
   });
 
   it("should return string representation for strings", () => {
@@ -205,5 +207,55 @@ describe("getColors", () => {
     };
 
     expect(getColors(rawSeries, settings).Doohickey).toBe(color("accent3"));
+  });
+});
+
+describe("with a non-English locale", () => {
+  beforeAll(() => {
+    addLocale("es-fake", {
+      headers: { "plural-forms": "nplurals=2; plural=(n != 1);" },
+      translations: {
+        "": { "(empty)": { msgid: "(empty)", msgstr: ["(vacío)"] } },
+      },
+    });
+    useLocale("es-fake");
+  });
+
+  afterAll(() => {
+    // restore the default locale so later tests aren't affected
+    useLocale("en");
+  });
+
+  it("keys the null slice by its untranslated label so saved rows still match", () => {
+    expect(getKeyFromDimensionValue(null)).toBe("(empty)");
+  });
+
+  it("keeps the color a saved null slice records", () => {
+    // getColors only reads rows and cols off the series
+    const rawSeries = [
+      {
+        data: createMockDatasetData({
+          rows: [[null, 1]],
+          cols: [
+            createMockColumn({ name: "Category" }),
+            createMockColumn({ name: "Count" }),
+          ],
+        }),
+      },
+    ] as RawSeries;
+    const settings = {
+      "pie.metric": "Count",
+      "pie.dimension": "Category",
+      // getColors only reads the key, color and defaultColor of a row
+      "pie.rows": [
+        {
+          key: NULL_DIMENSION_KEY,
+          defaultColor: false,
+          color: "#FF0000",
+        },
+      ] as PieRow[],
+    };
+
+    expect(getColors(rawSeries, settings)[NULL_DIMENSION_KEY]).toBe("#FF0000");
   });
 });

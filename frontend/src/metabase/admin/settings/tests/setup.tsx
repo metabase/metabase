@@ -60,7 +60,7 @@ export const ossRoutes: RouteMap = {
     path: "/authentication/api-keys",
     testPattern: /Create API keys to let users authenticate/i,
   },
-  maps: { path: "/maps", testPattern: /Map tile server URL/i },
+  maps: { path: "/maps", testPattern: /Map tile server public URL/i },
   localization: { path: "/localization", testPattern: /Instance language/i },
   uploads: {
     path: "/uploads",

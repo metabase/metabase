@@ -59,7 +59,7 @@
 
 (def ^:private ListConversationsQueryParams
   "Query-param schema for `GET /conversations`."
-  [:map
+  [:map {:closed true}
    [:sort_by   {:optional true} [:maybe SortColumn]]
    [:sort_dir  {:optional true} [:maybe SortDirection]]
    [:user_id   {:optional true} [:maybe ms/PositiveInt]]
@@ -141,7 +141,7 @@
 
 (def ^:private ConversationIdParams
   "Route-param schema for endpoints addressing a single conversation by id."
-  [:map [:id ms/UUIDString]])
+  [:map {:closed true} [:id ms/UUIDString]])
 
 ;;; -------------------------------------------------- Endpoints --------------------------------------------------
 

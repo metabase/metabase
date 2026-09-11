@@ -17,21 +17,21 @@ import type { User } from "metabase-types/api";
 
 import type { UserPasswordData } from "../../types";
 
-const USER_PASSWORD_SCHEMA = Yup.object({
-  old_password: Yup.string().default("").required(requiredErrorMessage),
-  password: Yup.string()
-    .default("")
-    .required(requiredErrorMessage)
-    .test(async (value = "", context) => {
-      const error = await context.options.context?.onValidatePassword(value);
-      return error ? context.createError({ message: error }) : true;
-    }),
-  password_confirm: Yup.string()
-    .default("")
-    .required(requiredErrorMessage)
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    .oneOf([Yup.ref("password")], t`Passwords do not match`),
-});
+const getUserPasswordSchema = () =>
+  Yup.object({
+    old_password: Yup.string().default("").required(requiredErrorMessage),
+    password: Yup.string()
+      .default("")
+      .required(requiredErrorMessage)
+      .test(async (value = "", context) => {
+        const error = await context.options.context?.onValidatePassword(value);
+        return error ? context.createError({ message: error }) : true;
+      }),
+    password_confirm: Yup.string()
+      .default("")
+      .required(requiredErrorMessage)
+      .oneOf([Yup.ref("password")], t`Passwords do not match`),
+  });
 
 export interface UserPasswordFormProps {
   user: User;
@@ -43,7 +43,7 @@ export const UserPasswordForm = ({
   onValidatePassword,
 }: UserPasswordFormProps): JSX.Element => {
   const initialValues = useMemo(() => {
-    return USER_PASSWORD_SCHEMA.getDefault();
+    return getUserPasswordSchema().getDefault();
   }, []);
 
   const validationContext = useMemo(
@@ -68,7 +68,7 @@ export const UserPasswordForm = ({
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={USER_PASSWORD_SCHEMA}
+      validationSchema={getUserPasswordSchema()}
       validationContext={validationContext}
       onSubmit={handleSubmit}
     >

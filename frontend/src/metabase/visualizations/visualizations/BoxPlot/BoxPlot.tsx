@@ -3,6 +3,7 @@ import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 import { useSet } from "react-use";
 
 import { isReducedMotionPreferred } from "metabase/utils/dom";
+import { assignLazily } from "metabase/utils/merge-lazily";
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import { LegendCaption } from "metabase/visualizations/components/legend/LegendCaption";
@@ -11,7 +12,7 @@ import type { VisualizationProps } from "metabase/visualizations/types";
 import {
   CartesianChartLegendLayout,
   CartesianChartRoot,
-} from "metabase/visualizations/visualizations/CartesianChart/CartesianChart.styled";
+} from "metabase/visualizations/visualizations/CartesianChart/CartesianChartLayout";
 import { useTooltipMouseLeave } from "metabase/visualizations/visualizations/CartesianChart/use-tooltip-mouse-leave";
 import {
   extractRemappings,
@@ -241,7 +242,4 @@ function BoxPlotComponent(props: VisualizationProps) {
   );
 }
 
-export const BoxPlot = Object.assign(
-  BoxPlotComponent,
-  BOXPLOT_CHART_DEFINITION,
-);
+export const BoxPlot = assignLazily(BoxPlotComponent, BOXPLOT_CHART_DEFINITION);
