@@ -552,13 +552,13 @@
                (fast-mode-cooling-down?) (assoc :fast? false))
         req  (claude-request-body opts)]
     (adapter/stream! provider opts
-                     {:path     "/v1/messages"
-                      :body     req
-                      :headers  (when (:speed req) {"anthropic-beta" fast-mode-beta})
-                      :on-error #(fast-mode-retry-or-throw!
-                                  req
-                                  (fn [] (claude-raw (assoc opts :fast? false)))
-                                  %)})))
+                     {:path             "/v1/messages"
+                      :body             req
+                      :headers          (when (:speed req) {"anthropic-beta" fast-mode-beta})
+                      :on-request-error #(fast-mode-retry-or-throw!
+                                          req
+                                          (fn [] (claude-raw (assoc opts :fast? false)))
+                                          %)})))
 
 (defn claude
   "Call Claude API, return AISDK stream"

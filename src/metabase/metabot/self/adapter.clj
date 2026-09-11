@@ -79,14 +79,14 @@
 (def StreamOpts
   "How an adapter puts one request on the wire; see [[stream!]]."
   [:map
-   [:path                        :string]
-   [:body                        :map]
-   [:headers    {:optional true} [:maybe [:map-of :string :string]]]
-   [:request    {:optional true} [:maybe :map]]
-   [:span-attrs {:optional true} [:maybe :map]]
-   [:error-msg  {:optional true} [:maybe fn?]]
-   [:wrap       {:optional true} [:maybe fn?]]
-   [:on-error   {:optional true} [:maybe fn?]]])
+   [:path                              :string]
+   [:body                              :map]
+   [:headers          {:optional true} [:maybe [:map-of :string :string]]]
+   [:request-options  {:optional true} [:maybe :map]]
+   [:span-attrs       {:optional true} [:maybe :map]]
+   [:error-msg        {:optional true} [:maybe fn?]]
+   [:wrap-stream      {:optional true} [:maybe fn?]]
+   [:on-request-error {:optional true} [:maybe fn?]]])
 
 ;;; ------------------------------------------------- Descriptor -------------------------------------------------
 
@@ -252,20 +252,24 @@
 
   The third argument says how this adapter puts that request on the wire:
 
-    :path       - the streaming endpoint, relative to the base URL.
-    :body       - the composed request body. Encoded here.
-    :headers    - extra request headers, beyond the descriptor's own and `Content-Type`.
-    :request    - extra [[core/request]] opts, e.g. per-provider timeouts.
-    :span-attrs - extra attributes for the span.
-    :error-msg  - replaces the descriptor's own `res->message`, for a provider whose message depends on
-                  the connection rather than only on the response.
-    :wrap       - applied to the reducible before error translation, for an adapter with its own
-                  translation to do first.
-    :on-error   - replaces the default [[rethrow!]] catch, for an adapter that retries."
+    :path             - the streaming endpoint, relative to the base URL.
+    :body             - the composed request body. Encoded here.
+    :headers          - extra request headers, beyond the descriptor's own and `Content-Type`.
+    :request-options  - extra [[core/request]] opts, e.g. per-provider timeouts.
+    :span-attrs       - extra attributes for the span.
+    :error-msg        - replaces the descriptor's own `res->message`, for a provider whose message
+                        depends on the connection rather than only on the response. Applies to both
+                        phases below.
+    :wrap-stream      - applied to the reducible before error translation, for an adapter with its own
+                        translation to do first.
+    :on-request-error - replaces the default [[rethrow!]] catch, for an adapter that retries. Only
+                        request-time failures reach it: the body is consumed long after this returns,
+                        so a mid-stream failure is translated by [[core/reducible-with-api-errors]]
+                        instead, which no adapter overrides."
   [{:keys [slug display-name span] :as p}            :- Provider
    {:keys [model input tools credentials ai-proxy?]} :- core/LLMRequestOpts
-   {:keys [path body headers request span-attrs wrap on-error error-msg]
-    :or   {wrap identity}}                           :- StreamOpts]
+   {:keys [path body headers request-options span-attrs wrap-stream on-request-error error-msg]
+    :or   {wrap-stream identity}}                    :- StreamOpts]
   (let [msg-count  (count input)
         tool-count (count tools)
         res->msg   (or error-msg (:error-msg p))]
@@ -284,16 +288,16 @@
                          :headers     (merge {"Content-Type" "application/json"} headers)
                          ;; encoded up front, since a provider may sign over the body
                          :body        (json/encode body)}
-                      request)
+                      request-options)
             :body
             core/sse-reducible
             (debug/capture-stream {:provider slug
                                    :model    model
                                    :url      path
                                    :request  body})
-            wrap
+            wrap-stream
             (core/reducible-with-api-errors slug res->msg))
         (catch Exception e
-          (if on-error
-            (on-error e)
+          (if on-request-error
+            (on-request-error e)
             (core/rethrow-api-error! slug res->msg e)))))))
