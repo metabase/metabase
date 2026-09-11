@@ -143,7 +143,7 @@
      collections
      util.config
      content-verification
-     contextual-interestingness
+     explorations.contextual-interestingness
      custom-viz-plugin
      dashboards
      documents

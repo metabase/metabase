@@ -680,14 +680,6 @@
    :model-exports #{:model/ModerationReview}
    :model-imports #{:model/Card :model/Dashboard :model/User}}
 
-  contextual-interestingness
-  {:team "UX West"
-   :api #{metabase.contextual-interestingness.core}
-   :uses #{interestingness
-           metabot
-           query-processor
-           util}}
-
   core
   {:team "UX West"
    :module-exports #{core.cmd
@@ -962,11 +954,6 @@
            util}
    :model-imports #{:model/Card :model/Dashboard :model/DashboardCard :model/EmbeddingTheme}}
 
-  embeddings
-  {:team "Metabot"
-   :api  #{metabase.embeddings.provider metabase.embeddings.startup}
-   :uses #{plugins util}}
-
   events
   {:team "DevEx"
    :api  #{metabase.events.core metabase.events.impl metabase.events.init}
@@ -993,9 +980,9 @@
            app-db
            collections
            comments
-           contextual-interestingness
            documents
            events
+           explorations.contextual-interestingness
            interestingness
            lib
            lib.be
@@ -1026,6 +1013,15 @@
                     :model/StoredResultUse
                     :model/Timeline
                     :model/User}}
+
+  explorations.contextual-interestingness
+  {:team "UX West"
+   :ns-prefix "metabase.contextual-interestingness"
+   :api #{metabase.contextual-interestingness.core}
+   :uses #{interestingness
+           metabot
+           query-processor
+           util}}
 
   formatter
   {:team "UX West"
@@ -2235,7 +2231,8 @@
 
   search
   {:team "UX West"
-   :module-exports #{search.entity-retrieval}
+   :module-exports #{search.embeddings
+                     search.entity-retrieval}
    :api  #{metabase.search.api
            metabase.search.appdb.scoring
            metabase.search.config
@@ -2279,6 +2276,12 @@
                     :model/Database
                     :model/Table
                     :model/User}}
+
+  search.embeddings
+  {:team "Metabot"
+   :ns-prefix "metabase.embeddings"
+   :api  #{metabase.embeddings.provider metabase.embeddings.startup}
+   :uses #{plugins util}}
 
   search.entity-retrieval
   {:team "Metabot"
@@ -3585,11 +3588,6 @@
            settings
            util}}
 
-  enterprise/embedder
-  {:team "Metabot"
-   :api  #{}
-   :uses #{embeddings util util.classloader}}
-
   enterprise/embedding
   {:team "Embedding"
    :ns-prefix "metabase-enterprise.embedding-hub"
@@ -3656,8 +3654,8 @@
                      enterprise/metabot.analytics
                      enterprise/metabot.data-complexity-score}
    :api            #{metabase-enterprise.metabot.api
-              metabase-enterprise.metabot.api.routes
-              metabase-enterprise.metabot.init}
+                     metabase-enterprise.metabot.api.routes
+                     metabase-enterprise.metabot.init}
    :uses           #{api
                      lib.be
                      lib.schema
@@ -3717,11 +3715,11 @@
            audit-app
            collections
            driver
-           embeddings
            lib.schema
            metabot
            models
            premium-features
+           search.embeddings
            settings
            startup
            task
@@ -3924,6 +3922,12 @@
    :api #{metabase-enterprise.embeddings.client}
    :uses #{enterprise/search.semantic}}
 
+  enterprise/search.embeddings.embedder
+  {:team "Metabot"
+   :ns-prefix "metabase-enterprise.embedder"
+   :api  #{}
+   :uses #{search.embeddings util util.classloader}}
+
   enterprise/search.entity-retrieval
   {:team "Metabot"
    :ns-prefix "metabase-enterprise.entity-retrieval"
@@ -3962,7 +3966,6 @@
            app-db
            collections
            connection-pool
-           embeddings
            events
            health-inspector
            lib.be
@@ -3974,6 +3977,7 @@
            premium-features
            request
            search
+           search.embeddings
            settings
            task
            tracing
@@ -4221,9 +4225,7 @@
            permissions
            util
            warehouses.schema}
-   :model-imports #{:model/Database :model/Field :model/Table}}
-
-}
+   :model-imports #{:model/Database :model/Field :model/Table}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.
