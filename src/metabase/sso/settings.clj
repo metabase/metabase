@@ -283,8 +283,7 @@
   :visibility :internal
   :default :allow-all
   :export? false
-  ;; network-level: this policy defends the host against the people who administer Metabase, so only the
-  ;; environment sets it. An unrecognized value fails closed at the point of use (see `metabase.util.http`).
+  :value-validator #{:allow-all :allow-private :external-only}
   :sysadmin-only? true)
 
 (defn- ee-sso-configured? []

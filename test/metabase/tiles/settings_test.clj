@@ -95,8 +95,11 @@
         (testing "the scheme is still checked"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid map tile server URL"
                                 (tiles.settings/map-tile-server-url! "file:///etc/passwd"))))))
-    (testing "an unrecognized policy fails closed rather than quietly allowing everything"
+    (testing "only the three known values are accepted; anything else fails closed"
       (mt/with-temporary-setting-values [map-tile-server-allowed-networks :allow-everything]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"MB_MAP_TILE_SERVER_ALLOWED_NETWORKS: \"allow-everything\" is not a valid value for setting map-tile-server-allowed-networks"
+                              (tiles.settings/map-tile-server-allowed-networks)))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid map tile server URL"
                               (tiles.settings/map-tile-server-url! "https://8.8.8.8/{z}/{x}/{y}.png")))))))
 

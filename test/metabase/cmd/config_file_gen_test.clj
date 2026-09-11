@@ -1,7 +1,7 @@
 (ns metabase.cmd.config-file-gen-test
   (:require
    [clojure.test :refer :all]
-   [metabase.cmd.config-file-gen :refer [config-file-settings create-settings-map]]))
+   [metabase.cmd.config-file-gen :refer [config-file-settings create-settings-map get-name-and-default]]))
 
 (def example-settings '({:database-local :never,
                          :cache? true,
@@ -117,6 +117,14 @@
    :aggregated-query-row-limit nil
    :anon-tracking-enabled true})
 
+(deftest computed-default-test
+  (testing "a :default computed at runtime has no value the template can carry; it is left unset"
+    (is (= {:computed-setting nil}
+           (get-name-and-default {:munged-name "computed-setting" :default (fn [] :depends-on-the-instance)})))
+    (testing "while a plain default is carried as it is"
+      (is (= {:plain-setting :sunday}
+             (get-name-and-default {:munged-name "plain-setting" :default :sunday}))))))
+
 (deftest test-config-template
   (testing "Setting map for config file is formatted as expected."
     (let [settings (create-settings-map example-settings)]
@@ -167,3 +175,14 @@
                      (map :munged-name)
                      set)]
       (is (contains? names "metabot-chat-system-prompt")))))
+
+(deftest ^:parallel sysadmin-only-settings-excluded-test
+  (testing "A sysadmin-only setting is documented as an env var but cannot be set from the config file"
+    (is (empty? (config-file-settings [{:name           :warehouse-allowed-networks
+                                        :munged-name    "warehouse-allowed-networks"
+                                        :type           :keyword
+                                        :default        :allow-all
+                                        :description    (constantly "What networks may a warehouse be on?")
+                                        :visibility     :internal
+                                        :setter         :none
+                                        :sysadmin-only? true}])))))

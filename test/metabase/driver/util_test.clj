@@ -926,10 +926,13 @@
       (is (= :external-only (driver.settings/warehouse-allowed-networks)))
       (is (=? {:status-code 400}
               (ssrf-error #(driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"}))))))
-  (testing "an unrecognized policy fails closed at the point of use rather than quietly allowing everything"
+  (testing "an unrecognized policy fails closed rather than quietly allowing everything"
     (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "unknown-policy"]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                            #"Unknown network policy"
+                            #"MB_WAREHOUSE_ALLOWED_NETWORKS: \"unknown-policy\" is not a valid value for setting warehouse-allowed-networks"
+                            (driver.settings/warehouse-allowed-networks)))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"is not a valid value"
                             (driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"}))))))
 
 (deftest warehouse-allowed-networks-is-sysadmin-only-test

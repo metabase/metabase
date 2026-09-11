@@ -21,17 +21,11 @@
   :type       :keyword
   :visibility :internal
   :export?    false
-  ;; No `:default`, because it depends on where we are running. On Cloud a warehouse is always reached across the
-  ;; public internet, so an internal address is somebody reaching for our own infrastructure rather than their
-  ;; database. Self-hosted, a warehouse on a private network is the ordinary case, and defaulting to anything
-  ;; stricter would break working instances on upgrade.
-  :getter     (fn []
-                (or (setting/get-value-of-type :keyword :warehouse-allowed-networks)
-                    (if (premium-features/is-hosted?)
-                      :external-only
-                      :allow-all)))
-  ;; network-level: this policy defends the host against the people who administer Metabase, so only the
-  ;; environment sets it. An unrecognized value fails closed at the point of use (see `metabase.util.http`).
+  :default    (fn []
+                (if (premium-features/is-hosted?)
+                  :external-only
+                  :allow-all))
+  :value-validator #{:external-only :allow-private :allow-all}
   :sysadmin-only? true)
 
 (defsetting ssh-heartbeat-interval-sec

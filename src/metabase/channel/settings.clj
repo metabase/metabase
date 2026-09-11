@@ -326,8 +326,7 @@
   :default    :external-only
   :export?    false
   :deprecated-name :http-channel-host-strategy
-  ;; network-level: this policy defends the host against the people who administer Metabase, so only the
-  ;; environment sets it. An unrecognized value fails closed at the point of use (see `metabase.util.http`).
+  :value-validator #{:external-only :allow-private :allow-all}
   :sysadmin-only? true)
 
 (defsetting slack-configured?

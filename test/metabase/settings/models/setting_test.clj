@@ -2240,12 +2240,158 @@
           (mt/with-log-messages-for-level [messages :warn]
             (setting/log-ignored-sysadmin-db-values!)
             (is (empty? (filter #(str/includes? (:message %) "test-sysadmin-only-setting") (messages)))))))))
-  (testing "a row under the deprecated name is warned about too"
+  (testing "a row under the deprecated name is warned about too, naming that key"
     (with-setting-row-in-db [:test-sysadmin-only-old-name "stale-db-value"]
       (mt/with-log-messages-for-level [messages :warn]
         (setting/log-ignored-sysadmin-db-values!)
-        (is (some #(str/includes? % "test-sysadmin-only-renamed-setting") (map :message (messages)))))))
+        (let [relevant (filter #(str/includes? % "test-sysadmin-only") (map :message (messages)))]
+          (is (=? [#"(?s).*test-sysadmin-only-renamed-setting.*deprecated key test-sysadmin-only-old-name.*ignored.*MB_TEST_SYSADMIN_ONLY_RENAMED_SETTING=stale-db-value.*"]
+                  relevant))
+          (testing "and does not tell the sysadmin to rename the row: renaming it would change nothing"
+            (is (not-any? #(str/includes? % "rename it") relevant)))))))
   (testing "nothing is logged when no row exists"
     (mt/with-log-messages-for-level [messages :warn]
       (setting/log-ignored-sysadmin-db-values!)
       (is (empty? (filter #(str/includes? (:message %) "test-sysadmin-only") (messages)))))))
+
+;;; -------------------------------------------------- :value-validator --------------------------------------------------
+
+(defsetting test-validated-keyword-setting
+  "Setting to test :value-validator. This only shows up in dev."
+  :visibility :internal
+  :type :keyword
+  :default :alpha
+  :value-validator #{:alpha :beta})
+
+(defsetting test-validated-integer-setting
+  "Setting to test :value-validator on a number. This only shows up in dev."
+  :visibility :internal
+  :type :integer
+  :default 10
+  :value-validator pos-int?)
+
+(defsetting test-validated-sysadmin-only-setting
+  "Setting to test :value-validator on a sysadmin-only setting. This only shows up in dev."
+  :visibility :internal
+  :type :keyword
+  :default :alpha
+  :value-validator #{:alpha :beta}
+  :sysadmin-only? true)
+
+(defsetting test-validated-renamed-setting
+  "Setting to test :value-validator against a deprecated env var name. This only shows up in dev."
+  :visibility :internal
+  :type :keyword
+  :default :alpha
+  :deprecated-name :test-validated-old-name
+  :value-validator #{:alpha :beta})
+
+(deftest value-validator-registration-test
+  (testing "the validator has to be callable"
+    (is (thrown? Exception
+                 (defsetting test-validated-broken-setting
+                   "Invalid validator"
+                   :visibility :internal
+                   :type :keyword
+                   :value-validator "nope")))))
+
+(deftest value-validator-setter-test
+  (testing "a valid value is stored"
+    (mt/with-temporary-setting-values [test-validated-keyword-setting :beta]
+      (is (= :beta (test-validated-keyword-setting))))
+    (mt/with-temporary-setting-values [test-validated-integer-setting 3]
+      (is (= 3 (test-validated-integer-setting)))))
+  (testing "an invalid value is rejected with a 400, whether typed or spelled the way the API sends it"
+    (is (thrown-with-msg? ExceptionInfo #"^\"gamma\" is not a valid value for setting test-validated-keyword-setting\.$"
+                          (test-validated-keyword-setting! "gamma")))
+    (doseq [v [:gamma "gamma"]]
+      (is (thrown-with-msg? ExceptionInfo #"is not a valid value for setting test-validated-keyword-setting"
+                            (test-validated-keyword-setting! v)))
+      (is (= {:status-code 400 :setting "test-validated-keyword-setting"}
+             (try (test-validated-keyword-setting! v) (catch ExceptionInfo e (ex-data e))))))
+    (doseq [v [0 "0" -5]]
+      (is (thrown-with-msg? ExceptionInfo #"is not a valid value for setting test-validated-integer-setting"
+                            (test-validated-integer-setting! v)))))
+  (testing "nil clears the setting without consulting the validator"
+    (mt/with-temporary-setting-values [test-validated-keyword-setting :beta]
+      (test-validated-keyword-setting! nil)
+      (is (= :alpha (test-validated-keyword-setting))))))
+
+(deftest value-validator-env-test
+  (reset! @#'setting/env-value-validation-cache {})
+  (mt/with-temporary-setting-values [test-validated-keyword-setting nil]
+    (testing "a valid env value is used"
+      (mt/with-temp-env-var-value! [mb-test-validated-keyword-setting "beta"]
+        (is (= :beta (test-validated-keyword-setting)))))
+    (testing "an invalid env value fails closed: every read throws, it still counts as env-set, and startup refuses it"
+      (mt/with-temp-env-var-value! [mb-test-validated-keyword-setting "gamma"]
+        (is (thrown-with-msg? ExceptionInfo
+                              #"^MB_TEST_VALIDATED_KEYWORD_SETTING: \"gamma\" is not a valid value for setting test-validated-keyword-setting\.$"
+                              (test-validated-keyword-setting)))
+        (is (thrown-with-msg? ExceptionInfo #"is not a valid value" (test-validated-keyword-setting))
+            "the validator's verdict is cached, but the read still throws")
+        (is (thrown-with-msg? ExceptionInfo #"is not a valid value"
+                              (setting/get-raw-value-source :test-validated-keyword-setting)))
+        (is (=? {:is_env_setting true, :value nil}
+                (#'setting/user-facing-info (setting/resolve-setting :test-validated-keyword-setting))))
+        (is (thrown-with-msg? ExceptionInfo #"Invalid KEYWORD configuration for setting: test-validated-keyword-setting"
+                              (setting/validate-settings-formatting!)))
+        (testing "the startup error names the value rather than redacting it, as the message is already sensitivity-aware"
+          (is (thrown-with-msg? ExceptionInfo #"\"gamma\" is not a valid value"
+                                (try (setting/validate-settings-formatting!)
+                                     (catch ExceptionInfo e (throw (ex-cause e)))))))))
+    (testing "a value the type cannot parse is left to the usual parse error"
+      (mt/with-temp-env-var-value! [mb-test-validated-integer-setting "lots"]
+        (is (thrown-with-msg? ExceptionInfo #"Error parsing Setting" (test-validated-integer-setting)))))
+    (testing "an invalid value under the deprecated env var name is reported against that name, not the primary one"
+      (mt/with-temp-env-var-value! [mb-test-validated-old-name "gamma"]
+        (is (thrown-with-msg? ExceptionInfo
+                              #"^MB_TEST_VALIDATED_OLD_NAME: \"gamma\" is not a valid value for setting test-validated-renamed-setting\.$"
+                              (test-validated-renamed-setting)))
+        (is (= "MB_TEST_VALIDATED_OLD_NAME"
+               (try (test-validated-renamed-setting) (catch ExceptionInfo e (:env-name (ex-data e))))))))
+    (testing "a sysadmin-only setting is validated the same way -- its env var is its only source"
+      (mt/with-temp-env-var-value! [mb-test-validated-sysadmin-only-setting "beta"]
+        (is (= :beta (test-validated-sysadmin-only-setting))))
+      (mt/with-temp-env-var-value! [mb-test-validated-sysadmin-only-setting "gamma"]
+        (is (thrown-with-msg? ExceptionInfo #"is not a valid value for setting test-validated-sysadmin-only-setting"
+                              (test-validated-sysadmin-only-setting)))))))
+
+;;; ------------------------------------------------ fn-valued :default ------------------------------------------------
+
+(defonce ^:private dynamic-default-source (atom :from-atom))
+
+(defsetting test-dynamic-default-setting
+  "Setting whose :default is computed on every read. This only shows up in dev."
+  :visibility :internal
+  :type       :keyword
+  :default    (fn [] @dynamic-default-source))
+
+(deftest dynamic-default-test
+  (mt/with-temporary-setting-values [test-dynamic-default-setting nil]
+    (testing "a fn-valued :default is called on read, so it tracks whatever it depends on"
+      (reset! dynamic-default-source :from-atom)
+      (is (= :from-atom (test-dynamic-default-setting)))
+      (is (= :from-atom (setting/default-value :test-dynamic-default-setting)))
+      (is (= :default (setting/get-raw-value-source :test-dynamic-default-setting)))
+      (reset! dynamic-default-source :changed)
+      (is (= :changed (test-dynamic-default-setting)))
+      (testing "user-facing-info reports the computed value, not the function"
+        (is (= :changed (:default (#'setting/user-facing-info (setting/resolve-setting :test-dynamic-default-setting))))))
+      (testing "user-facing-value treats the computed default as 'not set', exactly as it does a plain one"
+        (is (nil? (setting/user-facing-value :test-dynamic-default-setting)))))
+    (testing "a stored or env value still wins over it"
+      (mt/with-temporary-setting-values [test-dynamic-default-setting :stored]
+        (is (= :stored (test-dynamic-default-setting)))
+        (is (= :database (setting/get-raw-value-source :test-dynamic-default-setting))))
+      (mt/with-temp-env-var-value! [mb-test-dynamic-default-setting "from-env"]
+        (is (= :from-env (test-dynamic-default-setting)))))
+    (testing "it is still mutually exclusive with :init"
+      (is (thrown-with-msg? ExceptionInfo #"uses both :default and :init"
+                            (defsetting test-dynamic-default-with-init
+                              "Invalid"
+                              :visibility :internal
+                              :type       :string
+                              :encryption :no
+                              :default    (fn [] "x")
+                              :init       (fn [] "y")))))))

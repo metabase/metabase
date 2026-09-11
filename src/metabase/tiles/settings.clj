@@ -36,13 +36,11 @@
   :type       :keyword
   :visibility :internal
   :export?    false
-  :getter     (fn []
-                (or (setting/get-value-of-type :keyword :map-tile-server-allowed-networks)
-                    (if (premium-features/is-hosted?)
-                      :external-only
-                      :allow-private)))
-  ;; network-level: this is the SSRF allowlist the map-tile-server-url setter checks against, so a Metabase admin must
-  ;; not be able to widen it. An unrecognized value fails closed at the point of use (see `metabase.util.http`).
+  :default    (fn []
+                (if (premium-features/is-hosted?)
+                  :external-only
+                  :allow-private))
+  :value-validator #{:external-only :allow-private :allow-all}
   :sysadmin-only? true)
 
 (defn- valid-map-tile-server-url?
