@@ -500,4 +500,3 @@
                  :is_defective_duplicate     false
                  :json_unfolding             false
                  :preview_display            true}}))
-
