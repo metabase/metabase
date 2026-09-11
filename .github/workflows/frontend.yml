@@ -12,8 +12,8 @@ on:
       skip-custom-viz:
         type: boolean
         default: false
-      # JSON array of unit spec files to run, '' to run the full suite.
-      unit-specs:
+      # ID of this run's test-plan.json artifact; '' runs the full suite.
+      test-plan-artifact-id:
         type: string
         default: ""
       skip-ci-scripts:
@@ -117,18 +117,59 @@ jobs:
         # Resolve JOB_ID before the long test step so the ci-conductor reporter
         # below can link failures to this exact job. Best-effort.
         uses: ./.github/actions/resolve-job-id
+      - name: Download test plan
+        id: test-plan
+        if: ${{ inputs.test-plan-artifact-id != '' }}
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          artifact-ids: ${{ inputs.test-plan-artifact-id }}
+          path: ${{ runner.temp }}/test-plan
+      - name: Prepare unit test selection
+        id: unit-selection
+        if: ${{ inputs.test-plan-artifact-id != '' }}
+        env:
+          PLAN_DOWNLOADED: ${{ steps.test-plan.outcome }}
+        run: |
+          plan="$RUNNER_TEMP/test-plan/test-plan.json"
+          if [ "$PLAN_DOWNLOADED" != success ] || ! jq -e '
+            (.fe_unit_specs_to_run | type == "array" and all(.[]; type == "string" and length > 0)) and
+            (.stats.unit_specs_all | type == "number" and . >= 0 and . == floor) and
+            (.fe_unit_specs_to_run | length) == .stats.unit_specs_to_run_usage and
+            (.fe_unit_specs_to_run | length) <= .stats.unit_specs_all
+          ' "$plan" > /dev/null; then
+            echo "::warning::Test plan unavailable or invalid; running the full unit suite."
+            exit 0
+          fi
+          # Full selections use Jest's normal discovery, without the filter.
+          if jq -e '.stats.unit_specs_to_run_usage == .stats.unit_specs_all' "$plan" > /dev/null; then
+            exit 0
+          fi
+          jq '.fe_unit_specs_to_run' "$plan" > "$RUNNER_TEMP/unit-specs.json"
+          echo "paths-file=$RUNNER_TEMP/unit-specs.json" >> "$GITHUB_OUTPUT"
       - name: Run frontend unit tests
         id: fe-tests
         env:
-          JEST_TEST_PATHS_FILE: ${{ inputs.unit-specs && 'unit-specs.json' || '' }}
+          JEST_TEST_PATHS_FILE: ${{ steps.unit-selection.outputs.paths-file }}
         # Jest exits non-zero on a shard with no files unless --passWithNoTests is set.
         run: |
-          cat > unit-specs.json <<'EOF'
-          ${{ inputs.unit-specs }}
-          EOF
-          bun run test-unit --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }} ${{ inputs.unit-specs && '--passWithNoTests' || '' }}
-        # Keep this step continue-on-error because the quarantine logic controls whether it ultimately fails.
+          rm -f unit-test-results.json "$JEST_JUNIT_OUTPUT_DIR/$JEST_JUNIT_OUTPUT_NAME"
+          bun run test-unit --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }} --json --outputFile=unit-test-results.json ${{ steps.unit-selection.outputs.paths-file && '--passWithNoTests' || '' }}
+        # Ordinary assertion failures can be quarantined; runner failures cannot.
         continue-on-error: true
+      - name: Reject unit test runner failures
+        if: ${{ !cancelled() && steps.fe-tests.outcome == 'failure' }}
+        run: |
+          # A filter/startup crash has no completed report. Suite setup crashes
+          # have runtime errors. Neither is an ordinary quarantinable test failure.
+          if ! jq -e '
+            .success == false and .wasInterrupted == false and
+            .numFailedTests > 0 and .numRuntimeErrorTestSuites == 0
+          ' unit-test-results.json > /dev/null ||
+            [ ! -s "$JEST_JUNIT_OUTPUT_DIR/$JEST_JUNIT_OUTPUT_NAME" ]; then
+            echo "::error::Unit test runner failed without complete assertion-failure results."
+            exit 1
+          fi
       - name: Report failed tests to ci-conductor
         if: ${{ !cancelled() && ( steps.fe-tests.outcome == 'failure' || github.run_attempt != '1' ) }}
         # This step should NEVER fail the job!

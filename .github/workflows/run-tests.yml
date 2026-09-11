@@ -94,16 +94,14 @@ jobs:
           filters: .github/file-paths.yaml
 
   create-test-plan:
-    needs: files-changed
+    needs: [should-run, files-changed]
     name: Create test plan
-    if: ${{ github.event_name == 'pull_request' }}
+    if: ${{ github.event_name == 'pull_request' && needs.should-run.outputs.verdict == 'defer' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     outputs:
       stats: ${{ steps.compute.outputs.stats }}
-      fe_unit_specs_to_run: ${{ steps.compute.outputs.fe_unit_specs_to_run }}
-      loki_stories_to_run: ${{ steps.compute.outputs.loki_stories_to_run }}
-      e2e_specs_to_run: ${{ steps.compute.outputs.e2e_specs_to_run }}
+      artifact-id: ${{ steps.compute.outputs.artifact-id }}
     steps:
       - uses: actions/checkout@v6
       - name: Create test plan
@@ -280,12 +278,8 @@ jobs:
       skip: >-
         ${{ needs.should-run.outputs.verdict != 'force-run' &&
         needs.files-changed.outputs.frontend_all != 'true' }}
-      # Only a pull request with a successful plan is narrowed.
-      # Anything else falls through to '', which runs the full suite.
-      unit-specs: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.create-test-plan.result == 'success' &&
-        needs.create-test-plan.outputs.fe_unit_specs_to_run || '' }}
+      # A skipped/failed planner supplies no artifact, so the suite runs in full.
+      test-plan-artifact-id: ${{ needs.create-test-plan.result == 'success' && needs.create-test-plan.outputs.artifact-id || '' }}
       skip-lint: >-
         ${{ needs.should-run.outputs.verdict != 'force-run' &&
         needs.files-changed.outputs.frontend_all != 'true' &&

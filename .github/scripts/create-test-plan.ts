@@ -1,5 +1,5 @@
 // I/O entrypoint: gather inputs (env vars, the test-file lists, the cruise graph on request),
-// hand them to createTestPlan, which does the computing, and write its GITHUB_OUTPUT entries.
+// hand them to createTestPlan, which does the computing, and publish its small stats output.
 
 import { execFileSync, spawnSync } from "node:child_process";
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
@@ -138,8 +138,6 @@ process.stdout.write(JSON.stringify(testPlan) + "\n");
 if (process.env.GITHUB_OUTPUT) {
   appendFileSync(
     process.env.GITHUB_OUTPUT,
-    Object.entries(testPlan)
-      .map(([name, value]) => `${name}=${JSON.stringify(value)}\n`)
-      .join(""),
+    `stats=${JSON.stringify(testPlan.stats)}\n`,
   );
 }
