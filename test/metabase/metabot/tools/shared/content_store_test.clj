@@ -221,8 +221,10 @@
   "A syntactically valid entity_id, so the resolver reaches the store instead of short-circuiting."
   "GRLHTBIcE5nGFVJoxGr5D")
 
-(deftest repair-does-not-audit-the-refusals-it-swallows-test
-  (testing "repair resolves a source-card ref through the store, and 403s there leave no audit trail"
+(deftest suppressed-refusals-during-repair-leave-no-audit-trail-test
+  (testing "repair resolves a source-card ref through the store, and with auditing suppressed - as
+            metabase.metabot.tools.construct suppresses it around the repair call - a 403 there
+            leaves no trail"
     (let [lookups (atom 0)
           row     (stub-row {:id 1 :database_id 1 :entity_id source-card-entity-id})
           store   (reify resolve.mp/ContentStore
@@ -239,8 +241,9 @@
                                 "source-card" source-card-entity-id}]}]
       (mt/with-dynamic-fn-redefs [api/read-check (fn [& _]
                                                    (is false "api/read-check ran on a refusal repair discards"))]
-        (binding [api/*current-user-id* 1
-                  *stub-can-read?*      false]
+        (binding [api/*current-user-id*        1
+                  *stub-can-read?*             false
+                  resolve.mp/*audit-refusals?* false]
           (let [repaired (repr.repair/repair mp query (shared.content-store/read-checked store))]
             (is (pos? @lookups) "precondition: repair looked the source card up")
             (is (= source-card-entity-id (get-in repaired ["stages" 0 "source-card"]))
@@ -263,8 +266,8 @@
           (is (mi/can-read? :model/Database (mt/id))
               "precondition: query access to one table makes the whole database readable")
           (doseq [audited? [true false]]
-            (is (some? (shared.content-store/query-if-database-readable (query-on (mt/id :orders)) audited?)))
-            (is (nil? (shared.content-store/query-if-database-readable (query-on (mt/id :venues)) audited?)))))))))
+            (is (some? (shared.content-store/query-for-export (query-on (mt/id :orders)) audited?)))
+            (is (nil? (shared.content-store/query-for-export (query-on (mt/id :venues)) audited?)))))))))
 
 (deftest native-query-needs-database-wide-native-access-test
   (testing "a native query is withheld unless the user may write native queries against the whole database"
@@ -276,11 +279,11 @@
                           :native   {:query "SELECT * FROM orders"}}]
         (mt/with-test-user :rasta
           (doseq [audited? [true false]]
-            (is (nil? (shared.content-store/query-if-database-readable native-query audited?)))))
+            (is (nil? (shared.content-store/query-for-export native-query audited?)))))
         (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
         (mt/with-test-user :rasta
           (doseq [audited? [true false]]
-            (is (some? (shared.content-store/query-if-database-readable native-query audited?)))))))))
+            (is (some? (shared.content-store/query-for-export native-query audited?)))))))))
 
 (deftest saved-question-source-authorizes-through-its-collection-test
   (testing "a query on a saved question the user can read is exported without query access to its database"
@@ -298,7 +301,7 @@
             (is (not (mi/can-query? :model/Database (mt/id)))
                 "precondition: nothing grants query access to the database")
             (doseq [audited? [true false]]
-              (is (some? (shared.content-store/query-if-database-readable query audited?))))))))))
+              (is (some? (shared.content-store/query-for-export query audited?))))))))))
 
 ;;; ============================================================
 ;;; default-store integration shape
