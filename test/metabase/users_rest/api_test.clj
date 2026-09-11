@@ -1730,8 +1730,8 @@
         (auth-identity/set-password! (:id user) "def")
         (let [user-id               (:id user)
               auth-identity         (t2/select-one :model/AuthIdentity :user_id user-id)
-              totp-auth-identity-id (t2/insert! :model/AuthIdentity {:user_id  user-id
-                                                                     :provider "totp"})
+              totp-auth-identity-id (t2/insert-returning-pk! :model/AuthIdentity {:user_id  user-id
+                                                                                  :provider "totp"})
               original-session-key  (generate-session! user-id
                                                        (:id auth-identity)
                                                        :mfa_auth_identity_id totp-auth-identity-id)
@@ -1746,9 +1746,9 @@
                    :success true}
                   resp))
           ;; Original session should be gone
-          (is (t2/exists?
-               :model/Session
-               :key_hashed (session/hash-session-key original-session-key)))
+          (is (not (t2/exists?
+                    :model/Session
+                    :key_hashed (session/hash-session-key original-session-key))))
           (let [new-session-key  (:session_id resp)
                 new-session      (t2/select-one
                                   :model/Session

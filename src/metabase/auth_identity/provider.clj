@@ -257,13 +257,15 @@
 (mu/defn- apply-inactive-check
   "Checks if the provided `request` is an attempt to log in an active user, or an inactive one.
 
-  If the user does not have `:is_active true`, the response is not successful and an error message is returned."
+  If the user does not have `:is_active true`, the response is not successful and an error message is returned. A
+  request that resolved no user at all is left alone: link-only flows legitimately finish without one."
   [request :- [:map
                [:user {:optional true} [:maybe [:map
                                                 [:id ms/PositiveInt]
                                                 [:is_active :boolean]]]]]]
   (cond-> request
     (and (nil? (:error request))
+         (:user request)
          (not (get-in request [:user :is_active]))) (assoc :success? false
                                                            :error disabled-account-snippet
                                                            :message disabled-account-message)))

@@ -2811,6 +2811,7 @@
                     :model/Collection
                     :model/Dashboard
                     :model/LoginHistory
+                    :model/Session
                     :model/User}}
 
   util

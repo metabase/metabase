@@ -765,8 +765,8 @@
 
 (defn generate-mfa-session!
   [user-id auth-identity-id]
-  (let [totp-auth-identity-id (t2/insert! :model/AuthIdentity {:user_id  user-id
-                                                               :provider "totp"})]
+  (let [totp-auth-identity-id (t2/insert-returning-pk! :model/AuthIdentity {:user_id  user-id
+                                                                            :provider "totp"})]
     (generate-session! user-id
                        auth-identity-id
                        :mfa_auth_identity_id totp-auth-identity-id)))
