@@ -24,6 +24,7 @@ import {
   needsGraphGoalResolution,
   resolveGoalSegments,
   resolveGoalValue,
+  resolveGraphGoalSettings,
   resolveOpenEndedGoalSegments,
 } from "./dynamic-goals";
 
@@ -1076,6 +1077,61 @@ describe("needsGraphGoalResolution", () => {
         }),
       ).toBe(false);
     });
+  });
+});
+
+describe("resolveGraphGoalSettings", () => {
+  const ref = { type: "card" as const, id: 9, column: "goal" };
+  const settings: VisualizationSettings = {
+    "graph.show_goal": true,
+    "graph.goal_value": ref,
+  };
+  const data = createMockDatasetData({
+    cols: [createMockColumn({ name: "count" })],
+    rows: [[50]],
+  });
+  const answeredData = createMockDatasetData({
+    ...data,
+    referenced_entities: {
+      card: {
+        9: {
+          status: "completed",
+          data: { cols: [createMockColumn({ name: "goal" })], rows: [[250]] },
+        },
+      },
+    },
+  });
+
+  it("substitutes the value the data resolves the reference to", () => {
+    expect(resolveGraphGoalSettings("line", settings, answeredData)).toEqual({
+      ...settings,
+      "graph.goal_value": 250,
+    });
+  });
+
+  it("substitutes null for a reference the data cannot resolve", () => {
+    expect(resolveGraphGoalSettings("line", settings, data)).toEqual({
+      ...settings,
+      "graph.goal_value": null,
+    });
+  });
+
+  it("returns the same settings object when there is nothing to resolve", () => {
+    const staticSettings: VisualizationSettings = {
+      "graph.show_goal": true,
+      "graph.goal_value": 10,
+    };
+    const hiddenSettings = { ...settings, "graph.show_goal": false };
+
+    expect(resolveGraphGoalSettings("line", staticSettings, data)).toBe(
+      staticSettings,
+    );
+    expect(resolveGraphGoalSettings("line", hiddenSettings, data)).toBe(
+      hiddenSettings,
+    );
+    expect(resolveGraphGoalSettings("scalar", settings, answeredData)).toBe(
+      settings,
+    );
   });
 });
 
