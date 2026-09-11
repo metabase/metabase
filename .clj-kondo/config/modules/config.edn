@@ -1358,6 +1358,7 @@
            ai-tracing
            api
            app-db
+           auth-identity
            config
            lib
            llm
@@ -1369,7 +1370,8 @@
            session
            settings
            system
-           util}}
+           util}
+   :model-imports #{:model/AuthIdentity}}
 
   measures
   {:team "Graphy"
@@ -2255,6 +2257,7 @@
    :api  #{metabase.session.api
            metabase.session.core
            metabase.session.init
+           metabase.session.schema
            metabase.session.settings}      ; TODO -- shouldn't be exposed as an API namespace
    :uses #{api
            app-db
@@ -3864,6 +3867,18 @@
            setup
            util}
    :model-imports :bypass}
+
+  enterprise/session-management
+  {:team "UX West"
+   :api  #{metabase-enterprise.session-management.api}
+   :uses #{api
+           events
+           lib
+           request
+           session
+           users
+           util}
+   :model-imports #{:model/Session :model/User}}
 
   enterprise/snippet-collections
   {:team "Graphy"

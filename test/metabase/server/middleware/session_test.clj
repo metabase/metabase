@@ -433,7 +433,8 @@
               :is-group-manager? false,
               :user-locale nil
               :is-data-analyst? false
-              :auth-provider nil}
+              :auth-provider nil
+              :session-key-hash test-session-key-hashed}
              (#'mw.session/current-user-info-for-session test-session-key nil)))
       (finally
         (t2/delete! :model/Session :id test-session-id)))))
@@ -449,7 +450,8 @@
               :is-group-manager? false,
               :user-locale nil
               :is-data-analyst? false
-              :auth-provider nil}
+              :auth-provider nil
+              :session-key-hash test-session-key-hashed}
              (#'mw.session/current-user-info-for-session test-session-key nil)))
       (finally
         (t2/delete! :model/Session :id test-session-id)))))
@@ -500,7 +502,8 @@
                 :is-group-manager? false,
                 :user-locale nil
                 :is-data-analyst? false
-                :auth-provider nil}
+                :auth-provider nil
+                :session-key-hash test-session-key-hashed}
                (#'mw.session/current-user-info-for-session test-session-key test-anti-csrf-token)))
         (finally
           (t2/delete! :model/Session :id test-session-id)))
@@ -706,6 +709,122 @@
                       {:id session-id :key_hashed key-hashed :user_id user-id :created_at :%now
                        :last_active_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now -600 :second)})
           (is (some? (#'mw.session/current-user-info-for-session session-key nil))))))))
+
+;;; ------------------------------------ last_active_at is written on every instance -----------------------------------
+
+(defn- last-active-at
+  "Read `last_active_at` for the session with plaintext key `session-key` directly from the DB."
+  [session-key]
+  (t2/select-one-fn :last_active_at (t2/table-name :model/Session)
+                    :key_hashed (session/hash-session-key session-key)))
+
+(defn- age-last-active-at!
+  "Set `last_active_at` for `session-key` to ten minutes ago and return the stored value. Used as a sentinel: any
+  subsequent write would move the column back to ~now, so an unchanged value proves that no write happened."
+  [session-key]
+  (t2/query-one {:update (t2/table-name :model/Session)
+                 :set    {:last_active_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now -600 :second)}
+                 :where  [:= :key_hashed (session/hash-session-key session-key)]})
+  (last-active-at session-key))
+
+(defn- run-auth-stack!
+  "Run `request` through the real authentication middleware — session-key extraction, credential resolution, and the
+  activity tracking that hangs off the response — and return the request as the inner handler saw it."
+  [request]
+  (let [seen    (atom nil)
+        handler (fn [request respond _]
+                  (reset! seen request)
+                  (respond {:body "" :cookies {}}))]
+    ((-> handler
+         mw.session/reset-session-timeout
+         mw.session/wrap-current-user-info
+         mw.session/wrap-session-key)
+     request
+     identity
+     (fn [e] (throw e)))
+    @seen))
+
+(defn- request-with-session-cookie
+  [session-key]
+  (assoc (ring.mock/request :get "/api/user/current")
+         :cookies {session-cookie {:value session-key}}))
+
+(defn- throttled?!
+  "Whether the activity throttle cache already holds an entry for `session-key`. Recording an update returns false
+  when a live entry is present, so `false` here means nothing was recorded for that session."
+  [session-key]
+  (not (session/record-session-activity-update! (session/hash-session-key session-key))))
+
+(deftest last-active-at-updated-without-session-timeout-test
+  (init-status/set-complete!)
+  (testing "last_active_at is written on every instance, not only when an idle timeout is configured"
+    (mt/with-premium-features #{}
+      (mt/with-temporary-setting-values [session-timeout nil]
+        (is (nil? (request/enabled-session-timeout-seconds))
+            "precondition: no idle timeout is in effect")
+        (mt/with-temp [:model/User {user-id :id}]
+          (let [session-key (insert-test-session! user-id {:created_at :%now})]
+            (session/clear-session-activity-cache!)
+            (is (nil? (last-active-at session-key)))
+            (testing "a session-authenticated request writes last_active_at"
+              (let [seen (run-auth-stack! (request-with-session-cookie session-key))]
+                (is (= user-id (:metabase-user-id seen))
+                    "precondition: the session authenticated the request")
+                (is (= (session/hash-session-key session-key) (:metabase/authed-session-key-hash seen))
+                    "the session that authenticated the request is the one marked for the activity write")
+                (is (not (contains? seen :metabase/authed-session-key))
+                    "the request carries the hash, never the key, under the namespaced marker"))
+              (is (some? (last-active-at session-key))))
+            (testing "a second request within the throttle window does not write again"
+              (let [aged (age-last-active-at! session-key)]
+                (run-auth-stack! (request-with-session-cookie session-key))
+                (is (= aged (last-active-at session-key)))))))))))
+
+(deftest last-active-at-not-written-for-non-session-auth-test
+  (init-status/set-complete!)
+  (testing "a stale session cookie riding along with another credential is not touched"
+    ;; `wrap-session-key` attaches `:metabase-session-key` from any non-empty cookie without validating it, so a
+    ;; request authenticated by an API key can still carry someone else's dead session. Writing `last_active_at` for
+    ;; it would revive a session the API key holder never authenticated as.
+    (mt/with-premium-features #{}
+      (mt/with-temporary-setting-values [session-timeout nil]
+        (mt/with-temp [:model/User {session-user-id :id} {}
+                       :model/ApiKey _ {:name                  "An API Key"
+                                        :user_id               (mt/user->id :lucky)
+                                        :creator_id            (mt/user->id :lucky)
+                                        :updated_by_id         (mt/user->id :lucky)
+                                        ::api-key/unhashed-key (u.secret/secret "mb_lastactive")}]
+          (let [db-type     (mdb/db-type)
+                now         (h2x/current-datetime-honeysql-form db-type)
+                session-key (insert-test-session! session-user-id
+                                                  {:created_at now
+                                                   :expires_at (h2x/add-interval-honeysql-form db-type now -1 :second)})
+                seen        (do (session/clear-session-activity-cache!)
+                                (run-auth-stack! (-> (request-with-session-cookie session-key)
+                                                     (ring.mock/header "x-api-key" "mb_lastactive"))))]
+            (testing "the API key authenticated the request, and the stale session key came along for the ride"
+              (is (= (mt/user->id :lucky) (:metabase-user-id seen)))
+              (is (= session-key (:metabase-session-key seen)))
+              (is (nil? (:metabase/authed-session-key-hash seen))
+                  "the stale session is not marked as the credential that authenticated the request"))
+            (is (nil? (last-active-at session-key))
+                "the stale session's last_active_at is not written")
+            (is (false? (throttled?! session-key))
+                "no throttle entry is recorded for the stale session"))))))
+  (testing "an unauthenticated request carrying a stale session cookie does not write"
+    (mt/with-premium-features #{}
+      (mt/with-temporary-setting-values [session-timeout nil]
+        (mt/with-temp [:model/User {user-id :id}]
+          (let [db-type     (mdb/db-type)
+                now         (h2x/current-datetime-honeysql-form db-type)
+                session-key (insert-test-session! user-id
+                                                  {:created_at now
+                                                   :expires_at (h2x/add-interval-honeysql-form db-type now -1 :second)})]
+            (session/clear-session-activity-cache!)
+            (is (nil? (:metabase-user-id (run-auth-stack! (request-with-session-cookie session-key))))
+                "precondition: nothing authenticated the request")
+            (is (nil? (last-active-at session-key)))
+            (is (false? (throttled?! session-key)))))))))
 
 (deftest auth-method-test
   (testing "auth-method prefers route-based override on special routes"

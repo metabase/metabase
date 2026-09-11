@@ -16,6 +16,7 @@
    [metabase.session.db :as session.db]
    [metabase.session.models.session :as session]
    [metabase.session.schema :as session.schema]
+   [metabase.session.settings :as session.settings]
    [metabase.settings.core :as setting]
    [metabase.sso.core :as sso]
    [metabase.system.core :as system]
@@ -345,10 +346,22 @@
    request]
   (let [request-source (request/ip-address request)]
     (throttle-check reset-password-throttler request-source))
-  (let [auth-result (auth-identity/with-fallback auth-identity/login!
-                      [:provider/support-access-grant
-                       :provider/emailed-secret-password-reset]
-                      (select-keys request-body [:token :password]))]
+  (let [credentials  (select-keys request-body [:token :password])
+        grant-result (auth-identity/with-fallback auth-identity/login!
+                       [:provider/support-access-grant]
+                       credentials)
+        ;; Refuse before the reset's `login!` runs, so nothing mutates. A reset ends in a password
+        ;; session, which `:model/Session`'s before-insert rejects while password login is off — but by
+        ;; then the password has been changed, the token consumed and every session revoked, and
+        ;; `with-fallback` would report the failure as an invalid token. Such a user is sent to
+        ;; /auth/login to use their SSO provider.
+        _            (when-not (or (:success? grant-result) (session.settings/enable-password-login))
+                       (throw (ex-info (tru "Password login is disabled for this instance.") {:status-code 400})))
+        auth-result  (if (:success? grant-result)
+                       grant-result
+                       (auth-identity/with-fallback auth-identity/login!
+                         [:provider/emailed-secret-password-reset]
+                         credentials))]
     (cond
       (not (:success? auth-result))
       (api/throw-invalid-param-exception :password (tru "Invalid reset token"))

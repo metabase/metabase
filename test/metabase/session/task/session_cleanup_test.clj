@@ -2,9 +2,16 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.session.core :as session]
    [metabase.session.task.session-cleanup :as session-cleanup]
    [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [metabase.util :as u]
+   [toucan2.core :as t2])
+  (:import
+   (metabase.session.task.session_cleanup SessionCleanup)
+   (org.quartz Job)))
+
+(set! *warn-on-reflection* true)
 
 (deftest clean-sessions-test
   (mt/with-temp-env-var-value! [:max-session-age (str (* 60 24))] ;; one day
@@ -47,5 +54,16 @@
           (is (not (t2/exists? :model/Session :id (:id expired-session))))
           (is (t2/exists? :model/Session :id (:id unexpired-session)))
           (is (t2/exists? :model/Session :id (:id no-expiry-session))))))))
+
+(deftest session-cleanup-job-prunes-activity-cache-test
+  (testing "the cleanup job prunes the in-memory session activity throttle cache"
+    (session/clear-session-activity-cache!)
+    (let [key-hash (str (random-uuid))]
+      (session/record-session-activity-update! key-hash)
+      ;; the cache only drops entries older than the throttle window, so make every entry look stale
+      (with-redefs [u/since-ms (constantly Long/MAX_VALUE)]
+        (.execute ^Job (SessionCleanup.) nil))
+      (is (true? (session/record-session-activity-update! key-hash))
+          "a pruned session is no longer throttled"))))
 
 ;; cleanup-idle-sessions-test is in metabase-enterprise.api.session-test because it requires EE features.
