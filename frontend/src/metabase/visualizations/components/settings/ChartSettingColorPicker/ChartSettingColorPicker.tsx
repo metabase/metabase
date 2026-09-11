@@ -8,6 +8,8 @@ import { Box } from "metabase/ui";
 import { getNamedAccentColors } from "metabase/ui/colors/groups";
 import type { AccentColorOptions } from "metabase/ui/colors/types";
 
+import S from "./ChartSettingColorPicker.module.css";
+
 interface ChartSettingColorPickerProps {
   className?: string;
   value: string;
@@ -50,11 +52,12 @@ export const ChartSettingColorPicker = ({
 }: ChartSettingColorPickerProps) => {
   return (
     <Box
-      className={cx(CS.flex, CS.alignCenter, className)}
-      py={bordered ? "md" : undefined}
-      px={bordered ? "lg" : undefined}
-      bd={bordered ? "1px solid var(--mb-color-border-neutral)" : undefined}
-      bdrs={bordered ? "sm" : undefined}
+      className={cx(
+        CS.flex,
+        CS.alignCenter,
+        { [S.bordered]: bordered },
+        className,
+      )}
     >
       <ColorSelector
         value={value}
@@ -65,7 +68,7 @@ export const ChartSettingColorPicker = ({
         }
         pillSize={pillSize}
       />
-      {title && <h4 className={bordered ? CS.ml2 : CS.ml1}>{title}</h4>}
+      {title && <h4 className={S.title}>{title}</h4>}
     </Box>
   );
 };
