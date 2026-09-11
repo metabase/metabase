@@ -106,7 +106,7 @@
   width: 100%;
   max-width: 49.5rem;
   margin-inline: auto;
-  padding-inline: 1rem;
+  padding-inline: 1.5rem;
 }
 
 .messageContainer {
@@ -196,7 +196,7 @@
   width: 100%;
   max-width: 49.5rem;
   margin-inline: auto;
-  padding-inline: 1rem;
+  padding-inline: 1.5rem;
 }
 
 .promptSuggestionsHidden {
@@ -241,7 +241,7 @@
 .footerContainer {
   display: flex;
   flex-direction: column;
-  padding: 0 1rem;
+  padding: 0 1.5rem;
   width: 100%;
   max-width: 37.5rem;
   margin-inline: auto;
@@ -258,11 +258,12 @@
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  min-height: 2rem;
-  padding: 0 0.25rem;
+  min-height: 2.5rem;
+  padding: 0.75rem 0.25rem;
 
   > :first-child {
     grid-column: 2;
+    line-height: 1rem;
   }
 }
 
