@@ -10,7 +10,8 @@
 
 (doto :model/Glossary
   (derive :metabase/model)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive :hook/entity-id))
 
 (methodical/defmethod t2/batched-hydrate [:model/Glossary :creator]
   "Add creator (user) to a glossary entry"
@@ -31,18 +32,22 @@
 
 ;;; ---------------------- Serialization ----------------------------
 
-(defmethod serdes/entity-id "Glossary" [_ {:keys [term]}]
-  term)
-
-(defmethod serdes/load-find-local "Glossary"
-  [path]
-  (glossary.db/glossary-entry-by-term (:id (first path))))
+(defmethod serdes/load-one! "Glossary"
+  [ingested maybe-local]
+  ;; `term` is unique, so match on it before inserting: files exported before `entity_id` existed are keyed by
+  ;; term, and two instances can each create the same term under different entity_ids. The loader generates a
+  ;; throwaway entity_id for a term-keyed file, so keep the local row's identity in that case.
+  (let [local       (or maybe-local (glossary.db/glossary-entry-by-term (:term ingested)))
+        term-keyed? (not= (-> ingested serdes/path last :id) (:entity_id ingested))]
+    (serdes/default-load-one! (cond-> ingested
+                                (and local term-keyed?) (assoc :entity_id (:entity_id local)))
+                              local)))
 
 (defmethod serdes/make-spec "Glossary" [_model-name _opts]
-  {:copy      [:term :definition]
+  {:copy      [:entity_id :term :definition]
    :transform {:created_at (serdes/date)
                :updated_at (serdes/date)
                :creator_id (serdes/fk :model/User)}})
 
 (defmethod serdes/storage-path "Glossary" [item _]
-  [{:label "glossary"} {:label (:term item) :key (:term item)}])
+  [{:label "glossary"} {:label (:term item) :key (:entity_id item)}])

@@ -1,0 +1,63 @@
+## Glossary entries get an entity_id so serialization and remote sync can key them on a stable, portable
+## identifier instead of the (renameable, per-instance) term. Backfill mirrors 20260723_backfill_entity_ids:
+## all three dialect variants in one changeset so every database records it, then NOT NULL and UNIQUE.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-09-11T12:00:00
+      author: tplude
+      comment: Add entity_id column to glossary table
+      changes:
+        - addColumn:
+            tableName: glossary
+            columns:
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity.
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: glossary
+            columnName: entity_id
+
+  - changeSet:
+      id: v64.2026-09-11T12:00:01
+      author: tplude
+      comment: Backfill NULL glossary.entity_id values
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: UPDATE glossary SET entity_id = substr(replace(gen_random_uuid()::text, '-', ''), 1, 21) WHERE entity_id IS NULL;
+        - sql:
+            dbms: mysql,mariadb
+            sql: UPDATE glossary SET entity_id = substr(replace(uuid(), '-', ''), 1, 21) WHERE entity_id IS NULL;
+        - sql:
+            dbms: h2
+            sql: UPDATE glossary SET entity_id = substr(replace(cast(random_uuid() as varchar), '-', ''), 1, 21) WHERE entity_id IS NULL;
+      rollback: []
+
+  - changeSet:
+      id: v64.2026-09-11T12:00:02
+      author: tplude
+      comment: entity_id is NOT NULL on glossary
+      changes:
+        - addNotNullConstraint:
+            tableName: glossary
+            columnName: entity_id
+            columnDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-09-11T12:00:03
+      author: tplude
+      comment: entity_id is unique on glossary
+      changes:
+        - addUniqueConstraint:
+            tableName: glossary
+            columnNames: entity_id
+            constraintName: uq_glossary_entity_id
+      rollback:
+        - dropUniqueConstraint:
+            tableName: glossary
+            constraintName: uq_glossary_entity_id

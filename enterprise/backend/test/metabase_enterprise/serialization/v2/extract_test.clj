@@ -2159,12 +2159,14 @@
             (is (= expected result))))))))
 
 (deftest glossary-test
-  (testing "Glossary entries are extracted well"
-    (mt/with-temp [:model/Glossary _ {:term       "foobar"
-                                      :definition "It's foobar2000 actually"}]
+  (testing "Glossary entries are keyed on entity_id and carry the term"
+    (mt/with-temp [:model/Glossary {eid :entity_id} {:term       "foobar"
+                                                     :definition "It's foobar2000 actually"}]
       (let [ser (serdes/extract-one "Glossary" {} (t2/select-one :model/Glossary :term "foobar"))]
-        (is (=? {:serdes/meta [{:model "Glossary" :id "foobar"}]
-                 :term        "foobar"}
+        (is (=? {:serdes/meta [{:model "Glossary" :id eid}]
+                 :entity_id   eid
+                 :term        "foobar"
+                 :definition  "It's foobar2000 actually"}
                 ser))))))
 
 (deftest transform-tag-extraction-test
