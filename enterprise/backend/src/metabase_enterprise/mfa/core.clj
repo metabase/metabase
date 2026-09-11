@@ -10,6 +10,7 @@
    [metabase-enterprise.mfa.settings]
    [metabase-enterprise.mfa.verification :as verification]
    [metabase.channel.email.messages :as messages]
+   [metabase.mfa.settings]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -19,8 +20,9 @@
 
 (p/import-vars
  [metabase-enterprise.mfa.settings
-  mfa-enforcement
-  mfa-enabled?])
+  mfa-enabled?]
+ [metabase.mfa.settings
+  mfa-enforcement])
 
 (defenterprise apply-mfa-gate
   "Decide whether a successful first-factor login must complete a second factor before a session is
