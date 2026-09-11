@@ -55,7 +55,7 @@ Some notes on locked parameters:
 - **Multiple locked parameters combine with AND.** To skip a locked parameter for a given token, pass `[]` as its value.
 - **The key in `params` is the filter's slug.** If you rename a locked dashboard filter, update the key in your server code to match. Locked parameters connected to a [SQL variable](../questions/native-editor/sql-parameters.md) keep the variable's name, so renaming the widget doesn't affect them.
 - **A locked filter only restricts the cards it's connected to.** A dashboard filter with no connected cards still shows up in the wizard, still has to be in the token, but it won't do anything. The embed renders fine, so nothing in the browser tells you.
-- **Connect a locked filter to a field filter if your server may send more than one value.** A field filter expands `["Gadget", "Widget"]` to `IN (...)`. A plain SQL variable substitutes a comma-separated list, which is a SQL error after `=`. Wrap the tag in `[[ ]]` so the clause disappears when the token passes `[]`.
+- **Connect a locked filter to a field filter if your server may send more than one value.** A plain SQL variable can't take a list.
 
 See [params in a signed token](./parameters-reference.md#params-in-a-signed-token).
 
@@ -159,7 +159,7 @@ For SQL questions, pair `sqlParameters` with `onSqlParametersChange`:
 
 You must update your state from the callback. If you don't, the embed reverts to the values in your prop on the next render (which may wipe out edits people have made).
 
-The [callback's payload](./parameters-reference.md#change-payload) includes the applied values, each parameter's default, and a `source` that says why it fired. To clear one filter, pass `null` for its slug. To reset the value to its default, omit the slug. See [Value formats by parameter type](./parameters-reference.md#value-formats-by-parameter-type).
+The [callback's payload](./parameters-reference.md#change-payload) includes the applied values, each parameter's default, and a `source` that says why it fired. For what each parameter type accepts, and how to clear or reset a value, see [Value formats by parameter type](./parameters-reference.md#value-formats-by-parameter-type).
 
 Push values as arrays, even single ones: `{ min_rating: [4] }`. Metabase stores dashboard values as arrays and hands them back that way.
 

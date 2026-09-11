@@ -131,7 +131,7 @@ Parameters on a guest embed start out **Disabled**: the widget is hidden, and no
 
 ### Locked parameters
 
-Locked parameters are how you restrict data in a guest embed. Your server puts the value in the `params` object of the token it signs, and Metabase applies the filter before anything reaches the browser. Every token you sign for that item has to include a value for every locked parameter, and `[]` turns a locked filter off for one token.
+Locked parameters are how you restrict data in a guest embed. Your server puts the value in the `params` object of the token it signs, and Metabase applies the filter before anything reaches the browser.
 
 - For the walkthrough, check out [Restrict data on guest embeds](./parameters.md#restrict-data-on-guest-embeds).
 - For the rules Metabase applies to `params`, check out [Params in a signed token](./parameters-reference.md#params-in-a-signed-token).

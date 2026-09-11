@@ -5,7 +5,7 @@ summary: "Reference for parameters in modular embeds: which attribute or prop to
 
 # Embedding parameters reference
 
-Reference material for parameters in embedded dashboards and charts. For how to use all this, check out [Embedding parameters](./parameters.md). 
+Reference material for parameters in embedded dashboards and charts. For how to use all this, check out [Embedding parameters](./parameters.md).
 
 For each attribute's or prop's type and description, see:
 
@@ -23,8 +23,6 @@ For each attribute's or prop's type and description, see:
 | Change notification | Dashboard    | `parameters-change` event     | `onParametersChange`    |
 |                     | SQL question | `sql-parameters-change` event | `onSqlParametersChange` |
 | Hide widgets        | Both         | `hidden-parameters`           | `hiddenParameters`      |
-
-Pass starting values or controlled values, not both. If you pass both, the embed uses the controlled values and logs a warning to the console.
 
 ## Web component attribute parsing
 
@@ -46,7 +44,7 @@ Changing `initial-parameters`, `initial-sql-parameters`, or `hidden-parameters` 
 
 To clear a filter, pass `null` for its slug. To reset it to its default, leave the slug out.
 
-Whatever shape you push, the [change callback](#change-payload) hands values back as arrays: push `4` and you get `[4]`.
+The [change callback](#change-payload) hands values back as arrays: push `4` and you get `[4]`. Date and time grouping values are the exception and stay strings.
 
 The two-element between formats work with dashboard filters connected to a column or a field filter. A plain SQL variable can only be connected to an equal-to filter, so a between value never reaches one; put the comparison in the SQL instead.
 
@@ -76,33 +74,33 @@ The quickest way to get these values is to set the filter in Metabase and copy i
 
 The `exclude-` formats work with dashboard filters and field filters. A plain SQL variable can't take them, because Metabase substitutes a variable with a date range, and an exclusion isn't one.
 
- ## Change payload
+## Change payload
 
- `onParametersChange` (SDK) and the `parameters-change` event (web component, as `event.detail`) both deliver the same object, a [`ParameterChangePayload`](./sdk/api/ParameterChangePayload.html). Every field is keyed by parameter slug and lists every parameter on the item, with `null` where there's no value.
+`onParametersChange` (SDK) and the `parameters-change` event (web component, as `event.detail`) both deliver the same object, a [`ParameterChangePayload`](./sdk/api/ParameterChangePayload.html). Every field is keyed by parameter slug and lists every parameter on the item, with `null` where there's no value.
 
- | Field                | What it holds                                                                   |
- | -------------------- | ------------------------------------------------------------------------------- |
- | `parameters`         | The values currently applied to the embed.                                      |
- | `defaultParameters`  | Each parameter's default value.                                                 |
- | `lastUsedParameters` | The values this person last applied on this dashboard. Dashboards only.         |
- | `source`             | Why the callback fired. See [When the callback fires](#when-the-callback-fires). |
+| Field                | What it holds                                                                   |
+| -------------------- | ------------------------------------------------------------------------------- |
+| `parameters`         | The values currently applied to the embed.                                      |
+| `defaultParameters`  | Each parameter's default value.                                                 |
+| `lastUsedParameters` | The values this person last applied on this dashboard. Dashboards only.         |
+| `source`             | Why the callback fired. See [When the callback fires](#when-the-callback-fires). |
 
- SQL questions deliver a [`SqlParameterChangePayload`](./sdk/api/SqlParameterChangePayload.html) through `onSqlParametersChange` or `sql-parameters-change`. It's the same object without `lastUsedParameters`.
+SQL questions deliver a [`SqlParameterChangePayload`](./sdk/api/SqlParameterChangePayload.html) through `onSqlParametersChange` or `sql-parameters-change`. It's the same object without `lastUsedParameters`.
 
- ### When the callback fires
+### When the callback fires
 
- The [`source`](./sdk/api/ParameterChangeSource.html) field says which of these happened:
+The [`source`](./sdk/api/ParameterChangeSource.html) field says which of these happened:
 
- | `source`        | Fires when                                                                                                                                                                                   |
- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
- | `initial-state` | The embed finishes loading. Once per load.                                                                                                                                                   |
- | `manual-change` | Someone applies a value with one of Metabase's filter widgets. On a dashboard with auto-apply turned off, editing a widget doesn't count; clicking **Apply** does.                            |
- | `auto-change`   | You pushed values and Metabase applied something different. The payload carries what was actually applied.                                                                                   |
+| `source`        | Fires when                                                                                                                                                                                   |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `initial-state` | The embed finishes loading. Once per load.                                                                                                                                                   |
+| `manual-change` | Someone applies a value with one of Metabase's filter widgets. On a dashboard with auto-apply turned off, editing a widget doesn't count; clicking **Apply** does.                            |
+| `auto-change`   | You pushed values and Metabase applied something different. The payload carries what was actually applied.                                                                                   |
 
- Metabase normalizes values before applying them, so `auto-change` usually means one of two things:
+Metabase normalizes values before applying them, so `auto-change` usually means one of two things:
 
- - You pushed a bare value. Metabase stores most values as arrays, so pushing `4` fires `auto-change` with `[4]`. Pushing `[4]` fires nothing. Date and time grouping values stay as strings.
- - You left a slug out. A push replaces every value, so each slug you didn't include resolves to its default, or `null` if it has none, and `auto-change` reports it.
+- You pushed a bare value, and Metabase [stored it as an array](#value-formats-by-parameter-type). Pushing `[4]` fires nothing.
+- You left a slug out. A push replaces every value, so each slug you didn't include resolves to its default, or `null` if it has none, and `auto-change` reports it.
 
 ## Params in a signed token
 
