@@ -286,6 +286,12 @@
                 (first (member-rows projection-key model lib-ids {:id entity-local-id, :parent-ids [parent-id]})))))
           (first (member-rows projection-key model lib-ids {:id entity-local-id})))))))
 
+(def max-osi-description-len
+  "Maximum source-description length sent to OSI generation and stamped in its basis. The same normalized
+  entity feeds both values, so a long description converges after one generation instead of producing a
+  permanent prompt/basis mismatch. Retrieval-index descriptions keep their independent document cap."
+  5000)
+
 ;;; ------------------------------------------------- Hydration ---------------------------------------------------
 
 (defn hydration-key
@@ -381,6 +387,37 @@
       (::data-defect (ex-data e)) true
       :else                       (recur (ex-cause e)))))
 
+(defn parent-table-by-entity
+  "Batch `:table` hydration shared by the `:osi-context` declarations of the `:via-parent` models
+  (`:model/Measure`, `:model/Segment`): [[hydration-key]] -> `{:name s :display-name s :description s}` for
+  the row's parent Table, or nil when that Table is gone.
+
+  Both via-parent models today hang off a Table and the columns read here are Table's, so the parent model
+  is fixed rather than read from each `:via-parent` declaration. A parent of some other model would need
+  its own hydration.
+
+  The description is capped at [[max-osi-description-len]], the same cap the Table's own projection
+  applies, so a measure sees exactly the text its table sends. A child has one parent, so one full-length
+  description is the whole cost; capping is only to keep the basis bounded by something."
+  [entities]
+  (let [ids (into #{} (keep :table_id) entities)]
+    (when (seq ids)
+      (let [tables (into {}
+                         (map (juxt :id identity))
+                         (mapcat (fn [id-chunk]
+                                   (t2/select [:model/Table :id :name :display_name :description]
+                                              :id [:in (vec id-chunk)]))
+                                 (partition-all hydration-query-chunk-size ids)))]
+        (into {}
+              (keep (fn [entity]
+                      (when-let [table (tables (:table_id entity))]
+                        [(hydration-key entity)
+                         {:name         (:name table)
+                          :display-name (:display_name table)
+                          :description  (some-> (:description table)
+                                                (u.str/limit-chars max-osi-description-len))}])))
+              entities)))))
+
 (defn hydrate
   "Apply `projection-key`'s batch hydrations to a collection of entities.
 
@@ -439,12 +476,6 @@
           :let [value (get entity k)]
           :when (instance? Throwable value)]
     (throw value)))
-
-(def max-osi-description-len
-  "Maximum source-description length sent to OSI generation and stamped in its basis. The same normalized
-  entity feeds both values, so a long description converges after one generation instead of producing a
-  permanent prompt/basis mismatch. Retrieval-index descriptions keep their independent document cap."
-  5000)
 
 (defn- normalize-projection-entity
   [projection-key entity]

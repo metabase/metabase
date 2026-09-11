@@ -265,11 +265,12 @@
 (defn- segment->llm-input
   "The `:osi-context` projection for a Segment: the deterministic map handed to the generation prompt."
   [segment]
-  ;; Complete v1 prompt projection. Future parent/filter context may be added here without becoming a
-  ;; volatile basis invalidator.
+  ;; Complete v1 prompt projection. Prompt-only additions stay out of :basis unless they should
+  ;; invalidate previously generated metadata.
   {:entity-type "segment"
    :name        (:name segment)
-   :description (:description segment)})
+   :description (:description segment)
+   :table       (:table segment)})
 
 (def ^:private library-segment-membership
   ;; shared by both projections — :osi-context membership is fixed to :library-index's for v1.
@@ -289,4 +290,5 @@
 (entity-retrieval.spec/define-projection :osi-context :model/Segment
   {:membership library-segment-membership
    :project    #'segment->llm-input
-   :basis      [:name :description]})
+   :hydrate    {:table #'entity-retrieval.spec/parent-table-by-entity}
+   :basis      [:name :description :table]})

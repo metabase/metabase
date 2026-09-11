@@ -246,11 +246,12 @@
 (defn- measure->llm-input
   "The `:osi-context` projection for a Measure: the deterministic map handed to the generation prompt."
   [measure]
-  ;; Complete v1 prompt projection. Future parent/query context may be added here without becoming a
-  ;; volatile basis invalidator.
+  ;; Complete v1 prompt projection. Prompt-only additions stay out of :basis unless they should
+  ;; invalidate previously generated metadata.
   {:entity-type "measure"
    :name        (:name measure)
-   :description (:description measure)})
+   :description (:description measure)
+   :table       (:table measure)})
 
 (def ^:private library-measure-membership
   ;; shared by both projections — :osi-context membership is fixed to :library-index's for v1.
@@ -270,7 +271,8 @@
 (entity-retrieval.spec/define-projection :osi-context :model/Measure
   {:membership library-measure-membership
    :project    #'measure->llm-input
-   :basis      [:name :description]})
+   :hydrate    {:table #'entity-retrieval.spec/parent-table-by-entity}
+   :basis      [:name :description :table]})
 
 ;;; ------------------------------------------------- Dimension Persistence --------------------------------------------------
 

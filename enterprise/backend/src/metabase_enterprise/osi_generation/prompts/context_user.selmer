@@ -5,6 +5,8 @@ Type: {{entity-type}}
 Name: {{name}}
 {% if display-name %}Display name: {{display-name}}
 {% endif %}{% if description %}Description (primary business meaning; input only — do not rewrite it): {{description}}
+{% endif %}{% if table %}
+Defined on table {{table.name}}{% if table.display-name %} ("{{table.display-name}}"){% endif %}{% if table.description %}, described as: {{table.description}}{% endif %}
 {% endif %}{% if field-names %}
 Fields (supporting structural evidence):
 {% for f in field-names %}- {{f}}
