@@ -1,5 +1,6 @@
 import { DYNAMIC_GOAL_GRAPH_DISPLAYS } from "__support__/dynamic-goals";
 import type {
+  DatasetData,
   Series,
   VisualizationDisplay,
   VisualizationSettings,
@@ -26,7 +27,9 @@ const REFERENCED_SETTINGS: VisualizationSettings = {
 describe("validateGoalReferences", () => {
   it("accepts a static goal", () => {
     expect(() =>
-      validateGoalReferences(createSeries(), { "graph.goal_value": 10 }),
+      validateGoalReferences(createSeries(FAILED_DATA, "line"), {
+        "graph.goal_value": 10,
+      }),
     ).not.toThrow();
   });
 
@@ -126,8 +129,8 @@ describe("validateGoalReferences", () => {
 });
 
 function createSeries(
-  data = FAILED_DATA,
-  display: VisualizationDisplay = "line",
+  data: DatasetData,
+  display: VisualizationDisplay,
 ): Series {
   return [createMockSingleSeries({ display }, { data })];
 }
