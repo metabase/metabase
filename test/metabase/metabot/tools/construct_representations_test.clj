@@ -20,7 +20,8 @@
    [metabase.metabot.tools.construct :as construct]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization.resolve.mp :as resolve.mp]))
+   [metabase.models.serialization.resolve.mp :as resolve.mp]
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -1325,10 +1326,11 @@
   (testing "repair's source-card lookups are best-effort and the query is resolved for real afterwards,
             so a refusal in there must not be audited as an access attempt"
     (let [seen   (atom ::never-called)
-          repair repr.repair/repair]
-      (with-redefs [repr.repair/repair (fn [& args]
-                                         (reset! seen resolve.mp/*audit-refusals?*)
-                                         (apply repair args))]
+          repair (mt/original-fn #'repr.repair/repair)]
+      (mt/with-dynamic-fn-redefs
+        [repr.repair/repair (fn [& args]
+                              (reset! seen resolve.mp/*audit-refusals?*)
+                              (apply repair args))]
         (with-mp-and-stubs!
           (fn []
             (construct/execute-representations-query

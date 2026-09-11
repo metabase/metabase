@@ -139,15 +139,16 @@
         analytics-calls  (atom [])
         tracking-calls   (atom [])
         resolution-calls (atom [])]
-    (with-redefs [embeddings.provider/resolve-model               (fn [requested]
-                                                                    (swap! resolution-calls conj requested)
-                                                                    (assoc requested :model-name "local-model"))
-                  embeddings.provider/embed-text                  (fn [_ text _] [text])
-                  embeddings.provider/embed-texts                 (fn [_ texts _] (mapv vector texts))
-                  analytics/inc!                                  (fn [metric labels value]
-                                                                    (swap! analytics-calls conj [metric labels value]))
-                  semantic.models.token-tracking/record-tokens    (fn [& args]
-                                                                    (swap! tracking-calls conj args))]
+    (mt/with-dynamic-fn-redefs
+      [embeddings.provider/resolve-model            (fn [requested]
+                                                      (swap! resolution-calls conj requested)
+                                                      (assoc requested :model-name "local-model"))
+       embeddings.provider/embed-text               (fn [_ text _] [text])
+       embeddings.provider/embed-texts              (fn [_ texts _] (mapv vector texts))
+       analytics/inc!                               (fn [metric labels value]
+                                                      (swap! analytics-calls conj [metric labels value]))
+       semantic.models.token-tracking/record-tokens (fn [& args]
+                                                      (swap! tracking-calls conj args))]
       (embedding/get-embedding model "Hello world" :type :query :record-tokens? true)
       (embedding/get-embeddings-batch model ["Hello world" "again"] :type :index :record-tokens? true)
       (testing "local calls report approximate token metrics and persistent usage"

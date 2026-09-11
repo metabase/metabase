@@ -84,12 +84,13 @@
 ;; adhoc_viz data part, instructions text, error passthrough).
 
 (defn- with-repr-stub! [stub-fn f]
-  (with-redefs [construct/execute-representations-query stub-fn
-                ;; `streaming/query->question-url` inspects the query; stub it too so the
-                ;; fake query doesn't have to satisfy the real function's expectations.
-                streaming/query->question-url
-                (fn [_q display]
-                  (str "/question#fake" (when display (str "?d=" display))))]
+  (mt/with-dynamic-fn-redefs
+    [construct/execute-representations-query stub-fn
+     ;; `streaming/query->question-url` inspects the query; stub it too so the
+     ;; fake query doesn't have to satisfy the real function's expectations.
+     streaming/query->question-url
+     (fn [_q display]
+       (str "/question#fake" (when display (str "?d=" display))))]
     (f)))
 
 (deftest slackbot-tool-happy-path-test

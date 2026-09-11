@@ -565,7 +565,7 @@
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"
                                                     :location "/"
                                                     :is_remote_synced false}]
-      (with-redefs [guards/task-running? (constantly true)]
+      (mt/with-dynamic-fn-redefs [guards/task-running? (constantly true)]
         (is (thrown-with-msg? Exception #"Remote sync task in progress"
                               (core/bulk-set-remote-sync {coll-id true})))
         (is (false? (:is_remote_synced (t2/select-one :model/Collection :id coll-id)))

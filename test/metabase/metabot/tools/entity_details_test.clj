@@ -408,10 +408,11 @@
       (is (= raw-values
              (#'entity-details/get-field-values {field-id {:values raw-values}} field-id))))
     (testing "cache misses return the same raw-value shape"
-      (with-redefs [params.field-values/current-user-can-fetch-field-values?        (constantly true)
-                    params.field-values/get-or-create-field-values!                 (constantly {:values raw-values})
-                    params.field-values/get-or-create-field-values-for-current-user!
-                    (constantly {:values (mapv vector raw-values)})]
+      (mt/with-dynamic-fn-redefs
+        [params.field-values/current-user-can-fetch-field-values? (constantly true)
+         params.field-values/get-or-create-field-values!          (constantly {:values raw-values})
+         params.field-values/get-or-create-field-values-for-current-user!
+         (constantly {:values (mapv vector raw-values)})]
         (is (= raw-values
                (#'entity-details/get-field-values {} field-id)))))))
 
@@ -457,9 +458,10 @@
                                                   :type          :metric}]
         (mt/with-no-data-perms-for-all-users!
           (mt/with-current-user (mt/user->id :rasta)
-            (with-redefs [params.field-values/field-id->field-values-for-current-user
-                          (fn [_]
-                            (throw (ex-info "field values must not be fetched" {})))]
+            (mt/with-dynamic-fn-redefs
+              [params.field-values/field-id->field-values-for-current-user
+               (fn [_]
+                 (throw (ex-info "field values must not be fetched" {})))]
               (let [output (:structured-output
                             (entity-details/get-metric-details {:metric-id     metric-id
                                                                 :with-segments? true}))]

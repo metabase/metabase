@@ -75,6 +75,11 @@
 (defn do-with-fake-inbox!
   "Impl for `with-fake-inbox` macro; prefer using that rather than calling this directly."
   [f]
+  ;; `with-redefs`, not a dynamic redef: shared helper with ~84 call sites, some of which block in
+  ;; `do-with-expected-messages` waiting on mail sent from other threads. Whether a dynamic redef reaches
+  ;; those senders is unverified. `metabase.test` imports `inbox` from this ns, so converting it would
+  ;; have to use the `dynamic-redefs/` alias, not `mt/`.
+  #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
   (with-redefs [email/send-email! fake-inbox-email-fn]
     (reset-inbox!)
     (tu/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
@@ -359,8 +364,8 @@
           ;; `send-message!` — `send-message-or-throw!` sends each recipient batch for its side effect and does not
           ;; return the message.
           (let [sent (atom nil)]
-            (with-redefs [email/send-email! (fn [credentials email-details]
-                                              (reset! sent (mock-send-email! credentials email-details)))]
+            (dynamic-redefs/with-dynamic-fn-redefs [email/send-email! (fn [credentials email-details]
+                                                                        (reset! sent (mock-send-email! credentials email-details)))]
               (let [basename                     "this-is-quite-long-and-has-non-Âſçïı-characters"
                     csv-file                     (temp-csv basename csv-contents)
                     params-with-problematic-file (-> params
@@ -526,8 +531,8 @@
 
 (deftest send-message-or-throw!-splits-large-recipient-lists-test
   (let [sent (atom [])]
-    (with-redefs [email/send-email! (fn [_ email-details]
-                                      (swap! sent conj (or (:to email-details) (:bcc email-details))))]
+    (dynamic-redefs/with-dynamic-fn-redefs [email/send-email! (fn [_ email-details]
+                                                                (swap! sent conj (or (:to email-details) (:bcc email-details))))]
       (tu/with-temporary-setting-values [email-smtp-host                   "fake_smtp_host"
                                          email-smtp-port                   587
                                          email-max-recipients-per-message  2]
@@ -540,8 +545,8 @@
             (is (every? #(<= (count %) 2) @sent) "no message exceeds the cap")
             (is (= recipients (vec (mapcat identity @sent))) "every recipient is covered exactly once, in order")))))
     (testing "with the cap unset, all recipients go in a single message (unchanged behavior)"
-      (with-redefs [email/send-email! (fn [_ email-details]
-                                        (swap! sent conj (or (:to email-details) (:bcc email-details))))]
+      (dynamic-redefs/with-dynamic-fn-redefs [email/send-email! (fn [_ email-details]
+                                                                  (swap! sent conj (or (:to email-details) (:bcc email-details))))]
         (tu/with-temporary-setting-values [email-smtp-host                   "fake_smtp_host"
                                            email-smtp-port                   587
                                            email-max-recipients-per-message  nil]

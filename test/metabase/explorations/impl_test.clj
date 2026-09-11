@@ -77,7 +77,7 @@
     (testing "resolver computes breakoutable-columns once per (db,table) and reuses it"
       (let [calls    (atom 0)
             resolve* (make-resolver)]
-        (with-redefs [lib/breakoutable-columns (fn [_] (swap! calls inc) [])]
+        (mt/with-dynamic-fn-redefs [lib/breakoutable-columns (fn [_] (swap! calls inc) [])]
           (resolve* m q)                                  ; orders: miss
           (resolve* m q)                                  ; orders: hit
           (resolve* (assoc m :table_id (mt/id :products)) q)) ; products: miss

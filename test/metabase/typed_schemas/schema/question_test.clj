@@ -28,10 +28,10 @@
                                 (fn [{:keys [report-id] :as options}]
                                   (swap! report-details-calls conj options)
                                   {:structured-output {:id report-id :result-columns []}})]
-      (with-redefs [schema.common/select-schema-cards (constantly cards)
-                    entity-details/cards-details (fn [card-type database-id selected-cards _options]
-                                                   (swap! bulk-details-calls conj [card-type database-id selected-cards])
-                                                   (map #(assoc % :fields []) selected-cards))]
+      (mt/with-dynamic-fn-redefs [schema.common/select-schema-cards (constantly cards)
+                                  entity-details/cards-details (fn [card-type database-id selected-cards _options]
+                                                                 (swap! bulk-details-calls conj [card-type database-id selected-cards])
+                                                                 (map #(assoc % :fields []) selected-cards))]
         (is (= [41 42]
                (mapv :id (schema.question/question-schemas nil nil))))
         (is (= [[:question 1 cards]]

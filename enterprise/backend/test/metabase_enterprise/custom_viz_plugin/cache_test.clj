@@ -230,7 +230,7 @@
                                                       :status       :active
                                                       :bundle_hash  "abc123"
                                                       :manifest     manifest}]
-          (with-redefs [cache/get-asset (fn [_ asset-name] (.getBytes (str "bytes:" asset-name) "UTF-8"))]
+          (mt/with-dynamic-fn-redefs [cache/get-asset (fn [_ asset-name] (.getBytes (str "bytes:" asset-name) "UTF-8"))]
             (testing "serves the manifest icon"
               (is (= "bytes:icon.svg"
                      (some-> (cache/resolve-asset plugin "icon.svg") (String. "UTF-8")))))

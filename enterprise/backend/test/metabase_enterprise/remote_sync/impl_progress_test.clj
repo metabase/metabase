@@ -3,7 +3,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.impl :as impl]
-   [metabase-enterprise.remote-sync.source.protocol :as source.p]))
+   [metabase-enterprise.remote-sync.source.protocol :as source.p]
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -19,10 +20,10 @@
 
 (deftest stage-writes-invokes-on-chunk-with-cumulative-count-test
   (testing "stage-writes calls on-chunk once per chunk with the running staged count, and stages everything"
-    (with-redefs [;; make each row its own chunk (matching the real {:model_type :rows} chunk shape) and a
-                  ;; trivial entity, so we exercise the loop deterministically without hitting serdes/the app DB
-                  impl/->sized-chunks (fn [rows] (map (fn [row] {:model_type (:model_type row) :rows [row]}) rows))
-                  impl/extract-chunk  (fn [{:keys [rows]}] (map (fn [row] [row {:e (:model_id row)}]) rows))]
+    (mt/with-dynamic-fn-redefs [;; make each row its own chunk (matching the real {:model_type :rows} chunk shape) and a
+                                ;; trivial entity, so we exercise the loop deterministically without hitting serdes/the app DB
+                                impl/->sized-chunks (fn [rows] (map (fn [row] {:model_type (:model_type row) :rows [row]}) rows))
+                                impl/extract-chunk  (fn [{:keys [rows]}] (map (fn [row] [row {:e (:model_id row)}]) rows))]
       (let [staged (atom [])
             commit (->RecordingCommit staged)
             rows   [{:model_type "card" :model_id 1 :file_path "a"}
@@ -44,7 +45,7 @@
                      (finish-commit! [_ _message] "sha")
                      (finish-commit! [_ _message report] (when report (report 0.8 {:force? true})) "sha")
                      (abort-commit! [_] nil))]
-      (with-redefs [source.p/open-commit (fn [_] commit)]
+      (mt/with-dynamic-fn-redefs [source.p/open-commit (fn [_] commit)]
         (#'impl/commit-staged! {:managed-dirs []} "msg"
                                (fn [_c] [{:id 1}])
                                (fn [f & _] (swap! reported conj f))))

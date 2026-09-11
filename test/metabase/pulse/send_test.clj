@@ -245,6 +245,9 @@
 
            :fixture
            (fn [_ thunk]
+             ;; `with-redefs`: wrap-function returns a reify implementing only fixed `invoke` arities. The
+             ;; dynamic proxy invokes through `apply`, which needs `applyTo` and throws AbstractMethodError.
+             #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
              (with-redefs [body/attached-results-text (pulse.test-util/wrap-function @#'body/attached-results-text)]
                (thunk)))
 

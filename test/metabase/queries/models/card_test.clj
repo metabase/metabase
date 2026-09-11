@@ -1294,7 +1294,7 @@
 
 (deftest assert-no-source-card-id-for-native-query-test
   (testing "assertion fires if native query has source_card_id set"
-    (with-redefs [card/populate-query-fields identity]
+    (mt/with-dynamic-fn-redefs [card/populate-query-fields identity]
       (is (thrown-with-msg? Exception #"Assert failed"
                             (t2/insert! :model/Card
                                         {:name "Bad Card"

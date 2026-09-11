@@ -304,7 +304,7 @@
           (is (true? @email-sent)))))))
 
 (deftest persisted-model-refresh-error-event-accepts-quartz-trigger-test
-  (with-redefs [messages/send-persistent-model-error-email! (fn [& _] nil)]
+  (mt/with-dynamic-fn-redefs [messages/send-persistent-model-error-email! (fn [& _] nil)]
     (let [^org.quartz.Trigger trigger (#'task.persist-refresh/database-trigger {:id 1} "0 0 0/8 * * ? *")]
       (is (identical?
            trigger

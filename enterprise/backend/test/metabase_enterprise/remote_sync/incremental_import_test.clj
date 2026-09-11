@@ -92,12 +92,12 @@
   path it took. Returns [result path], where path is :incremental (the fast-path ran) or :fallback (it
   declined and import! ran the full load-snapshot!)."
   [src]
-  (let [real @#'impl/incremental-load-snapshot!
+  (let [real (mt/original-fn #'impl/incremental-load-snapshot!)
         path (atom :fallback)]
-    (with-redefs [impl/incremental-load-snapshot!
-                  (fn [& args] (let [r (apply real args)]
-                                 (reset! path (if (= r :remote-sync/incremental-not-possible) :fallback :incremental))
-                                 r))]
+    (mt/with-dynamic-fn-redefs [impl/incremental-load-snapshot!
+                                (fn [& args] (let [r (apply real args)]
+                                               (reset! path (if (= r :remote-sync/incremental-not-possible) :fallback :incremental))
+                                               r))]
       [(import-at! src "v1" :force? false) @path])))
 
 (defn- run-differential!
@@ -200,8 +200,8 @@
                src     (rs.test/versioned-source :trees {"v0" f0 "v1" f1} :current "v0")
                indexed (atom #{})]
            (import-at! src "v0" :force? true)              ; baseline (full) — local == v0
-           (with-redefs [search/update! (fn [inst] (swap! indexed conj (:entity_id inst)))
-                         search/delete! (fn [& _] nil)]
+           (mt/with-dynamic-fn-redefs [search/update! (fn [inst] (swap! indexed conj (:entity_id inst)))
+                                       search/delete! (fn [& _] nil)]
              (import-at! src "v1"))                        ; incremental edit of card_b only
            (is (contains? @indexed b-eid) "the edited card is re-indexed")
            (is (not (contains? @indexed a-eid)) "the unchanged card is NOT re-indexed")))))))
@@ -222,7 +222,7 @@
                deleted (atom [])]
            (import-at! src "v0" :force? true)              ; baseline (full) — local == v0
            (let [b-id (t2/select-one-pk :model/Card :entity_id b-eid)]
-             (with-redefs [search/delete! (fn [model ids] (swap! deleted conj [model (vec ids)]))]
+             (mt/with-dynamic-fn-redefs [search/delete! (fn [model ids] (swap! deleted conj [model (vec ids)]))]
                (import-at! src "v1"))                      ; incremental delete of card_b
              (is (some (fn [[model ids]] (and (= :model/Card model) (some #{b-id} ids))) @deleted)
                  "the removed card is deleted from the search index by id"))))))))
@@ -270,9 +270,9 @@
     (do-with-bench!
      (fn [f0]
        (let [src     (rs.test/versioned-source :trees {"v0" f0} :current "v0")
-             real    @#'impl/incremental-load-snapshot!
+             real    (mt/original-fn #'impl/incremental-load-snapshot!)
              called? (atom false)]
-         (with-redefs [impl/incremental-load-snapshot! (fn [& args] (reset! called? true) (apply real args))]
+         (mt/with-dynamic-fn-redefs [impl/incremental-load-snapshot! (fn [& args] (reset! called? true) (apply real args))]
            ;; no baseline import has run, so this is the first import: first-import? is true
            (is (= :success (:status (import-at! src "v0" :force? false))))
            (is (not @called?)

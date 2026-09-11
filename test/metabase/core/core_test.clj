@@ -49,7 +49,7 @@
   (testing "With no sample database present the bundled one is added, so fresh installs still get it"
     (mt/with-temp-empty-app-db [_conn :h2]
       (mdb/setup-db! :create-sample-content? false)
-      (with-redefs [config/load-sample-content? (constantly true)]
+      (mt/with-dynamic-fn-redefs [config/load-sample-content? (constantly true)]
         (#'core/reconcile-sample-database!))
       (let [sample-db (t2/select-one :model/Database :is_sample true)]
         (is (some? sample-db))

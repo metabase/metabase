@@ -17,28 +17,28 @@
 (deftest apply-defaults-to-collection-test
   (testing "Child inherits :namespace from a non-default-namespace parent"
     (mt/with-temp [:model/Collection parent {:name "Snippet Parent" :namespace "snippets"}]
-      (with-redefs [api/write-check (fn [& _])]
+      (mt/with-dynamic-fn-redefs [api/write-check (fn [& _])]
         (let [defaulted (collections.create/apply-defaults-to-collection
                          {:name "Snippet Child" :parent_id (:id parent)})]
           (is (= :snippets (:namespace defaulted))
               "Namespace propagates from parent when child doesn't specify one")))))
   (testing "Caller's explicit :namespace wins over parent's"
     (mt/with-temp [:model/Collection parent {:name "Snippet Parent 2" :namespace "snippets"}]
-      (with-redefs [api/write-check (fn [& _])]
+      (mt/with-dynamic-fn-redefs [api/write-check (fn [& _])]
         ;; Caller-provided namespace overrides parent inheritance — REST behavior we mirror.
         (let [defaulted (collections.create/apply-defaults-to-collection
                          {:name "Explicit NS Child" :parent_id (:id parent) :namespace "default"})]
           (is (= "default" (:namespace defaulted)))))))
   (testing "Child inherits :type from a library-typed parent"
     (mt/with-temp [:model/Collection parent {:name "Library Parent" :type "library"}]
-      (with-redefs [api/write-check (fn [& _])]
+      (mt/with-dynamic-fn-redefs [api/write-check (fn [& _])]
         (let [defaulted (collections.create/apply-defaults-to-collection
                          {:name "Library Child" :parent_id (:id parent)})]
           (is (= "library" (:type defaulted))
               "Library type propagates so the child stays inside the library hierarchy")))))
   (testing "Child does NOT inherit :type \"trash\" from a trash parent"
     (mt/with-temp [:model/Collection parent {:name "Trashy Parent" :type "trash"}]
-      (with-redefs [api/write-check (fn [& _])]
+      (mt/with-dynamic-fn-redefs [api/write-check (fn [& _])]
         ;; "trash" is a sentinel for the Trash collection; only library types propagate.
         (let [defaulted (collections.create/apply-defaults-to-collection
                          {:name "Not-Trash Child" :parent_id (:id parent)})]
@@ -46,7 +46,7 @@
               "Trash type does not propagate to children")))))
   (testing "Child does NOT inherit :type \"tenant-specific-root-collection\" from a tenant root parent (UXW-4520)"
     (mt/with-temp [:model/Collection parent {:name "Tenant Root" :type "tenant-specific-root-collection"}]
-      (with-redefs [api/write-check (fn [& _])]
+      (mt/with-dynamic-fn-redefs [api/write-check (fn [& _])]
         ;; The tenant root type is a root-only sentinel; propagating it would fail the closed
         ;; output schema and break tenant sub-collection creation.
         (let [defaulted (collections.create/apply-defaults-to-collection
@@ -55,14 +55,14 @@
               "Tenant root type does not propagate to children")))))
   (testing "Child inherits :is_remote_synced from a remote-synced parent"
     (mt/with-temp [:model/Collection parent {:name "RS Parent" :is_remote_synced true}]
-      (with-redefs [api/write-check (fn [& _])]
+      (mt/with-dynamic-fn-redefs [api/write-check (fn [& _])]
         (let [defaulted (collections.create/apply-defaults-to-collection
                          {:name "RS Child" :parent_id (:id parent)})]
           (is (true? (:is_remote_synced defaulted))
               "Remote-synced flag propagates so the child participates in remote sync")))))
   (testing "Plain parent: child gets is_remote_synced=false, no type, no namespace"
     (mt/with-temp [:model/Collection parent {:name "Plain Parent"}]
-      (with-redefs [api/write-check (fn [& _])]
+      (mt/with-dynamic-fn-redefs [api/write-check (fn [& _])]
         (let [defaulted (collections.create/apply-defaults-to-collection
                          {:name "Plain Child" :parent_id (:id parent)})]
           (is (false? (:is_remote_synced defaulted)))
@@ -70,7 +70,7 @@
           (is (not (contains? defaulted :namespace)))))))
   (testing "Location reflects parent path"
     (mt/with-temp [:model/Collection parent {:name "Path Parent"}]
-      (with-redefs [api/write-check (fn [& _])]
+      (mt/with-dynamic-fn-redefs [api/write-check (fn [& _])]
         (let [defaulted (collections.create/apply-defaults-to-collection
                          {:name "Path Child" :parent_id (:id parent)})]
           (is (= (str "/" (:id parent) "/") (:location defaulted))))))))
@@ -78,7 +78,7 @@
 (deftest create-collection!-test
   (testing "Creates a collection and persists inheritance defaults"
     (mt/with-temp [:model/Collection parent {:name "Persist Parent" :is_remote_synced true}]
-      (with-redefs [api/write-check (fn [& _])]
+      (mt/with-dynamic-fn-redefs [api/write-check (fn [& _])]
         (let [coll (collections.create/create-collection!
                     {:name "Persist Child" :parent_id (:id parent)})]
           (try

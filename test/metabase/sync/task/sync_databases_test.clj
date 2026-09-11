@@ -178,7 +178,7 @@
     (mt/with-temp [:model/Database {db-id :id} {:is_full_sync true}]
       (testing "SyncAndAnalyzeDatabase: inner sync orchestrator is skipped when the flag is on"
         (let [calls (atom 0)]
-          (with-redefs [task.sync-databases/sync-and-analyze-database*! (fn [_] (swap! calls inc))]
+          (mt/with-dynamic-fn-redefs [task.sync-databases/sync-and-analyze-database*! (fn [_] (swap! calls inc))]
             (testing "default (flag=false): job proceeds and calls the inner orchestrator"
               (reset! calls 0)
               (#'task.sync-databases/sync-and-analyze-database! (MockJobExecutionContext. {"db-id" db-id}))
@@ -190,7 +190,7 @@
               (is (zero? @calls))))))
       (testing "UpdateFieldValues: field-values update is skipped when the flag is on"
         (let [calls (atom 0)]
-          (with-redefs [sync.field-values/update-field-values! (fn [_] (swap! calls inc))]
+          (mt/with-dynamic-fn-redefs [sync.field-values/update-field-values! (fn [_] (swap! calls inc))]
             (testing "default (flag=false): job proceeds and calls update-field-values!"
               (reset! calls 0)
               (#'task.sync-databases/update-field-values! (MockJobExecutionContext. {"db-id" db-id}))
@@ -206,7 +206,7 @@
     (mt/with-temp [:model/Database {db-id :id}      {:is_stub false}
                    :model/Database {stub-id :id}    {:is_stub true}]
       (let [calls (atom 0)]
-        (with-redefs [task.sync-databases/sync-and-analyze-database*! (fn [_] (swap! calls inc))]
+        (mt/with-dynamic-fn-redefs [task.sync-databases/sync-and-analyze-database*! (fn [_] (swap! calls inc))]
           (testing "non-stub: inner orchestrator is called"
             (reset! calls 0)
             (#'task.sync-databases/sync-and-analyze-database! (MockJobExecutionContext. {"db-id" db-id}))
@@ -221,7 +221,7 @@
     (mt/with-temp [:model/Database non-stub {:is_stub false}
                    :model/Database stub     {:is_stub true}]
       (let [calls (atom 0)]
-        (with-redefs [task.sync-databases/update-db-trigger-if-needed! (fn [_ _] (swap! calls inc))]
+        (mt/with-dynamic-fn-redefs [task.sync-databases/update-db-trigger-if-needed! (fn [_ _] (swap! calls inc))]
           (testing "non-stub: triggers are considered for scheduling"
             (reset! calls 0)
             (task.sync-databases/check-and-schedule-tasks-for-db! non-stub)

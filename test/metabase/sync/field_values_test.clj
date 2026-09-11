@@ -356,18 +356,18 @@
                                             :base_type :type/Text, :has_field_values :list}
                      :model/Field plain-c  {:table_id tbl-id, :name "plain"
                                             :base_type :type/Text, :has_field_values :list}]
-        (with-redefs [sync.field-values/fetch-distinct-for-table
-                      (fn [_table fields]
-                        (swap! calls-to-fetch-distinct-for-table conj (set (map :id fields)))
-                        {:results (into {} (map (fn [f] [(:id f) {:values []}])) fields)
-                         :queries 1
-                         :failed-fields #{}})
-                      sync.field-values/fetch-distinct-per-field
-                      (fn [fields]
-                        (swap! calls-to-fetch-distinct-per-field conj (set (map :id fields)))
-                        {:results (into {} (map (fn [f] [(:id f) {:values []}])) fields)
-                         :queries (count fields)
-                         :failed-fields #{}})]
+        (mt/with-dynamic-fn-redefs [sync.field-values/fetch-distinct-for-table
+                                    (fn [_table fields]
+                                      (swap! calls-to-fetch-distinct-for-table conj (set (map :id fields)))
+                                      {:results (into {} (map (fn [f] [(:id f) {:values []}])) fields)
+                                       :queries 1
+                                       :failed-fields #{}})
+                                    sync.field-values/fetch-distinct-per-field
+                                    (fn [fields]
+                                      (swap! calls-to-fetch-distinct-per-field conj (set (map :id fields)))
+                                      {:results (into {} (map (fn [f] [(:id f) {:values []}])) fields)
+                                       :queries (count fields)
+                                       :failed-fields #{}})]
           (#'sync.field-values/sync-fields-for-table! table [nested-a nested-b plain-c] {})
           (testing "Plain field goes to batch path"
             (is (= [#{(:id plain-c)}] @calls-to-fetch-distinct-for-table)))

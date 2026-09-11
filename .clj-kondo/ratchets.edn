@@ -27,7 +27,7 @@
                   :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests 13
                   :metabase/modules                                                    23
                   :metabase/namespace-name                                             4
-                  :metabase/prefer-with-dynamic-fn-redefs                              28
+                  :metabase/prefer-with-dynamic-fn-redefs                              37
                   :metabase/test-helpers-use-non-thread-safe-functions                 18
                   :metabase/validate-defendpoint-has-response-schema                   427
                   :metabase/validate-defendpoint-query-params-use-kebab-case           48
@@ -60,7 +60,7 @@
                   :main-without-gen-class                  1
                   :metabase/defsetting-must-specify-export 1
                   :metabase/defsetting-namespace           1
-                  :metabase/prefer-with-dynamic-fn-redefs  3
+                  :metabase/prefer-with-dynamic-fn-redefs  4
                   :metabase/t2-query-namespace             2
                   :missing-docstring                       1
                   :private-call                            1
