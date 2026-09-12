@@ -75,21 +75,38 @@ function setup(opts: SetupOpts = {}) {
 }
 
 function getSearchInput() {
-  return screen.getByRole("textbox", { name: "Search columns" });
+  return screen.getByLabelText("Search columns");
 }
 
-function getColumnCheckboxes() {
-  return within(screen.getByRole("list")).getAllByRole("checkbox");
+function getOptions() {
+  return within(screen.getByRole("listbox")).getAllByRole("option");
+}
+
+function getOptionNames() {
+  return getOptions().map((option) => option.getAttribute("aria-label"));
+}
+
+function getHighlightedOptionName() {
+  return screen
+    .queryByRole("option", { selected: true })
+    ?.getAttribute("aria-label");
+}
+
+function getToggledColumnName(
+  onToggle: jest.Mock,
+  query: Lib.Query,
+): [string, boolean] {
+  const [column, isSelected] = onToggle.mock.calls[0];
+  return [Lib.displayInfo(query, STAGE_INDEX, column).name, isSelected];
 }
 
 describe("FieldPicker", () => {
   it("should not show a search box when there are few columns", () => {
     setup({ columnCount: SEARCHABLE_COLUMN_COUNT });
 
-    expect(
-      screen.queryByRole("textbox", { name: "Search columns" }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Search columns")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Select all")).toBeInTheDocument();
+    expect(getOptions()).toHaveLength(SEARCHABLE_COLUMN_COUNT);
   });
 
   it("should show a focused search box when there are many columns", () => {
@@ -97,8 +114,25 @@ describe("FieldPicker", () => {
 
     expect(columns.length).toBeGreaterThan(SEARCHABLE_COLUMN_COUNT);
     expect(getSearchInput()).toHaveFocus();
-    // "Select all" plus one checkbox per column
-    expect(getColumnCheckboxes()).toHaveLength(columns.length + 1);
+    expect(screen.getByRole("listbox")).toHaveAttribute(
+      "aria-multiselectable",
+      "true",
+    );
+    expect(getOptions()).toHaveLength(columns.length);
+  });
+
+  it("should reflect selection and disabled state on the options", () => {
+    setup({ selectedColumnNames: ["ID"] });
+
+    expect(screen.getByRole("option", { name: "ID" })).toBeChecked();
+    expect(screen.getByRole("option", { name: "ID" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    expect(screen.getByRole("option", { name: "Tax" })).not.toBeChecked();
+    expect(screen.getByRole("option", { name: "Tax" })).not.toHaveAttribute(
+      "aria-disabled",
+    );
   });
 
   it("should filter columns case-insensitively and hide 'Select all' while searching", async () => {
@@ -106,9 +140,7 @@ describe("FieldPicker", () => {
 
     await userEvent.type(getSearchInput(), "TOT");
 
-    expect(screen.getByLabelText("Total")).toBeInTheDocument();
-    expect(screen.getByLabelText("Subtotal")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Tax")).not.toBeInTheDocument();
+    expect(getOptionNames()).toEqual(["Subtotal", "Total"]);
     expect(screen.queryByLabelText("Select all")).not.toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("2 columns found");
   });
@@ -118,7 +150,7 @@ describe("FieldPicker", () => {
 
     await userEvent.type(getSearchInput(), "tax");
 
-    expect(getColumnCheckboxes()).toHaveLength(1);
+    expect(getOptionNames()).toEqual(["Tax"]);
     expect(getSearchInput()).toBeInTheDocument();
   });
 
@@ -131,27 +163,96 @@ describe("FieldPicker", () => {
     expect(screen.getByRole("status")).toHaveTextContent("0 columns found");
   });
 
-  it("should toggle a column from the filtered list", async () => {
+  it("should toggle a column by clicking it in the filtered list", async () => {
     const { onToggle, query } = setup({ selectedColumnNames: ["ID"] });
 
     await userEvent.type(getSearchInput(), "tax");
-    await userEvent.click(screen.getByLabelText("Tax"));
+    await userEvent.click(screen.getByRole("option", { name: "Tax" }));
 
     expect(onToggle).toHaveBeenCalledTimes(1);
-    const [column, isSelected] = onToggle.mock.calls[0];
-    expect(Lib.displayInfo(query, STAGE_INDEX, column).name).toBe("TAX");
-    expect(isSelected).toBe(true);
+    expect(getToggledColumnName(onToggle, query)).toEqual(["TAX", true]);
+  });
+
+  it("should toggle a selected column off", async () => {
+    const { onToggle, query } = setup({ selectedColumnNames: ["ID", "TAX"] });
+
+    await userEvent.click(screen.getByRole("option", { name: "Tax" }));
+
+    expect(getToggledColumnName(onToggle, query)).toEqual(["TAX", false]);
+  });
+
+  it("should not toggle a disabled column", async () => {
+    const { onToggle } = setup({ selectedColumnNames: ["ID"] });
+
+    await userEvent.click(screen.getByRole("option", { name: "ID" }));
+
+    expect(onToggle).not.toHaveBeenCalled();
+  });
+
+  it("should highlight the first match while typing and toggle it with Enter", async () => {
+    const { onToggle, query } = setup({ selectedColumnNames: ["ID"] });
+
+    await userEvent.type(getSearchInput(), "tax");
+    expect(getHighlightedOptionName()).toBe("Tax");
+
+    await userEvent.keyboard("{Enter}");
+
+    expect(getToggledColumnName(onToggle, query)).toEqual(["TAX", true]);
+    expect(getSearchInput()).toHaveFocus();
+  });
+
+  it("should move the highlight with the arrow keys from the search box", async () => {
+    const { onToggle, query } = setup({ selectedColumnNames: ["ID"] });
+
+    await userEvent.type(getSearchInput(), "tot");
+    expect(getHighlightedOptionName()).toBe("Subtotal");
+
+    await userEvent.keyboard("{ArrowDown}");
+    expect(getHighlightedOptionName()).toBe("Total");
+
+    await userEvent.keyboard("{ArrowUp}");
+    expect(getHighlightedOptionName()).toBe("Subtotal");
+
+    await userEvent.keyboard("{ArrowDown}{Enter}");
+    expect(getToggledColumnName(onToggle, query)).toEqual(["TOTAL", true]);
+  });
+
+  it("should navigate the list from the 'Select all' checkbox when there is no search box", async () => {
+    const { onToggle, query } = setup({
+      columnCount: SEARCHABLE_COLUMN_COUNT,
+      selectedColumnNames: ["ID"],
+    });
+
+    screen.getByLabelText("Select all").focus();
+    await userEvent.keyboard("{ArrowDown}{Enter}");
+
+    expect(getToggledColumnName(onToggle, query)).toEqual(["USER_ID", true]);
+    expect(onToggle).toHaveBeenCalledTimes(1);
   });
 
   it("should restore the full list when the search is cleared", async () => {
     const { columns } = setup();
 
     await userEvent.type(getSearchInput(), "tax");
-    await userEvent.click(screen.getByRole("button", { name: "close icon" }));
+    await userEvent.click(screen.getByLabelText("Clear search"));
 
     expect(getSearchInput()).toHaveValue("");
     expect(screen.getByLabelText("Select all")).toBeInTheDocument();
-    expect(getColumnCheckboxes()).toHaveLength(columns.length + 1);
+    expect(getOptions()).toHaveLength(columns.length);
+  });
+
+  it("should render each column once across repeated searches", async () => {
+    const { columns } = setup();
+    const allNames = getOptionNames();
+
+    for (const term of ["tot", "id", "zzz"]) {
+      await userEvent.type(getSearchInput(), term);
+      await userEvent.clear(getSearchInput());
+
+      expect(getOptionNames()).toEqual(allNames);
+      expect(getOptions()).toHaveLength(columns.length);
+      expect(screen.getAllByText("ID")).toHaveLength(1);
+    }
   });
 
   it("should clear the search on Escape without bubbling to the popover", async () => {
@@ -159,28 +260,10 @@ describe("FieldPicker", () => {
     const input = getSearchInput();
 
     await userEvent.type(input, "tax");
-    await userEvent.type(input, "{Escape}");
+    await userEvent.keyboard("{Escape}");
 
     expect(input).toHaveValue("");
     expect(screen.getByLabelText("Select all")).toBeInTheDocument();
-  });
-
-  it("should move focus to the first enabled checkbox on ArrowDown", async () => {
-    setup();
-
-    await userEvent.type(getSearchInput(), "{ArrowDown}");
-
-    expect(screen.getByLabelText("Select all")).toHaveFocus();
-  });
-
-  it("should skip disabled checkboxes when moving focus on ArrowDown", async () => {
-    setup({ selectedColumnNames: ["ID"] });
-
-    await userEvent.type(getSearchInput(), "id");
-    await userEvent.type(getSearchInput(), "{ArrowDown}");
-
-    expect(screen.getByLabelText("ID")).toBeDisabled();
-    expect(screen.getByLabelText("User ID")).toHaveFocus();
   });
 
   describe("content translation", () => {
@@ -194,12 +277,13 @@ describe("FieldPicker", () => {
         dictionary: [{ msgid: "Tax", msgstr: "Impuesto", locale: "en" }],
       });
 
-      expect(await screen.findByLabelText("Impuesto")).toBeInTheDocument();
+      expect(
+        await screen.findByRole("option", { name: "Impuesto" }),
+      ).toBeInTheDocument();
 
       await userEvent.type(getSearchInput(), "impu");
 
-      expect(getColumnCheckboxes()).toHaveLength(1);
-      expect(screen.getByLabelText("Impuesto")).toBeInTheDocument();
+      expect(getOptionNames()).toEqual(["Impuesto"]);
     });
   });
 });
