@@ -21,7 +21,7 @@
    [metabase.util.string :as string]
    [toucan2.core :as t2])
   (:import
-   (org.postgresql.util PSQLException)))
+   (java.sql SQLException)))
 
 (comment
   h2/keep-me
@@ -170,7 +170,7 @@
                     (log/errorf "Error creating pending index table, cleaning up metadata: %s" (ex-message e))
                     (try
                       (t2/with-connection [safe-conn (mdb/app-db)]
-                        (search.db/delete-index-metadata-by-name-on-conn! safe-conn (name table-name)))
+                        (search.db/delete-index-metadata-by-name! safe-conn (name table-name)))
                       (catch Exception del-e
                         (log/warnf "Error clearing out search metadata after failure: %s" (ex-message del-e))))
                     (sync-tracking-atoms!))))
@@ -232,12 +232,27 @@
         (dissoc :native_query)
         (merge (specialization/extra-entry-fields entity)))))
 
+;; Keep these aligned with `impl-table-known-to-not-exist?` in the H2, Postgres, and MySQL drivers. Importing that
+;; predicate would make the search module depend on the driver module.
+(def ^:private table-not-found-sql-states
+  (into #{} (map search.db/sql-states) [:undefined-table
+                                        :table-or-view-not-found
+                                        :table-or-view-not-found-with-candidates
+                                        :table-or-view-not-found-database-empty]))
+
 (defn- table-not-found-exception? [e]
-  ;; Use with care, obviously this can give false positives if used with a query that's *actually* malformed.
-  ;; TODO we should handle the MySQL and MariaDB flavors here too
-  (or (instance? PSQLException (ex-cause e))
-      (= mdb/jdbc-sql-syntax-error-exception-classname
-         (some-> e ex-cause class .getName))))
+  ;; SQLSTATE distinguishes a missing table from other errors raised by the same driver.
+  (loop [e e]
+    (cond
+      (nil? e)
+      false
+
+      (and (instance? SQLException e)
+           (contains? table-not-found-sql-states (.getSQLState ^SQLException e)))
+      true
+
+      :else
+      (recur (ex-cause e)))))
 
 (defn- retry-upsert-ex [table-type table-name-before table-name-after e-before e-after]
   (ex-info "Failed retrying search index batch upsert"
@@ -258,15 +273,12 @@
     (f)))
 
 (defn- safe-batch-upsert!
-  "A version of batch-upsert! that no-ops for missing indexes, and handles stale index tracking metadata.
+  "Upsert a batch, treating an absent or stale tracked table as recoverable.
 
-  Returns the name of the table that was written to, or nil if there is none being tracked, or nil
-  if the upsert failed for any other reason — in which case the failure is logged at ERROR and we
-  continue so the rest of the reindex can finish and activate whatever was successfully written.
-
-  We recover gracefully the first time if the tracking atom was stale, but do not check again on retry."
+  Returns the table name written, or nil if no table is tracked or the batch is skipped.
+  Interruptions and failed retries propagate.
+  Stale tracking is refreshed once."
   [table-type table-name-fn entries]
-  ;; For convenience, no-op if we are not tracking any table.
   (when-let [table-name (table-name-fn)]
     (let [upsert! (fn [t]
                     (isolate-write! #(specialization/batch-upsert! t entries))
@@ -398,7 +410,7 @@
             ;; stop tracking any pending table
             (when-let [table-name (pending-table)]
               (when-not *mocking-tables*
-                (let [deleted (search-index-metadata/delete-index! :appdb (search.spec/index-version-hash) table-name)]
+                (let [deleted (search-index-metadata/delete-pending-index! :appdb (search.spec/index-version-hash) table-name)]
                   (when (pos? deleted)
                     (log/infof "Deleted %d pending indices" deleted))))
               (swap! *indexes* assoc :pending nil))
