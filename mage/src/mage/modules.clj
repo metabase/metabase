@@ -204,6 +204,7 @@
      view-log
      warehouse-schema
      warehouse-schema-overlay
+     workspaces
      xrays})
 
 (defn- affected-modules

@@ -1775,6 +1775,7 @@
   {:team "UX West"
    :api  #{metabase.premium-features.api
            metabase.premium-features.core
+           metabase.premium-features.defenterprise
            metabase.premium-features.init}
    :uses #{analytics-interface
            api
@@ -2064,7 +2065,8 @@
            tracing
            users
            util
-           warehouse-schema-overlay}
+           warehouse-schema-overlay
+           workspaces}
    :model-imports #{:model/Card
                     :model/DashboardCardSeries
                     :model/Database
@@ -2622,7 +2624,8 @@
            tracing
            transforms-base
            util
-           warehouse-schema-overlay}
+           warehouse-schema-overlay
+           workspaces}
    :friends #{models
               enterprise/transforms-python}
    :model-exports #{:model/Transform
@@ -2931,11 +2934,12 @@
   warehouse-schema-overlay
   {:team "UX West"
    :api  #{metabase.warehouse-schema-overlay.core}
-   :uses #{util}
+   :uses #{premium-features util}
    :model-imports #{:model/Field
                     :model/FieldUserSettings
                     :model/Table
-                    :model/TableUserSettings}}
+                    :model/TableUserSettings
+                    :model/WorkspaceTableRemapping}}
 
   warehouse-schema-rest
   {:team "UX West"
@@ -3029,6 +3033,13 @@
                     :model/Database
                     :model/Field
                     :model/Table}}
+
+  workspaces
+  {:team "Graphy"
+   :api  #{metabase.workspaces.core metabase.workspaces.schema}
+   :uses #{lib
+           premium-features
+           util}}
 
   xrays
   {:team "Graphy"
@@ -4093,7 +4104,23 @@
            upload
            util
            warehouse-schema-overlay}
-   :model-imports #{:model/Database :model/Table}}}
+   :model-imports #{:model/Database :model/Table}}
+
+  enterprise/workspaces
+  {:team "Graphy"
+   :api  #{metabase-enterprise.workspaces.init}
+   :uses #{app-db
+           cache
+           driver
+           lib
+           premium-features
+           query-processor
+           settings
+           sql-tools
+           util
+           workspaces}
+   :model-imports #{:model/Database}
+   :model-exports #{:model/WorkspaceTableRemapping}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.

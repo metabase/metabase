@@ -175,4 +175,5 @@
    "User"
    "UserKeyValue"
    "UserParameterValue"
-   "ViewLog"])
+   "ViewLog"
+   "WorkspaceTableRemapping"])
