@@ -360,36 +360,29 @@
         (t2/delete! :model/SearchIndexMetadata :engine :appdb :version version)
         (delete-coordinate! coordinate)))))
 
-(deftest lease-acquired-in-transaction-keeps-mutations-on-the-caller-connection-test
-  (let [coordinate (coordinate)
-        version    (:version coordinate)
+(deftest unleased-in-transaction-mutations-join-the-caller-connection-test
+  (let [version    (str (random-uuid))
         index-name (str (random-uuid))
         insert!    #(t2/insert! :conn % :model/SearchIndexMetadata
-                                {:engine :appdb, :version version, :lang_code (:lang_code coordinate)
+                                {:engine :appdb, :version version, :lang_code "en"
                                  :status :pending, :index_name index-name})]
     (try
-      (testing "the mutation sees the caller's uncommitted rows and rolls back with it"
+      (testing "an unleased mutation sees the caller's uncommitted rows and rolls back with it"
         (is (thrown-with-msg?
              Exception
              #"roll back caller"
              (t2/with-transaction [_outer-conn]
                (t2/insert! :model/SearchIndexMetadata
-                           {:engine :appdb, :version version, :lang_code (:lang_code coordinate)
+                           {:engine :appdb, :version version, :lang_code "en"
                             :status :active, :index_name (str index-name "-active")})
-               (lease/do-with-lease
-                coordinate
-                (fn []
-                  (lease/do-with-mutation-connection
-                   (fn [conn]
-                     (is (= 1 (t2/count :conn conn :model/SearchIndexMetadata :engine :appdb :version version)))
-                     (insert! conn)))))
+               (lease/do-with-mutation-connection
+                (fn [conn]
+                  (is (= 1 (t2/count :conn conn :model/SearchIndexMetadata :engine :appdb :version version)))
+                  (insert! conn)))
                (throw (Exception. "roll back caller")))))
         (is (nil? (t2/select-one-fn :index_name :model/SearchIndexMetadata :engine :appdb :version version))))
-      (testing "the lease itself is still released outside the caller's transaction"
-        (is (false? (apply t2/exists? :search_index_lease (mapcat identity (#'lease/where-coordinate coordinate))))))
       (finally
-        (t2/delete! :model/SearchIndexMetadata :engine :appdb :version version)
-        (delete-coordinate! coordinate)))))
+        (t2/delete! :model/SearchIndexMetadata :engine :appdb :version version)))))
 
 (deftest concurrent-acquisition-elects-one-owner-test
   (let [coordinate (coordinate)
@@ -433,11 +426,10 @@
         (is (= 2 (count @coordinates)))
         (is (apply = @coordinates))))))
 
-(deftest ambient-transaction-refused-outside-test-mode-test
+(deftest ambient-transaction-refused-test
   (let [coordinate (coordinate)
         events     (atom [])]
-    (mt/with-dynamic-fn-redefs [lease/ambient-transactions-allowed? (constantly false)
-                                analytics/inc! (fn [metric labels & _] (swap! events conj [metric labels]))]
+    (mt/with-dynamic-fn-redefs [analytics/inc! (fn [metric labels & _] (swap! events conj [metric labels]))]
       (is (thrown-with-msg?
            Exception
            #"cannot be acquired inside an app-db transaction"

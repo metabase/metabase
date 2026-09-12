@@ -33,6 +33,7 @@
    [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.search.spec :as search.spec]
    [metabase.settings.core :as setting]
    [metabase.settings.models.setting]
@@ -997,9 +998,11 @@
                                                      {:delete-from (t2/table-name model)
                                                       :where where-clause})]]
                                   (if (and (search-relevant? model) (number? deleted)) deleted 0)))]
-          ;; Raw deletes skip Toucan hooks. Reindex only if they removed rows represented in search.
+          ;; Raw deletes skip Toucan hooks. After removing search rows, reindex synchronously and without a lease so
+          ;; callers inside a test transaction see the purge immediately and all writes roll back together.
           (when (pos? deleted-searched)
-            (reindex-search-index!)))))))
+            (binding [search.ingestion/*force-sync* true]
+              (reindex-search-index!))))))))
 
 (defmacro with-model-cleanup
   "Execute `body`, then delete any *new* rows created for each model in `models`.
