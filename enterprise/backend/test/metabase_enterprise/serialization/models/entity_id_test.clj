@@ -151,6 +151,7 @@
     :model/UserParameterValue
     :model/UserKeyValue
     :model/ViewLog
+    :model/WorkspaceTableRemapping
     :model/Sandbox
     :model/ConnectionImpersonation
     :model/SecurityAdvisory

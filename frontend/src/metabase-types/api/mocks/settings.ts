@@ -153,6 +153,7 @@ export const createMockTokenFeatures = (
   writable_connection: false,
   admin_security_center: false,
   ai_controls: false,
+  workspaces: false,
   ...opts,
 });
 
@@ -446,6 +447,7 @@ export const createMockSettings = (
   "mcp-apps-cors-enabled-clients": [],
   "mcp-apps-cors-custom-origins": "",
   "transforms-meter-locked": null,
+  "workspaces-enabled": false,
   "mfa-enforcement": "off",
   ...opts,
 });

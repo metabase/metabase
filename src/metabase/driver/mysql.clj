@@ -106,20 +106,6 @@
                               :describe-is-generated                  true}]
   (defmethod driver/database-supports? [:mysql feature] [_driver _feature _db] supported?))
 
-(defmethod driver/qualified-name-components :mysql
-  [_driver]
-  ;; MySQL's "schema" doesn't exist; its "database" is what other engines call a schema and
-  ;; what JDBC calls a catalog. We populate the `:db` AST slot (= SQLGlot `Table.catalog`)
-  ;; with the connection's bound DB so table remapping can record both canonical and remapped
-  ;; DB names on `TableRemapping` rows and the QP can rewrite identifiers across DBs.
-  ;; Production SELECTs continue to emit unqualified `t` because the SQL compiler reads
-  ;; the per-driver `quote-name` rules, not this multimethod.
-  [:db])
-
-;;; MySQL has no schema layer. Table remapping stores `:db.table` -- the `:db`
-;;; slot carries the connection's bound DB so cross-DB routing works. Production
-;;; SELECTs emit unqualified `t` because the SQL compiler reads `quote-name`
-;;; rules, not this multimethod.
 (defmethod driver.sql/table-qualification-style :mysql
   [_driver]
   :table-qualification-style/db-table)

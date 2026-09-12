@@ -7,7 +7,7 @@ import {
 import { CollectUserDataInput } from "metabase/admin/settings/components/widgets/UsageTracking/CollectUserDataInput";
 import { UpsellDevInstances } from "metabase/admin/upsells";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { PLUGIN_SEMANTIC_SEARCH } from "metabase/plugins";
+import { PLUGIN_SEMANTIC_SEARCH, PLUGIN_WORKSPACES } from "metabase/plugins";
 
 import { DevInstanceBanner } from "../GeneralSettings/DevInstanceBanner";
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
@@ -78,6 +78,8 @@ export function GeneralSettingsPage() {
           {hasAuditAppFeature && <CollectUserDataInput />}
         </SettingsSection>
       )}
+
+      <PLUGIN_WORKSPACES.WorkspacesSettingsSection />
 
       <UpsellDevInstances location="settings-general" />
     </SettingsPageWrapper>
