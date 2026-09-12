@@ -34,7 +34,9 @@
   {:style/indent :defn}
   [entities & body]
   `(search.tu/with-temp-index-table
-     (#'specialization/batch-upsert! (search.index/active-table)
+     ;; a nil connection is the ambient one, which is what these fixtures write on
+     (#'specialization/batch-upsert! nil
+                                     (search.index/active-table)
                                      (map (comp #'search.index/document->entry
                                                 #'search.ingestion/->document)
                                           ~entities))

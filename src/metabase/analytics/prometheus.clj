@@ -135,20 +135,17 @@
     arr))
 
 (defn- conn-pool-bean-diag-info [acc ^ObjectName jmx-bean]
-  ;; We should not be using specific driver implementations
-  (let [pool-var (requiring-resolve 'metabase.driver.sql-jdbc.connection/pool-cache-key->connection-pool)]
-    ;; Using this `locking` is non-obvious but absolutely required to avoid the deadlock inside c3p0 implementation. The
-    ;; act of JMX attribute reading first locks a DynamicPooledDataSourceManagerMBean object, and then a
-    ;; PoolBackedDataSource object. Conversely, the act of creating a pool (with
-    ;; com.mchange.v2.c3p0.DataSources/pooledDataSource) first locks PoolBackedDataSource and then
-    ;; DynamicPooledDataSourceManagerMBean. We have to lock a common monitor (which `pool-cache-key->connection-pool` is)
-    ;; to prevent the deadlock. Hopefully.
-    ;; Issue against c3p0: https://github.com/swaldman/c3p0/issues/95
-    (locking @pool-var
-      (let [bean-id   (.getCanonicalName jmx-bean)
-            props     [:numConnections :numIdleConnections :numBusyConnections
-                       :minPoolSize :maxPoolSize :numThreadsAwaitingCheckoutDefaultUser]]
-        (assoc acc (jmx/read bean-id :dataSourceName) (jmx/read bean-id props))))))
+  ;; Avoid a direct dependency on driver internals.
+  (let [pool-var     (requiring-resolve 'metabase.driver.sql-jdbc.connection/pool-cache-key->connection-pool)
+        app-db-monitor @(requiring-resolve 'metabase.app-db.core/c3p0-pool-monitor)]
+    ;; c3p0 locks its MBean and data source in opposite orders during JMX reads and pool creation. Serialize both paths,
+    ;; always taking the app-db monitor first. See https://github.com/swaldman/c3p0/issues/95.
+    (locking app-db-monitor
+      (locking @pool-var
+        (let [bean-id   (.getCanonicalName jmx-bean)
+              props     [:numConnections :numIdleConnections :numBusyConnections
+                         :minPoolSize :maxPoolSize :numThreadsAwaitingCheckoutDefaultUser]]
+          (assoc acc (jmx/read bean-id :dataSourceName) (jmx/read bean-id props)))))))
 
 (defn connection-pool-info
   "Builds a map of info about the current c3p0 connection pools managed by this Metabase instance."
@@ -374,6 +371,13 @@
                          {:description "Duration in milliseconds that index reindex jobs took."
                           ;; 1ms -> 10minutes
                           :buckets [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
+   (prometheus/counter :metabase-search/reindex-lease-events
+                       {:description "Search reindex lease outcomes and failures by engine."
+                        :labels      [:engine :event]})
+   (prometheus/histogram :metabase-search/reindex-lease-held-duration-ms
+                         {:description "Duration in milliseconds that a search reindex lease was held."
+                          :labels      [:engine]
+                          :buckets     [1000 5000 30000 60000 300000 600000 1800000 3600000 7200000]})
    (prometheus/gauge :metabase-search/appdb-index-size
                      {:description "Estimated number of rows in this instance's active appdb search index table."})
    (prometheus/gauge :metabase-search/semantic-index-size
