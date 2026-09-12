@@ -238,6 +238,17 @@ type CollectionBrowserEntityTypes =
   | "question"
   | "model";
 
+export type GuestTokenProviderResponse = {
+  jwt: string;
+}
+
+export type GuestTokenProvider = (context: {
+  entityType: "dashboard" | "question";
+  entityId?: number;
+  customContext?: unknown;
+  expiredToken?: string;
+}) => Promise<GuestTokenProviderResponse>;
+
 export type SdkIframeEmbedBaseSettings = {
   isGuest?: boolean;
   apiKey?: string;
@@ -250,6 +261,14 @@ export type SdkIframeEmbedBaseSettings = {
 
   /** Whether we should use the existing user session (i.e. admin user's cookie) */
   useExistingUserSession?: boolean;
+
+  /**
+   * Function to get guest embed JWT tokens (iframe only, not applicable for SDK's guest mode).
+   * Supports both token refresh on expiry and initial token fetch when no static token is provided.
+   * In both cases, this works with guest embed components (metabase-dashboard and metabase-question).
+   * It has precedence over guestEmbedProviderUri
+   */
+  guestEmbedProvider?: GuestTokenProvider;
 
   /**
    * URL endpoint for fetching and refreshing guest embed JWT tokens (iframe only, not applicable for SDK's guest mode).
