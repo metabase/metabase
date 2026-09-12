@@ -22,7 +22,7 @@ export const Visualization = (
   );
   const measuredWidth = Math.round(measuredTextSize.width);
   const measuredHeight = Math.round(measuredTextSize.height);
-  const brandColor = renderingContext.getColor("brand");
+  const brandColor = renderingContext.getColor("core-brand");
 
   const [lastClickValue, setLastClickValue] = useState<number | null>(null);
   const [lastHoverValue, setLastHoverValue] = useState<number | null>(null);
