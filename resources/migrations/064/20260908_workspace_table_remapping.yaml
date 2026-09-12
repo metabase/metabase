@@ -1,0 +1,95 @@
+## Workspace mode: when the `workspace-mode` setting is on, transform runs write their output into
+## each database's workspace schema under a random table name instead of the configured target.
+## `workspace_table_remapping` records, per database, which canonical (schema, table) is backed by
+## which workspace (schema, table) so the query processor, metadata reads and serdes can translate
+## between the two. Schema columns are NULL for schema-less drivers.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.workspace-table-remapping-1
+      author: ranquild
+      comment: Create workspace_table_remapping table
+      changes:
+        - createTable:
+            tableName: workspace_table_remapping
+            remarks: Maps canonical transform output tables to their workspace workspace-schema tables
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: db_id
+                  type: int
+                  remarks: Database this remapping applies to
+                  constraints:
+                    nullable: false
+              - column:
+                  name: from_schema
+                  type: varchar(254)
+                  remarks: Canonical schema name, NULL for schema-less drivers
+                  constraints:
+                    nullable: true
+              - column:
+                  name: from_table
+                  type: varchar(254)
+                  remarks: Canonical table name
+                  constraints:
+                    nullable: false
+              - column:
+                  name: to_schema
+                  type: varchar(254)
+                  remarks: Workspace schema the workspace table lives in, NULL for schema-less drivers
+                  constraints:
+                    nullable: true
+              - column:
+                  name: to_table
+                  type: varchar(254)
+                  remarks: Physical (random) table name in the workspace schema
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: When this remapping was created
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v64.workspace-table-remapping-2
+      author: ranquild
+      comment: Add unique constraint on workspace_table_remapping (db_id, from_schema, from_table)
+      ## Leading column is db_id, so MySQL reuses this index for the foreign key added below.
+      changes:
+        - addUniqueConstraint:
+            tableName: workspace_table_remapping
+            constraintName: idx_unique_workspace_table_remapping_source
+            columnNames: db_id, from_schema, from_table
+
+  - changeSet:
+      id: v64.workspace-table-remapping-3
+      author: ranquild
+      comment: Add unique constraint on workspace_table_remapping (db_id, to_schema, to_table)
+      changes:
+        - addUniqueConstraint:
+            tableName: workspace_table_remapping
+            constraintName: idx_unique_workspace_table_remapping_target
+            columnNames: db_id, to_schema, to_table
+
+  - changeSet:
+      id: v64.workspace-table-remapping-4
+      author: ranquild
+      comment: Add foreign key on workspace_table_remapping(db_id)
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_table_remapping
+            baseColumnNames: db_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_workspace_table_remapping_db_id
+            deleteCascade: true

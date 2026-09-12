@@ -202,8 +202,8 @@
    parts (e.g. `metabase.driver.sql/run-transform! [:sql :table]`), so this stays
    2-segment.
 
-   The `:db` slot — populated for engines whose `qualified-name-components`
-   includes `:db` (Snowflake / SQL Server / BigQuery / MySQL) — is **not** encoded
+   The `:db` slot — populated for the engines that name a database above the schema
+   (Snowflake / SQL Server / BigQuery / MySQL) — is **not** encoded
    here. It travels separately on `transform-details` as `:output-db` and is
    prepended at the SQL emission site. See
    [[metabase.driver.sql.query-processor/compile-transform :sql]]."

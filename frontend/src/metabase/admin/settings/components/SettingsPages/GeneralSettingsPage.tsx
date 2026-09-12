@@ -4,7 +4,11 @@ import { CollectUserDataInput } from "metabase/admin/settings/components/widgets
 import { UpsellDevInstances } from "metabase/admin/upsells";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { PLUGIN_EMBEDDING_SDK, PLUGIN_SEMANTIC_SEARCH } from "metabase/plugins";
+import {
+  PLUGIN_EMBEDDING_SDK,
+  PLUGIN_SEMANTIC_SEARCH,
+  PLUGIN_WORKSPACES,
+} from "metabase/plugins";
 import { useSetting } from "metabase/settings";
 import {
   AdminSettingInput,
@@ -98,6 +102,8 @@ export function GeneralSettingsPage() {
           </ExternalLink>
         </SettingsSection>
       )}
+
+      <PLUGIN_WORKSPACES.WorkspacesSettingsSection />
 
       <UpsellDevInstances location="settings-general" />
     </SettingsPageWrapper>
