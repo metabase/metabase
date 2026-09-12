@@ -57,15 +57,17 @@ export function lazyModalRouteElement(
   loadModal: () => Promise<ModalComponent>,
   options: ModalRouteOptions = {},
 ) {
-  return (
-    <Route
-      key={path}
-      path={path}
-      lazy={async () => ({
-        Component: createModalRouteComponent(await loadModal(), options),
-      })}
-    />
-  );
+  const lazy = async () => ({
+    Component: createModalRouteComponent(await loadModal(), options),
+  });
+
+  // The preload generator reads chunk names out of loader source, and this
+  // wrapper hides the `import()` inside `loadModal`. Hanging the modal's own
+  // loader off the wrapper lets the generator see it, so a modal is skipped
+  // because it is a modal rather than because nothing could read it.
+  lazy.loadModal = loadModal;
+
+  return <Route key={path} path={path} lazy={lazy} />;
 }
 
 /**
@@ -80,12 +82,12 @@ export function lazyModalRoute(
   loadModal: () => Promise<ModalComponent>,
   options: ModalRouteOptions = {},
 ): RouteObject {
-  return {
-    path,
-    lazy: async () => ({
-      Component: createModalRouteComponent(await loadModal(), options),
-    }),
-  };
+  const lazy = async () => ({
+    Component: createModalRouteComponent(await loadModal(), options),
+  });
+  lazy.loadModal = loadModal;
+
+  return { path, lazy };
 }
 
 export function createModalRouteComponent(

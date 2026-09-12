@@ -29,6 +29,13 @@
     -->
     <!-- asset-preloads -->
 
+    <!--
+      Preload hints for the page this URL renders, written per request by
+      metabase.server.routes.index. These come after the entry assets, which the
+      page cannot boot without.
+    -->
+    {{{routePreloads}}}
+
     <script type="application/json" id="_metabaseBootstrap">
       {{{bootstrapJSON}}}
     </script>
