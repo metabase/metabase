@@ -23,6 +23,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.time :as u.time]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
@@ -959,8 +960,13 @@
 (defmethod set-value-of-type! :timestamp
   [_setting-type setting-definition-or-name new-value]
   (set-value-of-type!
-   :string setting-definition-or-name
-   (some-> new-value u.date/format)))
+   :string
+   setting-definition-or-name
+   (when (some? new-value) ; nils are written through directly
+     ;; But if there is a value, then it must be one we can coerce to a timestamp.
+     (if-let [timestamp (u.time/coerce-to-timestamp new-value)]
+       (u.date/format timestamp)
+       (throw (ex-info "Malformed value for :timestamp setting" {:value new-value}))))))
 
 (defn- serialize-csv [value]
   (cond

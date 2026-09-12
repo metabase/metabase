@@ -164,11 +164,24 @@
    :body    "ok"})
 
 (defn- all-files-skipped?
-  "Returns true if all files were skipped (none were CSV/TSV)."
+  "Returns true if nothing was uploaded and at least one file was refused."
   [{:keys [upload-result]}]
-  (let [{:keys [results skipped]} upload-result]
-    (and (seq skipped)
-         (empty? results))))
+  (let [{:keys [results skipped remote]} upload-result]
+    (and (empty? results)
+         (or (seq skipped) (seq remote)))))
+
+(defn- refused-files-message
+  "Reply text for a share where nothing could be uploaded, naming why for each file."
+  [{:keys [skipped remote]}]
+  (str/join " "
+            (cond-> []
+              (seq skipped)
+              (conj (format "I can only process CSV and TSV files. The following files were skipped: %s"
+                            (str/join ", " skipped)))
+
+              (seq remote)
+              (conj (format "These files are stored outside Slack, so I can't upload them: %s"
+                            (str/join ", " remote))))))
 
 (mu/defn- handle-message-file-share
   "Process a file_share message - handles CSV uploads"
@@ -192,14 +205,12 @@
         should-skip-ai? (and (not has-text?)
                              (not (:error file-handling))
                              all-skipped?)]
-    ;; If all files were skipped (non-CSV) and there's no text, respond directly
+    ;; If nothing could be uploaded and there's no text, respond directly
     ;; without calling the AI to avoid sending an empty prompt
     (if should-skip-ai?
-      (let [skipped-files (get-in file-handling [:upload-result :skipped])]
-        (slackbot.client/post-message client
-                                      (merge (slackbot.events/event->reply-context event)
-                                             {:text (format "I can only process CSV and TSV files. The following files were skipped: %s"
-                                                            (str/join ", " skipped-files))})))
+      (slackbot.client/post-message client
+                                    (merge (slackbot.events/event->reply-context event)
+                                           {:text (refused-files-message (:upload-result file-handling))}))
       (slackbot.streaming/send-response client event extra-history))))
 
 (defmethod analytics.core/known-labels :metabase-slackbot/responses-generated [_]

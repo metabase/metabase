@@ -77,6 +77,7 @@
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.field-stats :as field-stats]
    [metabase.metabot.tools.shared :as shared]
+   [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.models.interface :as mi]
@@ -114,7 +115,7 @@
                                      (if (= pages 1) " page." " pages."))
                                 {:page page :pages pages})))
         start (* (dec page) page-size)]
-    {:items (vec (take page-size (drop start items)))
+    {:items (subvec items start (min total (+ start page-size)))
      :total total
      :page  page
      :pages pages}))
@@ -721,19 +722,33 @@
                           (str/join "\n" (map-indexed document-block-line blocks)))
                      "The document is empty.")})))
 
+(def ^:private query-withheld-message
+  "Names no particular grant: the body is withheld both for an unreadable database and for a
+  403 on a card, measure or segment inside the query."
+  "The query is hidden because it references content the user cannot read.")
+
+(defn- export-state-query
+  "Export a conversation-state query for presentation, nil when the user may not see it.
+  `query-id` picks the treatment: an id seeded from the client's viewing context carries
+  ids that are the caller's own, so its refusals are audited; one the agent's tools wrote
+  is routine presentation and stays quiet."
+  [query-id query]
+  (let [audited? (contains? (shared/current-client-ids) query-id)]
+    (when-let [[gated mp] (shared.content-store/query-for-export query audited?)]
+      (llm-shape/export-query-for-llm gated mp (if audited?
+                                                 shared.content-store/audited-store
+                                                 shared.content-store/default-store)))))
+
 (defn- fetch-conversation-query
   "Present a query stored in this conversation's agent state (created by tools or pasted
-  as a chart mention). Read-checks the query's database before exporting it with resolved
-  table/field names."
+  as a chart mention). A query the user may not see is withheld."
   [query-id]
   (if-let [query (get (shared/current-queries-state) query-id)]
-    (do
-      (when-let [database-id (and (map? query) (:database query))]
-        (api/read-check :model/Database database-id))
-      (entity-result
-       {:type        "conversation-query"
-        :id          query-id
-        :description (llm-shape/export-query-for-llm query)}))
+    (entity-result
+     {:type        "conversation-query"
+      :id          query-id
+      :description (or (export-state-query query-id query)
+                       query-withheld-message)})
     {:status-code 404
      :output (str "No chart or query with id '" query-id "' exists in this conversation. "
                   "It may belong to another conversation; ask the user to paste or recreate it here.")}))
@@ -743,18 +758,23 @@
   pasted as a mention). Falls back to the queries state when the id is actually a query id."
   [chart-id]
   (if-let [chart (get (shared/current-charts-state) chart-id)]
-    (let [query (or (first (:queries chart))
-                    (get (shared/current-queries-state) (:query_id chart)))]
-      (when-let [database-id (and (map? query) (:database query))]
-        (api/read-check :model/Database database-id))
+    (let [[query-id query] (if-let [q (first (:queries chart))]
+                             ;; create_chart mints a new chart id for a client-supplied query and
+                             ;; keeps the original under :query_id, so the audit polarity has to
+                             ;; follow the query rather than the chart
+                             [(or (:query_id chart) chart-id) q]
+                             [(:query_id chart) (get (shared/current-queries-state) (:query_id chart))])
+          query-text (when query (export-state-query query-id query))]
       (entity-result
        {:type        "conversation-chart"
         :id          chart-id
         :description (str "Chart type: "
                           (or (some-> (get-in chart [:visualization_settings :chart_type]) name)
                               "table")
-                          "\nQuery:\n"
-                          (llm-shape/export-query-for-llm query))}))
+                          (cond
+                            (nil? query) "\nNo query is attached to this chart."
+                            query-text   (str "\nQuery:\n" query-text)
+                            :else        (str "\n" query-withheld-message)))}))
     (fetch-conversation-query chart-id)))
 
 ;; ----- Dispatch -----

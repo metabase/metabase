@@ -87,25 +87,43 @@
   map with a `:database` is normalized and exported to the portable representations form
   the `construct_notebook_query` tool consumes (a JSON code block); pre-resolved string
   sources pass through; a `pprint`'d map is the last-resort fallback. A permission-refused
-  export renders nothing at all rather than the fallback."
-  [query]
-  (cond
-    (string? query) query
-    (string? (:query-content query)) (:query-content query)
-    (and (map? query) (:database query))
-    (try
-      (let [normalized (lib-be/normalize-query query)
-            mp         (lib-be/application-database-metadata-provider (:database normalized))
-            exported   (repr.resolve/export-query mp normalized shared.content-store/default-store)]
-        (or (repr-data->llm-block exported)
-            (query-edn-fallback normalized)))
-      (catch Exception e
-        (when-not (= 403 (:status-code (ex-data e)))
-          (log/debugf "Failed to export query for LLM, using EDN fallback: %s" (ex-message e))
-          (query-edn-fallback query))))
-    (string? (get-in query [:native :query])) (get-in query [:native :query])
-    (map? query) (query-edn-fallback query)
-    :else (some-> query str)))
+  export renders nothing at all rather than the fallback.
+
+  `store` gates the Card / Measure / Segment lookups and every caller names one:
+  [[shared.content-store/default-store]] for queries loaded from the app DB,
+  [[shared.content-store/audited-store]] for client-supplied queries so a denied lookup
+  keeps its audit trail. No defaulting arity, so the choice stays visible at the call site.
+
+  Passing `mp` says `query` is already normalized and names the provider to export it through -
+  what [[shared.content-store/query-for-export]] hands back, so the export doesn't
+  repeat the normalization its permission check just did."
+  ([query store]
+   (export-query-for-llm query nil store))
+  ([query mp store]
+   (cond
+     (string? query) query
+     (string? (:query-content query)) (:query-content query)
+     (and (map? query) (:database query))
+     ;; The refusal marker, not the status code, is what distinguishes "you may not read this"
+     ;; from "the export failed". A by-id denial collapses into the same not-found a missing id
+     ;; produces — deliberately, so the agent cannot probe for hidden content — so the 403 this
+     ;; used to catch does not arrive on that path. Without the marker a refused card would fall
+     ;; through to the EDN fallback and print the raw query.
+     (binding [shared.content-store/*last-lookup-refused?* (atom false)]
+       (try
+         (let [normalized (if mp query (lib-be/normalize-query query))
+               mp         (or mp (lib-be/application-database-metadata-provider (:database normalized)))
+               exported   (repr.resolve/export-query mp normalized store)]
+           (or (repr-data->llm-block exported)
+               (query-edn-fallback normalized)))
+         (catch Exception e
+           (when-not (or (= 403 (:status-code (ex-data e)))
+                         @shared.content-store/*last-lookup-refused?*)
+             (log/debugf "Failed to export query for LLM, using EDN fallback: %s" (ex-message e))
+             (query-edn-fallback query)))))
+     (string? (get-in query [:native :query])) (get-in query [:native :query])
+     (map? query) (query-edn-fallback query)
+     :else (some-> query str))))
 
 (defn transform-query->text
   "Render a transform source query for model context: native SQL verbatim, anything else
@@ -113,7 +131,7 @@
   fence remains valid when the result is interpolated inside an XML `<query>` element."
   [query]
   (or (when (map? query) (metabot.u/extract-sql-content query))
-      (when-let [text (export-query-for-llm query)]
+      (when-let [text (export-query-for-llm query shared.content-store/default-store)]
         (if (str/starts-with? text "```json\n")
           (format "\n%s\n" text)
           text))))

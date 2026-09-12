@@ -8,6 +8,7 @@
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self.core :as metabot.self]
+   [metabase.metabot.test-util :as mut]
    [metabase.metabot.tools.explorations :as tools.explorations]
    [metabase.test :as mt]
    [metabase.util.json :as json]))
@@ -227,18 +228,21 @@
                          "Draft")))))
 
 (deftest explorations-profile-renders-research-plan-in-system-prompt-test
-  (testing "the registered :explorations profile wires research-plan-system-context, so a draft plan
+  (mut/do-with-registered-profile!
+   profiles/explorations-profile
+   (fn []
+     (testing "the registered :explorations profile wires research-plan-system-context, so a draft plan
             reaches the LLM's system prompt (the feature the generic agent no longer knows about)"
-    (let [profile (profiles/get-profile :explorations)
-          plan    {:name   "Why was revenue down?"
-                   :groups [{:block_id   "metric:42"
-                             :metric     {:id 42 :name "Revenue"}
-                             :dimensions [{:id "d1" :name "Region"}]}]}
-          content (:content (messages/build-system-message {:research_plan plan} profile {}))]
-      (is (str/includes? content "Current research plan"))
-      (is (str/includes? content "Why was revenue down?"))
-      (is (str/includes? content "[metric:42] Revenue, broken out by: Region (d1)")))
-    (testing "and omits the plan section entirely when there is no plan"
-      (let [content (:content (messages/build-system-message
-                               {} (profiles/get-profile :explorations) {}))]
-        (is (not (str/includes? content "Current research plan")))))))
+       (let [profile (profiles/get-profile :explorations)
+             plan    {:name   "Why was revenue down?"
+                      :groups [{:block_id   "metric:42"
+                                :metric     {:id 42 :name "Revenue"}
+                                :dimensions [{:id "d1" :name "Region"}]}]}
+             content (:content (messages/build-system-message {:research_plan plan} profile {}))]
+         (is (str/includes? content "Current research plan"))
+         (is (str/includes? content "Why was revenue down?"))
+         (is (str/includes? content "[metric:42] Revenue, broken out by: Region (d1)")))
+       (testing "and omits the plan section entirely when there is no plan"
+         (let [content (:content (messages/build-system-message
+                                  {} (profiles/get-profile :explorations) {}))]
+           (is (not (str/includes? content "Current research plan")))))))))

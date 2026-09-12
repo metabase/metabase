@@ -1,75 +1,24 @@
 import cx from "classnames";
-import React, {
-  type ReactNode,
-  forwardRef,
-  useCallback,
-  useState,
-} from "react";
+import React, { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { Markdown } from "metabase/common/components/Markdown";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
-import {
-  Box,
-  type BoxProps,
-  Ellipsified,
-  Flex,
-  Icon,
-  type IconProps,
-  Menu,
-  Tooltip,
-} from "metabase/ui";
+import type { IconProps } from "metabase/ui";
+import { Ellipsified, Icon, Menu, Tooltip } from "metabase/ui";
 import { SAVING_DOM_IMAGE_OVERFLOW_VISIBLE_CLASS } from "metabase/viz-core";
 
 import { LegendActions } from "../LegendActions";
-import { LegendLabel } from "../LegendLabel";
 
-import S from "./LegendCaption.module.css";
-
-export const LEGEND_LABEL_FONT_SIZE = "0.875rem";
-export const LEGEND_LABEL_FONT_WEIGHT = 700;
-
-const TITLE_SIZE_CLASSES = {
-  sm: { root: S.rootSm, label: S.labelSm },
-  md: { root: S.rootMd, label: S.labelMd },
-} as const;
-
-export type LegendCaptionTitleSize = keyof typeof TITLE_SIZE_CLASSES;
-
-export const LegendDescriptionIcon = forwardRef<
-  HTMLDivElement,
-  BoxProps & {
-    name?: IconProps["name"];
-    inCappedRow?: boolean;
-    "data-testid"?: string;
-  }
->(function LegendDescriptionIcon(
-  { name = "info", inCappedRow, className, ...props },
-  ref,
-) {
-  return (
-    <Box
-      component="span"
-      ref={ref}
-      className={cx(
-        S.descriptionIcon,
-        { [S.descriptionIconCapped]: inCappedRow },
-        className,
-      )}
-      {...props}
-    >
-      <Icon name={name} />
-    </Box>
-  );
-});
-
-export const LegendRightContent = ({ children }: { children?: ReactNode }) => (
-  <Flex justify="flex-end" ms="auto" align="center">
-    {children}
-  </Flex>
-);
+import {
+  LegendCaptionRoot,
+  LegendDescriptionIcon,
+  LegendLabel,
+  LegendLabelIcon,
+  LegendRightContent,
+} from "./LegendCaption.styled";
 
 function shouldHideDescription(width: number | undefined) {
   const HIDE_DESCRIPTION_THRESHOLD = 100;
@@ -93,7 +42,6 @@ interface LegendCaptionProps {
   hasInfoTooltip?: boolean;
   onSelectTitle?: () => void;
   titleMenuItems?: React.ReactNode;
-  titleSize?: LegendCaptionTitleSize;
   width?: number;
 }
 
@@ -108,7 +56,6 @@ export const LegendCaption = ({
   onSelectTitle,
   width,
   titleMenuItems,
-  titleSize,
 }: LegendCaptionProps) => {
   /*
    * Optimization: lazy computing the href on title focus & mouseenter only.
@@ -137,13 +84,9 @@ export const LegendCaption = ({
   const hasTitleMenuItems =
     titleMenuItems && React.Children.count(titleMenuItems) > 1;
 
-  const sizeClasses = titleSize ? TITLE_SIZE_CLASSES[titleSize] : undefined;
-
   const titleElement = (
     <LegendLabel
       className={cx(
-        S.label,
-        sizeClasses?.label,
         DashboardS.fullscreenNormalText,
 
         // html2canvas doesn't support `text-overflow: ellipsis` (#45499) https://github.com/niklasvh/html2canvas/issues/324
@@ -172,13 +115,8 @@ export const LegendCaption = ({
   );
 
   return (
-    <Flex
-      align="center"
-      miw={0}
-      className={cx(sizeClasses?.root, className)}
-      data-testid="legend-caption"
-    >
-      {icon && <Icon {...icon} className={cx(S.labelIcon, icon.className)} />}
+    <LegendCaptionRoot className={className} data-testid="legend-caption">
+      {icon && <LegendLabelIcon {...icon} />}
       {hasTitleMenuItems ? (
         <Menu>
           <Menu.Target>{titleElement}</Menu.Target>
@@ -202,8 +140,7 @@ export const LegendCaption = ({
           <LegendDescriptionIcon
             name="info"
             className={cx(CS.hoverChild, CS.hoverChildSmooth)}
-            inCappedRow={titleSize != null}
-            mt={titleSize != null ? undefined : "3px"}
+            mt="3px"
             me="lg"
           />
         </Tooltip>
@@ -211,6 +148,6 @@ export const LegendCaption = ({
       <LegendRightContent>
         {actionButtons && <LegendActions>{actionButtons}</LegendActions>}
       </LegendRightContent>
-    </Flex>
+    </LegendCaptionRoot>
   );
 };

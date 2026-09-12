@@ -36,9 +36,9 @@
                                           :credentials  {:secret secret}}]
       (let [code (verification/set-email-otp! user-id)]
         (is (re-matches #"\d{6}" code))
-        (is (true? (verification/verify-attempt! user-id code (fresh-jti))))
+        (is (true? (boolean (verification/verify-attempt! user-id code (fresh-jti)))))
         (testing "single-use"
-          (is (false? (verification/verify-attempt! user-id code (fresh-jti)))))))))
+          (is (false? (boolean (verification/verify-attempt! user-id code (fresh-jti))))))))))
 
 (deftest successful-verify-clears-pending-email-otp-test
   (let [secret (totp/generate-secret)]
@@ -48,9 +48,9 @@
                                           :confirmed_at (t/instant)
                                           :credentials  {:secret secret}}]
       (let [email-code (verification/set-email-otp! user-id)]
-        (is (true? (verification/verify-attempt! user-id (totp/generate-code secret) (fresh-jti))))
+        (is (true? (boolean (verification/verify-attempt! user-id (totp/generate-code secret) (fresh-jti)))))
         (testing "a successful TOTP verification kills the pending emailed code for its whole TTL"
-          (is (false? (verification/verify-attempt! user-id email-code (fresh-jti)))))))))
+          (is (false? (boolean (verification/verify-attempt! user-id email-code (fresh-jti))))))))))
 
 (deftest email-otp-requires-confirmed-enrollment-test
   (mt/with-temp [:model/User {user-id :id} {}
@@ -72,7 +72,7 @@
           (t2/update! :model/AuthIdentity ai-id
                       {:credentials (assoc-in (:credentials ai) [:email_otp :exp]
                                               (dec (quot (System/currentTimeMillis) 1000)))}))
-        (is (false? (verification/verify-attempt! user-id code (fresh-jti))))))))
+        (is (false? (boolean (verification/verify-attempt! user-id code (fresh-jti)))))))))
 
 (deftest send-email-otp-e2e-test
   (mt/with-premium-features #{:multi-factor-auth}

@@ -11,8 +11,6 @@ import type {
 } from "../NotificationsAdminPage/types";
 import { trackAlertsManagementTabClicked } from "../analytics";
 
-import S from "./NotificationsTabs.module.css";
-
 type Props = {
   tab: NotificationsTab;
   allCount: TabCountState;
@@ -45,17 +43,17 @@ const TabCountBadge = ({
         data-testid="tab-count-skeleton"
       />
     ))
-    .with({ status: "loaded" }, ({ value }) =>
-      isActive ? (
-        <Badge variant="filled" size="xs" color="brand">
-          {value}
-        </Badge>
-      ) : (
-        <Badge variant="light" size="xs" color="neutral">
-          {value}
-        </Badge>
-      ),
-    )
+    .with({ status: "loaded" }, ({ value }) => (
+      <Badge
+        variant="light"
+        size="xs"
+        color="neutral"
+        bg={isActive ? "background_surface-secondary-hover" : undefined}
+        c={isActive ? "text-primary-inverse" : undefined}
+      >
+        {value}
+      </Badge>
+    ))
     .with({ status: "error" }, () => null)
     .exhaustive();
 
@@ -111,14 +109,7 @@ export const NotificationsTabs = ({
       variant="pills"
       value={tab}
       onChange={handleTabChange}
-      radius="xl"
       data-testid="notifications-admin-tabs"
-      classNames={{
-        list: S.list,
-        tab: S.tab,
-        tabLabel: S.tabLabel,
-        tabSection: S.tabSection,
-      }}
     >
       <Tabs.List>
         {tabs.map((config) => (

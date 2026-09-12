@@ -12,3 +12,7 @@ export {
   AIProviderSetup,
   LlmModelPicker,
 } from "./components/AIProviderConfigurationForm";
+export {
+  PLUGIN_METABOT_SLASH_COMMANDS,
+  type MetabotSlashCommandHandler,
+} from "./plugins";

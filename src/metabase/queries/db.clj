@@ -166,6 +166,12 @@
                         [:in :card_id card-ids]]
              :group-by [:card_id]}))
 
+(defn card-dashboards
+  "The Dashboards `card` appears in, hydrating `:in_dashboards` unless it is already present."
+  [card]
+  (or (:in_dashboards card)
+      (:in_dashboards (t2/hydrate card :in_dashboards))))
+
 (mu/defn dashboards-for-cards
   "Rows of `:card_id` plus Dashboard columns for every Dashboard each of `card-ids` appears on, directly or as a series."
   [card-ids :- [:sequential ::lib.schema.id/card]]
