@@ -1,5 +1,9 @@
 name: Lint
 
+permissions:
+  contents: read
+  pull-requests: read
+
 on:
   push:
     branches:
@@ -42,12 +46,10 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Setup frontend env
-        if: |
-          needs.files-changed.outputs.yaml == 'true' ||
-          needs.files-changed.outputs.openapi == 'true'
+        if: needs.files-changed.outputs.yaml == 'true'
         uses: ./.github/actions/prepare-frontend
 
-      # Always required by whitespace linter, also used by OpenAPI spec validation
+      # Required by the whitespace linter.
       - name: Setup backend env
         uses: ./.github/actions/prepare-backend
 
@@ -88,17 +90,53 @@ jobs:
           if: needs.files-changed.outputs.workflows == 'true'
           run: .github/scripts/check-job-timeouts.sh ${{ needs.files-changed.outputs.workflows_files }}
 
-        # Generate and Lint OpenAPI spec
-        - name: Generate OpenAPI spec
-          if: needs.files-changed.outputs.openapi == 'true'
-          run: bun run generate-openapi
+  api-contracts:
+    needs: files-changed
+    if: needs.files-changed.outputs.openapi == 'true'
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Prepare frontend environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare backend environment
+        uses: ./.github/actions/prepare-backend
+      - name: Test the contract checker
+        run: bun run api-contract-check:test
+      - name: Generate the Enterprise spec from checked-out source
+        run: bun run openapi:generate
+      - name: Validate the OpenAPI spec
+        run: bun run openapi:lint
+      - name: Generate declarations for verification
+        run: bun run openapi:types
+      - name: Compile CLJS dependencies used by frontend types
+        run: bun run build-pure:cljs
+      - name: Check frontend API contracts against the baseline
+        run: bun run api-contract-check-pure
+      - name: Upload contract coverage and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: api-contracts-report
+          path: .tmp/openapi/contracts-report.json
+          include-hidden-files: true
+          retention-days: 7
 
-      # Parallel steps run asynchronously, and explicitly waiting for a parallel step means "if" statements are ignored.
-      # Move OpenAPI validation outside the parallel block so that spec generation happens asynchronously without requiring
-      # an explicit "wait".
-      - name: Validate OpenAPI spec
-        if: needs.files-changed.outputs.openapi == 'true'
-        run: bun run lint-openapi
+  api-contracts-result:
+    needs: [files-changed, api-contracts]
+    if: always() && !cancelled()
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - name: Check contract job status
+        env:
+          FILTER_RESULT: ${{ needs.files-changed.result }}
+          CONTRACT_RESULT: ${{ needs.api-contracts.result }}
+        run: |
+          test "$FILTER_RESULT" = success
+          test "$CONTRACT_RESULT" = success || test "$CONTRACT_RESULT" = skipped
 
   i18n:
     needs: files-changed
