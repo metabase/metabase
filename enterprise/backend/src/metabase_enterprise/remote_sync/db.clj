@@ -119,13 +119,14 @@
   (t2/count model-key {:where (unsynced-instance-expr model-key model-type removal-opts)}))
 
 (mu/defn unsynced-instance-names
-  "Up to `limit` names of the rows [[unsynced-instance-count]] counts."
+  "Up to `limit` values of `name-col` from the rows [[unsynced-instance-count]] counts."
   [model-key    :- :keyword
    model-type   :- :string
+   name-col     :- :keyword
    removal-opts :- RemovalOpts
    limit        :- ms/PositiveInt]
-  (t2/select-fn-vec :name model-key {:where (unsynced-instance-expr model-key model-type removal-opts)
-                                     :limit limit}))
+  (t2/select-fn-vec name-col model-key {:where (unsynced-instance-expr model-key model-type removal-opts)
+                                        :limit limit}))
 
 (mu/defn instance
   "The instance of `model` with `id`, or nil."
@@ -278,6 +279,11 @@
   "The `:id`, `:name`, and `:collection_id` of every NativeQuerySnippet."
   []
   (t2/select [:model/NativeQuerySnippet :id :name :collection_id]))
+
+(mu/defn glossary-entries
+  "The `:id` and `:term` of every Glossary entry."
+  []
+  (t2/select [:model/Glossary :id :term]))
 
 (defn- subtree-expr
   "Matches `collections` and all of their descendants."

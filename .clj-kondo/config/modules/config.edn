@@ -3943,6 +3943,7 @@
                     :model/Document
                     :model/Field
                     :model/FieldUserSettings
+                    :model/Glossary
                     :model/Measure
                     :model/NativeQuerySnippet
                     :model/PythonLibrary
