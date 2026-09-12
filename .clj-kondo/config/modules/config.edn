@@ -970,7 +970,7 @@
 
   explorations
   {:team "UX West"
-   :api #{metabase.explorations.api metabase.explorations.core metabase.explorations.init}
+   :api #{metabase.explorations.core metabase.explorations.init}
    :uses #{analytics
            analytics.interface
            api

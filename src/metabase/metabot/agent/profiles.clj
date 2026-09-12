@@ -228,23 +228,26 @@
                     #'tools/create-alert-tool
                     #'tools/slackbot-create-dashboard-subscription-tool]})
 
-(register-profile!
- {:name            :explorations
-  :prompt-template "explorations.selmer"
-  :max-iterations  15
-  :temperature     0.3
-  :system-prompt-context #'tools.explorations/research-plan-system-context
-  :skills?         false
-  :tools           [#'tools/search-tool
-                    #'tools/read-resource-tool
-                    #'tools/list-research-metrics-tool
-                    #'tools/get-research-candidates-tool
-                    #'tools/add-research-groups-tool
-                    #'tools/remove-from-research-plan-tool
-                    #'tools/set-exploration-name-tool
-                    #'tools/list-timelines-tool
-                    #'tools/get-timeline-details-tool
-                    #'tools/select-exploration-timelines-tool]})
+(def explorations-profile
+  "The `:explorations` (Research mode) profile. Explorations are intentionally disabled on the v64 release branch,
+  so this profile is defined but not registered; do not register it here. Tests that exercise it register it with
+  [[metabase.metabot.test-util/do-with-registered-profile!]]."
+  {:name            :explorations
+   :prompt-template "explorations.selmer"
+   :max-iterations  15
+   :temperature     0.3
+   :system-prompt-context #'tools.explorations/research-plan-system-context
+   :skills?         false
+   :tools           [#'tools/search-tool
+                     #'tools/read-resource-tool
+                     #'tools/list-research-metrics-tool
+                     #'tools/get-research-candidates-tool
+                     #'tools/add-research-groups-tool
+                     #'tools/remove-from-research-plan-tool
+                     #'tools/set-exploration-name-tool
+                     #'tools/list-timelines-tool
+                     #'tools/get-timeline-details-tool
+                     #'tools/select-exploration-timelines-tool]})
 
 (defn- filter-by-capabilities
   "Filter tool vars by user capabilities.
@@ -283,6 +286,11 @@
   [profile-id]
   (and (= profile-id :nlq)
        (not (entity-retrieval/entity-retrieval-available?))))
+
+(defn profile-registered?
+  "Whether a profile with `profile-id` is registered."
+  [profile-id]
+  (contains? @*profiles profile-id))
 
 (defn get-profile
   "Get profile configuration by profile-id keyword.

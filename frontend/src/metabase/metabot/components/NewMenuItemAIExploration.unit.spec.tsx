@@ -7,15 +7,11 @@ import { Menu } from "metabase/ui";
 
 import { NewMenuItemAIExploration } from "./NewMenuItemAIExploration";
 
-function setup(
-  { hasNlqAccess } = {
-    hasNlqAccess: true,
-  },
-) {
+function setup() {
   const TestComponent = () => (
     <Menu opened>
       <Menu.Dropdown>
-        <NewMenuItemAIExploration hasNlqAccess={hasNlqAccess} />
+        <NewMenuItemAIExploration />
       </Menu.Dropdown>
     </Menu>
   );
@@ -33,21 +29,11 @@ function setup(
 }
 
 describe("NewMenuItemAIExploration", () => {
-  it("links to the ask mode question page when hasNlqAccess is true", () => {
+  it("links to the ask mode question page", () => {
     setup();
 
     expect(
       screen.getByRole("menuitem", { name: /AI exploration/ }),
     ).toHaveAttribute("href", "/question/ask");
-  });
-
-  it("should link to the research mode page when hasNlqAccess is false", () => {
-    setup({
-      hasNlqAccess: false,
-    });
-
-    expect(
-      screen.getByRole("menuitem", { name: /AI exploration/ }),
-    ).toHaveAttribute("href", "/question/research");
   });
 });
