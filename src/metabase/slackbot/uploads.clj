@@ -73,7 +73,8 @@
   (File/createTempFile "slack-upload-" (str "." filetype)))
 
 (defn- upload-file!
-  "Upload one CSV or TSV file and return its model details or a safe error message."
+  "Upload one CSV or TSV file.
+  Returns `:filename`, `:model-id`, and `:model-name` on success, or `:filename` and a safe `:error` on failure."
   [client {:keys [db schema-name table-prefix]} {:keys [name filetype url_private] :as file}]
   (if-let [size-error (file-size-error file)]
     (do
@@ -183,7 +184,9 @@
       (conj (assistant-history-message (remote-files-message remote))))))
 
 (defn handle-file-uploads!
-  "Upload attached CSV and TSV files with `client` and return Metabot `:extra-history` with any `:upload-result`, or nil when no files are attached."
+  "Handle attached CSV and TSV files with `client`.
+  Returns nil when no files are attached.
+  Otherwise returns Metabot `:extra-history` and includes `:upload-result` when file processing was attempted."
   [client files]
   (when (seq files)
     (if-let [{:keys [db schema-name] :as target} (upload-target)]
