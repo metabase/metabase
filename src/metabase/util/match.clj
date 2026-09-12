@@ -384,6 +384,21 @@
   [value & clauses]
   (match-many* value clauses))
 
+(defn- matches?* [value clause]
+  (let [;; Wrap explicit nil values.
+        value (if (nil? value) `(identity nil) value)
+        processed (process-clause [clause true] '&match)]
+    `(let [~'&match ~value
+           ~@(mapcat identity (:bindings processed))]
+       ~(expand-conditions `and (:conditions processed) true true))))
+
+(defmacro matches?
+  "Pattern matching macro for a single clause that returns `true` if the pattern matches, and `false` otherwise. See
+  `match-one` for pattern and return expression syntax."
+  {:style/indent :defn}
+  [value clause]
+  (matches?* value clause))
+
 ;; TODO - it would be ultra handy to have a `match-all` function that could handle clauses with recursive matches,
 ;; e.g. with a query like
 ;;
