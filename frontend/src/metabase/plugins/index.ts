@@ -38,7 +38,6 @@ export {
   type CollectionAuthorityLevelDisplayProps,
   type CollectionAuthorityLevelIcon,
 } from "./oss/collections";
-export { PLUGIN_CONTENT_TRANSLATION } from "./oss/content-translation";
 export {
   type LoadCustomVizPluginForDisplayResult,
   PLUGIN_CUSTOM_VIZ,
