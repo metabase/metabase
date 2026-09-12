@@ -416,7 +416,7 @@ async function handleQBInit(
     question = question.setQuery(
       Lib.withNativeQuery(
         question.query(),
-        Lib.rawNativeQuery(question.query()),
+        Lib.rawNativeQuery(question.query()) ?? "",
       ),
     );
   }

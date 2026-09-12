@@ -22,7 +22,7 @@ export function useDateFilter({
   filter,
 }: UseDateFilterProps) {
   const value = useMemo(() => {
-    return filter && getDatePickerValue(query, stageIndex, filter);
+    return filter ? getDatePickerValue(query, stageIndex, filter) : undefined;
   }, [query, stageIndex, filter]);
   const availableUnits = useMemo(() => {
     return getDatePickerUnits(query, stageIndex, column);

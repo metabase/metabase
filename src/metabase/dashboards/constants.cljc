@@ -36,10 +36,17 @@
    :heading     {:min {:width 1 :height 1} :default {:width grid-width :height 1}}
    :text        {:min {:width 1 :height 1} :default {:width 12 :height 3}}})
 
-#?(:cljs (def ^:export CARD_SIZE_DEFAULTS_JSON
+#?(:cljs (def ^{:export true
+                :schema [:map-of :string
+                         [:map
+                          [:min [:map [:width :int] [:height :int]]]
+                          [:default [:map [:width :int] [:height :int]]]]]}
+           CARD_SIZE_DEFAULTS_JSON
            "Default card sizes per visualization type as a json object suitable for the FE"
            (clj->js card-size-defaults)))
 
-#?(:cljs (def ^:export DEFAULT_CARD_SIZE_JSON
+#?(:cljs (def ^{:export true
+                :schema [:map [:width :int] [:height :int]]}
+           DEFAULT_CARD_SIZE_JSON
            "Fallback card size as a json object suitable for the FE"
            (clj->js default-card-size)))

@@ -203,7 +203,7 @@ export function suggestedJoinConditions(
   return ML.suggested_join_conditions(query, stageIndex, joinable, joinPositon);
 }
 
-export type JoinFields = ColumnMetadata[] | "all" | "none";
+export type JoinFields = Parameters<typeof ML.with_join_fields>[1];
 
 export function joinFields(join: Join): JoinFields {
   return ML.join_fields(join);
@@ -221,7 +221,10 @@ export function removeJoin(
   return ML.remove_join(query, stageIndex, joinSpec);
 }
 
-export function joinedThing(query: Query, join: Join): Joinable {
+export function joinedThing(
+  query: Query,
+  join: Join,
+): TableMetadata | CardMetadata | null {
   return ML.joined_thing(query, join);
 }
 
@@ -248,7 +251,29 @@ export function pickerInfo(
   query: Query,
   metadata: Joinable,
 ): PickerInfo | null {
-  return ML.picker_info(query, metadata);
+  const info = ML.picker_info(query, metadata);
+  return isPickerInfo(info) ? info : null;
+}
+
+function isPickerInfo(value: unknown): value is PickerInfo {
+  if (
+    typeof value !== "object" ||
+    value == null ||
+    !("databaseId" in value) ||
+    typeof value.databaseId !== "number" ||
+    !("tableId" in value)
+  ) {
+    return false;
+  }
+  if ("cardId" in value) {
+    return (
+      typeof value.tableId === "string" &&
+      typeof value.cardId === "number" &&
+      "isModel" in value &&
+      typeof value.isModel === "boolean"
+    );
+  }
+  return typeof value.tableId === "number";
 }
 
 export function joinableColumns(
