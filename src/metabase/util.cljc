@@ -922,10 +922,9 @@
   This function exists as a workaround: use it as a multimethod dispatch function for Cljc multimethods that would
   have dispatched on `type` if they were written in pure Clojure.
 
-  Returns `:dispatch-type/unknown` for a type this function does not classify; add mappings below as needed.
+  Returns `:dispatch-type/unknown` for a type it does not classify.
 
-  The keywords this returns are unrelated to one another -- there is no hierarchy. A multimethod that wants a
-  catch-all method needs `:default`; `:dispatch-type/unknown` matches only the values that fell through."
+  There is no hierarchy relating these keywords, so a catch-all method has to be `:default`."
   [x]
   (cond
     (nil? x)              :dispatch-type/nil

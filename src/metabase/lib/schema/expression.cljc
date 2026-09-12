@@ -24,7 +24,7 @@
   always have type info!"
   {:arglists '([expr])}
   (fn [x]
-    ;; When [[lib.dispatch/dispatch-value]] can't classify `x`, dispatch on its actual class instead. This is so we
+    ;; Dispatch on the concrete class when [[lib.dispatch/dispatch-value]] can't classify `x`. This is so we
     ;; can implement support for some platform-specific classes like `BigDecimal` or `java.time.OffsetDateTime`, for
     ;; use inside QP code or whatever. In the future maybe we can add support for JS-specific stuff too.
     (let [dispatch-value (lib.dispatch/dispatch-value x)]
