@@ -747,7 +747,7 @@
                                                               :headers {"anthropic-version" "2023-06-01"
                                                                         "x-api-key"        "sk-ant-byok"}}
                                                              req))
-                                                     {:body "{\"data\":[]}"})]
+                                                     {:status 200 :body {:data []}})]
             (is (= {:models []}
                    (claude/list-models {:credentials byok-credentials})))))
         (testing "Uses ai proxy when explicitly requested"
@@ -757,7 +757,7 @@
                                                               :headers {"anthropic-version"         "2023-06-01"
                                                                         "x-metabase-instance-token" "proxy-token"}}
                                                              req))
-                                                     {:body "{\"data\":[]}"})]
+                                                     {:status 200 :body {:data []}})]
             (is (= {:models []}
                    (claude/list-models {:ai-proxy? true})))))
         (testing "Does not fall back to ai proxy when the connection carries no key"
@@ -794,7 +794,7 @@
       (mt/with-dynamic-fn-redefs [http/request (fn [req]
                                                  (is (=? {:headers {"x-api-key" "sk-ant-explicit"}}
                                                          req))
-                                                 {:body "{\"data\":[]}"})]
+                                                 {:status 200 :body {:data []}})]
         (is (= {:models []}
                (claude/list-models {:credentials {:api-key "sk-ant-explicit"}})))))))
 
@@ -814,22 +814,23 @@
            #"No Anthropic API key is set"
            (claude/list-models {:credentials {:api-key ""}}))))))
 
-(deftest ^:parallel supported-model?-test
+(deftest ^:parallel supported-models-test
   (testing "whitelisted models are supported"
     (doseq [id ["claude-fable-5" "claude-opus-5" "claude-opus-4-8" "claude-sonnet-5" "claude-haiku-4-5-20251001"]]
-      (is (true? (#'claude/supported-model? {:id id})) id)))
+      (is (contains? claude/supported-models id) id)))
   (testing "non-whitelisted models are not supported"
     (doseq [id ["claude-3-5-sonnet-20241022" "claude-opus-4-0" "claude-sonnet-4-20250514"]]
-      (is (false? (#'claude/supported-model? {:id id})) id))))
+      (is (not (contains? claude/supported-models id)) id))))
 
 (deftest list-models-filters-catalog-to-whitelist-test
   (testing "list-models keeps only whitelisted models sorted by id, preserving display_name"
+    ;; the catalog request is `:as :json`, so clj-http hands the adapter an already-decoded body
     (with-redefs [http/request (fn [_]
-                                 {:body (json/encode
-                                         {:data [{:id "claude-sonnet-5"            :display_name "Claude Sonnet 5"  :created_at "2026-01-01"}
-                                                 {:id "claude-opus-4-8"            :display_name "Claude Opus 4.8"  :created_at "2026-02-01"}
-                                                 {:id "claude-3-5-sonnet-20241022" :display_name "Claude 3.5"       :created_at "2024-10-22"}
-                                                 {:id "claude-fable-5"             :display_name "Claude Fable 5"   :created_at "2026-03-01"}]})})]
+                                 {:status 200
+                                  :body   {:data [{:id "claude-sonnet-5"            :display_name "Claude Sonnet 5"  :created_at "2026-01-01"}
+                                                  {:id "claude-opus-4-8"            :display_name "Claude Opus 4.8"  :created_at "2026-02-01"}
+                                                  {:id "claude-3-5-sonnet-20241022" :display_name "Claude 3.5"       :created_at "2024-10-22"}
+                                                  {:id "claude-fable-5"             :display_name "Claude Fable 5"   :created_at "2026-03-01"}]}})]
       (is (= [{:id "claude-fable-5" :display_name "Claude Fable 5"}
               {:id "claude-opus-4-8" :display_name "Claude Opus 4.8"}
               {:id "claude-sonnet-5" :display_name "Claude Sonnet 5"}]
