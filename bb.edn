@@ -261,6 +261,14 @@
    :requires [[mage.modules]]
    :task (task! (mage.modules/cli-print-affected-modules (:arguments parsed)))}
 
+  update-codeowners
+  {:doc "Regenerate the module-ownership block in .github/CODEOWNERS from module :team + team.json :assignee."
+   :examples [["./bin/mage update-codeowners" "Rewrite the generated block in .github/CODEOWNERS"]
+              ["./bin/mage update-codeowners --check" "Exit non-zero if the block is out of date (for CI)"]]
+   :options [[nil "--check" "Exit non-zero if CODEOWNERS is out of date instead of rewriting it"]]
+   :requires [[mage.modules]]
+   :task (task! (mage.modules/cli-update-codeowners (cli/parse! (current-task))))}
+
   modules-tree
   {:doc "Print the module hierarchy, nesting enterprise extensions under their OSS module"
    :examples [["./bin/mage modules-tree" "Print the full tree; * marks a custom :ns-prefix"]
