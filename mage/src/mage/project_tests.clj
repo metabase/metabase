@@ -9,6 +9,7 @@
 
 (def ^:private module-check-namespaces
   '[dev.modules-config-test
+    metabase.core.module-cycle-ratchet-test
     metabase.core.modules-test])
 
 (def ^:private ratchet-test-namespaces

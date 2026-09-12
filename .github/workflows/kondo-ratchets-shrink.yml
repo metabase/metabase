@@ -1,10 +1,13 @@
 name: Shrink ratchets
 
-# Lowers the ratchet budgets to match master and delivers the result through one
-# automation PR, because the rulesets require a pull request for every change to master. The PR is
+# Lowers the ratchet budgets, and records the module cycle clusters, to match master, and delivers both
+# through one automation PR, because the rulesets require a pull request for every change to master. The PR is
 # approved by github-actions[bot] and merges itself once the ratchet check passes. A merge of that PR
 # touches only ratchet files, which match `.clj-kondo/**` below, so it triggers one more run that finds
 # nothing to lower and stops: a single no-op, not a loop.
+#
+# The cluster record is a ceiling like the budgets: `./bin/mage fix-module-cycles` records a cluster
+# shrinking, splitting or dissolving, and refuses to widen one, so this run can loosen nothing.
 
 on:
   push:
@@ -34,6 +37,7 @@ env:
   AUTOMATION_BRANCH: automation/shrink-ratchets
   KONDO_RATCHETS_FILE: .clj-kondo/ratchets.edn
   MODULE_RATCHETS_FILE: .clj-kondo/config/modules/ratchets.edn
+  CYCLE_CLUSTERS_FILE: .clj-kondo/config/modules/cycle-clusters.edn
 
 jobs:
   shrink:
@@ -41,7 +45,8 @@ jobs:
     # A fork with Actions enabled has no automation token, so this would only ever fail at the push.
     if: github.repository == 'metabase/metabase'
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 10
+    # The module-cycle scan parses every backend source file on a JVM.
+    timeout-minutes: 25
     steps:
       # `ref: master` checks out the branch head at checkout time rather than the pushed commit, so a run
       # that queued behind another one starts from the newest master it can see.
@@ -52,16 +57,24 @@ jobs:
           # get the force-push rejected. Nothing here needs it: the repo is public, so the fetch of the
           # automation branch is anonymous, and every gh call carries its own token.
           persist-credentials: false
-      - name: Set up Java for cold dependency resolution
-        uses: actions/setup-java@v5.2.0
-        with:
-          distribution: temurin
-          java-version: 25
+      # Java for babashka's cold resolution of the pinned kondo jar; the Clojure CLI and the M2 cache for the
+      # module-cycle scan.
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
       - name: Shrink ratchets
         run: |
           cp "$KONDO_RATCHETS_FILE" "$RUNNER_TEMP/kondo-ratchets-before.edn"
           cp "$MODULE_RATCHETS_FILE" "$RUNNER_TEMP/module-ratchets-before.edn"
           ./bin/mage kondo-ratchets-shrink
+      # The fixer refuses a cluster that grew on master -- a semantic conflict between two branches that each
+      # passed -- and a split whose halves it cannot name. The budgets are unrelated, so they still ship; the
+      # last step turns the run red so the refusal stays visible.
+      - name: Record module cycles
+        id: cycles
+        continue-on-error: true
+        run: |
+          cp "$CYCLE_CLUSTERS_FILE" "$RUNNER_TEMP/cycle-clusters-before.edn"
+          ./bin/mage fix-module-cycles
       # Two independent outputs: `push` says the branch needs a new commit, `pr` names the open automation
       # PR if there is one. Approval and auto-merge key on `pr` alone, so a run that failed after opening
       # the PR is repaired by the next run instead of leaving the PR stranded.
@@ -79,7 +92,7 @@ jobs:
             --jq '.[0].number // empty')
           echo "pr=$open_pr" >> "$GITHUB_OUTPUT"
 
-          if git diff --quiet -- "$KONDO_RATCHETS_FILE" "$MODULE_RATCHETS_FILE"; then
+          if git diff --quiet -- "$KONDO_RATCHETS_FILE" "$MODULE_RATCHETS_FILE" "$CYCLE_CLUSTERS_FILE"; then
             echo "Ratchet budgets already match master $(git rev-parse --short HEAD)"
             [ -z "$open_pr" ] || echo "The open automation PR #$open_pr is re-approved below"
             echo "push=false" >> "$GITHUB_OUTPUT"
@@ -95,7 +108,7 @@ jobs:
           # lazily, so a pending UNKNOWN reads as not conflicted and the next run settles it.
           if [ -n "$open_pr" ] \
              && git fetch --quiet --depth=1 origin "refs/heads/$AUTOMATION_BRANCH" 2>/dev/null \
-             && git diff --quiet FETCH_HEAD -- "$KONDO_RATCHETS_FILE" "$MODULE_RATCHETS_FILE" \
+             && git diff --quiet FETCH_HEAD -- "$KONDO_RATCHETS_FILE" "$MODULE_RATCHETS_FILE" "$CYCLE_CLUSTERS_FILE" \
              && [ "$(gh pr view "$open_pr" --repo "$GITHUB_REPOSITORY" \
                        --json mergeable --jq .mergeable)" != CONFLICTING ]; then
             echo "The automation PR #$open_pr already carries this result"
@@ -104,7 +117,7 @@ jobs:
             exit 0
           fi
 
-          git diff --stat -- "$KONDO_RATCHETS_FILE" "$MODULE_RATCHETS_FILE"
+          git diff --stat -- "$KONDO_RATCHETS_FILE" "$MODULE_RATCHETS_FILE" "$CYCLE_CLUSTERS_FILE"
           echo "push=true" >> "$GITHUB_OUTPUT"
       - name: Update the automation PR
         id: deliver
@@ -112,10 +125,11 @@ jobs:
         # The automation user's token pushes the branch and owns the PR: a branch pushed with
         # GITHUB_TOKEN starts no pull_request workflows, so the PR would never get its checks. The commit
         # identity is the docs generator's, which merges with one approval under the unattributed-changes
-        # rule. Nothing raises a budget.
+        # rule. Nothing raises a budget, and nothing widens a cluster.
         env:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           OPEN_PR: ${{ steps.compare.outputs.pr }}
+          CYCLES_OUTCOME: ${{ steps.cycles.outcome }}
         run: |
           ./bin/mage -kondo-ratchets-pr-body \
             "$RUNNER_TEMP/kondo-ratchets-before.edn" \
@@ -124,10 +138,16 @@ jobs:
             "$MODULE_RATCHETS_FILE" \
             "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
             > "$RUNNER_TEMP/ratchets-pr-body.md"
+          if [ "$CYCLES_OUTCOME" = success ]; then
+            ./bin/mage -module-cycles-pr-body \
+              "$RUNNER_TEMP/cycle-clusters-before.edn" \
+              "$CYCLE_CLUSTERS_FILE" \
+              >> "$RUNNER_TEMP/ratchets-pr-body.md"
+          fi
 
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git add -- "$KONDO_RATCHETS_FILE" "$MODULE_RATCHETS_FILE"
+          git add -- "$KONDO_RATCHETS_FILE" "$MODULE_RATCHETS_FILE" "$CYCLE_CLUSTERS_FILE"
           git commit --quiet -m "Tighten ratchets"
           git push --force --quiet \
             "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
@@ -168,3 +188,8 @@ jobs:
           PR_NUMBER: ${{ steps.deliver.outputs.pr || steps.compare.outputs.pr }}
           HEAD_SHA: ${{ steps.deliver.outputs.head || steps.compare.outputs.head }}
         run: gh pr merge --squash --auto --match-head-commit "$HEAD_SHA" "$PR_NUMBER"
+      - name: Fail on the module-cycle scan
+        if: steps.cycles.outcome == 'failure'
+        run: |
+          echo "::error::./bin/mage fix-module-cycles failed; see the Record module cycles step. The budgets were still delivered."
+          exit 1
