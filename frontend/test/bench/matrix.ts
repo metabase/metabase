@@ -34,8 +34,10 @@ interface Timings {
 /** What one `measure.ts` series prints. */
 interface Series {
   runs: number;
+  locale: string;
   scripts: number;
   scriptKb: number;
+  totalKb: number;
   median: Timings;
   secondLoad: Timings | null;
   steady: Timings | null;
@@ -187,8 +189,10 @@ function spreadPercent(values: number[]) {
         coldLargestPaintMs: cold.median.largestContentfulPaintMs,
         coldPageReadyMs: cold.median.pageReadyMs,
         warmPageReadyMs: required(warm.secondLoad, "secondLoad").pageReadyMs,
+        locale: cold.locale,
         scripts: cold.scripts,
         scriptKb: cold.scriptKb,
+        totalKb: cold.totalKb,
         runs: cold.runs,
       });
 
