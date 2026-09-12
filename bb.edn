@@ -338,6 +338,25 @@
    :requires [[mage.kondo-ratchet]]
    :task (task! (mage.kondo-ratchet/insert-ignores (:arguments parsed)))}
 
+  security-lint
+  {:doc "Run the backend security rules over Clojure source and report findings."
+   :examples [["./bin/mage security-lint" "Scan src and enterprise/backend/src"]
+              ["./bin/mage security-lint src/metabase/llm" "Scan only the given paths"]
+              ["./bin/mage security-lint --sarif security.sarif" "Also write a SARIF report"]
+              ["./bin/mage security-lint --warn-only" "Report findings but always exit 0"]
+              ["./bin/mage security-lint --taint any-local" "Audit mode: treat every local binding as attacker-influenced"]
+              ["./bin/mage security-lint --branch" "Only findings in files this branch changed -- what a PR check runs"]
+              ["./bin/mage security-lint --uncommitted" "Only findings in what you have not committed yet"]]
+   ;; Runs `clojure -X:dev dev.security-lint/cli!` in a fresh JVM. Exits 1 when an :error finding is present.
+   :options [["-s" "--sarif FILE" "Write a SARIF 2.1.0 report to FILE"]
+             ["-w" "--warn-only" "Report findings but exit 0 regardless"]
+             ["-t" "--taint POLICY" "Taint source policy: call-graph (default) or any-local (audit everything)"]
+             ["-b" "--branch" "Report only findings in files this branch changed vs origin/master (the whole tree is still analyzed; a SARIF report always covers it)"]
+             ["-B" "--base REF" "The ref --branch diffs against (three-dot, so its merge-base with HEAD), default origin/master; CI passes HEAD^1 on a pull request's merge commit"]
+             ["-u" "--uncommitted" "Report only findings in uncommitted and untracked files"]]
+   :requires [[mage.security-lint]]
+   :task (task! (mage.security-lint/cli-scan (cli/parse! (current-task))))}
+
   ls
   {:doc "List all mage public and private tasks"
    :examples [["./bin/mage ls" "List all tasks"]]

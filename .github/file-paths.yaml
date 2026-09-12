@@ -252,6 +252,13 @@ yaml:
   - "**/*.yml"
   - "**/*.yaml"
 
+metabase_security_lint:
+  - *backend_sources
+  - "dev/src/dev/security_lint/**"
+  - "dev/src/dev/security_lint.clj"
+  - "mage/src/mage/security_lint.clj"
+  - ".github/workflows/metabase-security-lint.yml"
+
 codeql:
   - ".github/workflows/lint.yml"
   - "frontend/src/**"
