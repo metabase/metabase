@@ -1,13 +1,19 @@
-import { type KeyboardEvent, useMemo, useRef, useState } from "react";
+import { type KeyboardEvent, useEffect, useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
-import { ListSearchField } from "metabase/common/components/ListSearchField";
 import {
   HoverParent,
   QueryColumnInfoIcon,
 } from "metabase/common/components/MetadataInfo/QueryColumnInfoIcon";
 import { useTranslateContent } from "metabase/content-translation/hooks";
-import { Checkbox, DelayGroup, Text } from "metabase/ui";
+import {
+  Checkbox,
+  Combobox,
+  DelayGroup,
+  Icon,
+  Input,
+  useCombobox,
+} from "metabase/ui";
 import { isTouchDevice } from "metabase/utils/browser";
 import * as Lib from "metabase-lib";
 
@@ -50,19 +56,23 @@ export const FieldPicker = ({
   ...props
 }: FieldPickerProps) => {
   const tc = useTranslateContent();
-  const listRef = useRef<HTMLUListElement>(null);
   const [searchText, setSearchText] = useState("");
+  // The options are always visible, so the store stays "open": arrow keys
+  // navigate straight away and Escape can't collapse the list.
+  const combobox = useCombobox({ opened: true });
 
   const items = useMemo(() => {
     const items = columns.map((column) => ({
       column,
       columnInfo: Lib.displayInfo(query, stageIndex, column),
     }));
-    return items.map((item) => ({
+    return items.map((item, index) => ({
       ...item,
+      // Display names aren't guaranteed unique, so identify rows by position.
+      id: String(index),
       title: tc(item.columnInfo.displayName),
       isSelected: isColumnSelected(item, items),
-      isDisabled: isColumnDisabled?.(item, items),
+      isDisabled: isColumnDisabled?.(item, items) ?? false,
     }));
   }, [query, stageIndex, columns, isColumnSelected, isColumnDisabled, tc]);
 
@@ -82,6 +92,12 @@ export const FieldPicker = ({
     [items, isSearching, normalizedSearchText],
   );
 
+  const { selectFirstOption } = combobox;
+  // Passive so it runs after Combobox.Options has registered its list id.
+  useEffect(() => {
+    selectFirstOption();
+  }, [selectFirstOption, normalizedSearchText]);
+
   const isAll = items.every((item) => item.isSelected);
   const isNone = items.every((item) => !item.isSelected);
 
@@ -93,13 +109,15 @@ export const FieldPicker = ({
     }
   };
 
+  const handleOptionSubmit = (id: string) => {
+    const item = items.find((item) => item.id === id);
+    if (item && !item.isDisabled) {
+      onToggle(item.column, !item.isSelected);
+    }
+  };
+
   const handleSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "ArrowDown") {
-      event.preventDefault();
-      listRef.current
-        ?.querySelector<HTMLInputElement>("input[type=checkbox]:not(:disabled)")
-        ?.focus();
-    } else if (event.key === "Escape" && searchText.length > 0) {
+    if (event.key === "Escape" && searchText.length > 0) {
       // Clear the query first; a second Escape reaches the popover and closes it.
       event.preventDefault();
       event.stopPropagation();
@@ -108,78 +126,101 @@ export const FieldPicker = ({
   };
 
   return (
-    <div
-      role="group"
-      aria-label={t`Columns`}
-      data-testid={props["data-testid"]}
-    >
-      {isSearchable && (
-        <div className={S.SearchContainer}>
-          <ListSearchField
-            aria-label={t`Search columns`}
-            placeholder={t`Search columns…`}
-            value={searchText}
-            autoFocus={!isTouchDevice()}
-            onChange={(event) => setSearchText(event.target.value)}
-            onKeyDown={handleSearchKeyDown}
-            onResetClick={() => setSearchText("")}
-          />
-          <div role="status" aria-live="polite" className={S.VisuallyHidden}>
-            {isSearching &&
-              ngettext(
-                msgid`${visibleItems.length} column found`,
-                `${visibleItems.length} columns found`,
-                visibleItems.length,
-              )}
+    <div data-testid={props["data-testid"]}>
+      <Combobox
+        store={combobox}
+        onOptionSubmit={handleOptionSubmit}
+        classNames={{
+          search: S.Search,
+          options: S.Options,
+          option: S.Option,
+          empty: S.Empty,
+        }}
+      >
+        {isSearchable && (
+          <div className={S.SearchContainer}>
+            <Combobox.Search
+              aria-label={t`Search columns`}
+              placeholder={t`Search columns…`}
+              value={searchText}
+              autoFocus={!isTouchDevice()}
+              leftSection={<Icon name="search" />}
+              rightSectionPointerEvents="all"
+              rightSection={
+                searchText.length > 0 ? (
+                  <Input.ClearButton
+                    aria-label={t`Clear search`}
+                    c="text-secondary"
+                    onClick={() => setSearchText("")}
+                  />
+                ) : null
+              }
+              onChange={(event) => setSearchText(event.currentTarget.value)}
+              onKeyDown={handleSearchKeyDown}
+            />
+            <div role="status" aria-live="polite" className={S.VisuallyHidden}>
+              {isSearching &&
+                ngettext(
+                  msgid`${visibleItems.length} column found`,
+                  `${visibleItems.length} columns found`,
+                  visibleItems.length,
+                )}
+            </div>
           </div>
-        </div>
-      )}
-      <ul ref={listRef} className={S.ItemList}>
-        {!isSearching && (
-          <li className={S.ToggleItem}>
-            <HoverParent as="label" className={S.Label}>
-              <Checkbox
-                variant="stacked"
-                checked={isAll}
-                indeterminate={!isAll && !isNone}
-                onChange={handleLabelToggle}
-              />
-              <div className={S.ItemTitle}>{t`Select all`}</div>
-            </HoverParent>
-          </li>
         )}
-        <DelayGroup>
-          {visibleItems.map((item) => (
-            <li key={item.columnInfo.longDisplayName}>
-              <HoverParent className={S.Label} as="label">
+        <div className={S.List}>
+          {!isSearching && (
+            <label className={S.ToggleRow}>
+              <Combobox.EventsTarget withAriaAttributes={false}>
                 <Checkbox
-                  checked={item.isSelected}
+                  variant="stacked"
+                  checked={isAll}
+                  indeterminate={!isAll && !isNone}
+                  onChange={handleLabelToggle}
+                />
+              </Combobox.EventsTarget>
+              <div className={S.ItemTitle}>{t`Select all`}</div>
+            </label>
+          )}
+          <Combobox.Options aria-label={t`Columns`} aria-multiselectable="true">
+            <DelayGroup>
+              {visibleItems.map((item) => (
+                <Combobox.Option
+                  key={item.id}
+                  value={item.id}
                   disabled={item.isDisabled}
-                  onChange={(event) =>
-                    onToggle(item.column, event.target.checked)
-                  }
-                />
-                <QueryColumnInfoIcon
-                  className={S.ItemIcon}
-                  query={query}
-                  stageIndex={stageIndex}
-                  column={item.column}
-                  position="top-start"
-                  size={16}
-                />
-                <div className={S.ItemTitle}>{item.title}</div>
-              </HoverParent>
-            </li>
-          ))}
-        </DelayGroup>
-        {isSearching && visibleItems.length === 0 && (
-          <li>
-            <Text c="text-secondary" className={S.EmptyState}>
-              {t`No columns found`}
-            </Text>
-          </li>
-        )}
-      </ul>
+                  aria-label={item.title}
+                  aria-checked={item.isSelected}
+                  aria-disabled={item.isDisabled || undefined}
+                >
+                  <HoverParent className={S.Row}>
+                    <Checkbox
+                      className={S.RowCheckbox}
+                      checked={item.isSelected}
+                      disabled={item.isDisabled}
+                      readOnly
+                      aria-hidden
+                      tabIndex={-1}
+                    />
+                    <QueryColumnInfoIcon
+                      className={S.ItemIcon}
+                      query={query}
+                      stageIndex={stageIndex}
+                      column={item.column}
+                      position="top-start"
+                      size={16}
+                    />
+                    <div className={S.ItemTitle}>{item.title}</div>
+                  </HoverParent>
+                </Combobox.Option>
+              ))}
+            </DelayGroup>
+            {isSearching && visibleItems.length === 0 && (
+              <Combobox.Empty>{t`No columns found`}</Combobox.Empty>
+            )}
+          </Combobox.Options>
+        </div>
+      </Combobox>
     </div>
   );
 };

@@ -5,6 +5,20 @@
   z-index: 1;
   padding: 0.5em 0.5em 0;
   background: var(--mb-color-background_surface-primary);
+
+  /* Mantine styles Combobox.Search as a dropdown header (negative margins, no
+     side borders, raw palette colors); restore the regular input look. */
+  .Search {
+    margin: 0;
+    width: 100%;
+    border: 1px solid var(--mb-color-border-neutral);
+    border-radius: var(--default-border-radius);
+    background-color: var(--mb-color-background_surface-primary);
+
+    &:focus {
+      border-color: var(--mb-color-core-brand);
+    }
+  }
 }
 
 .VisuallyHidden {
@@ -19,6 +33,64 @@
   border: 0;
 }
 
+/* Nested under .List so these win over the theme's Combobox classes at equal specificity. */
+.List {
+  padding: 0.5em;
+
+  .Options {
+    padding: 0;
+  }
+
+  .Option {
+    padding: 0;
+    border-radius: 6px;
+    color: inherit;
+
+    &:hover,
+    &[data-combobox-selected="true"] {
+      color: inherit;
+      background: var(--mb-color-background_page-tertiary);
+    }
+
+    &[data-combobox-disabled="true"] {
+      cursor: default;
+    }
+  }
+
+  .Empty {
+    padding: 0.5em;
+  }
+}
+
+.Row {
+  display: flex;
+  align-items: center;
+  padding: 0 0.5em;
+  padding-right: 0;
+  min-height: 2.25rem;
+}
+
+/* The checkbox is decorative; clicks must fall through to the option row. */
+.RowCheckbox {
+  pointer-events: none;
+}
+
+.ToggleRow {
+  composes: Row;
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+  margin-bottom: 0.5em;
+  border-radius: 6px;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--mb-color-background_page-tertiary);
+  }
+
+  .ItemTitle {
+    margin-left: 1em;
+  }
+}
+
 .ItemTitle {
   color: var(--mb-color-text-secondary);
   min-width: 10ch;
@@ -28,35 +100,4 @@
   margin: 0 0.5em;
   margin-left: 0.75em;
   color: var(--mb-color-text-disabled);
-}
-
-.ItemList {
-  padding: 0.5em;
-}
-
-.Label {
-  display: flex;
-  align-items: center;
-  padding: 0 0.5em;
-  padding-right: 0;
-  border-radius: 6px;
-  cursor: pointer;
-  min-height: 2.25rem;
-
-  &:hover {
-    background: var(--mb-color-background_page-tertiary);
-  }
-}
-
-.ToggleItem {
-  border-bottom: 1px solid var(--mb-color-border-neutral);
-  margin-bottom: 0.5em;
-
-  .ItemTitle {
-    margin-left: 1em;
-  }
-}
-
-.EmptyState {
-  padding: 0.5em;
 }
