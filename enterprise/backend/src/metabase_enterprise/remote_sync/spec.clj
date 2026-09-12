@@ -73,7 +73,7 @@
    - :export-scope   - Export scope for query-export-roots:
                        :root-collections - Query root-level remote-synced + namespace collections (Collection)
                        :root-only        - Query root instances with collection_id = nil (Transform)
-                       :all              - Query all instances (TransformTag, PythonLibrary, NativeQuerySnippet)
+                       :all              - Query all instances (TransformTag, PythonLibrary, NativeQuerySnippet, Glossary)
                        nil/:derived      - No root query; derived from other models via serdes/descendants
    - :enabled?       - true, or setting keyword (e.g., :remote-sync-transforms, :library-synced).
                        When :library-synced, uses the library-is-remote-synced? setting."
@@ -144,6 +144,20 @@
                                       :model_collection_id :collection_id}}
     :removal        {:statuses #{"removed" "delete"}}  ; no scope-key = global deletion
     :export-scope   :all  ; export all snippets
+    :enabled?       :library-synced}
+
+   :model/Glossary
+   {:model-type     "Glossary"
+    :model-key      :model/Glossary
+    :identity       :entity-id
+    :events         {:prefix :event/glossary
+                     :types  [:create :update :delete]}
+    :eligibility    {:type :library-synced}  ; sync every glossary entry when Library is remote-synced
+    :archived-key   nil
+    :tracking       {:select-fields  [:term]
+                     :field-mappings {:model_name :term}}
+    :removal        {:statuses #{"removed" "delete"}}  ; no scope-key = global deletion
+    :export-scope   :all  ; export all glossary entries
     :enabled?       :library-synced}
 
    :model/Timeline
@@ -442,6 +456,14 @@
     :library-synced         "Snippets"
     (str/capitalize (name setting-kw))))
 
+(defn- setting->content-label
+  "Describes the content a feature setting governs, for conflict messages. The Library groups several models
+   under one category, so name them rather than the category."
+  [setting-kw]
+  (case setting-kw
+    :library-synced "Library content (snippets, glossary)"
+    (setting->category setting-kw)))
+
 (defn- setting->namespace
   "Converts a setting keyword to the corresponding collection namespace keyword, or nil."
   [setting-kw]
@@ -533,11 +555,11 @@
                           (and feature-namespace
                                (contains? import-namespace-collections (name feature-namespace))))
                 :when (has-unsynced-entities-for-feature? specs-for-feature)
-                :let [category (setting->category setting-kw)]]
+                :let [category (setting->category setting-kw)
+                      label    (setting->content-label setting-kw)]]
             {:type     (keyword (str (u/lower-case-en category) "-conflict"))
              :category category
-             :message  (format "Import contains %s but local instance has unsynced %s"
-                               category category)}))))
+             :message  (format "Import contains %s but local instance has unsynced %s" label label)}))))
 
 (defn check-namespace-collection-conflicts
   "Checks if import contains namespace collections (transforms/snippets) that conflict with local
@@ -683,14 +705,16 @@
                         ;; unsynced rows the import would delete. Done in SQL so we never materialize a whole
                         ;; collection's worth of rows just to count/sample them.
                         opts         (removal-opts spec synced-collection-ids imported-ids)
-                        n            (remote-sync.db/unsynced-instance-count model-key model-type opts)]
+                        n            (remote-sync.db/unsynced-instance-count model-key model-type opts)
+                        name-col     (get-in spec [:tracking :field-mappings :model_name])]
                   :when (pos? n)]
               {:type     (keyword (str (u/lower-case-en model-type) "-deletion-conflict"))
                :category model-type
                :model    model-type
                :count    n
                ;; A bounded sample of names for the UI; :count above is the true total.
-               :names    (remote-sync.db/unsynced-instance-names model-key model-type opts max-conflict-names)
+               :names    (remote-sync.db/unsynced-instance-names model-key model-type name-col opts
+                                                                 max-conflict-names)
                :message  (format "Import would delete %d unsynced local %s %s"
                                  n model-type (if (= 1 n) "entity" "entities"))})))))
 

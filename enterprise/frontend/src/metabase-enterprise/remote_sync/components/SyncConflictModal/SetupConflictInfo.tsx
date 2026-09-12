@@ -33,7 +33,7 @@ const useConflictedEntityNames = () => {
     const names = [];
     const conflictNameMap: Record<string, string> = {
       transforms: t`Transforms`,
-      snippets: t`Snippets`,
+      snippets: t`Snippets and glossary`,
       library: t`Library`,
     };
 
@@ -44,7 +44,7 @@ const useConflictedEntityNames = () => {
     }
 
     if (!names?.length) {
-      return t`Library, Transforms and Snippets.`;
+      return t`Library, Transforms, Snippets and Glossary.`;
     }
 
     return names.join(", ");

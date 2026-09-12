@@ -28,9 +28,7 @@
     ;; serdes path nests under that entity, so it has no generated entity_id.
     :model/OsiAiContext
     ;; Settings have human-selected unique names.
-    :model/Setting
-    ;; Glossary items have unique `term` key
-    :model/Glossary})
+    :model/Setting})
 
 (def ^:private entities-not-exported
   "Entities that are either:

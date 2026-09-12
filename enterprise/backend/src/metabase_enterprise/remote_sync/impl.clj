@@ -1019,7 +1019,7 @@
   []
   (cond-> #{}
     (not (settings/remote-sync-transforms))    (into ["transforms" "python-libraries" "python_libraries"])
-    (not (settings/library-is-remote-synced?)) (conj "snippets")))
+    (not (settings/library-is-remote-synced?)) (into ["snippets" "glossary"])))
 
 (defn- stage-write [commit opts [row entity]]
   (let [path    (or (:file_path row) (source/entity->path opts entity))

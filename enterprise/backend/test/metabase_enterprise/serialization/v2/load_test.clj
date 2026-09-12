@@ -2939,3 +2939,52 @@
                     (is (= (:id data-dest) (:id data-after))))
                   (testing "permissions are unchanged after import"
                     (is (= perms-before perms-after))))))))))))
+
+(deftest glossary-round-trip-test
+  (let [serialized (atom nil)
+        eid        (atom nil)]
+    (ts/with-dbs [source-db dest-db]
+      (ts/with-db source-db
+        (let [entry (ts/create! :model/Glossary :term "ARR" :definition "Annual recurring revenue")]
+          (reset! eid (:entity_id entry))
+          (reset! serialized (into [] (serdes.extract/extract {:no-settings true})))))
+      (testing "the export is keyed on entity_id"
+        (is (contains? (ids-by-model @serialized "Glossary") @eid)))
+      (testing "importing into an empty app db reproduces the term, definition and entity_id"
+        (ts/with-db dest-db
+          (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+          (is (=? [{:term "ARR" :definition "Annual recurring revenue" :entity_id @eid}]
+                  (t2/select :model/Glossary)))))
+      (testing "importing again updates in place rather than duplicating"
+        (ts/with-db dest-db
+          (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+          (is (= 1 (t2/count :model/Glossary))))))))
+
+(deftest glossary-import-matches-existing-term-test
+  (let [glossary-file (fn [id entity]
+                        (merge {:serdes/meta [{:model "Glossary" :id id}]
+                                :term        "ARR"
+                                :definition  "Annual recurring revenue (imported)"
+                                :creator_id  "crowberto@metabase.com"
+                                :created_at  "2026-09-11T00:00:00Z"
+                                :updated_at  "2026-09-11T00:00:00Z"}
+                               entity))]
+    (testing "a term-keyed file exported before entity_id existed updates the same-term row and keeps its entity_id"
+      (mt/with-empty-h2-app-db!
+        (let [{local-eid :entity_id} (ts/create! :model/Glossary :term "ARR" :definition "local")]
+          (serdes.load/load-metabase! (ingestion-in-memory [(glossary-file "ARR" nil)]))
+          (is (=? [{:term "ARR" :definition "Annual recurring revenue (imported)" :entity_id local-eid}]
+                  (t2/select :model/Glossary))))))
+    (testing "a file whose term exists locally under another entity_id updates that row and adopts the file's entity_id"
+      (mt/with-empty-h2-app-db!
+        (let [file-eid "glossaryfileeid000001"]
+          (ts/create! :model/Glossary :term "ARR" :definition "local")
+          (serdes.load/load-metabase! (ingestion-in-memory [(glossary-file file-eid {:entity_id file-eid})]))
+          (is (=? [{:term "ARR" :definition "Annual recurring revenue (imported)" :entity_id file-eid}]
+                  (t2/select :model/Glossary))))))
+    (testing "a file whose entity_id and term are both new inserts a row"
+      (mt/with-empty-h2-app-db!
+        (let [file-eid "glossaryfileeid000002"]
+          (serdes.load/load-metabase! (ingestion-in-memory [(glossary-file file-eid {:entity_id file-eid})]))
+          (is (=? [{:term "ARR" :entity_id file-eid}]
+                  (t2/select :model/Glossary))))))))

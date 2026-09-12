@@ -254,13 +254,13 @@
 (defn conflict-sync-task!
   "Marks a sync task as having conflicts.
 
-  Takes the ID of the sync task and a collection of conflicts (vector of strings).
-  Conflicts are automatically serialized to JSON via the model transform.
+  Takes the ID of the sync task and a collection of conflict category names (`import!` reports them as a
+  set). Conflicts are automatically serialized to JSON via the model transform.
 
   Returns the number of rows updated (should be 1 if successful)."
   [task-id conflicts]
   (remote-sync.db/end-task! task-id
-                            {:conflicts conflicts}))
+                            {:conflicts (vec conflicts)}))
 
 ;;; ------------------------------------------- Hydration -------------------------------------------
 
