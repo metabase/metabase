@@ -434,7 +434,7 @@
                                                                     :type "library" :is-remote-synced true)
                              "collections/main/test_coll/test_coll.yaml"
                              (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection")
-                             "glossary/test-glossary-xxxxxxx_arr.yaml"
+                             "glossary/arr.yaml"
                              (test-helpers/generate-glossary-yaml eid "ARR" "Annual recurring revenue")}}]
           (is (= "synced"
                  (import-then-noop-status!

@@ -12,11 +12,11 @@
     :content (str "serdes/meta:\n- model: Card\n  id: " id "\n  label: " name "\nname: " name "\n" extra)}))
 
 (defn- glossary-entry
-  "Builds a `{:path :content}` spec for a Glossary entry with entity `id`, `term` (which drives the path) and an
-  optional `definition` to vary the body."
+  "Builds a `{:path :content}` spec for a Glossary entry with entity `id`, `term` (the file name, as the export
+  slugs it) and an optional `definition` to vary the body."
   ([id term] (glossary-entry id term "def"))
   ([id term definition]
-   {:path    (str "glossary/" id "_" term ".yaml")
+   {:path    (str "glossary/" term ".yaml")
     :content (str "serdes/meta:\n- model: Glossary\n  id: " id "\n  label: " term "\nentity_id: " id
                   "\nterm: " term "\ndefinition: " definition "\n")}))
 

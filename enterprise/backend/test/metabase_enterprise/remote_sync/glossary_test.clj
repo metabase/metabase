@@ -181,7 +181,7 @@
 
 ;;; ------------------------------------------- Export Tests -------------------------------------------
 
-(defn- files [mock] (get @(:files-atom mock) "main"))
+(defn- repo-files [mock] (get @(:files-atom mock) "main"))
 
 (defn- new-task! [sync-task-type]
   (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type sync-task-type :initiated_by (mt/user->id :rasta)}))
@@ -196,7 +196,7 @@
           (when (and (str/starts-with? path "glossary/")
                      (= entity-id (:entity_id (yaml/parse-string content))))
             path))
-        (files mock)))
+        (repo-files mock)))
 
 (defn- run-export!
   "Exports to `mock` under a fresh task and returns `[task-id result]`. Earlier tasks are dropped first: the mock
@@ -239,17 +239,15 @@
   (collections.tu/with-library-not-synced
     (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-enabled true]
       (mt/with-model-cleanup [:model/RemoteSyncTask]
-        (mt/with-temp [:model/Collection {coll-id :id} {:name "Synced" :is_remote_synced true :location "/"}]
-          (t2/insert! :model/RemoteSyncObject {:model_type "Collection" :model_id coll-id :model_name "Synced"
-                                               :status "synced" :status_changed_at (t/offset-date-time)})
-          (let [stale-path "glossary/stale-glossary-xxxxxxx_arr.yaml"
-                mock       (test-helpers/create-mock-source
-                            :initial-files {"main" {stale-path (test-helpers/generate-glossary-yaml
-                                                                "stale-glossary-xxxxxxx" "ARR" "Annual recurring revenue")}})
-                [_ result] (run-export! mock "remove stale glossary")]
-            (is (= :success (:status result)))
-            (is (nil? (get (files mock) stale-path))
-                "a glossary file left behind after the Library was un-synced is deleted on export")))))))
+        ;; No dirty rows: the export reaches the incremental path with an empty plan and only the stale deletes.
+        (let [stale-path "glossary/arr.yaml"
+              mock       (test-helpers/create-mock-source
+                          :initial-files {"main" {stale-path (test-helpers/generate-glossary-yaml
+                                                              "stale-glossary-xxxxxxx" "ARR" "Annual recurring revenue")}})
+              [_ result] (run-export! mock "remove stale glossary")]
+          (is (= :success (:status result)))
+          (is (nil? (get (repo-files mock) stale-path))
+              "a glossary file left behind after the Library was un-synced is deleted on export"))))))
 
 (deftest term-rename-uses-incremental-export-path-test
   (collections.tu/with-library-synced
@@ -258,15 +256,15 @@
         (mt/with-temp [:model/Glossary {eid :entity_id :as entry} {:term "ARR" :definition "Annual recurring revenue"}]
           (let [mock     (export-entry! entry)
                 old-path (glossary-file-path mock eid)]
-            (t2/update! :model/Glossary (:id entry) {:term "Annual Recurring Revenue"})
-            (t2/update! :model/RemoteSyncObject :model_type "Glossary" :model_id (:id entry)
-                        {:status "update" :status_changed_at (t/offset-date-time)})
+            (glossary.core/update-entry! (mt/user->id :rasta) (:id entry)
+                                         {:term "Annual Recurring Revenue" :definition (:definition entry)})
+            (is (= "update" (:status (rso entry))))
             (let [[task result] (run-export! mock "rename")
                   new-path      (glossary-file-path mock eid)]
               (is (= :success (:status result)))
               (is (= "apply-changes-version" (written-version task)) "the rename is exported incrementally")
               (is (= "glossary/annual_recurring_revenue.yaml" new-path))
-              (is (not (contains? (files mock) old-path)) "the file at the old term's path is deleted")
+              (is (not (contains? (repo-files mock) old-path)) "the file at the old term's path is deleted")
               (is (=? {:status "synced" :file_path new-path} (rso entry))))))))))
 
 ;;; ------------------------------------------- Import Tests -------------------------------------------
@@ -298,7 +296,7 @@
       (do-with-synced-library!
        (fn []
          (let [eid    "test-glossary-xxxxxxx"
-               path   "glossary/test-glossary-xxxxxxx_mrr.yaml"
+               path   "glossary/mrr.yaml"
                files  {"main" {library-yaml-path    (library-yaml)
                                test-collection-path (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection")
                                path                 (test-helpers/generate-glossary-yaml eid "MRR" "Monthly recurring revenue")}}
@@ -332,27 +330,60 @@
                  (is (not (t2/exists? :model/Glossary :id (:id entry))))
                  (is (nil? (rso entry))))))))))))
 
+(def ^:private base-tree
+  "A snapshot with the synced Library and one plain collection, and no glossary files."
+  {library-yaml-path    (library-yaml)
+   test-collection-path (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection")})
+
+(defn- import-v0-then-v1!
+  "Force-imports tree `v0`, then imports `v1` as a normal pull. Returns true when the second import took the
+  incremental fast path."
+  [v0 v1]
+  (let [src          (test-helpers/versioned-source :trees {"v0" v0 "v1" v1} :current "v0")
+        incremental? (atom false)]
+    (is (= :success (:status (run-import! (source.p/snapshot-at src "v0") :force? true))))
+    (mt/with-dynamic-fn-redefs [impl/incremental-load-snapshot!
+                                (fn [& args]
+                                  (reset! incremental? true)
+                                  (apply (mt/original-fn #'impl/incremental-load-snapshot!) args))]
+      (is (= :success (:status (run-import! (source.p/snapshot-at src "v1"))))))
+    @incremental?))
+
 (deftest changed-glossary-file-imports-incrementally-test
   (mt/with-temporary-setting-values [remote-sync-enabled true]
     (mt/with-model-cleanup [:model/Glossary :model/Collection :model/RemoteSyncTask]
       (do-with-synced-library!
        (fn []
-         (let [eid        "test-glossary-xxxxxxx"
-               path       "glossary/test-glossary-xxxxxxx_mrr.yaml"
-               v0         {library-yaml-path    (library-yaml)
-                           test-collection-path (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection")
-                           path                 (test-helpers/generate-glossary-yaml eid "MRR" "Monthly recurring revenue")}
-               v1         (assoc v0 path (test-helpers/generate-glossary-yaml eid "MRR" "Monthly recurring revenue, net of churn"))
-               src        (test-helpers/versioned-source :trees {"v0" v0 "v1" v1} :current "v0")
-               took       (atom :fallback)]
-           (is (= :success (:status (run-import! (source.p/snapshot-at src "v0") :force? true))))
-           (mt/with-dynamic-fn-redefs [impl/incremental-load-snapshot!
-                                       (fn [& args]
-                                         (let [r (apply (mt/original-fn #'impl/incremental-load-snapshot!) args)]
-                                           (reset! took (if (= r :remote-sync/incremental-not-possible) :fallback :incremental))
-                                           r))]
-             (is (= :success (:status (run-import! (source.p/snapshot-at src "v1"))))))
-           (is (= :incremental @took) "a glossary-only change takes the incremental import fast path")
+         (let [eid  "test-glossary-xxxxxxx"
+               path "glossary/mrr.yaml"
+               v0   (assoc base-tree path (test-helpers/generate-glossary-yaml eid "MRR" "Monthly recurring revenue"))
+               v1   (assoc base-tree path (test-helpers/generate-glossary-yaml eid "MRR" "Monthly recurring revenue, net of churn"))]
+           (is (true? (import-v0-then-v1! v0 v1)) "a changed glossary file takes the incremental import fast path")
            (let [entry (t2/select-one :model/Glossary :entity_id eid)]
              (is (= "Monthly recurring revenue, net of churn" (:definition entry)))
              (is (=? {:status "synced" :file_path path} (rso entry))))))))))
+
+(deftest added-glossary-file-imports-incrementally-test
+  (mt/with-temporary-setting-values [remote-sync-enabled true]
+    (mt/with-model-cleanup [:model/Glossary :model/Collection :model/RemoteSyncTask]
+      (do-with-synced-library!
+       (fn []
+         (let [eid  "test-glossary-xxxxxxx"
+               path "glossary/mrr.yaml"
+               v1   (assoc base-tree path (test-helpers/generate-glossary-yaml eid "MRR" "Monthly recurring revenue"))]
+           (is (true? (import-v0-then-v1! base-tree v1)) "a new glossary file takes the incremental import fast path")
+           (let [entry (t2/select-one :model/Glossary :entity_id eid)]
+             (is (=? {:term "MRR" :definition "Monthly recurring revenue"} entry))
+             (is (=? {:status "synced" :model_name "MRR" :file_path path :content_hash string?} (rso entry))))))))))
+
+(deftest deleted-glossary-file-imports-incrementally-test
+  (mt/with-temporary-setting-values [remote-sync-enabled true]
+    (mt/with-model-cleanup [:model/Glossary :model/Collection :model/RemoteSyncTask]
+      (do-with-synced-library!
+       (fn []
+         (let [eid  "test-glossary-xxxxxxx"
+               path "glossary/mrr.yaml"
+               v0   (assoc base-tree path (test-helpers/generate-glossary-yaml eid "MRR" "Monthly recurring revenue"))]
+           (is (true? (import-v0-then-v1! v0 base-tree)) "a deleted glossary file takes the incremental import fast path")
+           (is (nil? (t2/select-one :model/Glossary :entity_id eid)) "the entry is deleted")
+           (is (nil? (t2/select-one :model/RemoteSyncObject :model_type "Glossary" :file_path path)) "its ledger row is removed")))))))
