@@ -16,6 +16,6 @@
   line-height: 1.4;
   margin-top: 0;
   color: var(--mb-color-feedback-negative);
-  border-left: 3px solid var(--mb-color-feedback-negative);
-  padding-left: 12px;
+  border-inline-start: 3px solid var(--mb-color-feedback-negative);
+  padding-inline-start: 12px;
 }

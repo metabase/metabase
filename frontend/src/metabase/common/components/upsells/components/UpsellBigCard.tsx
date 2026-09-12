@@ -95,8 +95,8 @@ export const UpsellBigCardInner: React.FC<UpsellBigCardProps> = ({
     >
       <Flex px="xxl" py="lg">
         <UpsellGem size={24} />
-        <Stack align="flex-start" gap={0} ml="0.75rem" maw="18.75rem">
-          <Title order={2} lh={1} mb="sm" pr="1rem">
+        <Stack align="flex-start" gap={0} ms="0.75rem" maw="18.75rem">
+          <Title order={2} lh={1} mb="sm" pe="1rem">
             {title}
           </Title>
           <Text lh="xl" mb="xl">
@@ -106,7 +106,7 @@ export const UpsellBigCardInner: React.FC<UpsellBigCardProps> = ({
         </Stack>
       </Flex>
       {illustrationSrc && (
-        <Image src={illustrationSrc} p="lg" pl={0} w="auto" />
+        <Image src={illustrationSrc} p="lg" ps={0} w="auto" />
       )}
     </Box>
   );

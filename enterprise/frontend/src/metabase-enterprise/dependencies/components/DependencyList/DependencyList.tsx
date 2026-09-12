@@ -90,8 +90,8 @@ function DependentItem({ node, onGraphOpened }: DependentItemProps) {
             <Breadcrumbs
               separator={<FixedSizeIcon name="chevronright" size={12} />}
               c="text-secondary"
-              ml="1rem"
-              pl="sm"
+              ms="1rem"
+              ps="sm"
             >
               {location.links.map((link, linkIndex) => (
                 <Box key={linkIndex} className={CS.textWrap} lh="1rem">

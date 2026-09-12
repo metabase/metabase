@@ -24,7 +24,7 @@ export const CorsInputWidget = () => {
                     name="info"
                     c="text-secondary"
                     cursor="pointer"
-                    ml="sm"
+                    ms="sm"
                     style={{ verticalAlign: "middle" }}
                   />
                 </HoverCard.Target>

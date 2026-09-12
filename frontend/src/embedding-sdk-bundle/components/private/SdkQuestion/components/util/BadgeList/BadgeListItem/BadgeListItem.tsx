@@ -25,14 +25,14 @@ const _BadgeListItem = (
       root: S.BadgeListItem,
       label: CS.cursorPointer,
     }}
-    pr={0}
-    pl="sm"
+    pe={0}
+    ps="sm"
     color="brand"
     rightSection={
       <ActionIcon
         radius="xl"
         size="sm"
-        ml={0}
+        ms={0}
         onClick={(e) => {
           e.stopPropagation();
           onRemoveItem?.();

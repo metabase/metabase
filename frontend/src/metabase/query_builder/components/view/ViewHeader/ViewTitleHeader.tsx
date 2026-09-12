@@ -156,7 +156,7 @@ export function ViewTitleHeader({
         data-testid="qb-header"
       >
         <Flex className={ViewTitleHeaderS.ViewHeaderLeftSideWrapper}>
-          <QueryBuilderBackButton mr="sm" />
+          <QueryBuilderBackButton me="sm" />
           {isSaved ? (
             <SavedQuestionLeftSide
               question={question}

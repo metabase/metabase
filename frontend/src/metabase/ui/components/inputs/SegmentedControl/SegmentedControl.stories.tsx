@@ -6,7 +6,7 @@ const args = {
       label: (
         <Center>
           <Icon name="embed" />
-          <Box ml="0.5rem">Code</Box>
+          <Box ms="0.5rem">Code</Box>
         </Center>
       ),
       value: "code",
@@ -15,7 +15,7 @@ const args = {
       label: (
         <Center>
           <Icon name="eye_filled" />
-          <Box ml="0.5rem">Preview</Box>
+          <Box ms="0.5rem">Preview</Box>
         </Center>
       ),
       value: "preview",

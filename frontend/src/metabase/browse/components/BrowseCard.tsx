@@ -91,7 +91,7 @@ export const BrowseCard = ({
           </Title>
         </Ellipsified>
         {size === "md" && (
-          <Box ml="auto" style={{ flexShrink: 0 }}>
+          <Box ms="auto" style={{ flexShrink: 0 }}>
             {children}
           </Box>
         )}

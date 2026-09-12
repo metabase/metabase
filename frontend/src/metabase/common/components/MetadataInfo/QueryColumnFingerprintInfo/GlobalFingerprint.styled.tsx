@@ -33,7 +33,7 @@ export const RelativeContainer = styled.div<{ height?: string }>`
 export const Fade = styled.div<{ visible?: boolean }>`
   position: absolute;
   top: 0;
-  left: 0;
+  inset-inline-start: 0;
   width: 100%;
   transition: opacity ${TRANSITION_DURATION} linear;
   opacity: ${({ visible }) => (visible ? "1" : "0")};

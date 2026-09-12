@@ -83,8 +83,8 @@ export function TableFieldsPage() {
               Urls.dataStudioTableFields(tableId, fieldId)
             }
             onSyncOptionsClick={openSyncModal}
-            pl="3.5rem"
-            pr="xl"
+            ps="3.5rem"
+            pe="xl"
           />
         </Stack>
         {field != null && (

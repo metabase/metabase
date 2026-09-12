@@ -96,7 +96,7 @@ export const GroupSelect = ({
         <UnstyledButton onClick={() => combobox.toggleDropdown()}>
           <Flex align="center">
             <GroupSummary
-              mr="sm"
+              me="sm"
               groups={groups}
               selectedGroupIds={selectedGroupIds}
             />

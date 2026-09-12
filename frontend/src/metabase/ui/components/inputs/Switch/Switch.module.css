@@ -1,4 +1,12 @@
 .root {
+  &[data-label-position="left"] .labelWrapper:not(:empty) {
+    padding-inline-end: var(--switch-padding);
+  }
+
+  &[data-label-position="right"] .labelWrapper:not(:empty) {
+    padding-inline-start: var(--switch-padding);
+  }
+
   .description {
     color: var(--mb-color-text-secondary);
     font-size: var(--mantine-font-size-sm);

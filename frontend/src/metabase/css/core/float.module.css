@@ -1,7 +1,11 @@
 .floatLeft {
-  float: left;
+  /* stylelint-disable-next-line declaration-block-no-duplicate-properties */
+  float: left; /* fallback for browsers without logical float (< Chrome 118) */
+  float: inline-start;
 }
 
 .floatRight {
-  float: right;
+  /* stylelint-disable-next-line declaration-block-no-duplicate-properties */
+  float: right; /* fallback for browsers without logical float (< Chrome 118) */
+  float: inline-end;
 }

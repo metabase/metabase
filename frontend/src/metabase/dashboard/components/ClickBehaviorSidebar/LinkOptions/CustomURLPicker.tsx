@@ -121,7 +121,7 @@ export function CustomURLPicker({
           )}
           <ValuesYouCanReference dashcard={dashcard} parameters={parameters} />
           <Button
-            ml="auto"
+            ms="auto"
             mt="xxl"
             variant="filled"
             type="button"

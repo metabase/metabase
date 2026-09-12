@@ -44,7 +44,7 @@ export const RefreshWidget = (
             fz="sm"
             tt="uppercase"
             mb="lg"
-            ml="sm"
+            ms="sm"
             c="text-secondary"
           >{t`Auto Refresh`}</Box>
           <ul>

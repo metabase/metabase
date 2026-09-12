@@ -31,6 +31,6 @@ export const ActionButtons = styled.div`
   /* Since the button is borderless, adding the negative margin
      will make it look flush with the container */
   &:last-child {
-    margin-right: calc(var(--mantine-spacing-sm) * -1);
+    margin-inline-end: calc(var(--mantine-spacing-sm) * -1);
   }
 `;

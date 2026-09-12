@@ -5,8 +5,8 @@
 }
 
 .list {
-  margin-left: auto;
-  margin-right: auto;
+  margin-inline-start: auto;
+  margin-inline-end: auto;
   max-width: 680px;
 }
 
@@ -81,7 +81,7 @@
   flex-direction: row;
   align-items: center;
   display: flex;
-  padding-right: 8px;
+  padding-inline-end: 8px;
   color: var(--muted-color);
 }
 

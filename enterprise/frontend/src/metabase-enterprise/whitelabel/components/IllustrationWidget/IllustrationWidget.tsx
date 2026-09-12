@@ -224,7 +224,7 @@ export function IllustrationWidget({
                     className={CS.flexNoShrink}
                     onClick={() => fileInputRef.current?.click()}
                   >{t`Choose File`}</Button>
-                  <Box ml="sm">
+                  <Box ms="sm">
                     <ImageUploadInfoDot type={type} />
                   </Box>
                   <input
@@ -237,7 +237,7 @@ export function IllustrationWidget({
                     accept="image/jpeg,image/png,image/svg+xml"
                     multiple={false}
                   />
-                  <Text ml="xl" truncate="end">
+                  <Text ms="xl" truncate="end">
                     {!customIllustrationSource
                       ? t`No file chosen`
                       : fileName
@@ -249,7 +249,7 @@ export function IllustrationWidget({
                       leftSection={<Icon name="close" />}
                       variant="subtle"
                       c="text-primary"
-                      ml="lg"
+                      ms="lg"
                       size="compact-md"
                       onClick={handleRemoveCustomIllustration}
                       aria-label={t`Remove custom illustration`}

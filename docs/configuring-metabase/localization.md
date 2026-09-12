@@ -168,7 +168,17 @@ Supported languages include:
 
 The locale codes are relevant for setting the language in [guest embeds](../embedding/guest-embedding.md).
 
-> While Metabase can support languages that read right to left, the Metabase UI is designed around languages that read left to right.
+### Languages that read right to left
+
+When you pick a language that reads right to left — Arabic, Farsi/Persian or Hebrew — Metabase mirrors its layout to match. Navigation and sidebars move to the right, so do table columns and the value axis on charts, and directional icons like "next" and "back" point the other way. Dashboards, exported PDFs and embedded Metabase all follow the same direction as the rest of the interface.
+
+A few things stay as they are on purpose:
+
+- **Time still runs left to right on charts.** Reversing it would change what a chart means, not just how it's laid out.
+- **Latin text keeps its own direction.** URLs, email addresses, code and column names from your database read left to right even inside right-to-left text, which is how mixed text is meant to behave.
+- **Urdu (`ur`) is not in the list above** yet, since translation coverage decides which languages ship. If it's added, it will render in Naskh rather than Nastaliq.
+
+Because your database content is separate from the interface language, data that reads left to right still displays correctly in a right-to-left interface, and the reverse.
 
 ## Translations
 

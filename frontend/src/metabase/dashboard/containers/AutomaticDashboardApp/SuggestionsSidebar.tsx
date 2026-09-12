@@ -76,7 +76,7 @@ const SuggestionsList = ({
                     />
                     <h4 className={CS.textWrap}>{item.title}</h4>
                     {!!item.description && (
-                      <Box ml="auto" className={CS.hoverChild}>
+                      <Box ms="auto" className={CS.hoverChild}>
                         <Tooltip label={item.description}>
                           <Icon
                             name="info_outline"

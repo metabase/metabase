@@ -191,7 +191,7 @@ const Header = ({
   <Flex align="center" wrap="wrap">
     <Flex align="center" style={{ cursor: "pointer" }} onClick={onBack}>
       {onBack && <Icon name="chevronleft" size={18} />}
-      <Box component="span" ml="sm" data-testid="source-database">
+      <Box component="span" ms="sm" data-testid="source-database">
         {selectedDatabase.name}
       </Box>
     </Flex>

@@ -2,8 +2,8 @@
   display: flex;
   flex-shrink: 0;
   align-items: center;
-  margin-left: auto;
-  text-align: right;
+  margin-inline-start: auto;
+  text-align: end;
 }
 
 .message {
@@ -11,7 +11,7 @@
 }
 
 .button {
-  padding-right: 0.5rem;
+  padding-inline-end: 0.5rem;
   color: var(--mb-color-text-primary);
   cursor: pointer;
 }
@@ -26,5 +26,5 @@
 }
 
 .previous {
-  padding-left: 0.5rem;
+  padding-inline-start: 0.5rem;
 }

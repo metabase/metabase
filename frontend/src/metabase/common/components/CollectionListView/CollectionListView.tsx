@@ -58,7 +58,7 @@ export const CollectionListView = ({
       <Box py="1rem">
         <BrowserCrumbs crumbs={crumbs} />
       </Box>
-      <Box style={{ flexGrow: 1, overflowY: "hidden" }} pr="0.5rem">
+      <Box style={{ flexGrow: 1, overflowY: "hidden" }} pe="0.5rem">
         {loading ? (
           <Flex justify="center" align="center" h="100%">
             <Loader size="lg" />

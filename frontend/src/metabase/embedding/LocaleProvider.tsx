@@ -8,6 +8,9 @@ import { useSetting } from "metabase/settings";
 import { DatesProvider } from "metabase/ui/components/theme/DatesProvider/DatesProvider";
 import type { LocaleDataWithLanguage } from "metabase/utils/i18n";
 
+// Re-exported for backwards compatibility; the context now lives in its own module.
+export { FrontendLocaleContext };
+
 interface LocaleProviderProps {
   locale?: string | null;
   shouldWaitForLocale?: boolean;

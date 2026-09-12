@@ -302,7 +302,7 @@ const ParameterItem = ({
 
   return (
     <Box className={S.parameterItem} bg="background_page-secondary">
-      <Group justify="space-between" align="center" pr="lg">
+      <Group justify="space-between" align="center" pe="lg">
         <Button
           c={isCompatible ? "text-primary" : undefined}
           variant="subtle"

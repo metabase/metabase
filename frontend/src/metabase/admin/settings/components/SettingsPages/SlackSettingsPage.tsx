@@ -12,7 +12,7 @@ export const SlackSettingsPage = () => {
       <SettingsPageWrapper
         title={
           <>
-            <Icon name="slack_colorized" size={22} mr="sm" /> {t`Slack`}
+            <Icon name="slack_colorized" size={22} me="sm" /> {t`Slack`}
           </>
         }
       >

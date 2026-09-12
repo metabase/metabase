@@ -53,7 +53,9 @@ export function InputWithSelectPrefix({
   );
 
   return (
-    <Flex w="100%" p={0} className={S.Border}>
+    // URLs are inherently left-to-right: keep the prefix/host order and the
+    // "http://" text from being reordered by bidi when the UI language is RTL.
+    <Flex w="100%" p={0} dir="ltr" className={S.Border}>
       <Select
         aria-label="input-prefix"
         name="input-prefix"

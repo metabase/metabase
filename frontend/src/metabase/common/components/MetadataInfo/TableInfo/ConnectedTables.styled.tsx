@@ -11,7 +11,7 @@ export const InteractiveTableLabel = styled(TableLabel)`
 
 export const LabelButton = styled.button`
   cursor: pointer;
-  text-align: left;
+  text-align: start;
 
   &:hover,
   &:focus {

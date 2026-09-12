@@ -22,8 +22,8 @@ type ChartSettingSelectProps = Pick<
   | "id"
   | "leftSection"
   | "leftSectionWidth"
-  | "pl"
-  | "pr"
+  | "ps"
+  | "pe"
   | "rightSection"
   | "variant"
   | "w"
@@ -54,10 +54,10 @@ export const ChartSettingSelect = ({
   leftSection,
   onChange,
   options = [],
-  pl,
+  ps,
   placeholder,
   placeholderNoOptions,
-  pr,
+  pe,
   rightSection,
   rightSectionWidth,
   searchProp,
@@ -158,8 +158,8 @@ export const ChartSettingSelect = ({
       onDropdownClose={
         popoverPortal ? () => setDropdownOpened(false) : undefined
       }
-      pl={pl}
-      pr={pr}
+      ps={ps}
+      pe={pe}
       variant={variant}
       w={w}
     />

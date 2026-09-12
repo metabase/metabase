@@ -38,7 +38,7 @@
 .ModalHelpMessage {
   color: var(--mb-color-text-secondary);
   margin-top: 0.25rem;
-  margin-left: 1.25rem;
+  margin-inline-start: 1.25rem;
 }
 
 .ModalErrorMessage {

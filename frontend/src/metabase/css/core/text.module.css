@@ -4,11 +4,11 @@
 }
 
 .textLeft {
-  text-align: left;
+  text-align: start;
 }
 
 .textRight {
-  text-align: right;
+  text-align: end;
 }
 
 .textUppercase {

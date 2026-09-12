@@ -220,7 +220,7 @@ function ExistingTagSelectItem({
           <Tooltip
             label={t`This tag contains a transform you don't have permission to run.`}
           >
-            <Icon name="lock_filled" size={14} ml="xxs" />
+            <Icon name="lock_filled" size={14} ms="xxs" />
           </Tooltip>
         )}
       </Text>

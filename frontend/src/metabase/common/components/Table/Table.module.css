@@ -8,7 +8,7 @@
   border: 1px solid var(--mb-color-border-neutral);
 
   th {
-    text-align: left;
+    text-align: start;
     padding: 0.5rem;
     border-bottom: 1px solid var(--mb-color-border-neutral);
     padding-inline: 0.75rem;

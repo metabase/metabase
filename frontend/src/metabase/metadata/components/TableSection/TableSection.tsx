@@ -90,7 +90,7 @@ const TableSectionBase = ({
                   variant="subtle"
                   color="text-disabled"
                   size="sm"
-                  mr="sm"
+                  me="sm"
                   aria-label={t`Go to this table`}
                 >
                   <Icon name="external" size={16} />

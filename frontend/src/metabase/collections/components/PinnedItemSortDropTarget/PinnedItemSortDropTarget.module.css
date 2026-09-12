@@ -4,8 +4,7 @@
   position: absolute !important;
   top: 0;
   bottom: 0;
-  left: -0.625rem;
-  right: -0.625rem;
+  inset-inline: -0.625rem;
   pointer-events: none;
   background-color: transparent;
 }
@@ -28,17 +27,17 @@
 }
 
 .front {
-  border-left: 4px solid var(--mb-color-background_page-tertiary);
+  border-inline-start: 4px solid var(--mb-color-background_page-tertiary);
 }
 
 .back {
-  border-right: 4px solid var(--mb-color-background_page-tertiary);
+  border-inline-end: 4px solid var(--mb-color-background_page-tertiary);
 }
 
 .hovered.front {
-  border-left-color: var(--mb-color-core-brand);
+  border-inline-start-color: var(--mb-color-core-brand);
 }
 
 .hovered.back {
-  border-right-color: var(--mb-color-core-brand);
+  border-inline-end-color: var(--mb-color-core-brand);
 }

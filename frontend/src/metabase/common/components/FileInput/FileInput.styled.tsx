@@ -23,7 +23,7 @@ export const InputField = styled.input<InputFieldProps>`
 
   &::file-selector-button {
     padding-top: 0.5rem;
-    padding-right: 2rem;
+    padding-inline-end: 2rem;
     visibility: hidden;
   }
 `;

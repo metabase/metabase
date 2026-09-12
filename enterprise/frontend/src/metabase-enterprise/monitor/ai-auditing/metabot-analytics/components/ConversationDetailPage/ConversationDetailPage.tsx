@@ -288,7 +288,7 @@ function FeedbackCard({
           />
           <Text fw={700}>{feedback.positive ? t`Positive` : t`Negative`}</Text>
           {!feedback.positive && feedback.issue_type && (
-            <Badge color="negative" ml="xxs" size="sm">
+            <Badge color="negative" ms="xxs" size="sm">
               {getIssueTypeLabel(feedback.issue_type)}
             </Badge>
           )}

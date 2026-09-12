@@ -196,7 +196,7 @@ export function Editor(props: EditorProps) {
           <Shortcuts shortcuts={shortcuts} className={S.shortcuts} />
         )}
 
-        <Flex className={S.toolbar} gap="sm" pt="sm" pr="sm" direction="column">
+        <Flex className={S.toolbar} gap="sm" pt="sm" pe="sm" direction="column">
           <ButtonTooltip label={t`Function browser`}>
             <Button
               aria-label={t`Function browser`}

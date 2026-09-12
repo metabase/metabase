@@ -39,7 +39,7 @@ export const PermissionsTabs = ({ tab, onChangeTab }: PermissionsTabsProps) => {
         value={tab}
         onChange={(value) => value && onChangeTab(value)}
       >
-        <Tabs.List pl="xxl">
+        <Tabs.List ps="xxl">
           {tabs.map((tabOption) => (
             <Tabs.Tab key={tabOption.value} value={tabOption.value}>
               {tabOption.name}

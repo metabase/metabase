@@ -30,7 +30,7 @@ export const ChartSettingIconRadio = ({
           className={S.iconButton}
           variant={option.value === value ? "filled" : "default"}
           size="2rem"
-          ml="sm"
+          ms="sm"
           onClick={() => handleClick(option.value)}
         >
           <Icon name={option.iconName} />

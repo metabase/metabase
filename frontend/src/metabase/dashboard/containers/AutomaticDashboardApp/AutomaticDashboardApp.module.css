@@ -11,14 +11,14 @@
   min-height: 100%;
   width: 346px;
   background-color: var(--mb-color-background_page-secondary);
-  border-left: 2px solid var(--mb-color-border-neutral);
+  border-inline-start: 2px solid var(--mb-color-border-neutral);
 }
 
 .DashboardWrapper {
   flex-grow: 1;
 
   &.HasSidebar {
-    padding-right: 346px;
+    padding-inline-end: 346px;
   }
 }
 

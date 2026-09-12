@@ -8,7 +8,7 @@ export function Context({ context }: { context: any[] }) {
   }
 
   return (
-    <Box ml={rem(42)} mt={rem(12)} maw={rem(620)}>
+    <Box ms={rem(42)} mt={rem(12)} maw={rem(620)}>
       <Text component="p" c="text-secondary" lh="lg">
         {context.map(({ is_match, text }, i: number) => {
           if (!is_match) {

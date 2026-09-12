@@ -107,7 +107,7 @@ export const SearchResults = ({
                     status={"moderated_status" in item && item.moderated_status}
                     filled
                     size={14}
-                    ml="0.5rem"
+                    ms="0.5rem"
                   />
                 </Flex>
               }

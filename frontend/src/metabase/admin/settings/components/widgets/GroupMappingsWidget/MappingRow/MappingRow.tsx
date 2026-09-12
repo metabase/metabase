@@ -142,7 +142,7 @@ export const MappingRow = ({
           />
         </td>
         <td className={AdminS.TableActions}>
-          <Flex justify="flex-end" mr="sm">
+          <Flex justify="flex-end" me="sm">
             <DeleteButton
               onDelete={() =>
                 shouldUseDeleteGroupMappingModal

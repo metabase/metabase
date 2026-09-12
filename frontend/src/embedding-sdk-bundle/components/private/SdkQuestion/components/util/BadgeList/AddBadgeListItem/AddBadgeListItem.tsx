@@ -23,8 +23,8 @@ const _AddBadgeListItem = (
     size="sm"
     variant="transparent"
     color="brand"
-    pr="sm"
-    pl="xxs"
+    pe="sm"
+    ps="xxs"
     leftSection={
       <ActionIcon radius="xl" size="sm" className={CS.bgMediumHover}>
         <Icon name="add" c="text-brand" size={10} />

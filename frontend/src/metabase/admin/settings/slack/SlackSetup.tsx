@@ -80,7 +80,7 @@ const SlackConnectionStatus = ({
             </HoverCard>
           )}
           {!isValid && (
-            <Text ml="sm" inline>
+            <Text ms="sm" inline>
               {jt`Need help? ${<ExternalLink key="link" href={docsUrl}>{t`See our docs`}</ExternalLink>}.`}
             </Text>
           )}
@@ -129,7 +129,7 @@ export const SlackSetup = () => {
           <Box>
             <ButtonLink href={`https://api.slack.com${link}`}>
               <span>{t`Create Slack App`}</span>
-              <Icon name="external" opacity={0.7} ml="lg" />
+              <Icon name="external" opacity={0.7} ms="lg" />
             </ButtonLink>
           </Box>
           <Markdown>
@@ -153,7 +153,7 @@ export const SlackSetup = () => {
           docsUrl={docsUrl}
           token={slackAppToken}
         />
-        <Divider w="calc(100% + 4rem)" ml="-2rem" my="xl" />
+        <Divider w="calc(100% + 4rem)" ms="-2rem" my="xl" />
         <SlackConfiguration />
       </Box>
     </SettingsSection>

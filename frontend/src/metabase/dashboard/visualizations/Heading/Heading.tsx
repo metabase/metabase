@@ -200,7 +200,7 @@ export function Heading({
       h="100%"
       align="center"
       justify="space-between"
-      pl="0.75rem"
+      ps="0.75rem"
       style={{ overflow: "hidden" }}
       ref={containerRef}
     >

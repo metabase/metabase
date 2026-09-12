@@ -30,7 +30,9 @@ export const DataGridHeader = <TData,>({
   classNames,
   styles,
 }: DataGridHeaderProps<TData>) => {
-  const paddingLeft = columns[0]?.virtualItem?.start ?? 0;
+  // Offset the virtualized window from the inline-start edge so it follows the
+  // scroll direction in both LTR and RTL.
+  const paddingInlineStart = columns[0]?.virtualItem?.start ?? 0;
 
   return (
     <div
@@ -38,7 +40,7 @@ export const DataGridHeader = <TData,>({
       role="row"
       style={{
         backgroundColor,
-        paddingLeft,
+        paddingInlineStart,
         height: `${HEADER_BASE_HEIGHT}px`,
         ...styles?.row,
       }}

@@ -7,15 +7,15 @@
 
 @media screen and (--breakpoint-min-sm) {
   .wrapper {
-    padding-left: 2em;
-    padding-right: 2em;
+    padding-inline-start: 2em;
+    padding-inline-end: 2em;
   }
 }
 
 @media screen and (--breakpoint-min-md) {
   .wrapper {
-    padding-left: 3em;
-    padding-right: 3em;
+    padding-inline-start: 3em;
+    padding-inline-end: 3em;
   }
 }
 
@@ -60,7 +60,7 @@
 }
 
 .right {
-  right: 0;
+  inset-inline-end: 0;
 }
 
 .bottom {
@@ -68,7 +68,7 @@
 }
 
 .left {
-  left: 0;
+  inset-inline-start: 0;
 }
 
 @media screen and (--breakpoint-min-md) {
@@ -81,8 +81,8 @@
 .spread {
   position: absolute;
   top: 0;
-  left: 0;
-  right: 0;
+  inset-inline-start: 0;
+  inset-inline-end: 0;
   bottom: 0;
 }
 

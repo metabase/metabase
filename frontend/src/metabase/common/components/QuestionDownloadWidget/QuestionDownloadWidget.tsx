@@ -207,8 +207,8 @@ export const QuestionDownloadWidget = ({
             </Text>
             <Button
               aria-label={t`Close hint`}
-              pl={8}
-              pr={0}
+              ps={8}
+              pe={0}
               variant="subtle"
               size="compact-md"
               style={{ flexShrink: 0 }}
@@ -240,7 +240,7 @@ export const QuestionDownloadWidget = ({
         <Button
           data-testid="download-results-button"
           mt="auto"
-          ml="auto"
+          ms="auto"
           variant="filled"
           loading={loading}
           onClick={handleDownload}

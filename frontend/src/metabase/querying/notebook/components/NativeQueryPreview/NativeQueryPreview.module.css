@@ -20,5 +20,5 @@
 .copyButton {
   position: absolute;
   top: var(--mantine-spacing-sm);
-  right: var(--mantine-spacing-sm);
+  inset-inline-end: var(--mantine-spacing-sm);
 }

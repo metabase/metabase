@@ -46,7 +46,7 @@ export const PaneHeader = ({
       <Flex mb="xl" mt="lg" w="100%" h="xxl">
         {breadcrumbs}
 
-        <Group ml="auto" gap="lg" className={S.ButtonGroup}>
+        <Group ms="auto" gap="lg" className={S.ButtonGroup}>
           {showMetabotButton && <MetabotDataStudioButton />}
           {showAppSwitcher && <AppSwitcher />}
         </Group>

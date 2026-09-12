@@ -54,6 +54,6 @@ export const DatabaseInfoSectionDivider = ({
   condensed?: boolean;
 }) => {
   return (
-    <Divider w="calc(100% + 3rem)" ml="-1.5rem" my={condensed ? "lg" : "xl"} />
+    <Divider w="calc(100% + 3rem)" ms="-1.5rem" my={condensed ? "lg" : "xl"} />
   );
 };

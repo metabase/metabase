@@ -39,7 +39,7 @@ export const LockedTransformsBanner = () => {
         )}
       </Stack>
       {canPurchaseTransforms && (
-        <Box ml="lg">
+        <Box ms="lg">
           <Button
             component={ExternalLink}
             href={storeUrl}

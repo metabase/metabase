@@ -68,7 +68,7 @@ export const TenantsListingApp = () => {
         <Tabs
           value={status}
           onChange={handleTabChange}
-          pl="lg"
+          ps="lg"
           listBorder={false}
         >
           <Tabs.List>

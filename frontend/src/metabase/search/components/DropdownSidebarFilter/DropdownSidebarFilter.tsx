@@ -133,7 +133,7 @@ export const DropdownSidebarFilter = ({
               <Button
                 data-testid="sidebar-filter-dropdown-button"
                 size="compact-xs"
-                mr="0.25rem"
+                me="0.25rem"
                 c="inherit"
                 variant="subtle"
                 onClick={onClearFilter}

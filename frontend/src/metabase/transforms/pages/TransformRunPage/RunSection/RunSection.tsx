@@ -162,7 +162,7 @@ function RunStatusSection({ transform, isScheduled }: RunStatusSectionProps) {
   const runExtra = status === "succeeded" && previousStatus === "canceling" && (
     <Box
       c="text-disabled"
-      ml="xl"
+      ms="xl"
     >{t`This run succeeded before it had a chance to cancel.`}</Box>
   );
 

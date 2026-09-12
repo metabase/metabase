@@ -42,7 +42,7 @@ export function EditorTabs({
           })}
           htmlFor="editor-tabs-query"
         >
-          <Icon name="sql" mr="10px" />
+          <Icon name="sql" me="10px" />
           <input
             className={EditorTabsS.RadioInput}
             type="radio"
@@ -69,7 +69,7 @@ export function EditorTabs({
           })}
           htmlFor="editor-tabs-columns"
         >
-          <Icon name="notebook" mr="10px" />
+          <Icon name="notebook" me="10px" />
           <input
             type="radio"
             className={EditorTabsS.RadioInput}
@@ -94,7 +94,7 @@ export function EditorTabs({
           })}
           htmlFor="editor-tabs-metadata"
         >
-          <Icon name="gear" mr="10px" />
+          <Icon name="gear" me="10px" />
           <input
             type="radio"
             className={EditorTabsS.RadioInput}

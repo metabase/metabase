@@ -1,5 +1,5 @@
 .nodeListInfoIcon {
-  margin-left: auto;
+  margin-inline-start: auto;
 }
 
 .NodeListItemIcon {
@@ -40,7 +40,7 @@
   .NodeListItemLink {
     padding-top: 0;
     padding-bottom: 0;
-    padding-right: 0;
+    padding-inline-end: 0;
   }
 }
 
