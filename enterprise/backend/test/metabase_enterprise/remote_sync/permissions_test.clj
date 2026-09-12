@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase.collections.models.collection :as collections]
+   [metabase.collections.test-utils :as collections.tu]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
@@ -755,3 +756,44 @@
                                                                    :schema "public"
                                                                    :name "target_table"}}))
                 "Non-superuser should not be able to create transforms even when remote-sync-type is read-write")))))))
+
+;;; ------------------------------------------- Glossary -------------------------------------------
+
+(deftest glossary-write-endpoints-return-403-in-read-only-remote-sync-test
+  (testing "POST/PUT/DELETE /api/glossary reject with 403 when remote sync is read-only and the Library is synced"
+    (mt/with-temporary-setting-values [settings/remote-sync-url "https://github.com/test/repo.git"
+                                       settings/remote-sync-type :read-only]
+      (collections.tu/with-library-synced
+        (mt/with-model-cleanup [:model/Glossary :model/RemoteSyncObject]
+          (mt/with-temp [:model/Glossary {id :id} {:term "ARR" :definition "Annual recurring revenue"}]
+            (testing "POST is rejected"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :crowberto :post 403 "glossary" {:term "MRR" :definition "Monthly recurring revenue"}))))
+            (testing "PUT is rejected"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :crowberto :put 403 (str "glossary/" id) {:term "ARR" :definition "changed"}))))
+            (testing "DELETE is rejected"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :crowberto :delete 403 (str "glossary/" id)))))
+            (testing "the entry is untouched"
+              (is (= "Annual recurring revenue" (t2/select-one-fn :definition :model/Glossary :id id))))
+            (testing "GET still works"
+              (is (some #(= id (:id %)) (:data (mt/user-http-request :crowberto :get 200 "glossary")))))))))))
+
+(deftest glossary-write-endpoints-allowed-when-editable-test
+  (mt/with-model-cleanup [:model/Glossary :model/RemoteSyncObject]
+    (mt/with-temp [:model/Glossary {id :id} {:term "ARR" :definition "Annual recurring revenue"}]
+      (testing "PUT /api/glossary/:id succeeds in read-write mode with the Library synced"
+        (mt/with-temporary-setting-values [settings/remote-sync-url "https://github.com/test/repo.git"
+                                           settings/remote-sync-type :read-write]
+          (collections.tu/with-library-synced
+            (is (= "read-write edit"
+                   (:definition (mt/user-http-request :crowberto :put 200 (str "glossary/" id)
+                                                      {:term "ARR" :definition "read-write edit"})))))))
+      (testing "PUT /api/glossary/:id succeeds in read-only mode when the Library is not synced"
+        (mt/with-temporary-setting-values [settings/remote-sync-url "https://github.com/test/repo.git"
+                                           settings/remote-sync-type :read-only]
+          (collections.tu/with-library-not-synced
+            (is (= "unsynced edit"
+                   (:definition (mt/user-http-request :crowberto :put 200 (str "glossary/" id)
+                                                      {:term "ARR" :definition "unsynced edit"}))))))))))

@@ -1055,6 +1055,7 @@
            events
            lib.schema
            models
+           remote-sync
            util}
    :model-exports #{:model/Glossary}
    :model-imports #{:model/User}}

@@ -5,7 +5,9 @@
    [metabase-enterprise.remote-sync.init :as init]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase.collections.models.collection :as collection]
-   [metabase.test :as mt]))
+   [metabase.collections.test-utils :as collections.tu]
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (defn- capture-async-import! []
   (let [calls (atom [])]
@@ -100,3 +102,66 @@
           (mt/with-temp [:model/Collection _ {:name "Synced" :is_remote_synced true}]
             (#'init/remote-sync-init)
             (is (empty? @calls))))))))
+
+;;; ------------------------------------------- Glossary ledger backfill -------------------------------------------
+
+(defn- glossary-rso-count []
+  (t2/count :model/RemoteSyncObject :model_type "Glossary"))
+
+(defn- do-with-untracked-glossary-entry
+  "Runs `f` with one glossary entry and no Glossary ledger rows, under `remote-sync-type` `sync-type`."
+  [sync-type f]
+  (mt/with-temporary-setting-values [:remote-sync-url "file://my/repo.git"
+                                     :remote-sync-type sync-type
+                                     :remote-sync-branch "main"]
+    (mt/with-model-cleanup [:model/RemoteSyncObject]
+      (mt/with-temp [:model/Glossary entry {:term "ARR" :definition "Annual recurring revenue"}]
+        (t2/delete! :model/RemoteSyncObject :model_type "Glossary")
+        (with-redefs [impl/async-import! (constantly nil)
+                      remote-sync.object/dirty? (constantly false)]
+          (f entry))))))
+
+(deftest remote-sync-init-backfills-glossary-tracking-test
+  (testing "Read-write with a synced Library tracks every untracked glossary entry as 'create', once"
+    (collections.tu/with-library-synced
+      (do-with-untracked-glossary-entry
+       :read-write
+       (fn [entry]
+         (#'init/remote-sync-init)
+         (is (=? {:status "create" :model_name "ARR"}
+                 (t2/select-one :model/RemoteSyncObject :model_type "Glossary" :model_id (:id entry))))
+         (is (= 1 (glossary-rso-count)))
+         (testing "a second run inserts nothing"
+           (#'init/remote-sync-init)
+           (is (= 1 (glossary-rso-count)))))))))
+
+(deftest remote-sync-init-glossary-backfill-skips-when-already-tracked-test
+  (testing "An existing Glossary ledger row means the ledger is authoritative, so nothing is inserted"
+    (collections.tu/with-library-synced
+      (do-with-untracked-glossary-entry
+       :read-write
+       (fn [entry]
+         (mt/with-temp [:model/Glossary tracked {:term "MRR" :definition "Monthly recurring revenue"}]
+           (t2/insert! :model/RemoteSyncObject {:model_type "Glossary" :model_id (:id tracked) :model_name "MRR"
+                                                :status "synced" :status_changed_at (java.time.OffsetDateTime/now)})
+           (#'init/remote-sync-init)
+           (is (= 1 (glossary-rso-count)))
+           (is (nil? (t2/select-one :model/RemoteSyncObject :model_type "Glossary" :model_id (:id entry))))))))))
+
+(deftest remote-sync-init-glossary-backfill-skips-read-only-test
+  (testing "A read-only instance is not backfilled"
+    (collections.tu/with-library-synced
+      (do-with-untracked-glossary-entry
+       :read-only
+       (fn [_entry]
+         (#'init/remote-sync-init)
+         (is (zero? (glossary-rso-count))))))))
+
+(deftest remote-sync-init-glossary-backfill-skips-unsynced-library-test
+  (testing "Glossary entries are only tracked when the Library is synced"
+    (collections.tu/with-library-not-synced
+      (do-with-untracked-glossary-entry
+       :read-write
+       (fn [_entry]
+         (#'init/remote-sync-init)
+         (is (zero? (glossary-rso-count))))))))
