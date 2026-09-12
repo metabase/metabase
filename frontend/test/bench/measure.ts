@@ -43,6 +43,7 @@ if (!url) {
 /** What READ_METRICS evaluates to in the page. */
 interface Run {
   href: string;
+  language: string;
   ttfb: number;
   domContentLoaded: number;
   load: number;
@@ -125,6 +126,8 @@ const READ_METRICS = `JSON.stringify((() => {
   };
   return {
     href: location.href,
+    // What the server actually served, so a row says which locale it measured.
+    language: document.documentElement.lang,
     ttfb: nav ? nav.responseStart : 0,
     domContentLoaded: nav ? nav.domContentLoadedEventEnd : 0,
     load: nav ? nav.loadEventEnd : 0,
@@ -336,6 +339,7 @@ function timings(run: Run) {
         cpuThrottle,
         network: mbps > 0 ? `${mbps} Mbps` : "unthrottled",
         cache: keepCache ? "kept between runs" : "disabled",
+        locale: results[0].language,
         scripts: results[0].scriptCount,
         scriptKb: Number((results[0].scriptBytes / 1024).toFixed(1)),
         // Read at the same moment as `scriptKb`, so the difference between the
