@@ -9,10 +9,13 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn- check-editable!
+(defn- editable?
   "Glossary entries are locked on a read-only remote-sync instance whose Library is synced."
   []
-  (api/check-403 (remote-sync/model-editable? :model/Glossary nil)))
+  (remote-sync/model-editable? :model/Glossary nil))
+
+(defn- check-editable! []
+  (api/check-403 (editable?)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -22,7 +25,8 @@
   "Fetch all glossary entries, optionally filtered by search term."
   [_route-params
    {:keys [search]} :- [:maybe [:map {:closed true} [:search {:optional true} [:maybe ms/NonBlankString]]]]]
-  {:data (t2/hydrate (glossary.db/glossary-entries search) :creator)})
+  {:data      (t2/hydrate (glossary.db/glossary-entries search) :creator)
+   :can_write (boolean (and (api/is-data-analyst?) (editable?)))})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

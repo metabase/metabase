@@ -108,6 +108,7 @@ describe("data reference > glossary", () => {
           { id: 1, term: "Alpha", definition: "First" },
           { id: 2, term: "Beta", definition: "Second" },
         ],
+        can_write: true,
       },
     }).as("getGlossary");
 

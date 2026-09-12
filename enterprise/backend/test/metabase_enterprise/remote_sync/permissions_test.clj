@@ -777,8 +777,10 @@
                      (mt/user-http-request :crowberto :delete 403 (str "glossary/" id)))))
             (testing "the entry is untouched"
               (is (= "Annual recurring revenue" (t2/select-one-fn :definition :model/Glossary :id id))))
-            (testing "GET still works"
-              (is (some #(= id (:id %)) (:data (mt/user-http-request :crowberto :get 200 "glossary")))))))))))
+            (testing "GET still works and reports the glossary as not writable"
+              (let [response (mt/user-http-request :crowberto :get 200 "glossary")]
+                (is (some #(= id (:id %)) (:data response)))
+                (is (false? (:can_write response)))))))))))
 
 (deftest glossary-write-endpoints-allowed-when-editable-test
   (mt/with-model-cleanup [:model/Glossary :model/RemoteSyncObject]
@@ -787,6 +789,7 @@
         (mt/with-temporary-setting-values [settings/remote-sync-url "https://github.com/test/repo.git"
                                            settings/remote-sync-type :read-write]
           (collections.tu/with-library-synced
+            (is (true? (:can_write (mt/user-http-request :crowberto :get 200 "glossary"))))
             (is (= "read-write edit"
                    (:definition (mt/user-http-request :crowberto :put 200 (str "glossary/" id)
                                                       {:term "ARR" :definition "read-write edit"})))))))
@@ -794,6 +797,7 @@
         (mt/with-temporary-setting-values [settings/remote-sync-url "https://github.com/test/repo.git"
                                            settings/remote-sync-type :read-only]
           (collections.tu/with-library-not-synced
+            (is (true? (:can_write (mt/user-http-request :crowberto :get 200 "glossary"))))
             (is (= "unsynced edit"
                    (:definition (mt/user-http-request :crowberto :put 200 (str "glossary/" id)
                                                       {:term "ARR" :definition "unsynced edit"}))))))))))

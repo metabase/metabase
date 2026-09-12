@@ -944,4 +944,52 @@ describe("AllChangesView", () => {
       expect(screen.queryByText("Root")).not.toBeInTheDocument();
     });
   });
+
+  describe("glossary entries", () => {
+    it("should display glossary entries under the Library collection with the glossary icon", async () => {
+      const libraryCollection = createMockCollection({
+        id: 99,
+        name: "Library",
+        type: "library",
+        effective_ancestors: [],
+      });
+      const glossaryEntity = createMockRemoteSyncEntity({
+        id: 500,
+        name: "ARR",
+        model: "glossary",
+        collection_id: undefined,
+        sync_status: "create",
+      });
+
+      setup({
+        entities: [glossaryEntity],
+        collections: [libraryCollection],
+      });
+
+      expect(await screen.findByText("Library")).toBeInTheDocument();
+      expect(screen.getByText("ARR")).toBeInTheDocument();
+      expect(screen.getAllByLabelText("glossary icon").length).toBeGreaterThan(
+        0,
+      );
+      expect(screen.queryByText("Root")).not.toBeInTheDocument();
+    });
+
+    it("should display glossary entries under Root when no Library collection exists", async () => {
+      const glossaryEntity = createMockRemoteSyncEntity({
+        id: 500,
+        name: "ARR",
+        model: "glossary",
+        collection_id: undefined,
+        sync_status: "update",
+      });
+
+      setup({
+        entities: [glossaryEntity],
+        collections: [defaultCollection],
+      });
+
+      expect(await screen.findByText("ARR")).toBeInTheDocument();
+      expect(screen.queryByText("Library")).not.toBeInTheDocument();
+    });
+  });
 });

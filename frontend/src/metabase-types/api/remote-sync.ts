@@ -18,7 +18,8 @@ export type RemoteSyncEntityModel =
   | "transform"
   | "transformtag"
   | "transformjob"
-  | "pythonlibrary";
+  | "pythonlibrary"
+  | "glossary";
 
 export type RemoteSyncEntityStatus =
   | "create"
