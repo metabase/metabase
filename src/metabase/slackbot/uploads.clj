@@ -26,8 +26,8 @@
   (contains? supported-filetypes filetype))
 
 (defn- remote-file?
-  "Whether Slack reports `file` as stored outside Slack, so its URL and size come from the app that registered it
-  rather than from Slack. Those are never downloaded, whatever filetype they claim."
+  "Whether Slack reports `file` as stored outside Slack.
+  A remote file's URL and size come from the app that registered it, so it is never downloaded."
   [{:keys [mode]}]
   (= "external" mode))
 
@@ -45,9 +45,9 @@
     (size-limit-message name)))
 
 (defn- copy-to-file!
-  "Copy `in` into `file`, refusing more than [[max-slack-upload-size-bytes]]. The size on the event is only what
-  the sender declared, so the limit has to hold as the bytes arrive."
+  "Copy `in` into `file`, refusing more than [[max-slack-upload-size-bytes]]."
   [^InputStream in ^File file filename]
+  ;; The size on the event is only what the sender declared, so the limit has to hold as the bytes arrive.
   (let [buf (byte-array 8192)]
     (with-open [^OutputStream out (io/output-stream file)]
       (loop [written 0]
