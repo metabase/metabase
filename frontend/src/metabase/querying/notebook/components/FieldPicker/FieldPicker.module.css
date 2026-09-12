@@ -1,3 +1,24 @@
+/* The popover dropdown is the scroll container, so pin the search box to its top. */
+.SearchContainer {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 0.5em 0.5em 0;
+  background: var(--mb-color-background_surface-primary);
+}
+
+.VisuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .ItemTitle {
   color: var(--mb-color-text-secondary);
   min-width: 10ch;
@@ -34,4 +55,8 @@
   .ItemTitle {
     margin-left: 1em;
   }
+}
+
+.EmptyState {
+  padding: 0.5em;
 }
