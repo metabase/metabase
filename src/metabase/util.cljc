@@ -922,9 +922,10 @@
   This function exists as a workaround: use it as a multimethod dispatch function for Cljc multimethods that would
   have dispatched on `type` if they were written in pure Clojure.
 
-  Returns `:dispatch-type/*` if there is no mapping for the current type, but you can add more as needed if
-  appropriate. The keywords are unrelated to each other: `:dispatch-type/*` is just the value for unmapped types, not
-  a parent that other types dispatch to. Use `:default` for a fallback method."
+  Returns `:dispatch-type/unknown` for a type this function does not classify; add mappings below as needed.
+
+  The keywords this returns are unrelated to one another -- there is no hierarchy. A multimethod that wants a
+  catch-all method needs `:default`; `:dispatch-type/unknown` matches only the values that fell through."
   [x]
   (cond
     (nil? x)              :dispatch-type/nil
@@ -940,7 +941,7 @@
     (fn? x)               :dispatch-type/fn
     (regexp? x)           :dispatch-type/regex
     ;; we should add more mappings here as needed
-    :else                 :dispatch-type/*))
+    :else                 :dispatch-type/unknown))
 
 (defn assoc-dissoc
   "Called like `(assoc m k v)`, this does [[assoc]] if `(some? v)`, and [[dissoc]] if not.

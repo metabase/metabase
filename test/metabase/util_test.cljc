@@ -444,7 +444,7 @@
     'str                                  :dispatch-type/symbol
     #"\d+"                                :dispatch-type/regex
     str                                   :dispatch-type/fn
-    #?(:clj (Object.) :cljs (js/Object.)) :dispatch-type/*))
+    #?(:clj (Object.) :cljs (js/Object.)) :dispatch-type/unknown))
 
 (deftest ^:parallel assoc-dissoc-test
   (testing `lib.options/with-option-value

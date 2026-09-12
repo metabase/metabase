@@ -24,11 +24,11 @@
   always have type info!"
   {:arglists '([expr])}
   (fn [x]
-    ;; For the fallback case: use the actual type/class name as the dispatch type rather than `:type/*`. This is so we
+    ;; When [[lib.dispatch/dispatch-value]] can't classify `x`, dispatch on its actual class instead. This is so we
     ;; can implement support for some platform-specific classes like `BigDecimal` or `java.time.OffsetDateTime`, for
     ;; use inside QP code or whatever. In the future maybe we can add support for JS-specific stuff too.
     (let [dispatch-value (lib.dispatch/dispatch-value x)]
-      (if (= dispatch-value :dispatch-type/*)
+      (if (= dispatch-value :dispatch-type/unknown)
         (type x)
         dispatch-value)))
   :hierarchy lib.hierarchy/hierarchy)
