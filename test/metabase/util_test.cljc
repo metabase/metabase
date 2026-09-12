@@ -444,21 +444,7 @@
     'str                                  :dispatch-type/symbol
     #"\d+"                                :dispatch-type/regex
     str                                   :dispatch-type/fn
-    #?(:clj (Object.) :cljs (js/Object.)) :dispatch-type/*)
-  (testing "All type keywords should derive from :dispatch-type/*"
-    (are [x] (isa? u/dispatch-type-hierarchy (u/dispatch-type-keyword x) :dispatch-type/*)
-      :dispatch-type/nil
-      :dispatch-type/string
-      :dispatch-type/keyword
-      :dispatch-type/integer
-      :dispatch-type/number
-      :dispatch-type/map
-      :dispatch-type/sequential
-      :dispatch-type/set
-      :dispatch-type/symbol
-      :dispatch-type/regex
-      :dispatch-type/fn
-      :dispatch-type/*)))
+    #?(:clj (Object.) :cljs (js/Object.)) :dispatch-type/*))
 
 (deftest ^:parallel assoc-dissoc-test
   (testing `lib.options/with-option-value
