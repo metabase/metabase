@@ -74,7 +74,7 @@ export const RemoteSyncSettingsForm = ({
   const { handleDisable, disableModal, isDisabling } = useDisableRemoteSync();
 
   const dirtyEntities = dirtyData?.dirty ?? [];
-  const dependencyFailures = unsyncedDependenciesError?.errors.collections;
+  const requiredSyncs = unsyncedDependenciesError?.errors.required;
   const isModalVariant = variant === "settings-modal";
   const isSaving = isUpdating || isDisabling;
   const canDisable =
@@ -161,7 +161,7 @@ export const RemoteSyncSettingsForm = ({
 
               {/* Inside the form so its fix-and-save can write through formik; Mantine portals it out. */}
               {!isModalVariant && (
-                <RemoteSyncDependencyModal failures={dependencyFailures} />
+                <RemoteSyncDependencyModal required={requiredSyncs} />
               )}
             </Form>
           );

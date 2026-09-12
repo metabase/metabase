@@ -265,9 +265,9 @@
              :where  (path-expr paths true)}))
 
 (mu/defn card-types
-  "The `:id`, `:type`, and `:card_schema` of the Cards with `card-ids`."
+  "The `:id`, `:type`, :display, and `:card_schema` of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select [:model/Card :id :type :card_schema] :id [:in card-ids]))
+  (t2/select [:model/Card :id :type :display :card_schema] :id [:in card-ids]))
 
 (mu/defn field-user-settings-exist?
   "Whether the Field with `field-id` has FieldUserSettings."
@@ -294,7 +294,7 @@
 (mu/defn collections-by-id
   "A map of ID to the ID, name, location, and personal owner of the Collections with `collection-ids`."
   [collection-ids :- [:set ::lib.schema.id/collection]]
-  (t2/select-pk->fn identity [:model/Collection :id :name :location :personal_owner_id] :id [:in collection-ids]))
+  (t2/select-pk->fn identity [:model/Collection :id :name :type :location :personal_owner_id] :id [:in collection-ids]))
 
 (mu/defn collection-sync-states
   "The `:id` and `:is_remote_synced` of the Collections with `collection-ids`."
