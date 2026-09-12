@@ -106,6 +106,7 @@ interface DataSelectorOwnProps {
   canSelectModel: boolean;
   canSelectTable: boolean;
   canSelectQuestion: boolean;
+  canSelectMetric: boolean;
 
   selectedDataBucketId?: DataPickerDataType | null;
   selectedDatabaseId?: DatabaseId | null;
@@ -448,6 +449,11 @@ export class UnconnectedDataSelector extends Component<
       savedEntityType === "model"
     ) {
       return "model";
+    } else if (
+      selectedDataBucketId === DATA_BUCKET.METRICS ||
+      savedEntityType === "metric"
+    ) {
+      return "metric";
     } else {
       return "question";
     }
@@ -461,6 +467,16 @@ export class UnconnectedDataSelector extends Component<
   hasUsableModels = (): boolean => {
     // As models are actually saved questions, nested queries must be enabled
     return this.hasModels() && this.props.hasNestedQueriesEnabled;
+  };
+
+  hasMetrics = (): boolean => {
+    const { availableModels, canSelectMetric, loaded } = this.props;
+    return loaded && canSelectMetric && availableModels.includes("metric");
+  };
+
+  hasUsableMetrics = (): boolean => {
+    // As metrics are actually saved questions, nested queries must be enabled
+    return this.hasMetrics() && this.props.hasNestedQueriesEnabled;
   };
 
   hasSavedQuestions = (): boolean => {
@@ -492,7 +508,8 @@ export class UnconnectedDataSelector extends Component<
     if (
       this.isSavedEntitySelected() ||
       this.state.selectedDataBucketId === DATA_BUCKET.MODELS ||
-      this.state.selectedDataBucketId === DATA_BUCKET.SAVED_QUESTIONS
+      this.state.selectedDataBucketId === DATA_BUCKET.SAVED_QUESTIONS ||
+      this.state.selectedDataBucketId === DATA_BUCKET.METRICS
     ) {
       await this.switchToStep(DATABASE_STEP);
     } else if (
@@ -524,7 +541,11 @@ export class UnconnectedDataSelector extends Component<
         // query source is a table
         await this.switchToStep(SCHEMA_STEP);
       }
-    } else if (!this.hasUsableModels() && !this.hasSavedQuestions()) {
+    } else if (
+      !this.hasUsableModels() &&
+      !this.hasSavedQuestions() &&
+      !this.hasUsableMetrics()
+    ) {
       await this.switchToStep(DATABASE_STEP);
     } else {
       await this.switchToStep(DATA_BUCKET_STEP);
@@ -557,6 +578,7 @@ export class UnconnectedDataSelector extends Component<
         hasModels: this.hasModels(),
         hasTables: this.props.canSelectTable,
         hasSavedQuestions: this.hasSavedQuestions(),
+        hasMetrics: this.hasMetrics(),
         hasNestedQueriesEnabled: this.props.hasNestedQueriesEnabled,
       });
       if (dataTypes.length === 1) {
@@ -850,6 +872,12 @@ export class UnconnectedDataSelector extends Component<
     ) {
       this.previousStep();
     }
+    if (
+      selectedDataBucketId === DATA_BUCKET.METRICS ||
+      this.hasUsableMetrics()
+    ) {
+      this.previousStep();
+    }
     this.setState({ isSavedEntityPickerShown: false, savedEntityType: null });
   };
 
@@ -861,7 +889,9 @@ export class UnconnectedDataSelector extends Component<
     const hasBackButton =
       hasPreviousStep &&
       steps.includes(DATA_BUCKET_STEP) &&
-      (this.hasUsableModels() || this.hasSavedQuestions());
+      (this.hasUsableModels() ||
+        this.hasSavedQuestions() ||
+        this.hasUsableMetrics());
 
     const props = {
       ...this.state,
@@ -889,6 +919,7 @@ export class UnconnectedDataSelector extends Component<
                 hasModels: this.hasModels(),
                 hasTables: this.props.canSelectTable,
                 hasSavedQuestions: this.hasSavedQuestions(),
+                hasMetrics: this.hasMetrics(),
                 hasNestedQueriesEnabled,
               })}
               {...props}
@@ -957,6 +988,7 @@ export class UnconnectedDataSelector extends Component<
     const savedEntityBucketIds: (DataPickerDataType | null | undefined)[] = [
       DATA_BUCKET.MODELS,
       DATA_BUCKET.SAVED_QUESTIONS,
+      DATA_BUCKET.METRICS,
     ];
     const isPickerOpen =
       isSavedEntityPickerShown ||
@@ -1073,9 +1105,9 @@ function withSchemaFetchers(
   };
 }
 
-// If there is at least one model, we want to display a slightly different
-// data picker view (see DATA_BUCKET step). Pre-fetches available models via
-// search and exposes them as `availableModelsResult`/`loading`/`loaded` props.
+// If there is at least one model or metric, we want to display a slightly
+// different data picker view (see DATA_BUCKET step). Pre-fetches available
+// models via search and exposes them as `availableModelsResult`/`loading`/`loaded` props.
 function withAvailableModels(
   WrappedComponent: ComponentType<WithoutSchemaFetchers>,
 ): ComponentType<PublicDataSelectorProps> {
@@ -1085,7 +1117,7 @@ function withAvailableModels(
     const { data: response, isLoading } = useSearchQuery({
       calculate_available_models: true,
       limit: 0,
-      models: ["dataset"],
+      models: ["dataset", "metric"],
       context: "data-picker",
     });
     let availableModelsResult: AvailableModelsResult | undefined;

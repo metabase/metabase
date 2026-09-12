@@ -32,14 +32,19 @@ const storeInitialState = createMockState({
 
 const AVAILABLE_MODELS: Record<
   AvailableModels,
-  Extract<SearchModel, "table" | "dataset" | "card">[]
+  Extract<SearchModel, "table" | "dataset" | "card" | "metric">[]
 > = {
   "tables-only": ["table"],
   "with-models": ["table", "dataset"],
   "with-questions": ["table", "card"],
+  "with-metrics": ["table", "metric"],
 };
 
-type AvailableModels = "tables-only" | "with-models" | "with-questions";
+type AvailableModels =
+  | "tables-only"
+  | "with-models"
+  | "with-questions"
+  | "with-metrics";
 
 interface SetupOpts {
   databases?: Database[];
@@ -64,12 +69,12 @@ function setup({
     query: {
       calculate_available_models: true,
       limit: 0,
-      models: ["dataset"],
+      models: ["dataset", "metric"],
     },
     response: {
       data: [],
       limit: 0,
-      models: ["dataset"],
+      models: ["dataset", "metric"],
       offset: 0,
       table_db_id: null,
       engine: "search.engine/in-place",
@@ -100,6 +105,7 @@ function setup({
       canSelectModel={entityTypes ? entityTypes.includes("model") : true}
       canSelectTable={entityTypes ? entityTypes.includes("table") : true}
       canSelectQuestion={entityTypes ? entityTypes.includes("question") : true}
+      canSelectMetric={entityTypes ? entityTypes.includes("metric") : true}
       triggerElement={<div>Click me to open or close data picker</div>}
       setSourceTableFn={jest.fn()}
     />,
@@ -262,6 +268,42 @@ describe("DataSourceSelector", () => {
     });
   });
 
+  describe("both metrics and tables are available", () => {
+    const setupOpts: SetupOpts = {
+      availableModels: "with-metrics",
+    };
+
+    it("should show the metrics bucket alongside raw data", async () => {
+      setup({
+        ...setupOpts,
+        entityTypes: ["table", "metric"],
+      });
+
+      expect(await screen.findByText("Metrics")).toBeInTheDocument();
+      expect(screen.getByText("Raw Data")).toBeInTheDocument();
+    });
+
+    it("should skip the bucket step and show the SavedEntityPicker right away if there is only metrics in the bucket step", async () => {
+      setup({
+        ...setupOpts,
+        entityTypes: ["metric"],
+      });
+
+      expect(await screen.findByText("Our analytics")).toBeInTheDocument();
+      expect(screen.getByText("Metrics")).toBeInTheDocument();
+    });
+
+    it("should not show the metrics bucket when metrics are not in `entityTypes`", async () => {
+      setup({
+        ...setupOpts,
+        entityTypes: ["table"],
+      });
+
+      expect(await screen.findByText("Sample Database")).toBeInTheDocument();
+      expect(screen.queryByText("Metrics")).not.toBeInTheDocument();
+    });
+  });
+
   // metabase#74428: after the "Remove database entity" PR the picker hydrated as
   // soon as the (fast) models search resolved, so it showed the models bucket
   // before the database list had loaded and streamed the databases in
@@ -277,13 +319,13 @@ describe("DataSourceSelector", () => {
         query: {
           calculate_available_models: true,
           limit: 0,
-          models: ["dataset"],
+          models: ["dataset", "metric"],
         },
         response: () =>
           searchResponse.then(() => ({
             data: [],
             limit: 0,
-            models: ["dataset"],
+            models: ["dataset", "metric"],
             offset: 0,
             table_db_id: null,
             total: 1,
@@ -316,6 +358,7 @@ describe("DataSourceSelector", () => {
           canSelectModel
           canSelectTable
           canSelectQuestion
+          canSelectMetric
           triggerElement={<div>Click me to open or close data picker</div>}
           setSourceTableFn={jest.fn()}
         />,

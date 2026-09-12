@@ -122,6 +122,9 @@ Available entity types are:
 - `table`
 - `model`
 - `question` (only works with `data_picker=staged`)
+- `metric` (only works with `data_picker=staged`)
+
+By default, the picker shows tables, models, and metrics. Set `entity_types` when you want to show fewer than that.
 
 You can separate entity types with a comma:
 

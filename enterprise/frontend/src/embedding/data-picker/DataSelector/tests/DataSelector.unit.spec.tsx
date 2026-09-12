@@ -93,6 +93,7 @@ describe("DataSelector", () => {
     canSelectModel: true,
     canSelectTable: true,
     canSelectQuestion: true,
+    canSelectMetric: true,
     metadata: emptyMetadata,
     databases: [],
     availableModels: [],

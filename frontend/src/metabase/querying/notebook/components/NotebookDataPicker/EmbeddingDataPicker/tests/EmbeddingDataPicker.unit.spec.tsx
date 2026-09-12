@@ -87,11 +87,72 @@ describe("EmbeddingDataPicker", () => {
         expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
       });
 
+      it("should show metrics without configuring `entity_types`", async () => {
+        setup({ hasMetrics: true });
+
+        expect(await screen.findByText("Metrics")).toBeInTheDocument();
+        expect(screen.getByText("Models")).toBeInTheDocument();
+        expect(screen.getByText("Raw Data")).toBeInTheDocument();
+      });
+
+      it('should show metrics when `entity_types=["metric"]`', async () => {
+        setup({
+          hasMetrics: true,
+          entityTypes: ["metric"],
+        });
+
+        expect(await screen.findByText("Metrics")).toBeInTheDocument();
+
+        expect(screen.queryByText("Models")).not.toBeInTheDocument();
+        expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
+      });
+
+      it('should not show metrics when `entity_types=["model", "table"]`', async () => {
+        setup({
+          hasMetrics: true,
+          entityTypes: ["model", "table"],
+        });
+
+        expect(await screen.findByText("Models")).toBeInTheDocument();
+        expect(screen.getByText("Raw Data")).toBeInTheDocument();
+        expect(screen.queryByText("Metrics")).not.toBeInTheDocument();
+      });
+
+      it('should not show metrics when the instance has none, even when `entity_types=["metric", "table"]`', async () => {
+        setup({
+          hasMetrics: false,
+          entityTypes: ["metric", "table"],
+        });
+
+        expect(await screen.findByText("Sample Database")).toBeInTheDocument();
+        expect(screen.queryByText("Metrics")).not.toBeInTheDocument();
+      });
+
       /**
        * We don't test invalid `entityTypes` values here as the redux state is set via a slice which has proper validations and tests in place.
        *
        * @see frontend/src/metabase/redux/embed/embed.unit.spec.ts
        */
+    });
+  });
+
+  describe("simple data picker", () => {
+    it("should not show metrics, even when the instance has them", async () => {
+      setup({ dataPicker: "flat", hasMetrics: true });
+
+      expect(await screen.findByText("Orders model")).toBeInTheDocument();
+      expect(screen.queryByText("Revenue")).not.toBeInTheDocument();
+    });
+
+    it('should not show metrics when `entity_types=["metric"]`', async () => {
+      setup({
+        dataPicker: "flat",
+        hasMetrics: true,
+        entityTypes: ["metric"],
+      });
+
+      expect(await screen.findByText("Orders model")).toBeInTheDocument();
+      expect(screen.queryByText("Revenue")).not.toBeInTheDocument();
     });
   });
 });
