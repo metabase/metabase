@@ -1224,6 +1224,26 @@
                    qp.compile/compile
                    (update :query #(str/split-lines (driver/prettify-native-form :bigquery-cloud-sdk %))))))))))
 
+(deftest ^:parallel median-interpolates-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "Median interpolates even-sized groups and ignores nulls (#82198)"
+      (let [query (mt/mbql-query nil
+                    {:aggregation  [[:median [:field "x" {:base-type :type/Float}]]]
+                     :breakout     [[:field "bucket" {:base-type :type/Text}]]
+                     :order-by     [[:asc [:field "bucket" {:base-type :type/Text}]]]
+                     :source-query {:native (str "SELECT * FROM UNNEST(["
+                                                 "STRUCT('even' AS bucket, 1.0 AS x), "
+                                                 "STRUCT('even' AS bucket, 2.0 AS x), "
+                                                 "STRUCT('even' AS bucket, 3.0 AS x), "
+                                                 "STRUCT('even' AS bucket, 10.0 AS x), "
+                                                 "STRUCT('odd-with-null' AS bucket, 1.0 AS x), "
+                                                 "STRUCT('odd-with-null' AS bucket, 2.0 AS x), "
+                                                 "STRUCT('odd-with-null' AS bucket, 3.0 AS x), "
+                                                 "STRUCT('odd-with-null' AS bucket, CAST(NULL AS FLOAT64) AS x)"
+                                                 "])")}})]
+        (is (= [["even" 2.5] ["odd-with-null" 2.0]]
+               (mt/rows (qp/process-query query))))))))
+
 (deftest ^:parallel no-qualify-breakout-field-name-with-subquery-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "Make sure columns name `source` in source query work correctly (#18742)"
