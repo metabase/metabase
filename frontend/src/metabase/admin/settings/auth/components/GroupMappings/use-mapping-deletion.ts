@@ -1,10 +1,6 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import {
-  type GroupLookup,
-  withoutMapping,
-} from "metabase/admin/settings/auth/components/GroupMappings";
 import type {
   DeleteMappingModalValueType,
   GroupIds,
@@ -15,20 +11,17 @@ import {
 } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
 
-import type {
-  GroupMappingSettings,
-  GroupMappingSettingsState,
-} from "./use-group-mapping-settings";
+import type { GroupMappingsState } from "./use-group-mappings";
+import { type GroupLookup, withoutMapping } from "./utils";
 
 type MappingCascade = {
   value: Exclude<DeleteMappingModalValueType, "nothing">;
   groupIds: GroupIds;
 };
 
-type MappingDeletionState = {
+export type MappingDeletionState = {
   target: string | null;
   targetGroupIds: GroupIds;
-  isDeletingLastMapping: boolean;
   isDeleting: boolean;
   requestDelete: (name: string) => void;
   cancelDelete: () => void;
@@ -43,7 +36,7 @@ export function useMappingDeletion({
   groupMapping,
   groupLookup,
 }: {
-  groupMapping: GroupMappingSettingsState;
+  groupMapping: GroupMappingsState;
   groupLookup: GroupLookup;
 }): MappingDeletionState {
   const [sendToast] = useToast();
@@ -56,8 +49,6 @@ export function useMappingDeletion({
     target == null
       ? []
       : groupLookup.existingIds(groupMapping.mappings[target] ?? []);
-  const isDeletingLastMapping =
-    target != null && Object.keys(groupMapping.mappings).length === 1;
 
   // "nothing, just remove the mapping" arrives as null and touches no group
   const runCascade = async (cascade: MappingCascade | null) => {
@@ -86,13 +77,8 @@ export function useMappingDeletion({
       name,
       cascade?.value === "delete" ? cascade.groupIds : [],
     );
-    const isLastMapping = Object.keys(nextMappings).length === 0;
-    // sync can't stay on without mappings, or the backend would silently fall back to name matching
-    const settings: GroupMappingSettings = isLastMapping
-      ? { "jwt-group-mappings": nextMappings, "jwt-group-sync": false }
-      : { "jwt-group-mappings": nextMappings };
-    const saved = await groupMapping.saveSettings(settings);
-    if (!saved) {
+    const result = await groupMapping.saveMappings(nextMappings);
+    if (!result.ok) {
       return;
     }
     const { failureCount } = await runCascade(cascade);
@@ -104,12 +90,7 @@ export function useMappingDeletion({
       });
       return;
     }
-    sendToast({
-      message: isLastMapping
-        ? t`Mapping deleted and group mapping turned off`
-        : t`Mapping deleted`,
-      icon: "check_filled",
-    });
+    sendToast({ message: t`Mapping deleted`, icon: "check_filled" });
   };
 
   const confirmDelete = async (
@@ -134,7 +115,6 @@ export function useMappingDeletion({
   return {
     target,
     targetGroupIds,
-    isDeletingLastMapping,
     isDeleting,
     requestDelete: setTarget,
     cancelDelete: () => setTarget(null),
