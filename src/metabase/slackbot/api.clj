@@ -163,54 +163,16 @@
    :headers {"Content-Type" "text/plain"}
    :body    "ok"})
 
-(defn- all-files-skipped?
-  "Returns true if nothing was uploaded and at least one file was refused."
-  [{:keys [upload-result]}]
-  (let [{:keys [results skipped remote]} upload-result]
-    (and (empty? results)
-         (or (seq skipped) (seq remote)))))
-
-(defn- refused-files-message
-  "Reply text for a share where nothing could be uploaded, naming why for each file."
-  [{:keys [skipped remote]}]
-  (str/join " "
-            (cond-> []
-              (seq skipped)
-              (conj (format "I can only process CSV and TSV files. The following files were skipped: %s"
-                            (str/join ", " skipped)))
-
-              (seq remote)
-              (conj (format "These files are stored outside Slack, so I can't upload them: %s"
-                            (str/join ", " remote))))))
-
 (mu/defn- handle-message-file-share
-  "Process a file_share message - handles CSV uploads"
+  "Handle a Slack message with file attachments."
   [client :- slackbot.client/SlackClient
    event  :- slackbot.events/SlackMessageFileShareEvent]
-  (let [files         (:files event)
-        text          (:text event)
-        has-text?     (not (str/blank? text))
-        file-handling (when (seq files)
-                        (slackbot.uploads/handle-file-uploads files))
-        extra-history (cond
-                        ;; Pre-flight error (uploads disabled, no permission)
-                        (:error file-handling)
-                        [{:role :assistant
-                          :content (:error file-handling)}]
-
-                        ;; Upload results to communicate to AI
-                        (:system-messages file-handling)
-                        (:system-messages file-handling))
-        all-skipped?    (all-files-skipped? file-handling)
-        should-skip-ai? (and (not has-text?)
-                             (not (:error file-handling))
-                             all-skipped?)]
-    ;; If nothing could be uploaded and there's no text, respond directly
-    ;; without calling the AI to avoid sending an empty prompt
-    (if should-skip-ai?
+  (let [extra-history (:extra-history (slackbot.uploads/handle-file-uploads! client (:files event)))]
+    ;; When a message contains only attachments, reply directly instead of sending an empty prompt to the AI.
+    (if (str/blank? (:text event))
       (slackbot.client/post-message client
-                                    (merge (slackbot.events/event->reply-context event)
-                                           {:text (refused-files-message (:upload-result file-handling))}))
+                                    (assoc (slackbot.events/event->reply-context event)
+                                           :text (str/join "\n\n" (map :content extra-history))))
       (slackbot.streaming/send-response client event extra-history))))
 
 (defmethod analytics.core/known-labels :metabase-slackbot/responses-generated [_]
