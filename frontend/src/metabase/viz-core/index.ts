@@ -74,7 +74,7 @@ export {
   getCartesianChartOption,
   getTimelineSelectionSeries,
 } from "./echarts/cartesian/option";
-export { TREND_LINE_DASH } from "./echarts/cartesian/option/trend-line";
+export { TREND_LINE_WIDTH } from "./echarts/cartesian/option/trend-line";
 export { getScatterPlotModel } from "./echarts/cartesian/scatter/model";
 export { getScatterPlotOption } from "./echarts/cartesian/scatter/option";
 export { getTimelineEventsModel } from "./echarts/cartesian/timeline-events/model";

@@ -258,6 +258,11 @@ export type VisualizationSettingsDefinitions = {
   >;
   "graph.tooltip_columns"?: SeriesSettingDefinition<Value, Props>;
   "graph.tooltip_type"?: SeriesSettingDefinition<Value, Props>;
+  "graph.trendline_color"?: SeriesSettingDefinition<Value, Props>;
+  "graph.trendline_style"?: SeriesSettingDefinition<
+    Value,
+    ChartSettingSegmentedControlProps
+  >;
   "graph.x_axis._is_histogram"?: SeriesSettingDefinition<Value, Props>;
   "graph.x_axis._is_numeric"?: SeriesSettingDefinition<Value, Props>;
   "graph.x_axis._is_timeseries"?: SeriesSettingDefinition<Value, Props>;
@@ -354,6 +359,11 @@ export type VisualizationSettingsDefinitions = {
   "treemap.show_parent_values"?: SeriesSettingDefinition<Value, Props>;
   "treemap.sub_grouping"?: SeriesSettingDefinition<Value, Props>;
   "treemap.value"?: SeriesSettingDefinition<Value, Props>;
+  "trendline.color"?: SingleSeriesSettingDefinition<Value, Props>;
+  "trendline.style"?: SingleSeriesSettingDefinition<
+    Value,
+    ChartSettingSegmentedControlProps
+  >;
   view_as?: SeriesSettingDefinition<Value, Props>;
   "waterfall.decrease_color"?: SeriesSettingDefinition<Value, Props>;
   "waterfall.increase_color"?: SeriesSettingDefinition<Value, Props>;

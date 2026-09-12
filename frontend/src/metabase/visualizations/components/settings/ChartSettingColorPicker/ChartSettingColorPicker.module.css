@@ -1,0 +1,13 @@
+.bordered {
+  padding: var(--mantine-spacing-md) var(--mantine-spacing-lg);
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: var(--mantine-radius-sm);
+
+  .title {
+    margin-left: var(--mantine-spacing-lg);
+  }
+}
+
+.title {
+  margin-left: var(--mantine-spacing-sm);
+}
