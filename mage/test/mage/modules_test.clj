@@ -2,6 +2,7 @@
   "Tests for driver decision logic.
    Run `mage -driver-decisions -h` to see the priority order."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [hooks.common.modules :as modules]
    [mage.color]
@@ -381,3 +382,98 @@
       (is (= 'driver (#'mage.modules/file->module prefix->module "src/metabase/driver.clj")))
       (is (nil? (#'mage.modules/file->module prefix->module "test/metabase/test_runner.clj")))
       (is (nil? (#'mage.modules/file->module prefix->module "src/metabase/DO_NOT_ADD_NEW_FILES_HERE.txt"))))))
+
+;;; =============================================================================
+;;; CODEOWNERS generation
+;;; =============================================================================
+
+(deftest codeowners-stanza-active-test
+  (testing "a module whose team has an :assignee and no suppression gets live owner lines"
+    (is (= ["# lib (Querying Platform)"
+            "src/metabase/lib @metabase/qp"
+            "test/metabase/lib @metabase/qp"]
+           (#'mage.modules/codeowners-stanza-lines
+            {:module 'lib :team "Querying Platform" :handle "@metabase/qp" :suppress? false
+             :dirs ["src/metabase/lib" "test/metabase/lib"]})))))
+
+(deftest codeowners-stanza-suppressed-test
+  (testing "a suppressed module is commented out but keeps its known handle, ready to uncomment"
+    (is (= ["# driver (Querying Platform, suppressed via :suppress-codeowners)"
+            "# src/metabase/driver @metabase/qp"]
+           (#'mage.modules/codeowners-stanza-lines
+            {:module 'driver :team "Querying Platform" :handle "@metabase/qp" :suppress? true
+             :dirs ["src/metabase/driver"]})))))
+
+(deftest codeowners-stanza-no-assignee-test
+  (testing "a module whose team has no :assignee is commented out with no handle"
+    (is (= ["# audit-app (UX West, no :assignee in team.json)"
+            "# enterprise/backend/src/metabase_enterprise/audit_app"]
+           (#'mage.modules/codeowners-stanza-lines
+            {:module 'enterprise/audit-app :team "UX West" :handle nil :suppress? false
+             :dirs ["enterprise/backend/src/metabase_enterprise/audit_app"]})))))
+
+(deftest codeowners-stanza-no-dirs-test
+  (testing "a module that owns no existing directory produces no stanza"
+    (is (nil? (#'mage.modules/codeowners-stanza-lines
+               {:module 'ghost :team "UX West" :handle nil :suppress? false :dirs []})))))
+
+(deftest codeowners-splice-idempotent-test
+  (testing "splicing a block in replaces only the marked region and is idempotent"
+    (let [begin @#'mage.modules/codeowners-begin-marker
+          end   @#'mage.modules/codeowners-end-marker
+          splice @#'mage.modules/splice-codeowners
+          block (str begin "\nfoo/bar @team\n" end)
+          base  "# hand-maintained\ndocs @writers\n"
+          once  (splice base block)
+          twice (splice once block)]
+      (is (str/includes? once "# hand-maintained"))
+      (is (str/includes? once "foo/bar @team"))
+      (is (= once twice))))
+  (testing "text on BOTH sides of the marked region survives, with the block still between them"
+    ;; This is the normal layout: the generated block sits above the hand-maintained rules, so the
+    ;; trailing-content branch of the in-place splice is load-bearing. The idempotence case above
+    ;; leaves an empty tail and would not notice it being dropped.
+    (let [begin  @#'mage.modules/codeowners-begin-marker
+          end    @#'mage.modules/codeowners-end-marker
+          splice @#'mage.modules/splice-codeowners
+          base   (str "# header\n" begin "\nold/path @old\n" end "\n\n# exceptions\nsrc/a.clj @owner\n")
+          block  (str begin "\nnew/path @new\n" end)
+          out    (splice base block)]
+      (is (str/includes? out "# header") "leading content survives")
+      (is (str/includes? out "src/a.clj @owner") "trailing content survives")
+      (is (str/includes? out "new/path @new") "the block was replaced")
+      (is (not (str/includes? out "old/path @old")) "the previous block is gone")
+      (is (< (str/index-of out "# header")
+             (str/index-of out "new/path @new")
+             (str/index-of out "src/a.clj @owner"))
+          "and the block still sits between the two")
+      (is (= out (splice out block)) "still idempotent with content on both sides"))))
+
+(deftest codeowners-block-orders-children-after-parents
+  (testing (str "Stanzas sort by source path so a nested child's dirs come after its parent's. "
+                "CODEOWNERS applies the LAST matching pattern, so reversing this would let the "
+                "parent's module-wide rule swallow its child's ownership.")
+    ;; `lib` and `lib.schema` are used because the generator only emits directories that exist on
+    ;; disk, so an invented nested path would silently drop its stanza and the ordering assertion
+    ;; would pass on a one-element list.
+    (let [config    '{lib        {:team "Querying Platform"}
+                      lib.schema {:team "Querying Platform"}}
+          assignees {"Querying Platform" "@metabase/querying-platform"}
+          block     (#'mage.modules/codeowners-block config assignees)
+          lines     (->> (str/split-lines block)
+                         (filter #(str/starts-with? % "src/metabase/lib")))]
+      (is (= 2 (count lines)) "both parent and child stanzas are emitted")
+      (is (= ["src/metabase/lib @metabase/querying-platform"
+              "src/metabase/lib/schema @metabase/querying-platform"]
+             lines)))))
+
+(deftest codeowners-block-comments-out-unknown-teams
+  (testing (str "A module whose :team has no matching team.json entry degrades to a commented "
+                "stanza rather than emitting a bad handle or being dropped silently.")
+    (let [config    '{lib {:team "Nonexistent Team"}}
+          block     (#'mage.modules/codeowners-block config {"Querying Platform" "@metabase/querying-platform"})
+          src-lines (->> (str/split-lines block)
+                         (filter #(str/includes? % "src/metabase/lib")))]
+      (is (seq src-lines) "the module still appears in the block")
+      (is (every? #(str/starts-with? % "#") src-lines)
+          "but every one of its path lines is commented out"))))
