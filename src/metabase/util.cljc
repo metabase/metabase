@@ -915,24 +915,6 @@
 #?(:clj (defn- regexp? [x]
           (instance? java.util.regex.Pattern x)))
 
-(def dispatch-type-hierarchy
-  "Hierarchy relating the keywords returned by [[dispatch-type-keyword]]. A multimethod dispatching
-  on [[dispatch-type-keyword]] must pass `:hierarchy #'dispatch-type-hierarchy` for `:dispatch-type/*` to work as a
-  fallback method; Clojure's global hierarchy does not relate these keywords."
-  (-> (make-hierarchy)
-      (derive :dispatch-type/nil        :dispatch-type/*)
-      (derive :dispatch-type/boolean    :dispatch-type/*)
-      (derive :dispatch-type/string     :dispatch-type/*)
-      (derive :dispatch-type/keyword    :dispatch-type/*)
-      (derive :dispatch-type/number     :dispatch-type/*)
-      (derive :dispatch-type/integer    :dispatch-type/number)
-      (derive :dispatch-type/map        :dispatch-type/*)
-      (derive :dispatch-type/sequential :dispatch-type/*)
-      (derive :dispatch-type/set        :dispatch-type/*)
-      (derive :dispatch-type/symbol     :dispatch-type/*)
-      (derive :dispatch-type/fn         :dispatch-type/*)
-      (derive :dispatch-type/regex      :dispatch-type/*)))
-
 (defn dispatch-type-keyword
   "In Cljs `(type 1) is `js/Number`, but `(isa? 1 js/Number)` isn't truthy, so dispatching off of [[clojure.core/type]]
   doesn't really work the way we'd want. Also, type names are different between Clojure and ClojureScript.
@@ -940,13 +922,9 @@
   This function exists as a workaround: use it as a multimethod dispatch function for Cljc multimethods that would
   have dispatched on `type` if they were written in pure Clojure.
 
-  Returns `:dispatch-type/*` if there is no mapping for the current type, but you can add more as needed if
-  appropriate. All type keywords returned by this method derive from `:dispatch-type/*`
-  in [[dispatch-type-hierarchy]], meaning you can write an implementation for `:dispatch-type/*` and use it as a
-  fallback method.
+  Returns `:dispatch-type/unknown` for a type it does not classify.
 
-  Think of `:dispatch-type/*` as similar to how you would use `Object` if you were dispatching
-  off of `type` in pure Clojure."
+  There is no hierarchy relating these keywords, so a catch-all method has to be `:default`."
   [x]
   (cond
     (nil? x)              :dispatch-type/nil
@@ -962,7 +940,7 @@
     (fn? x)               :dispatch-type/fn
     (regexp? x)           :dispatch-type/regex
     ;; we should add more mappings here as needed
-    :else                 :dispatch-type/*))
+    :else                 :dispatch-type/unknown))
 
 (defn assoc-dissoc
   "Called like `(assoc m k v)`, this does [[assoc]] if `(some? v)`, and [[dissoc]] if not.
