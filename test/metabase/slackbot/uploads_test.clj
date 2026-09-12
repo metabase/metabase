@@ -436,7 +436,7 @@
     (is (false? (#'slackbot.uploads/remote-file? {:filetype "csv" :mode "hosted"})))
     (is (false? (#'slackbot.uploads/remote-file? {:filetype "csv"})))))
 
-(deftest ^:parallel remote-files-are-reported-separately-test
+(deftest remote-files-are-reported-separately-test
   (testing "a remote CSV is refused for being remote, not reported as an unsupported filetype"
     (is (=? {:remote  ["evil.csv"]
              :skipped ["notes.pdf"]
