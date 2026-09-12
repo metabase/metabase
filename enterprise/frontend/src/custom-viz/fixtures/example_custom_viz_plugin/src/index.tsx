@@ -2,6 +2,7 @@ import { defineConfig } from "../../../src/index";
 import type {
   BaseWidgetProps,
   CreateCustomVisualization,
+  CustomStaticVisualizationProps,
 } from "../../../src/types/viz";
 import { Visualization } from "./Visualization";
 
@@ -41,6 +42,38 @@ function RenameQuestionWidget({
     </button>
   );
 }
+
+const StaticVisualization = ({
+  series,
+  settings,
+  renderingContext,
+  width,
+  height,
+}: CustomStaticVisualizationProps<Settings>) => {
+  const { threshold } = settings;
+  const value = series[0].data.rows[0][0];
+
+  if (typeof value !== "number" || typeof threshold !== "number") {
+    throw new Error("Value and threshold need to be numbers");
+  }
+
+  return (
+    <svg
+      width={width ?? 540}
+      height={height ?? 360}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <rect
+        width="100%"
+        height="100%"
+        fill={renderingContext.getColor("core-brand")}
+      />
+      <text x="10" y="20">
+        {value >= threshold ? "above threshold" : "below threshold"}
+      </text>
+    </svg>
+  );
+};
 
 const createVisualization: CreateCustomVisualization<Settings> = ({
   defineSetting,
@@ -132,6 +165,7 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
     VisualizationComponent: (props) => (
       <Visualization {...props} locale={locale} />
     ),
+    StaticVisualizationComponent: StaticVisualization,
   });
 };
 

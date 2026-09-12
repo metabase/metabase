@@ -1,82 +1,54 @@
 (ns metabase.channel.render.js.graal
-  "The GraalVM [[metabase.channel.render.js.protocol/StaticVizRenderer]]: runs the static-viz JS
-  in-process on a pool of sandboxed GraalVM contexts (up to three by default).
+  "The GraalVM metabase.channel.render.js.protocol/StaticVizRenderer runs all static-viz JS inside a
+  GraalVM native-image isolate (separate VM, separate heap) under `SandboxPolicy/UNTRUSTED`, so CPU/heap
+  limits and speculative-execution mitigations are enforced by the VM. Requires the `js-isolate-community`
+  artifact on the classpath.
 
-  We run the JS interpreted (no Graal compiler on a stock JDK) and silence the interpreter warning with
-  the engine-level `engine.WarnInterpreterOnly` option. See
-  https://github.com/oracle/graaljs/blob/master/docs/user/RunOnJDK.md.
+  One ref-counted isolate `Engine` (see [[shared-untrusted-engine]]) is shared by two single-context pools
+  that never mix taints:
 
-  The pooled contexts share one `Engine` and one parsed bundle `Source`: the engine (and its
-  `Source`-keyed code cache) is created with the first context and closed with the last, and each context
-  evaluates the shared source into its own realm. So one parsed copy of the bundle is held regardless of
-  how many contexts there are, which makes raising the pool's max from 1 to 2 or 3 a one-line change. A
-  context is held exclusively per render (so renders serialize per context); the utilization controller
-  has min 0, so when idle the pool shrinks to 0 and the last `destroy` closes the engine (GraalVM reclaims
-  neither context nor engine on GC). The first render after an idle gap rebuilds them."
+  - the *builtin* pool (1 context, full static-viz bundle) renders built-in charts and only ever evaluates
+    our own bundle;
+  - the *plugin* pool (1 context, slim custom-viz bundle) is the only place untrusted third-party
+    custom-viz plugin JS runs.
+
+  Contexts on a shared engine have isolated global scopes (a plugin can't see another context's globals)
+  while sharing the engine's parsed-source code cache. A context is held exclusively per render, and all
+  rendering is globally serialized (see [[render-lock]]) — one render at a time across both pools."
   (:require
    [clojure.java.io :as io]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.channel.render.js.common :as common]
    [metabase.channel.render.js.protocol :as js.protocol]
    [metabase.config.core :as config]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.pool :as u.pool])
   (:import
    (io.aleph.dirigiste Pool)
-   (org.graalvm.polyglot Context Engine HostAccess Source Value)))
+   (java.io OutputStream)
+   (org.graalvm.polyglot Context Engine HostAccess PolyglotException SandboxPolicy Source Value)))
 
 (set! *warn-on-reflection* true)
 
-;;; --------------------------------------------- engine / context ----------------------------------------
-
-(def ^:private no-host-class-lookup
-  "Predicate blocking all host class lookup."
-  (reify java.util.function.Predicate
-    (test [_ _] false)))
-
-(defn- create-engine
-  "Build a JS `Engine`. We run JS interpreted (no Graal compiler on a stock JDK), so
-  `engine.WarnInterpreterOnly` is silenced here (it's an engine-level option)."
-  ^Engine []
-  (.. (Engine/newBuilder)
-      (option "engine.WarnInterpreterOnly" "false")
-      (build)))
-
-(defn create-context
-  "Create a sandboxed org.graalvm.polyglot.Context for evaluating javascript — on a fresh engine (no args)
-  or on the given `engine`, so several contexts can share one engine and its parsed-source code cache. No
-  host access, no class lookup, no filesystem I/O; all data must be passed as JSON strings and parsed in JS."
-  (^Context [] (create-context (create-engine)))
-  (^Context [^Engine engine]
-   (.. (Context/newBuilder (into-array String ["js"]))
-       (engine engine)
-       (option "js.intl-402" "true")
-       (allowHostAccess HostAccess/NONE)
-       (allowHostClassLookup no-host-class-lookup)
-       (out System/out)
-       (err System/err)
-       (allowIO false)
-       (build))))
+;;; ------------------------------------------ evaluation helpers -----------------------------------------
 
 (defn load-js-string
   "Load a string literal source into the js context."
   [^Context context ^String string-src ^String src-name]
   (.eval context (.buildLiteral (Source/newBuilder "js" string-src src-name))))
 
-(defn- build-source
-  "Build a `Source` from a classpath resource path."
-  ^Source [source-path]
-  (let [resource (io/resource source-path)]
-    (when (nil? resource)
-      (throw (ex-info (trs "Javascript resource not found: {0}" source-path)
-                      {:source source-path})))
-    (.build (Source/newBuilder "js" ^java.net.URL resource))))
-
-(defn- eval-source
-  "Evaluate an already-built `Source` in the js context."
-  [^Context context ^Source source]
-  (.eval context source))
+(defn load-resource
+  "Load a JS classpath resource into `context` as a *literal* `Source` (content, not URL-backed).
+  It's needed for the `SandboxPolicy/UNTRUSTED` context"
+  [^Context context ^String source-path]
+  (if-let [resource (io/resource source-path)]
+    (load-js-string context (slurp resource) source-path)
+    (throw (ex-info (trs "Javascript resource not found: {0}" source-path)
+                    {:source source-path}))))
 
 (defn execute-fn-name
   "Execute the global js function named `js-fn-name` in `context` with `args`. Not thread-safe on its own
@@ -92,103 +64,311 @@
   (assert (.canExecute fn-ref) "cannot execute function reference")
   (.execute fn-ref (object-array args)))
 
-;;; ---------------------------------------- shared engine + contexts -------------------------------------
+;;; ------------------------------------- untrusted isolate engine ----------------------------------------
+
+(def ^:private ^OutputStream discarding-output-stream
+  "Sink for untrusted-guest stdout/stderr — guest console output (ours or a plugin's) is not useful in
+  server logs, plugin output is additionally untrusted, and `SandboxPolicy/UNTRUSTED` bounds it via
+  `sandbox.Max*StreamSize` regardless."
+  (OutputStream/nullOutputStream))
+
+;;; ---- Isolate memory caps (fail closed, catchable) ----
+;;;
+;;; The isolate is a separate heap but runs in the *same OS process* as the JVM, so its native memory counts
+;;; against the same pod/container.
+(def ^:private max-isolate-memory
+  "`engine.MaxIsolateMemory`: hard cap on the untrusted isolate's *whole* heap across every live context —
+  a ceiling, not a reservation, and deliberately an overcommit: the (at most two) resident contexts' per-
+  context caps ([[max-heap-memory]]) sum above it, which is tolerable because rendering is globally
+  serialized — see [[render-lock]]. If a resident builtin + plugin pair still pushes past this, the isolate
+  fails closed (a resource-exhausted render → error card), never OOM-kills the pod. Must stay strictly
+  above the per-context [[max-heap-memory]] (GraalVM requires it)."
+  "512MB")
+
+(def ^:private max-heap-memory
+  "`sandbox.MaxHeapMemory`: per-context guest-heap cap. GraalVM requires it strictly below the engine-wide
+  [[max-isolate-memory]]"
+  "416MB")
+
+(defn- new-untrusted-engine
+  "Build the isolate `Engine` shared by every untrusted context. `engine.MaxIsolateMemory` caps the
+  whole isolate heap and must exceed the per-context `sandbox.MaxHeapMemory` set in
+  [[untrusted-context]], so the isolate fails closed below the cgroup ceiling instead of OOM-killing
+  the pod."
+  ^Engine []
+  (.. (Engine/newBuilder (into-array String ["js"]))
+      ;; A shared engine and its contexts must declare the same sandbox policy, so the engine sets UNTRUSTED
+      ;; too — otherwise creating an UNTRUSTED context on it would fail the engine/context policy-match check.
+      (sandbox SandboxPolicy/UNTRUSTED)
+      (option "engine.MaxIsolateMemory" max-isolate-memory)
+      (out discarding-output-stream)
+      (err discarding-output-stream)
+      (build)))
 
 (def ^:private engine-lock (Object.))
 
-(def ^:private shared-engine
-  "Atom holding `{:engine <Engine>, :source <Source>, :refs <live context count>}`, or nil when no context
-  is live. Guarded by [[engine-lock]]. The engine and parsed bundle are shared by every pooled context;
-  they're created with the first context ([[acquire-engine!]]) and closed with the last
-  ([[release-engine!]])."
+(def ^:private shared-untrusted-engine
+  "Atom holding `{:engine <Engine>, :refs <live context count>}`, or nil when no context is live. Guarded
+  by [[engine-lock]]. The single UNTRUSTED isolate `Engine` is shared by every context from both pools:
+  created with the first context ([[acquire-untrusted-engine!]]) and closed with the last
+  ([[release-untrusted-engine!]]) — from either pool — so idle-shrunk pools free the isolate's native heap
+  (up to [[max-isolate-memory]]) instead of pinning it for the process lifetime. GraalVM reclaims neither
+  engine nor contexts on GC, so the last release must close the engine explicitly to get the memory back."
   (atom nil))
 
-(defn- acquire-engine!
-  "Return the shared `{:engine, :source}`, creating them (parsing the bundle) with the first context.
-  Bumps the ref count."
-  []
+(defn- acquire-untrusted-engine!
+  "Return the shared UNTRUSTED isolate `Engine`, creating it with the first context. Bumps the ref count."
+  ^Engine []
   (locking engine-lock
-    (let [state (or @shared-engine
-                    {:source (build-source common/bundle-resource-path)
-                     :engine (create-engine)
-                     :refs   0})]
-      (reset! shared-engine (update state :refs inc))
-      state)))
+    (let [state (or @shared-untrusted-engine {:engine (new-untrusted-engine), :refs 0})]
+      (reset! shared-untrusted-engine (update state :refs inc))
+      (analytics/inc! :metabase-static-viz/isolate-contexts)
+      (:engine state))))
 
-(defn- release-engine!
+(defn- release-untrusted-engine!
   "Drop a ref on the shared engine, closing it once the last context is gone."
   []
   (locking engine-lock
-    (let [{:keys [^Engine engine refs]} @shared-engine]
+    (let [{:keys [^Engine engine refs]} @shared-untrusted-engine]
       (if (<= refs 1)
         (do (try (.close engine) (catch Exception _))
-            (reset! shared-engine nil))
-        (swap! shared-engine update :refs dec)))))
+            (reset! shared-untrusted-engine nil))
+        (swap! shared-untrusted-engine update :refs dec))
+      (analytics/dec-gauge! :metabase-static-viz/isolate-contexts))))
 
-(defn- generate-context!
-  "Build a context on the shared engine and evaluate the bundle into it (creating the engine + parsing the
-  bundle if this is the first context)."
-  ^Context []
+(def ^:private render-max-cpu-time
+  "`sandbox.MaxCPUTime` for a *non-pooled* untrusted context (the dev fresh-context path). Covers a cold parse
+  of the static-viz bundle plus a single render on dev hardware. Prod uses a pooled context with the larger,
+  cumulative [[pool-max-cpu-time]] instead."
+  "30s")
+
+(def ^:private pool-max-cpu-time
+  "`sandbox.MaxCPUTime` for a *pooled*, long-lived untrusted context (the prod path). MaxCPUTime is a
+  *cumulative* per-context lifetime budget, not per-render: it must cover the one-time cold parse of the
+  bundle at pool generation plus the many renders the context then serves. Pooled contexts are proactively
+  recycled before this budget runs out mid-render — see [[pool-cpu-soft-limit-ms]]."
+  "180s")
+
+(defn untrusted-context
+  "Create a `SandboxPolicy/UNTRUSTED` GraalVM isolate `Context` on `engine` (which must itself declare
+  `SandboxPolicy/UNTRUSTED` — see [[new-untrusted-engine]]). The guest runs in a separate isolate heap
+  with VM-enforced CPU/heap/AST limits, no host access, and no IO, so data must cross the boundary as
+  JSON strings. Guest stdout/stderr go to the engine's discarding streams."
+  ^Context [^Engine engine ^String max-cpu-time]
+  (.. (Context/newBuilder (into-array String ["js"]))
+      (engine engine)
+      (sandbox SandboxPolicy/UNTRUSTED)
+      ;; HostAccess/UNTRUSTED, not /NONE: the UNTRUSTED policy rejects /NONE (it still permits mutable
+      ;; target-type mappings). /UNTRUSTED is the policy's purpose-built strictest host-access mode.
+      (allowHostAccess HostAccess/UNTRUSTED)
+      ;; allowAllAccess (the master switch that would enable all of the below at once) is false by default; UNTRUSTED forbids true.
+      ;; allowHostClassLookup is false by default under SandboxPolicy/UNTRUSTED.
+      ;; allowIO is disabled by default under SandboxPolicy/UNTRUSTED.
+      ;; allowNativeAccess is false by default under SandboxPolicy/UNTRUSTED.
+      ;; allowEnvironmentAccess is NONE (no host env vars) by default under SandboxPolicy/UNTRUSTED.
+      ;; allowExperimentalOptions left at default false
+      ;; MaxCPUTimeCheckInterval left at its ~10ms default
+      (option "sandbox.MaxCPUTime" max-cpu-time)
+      (option "sandbox.MaxHeapMemory" max-heap-memory)
+      (option "sandbox.MaxASTDepth" "5000")
+      (option "sandbox.MaxThreads" "1")         ; single-threaded isolate; allowCreateThread also defaults to false
+      (option "sandbox.MaxOutputStreamSize" "16MB")
+      (option "sandbox.MaxErrorStreamSize" "4MB")
+      ;; sandbox.MaxStatements skipped (and thus its MaxStatementsIncludeInternal modifier): fragile to tune and the compute axis is already covered by MaxCPUTime et al.
+      ;; sandbox.MaxStackFrames skipped too: runtime-recursion blowup surfaces as a contained guest error in the isolate.
+      (build)))
+
+;;; ------------------------------------ untrusted context generation -------------------------------------
+
+(defn- destroy-untrusted-context!
+  "Close an untrusted isolate context reaped or disposed by a pool and drop its ref on the shared
+  untrusted engine (closing the engine — and freeing its isolate heap — with the last context)."
+  [^Context context]
+  (log/debug "static-viz: disposing untrusted isolate context")
+  (try (.close context true) (catch Exception _))
+  (release-untrusted-engine!))
+
+(defn- generate-untrusted-context!
+  "Cold-parse the bundle at `bundle-path` into a fresh isolate context on the shared untrusted engine
+  (creating the engine with the first context); logged with timing because this is the dominant
+  per-context cost and explains slow first/regenerated renders."
+  ^Context [^String bundle-path ^String max-cpu-time]
   (common/assert-tests-not-initializing!)
-  (let [{:keys [^Engine engine ^Source source]} (acquire-engine!)]
+  (let [timer          (u/start-timer)
+        ^Engine engine (acquire-untrusted-engine!)]
     (try
-      (doto (create-context engine)
-        (eval-source source))
+      (let [context (untrusted-context engine max-cpu-time)]
+        (try
+          (load-resource context bundle-path)
+          (log/infof "static-viz: generated untrusted isolate context (cold-parsed %s) in %.0fms"
+                     bundle-path (u/since-ms timer))
+          context
+          (catch Throwable t
+            ;; a bundle-load failure would otherwise leak the freshly-built isolate; close it and rethrow
+            ;; (the engine ref is dropped by the outer catch)
+            (try (.close context true) (catch Exception _))
+            (throw t))))
       (catch Throwable t
-        (release-engine!)
+        (release-untrusted-engine!)
         (throw t)))))
 
-(defn- destroy-context!
-  "Close a context and drop its ref on the shared engine (closing the engine if it was the last context)."
-  [^Context context]
-  (try (.close context true) (catch Exception _))
-  (release-engine!))
-
-;;; ------------------------------------------------ context pool -----------------------------------------
+;;; ---------------------------------------- untrusted context pools --------------------------------------
 
 (def ^:private pool-key
   "Dirigiste pools are keyed; the key itself is arbitrary, it just has to be the same for every operation."
   :static-viz)
 
-(def ^:private ^Pool static-viz-context-pool
-  "A pool of up to three static-viz contexts, each held exclusively from acquire to release, so at most
-  three renders run at once — one per context, on the shared engine. When idle for up to 10 minutes the
-  pool shrinks to 0 and the generator's `destroy` closes the context (and, on the last one, the shared
-  engine); the first render after an idle gap rebuilds them. See
-  [[metabase.util.pool/create-pool]]."
-  (u.pool/create-pool generate-context! destroy-context! {:max-size 3, :idle-minutes 10}))
+(defn- untrusted-context-pool
+  "Pool of one isolate context pre-loaded with the bundle at `bundle-path`. Pools `{:context <Context>,
+  :used-ms <atom>}` wrappers so the cumulative-CPU accumulator (see [[pool-cpu-soft-limit-ms]]) travels
+  with its context. After 10 idle minutes the pool shrinks to 0, closing the context (and, with the last
+  context from either pool, the shared engine)."
+  ^Pool [bundle-path]
+  (u.pool/create-pool (fn [] {:context (generate-untrusted-context! bundle-path pool-max-cpu-time)
+                              :used-ms (atom 0)})
+                      (fn [{:keys [context]}] (destroy-untrusted-context! context))
+                      {:max-size 1, :idle-minutes 10}))
 
-(defn- do-with-static-viz-context
-  "Borrow a pooled static-viz context and call `f` with it, held exclusively for the call (never let it —
-  or a context-bound `Value` — escape). In dev, builds and closes a throwaway context per call so a fresh
-  `bun run build-static-viz` is picked up without a REPL restart."
+(def ^:private ^Pool untrusted-plugin-context-pool
+  "Pool of one isolate context (slim custom-viz bundle) — the only place untrusted third-party custom-viz
+  plugin JS ever runs."
+  (untrusted-context-pool common/custom-viz-bundle-resource-path))
+
+(def ^:private ^Pool untrusted-builtin-context-pool
+  "Pool of one isolate context (full static-viz bundle) for rendering built-in static viz."
+  (untrusted-context-pool common/bundle-resource-path))
+
+(def ^:private render-lock
+  "Serializes *all* static-viz rendering — builtin or plugin, at most one render at a time — so only one
+  context allocates its peak heap at a time, which is what lets [[max-isolate-memory]] sit as low as it
+  does. Bounds concurrency, not residency: the pools still keep their contexts warm between renders."
+  (Object.))
+
+(def ^:private pool-cpu-soft-limit-ms
+  "Recycle a pooled context once its renders' cumulative host wall time passes this threshold — well
+  before exhausting the hard [[pool-max-cpu-time]] budget, which would kill a render mid-flight."
+  120000)
+
+(defn- sandbox-limit-label
+  "Which sandbox limit killed a render, for the prometheus counter. Only the exception message
+  distinguishes the heap cap from the CPU-time budget — the polyglot API exposes no more than the
+  cancelled/resource-exhausted flags."
+  [^PolyglotException e]
+  (let [message (str (.getMessage e))]
+    (cond
+      (re-find #"(?i)heap" message)     "memory"
+      (re-find #"(?i)cpu time" message) "cpu"
+      :else                             "other")))
+
+(defn- do-with-pooled-context
+  "Prod path: borrow a wrapper from `pool` and run `f` with its context. The context is disposed instead
+  of released when a sandbox-limit hit leaves it permanently unusable, or when its cumulative CPU crosses
+  [[pool-cpu-soft-limit-ms]]. `label` only tags log messages."
+  [^Pool pool label f]
+  (let [{:keys [^Context context used-ms] :as wrapper} (.acquire pool pool-key)
+        disposed? (volatile! false)
+        timer     (u/start-timer)]
+    (try
+      (f context)
+      (catch PolyglotException e
+        ;; A cancelled / resource-exhausted context is permanently unusable; dispose it so the pool
+        ;; regenerates a fresh one rather than handing a dead context to the next render.
+        (when (or (.isCancelled e) (.isResourceExhausted e))
+          (vreset! disposed? true)
+          (analytics/inc! :metabase-static-viz/sandbox-limit-hits
+                          {:tier label, :limit (sandbox-limit-label e)})
+          (log/warnf "static-viz: untrusted %s context hit a sandbox limit (cancelled=%s resource-exhausted=%s); disposing and regenerating. %s"
+                     label (.isCancelled e) (.isResourceExhausted e) (.getMessage e))
+          (.dispose pool pool-key wrapper))
+        (throw e))
+      (finally
+        (when-not @disposed?
+          (let [total (swap! used-ms + (long (u/since-ms timer)))]
+            (if (>= total pool-cpu-soft-limit-ms)
+              (do
+                (analytics/inc! :metabase-static-viz/context-recycles {:tier label})
+                (log/infof "static-viz: %s isolate context spent ~%dms of its cumulative %s CPU budget; recycling it"
+                           label total pool-max-cpu-time)
+                (.dispose pool pool-key wrapper))
+              (.release pool pool-key wrapper))))))))
+
+(defn- do-with-untrusted-context*
+  "Run `f` with an isolate context pre-loaded with the bundle at `bundle-path`, under the global
+  [[render-lock]]. In dev, builds a throwaway context per call so a fresh `bun run build-static-viz` is
+  picked up without a REPL restart; in prod, borrows a pooled context from `pool`."
+  [^Pool pool bundle-path label f]
+  (analytics/inc! :metabase-static-viz/untrusted-render {:tier label})
+  (let [wait-timer (u/start-timer)]
+    ;; monitor acquisition can't throw, so the matching dec-gauge! inside the lock body cannot be skipped
+    (analytics/inc! :metabase-static-viz/render-queue)
+    (locking render-lock
+      (analytics/dec-gauge! :metabase-static-viz/render-queue)
+      (let [waited-ms (long (u/since-ms wait-timer))]
+        (if (>= waited-ms 1000)
+          (log/infof "static-viz: %s render waited %dms for the render lock" label waited-ms)
+          (log/debugf "static-viz: %s render waited %dms for the render lock" label waited-ms)))
+      (if config/is-dev?
+        (let [context (generate-untrusted-context! bundle-path render-max-cpu-time)]
+          (try
+            (f context)
+            (finally
+              (destroy-untrusted-context! context))))
+        (do-with-pooled-context pool label f)))))
+
+(defn do-with-untrusted-plugin-context
+  "Acquire a plugin isolate context (slim custom-viz bundle) — the only kind of context that ever evaluates
+  untrusted third-party plugin JS — and call `f` with it (never let the context — or a context-bound
+  `Value` — escape)."
   [f]
-  (if config/is-dev?
-    (let [context (generate-context!)]
-      (try (f context)
-           (finally (destroy-context! context))))
-    (let [context (.acquire static-viz-context-pool pool-key)]
-      (try (f context)
-           (finally (.release static-viz-context-pool pool-key context))))))
+  (do-with-untrusted-context* untrusted-plugin-context-pool common/custom-viz-bundle-resource-path "plugin" f))
+
+(defn do-with-untrusted-builtin-context
+  "Acquire a builtin isolate context (full static-viz bundle) and call `f` with it (never let the context —
+  or a context-bound `Value` — escape)."
+  [f]
+  (do-with-untrusted-context* untrusted-builtin-context-pool common/bundle-resource-path "builtin" f))
 
 ;;; ------------------------------------------------ backend ----------------------------------------------
 
 (mu/defn- call-js :- :string
   "Execute static-viz bundle function `fn-name` (a `MetabaseStaticViz.*` global) with the already-JSON-encoded
-  string `args` on the pooled context."
+  string `args` on a pooled builtin isolate context."
   [fn-name :- :string
    args    :- [:sequential :string]]
-  (do-with-static-viz-context
+  (do-with-untrusted-builtin-context
    (fn [^Context context]
      (.asString ^Value (apply execute-fn-name context (str "MetabaseStaticViz." fn-name) args)))))
 
+(defn- chart-with-custom-viz*
+  "Render `input` on a pooled plugin isolate context (slim custom-viz bundle already loaded by the pool)
+  after evaluating and registering the custom-viz plugin `bundles` (untrusted third-party JS) into it.
+  Bundles are re-evaluated on every render: the set of plugins varies per card, and skipping re-evaluation
+  would mean trusting whatever state untrusted code left behind in the pooled context."
+  [input bundles]
+  (let [timer        (u/start-timer)
+        options-json (json/encode (:options input))
+        input-json   (json/encode input)
+        result       (do-with-untrusted-plugin-context
+                      (^:once fn* [^Context context]
+                        (execute-fn-name context "MetabaseStaticViz.initializeContextJSON" options-json)
+                        (doseq [{:keys [identifier plugin-id source]} bundles]
+                          (load-js-string context source (str "custom-viz-" identifier ".js"))
+                          (execute-fn-name context "MetabaseStaticViz.registerCustomVizPlugin" identifier plugin-id))
+                        (.asString ^Value (execute-fn-name context "MetabaseStaticViz.renderChartJSON" input-json))))]
+    (log/infof "custom-viz: static-rendered %s in %.0fms (incl. context acquire/generation)"
+               (mapv :identifier bundles) (u/since-ms timer))
+    result))
+
 (defn renderer
-  "The GraalVM [[metabase.channel.render.js.protocol/StaticVizRenderer]] — runs the static-viz JS
-  in-process on the pooled GraalVM context. Each method JSON-encodes its `input` map for the bundle and
-  decodes the bundle's JSON result back into Clojure data."
+  "The GraalVM [[metabase.channel.render.js.protocol/StaticVizRenderer]] — every method renders on a
+  pooled `SandboxPolicy/UNTRUSTED` isolate context: built-in rendering on the builtin (full-bundle) pool,
+  `chart-with-custom-viz` (untrusted plugin JS) on the plugin (slim-bundle) pool. Each method JSON-encodes
+  its `input` map for the bundle and decodes the bundle's JSON result back into Clojure data."
   []
   (reify js.protocol/StaticVizRenderer
     (chart [_ input]
       (json/decode+kw (call-js "renderChartJSON" [(json/encode input)])))
+    (chart-with-custom-viz [_ input custom-viz-bundles]
+      (json/decode+kw (chart-with-custom-viz* input custom-viz-bundles)))
     (cell-background-colors [_ input]
       (json/decode (call-js "getCellBackgroundColorsJSON" [(json/encode input)])))))

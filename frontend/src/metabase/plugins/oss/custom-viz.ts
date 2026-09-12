@@ -1,3 +1,7 @@
+import type {
+  CreateCustomVisualization,
+  CustomVisualization,
+} from "custom-viz";
 import type { ComponentType } from "react";
 
 import type { ToastArgs } from "metabase/common/hooks";
@@ -6,6 +10,7 @@ import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder
 import type { Dispatch } from "metabase/redux/store";
 import type { CustomVizSettingWidgetProps } from "metabase/viz-core";
 import type {
+  CustomVizDisplayType,
   CustomVizPluginId,
   CustomVizPluginRuntime,
   VisualizationDisplay,
@@ -95,6 +100,17 @@ const getDefaultPluginCustomViz = () => ({
     mount: WidgetMount<CustomVizSettingWidgetProps>;
     widgetProps: CustomVizSettingWidgetProps;
   }>,
+
+  // Static viz rendering (GraalJS context)
+  customVizRegistry: new Map<
+    CustomVizDisplayType,
+    CustomVisualization<Record<string, unknown>>
+  >(),
+  registerCustomVizPlugin: (
+    _factory: CreateCustomVisualization<Record<string, unknown>>,
+    _identifier: string,
+    _pluginId: CustomVizPluginId,
+  ) => {},
 });
 
 export const PLUGIN_CUSTOM_VIZ = definePluginSlot(getDefaultPluginCustomViz);

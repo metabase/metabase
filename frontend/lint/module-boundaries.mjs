@@ -360,6 +360,7 @@ const elements = [
     "frontend/src/metabase/app-embed.ts",
     "frontend/src/metabase/app-public.ts",
     "frontend/src/metabase/app-static-viz.ts",
+    "frontend/src/metabase/app-static-viz-custom.ts",
     "frontend/src/metabase/AppComponent.tsx",
     "frontend/src/metabase/App.styled.tsx",
     "frontend/src/metabase/AppKBarProvider.tsx",
@@ -379,6 +380,8 @@ const elements = [
     // GraalJS) - like app.tsx, it composes OSS + EE code for a build artifact.
     // Full-mode entries match before folder patterns, whatever the order.
     "frontend/src/metabase/static-viz/index.tsx",
+    "frontend/src/metabase/static-viz/index-custom.tsx",
+    "frontend/src/metabase/static-viz/lib/entrypoint.ts",
     "frontend/src/metabase/static-viz/index.unit.spec.tsx",
   ].map((path) =>
     createElement({
