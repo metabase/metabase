@@ -13,6 +13,9 @@ const {
 const {
   bundleStatsPlugins,
 } = require("./frontend/build/shared/rspack/bundle-stats");
+const {
+  eePluginManifestPlugins,
+} = require("./frontend/build/shared/rspack/ee-plugin-manifest");
 
 const {
   IS_DEV_MODE,
@@ -347,6 +350,7 @@ const config = {
 
   plugins: [
     ...bundleStatsPlugins("stats-main.json"),
+    ...eePluginManifestPlugins(),
     // Extracts initial CSS into a standard stylesheet that can be loaded in parallel with JavaScript
     new rspack.CssExtractRspackPlugin({
       filename: isDevMode ? "[name].css" : "[name].[contenthash].css",

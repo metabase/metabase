@@ -11,10 +11,6 @@ import { Button, Flex, Loader, UnstyledButton } from "metabase/ui";
 import { isSyncCompleted } from "metabase/utils/syncing";
 import type { Database, Engine } from "metabase-types/api";
 
-const query = {
-  ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.databaseDetailsQueryProps,
-};
-
 interface DatabaseListProps {
   databases: Database[];
   engines: Record<string, Engine>;
@@ -124,7 +120,11 @@ export const DatabaseList = ({
                 ) : (
                   <UnstyledButton
                     c="core-brand"
-                    onClick={() => addSampleDatabase(query)}
+                    onClick={() =>
+                      addSampleDatabase({
+                        ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.databaseDetailsQueryProps,
+                      })
+                    }
                   >
                     {t`Bring the sample database back`}
                   </UnstyledButton>

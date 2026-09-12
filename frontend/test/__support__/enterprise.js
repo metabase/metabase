@@ -36,8 +36,8 @@ export function setupEnterpriseTest() {
 }
 
 export function setupEnterprisePlugins() {
-  const { initializePlugins } = require(`metabase-enterprise/plugins`);
-  initializePlugins?.();
+  const { initializePluginsSync } = require(`metabase-enterprise/plugins`);
+  initializePluginsSync((name) => require(`metabase-enterprise/${name}`));
 }
 
 export function setupSdkPlugins() {
