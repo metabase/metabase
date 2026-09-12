@@ -59,7 +59,20 @@
                                                                                               [:path [:maybe [:sequential [:any {:typescript "string | number | boolean | null | object"}]]]]
                                                                                               [:rawValue [:any {:typescript "string | number | boolean | null | object"}]]
                                                                                               [:value :string]]]]
-                                                               [:getRowSection :any]]}]
+                                                               [:getRowSection [:=> [:cat :int :int]
+                                                                                [:sequential [:map
+                                                                                              [:clicked [:maybe [:map
+                                                                                                                 [:value [:any {:typescript "string | number | boolean | null | object"}]]
+                                                                                                                 [:colIdx :int]]]]
+                                                                                              [:hasChildren :boolean]
+                                                                                              [:depth :int]
+                                                                                              [:maxDepthBelow :int]
+                                                                                              [:offset :int]
+                                                                                              [:span :int]
+                                                                                              [:path [:maybe [:sequential [:any {:typescript "string | number | boolean | null | object"}]]]]
+                                                                                              [:rawValue [:any {:typescript "string | number | boolean | null | object"}]]
+                                                                                              [:value :string]
+                                                                                              [:backgroundColor {:optional true} :string]]]]]]}]
   "Formats rows, columns, and measure values in a pivot table according to
   provided formatters."
   [data row-indexes col-indexes val-indexes cols top-formatters left-formatters value-formatters settings col-settings make-color-getter]
