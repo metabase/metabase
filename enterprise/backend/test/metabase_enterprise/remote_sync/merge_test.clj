@@ -11,6 +11,15 @@
    {:path    (str "collections/" name ".yaml")
     :content (str "serdes/meta:\n- model: Card\n  id: " id "\n  label: " name "\nname: " name "\n" extra)}))
 
+(defn- glossary-entry
+  "Builds a `{:path :content}` spec for a Glossary entry with entity `id`, `term` (which drives the path) and an
+  optional `definition` to vary the body."
+  ([id term] (glossary-entry id term "def"))
+  ([id term definition]
+   {:path    (str "glossary/" id "_" term ".yaml")
+    :content (str "serdes/meta:\n- model: Glossary\n  id: " id "\n  label: " term "\nentity_id: " id
+                  "\nterm: " term "\ndefinition: " definition "\n")}))
+
 (defn- ids
   "Sorted entity ids present in a merge result's :merged set."
   [result]
@@ -35,6 +44,25 @@
                   [(card "A" "a")]
                   [(card "A" "a" "x: ours\n")]
                   [(card "A" "a" "x: theirs\n")])]
+      (is (= 1 (count (:conflicts result))))
+      (is (empty? (:merged result))))))
+
+(deftest ^:parallel glossary-disjoint-edits-merge-clean-test
+  (testing "local edits term A's definition and remote edits term B's -> both merged, no conflict"
+    (let [base   [(glossary-entry "A" "arr") (glossary-entry "B" "mrr")]
+          ours   [(glossary-entry "A" "arr" "ours") (glossary-entry "B" "mrr")]
+          theirs [(glossary-entry "A" "arr") (glossary-entry "B" "mrr" "theirs")]
+          result (remote-sync.merge/three-way-merge base ours theirs)]
+      (is (empty? (:conflicts result)))
+      (is (= ["A" "B"] (ids result)))
+      (is (= {:added 0 :updated 1 :removed 0} (:summary result))))))
+
+(deftest ^:parallel glossary-same-term-edited-both-sides-is-conflict-test
+  (testing "the same term's definition edited differently on both sides -> conflict"
+    (let [result (remote-sync.merge/three-way-merge
+                  [(glossary-entry "A" "arr")]
+                  [(glossary-entry "A" "arr" "ours")]
+                  [(glossary-entry "A" "arr" "theirs")])]
       (is (= 1 (count (:conflicts result))))
       (is (empty? (:merged result))))))
 
