@@ -297,11 +297,16 @@
       (is (true? (expressible? "SELECT status, count(*) FROM orders GROUP BY status")))
       (is (true? (expressible? (str "select o.status, count(*) from orders o join products p on p.id = o.product_id "
                                     "where o.total > 10 group by o.status having count(*) > 5 order by 2 desc limit 10;")))))
+    (testing "a whole-table aggregate with no GROUP BY — the SQL an agent reaches for on \"how many X\" — is expressible"
+      (is (true? (expressible? "SELECT COUNT(*) AS total_expense_reports FROM brex_enriched.int_brex_expense_facts")))
+      (is (true? (expressible? "select sum(total) from orders where total > 10")))
+      (is (true? (expressible? "SELECT DISTINCT count(*) FROM orders"))))
     (testing "keywords inside string literals and comments do not disqualify"
       (is (true? (expressible? "SELECT status, count(*) FROM orders WHERE note = 'with over (' GROUP BY status")))
       (is (true? (expressible? "-- with\nSELECT status, count(*) FROM orders /* over ( */ GROUP BY status"))))
-    (testing "no GROUP BY, CTEs, window functions, set ops, subselects, template tags, and multiple statements are not"
+    (testing "a bare projection with no GROUP BY, CTEs, window functions, set ops, subselects, template tags, and multiple statements are not"
       (is (false? (expressible? "SELECT id FROM orders ORDER BY id")))
+      (is (false? (expressible? "SELECT id, count_of_things FROM orders")))
       (is (false? (expressible? "WITH t AS (SELECT status FROM orders) SELECT status, count(*) FROM t GROUP BY status")))
       (is (false? (expressible? "SELECT status, count(*) OVER () FROM orders GROUP BY status")))
       (is (false? (expressible? "SELECT status, count(*) FROM orders GROUP BY status UNION SELECT 'x', 0")))

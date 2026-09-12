@@ -34,7 +34,7 @@
   "The pack catalog, in the order `learn()` lists it. `:description` doubles as the catalog line
    and must say when to read the pack, not just what it is."
   [{:name        "query-dialect"
-    :description "The query dialect for execute_query and question_write's `query`: numeric-id refs, clause grammar, joins, expressions, multi-stage queries. Read before any non-trivial query. Reference `operators`: every filter/aggregation/expression operator."
+    :description "The query dialect for execute_query (the default route) and question_write's `query`: numeric-id refs, clause grammar, joins, expressions, multi-stage queries, limit vs paging, when SQL is warranted. Read before any non-trivial query. Reference `operators`: every filter/aggregation/expression operator."
     :references  ["operators"]}
    {:name        "native-parameters"
     :description "Template tags for native SQL (question_write's `native`): tag kinds, field filter vs raw variable, the template_tags shape, widget types, [[ ]] optional blocks. Read before first passing template_tags."
