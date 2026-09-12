@@ -78,6 +78,18 @@ describe("AIMarkdown", () => {
     expect(screen.getByRole("img", { name: /icon/ })).toBeInTheDocument();
   });
 
+  it("should render a metric mention as a smart link to the metric", async () => {
+    fetchMock.get(
+      "path:/api/card/456",
+      createMockCard({ id: 456, name: "Revenue", type: "metric" }),
+    );
+    setup({ children: "[Revenue](metabase://metric/456)" });
+
+    expect(
+      await screen.findByRole("link", { name: /Revenue/ }),
+    ).toHaveAttribute("href", "/metric/456");
+  });
+
   it("should render a generated-chart mention as a smart link chip", async () => {
     setup(
       { children: "[Orders by month](metabase://chart/chart-1)" },
