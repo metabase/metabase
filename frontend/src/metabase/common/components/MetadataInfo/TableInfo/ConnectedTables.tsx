@@ -1,7 +1,8 @@
 import { t } from "ttag";
 
+import { useQuestionFromOpts } from "metabase/metadata-store";
 import * as Urls from "metabase/urls";
-import type Table from "metabase-lib/v1/metadata/Table";
+import type { NormalizedTable } from "metabase-types/api";
 
 import { Container, Label, LabelContainer } from "../MetadataInfo.styled";
 
@@ -11,20 +12,23 @@ import {
   LabelLink,
 } from "./ConnectedTables.styled";
 
+export type ConnectedTable = Pick<
+  NormalizedTable,
+  "id" | "db_id" | "display_name"
+>;
+
 type Props = {
-  table: Table;
-  onConnectedTableClick?: (table: Table) => void;
+  tables: ConnectedTable[];
+  onConnectedTableClick?: (table: ConnectedTable) => void;
 };
 
-export function ConnectedTables({ table, onConnectedTableClick }: Props) {
-  const fkTables = table.connectedTables();
-
-  return fkTables.length ? (
+export function ConnectedTables({ tables, onConnectedTableClick }: Props) {
+  return tables.length ? (
     <Container>
       <LabelContainer color="text-primary">
         <Label>{t`Connected to these tables`}</Label>
       </LabelContainer>
-      {fkTables.slice(0, 8).map((fkTable) => {
+      {tables.slice(0, 8).map((fkTable) => {
         return onConnectedTableClick ? (
           <ConnectedTableButton
             key={fkTable.id}
@@ -43,8 +47,8 @@ function ConnectedTableButton({
   table,
   onClick,
 }: {
-  table: Table;
-  onClick: (table: Table) => void;
+  table: ConnectedTable;
+  onClick: (table: ConnectedTable) => void;
 }) {
   return (
     <LabelButton key={table.id} onClick={() => onClick(table)}>
@@ -53,9 +57,15 @@ function ConnectedTableButton({
   );
 }
 
-function ConnectedTableLink({ table }: { table: Table }) {
+function ConnectedTableLink({ table }: { table: ConnectedTable }) {
+  const buildQuestion = useQuestionFromOpts();
+  const question = buildQuestion({
+    DEPRECATED_RAW_MBQL_databaseId: table.db_id,
+    DEPRECATED_RAW_MBQL_tableId: table.id,
+  }).setDefaultDisplay();
+
   return (
-    <LabelLink to={Urls.question(table.newQuestion())}>
+    <LabelLink to={Urls.question(question)}>
       <InteractiveTableLabel table={table} />
     </LabelLink>
   );
