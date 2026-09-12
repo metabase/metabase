@@ -106,8 +106,8 @@
    ;; Curation badges act as tie-breakers by default; the :data-picker context boosts them (to 35 each).
    :official-collection 1
    :verified            1
-   ;; :library is a data-layer curation signal relevant only when picking a data source, so it is off by
-   ;; default; the :data-picker context opts in, at a curation-tier level that an exact match can overpower.
+   ;; :library is a curation signal used when choosing data sources, so it is disabled by default.
+   ;; :data-picker and :metabot enable it at a level that an exact match can override.
    :library             0
    ;; RRF is the "Reciprocal Rank Fusion" score used by the semantic search backend to blend semantic and keyword scores
    :rrf                 500
@@ -156,11 +156,25 @@
    ;; - `custom-viz.cy.spec.ts`
    ;; - `search-snowplow.cy.spec.js`
    :metabot
-   {:data-layer          33
+   ;; Metabot searches for data sources, so it uses the data picker's library boost.
+   ;; This preserves the preference when library-only retrieval falls back to general search.
+   {:library             80
+    :data-layer          33
     :data-layer/final    1     ; ≈ 33
     :data-layer/internal 0.3   ; ≈ 10
     :data-layer/hidden   0.03  ; ≈ 1
-    }})
+    ;; Favor semantic-layer content over saved questions, and saved questions over models.
+    ;; Tables have no type boost because :data-layer already ranks them. A metric therefore ties an internal table.
+    ;; List every model Metabot searches; otherwise [[models-search-order]] supplies its fallback boost.
+    :model               10
+    :model/metric        1     ; ≈ 10
+    :model/dashboard     0.3   ; ≈ 3
+    :model/card          0.3   ; ≈ 3
+    :model/table         0
+    :model/dataset       0
+    :model/document      0
+    :model/transform     0
+    :model/database      0}})
 
 (def known-rankers
   "Scorer keys the weights API accepts as overrides: the union across [[static-default-weights]] and every

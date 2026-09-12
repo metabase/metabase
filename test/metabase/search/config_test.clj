@@ -91,4 +91,7 @@
     (is (= 1 (search.config/weight {:context :global} :verified)))
     (is (> (search.config/weight {:context :data-picker} :library)
            (+ (search.config/weight {:context :data-picker} :official-collection)
-              (search.config/weight {:context :data-picker} :verified))))))
+              (search.config/weight {:context :data-picker} :verified)))))
+  (testing "Metabot applies the same library boost as the data picker"
+    (is (= (search.config/weight {:context :data-picker} :library)
+           (search.config/weight {:context :metabot} :library)))))
