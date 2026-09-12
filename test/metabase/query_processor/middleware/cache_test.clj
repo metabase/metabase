@@ -456,6 +456,17 @@
       (is (= :not-cached
              (run-query {:cache-strategy nil}))))))
 
+(deftest cache-skip-warn-log-test
+  (testing "when results are too large to cache, a WARN-level log is emitted (not just INFO)"
+    (with-mock-cache! [save-chan]
+      (mt/with-log-messages-for-level [messages [metabase.query-processor.middleware.cache.impl :warn]]
+        (mt/with-temporary-setting-values [query-caching-max-kb 0]
+          (run-query)
+          (mt/wait-for-result save-chan))
+        (is (some #(re-find #"(?i)too large" (str (:message %)))
+                  (messages))
+            "Expected a WARN-level log message when results exceed cache size limit")))))
+
 (deftest max-kb-test
   (testing "check that `query-caching-max-kb` is respected and queries aren't cached if they're past the threshold"
     (with-mock-cache! [save-chan]
