@@ -171,7 +171,9 @@ describe("scenarios > admin > transforms incremental", () => {
           .click();
         H.popover().findByText(DB_NAME).click();
 
-        getPythonDataPicker().findByText("Select a table…").click();
+        getPythonDataPicker()
+          .findByRole("button", { name: "Select a table…" })
+          .click();
         H.entityPickerModal().findByText(SOURCE_TABLE).click();
 
         H.PythonEditor.clear().paste(
@@ -198,6 +200,9 @@ def transform(animals):
           });
         });
 
+        H.DataStudio.Transforms.header({ timeout: 10_000 }).should(
+          "be.visible",
+        );
         cy.log("run the transform and make sure its table can be queried");
         H.DataStudio.Transforms.runTab().click();
         runTransformAndWaitForSuccess();

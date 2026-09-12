@@ -1,3 +1,5 @@
+import type { MatcherOptions } from "@testing-library/cypress";
+
 import type {
   MeasureId,
   SegmentId,
@@ -20,7 +22,8 @@ export const DataStudio = {
   nav: () => cy.findByTestId("data-studio-nav"),
   breadcrumbs: () => cy.findByTestId("data-studio-breadcrumbs"),
   Transforms: {
-    header: () => cy.findByTestId("transforms-header"),
+    header: (options?: MatcherOptions) =>
+      cy.findByTestId("transforms-header", options),
     sectionHeader: () => cy.findByTestId("transforms-section-header"),
     transformsTab: () =>
       DataStudio.Transforms.sectionHeader().findByText("Transforms"),
