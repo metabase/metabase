@@ -25,4 +25,5 @@
   generate-representation
   temporal-context]
  [metabase.interestingness.chart.stats
+  chart-stats-schema
   compute-chart-stats])

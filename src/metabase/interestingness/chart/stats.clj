@@ -48,10 +48,10 @@
                                    [name (count y_values)]))
         limited-series  (into {} (for [[name config] series-data]
                                    [name (downsample-series config max-data-points-per-series)]))
-        downsampled     (into {} (for [[name orig-count] original-counts
-                                       :let [new-count (count (get-in limited-series [name :y_values]))]
-                                       :when (< new-count orig-count)]
-                                   [name {:original-count orig-count :sampled-count new-count}]))]
+        downsampled     (vec (for [[name orig-count] original-counts
+                                   :let [new-count (count (get-in limited-series [name :y_values]))]
+                                   :when (< new-count orig-count)]
+                               {:name name :original-count orig-count :sampled-count new-count}))]
     [limited-series
      (when (seq downsampled)
        {:downsampled-series downsampled})]))
@@ -168,3 +168,9 @@
                                                            " charts not yet implemented")})]
     (cond-> stats
       limits-info (assoc :limits limits-info))))
+
+;;; --------------------------------------------- Serialization ------------------------------------------------------
+
+(def chart-stats-schema
+  "Registry key for a [[compute-chart-stats]] result."
+  ::stats.types/chart-stats)

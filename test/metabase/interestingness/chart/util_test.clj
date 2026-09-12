@@ -6,8 +6,6 @@
 
 (set! *warn-on-reflection* true)
 
-;;; ------------------------------------------------ nan->nil -------------------------------------------------------
-
 (deftest ^:parallel nan->nil-test
   (testing "NaN becomes nil"
     (is (nil? (stats.u/nan->nil Double/NaN))))
@@ -15,8 +13,11 @@
     (is (= 42.0 (stats.u/nan->nil 42.0)))
     (is (= 0.0 (stats.u/nan->nil 0.0)))
     (is (= -1.5 (stats.u/nan->nil -1.5))))
-  (testing "infinity passes through (not NaN)"
-    (is (= Double/POSITIVE_INFINITY (stats.u/nan->nil Double/POSITIVE_INFINITY)))))
+  (testing "the infinities are dropped too, despite the name — as unrepresentable in JSON as NaN.
+            Nothing produces one today (every division that could is zero-guarded), so this pins the
+            guard rather than a live case"
+    (is (nil? (stats.u/nan->nil Double/POSITIVE_INFINITY)))
+    (is (nil? (stats.u/nan->nil Double/NEGATIVE_INFINITY)))))
 
 ;;; -------------------------------------------- compute-summary ---------------------------------------------------
 
@@ -181,10 +182,11 @@
                   series-data
                   (fn [xs ys] {:sum (reduce + ys) :count (count xs)}))]
       (is (= 1 (count result)))
-      (is (=? {"s1" {:sum 60
-                     :count 3
-                     :x-name "Date"
-                     :y-name "Revenue"}}
+      (is (=? [{:name   "s1"
+                :sum    60
+                :count  3
+                :x-name "Date"
+                :y-name "Revenue"}]
               result)))))
 
 (deftest ^:parallel compute-series-with-labels-nil-metadata-test
@@ -193,8 +195,9 @@
           result (stats.u/compute-series-with-labels
                   series-data
                   (fn [_ _] {:ok true}))]
-      (is (=? {"s1" {:x-name nil?
-                     :y-name nil?}}
+      (is (=? [{:name   "s1"
+                :x-name nil?
+                :y-name nil?}]
               result)))))
 
 (deftest ^:parallel compute-series-with-labels-multiple-series-test
@@ -210,8 +213,8 @@
           result (stats.u/compute-series-with-labels
                   series-data
                   (fn [_ ys] {:val (first ys)}))]
-      (is (=? {"a" {:val 10}
-               "b" {:val 20}}
+      (is (=? [{:name "a" :val 10}
+               {:name "b" :val 20}]
               result)))))
 
 ;;; ------------------------------------------- make-chart-result ----------------------------------------------------
@@ -225,27 +228,29 @@
    :range   9.0})
 
 (def ^:private sample-categorical-series
-  {"s1" {:summary        sample-summary
-         :data-points    5
-         :category-count 3
-         :top-categories [{:name "A" :value 10.0 :percentage 50.0}]
-         :outliers       []}})
+  [{:name           "s1"
+    :summary        sample-summary
+    :data-points    5
+    :category-count 3
+    :top-categories [{:name "A" :value 10.0 :percentage 50.0}]
+    :outliers       []}])
 
 (def ^:private sample-histogram-series
-  {"s1" {:estimated-summary {:weighted-mean    5.0
-                             :weighted-std-dev 2.0
-                             :data-range       9.0}
-         :total-count       50
-         :data-points       10
-         :bin-data          [[1.0 5.0] [2.0 10.0]]
-         :distribution      {:estimated-percentiles {25 2.0 50 5.0 75 8.0 90 9.0 95 9.5 99 9.9}
-                             :estimated-quartiles   {:q1 2.0 :median 5.0 :q3 8.0 :iqr 6.0}}
-         :structure         {:mode-bin           [2.0 10.0]
-                             :peak-count         1
-                             :concentration-top3 1.0
-                             :gap-count          0
-                             :empty-bin-ratio    0.0
-                             :bin-count          2}}})
+  [{:name              "s1"
+    :estimated-summary {:weighted-mean    5.0
+                        :weighted-std-dev 2.0
+                        :data-range       9.0}
+    :total-count       50
+    :data-points       10
+    :bin-data          [[1.0 5.0] [2.0 10.0]]
+    :distribution      {:estimated-percentiles {:p25 2.0 :p50 5.0 :p75 8.0 :p90 9.0 :p95 9.5 :p99 9.9}
+                        :estimated-quartiles   {:q1 2.0 :median 5.0 :q3 8.0 :iqr 6.0}}
+    :structure         {:mode-bin           [2.0 10.0]
+                        :peak-count         1
+                        :concentration-top3 1.0
+                        :gap-count          0
+                        :empty-bin-ratio    0.0
+                        :bin-count          2}}])
 
 (deftest ^:parallel make-chart-result-basic-test
   (testing "builds standard chart result with valid schema"
@@ -259,16 +264,18 @@
   (testing "includes correlations when provided"
     (let [corrs [{:series-a "a" :series-b "b" :coefficient 0.9
                   :strength :strong :direction :positive}]
-          series {"a" {:summary        sample-summary
-                       :data-points    2
-                       :category-count 2
-                       :top-categories []
-                       :outliers       []}
-                  "b" {:summary        sample-summary
-                       :data-points    2
-                       :category-count 2
-                       :top-categories []
-                       :outliers       []}}
+          series [{:name           "a"
+                   :summary        sample-summary
+                   :data-points    2
+                   :category-count 2
+                   :top-categories []
+                   :outliers       []}
+                  {:name           "b"
+                   :summary        sample-summary
+                   :data-points    2
+                   :category-count 2
+                   :top-categories []
+                   :outliers       []}]
           result (stats.u/make-chart-result :categorical {"a" {} "b" {}} series corrs)]
       (is (= corrs (:correlations result))))))
 

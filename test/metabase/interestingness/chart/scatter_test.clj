@@ -84,14 +84,16 @@
                              :display_name "S2"}}]
       (is (=? {:chart-type    :scatter
                :series-count  2
-               :series        {"S1" {:data-points 3
-                                     :correlation {:coefficient 1.0
-                                                   :strength :strong
-                                                   :direction :positive}}
-                               "S2" {:data-points 3
-                                     :correlation {:coefficient -1.0
-                                                   :strength :strong
-                                                   :direction :negative}}}
+               :series        [{:name        "S1"
+                                :data-points 3
+                                :correlation {:coefficient 1.0
+                                              :strength :strong
+                                              :direction :positive}}
+                               {:name        "S2"
+                                :data-points 3
+                                :correlation {:coefficient -1.0
+                                              :strength :strong
+                                              :direction :negative}}]
                :correlations  (symbol "nil #_\"key is not present.\"")}
               (scatter/compute-scatter-stats series-data {}))))))
 

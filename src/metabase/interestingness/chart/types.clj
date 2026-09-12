@@ -52,7 +52,7 @@
    [:max number?]
    [:mean number?]
    [:median number?]
-   [:std-dev number?]
+   [:std-dev [:maybe number?]]
    [:range number?]])
 
 (mr/def ::time-range
@@ -160,6 +160,9 @@
 (mr/def ::time-series-series-stats
   "Statistics for a single time series."
   [:map
+   [:name :string]
+   [:x-name {:optional true} [:maybe :string]]
+   [:y-name {:optional true} [:maybe :string]]
    [:summary ::series-summary]
    [:time-range ::time-range]
    [:data-points :int]
@@ -179,7 +182,7 @@
   [:map
    [:chart-type [:= :time-series]]
    [:series-count :int]
-   [:series [:map-of :string ::time-series-series-stats]]
+   [:series [:sequential ::time-series-series-stats]]
    [:correlations {:optional true} [:maybe [:sequential ::correlation]]]])
 
 (mr/def ::category-stat
@@ -192,6 +195,9 @@
 (mr/def ::categorical-series-stats
   "Statistics for a single categorical series."
   [:map
+   [:name :string]
+   [:x-name {:optional true} [:maybe :string]]
+   [:y-name {:optional true} [:maybe :string]]
    [:summary [:maybe ::series-summary]]
    [:data-points :int]
    [:category-count :int]
@@ -204,7 +210,7 @@
   [:map
    [:chart-type [:= :categorical]]
    [:series-count :int]
-   [:series [:map-of :string ::categorical-series-stats]]
+   [:series [:sequential ::categorical-series-stats]]
    [:correlations {:optional true} [:maybe [:sequential ::correlation]]]])
 
 (mr/def ::regression-stats
@@ -217,6 +223,9 @@
 (mr/def ::scatter-series-stats
   "Statistics for a single scatter series."
   [:map
+   [:name :string]
+   [:x-name {:optional true} [:maybe :string]]
+   [:y-name {:optional true} [:maybe :string]]
    [:x-summary [:maybe ::series-summary]]
    [:y-summary [:maybe ::series-summary]]
    [:data-points :int]
@@ -233,7 +242,7 @@
   [:map
    [:chart-type [:= :scatter]]
    [:series-count :int]
-   [:series [:map-of :string ::scatter-series-stats]]])
+   [:series [:sequential ::scatter-series-stats]]])
 
 (mr/def ::histogram-summary
   "Weighted summary statistics estimated from binned histogram data."
@@ -242,10 +251,20 @@
    [:weighted-std-dev number?]
    [:data-range number?]])
 
+(mr/def ::estimated-percentiles
+  "The fixed percentile set [[metabase.interestingness.chart.histogram]] estimates."
+  [:map {:closed true}
+   [:p25 number?]
+   [:p50 number?]
+   [:p75 number?]
+   [:p90 number?]
+   [:p95 number?]
+   [:p99 number?]])
+
 (mr/def ::estimated-distribution-stats
   "Distribution statistics estimated from binned histogram data using weighted approximations."
   [:map
-   [:estimated-percentiles [:map-of :int number?]]
+   [:estimated-percentiles [:maybe ::estimated-percentiles]]
    [:estimated-quartiles [:map
                           [:q1 number?]
                           [:median number?]
@@ -267,6 +286,9 @@
 (mr/def ::histogram-series-stats
   "Statistics for a single histogram series."
   [:map
+   [:name :string]
+   [:x-name {:optional true} [:maybe :string]]
+   [:y-name {:optional true} [:maybe :string]]
    [:estimated-summary ::histogram-summary]
    [:total-count :int]
    [:data-points :int]
@@ -279,7 +301,7 @@
   [:map
    [:chart-type [:= :histogram]]
    [:series-count :int]
-   [:series [:map-of :string ::histogram-series-stats]]])
+   [:series [:sequential ::histogram-series-stats]]])
 
 (mr/def ::unknown-stats
   "Fallback stats for chart types that don't have dedicated analysis (e.g. scalar)."
@@ -290,12 +312,12 @@
 
 (mr/def ::chart-stats
   "Union of all chart statistics types."
-  [:or
-   ::time-series-stats
-   ::categorical-stats
-   ::scatter-stats
-   ::histogram-stats
-   ::unknown-stats])
+  [:multi {:dispatch (comp keyword :chart-type)}
+   [:time-series ::time-series-stats]
+   [:categorical ::categorical-stats]
+   [:scatter     ::scatter-stats]
+   [:histogram   ::histogram-stats]
+   [:unknown     ::unknown-stats]])
 
 ;;; ------------------------------------------ Representation Schema ------------------------------------------------
 

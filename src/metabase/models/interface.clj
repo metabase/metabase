@@ -14,6 +14,8 @@
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [malli.core :as mc]
+   [malli.transform :as mtx]
    [medley.core :as m]
    ;; Toucan out-transforms normalize stored legacy MBQL on read; needed until the app db is MBQL 5
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -346,6 +348,59 @@
   [source]
   {:in  encrypted-json-in
    :out (decrypt-error-context source cached-encrypted-json-out)})
+
+(def ^:private json-schema-transformer
+  "The same [[malli.transform/json-transformer]] [[metabase.api.macros]] decodes request bodies with, so a
+  value has one JSON shape rather than one for the wire and another for the app DB."
+  (mtx/json-transformer))
+
+(defn- json-schema-encoder [schema]
+  (mr/cached ::json-schema-encoder schema #(mc/encoder schema json-schema-transformer)))
+
+(defn- json-schema-decoder [schema]
+  (mr/cached ::json-schema-decoder schema #(mc/decoder schema json-schema-transformer)))
+
+(defn transform-json-with-schema
+  "Like [[transform-json]], but runs the value through `schema`'s malli JSON encoder and decoder, so a column
+  can hold keywords and anything else JSON cannot carry on its own. `source` is a \"table.column\" string,
+  named in the log message when a blob cannot be read.
+
+  Values always go through `schema`; there is no string passthrough, since an already-encoded string would
+  skip the decode this transform exists to do.
+
+  An unreadable blob reads as `nil` rather than throwing, so one bad row cannot break a whole `t2/select`. It
+  is logged at `:log-level` (`:warn` by default); pass `:error` when a failure carries a security
+  consequence."
+  ([source schema]
+   (transform-json-with-schema source schema nil))
+
+  ([source schema {:keys [log-level] :or {log-level :warn}}]
+   {:in  (fn [v]
+           (when (some? v)
+             (json/encode ((json-schema-encoder schema) v))))
+    :out (fn [s]
+           (when (string? s)
+             (try
+               ((json-schema-decoder schema) (json/decode+kw s))
+               (catch Throwable e
+                 (if (= log-level :error)
+                   (log/errorf e "Failed to parse %s; returning nil" source)
+                   (log/warnf e "Failed to parse %s; returning nil" source))
+                 nil))))}))
+
+(defn transform-encrypted-json-with-schema
+  "[[transform-json-with-schema]] for a column that is also encrypted at rest. [[decrypt-error-context]] names
+  the column when a decrypt fails, instead of a bare \"Expected an encrypted value\".
+
+  Unlike [[transform-encrypted-json]], the decrypt is not memoized: that cache holds both ciphertext and
+  decoded value for an hour, which is the wrong trade for the unbounded blobs these columns tend to hold."
+  ([source schema]
+   (transform-encrypted-json-with-schema source schema nil))
+
+  ([source schema opts]
+   (let [{:keys [in out]} (transform-json-with-schema source schema opts)]
+     {:in  (comp encryption/maybe-encrypt in)
+      :out (comp out (decrypt-error-context source encryption/maybe-decrypt))})))
 
 (defn transform-encrypted-text
   "Whole-column encrypted text transform for the column named by `source` (a \"table.column\" string, used in decrypt
