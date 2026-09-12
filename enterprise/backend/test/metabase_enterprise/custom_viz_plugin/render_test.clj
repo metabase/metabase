@@ -47,7 +47,6 @@
 
 (deftest detect-pulse-chart-type-custom-viz-test
   (mt/with-premium-features #{:custom-viz}
-    ;; use 2 cols to avoid scalar detection (1 col + 1 row = :scalar)
     (let [multi-col-data {:cols [{:name "x"} {:name "y"}] :rows [[1 2] [3 4]]}]
       (testing "custom viz without a registered plugin falls back to :table"
         (let [card {:display :custom:nonexistent}]
@@ -105,7 +104,16 @@
                                                  :dev_bundle_url "http://localhost:9876"}]
           (let [card {:display :custom:dev-only}]
             (is (= :javascript_visualization
-                   (card/detect-pulse-chart-type card nil multi-col-data)))))))))
+                   (card/detect-pulse-chart-type card nil multi-col-data))))))
+      (testing "a one-row, one-column custom viz is still a custom viz, not a :scalar"
+        (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "single-value"
+                                                 :display_name "Single Value"
+                                                 :status       :active
+                                                 :enabled      true
+                                                 :bundle_hash  "abc"}]
+          (let [card {:display :custom:single-value}]
+            (is (= :javascript_visualization
+                   (card/detect-pulse-chart-type card nil {:cols [{:name "x"}] :rows [[1]]})))))))))
 
 ;;; ------------------------------------------------ javascript_visualization rendering ------------------------------------------------
 
@@ -122,74 +130,36 @@
           (let [result (body/render :javascript_visualization :inline "UTC" card nil data)]
             (is (= (:content table-result) (:content result)))))))))
 
-(deftest custom-viz-bundles-resolved-test
-  (mt/with-premium-features #{:custom-viz}
-    (testing "custom-viz-bundles resolves the plugin bundle"
-      (let [bundle-content "function customViz(){}"]
-        (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "bundle-resolve"
-                                                        :display_name "Bundle Resolve"
-                                                        :status       :active
-                                                        :enabled      true}]
-          (with-redefs [custom-viz-plugin/resolve-bundle (constantly {:content bundle-content :hash "abc"})]
-            (let [custom-viz-bundles #'body/custom-viz-bundles
-                  result             (custom-viz-bundles {:display :custom:bundle-resolve})]
-              (is (= 1 (count result)))
-              (let [{:keys [identifier plugin-id source]} (first result)]
-                (is (= "bundle-resolve" identifier))
-                (is (= id plugin-id))
-                (is (= bundle-content source))))))))))
+;;; ------------------------------------------------ javascript-visualization receives custom bundles ------------------------------------------------
 
-(deftest custom-viz-bundles-no-bundle-test
-  (mt/with-premium-features #{:custom-viz}
-    (testing "custom-viz-bundles returns nil when the plugin has no resolvable bundle"
-      (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "no-bundle"
-                                               :display_name "No Bundle"
-                                               :status       :active
-                                               :enabled      true}]
-        (with-redefs [custom-viz-plugin/resolve-bundle (constantly nil)]
-          (let [custom-viz-bundles #'body/custom-viz-bundles]
-            (is (nil? (custom-viz-bundles {:display :custom:no-bundle})))))))))
+(defn- render-and-capture-bundles
+  "Render `card` through the `:javascript_visualization` path and return the custom bundles handed to
+   `*javascript-visualization*`."
+  [card]
+  (let [received-bundles (atom ::not-called)]
+    (binding [js.svg/*javascript-visualization*
+              (fn [_cards _viz-settings custom-bundles]
+                (reset! received-bundles custom-bundles)
+                {:type :html :content "<div>test</div>"})]
+      (body/render :javascript_visualization :inline "UTC" card nil
+                   {:cols [{:name "x" :base_type :type/Integer}] :rows [[1]]})
+      @received-bundles)))
 
-(deftest custom-viz-bundles-nil-when-no-plugin-test
+(deftest javascript-visualization-custom-bundles-test
   (mt/with-premium-features #{:custom-viz}
-    (testing "custom-viz-bundles returns nil when plugin doesn't exist"
-      (let [custom-viz-bundles #'body/custom-viz-bundles]
-        (is (nil? (custom-viz-bundles {:display :custom:nonexistent})))))))
-
-;;; ------------------------------------------------ javascript-visualization passes custom bundles ------------------------------------------------
-
-(deftest javascript-visualization-passes-custom-bundles-test
-  (mt/with-premium-features #{:custom-viz}
-    (testing "*javascript-visualization* receives custom-viz-bundles argument"
-      (let [received-bundles (atom nil)]
-        (binding [js.svg/*javascript-visualization*
-                  (fn [_cards _viz-settings custom-bundles]
-                    (reset! received-bundles custom-bundles)
-                    {:type :html :content "<div>test</div>"})]
-          (body/render :javascript_visualization :inline "UTC"
-                       {:display :bar :id 1}
-                       nil
-                       {:cols [{:name "x" :base_type :type/Integer}] :rows [[1]]})
-          ;; For a non-custom display type, custom-viz-bundles returns nil
-          (is (nil? @received-bundles)))))))
-
-(deftest javascript-visualization-passes-resolved-bundles-for-custom-display-test
-  (mt/with-premium-features #{:custom-viz}
-    (testing "*javascript-visualization* receives resolved bundles when display is :custom:*"
-      (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "wired-through"
-                                               :display_name "Wired Through"
-                                               :status       :active
-                                               :enabled      true}]
-        (let [received-bundles (atom nil)]
+    (testing "non-custom display types pass no custom bundles"
+      (is (nil? (render-and-capture-bundles {:display :bar :id 1}))))
+    (testing "an unregistered custom display passes no custom bundles"
+      (is (nil? (render-and-capture-bundles {:display :custom:nonexistent :id 1}))))
+    (mt/with-temp [:model/CustomVizPlugin {plugin-id :id} {:identifier   "wired-through"
+                                                           :display_name "Wired Through"
+                                                           :status       :active
+                                                           :enabled      true}]
+      (let [card {:display :custom:wired-through :id 1}]
+        (testing "a plugin without a resolvable bundle passes no custom bundles"
+          (with-redefs [custom-viz-plugin/resolve-bundle (constantly nil)]
+            (is (nil? (render-and-capture-bundles card)))))
+        (testing "a plugin with a resolvable bundle passes it through with identifier, plugin id and source"
           (with-redefs [custom-viz-plugin/resolve-bundle (constantly {:content "function(){}" :hash "abc"})]
-            (binding [js.svg/*javascript-visualization*
-                      (fn [_cards _viz-settings custom-bundles]
-                        (reset! received-bundles custom-bundles)
-                        {:type :html :content "<div>custom</div>"})]
-              (body/render :javascript_visualization :inline "UTC"
-                           {:display :custom:wired-through :id 1}
-                           nil
-                           {:cols [{:name "x" :base_type :type/Integer}] :rows [[1]]})
-              (is (= 1 (count @received-bundles)))
-              (is (= "wired-through" (:identifier (first @received-bundles))))
-              (is (= "function(){}" (:source (first @received-bundles)))))))))))
+            (is (= [{:identifier "wired-through" :plugin-id plugin-id :source "function(){}"}]
+                   (render-and-capture-bundles card)))))))))
