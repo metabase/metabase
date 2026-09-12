@@ -5,6 +5,7 @@
    [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.scope :as scope]
+   [metabase.metabot.test-util :as mut]
    [metabase.metabot.tools :as tools]
    [metabase.metabot.tools.transforms :as tools.transforms]
    [metabase.premium-features.core :as premium-features]
@@ -260,11 +261,18 @@
                              (assoc base :skills? false :always-on-skills [:read-resource])))))))
 
 (deftest explorations-profile-disables-skills-test
-  (binding [scope/*current-user-scope* api-scope/unrestricted]
-    (testing "explorations opts out of skills so read_resource does not inject load_skill"
-      (let [profile (profiles/get-profile :explorations)
-            tools   (profiles/profile->tools profile [])]
-        (is (false? (:skills? profile)))
-        (is (contains? tools "read_resource")
-            "precondition: read_resource is active (would otherwise match a skill)")
-        (is (not (contains? tools "load_skill")))))))
+  (mut/do-with-registered-profile!
+   profiles/explorations-profile
+   (fn []
+     (binding [scope/*current-user-scope* api-scope/unrestricted]
+       (testing "explorations opts out of skills so read_resource does not inject load_skill"
+         (let [profile (profiles/get-profile :explorations)
+               tools   (profiles/profile->tools profile [])]
+           (is (false? (:skills? profile)))
+           (is (contains? tools "read_resource")
+               "precondition: read_resource is active (would otherwise match a skill)")
+           (is (not (contains? tools "load_skill")))))))))
+
+(deftest explorations-profile-not-registered-test
+  (testing "The :explorations profile is not registered while explorations are disabled"
+    (is (nil? (profiles/get-profile :explorations)))))

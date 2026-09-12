@@ -82,7 +82,8 @@ export function SpecificDatePicker({
     <Tabs value={value.operator} onChange={handleTabChange}>
       <Flex>
         <PopoverBackButton
-          p="sm"
+          px="sm"
+          h="var(--tab-height)"
           onClick={onBack}
           disabled={readOnly}
           withArrow={!readOnly}

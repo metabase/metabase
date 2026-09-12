@@ -7,11 +7,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.search.config :as search.config]
-   [metabase.search.core :as search]
-   [metabase.search.ingestion :as search.ingestion]
    [metabase.search.spec :as search.spec]
-   [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -164,32 +160,11 @@
         (is (= "d1" (:dimension_id reread)))
         (is (= 1 (-> reread :dataset_query :database)))))))
 
-(deftest exploration-is-searchable-test
-  ;; The wiring assertions run unconditionally so this test can never silently pass
-  ;; with zero assertions; only the index round-trip below is gated on engine support.
+(deftest exploration-search-spec-is-registered-test
+  ;; Explorations are still ingested into the search index; that the closed search surface omits them is pinned in
+  ;; `metabase.explorations.disabled-test`.
   (testing "the exploration search-model is wired up"
-    (is (= :model/Exploration (:model (search.spec/spec "exploration"))))
-    (is (contains? search.config/all-models "exploration")))
-  (testing "an exploration is indexed and returned from the default search"
-    (when (search/supports-index?)
-      (search.tu/with-temp-index-table
-        (mt/with-temp [:model/Collection  coll {}
-                       :model/Exploration e {:name "searchable-research" :collection_id (:id coll)}]
-          (letfn [(research-hits [user]
-                    (->> (search.tu/search-results "searchable-research"
-                                                   {:search-engine   "appdb"
-                                                    :current-user-id (mt/user->id user)})
-                         (filter (comp #{"searchable-research"} :name))
-                         (mapv (juxt :model :id))))]
-            (search.ingestion/update!
-             (#'search.ingestion/query->documents
-              (#'search.ingestion/spec-index-reducible "exploration" [:= :this.id (:id e)]))
-             [])
-            (testing "a user who can read the collection finds it"
-              (is (= [["exploration" (:id e)]] (research-hits :crowberto))))
-            (testing "a user without collection perms does not"
-              (mt/with-non-admin-groups-no-collection-perms coll
-                (is (= [] (research-hits :rasta)))))))))))
+    (is (= :model/Exploration (:model (search.spec/spec "exploration"))))))
 
 (deftest hydrate-threads-on-exploration-test
   (mt/with-temp [:model/User u {}

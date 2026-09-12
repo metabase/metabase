@@ -60,6 +60,7 @@
     "enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/ConfirmCodeForm/ConfirmCodeForm.tsx": "self",
     "enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/SetupModal/SetupModal.tsx": "self",
     "enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AuthChallengeForm/AuthChallengeForm.tsx": "self",
+    "enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AuthEnrollmentForm/AuthEnrollmentForm.tsx": "self",
     "enterprise/frontend/src/metabase-enterprise/overrides.ts": "entry",
     "enterprise/frontend/src/metabase-enterprise/plugins.ts": "entry",
     "enterprise/frontend/src/metabase-enterprise/redux.ts": "self",

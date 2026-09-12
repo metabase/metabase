@@ -2,6 +2,8 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [mb.hawk.parallel]
+   [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.util.json :as json]
@@ -170,3 +172,19 @@
   "Tool map for tests — keyed by tool name string."
   (let [tool-defs (map #(%) [get-time-tool convert-currency-tool mock-llm-tool no-arg-tool])]
     (into {} (map (juxt :tool-name identity)) tool-defs)))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; Profiles
+;;; ──────────────────────────────────────────────────────────────────
+
+(defn do-with-registered-profile!
+  "Run `thunk` with `profile` registered in the agent profile registry, restoring the registry afterwards. For
+  profiles the application defines but does not register, such as [[profiles/explorations-profile]]."
+  [profile thunk]
+  (mb.hawk.parallel/assert-test-is-not-parallel "do-with-registered-profile!")
+  (let [registry @#'profiles/*profiles]
+    (try
+      (#'profiles/register-profile! profile)
+      (thunk)
+      (finally
+        (swap! registry dissoc (:name profile))))))

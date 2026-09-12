@@ -368,7 +368,8 @@
     [:metabase.driver.sql.query-processor/wrap-in-case {:optional true} :boolean]
     [:metabase.driver.sql.parameters.substitution/compiling-field-filter? {:optional true} :boolean]
     [:metabase.driver.sqlserver/optimized-bucketing? {:optional true} :boolean]
-    [:metabase.driver.mongo.query-processor/join-local {:optional true} [:ref :metabase.lib.schema.join/alias]]]
+    [:metabase.driver.mongo.query-processor/join-local {:optional true} [:ref :metabase.lib.schema.join/alias]]
+    [:metabase.mcp.v2.query/keyset {:optional true} :boolean]]
    (disallowed-keys
     {:ident ":ident is deprecated and should not be included in options maps"})])
 

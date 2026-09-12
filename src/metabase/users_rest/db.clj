@@ -136,3 +136,9 @@
   [user-id :- ::lib.schema.id/user
    changes :- PersonalUserChanges]
   (t2/update! :model/User user-id {:type :personal} changes))
+
+(mu/defn mfa-auth-identity-id-from-hashed-key
+  "Fetches the `mfa_auth_identity_id` from the session with the given hashed key"
+  [key-hashed :- string?]
+  (t2/select-one [:model/Session :mfa_auth_identity_id]
+                 :key_hashed key-hashed))

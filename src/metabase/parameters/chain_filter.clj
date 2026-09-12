@@ -657,6 +657,61 @@
       :else
       (unremapped-chain-filter field-id constraints options))))
 
+(mu/defn- chain-filter-range-mbql-query :- ::lib.schema/query
+  "The query behind [[chain-filter-range]]: the same source table, joins and constraint filters
+  [[chain-filter-mbql-query]] builds, aggregated to a single row instead of broken out into values.
+
+  Two deliberate differences from the values query. There is no limit — that is the whole point, since an
+  aggregation reads the entire column and yields the column's real max rather than the last of a capped
+  page. And there is no remapping: a range describes the filtered column itself, and a display label
+  (`category_id` shown as `category.name`) has no min or max worth reporting."
+  [field-id    :- ::lib.schema.id/field
+   constraints :- [:maybe ::constraints]]
+  (let [database-id      (field/field-id->database-id field-id)
+        mp               (lib-be/application-database-metadata-provider database-id)
+        source-table-id  (:table-id (lib.metadata/field mp field-id))
+        joins            (find-all-joins mp database-id source-table-id (set (map :field-id constraints)))
+        joined-table-ids (set (map #(get-in % [:rhs :table]) joins))
+        field            (lib.metadata/field mp field-id)]
+    (when (seq joins)
+      (log/tracef "Generating joins and filters for source %s with joins info\n%s"
+                  (name-for-logging :model/Table source-table-id) (pr-str joins)))
+    (-> (lib/query mp (lib.metadata/table mp source-table-id))
+        (assoc-in [:middleware :disable-remaps?] true)
+        (add-joins source-table-id joins)
+        (lib/aggregate (lib/min field))
+        (lib/aggregate (lib/max field))
+        (lib/aggregate (lib/distinct field))
+        (add-filters source-table-id joined-table-ids constraints)
+        schema.metadata-queries/add-required-filters-if-needed
+        ;; Runs LAST for the same reason it does in the values query — see the note there.
+        tighten-join-projections)))
+
+(mu/defn chain-filter-range :- [:map
+                                [:min [:maybe :any]]
+                                [:max [:maybe :any]]
+                                [:distinct-count [:maybe :int]]]
+  "The span of Field `field-id` under the same `constraints` [[chain-filter]] applies, as
+  `{:min :max :distinct-count}`, by aggregating rather than listing.
+
+  For a column whose distinct values are a range to filter inside rather than a set to pick from — dates,
+  above all — this is the answer [[chain-filter]] cannot give: it caps at 1000 values, and since values come
+  back ascending, a capped fetch's last value is the 1000th-earliest rather than the column's max.
+
+  A column with no rows (or none the caller can see) answers with nils and a zero count, not an error."
+  [field-id    :- ::lib.schema.id/field
+   constraints :- [:maybe ::constraints]]
+  (let [mbql-query (chain-filter-range-mbql-query field-id constraints)]
+    (try
+      (let [[lo hi n] (first (:rows (:data (qp/process-query mbql-query))))]
+        {:min lo :max hi :distinct-count (or n 0)})
+      (catch Throwable e
+        (throw (ex-info (tru "Error executing chain filter range query")
+                        {:field-id    field-id
+                         :constraints constraints
+                         :mbql-query  mbql-query}
+                        e))))))
+
 ;;; ----------------- Chain filter search (powers GET /api/dashboard/:id/params/:key/search/:query) -----------------
 
 ;; TODO -- if this validation succeeds, we can probably cache that success for a bit so we can avoid unneeded DB

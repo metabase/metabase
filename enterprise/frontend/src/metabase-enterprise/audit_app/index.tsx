@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { PLUGIN_METABOT_SLASH_COMMANDS } from "metabase/metabot";
 import {
   PLUGIN_ADMIN_USER_MENU_ITEMS,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
@@ -54,6 +55,7 @@ export function initializePlugin() {
     PLUGIN_AUDIT.getAiAuditingRoutes = hasPremiumFeature("ai_controls")
       ? getAiAuditingRoutes
       : getAiAuditingUpsellRoutes;
-    PLUGIN_AUDIT.handleMetabotSlashCommand = handleMetabotSlashCommand;
+    PLUGIN_METABOT_SLASH_COMMANDS.handleSlashCommand =
+      handleMetabotSlashCommand;
   }
 }

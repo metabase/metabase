@@ -3013,3 +3013,76 @@
             (is (= "metabase-transform" (:data_source provisional)))
             (is (= "computed" (:data_authority provisional)))
             (is (= "New Target Table" (:display_name provisional)))))))))
+
+(deftest retire-mcp-v1-oauth-scopes-test
+  (testing (str "v64.2026-09-09T12:00:00/01: a client connected to a shipped v0.60–v0.63 release holds a 17-scope "
+                "registration snapshot and tokens scoped to it. The v2 surface gates on six coarse scopes that no "
+                "legacy scope satisfies, so without this migration the client gets HTTP 200 with an empty tools list "
+                "and never recovers — the refresh grant can only narrow. The migration widens the ceiling so a "
+                "re-authorization validates, then revokes the legacy-shaped tokens so the client actually "
+                "re-authenticates instead of refreshing.")
+    (impl/test-migrations ["v64.2026-09-09T12:00:00" "v64.2026-09-09T12:00:01"] [migrate!]
+      (let [;; The 17 scopes DCR snapshots on v0.63: 15 per-entity agent scopes + 2 mcp-ui resource scopes.
+            legacy-scopes   ["agent:sql:construct" "agent:sql:create" "agent:sql:edit" "agent:sql:read"
+                             "agent:notebook:create" "agent:query:construct" "agent:query:execute"
+                             "agent:question:create" "agent:question:update" "agent:question:execute"
+                             "agent:metric:create" "agent:metric:update"
+                             "agent:dashboard:create" "agent:dashboard:update" "agent:collection:create"
+                             "agent:viz:mcp-ui:query" "agent:viz:mcp-ui:drill-through"]
+            v2-scopes       ["agent:content:read" "agent:content:write" "agent:query:run"
+                             "agent:sql:run" "agent:delivery:write" "agent:resource:read"]
+            ;; `oauth_access_token.user_id` is a real FK, so the row must exist. Inserted directly rather
+            ;; than via `new-instance-with-default` because this release makes `entity_id` NOT NULL.
+            user-id         (t2/insert-returning-pk!
+                             :core_user {:first_name  "MCP"
+                                         :last_name   "Migration"
+                                         :email       (str (random-uuid) "@metabase.com")
+                                         :password    "irrelevant"
+                                         :entity_id   (subs (str/replace (str (random-uuid)) "-" "") 0 21)
+                                         :date_joined :%now})
+            insert-client!  (fn [client-id registration-type scopes]
+                              (t2/insert-returning-pk!
+                               :oauth_client {:client_id         client-id
+                                              :client_name       "Legacy MCP Client"
+                                              :redirect_uris     (json/encode ["http://localhost/callback"])
+                                              :grant_types       (json/encode ["authorization_code"])
+                                              :response_types    (json/encode ["code"])
+                                              :scopes            (json/encode scopes)
+                                              :registration_type registration-type
+                                              :client_type       "public"
+                                              :created_at        :%now
+                                              :updated_at        :%now}))
+            insert-token!   (fn [table client-id scopes]
+                              (t2/insert-returning-pk!
+                               table {:token      (str (random-uuid))
+                                      :user_id    user-id
+                                      :client_id  client-id
+                                      :scope      (json/encode scopes)
+                                      :expiry     (+ (System/currentTimeMillis) 3600000)
+                                      :created_at :%now}))
+            dynamic-id      (insert-client! "dynamic-legacy" "dynamic" legacy-scopes)
+            static-id       (insert-client! "static-legacy" "static" legacy-scopes)
+            legacy-access   (insert-token! :oauth_access_token "dynamic-legacy" legacy-scopes)
+            legacy-refresh  (insert-token! :oauth_refresh_token "dynamic-legacy" legacy-scopes)
+            ;; A token already minted against the v2 surface — the migration must leave it alone, or upgrading
+            ;; would log out clients that were working.
+            v2-access       (insert-token! :oauth_access_token "dynamic-legacy" ["agent:content:read"])
+            v2-refresh      (insert-token! :oauth_refresh_token "dynamic-legacy" v2-scopes)
+            scopes-of       (fn [table id col]
+                              (set (json/decode (get (t2/query-one {:select [col] :from [table] :where [:= :id id]}) col))))
+            revoked?        (fn [table id]
+                              (some? (:revoked_at (t2/query-one {:select [:revoked_at] :from [table] :where [:= :id id]}))))]
+        (migrate!)
+        (testing "the dynamic client's snapshot gains the six v2 scopes, so a re-authorization validates"
+          (let [scopes (scopes-of :oauth_client dynamic-id :scopes)]
+            (is (every? scopes v2-scopes))
+            (testing "and keeps its legacy scopes — issued tokens carry literal strings, so none may be dropped"
+              (is (every? scopes legacy-scopes)))))
+        (testing "a statically registered client is left alone — it did not snapshot via DCR"
+          (is (= (set legacy-scopes) (scopes-of :oauth_client static-id :scopes))))
+        (testing "legacy-scoped tokens are revoked — both tables, or the client refreshes instead of re-authing"
+          (is (revoked? :oauth_access_token legacy-access))
+          (is (revoked? :oauth_refresh_token legacy-refresh)))
+        (testing "tokens already carrying a v2 tool scope keep working"
+          (is (not (revoked? :oauth_access_token v2-access)))
+          (is (not (revoked? :oauth_refresh_token v2-refresh))))))))

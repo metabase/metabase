@@ -2,6 +2,7 @@
   "Tests for /api/bookmark endpoints."
   (:require
    [clojure.test :refer :all]
+   [metabase.bookmarks.db :as bookmarks.db]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
@@ -59,6 +60,36 @@
       (is (some #(= (u/the-id card) (:item_id %))
                 (mt/user-http-request :rasta :get 200 "bookmark"))))))
 
+(deftest insert-bookmark!-idempotent-test
+  (testing "GHY-4152: insert-bookmark! returns the existing row rather than tripping the (user_id, item)
+            unique constraint, so a caller racing itself gets the state it asked for"
+    (mt/with-temp [:model/Card card {}]
+      (let [user-id (mt/user->id :rasta)
+            card-id (u/the-id card)
+            first!  (bookmarks.db/insert-bookmark! "card" card-id user-id)]
+        (is (= (:id first!) (:id (bookmarks.db/insert-bookmark! "card" card-id user-id))))
+        (is (= 1 (t2/count :model/CardBookmark :card_id card-id :user_id user-id)))))))
+
+(deftest unknown-bookmark-model-test
+  (testing "GHY-4152: bookmark-exists?, insert-bookmark!, and delete-bookmark! all fail the same way for a model
+            string none of them recognize, now that metabase.bookmarks.db is module API and can be reached
+            directly by callers the REST/MCP schemas don't validate"
+    (let [user-id (mt/user->id :rasta)]
+      (doseq [[label thunk] [["bookmark-exists?" #(bookmarks.db/bookmark-exists? "bogus" 1 user-id)]
+                             ["insert-bookmark!" #(bookmarks.db/insert-bookmark! "bogus" 1 user-id)]
+                             ["delete-bookmark!" #(bookmarks.db/delete-bookmark! "bogus" 1 user-id)]]]
+        (testing label
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown bookmarkable model" (thunk))))))))
+
+(deftest duplicate-bookmark-post-returns-400-test
+  (testing "GHY-4152: POST /api/bookmark/:model/:id returns 400 \"Bookmark already exists\" on a duplicate request.
+            Regression guard for the insert-bookmark! swap from t2/insert-returning-instance! to
+            mdb/select-or-insert!, which could silently succeed on a duplicate instead of 400ing."
+    (mt/with-temp [:model/Card card {}]
+      (mt/user-http-request :rasta :post 200 (str "bookmark/card/" (u/the-id card)))
+      (is (= "Bookmark already exists"
+             (mt/user-http-request :rasta :post 400 (str "bookmark/card/" (u/the-id card))))))))
+
 (deftest bookmark-requires-only-read-perms-test
   (testing "POST /api/bookmark/card/:id succeeds for a read-only (collection-read) user"
     (mt/with-non-admin-groups-no-root-collection-perms
@@ -89,16 +120,13 @@
       (mt/with-temp [:model/Collection  {coll-id :id :as coll} {:name "Readable"}
                      :model/Card        {card-id :id} {:name "Secret Card" :collection_id coll-id}
                      :model/Dashboard   {dash-id :id} {:name "Secret Dashboard" :collection_id coll-id}
-                     :model/Document    {doc-id :id}  {:name "Secret Document" :collection_id coll-id}
-                     :model/Exploration {expl-id :id} {:name "Secret Exploration" :collection_id coll-id}]
+                     :model/Document    {doc-id :id}  {:name "Secret Document" :collection_id coll-id}]
         (perms/grant-collection-read-permissions! (perms/all-users-group) coll)
         ;; rasta bookmarks each item (including the collection itself) while access is granted; POST read-check passes.
-        (doseq [[model id] [["card" card-id] ["dashboard" dash-id] ["document" doc-id]
-                            ["exploration" expl-id] ["collection" coll-id]]]
+        (doseq [[model id] [["card" card-id] ["dashboard" dash-id] ["document" doc-id] ["collection" coll-id]]]
           (mt/user-http-request :rasta :post 200 (format "bookmark/%s/%d" model id)))
         (testing "happy path: all bookmarks are visible while access is granted"
-          (is (= #{["card" card-id] ["dashboard" dash-id] ["document" doc-id]
-                   ["exploration" expl-id] ["collection" coll-id]}
+          (is (= #{["card" card-id] ["dashboard" dash-id] ["document" doc-id] ["collection" coll-id]}
                  (bookmarked-items :rasta))))
         (testing "after revoking read access (nothing archived), none of the bookmarks are returned"
           (perms/revoke-collection-permissions! (perms/all-users-group) coll)
@@ -111,19 +139,17 @@
                      :model/Collection  {hidden-id :id}                {:name "Hidden"}
                      :model/Card        {card-id :id} {:name "Secret Card" :collection_id readable-id}
                      :model/Dashboard   {dash-id :id} {:name "Secret Dashboard" :collection_id readable-id}
-                     :model/Document    {doc-id :id}  {:name "Secret Document" :collection_id readable-id}
-                     :model/Exploration {expl-id :id} {:name "Secret Exploration" :collection_id readable-id}]
+                     :model/Document    {doc-id :id}  {:name "Secret Document" :collection_id readable-id}]
         (perms/grant-collection-read-permissions! (perms/all-users-group) readable)
-        (doseq [[model id] [["card" card-id] ["dashboard" dash-id] ["document" doc-id] ["exploration" expl-id]]]
+        (doseq [[model id] [["card" card-id] ["dashboard" dash-id] ["document" doc-id]]]
           (mt/user-http-request :rasta :post 200 (format "bookmark/%s/%d" model id)))
-        (is (= #{["card" card-id] ["dashboard" dash-id] ["document" doc-id] ["exploration" expl-id]}
+        (is (= #{["card" card-id] ["dashboard" dash-id] ["document" doc-id]}
                (bookmarked-items :rasta)))
         (testing "moving each item into an unreadable collection (admin action; nothing archived) hides its bookmark"
           ;; stand in for the admin PUT /api/card|document ... {:collection_id hidden} in the attack
           (t2/update! :model/Card card-id {:collection_id hidden-id})
           (t2/update! :model/Dashboard dash-id {:collection_id hidden-id})
           (t2/update! :model/Document doc-id {:collection_id hidden-id})
-          (t2/update! :model/Exploration expl-id {:collection_id hidden-id})
           (is (= #{} (bookmarked-items :rasta))))))))
 
 (deftest bookmark-card-type-tracks-current-card-type-test
@@ -250,43 +276,4 @@
       (bookmark-models (mt/user->id :rasta) archived-document)
       (testing "archived documents don't appear in bookmark list"
         (is (empty? (filter #(= (:type %) "document")
-                            (mt/user-http-request :rasta :get 200 "bookmark"))))))))
-
-(deftest exploration-bookmarks-test
-  (testing "Exploration bookmarks"
-    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
-                   :model/Exploration exploration {:name "Test Exploration" :collection_id coll-id}]
-      (testing "can bookmark an exploration"
-        (is (= (u/the-id exploration)
-               (->> (mt/user-http-request :rasta :post 200 (str "bookmark/exploration/" (u/the-id exploration)))
-                    :exploration_id))))
-      (testing "exploration appears in bookmark list"
-        (let [result (mt/user-http-request :rasta :get 200 "bookmark")
-              exploration-bookmark (first (filter #(= (:type %) "exploration") result))]
-          (is (some? exploration-bookmark))
-          (is (= "Test Exploration" (:name exploration-bookmark)))
-          (is (= (u/the-id exploration) (:item_id exploration-bookmark)))))
-      (testing "can delete exploration bookmark"
-        (mt/user-http-request :rasta :delete 204 (str "bookmark/exploration/" (u/the-id exploration)))
-        (is (empty? (filter #(= (:type %) "exploration")
-                            (mt/user-http-request :rasta :get 200 "bookmark")))))
-      (testing "exploration bookmarks are included in ordering"
-        (mt/with-temp [:model/Card card {:name "Test Card"}]
-          (mt/with-model-cleanup [:model/BookmarkOrdering]
-            (bookmark-models (mt/user->id :rasta) exploration card)
-            (mt/user-http-request :rasta :put 204 "bookmark/ordering"
-                                  {:orderings [{:type "exploration" :item_id (u/the-id exploration)}
-                                               {:type "card" :item_id (u/the-id card)}]})
-            (is (= ["exploration" "card"]
-                   (map :type (mt/user-http-request :rasta :get 200 "bookmark"))))))))))
-
-(deftest exploration-bookmarks-archived-test
-  (testing "Exploration bookmarks on archived explorations"
-    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
-                   :model/Exploration archived-exploration {:name "Archived Exploration"
-                                                            :collection_id coll-id
-                                                            :archived true}]
-      (bookmark-models (mt/user->id :rasta) archived-exploration)
-      (testing "archived explorations don't appear in bookmark list"
-        (is (empty? (filter #(= (:type %) "exploration")
                             (mt/user-http-request :rasta :get 200 "bookmark"))))))))
