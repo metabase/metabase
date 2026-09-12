@@ -1581,6 +1581,13 @@
            util}
    :model-imports #{:model/Card :model/Field :model/Measure}}
 
+  mfa
+  {:team "UX West"
+   :api  #{metabase.mfa.init metabase.mfa.settings}
+   :uses #{premium-features
+           settings
+           util}}
+
   model-persistence
   {:team "Graphy"
    :api  #{metabase.model-persistence.api
@@ -2984,6 +2991,7 @@
            permissions
            premium-features
            request
+           session
            sso
            sso.auth-identity
            system
@@ -2996,6 +3004,7 @@
                     :model/Collection
                     :model/Dashboard
                     :model/LoginHistory
+                    :model/Session
                     :model/User}}
 
   users.tenants
@@ -3782,13 +3791,14 @@
                     :model/Table}}
 
   enterprise/mfa
-  {:team "Graphy"
+  {:team "UX West"
    :api #{metabase-enterprise.mfa.core metabase-enterprise.mfa.init metabase-enterprise.mfa.routes}
    :uses #{api
            appearance
            channel
            events
            lib.schema
+           mfa
            premium-features
            request
            settings
