@@ -1,59 +1,71 @@
 import { useCallback } from "react";
 
 import { useDispatch, useSelector } from "metabase/redux";
-import {
-  TimelineSidebar as SharedTimelineSidebar,
-  type TimelineSidebarProps as SharedTimelineSidebarProps,
-} from "metabase/timelines/questions/components/TimelineSidebar";
+import { TimelineSidebar as SharedTimelineSidebar } from "metabase/timelines/panel/components/TimelineSidebar";
+import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
+import type { TimelineEventsVisibilityUpdate } from "metabase/visualizations/types";
+import type { TimelineEvent } from "metabase-types/api";
 
-import { onOpenTimelines } from "../../../../store/actions";
 import {
-  getTimeseriesDataInterval,
-  getUiControls,
+  deselectTimelineEvents,
+  selectTimelineEvents,
+  updateTimelineEventsVisibility,
+} from "../../../../actions/timelines";
+import { onCloseTimelines, onOpenTimelines } from "../../../../store/actions";
+import {
+  getFocusedTimelineEventIds,
+  getQuestion,
+  getSelectedTimelineEventIds,
+  getTimeseriesXAxis,
+  getVisibleTimelineEventIds,
 } from "../../../../store/selectors";
 
-export type TimelineSidebarProps = Omit<
-  SharedTimelineSidebarProps,
-  "focusedTimelineEventIds" | "dataInterval" | "onShowAllEvents"
->;
-
-export const TimelineSidebar = ({
-  collectionId,
-  timelines,
-  visibleTimelineEventIds,
-  selectedTimelineEventIds,
-  xDomain,
-  onShowTimelineEvents,
-  onHideTimelineEvents,
-  onSelectTimelineEvents,
-  onDeselectTimelineEvents,
-  onOpenModal,
-  onClose,
-}: TimelineSidebarProps) => {
+export const TimelineSidebar = () => {
   const dispatch = useDispatch();
-  const { focusedTimelineEventIds } = useSelector(getUiControls);
-  const dataInterval = useSelector(getTimeseriesDataInterval);
+  const collectionId = useSelector((state) =>
+    getQuestion(state)?.collectionId(),
+  );
+  const timelines = useSelector(getTransformedTimelines);
+  const visibleEventIds = useSelector(getVisibleTimelineEventIds);
+  const selectedEventIds = useSelector(getSelectedTimelineEventIds);
+  const focusedEventIds = useSelector(getFocusedTimelineEventIds);
+  const xAxis = useSelector(getTimeseriesXAxis);
 
-  const handleShowAllEvents = useCallback(() => {
-    dispatch(onOpenTimelines());
-  }, [dispatch]);
+  const handleUpdateVisibility = useCallback(
+    (update: TimelineEventsVisibilityUpdate) =>
+      dispatch(updateTimelineEventsVisibility(update)),
+    [dispatch],
+  );
+  const handleSelectEvents = useCallback(
+    (events: TimelineEvent[]) => dispatch(selectTimelineEvents(events)),
+    [dispatch],
+  );
+  const handleDeselectEvents = useCallback(
+    () => dispatch(deselectTimelineEvents()),
+    [dispatch],
+  );
+  const handleShowAllEvents = useCallback(
+    () => dispatch(onOpenTimelines()),
+    [dispatch],
+  );
+  const handleClose = useCallback(
+    () => dispatch(onCloseTimelines()),
+    [dispatch],
+  );
 
   return (
     <SharedTimelineSidebar
       collectionId={collectionId}
       timelines={timelines}
-      visibleTimelineEventIds={visibleTimelineEventIds}
-      selectedTimelineEventIds={selectedTimelineEventIds}
-      focusedTimelineEventIds={focusedTimelineEventIds}
-      dataInterval={dataInterval}
-      xDomain={xDomain}
-      onShowTimelineEvents={onShowTimelineEvents}
-      onHideTimelineEvents={onHideTimelineEvents}
-      onSelectTimelineEvents={onSelectTimelineEvents}
-      onDeselectTimelineEvents={onDeselectTimelineEvents}
+      visibleEventIds={visibleEventIds}
+      selectedEventIds={selectedEventIds}
+      focusedEventIds={focusedEventIds}
+      xAxis={xAxis}
+      onUpdateVisibility={handleUpdateVisibility}
+      onSelectEvents={handleSelectEvents}
+      onDeselectEvents={handleDeselectEvents}
       onShowAllEvents={handleShowAllEvents}
-      onOpenModal={onOpenModal}
-      onClose={onClose}
+      onClose={handleClose}
     />
   );
 };

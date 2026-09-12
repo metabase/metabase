@@ -27,6 +27,11 @@ export const createMockDashboardState = (
   sidebar: {
     props: {},
   },
+  timelineEvents: {
+    overrides: {},
+    selection: null,
+    hasTrackedEventsShown: false,
+  },
   selectedTabId: null,
   missingActionParameters: null,
   autoApplyFilters: {

@@ -38,7 +38,10 @@ import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/mod
 import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type { Card, DashboardTabId, DatasetQuery } from "metabase-types/api";
 
-import { trackNewQuestionSaved } from "../../analytics";
+import {
+  trackNewQuestionSaved,
+  trackQuestionTimelineEventsSaved,
+} from "../../analytics";
 import { updateModelIndexes } from "../../model-indexes/actions";
 import {
   API_CREATE_QUESTION,
@@ -254,6 +257,7 @@ export const apiCreateQuestion = (
       createdQuestion,
       isBasedOnExistingQuestion(getState()),
     );
+    trackQuestionTimelineEventsSaved(createdQuestion);
 
     // Saving a card, locks in the current display as though it had been
     // selected in the UI.
@@ -317,6 +321,8 @@ export const apiUpdateQuestion = (
         excludeVisualisationSettings: isMetric,
       },
     );
+
+    trackQuestionTimelineEventsSaved(updatedQuestion, originalQuestion);
 
     // invalidate question notifications
     // (some of the old alerts might be removed during update)

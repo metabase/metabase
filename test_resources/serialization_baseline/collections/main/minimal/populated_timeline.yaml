@@ -5,14 +5,16 @@ entity_id: jqbQYdaqb_vXFlZnjvshP
 events:
 - created_at: '2024-08-28T14:31:56.942571Z'
   creator_id: admin@example.com
+  entity_id: UlA1lYjo2tSI6497Ovj_4
   icon: star
   name: First Event
   time_matters: true
   timestamp: '2020-04-11T00:00:00Z'
   timezone: US/Pacific
   serdes/meta:
-  - id: null
-    label: first_event
+  - id: jqbQYdaqb_vXFlZnjvshP
+    model: Timeline
+  - id: UlA1lYjo2tSI6497Ovj_4
     model: TimelineEvent
 icon: star
 name: Populated Timeline

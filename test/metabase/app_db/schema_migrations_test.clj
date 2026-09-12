@@ -3362,3 +3362,37 @@
         (testing "the mirror column is nullable"
           (t2/update! :metabase_field_user_settings :field_id field-id {:data_sensitivity nil})
           (is (nil? (t2/select-one-fn :data_sensitivity :metabase_field_user_settings :field_id field-id))))))))
+
+(deftest timeline-event-entity-ids-test
+  (testing "v64.h1c4r5 thru v64.0npr54: existing timeline events get distinct portable IDs, other data unchanged"
+    (impl/test-migrations ["v64.h1c4r5" "v64.0npr54"] [migrate!]
+      (let [user-id     (t2/insert-returning-pk! :core_user {:email       "migration-birds@example.com"
+                                                             :password    "password"
+                                                             :date_joined :%now
+                                                             :entity_id   (u/generate-nano-id)})
+            timeline-id (t2/insert-returning-pk! :timeline {:name       "Migration seasons"
+                                                            :icon       "star"
+                                                            :creator_id user-id
+                                                            :created_at :%now
+                                                            :updated_at :%now
+                                                            :entity_id  (u/generate-nano-id)})
+            event       {:name         "Swallows return"
+                         :archived     false
+                         :icon         "star"
+                         :timeline_id  timeline-id
+                         :creator_id   user-id
+                         :created_at   :%now
+                         :updated_at   :%now
+                         :timestamp    #t "2027-04-20T00:00:00Z"
+                         :time_matters false
+                         :timezone     "UTC"}
+            _           (t2/insert! :timeline_event [event (assoc event :archived true)])
+            before      (t2/select :timeline_event {:order-by [:id]})]
+        (migrate!)
+        (let [after      (t2/select :timeline_event {:order-by [:id]})
+              entity-ids (map :entity_id after)]
+          (is (= before (mapv #(dissoc % :entity_id) after)))
+          (is (= 2 (count (set entity-ids))))
+          (is (every? #(and (string? %) (re-matches #"[A-Za-z0-9_-]{21}" %)) entity-ids))
+          (is (thrown? Exception (t2/insert! :timeline_event event))
+              "new events must carry an entity ID"))))))

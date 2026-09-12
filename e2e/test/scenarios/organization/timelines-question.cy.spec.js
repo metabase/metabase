@@ -338,12 +338,12 @@ describe("scenarios > organization > timelines > question", () => {
         // should hide individual events from chart if hidden in sidebar
         cy.icon("calendar").click();
         cy.findByTestId("sidebar-content").findByText("Releases").click();
-        toggleEventVisibility("RC1");
+        H.toggleTimelineEventVisibility("RC1");
 
         H.timelineEventChip("RC1").should("not.exist");
 
         // should show individual events in chart again
-        toggleEventVisibility("RC1");
+        H.toggleTimelineEventVisibility("RC1");
 
         H.timelineEventChip("RC1").should("be.visible");
 
@@ -352,34 +352,29 @@ describe("scenarios > organization > timelines > question", () => {
         cy.findByLabelText("Event name").type("RC2");
         cy.findByLabelText("Date").clear().type("10/20/2026");
         cy.button("Create").click();
-        waitForTimelinesAfterCreatingAnEvent("RC2");
+        H.waitForTimelinesAfterCreatingAnEvent("RC2");
 
         H.undoToast().icon("close").click();
         H.timelineEventChip("RC2").should("be.visible");
 
         // should then hide the newly created event
-        timelineEventVisibility("RC2").should("be.checked");
-        toggleEventVisibility("RC2");
-        timelineEventVisibility("RC2").should("not.be.checked");
+        H.timelineEventVisibility("RC2").should("be.checked");
+        H.toggleTimelineEventVisibility("RC2");
+        H.timelineEventVisibility("RC2").should("not.be.checked");
 
         H.timelineEventChip("RC2").should("not.exist");
 
         // its timeline, visible but having one hidden event
         // should display its checkbox in an indeterminate state
-        cy.findByTestId("sidebar-content")
-          .findByText("Releases")
-          .closest("[aria-label='Timeline card header']")
-          .within(() => {
-            cy.findByRole("checkbox").should(
-              "have.prop",
-              "indeterminate",
-              true,
-            );
+        H.timelineVisibility("Releases").should(
+          "have.prop",
+          "indeterminate",
+          true,
+        );
 
-            // Hide the timeline then show it again
-            cy.findByRole("checkbox").click();
-            cy.findByRole("checkbox").click();
-          });
+        // Hide the timeline then show it again
+        H.timelineVisibility("Releases").click();
+        H.timelineVisibility("Releases").click();
 
         // once timeline is visible, all its events should be visible
         H.timelineEventChip("RC2").should("be.visible");
@@ -400,16 +395,13 @@ describe("scenarios > organization > timelines > question", () => {
 
         // making a hidden timeline visible
         // should make its events automatically visible
-        cy.findByTestId("sidebar-content")
-          .findByText("Timeline for collection")
-          .closest("[aria-label='Timeline card header']")
-          .within(() => cy.findByRole("checkbox").click());
+        H.timelineVisibility("Timeline for collection").click();
 
         H.timelineEventChip("TC1").should("be.visible");
 
         // events whose timeline was invisible on page load
         // should be hideable once their timelines are visible
-        toggleEventVisibility("TC1");
+        H.toggleTimelineEventVisibility("TC1");
 
         H.timelineEventChip("TC1").should("not.exist");
 
@@ -431,13 +423,13 @@ describe("scenarios > organization > timelines > question", () => {
 
           cy.button("Create").click();
         });
-        waitForTimelinesAfterCreatingAnEvent("Event at the end of range");
+        H.waitForTimelinesAfterCreatingAnEvent("Event at the end of range");
 
         H.modal().should("not.exist"); // wait for modal to close
 
         cy.log("remove all other events except the new one");
-        toggleEventVisibility("RC1").should("not.be.checked");
-        toggleEventVisibility("RC2").should("not.be.checked");
+        H.toggleTimelineEventVisibility("RC1").should("not.be.checked");
+        H.toggleTimelineEventVisibility("RC2").should("not.be.checked");
 
         cy.log("the new event should be visible in the chart");
         H.timelineEventChip("Event at the end of range").should("be.visible");
@@ -642,8 +634,8 @@ describe("scenarios > organization > timelines > question", () => {
         "true",
       );
       cy.findByTestId("sidebar-content").within(() => {
-        timelineEventCard("Alpha").should("be.visible");
-        timelineEventCard("Delta").should("be.visible");
+        H.timelineEventCard("Alpha").should("be.visible");
+        H.timelineEventCard("Delta").should("be.visible");
       });
 
       cy.log("the unrelated timeline is filtered out of the focused list");
@@ -690,8 +682,8 @@ describe("scenarios > organization > timelines > question", () => {
       H.timelineEventChip("2 events").should("be.visible").click();
 
       cy.findByTestId("sidebar-content").within(() => {
-        timelineEventCard("Alpha").should("be.visible");
-        timelineEventCard("Beta").should("be.visible");
+        H.timelineEventCard("Alpha").should("be.visible");
+        H.timelineEventCard("Beta").should("be.visible");
       });
       cy.findByTestId("sidebar-content")
         .findByText("Other")
@@ -829,22 +821,41 @@ describe("scenarios > organization > timelines > question", () => {
       H.rightSidebar().icon("ellipsis").should("not.exist");
     });
   });
+
+  describe("analytics", () => {
+    beforeEach(() => {
+      H.resetSnowplow();
+      cy.signInAsAdmin();
+      H.enableTracking();
+    });
+
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
+    });
+
+    it("should track opening the events panel and saving a question with a recorded selection", () => {
+      H.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [{ name: "RC1", timestamp: "2027-10-20T00:00:00Z" }],
+      });
+
+      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+      H.timelineEventChip("RC1").should("be.visible");
+
+      cy.icon("calendar").click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "question_events_panel_opened",
+        triggered_from: "footer",
+      });
+
+      H.toggleTimelineEventVisibility("RC1");
+      H.timelineEventChip("RC1").should("not.exist");
+      H.saveSavedQuestion();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "question_timeline_events_saved",
+        target_id: ORDERS_BY_YEAR_QUESTION_ID,
+      });
+    });
+  });
 });
-
-function timelineEventCard(eventName) {
-  return cy.findByText(eventName).closest("[aria-label='Timeline event card']");
-}
-
-function toggleEventVisibility(eventName) {
-  return timelineEventVisibility(eventName).click();
-}
-
-function timelineEventVisibility(eventName) {
-  return timelineEventCard(eventName).findByRole("checkbox");
-}
-
-function waitForTimelinesAfterCreatingAnEvent(eventName) {
-  return timelineEventCard(eventName)
-    .findByText(/^Bobby Tables added this on/)
-    .should("be.visible");
-}
