@@ -177,6 +177,32 @@ describe("data model utils", () => {
         expect(checkCanBeModel(question)).toBe(true);
       });
 
+      it("returns true when the current user id variable is used", () => {
+        const card = createSavedNativeCard({
+          tags: {
+            current_user_id: { type: "text" },
+          },
+        });
+        const { metadata } = setup({ cards: [card] });
+
+        const question = new Question(card, metadata);
+
+        expect(checkCanBeModel(question)).toBe(true);
+      });
+
+      it("returns true when the current user id variable uses dashes", () => {
+        const card = createSavedNativeCard({
+          tags: {
+            "current-user-id": { type: "number" },
+          },
+        });
+        const { metadata } = setup({ cards: [card] });
+
+        const question = new Question(card, metadata);
+
+        expect(checkCanBeModel(question)).toBe(true);
+      });
+
       UNSUPPORTED_TEMPLATE_TAG_TYPES.forEach((tagType) => {
         it(`returns false when '${tagType}' variables are used`, () => {
           const card = createSavedNativeCard({

@@ -1714,6 +1714,7 @@
  [lib.swap
   swap-clauses]
  [lib.template-tags
+  current-user-id-template-tag?
   template-tags->card-ids
   template-tags->snippet-ids]
  [lib.temporal-bucket

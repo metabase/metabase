@@ -12,6 +12,11 @@ import type {
   TemplateTag,
 } from "metabase-types/api";
 
+const CURRENT_USER_ID_TEMPLATE_TAG_NAMES = new Set([
+  "current_user_id",
+  "current-user-id",
+]);
+
 function getParameterType(tag: TemplateTag) {
   if (tag["widget-type"]) {
     return tag["widget-type"];
@@ -77,6 +82,7 @@ export function getTemplateTagParameters(
     .filter(
       (tag) =>
         tag.type != null &&
+        !CURRENT_USER_ID_TEMPLATE_TAG_NAMES.has(tag.name) &&
         tag.type !== "card" &&
         tag.type !== "table" &&
         tag.type !== "snippet" &&

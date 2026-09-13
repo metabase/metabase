@@ -86,6 +86,43 @@
          (is (= 22
                 (count-with-params :venues :price :number "1" options))))))))
 
+(defn- current-user-id-query
+  []
+  (mt/native-query
+   {:query         (str "SELECT {{current_user_id}} AS current_user_id"
+                        (case driver/*driver*
+                          :oracle " FROM dual"
+                          ""))
+    :template-tags {"current_user_id" {:name         "current_user_id"
+                                       :display-name "Current user ID"
+                                       :type         :number}}}))
+
+(defn- current-user-id-query-result
+  [query]
+  (ffirst (mt/formatted-rows [int] (qp/process-query query))))
+
+(deftest ^:parallel current-user-id-template-tag-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
+    (mt/with-test-user :rasta
+      (let [current-user-id      (mt/user->id :rasta)
+            executed-by-user-id  (mt/user->id :crowberto)]
+        (testing "resolves from query execution info"
+          (is (= executed-by-user-id
+                 (current-user-id-query-result
+                  (assoc (current-user-id-query)
+                         :info {:executed-by executed-by-user-id
+                                :query-hash  (byte-array 0)})))))
+        (testing "falls back to the current user binding"
+          (is (= current-user-id
+                 (current-user-id-query-result (current-user-id-query)))))
+        (testing "cannot be overridden by a supplied parameter"
+          (is (= current-user-id
+                 (current-user-id-query-result
+                  (assoc (current-user-id-query)
+                         :parameters [{:type   :number
+                                       :target [:variable [:template-tag "current_user_id"]]
+                                       :value  "999"}])))))))))
+
 (defmethod driver/database-supports? [::driver/driver ::template-tag-date-param-test]
   [_driver _feature _database]
   true)

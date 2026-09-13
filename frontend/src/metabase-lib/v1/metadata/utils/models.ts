@@ -19,6 +19,10 @@ type FieldMetadata = {
 };
 
 const MAX_FIELD_SCORE = 3;
+const CURRENT_USER_ID_TEMPLATE_TAG_NAMES = new Set([
+  "current_user_id",
+  "current-user-id",
+]);
 
 /**
  * Calculates field metadata completeness score for individual column
@@ -80,7 +84,10 @@ export function getDatasetMetadataCompletenessPercentage(
 }
 
 function isSupportedTemplateTagForModel(tag: TemplateTag) {
-  return ["card", "snippet"].includes(tag.type);
+  return (
+    ["card", "snippet"].includes(tag.type) ||
+    CURRENT_USER_ID_TEMPLATE_TAG_NAMES.has(tag.name)
+  );
 }
 
 export function checkCanBeModel(question: Question) {

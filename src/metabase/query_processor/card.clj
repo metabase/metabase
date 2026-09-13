@@ -150,9 +150,10 @@
 (mu/defn parameter-template-tag? :- :boolean
   "Whether a parameter is created for this template tag, as opposed to tags that splice content into the query itself,
   like snippets, card references, and tables."
-  [{tag-type :type, widget-type :widget-type} :- [:maybe ::lib.schema.template-tag/template-tag]]
+  [{tag-type :type, widget-type :widget-type, :as tag} :- [:maybe ::lib.schema.template-tag/template-tag]]
   (boolean
    (and tag-type
+        (not (lib/current-user-id-template-tag? tag))
         (or (contains? lib.schema.template-tag/raw-value-template-tag-types tag-type)
             (= tag-type :temporal-unit)
             (and (= tag-type :dimension) widget-type (not= widget-type :none))))))

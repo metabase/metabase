@@ -6288,6 +6288,15 @@
                                         (assoc (card-with-name-and-query "model with snippet" query)
                                                :type :model :display :table)))))))))
 
+(deftest create-model-with-current-user-id-template-tag-test
+  (testing "POST /api/card: a native query using the built-in current user id tag can be saved as a model"
+    (mt/with-model-cleanup [:model/Card]
+      (let [query (lib/native-query (mt/metadata-provider) "select {{current_user_id}} as current_user_id")]
+        (is (=? {:id pos-int?}
+                (mt/user-http-request :rasta :post 200 "card"
+                                      (assoc (card-with-name-and-query "model with current user id" query)
+                                             :type :model :display :table))))))))
+
 (deftest create-model-without-result-metadata-test
   (testing "POST /api/card currently allows saving a native-query model without an explicit result_metadata (#37009 gap)"
     (mt/with-model-cleanup [:model/Card]
