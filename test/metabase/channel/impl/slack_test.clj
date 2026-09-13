@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.channel.core :as channel]
    [metabase.channel.impl.slack :as channel.slack]
+   [metabase.channel.render.core :as channel.render]
    [metabase.channel.slack :as slack]
    [metabase.config.core :as config]
    [metabase.test :as mt]))
@@ -192,10 +193,17 @@
                         :creator {:common_name "Test User"}}
           recipient    {:type :notification-recipient/raw-value :details {:value "#test-channel"}}]
       (mt/with-dynamic-fn-redefs [slack/upload-file!             (fn [_ _] {:id "uploaded-file-id"})
-                                  channel.slack/part->sections! (fn [params part]
-                                                                  (if (= 2 (-> part :card :id))
-                                                                    (throw (ex-info "boom rendering part" {}))
-                                                                    (orig params part)))]
+                                  channel.slack/part->sections! (fn
+                                                                  ([part]
+                                                                   (orig part))
+                                                                  ([params part]
+                                                                   (if (= 2 (-> part :card :id))
+                                                                     (throw (ex-info "boom rendering part" {}))
+                                                                     (orig params part)))
+                                                                  ([params part include-text?]
+                                                                   (if (= 2 (-> part :card :id))
+                                                                     (throw (ex-info "boom rendering part" {}))
+                                                                     (orig params part include-text?))))]
         (mt/with-temporary-setting-values [site-url "http://example.com"]
           (let [blocks   (-> (channel/render-notification :channel/slack notification {:recipients [recipient]})
                              first :blocks)
@@ -204,3 +212,68 @@
               (is (str/includes? all-text "An error occurred while displaying this card.")))
             (testing "the healthy card still produced its block (delivery not aborted)"
               (is (str/includes? all-text "Good Card")))))))))
+
+(deftest include-text-renders-table-as-mrkdwn-test
+  (testing "When include_text is true, table :render/text is sent as an mrkdwn code block"
+    (let [rendered {:content          [:div "html"]
+                    :render/text      "Name | Amt\n---- | ---\nAcme |  12"
+                    :render/text-kind :table}
+          part     {:type :card
+                    :card {:id 1 :name "Sales" :display :table}
+                    :result {:data {:cols [] :rows []}}}]
+      (mt/with-dynamic-fn-redefs [channel.render/render-pulse-card (fn [& _] rendered)]
+        (mt/with-temporary-setting-values [site-url "http://example.com"]
+          (let [blocks (#'channel.slack/part->sections! {} part true)
+                body   (last blocks)]
+            (is (= "mrkdwn" (get-in body [:text :type])))
+            (is (str/starts-with? (get-in body [:text :text]) "```"))
+            (is (str/includes? (get-in body [:text :text]) "Acme")))))))
+  (testing "When include_text is false, table text is ignored and an image is uploaded"
+    (let [rendered {:content          [:div "html"]
+                    :render/text      "Name | Amt\n---- | ---\nAcme |  12"
+                    :render/text-kind :table}
+          part     {:type :card
+                    :card {:id 1 :name "Sales" :display :table}
+                    :result {:data {:cols [] :rows []}}}]
+      (mt/with-dynamic-fn-redefs [channel.render/render-pulse-card (fn [& _] rendered)
+                                  channel.render/png-from-render-info (fn [_ _] (byte-array [1 2 3]))
+                                  slack/upload-file! (fn [_ _] {:id "uploaded-file-id"})]
+        (mt/with-temporary-setting-values [site-url "http://example.com"]
+          (let [blocks (#'channel.slack/part->sections! {} part false)
+                body   (last blocks)]
+            (is (= "image" (:type body)))
+            (is (= "uploaded-file-id" (get-in body [:slack_file :id]))))))))
+  (testing "Scalars keep the historical plain_text path when include_text is off"
+    (let [rendered {:content [:div] :render/text "42"}
+          part     {:type :card
+                    :card {:id 1 :name "Count" :display :scalar}
+                    :result {:data {:cols [] :rows [[42]]}}}]
+      (mt/with-dynamic-fn-redefs [channel.render/render-pulse-card (fn [& _] rendered)]
+        (mt/with-temporary-setting-values [site-url "http://example.com"]
+          (let [body (last (#'channel.slack/part->sections! {} part false))]
+            (is (= {:type "section"
+                    :text {:type "plain_text" :text "42"}}
+                   body))))))))
+
+(deftest dashboard-include-text-is-forwarded-test
+  (testing "render-notification passes include_text through to part->sections!"
+    (let [seen (atom nil)
+          orig @#'channel.slack/part->sections!]
+      (mt/with-dynamic-fn-redefs [channel.slack/part->sections!
+                                  (fn
+                                    ([part] (orig part))
+                                    ([params part] (orig params part))
+                                    ([params part include-text?]
+                                     (reset! seen include-text?)
+                                     (orig params part include-text?)))]
+        (channel/render-notification
+         :channel/slack
+         {:payload_type :notification/dashboard
+          :payload      {:dashboard       {:id 1 :name "D"}
+                         :parameters      []
+                         :dashboard_parts [{:type :text :text "hello"}]}
+          :creator      {:common_name "A"}}
+         {:recipients   [{:type    :notification-recipient/raw-value
+                          :details {:value "#foo"}}]
+          :include_text true})
+        (is (true? @seen))))))

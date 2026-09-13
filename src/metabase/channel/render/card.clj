@@ -263,7 +263,8 @@
          {description :content}           (make-description-if-needed dashcard card options)
          {pulse-body       :content
           body-attachments :attachments
-          text             :render/text}  (render-pulse-card-body render-type timezone-id card dashcard results)
+          text             :render/text
+          text-kind        :render/text-kind} (render-pulse-card-body render-type timezone-id card dashcard results)
          attachment-href                  (if dashcard
                                             (urls/dashcard-url dashcard)
                                             (card-href card))
@@ -294,7 +295,8 @@
                            (if-let [more-results-message (body/attached-results-text render-type card)]
                              (conj more-results-message (list pulse-body))
                              pulse-body)]]]]}
-       text (assoc :render/text text)))))
+       text (assoc :render/text text)
+       text-kind (assoc :render/text-kind text-kind)))))
 
 (mu/defn render-pulse-card-for-display
   "Same as `render-pulse-card` but isn't intended for an email, rather for previewing so there is no need for
