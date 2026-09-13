@@ -12,13 +12,13 @@ import {
 import { useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import { useSetting } from "metabase/settings";
-import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
-import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
 import { Button, Center, Icon, Loader, Menu, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import { trackTransformCreate } from "../../../analytics";
 import { CreateTransformCollectionModal } from "../../../components/CreateTransformCollectionModal";
+import { useTransformPermissions } from "../../../hooks/use-transform-permissions";
+import { getShouldShowPythonTransformsUpsell } from "../../../selectors";
 
 import { shouldDisableItem } from "./utils";
 

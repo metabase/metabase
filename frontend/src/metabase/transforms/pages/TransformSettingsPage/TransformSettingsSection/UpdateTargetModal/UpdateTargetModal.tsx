@@ -4,10 +4,8 @@ import * as Yup from "yup";
 
 import {
   skipToken,
-  useDeleteTransformTargetMutation,
   useGetDatabaseQuery,
   useListDatabaseSchemasQuery,
-  useUpdateTransformMutation,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { hasFeature } from "metabase/databases";
@@ -18,8 +16,6 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { SchemaFormSelect } from "metabase/transforms/components/SchemaFormSelect";
-import { sourceDatabaseId } from "metabase/transforms/utils";
 import {
   Box,
   Button,
@@ -31,6 +27,13 @@ import {
 } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { Transform, UpdateTransformRequest } from "metabase-types/api";
+
+import {
+  useDeleteTransformTargetMutation,
+  useUpdateTransformMutation,
+} from "../../../../api/transform";
+import { SchemaFormSelect } from "../../../../components/SchemaFormSelect";
+import { sourceDatabaseId } from "../../../../utils";
 
 type UpdateTargetModalProps = {
   transform: Transform;
@@ -66,15 +69,16 @@ type EditTransformValues = {
 };
 
 // `$supportsSchemas` is threaded in via `FormProvider`'s `validationContext`; see `LoginForm.tsx`.
-export const EDIT_TRANSFORM_SCHEMA = Yup.object({
-  name: Yup.string().required(Errors.required),
-  schema: Yup.string()
-    .nullable()
-    .when("$supportsSchemas", {
-      is: true,
-      then: (schema) => schema.required(Errors.required),
-    }),
-});
+export const EDIT_TRANSFORM_SCHEMA = /* #__PURE__ */ (() =>
+  Yup.object({
+    name: Yup.string().required(Errors.required),
+    schema: Yup.string()
+      .nullable()
+      .when("$supportsSchemas", {
+        is: true,
+        then: (schema) => schema.required(Errors.required),
+      }),
+  }))();
 
 type UpdateTargetFormProps = {
   transform: Transform;

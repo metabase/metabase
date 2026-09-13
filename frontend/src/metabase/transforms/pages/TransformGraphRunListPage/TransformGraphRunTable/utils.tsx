@@ -1,14 +1,6 @@
 import type { SortingState } from "@tanstack/react-table";
 import { msgid, ngettext, t } from "ttag";
 
-import { TimezoneIndicator } from "metabase/transforms/components/TimezoneIndicator";
-import {
-  formatRunMethod,
-  formatStatus,
-  getRunDurationMs,
-  isErrorStatus,
-  parseTimestampWithTimezone,
-} from "metabase/transforms/utils";
 import type { MantineSize, TreeTableColumnDef } from "metabase/ui";
 import {
   Box,
@@ -29,6 +21,14 @@ import {
   type TransformGraphRunSortColumn,
 } from "metabase-types/api";
 
+import { TimezoneIndicator } from "../../../components/TimezoneIndicator";
+import {
+  formatRunMethod,
+  formatStatus,
+  getRunDurationMs,
+  isErrorStatus,
+  parseTimestampWithTimezone,
+} from "../../../utils";
 import type { TransformGraphRunSortOptions } from "../types";
 
 export function getRowKey(run: TransformGraphRun): string {

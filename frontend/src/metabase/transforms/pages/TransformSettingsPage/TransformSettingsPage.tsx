@@ -1,12 +1,12 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { useParams } from "metabase/router";
-import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import { TransformDisconnectedDatabaseBanner } from "../../components/TransformDisconnectedDatabaseBanner";
 import { TransformHeader } from "../../components/TransformHeader";
+import { useTransformPermissions } from "../../hooks/use-transform-permissions";
 import { useTransformWithPolling } from "../../hooks/use-transform-with-polling";
 
 import { TransformSettingsSection } from "./TransformSettingsSection";

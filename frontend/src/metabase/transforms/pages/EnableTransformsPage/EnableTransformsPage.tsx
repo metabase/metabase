@@ -4,8 +4,9 @@ import { PageContainer } from "metabase/common/data-studio/components/PageContai
 import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { useSetting, useUpdateSettingMutation } from "metabase/settings";
-import { TransformsHeader } from "metabase/transforms/components/TransformsHeader";
 import { Center, Text } from "metabase/ui";
+
+import { TransformsHeader } from "../../components/TransformsHeader";
 
 import { EnableTransformsCard } from "./EnableTransformsCard";
 

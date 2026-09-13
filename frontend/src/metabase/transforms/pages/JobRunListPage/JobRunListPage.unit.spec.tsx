@@ -20,7 +20,6 @@ import {
   within,
 } from "__support__/ui";
 import { Route } from "metabase/router";
-import { POLLING_INTERVAL } from "metabase/transforms/constants";
 import type {
   TransformJobRun,
   TransformRunForJobRun,
@@ -33,6 +32,8 @@ import {
   createMockTransformJobRun,
   createMockTransformRunForJobRun,
 } from "metabase-types/api/mocks";
+
+import { POLLING_INTERVAL } from "../../constants";
 
 import { JobRunListPage } from "./JobRunListPage";
 

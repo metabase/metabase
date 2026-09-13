@@ -3,14 +3,6 @@ import { t } from "ttag";
 import { DateTime } from "metabase/common/components/DateTime";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
-import { ErrorSection } from "metabase/transforms/components/ErrorSection";
-import { TransformOutput } from "metabase/transforms/components/TransformOutput";
-import {
-  formatStatus,
-  getRunDurationMs,
-  getTransformRunName,
-  isErrorStatus,
-} from "metabase/transforms/utils";
 import {
   Anchor,
   Box,
@@ -24,6 +16,15 @@ import * as Urls from "metabase/urls";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import { formatDurationLong } from "metabase/utils/formatting";
 import type { TransformRunForJobRun } from "metabase-types/api";
+
+import { ErrorSection } from "../../../components/ErrorSection";
+import { TransformOutput } from "../../../components/TransformOutput";
+import {
+  formatStatus,
+  getRunDurationMs,
+  getTransformRunName,
+  isErrorStatus,
+} from "../../../utils";
 
 import S from "./TransformRunItem.module.css";
 

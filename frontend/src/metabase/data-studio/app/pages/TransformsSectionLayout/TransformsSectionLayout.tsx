@@ -6,9 +6,11 @@ import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Outlet, useParams } from "metabase/router";
 import { useSetting } from "metabase/settings";
-import { useTransformSupportedDbs } from "metabase/transforms/hooks/use-transform-supported-dbs";
-import { EnableTransformsPage } from "metabase/transforms/pages/EnableTransformsPage/EnableTransformsPage";
-import { getShouldShowTransformsUpsell } from "metabase/transforms/selectors";
+import {
+  EnableTransformsPage,
+  getShouldShowTransformsUpsell,
+  useTransformSupportedDbs,
+} from "metabase/transforms";
 
 import { SectionLayout } from "../../components/SectionLayout";
 

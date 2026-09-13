@@ -7,7 +7,6 @@ import {
   useGetDocumentQuery,
   useGetSegmentQuery,
   useGetTableQuery,
-  useGetTransformQuery,
   useListMentionsQuery,
 } from "metabase/api";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
@@ -57,7 +56,7 @@ export const useEntityData = (
     },
   );
 
-  const transformQuery = useGetTransformQuery(entityId!, {
+  const transformQuery = PLUGIN_TRANSFORMS.useGetTransformQuery(entityId!, {
     skip: !PLUGIN_TRANSFORMS.isEnabled || !entityId || model !== "transform",
   });
 

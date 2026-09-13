@@ -18,7 +18,7 @@ import {
 import { TransformSettingsSection } from "./TransformSettingsSection";
 
 jest.mock(
-  "metabase/transforms/components/IncrementalTransform/useHasCheckpointOptions",
+  "../../../components/IncrementalTransform/useHasCheckpointOptions",
   () => ({
     useHasCheckpointOptions: jest.fn().mockReturnValue({
       hasCheckpointOptions: true,

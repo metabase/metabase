@@ -34,22 +34,23 @@ export type IncrementalSettingsFormValues = {
   lookbackUnit: LookbackUnit;
 };
 
-export const VALIDATION_SCHEMA = Yup.object({
-  incremental: Yup.boolean().required(),
-  sourceStrategy: Yup.mixed<"checkpoint">().oneOf(["checkpoint"]).required(),
-  checkpointFilterFieldId: Yup.string()
-    .nullable()
-    .defined()
-    .when(["incremental", "sourceStrategy"], {
-      is: (incremental: boolean, sourceStrategy: "checkpoint") =>
-        incremental && sourceStrategy === "checkpoint",
-      then: (schema) => schema.required(Errors.required),
-      otherwise: (schema) => schema.nullable().defined(),
-    }),
-  uniqueKey: Yup.string().default(""),
-  lookbackValue: Yup.number().nullable().positive().integer().default(null),
-  lookbackUnit: Yup.mixed<LookbackUnit>().default("day"),
-});
+export const VALIDATION_SCHEMA = /* #__PURE__ */ (() =>
+  Yup.object({
+    incremental: Yup.boolean().required(),
+    sourceStrategy: Yup.mixed<"checkpoint">().oneOf(["checkpoint"]).required(),
+    checkpointFilterFieldId: Yup.string()
+      .nullable()
+      .defined()
+      .when(["incremental", "sourceStrategy"], {
+        is: (incremental: boolean, sourceStrategy: "checkpoint") =>
+          incremental && sourceStrategy === "checkpoint",
+        then: (schema) => schema.required(Errors.required),
+        otherwise: (schema) => schema.nullable().defined(),
+      }),
+    uniqueKey: Yup.string().default(""),
+    lookbackValue: Yup.number().nullable().positive().integer().default(null),
+    lookbackUnit: Yup.mixed<LookbackUnit>().default("day"),
+  }))();
 
 export const getInitialValues = (
   defaults?: Partial<IncrementalSettingsFormValues>,

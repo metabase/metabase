@@ -1,12 +1,13 @@
 import { type MouseEvent, useState } from "react";
 import { t } from "ttag";
 
-import { useUpdateTransformJobMutation } from "metabase/api";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { useNavigate } from "metabase/router";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { TransformJob } from "metabase-types/api";
+
+import { useUpdateTransformJobMutation } from "../../api/transform-job";
 
 import { DeleteJobModal } from "./DeleteJobModal";
 import type { JobMoreMenuModalType } from "./types";

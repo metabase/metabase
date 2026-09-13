@@ -19,7 +19,6 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { IncrementalTransformSettings } from "metabase/transforms/components/IncrementalTransform/IncrementalTransformSettings";
 import { Box, Button, Group, Modal, Stack } from "metabase/ui";
 import type {
   SchemaName,
@@ -27,6 +26,7 @@ import type {
   TransformSource,
 } from "metabase-types/api";
 
+import { IncrementalTransformSettings } from "../../../components/IncrementalTransform/IncrementalTransformSettings";
 import { SchemaFormSelect } from "../../../components/SchemaFormSelect";
 import { TargetNameInput } from "../../../components/TargetNameInput";
 

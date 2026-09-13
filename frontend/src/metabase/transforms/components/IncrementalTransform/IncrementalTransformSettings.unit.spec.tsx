@@ -12,7 +12,7 @@ jest.mock("./useHasCheckpointOptions", () => ({
   useHasCheckpointOptions: jest.fn(),
 }));
 
-jest.mock("metabase/transforms/utils", () => ({
+jest.mock("../../utils", () => ({
   getLibQuery: () => null,
   isMbqlQuery: () => false,
 }));

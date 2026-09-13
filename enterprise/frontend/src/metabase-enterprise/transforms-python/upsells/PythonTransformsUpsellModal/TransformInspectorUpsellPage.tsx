@@ -6,9 +6,11 @@ import { useSelector } from "metabase/redux/hooks";
 import { useParams } from "metabase/router";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import { useSetting } from "metabase/settings";
-import { TransformHeader } from "metabase/transforms/components/TransformHeader";
-import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
-import { useTransformWithPolling } from "metabase/transforms/hooks/use-transform-with-polling";
+import {
+  TransformHeader,
+  useTransformPermissions,
+  useTransformWithPolling,
+} from "metabase/transforms";
 import { Card, Center, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { reload } from "metabase/utils/dom";

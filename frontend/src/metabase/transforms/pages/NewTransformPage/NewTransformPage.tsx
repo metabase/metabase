@@ -19,8 +19,6 @@ import { loadQueryEditorWithParameters } from "metabase/parameters/components/Qu
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { type Location, useNavigate, useParams } from "metabase/router";
-import { useRegisterMetabotTransformContext } from "metabase/transforms/hooks/use-register-transform-metabot-context";
-import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Box, Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
@@ -32,7 +30,9 @@ import type {
 
 import { TransformEditor } from "../../components/TransformEditor";
 import { NAME_MAX_LENGTH } from "../../constants";
+import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";
 import { useSourceState } from "../../hooks/use-source-state";
+import { useTransformPermissions } from "../../hooks/use-transform-permissions";
 import { getValidationResult, isCompleteSource } from "../../utils";
 
 import { CreateTransformModal } from "./CreateTransformModal";

@@ -4,7 +4,6 @@ import { useListDatabasesQuery } from "metabase/api/database";
 import { Link } from "metabase/common/components/Link";
 import { useSelector } from "metabase/redux";
 import { getPlan, getSetting, isProPlan } from "metabase/settings";
-import { doesDatabaseSupportTransforms } from "metabase/transforms/utils";
 import {
   Alert,
   Button,
@@ -17,6 +16,8 @@ import {
   Title,
 } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
+
+import { doesDatabaseSupportTransforms } from "../../utils";
 export function EnableTransformsCard({
   onEnableClick,
   permissionsErrorMessage,

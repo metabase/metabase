@@ -1,6 +1,6 @@
 import { match } from "ts-pattern";
 
-import { trackTransformInspectAlertClicked } from "metabase/transforms/analytics";
+import { trackTransformInspectAlertClicked } from "metabase/transforms";
 import { ActionIcon, Icon } from "metabase/ui";
 import type {
   InspectorAlertTrigger,

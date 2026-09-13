@@ -2,20 +2,21 @@ import { useDisclosure, useElementSize } from "@mantine/hooks";
 import cx from "classnames";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import {
-  useListTransformGraphRunsQuery,
-  useListTransformsQuery,
-} from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useLocation, useNavigate } from "metabase/router";
-import { DetailedViewSwitch } from "metabase/transforms/components/DetailedViewSwitch";
-import { TransformsHeader } from "metabase/transforms/components/TransformsHeader";
-import { POLLING_INTERVAL } from "metabase/transforms/constants";
-import { isActiveRunStatus } from "metabase/transforms/utils";
 import { Center, Flex, Group, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { TransformGraphRun } from "metabase-types/api";
+
+import {
+  useListTransformGraphRunsQuery,
+  useListTransformsQuery,
+} from "../../api/transform";
+import { DetailedViewSwitch } from "../../components/DetailedViewSwitch";
+import { TransformsHeader } from "../../components/TransformsHeader";
+import { POLLING_INTERVAL } from "../../constants";
+import { isActiveRunStatus } from "../../utils";
 
 import { TransformGraphRunFilterBar } from "./TransformGraphRunFilterBar";
 import S from "./TransformGraphRunListPage.module.css";

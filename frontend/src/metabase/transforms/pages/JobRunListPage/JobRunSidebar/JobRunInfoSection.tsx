@@ -1,17 +1,18 @@
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
-import { SidebarInfoRow } from "metabase/transforms/components/SidebarInfoRow";
+import { Box, Card } from "metabase/ui";
+import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
+import { formatDurationLong } from "metabase/utils/formatting";
+import type { TransformJobRun } from "metabase-types/api";
+
+import { SidebarInfoRow } from "../../../components/SidebarInfoRow";
 import {
   formatRunMethod,
   formatStatus,
   getRunDurationMs,
   isErrorStatus,
-} from "metabase/transforms/utils";
-import { Box, Card } from "metabase/ui";
-import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
-import { formatDurationLong } from "metabase/utils/formatting";
-import type { TransformJobRun } from "metabase-types/api";
+} from "../../../utils";
 
 type JobRunInfoSectionProps = {
   run: TransformJobRun;

@@ -15,8 +15,10 @@ import "metabase/embedding-sdk/vendors-side-effects";
 
 // Import the EE plugins required by the embedding sdk.
 import { initializePlugins } from "sdk-ee-plugins";
+import { registerTransformQueryHooks } from "metabase/transforms";
 
 initializePlugins();
+registerTransformQueryHooks();
 
 import { sdkBundleExports } from "./sdk-bundle-exports";
 

@@ -1,3 +1,13 @@
+import { Api } from "metabase/api";
+import {
+  idTag,
+  invalidateTags,
+  listTag,
+  provideTransformJobListTags,
+  provideTransformJobTags,
+  provideTransformListTags,
+  tag,
+} from "metabase/api/tags";
 import type {
   CreateTransformJobRequest,
   ListJobRunTransformRunsRequest,
@@ -11,17 +21,6 @@ import type {
   UpdateTransformJobRequest,
 } from "metabase-types/api";
 import { PENDING_RUN_ID } from "metabase-types/api";
-
-import { Api } from "./api";
-import {
-  idTag,
-  invalidateTags,
-  listTag,
-  provideTransformJobListTags,
-  provideTransformJobTags,
-  provideTransformListTags,
-  tag,
-} from "./tags";
 
 export const transformJobApi = Api.injectEndpoints({
   endpoints: (builder) => ({

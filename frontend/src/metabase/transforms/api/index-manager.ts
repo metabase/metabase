@@ -1,3 +1,11 @@
+import { Api } from "metabase/api";
+import {
+  idTag,
+  invalidateTags,
+  listTag,
+  provideTableIndexListTags,
+  provideTableIndexTags,
+} from "metabase/api/tags";
 import type {
   CreateTableIndexRequest,
   ListTableIndexesRequest,
@@ -7,15 +15,6 @@ import type {
   TableIndexRequestId,
   UpdateTableIndexRequest,
 } from "metabase-types/api";
-
-import { Api } from "./api";
-import {
-  idTag,
-  invalidateTags,
-  listTag,
-  provideTableIndexListTags,
-  provideTableIndexTags,
-} from "./tags";
 
 export const indexManagerApi = Api.injectEndpoints({
   endpoints: (builder) => ({

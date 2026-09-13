@@ -1,5 +1,9 @@
 import { modalRoute } from "metabase/common/components/ModalRoute";
 import { Route } from "metabase/router";
+import {
+  loadNewPythonTransformPage,
+  loadTransformListPage,
+} from "metabase/transforms";
 
 import { PythonTransformsUpsellModal } from "./upsells/PythonTransformsUpsellModal";
 
@@ -20,23 +24,11 @@ const pythonLibraryEditorPage = () =>
     Component: PythonLibraryEditorPage,
   }));
 
-const newPythonTransformPage = () =>
-  import(
-    /* webpackChunkName: "transforms-python" */ "metabase/transforms/pages/NewTransformPage"
-  ).then(({ NewPythonTransformPage }) => ({
-    Component: NewPythonTransformPage,
-  }));
-
-const transformListPage = () =>
-  import(
-    /* webpackChunkName: "transforms-python" */ "metabase/transforms/pages/TransformListPage"
-  ).then(({ TransformListPage }) => ({ Component: TransformListPage }));
-
 export function getPythonTransformsRoutes() {
   return (
     <>
       <Route path="library/:path" lazy={pythonLibraryEditorPage} />
-      <Route path="new/python" lazy={newPythonTransformPage} />
+      <Route path="new/python" lazy={loadNewPythonTransformPage} />
     </>
   );
 }
@@ -44,7 +36,7 @@ export function getPythonTransformsRoutes() {
 export function getPythonUpsellRoutes() {
   return (
     // Render upsell modal on python transforms routes if feature is not enabled
-    <Route path="" lazy={transformListPage}>
+    <Route path="" lazy={loadTransformListPage}>
       {modalRoute("library/:path", PythonTransformsUpsellModal, {
         noWrap: true,
       })}

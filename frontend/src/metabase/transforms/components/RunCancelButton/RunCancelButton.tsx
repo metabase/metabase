@@ -1,15 +1,16 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
-import {
-  useCancelCurrentTransformRunMutation,
-  useLazyGetTransformQuery,
-} from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 import { isResourceNotFoundError } from "metabase/utils/errors";
 import type { Transform, TransformRunStatus } from "metabase-types/api";
+
+import {
+  useCancelCurrentTransformRunMutation,
+  useLazyGetTransformQuery,
+} from "../../api/transform";
 
 export function RunCancelButton({
   status,

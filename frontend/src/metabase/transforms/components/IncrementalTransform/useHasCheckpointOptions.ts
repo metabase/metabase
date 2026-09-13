@@ -6,10 +6,11 @@ import {
   useGetTableQueryMetadataQuery,
 } from "metabase/api";
 import { useMetadataProviderFactory } from "metabase/metadata-store";
-import { getLibQuery, isMbqlQuery } from "metabase/transforms/utils";
 import * as Lib from "metabase-lib";
 import type { TransformSource } from "metabase-types/api";
 import { isConcreteTableId } from "metabase-types/api/table";
+
+import { getLibQuery, isMbqlQuery } from "../../utils";
 
 import { getSourceFieldOptions } from "./KeysetColumnSelect";
 import { useNativeHasCheckpointFieldOptions } from "./useNativeCheckpointFieldOptions";

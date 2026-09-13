@@ -1,10 +1,6 @@
 import { t } from "ttag";
 
 import type { RelativeIntervalDirection } from "metabase/querying/common/types";
-import { RunMethodFilterWidget } from "metabase/transforms/pages/RunListPage/RunFilterBar/RunMethodFilterWidget";
-import { StatusFilterWidget } from "metabase/transforms/pages/RunListPage/RunFilterBar/StatusFilterWidget";
-import { TimeFilterWidget } from "metabase/transforms/pages/RunListPage/RunFilterBar/TimeFilterWidget";
-import { TransformFilterWidget } from "metabase/transforms/pages/RunListPage/RunFilterBar/TransformFilterWidget";
 import { Group } from "metabase/ui";
 import type {
   Transform,
@@ -14,6 +10,10 @@ import type {
   TransformRunStatus,
 } from "metabase-types/api";
 
+import { RunMethodFilterWidget } from "../../RunListPage/RunFilterBar/RunMethodFilterWidget";
+import { StatusFilterWidget } from "../../RunListPage/RunFilterBar/StatusFilterWidget";
+import { TimeFilterWidget } from "../../RunListPage/RunFilterBar/TimeFilterWidget";
+import { TransformFilterWidget } from "../../RunListPage/RunFilterBar/TransformFilterWidget";
 import type { TransformGraphRunFilterOptions } from "../types";
 
 import { TypeFilterWidget } from "./TypeFilterWidget";

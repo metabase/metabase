@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { useRunInspectorQueryQuery } from "metabase/api";
+import { useRunInspectorQueryQuery } from "metabase/transforms";
 import {
   type CardStats,
   computeCardStats,
