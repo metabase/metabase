@@ -8,18 +8,19 @@ import { DatabasePanelEmptyState } from "./AddDataModalEmptyStates";
 
 export const DatabasesPanel = ({
   canSeeContent,
-  fromEmbeddingSetupGuide,
+  returnToSetupGuide,
 }: {
   canSeeContent: boolean;
-  fromEmbeddingSetupGuide?: boolean;
+  /** Path of the setup guide that opened this, so the flow can return there. */
+  returnToSetupGuide?: string;
 }) => {
   const navigate = useNavigate();
 
   const handleDatabaseSelect = (key: string) => {
     trackDatabaseSelect(key);
     const params = new URLSearchParams({ engine: key });
-    if (fromEmbeddingSetupGuide) {
-      params.set(RETURN_TO_SETUP_GUIDE_PARAM, "true");
+    if (returnToSetupGuide) {
+      params.set(RETURN_TO_SETUP_GUIDE_PARAM, returnToSetupGuide);
     }
     navigate(`/admin/databases/create?${params.toString()}`);
   };

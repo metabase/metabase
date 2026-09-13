@@ -929,6 +929,28 @@
    :model-imports #{:model/Card :model/Dashboard}
    :model-exports #{:model/EmbeddingTheme}}
 
+  embedding-hub
+  {:team "Embedding"
+   :api  #{metabase.embedding-hub.api}
+   :uses #{api
+           appearance
+           audit-app
+           embedding
+           metabot
+           permissions
+           premium-features
+           util.config}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/ConnectionImpersonation
+                    :model/Dashboard
+                    :model/Database
+                    :model/DatabaseRouter
+                    :model/EmbeddingTheme
+                    :model/Sandbox
+                    :model/Table
+                    :model/Tenant}}
+
   embedding.rest
   {:team "Embedding"
    :ns-prefix "metabase.embedding-rest"
@@ -2028,7 +2050,6 @@
    :uses #{api
            api.eid-translation
            collections
-           embedding
            events
            lib
            lib.be
@@ -3645,13 +3666,8 @@
   enterprise/embedding
   {:team "Embedding"
    :ns-prefix "metabase-enterprise.embedding-hub"
-   :api #{metabase-enterprise.embedding-hub.api}
-   :uses #{api
-           appearance
-           audit-app
-           embedding
-           lib.schema
-           permissions
+   :api #{}
+   :uses #{lib.schema
            premium-features
            util
            enterprise/sso}
