@@ -1,0 +1,337 @@
+## Content Diagnostics — detected findings snapshot (scan-snapshot, latest-wins).
+## Persisted table: `content_diagnostics_finding`.
+##
+## Squash of the seven unreleased 064 migrations the feature accumulated while it was targeting v64:
+## every `addColumn` is folded into the `createTable` below, and the card-type index that was created and
+## later dropped is simply never created. Indexes were re-derived from the query shapes in
+## `metabase-enterprise.content-diagnostics.{db,api,api.common,models.finding}`, so two of the original
+## thirteen objects are gone: `idx_cd_finding_ftype_name` (both uses of `entity_name` are wrapped in
+## `lower()`, and the name search is a leading-wildcard LIKE, so a plain B-tree can serve neither) and
+## `idx_cd_finding_scan` (the only `scan_id` predicate is a `!=`, and it duplicates the leading-column
+## prefix of `idx_uniq_cd_finding`). `idx_cd_finding_detected` is new: `last-detected-at` runs an
+## unfiltered `ORDER BY detected_at DESC LIMIT 1` on every list request, and `detected-at` is the default
+## sort column.
+##
+## Every changeset except `idx_cd_finding_detected` is marked ran when its object already exists: app DBs that ran
+## the pre-squash 064 changesets (dev and CI instances on `content-optimizer`) already hold those objects.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.scnt3k
+      author: yb
+      comment: Content Diagnostics — content_diagnostics_finding (scan snapshot)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: content_diagnostics_finding
+      changes:
+        - createTable:
+            tableName: content_diagnostics_finding
+            remarks: One detected problem for one entity, from one scan run.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: scan_id
+                  type: varchar(36)
+                  remarks: Groups all rows from one scan run (UUID). API serves the newest scan.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_type
+                  type: varchar(32)
+                  remarks: Polymorphic — card/dashboard/document/collection/transform. No FK.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: int
+                  remarks: Polymorphic id of the flagged entity (no FK; paired with entity_type).
+                  constraints:
+                    nullable: false
+              - column:
+                  name: finding_type
+                  type: varchar(32)
+                  remarks: stale/duplicated/empty/crowded/sparse/slow/trash-not-emptied
+                  constraints:
+                    nullable: false
+              - column:
+                  name: scope_collection_id
+                  type: int
+                  remarks: collection the entity lived in at scan time (filter/sort); no FK
+              - column:
+                  name: details
+                  type: ${text.type}
+                  remarks: JSON evidence — e.g. {threshold_days, last_active_at}
+              - column:
+                  name: detected_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When this finding was detected (per-finding freshness signal).
+                  constraints:
+                    nullable: false
+              - column:
+                  name: invalidated_at
+                  type: ${timestamp_type}
+                  remarks: stamped when invalidated/superseded; null = active (drives the served-set filter)
+              - column:
+                  name: last_active_at
+                  type: ${timestamp_type}
+                  remarks: Entity's last activity at scan time (card last_used_at / dashboard last_viewed_at); null = never used/ran. Frozen verdict evidence; powers the threshold-days serve filter.
+              - column:
+                  name: entity_name
+                  type: varchar(254)
+                  remarks: Entity's name at scan time. Denormalized sort key (display still hydrates the live name).
+              - column:
+                  name: entity_created_at
+                  type: ${timestamp_type}
+                  remarks: Entity's created_at (immutable). Denormalized for sort + display.
+              - column:
+                  name: entity_creator_id
+                  type: int
+                  remarks: Entity's creator_id at scan time; no FK (polymorphic, mirrors entity_id). Sort key (groups by creator).
+              - column:
+                  name: entity_creator_name
+                  type: varchar(254)
+                  remarks: Creator's common_name at scan time (resolved from creator_id). Sort key for created-by + served in details.creator; display prefers this over live hydration.
+              - column:
+                  name: duration_ms
+                  type: bigint
+                  remarks: Verdict magnitude for slow findings - avg query ms (card) / last-run ms (transform) / slowest-child ms (dashboard/document roll-up); null on all other finding types (per-type named magnitude column). bigint, not int - a pathological run duration can exceed 2^31-1 ms.
+              - column:
+                  name: content_count
+                  type: bigint
+                  remarks: Verdict magnitude for imbalanced (empty/sparse/crowded) findings - items (collection) / dashcards or tabs (dashboard) / cards (document) / rows (card, transform); 0 on every empty finding, null on all other finding types (per-type named magnitude column). bigint - house choice for magnitude columns.
+              - column:
+                  name: duplicate_count
+                  type: bigint
+                  remarks: Verdict magnitude for duplicated findings - the number of other same-type entities sharing the normalized name (cluster size minus 1); null on all other finding types (per-type named magnitude column).
+              - column:
+                  name: card_type
+                  type: varchar(32)
+                  remarks: report_card.type (question/model/metric) at scan time, card findings only; null on all other entity types. Denormalized filter key for the card sub-kind values of the entity-types param (mutable upstream - drift until the next scan, like entity_name).
+              - column:
+                  name: entity_collection_name
+                  type: ${text.type}
+                  remarks: Scan-time name of the scope_collection_id collection (root rows store the root label); sort/display value for the collection column.
+              - column:
+                  name: entity_kind
+                  type: varchar(32)
+                  remarks: Flat entity kind at scan time - card_type for cards, else entity_type; serves the entity-types filter and entity-type sort.
+
+  - changeSet:
+      id: v65.npdmkx
+      author: yb
+      comment: Content Diagnostics — unique finding per scan (dedup)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            # MySQL/MariaDB implement the constraint as an index of the same name, which uniqueConstraintExists misses
+            - or:
+                - uniqueConstraintExists:
+                    tableName: content_diagnostics_finding
+                    constraintName: idx_uniq_cd_finding
+                - indexExists:
+                    tableName: content_diagnostics_finding
+                    indexName: idx_uniq_cd_finding
+      changes:
+        - addUniqueConstraint:
+            tableName: content_diagnostics_finding
+            columnNames: scan_id, entity_type, entity_id, finding_type
+            constraintName: idx_uniq_cd_finding
+
+  - changeSet:
+      id: v65.26tmoa
+      author: yb
+      comment: Content Diagnostics — index findings by entity
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: content_diagnostics_finding
+                indexName: idx_cd_finding_entity
+      changes:
+        - createIndex:
+            tableName: content_diagnostics_finding
+            indexName: idx_cd_finding_entity
+            columns:
+              - column:
+                  name: entity_type
+              - column:
+                  name: entity_id
+
+  - changeSet:
+      id: v65.sl8bnu
+      author: yb
+      comment: Content Diagnostics — index findings by detected_at
+      changes:
+        - createIndex:
+            tableName: content_diagnostics_finding
+            indexName: idx_cd_finding_detected
+            columns:
+              - column:
+                  name: detected_at
+
+  - changeSet:
+      id: v65.tkjy23
+      author: yb
+      comment: Content Diagnostics — index findings by finding_type + entity_created_at
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: content_diagnostics_finding
+                indexName: idx_cd_finding_ftype_created
+      changes:
+        - createIndex:
+            tableName: content_diagnostics_finding
+            indexName: idx_cd_finding_ftype_created
+            columns:
+              - column:
+                  name: finding_type
+              - column:
+                  name: entity_created_at
+
+  - changeSet:
+      id: v65.qxmpmd
+      author: yb
+      comment: Content Diagnostics — index findings by finding_type + last_active_at
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: content_diagnostics_finding
+                indexName: idx_cd_finding_ftype_active
+      changes:
+        - createIndex:
+            tableName: content_diagnostics_finding
+            indexName: idx_cd_finding_ftype_active
+            columns:
+              - column:
+                  name: finding_type
+              - column:
+                  name: last_active_at
+
+  - changeSet:
+      id: v65.fql5u8
+      author: yb
+      comment: Content Diagnostics — index findings by finding_type + entity_creator_name
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: content_diagnostics_finding
+                indexName: idx_cd_finding_ftype_creator
+      changes:
+        - createIndex:
+            tableName: content_diagnostics_finding
+            indexName: idx_cd_finding_ftype_creator
+            columns:
+              - column:
+                  name: finding_type
+              - column:
+                  name: entity_creator_name
+
+  - changeSet:
+      id: v65.nv29zr
+      author: yb
+      comment: Content Diagnostics — index findings by finding_type + duration_ms
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: content_diagnostics_finding
+                indexName: idx_cd_finding_ftype_duration
+      changes:
+        - createIndex:
+            tableName: content_diagnostics_finding
+            indexName: idx_cd_finding_ftype_duration
+            columns:
+              - column:
+                  name: finding_type
+              - column:
+                  name: duration_ms
+
+  - changeSet:
+      id: v65.o416px
+      author: yb
+      comment: Content Diagnostics — index findings by finding_type + content_count
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: content_diagnostics_finding
+                indexName: idx_cd_finding_ftype_content_count
+      changes:
+        - createIndex:
+            tableName: content_diagnostics_finding
+            indexName: idx_cd_finding_ftype_content_count
+            columns:
+              - column:
+                  name: finding_type
+              - column:
+                  name: content_count
+
+  - changeSet:
+      id: v65.7s0awm
+      author: yb
+      comment: Content Diagnostics — index findings by finding_type + duplicate_count
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: content_diagnostics_finding
+                indexName: idx_cd_finding_ftype_duplicate_count
+      changes:
+        - createIndex:
+            tableName: content_diagnostics_finding
+            indexName: idx_cd_finding_ftype_duplicate_count
+            columns:
+              - column:
+                  name: finding_type
+              - column:
+                  name: duplicate_count
+
+  - changeSet:
+      id: v65.5pab0l
+      author: yb
+      comment: Content Diagnostics — index for the entity-types filter and entity-type sort
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: content_diagnostics_finding
+                indexName: idx_cd_finding_ftype_entity_kind
+      changes:
+        - createIndex:
+            tableName: content_diagnostics_finding
+            indexName: idx_cd_finding_ftype_entity_kind
+            columns:
+              - column:
+                  name: finding_type
+              - column:
+                  name: entity_kind
+
+  - changeSet:
+      id: v65.sp9nyx
+      author: yb
+      comment: Content Diagnostics — index findings by invalidated_at
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: content_diagnostics_finding
+                indexName: idx_cd_finding_invalidated
+      changes:
+        - createIndex:
+            tableName: content_diagnostics_finding
+            indexName: idx_cd_finding_invalidated
+            columns:
+              - column:
+                  name: invalidated_at
