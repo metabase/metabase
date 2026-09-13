@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
+import { useQuestionFromOpts } from "metabase/metadata-store";
 import * as Urls from "metabase/urls";
 import type { NormalizedTable } from "metabase-types/api";
-import { isConcreteTableId } from "metabase-types/api";
 
 import { Container, Label, LabelContainer } from "../MetadataInfo.styled";
 
@@ -58,12 +58,17 @@ function ConnectedTableButton({
 }
 
 function ConnectedTableLink({ table }: { table: ConnectedTable }) {
-  const url = isConcreteTableId(table.id)
-    ? Urls.table({ id: table.id, name: table.display_name })
-    : Urls.tableRowsQuery(table.db_id, table.id);
+  const buildQuestion = useQuestionFromOpts();
+  const question = buildQuestion({
+    dataset_query: {
+      database: table.db_id,
+      type: "query",
+      query: { "source-table": table.id },
+    },
+  }).setDefaultDisplay();
 
   return (
-    <LabelLink to={url}>
+    <LabelLink to={Urls.question(question)}>
       <InteractiveTableLabel table={table} />
     </LabelLink>
   );

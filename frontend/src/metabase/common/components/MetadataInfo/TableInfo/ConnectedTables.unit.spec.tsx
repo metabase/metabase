@@ -1,6 +1,9 @@
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
+import { getMetadata } from "metabase/metadata-store";
+import * as Urls from "metabase/urls";
+import { checkNotNull } from "metabase/utils/types";
 import { createMockTable } from "metabase-types/api/mocks";
 import {
   PRODUCTS_ID,
@@ -23,6 +26,8 @@ function setup({ tables }: { tables: ConnectedTable[] }) {
     </div>,
     { storeInitialState: state },
   );
+
+  return { state };
 }
 
 describe("ConnectedTables", () => {
@@ -54,25 +59,15 @@ describe("ConnectedTables", () => {
     expect(screen.getAllByText(/Bar-\d/)).toHaveLength(8);
   });
 
-  it("should link a table to the page that queries its rows", () => {
-    setup({ tables: [createProductsTable()] });
+  it("should link each table to a new question on it", () => {
+    const { state } = setup({ tables: [createProductsTable()] });
+    const newQuestion = checkNotNull(
+      getMetadata(state).table(PRODUCTS_ID),
+    ).newQuestion();
 
     expect(screen.getByRole("link", { name: /Products/ })).toHaveAttribute(
       "href",
-      `/table/${PRODUCTS_ID}-products`,
-    );
-  });
-
-  it("should link a table the /table route cannot address to an ad-hoc question", () => {
-    setup({
-      tables: [
-        createMockTable({ id: "card__1", db_id: 1, display_name: "A model" }),
-      ],
-    });
-
-    expect(screen.getByRole("link", { name: /A model/ })).toHaveAttribute(
-      "href",
-      "/question#?db=1&table=card__1",
+      Urls.question(newQuestion),
     );
   });
 });
