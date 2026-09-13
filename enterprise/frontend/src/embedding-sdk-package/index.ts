@@ -99,7 +99,7 @@ export type {
   DashboardCardCustomMenuItem,
   DashboardCardMenuCustomElement,
   DashboardCardMenu,
-} from "metabase/dashboard/components/DashCard/DashCardMenu/dashcard-menu";
+} from "embedding-sdk-bundle/types/plugins";
 
 export type {
   ButtonProps,

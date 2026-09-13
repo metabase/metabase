@@ -35,6 +35,7 @@ import {
 import { useSetupContentTranslations } from "embedding-sdk-bundle/hooks/private/use-setup-content-translations";
 import { useWarnConflictingParameterProps } from "embedding-sdk-bundle/hooks/private/use-warn-conflicting-parameter-props";
 import { getEffectiveParameterValues } from "embedding-sdk-bundle/lib/controlled-parameters";
+import { toDashCardMenuSpec } from "embedding-sdk-bundle/lib/plugins/dashboard";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import {
   clearGuestToken,
@@ -361,10 +362,14 @@ const SdkDashboardInner = ({
   // state). The local prop takes precedence, then the global plugin, and
   // finally the component's built-in default menu.
   const globalPlugins = useSdkSelector(getPlugins);
-  const finalDashcardMenu =
+  const dashboardCardMenu =
     plugins?.dashboard?.dashboardCardMenu ??
-    globalPlugins?.dashboard?.dashboardCardMenu ??
-    dashcardMenu;
+    globalPlugins?.dashboard?.dashboardCardMenu;
+  const finalDashcardMenu = useMemo(
+    () =>
+      dashboardCardMenu ? toDashCardMenuSpec(dashboardCardMenu) : dashcardMenu,
+    [dashboardCardMenu, dashcardMenu],
+  );
 
   const [renderModeState, setRenderMode] = useState<
     "dashboard" | "queryBuilder"

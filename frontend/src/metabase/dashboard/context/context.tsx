@@ -26,7 +26,7 @@ import type {
 } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 
-import type { DashboardCardMenu } from "../components/DashCard/DashCardMenu/dashcard-menu";
+import type { DashCardMenuSpec } from "../components/DashCard/DashCardMenu/dashcard-menu";
 import type { NavigateToNewCardFromDashboardOpts } from "../components/DashCard/types";
 import type { DashboardActionKey } from "../components/DashboardHeader/DashboardHeaderButtonRow/types";
 import {
@@ -62,7 +62,7 @@ export type DashboardContextOwnProps = {
   navigateToNewCardFromDashboard:
     | ((opts: NavigateToNewCardFromDashboardOpts) => void)
     | null;
-  dashcardMenu?: DashboardCardMenu | null;
+  dashcardMenu?: DashCardMenuSpec | null;
   dashboardActions?:
     | DashboardActionButtonList
     | ((
