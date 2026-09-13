@@ -1,22 +1,23 @@
 ## Content Diagnostics — detected findings snapshot (scan-snapshot, latest-wins).
 ## Persisted table: `content_diagnostics_finding`.
 ##
-## Squash of the seven unreleased 064 migrations the feature accumulated while it was targeting v64:
-## every `addColumn` is folded into the `createTable` below, and the card-type index that was created and
-## later dropped is simply never created. Indexes were re-derived from the query shapes in
-## `metabase-enterprise.content-diagnostics.{db,api,api.common,models.finding}`, so two of the original
-## thirteen objects are gone: `idx_cd_finding_ftype_name` (both uses of `entity_name` are wrapped in
-## `lower()`, and the name search is a leading-wildcard LIKE, so a plain B-tree can serve neither) and
-## `idx_cd_finding_scan` (the only `scan_id` predicate is a `!=`, and it duplicates the leading-column
-## prefix of `idx_uniq_cd_finding`). `idx_cd_finding_detected` is new: `last-detected-at` runs an
-## unfiltered `ORDER BY detected_at DESC LIMIT 1` on every list request, and `detected-at` is the default
-## sort column.
+## `entity_name` has no index: it is only read through `lower()` and a leading-wildcard LIKE, which a plain
+## B-tree can't serve. `scan_id` has no index of its own: its only predicate is a `!=`, and it leads
+## `idx_uniq_cd_finding`. `idx_cd_finding_detected` serves `last-detected-at` (an unfiltered
+## `ORDER BY detected_at DESC LIMIT 1` on every list request) and the default sort.
+##
+## Every changeset except `idx_cd_finding_detected` is marked ran when its object already exists.
 
 databaseChangeLog:
   - changeSet:
       id: v65.scnt3k
       author: yb
       comment: Content Diagnostics — content_diagnostics_finding (scan snapshot)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: content_diagnostics_finding
       changes:
         - createTable:
             tableName: content_diagnostics_finding
@@ -121,6 +122,12 @@ databaseChangeLog:
       id: v65.npdmkx
       author: yb
       comment: Content Diagnostics — unique finding per scan (dedup)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - uniqueConstraintExists:
+                tableName: content_diagnostics_finding
+                constraintName: idx_uniq_cd_finding
       changes:
         - addUniqueConstraint:
             tableName: content_diagnostics_finding
@@ -131,6 +138,12 @@ databaseChangeLog:
       id: v65.26tmoa
       author: yb
       comment: Content Diagnostics — index findings by entity
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: content_diagnostics_finding
+                indexName: idx_cd_finding_entity
       changes:
         - createIndex:
             tableName: content_diagnostics_finding
@@ -157,6 +170,12 @@ databaseChangeLog:
       id: v65.tkjy23
       author: yb
       comment: Content Diagnostics — index findings by finding_type + entity_created_at
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: content_diagnostics_finding
+                indexName: idx_cd_finding_ftype_created
       changes:
         - createIndex:
             tableName: content_diagnostics_finding
@@ -171,6 +190,12 @@ databaseChangeLog:
       id: v65.qxmpmd
       author: yb
       comment: Content Diagnostics — index findings by finding_type + last_active_at
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: content_diagnostics_finding
+                indexName: idx_cd_finding_ftype_active
       changes:
         - createIndex:
             tableName: content_diagnostics_finding
@@ -185,6 +210,12 @@ databaseChangeLog:
       id: v65.fql5u8
       author: yb
       comment: Content Diagnostics — index findings by finding_type + entity_creator_name
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: content_diagnostics_finding
+                indexName: idx_cd_finding_ftype_creator
       changes:
         - createIndex:
             tableName: content_diagnostics_finding
@@ -199,6 +230,12 @@ databaseChangeLog:
       id: v65.nv29zr
       author: yb
       comment: Content Diagnostics — index findings by finding_type + duration_ms
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: content_diagnostics_finding
+                indexName: idx_cd_finding_ftype_duration
       changes:
         - createIndex:
             tableName: content_diagnostics_finding
@@ -213,6 +250,12 @@ databaseChangeLog:
       id: v65.o416px
       author: yb
       comment: Content Diagnostics — index findings by finding_type + content_count
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: content_diagnostics_finding
+                indexName: idx_cd_finding_ftype_content_count
       changes:
         - createIndex:
             tableName: content_diagnostics_finding
@@ -227,6 +270,12 @@ databaseChangeLog:
       id: v65.7s0awm
       author: yb
       comment: Content Diagnostics — index findings by finding_type + duplicate_count
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: content_diagnostics_finding
+                indexName: idx_cd_finding_ftype_duplicate_count
       changes:
         - createIndex:
             tableName: content_diagnostics_finding
@@ -241,6 +290,12 @@ databaseChangeLog:
       id: v65.5pab0l
       author: yb
       comment: Content Diagnostics — index for the entity-types filter and entity-type sort
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: content_diagnostics_finding
+                indexName: idx_cd_finding_ftype_entity_kind
       changes:
         - createIndex:
             tableName: content_diagnostics_finding
@@ -255,6 +310,12 @@ databaseChangeLog:
       id: v65.sp9nyx
       author: yb
       comment: Content Diagnostics — index findings by invalidated_at
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: content_diagnostics_finding
+                indexName: idx_cd_finding_invalidated
       changes:
         - createIndex:
             tableName: content_diagnostics_finding
