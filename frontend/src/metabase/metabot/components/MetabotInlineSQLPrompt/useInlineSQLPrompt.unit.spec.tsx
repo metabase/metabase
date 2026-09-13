@@ -13,9 +13,11 @@ import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { MetabotProvider } from "metabase/metabot/context";
-import { registerMetabotPlugins } from "metabase/metabot/register";
 import { getMetadata } from "metabase/metadata-store";
-import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor/NativeQueryEditor";
+import {
+  NATIVE_EDITOR_ICON_SIZE,
+  NativeQueryEditor,
+} from "metabase/querying/components/NativeQueryEditor";
 import { checkNotNull } from "metabase/utils/types";
 import type Question from "metabase-lib/v1/Question";
 import {
@@ -24,6 +26,8 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+
+import { MetabotPromptButton } from "../MetabotPromptButton";
 
 import { useInlineSQLPrompt } from "./useInlineSQLPrompt";
 
@@ -57,11 +61,17 @@ function TestEditor({ question }: { question: Question }) {
         isNativeEditorOpen
         isInitiallyOpen
         extensions={extensions}
-        isPromptInputOpen={isPromptOpen}
-        onTogglePromptInput={togglePrompt}
       >
         <NativeQueryEditor.TopBar>
-          <NativeQueryEditor.Sidebar />
+          <NativeQueryEditor.Sidebar
+            promptButton={
+              <MetabotPromptButton
+                size={NATIVE_EDITOR_ICON_SIZE}
+                isPromptInputOpen={isPromptOpen}
+                onClick={togglePrompt}
+              />
+            }
+          />
         </NativeQueryEditor.TopBar>
       </NativeQueryEditor>
       {portalElement}
@@ -70,7 +80,6 @@ function TestEditor({ question }: { question: Question }) {
 }
 
 function setup({ isMetabotEnabled = true } = {}) {
-  registerMetabotPlugins();
   setupEnterprisePlugins();
   setupUserMetabotPermissionsEndpoint();
   setupCollectionsEndpoints({ collections: [] });

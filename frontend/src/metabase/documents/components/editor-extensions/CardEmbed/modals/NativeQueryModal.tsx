@@ -6,6 +6,7 @@ import EmptyCodeResult from "assets/img/empty-states/code.svg";
 import { datasetApi } from "metabase/api/dataset";
 import { getErrorMessage as getResponseErrorMessage } from "metabase/api/utils";
 import { ErrorMessage } from "metabase/common/components/ErrorMessage";
+import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { getMetabotVisible } from "metabase/metabot/state";
 import { useQuestionFromCard } from "metabase/metadata-store";
 import { defaultClickActionMode } from "metabase/querying/click-actions/lib/modes";
@@ -38,7 +39,6 @@ const MODAL_SIDEBAR_FEATURES = {
   dataReference: true,
   variables: false,
   snippets: false,
-  promptInput: false,
   formatQuery: false,
 } as const;
 
@@ -123,6 +123,7 @@ export const NativeQueryModal = ({
   const isMetabotSidebarOpen = useSelector((state) =>
     getMetabotVisible(state, "omnibot"),
   );
+  const { hasSqlGenerationAccess } = useUserMetabotPermissions();
   const [dataReferenceStack, setDataReferenceStack] = useState<
     DataReferenceItem[]
   >([]);
@@ -344,6 +345,7 @@ export const NativeQueryModal = ({
                   isNativeEditorOpen
                   isInitiallyOpen
                   canAutoOpenDataReference={!isMetabotSidebarOpen}
+                  hasSqlGenerationAccess={hasSqlGenerationAccess}
                   availableHeight={totalHeight}
                   isRunnable
                   isRunning={isQueryRunning}

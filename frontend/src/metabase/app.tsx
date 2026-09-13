@@ -35,7 +35,6 @@ import { getUserId } from "metabase/current-user";
 import { registerDashboardVisualizations } from "metabase/dashboard/visualizations/register";
 import { initializeInteractiveEmbedding } from "metabase/embedding/interactive-embedding";
 import { MetabotProvider } from "metabase/metabot/context";
-import { registerMetabotPlugins } from "metabase/metabot/register";
 import { PLUGIN_APP_INIT_FUNCTIONS } from "metabase/plugins";
 import { MetabaseReduxProvider } from "metabase/redux";
 import {
@@ -64,7 +63,6 @@ import { OverlayStackProvider } from "./ui/components/overlays/overlay-stack";
 setBasename(window.MetabaseRoot);
 
 initializePlugins();
-registerMetabotPlugins();
 
 type Store = ReturnType<typeof getStore>;
 

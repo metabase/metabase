@@ -14,7 +14,6 @@ import {
   CodeMirror,
   type CodeMirrorRef,
 } from "metabase/common/components/CodeMirror";
-import { PLUGIN_SQL_GENERATION } from "metabase/querying/plugins";
 import { isEventOverElement } from "metabase/utils/dom";
 import * as Lib from "metabase-lib";
 import type { CardId } from "metabase-types/api";
@@ -35,6 +34,7 @@ export type CodeMirrorEditorProps = {
   highlightedLineNumbers?: number[];
   placeholder?: string;
   readOnly?: boolean;
+  hasSqlGenerationAccess?: boolean;
   extensions?: Extension[];
   onChange?: (queryText: string) => void;
   onFormatQuery?: () => void;
@@ -60,6 +60,7 @@ export const CodeMirrorEditor = forwardRef<
     highlightedLineNumbers,
     placeholder: placeholderProp,
     readOnly,
+    hasSqlGenerationAccess,
     extensions: customExtensions,
     onChange,
     onRunQuery,
@@ -72,7 +73,6 @@ export const CodeMirrorEditor = forwardRef<
   ref,
 ) {
   const editorRef = useRef<CodeMirrorRef>(null);
-  const hasSqlGenerationAccess = PLUGIN_SQL_GENERATION.useHasAccess();
   const placeholder =
     placeholderProp ??
     getPlaceholderText(Lib.engine(query), hasSqlGenerationAccess);

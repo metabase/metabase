@@ -85,7 +85,6 @@ export type NativeQueryEditorCoreProps = Omit<
   isResultDirty?: boolean;
   isRunnable?: boolean;
   isRunning?: boolean;
-  isPromptInputOpen?: boolean;
   isShowingDataReference?: boolean;
   isShowingSnippetSidebar?: boolean;
   isShowingTemplateTagsEditor?: boolean;
@@ -99,7 +98,6 @@ export type NativeQueryEditorCoreProps = Omit<
   onOpenModal?: (modalType: QueryModalType) => void;
   onRejectProposed?: () => void;
   onSetDatabaseId?: (id: DatabaseId) => void;
-  onTogglePromptInput?: () => void;
   openDataReferenceAtQuestion?: (id: CardId) => void;
   openSnippetModalWithSelectedText?: () => void;
   placeholder?: string;
@@ -133,6 +131,7 @@ export const NativeQueryEditorRoot = forwardRef<
     children,
     availableHeight = Infinity,
     canAutoOpenDataReference = true,
+    hasSqlGenerationAccess,
     canChangeDatabase = true,
     cancelQuery,
     className,
@@ -146,7 +145,6 @@ export const NativeQueryEditorRoot = forwardRef<
     insertSnippet,
     isNativeEditorOpen,
     isInitiallyOpen,
-    isPromptInputOpen = false,
     isResultDirty = false,
     isRunnable = false,
     isRunning = false,
@@ -160,7 +158,6 @@ export const NativeQueryEditorRoot = forwardRef<
     onOpenModal,
     onRejectProposed,
     onSetDatabaseId,
-    onTogglePromptInput,
     openDataReferenceAtQuestion,
     openSnippetModalWithSelectedText,
     placeholder,
@@ -312,8 +309,6 @@ export const NativeQueryEditorRoot = forwardRef<
     nativeEditorSelectedText,
     snippets,
     snippetCollections,
-    isPromptInputOpen,
-    onTogglePromptInput,
     isShowingDataReference,
     isShowingSnippetSidebar,
     isShowingTemplateTagsEditor,
@@ -364,6 +359,7 @@ export const NativeQueryEditorRoot = forwardRef<
                   proposedQuery={proposedQuestion?.query()}
                   readOnly={readOnly}
                   placeholder={placeholder}
+                  hasSqlGenerationAccess={hasSqlGenerationAccess}
                   highlightedLineNumbers={highlightedLineNumbers}
                   extensions={extensions}
                   onBlur={onBlur}

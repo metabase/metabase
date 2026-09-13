@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { DataReferenceButton } from "metabase/querying/components/NativeQueryEditor/DataReferenceButton";
@@ -6,14 +7,13 @@ import { PreviewQueryButton } from "metabase/querying/components/NativeQueryEdit
 import { SnippetSidebarButton } from "metabase/querying/components/NativeQueryEditor/SnippetSidebarButton";
 import type { QueryModalType } from "metabase/querying/constants";
 import type { SidebarFeatures } from "metabase/querying/editor/types";
-import { PLUGIN_SQL_GENERATION } from "metabase/querying/plugins";
 import { Button, Flex, Icon, Tooltip } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { Collection, NativeQuerySnippet } from "metabase-types/api";
 
 import S from "./NativeQueryEditorActionButtons.module.css";
 
-const ICON_SIZE = 18;
+export const NATIVE_EDITOR_ICON_SIZE = 18;
 
 interface NativeQueryEditorActionButtonsProps {
   question: Question;
@@ -23,8 +23,7 @@ interface NativeQueryEditorActionButtonsProps {
   isRunnable: boolean;
   isRunning: boolean;
   isResultDirty: boolean;
-  isPromptInputOpen?: boolean;
-  onTogglePromptInput?: () => void;
+  promptButton?: ReactNode;
   isShowingDataReference: boolean;
   isShowingTemplateTagsEditor: boolean;
   isShowingSnippetSidebar: boolean;
@@ -45,8 +44,7 @@ export const NativeQueryEditorActionButtons = (
     snippetCollections,
     snippets,
     features,
-    isPromptInputOpen,
-    onTogglePromptInput,
+    promptButton,
     toggleDataReference,
     toggleTemplateTagsEditor,
     onFormatQuery,
@@ -70,30 +68,24 @@ export const NativeQueryEditorActionButtons = (
       gap="xl"
       align="center"
     >
-      {features.promptInput && onTogglePromptInput && (
-        <PLUGIN_SQL_GENERATION.PromptButton
-          size={ICON_SIZE}
-          isPromptInputOpen={isPromptInputOpen}
-          onClick={onTogglePromptInput}
-        />
-      )}
+      {promptButton}
       {PreviewQueryButton.shouldRender({ question }) && (
         <PreviewQueryButton {...props} />
       )}
       {features.dataReference && (
         <DataReferenceButton
           {...props}
-          size={ICON_SIZE}
+          size={NATIVE_EDITOR_ICON_SIZE}
           onClick={toggleDataReference}
         />
       )}
       {features.snippets && showSnippetSidebarButton && (
-        <SnippetSidebarButton {...props} size={ICON_SIZE} />
+        <SnippetSidebarButton {...props} size={NATIVE_EDITOR_ICON_SIZE} />
       )}
       {features.variables && (
         <NativeVariablesButton
           {...props}
-          size={ICON_SIZE}
+          size={NATIVE_EDITOR_ICON_SIZE}
           onClick={toggleTemplateTagsEditor}
         />
       )}
@@ -104,7 +96,9 @@ export const NativeQueryEditorActionButtons = (
             className={S.button}
             aria-label={t`Auto-format`}
             p={0}
-            leftSection={<Icon name="format_code" size={ICON_SIZE} />}
+            leftSection={
+              <Icon name="format_code" size={NATIVE_EDITOR_ICON_SIZE} />
+            }
             onClick={onFormatQuery}
           />
         </Tooltip>

@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { createMockMetadata } from "__support__/metadata";
 import { mockSettings } from "__support__/settings";
@@ -30,6 +32,7 @@ export interface SetupOpts {
   tokenFeatures?: Partial<TokenFeatures>;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   errorType?: DatasetErrorType;
+  errorAction?: ReactNode;
   duration?: number;
 }
 
@@ -41,6 +44,7 @@ export const setup = ({
   tokenFeatures = {},
   enterprisePlugins = [],
   errorType,
+  errorAction,
   duration = 0,
 }: SetupOpts) => {
   const state = createMockState({
@@ -71,6 +75,7 @@ export const setup = ({
       // Unjustified type cast. FIXME
       error={error as DatasetError}
       errorType={errorType}
+      errorAction={errorAction}
       via={[]}
     />,
     { storeInitialState: state },

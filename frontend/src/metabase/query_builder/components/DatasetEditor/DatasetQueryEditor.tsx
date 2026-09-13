@@ -8,6 +8,7 @@ import {
 } from "react";
 import type { ResizableBoxProps } from "react-resizable";
 
+import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { getMetabotVisible } from "metabase/metabot/state";
 import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor";
 import { useSelector } from "metabase/redux";
@@ -53,6 +54,7 @@ function DatasetQueryEditorInner({
   const isMetabotSidebarOpen = useSelector((state) =>
     getMetabotVisible(state, "omnibot"),
   );
+  const { hasSqlGenerationAccess } = useUserMetabotPermissions();
 
   const [isResizing, setResizing] = useState(false);
 
@@ -97,6 +99,7 @@ function DatasetQueryEditorInner({
           query={checkNotNull(question.legacyNativeQuery())} // memoized query
           isInitiallyOpen
           canAutoOpenDataReference={!isMetabotSidebarOpen}
+          hasSqlGenerationAccess={hasSqlGenerationAccess}
           onSetDatabaseId={onSetDatabaseId}
         >
           {isActive && (

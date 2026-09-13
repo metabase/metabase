@@ -27,7 +27,6 @@ import {
   EMBEDDING_SDK_CONFIG,
   isEmbeddingEajs,
 } from "metabase/embedding-sdk/config";
-import { registerMetabotPlugins } from "metabase/metabot/register";
 import { setBasename } from "metabase/utils/basename";
 import { registerVisualizations } from "metabase/visualizations/register";
 
@@ -51,7 +50,6 @@ const registerVisualizationsOnce = _.once(registerVisualizations);
 const registerDashboardVisualizationsOnce = _.once(
   registerDashboardVisualizations,
 );
-const registerMetabotPluginsOnce = _.once(registerMetabotPlugins);
 
 // Install the SDK's request-client header strategy once; re-renders keep the
 // first-set client (matching the previous set-once-if-unset behaviour).
@@ -170,6 +168,5 @@ export const useInitDataInternal = ({
   useMount(function registerVisualizations() {
     registerVisualizationsOnce();
     registerDashboardVisualizationsOnce();
-    registerMetabotPluginsOnce();
   });
 };
