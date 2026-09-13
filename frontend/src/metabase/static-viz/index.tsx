@@ -13,6 +13,7 @@ import { LegacyStaticChart } from "metabase/static-viz/containers/LegacyStaticCh
 import type { LegacyStaticChartType } from "metabase/static-viz/containers/LegacyStaticChart/LegacyStaticChart";
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
 import { measureTextEChartsAdapter } from "metabase/static-viz/lib/text";
+import { mutateColors } from "metabase/ui/colors/colors";
 import { updateStartOfWeek } from "metabase/utils/i18n";
 import MetabaseSettings from "metabase/utils/settings";
 import { DEFAULT_VISUALIZER_DISPLAY } from "metabase/visualizer/constants";
@@ -133,6 +134,10 @@ function RenderChart(
     "application-colors" as SettingKey,
     options.applicationColors,
   );
+  // The app loads the instance's colors from the page bootstrap, which this
+  // context has no access to. Without them, a palette color looked up by name
+  // would resolve to the default value rather than the instance's.
+  mutateColors(options.applicationColors ?? {});
 
   if (typeof enterpriseOverrides === "function") {
     enterpriseOverrides();

@@ -2,7 +2,7 @@ import { cardApi, dashboardApi, datasetApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { createThunkAction } from "metabase/redux";
 import type { Dispatch, GetState } from "metabase/redux/store";
-import type Field from "metabase-lib/v1/metadata/Field";
+import type { ParameterField } from "metabase-lib/v1/parameters/types";
 import { hasRemappedParameterValues } from "metabase-lib/v1/parameters/utils/parameter-source";
 import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
@@ -15,7 +15,7 @@ import type {
 } from "metabase-types/api";
 
 import { fieldRemappingsUpdated } from "./actions";
-import { getFieldRemappings } from "./selectors";
+import { getFieldRemappings, getRemappedFieldValue } from "./selectors";
 
 export const addRemappings =
   (fieldId: FieldId, remappings: FieldValue[]) =>
@@ -37,7 +37,7 @@ export const addRemappings =
 type FetchRemappingOptions = {
   parameter?: Parameter | null;
   value: RowValue;
-  field?: Field | null;
+  field?: ParameterField | null;
   cardId?: CardId | null;
   dashboardId?: DashboardId | null;
   uuid?: string | null;
@@ -56,8 +56,11 @@ export const fetchRemapping = createThunkAction(
     uuid,
     token,
   }: FetchRemappingOptions) =>
-    async (dispatch: Dispatch) => {
-      if (field != null && field.hasRemappedValue(value)) {
+    async (dispatch: Dispatch, getState: GetState) => {
+      if (
+        field != null &&
+        getRemappedFieldValue(getState(), field, value) !== undefined
+      ) {
         return;
       }
 

@@ -28,6 +28,8 @@ import * as Urls from "metabase/urls";
 import { isNullOrUndefined } from "metabase/utils/types";
 import type { Table, TableDataSource, UserId } from "metabase-types/api";
 
+import { PublishingInfo } from "../PublishingInfo";
+
 import S from "./DescriptionSection.module.css";
 
 type DescriptionSectionProps = {
@@ -272,6 +274,7 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
             {t`Owner`}
           </Text>
         </Card.Section>
+        <PublishingInfo table={table} />
       </Card>
 
       {/* Statistics */}

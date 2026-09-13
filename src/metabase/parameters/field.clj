@@ -6,6 +6,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.parameters.chain-filter :as chain-filter]
+   [metabase.parameters.db :as parameters.db]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.parameters.field.search-values-query :as search-values-query]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -13,8 +14,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.metadata-from-qp :as warehouse-schema.metadata-from-qp]
-   [toucan2.core :as t2])
+   [metabase.warehouse-schema.metadata-from-qp :as warehouse-schema.metadata-from-qp])
   (:import
    (java.text NumberFormat)))
 
@@ -32,7 +32,7 @@
   [{semantic-type :semantic_type, fk-target-field-id :fk_target_field_id, :as field}]
   (if (and (isa? semantic-type :type/FK)
            fk-target-field-id)
-    (t2/select-one :model/Field :id fk-target-field-id)
+    (parameters.db/field fk-target-field-id)
     field))
 
 (def ^:private default-max-field-search-limit 1000)
@@ -78,26 +78,66 @@
   (if-let [remapped-field-id (when (= has-field-values-type :list)
                                (chain-filter/remapped-field-id field-id))]
     {:values          (search-values (api/check-404 field)
-                                     (api/check-404 (t2/select-one :model/Field :id remapped-field-id)))
+                                     (api/check-404 (parameters.db/field remapped-field-id)))
      :field_id        field-id
      :has_more_values (boolean has_more_values)}
     (params.field-values/get-or-create-field-values-for-current-user! (api/check-404 field))))
 
+(defn- resolve-search-fields
+  "Resolve the `[field search-field]` pair for a `field-id` param-values search: `field` is permission-checked
+  (relaxed to a 404 check under `*param-values-query*`, since when fetching values for a card/dashboard the caller can
+  read we skip the Field read-check that requires create-queries permission), and `search-field` follows any
+  Field->Field remapping."
+  [field-id]
+  (let [field        (if qp.perms/*param-values-query*
+                       (api/check-404 (parameters.db/field field-id))
+                       (api/read-check (parameters.db/field field-id)))
+        search-field (or (some->> (chain-filter/remapped-field-id field-id)
+                                  parameters.db/field)
+                         field)]
+    [field search-field]))
+
 (mu/defn search-values-from-field-id :- ms/FieldValuesResult
-  "Search for values of a field given by `field-id` that contain `query`."
+  "Search for values of a field given by `field-id` that contain `query`.
+
+  `:has_more_values` is a heuristic here, not a measurement: `true` whenever a `query-string` narrowed the search,
+  `false` otherwise. A no-query fetch that fills the underlying `default-max-field-search-limit` cap is still reported
+  `false`. Callers that must not present a capped list as complete -- e.g. so an agent isn't handed a truncated value
+  set believing it is the whole column -- should use [[search-values-from-field-id-strict]], which reports a truthful
+  floor when the cap is hit and surfaces fetch errors rather than swallowing them to `[]`."
   [field-id     :- ::lib.schema.id/field
    query-string :- [:maybe :string]]
-  (let [field        (if qp.perms/*param-values-query*
-                       ;; When fetching param values for a card/dashboard the user can read, skip the Field
-                       ;; read-check which requires create-queries permission on the table.
-                       (api/check-404 (t2/select-one :model/Field :id field-id))
-                       (api/read-check (t2/select-one :model/Field :id field-id)))
-        search-field (or (some->> (chain-filter/remapped-field-id field-id)
-                                  (t2/select-one :model/Field :id))
-                         field)]
+  (let [[field search-field] (resolve-search-fields field-id)]
     {:values          (search-values field search-field query-string)
      ;; assume there are more if doing a search, otherwise there are no more values
      :has_more_values (not (str/blank? query-string))
+     :field_id        field-id}))
+
+(mu/defn search-values-from-field-id-strict :- ms/FieldValuesResult
+  "Like [[search-values-from-field-id]], but honest about the two things that fn papers over, for callers (the MCP
+  `get_parameter_values` tool) that must not mislead an agent:
+
+    1. `:has_more_values` is a floor: `true` exactly when the underlying query filled the
+       `default-max-field-search-limit` cap, so a column with more distinct values than the cap reads as truncated
+       rather than complete. Unlike [[search-values-from-field-id]] it does NOT report `true` merely because a
+       `query-string` narrowed the search — this fn runs the query itself and can count the rows, and claiming
+       more exist when the search returned everything tells an agent to keep narrowing a list it already has
+       in full.
+
+    2. A fetch error propagates. Unlike [[search-values]], which logs and returns `[]` -- turning a warehouse timeout
+       or sandbox error into an empty list that reads as \"no values\" -- this runs the search query directly, so the
+       exception reaches the caller.
+
+  For the field-backed source only; static-list and card sources already report `:has_more_values` truthfully via
+  `custom-values`."
+  [field-id     :- ::lib.schema.id/field
+   query-string :- [:maybe :string]]
+  (let [[field search-field] (resolve-search-fields field-id)
+        limit                default-max-field-search-limit
+        rows                 (search-values-query/search-values-query
+                              (follow-fks field) (follow-fks search-field) (not-empty query-string) limit)]
+    {:values          rows
+     :has_more_values (>= (count rows) limit)
      :field_id        field-id}))
 
 (defn parse-query-param-value-for-field

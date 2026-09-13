@@ -2,12 +2,20 @@ import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { deserializeCardFromUrl } from "metabase/common/utils/card";
-import { getMetadata } from "metabase/metadata-store";
+import {
+  type CardQuestionBuilder,
+  type MetadataSelectorOpts,
+  useQuestionFromCard,
+} from "metabase/metadata-store";
 import { loadMetadataForCard } from "metabase/questions/actions";
-import { useDispatch, useSelector } from "metabase/redux";
-import Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import { useDispatch } from "metabase/redux";
+import type Question from "metabase-lib/v1/Question";
 import type { UnsavedCard } from "metabase-types/api";
+
+// Hoisted: the metadata selector memoises on the options object.
+const WITH_SENSITIVE_FIELDS: MetadataSelectorOpts = {
+  includeSensitiveFields: true,
+};
 
 type ChildrenProps = {
   question: Question | null;
@@ -17,7 +25,7 @@ type ChildrenProps = {
 
 type AdHocQuestionLoaderViewProps = {
   questionHash: string | null;
-  metadata?: Metadata;
+  buildQuestion: CardQuestionBuilder;
   loadMetadataForCard: (
     card: UnsavedCard,
     options?: { includeSensitiveFields?: boolean },
@@ -58,7 +66,7 @@ type AdHocQuestionLoaderProps = {
  */
 export function AdHocQuestionLoaderView({
   questionHash,
-  metadata,
+  buildQuestion,
   loadMetadataForCard: loadMetadata,
   includeSensitiveFields,
   children,
@@ -70,8 +78,8 @@ export function AdHocQuestionLoaderView({
   const [loading, setLoading] = useState(Boolean(questionHash));
   const [error, setError] = useState<unknown>(null);
 
-  const metadataRef = useRef<Metadata | undefined>(metadata);
-  metadataRef.current = metadata;
+  const buildQuestionRef = useRef(buildQuestion);
+  buildQuestionRef.current = buildQuestion;
 
   useEffect(() => {
     let cancelled = false;
@@ -114,7 +122,7 @@ export function AdHocQuestionLoaderView({
         // instantiate a new question object using the metadata and saved question
         // so we can use metabase-lib methods to retrieve information and modify
         // the question
-        const newQuestion = new Question(deserializedCard, metadataRef.current);
+        const newQuestion = buildQuestionRef.current(deserializedCard);
 
         // finally, set state to store the Question object so it can be passed
         // to the component using the loader, keep a reference to the card
@@ -144,10 +152,10 @@ export function AdHocQuestionLoaderView({
   // if the metadata changes for some reason we need to make sure we
   // update the question with that metadata
   useEffect(() => {
-    if (metadata && card) {
-      setQuestion(new Question(card, metadata));
+    if (card) {
+      setQuestion(buildQuestion(card));
     }
-  }, [metadata, card]);
+  }, [buildQuestion, card]);
 
   // call the child function with our loaded question
   return children({ question, loading, error });
@@ -159,8 +167,8 @@ export function AdHocQuestionLoader({
   children,
 }: AdHocQuestionLoaderProps) {
   const dispatch = useDispatch();
-  const metadata = useSelector((state) =>
-    getMetadata(state, { includeSensitiveFields }),
+  const buildQuestion = useQuestionFromCard(
+    includeSensitiveFields ? WITH_SENSITIVE_FIELDS : undefined,
   );
 
   const loadMetadata = useCallback(
@@ -176,7 +184,7 @@ export function AdHocQuestionLoader({
   return (
     <AdHocQuestionLoaderView
       questionHash={questionHash}
-      metadata={metadata}
+      buildQuestion={buildQuestion}
       loadMetadataForCard={loadMetadata}
       includeSensitiveFields={includeSensitiveFields}
     >

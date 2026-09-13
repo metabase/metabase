@@ -1,7 +1,10 @@
 (ns metabase.transforms.revision-test
   (:require
    [clojure.test :refer :all]
+   [metabase.revisions.impl.transform]
    [metabase.revisions.models.revision :as revision]))
+
+(comment metabase.revisions.impl.transform/keep-me)
 
 (deftest transform-serialize-instance-test
   (testing "serialize-instance for :model/Transform excludes the correct columns"

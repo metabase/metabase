@@ -9,6 +9,7 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
+   [metabase.users.db :as users.db]
    [metabase.users.models.user :as user]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
@@ -51,9 +52,10 @@
       (maybe-set-user-permissions-groups! user-or-id (map :id new-user-group-memberships)))))
 
 (defn fetch-user
-  "Implementation for `/api/user` endpoints; fetch a User from the app DB."
-  [& query-criteria]
-  (apply t2/select-one (vec (cons :model/User user/admin-or-self-visible-columns)) query-criteria))
+  "Implementation for `/api/user` endpoints; fetch a User from the app DB by `:id`, optionally requiring `:type`
+   and/or `:is_active` to match."
+  [& {:keys [id type is_active]}]
+  (users.db/admin-or-self-visible-user user/admin-or-self-visible-columns id :type type :is-active? is_active))
 
 (mu/defn invite-user!
   "Implementation for `POST /api/user`, invites a user to Metabase."
@@ -65,7 +67,7 @@
     :as   attributes} :- [:map
                           [:source {:optional true, :default :admin} [:enum :setup :admin]]]]
   (api/check-superuser)
-  (api/check-400 (not (t2/exists? :model/User :%lower.email (u/lower-case-en email)))
+  (api/check-400 (not (users.db/user-email-exists? (u/lower-case-en email)))
                  {:errors     {:email (tru "Email address already in use.")}
                   :error_code "email-already-in-use"})
   (api/checkp (not (and tenant-id

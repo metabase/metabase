@@ -12,6 +12,7 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.driver :as driver]
+   [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.send :as pulse.send]
    [metabase.query-processor.timezone :as qp.timezone]
@@ -20,8 +21,7 @@
    [metabase.tracing.core :as tracing]
    [metabase.util.cron :as u.cron]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2])
+   [metabase.util.malli :as mu])
   (:import
    (java.util TimeZone)
    (org.quartz CronTrigger DisallowConcurrentExecution JobExecutionContext TriggerKey)))
@@ -35,7 +35,7 @@
 (defn- send-pulse-trigger-key
   ^TriggerKey [pulse-id schedule-map]
   (triggers/key (format "metabase.task.send-pulse.trigger.%d.%s"
-                        pulse-id (-> schedule-map
+                        pulse-id (-> (select-keys schedule-map u.cron/schedule-keys)
                                      u.cron/schedule-map->cron-string
                                      (str/replace " " "_")))))
 
@@ -94,7 +94,7 @@
                               "channel-ids" pc-ids})
     (triggers/with-schedule
      (cron/schedule
-      (cron/cron-schedule (u.cron/schedule-map->cron-string schedule-map))
+      (cron/cron-schedule (u.cron/schedule-map->cron-string (select-keys schedule-map u.cron/schedule-keys)))
       (cron/in-time-zone (TimeZone/getTimeZone ^String timezone))
       ;; If the trigger is misfired, fire it immediately and proceed with the next scheduled time.
       ;; TODO: upon testing, look like re-firing on startup is not working as expected
@@ -109,14 +109,7 @@
   [pulse-id]
   (tracing/with-span :tasks "task.pulse.clear-orphan-channels" {:pulse/id pulse-id}
     (when-let [ids-to-delete (seq
-                              (for [channel (t2/select [:model/PulseChannel :id :details :channel_id :channel_type]
-                                                       {:where [:and
-                                                                [:= :pulse_id pulse-id]
-                                                                [:not [:exists ^:allow-subquery
-                                                                       {:select [1]
-                                                                        :from   [:pulse_channel_recipient]
-                                                                        :where  [:= :pulse_channel_recipient.pulse_channel_id
-                                                                                 :pulse_channel.id]}]]]})
+                              (for [channel (pulse.db/pulse-channels-without-recipients pulse-id)
                                     :when  (case (:channel_type channel)
                                              :email
                                              (empty? (get-in channel [:details :emails]))
@@ -126,7 +119,7 @@
                                              (nil? (:channel_id channel)))]
                                 (:id channel)))]
       (log/infof "Deleting %d PulseChannels with id: %s due to having no recipients" (count ids-to-delete) (str/join ", " ids-to-delete))
-      (t2/delete! :model/PulseChannel :id [:in ids-to-delete])
+      (pulse.db/delete-pulse-channels! ids-to-delete)
       (set ids-to-delete))))
 
 (defn- send-pulse!*
@@ -136,7 +129,7 @@
   [pulse-id channel-ids]
   (let [cleared-channel-ids         (clear-pulse-channels-no-recipients! pulse-id)
         to-send-channel-ids         (set/difference channel-ids cleared-channel-ids)
-        to-send-enabled-channel-ids (t2/select-pks-set :model/PulseChannel :id [:in to-send-channel-ids] :enabled true)]
+        to-send-enabled-channel-ids (pulse.db/enabled-pulse-channel-ids to-send-channel-ids)]
     (if (seq to-send-enabled-channel-ids)
       (send-pulse! pulse-id to-send-enabled-channel-ids)
       (log/infof "Skip sending pulse %d because all channels have no recipients" pulse-id))))
@@ -182,17 +175,7 @@
 
 (defn- active-dashsub-pcs
   []
-  (t2/select :model/PulseChannel
-             {:select    [:pc.*]
-              :from      [[:pulse_channel :pc]]
-              :left-join [[:pulse :p] [:= :pc.pulse_id :p.id]
-                          [:report_dashboard :d] [:= :p.dashboard_id :d.id]]
-              :where     [:and
-                          [:= :pc.enabled true]
-                          ;; only do this for dashboard subscriptions, alert has been
-                          ;; migrated to notifications
-                          [:not= :p.dashboard_id nil]
-                          [:= :d.archived false]]}))
+  (pulse.db/active-dashboard-subscription-channels))
 
 (defn init-dashboard-subscription-triggers!
   "Update send pulse triggers for all active pulses.
@@ -221,7 +204,7 @@
   * To remove 2 pulse channels from a trigger
     (update-send-pulse-trigger-if-needed! pulse-id schedule-map :remove-pc-ids #{1 2}))"
   [pulse-id schedule-map & {:keys [add-pc-ids remove-pc-ids]}]
-  (let [schedule-map     (update-vals schedule-map
+  (let [schedule-map     (update-vals (select-keys schedule-map u.cron/schedule-keys)
                                       #(if (keyword? %)
                                          (name %)
                                          %))

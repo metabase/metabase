@@ -47,7 +47,7 @@ You'll see an icon along the x-axis that plots the event. A vertical line will e
 
 ![An event on a chart](./images/example-event.png)
 
-You can't add a timeline with events to the [Library](../data-studio/library.md).
+You can't add a timeline with events to the [Library](../data-modeling/semantic-layer/library.md).
 
 ## Adding events when viewing a question
 
@@ -103,7 +103,7 @@ To archive a timeline:
 To view (and resurrect) archived timelines and events:
 
 1. Click on the **Calendar** icon in the relevant collection.
-2. Click on the three-dot menu **...** menu.
+2. Click on the three-dot **...** menu.
 3. Select **View archived timelines**. Metabase will display archived events or timelines.
 4. If you want to unarchive an item, click on the three-dot menu **...** next to the event or timeline and select the **Unarchive** option.
 

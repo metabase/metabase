@@ -1125,7 +1125,7 @@
       (automagic-dashboards.test/with-rollback-only-transaction
         (is (partial= {:list-like?  true
                        :num-fields 2}
-                      (-> (#'magic/load-tables-with-enhanced-table-stats [[:= :id table-id]])
+                      (-> (#'magic/load-tables-with-enhanced-table-stats db-id nil)
                           first)))))))
 
 (deftest enhance-table-stats-fk-test
@@ -1138,7 +1138,7 @@
       (automagic-dashboards.test/with-rollback-only-transaction
         (testing "filters out link-tables"
           (is (empty?
-               (#'magic/load-tables-with-enhanced-table-stats [[:= :id table-id]]))))))))
+               (#'magic/load-tables-with-enhanced-table-stats db-id nil))))))))
 
 ;;; ------------------- Definition overloading -------------------
 

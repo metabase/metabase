@@ -7,6 +7,7 @@
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.database-routing.core :as database-routing]
    [metabase.eid-translation.core :as eid-translation]
+   [metabase.embedding-rest.db :as embedding-rest.db]
    [metabase.embedding.jwt :as embed]
    [metabase.embedding.validation :as embedding.validation]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
@@ -27,8 +28,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -38,7 +38,7 @@
 
 (def SearchParams
   "Malli schema for route params of search paths"
-  [:map
+  [:map {:closed true}
    [:token EncodedToken]
    [:param-key ms/NonBlankString]
    [:prefix ms/NonBlankString]])
@@ -46,9 +46,10 @@
 (def QueryParams
   "Malli schema for the raw query-string parameter map of the embed query and param-values endpoints: dashboard/card
   parameter slugs (or parameter IDs, for the param-values endpoints) mapped to values exactly as they come off the
-  query string, plus the optional `:parameters` JSON blob (see [[parse-query-params]]). Keys that don't read cleanly
-  as keywords (e.g. slugs starting with a digit) arrive as strings (see [[normalize-query-params]])."
-  [:map-of [:or :keyword :string] [:maybe [:or :string [:sequential :string]]]])
+  query string, plus the optional `parameters` JSON blob (see [[parse-query-params]]). String-keyed: slugs are not
+  ours to name, and some (e.g. ones starting with a digit) never read cleanly as keywords anyway (see
+  [[normalize-query-params]])."
+  (ms/string-keyed-map [:maybe [:or :string [:sequential :string]]]))
 
 (def ParsedQueryParams
   "Schema for [[QueryParams]] after the `:parameters` JSON blob has been decoded into real JSON scalars."
@@ -68,8 +69,12 @@
 (defn- check-params-are-allowed
   "Check that the conditions specified by `object-embedding-params` are satisfied."
   [object-embedding-params token-params user-params]
-  (let [all-params        (merge token-params user-params)
-        duplicated-params (set/intersection (set (keys token-params)) (set (keys user-params)))]
+  (let [param-names       (fn [params] (into #{} (map name) (keys params)))
+        token-values      (update-keys token-params name)
+        all-params        (param-names (merge token-params user-params))
+        token-param-names (param-names token-params)
+        user-param-names  (param-names user-params)
+        duplicated-params (set/intersection token-param-names user-param-names)]
     (doseq [[param status] object-embedding-params]
       (case status
         ;; disabled means a param is not allowed to be specified by either token or user
@@ -80,15 +85,15 @@
                               [400 (tru "You can''t specify a value for {0} if it''s already set in the JWT." param)])
         ;; locked means JWT must specify param
         "locked"   (api/check
-                    (some? (get token-params param))    [400 (tru "You must specify a value for {0} in the JWT." param)]
-                    (not (contains? user-params param)) [400 (tru "You can only specify a value for {0} in the JWT." param)])))))
+                    (some? (get token-values param))          [400 (tru "You must specify a value for {0} in the JWT." (keyword param))]
+                    (not (contains? user-param-names param)) [400 (tru "You can only specify a value for {0} in the JWT." param)])))))
 
 (defn- check-params-exist
   "Make sure all the params specified are specified in `object-embedding-params`."
   [object-embedding-params all-params]
   (let [embedding-params (set (keys object-embedding-params))]
     (doseq [[k _] all-params]
-      (api/check (contains? embedding-params k)
+      (api/check (contains? embedding-params (name k))
                  [400 (format "Unknown parameter %s." k)]))))
 
 (defn- check-param-sets
@@ -96,7 +101,6 @@
   URL) are valid for the `object-embedding-params`. `token-params` and `user-params` should be sets of all valid param
   keys specified in the JWT or by the user, respectively."
   [object-embedding-params token-params user-params]
-  ;; TODO - maybe make this log/debug once embedding is wrapped up
   (log/debug "Validating params for embedded object:\n"
              "object embedding params:" object-embedding-params
              "token params:"            token-params
@@ -162,7 +166,7 @@
   contains serialized JSON with parameter values. If this object cannot be found or parsed, we fallback to plain query
   string parameters."
   [query-params]
-  (let [parsed (when-let [parameters (:parameters query-params)]
+  (let [parsed (when-let [parameters (some query-params [:parameters "parameters"])]
                  (try
                    (json/decode+kw parameters)
                    (catch Throwable _
@@ -229,7 +233,7 @@
   than the client, and are passed to the parameter value lookups as constraints so the values offered for the
   enabled parameters match the rows the locked values select."
   [embedding-params token-params]
-  (into {} (filter (fn [[slug _value]] (= (get embedding-params (keyword slug)) "locked"))) token-params))
+  (into {} (filter (fn [[slug _value]] (= (get embedding-params (name slug)) "locked"))) token-params))
 
 (defn- enabled-param-slugs
   "The set of param slugs (as keywords) from `dashboard-or-card-params` that may be exposed to embed viewers: only
@@ -237,8 +241,8 @@
   listed as \"disabled\" or \"locked\" — is not in the set, so it fails closed."
   [dashboard-or-card-params embedding-params]
   (into #{}
-        (comp (map (comp keyword :slug))
-              (filter #(= (get embedding-params %) "enabled")))
+        (comp (filter #(= (get embedding-params (:slug %)) "enabled"))
+              (map (comp keyword :slug)))
         dashboard-or-card-params))
 
 (mu/defn- enabled-params
@@ -311,15 +315,13 @@
        (eid-translation/->id :model/Card)))
 
 (defn card-for-unsigned-token
-  "Return the info needed for embedding about Card specified in `token`. Additional `constraints` can be passed to the
-  `public-card` function that fetches the Card."
-  [unsigned-token & {:keys [embedding-params constraints]}]
-  {:pre [((some-fn empty? sequential?) constraints) (even? (count constraints))]}
+  "Return the info needed for embedding about Card specified in `token`."
+  [unsigned-token & {:keys [embedding-params enable-embedding?]}]
   (let [card-id      (unsigned-token->card-id unsigned-token)
         token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
         resolved-embedding-params (or embedding-params
-                                      (t2/select-one-fn :embedding_params :model/Card :id card-id))]
-    (-> (apply api.public/public-card card-id constraints)
+                                      (embedding-rest.db/card-embedding-params card-id))]
+    (-> (api.public/public-card card-id :enable-embedding? enable-embedding?)
         api.public/combine-parameters-and-template-tags
         (remove-token-parameters token-params)
         (enabled-params resolved-embedding-params)
@@ -424,15 +426,13 @@
        (eid-translation/->id :model/Dashboard)))
 
 (mu/defn dashboard-for-unsigned-token :- ::dashboards.schema/dashboard
-  "Return the info needed for embedding about Dashboard specified in `token`. Additional `constraints` can be passed to
-  the `public-dashboard` function that fetches the Dashboard."
-  [unsigned-token & {:keys [embedding-params constraints]}]
-  {:pre [((some-fn empty? sequential?) constraints) (even? (count constraints))]}
+  "Return the info needed for embedding about Dashboard specified in `token`."
+  [unsigned-token & {:keys [embedding-params enable-embedding?]}]
   (let [dashboard-id (unsigned-token->dashboard-id unsigned-token)
         embedding-params (or embedding-params
-                             (t2/select-one-fn :embedding_params :model/Dashboard, :id dashboard-id))
+                             (embedding-rest.db/dashboard-embedding-params dashboard-id))
         token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
-    (-> (apply api.public/public-dashboard dashboard-id constraints)
+    (-> (api.public/public-dashboard dashboard-id :enable-embedding? enable-embedding?)
         (substitute-token-parameters-in-text token-params)
         (remove-locked-parameters embedding-params)
         (remove-token-parameters token-params)
@@ -493,7 +493,7 @@
         searched-param-slug (get id->slug param-key)
         embedding-params    (:embedding_params card)]
     (try
-      (when-not (= (get embedding-params (keyword searched-param-slug)) "enabled")
+      (when-not (= (get embedding-params searched-param-slug) "enabled")
         (throw (ex-info (tru "Cannot search for values: {0} is not an enabled parameter."
                              (pr-str searched-param-slug))
                         {:status-code 400})))
@@ -540,7 +540,7 @@
         searched-param-slug (get id->slug param-key)
         embedding-params    (:embedding_params card)]
     (try
-      (when-not (= (get embedding-params (keyword searched-param-slug)) "enabled")
+      (when-not (= (get embedding-params searched-param-slug) "enabled")
         (throw (ex-info (tru "Cannot get remapped value for parameter: {0} is not an enabled parameter."
                              (pr-str searched-param-slug))
                         {:status-code 400})))
@@ -584,7 +584,7 @@
    & {:keys [preview] :or {preview false}}]
   (let [unsigned-token                                 (embed/unsign token)
         dashboard-id                                   (unsigned-token->dashboard-id unsigned-token)
-        dashboard                                      (t2/select-one :model/Dashboard :id dashboard-id)
+        dashboard                                      (embedding-rest.db/dashboard dashboard-id)
         _                                              (when-not preview (check-embedding-enabled-for-dashboard dashboard))
         slug-token-params                              (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
         {parameters                 :parameters
@@ -595,14 +595,14 @@
         embedding-params                               (if preview
                                                          (merge
                                                           published-embedding-params
-                                                          (get unsigned-token :_embedding_params))
+                                                          (update-keys (get unsigned-token :_embedding_params) name))
                                                          published-embedding-params)
         id->slug                                       (into {} (map (juxt :id :slug)) parameters)
         slug->id                                       (set/map-invert id->slug)
         searched-param-slug                            (get id->slug searched-param-id)]
     (try
       ;; you can only search for values of a parameter if it is ENABLED and NOT PRESENT in the JWT.
-      (when-not (= (get embedding-params (keyword searched-param-slug)) "enabled")
+      (when-not (= (get embedding-params searched-param-slug) "enabled")
         (throw (ex-info (tru "Cannot search for values: {0} is not an enabled parameter." (pr-str searched-param-slug))
                         {:status-code 400})))
       (when (get slug-token-params (keyword searched-param-slug))
@@ -639,7 +639,7 @@
   ([token param-key value {:keys [preview] :or {preview false}}]
    (let [unsigned-token             (embed/unsign token)
          dashboard-id               (unsigned-token->dashboard-id unsigned-token)
-         dashboard                  (t2/select-one :model/Dashboard :id dashboard-id)
+         dashboard                  (embedding-rest.db/dashboard dashboard-id)
          _                          (when-not preview (check-embedding-enabled-for-dashboard dashboard))
          slug-token-params          (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
          parameters                 (:parameters dashboard)
@@ -651,7 +651,7 @@
          ;; the settings to the Appdb.
          embedding-params           (if preview
                                       (merge published-embedding-params
-                                             (get unsigned-token :_embedding_params))
+                                             (update-keys (get unsigned-token :_embedding_params) name))
                                       published-embedding-params)
          param-slug                 (get id->slug param-key)
          locked-param-ids           (into #{}
@@ -660,7 +660,7 @@
                                                     (-> param name slug->id))))
                                           embedding-params)]
      ;; you can only search for values of a parameter if it is ENABLED and NOT PRESENT in the JWT.
-     (when (not= (get embedding-params (keyword param-slug)) "enabled")
+     (when (not= (get embedding-params param-slug) "enabled")
        (throw (ex-info (tru "Cannot get remapped value for parameter: {0} is not an enabled parameter." (pr-str param-slug))
                        {:status-code 400})))
      (when (get slug-token-params (keyword param-slug))

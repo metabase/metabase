@@ -11,7 +11,6 @@ import {
 import { stableStringify } from "metabase/utils/objects";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { deriveFieldOperatorFromParameter } from "metabase-lib/v1/parameters/utils/operators";
 import { normalizeParameterValue } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -101,7 +100,7 @@ export function isEqualCard(card1?: Card | null, card2?: Card | null) {
 
 export function getMetricSeriesWithDefaultDisplay(
   series: DashCardSeries,
-  metadata: Metadata,
+  metadataProvider: Lib.MetadataProvider,
 ): DashCardSeries {
   if (series.length !== 1 || !isDashCardDataSeries(series)) {
     return series;
@@ -112,7 +111,7 @@ export function getMetricSeriesWithDefaultDisplay(
     return series;
   }
 
-  const query = Lib.fromJsQueryAndMetadata(metadata, metricSeries.json_query);
+  const query = Lib.fromJsQuery(metadataProvider, metricSeries.json_query);
   const { display, settings = {} } = Lib.defaultDisplay(
     query,
     metricSeries.data.cols,

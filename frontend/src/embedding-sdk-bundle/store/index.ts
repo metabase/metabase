@@ -1,4 +1,8 @@
-import { type Reducer, combineReducers } from "@reduxjs/toolkit";
+import {
+  type Reducer,
+  type StateFromReducersMapObject,
+  combineReducers,
+} from "@reduxjs/toolkit";
 import { useContext } from "react";
 
 import * as pulse from "metabase/notifications/pulse/reducers";
@@ -13,14 +17,21 @@ import { sdkListenerMiddleware } from "./listener-middleware";
 import { sdk } from "./reducer";
 import type { SdkDispatch, SdkStore } from "./types";
 
-// Unjustified type cast. FIXME
-export const sdkReducers = {
+const sdkReducerMap = {
   ...commonReducers,
   pulse: combineReducers(pulse),
   qb: queryBuilderReducer,
   visualizer,
   sdk,
-} as unknown as Record<string, Reducer>;
+};
+
+/**
+ * The SDK's state, derived from the slices this root composes.
+ */
+export type SdkState = StateFromReducersMapObject<typeof sdkReducerMap>;
+
+// Unjustified type cast. FIXME
+export const sdkReducers = sdkReducerMap as unknown as Record<string, Reducer>;
 
 export const getSdkStore = () =>
   // Unjustified type cast. FIXME

@@ -3,6 +3,7 @@
   Endpoints are versioned (e.g., /v1/search) and use standard HTTP semantics."
   (:require
    [clojure.string :as str]
+   [metabase.agent-api.db :as agent-api.db]
    [metabase.agent-api.query-guards :as query-guards]
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.agent-api.validation :as agent-api.validation]
@@ -26,6 +27,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.metabot.core :as metabot]
    [metabase.metabot.tools.construct :as metabot-construct]
+   [metabase.metabot.tools.recovery-hints :as recovery-hints]
    [metabase.metabot.tools.resources :as metabot-resources]
    [metabase.metabot.tools.search :as metabot-search]
    [metabase.metabot.util :as metabot.u]
@@ -72,9 +74,7 @@
   [collection-id]
   (if-not collection-id
     (:name (collection/root-collection-with-ui-details nil))
-    (let [coll      (t2/select-one [:model/Collection :id :name :location :personal_owner_id
-                                    :namespace :archived_directly]
-                                   collection-id)
+    (let [coll      (agent-api.db/collection-breadcrumb-columns collection-id)
           ;; `:effective_ancestors` is the app breadcrumb: it leads with the "Our analytics" root and
           ;; drops ancestors the caller can't read. A personal subtree leads with the personal
           ;; collection instead, so drop that root crumb for them.
@@ -110,8 +110,12 @@
    [:collection {:optional true} [:maybe :map]]
    ;; Present on collection results — the parent location path (e.g. "/12/34/").
    [:location {:optional true} [:maybe :string]]
-   [:updated_at {:optional true} [:maybe :any]]
-   [:created_at {:optional true} [:maybe :any]]])
+   ;; `[:maybe :any]` publishes as `oneOf [{}, {type:null}]`. Clients that enforce
+   ;; `oneOf` reject null timestamps because both branches match; TemporalInstant
+   ;; keeps the branches disjoint (`date-time` vs `null`). Collections can omit
+   ;; `updated_at` in search results.
+   [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at {:optional true} [:maybe ms/TemporalInstant]]])
 
 (mr/def ::search-response
   "Search results containing tables, models, metrics, saved questions, dashboards, and
@@ -164,7 +168,7 @@
    _query-params
    {term-queries     :term_queries
     semantic-queries :semantic_queries}
-   :- [:map
+   :- [:map {:closed true}
        [:term_queries {:optional true
                        :tool/description "Keyword search queries as an array of strings, for example [\"orders\", \"revenue\"]."}
         [:maybe [:or [:sequential ms/NonBlankString] ms/NonBlankString]]]
@@ -196,7 +200,7 @@
   `referenced_entities` envelope from before the repr migration) are dropped during request
   decoding, so a caller still sending the old shape is served.
 
-  The inner `:query` value is intentionally typed as an open map ([[ms/Map]]) at this boundary
+  The inner `:query` value is an opaque, string-keyed JSON object ([[ms/OpaqueJSONObject]]) at this boundary
   rather than `::lib.schema/external-query`. Being open matters: a closed map with no declared
   entries would have every key stripped before the handler saw it. Reasons for not naming the
   real schema:
@@ -213,7 +217,7 @@
   [:map {:closed true}
    [:query {:tool/description (str "A Metabase MBQL 5 query as a JSON object. See the "
                                    "`construct_notebook_query` tool for the format reference.")}
-    ms/Map]
+    ms/OpaqueJSONObject]
    ;; The user's original message, when available, captured so `visualize_query` can later
    ;; surface it back to the iframe alongside the query body for feedback submission. The MCP
    ;; layer stores it with the handle (see `metabase.mcp.tools/make-store-construct-query-result`).
@@ -236,7 +240,9 @@
   table, ambiguous FK, etc.); we let those propagate so [[api.macros/defendpoint]] surfaces
   them with the appropriate 4xx status code instead of a 500."
   [body]
-  (-> (metabot-construct/execute-representations-query (:query body))
+  (-> (metabot-construct/execute-representations-query
+       (:query body)
+       {:recovery-hint recovery-hints/recovery-hint})
       (get-in [:structured-output :query])))
 
 (defn- evaluate-external-query-for-execution
@@ -568,7 +574,7 @@
 
 (mr/def ::execute-query-request
   "Request schema for /v1/execute. Accepts a base64-encoded MBQL query."
-  [:map
+  [:map {:closed true}
    [:query {:tool/description "A base64-encoded query string returned by /v1/construct-query. Do not construct this value manually."}
     ms/NonBlankString]])
 
@@ -631,7 +637,7 @@
 
 (mr/def ::execute-sql-request
   "Request shape for /v1/execute-sql. The LLM passes a raw SQL string against a target database."
-  [:map
+  [:map {:closed true}
    [:database_id ms/PositiveInt]
    [:sql         ms/NonBlankString]])
 
@@ -673,7 +679,7 @@
 
 (mr/def ::read-resource-request
   "Request shape for /v1/read-resource. Accepts up to 5 metabase:// URIs."
-  [:map
+  [:map {:closed true}
    [:uris [:sequential ms/NonBlankString]]])
 
 (mr/def ::read-resource-item
@@ -872,16 +878,16 @@
                            :card-updates          card-updates
                            :actor                 @api/*current-user*
                            :delete-old-dashcards? false})
-    (update-card-response (t2/select-one :model/Card :id id))))
+    (update-card-response (agent-api.db/card id))))
 
 (mr/def ::create-question-request
-  [:map
+  [:map {:closed true}
    [:name                   ms/NonBlankString]
    [:query                  ms/NonBlankString]
    [:display                {:optional true} [:maybe ::card-display]]
    [:description            {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
-   [:visualization_settings {:optional true} [:maybe ms/Map]]])
+   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]])
 
 (mr/def ::create-question-response
   [:map
@@ -925,13 +931,13 @@
 ;;; -------------------------------------------------- Create Metric -------------------------------------------------
 
 (mr/def ::create-metric-request
-  [:map
+  [:map {:closed true}
    [:name                   ms/NonBlankString]
    [:query                  ms/NonBlankString]
    [:display                {:optional true} [:maybe ::card-display]]
    [:description            {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
-   [:visualization_settings {:optional true} [:maybe ms/Map]]])
+   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]])
 
 (mr/def ::create-metric-response
   [:map
@@ -992,12 +998,12 @@
   "Patch shape for `update_metric`. Every field is optional; only the fields the caller
   passes are changed. `:query` accepts a base64-encoded MBQL string (or query_handle UUID
   resolved upstream in the MCP layer) and must still describe a valid metric."
-  [:map
+  [:map {:closed true}
    [:name                   {:optional true} [:maybe ms/NonBlankString]]
    [:description            {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
    [:display                {:optional true} [:maybe ::card-display]]
-   [:visualization_settings {:optional true} [:maybe ms/Map]]
+   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
    [:archived               {:optional true} [:maybe :boolean]]
    [:query                  {:optional true} [:maybe ms/NonBlankString]]])
 
@@ -1033,7 +1039,7 @@
                              "(a query_handle from construct_query) - it must still have exactly one "
                              "aggregation and at most one date/datetime grouping. The target must be a "
                              "metric; use update_question for regular questions.")}}
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    body :- ::update-metric-request]
   (let [card-before-update (api/write-check :model/Card id)]
@@ -1050,12 +1056,12 @@
   "Patch shape for `update_question`. Every field is optional; only the fields the caller
   passes are changed. `:query` accepts a base64-encoded MBQL string (or query_handle UUID
   resolved upstream in the MCP layer)."
-  [:map
+  [:map {:closed true}
    [:name                   {:optional true} [:maybe ms/NonBlankString]]
    [:description            {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
    [:display                {:optional true} [:maybe ::card-display]]
-   [:visualization_settings {:optional true} [:maybe ms/Map]]
+   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
    [:archived               {:optional true} [:maybe :boolean]]
    [:query                  {:optional true} [:maybe ms/NonBlankString]]])
 
@@ -1089,7 +1095,7 @@
                              "delete or remove a question; set archived false to restore. "
                              "To replace the underlying query, pass query "
                              "(a query_handle from construct_query or construct_native_query).")}}
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    body :- ::update-question-request]
   (apply-agent-card-patch! (api/write-check :model/Card id) body nil))
@@ -1125,7 +1131,7 @@
                              "if the question takes parameters or template-tag input, this returns an "
                              "error.")
            :annotations {:read-only? true :idempotent? true}}}
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    _body]
   (let [card (api/read-check :model/Card id)]
@@ -1155,7 +1161,7 @@
     (autoplace/get-position-for-new-dashcard placed display)))
 
 (mr/def ::create-dashboard-request
-  [:map
+  [:map {:closed true}
    [:name          ms/NonBlankString]
    [:description   {:optional true} [:maybe :string]]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
@@ -1170,8 +1176,7 @@
   "The dashboard's tabs as `{:id :name}` in display order, [] when it has none."
   [dashboard-id]
   (mapv #(select-keys % [:id :name])
-        (t2/select [:model/DashboardTab :id :name] :dashboard_id dashboard-id
-                   {:order-by [[:position :asc] [:id :asc]]})))
+        (agent-api.db/dashboard-tab-names dashboard-id)))
 
 (mr/def ::create-dashboard-response
   [:map
@@ -1218,19 +1223,17 @@
     (let [cards (when (seq question_ids)
                   (mapv #(api/read-check :model/Card %) question_ids))
           dash  (t2/with-transaction [_conn]
-                  (let [dash (first (t2/insert-returning-instances!
-                                     :model/Dashboard
-                                     {:name          dashboard-name
-                                      :description   description
-                                      :parameters    []
-                                      :creator_id    api/*current-user-id*
-                                      :collection_id collection_id}))]
+                  (let [dash (agent-api.db/insert-dashboard!
+                              {:name          dashboard-name
+                               :description   description
+                               :parameters    []
+                               :creator_id    api/*current-user-id*
+                               :collection_id collection_id})]
                     (when (seq cards)
                       (reduce (fn [placed card]
                                 (let [display  (or (:display card) :table)
                                       position (autoplaced-position placed display nil)]
-                                  (t2/insert-returning-instance!
-                                   :model/DashboardCard
+                                  (agent-api.db/insert-dashcard!
                                    (merge position {:dashboard_id (:id dash)
                                                     :card_id      (:id card)}))
                                   (conj placed position)))
@@ -1245,8 +1248,7 @@
        :collection_path (collection-path (:collection_id dash))
        :description     (:description dash)
        ;; select-fn-vec returns nil, not [], when there are no rows
-       :dashcard_ids    (or (t2/select-fn-vec :id :model/DashboardCard :dashboard_id (:id dash)
-                                              {:order-by [[:row :asc] [:col :asc]]})
+       :dashcard_ids    (or (agent-api.db/dashcard-ids-in-layout-order (:id dash))
                             [])
        :tabs            (dashboard-tabs (:id dash))})))
 
@@ -1297,7 +1299,7 @@
 (mr/def ::update-dashboard-request
   "Patch shape for `update_dashboard`. Metadata fields and an optional `dashcards` list of
    add/add_heading/add_text/update_text/remove/move mutations applied in order."
-  [:map
+  [:map {:closed true}
    [:name          {:optional true} [:maybe ms/NonBlankString]]
    [:description   {:optional true} [:maybe :string]]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
@@ -1345,10 +1347,9 @@
   Placement is per-tab: adds go on the mutation's `tab_id` (default: the first tab) and only
   collide with that tab's cards; a move only reflows cards sharing the moved card's tab."
   [dashboard-id mutations]
-  (let [current        (t2/select :model/DashboardCard :dashboard_id dashboard-id)
+  (let [current        (agent-api.db/dashcards dashboard-id)
         ;; one fetch serves the default tab, per-mutation tab_id validation, and collision grouping
-        tab-ids        (t2/select-pks-vec :model/DashboardTab :dashboard_id dashboard-id
-                                          {:order-by [[:position :asc] [:id :asc]]})
+        tab-ids        (agent-api.db/dashboard-tab-ids dashboard-id)
         ;; new dashcards land on the first tab, alongside any nil-tab dashcards, which the
         ;; frontend renders there; nil when the dashboard has no tabs
         default-tab-id (first tab-ids)
@@ -1395,18 +1396,17 @@
           (let [tab-id (target-tab-id tab_id)]
             (insert-new-dashcard! state dashboard-id tab-id
                                   (autoplaced-position (on-tab (:placed @state) tab-id) :heading nil)
-                                  {:visualization_settings (dashboard-card/virtual-card-settings "heading" text)}))
+                                  {:visualization_settings (dashboard-card/virtual-card-settings "heading" {:text text})}))
 
           "add_text"
           (let [tab-id (target-tab-id tab_id)]
             (insert-new-dashcard! state dashboard-id tab-id
                                   (autoplaced-position (on-tab (:placed @state) tab-id) :text display_size)
-                                  {:visualization_settings (dashboard-card/virtual-card-settings "text" text)}))
+                                  {:visualization_settings (dashboard-card/virtual-card-settings "text" {:text text})}))
 
           "update_text"
           (let [existing (api/check-404
-                          (t2/select-one :model/DashboardCard
-                                         :id dashcard_id :dashboard_id dashboard-id))
+                          (agent-api.db/dashcard-in-dashboard dashcard_id dashboard-id))
                 vs       (:visualization_settings existing)
                 display  (some-> (get-in vs [:virtual_card :display]) name)]
             (api/check (or (contains? #{"heading" "text"} display)
@@ -1417,13 +1417,11 @@
                                 (string? (:text vs))))
                        [400 "Only heading and text cards support update_text."])
             ;; In-place: position and size stay put, unlike a remove + add_* round-trip.
-            (t2/update! :model/DashboardCard dashcard_id
-                        {:visualization_settings (assoc vs :text text)}))
+            (agent-api.db/update-dashcard! dashcard_id {:visualization_settings (assoc vs :text text)}))
 
           "remove"
           (let [existing (api/check-404
-                          (t2/select-one :model/DashboardCard
-                                         :id dashcard_id :dashboard_id dashboard-id))]
+                          (agent-api.db/dashcard-in-dashboard dashcard_id dashboard-id))]
             ;; Model-level delete also cleans up orphaned inline parameters and pulse cards.
             (dashboard-card/delete-dashboard-cards! [dashcard_id])
             (swap! state #(-> %
@@ -1432,8 +1430,7 @@
 
           "move"
           (let [existing  (api/check-404
-                           (t2/select-one :model/DashboardCard
-                                          :id dashcard_id :dashboard_id dashboard-id))
+                           (agent-api.db/dashcard-in-dashboard dashcard_id dashboard-id))
                 ;; A move only makes sense relative to the moved card's own tab: collision checks
                 ;; and the move-to-top reflow must not touch cards on other tabs. Compared via
                 ;; `effective-tab` so nil-tab dashcards group with the first tab they render on.
@@ -1456,9 +1453,8 @@
             (when (= position "top")
               (let [shift (:size_y existing)]
                 (doseq [{:keys [id row]} tab-placed]
-                  (t2/update! :model/DashboardCard id {:row (+ row shift)}))))
-            (t2/update! :model/DashboardCard dashcard_id
-                        (select-keys new-pos [:row :col]))
+                  (agent-api.db/update-dashcard! id {:row (+ row shift)}))))
+            (agent-api.db/update-dashcard! dashcard_id (select-keys new-pos [:row :col]))
             (swap! state #(-> %
                               (assoc :placed
                                      (conj (mapv (fn [c]
@@ -1480,7 +1476,7 @@
     ;; this dashboard. Sync their archived state from the final dashcard set, like the REST path.
     (when (or (seq (:added @state)) (seq (:removed @state)))
       (dashboard/archive-or-unarchive-internal-dashboard-questions!
-       dashboard-id (t2/select :model/DashboardCard :dashboard_id dashboard-id)))
+       dashboard-id (agent-api.db/dashcards dashboard-id)))
     (select-keys @state [:added :removed :moved])))
 
 (api.macros/defendpoint :put "/v1/dashboard/:id" :- ::update-dashboard-response
@@ -1516,7 +1512,7 @@
                              "The response dashcard_ids lists all dashcards in row/col order; "
                              "metabase://dashboard/{id}/items (via read_resource) shows each "
                              "dashcard with its dashcard_id.")}}
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    body :- ::update-dashboard-request]
   (let [current-dash (api/write-check :model/Dashboard id)
@@ -1548,7 +1544,7 @@
         result       (t2/with-transaction [_conn]
                        (when (seq updates)
                          (dashboard/cascade-card-state-from-dashboard-update! current-dash updates)
-                         (t2/update! :model/Dashboard id updates)
+                         (agent-api.db/update-dashboard! id updates)
                          ;; Fire :event/collection-touch with the *target* collection id so the
                          ;; activity feed records the right collection. Note: the dashboards-rest
                          ;; PUT-dashboard endpoint passes the dashboard id here instead, which
@@ -1572,7 +1568,7 @@
                              {:object current-dash
                               :user-id api/*current-user-id*
                               :dashcards (:removed result)}))
-    (let [updated (t2/select-one :model/Dashboard :id id)]
+    (let [updated (agent-api.db/dashboard id)]
       (events/publish-event! :event/dashboard-update
                              {:object updated :user-id api/*current-user-id*})
       {:id              (:id updated)
@@ -1582,8 +1578,7 @@
        :description     (:description updated)
        :archived        (boolean (:archived updated))
        ;; select-fn-vec returns nil, not [], when there are no rows
-       :dashcard_ids    (or (t2/select-fn-vec :id :model/DashboardCard :dashboard_id id
-                                              {:order-by [[:row :asc] [:col :asc]]})
+       :dashcard_ids    (or (agent-api.db/dashcard-ids-in-layout-order id)
                             [])
        :tabs            (dashboard-tabs id)})))
 
@@ -1593,7 +1588,7 @@
   "Request shape for `create_collection`. `:parent_collection_id` is named separately from
   the internal `:parent_id` field to make the LLM-facing API less ambiguous (the caller is
   saying \"put it under this parent\", not echoing back a server-set field)."
-  [:map
+  [:map {:closed true}
    [:name                 ms/NonBlankString]
    [:description          {:optional true} [:maybe :string]]
    [:parent_collection_id {:optional true} [:maybe ms/PositiveInt]]])
@@ -1680,7 +1675,7 @@
       ;; JWT is valid - look up user from the email extracted by the JWT provider
       ;; The provider uses jwt-attribute-email setting to extract the email from claims
       (if-let [user (when-let [email (get-in result [:user-data :email])]
-                      (t2/select-one :model/User :%lower.email (u/lower-case-en email) :is_active true))]
+                      (agent-api.db/active-user-by-email email))]
         (let [scope-entry (-> result :jwt-data (find :scope))]
           (cond-> {:user user}
             scope-entry

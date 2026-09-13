@@ -1,8 +1,8 @@
 import { useCallback, useMemo } from "react";
-import _ from "underscore";
 
 import { Form, FormProvider } from "metabase/forms";
 import { useSetting } from "metabase/settings";
+import { memoize } from "metabase/utils/memoize";
 import type { DatabaseData } from "metabase-types/api";
 
 import type { FormLocation } from "../../types";
@@ -69,7 +69,7 @@ export const DatabaseForm = ({
   }, [engines, initialData, isAdvanced]);
 
   const getSchema = useMemo(() => {
-    return _.memoize((engineKey: string | undefined) =>
+    return memoize((engineKey: string | undefined) =>
       getValidationSchema(getEngine(engines, engineKey), engineKey, isAdvanced),
     );
   }, [engines, isAdvanced]);

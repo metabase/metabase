@@ -148,6 +148,7 @@ export type {
   ParameterChangePayload,
   UseMetabotResult,
   SdkEntityToken,
+  SdkBrowserCollectionId,
   SdkCollectionId,
   SdkDashboardId,
   SdkDashboardEntityPublicProps,
@@ -164,6 +165,8 @@ export type {
   SdkUserId,
   SqlParameterValues,
   SdkActionId,
+  SdkActionDefinition,
+  SdkActionInput,
 } from "embedding-sdk-bundle/types";
 export type {
   FieldSchema,

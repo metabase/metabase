@@ -22,13 +22,13 @@
   failed extractions, sandboxed users will see zero columns until an admin fixes the source
   card — which is what we want, given the alternative is leaking every column."
   (:require
+   [metabase-enterprise.sandbox.db :as sandbox.db]
    [metabase.lib.core :as lib]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (mu/defn find-sandbox-source-cards :- [:map-of ms/PositiveInt :map]
   "Return `{table-id => sandbox-source-card}` for the `table-ids` that have a Card-backed sandbox for the current user.
@@ -38,8 +38,7 @@
   (let [sandboxes (filter (comp table-ids :table_id) (perms/sandboxes-for-user))
         card-ids  (into #{} (keep :card_id) sandboxes)]
     (if (seq card-ids)
-      (let [cards-by-id (t2/select-pk->fn identity [:model/Card :id :dataset_query :result_metadata :card_schema]
-                                          :id [:in card-ids])]
+      (let [cards-by-id (sandbox.db/cards-by-id card-ids)]
         (into {}
               (keep (fn [{:keys [table_id card_id]}]
                       (when-let [card (get cards-by-id card_id)]

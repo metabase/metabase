@@ -35,15 +35,15 @@ import type {
 } from "metabase-types/api";
 import { clickBehaviorIsValid } from "metabase-types/guards";
 
-interface Target {
+export interface Target {
   id: Parameter["id"];
   name: Parameter["name"] | null | undefined;
   target: ClickBehaviorTarget;
   sourceFilters: SourceFilters;
 }
 
-interface SourceFilters {
-  column: (column: DatasetColumn, question: Question) => boolean;
+export interface SourceFilters {
+  column: (column: DatasetColumn) => boolean;
   parameter: (parameter: Parameter) => boolean;
   userAttribute: (userAttribute: string) => boolean;
 }

@@ -7,7 +7,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import CS from "metabase/css/core/index.css";
 import {
   getShallowFields as getFields,
-  getMetadata,
+  selectMetadataProvider,
 } from "metabase/metadata-store";
 import { connect } from "metabase/redux";
 import S from "metabase/reference/Reference.module.css";
@@ -17,7 +17,7 @@ import EditableReferenceHeader from "metabase/reference/components/EditableRefer
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
 import { updateTable } from "metabase/reference/update-actions";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type * as Lib from "metabase-lib";
 import type { User } from "metabase-types/api";
 
 import type { ReferenceRouteProps, StateWithReference } from "../selectors";
@@ -39,25 +39,26 @@ interface TableDetailFormFields extends BaseDetailFormFields {
   revision_message?: string;
 }
 
-const interestingQuestions = (table: StubbedTable, metadata: Metadata) => {
+const interestingQuestions = (
+  table: StubbedTable,
+  metadataProvider: Lib.MetadataProvider,
+) => {
   return [
     {
       text: t`Count of ${table.display_name}`,
       icon: "number" as const,
       link: getQuestionUrl({
-        dbId: table.db_id!,
         tableId: table.id,
         getCount: true,
-        metadata,
+        metadataProvider: metadataProvider,
       }),
     },
     {
       text: t`See raw data for ${table.display_name}`,
       icon: "table2" as const,
       link: getQuestionUrl({
-        dbId: table.db_id!,
         tableId: table.id,
-        metadata,
+        metadataProvider: metadataProvider,
       }),
     },
   ];
@@ -74,7 +75,10 @@ const mapStateToProps = (
     entity,
     table: getTable(state, props),
     metadataFields: fields,
-    metadata: getMetadata(state),
+    metadataProvider: selectMetadataProvider(
+      state,
+      getTable(state, props)?.db_id ?? null,
+    ),
     user: getUser(state),
     isEditing: getIsEditing(state),
     hasSingleSchema: getHasSingleSchema(state, props),
@@ -99,7 +103,7 @@ interface TableDetailProps {
   hasSingleSchema?: boolean;
   loading?: boolean;
   loadingError?: unknown;
-  metadata: Metadata;
+  metadataProvider: Lib.MetadataProvider;
 
   onSubmit: (fields: TableDetailFormFields, props: any) => Promise<void>;
 }
@@ -116,7 +120,7 @@ const TableDetail = (props: TableDetailProps) => {
     startEditing,
     endEditing,
     hasSingleSchema,
-    metadata,
+    metadataProvider,
     onSubmit,
   } = props;
 
@@ -163,9 +167,8 @@ const TableDetail = (props: TableDetailProps) => {
         type="table"
         headerIcon="table2"
         headerLink={getQuestionUrl({
-          dbId: entity.db_id!,
           tableId: entity.id,
-          metadata,
+          metadataProvider: metadataProvider,
         })}
         name={t`Details`}
         user={user}
@@ -234,7 +237,7 @@ const TableDetail = (props: TableDetailProps) => {
                 {!isEditing && (
                   <li>
                     <UsefulQuestions
-                      questions={interestingQuestions(table, metadata)}
+                      questions={interestingQuestions(table, metadataProvider)}
                     />
                   </li>
                 )}

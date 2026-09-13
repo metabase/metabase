@@ -1,7 +1,7 @@
 import { setupBugReportingDetailsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { HelpLinkSetting } from "metabase-types/api";
 import {
   createMockTokenStatus,

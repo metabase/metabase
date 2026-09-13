@@ -15,7 +15,6 @@ import type {
   GetPublicDashboard,
   GetRemappedDashboardParameterValueRequest,
   GetValidDashboardFilterFieldsRequest,
-  ListCollectionItemsRequest,
   ListCollectionItemsResponse,
   ListDashboardsRequest,
   ListDashboardsResponse,
@@ -162,10 +161,7 @@ export const dashboardApi = Api.injectEndpoints({
       }),
       listDashboardItems: builder.query<
         ListCollectionItemsResponse,
-        Omit<
-          ListCollectionItemsRequest,
-          "id" | "q" | "include_available_models"
-        > & { id: DashboardId }
+        { id: DashboardId }
       >({
         query: ({ id, ...body }) => ({
           method: "GET",
@@ -266,7 +262,7 @@ export const dashboardApi = Api.injectEndpoints({
       }),
       updateDashboardEnableEmbedding: updateDashboardPropertiesMutation<
         "enable_embedding" | "embedding_type"
-      >([listTag("embedding-hub-checklist")]),
+      >([listTag("setup-guide-checklist")]),
       updateDashboardEmbeddingParams: updateDashboardPropertiesMutation<
         "embedding_params" | "embedding_type"
       >(),

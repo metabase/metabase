@@ -221,7 +221,7 @@
                                "All Metabase features may not work properly when using an unsupported version."
                                "\n********************************************************************************\n"))))))))
 
-(def ^:private disallowed-additional-opts #"(?:allowLoadLocalInfile|allowLoadLocalInfileInPath|allowUrlInLocalInfile|autoDeserialize|serverRSAPublicKeyFile)")
+(def ^:private disallowed-additional-opts #"(?:allowLocalInfile|allowLoadLocalInfile|allowLoadLocalInfileInPath|allowUrlInLocalInfile|autoDeserialize|serverRSAPublicKeyFile)")
 
 (defmethod driver/validate-db-details! :mysql
   [_driver details]
@@ -740,6 +740,14 @@
         (set-prog-nm-fn))
       (set-prog-nm-fn)))) ; additional-options did not contain connectionAttributes at all; set it
 
+(defn- set-local-infile
+  "Pin `allowLocalInfile` to `allowed?` on `spec`'s connection string.
+
+  Appending is what makes this stick: the driver lets URL parameters override connection `Properties`, and lets a later
+  duplicate parameter override an earlier one, so this only wins if it comes after `:additional-options`."
+  [spec allowed?]
+  (sql-jdbc.common/handle-additional-options spec {:additional-options (str "allowLocalInfile=" allowed?)}))
+
 (defmethod sql-jdbc.conn/connection-details->spec :mysql
   [_ {ssl? :ssl, :keys [additional-options ssl-cert auth-provider], :as details}]
   ;; In versions older than 0.32.0 the MySQL driver did not correctly save `ssl?` connection status. Users worked
@@ -779,7 +787,8 @@
                          (dissoc :ssl)))]
        (-> (driver-api/spec :mysql details)
            (maybe-add-program-name-option addl-opts-map)
-           (sql-jdbc.common/handle-additional-options details))))))
+           (sql-jdbc.common/handle-additional-options details)
+           (set-local-infile false))))))
 
 (defmethod sql-jdbc.sync/active-tables :mysql
   [& args]
@@ -1072,12 +1081,14 @@
           (with-open [^java.io.Writer writer (jio/writer file-path)]
             (doseq [value (interpose \newline tsvs)]
               (.write writer (str value))))
-          (sql-jdbc.execute/do-with-connection-with-options
-           driver
-           db-id
-           nil
-           (fn [conn]
-             (jdbc/execute! {:connection conn} sql))))
+          ;; Bulk-loading needs a connection that will service `LOAD DATA LOCAL INFILE`, which the pooled connections
+          ;; refuse (see [[set-local-infile]]), so open a dedicated unpooled one for this statement. That is safe here
+          ;; where it is not for user-supplied SQL: the driver only sends the server the file named in the statement,
+          ;; and this statement names the temp file we just wrote.
+          (driver-api/with-metadata-provider db-id
+            (let [details (driver.conn/effective-details (driver-api/database (driver-api/metadata-provider)))]
+              (sql-jdbc.conn/with-connection-spec-for-testing-connection [spec [driver details]]
+                (jdbc/execute! (set-local-infile spec true) sql)))))
         (finally
           (.delete temp-file))))))
 

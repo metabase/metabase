@@ -44,6 +44,7 @@ describe("Transform Embedding Theme Override", () => {
         "text-disabled": expect.arrayContaining(["green"]),
         "background-primary": expect.arrayContaining(["orange"]),
         "background_page-primary": expect.arrayContaining(["orange"]),
+        "background_surface-primary": expect.arrayContaining(["orange"]),
         "background-tertiary": expect.arrayContaining(["brown"]),
         "background-secondary": expect.arrayContaining(["brown"]),
         "background_page-secondary": expect.arrayContaining(["brown"]),
@@ -75,6 +76,7 @@ describe("Transform Embedding Theme Override", () => {
       colors: {
         "background-primary": expect.arrayContaining(["green"]),
         "background_page-primary": expect.arrayContaining(["green"]),
+        "background_surface-primary": expect.arrayContaining(["green"]),
         "background-tertiary": expect.arrayContaining(["green"]),
         "background-secondary": expect.arrayContaining(["green"]),
         "background_page-secondary": expect.arrayContaining(["green"]),

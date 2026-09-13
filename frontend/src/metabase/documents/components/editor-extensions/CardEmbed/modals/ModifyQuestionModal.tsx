@@ -2,14 +2,17 @@ import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { getMetadata } from "metabase/metadata-store";
+import {
+  selectQuestionFromCard,
+  useQuestionFromCard,
+} from "metabase/metadata-store";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { useDispatch, useSelector, useStore } from "metabase/redux";
 import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
 import { getSetting } from "metabase/settings";
 import { Box, Button, Flex, Modal, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
+import type Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 
 import S from "./ModifyQuestionModal.module.css";
@@ -30,7 +33,7 @@ export const ModifyQuestionModal = ({
   const store = useStore();
   const dispatch = useDispatch();
   const host = useEditorHost();
-  const metadata = useSelector(getMetadata);
+  const buildQuestion = useQuestionFromCard();
   const reportTimezone = useSelector((state) =>
     getSetting(state, "report-timezone-long"),
   );
@@ -45,16 +48,16 @@ export const ModifyQuestionModal = ({
   }, [isOpen, card, dispatch, host.actions]);
 
   const question = useMemo(() => {
-    if (!card || !metadata || !isOpen) {
+    if (!card || !isOpen) {
       return null;
     }
 
-    const baseQuestion = new Question(card, metadata);
+    const baseQuestion = buildQuestion(card);
     if (!modifiedQuestion) {
       setModifiedQuestion(baseQuestion);
     }
     return baseQuestion;
-  }, [card, metadata, isOpen, modifiedQuestion]);
+  }, [card, buildQuestion, isOpen, modifiedQuestion]);
 
   const handleUpdateQuestion = async (newQuestion: Question) => {
     const currentDependencies = modifiedQuestion
@@ -75,12 +78,11 @@ export const ModifyQuestionModal = ({
       await dispatch(
         host.actions.loadMetadataForDocumentCard(newQuestion.card()),
       );
-      const freshMetadata = getMetadata(store.getState());
-      const questionWithFreshMetadata = new Question(
-        newQuestion.card(),
-        freshMetadata,
+      // Rebuilt from the store after the fetch, so it carries the metadata
+      // that was just loaded.
+      setModifiedQuestion(
+        selectQuestionFromCard(store.getState(), newQuestion.card()),
       );
-      setModifiedQuestion(questionWithFreshMetadata);
     } else {
       setModifiedQuestion(newQuestion);
     }

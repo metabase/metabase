@@ -1,6 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
 import {
+  createMockMetabotTextPart,
+  createMockMetabotToolCallPart,
+  createMockParentedMessage,
   setupGroupsEndpoint,
   setupMetabotConversationEndpoint,
   setupPermissionMembershipEndpoint,
@@ -12,7 +15,11 @@ import type {
   ConversationDetail,
   ConversationFeedback,
 } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/types";
-import { createMockUser } from "metabase-types/api/mocks";
+import type {
+  GroupListQuery,
+  ListUserMembershipsResponse,
+} from "metabase-types/api";
+import { createMockGroup, createMockUser } from "metabase-types/api/mocks";
 
 import { ConversationDetailPage } from "./ConversationDetailPage";
 
@@ -25,57 +32,53 @@ jest.mock("metabase/monitor/components/MonitorLayout/Sidebar", () => ({
 }));
 
 type ConversationMessage = ConversationDetail["messages"][number];
+type AgentMessagePart = Extract<
+  ConversationMessage["parts"][number],
+  { role: "agent" }
+>;
 
 function userMessage(
   id: string,
   parentId: string | null,
-  message: string,
+  text: string,
 ): ConversationMessage {
-  return {
-    id,
-    parent_message_id: parentId,
+  return createMockParentedMessage(id, parentId, {
     role: "user",
-    type: "text",
-    message,
-  };
+    parts: [{ id: `${id}-text`, role: "user", type: "text", message: text }],
+  });
 }
 
 function agentMessage(
   id: string,
   parentId: string,
-  message: string,
+  ...parts: (string | AgentMessagePart)[]
 ): ConversationMessage {
-  return {
-    id,
-    parent_message_id: parentId,
-    role: "agent",
-    type: "text",
-    message,
+  return createMockParentedMessage(id, parentId, {
     externalId: id,
-  };
+    parts: parts.map((part, index) =>
+      typeof part === "string"
+        ? createMockMetabotTextPart({
+            id: `${id}-text-${index}`,
+            message: part,
+          })
+        : part,
+    ),
+  });
 }
 
 function inProgressMessage(id: string, parentId: string): ConversationMessage {
-  return {
-    id,
-    parent_message_id: parentId,
-    role: "agent",
-    type: "turn_in_progress",
+  return createMockParentedMessage(id, parentId, {
     externalId: id,
-  };
+    status: { type: "in_progress" },
+  });
 }
 
-function toolCallMessage(id: string, parentId: string): ConversationMessage {
-  return {
-    id,
-    parent_message_id: parentId,
-    role: "agent",
-    type: "tool_call",
-    name: "search",
-    status: "ended",
+function toolCallPart(id: string): AgentMessagePart {
+  return createMockMetabotToolCallPart({
+    id: `${id}-tool-call`,
     args: JSON.stringify({ query: "orders" }),
     result: JSON.stringify({ count: 3 }),
-  };
+  });
 }
 
 function createConversation(
@@ -106,10 +109,14 @@ function createConversation(
   };
 }
 
-function setup(conversation: ConversationDetail) {
+function setup(
+  conversation: ConversationDetail,
+  groups: GroupListQuery[] = [],
+  memberships: ListUserMembershipsResponse = {},
+) {
   setupMetabotConversationEndpoint(conversation);
-  setupGroupsEndpoint([]);
-  setupPermissionMembershipEndpoint({});
+  setupGroupsEndpoint(groups);
+  setupPermissionMembershipEndpoint(memberships);
   return renderWithProviders(
     <Route
       path="/conversations/:convoId"
@@ -354,8 +361,7 @@ describe("ConversationDetailPage", () => {
     setup(
       createConversation([
         userMessage("u1", null, "search orders"),
-        toolCallMessage("t1", "u1"),
-        agentMessage("a1", "t1", "found 3 orders"),
+        agentMessage("a1", "u1", toolCallPart("a1"), "found 3 orders"),
       ]),
     );
 
@@ -383,8 +389,7 @@ describe("ConversationDetailPage", () => {
     setup(
       createConversation([
         userMessage("u1", null, "search orders"),
-        toolCallMessage("t1", "u1"),
-        agentMessage("a1", "t1", "found 3 orders"),
+        agentMessage("a1", "u1", toolCallPart("a1"), "found 3 orders"),
       ]),
     );
 
@@ -401,5 +406,36 @@ describe("ConversationDetailPage", () => {
     expect(
       screen.queryByTestId("tool-call-details-sidebar"),
     ).not.toBeInTheDocument();
+  });
+
+  it("links each of the user's groups to the usage page filtered by that group", async () => {
+    const group = createMockGroup({
+      id: 42,
+      name: "Analysts",
+      magic_group_type: null,
+    });
+    setup(
+      {
+        ...createConversation([userMessage("u1", null, "hi")]),
+        user: {
+          id: 7,
+          first_name: "Ada",
+          last_name: "Lovelace",
+          tenant_id: null,
+        },
+      },
+      [group],
+      { 7: [{ user_id: 7, group_id: group.id, membership_id: 1 }] },
+    );
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /Analysts/ }),
+    );
+
+    expect(screen.getByText("View a group's usage")).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: /Analysts/ })).toHaveAttribute(
+      "href",
+      Urls.monitorAiAuditingUsage({ groupId: 42 }),
+    );
   });
 });

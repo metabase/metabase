@@ -1,6 +1,6 @@
 import { QueryStatus } from "@reduxjs/toolkit/query";
 
-import { createMockSettingsState } from "metabase/redux/store/mocks";
+import { createMockSettingsState } from "__support__/state";
 import type { Database, SchemaName, TableId } from "metabase-types/api";
 import {
   createMockDatabase,

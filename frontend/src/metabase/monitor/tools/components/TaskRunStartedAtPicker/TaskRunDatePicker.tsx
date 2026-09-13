@@ -164,7 +164,7 @@ export const TaskRunDatePicker = ({
         </Input>
       </Popover.Target>
 
-      <Popover.Dropdown p="lg">
+      <Popover.Dropdown p="md">
         <Stack gap="lg" w={PICKER_WIDTH}>
           <Select
             data={options}

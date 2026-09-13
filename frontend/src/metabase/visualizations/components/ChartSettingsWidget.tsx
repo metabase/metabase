@@ -4,7 +4,9 @@ import type { CSSProperties, ComponentType } from "react";
 import FormS from "metabase/css/components/form.module.css";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { Box, Group, Icon, Text, Tooltip } from "metabase/ui";
-import type { WidgetMount } from "metabase-types/api";
+import { checkNotNull } from "metabase/utils/types";
+import type { CustomVizSettingWidgetProps } from "metabase/viz-core";
+import type { VisualizationSettings, WidgetMount } from "metabase-types/api";
 
 import S from "./ChartSettingsWidget.module.css";
 
@@ -15,12 +17,18 @@ type Props = {
   description?: string;
   hint?: string;
   hidden?: boolean;
-  widget?: string | ComponentType<{ id: string }> | WidgetMount;
+  widget?:
+    | string
+    | ComponentType<{ id: string }>
+    | WidgetMount<CustomVizSettingWidgetProps>;
   inline?: boolean;
   props?: Record<string, unknown>;
   variant?: ChartSettingsWidgetVariant;
   dataTestId?: string;
   id: string;
+  value?: unknown;
+  onChange?: (value?: unknown) => void;
+  onChangeSettings?: (settings: Partial<VisualizationSettings>) => void;
   style?: CSSProperties;
 };
 
@@ -80,7 +88,13 @@ const ChartSettingsWidget = ({
         (PLUGIN_CUSTOM_VIZ.isWidgetMount(Widget) ? (
           <PLUGIN_CUSTOM_VIZ.CustomVizSettingWidget
             mount={Widget}
-            widgetProps={{ ...extraWidgetProps, ...props }}
+            widgetProps={{
+              ...props, // spread first so a plugin's getProps can't override the base props
+              id: extraWidgetProps.id,
+              value: extraWidgetProps.value,
+              onChange: checkNotNull(extraWidgetProps.onChange),
+              onChangeSettings: checkNotNull(extraWidgetProps.onChangeSettings),
+            }}
           />
         ) : (
           <Widget {...extraWidgetProps} {...props} />

@@ -17,6 +17,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.query-permissions.db :as query-permissions.db]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.interface :as qp.i]
    ;; legacy usage -- don't do things like this going forward
@@ -171,7 +172,7 @@
       (if (qp.store/initialized?)
         (when-let [{:keys [collection-id]} (lib.metadata/card (qp.store/metadata-provider) card-id)]
           (t2/instance :model/Card {:collection_id collection-id}))
-        (t2/select-one [:model/Card :collection_id :card_schema] :id card-id))
+        (query-permissions.db/card-collection-id card-id))
       (throw (Exception. (tru "Card {0} does not exist." card-id)))))
 
 (mu/defn- source-card-read-perms :- [:set perms/PathSchema]
@@ -351,7 +352,7 @@
       ;; used by the model upon which the action is defined. In this case, the underlying model whose
       ;; permissions we need to check will not be exposed by the metadata provider, so we need a fallback.
       ;; -- Noah
-      (t2/select-one :model/Card :id card-id :database_id [:!= database-id])
+      (query-permissions.db/card-not-in-database card-id database-id)
       (throw (ex-info (tru "Card {0} does not exist." card-id)
                       {:type    qp.error-type/invalid-query
                        :card-id card-id}))))
@@ -362,7 +363,7 @@
   (let [field-ids (keep :id result-metadata)
         table-ids (into (set (keep (some-fn :table-id :table_id) result-metadata))
                         (when (seq field-ids)
-                          (t2/select-fn-set :table_id :model/Field :id [:in field-ids])))]
+                          (query-permissions.db/field-table-ids field-ids)))]
     (perms/prime-table-perms-cache {:db-ids #{database-id} :table-ids table-ids})
     (run! #(when-not (perms/user-has-permission-for-table?
                       api/*current-user-id*
@@ -430,21 +431,35 @@
         false))))
 
 (mu/defn can-run-query?
-  "Return `true` if the current user has sufficient permissions to run `query`, and `false` otherwise."
+  "Return `true` if the current user has sufficient permissions to run `query`, and `false` otherwise.
+
+  With `throw-non-permission-errors?`, anything that is not a permission denial throws rather than
+  being answered as one: a failure to work out which permissions `query` needs (otherwise logged at
+  error and folded into the answer), and any other error the checks raise, such as a missing Card in
+  [[check-card-read-perms]]. A denial still returns `false`."
   ([query]
    (can-run-query? query false))
 
+  ([query :- :map
+    already-preprocessed? :- :boolean]
+   (can-run-query? query already-preprocessed? false))
+
   ([{database-id :database :as query} :- :map
-    already-preprocessed?             :- :boolean]
+    already-preprocessed?                :- :boolean
+    throw-non-permission-errors?         :- :boolean]
    (try
-     (let [required-perms (required-perms-for-query query :already-preprocessed? already-preprocessed?)]
+     (let [required-perms (required-perms-for-query query
+                                                    :already-preprocessed? already-preprocessed?
+                                                    :throw-exceptions? throw-non-permission-errors?)]
        (check-data-perms query required-perms)
        ;; Check card read permissions for any cards referenced in subqueries!
        (doseq [card-id (:card-ids required-perms)]
          (check-card-read-perms database-id card-id))
        true)
-     (catch clojure.lang.ExceptionInfo _e
-       false))))
+     (catch clojure.lang.ExceptionInfo e
+       (if (and throw-non-permission-errors? (not (:permissions-error? (ex-data e))))
+         (throw e)
+         false)))))
 
 (mu/defn can-query-table?
   "Does the current user have permissions to run an ad-hoc query against the Table with `table-id`?"
@@ -459,9 +474,9 @@
   to."
   [field-ids :- [:maybe [:sequential ::lib.schema.id/field]]]
   (when (seq field-ids)
-    (let [table-ids             (t2/select-fn-set :table_id :model/Field :id [:in (set field-ids)])
+    (let [table-ids             (query-permissions.db/field-table-ids (set field-ids))
           table-id->database-id (when (seq table-ids)
-                                  (t2/select-pk->fn :db_id :model/Table :id [:in table-ids]))]
+                                  (query-permissions.db/table-id->database-id table-ids))]
       (perms/prime-table-perms-cache {:table-ids table-ids})
       (doseq [table-id table-ids
               :let     [database-id (table-id->database-id table-id)]]

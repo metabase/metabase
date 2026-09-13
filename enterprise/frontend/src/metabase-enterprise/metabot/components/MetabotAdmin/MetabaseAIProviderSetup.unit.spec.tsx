@@ -8,9 +8,9 @@ import {
   setupPropertiesEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { reinitialize } from "metabase/plugins";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { MetabotUsageResponse } from "metabase-enterprise/api";
 import type { TokenStatusFeature } from "metabase-types/api";
 import {

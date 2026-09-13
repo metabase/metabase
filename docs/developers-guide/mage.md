@@ -27,4 +27,4 @@ $ ./bin/mage kondo -h
 
 ### mage Autocomplete
 
-Run `./bin/mage setup-autocomplete` and follow the instructions to setup autocomplete in your terminal.
+Run `./bin/mage setup-autocomplete` and follow the instructions to set up autocomplete in your terminal.

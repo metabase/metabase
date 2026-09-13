@@ -147,13 +147,12 @@ describe("cli init", () => {
     expect(pkg.name).toBe("my-custom-viz");
   });
 
-  it("uses normalized id and human-friendly display name in index.tsx", async () => {
+  it("uses human-friendly display name in index.tsx", async () => {
     await runCli(["init", "My Custom Viz"]);
     const indexTsx = readFileSync(
       join(tmpDir, "my-custom-viz", "src", "index.tsx"),
       "utf-8",
     );
-    expect(indexTsx).toContain('id: "my-custom-viz"');
     expect(indexTsx).toContain('getName: () => "My Custom Viz"');
   });
 

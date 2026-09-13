@@ -19,14 +19,25 @@ interface TestMcpApp {
   ontoolresult: (params: McpUiToolResultNotification["params"]) => void;
 }
 
+// `visualize_query` and `render_drill_through` put a handle in `structuredContent` and nothing
+// else, so every fixture here is handle-shaped. The queries below are what the callback API
+// resolves those handles to — see `resolveHandles`.
+const QUERY_HANDLE = "11111111-1111-4111-8111-111111111111";
+const NEXT_QUERY_HANDLE = "22222222-2222-4222-8222-222222222222";
+
 const QUERY_RESULT: McpUiToolResultNotification["params"] = {
   content: [],
-  structuredContent: { query: "encoded-query" },
+  structuredContent: { query_handle: QUERY_HANDLE },
 };
 
 const NEXT_QUERY_RESULT: McpUiToolResultNotification["params"] = {
   content: [],
-  structuredContent: { query: "next-encoded-query" },
+  structuredContent: { query_handle: NEXT_QUERY_HANDLE },
+};
+
+const HANDLE_RESULT: McpUiToolResultNotification["params"] = {
+  content: [],
+  structuredContent: { query_handle: "0f2a1c33-4b5e-4a6f-8c7d-9e0a1b2c3d4e" },
 };
 
 const createAuthResult = (
@@ -64,6 +75,24 @@ const setup = (overrides: Partial<TestMcpApp> = {}) => {
   return { app, ...renderHook(() => useMcpApp()) };
 };
 
+const mockFetchQueryByHandle = jest.fn();
+
+/** Default callback-API behaviour: each fixture handle resolves to its own query. */
+const resolveHandles = () =>
+  mockFetchQueryByHandle.mockImplementation(
+    ({ queryHandle }: { queryHandle: string }) =>
+      Promise.resolve({
+        query:
+          queryHandle === NEXT_QUERY_HANDLE
+            ? "next-encoded-query"
+            : "encoded-query",
+      }),
+  );
+
+jest.mock("../api", () => ({
+  fetchQueryByHandle: (...args: unknown[]) => mockFetchQueryByHandle(...args),
+}));
+
 jest.mock("@modelcontextprotocol/ext-apps/react", () => ({
   applyDocumentTheme: jest.fn(),
   applyHostFonts: jest.fn(),
@@ -77,6 +106,11 @@ describe("useMcpApp", () => {
     jest.restoreAllMocks();
 
     mockUseApp.mockReset();
+    mockFetchQueryByHandle.mockReset();
+  });
+
+  beforeEach(() => {
+    resolveHandles();
   });
 
   it("gets auth from the server tool instead of the visualization result", async () => {
@@ -382,5 +416,63 @@ describe("useMcpApp", () => {
     });
     expect(result.current.uiCredential).toBe("");
     expect(result.current.mcpSessionId).toBe("");
+  });
+
+  // The v2 tools emit `{query_handle}` and nothing else.
+  describe("v2 query_handle payloads", () => {
+    it("resolves a handle into a query once the credential exists", async () => {
+      mockFetchQueryByHandle.mockResolvedValue({
+        query: "resolved-encoded-query",
+        prompt: "show me orders",
+      });
+
+      const { app, result } = setup({
+        callServerTool: jest.fn().mockResolvedValue(createAuthResult()),
+        getHostCapabilities: jest.fn(() => ({ serverTools: {} })),
+      });
+
+      act(() => {
+        app.ontoolresult(HANDLE_RESULT);
+      });
+
+      await waitFor(() => {
+        expect(result.current.query).toBe("resolved-encoded-query");
+      });
+
+      expect(result.current.prompt).toBe("show me orders");
+      expect(result.current.queryError).toBeNull();
+
+      // Resolved with the credential from this refresh, not from React state,
+      // which has not committed at the time the callback fires.
+      expect(mockFetchQueryByHandle).toHaveBeenCalledWith(
+        expect.objectContaining({
+          queryHandle: "0f2a1c33-4b5e-4a6f-8c7d-9e0a1b2c3d4e",
+          uiCredential: "refreshed-credential",
+          mcpSessionId: "mcp-session-id",
+        }),
+      );
+    });
+
+    it("surfaces an error instead of spinning forever when a handle will not resolve", async () => {
+      mockFetchQueryByHandle.mockRejectedValue(
+        Object.assign(new Error("gone"), { status: 404 }),
+      );
+      jest.spyOn(console, "error").mockImplementation(() => {});
+
+      const { app, result } = setup({
+        callServerTool: jest.fn().mockResolvedValue(createAuthResult()),
+        getHostCapabilities: jest.fn(() => ({ serverTools: {} })),
+      });
+
+      act(() => {
+        app.ontoolresult(HANDLE_RESULT);
+      });
+
+      await waitFor(() => {
+        expect(result.current.queryError).toMatch(/expired/i);
+      });
+
+      expect(result.current.query).toBeNull();
+    });
   });
 });

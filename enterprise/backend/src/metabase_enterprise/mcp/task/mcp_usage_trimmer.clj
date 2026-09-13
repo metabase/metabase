@@ -8,10 +8,10 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
+   [metabase-enterprise.mcp.db :as mcp.db]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.task.core :as task]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.util.log :as log])
   (:import
    (org.quartz DisallowConcurrentExecution)))
 
@@ -30,8 +30,8 @@
         ;; Each table is pruned independently by its own created_at. Tool-call rows are
         ;; self-contained (identity is denormalized onto them, no session link), so pruning a
         ;; session row can never orphan a tool call.
-        (let [calls    (t2/delete! :model/McpToolCallLog {:where [:< :created_at cutoff]})
-              sessions (t2/delete! :model/McpSessionLog {:where [:< :created_at cutoff]})]
+        (let [calls    (mcp.db/delete-tool-call-logs-created-before! cutoff)
+              sessions (mcp.db/delete-session-logs-created-before! cutoff)]
           (log/infof "MCP usage log cleanup complete. Deleted %d tool-call and %d session rows."
                      (or calls 0) (or sessions 0)))))))
 

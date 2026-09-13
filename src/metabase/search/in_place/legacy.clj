@@ -158,7 +158,7 @@
 (mu/defn- add-table-db-id-clause
   "Add a WHERE clause to only return tables with the given DB id.
   Used in data picker for joins because we can't join across DB's."
-  [query :- ms/Map id :- [:maybe ms/PositiveInt]]
+  [query :- :map id :- [:maybe ms/PositiveInt]]
   (if (some? id)
     (sql.helpers/where query [:= id :db_id])
     query))
@@ -166,7 +166,7 @@
 (mu/defn- add-card-db-id-clause
   "Add a WHERE clause to only return cards with the given DB id.
   Used in data picker for joins because we can't join across DB's."
-  [query :- ms/Map id :- [:maybe ms/PositiveInt]]
+  [query :- :map id :- [:maybe ms/PositiveInt]]
   (if (some? id)
     (sql.helpers/where query [:= id :database_id])
     query))
@@ -539,7 +539,7 @@
       (search.in-place.filter/build-filters model context)))
 
 (mu/defn- shared-card-impl
-  [model :- ::queries.schema/card-type
+  [model :- ::queries.schema/card.type
    search-ctx :- SearchContext]
   (-> (base-query-for-model "card" search-ctx)
       (sql.helpers/where [:= :card.type (name model)])
@@ -688,7 +688,9 @@
     {:ctes    all-ctes
      :queries queries-without-ctes}))
 
-(defmethod search.engine/model-set :search.engine/in-place
+(defn model-set-query
+  "The Honey SQL query returning one row per search model with at least one result for `search-ctx` (every model is
+  considered, regardless of the context's `:models`), or nil when no model applies."
   [search-ctx]
   (let [raw-queries   (vec (for [model (search.in-place.filter/search-context->applicable-models
                                         ;; It's unclear why we don't use the existing :models
@@ -697,12 +699,11 @@
         {:keys [ctes queries]} (extract-and-hoist-ctes raw-queries)
         nested-queries (mapv #(vary-meta (hash-map :nest (vary-meta (sql.helpers/limit % 1) assoc :allow-subquery true))
                                          assoc :allow-subquery true)
-                             queries)
-        query          (when (pos-int? (count nested-queries))
-                         (cond-> {:select [:*]
-                                  :from   [[^:allow-subquery {:union-all nested-queries} :dummy_alias]]}
-                           (seq ctes) (assoc :with ctes)))]
-    (into #{} (map :model) (some-> query mdb/query))))
+                             queries)]
+    (when (pos-int? (count nested-queries))
+      (cond-> {:select [:*]
+               :from   [[^:allow-subquery {:union-all nested-queries} :dummy_alias]]}
+        (seq ctes) (assoc :with ctes)))))
 
 (mu/defn full-search-query
   "Postgres 9 is not happy with the type munging it needs to do to make the union-all degenerate down to a trivial case
@@ -730,17 +731,6 @@
                  :order-by order-clause
                  :limit    search.config/*db-max-results*}
           (seq ctes) (assoc :with ctes))))))
-
-;; Return a reducible-query corresponding to searching the entities without an index.
-(defn- results
-  [search-ctx]
-  (let [search-query (full-search-query search-ctx)]
-    (mdb/streaming-reducible-query search-query)))
-
-(defmethod search.engine/results
-  :search.engine/in-place
-  [search-ctx]
-  (results search-ctx))
 
 (defmethod search.engine/score :search.engine/in-place [search-ctx result]
   (scoring/score-and-result result search-ctx))

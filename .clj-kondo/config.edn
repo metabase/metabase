@@ -72,6 +72,7 @@
   :metabase/namespace-name                                   {:level :warning}
   :metabase/no-jsqlparser-imports                            {:level :warning}
   :metabase/prefer-with-dynamic-fn-redefs                    {:level :warning}
+  :metabase/t2-query-namespace                               {:level :warning}
   :metabase/toucan-model-ns                                  {:level :warning}
   :metabase/require-shape-checker                            {:level :warning}
   :metabase/tests-must-live-in-known-modules                 {:level :warning}
@@ -180,10 +181,16 @@
      clojure.core.async/take!
      clojure.core.async/to-chan!
      clojure.core.async/to-chan!!
-     ;; only writes .clj-kondo/ratchets.edn, from a :once fixture that finishes before the parallel tests
+     ;; writes the ratchet files from a :once fixture that finishes before the parallel tests
      dev.kondo-ratchet/fix!
      metabase.ai-tracing.core/record!
      metabase.api.macros.defendpoint.tools-manifest/assert-optional-fields-nullable!
+     ;; MCP v2 tool tests: call-tool! dispatches a tool with no shared mutable state across tests
+     metabase.mcp.v2.tools.alert-test/call-tool!
+     metabase.mcp.v2.tools.definitions-test/call-tool!
+     metabase.mcp.v2.tools.metric-test/call-tool!
+     ;; the `!` is for the throw (a teaching error), not a mutation; no shared mutable state
+     metabase.mcp.v2.tools.browse/validate-args-for-action!
      metabase.channel.core/send!
      metabase.channel.render.pdf/draw-too-large!
      metabase.channel.render.pdf/draw-no-results!
@@ -217,7 +224,9 @@
      ;; Safe in tests, where we typically use a private, temporary index per thread.
      metabase.search.core/reindex!
      metabase.util/run-count!
-     next.jdbc/execute!}}
+     next.jdbc/execute!
+     ;; pure validator: parses a keyword and throws on a bad one, touches no state
+     metabase.mcp.v2.tools.question/check-semantic-type!}}
 
   :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests
   {:level      :warning
@@ -280,10 +289,6 @@
     instaparse.core/transform
     (metabase.server.streaming-response/streaming-response)
     (metabase.driver.druid.query-processor-test/druid-query-returning-rows)
-    (metabase.util.match/match-one)
-    (metabase.util.match/match-many)
-    (metabase.util.match/replace-in)
-    (metabase.util.match/replace)
     (metabase.driver-api.core/match-one)
     (metabase.driver-api.core/match-many)
     (metabase.driver-api.core/replace)
@@ -469,6 +474,7 @@
   metabase-enterprise.serialization.metadata-file-import.wire-format-test/with-tiny-fixture! clojure.core/fn
   metabase-enterprise.serialization.test-util/with-dbs                                  clojure.core/fn
   metabase-enterprise.serialization.test-util/with-random-dump-dir                      clojure.core/let
+  metabase-enterprise.tenants.pulse-api-test/with-tenant-pulse-fixture!                 clojure.core/fn
   metabase-enterprise.workspaces.test-util/with-resources!                              clojure.core/let
   metabase-enterprise.workspaces.test-util/with-workspaces!                             clojure.core/let
   metabase.actions.test-util/with-actions                                               clojure.core/let
@@ -493,6 +499,7 @@
   metabase.driver.sql-jdbc.connection/with-connection-spec-for-testing-connection       clojure.core/let
   metabase.driver.sql-jdbc.execute.diagnostic/capturing-diagnostic-info                 clojure.core/fn
   metabase.driver-api.core/defsetting                                                   hooks.metabase.settings.models.setting/defsetting
+  metabase.mcp.v2.registry/deftool                                                      clojure.core/defn
   metabase.models.json-migration/def-json-migration                                     clj-kondo.lint-as/def-catch-all
   metabase.models.util.spec-update/define-spec                                          clojure.core/def
   metabase.notification.test-util/with-card-notification                                clojure.core/let
@@ -632,10 +639,50 @@
    metabase.lib.schema.mbql-clause/define-tuple-mbql-clause                                                                  hooks.metabase.lib.schema.mbql-clause/define-mbql-clause
    methodical.core/defmethod                                                                                                 hooks.metabase.toucan.table-name/lint-defmethod
    methodical.macros/defmethod                                                                                               hooks.metabase.toucan.table-name/lint-defmethod
+   metabase.app-db.core/query                                                                                                hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.app-db.core/streaming-reducible-query                                                                            hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.app-db.core/select-or-insert!                                                                                    hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.app-db.core/update-or-insert!                                                                                    hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.app-db.core/current-timestamp-string                                                                             hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.app-db.query/query                                                                                               hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.app-db.query/streaming-reducible-query                                                                           hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.app-db.query/select-or-insert!                                                                                   hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.app-db.query/update-or-insert!                                                                                   hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.app-db.query/current-timestamp-string                                                                            hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/count                                                                                                        hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/delete!                                                                                                      hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/exists?                                                                                                      hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/insert!                                                                                                      hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/insert-returning-instance!                                                                                   hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/insert-returning-instances!                                                                                  hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/insert-returning-pk!                                                                                         hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/insert-returning-pks!                                                                                        hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/query                                                                                                        hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/query-one                                                                                                    hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/reducible-query                                                                                              hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/reducible-select                                                                                             hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/reducible-update                                                                                             hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/reducible-update-returning-pks                                                                               hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/save!                                                                                                        hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select                                                                                                       hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-fn->fn                                                                                                hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-fn->pk                                                                                                hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-fn-reducible                                                                                          hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-fn-set                                                                                                hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-fn-vec                                                                                                hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-one                                                                                                   hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-one-fn                                                                                                hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-one-pk                                                                                                hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-pk->fn                                                                                                hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-pks-set                                                                                               hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-pks-vec                                                                                               hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/update!                                                                                                      hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/update-returning-pks!                                                                                        hooks.metabase.toucan.db-ns/lint-query-call
    metabase.lib.test-util.macros/$ids                                                                                        hooks.metabase.test.data/$ids
    metabase.lib.test-util.macros/mbql-query                                                                                  hooks.metabase.test.data/mbql-query
    metabase.lib.test-util.macros/mbql-5-query                                                                                hooks.metabase.test.data/mbql-query
    metabase.lib.test-util.macros/with-testing-against-standard-queries                                                       hooks.metabase.lib.test-util.macros/with-testing-against-standard-queries
+   metabase.mcp.v2.tools.parameters-test/with-fixtures                                                                       hooks.common/with-one-binding
    metabase.metrics.api-dimension-test/with-seeded-metric                                                                    hooks.common/with-one-binding
    metabase.model-persistence.api-test/with-persistence-setup!                                                               hooks.common/with-one-top-level-binding
    metabase.model-persistence.api-test/with-setup!                                                                           hooks.common/with-one-top-level-binding
@@ -735,6 +782,7 @@
    metabase.util.malli.registry/def                                                                                          hooks.metabase.util.malli.registry/def
    metabase.util.match/match-one                                                                                             hooks.metabase.util.match/match-one
    metabase.util.match/match-many                                                                                            hooks.metabase.util.match/match-many
+   metabase.util.match/matches?                                                                                              hooks.metabase.util.match/matches?
    metabase.util.match/replace                                                                                               hooks.metabase.util.match/replace
    metabase.util.match/replace-in                                                                                            hooks.metabase.util.match/replace-in
    metabase.util/case-enum                                                                                                   hooks.metabase.util/case-enum
@@ -803,7 +851,7 @@
    :name    test-namespaces}
   {:pattern "^(?!.*-test(?:\\..*)?$)(?!.*test-util)(?!^metabase\\.test.*).*$"
    :name    source-namespaces}
-  {:pattern "(?:(?:^metabase\\.cmd.*)|(?:^build.*)|(?:^metabuild-common.*)|(?:^release.*)|(?:^i18n.*)|(?:^lint-migrations-file$))|(?:^mage.*)|(?:^load-namespaces.*)"
+  {:pattern "(?:(?:^metabase\\.cmd.*)|(?:^build.*)|(?:^metabuild-common.*)|(?:^release.*)|(?:^i18n.*)|(?:^lint-migrations-file$))|(?:^mage.*)|(?:^load-namespaces.*)|(?:^dev\\..*)"
    :name    printable-namespaces}
   {:pattern "^metabase\\.(?:(?:lib)|(?:legacy-mbql))\\..*"
    :name    metabase-lib}
@@ -840,7 +888,13 @@
   {:pattern "^metabase(?:((?:-enterprise\\.sandbox)?\\.query-processor)|(?:\\.driver\\.sql(?!server)(?!ite))).*-test$"
    :name    general-qp-and-driver-test-namespaces}
   {:pattern "(?:^mage.*)"
-   :name    mage-namespaces}]
+   :name    mage-namespaces}
+  ;;
+  ;; the app-db module is the application database layer itself (connections, migrations, encryption), so it gets to
+  ;; run Toucan 2 queries anywhere.
+  ;;
+  {:pattern "^metabase\\.app-db\\..*"
+   :name    app-db-namespaces}]
 
  :config-in-ns
  {test-namespaces
@@ -850,12 +904,16 @@
     :private-call                                        {:level :off}
     :metabase/defsetting-must-specify-export             {:level :off}
     :metabase/defsetting-namespace                       {:level :off}
+    :metabase/t2-query-namespace                         {:level :off}
     :metabase/test-helpers-use-non-thread-safe-functions {:level :warning} ; more config in `.clj-kondo/config/test-helpers/config.edn`
 
     :discouraged-var
     {metabase.driver/database-supports? {:level :off}
      metabase.lib.convert/->legacy-MBQL {:level :off}
      metabase.lib.core/->legacy-MBQL    {:level :off}}}}
+
+  app-db-namespaces
+  {:linters {:metabase/t2-query-namespace {:level :off}}}
 
   ;; .cljc tests run in both Clojure and ClojureScript — `with-dynamic-fn-redefs` is JVM-only,
   ;; so leave these alone.

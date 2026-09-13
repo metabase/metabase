@@ -3,9 +3,9 @@ import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { MetabotAgentChainOfThoughtMessage } from "metabase/metabot/state";
-import { createMockState } from "metabase/redux/store/mocks";
 import { createMockDashboard } from "metabase-types/api/mocks";
 
 import { MetabotChainOfThought } from "./MetabotChainOfThought";
@@ -17,6 +17,7 @@ const chain = (
   role: "agent",
   type: "chain_of_thought",
   steps: [],
+  finished: false,
   ...overrides,
 });
 
@@ -31,7 +32,7 @@ const setup = (
     createMockDashboard({ id: 123, name: "Orders" }),
   );
   return renderWithProviders(
-    <MetabotChainOfThought message={message} isStreaming={isStreaming} />,
+    <MetabotChainOfThought part={{ ...message, finished: !isStreaming }} />,
     { storeInitialState: createMockState({ settings }) },
   );
 };
@@ -39,6 +40,10 @@ const setup = (
 const expandChain = async () => {
   await userEvent.click(screen.getByTestId("metabot-chain-of-thought-header"));
 };
+
+afterEach(() => {
+  delete window.overrideIsWithinIframe;
+});
 
 describe("MetabotChainOfThought", () => {
   it("shows Thinking for the empty shell while the turn is live", () => {
@@ -489,5 +494,63 @@ describe("MetabotChainOfThought", () => {
     await expandChain();
     expect(screen.getByText("Read 3 resources")).toBeInTheDocument();
     expect(screen.queryByText("Reading resource")).not.toBeInTheDocument();
+  });
+
+  it("keeps reasoning and entity names out of embedded sessions", async () => {
+    const message = chain({
+      steps: [
+        { kind: "reasoning", text: "Weighing the join order" },
+        {
+          kind: "tool",
+          id: "t1",
+          name: "search",
+          title: "revenue",
+          status: "ended",
+          searchResults: {
+            totalCount: 1,
+            results: [
+              {
+                id: 9,
+                type: "table",
+                name: "orders",
+                display_name: "Orders",
+                database_id: 1,
+                database_name: "Sample DB",
+                database_schema: "PUBLIC",
+              },
+            ],
+          },
+        },
+        {
+          kind: "tool",
+          id: "t2",
+          name: "read_resource",
+          title: "Orders",
+          status: "ended",
+        },
+      ],
+      startedAtMs: 1000,
+      endedAtMs: 2000,
+    });
+
+    window.overrideIsWithinIframe = true;
+    const { unmount } = setup(message, false);
+    await expandChain();
+    expect(screen.getByText("Searched")).toBeInTheDocument();
+    expect(screen.getByText("Read resource")).toBeInTheDocument();
+    expect(screen.queryByText("Thought briefly")).not.toBeInTheDocument();
+    expect(screen.queryByText("1 result")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Orders/)).not.toBeInTheDocument();
+    unmount();
+
+    delete window.overrideIsWithinIframe;
+    setup(message, false);
+    await expandChain();
+    await userEvent.click(screen.getByText("Thought briefly"));
+    expect(screen.getByText("Weighing the join order")).toBeInTheDocument();
+    expect(screen.getByText(/Searched for revenue/)).toBeInTheDocument();
+    expect(screen.getByText("Read Orders")).toBeInTheDocument();
+    await userEvent.click(screen.getByText("1 result"));
+    expect(screen.getByText("Sample DB", { exact: false })).toBeInTheDocument();
   });
 });

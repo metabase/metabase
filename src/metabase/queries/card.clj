@@ -90,7 +90,7 @@
   ([card param-key query-string]
    (card-param-values card param-key query-string nil))
 
-  ([card         :- ms/Map
+  ([card         :- ::queries.schema/card
     param-key    :- ::lib.schema.parameter/id
     query-string :- [:maybe ms/NonBlankString]
     constraints  :- [:maybe ::chain-filter/constraints]]

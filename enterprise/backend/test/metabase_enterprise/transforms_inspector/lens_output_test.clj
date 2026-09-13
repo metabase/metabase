@@ -2,6 +2,7 @@
   "Tests for lens card output validation and trigger flow."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms-inspector.core]
    [metabase-enterprise.transforms-inspector.lens.core :as lens.core]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -12,6 +13,8 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(comment metabase-enterprise.transforms-inspector.core/keep-me)
 
 ;;; -------------------------------------------------- Test context helpers --------------------------------------------------
 

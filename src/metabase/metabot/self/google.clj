@@ -31,6 +31,7 @@
    [metabase.llm.settings :as llm]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
+   [metabase.metabot.self.google.models :as models]
    [metabase.metabot.self.google.raw-predict :as raw-predict]
    [metabase.metabot.self.google.stream-generate-content :as stream-generate-content]
    [metabase.util :as u]
@@ -58,6 +59,25 @@
   There is also a `cloud-platform.read-only` scope, but inference calls made with the read-only scope are rejected."
   "https://www.googleapis.com/auth/cloud-platform")
 
+(def ^:private google-token-uris
+  "The complete `token_uri` values a service account key may carry: Google's current OAuth token endpoint and the
+  legacy one older keys still name. Whole URIs rather than hosts, because the transport posts whatever the key
+  says: a port, a query string, or another path on the same origin is not one of these endpoints."
+  #{"https://oauth2.googleapis.com/token"
+    "https://accounts.google.com/o/oauth2/token"})
+
+(defn- check-token-uri!
+  "Refuse a key whose `token_uri` is not one of Google's.
+  The credential library posts to that URL to mint an access token, before any request our own network policy
+  guards, so an admin-supplied key could otherwise point it at an internal host."
+  [^ServiceAccountCredentials creds]
+  (let [uri (.getTokenServerUri creds)]
+    (when-not (contains? google-token-uris (u/lower-case-en (str uri)))
+      (throw (ex-info (tru "Invalid Google service account key: token_uri must be a Google OAuth endpoint.")
+                      {:api-error   true
+                       :status-code 400
+                       :error-code  :invalid-service-account-key})))))
+
 (defn- parse-service-account-credentials
   "Parses a service account key JSON string into scoped `ServiceAccountCredentials`."
   ^ServiceAccountCredentials [^String sa-key]
@@ -76,6 +96,7 @@
                       {:api-error   true
                        :status-code 400
                        :error-code  :not-a-service-account-key})))
+    (check-token-uri! creds)
     (.createScoped ^ServiceAccountCredentials creds (Collections/singletonList cloud-platform-scope))))
 
 (def ^:private cached-service-account-credentials
@@ -293,16 +314,6 @@
   "The verb that serves Gemini models, asking for its stream as SSE rather than a JSON array."
   ":streamGenerateContent?alt=sse")
 
-(def ^:private gemini-context-windows
-  "Input context windows for known Google Gemini models, keyed by publisher-qualified model id.
-  Values:
-  - https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/3-5-flash
-  - https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/3-6-flash
-  - https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/3-7-flash"
-  {"google/gemini-3.5-flash" 1048576
-   "google/gemini-3.6-flash" 1048576
-   "google/gemini-3.7-flash" 1048576})
-
 (defn reasoning-model?
   "Whether a publisher-qualified `model` streams its reasoning back to us.
 
@@ -312,18 +323,19 @@
   [model]
   (case (model-families (model-publisher model))
     :anthropic (raw-predict/reasoning-model? (model-id model))
-    :google    (stream-generate-content/reasoning-model? (model-id model))
+    :google    (stream-generate-content/reasoning-model? model)
     false))
 
 (defn context-window-tokens
   "The input context window for a publisher-qualified `model`, or nil when it isn't one we know.
 
+  Gemini windows come from the [[models/catalog]], the same rows that drive the reasoning gate.
   Answers nil for a model this adapter cannot serve rather than throwing the way [[model->family]] does, for the
   same reason [[reasoning-model?]] does."
   [model]
   (case (model-families (model-publisher model))
     :anthropic (raw-predict/context-window-tokens (model-id model))
-    :google    (get gemini-context-windows model)
+    :google    (get-in models/catalog [model :context-window])
     nil))
 
 (defn- model-resource-path
@@ -506,7 +518,8 @@
   (let [family   (model->family model)
         req      (case family
                    :anthropic (raw-predict/request-body (model-id model) opts)
-                   :google    (stream-generate-content/request-body opts))
+                   ;; pass the defaulted model down: the thinking directive keys off it
+                   :google    (stream-generate-content/request-body (assoc opts :model model)))
         method   (case family
                    :anthropic raw-predict-method
                    :google    generate-content-method)

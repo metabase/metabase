@@ -5,6 +5,10 @@ import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
+import {
+  getShallowFields,
+  selectMetadataProvider,
+} from "metabase/metadata-store";
 import { connect } from "metabase/redux";
 import S from "metabase/reference/Reference.module.css";
 import Detail from "metabase/reference/components/Detail";
@@ -14,13 +18,14 @@ import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
 import { updateField } from "metabase/reference/update-actions";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { FieldId, User } from "metabase-types/api";
+import type * as Lib from "metabase-lib";
+import type { NormalizedField, User } from "metabase-types/api";
 
 import type { ReferenceRouteProps, StateWithReference } from "../selectors";
 import {
   getDatabase,
   getField,
+  getFieldId,
   getIsEditing,
   getIsFormulaExpanded,
   getTable,
@@ -45,44 +50,39 @@ const interestingQuestions = (
   database: StubbedDatabase,
   table: StubbedTable,
   field: StubbedField,
-  metadata: Metadata,
+  metadataProvider: Lib.MetadataProvider,
+  breakoutField: NormalizedField | undefined,
 ) => {
   return [
     {
       text: t`Number of ${table.display_name} grouped by ${field.display_name}`,
       icon: "bar" as const,
       link: getQuestionUrl({
-        dbId: database.id,
         tableId: table.id,
-        // Unjustified type cast. FIXME
-        fieldId: field.id as FieldId,
+        breakoutField,
         getCount: true,
         visualization: "bar",
-        metadata,
+        metadataProvider: metadataProvider,
       }),
     },
     {
       text: t`Number of ${table.display_name} grouped by ${field.display_name}`,
       icon: "pie" as const,
       link: getQuestionUrl({
-        dbId: database.id,
         tableId: table.id,
-        // Unjustified type cast. FIXME
-        fieldId: field.id as FieldId,
+        breakoutField,
         getCount: true,
         visualization: "pie",
-        metadata,
+        metadataProvider: metadataProvider,
       }),
     },
     {
       text: t`All distinct values of ${field.display_name}`,
       icon: "table2" as const,
       link: getQuestionUrl({
-        dbId: database.id,
         tableId: table.id,
-        // Unjustified type cast. FIXME
-        fieldId: field.id as FieldId,
-        metadata,
+        breakoutField,
+        metadataProvider: metadataProvider,
       }),
     },
   ];
@@ -95,6 +95,13 @@ const mapStateToProps = (
   const entity = getField(state, props) || {};
 
   return {
+    metadataProvider: selectMetadataProvider(
+      state,
+      getDatabase(state, props)?.id ?? null,
+    ),
+    // `getField` falls back to a stub with only an id, which cannot describe a
+    // column, so the breakout takes the loaded field or nothing
+    breakoutField: getShallowFields(state)?.[getFieldId(state, props)],
     entity,
     field: entity,
     table: getTable(state, props),
@@ -123,7 +130,8 @@ interface FieldDetailProps {
   endEditing: () => void;
   loading?: boolean;
   loadingError?: unknown;
-  metadata: Metadata;
+  metadataProvider: Lib.MetadataProvider;
+  breakoutField: NormalizedField | undefined;
 
   onSubmit: (fields: FieldDetailFormFields, props: any) => Promise<void>;
 }
@@ -139,7 +147,8 @@ const FieldDetail = (props: FieldDetailProps) => {
     isEditing,
     startEditing,
     endEditing,
-    metadata,
+    metadataProvider,
+    breakoutField,
     onSubmit,
   } = props;
 
@@ -275,7 +284,8 @@ const FieldDetail = (props: FieldDetailProps) => {
                         props.database,
                         props.table,
                         props.field,
-                        metadata,
+                        metadataProvider,
+                        breakoutField,
                       )}
                     />
                   </li>
@@ -293,7 +303,7 @@ const FieldDetail = (props: FieldDetailProps) => {
 // `metadata` is read here but selected by the container. Naming it keeps that
 // contract type-checked.
 type FieldDetailOwnProps = ReferenceRouteProps &
-  Pick<FieldDetailProps, "metadata"> &
+  Pick<FieldDetailProps, "metadataProvider" | "breakoutField"> &
   ReferenceLoadingProps;
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

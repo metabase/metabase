@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
+   [metabase.search.appdb.core :as search.appdb.core]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.appdb.scoring :as scoring]
    [metabase.search.appdb.specialization.api :as specialization]
@@ -41,7 +42,7 @@
 
 (defn search-results**
   [search-string raw-ctx]
-  (memoize/memo-clear! #'scoring/view-count-percentiles)
+  (memoize/memo-clear! #'search.appdb.core/view-count-percentiles)
   (search.tu/search-results search-string (assoc raw-ctx :search-engine "appdb")))
 
 (defn search-results*
@@ -79,7 +80,8 @@
                                    ;; Remove db-specific fields
                                    (remove #{:search-vector :query}))
                              (vals (scoring/scorers {:search-engine :search.engine/appdb
-                                                     :search-string ""})))
+                                                     :search-string ""}
+                                                    {})))
                        (set (cons :model (keys search.spec/attr-types))))))))
 
 ;; ---- index-ony rankers ----

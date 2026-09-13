@@ -24,11 +24,17 @@ const STORY_GLOBS = [
   "enterprise/frontend/**/*.stories.{js,jsx,ts,tsx}",
 ];
 
+// `git ls-files -- frontend enterprise/frontend` already prints just over a
+// megabyte of paths, and node's default maxBuffer is exactly 1 MiB: past that
+// the spawn dies with ENOBUFS. Give the listings room to grow.
+const LS_FILES_MAX_BUFFER = 64 * 1024 * 1024;
+
 // Returns the tracked files under `roots` that match `globs`. The `dot: true`
 // option means files inside dot-directories such as `.storybook` are included.
 function listFiles(roots: string[], globs: string[]): string[] {
   const tracked = execFileSync("git", ["ls-files", "--", ...roots], {
     encoding: "utf8",
+    maxBuffer: LS_FILES_MAX_BUFFER,
   })
     .split("\n")
     .map((line) => line.trim())

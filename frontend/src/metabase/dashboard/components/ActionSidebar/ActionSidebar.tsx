@@ -23,8 +23,8 @@ import {
 import { checkNotNull } from "metabase/utils/types";
 import type { ActionDashboardCard } from "metabase-types/api";
 
-const settings = checkNotNull(ActionViz.settings);
-const buttonVariantOptions = settings["button.variant"].getProps().options;
+const getButtonVariantOptions = () =>
+  checkNotNull(ActionViz.settings)["button.variant"].getProps().options;
 
 export function ActionSidebar() {
   const {
@@ -91,7 +91,7 @@ export function ActionSidebar() {
               title={t`Button variant`}
               label={t`Button variant`}
               name="button_variant"
-              data={buttonVariantOptions}
+              data={getButtonVariantOptions()}
               onChange={(value) =>
                 onUpdateDashCardVisualizationSettings(dashcard.id, {
                   "button.variant": value,

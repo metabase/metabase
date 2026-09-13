@@ -486,3 +486,47 @@
                              :coercion-strategy nil}))]
         (is (some #(contains? (last %) :fingerprint_version) updates)
             "base_type-change reset still includes fingerprint reset")))))
+
+(deftest base-type-change-leaves-data-sensitivity-test
+  (testing "the override write on a base type change does not include data_sensitivity"
+    (mt/with-temp [:model/Field {field-id :id} {:data_sensitivity :PII}]
+      (let [updates (updates-that-will-be-performed!
+                     (merge default-metadata
+                            {:id             field-id
+                             :base-type      :type/Text
+                             :effective-type :type/Text})
+                     (merge default-metadata
+                            {:id               field-id
+                             :base-type        :type/Integer
+                             :effective-type   :type/Integer
+                             :data-sensitivity :PII}))]
+        (is (= #{"FieldUserSettings" "Field"} (into #{} (map first) updates)))
+        (is (not-any? (fn [[_ _ changes]] (contains? changes :data_sensitivity)) updates)))))
+  (testing "a user-set label survives a column being dropped and re-created with a different type"
+    (mt/with-temp-test-data [["table"
+                              [{:field-name "field"
+                                :base-type  :type/Text}]
+                              [["ngoc@metabase.com"]]]]
+      (try
+        (sync/sync-table! (t2/select-one :model/Table (mt/id :table)))
+        (let [field-id (mt/id :table :field)]
+          (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:data_sensitivity "PII"})
+          (sql-jdbc.execute/do-with-connection-with-options
+           :h2
+           (mt/db)
+           {}
+           (fn [conn]
+             (doseq [sql ["ALTER TABLE \"TABLE\" DROP COLUMN \"FIELD\";"
+                          "ALTER TABLE \"TABLE\" ADD COLUMN \"FIELD\" INTEGER;"
+                          "INSERT INTO \"TABLE\"(field) VALUES(1);"]]
+               (next.jdbc/execute! conn [sql]))))
+          (sync/sync-table! (t2/select-one :model/Table (mt/id :table)))
+          (is (=? {:base_type        :type/Integer
+                   :effective_type   :type/Integer
+                   :data_sensitivity :PII}
+                  (t2/select-one :model/Field :id field-id)))
+          (is (=? {:effective_type   :type/Integer
+                   :data_sensitivity :PII}
+                  (t2/select-one :model/FieldUserSettings :field_id field-id))))
+        (finally
+          (t2/delete! :model/Database (mt/id)))))))

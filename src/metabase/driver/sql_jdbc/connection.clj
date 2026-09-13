@@ -9,6 +9,7 @@
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.connection :as driver.conn]
+   [metabase.driver.db :as driver.db]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
@@ -18,12 +19,10 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [get-in mapv select-keys]]
-   [potemkin :as p]
-   ;; pool invalidation re-fetches Database details from the app db; runs outside any query context
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2])
+   [potemkin :as p])
   (:import
-   (com.mchange.v2.c3p0 DataSources)
+   (com.mchange.v2.c3p0 C3P0ProxyConnection DataSources)
+   (java.sql Connection)
    (javax.sql DataSource)
    (org.apache.logging.log4j Level)))
 
@@ -414,7 +413,7 @@
       ;; the hash didn't match, but it's possible that a stale instance of `DatabaseInstance`
       ;; was passed in (ex: from a long-running sync operation); fetch the latest one from
       ;; our app DB, and see if it STILL doesn't match
-      (not= curr-hash (-> (t2/select-one [:model/Database :id :engine :details :write_data_details :admin_details] :id database-id)
+      (not= curr-hash (-> (driver.db/database-connection-details database-id)
                           jdbc-spec-hash)))))
 
 (defn- get-canonical-pool
@@ -546,3 +545,36 @@
 
 (defmethod driver/connection-spec :sql-jdbc [_driver db]
   (db->pooled-connection-spec  db))
+
+(def ^:private raw-connection-close-method
+  ;; c3p0 exposes the pooled physical Connection only through `rawConnectionOperation`, which names the operation as a
+  ;; `java.lang.reflect.Method`. `unwrap` is not an alternative: c3p0 delegates it to the driver, and Hive's throws.
+  (.getMethod Connection "close" (make-array Class 0)))
+
+(defn discard-pooled-connection!
+  "Destroy the physical Connection behind a c3p0 proxy, so the pool acquires a fresh one rather than handing this one
+  to the next query. Use for a Connection left in a state the pool cannot reset, such as after canceling a Statement
+  on a driver where that leaves unread protocol state on the wire.
+
+  Only the caller that owns `conn` may call this: the pool has no way to tell the difference between a Connection
+  whose borrower is finished with it and one that is still in use.
+
+  A Connection with no pool behind it has no next query to poison, so it is left alone."
+  [^Connection conn]
+  (when (instance? C3P0ProxyConnection conn)
+    (try
+      (.rawConnectionOperation ^C3P0ProxyConnection conn
+                               raw-connection-close-method
+                               C3P0ProxyConnection/RAW_CONNECTION
+                               (make-array Object 0))
+      (catch Throwable e
+        (log/debugf "Closing the raw connection to discard it failed: %s" (ex-message e))))
+    ;; Closing the raw Connection is invisible to c3p0: `rawConnectionOperation` reports nothing back to the pool, and
+    ;; the check-in reset only reads properties that a driver may answer from memory once closed — Hive's
+    ;; `getAutoCommit` is a bare `return true` — so on those drivers the pool would hand the dead Connection to the
+    ;; next query. Any *proxied* call routes its exception into c3p0, which then tests the physical Connection and
+    ;; destroys it when the test fails. `createStatement` is that call: JDBC requires it to throw on a closed
+    ;; Connection.
+    (try
+      (.close (.createStatement conn))
+      (catch Throwable _))))

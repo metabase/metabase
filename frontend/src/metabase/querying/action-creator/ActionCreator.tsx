@@ -6,8 +6,6 @@ import {
   useGetCardQuery,
   useListDatabasesQuery,
 } from "metabase/api";
-import { getMetadata } from "metabase/metadata-store";
-import { useSelector } from "metabase/redux";
 import type {
   Card,
   CardId,
@@ -57,7 +55,6 @@ export function ActionCreator({
   const { data: model } = useGetCardQuery(
     modelId != null ? { id: modelId } : skipToken,
   );
-  const metadata = useSelector(getMetadata);
   // `dataset_query.database` and not `database_id`: the v1 wrapper this
   // replaced read the database off the query, and the two can differ.
   const modelDatabase = databases?.data.find(
@@ -73,7 +70,6 @@ export function ActionCreator({
     <ActionContextProvider
       initialAction={contextAction}
       databaseId={databaseId}
-      metadata={metadata}
     >
       <ActionCreatorContent
         modelId={modelId}

@@ -86,7 +86,7 @@
     (doseq [category-name-options (lib.tu.macros/$ids venues
                                     [{:source-field %category-id}
                                      {:source-field               %category-id
-                                      ::some-other-namespaced-key true}])]
+                                      :qp/ignore-coercion true}])]
       (testing (format "\ncategories.name field options = %s" (pr-str category-name-options))
         (let [{:keys [remaps query]} (#'qp.add-remaps/add-fk-remaps
                                       (lib/query

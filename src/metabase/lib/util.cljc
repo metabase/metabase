@@ -23,7 +23,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
-   [metabase.util.performance :refer [every? mapv select-keys update-keys some get-in #?(:clj for)]]))
+   [metabase.util.performance :refer [every? mapv select-keys update-keys some get-in dropv #?(:clj for)]]))
 
 #?(:clj
    (set! *warn-on-reflection* true))
@@ -221,7 +221,7 @@
   (cond-> m
     (contains? m legacy-key) (update legacy-key #(if (and (vector? %)
                                                           (= (first %) :and))
-                                                   (vec (drop 1 %))
+                                                   (dropv 1 %)
                                                    [%]))
     (contains? m legacy-key) (set/rename-keys {legacy-key mbql5-key})))
 

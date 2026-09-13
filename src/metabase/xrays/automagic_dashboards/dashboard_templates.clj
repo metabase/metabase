@@ -9,6 +9,7 @@
    [malli.transform :as mtx]
    [metabase.dashboards.constants :as dashboards.constants]
    [metabase.query-processor.util :as qp.util]
+   [metabase.types.core :as types]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.i18n :as i18n]
@@ -16,7 +17,8 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :as perf]
    [metabase.util.yaml :as yaml]
-   [metabase.xrays.automagic-dashboards.populate :as populate])
+   [metabase.xrays.automagic-dashboards.populate :as populate]
+   [metabase.xrays.automagic-dashboards.util :as magic.util])
   (:import
    (java.nio.file Files Path)))
 
@@ -106,7 +108,7 @@
 
 (defn- table-type?
   [t]
-  (isa? t :entity/*))
+  (isa? types/entity-hierarchy t :entity/*))
 
 (def ^:private TableType
   [:and
@@ -334,7 +336,7 @@
 
 (defn- specificity
   [dashboard-template]
-  (transduce (map (comp count ancestors)) + (:applies_to dashboard-template)))
+  (transduce (map magic.util/ancestor-count) + (:applies_to dashboard-template)))
 
 (defn- ensure-default-card-sizes
   "Given a card definition from a template, fill in the card template with default width and height

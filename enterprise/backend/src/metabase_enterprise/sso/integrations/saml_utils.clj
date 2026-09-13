@@ -2,6 +2,7 @@
   "Functions for handling SAML authentication with the SDK side, including HTML popups"
   (:require
    [java-time.api :as t]
+   [metabase.server.middleware.security :as mw.security]
    [metabase.util.json :as json])
   (:import
    (java.time Instant)))
@@ -49,10 +50,13 @@
 </html>"))
 
 (defn create-token-response
-  "Create a token response with HTML and JavaScript to post the auth message"
+  "Create a token response with HTML and JavaScript to post the auth message. The inline script carries the
+  session key and timestamps, so it varies per request and no build-time hash can cover it. The response
+  opts into a `script-src` nonce for that reason."
   [session origin continue-url nonce]
   (let [current-time (t/instant)
         expiration-time (t/plus current-time (t/seconds 86400))]
     {:status 200
      :headers {"Content-Type" "text/html"}
+     mw.security/script-nonce-response-key true
      :body (generate-saml-html-popup (:key session) expiration-time current-time origin continue-url nonce)}))

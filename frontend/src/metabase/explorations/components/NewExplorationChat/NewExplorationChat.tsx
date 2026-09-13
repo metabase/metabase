@@ -21,26 +21,30 @@ import {
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
 import type {
-  MetabotChatMessage,
+  MetabotAgentDataPartMessage,
+  MetabotDataPart,
   MetabotDebugToolCallMessage,
+  MetabotMessagePart,
 } from "metabase/metabot/state";
 import { Box, Flex, Stack, Text } from "metabase/ui";
-import type {
-  AddResearchGroupsResponse,
-  RemoveFromResearchPlanResponse,
-} from "metabase-types/api";
+import type { RemoveFromResearchPlanResponse } from "metabase-types/api";
 
 import S from "./NewExplorationChat.module.css";
 
 export const EXPLORATIONS_AGENT_ID = "explorations";
 
-const ADD_RESEARCH_GROUPS_TOOL = "add_research_groups";
 const REMOVE_FROM_RESEARCH_PLAN_TOOL = "remove_from_research_plan";
 const SET_RESEARCH_NAME_TOOL = "set_research_name";
 const SELECT_RESEARCH_TIMELINES_TOOL = "select_research_timelines";
 
 type MetabotToolCallMessageWithResult = MetabotDebugToolCallMessage & {
   result: string;
+};
+
+// `add_research_groups` delivers its picker hydration on a data part rather than in its tool
+// result, because that result is also the agent's LLM context.
+type ResearchPlanUpdateMessage = MetabotAgentDataPartMessage & {
+  part: Extract<MetabotDataPart, { type: "data-research_plan_update" }>;
 };
 
 export interface NewExplorationChatProps {
@@ -103,18 +107,16 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
 
   const [sendToast] = useToast();
 
-  const handleAddResearchGroupsToolCallMessages = useCallback(
-    (messages: MetabotToolCallMessageWithResult[]) => {
+  const handleResearchPlanUpdateMessages = useCallback(
+    (messages: ResearchPlanUpdateMessage[]) => {
       const trackMetricsEdited = once(() =>
         trackExplorationPlanEdited("agent", "metrics"),
       );
 
       try {
         for (const message of messages) {
-          // tool result shape verified by the backend
-          const { metrics, dimension_groups, groups } = JSON.parse(
-            message.result,
-          ) as AddResearchGroupsResponse;
+          // data part shape verified by the backend
+          const { metrics, dimension_groups, groups } = message.part.data;
 
           const metricsById = new Map(metrics.map((m) => [m.id, m] as const));
           const dimensionsById = indexDimensionsById(dimension_groups);
@@ -242,28 +244,28 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
       return;
     }
 
-    const unprocessedMessages = messages.filter(
-      (message) => !processedMessageIdsRef.current.has(message.id),
-    );
-    for (const message of unprocessedMessages) {
-      processedMessageIdsRef.current.add(message.id);
+    const unprocessedParts = messages
+      .flatMap((message) => message.parts)
+      .filter((part) => !processedMessageIdsRef.current.has(part.id));
+    for (const part of unprocessedParts) {
+      processedMessageIdsRef.current.add(part.id);
     }
 
-    handleAddResearchGroupsToolCallMessages(
-      unprocessedMessages.filter(isAddResearchGroupsToolCallMessage),
+    handleResearchPlanUpdateMessages(
+      unprocessedParts.filter(isResearchPlanUpdateMessage),
     );
     handleRemoveFromResearchPlanToolCallMessages(
-      unprocessedMessages.filter(isRemoveFromResearchPlanToolCallMessage),
+      unprocessedParts.filter(isRemoveFromResearchPlanToolCallMessage),
     );
     handleSetExplorationNameToolCallMessages(
-      unprocessedMessages.filter(isSetExplorationNameToolCallMessage),
+      unprocessedParts.filter(isSetExplorationNameToolCallMessage),
     );
     handleSelectExplorationTimelinesToolCallMessages(
-      unprocessedMessages.filter(isSelectExplorationTimelinesToolCallMessage),
+      unprocessedParts.filter(isSelectExplorationTimelinesToolCallMessage),
     );
   }, [
     isDoingScience,
-    handleAddResearchGroupsToolCallMessages,
+    handleResearchPlanUpdateMessages,
     handleRemoveFromResearchPlanToolCallMessages,
     handleSetExplorationNameToolCallMessages,
     handleSelectExplorationTimelinesToolCallMessages,
@@ -348,20 +350,18 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
   );
 }
 
-function isAddResearchGroupsToolCallMessage(
-  message: MetabotChatMessage,
-): message is MetabotToolCallMessageWithResult {
+function isResearchPlanUpdateMessage(
+  message: MetabotMessagePart,
+): message is ResearchPlanUpdateMessage {
   return (
     message.role === "agent" &&
-    message.type === "tool_call" &&
-    message.name === ADD_RESEARCH_GROUPS_TOOL &&
-    !message.is_error &&
-    !!message.result
+    message.type === "data_part" &&
+    message.part.type === "data-research_plan_update"
   );
 }
 
 function isRemoveFromResearchPlanToolCallMessage(
-  message: MetabotChatMessage,
+  message: MetabotMessagePart,
 ): message is MetabotToolCallMessageWithResult {
   return (
     message.role === "agent" &&
@@ -373,7 +373,7 @@ function isRemoveFromResearchPlanToolCallMessage(
 }
 
 function isSetExplorationNameToolCallMessage(
-  message: MetabotChatMessage,
+  message: MetabotMessagePart,
 ): message is MetabotToolCallMessageWithResult {
   return (
     message.role === "agent" &&
@@ -385,7 +385,7 @@ function isSetExplorationNameToolCallMessage(
 }
 
 function isSelectExplorationTimelinesToolCallMessage(
-  message: MetabotChatMessage,
+  message: MetabotMessagePart,
 ): message is MetabotToolCallMessageWithResult {
   return (
     message.role === "agent" &&

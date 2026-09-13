@@ -1,7 +1,7 @@
 import { createMockMetadata } from "__support__/metadata";
+import { createMockLocation } from "__support__/state";
 import { getNextId } from "__support__/utils";
 import { serializeCardForUrl } from "metabase/common/utils/card";
-import { createMockLocation } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";

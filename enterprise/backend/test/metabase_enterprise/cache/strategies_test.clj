@@ -53,8 +53,7 @@
             (testing "strategy = duration"
               (let [query (assoc query :cache-strategy {:type            :duration
                                                         :duration        1
-                                                        :unit            "minutes"
-                                                        :min_duration_ms 0})]
+                                                        :unit            "minutes"})]
                 (testing "Results are stored and available immediately"
                   (mt/with-clock #t "2024-02-13T10:00:00Z"
                     (is (=? (mkres nil)

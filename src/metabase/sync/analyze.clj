@@ -5,14 +5,15 @@
    and infer field semantic types."
   (:require
    [metabase.sync.analyze.classify :as classify]
+   [metabase.sync.analyze.data-sensitivity :as sync.data-sensitivity]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.analyze.interestingness :as sync.interestingness]
+   [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 ;; How does analysis decide which Fields should get analyzed?
 ;;
@@ -55,21 +56,12 @@
 (mu/defn- update-fields-last-analyzed!
   "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in `table`."
   [table :- i/TableInstance]
-  (t2/update! :model/Field
-              (merge (sync.fingerprint/incomplete-analysis-kvs)
-                     {:table_id (:id table)})
-              {:last_analyzed :%now}))
+  (sync.db/mark-incomplete-fields-analyzed-for-table! (:id table) i/*latest-fingerprint-version*))
 
 (mu/defn- update-fields-last-analyzed-for-db!
   "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in `database`."
   [database :- i/DatabaseInstance]
-  (t2/update! :model/Field
-              (merge (sync.fingerprint/incomplete-analysis-kvs)
-                     {:table_id [:in ^:allow-subquery
-                                 {:select [:id]
-                                  :from   [(t2/table-name :model/Table)]
-                                  :where  [:and sync-util/sync-tables-clause [:= :db_id (:id database)]]}]})
-              {:last_analyzed :%now}))
+  (sync.db/mark-incomplete-fields-analyzed-for-database! (:id database) i/*latest-fingerprint-version*))
 
 (mu/defn analyze-table!
   "Perform in-depth analysis for a `table`."
@@ -78,6 +70,7 @@
   (classify/classify-fields! table)
   (classify/classify-table! table)
   (sync.interestingness/score-fields! table)
+  (sync.data-sensitivity/scan-table! table)
   (update-fields-last-analyzed! table))
 
 (defn- maybe-log-progress [progress-bar-fn]
@@ -102,6 +95,10 @@
   (format "Interestingness scored %d fields, %d failed"
           fields-scored fields-failed))
 
+(defn- data-sensitivity-summary [{:keys [fields-scanned fields-labeled fields-failed]}]
+  (format "Data sensitivity scanned %d fields, labeled %d, %d failed"
+          fields-scanned fields-labeled fields-failed))
+
 (defn- make-analyze-steps [log-fn]
   [(sync-util/create-sync-step "fingerprint-fields"
                                #(sync.fingerprint/fingerprint-fields-for-db! % log-fn)
@@ -114,7 +111,10 @@
                                classify-tables-summary)
    (sync-util/create-sync-step "score-interestingness"
                                #(sync.interestingness/score-fields-for-db! % log-fn)
-                               interestingness-summary)])
+                               interestingness-summary)
+   (sync-util/create-sync-step "classify-data-sensitivity"
+                               #(sync.data-sensitivity/scan-fields-for-db! % log-fn)
+                               data-sensitivity-summary)])
 
 (mu/defn- analyze-db!*
   "Shared core of [[analyze-db!]] and [[analyze-db-explicit!]]: the analysis work, without the

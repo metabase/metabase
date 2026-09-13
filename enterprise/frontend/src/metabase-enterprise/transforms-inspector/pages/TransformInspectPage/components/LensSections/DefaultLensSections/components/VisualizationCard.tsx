@@ -2,13 +2,12 @@ import { memo } from "react";
 
 import { useGetAdhocQueryMetadataQuery } from "metabase/api";
 import { useSnapshotSelector } from "metabase/common/hooks";
-import { getMetadata } from "metabase/metadata-store";
+import { selectMetadataProvider } from "metabase/metadata-store";
 import { Box, Card, Loader, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
 import { defaultDisplay } from "metabase-lib/query/display";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   CardDisplayType,
   Dataset,
@@ -40,7 +39,10 @@ export const VisualizationCard = memo(
       card.dataset_query,
     );
 
-    const metadata = useSnapshotSelector(getMetadata, [isMetadataLoading]);
+    const metadataProvider = useSnapshotSelector(
+      (state) => selectMetadataProvider(state, card.dataset_query.database),
+      [isMetadataLoading],
+    );
 
     if (card.display === "hidden") {
       return null;
@@ -50,7 +52,7 @@ export const VisualizationCard = memo(
     const drillLenses = drillLensesByCardId[card.id] ?? [];
 
     const { displayType, displaySettings } = getDisplayConfig(
-      metadata,
+      metadataProvider,
       card,
       isMetadataLoading,
     );
@@ -99,7 +101,7 @@ export const VisualizationCard = memo(
 VisualizationCard.displayName = "VisualizationCard";
 
 const getDisplayConfig = (
-  metadata: Metadata,
+  metadataProvider: Lib.MetadataProvider,
   card: InspectorCard,
   isMetadataLoading: boolean,
 ) => {
@@ -108,7 +110,7 @@ const getDisplayConfig = (
   }
 
   try {
-    const query = Lib.fromJsQueryAndMetadata(metadata, card.dataset_query);
+    const query = Lib.fromJsQuery(metadataProvider, card.dataset_query);
     const { display, settings = {} } = defaultDisplay(query);
     const finalDisplay =
       display === "table" || display === "bar" ? card.display : display;
