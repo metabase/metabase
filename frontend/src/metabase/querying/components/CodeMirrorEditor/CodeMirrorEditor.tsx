@@ -14,7 +14,7 @@ import {
   CodeMirror,
   type CodeMirrorRef,
 } from "metabase/common/components/CodeMirror";
-import { useUserMetabotPermissions } from "metabase/metabot/hooks";
+import { PLUGIN_SQL_GENERATION } from "metabase/querying/plugins";
 import { isEventOverElement } from "metabase/utils/dom";
 import * as Lib from "metabase-lib";
 import type { CardId } from "metabase-types/api";
@@ -72,7 +72,7 @@ export const CodeMirrorEditor = forwardRef<
   ref,
 ) {
   const editorRef = useRef<CodeMirrorRef>(null);
-  const { hasSqlGenerationAccess } = useUserMetabotPermissions();
+  const hasSqlGenerationAccess = PLUGIN_SQL_GENERATION.useHasAccess();
   const placeholder =
     placeholderProp ??
     getPlaceholderText(Lib.engine(query), hasSqlGenerationAccess);

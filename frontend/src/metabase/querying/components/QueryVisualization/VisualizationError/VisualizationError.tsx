@@ -10,7 +10,7 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { getEngineNativeType } from "metabase/databases/utils/engine";
-import { FixSqlQueryButton } from "metabase/metabot/components/FixSqlQueryButton";
+import { PLUGIN_SQL_GENERATION } from "metabase/querying/plugins";
 import { useSelector } from "metabase/redux";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
@@ -167,7 +167,7 @@ export function VisualizationError({
                 {t`Learn how to debug SQL errors`}
               </ExternalLink>
             )}
-            <FixSqlQueryButton />
+            <PLUGIN_SQL_GENERATION.FixQueryButton />
           </Flex>
         </Flex>
       </Box>

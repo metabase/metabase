@@ -8,7 +8,9 @@ import {
 } from "react";
 import type { ResizableBoxProps } from "react-resizable";
 
+import { getMetabotVisible } from "metabase/metabot/state";
 import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor";
+import { useSelector } from "metabase/redux";
 import { Box } from "metabase/ui";
 import { isReducedMotionPreferred } from "metabase/utils/dom";
 import { checkNotNull } from "metabase/utils/types";
@@ -48,6 +50,9 @@ function DatasetQueryEditorInner({
   ...props
 }: DatasetQueryEditorProps) {
   const { isNative } = Lib.queryDisplayInfo(question.query());
+  const isMetabotSidebarOpen = useSelector((state) =>
+    getMetabotVisible(state, "omnibot"),
+  );
 
   const [isResizing, setResizing] = useState(false);
 
@@ -91,6 +96,7 @@ function DatasetQueryEditorInner({
           question={question}
           query={checkNotNull(question.legacyNativeQuery())} // memoized query
           isInitiallyOpen
+          canAutoOpenDataReference={!isMetabotSidebarOpen}
           onSetDatabaseId={onSetDatabaseId}
         >
           {isActive && (

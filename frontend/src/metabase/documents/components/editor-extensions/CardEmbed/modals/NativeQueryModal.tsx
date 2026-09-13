@@ -6,12 +6,13 @@ import EmptyCodeResult from "assets/img/empty-states/code.svg";
 import { datasetApi } from "metabase/api/dataset";
 import { getErrorMessage as getResponseErrorMessage } from "metabase/api/utils";
 import { ErrorMessage } from "metabase/common/components/ErrorMessage";
+import { getMetabotVisible } from "metabase/metabot/state";
 import { useQuestionFromCard } from "metabase/metadata-store";
 import { defaultClickActionMode } from "metabase/querying/click-actions/lib/modes";
 import { DataReference } from "metabase/querying/components/DataReference/DataReference";
 import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
 import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor";
-import { useDispatch } from "metabase/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
 import { Box, Button, Flex, Loader, Modal, Stack, Text } from "metabase/ui";
 import { isMac } from "metabase/utils/browser";
@@ -119,6 +120,9 @@ export const NativeQueryModal = ({
   const [isShowingTemplateTagsEditor, setIsShowingTemplateTagsEditor] =
     useState(false);
   const [isShowingDataReference, setIsShowingDataReference] = useState(false);
+  const isMetabotSidebarOpen = useSelector((state) =>
+    getMetabotVisible(state, "omnibot"),
+  );
   const [dataReferenceStack, setDataReferenceStack] = useState<
     DataReferenceItem[]
   >([]);
@@ -339,6 +343,7 @@ export const NativeQueryModal = ({
                   query={nativeQuery}
                   isNativeEditorOpen
                   isInitiallyOpen
+                  canAutoOpenDataReference={!isMetabotSidebarOpen}
                   availableHeight={totalHeight}
                   isRunnable
                   isRunning={isQueryRunning}

@@ -240,11 +240,7 @@ const elements = [
   createElement({ type: "shared", name: "parameters" }),
   createElement({ type: "shared", name: "plugins", enforceSharedTiers: false }),
   createElement({ type: "shared", name: "pulse" }),
-  createElement({
-    type: "shared",
-    name: "querying",
-    enforceSharedTiers: false,
-  }),
+  createElement({ type: "shared", name: "querying" }),
   createElement({ type: "shared", name: "questions" }),
   createElement({ type: "shared", name: "redux", enforceSharedTiers: false }),
   createElement({ type: "shared", name: "rich_text_editing" }),

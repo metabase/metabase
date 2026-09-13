@@ -1,4 +1,5 @@
 import { useInlineSQLPrompt } from "metabase/metabot/components/MetabotInlineSQLPrompt";
+import { getMetabotVisible } from "metabase/metabot/state";
 import { NativeQueryParametersList } from "metabase/parameters/components/NativeQueryParametersList";
 import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor";
 import type { QueryModalType } from "metabase/querying/constants";
@@ -80,6 +81,9 @@ export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {
   );
 
   const inlineSQLPrompt = useInlineSQLPrompt(question, "qb");
+  const isMetabotSidebarOpen = useSelector((state) =>
+    getMetabotVisible(state, "omnibot"),
+  );
 
   // Normally, when users open native models,
   // they open an ad-hoc GUI question using the model as a data source
@@ -100,6 +104,7 @@ export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {
         query={legacyNativeQuery}
         highlightedLineNumbers={highlightedLineNumbers}
         isInitiallyOpen={isNativeEditorOpen}
+        canAutoOpenDataReference={!isMetabotSidebarOpen}
         onSetDatabaseId={onSetDatabaseId}
         extensions={inlineSQLPrompt?.extensions}
         proposedQuestion={inlineSQLPrompt?.proposedQuestion}

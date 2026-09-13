@@ -15,7 +15,6 @@ import { useMount } from "react-use";
 import { t } from "ttag";
 
 import { useListCollectionsQuery, useListSnippetsQuery } from "metabase/api";
-import { getMetabotVisible } from "metabase/metabot/state";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import {
   CodeMirrorEditor,
@@ -70,6 +69,7 @@ export type NativeQueryEditorCoreProps = Omit<
   "query"
 > & {
   availableHeight?: number;
+  canAutoOpenDataReference?: boolean;
   canChangeDatabase?: boolean;
   cancelQuery?: () => void;
   className?: string;
@@ -132,6 +132,7 @@ export const NativeQueryEditorRoot = forwardRef<
   const {
     children,
     availableHeight = Infinity,
+    canAutoOpenDataReference = true,
     canChangeDatabase = true,
     cancelQuery,
     className,
@@ -201,11 +202,8 @@ export const NativeQueryEditorRoot = forwardRef<
 
   // do not show reference sidebar on small screens automatically
   const screenSize = useNotebookScreenSize();
-  const isMetabotSidebarOpen = useSelector((state) =>
-    getMetabotVisible(state, "omnibot"),
-  );
   const shouldOpenDataReference =
-    screenSize !== "small" && !isMetabotSidebarOpen;
+    screenSize !== "small" && canAutoOpenDataReference;
 
   useMount(() => {
     setIsNativeEditorOpen?.(
