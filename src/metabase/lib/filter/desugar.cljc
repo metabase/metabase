@@ -291,10 +291,10 @@
 
 (mu/defn- desugar-divide-with-extra-args :- ::clause
   [expression :- ::clause]
-  (match/replace expression
-    [:/ opts x y z & more]
-    (&recur (-> (apply lib.expression// (lib.expression// x y) z more)
-                (merge-options opts)))))
+  (match/replace-all expression
+                     [:/ opts x y z & more]
+                     (-> (apply lib.expression// (lib.expression// x y) z more)
+                         (merge-options opts))))
 
 (mu/defn- temporal-case-expression :- :mbql.clause/case
   "Creates a `:case` expression with a condition for each value of the given unit."
@@ -318,10 +318,10 @@
   Uses the user's locale rather than the site locale, so the results will depend on the runner of the query, not just
   the query itself. Filtering should be done based on the number, rather than the name."
   [expression :- ::clause]
-  (match/replace expression
-    [:month-name   opts expr] (&recur (temporal-case-expression expr opts :month-of-year   12))
-    [:quarter-name opts expr] (&recur (temporal-case-expression expr opts :quarter-of-year  4))
-    [:day-name     opts expr] (&recur (temporal-case-expression expr opts :day-of-week      7))))
+  (match/replace-all expression
+                     [:month-name   opts expr] (temporal-case-expression expr opts :month-of-year   12)
+                     [:quarter-name opts expr] (temporal-case-expression expr opts :quarter-of-year  4)
+                     [:day-name     opts expr] (temporal-case-expression expr opts :day-of-week      7)))
 
 (mu/defn- desugar-expression :- ::clause
   "Rewrite various 'syntactic sugar' expressions like `:/` with more than two args into something simpler for drivers

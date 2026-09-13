@@ -427,6 +427,20 @@
       ~form
       ~(when contains-&parents? []))))
 
+(defmacro replace-all
+  "Like `replace`, but walks the `form` from the inside outwards, thus applying the transform multiple times (in a
+  \"postwalk\" fashion). Doesn't support `&parents` anaphora yet."
+  [form & clauses]
+  (let [replace-fn-symb (gensym "replace-")
+        contains-&parents? (contains-symbol? clauses '&parents)]
+    (when contains-&parents?
+      (throw (ex-info "&parents is not supported by replace-postwalk." {})))
+    `(perf/postwalk (fn ~replace-fn-symb [~'&match]
+                      (match-one ~'&match
+                        ~@clauses
+                        ~'_ ~'&match))
+                    ~form)))
+
 (defmacro replace-in
   "Like `replace`, but only replaces things in the part of `x` in the keypath `ks` (i.e. the way to `update-in` works.)"
   {:style/indent :defn}
