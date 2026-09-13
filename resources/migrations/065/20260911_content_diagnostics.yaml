@@ -132,9 +132,14 @@ databaseChangeLog:
       preConditions:
         - onFail: MARK_RAN
         - not:
-            - uniqueConstraintExists:
-                tableName: content_diagnostics_finding
-                constraintName: idx_uniq_cd_finding
+            # MySQL/MariaDB implement the constraint as an index of the same name, which uniqueConstraintExists misses
+            - or:
+                - uniqueConstraintExists:
+                    tableName: content_diagnostics_finding
+                    constraintName: idx_uniq_cd_finding
+                - indexExists:
+                    tableName: content_diagnostics_finding
+                    indexName: idx_uniq_cd_finding
       changes:
         - addUniqueConstraint:
             tableName: content_diagnostics_finding
