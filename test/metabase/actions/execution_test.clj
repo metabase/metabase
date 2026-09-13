@@ -194,6 +194,24 @@
             (is (=? {:context :public-action-execute, :executor_id nil}
                     (first (mt/action-executions since))))))))))
 
+(deftest public-implicit-execution-skips-impersonation-lookup-test
+  ;; the OSS `impersonation-enforced-for-db?` throws without a user, so the audit must not ask it on a public form
+  (testing "a public implicit execution records is_impersonated false and logs no lookup error"
+    (mt/test-helpers-set-global-values!
+      (mt/with-premium-features #{}
+        (mt/with-actions-test-data-and-actions-enabled
+          (mt/with-actions [{:keys [action-id]} {:type :implicit :kind "row/update"}]
+            (let [action (action/select-action :id action-id)
+                  since  (mt/latest-query-execution-id)]
+              (mt/with-log-messages-for-level [messages [metabase.actions.audit :warn]]
+                (request/as-admin
+                  (actions.execution/execute-action! action {"id" 1 "name" "Bird"}
+                                                     {:allow-http-actions? false
+                                                      :context             :public-action-execute}))
+                (is (=? {:context :public-action-execute, :executor_id nil, :is_impersonated false}
+                        (first (mt/action-executions since))))
+                (is (empty? (messages)))))))))))
+
 (deftest parameters-are-pii-gated-test
   (mt/test-helpers-set-global-values!
     (mt/with-actions-test-data-and-actions-enabled

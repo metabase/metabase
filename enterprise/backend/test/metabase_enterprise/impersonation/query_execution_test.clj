@@ -80,3 +80,24 @@
                              (actions.execution/execute-action! (action/select-action :id bad-action-id) {})))
                 (is (=? {:is_impersonated true, :error some?}
                         (first (mt/action-executions since))))))))))))
+
+(deftest implicit-action-row-records-impersonation-test
+  (testing "an implicit action records is_impersonated from the user's policy on the database, as reads do"
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-actions-test-data-and-actions-enabled
+        (mt/with-actions [{:keys [action-id]} {:type :implicit :kind "row/update"}]
+          (impersonation.util-test/with-impersonations!
+            {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+             :attributes     {"impersonation_attr" "impersonation_role"}}
+            ;; H2 can't switch roles, so a true here comes from the policy, as it does for reads on H2
+            (testing "impersonated user"
+              (let [since (mt/latest-query-execution-id)]
+                (actions.execution/execute-action! (action/select-action :id action-id) {"id" 1 "name" "Bird"})
+                (is (=? {:is_impersonated true, :native false, :error nil}
+                        (first (mt/action-executions since))))))
+            (testing "admins are never impersonated"
+              (mt/with-test-user :crowberto
+                (let [since (mt/latest-query-execution-id)]
+                  (actions.execution/execute-action! (action/select-action :id action-id) {"id" 1 "name" "Bird"})
+                  (is (=? {:is_impersonated false, :error nil}
+                          (first (mt/action-executions since)))))))))))))

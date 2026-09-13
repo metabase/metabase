@@ -12,6 +12,7 @@
    [metabase.analytics.settings :as analytics.settings]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
+   [metabase.permissions.core :as perms]
    [metabase.queries.models.query :as query]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -36,6 +37,20 @@
    ;; the input values that were actually supplied: PII-gated into `parameters`
    [:inputs       [:sequential :any]]])
 
+(defn- impersonated?
+  "Whether an enforced connection-impersonation policy applies to the current user on `database-id`: the question the
+  QP's impersonation preprocessing asks, so these rows agree with read rows. A lookup error (e.g. conflicting sandbox
+  and impersonation policies) is logged and reads as false, so auditing never fails the action."
+  [database-id]
+  (boolean
+   ;; public forms run with no user, and the OSS impl throws without one
+   (when (and api/*current-user-id* database-id)
+     (try
+       (perms/impersonation-enforced-for-db? database-id)
+       (catch Throwable e
+         (log/warnf e "Could not resolve connection impersonation for database %d" database-id)
+         false)))))
+
 ;; Mirrors `query-execution-info` in [[metabase.query-processor.middleware.process-userland-query]]; keep the two row
 ;; shapes in step when a column is added to `query_execution`.
 (mu/defn- execution-row
@@ -57,8 +72,8 @@
    :started_at      (t/zoned-date-time)
    ;; an action row can never be a cache hit; setting it keeps the EE cache-rerun join from ever matching
    :cache_hit       false
-   ;; the userland row always writes both; the native site overrides them from its captured snapshot
-   :is_impersonated false
+   ;; native rows take both from the writeback QP's snapshot; other rows skip the QP, so ask the policy directly
+   :is_impersonated (if native? false (impersonated? database-id))
    :is_db_routed    false
    :result_rows     0
    :running_time    0})

@@ -104,6 +104,7 @@
            model-persistence
            models
            parameters
+           permissions
            public-sharing
            queries
            query-processor
