@@ -920,12 +920,17 @@
    (qp.setup/with-qp-setup [query query]
      (let [query             (-> query
                                  qp.middleware.normalize/normalize-preprocessing-middleware
-                                 lib/prepare-after-deserialization)
-           db                (query-database query)
-           sql-driver?       (isa? driver/hierarchy (:engine db) :sql)
-           use-single-query? (and sql-driver? (qp.settings/use-native-pivot-tables))
-           primary           (if use-single-query? run-sql-pivot-query run-pivot-query-multi)]
-       (binding [qp.pipeline/*pivot?* true]
-         (if (and sql-driver? (pivot-parity-enabled?))
-           (run-with-parity-check query rff use-single-query?)
-           (primary query rff)))))))
+                                 lib/prepare-after-deserialization)]
+       ;; Pivot compilation assumes the last stage has both `:breakout` and `:aggregation`; without them
+       ;; there's nothing to group over or aggregate so we fall through to a plain non-pivot run.
+       (if (or (empty? (lib/breakouts query))
+               (empty? (lib/aggregations query)))
+         (qp/process-query query rff)
+         (let [db                (query-database query)
+               sql-driver?       (isa? driver/hierarchy (:engine db) :sql)
+               use-single-query? (and sql-driver? (qp.settings/use-native-pivot-tables))
+               primary           (if use-single-query? run-sql-pivot-query run-pivot-query-multi)]
+           (binding [qp.pipeline/*pivot?* true]
+             (if (and sql-driver? (pivot-parity-enabled?))
+               (run-with-parity-check query rff use-single-query?)
+               (primary query rff)))))))))
