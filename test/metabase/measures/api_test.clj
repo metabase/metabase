@@ -2,6 +2,7 @@
   "Tests for /api/measure endpoints."
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.measures.api-test]}}}}}}
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.response :as api.response]
    [metabase.lib-be.core :as lib-be]
@@ -117,10 +118,14 @@
     (testing "an updated definition must still be a valid MBQL query with a source table"
       (mt/with-temp [:model/Measure {:keys [id]} {:table_id   (mt/id :venues)
                                                   :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
-        (is (=? {:errors {:definition some?}}
-                (mt/user-http-request :crowberto :put 400 (str "measure/" id)
-                                      {:revision_message "no more source table"
-                                       :definition       {}})))))
+        (let [response (mt/user-http-request :crowberto :put 400 (str "measure/" id)
+                                             {:revision_message "no more source table"
+                                              :definition       {}})]
+          (is (=? {:errors {:definition some?}} response))
+          ;; The schema's own rule has to render, wherever malli files it. It used to be a
+          ;; `deferred-tru` under `:error/message`, which malli could not stringify, so the reason
+          ;; never reached the caller at all.
+          (is (str/includes? (pr-str response) "measure definition must have a source table")))))
     (testing "a definition that moves the Measure to another table keeps table_id in sync"
       (mt/with-temp [:model/Measure {:keys [id]} {:table_id   (mt/id :venues)
                                                   :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]

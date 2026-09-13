@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
 import { useHasTokenFeature } from "metabase/common/hooks";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
 import { LocalizationUpsellPage } from "metabase/embedding-hub/upsells";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { SettingsPageWrapper } from "metabase/settings-components";
 
 /**

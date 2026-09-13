@@ -265,6 +265,14 @@
      (str/join "&" (remove #(re-matches #"(?i)enablePutGet(=.*)?" %)
                            (str/split additional-options #"&"))))))
 
+;; we used to have schema as a top-level key but it's been gone for a while now
+;; but there's no way to remove it; you can only set it in additional-options.
+;; so that method needs to take precedence.
+(defn- remove-schema-if-in-additional [{:keys [additional-options] :as details}]
+  (if (and additional-options (re-find #"schema=" additional-options))
+    (dissoc details :schema)
+    details))
+
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake
   [_ {:keys [account additional-options host use-hostname password use-password], :as details}]
   (when (get "week_start" (sql-jdbc.common/additional-options->map additional-options :url))
@@ -314,6 +322,7 @@
                    ;; see https://github.com/metabase/metabase/issues/9511
                    (update :warehouse upcase-not-nil)
                    (m/update-existing :schema upcase-not-nil)
+                   (remove-schema-if-in-additional)
                    resolve-private-key
                    (dissoc :host :port :timezone)))
         (sql-jdbc.common/handle-additional-options (update details

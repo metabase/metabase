@@ -216,6 +216,28 @@ function EditingGroupRow({
 
 // ------------------------------------------------------------ Groups Table: not editing ------------------------------------------------------------
 
+function GroupNameCell({ group }: { group: GroupInfo }) {
+  const name = getGroupNameLocalized(group);
+  const membersLink = PLUGIN_TENANTS.isTenantGroup(group)
+    ? `${getTenantsBasePath()}/groups/${group.id}`
+    : `/admin/people/groups/${group.id}`;
+
+  return (
+    <Flex
+      component={Link}
+      align="center"
+      to={membersLink}
+      className={CS.link}
+      gap="md"
+    >
+      <UserAvatar user={{ name }} bg={groupIdToColor(group.id)} />
+      <Box component="span" fw={700} c="core-brand">
+        {name}
+      </Box>
+    </Flex>
+  );
+}
+
 interface GroupRowProps {
   group: GroupInfo;
   groupBeingEdited: GroupInfo | null;
@@ -237,18 +259,11 @@ function GroupRow({
   onEditGroupCancelClicked,
   onEditGroupDoneClicked,
 }: GroupRowProps) {
-  const backgroundColor = groupIdToColor(group.id);
   const showActionsButton =
     !isDefaultGroup(group) &&
     !isAdminGroup(group) &&
     !PLUGIN_TENANTS.isExternalUsersGroup(group);
   const editing = groupBeingEdited && groupBeingEdited.id === group.id;
-
-  const isTenantGroup = PLUGIN_TENANTS.isTenantGroup(group);
-
-  const membersLink = isTenantGroup
-    ? `${getTenantsBasePath()}/groups/${group.id}`
-    : `/admin/people/groups/${group.id}`;
 
   return editing ? (
     <EditingGroupRow
@@ -261,21 +276,7 @@ function GroupRow({
   ) : (
     <tr aria-label={`group-${group.id}-row`}>
       <td>
-        <Flex
-          component={Link}
-          align="center"
-          to={membersLink}
-          className={CS.link}
-          gap="lg"
-        >
-          <UserAvatar
-            user={{ name: getGroupNameLocalized(group) }}
-            bg={backgroundColor}
-          />
-          <Box component="span" fw={700} c="core-brand">
-            {getGroupNameLocalized(group)}
-          </Box>
-        </Flex>
+        <GroupNameCell group={group} />
       </td>
       <td aria-label="member-count">
         {group.member_count || 0}

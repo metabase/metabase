@@ -39,7 +39,6 @@ export {
   type CollectionAuthorityLevelDisplayProps,
   type CollectionAuthorityLevelIcon,
 } from "./oss/collections";
-export { PLUGIN_CONTENT_TRANSLATION } from "./oss/content-translation";
 export {
   type LoadCustomVizPluginForDisplayResult,
   PLUGIN_CUSTOM_VIZ,
@@ -104,6 +103,7 @@ export { PLUGIN_MODEL_PERSISTENCE } from "./oss/model-persistence";
 export {
   PLUGIN_MULTI_FACTOR_AUTH,
   type AuthChallengeFormProps,
+  type AuthEnrollmentFormProps,
 } from "./oss/multi-factor-auth";
 export {
   PLUGIN_MODERATION,
