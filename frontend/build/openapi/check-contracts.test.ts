@@ -15,7 +15,7 @@ const script = resolve("frontend/build/openapi/check-contracts.ts");
 
 describe("contract checker CLI", () => {
   let root: string;
-  const id = "frontend/src/api.ts:example:response.2XX";
+  const endpointId = "endpoints:example";
   const write = (path: string, contents: string) => {
     const target = join(root, path);
     mkdirSync(dirname(target), { recursive: true });
@@ -51,13 +51,13 @@ describe("contract checker CLI", () => {
       export type GetApiUserResponses = { "2XX": { owner: Owner } };
     `,
     );
-    write("frontend/build/openapi/baseline.json", "{}");
+    write("frontend/build/openapi/baseline.json", "[]");
   });
 
   afterEach(() => rmSync(root, { recursive: true, force: true }));
 
   it("explains exempted nested mismatches without changing the baseline", () => {
-    const baseline = JSON.stringify({ [id]: "mismatch" });
+    const baseline = JSON.stringify([endpointId]);
     write("frontend/build/openapi/baseline.json", baseline);
     const result = run("--explain", "example");
     assert.equal(result.status, 0, result.stderr);
@@ -104,4 +104,92 @@ describe("contract checker CLI", () => {
     assert.equal(result.status, 1);
     assert.match(result.stderr, /Missing generated declarations/);
   });
+
+  it("updates the baseline once per failing endpoint and keeps every diagnostic", () => {
+    const generated = ".tmp/openapi/types/types.gen.d.ts";
+    write(
+      generated,
+      readFileSync(join(root, generated), "utf8").replace(
+        "body?: never",
+        "body: { name: string }",
+      ),
+    );
+    write(
+      "frontend/build/openapi/baseline.json",
+      JSON.stringify(["removedApi:oldEndpoint"]),
+    );
+    const update = run("--update-baseline");
+    assert.equal(update.status, 0, update.stderr);
+    assert.deepEqual(
+      JSON.parse(
+        readFileSync(
+          join(root, "frontend/build/openapi/baseline.json"),
+          "utf8",
+        ),
+      ),
+      [endpointId],
+    );
+    const result = run();
+    assert.equal(result.status, 0, result.stderr);
+    const report = JSON.parse(
+      readFileSync(join(root, ".tmp/openapi/contracts-report.json"), "utf8"),
+    );
+    assert.equal(report.endpointCount, 1);
+    assert.deepEqual(report.exemptEndpoints, [endpointId]);
+    assert.ok(
+      report.results.filter((r: { status: string }) => r.status === "mismatch")
+        .length >= 2,
+    );
+    write("frontend/build/openapi/baseline.json", "[]");
+    assert.equal(run().status, 1);
+  });
+
+  it("reports stale exemptions without failing or editing the baseline", () => {
+    const generated = ".tmp/openapi/types/types.gen.d.ts";
+    write(
+      generated,
+      readFileSync(join(root, generated), "utf8").replace(
+        "string | null",
+        "string",
+      ),
+    );
+    const baseline = JSON.stringify([endpointId, "removedApi:oldEndpoint"]);
+    write("frontend/build/openapi/baseline.json", baseline);
+    const result = run();
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(
+      result.stdout,
+      /2 endpoint exemptions have no current failures/,
+    );
+    const report = JSON.parse(
+      readFileSync(join(root, ".tmp/openapi/contracts-report.json"), "utf8"),
+    );
+    assert.deepEqual(report.staleExemptions, [
+      endpointId,
+      "removedApi:oldEndpoint",
+    ]);
+    assert.equal(
+      readFileSync(join(root, "frontend/build/openapi/baseline.json"), "utf8"),
+      baseline,
+    );
+  });
+
+  it("does not let a stale exemption hide an unexempted endpoint's failure", () => {
+    write(
+      "frontend/build/openapi/baseline.json",
+      JSON.stringify(["removedApi:oldEndpoint"]),
+    );
+    const result = run();
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /endpoints:example:response.2XX/);
+  });
+
+  for (const baseline of [{ oldCheck: "mismatch" }, [42], [""], null]) {
+    it(`rejects malformed baseline ${JSON.stringify(baseline)}`, () => {
+      write("frontend/build/openapi/baseline.json", JSON.stringify(baseline));
+      const result = run();
+      assert.equal(result.status, 1);
+      assert.match(result.stderr, /array of non-empty endpoint IDs/);
+    });
+  }
 });

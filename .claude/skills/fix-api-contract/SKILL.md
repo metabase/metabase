@@ -1,6 +1,6 @@
 ---
 name: fix-api-contract
-description: Investigate and fix API contract checker diagnostics, or bring a selected Metabase RTK endpoint's request or response checks under enforcement.
+description: Investigate and fix API contract checker diagnostics, or bring a selected Metabase RTK endpoint under enforcement.
 ---
 
 # Fix an API contract
@@ -66,14 +66,23 @@ a regression test when in scope, or report the unsupported case as remaining wor
 
 ## Remove exemptions and verify
 
-`frontend/build/openapi/baseline.json` is an exemption list, keyed by individual checks such as
-`getErd:request.query` or `getErd:response.2XX` (prefixed by the source path). A response exemption covers
-all its fields. Requests and responses can be adopted separately.
+`frontend/build/openapi/baseline.json` is an array of endpoint IDs, such as
+`tableApi:getTablePublishingInfo`. IDs use enclosing API/factory declaration names and endpoint names;
+file paths and line numbers are diagnostic locations, not exemption identities. An exemption covers
+every request and response check on that endpoint, regardless of its current failures or statuses.
+The checker still reports all results for exempt endpoints. Unexempted endpoints fail the gate for
+any mismatch or unverified check.
 
-A zero exit status can mean the selected failure is still exempted. Confirm the targeted checks are
-present in the report with status `pass`, then remove their exact baseline entries. `ignored` and
-`unverified` do not count as adopted. Do not bulk-refresh the baseline or add exemptions to claim a fix.
-An obsolete-exemption error after a fix means its entry needs removal.
+A zero exit status can mean the endpoint is still exempted. To adopt an endpoint, resolve all of its
+mismatches and unverified checks, remove its endpoint ID from the baseline, and rerun the gate.
+Intentionally ignored responses remain visible as coverage limitations. Do not bulk-refresh the
+baseline or add exemptions to claim a contract fix.
+
+Fixed or removed endpoints may leave stale exemptions; these are informational and never fail the
+gate. They appear in `staleExemptions` in the report. Remove them when reviewing adoption or cleanup.
+`bun run api-contract-check-pure --update-baseline` replaces the list with all currently failing
+endpoint IDs, removing stale entries and accepting existing failures. Use it for an intentional
+baseline refresh and review the diff; it does not fix the underlying contracts.
 
 Run the full contract command after backend changes, or `api-contract-check-pure` after frontend-only
 changes against the current snapshot. Run `bun run type-check-pure` for affected frontend code and the

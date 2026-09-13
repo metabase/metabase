@@ -2,6 +2,7 @@ import ts from "typescript";
 
 export interface ContractResult {
   id: string;
+  endpointId: string;
   file: string;
   line: number;
   status: "pass" | "mismatch" | "unverified" | "ignored";
@@ -18,6 +19,27 @@ function propertyName(node: ts.Node): string | undefined {
   return ts.isIdentifier(node) || ts.isStringLiteral(node)
     ? node.text
     : undefined;
+}
+
+// Declaration names survive file moves and line changes. Keep source locations
+// in diagnostics, and reject ambiguous identities instead of sharing exemptions.
+function endpointIdentity(node: ts.CallExpression, name?: string): string {
+  const names = name ? [name] : [];
+  for (let parent = node.parent; parent; parent = parent.parent) {
+    if (
+      (ts.isVariableDeclaration(parent) || ts.isFunctionDeclaration(parent)) &&
+      parent.name &&
+      ts.isIdentifier(parent.name)
+    ) {
+      names.unshift(parent.name.text);
+    }
+  }
+  if (!names.length) {
+    throw new Error(
+      "Cannot identify an RTK endpoint; give its API or factory a named declaration.",
+    );
+  }
+  return names.join(":");
 }
 
 function member(object: ts.ObjectLiteralExpression, name: string) {
@@ -461,6 +483,7 @@ export function checkContracts(
   }
   const backend = operations(checker, generated);
   const results: ContractResult[] = [];
+  const endpointLocations = new Map<string, string>();
   for (const file of endpointFiles) {
     const source = program.getSourceFile(file);
     if (!source) {
@@ -487,14 +510,22 @@ export function checkContracts(
       const name = ts.isPropertyAssignment(node.parent)
         ? propertyName(node.parent.name)
         : undefined;
-      const endpoint = `${file}:${name ?? `anonymous-line-${line}`}`;
+      const endpointId = endpointIdentity(node, name);
+      const previousLocation = endpointLocations.get(endpointId);
+      if (previousLocation) {
+        throw new Error(
+          `Duplicate endpoint identity ${endpointId} at ${previousLocation} and ${file}:${line}; give API or factory declarations distinct names.`,
+        );
+      }
+      endpointLocations.set(endpointId, `${file}:${line}`);
       const add = (
         part: string,
         status: ContractResult["status"],
         message: string,
       ) => {
         results.push({
-          id: `${endpoint}:${part}`,
+          id: `${endpointId}:${part}`,
+          endpointId,
           file,
           line,
           status,
@@ -709,22 +740,11 @@ export function checkContracts(
 
 export function baselineProblems(
   results: ContractResult[],
-  baseline: Record<string, string>,
+  baseline: readonly string[],
 ): string[] {
-  const violations = new Map(
-    results
-      .filter((r) => r.status === "mismatch" || r.status === "unverified")
-      .map((r) => [r.id, r]),
-  );
-  const problems = [...violations.values()]
-    .filter((r) => baseline[r.id] !== r.status)
+  const exemptEndpoints = new Set(baseline);
+  return results
+    .filter((r) => r.status === "mismatch" || r.status === "unverified")
+    .filter((r) => !exemptEndpoints.has(r.endpointId))
     .map((r) => `${r.file}:${r.line} ${r.id}\n  ${r.status}: ${r.message}`);
-  for (const id of Object.keys(baseline)) {
-    if (!violations.has(id)) {
-      problems.push(
-        `${id}: remove the obsolete baseline exemption (fixed, removed, or renamed check).`,
-      );
-    }
-  }
-  return problems;
 }

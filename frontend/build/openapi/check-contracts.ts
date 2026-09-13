@@ -11,24 +11,17 @@ const baselinePath = resolve(root, "frontend/build/openapi/baseline.json");
 const generatedPath = resolve(root, ".tmp/openapi/types/types.gen.d.ts");
 const reportPath = resolve(root, ".tmp/openapi/contracts-report.json");
 
-function readBaseline(): Record<string, string> {
+function readBaseline(): string[] {
   const value: unknown = JSON.parse(readFileSync(baselinePath, "utf8"));
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    throw new Error(
-      "Contract baseline must be an object mapping check IDs to mismatch/unverified.",
-    );
-  }
-  const entries = Object.entries(value);
   if (
-    entries.some(
-      ([, status]) => status !== "mismatch" && status !== "unverified",
-    )
+    !Array.isArray(value) ||
+    value.some((id) => typeof id !== "string" || !id.trim())
   ) {
     throw new Error(
-      "Invalid baseline status: expected mismatch or unverified.",
+      "Contract baseline must be an array of non-empty endpoint IDs.",
     );
   }
-  return Object.fromEntries(entries);
+  return [...new Set(value)];
 }
 
 function main(): void {
@@ -79,13 +72,22 @@ function main(): void {
   for (const result of results.filter((r) => /:response(?:\.|$)/.test(r.id))) {
     responseCounts[result.status] += 1;
   }
-  const endpointCount = new Set(
-    results.map((r) => r.id.slice(0, r.id.lastIndexOf(":"))),
-  ).size;
+  const endpointCount = new Set(results.map((r) => r.endpointId)).size;
+  const failingEndpoints = new Set(
+    results
+      .filter((r) => r.status === "mismatch" || r.status === "unverified")
+      .map((r) => r.endpointId),
+  );
+  const exemptEndpoints = updateBaseline
+    ? [...failingEndpoints].sort()
+    : readBaseline();
+  const staleExemptions = exemptEndpoints.filter(
+    (id) => !failingEndpoints.has(id),
+  );
   mkdirSync(dirname(reportPath), { recursive: true });
   writeFileSync(
     reportPath,
-    `${JSON.stringify({ endpointCount, counts, responseCounts, results }, null, 2)}\n`,
+    `${JSON.stringify({ endpointCount, counts, responseCounts, exemptEndpoints, staleExemptions, results }, null, 2)}\n`,
   );
   if (explain) {
     const matching = results.filter((result) => result.id.includes(explain));
@@ -99,22 +101,24 @@ function main(): void {
     }
   }
   if (updateBaseline) {
-    const exemptions = results.filter(
-      (r) => r.status === "mismatch" || r.status === "unverified",
-    );
     writeFileSync(
       baselinePath,
-      `${JSON.stringify(Object.fromEntries(exemptions.map((r) => [r.id, r.status])), null, 2)}\n`,
+      `${JSON.stringify(exemptEndpoints, null, 2)}\n`,
     );
     console.log(
-      `Updated ${exemptions.length} exemptions. Review the baseline diff before committing.`,
+      `Updated ${exemptEndpoints.length} endpoint exemptions. Review the baseline diff before committing.`,
     );
   } else {
-    const problems = baselineProblems(results, readBaseline());
+    const problems = baselineProblems(results, exemptEndpoints);
     if (problems.length) {
       console.error(problems.join("\n\n"));
       process.exitCode = 1;
     }
+  }
+  if (staleExemptions.length) {
+    console.log(
+      `${staleExemptions.length} endpoint exemptions have no current failures (informational; see staleExemptions in the report).`,
+    );
   }
   console.log(
     `API contracts: ${counts.pass} compatible, ${counts.mismatch} mismatched, ${counts.unverified} unverified, ${counts.ignored} intentionally ignored.`,

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { afterEach, describe, it } from "node:test";
 
 import ts from "typescript";
@@ -525,7 +525,8 @@ describe("API contract checks", () => {
 
 describe("incremental enforcement", () => {
   const result: ContractResult = {
-    id: "api.ts:example:response",
+    id: "exampleApi:example:response.2XX",
+    endpointId: "exampleApi:example",
     file: "api.ts",
     line: 10,
     status: "mismatch",
@@ -533,29 +534,123 @@ describe("incremental enforcement", () => {
   };
 
   it("rejects new mismatches and permits explicitly baselined debt", () => {
-    assert.equal(baselineProblems([result], {}).length, 1);
+    assert.equal(baselineProblems([result], []).length, 1);
+    assert.deepEqual(baselineProblems([result], [result.endpointId]), []);
+  });
+
+  it("exempts every check on an endpoint as failures and coverage change", () => {
     assert.deepEqual(
-      baselineProblems([result], { [result.id]: "mismatch" }),
+      baselineProblems(
+        [
+          {
+            ...result,
+            status: "unverified",
+            message: "response schema missing",
+          },
+          { ...result, id: "exampleApi:example:request.body" },
+          { ...result, id: "exampleApi:example:request.path.0" },
+        ],
+        [result.endpointId],
+      ),
       [],
     );
   });
 
-  it("requires removing exemptions after a fix or disappearing check", () => {
-    assert.equal(
-      baselineProblems([{ ...result, status: "pass" }], {
-        [result.id]: "mismatch",
-      }).length,
-      1,
-    );
-    assert.equal(baselineProblems([], { [result.id]: "mismatch" }).length, 1);
+  it("does not fail for fixed, ignored, or removed endpoints", () => {
+    for (const status of ["pass", "ignored"] as const) {
+      assert.deepEqual(
+        baselineProblems([{ ...result, status }], [result.endpointId]),
+        [],
+      );
+    }
+    assert.deepEqual(baselineProblems([], [result.endpointId]), []);
   });
 
-  it("does not let a mismatching check silently become unverified", () => {
-    assert.equal(
-      baselineProblems([{ ...result, status: "unverified" }], {
-        [result.id]: "mismatch",
-      }).length,
-      1,
+  it("enforces all failures once the endpoint exemption is removed", () => {
+    for (const status of ["mismatch", "unverified"] as const) {
+      assert.equal(baselineProblems([{ ...result, status }], []).length, 1);
+    }
+  });
+
+  it("does not exempt another API's endpoint with the same name", () => {
+    assert.equal(baselineProblems([result], ["anotherApi:example"]).length, 1);
+  });
+});
+
+describe("endpoint identities", () => {
+  const definition = `
+    declare const builder: { query<R, A>(definition: unknown): unknown };
+    const tableApi = { example: builder.query<{}, void>({ query: () => ({ url: "/api/user" }) }) };
+  `;
+  const checkFiles = (files: Record<string, string>) => {
+    const root = mkdtempSync(join(tmpdir(), "contract-identities-"));
+    directories.push(root);
+    const paths = Object.entries(files).map(([name, contents]) => {
+      const file = join(root, name);
+      mkdirSync(dirname(file), { recursive: true });
+      writeFileSync(file, `${contents}\nexport {};`);
+      return file;
+    });
+    const generated = join(root, "types.gen.d.ts");
+    writeFileSync(
+      generated,
+      `export type GetApiUserData = { url: "/api/user"; body?: never; query?: never; path?: never };
+       export type GetApiUserResponses = { "2XX": {} };`,
+    );
+    const program = ts.createProgram([...paths, generated], { strict: true });
+    return checkContracts(program, paths, generated, root);
+  };
+
+  it("preserves exemptions across file moves and line changes", () => {
+    const before = checkFiles({ "api.ts": definition });
+    const after = checkFiles({ "moved/table.ts": `\n\n${definition}` });
+    assert.deepEqual(
+      after.map((r) => r.id),
+      before.map((r) => r.id),
+    );
+    assert.equal(after[0]?.endpointId, "tableApi:example");
+    assert.notEqual(after[0]?.file, before[0]?.file);
+    assert.notEqual(after[0]?.line, before[0]?.line);
+  });
+
+  it("identifies unsupported factories by declaration names instead of lines", () => {
+    const factory = `
+      declare const builder: { mutation<R, A>(definition: unknown): unknown };
+      const dashboardApi = (() => {
+        const updateProperties = () => builder.mutation<{}, void>({});
+        return { updateProperties };
+      })();
+    `;
+    const before = checkFiles({ "dashboard.ts": factory });
+    const after = checkFiles({ "moved.ts": `\n\n${factory}` });
+    assert.equal(before[0]?.endpointId, "dashboardApi:updateProperties");
+    assert.equal(before[0]?.status, "unverified");
+    assert.equal(after[0]?.id, before[0]?.id);
+  });
+
+  it("keeps the same endpoint name in different APIs separate", () => {
+    const results = checkFiles({
+      "table.ts": definition,
+      "other.ts": definition.replace("tableApi", "otherApi"),
+    });
+    assert.equal(new Set(results.map((r) => r.endpointId)).size, 2);
+  });
+
+  it("rejects duplicate identities across source files", () => {
+    assert.throws(
+      () => checkFiles({ "first.ts": definition, "second.ts": definition }),
+      /Duplicate endpoint identity tableApi:example/,
+    );
+  });
+
+  it("requires a name instead of falling back to a line number", () => {
+    assert.throws(
+      () =>
+        checkFiles({
+          "unnamed.ts":
+            "declare const builder: { query<R, A>(definition: unknown): unknown }; builder.query<{}, void>({});",
+        }),
+      /give its API or factory a named declaration/,
     );
   });
 });
