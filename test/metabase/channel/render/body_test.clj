@@ -1585,6 +1585,16 @@
               ["Widget"   "3"         "4"      ""]]
              (rendered-grid (render-simple-pivot simple-pivot-settings)))))))
 
+(deftest ^:parallel simple-pivot-compare-values-test
+  (let [day (fn [d] (java.time.LocalDate/of 2024 1 (int d)))]
+    (doseq [[a b expected] [[nil nil 0] [nil "a" -1] ["a" nil 1] [nil 1 -1] [nil {:a 1} -1] [{:a 1} nil 1]
+                            ["a" "b" -1] ["b" "a" 1] ["a" "a" 0]
+                            [1 2.5 -1] [3N 2 1] [2 2.0 0]
+                            [(day 1) (day 2) -1] [:a :b -1] [false true -1]
+                            ["1" 1 0] [(day 1) "2024-01-01" 0] [{:a 1} {:b 2} 0]]]
+      (testing (pr-str [a b])
+        (is (= expected (Integer/signum (int (#'body/compare-pivot-values a b)))))))))
+
 (deftest ^:parallel simple-pivot-order-test
   (testing "a native query's deliberate row order is kept when the rows are not sorted within groups"
     (is (= [["Category" "Organic" "Google"]
@@ -1599,6 +1609,14 @@
            (rendered-grid (render-simple-pivot simple-pivot-settings simple-pivot-cols
                                                [["Gizmo" "Organic" 2] ["Gizmo" "Google" 1]
                                                 ["Widget" "Organic" 4] ["Widget" "Google" 3]])))))
+  (testing "nil pivot values sort first and get an empty heading"
+    (is (= [["Category" ""  "Google"]
+            ["Gizmo"    "1" "2"]
+            ["Widget"   "3" "4"]]
+           (rendered-grid (render-simple-pivot simple-pivot-settings simple-pivot-cols
+                                               [["Gizmo" nil 1] ["Gizmo" "Google" 2]
+                                                ["Widget" nil 3] ["Widget" "Google" 4]]))))
+    (is (= [nil nil 1 2] (sort @#'body/compare-pivot-values [2 nil 1 nil]))))
   (testing "numeric pivot values are formatted as headings and sorted numerically"
     (let [cols [{:name "CATEGORY" :display_name "Category" :base_type :type/Text}
                 {:name "YEAR"     :display_name "Year"     :base_type :type/Integer}

@@ -259,8 +259,7 @@
              (= 3 (count cols)))
     (let [index-of  (fn [k]
                       (let [col-name (setting-value viz-settings k)]
-                        (some (fn [[i col]] (when (= (:name col) col-name) i))
-                              (map-indexed vector cols))))
+                        (u/index-of #(= (:name %) col-name) cols)))
           pivot-idx (index-of :table.pivot_column)
           cell-idx  (index-of :table.cell_column)]
       (when (and pivot-idx cell-idx (not= pivot-idx cell-idx))
@@ -269,15 +268,14 @@
          :cell   cell-idx}))))
 
 (defn- compare-pivot-values
-  "The browser's `DEFAULT_COMPARE` (visualizations/lib/data_grid.ts): strings compare as strings, other comparable values
-  of one class compare naturally, and anything else counts as equal."
+  "Like the browser's `DEFAULT_COMPARE` (visualizations/lib/data_grid.ts), but nil sorts first."
   [a b]
-  (cond
-    (and (string? a) (string? b))                    (compare a b)
-    (and (number? a) (number? b))                    (compare a b)
-    (and (instance? Comparable a) (some? b)
-         (= (class a) (class b)))                    (compare a b)
-    :else                                            0))
+  (if (or (nil? a)
+          (nil? b)
+          (and (number? a) (number? b))
+          (and (instance? Comparable a) (= (class a) (class b))))
+    (compare a b)
+    0))
 
 (def ^:private unsorted-state
   {:asc true, :desc true, :group-asc true, :group-desc true, :grouped? false})
