@@ -9,6 +9,10 @@
   (and (api/keyword-node? node)
        (= (:k node) k)))
 
+(defn- var-reader-node? [node]
+  (and (api/node? node)
+       (= (:tag node) :var)))
+
 (defn- binding-symbol?
   "True when the token is a plain symbol that should be treated as a binding
   (not a keyword, not a boolean literal, not nil, not a number, not `_`)."
@@ -28,6 +32,9 @@
   (cond
     (binding-symbol? pattern)
     [[pattern opaque-node]]
+
+    (var-reader-node? pattern)
+    [[(api/token-node '_) (first (:children pattern))]]
 
     ;; Lists: (:or ...), (:and ...), (sym :guard pred ...), or a quoted symbol.
     (api/list-node? pattern)

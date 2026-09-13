@@ -48,7 +48,7 @@
     [:relative-datetime _opts #{0 :current}]
     true
 
-    [(_tag :guard #{:absolute-datetime :relative-datetime}) _opts _n _unit]
+    [#{:absolute-datetime :relative-datetime} _opts _n _unit]
     (let [unit (or (lib/raw-temporal-bucket &match) :default)]
       (or (= unit :default)
           (contains? optimizable-units unit)))))
@@ -148,7 +148,7 @@
 
 (defn- change-temporal-unit-to-default [field]
   (match/replace field
-    [#{:field :expression} {:temporal-unit (_ :guard optimizable-units)} _id-or-name]
+    [#{:field :expression} {:temporal-unit #'optimizable-units} _id-or-name]
     (lib/update-options &match assoc :temporal-unit :default)
 
     [:absolute-datetime _opts t _unit]
