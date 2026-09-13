@@ -18,6 +18,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.normalize :as sql.normalize]
+   [metabase.driver.sql.pivot :as sql.pivot]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.like-escape-char-built-in :as like-escape-char-built-in]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -112,6 +113,13 @@
 (defmethod sql.qp/->honeysql [:h2 :regex-match-first]
   [driver [_ _opts arg pattern]]
   [:regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
+
+;; H2 loses a CTE's prepared-statement parameters under the outer `SELECT * FROM (<UNION ALL>)` wrap
+;; the pivot compiler emits — every branch counts zero rows. Opt out so the compiler inlines the
+;; pre-pivot subquery in each branch instead.
+(defmethod sql.pivot/apply-cte-hoist? :h2
+  [_driver]
+  false)
 
 (defmethod driver/connection-properties :h2
   [_]

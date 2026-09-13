@@ -49,7 +49,7 @@ title: Driver interface changelog
 
 - `metabase.driver.sql.pivot/apply-cte-hoist?` `[driver]` -- whether a `UNION ALL` pivot compiled for `driver`
   should hoist the shared pre-pivot subquery into a `WITH` binding that every branch references by alias, rather
-  than inlining it once per branch. Defaults to `false`.
+  than inlining it once per branch. Defaults to `true`.
 
 - `:native-pivot-tables` is now enabled for `:hive-like` drivers.
   Hive-family dialects synthesise the pivot-grouping bitmask from single-arg `GROUPING(x)` calls.

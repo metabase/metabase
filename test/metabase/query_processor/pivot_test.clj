@@ -1144,6 +1144,40 @@
                (mt/rows
                 (qp.pivot/run-pivot-query query))))))))
 
+(deftest ^:parallel single-combo-ua-preserves-user-order-by-test
+  (testing "UA compilation must honor user :order-by when there's only one grouping-set combo"
+    (let [mp        (mt/metadata-provider)
+          orders    (lib.metadata/table mp (mt/id :orders))
+          prod-id   (lib.metadata/field mp (mt/id :orders :product_id))
+          query     (-> (lib/query mp orders)
+                        (lib/breakout prod-id)
+                        (lib/aggregate (lib/count))
+                        (as-> q (lib/order-by q (lib/aggregation-ref q 0) :desc))
+                        (merge {:pivot-rows         [0]
+                                :pivot-cols         []
+                                :show-row-totals    false
+                                :show-column-totals false}))]
+      (binding [qp.pivot/*force-compilation-shape* :union-all]
+        (let [counts (mapv last (mt/rows (qp.pivot/run-pivot-query query)))]
+          (is (apply >= counts)
+              (str "Expected counts DESC; got: " counts)))))))
+
+(deftest ^:parallel run-pivot-query-falls-through-when-not-pivotable-test
+  (testing "run-pivot-query on a query whose last stage has no breakouts falls through to qp/process-query"
+    (let [mp     (mt/metadata-provider)
+          orders (lib.metadata/table mp (mt/id :orders))
+          query  (-> (lib/query mp orders) (lib/limit 3))]
+      (is (=? {:status :completed :row_count 3}
+              (qp.pivot/run-pivot-query query)))))
+  (testing "run-pivot-query on a query whose last stage has no aggregations falls through to qp/process-query"
+    (let [mp     (mt/metadata-provider)
+          orders (lib.metadata/table mp (mt/id :orders))
+          query  (-> (lib/query mp orders)
+                     (lib/breakout (lib.metadata/field mp (mt/id :orders :user_id)))
+                     (lib/limit 3))]
+      (is (=? {:status :completed :row_count 3}
+              (qp.pivot/run-pivot-query query))))))
+
 (deftest ^:parallel fe-friendly-legacy-field-refs-test
   (testing "field_refs in the result metadata should match the 'traditional' legacy shape the FE expects, or it will break"
     ;; (This is calculated by [[metabase.lib.metadata.result-metadata/super-broken-legacy-field-ref]])
