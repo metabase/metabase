@@ -32,11 +32,13 @@ export const LocaleProvider = ({
       );
 
       setLocaleHeader(localeToLoad);
+      // The locale stands whether or not its catalogue arrives. The API header
+      // is already set, so content translation still has to run against it.
+      setContextLocale(localeToLoad);
       loadLocalization(localeToLoad)
         .then((translatedObject) => {
           setIsLocaleLoading(false);
           setUserLocale(translatedObject);
-          setContextLocale(localeToLoad);
         })
         .catch(() => {
           setIsLocaleLoading(false);
