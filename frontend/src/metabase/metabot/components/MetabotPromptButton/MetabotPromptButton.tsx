@@ -3,22 +3,17 @@ import { t } from "ttag";
 
 import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
+import type { SqlGenerationPromptButtonProps } from "metabase/querying/plugins";
 import { useSetting } from "metabase/settings";
 import { Icon, Tooltip } from "metabase/ui";
 
 import S from "./MetabotPromptButton.module.css";
 
-interface MetabotPromptButtonProps {
-  size: number;
-  isPromptInputOpen?: boolean;
-  onClick?: () => void;
-}
-
 export const MetabotPromptButton = ({
   size,
   isPromptInputOpen,
   onClick,
-}: MetabotPromptButtonProps) => {
+}: SqlGenerationPromptButtonProps) => {
   const { hasSqlGenerationAccess } = useUserMetabotPermissions();
   const metabotName = useSetting("metabot-name");
 

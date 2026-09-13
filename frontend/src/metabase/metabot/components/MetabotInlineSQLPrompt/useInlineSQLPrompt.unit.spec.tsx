@@ -13,6 +13,7 @@ import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { MetabotProvider } from "metabase/metabot/context";
+import { registerMetabotPlugins } from "metabase/metabot/register";
 import { getMetadata } from "metabase/metadata-store";
 import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor/NativeQueryEditor";
 import { checkNotNull } from "metabase/utils/types";
@@ -69,6 +70,7 @@ function TestEditor({ question }: { question: Question }) {
 }
 
 function setup({ isMetabotEnabled = true } = {}) {
+  registerMetabotPlugins();
   setupEnterprisePlugins();
   setupUserMetabotPermissionsEndpoint();
   setupCollectionsEndpoints({ collections: [] });
