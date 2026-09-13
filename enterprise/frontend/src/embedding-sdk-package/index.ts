@@ -165,6 +165,8 @@ export type {
   SdkUserId,
   SqlParameterValues,
   SdkActionId,
+  SdkActionDefinition,
+  SdkActionInput,
 } from "embedding-sdk-bundle/types";
 export type {
   FieldSchema,

@@ -68,8 +68,9 @@ export const FUNNEL_CHART_DEFINITION: VisualizationDefinition = {
     ...columnSettings({ getHidden: () => true }),
     ...dimensionSetting("funnel.dimension", {
       getSection: () => t`Data`,
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
-      title: t`Column with steps`,
+      get title() {
+        return t`Column with steps`;
+      },
       dashboard: false,
       useRawSeries: true,
       showColumnSetting: true,
@@ -141,16 +142,18 @@ export const FUNNEL_CHART_DEFINITION: VisualizationDefinition = {
     ...metricSetting("funnel.metric", {
       getSection: () => t`Data`,
 
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
-      title: t`Measure`,
+      get title() {
+        return t`Measure`;
+      },
 
       dashboard: false,
       useRawSeries: true,
       showColumnSetting: true,
     }),
     "funnel.type": {
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
-      title: t`Funnel type`,
+      get title() {
+        return t`Funnel type`;
+      },
 
       getSection: () => t`Display`,
 

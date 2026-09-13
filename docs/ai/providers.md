@@ -41,7 +41,7 @@ Supported models:
 
 Credentials:
 
-- **API key** (required). [Where do I find this?](https://console.anthropic.com/settings/keys) You can also set it with the environment variable `MB_LLM_ANTHROPIC_API_KEY`.
+- **API key** (required). [Where do I find this?](https://platform.claude.com/settings/keys) You can also set it with the environment variable `MB_LLM_ANTHROPIC_API_KEY`.
 - **API base URL** (advanced). Defaults to `https://api.anthropic.com`. You can also set it with the environment variable `MB_LLM_ANTHROPIC_API_BASE_URL`.
 
 ## OpenAI

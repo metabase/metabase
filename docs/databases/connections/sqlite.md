@@ -4,7 +4,7 @@ title: SQLite
 
 # SQLite
 
-> SQLite isn't available for [Metabase Cloud](https://www.metabase.com/cloud/).
+> SQLite isn't available for [Metabase Cloud](https://www.metabase.com/cloud).
 
 To add a database connection, click the **grid** icon in the top right, and navigate to **Admin** > **Databases** > **Add a database**.
 
@@ -78,6 +78,6 @@ See [Danger zone](../danger-zone.md).
 ## Further reading
 
 - [Managing databases](../../databases/connecting.md)
-- [Metadata editing](../../data-modeling/metadata-editing.md)
-- [Models](../../data-modeling/models.md)
+- [Metadata editing](../../data-modeling/metadata/metadata-editing.md)
+- [Models](../../data-modeling/models/models.md)
 - [Setting data access permissions](../../permissions/data.md)

@@ -4,7 +4,7 @@
   (:refer-clojure :exclude [every? run! some mapv replace empty?])
   (:require
    [metabase.util.match.impl]
-   [metabase.util.performance :as perf :refer [empty? every? mapv run! some]]))
+   [metabase.util.performance :as perf :refer [empty? every? mapv run! some dropv]]))
 
 (defn- parse-pattern
   "Parse a pattern vector into bindings and conditions"
@@ -78,7 +78,7 @@
                                                              `metabase.util.match.impl/count=) s cnt)
                                                      {:depends-on s})))
                 (when rest-part
-                  (process-pattern rest-part `(into [] (drop ~cnt) ~s) bindings conditions false)))
+                  (process-pattern rest-part `(dropv ~cnt ~s) bindings conditions false)))
       :map (let [s (if (symbol? value) value (gensym "map"))]
              (vswap! bindings conj [s `(metabase.util.match.impl/map! ~value)])
              (run! (fn [[k v]]

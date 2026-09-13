@@ -78,7 +78,7 @@ When, for example, Tenant A logs in, they'll only see the `Tenant_ID` and `Metri
 
 Impersonation lets you map user attributes to database roles, which lets you do row-level security based on the database privileges you give each role.
 
-Check out this [article on impersonation](https://www.metabase.com/learn/metabase-basics/administration/permissions/impersonation).
+Check out [impersonation access](./impersonation.md).
 
 ## One database per customer
 

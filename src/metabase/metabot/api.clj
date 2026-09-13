@@ -14,6 +14,7 @@
    [metabase.lib.core :as lib]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.memory :as memory]
+   [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.api.conversations]
    [metabase.metabot.api.document]
    [metabase.metabot.api.metabot]
@@ -304,6 +305,9 @@
         _          (metabot.config/check-metabot-enabled! metabot-id)
         _          (metabot.usage/check-metabase-managed-free-limit!)
         profile-id (metabot.config/resolve-dynamic-profile-id profile_id metabot-id)
+        ;; reject before `start-turn!` persists anything or the title job calls the LLM
+        _          (when-not (profiles/profile-registered? (keyword profile-id))
+                     (throw (ex-info (tru "Unknown profile") {:status-code 400 :profile-id profile-id})))
         ;; Only allow debug mode in dev — never in production
         debug?     (and config/is-dev? (boolean debug))
         hostname   (analytics.core/extract-hostname (:origin request-info))

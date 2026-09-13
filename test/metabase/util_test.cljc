@@ -446,7 +446,7 @@
     str                                   :dispatch-type/fn
     #?(:clj (Object.) :cljs (js/Object.)) :dispatch-type/*)
   (testing "All type keywords should derive from :dispatch-type/*"
-    (are [x] (isa? (u/dispatch-type-keyword x) :dispatch-type/*)
+    (are [x] (isa? u/dispatch-type-hierarchy (u/dispatch-type-keyword x) :dispatch-type/*)
       :dispatch-type/nil
       :dispatch-type/string
       :dispatch-type/keyword

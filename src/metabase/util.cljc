@@ -915,18 +915,23 @@
 #?(:clj (defn- regexp? [x]
           (instance? java.util.regex.Pattern x)))
 
-(derive :dispatch-type/nil        :dispatch-type/*)
-(derive :dispatch-type/boolean    :dispatch-type/*)
-(derive :dispatch-type/string     :dispatch-type/*)
-(derive :dispatch-type/keyword    :dispatch-type/*)
-(derive :dispatch-type/number     :dispatch-type/*)
-(derive :dispatch-type/integer    :dispatch-type/number)
-(derive :dispatch-type/map        :dispatch-type/*)
-(derive :dispatch-type/sequential :dispatch-type/*)
-(derive :dispatch-type/set        :dispatch-type/*)
-(derive :dispatch-type/symbol     :dispatch-type/*)
-(derive :dispatch-type/fn         :dispatch-type/*)
-(derive :dispatch-type/regex      :dispatch-type/*)
+(def dispatch-type-hierarchy
+  "Hierarchy relating the keywords returned by [[dispatch-type-keyword]]. A multimethod dispatching
+  on [[dispatch-type-keyword]] must pass `:hierarchy #'dispatch-type-hierarchy` for `:dispatch-type/*` to work as a
+  fallback method; Clojure's global hierarchy does not relate these keywords."
+  (-> (make-hierarchy)
+      (derive :dispatch-type/nil        :dispatch-type/*)
+      (derive :dispatch-type/boolean    :dispatch-type/*)
+      (derive :dispatch-type/string     :dispatch-type/*)
+      (derive :dispatch-type/keyword    :dispatch-type/*)
+      (derive :dispatch-type/number     :dispatch-type/*)
+      (derive :dispatch-type/integer    :dispatch-type/number)
+      (derive :dispatch-type/map        :dispatch-type/*)
+      (derive :dispatch-type/sequential :dispatch-type/*)
+      (derive :dispatch-type/set        :dispatch-type/*)
+      (derive :dispatch-type/symbol     :dispatch-type/*)
+      (derive :dispatch-type/fn         :dispatch-type/*)
+      (derive :dispatch-type/regex      :dispatch-type/*)))
 
 (defn dispatch-type-keyword
   "In Cljs `(type 1) is `js/Number`, but `(isa? 1 js/Number)` isn't truthy, so dispatching off of [[clojure.core/type]]
@@ -936,8 +941,9 @@
   have dispatched on `type` if they were written in pure Clojure.
 
   Returns `:dispatch-type/*` if there is no mapping for the current type, but you can add more as needed if
-  appropriate. All type keywords returned by this method also derive from `:dispatch-type/*`, meaning you can write an
-  implementation for `:dispatch-type/*` and use it as a fallback method.
+  appropriate. All type keywords returned by this method derive from `:dispatch-type/*`
+  in [[dispatch-type-hierarchy]], meaning you can write an implementation for `:dispatch-type/*` and use it as a
+  fallback method.
 
   Think of `:dispatch-type/*` as similar to how you would use `Object` if you were dispatching
   off of `type` in pure Clojure."
