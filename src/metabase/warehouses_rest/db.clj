@@ -268,45 +268,6 @@
                                                 :right-join [[:metabase_table :t] [:= :f.table_id :t.id]]
                                                 :where      [:= :t.db_id database-id]}]}))
 
-(mu/defn active-tables-for-database
-  "The active Tables of the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select :model/Table :db_id database-id :active true))
-
-(mu/defn active-table-schemas
-  "The distinct schemas of the active Tables of the Database with `database-id`, in schema order. When
-  `include-hidden?` is false, restricted to Tables with no `visibility_type` (a non-nil value means the Table is
-  hidden -- see [[metabase.warehouse-schema.models.table/visibility-types]])."
-  [database-id     :- ::lib.schema.id/database
-   include-hidden? :- :boolean]
-  (let [clauses (cond-> []
-                  (not include-hidden?) (conj [:= :visibility_type nil]))]
-    (t2/select-fn-set :schema :model/Table :db_id database-id :active true
-                      (merge {:order-by [[:%lower.schema :asc]]}
-                             (when clauses
-                               {:where (into [:and] clauses)})))))
-
-(mu/defn active-tables-in-schema
-  "The active Tables in `schema` of the Database with `database-id`, in display name order."
-  [database-id :- ::lib.schema.id/database
-   schema      :- [:maybe :string]]
-  (t2/select :model/Table
-             :db_id database-id
-             :schema schema
-             :active true
-             {:order-by [[:display_name :asc]]}))
-
-(mu/defn active-visible-tables-in-schema
-  "The active, visible Tables in `schema` of the Database with `database-id`, in display name order."
-  [database-id :- ::lib.schema.id/database
-   schema      :- [:maybe :string]]
-  (t2/select :model/Table
-             :db_id database-id
-             :schema schema
-             :active true
-             :visibility_type nil
-             {:order-by [[:display_name :asc]]}))
-
 (mu/defn collection-ids-named
   "The ids of the Collections named `collection-name`, or nil."
   [collection-name :- :string]

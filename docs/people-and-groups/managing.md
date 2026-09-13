@@ -190,17 +190,17 @@ It's important that your All Users group should never have _greater_ access for 
 
 {% include plans-blockquote.html feature="Data Analysts group" %}
 
-You can add non-admins to the special **Data Analysts** group to give them access to [Data Studio](../data-studio/overview.md).
+You can add non-admins to the special **Data Analysts** group to give them access to [Data Studio](../data-modeling/data-studio.md).
 
 By default (and you can't change this), the Data Analyst group gets:
 
-- Access to [Data Studio](../data-studio/overview.md).
-- [Curate permissions](../permissions/collections.md#curate-access) for the [Library collection](../data-studio/library.md)
+- Access to [Data Studio](../data-modeling/data-studio.md).
+- [Curate permissions](../permissions/collections.md#curate-access) for the [Library collection](../data-modeling/semantic-layer/library.md)
 - [Manage table metadata permissions](../permissions/data.md#manage-table-metadata-permissions) for _all_ tables in all databases in your Metabase.
 
 Other than the fixed access listed above, you can assign data, collection, and application permissions to the Data Analyst group as you would normally.
 
-By default, a person in a Data Analysts group will have only read-only access to [Transforms](../data-studio/transforms/transforms-overview.md) that use tables which the person otherwise can view. To give a Data Analyst the ability to _create_ and _run_ transforms, you'll need to give them [transform permissions](../permissions/data.md#transform-permissions) on appropriate tables.
+By default, a person in a Data Analysts group will have only read-only access to [Transforms](../data-modeling/transforms/transforms-overview.md) that use tables which the person otherwise can view. To give a Data Analyst the ability to _create_ and _run_ transforms, you'll need to give them [transform permissions](../permissions/data.md#transform-permissions) on appropriate tables.
 
 ## Creating a group
 

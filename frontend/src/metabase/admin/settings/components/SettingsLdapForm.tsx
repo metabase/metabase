@@ -4,12 +4,6 @@ import _ from "underscore";
 import type { TestConfig } from "yup";
 import * as Yup from "yup";
 
-import {
-  SETTINGS_CARD_STACK_PROPS,
-  SETTINGS_CARD_TITLE_PROPS,
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
 import { GroupMappingsWidget } from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
 import { getExtraFormFieldProps } from "metabase/admin/settings/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -26,6 +20,12 @@ import {
   useGetAdminSettingsDetailsQuery,
   useGetSettingsQuery,
 } from "metabase/settings";
+import {
+  SETTINGS_CARD_STACK_PROPS,
+  SETTINGS_CARD_TITLE_PROPS,
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/settings-components";
 import { Box, Flex, Group, Radio, Stack } from "metabase/ui";
 import type { EnterpriseSettings, Settings } from "metabase-types/api";
 
@@ -84,7 +84,6 @@ export const SettingsLdapForm = () => {
 
   return (
     <SettingsPageWrapper title={t`LDAP`}>
-      <PLUGIN_LDAP_FORM_FIELDS.LdapUserProvisioning />
       <FormProvider
         initialValues={getFormValues(settingValues)}
         onSubmit={handleSubmit}
@@ -152,6 +151,8 @@ export const SettingsLdapForm = () => {
                   />
                 </Stack>
               </SettingsSection>
+              {/* the card saves on its own, so it stays out of the form's values */}
+              <PLUGIN_LDAP_FORM_FIELDS.LdapUserProvisioning />
               <SettingsSection
                 title={t`User schema`}
                 titleProps={SETTINGS_CARD_TITLE_PROPS}

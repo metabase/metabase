@@ -309,7 +309,7 @@
   [candidate-binding-values]
   (letfn [(score [a]
             (let [[_ definition] a]
-              [(reduce + (map (comp count ancestors) (:field_type definition)))
+              [(reduce + (map magic.util/ancestor-count (:field_type definition)))
                (count definition)
                (:score definition)]))]
     (map (juxt (comp score first) identity) candidate-binding-values)))

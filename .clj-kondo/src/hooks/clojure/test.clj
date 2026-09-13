@@ -194,7 +194,7 @@
                (not (contains? @warned-namespaces ns-symb)))
       (swap! warned-namespaces conj ns-symb)
       (let [known-modules  (set (keys (:metabase/modules (modules/config input))))
-            current-module (modules/module ns-symb)]
+            current-module (modules/module (modules/config input) ns-symb)]
         (when (or (not current-module)
                   (not (contains? known-modules current-module)))
           (hooks/reg-finding! (assoc (meta node)

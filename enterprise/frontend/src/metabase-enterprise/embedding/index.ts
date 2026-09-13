@@ -4,7 +4,7 @@ import { PLUGIN_ADMIN_SETTINGS, PLUGIN_EMBEDDING } from "metabase/plugins";
 import { isInteractiveEmbeddingEnabled } from "metabase-enterprise/embedding/selectors";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import { InteractiveEmbeddingSettingsCard } from "./components/InteractiveEmbeddingSettingsCard";
+import { InteractiveEmbeddingAuthorizedOriginsWidget } from "./components/InteractiveEmbeddingAuthorizedOriginsWidget";
 
 /**
  * We can't gate this component behind a feature flag, because SDK users could
@@ -21,7 +21,7 @@ export function initializePlugin() {
     PLUGIN_EMBEDDING.isEnabled = () => true;
     PLUGIN_EMBEDDING.isInteractiveEmbeddingEnabled =
       isInteractiveEmbeddingEnabled;
-    PLUGIN_ADMIN_SETTINGS.InteractiveEmbeddingSettingsCard =
-      InteractiveEmbeddingSettingsCard;
+    PLUGIN_ADMIN_SETTINGS.InteractiveEmbeddingAuthorizedOriginsWidget =
+      InteractiveEmbeddingAuthorizedOriginsWidget;
   }
 }

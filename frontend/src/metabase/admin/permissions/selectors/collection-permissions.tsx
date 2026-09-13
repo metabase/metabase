@@ -231,7 +231,7 @@ const getCollectionDisabledTooltip = (
   isIACollection: boolean,
 ): string | null => {
   if (groupType === "admin" && isIACollection) {
-    return PLUGIN_COLLECTIONS.INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE;
+    return PLUGIN_COLLECTIONS.getInstanceAnalyticsAdminReadonlyMessage();
   }
   if (groupType === "analyst" && isLibrary) {
     return Messages.UNABLE_TO_CHANGE_DATA_ANALYST_LIBRARY_PERMISSIONS;
