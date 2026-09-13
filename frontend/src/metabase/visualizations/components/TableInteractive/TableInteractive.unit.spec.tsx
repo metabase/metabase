@@ -111,9 +111,9 @@ describe("TableInteractive Subtotals", () => {
     for (let r = 0; r < 10000; r++) {
       const row = [];
       for (let c = 0; c < colCount; c++) {
-        if (r % 10 === 0 && c === 2) row.push(null);
-        else if (r % 15 === 0 && c === 3) row.push("");
-        else row.push(r * 1.5 + c);
+        if (r % 10 === 0 && c === 2) {row.push(null);}
+        else if (r % 15 === 0 && c === 3) {row.push("");}
+        else {row.push(r * 1.5 + c);}
       }
       rows.push(row);
     }
@@ -122,7 +122,7 @@ describe("TableInteractive Subtotals", () => {
       let hasValidNumber = false;
       const sum = rows.reduce((acc, row) => {
         const val = row[c];
-        if (val == null || val === "") return acc;
+        if (val == null || val === "") {return acc;}
         const num = typeof val === "number" ? val : Number(val);
         if (Number.isFinite(num)) {
           hasValidNumber = true;
