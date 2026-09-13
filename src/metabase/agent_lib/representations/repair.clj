@@ -63,16 +63,16 @@
 (defn- clause-like?
   "Heuristic: a real clause vector (not an FK path) whose head is a non-blank operator string."
   [v]
-  (and (match/matches? v [(_ :guard non-blank-string?) & _])
+  (and (match/matches? v [#'non-blank-string? & _])
        (not (looks-like-fk-path? v))))
 
 (defn- ensure-clause-options*
   "Fix a clause-like vector missing options map at position 2 in nested clause-like vectors."
   [form]
   (match/replace form
-    (:and [op] (_ :guard clause-like?)) [op {}]
-    (:and [op nil & _] (_ :guard clause-like?)) (&recur (assoc &match 1 {}))
-    (:and [op (non-map :guard (not (map? non-map))) & args] (_ :guard clause-like?)) (&recur (into [op {} non-map] args))))
+    (:and [op] #'clause-like?) [op {}]
+    (:and [op nil & _] #'clause-like?) (&recur (assoc &match 1 {}))
+    (:and [op (non-map :guard (not (map? non-map))) & args] #'clause-like?) (&recur (into [op {} non-map] args))))
 
 ;;; ============================================================
 ;;; Pass 1.7 -- unwrap nested `[field opts [field inner-opts target]]` clauses.
@@ -204,7 +204,7 @@
                      (let [lower (u/lower-case-en op)]
                        (and (contains? operator-name-aliases lower)
                             (not= op (operator-name-aliases lower))))))
-     (_ :guard map?) & _]
+     #'map? & _]
     (&recur (assoc &match 0 (operator-name-aliases (u/lower-case-en op))))))
 
 ;;; ============================================================
@@ -233,7 +233,7 @@
 (defn- rewrite-temporal-bucket-aliases*
   [form]
   (match/replace form
-    [(op :guard (and (string? op) (temporal-bucket-extraction-aliases op))) (_ :guard map?) & _]
+    [(op :guard (and (string? op) (temporal-bucket-extraction-aliases op))) #'map? & _]
     (&recur (assoc &match 0 (temporal-bucket-extraction-aliases (u/lower-case-en op))))))
 
 ;;; ============================================================
@@ -263,10 +263,8 @@
 (defn- drop-unsupported-day-of-week-mode*
   [form]
   (match/replace form
-    ["get-day-of-week"
-     (_ :guard map?)
-     _
-     (mode :guard  (and (string? mode) (not= "iso" (u/lower-case-en (str/trim mode)))))]
+    ["get-day-of-week" #'map? _
+     (mode :guard (and (string? mode) (not= "iso" (u/lower-case-en (str/trim mode)))))]
     (subvec &match 0 3)))
 
 ;;; ============================================================
@@ -305,7 +303,7 @@
 (defn- rewrite-direction-aliases*
   [form]
   (match/replace form
-    [(head :guard direction-clause-head?) (_ :guard map?) _]
+    [(head :guard direction-clause-head?) #'map? _]
     (&recur (assoc &match 0 (get direction-aliases (u/lower-case-en head))))))
 
 ;;; ============================================================
@@ -421,7 +419,7 @@
 (defn- merge-trailing-options*
   [form]
   (match/replace form
-    (_ :guard needs-trailing-options-merge?)
+    #'needs-trailing-options-merge?
     ;; &recur: dropping the trailing element changes the count, so the guard no longer fires
     ;; on the result -- this just resumes descent into the clause's own args, where a nested
     ;; clause might need the same fix.
@@ -468,7 +466,10 @@
 (defn- merge-string-filter-trailing-options*
   [form]
   (match/replace form
-    (_ :guard needs-string-filter-options-merge?)
+    ;; head + opts + field + >=1 value + trailing options-map
+    (:and [(op :guard (contains? string-search-filter-heads op)) #'map?
+           & (args :guard (and (map? (peek args)) (>= (count args) 3)))]
+          #'clause-like?)
     (&recur (merge-trailing-options &match))))
 
 ;;; ============================================================
@@ -567,7 +568,7 @@
     ;; Flat alternating pred/then args (≥4 args). Falls through from "branch pairs as
     ;; separate args" above when the first arg is a non-2-tuple vector like `["=" {} field
     ;; val]`.
-    (_ :guard (>= (count args) 4))
+    (_ :guard (>= (count &match) 4))
     (let [n          (count args)
           even-cnt   (- n (rem n 2))
           pred-thens (partition 2 (take even-cnt args))
@@ -681,11 +682,11 @@
   clause and corrupt it by inserting `{}` between the two scalars."
   [form]
   (match/replace form
-    (_ :guard in-not-in-values-list-clause)
+    #'in-not-in-values-list-clause
     (let [[head opts lhs values] (in-not-in-values-list-clause &match)]
       (&recur (splat-in-values-clause head opts lhs values)))
 
-    (_ :guard eq-values-list-clause)
+    #'eq-values-list-clause
     (let [[head opts lhs values] (eq-values-list-clause &match)]
       (&recur (splat-in-values-clause (=->in-head head) opts lhs values)))))
 
@@ -706,17 +707,6 @@
 ;;; legitimate uses of the head.
 ;;; ============================================================
 
-(defn- boolean-wrapper-clause?
-  "True when `node` is `[\"true\" {} x]` or `[\"false\" {} x]` - exactly one arg."
-  [node]
-  (and (vector? node)
-       (= 3 (count node))
-       (string? (nth node 0))
-       (map? (nth node 1))
-       (let [head (u/lower-case-en (nth node 0))]
-         (or (= head "true")
-             (= head "false")))))
-
 (defn- unwrap-boolean-wrapper [node]
   (let [head (u/lower-case-en (nth node 0))
         x    (nth node 2)]
@@ -731,7 +721,8 @@
 (defn- unwrap-boolean-wrappers*
   [form]
   (match/replace form
-    (_ :guard boolean-wrapper-clause?) (&recur (unwrap-boolean-wrapper &match))))
+    [(head :guard (and (string? head) (#{"true" "false"} (u/lower-case-en head)))) #'map _]
+    (&recur (unwrap-boolean-wrapper &match))))
 
 ;;; ============================================================
 ;;; Pass 1.87 -- swap out-of-order literal bounds in `between` clauses.
@@ -789,17 +780,14 @@
        (= "between" (nth v 0))
        (map? (nth v 1))))
 
-(defn- swappable-between-clause? [node]
-  (and (between-clause? node)
-       (bounds-comparable-and-swappable? (nth node 3) (nth node 4))))
-
 (defn- swap-between-bounds*
   [form]
   (match/replace form
-    (_ :guard swappable-between-clause?)
-    ;; &recur: after the swap the bounds compare in order, so `swappable-between-clause?` no
+    (:and ["between" #'map? _ lower upper]
+          (_ :guard (bounds-comparable-and-swappable? lower upper)))
+    ;; &recur: after the swap the bounds compare in order, so match no
     ;; longer fires on the result -- this just resumes descent into the clause.
-    (&recur (-> &match (assoc 3 (nth &match 4)) (assoc 4 (nth &match 3))))))
+    (&recur (-> &match (assoc 3 upper) (assoc 4 lower)))))
 
 ;;; ============================================================
 ;;; Pass 1.86 -- wrap bare ISO-date string bounds in `between` clauses as
@@ -857,19 +845,16 @@
       (iso-date-string? lo)
       (iso-date-string? hi)))
 
-(defn- between-needs-iso-wrap-clause? [node]
-  (and (between-clause? node)
-       (between-needs-iso-wrap? (nth node 3) (nth node 4))))
-
 (defn- wrap-iso-date-bounds*
   [form]
   ;; No `&recur`: a wrapped ISO bound becomes an `absolute-datetime` clause, which is itself
-  ;; temporal-shaped, so `between-needs-iso-wrap-clause?` would fire on the result forever.
+  ;; temporal-shaped, so `between-needs-iso-wrap?` would fire on the result forever.
   (match/replace form
-    (_ :guard between-needs-iso-wrap-clause?)
+    (:and ["between" #'map? _ lower upper]
+          (_ :guard (between-needs-iso-wrap? lower upper)))
     (-> &match
-        (assoc 3 (wrap-iso-date (nth &match 3)))
-        (assoc 4 (wrap-iso-date (nth &match 4))))))
+        (update 3 wrap-iso-date)
+        (update 4 wrap-iso-date))))
 
 ;;; ============================================================
 ;;; Pass 1.865 -- wrap bare `"now"` string literals in temporal contexts as the canonical
@@ -970,8 +955,7 @@
 (defn- normalise-fields-shape*
   [form]
   (match/replace form
-    {"fields" (:and single-clause
-                    [(_ :guard string?) (_ :guard map?) & _])}
+    {"fields" (:and single-clause [#'string? #'map? & _])}
     (&recur (assoc &match "fields" [single-clause]))))
 
 ;;; ============================================================
@@ -1129,7 +1113,7 @@
 
 (defn- ensure-lib-types* [form]
   (match/replace form
-    (_ :guard needs-lib-type-marker?)
+    #'needs-lib-type-marker?
     (&recur (assoc &match "lib/type" (cond (top-level-query-map? &match) "mbql/query"
                                            (join-like-map? &match) "mbql/join"
                                            (stage-like-map? &match) "mbql.stage/mbql")))))
@@ -1169,7 +1153,7 @@
   non-clause vectors are left alone."
   [form]
   (match/replace form
-    (:and (_ :guard clause-like?) [op (_ :guard map?) & args])
+    (:and #'clause-like? [op #'map? & args])
     (&recur (into [op] args))))
 
 (defn- ensure-aggregation-uuid
@@ -1370,7 +1354,7 @@
   and no `aggregation:` block, it's a perfectly valid stage)."
   [stage]
   (some? (match/match-one (dissoc stage "aggregation")
-           (_ :guard integer-index-agg-ref?) true)))
+           #'integer-index-agg-ref? true)))
 
 (defn- resolve-integer-agg-refs-in-stage
   "Resolve all integer-index aggregation refs in a single stage to canonical UUID form.
@@ -2002,7 +1986,7 @@
 
 (defn- string-cross-stage-field-clause? [v]
   (and (not (map-entry? v))
-       (match/matches? v (:and ["field" (_ :guard map?) (_ :guard non-blank-string?)]))))
+       (match/matches? v (:and ["field" #'map? #'non-blank-string?]))))
 
 (defn- types-from-column
   "Pull `\"base-type\"` (and optionally `\"effective-type\"`) off a `lib/returned-columns`
@@ -2244,7 +2228,7 @@
   [stage]
   (let [stage' (cond-> stage (contains? stage "joins") (dissoc "joins"))]
     (some? (match/match-one stage'
-             (_ :guard unstamped-cross-stage-ref?) true))))
+             #'unstamped-cross-stage-ref? true))))
 
 (defn- first-unresolved-cross-stage-ref
   "Return the first [[unstamped-cross-stage-ref?]] clause in `stage` that matches no column in
@@ -2396,7 +2380,7 @@
   `validate/operators.clj/validate-operator-specific!` `expression-ref` branch."
   [form]
   (match/match-one form
-    ["expression" (_ :guard map?) (name-slot :guard (or (not (string? name-slot)) (str/blank? name-slot)))]
+    ["expression" #'map? (name-slot :guard (or (not (string? name-slot)) (str/blank? name-slot)))]
     (throw (ex-info
             (tru "`[expression, <opts>, <name>]` reference requires a non-blank string identifier in the third slot, matching an entry in some stage''s `expressions:` block.")
             {:agent-error? true
@@ -2419,7 +2403,7 @@
   [form]
   (when-not resolve/*numeric-ids-allowed?*
     (match/match-one form
-      ["field" (_ :guard map?) (_ :guard integer?)]
+      ["field" #'map? #'integer?]
       (throw (ex-info
               (tru "`field` clause needs a portable FK in its third slot, not a numeric id. Use a vector `[<database>, <schema>, <table>, <column>]` (resolved against the metadata provider) or a string column-name (for cross-stage references).")
               {:agent-error? true

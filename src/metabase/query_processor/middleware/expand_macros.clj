@@ -39,15 +39,15 @@
   allowed, including `:filters`, join conditions, expression aggregations like `:sum-where`, etc."
   [macro-type :- ::macro-type
    query      :- ::lib.schema/query]
-  (let [ids (transient #{})]
+  (let [ids (volatile! (transient #{}))]
     (lib.walk/walk-stages
      query
      (fn [_query _path stage]
        (match/match-many stage
          [#{macro-type} _opts (id :guard pos-int?)]
-         (conj! ids id))
+         (vswap! ids conj! id))
        nil))
-    (not-empty (persistent! ids))))
+    (not-empty (persistent! @ids))))
 
 ;;; a legacy Segment has one or more filter clauses.
 

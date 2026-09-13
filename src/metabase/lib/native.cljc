@@ -87,7 +87,7 @@
     (loop [found            []
            [current & more] parsed]
       (let [[found more] (match/match-one current
-                           (_ :guard string?) [found more]
+                           #'string? [found more]
 
                            {:type ::lib.parse/param, :name tag-name}
                            (let [normalized-name (lib.params.parse/match-and-normalize-tag-name tag-name)]

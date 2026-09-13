@@ -457,12 +457,12 @@
   (let [a-conds (match/replace new-join-conditions
                   {:join-alias (ja :guard (= ja new-join-alias))}
                   (dissoc &match :join-alias :effective-type)
-                  {:effective-type (_ :guard identity)}
+                  {:effective-type &truthy}
                   (dissoc &match :effective-type))
         b-conds (match/replace join-conditions-b
                   {:join-alias (ja :guard (= ja join-alias-b))}
                   (dissoc &match :join-alias :effective-type)
-                  {:effective-type (_ :guard identity)}
+                  {:effective-type &truthy}
                   (dissoc &match :effective-type))]
     (not (lib.equality/= a-conds b-conds))))
 

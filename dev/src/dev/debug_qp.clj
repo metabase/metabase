@@ -129,13 +129,13 @@
                                                     (pos-int? (:source-field opts))
                                                     (update :source-field field-id->name-form))]
 
-             (:and m {:source-table (_ :guard pos-int?)})
+             (:and m {:source-table #'pos-int?})
              (add-names* (update m :source-table add-table-id-name))
 
-             (:and m {:metabase.query-processor.util.add-alias-info/source-table (_ :guard pos-int?)})
+             (:and m {:metabase.query-processor.util.add-alias-info/source-table #'pos-int?})
              (add-names* (update m :metabase.query-processor.util.add-alias-info/source-table add-table-id-name))
 
-             (:and m {:fk-field-id (_ :guard pos-int?)})
+             (:and m {:fk-field-id #'pos-int?})
              (add-names* (update m :fk-field-id field-id->name-form))
 
              ;; don't recursively replace the `do` lists above, other we'll get vectors.
@@ -259,7 +259,7 @@
 
 (defn- can-symbolize? [x]
   (match/match-one x
-    (_ :guard string?)
+    #'string?
     (not (re-find #"\s+" x))
 
     [:field (id :guard pos-int?) nil]
@@ -287,7 +287,7 @@
   (try
     (match/replace form
       (:and [:field (id :guard pos-int?) nil]
-            (_ :guard can-symbolize?))
+            #'can-symbolize?)
       (let [[table-name field-name] (field-and-table-name id)
             field-name              (some-> field-name u/lower-case-en)
             table-name              (some-> table-name u/lower-case-en)]
@@ -295,18 +295,18 @@
           [::$ field-name]
           [::$ table-name field-name]))
 
-      (:and [:field (field-name :guard string?) (:and {:base-type base-type} (opts :guard (= (count opts) 1)))]
-            (_ :guard can-symbolize?))
+      (:and [:field (field-name :guard string?) (:and {:base-type base-type} (opts :len 1))]
+            #'can-symbolize?)
       [::* field-name (name base-type)]
 
       (:and [:field _ {:temporal-unit temporal-unit}]
-            (_ :guard can-symbolize?))
+            #'can-symbolize?)
       (let [without-unit (mbql.u/update-field-options &match dissoc :temporal-unit)
             expansion    (expand without-unit table)]
         [::! (name temporal-unit) (strip-$ expansion)])
 
       (:and [:field _ {:source-field source-field}]
-            (_ :guard can-symbolize?))
+            #'can-symbolize?)
       (let [without-source-field   (mbql.u/update-field-options &match dissoc :source-field)
             expansion              (expand without-source-field table)
             source-as-field-clause [:field source-field nil]
@@ -314,7 +314,7 @@
         [::-> source-expansion expansion])
 
       (:and [:field _ {:join-alias join-alias}]
-            (_ :guard can-symbolize?))
+            #'can-symbolize?)
       (let [without-join-alias (mbql.u/update-field-options &match dissoc :join-alias)
             expansion          (expand without-join-alias table)]
         [::& join-alias expansion])
@@ -326,12 +326,12 @@
           &match
           [:field [::% (strip-$ expansion)] opts]))
 
-      (:and m {:source-table (_ :guard pos-int?)})
+      (:and m {:source-table #'pos-int?})
       (-> (update m :source-table (fn [table-id]
                                     [::$$ (some-> (t2/select-one-fn :name :model/Table :id table-id) u/lower-case-en)]))
           (expand table))
 
-      (:and m {:fk-field-id (_ :guard pos-int?)})
+      (:and m {:fk-field-id #'pos-int?})
       (-> (update m :fk-field-id (fn [fk-field-id]
                                    (let [[table-name field-name] (field-and-table-name fk-field-id)
                                          field-name              (some-> field-name u/lower-case-en)
