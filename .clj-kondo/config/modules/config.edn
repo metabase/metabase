@@ -2050,7 +2050,6 @@
    :uses #{api
            api.eid-translation
            collections
-           embedding
            events
            lib
            lib.be
