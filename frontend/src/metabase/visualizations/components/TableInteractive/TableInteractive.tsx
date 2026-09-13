@@ -63,7 +63,14 @@ import {
 import type { ClickObject, OrderByDirection } from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
-import { isFK, isID, isPK, isString } from "metabase-lib/v1/types/utils/isa";
+import {
+  isCoordinate,
+  isFK,
+  isID,
+  isPK,
+  isString,
+  isSummable,
+} from "metabase-lib/v1/types/utils/isa";
 import type {
   ColumnSettings,
   DatasetColumn,
@@ -501,6 +508,11 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   }, [isRawTable, mode, onVisualizationClick, question, isPivoted]);
 
   const columnsOptions: ColumnOptions<RowValues, RowValue>[] = useMemo(() => {
+    const showSubtotal = Boolean(settings["table.show_subtotal"]);
+    const firstNonSummableIndex = cols.findIndex(
+      (col) => !isSummable(col) || isCoordinate(col),
+    );
+
     return cols.map((col, columnIndex) => {
       const columnSettings = settings.column?.(col) ?? {};
 
@@ -540,10 +552,78 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
 
       const translatedColumnName = tc(columnName);
 
+      let footer: ColumnOptions<RowValues, RowValue>["footer"];
+      if (showSubtotal && rows.length > 0) {
+        if (isSummable(col) && !isCoordinate(col)) {
+          let hasValidNumber = false;
+          const sum = rows.reduce((acc, row) => {
+            const val = row[columnIndex];
+            if (val == null || val === "") {
+              return acc;
+            }
+            const num = typeof val === "number" ? val : Number(val);
+            if (Number.isFinite(num)) {
+              hasValidNumber = true;
+              return acc + num;
+            }
+            return acc;
+          }, 0);
+
+          const textAlign: React.CSSProperties["textAlign"] =
+            align === "middle"
+              ? "center"
+              : (align ?? (isSummable(col) ? "right" : "left"));
+
+          footer = () =>
+            hasValidNumber ? (
+              <div
+                title={String(
+                  formatValue(sum, {
+                    ...columnSettings,
+                    column: col,
+                    type: "cell",
+                  }),
+                )}
+                style={{
+                  width: "100%",
+                  textAlign,
+                }}
+              >
+                {formatValue(sum, {
+                  ...columnSettings,
+                  compact: true,
+                  column: col,
+                  type: "cell",
+                  jsx: true,
+                  rich: true,
+                })}
+              </div>
+            ) : null;
+        } else if (
+          columnIndex ===
+          (firstNonSummableIndex !== -1 ? firstNonSummableIndex : 0)
+        ) {
+          const labelTextAlign: React.CSSProperties["textAlign"] =
+            align === "middle" ? "center" : (align ?? "left");
+
+          footer = () => (
+            <div
+              style={{
+                width: "100%",
+                textAlign: labelTextAlign,
+              }}
+            >
+              {t`Subtotal`}
+            </div>
+          );
+        }
+      }
+
       const options: ColumnOptions<RowValues, RowValue> = {
         id,
         name: translatedColumnName,
         accessorFn: (row: RowValues) => row[columnIndex],
+        footer,
         cellVariant,
         getCellClassName: (value, rowIndex) =>
           cx(

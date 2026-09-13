@@ -442,3 +442,52 @@ describe("text_wrapping", () => {
     });
   });
 });
+
+describe("table.show_subtotal setting", () => {
+  const getSetting = () => Table.settings["table.show_subtotal"];
+
+  it("should be defined with toggle widget and default to false", () => {
+    const setting = getSetting();
+    expect(setting).toBeDefined();
+    expect(setting.widget).toBe("toggle");
+    expect(setting.default).toBe(false);
+    expect(setting.getDefault()).toBe(false);
+  });
+
+  it("should be hidden when table is pivoted", () => {
+    const setting = getSetting();
+    const pivotedSettings = {
+      "table.pivot": true,
+      "table.pivot_column": "dim1",
+      "table.cell_column": "metric",
+    };
+    const mockSeries = [
+      createMockSingleSeries(
+        { visualization_settings: pivotedSettings },
+        createMockDataset({
+          data: createMockDatasetData({
+            cols: [
+              createMockColumn({ name: "dim1" }),
+              createMockColumn({ name: "dim2" }),
+              createMockColumn({ name: "metric" }),
+            ],
+          }),
+        }),
+      ),
+    ];
+    expect(setting.getHidden?.(mockSeries, pivotedSettings)).toBe(true);
+  });
+
+  it("should not be hidden when table is not pivoted", () => {
+    const setting = getSetting();
+    const mockSeries = [
+      createMockSingleSeries(
+        { visualization_settings: { "table.pivot": false } },
+        createMockDataset(),
+      ),
+    ];
+    expect(setting.getHidden?.(mockSeries, { "table.pivot": false })).toBe(
+      false,
+    );
+  });
+});
