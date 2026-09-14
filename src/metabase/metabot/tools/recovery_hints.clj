@@ -5,8 +5,8 @@
    The pipeline throws a bare statement of what went wrong plus structured `ex-data`; it does
    not know which tools the caller has. This namespace turns that `ex-data` into the sentence
    telling *this* surface's agent how to recover, and each v1 entry point hands it to the
-   pipeline as `:recovery-hint`. v2's equivalent is
-   [[metabase.mcp.v2.recovery-hints/recovery-hint]].
+   pipeline as `:recovery-hint`. The MCP v2 surface attaches its own hints outside the pipeline,
+   from [[metabase.mcp.v2.recovery-hints/recovery-hint]].
 
    Keep every sentence inside v1's own vocabulary — `read_resource`, `metabase://` URIs,
    portable FKs and `portable_entity_id`. An error key with no entry here yields no sentence,

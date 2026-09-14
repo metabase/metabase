@@ -764,11 +764,11 @@
   "Run `external-query` through the representations pipeline. See
   [[execute-representations-query*]] for the pipeline itself.
 
-  `opts` may carry `:recovery-hint`, a function from an agent error's `ex-data` to the sentence
-  telling *this* caller's agent how to recover — the pipeline states what went wrong, the
-  caller supplies the vocabulary, because only the caller knows which tools its agent has.
-  Surfaces pass [[metabase.metabot.tools.recovery-hints/recovery-hint]] or
-  [[metabase.mcp.v2.recovery-hints/recovery-hint]]; omitting it yields bare statements."
+  `opts` may carry `:recovery-hint`, a function from an agent error's `ex-data` to a sentence
+  string (or nil) telling the caller's agent how to recover; the sentence is appended to the
+  agent error's message. The pipeline states what went wrong and the caller supplies the
+  vocabulary, because only the caller knows which tools its agent has. Omitting it yields bare
+  statements, for callers that attach recovery text themselves."
   ([external-query]
    (execute-representations-query external-query nil))
   ([external-query {:keys [recovery-hint]}]
