@@ -682,9 +682,11 @@
                                               {:query {:lib/type "mbql/query"
                                                        :stages   [{:lib/type     "mbql.stage/mbql"
                                                                    :source-table 999999999}]}}))]
-      (testing "an unknown numeric table id is a teaching error steering to browse_data"
-        (is (str/includes? msg "No table found with id 999999999"))
-        (is (str/includes? msg "browse_data"))))))
+      (testing "GHY-4544: an unknown numeric table id quotes the pipeline's sentence and steers to browse_data as prose"
+        (is (= (str "\"No table found with id 999999999.\"\n"
+                    "Call `browse_data` with action \"list_tables\" to list available tables with their numeric ids, "
+                    "then use one as `source-table`.")
+               msg))))))
 
 (deftest ^:parallel error-hints-name-v2-tools-test
   (mt/with-current-user (mt/user->id :rasta)

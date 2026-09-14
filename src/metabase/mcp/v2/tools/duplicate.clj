@@ -6,7 +6,6 @@
    neither, so the new name and collection are folded into the create itself. The tool absorbs that
    difference so one call is one copy, and the caller never has to follow a copy with a move."
   (:require
-   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.dashboards.write :as dashboards.write]
    [metabase.documents.core :as documents]
@@ -16,7 +15,8 @@
    [metabase.mcp.v2.resolve :as v2.resolve]
    [metabase.mcp.v2.write :as v2.write]
    [metabase.metabot.scope :as metabot.scope]
-   [metabase.queries.core :as queries]))
+   [metabase.queries.core :as queries]
+   [metabase.util.i18n :refer [tru]]))
 
 (set! *warn-on-reflection* true)
 
@@ -125,9 +125,9 @@
   (v2.resolve/resolve-collection-id-or-personal (:collection_id args)))
 
 (defn- copy-name
-  "The default name of a copy of `source`. A content name, not agent prose, so the source name goes in as it is."
+  "The default name of a copy of `source`, in the user's locale."
   [source]
-  (str/join " " ["Copy of" (:name source)]))
+  (tru "Copy of {0}" (:name source)))
 
 (def ^:private duplicate-content-args-schema
   [:map {:closed true}

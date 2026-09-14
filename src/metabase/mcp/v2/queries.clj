@@ -46,20 +46,29 @@
      (ex-cause e))
     e))
 
+(defn- with-recovery-hint
+  "`e` with v2's recovery message for its `ex-data` on a line after its message, or unchanged when there is none. The
+   rewrapped exception keeps `e`'s data and cause, and carries the new message under `::common/message`."
+  [^clojure.lang.ExceptionInfo e]
+  (if-let [hint (v2.recovery-hints/recovery-hint (ex-data e))]
+    (common/message-ex-info (message/msg ["%s" "%s"] (exception-message e) hint)
+                            (ex-data e)
+                            (ex-cause e))
+    e))
+
 (defn execute-representations-query
   "Run the shared representations pipeline (validate → repair → resolve) as the MCP v2 surface —
    the one entry point for v2 tools that accept an agent-authored MBQL query. Binds the numeric-id
-   dialect on, and supplies v2's recovery sentences so a resolution failure names `browse_data` /
-   `search` rather than v1's `read_resource` / `metabase://` URIs. A structural failure gains the
-   offending paths ([[with-schema-detail]]), which the pipeline computes but does not state."
+   dialect on. A structural failure gains the offending paths ([[with-schema-detail]]), which the
+   pipeline computes but does not state, and an agent error gains v2's recovery message
+   ([[with-recovery-hint]]), naming `browse_data` / `search` rather than v1's `read_resource` / `metabase://` URIs."
   [external-query]
   (binding [serdes.resolve/*numeric-ids-allowed?* true]
     (try
-      (metabot.construct/execute-representations-query
-       external-query
-       {:recovery-hint v2.recovery-hints/recovery-hint})
+      (metabot.construct/execute-representations-query external-query)
       (catch clojure.lang.ExceptionInfo e
-        (throw (with-schema-detail e))))))
+        (throw (cond-> (with-schema-detail e)
+                 (:agent-error? (ex-data e)) with-recovery-hint))))))
 
 ;;; ------------------------------------------------ Portable queries ----------------------------------------------
 

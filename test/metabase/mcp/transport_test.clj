@@ -562,7 +562,9 @@
             (is (= 429 (:status response)))
             (is (string? (get-in response [:headers "Retry-After"])))
             (is (= -32000 (get-in response [:body :error :code])))
-            (is (str/starts-with? (get-in response [:body :error :message]) "\"Too many attempts!"))
+            (is (re-matches #"Too many attempts! You must wait \d+ seconds before trying again\."
+                            (get-in response [:body :error :message]))
+                "GHY-4544: the refusal is server prose, not quoted")
             (is (nil? (get-in response [:body :result])))))))))
 
 (deftest throttle-charges-per-jsonrpc-message-not-per-request-test
@@ -582,7 +584,9 @@
             (is (= 429 (:status response))
                 "a 4-message batch against a cap of 3 is refused — it was charged 4, not 1")
             (is (= -32000 (get-in response [:body :error :code])))
-            (is (str/starts-with? (get-in response [:body :error :message]) "\"Too many attempts!"))))))
+            (is (re-matches #"Too many attempts! You must wait \d+ seconds before trying again\."
+                            (get-in response [:body :error :message]))
+                "GHY-4544: the refusal is server prose, not quoted")))))
     (testing "a single message costs exactly one attempt, so a cap of 1 serves it and refuses the next"
       (let [session-id (initialize!)]
         (with-redefs-fn {#'mcp.transport/mcp-throttler (throttle/make-throttler :user-id :attempts-threshold 1)}

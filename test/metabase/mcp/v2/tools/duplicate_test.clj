@@ -77,6 +77,22 @@
           (is (= (:dataset_query (t2/select-one :model/Card :id card-id))
                  (:dataset_query copy))))))))
 
+(deftest duplicate-question-default-name-is-localized-test
+  (testing "GHY-4544: the default copy name is translated into the user's locale, like the REST copy endpoints"
+    (mt/with-model-cleanup [:model/Card]
+      (mt/with-temp [:model/Card {card-id :id} {:name          "Umsatz"
+                                                :type          :question
+                                                :dataset_query (venues-query)}]
+        ;; Mock bundle: compiled translations aren't on the test classpath.
+        (mt/with-mock-i18n-bundles! {"de" {:messages {"Copy of {0}" ["Kopie von {0}"]}}}
+          (mt/with-current-user (mt/user->id :crowberto)
+            ;; Inside, because binding the current user rebinds the locale to the user's own.
+            (mt/with-user-locale "de"
+              (let [result (tool-result (registry/call-tool nil nil "duplicate_content"
+                                                            {:type "question" :id card-id}))]
+                (is (= "Kopie von Umsatz" (:name result)))
+                (is (= "Kopie von Umsatz" (t2/select-one-fn :name :model/Card :id (:id result))))))))))))
+
 (deftest duplicate-question-new-name-and-collection-test
   (testing "GHY-4151: new_name and collection_id override the defaults"
     (mt/with-model-cleanup [:model/Card]

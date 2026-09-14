@@ -591,9 +591,12 @@
       (throttle/check mcp-throttler user-id))
     nil
     (catch clojure.lang.ExceptionInfo e
-      (let [message       (ex-message e)
-            retry-seconds (some->> message (re-find #"(\d+) seconds") second)]
-        (cond-> (json-response 429 (jsonrpc-error nil -32000 message))
+      (let [retry-seconds (some->> (ex-message e) (re-find #"(\d+) seconds") second)
+            refusal       (if retry-seconds
+                            (message/msg ["Too many attempts! You must wait %d seconds before trying again."]
+                                         (parse-long retry-seconds))
+                            (message/msg ["Too many attempts! Wait a minute before trying again."]))]
+        (cond-> (json-response 429 (jsonrpc-error nil -32000 refusal))
           retry-seconds (assoc-in [:headers "Retry-After"] retry-seconds))))))
 
 ;;; ---------------------------------------------------- Handler ---------------------------------------------------

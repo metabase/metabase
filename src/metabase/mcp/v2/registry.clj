@@ -278,7 +278,7 @@
       ;; scope/disabled cases it stays listed for capable clients, so name what's missing.
       (seq missing)
       {:error {:code    common/error-code-invalid-params
-               :message (message/msg ["%s"] (mcp.ui-resource/missing-extensions-error tool-name missing))}}
+               :message (mcp.ui-resource/missing-extensions-error tool-name missing)}}
 
       :else
       ;; Strict MCP clients (ChatGPT) send every declared property with `null` for the ones they
