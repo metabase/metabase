@@ -218,17 +218,35 @@
   [_driver _breakout _breakout-expr]
   nil)
 
-(defmulti apply-cte-hoist?
-  "True iff a UNION ALL pivot compiled for `driver` should hoist the shared pre-pivot subquery into a
-  `WITH` binding that every branch references by alias, rather than inlining it once per branch. On
-  by default; drivers whose doesn't support the resulting shape override to false."
-  {:added "0.64.0", :arglists '([driver])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod apply-cte-hoist? :sql
-  [_driver]
-  true)
+(defn- hoist-shared-source-to-cte
+  "When every UA branch shares the same single-entry subquery `:from`, lift it into a `WITH`
+  binding and rewrite each branch to reference the CTE by its original alias. Returns
+  `{:cte-binding [<name> <src>] :branches <rewritten>}` on hoist, or `nil` when hoisting doesn't
+  apply — driver opts out via [[sql.qp/apply-cte-hoist?]], branches diverge, or the shared entry
+  isn't a subquery."
+  [driver branches]
+  (let [cte-name :__mb_pivot_source
+        froms    (mapv :from branches)
+        [shared-src src-alias]
+        (when (and (sql.qp/apply-cte-hoist? driver)
+                   (apply = froms)
+                   ;; single from-entry only: multi-source `:from` (implicit
+                   ;; cross joins) would need every entry hoisted separately.
+                   (= 1 (count (first froms))))
+          (let [entry (ffirst froms)]
+            (cond
+              ;; unaliased subquery: `<map>`
+              (map? entry)
+              [entry nil]
+              ;; aliased subquery: `[<map> <alias>]`
+              (and (vector? entry) (= 2 (count entry)) (map? (first entry)))
+              [(first entry) (second entry)])))]
+    (when shared-src
+      (let [cte-from (if src-alias
+                       [[cte-name src-alias]]
+                       [[cte-name]])]
+        {:cte-binding [cte-name shared-src]
+         :branches    (mapv #(assoc % :from cte-from) branches)}))))
 
 (defn- compile-union-all-pivot
   "Compile the `:pivot` clause into a `UNION ALL` over one branch per grouping-set combination, wrapped in an outer
@@ -361,33 +379,11 @@
                                         cat
                                         [user-order-by-outer
                                          (map (fn [alias] [alias :asc]) canonical-orig-bo-aliases)]))
-        ;; If every branch shares the same one-entry `:from` (the nested source produced by
-        ;; [[qp.util.transformations.nest-breakouts/nest-pivot-joins]]), lift it into a `WITH` binding
-        ;; and rewrite each branch to reference the CTE by its original alias. Falls back to the flat
-        ;; shape when branches diverge (no joins, or heterogeneous per-branch filters).
-        cte-name                 :__mb_pivot_source
-        froms                    (mapv :from branches)
-        [shared-src src-alias]   (when (and (apply-cte-hoist? driver)
-                                            (apply = froms)
-                                            ;; single from-entry only: multi-source `:from` (implicit
-                                            ;; cross joins) would need every entry hoisted separately.
-                                            (= 1 (count (first froms))))
-                                   (let [entry (ffirst froms)]
-                                     (cond
-                                       ;; unaliased subquery: `<map>`
-                                       (map? entry)
-                                       [entry nil]
-                                       ;; aliased subquery: `[<map> <alias>]`
-                                       (and (vector? entry) (>= (count entry) 1) (map? (first entry)))
-                                       [(first entry) (second entry)])))
-        cte-from                 (if src-alias
-                                   [[cte-name src-alias]]
-                                   [[cte-name]])
-        branches                 (cond->> branches
-                                   shared-src (mapv #(assoc % :from cte-from)))]
+        hoist                    (hoist-shared-source-to-cte driver branches)
+        branches                 (:branches hoist branches)]
     (cond-> {:select [:*]
              :from   [[{:union-all branches} :__mb_pivot_result]]}
-      shared-src     (assoc :with [[cte-name shared-src]])
+      hoist          (assoc :with [(:cte-binding hoist)])
       outer-order-by (assoc :order-by outer-order-by))))
 
 (defmethod sql.qp/apply-top-level-clause [:sql :pivot]
