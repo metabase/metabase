@@ -242,6 +242,7 @@ jobs:
       skip: >-
         ${{ needs.should-run.outputs.verdict != 'force-run' &&
         needs.files-changed.outputs.backend_all != 'true' }}
+      smoke-only: ${{ needs.should-run.outputs.verdict != 'force-run' }}
 
   app-db-tests:
     if: |
