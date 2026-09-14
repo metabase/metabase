@@ -77,7 +77,7 @@
             unchecked (for [sym   (id-params node params)
                             :let  [nm (ast/->str sym)
                                    ls (get bindings ((juxt :row :col) (meta sym)))]
-                            :when (and (contains? used nm) (seq ls) (not-any? taint/check-label? ls))]
+                            :when (and (contains? used nm) (seq (remove taint/meta-label? ls)) (not-any? taint/check-label? ls))]
                         nm)]
         (when (seq unchecked)
           {:message (str "Request id" (when (next unchecked) "s") " never permission-checked on any path: "

@@ -513,8 +513,11 @@
                                  ctx)
                         result ((:detect (:rule site)) ctx)]
               :when    result]
-          (cond-> (finding site node result kinds ctx)
-            reach (assoc :flows (cg/flows-to reach site))))
+          (let [flows (when reach (cg/flows-to reach site))]
+            (cond-> (finding site node result kinds ctx)
+              reach          (assoc :flows flows)
+              ;; nothing reaches it: say how it is called anyway, from the outermost caller down
+              (and reach (empty? flows)) (assoc :callers (cg/callers-of reach site)))))
         ;; endpoint-triggered rules visit only the files that hold an endpoint form
         (when (and reach (seq endpoint-rules))
           (for [filename (sort (distinct (map :filename (cg/entries reach))))

@@ -229,6 +229,35 @@
                                             :rules [(rule/by-id :metabase-security-lint/mass-assignment)]
                                             :taint-sources :call-graph})))))))
 
+(deftest mass-assignment-by-shape-test
+  (let [id :metabase-security-lint/mass-assignment]
+    (is (empty? (check-cg id "(ns t (:require [toucan2.core :as t2] [metabase.api.macros :as api.macros]))
+(defn- save! [id changes] (t2/update! :model/Card id changes))
+(api.macros/defendpoint :put \"/:id\" \"doc\" [{:keys [id]} _q body] (save! id {:name (:name body) :archived (:archived body)}))"))
+        "a helper whose every caller builds the map with literal keys: the code chose what it sets")
+    (is (empty? (check-cg id "(ns t (:require [toucan2.core :as t2] [metabase.api.macros :as api.macros]))
+(defn- save! [id changes] (t2/update! :model/Card id changes))
+(api.macros/defendpoint :put \"/:id\" \"doc\" [{:keys [id]} _q body] (save! id (select-keys body [:name])))"))
+        "the rule's own remediation, one call away")
+    (is (= [2] (map :row (check-cg id "(ns t (:require [toucan2.core :as t2] [metabase.api.macros :as api.macros]))
+(defn- save! [id changes] (t2/update! :model/Card id changes))
+(api.macros/defendpoint :put \"/:id\" \"doc\" [{:keys [id]} _q body] (save! id {:name (:name body)}))
+(api.macros/defendpoint :put \"/:id/all\" \"doc\" [{:keys [id]} _q body] (save! id body))")))
+        "one caller forwarding the request map is enough")
+    (is (= [2] (map :row (check-cg id "(ns t (:require [toucan2.core :as t2] [metabase.api.macros :as api.macros]))
+(defn- save! [id changes] (t2/update! :model/Card id changes))
+(api.macros/defendpoint :put \"/:id\" \"doc\" [{:keys [id]} _q {:keys [k v]}] (save! id {k v}))")))
+        "a map whose key is a request value names whatever column the request likes")
+    (testing "in the data-access layer, a Collection-derived value in a map the caller built with literal keys is
+              not a row written wholesale"
+      (let [dir (doto (java.io.File. (System/getProperty "java.io.tmpdir") (str "seclint" (System/nanoTime)))
+                  .mkdirs .deleteOnExit)
+            f   (doto (java.io.File. dir "db.clj") .deleteOnExit)]
+        (spit f "(ns t (:require [toucan2.core :as t2]))
+(defn insert-card! [card] (t2/insert! :model/Card card))
+(defn make-card! [name coll-id] (let [coll (t2/select-one :model/Collection coll-id)] (insert-card! {:name name :collection_id (:id coll)})))")
+        (is (empty? (engine/analyze {:paths [(.getAbsolutePath f)] :rules [(rule/by-id id)] :taint-sources :call-graph})))))))
+
 (deftest redos-test
   (is (flags? :metabase-security-lint/redos
               "(ns t) (defn f [pat] (re-pattern pat))")

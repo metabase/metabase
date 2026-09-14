@@ -84,6 +84,11 @@
   '#{map mapv mapcat filter filterv remove keep keep-indexed run! some every? not-any?
      sort-by group-by partition-by take-while drop-while})
 
+(def merging-heads
+  "Functions that put another map's keys into the map threaded through them, so a threaded map literal no longer
+  has only the keys the code wrote. Matched by name."
+  #{"merge" "merge-with" "into" "conj" "deep-merge"})
+
 (def executes-first-arg
   "Combinators that execute the function in their first position *right now*: `(apply check args)` has run the
   check. A genuine call edge, counted when asking whether an endpoint executes something. Matched by name, so

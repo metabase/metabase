@@ -92,13 +92,39 @@
 
 (declare binding-ids-in-region)
 
+(defn- arg-shape
+  "Whether an argument's *keys* were chosen by the code or by the data: `:keyed` for a map literal whose keys
+  are all keyword literals, and for `(select-keys x [:a :b])`; `:opaque` for anything else that could be a map
+  -- a local, a call, a `(merge defaults m)`, and `{k value}`, whose one key is a value; nil for a scalar literal,
+  which is no map at all. What a parameter received from every caller, as labels `:shape/keyed` and
+  `:shape/opaque`, is what a rule about a map's keys asks."
+  [a]
+  (let [a (ast/unmeta a)]
+    (cond
+      (ast/literal? a)
+      nil
+
+      (ast/map-node? a)
+      (if (every? (fn [[k _]] (ast/keyword-node? (ast/unmeta k))) (ast/map-entries a)) :keyed :opaque)
+
+      (and (ast/call? a) (= "select-keys" (some-> (ast/head-sym a) name)))
+      (let [ks (some-> (ast/arg a 1) ast/unmeta)]
+        (if (and ks (ast/vector-node? ks) (every? #(ast/keyword-node? (ast/unmeta %)) (ast/children ks)))
+          :keyed
+          :opaque))
+
+      :else :opaque)))
+
 (defn- arg-records
   "The `:calls` records for one argument: the argument itself, and for a map literal one more per keyword entry,
   keyed, so `(f {:table-id id :file file})` hands `id` to the `table-id` of a callee that destructures the map and
   `file` to its `file`, rather than both to both. See `slot-binding-ids`."
   [filename head index pos a]
   (let [a (ast/unmeta a)]
-    (cons {:head head :index index :pos pos :region (assoc (meta a) :filename filename) :map? (ast/map-node? a)}
+    (cons {:head head :index index :pos pos :region (assoc (meta a) :filename filename) :map? (ast/map-node? a)
+           :shape (arg-shape a)
+           ;; a bare local handed on: its shape is whatever it received, when it is a parameter
+           :sym?  (ast/symbol-node? a)}
           (for [[k v] (ast/map-entries a)
                 :let  [k (ast/unmeta k)]
                 :when (ast/keyword-node? k)]
@@ -216,6 +242,16 @@
       (ast/symbol-node? step) (n/sexpr step)
       (ast/call? step)        (ast/head-sym step)
       :else                   nil)))
+
+(defn- thread-shape
+  "The shape (see [[arg-shape]]) of what a threading step receives: the seed's, when every step before it is one
+  that keeps the keys the code chose -- `assoc`, `update`, `dissoc`, a helper that fills in fields -- and
+  `:opaque` once a step merges another map in. The same approximation the taint takes: a thread's steps are
+  recorded as receiving the seed."
+  [seed earlier-steps]
+  (let [merges? (fn [step] (contains? vocab/merging-heads (some-> (thread-target step) name)))]
+    (when-let [shape (arg-shape seed)]
+      (if (some merges? earlier-steps) :opaque shape))))
 
 (defn- meta-value
   "The value written for keyword `k` in `^{k v}` metadata on `raw`, an un-unmeta'd node, or nil."
@@ -617,7 +653,7 @@
         (when-let [slot (get threading-heads head)]
           (when-let [seed (first args)]
             (let [seed-region (assoc (meta seed) :filename filename)]
-              (doseq [step (rest args)
+              (doseq [[i step] (map-indexed vector (rest args))
                       :let [target (thread-target step)
                             spos   (assoc (select-keys (meta step) [:row :col]) :filename filename)]
                       :when target]
@@ -627,7 +663,10 @@
                 (vswap! calls conj {:head   target
                                     :index  slot
                                     :pos    spos
-                                    :region seed-region})))))
+                                    :region seed-region
+                                    ;; the seed's shape, as far as the steps before this one keep it
+                                    :shape  (thread-shape seed (take i (rest args)))
+                                    :sym?   (and (zero? i) (ast/symbol-node? (ast/unmeta seed)))})))))
         ;; `(apply f a b coll)` calls f with a and b in its first positions and the collection spread over the
         ;; rest; `(m/mapply f m)` calls f with the map as its trailing keyword arguments, so the map lands in the
         ;; last parameter -- `[& {:keys [dashboard card]}]`, or a plain trailing map. Recorded as calls to `f` at
@@ -983,6 +1022,43 @@
   [reach pos]
   (boolean (seq (reachable-from reach pos))))
 
+(defn- walk-back
+  "The function holding `pos`, and a breadth-first walk backwards from it over every reference: for each function
+  that can reach it, the next hop towards it and the distance. Cached per holding function: a thousand findings in
+  a few hundred functions cost a few hundred walks."
+  [{:keys [reverse-edges fns-by-file regions-of hops-cache]} {:keys [filename row col]}]
+  (let [holder (some (fn [{:keys [fn region]}] (when (within? region row col) {:fn fn :region region}))
+                     (get fns-by-file filename))
+        target (:fn holder)
+        walk   (fn [target]
+                 (loop [hops {target nil}, depth {target 0}, frontier [target], d 1]
+                   (if (empty? frontier)
+                     {:hops hops :depth depth}
+                     (let [[hops depth next] (reduce (fn [[hs ds nx] f]
+                                                       (reduce (fn [[hs ds nx] caller]
+                                                                 (if (contains? hs caller)
+                                                                   [hs ds nx]
+                                                                   [(assoc hs caller f) (assoc ds caller d) (conj nx caller)]))
+                                                               [hs ds nx]
+                                                               (get @reverse-edges f)))
+                                                     [hops depth []]
+                                                     frontier)]
+                       (recur hops depth next (inc d))))))
+        {:keys [hops depth]} (when target
+                               (or (get @hops-cache target)
+                                   (let [w (walk target)]
+                                     (swap! hops-cache assoc target w)
+                                     w)))
+        ;; the last step is the function holding `pos`, at the region that holds it -- twenty defmethods share
+        ;; one symbol, and the first region by that name is usually some other driver's
+        step   (fn [fq] (let [r (if (= fq target) (:region holder) (first (get regions-of fq)))]
+                          {:name (str fq) :filename (:filename r) :row (:row r) :col (:col r)}))]
+    {:target target
+     :hops   hops
+     :depth  depth
+     ;; the path from a function the walk visited down to the holder
+     :from   (fn [seed] (->> (iterate hops seed) (take-while some?) (mapv step)))}))
+
 (defn flows-to
   "How execution gets to `pos`, per entry kind:
 
@@ -991,43 +1067,14 @@
               :path [step ...]}}            ; one shortest path: the entry, then each function, ending at the
                                             ; function holding `pos`. Each step has :name :filename :row :col.
 
-  A breadth-first walk backwards from the function holding `pos` over every reference, recording for each
-  function the next hop towards `pos`; an entry reaches `pos` when one of its seeds was visited, and the path
-  follows the hops from that seed. A position directly inside an entry form has a one-step path. Empty when
-  nothing modelled reaches `pos`.
+  A breadth-first walk backwards from the function holding `pos` over every reference (see [[walk-back]]); an
+  entry reaches `pos` when one of its seeds was visited, and the path follows the hops from that seed. A
+  position directly inside an entry form has a one-step path. Empty when nothing modelled reaches `pos` -- see
+  [[callers-of]] for what the report says then.
 
-  The walk is cached per holding function, and the entries are found from the visited functions rather than
-  by testing every entry: a thousand findings in a few hundred functions cost a few hundred walks."
-  [{:keys [reverse-edges fns-by-file regions-of flow-entries entries-by-seed flow-entries-by-file hops-cache]}
-   {:keys [filename row col]}]
-  (let [holder  (some (fn [{:keys [fn region]}] (when (within? region row col) {:fn fn :region region}))
-                      (get fns-by-file filename))
-        target  (:fn holder)
-        ;; function -> the function it was reached from, one hop closer to the target, and its distance
-        walk    (fn [target]
-                  (loop [hops {target nil}, depth {target 0}, frontier [target], d 1]
-                    (if (empty? frontier)
-                      {:hops hops :depth depth}
-                      (let [[hops depth next] (reduce (fn [[hs ds nx] f]
-                                                        (reduce (fn [[hs ds nx] caller]
-                                                                  (if (contains? hs caller)
-                                                                    [hs ds nx]
-                                                                    [(assoc hs caller f) (assoc ds caller d) (conj nx caller)]))
-                                                                [hs ds nx]
-                                                                (get @reverse-edges f)))
-                                                      [hops depth []]
-                                                      frontier)]
-                        (recur hops depth next (inc d))))))
-        {:keys [hops depth]} (when target
-                               (or (get @hops-cache target)
-                                   (let [w (walk target)]
-                                     (swap! hops-cache assoc target w)
-                                     w)))
-        ;; the last step is the function holding `pos`, at the region that holds it -- twenty defmethods share
-        ;; one symbol, and the first region by that name is usually some other driver's
-        step    (fn [fq] (let [r (if (= fq target) (:region holder) (first (get regions-of fq)))]
-                           {:name (str fq) :filename (:filename r) :row (:row r) :col (:col r)}))
-        from    (fn [seed] (->> (iterate hops seed) (take-while some?) (mapv step)))
+  The entries are found from the visited functions rather than by testing every entry."
+  [{:keys [flow-entries entries-by-seed flow-entries-by-file] :as reach} {:keys [filename row col] :as pos}]
+  (let [{:keys [hops depth from]} (walk-back reach pos)
         direct  (into #{} (comp (filter #(within? % row col)) (map :i)) (get flow-entries-by-file filename))
         ;; in entry order, so that ties between equally short paths resolve the same way every run
         indexes (into (sorted-set) (concat direct (when hops (mapcat #(get @entries-by-seed %) (keys hops)))))
@@ -1046,6 +1093,24 @@
                [kind {:count   (count rs)
                       :entries (into [] (comp (map #(:name (:entry %))) (distinct) (take 5)) rs)
                       :path    (:path (first rs))}]))))
+
+(defn callers-of
+  "For a position no entry point reaches, how the code is used anyway:
+
+      {:count 2                             ; functions that reach it and that nothing calls -- the roots
+       :path [step ...]}                    ; from the farthest root down to the function holding `pos`
+
+  The same backwards walk as [[flows-to]]; a root is a visited function with no reference to it. A function
+  nothing calls is its own root, with a one-step path. nil for a position outside every function.
+
+  This is what a finding shows in place of a flow when it is unreachable: the linter did see the callers, and a
+  reader wants to know that `apply-transform!` is the end of the line, not that the chain was never looked at."
+  [{:keys [reverse-edges] :as reach} pos]
+  (let [{:keys [hops depth from]} (walk-back reach pos)
+        roots (when hops (filter #(empty? (get @reverse-edges %)) (keys hops)))]
+    (when (seq roots)
+      {:count (count roots)
+       :path  (from (first (sort-by (juxt (comp - depth) str) roots)))})))
 
 (defn sanitized-positions
   "Usage positions that a validating guard has already vouched for.
@@ -1217,6 +1282,34 @@
           (recur t' fresh' cbp (into indexed new-fns)))))))
 
 (declare propagate*)
+
+(defn- param-shapes
+  "`{param-id #{:shape/keyed}}`: the shape (see [[arg-shape]]) of what each parameter receives, over every call
+  that feeds it. A bare parameter handed on -- `(defn create! [m] (insert! m))` -- passes its own shape along;
+  one nothing feeds, or that a request bound, is opaque when handed on. A parameter no call feeds gets nothing.
+
+  Not a taint label: a shape is a fact about the argument as written at the call, and moving it with the values
+  would say a map built from a parameter's fields has that parameter's shape. A destructured parameter's `name`
+  inside `{:name name}` is not what makes the map keyed or not."
+  [{:keys [calls static slot-ids resolve-call params-by-fn param-ids]}]
+  (let [feeds (for [{:keys [i shape sym? key] :as call} calls
+                    :when (and (not key) (or shape sym?) (contains? params-by-fn (resolve-call call)))
+                    :let  [to   (slot-ids i)
+                           from (when sym? (first (:ids (static i))))]
+                    :when (seq to)]
+                {:to to :from (when (contains? param-ids from) from) :label (keyword "shape" (name (or shape :opaque)))})
+        fed   (into #{} (mapcat :to) feeds)]
+    (loop [m {}]
+      (let [m' (reduce (fn [m {:keys [to from label]}]
+                         (let [ls (cond
+                                    (nil? from)                  #{label}
+                                    (not (contains? fed from))   #{:shape/opaque}
+                                    ;; fed, but not yet known: wait for a later round (a cycle stays unknown)
+                                    :else                        (get m from #{}))]
+                           (reduce #(update %1 %2 (fnil into #{}) ls) m to)))
+                       m
+                       feeds)]
+        (if (= m m') m (recur m'))))))
 
 (defn propagate
   "Grow `:sources` to a fixpoint over the call graph, carrying labels. See [[propagate*]], of which this returns
@@ -1433,6 +1526,10 @@
                                              (into ls (filter #(= :checked (taint/label-kind %))) (get tainted id))
                                              ls)]))]
           {:tainted      (merge-with into tainted
+                                     (param-shapes {:calls all-calls :static (:static calls*) :slot-ids slot-ids
+                                                    :resolve-call resolve-call :params-by-fn params-by-fn
+                                                    :param-ids (into #{} (mapcat #(binding-ids-in-region local-idx (:region %)))
+                                                                     all-params)})
                                      (checks-backward check-sources
                                                       {:local-idx local-idx :usage-idx usage-idx :calls all-calls
                                                        :slots-for slots-for :resolve-call resolve-call :locals locals

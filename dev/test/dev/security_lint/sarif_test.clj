@@ -22,7 +22,9 @@
    {:rule-id :metabase-security-lint/command-injection :rule-name "Command injection"
     :file "/repo/src/metabase/b.clj" :row 2 :col 1 :end-row 2 :end-col 9
     :severity :error :precision :high :cwe "CWE-78" :message "dynamic arg"
-    :snippet "(shell/sh ...)" :form "(shell/sh ...)"}
+    :snippet "(shell/sh ...)" :form "(shell/sh ...)"
+    :callers {:count 1 :path [{:name "metabase.b/outer" :filename "/repo/src/metabase/b.clj" :row 9 :col 1}
+                              {:name "metabase.b/inner" :filename "/repo/src/metabase/b.clj" :row 1 :col 1}]}}
    {:rule-id :metabase-security-lint/weak-hash :rule-name "Weak hash"
     :file "/repo/src/metabase/c.clj" :row 4 :col 5 :end-row 4 :end-col 30
     :severity :note :precision :low :cwe "CWE-328" :message "md5"
@@ -152,7 +154,8 @@
   (testing "GitHub does not display result properties, so what reaches the finding goes in the message text"
     (let [msgs (mapv #(get-in % [:message :text]) (get-in (run-report) [:runs 0 :results]))]
       (is (= "dynamic arg. Reachable from http, job." (first msgs)))
-      (is (re-find #"(?i)not reachable from any known entry point" (second msgs))))))
+      (is (= "dynamic arg. Not reachable from any known entry point; the outermost caller is metabase.b/outer, which nothing calls."
+             (second msgs))))))
 
 (deftest text-report-test
   (let [^String out (sarif/text findings {:root "/repo"})]
@@ -173,6 +176,8 @@
     (testing "a finding starts with file:row:col alone on its line, which IDE terminals make clickable, with the
               details indented under it and a blank line after"
       (is (re-find #"\n\nsrc/metabase/b\.clj:2:1\n    not reachable from any known entry point" out)))
+    (testing "what nothing reaches still says how it is called, from the outermost caller down"
+      (is (re-find #"(?m)^    not reachable from any known entry point\n      called from metabase\.b/outer -> metabase\.b/inner; nothing calls metabase\.b/outer$" out)))
     (testing "the code is quoted under the message"
       (is (re-find #"\| \(shell/sh \.\.\.\)" out)))
     (testing "a summary closes the report"
@@ -220,8 +225,15 @@
         (is (= ["src/metabase/api.clj" "src/metabase/a.clj" "src/metabase/a.clj"]
                (map #(get-in % [:location :physicalLocation :artifactLocation :uri]) locs)))
         (is (= [3 6 8] (map #(get-in % [:location :physicalLocation :region :startLine]) locs)))))
-    (testing "a finding nothing reaches has no code flows"
-      (is (nil? (:codeFlows (second (get-in (run-report) [:runs 0 :results]))))))))
+    (testing "a finding nothing reaches shows the chain from its outermost caller instead, so 'Show paths' still
+              says how the code is used"
+      (let [flow (first (:codeFlows (second (get-in (run-report) [:runs 0 :results]))))
+            locs (get-in flow [:threadFlows 0 :locations])]
+        (is (= "No entry point reaches this; called from metabase.b/outer, which nothing calls" (get-in flow [:message :text])))
+        (is (= ["metabase.b/outer" "metabase.b/inner" "dynamic arg"] (map #(get-in % [:location :message :text]) locs)))
+        (is (= [9 1 2] (map #(get-in % [:location :physicalLocation :region :startLine]) locs)))))
+    (testing "and none at all when it is not inside any function"
+      (is (nil? (:codeFlows (nth (get-in (run-report) [:runs 0 :results]) 2)))))))
 
 (deftest uri-drops-leading-dot-slash-test
   (testing "a scan of ./src reports src/...; GitHub resolves URIs against the repository root"
