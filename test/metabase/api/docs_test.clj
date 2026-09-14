@@ -26,4 +26,5 @@
     (with-redefs [open-api/root-open-api-object (constantly spec)]
       (let [result (api.docs/open-api-object identity)]
         (is (= #{"/api/item" "/api/device"} (set (keys (:paths result)))))
-        (is (= #{"Public" "Child"} (set (keys (get-in result [:components :schemas])))))))))
+        (is (= #{"Public" "Child"} (set (keys (get-in result [:components :schemas])))))
+        (is (= [{:url "" :description "Metabase API"}] (:servers result)))))))
