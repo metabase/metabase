@@ -1,4 +1,5 @@
 import { DatePicker } from "@mantine/dates";
+import { t } from "ttag";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { useLocale } from "metabase/common/hooks";
@@ -135,6 +136,31 @@ describe("LocaleProvider", () => {
     await waitFor(() => {
       expect(screen.getByText("content")).toBeInTheDocument();
     });
+  });
+
+  it("should apply the new catalogue to its children when the locale changes", async () => {
+    // Reads the locale the way a translated component does, so it re-renders
+    // when the provider announces a new one.
+    const TestComponent = () => {
+      useLocale();
+      return <div>{t`Filter`}</div>;
+    };
+
+    const { rerender } = renderWithProviders(
+      <LocaleProvider locale="en">
+        <TestComponent />
+      </LocaleProvider>,
+    );
+
+    expect(await screen.findByText("Filter")).toBeInTheDocument();
+
+    rerender(
+      <LocaleProvider locale="ko">
+        <TestComponent />
+      </LocaleProvider>,
+    );
+
+    expect(await screen.findByText("[ko] Filter")).toBeInTheDocument();
   });
 
   it("should make useLocale return the correct locale", async () => {

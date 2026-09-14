@@ -6,7 +6,10 @@
   },
   "translations": {
     "": {
-      "": {}
+      "Filter": {
+        "msgid": "Filter",
+        "msgstr": ["[ko] Filter"]
+      }
     }
   }
 }
