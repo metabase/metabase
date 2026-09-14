@@ -23,23 +23,39 @@
 (set! *warn-on-reflection* true)
 
 (defn- marker-form?
-  "Whether `x` is a `[:auto/param v]` marker.
+  "Whether `x` is marker-shaped -- headed by `:auto/param`.
 
-  A `MapEntry` is also a two-element vector, so the entry `{:auto/param v}` would otherwise look
-  like a marker and the map holding it would be rewritten away."
+  Broader than what [[auto-param]] will lift, so that a marker written some other way is rejected
+  rather than left to compile. A `MapEntry` is excluded: it is a two-element vector holding its own
+  key, so `{:auto/param v}` (a column of that name) would otherwise look like a marker."
   [x]
-  (and (vector? x)
+  (and (sequential? x)
        (not (instance? MapEntry x))
        (= :auto/param (first x))))
 
-(defn- check-arity!
-  "A marker-headed vector that is not `[:auto/param v]` is always a mistake: HoneySQL does not know
-  the marker and compiles the leftover form into a call to a function named PARAM, which fails at
-  the database with nothing pointing back here."
+(defn- well-formed-marker?
+  "Whether `x` is a `[:auto/param v]` marker written the one supported way."
   [x]
-  (when-not (= 2 (count x))
-    (throw (ex-info (str "[:auto/param ...] takes exactly one value, got " (dec (count x)) ": " (pr-str x))
+  (and (marker-form? x)
+       (vector? x)
+       (= 2 (count x))))
+
+(defn- check-well-formed!
+  "A marker-shaped form that is not `[:auto/param v]` is always a mistake. HoneySQL does not know the
+  marker, so whatever is left compiles into a call to a function named PARAM and fails at the
+  database with nothing pointing back here."
+  [x]
+  (when-not (well-formed-marker? x)
+    (throw (ex-info (str "Malformed [:auto/param ...] marker: " (pr-str x)
+                         ". Write it as a two-element vector, [:auto/param value].")
                     {:type ::malformed-marker, :form x}))))
+
+(defn- contains-marker?
+  "Whether any marker survives in `form`."
+  [form]
+  (let [found (volatile! false)]
+    (walk/postwalk (fn [x] (when (marker-form? x) (vreset! found true)) x) form)
+    @found))
 
 (defn- param-key
   "A random key for a lifted value. Random rather than sequential so that a `[:param :k]` arriving
@@ -64,23 +80,53 @@
                     x
                     ;; Replace the whole form, so the payload is never descended into.
                     (do
-                      (check-arity! x)
-                      (let [k (param-key)]
-                        (vswap! params assoc k (second x))
-                        [:param k]))))
+                      (check-well-formed! x)
+                      (let [v (second x)]
+                        (if (nil? v)
+                          ;; HoneySQL turns a literal nil in a comparison into `IS NULL`; a bound
+                          ;; parameter gets `= ?`, which no row satisfies. Leave nil to HoneySQL.
+                          nil
+                          (let [k (param-key)]
+                            (vswap! params assoc k v)
+                            [:param k]))))))
                 query)]
     [walked @params]))
+
+(defn- assert-no-marker-survived!
+  "A marker must never reach SQL. HoneySQL does not recognise it and compiles the leftover form into
+  a call to a function named PARAM, or -- in a slot it formats as an identifier -- into the literal
+  identifier `param`, silently discarding the value."
+  [query]
+  (when (contains-marker? query)
+    (throw (ex-info "[:auto/param ...] would reach SQL unlifted. It belongs in a value slot of a query map."
+                    {:type ::marker-reached-sql, :query query}))))
+
+(defn- assert-every-value-bound!
+  "Every value lifted out of the query has to come back as a bound argument. A marker sitting in a
+  slot HoneySQL formats as an identifier is rewritten but never consumed, which drops the value and
+  leaks the generated key into the SQL text."
+  [params sql-args]
+  (let [bound (count (rest sql-args))]
+    (when (< bound (count params))
+      (throw (ex-info (str "[:auto/param ...] did not bind: " (- (count params) bound)
+                           " of " (count params) " marked values were not passed as parameters."
+                           " A marker belongs in a value slot, not a column or table position.")
+                      {:type ::marker-not-bound, :sql (first sql-args)})))))
 
 (methodical/defmethod t2.pipeline/compile :around :default
   [query-type model built-query]
   ;; Toucan re-enters `compile` with the `[sql & args]` vector it produced, so only a map is worth
   ;; walking -- and skipping the rest keeps this off the second pass.
   (if-not (map? built-query)
-    (next-method query-type model built-query)
+    (do (assert-no-marker-survived! built-query)
+        (next-method query-type model built-query))
     (let [[query params] (auto-param built-query)]
-      (if (seq params)
+      (assert-no-marker-survived! query)
+      (if-not (seq params)
+        (next-method query-type model query)
         ;; HoneySQL takes params as a format option rather than a query clause. Merge so that an
         ;; enclosing `*options*` keeps whatever params it already carried.
-        (binding [t2.honeysql/*options* (update (t2.honeysql/options) :params merge params)]
-          (next-method query-type model query))
-        (next-method query-type model query)))))
+        (let [sql-args (binding [t2.honeysql/*options* (update (t2.honeysql/options) :params merge params)]
+                         (next-method query-type model query))]
+          (assert-every-value-bound! params sql-args)
+          sql-args)))))

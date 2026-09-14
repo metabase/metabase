@@ -46,11 +46,17 @@
       {:where [:= :a 1] :set {:auto/param "x"}})))
 
 (deftest ^:parallel rejects-a-malformed-marker-test
-  (testing "a marker-headed vector of the wrong arity is a mistake, not a value"
-    (are [query] (thrown-with-msg? clojure.lang.ExceptionInfo #"takes exactly one value"
+  (testing "a marker written any way but [:auto/param value] is a mistake, not a value"
+    (are [query] (thrown-with-msg? clojure.lang.ExceptionInfo #"Malformed"
                                    (#'value-guard/auto-param query))
       {:where [:= :a [:auto/param]]}
-      {:where [:= :a [:auto/param 1 2]]})))
+      {:where [:= :a [:auto/param 1 2]]}
+      {:where [:= :a (list :auto/param 5)]})))
+
+(deftest ^:parallel leaves-nil-to-honeysql-test
+  (testing "a bound nil compares as `= ?`, which no row satisfies -- leave it a literal so it is IS NULL"
+    (is (= (sql/format {:where [:= :a nil]})
+           (formatted {:where [:= :a [:auto/param nil]]})))))
 
 (deftest ^:parallel leaves-an-unmarked-query-alone-test
   (let [query {:select [:*] :from [:t] :where [:= :a 1]}]
