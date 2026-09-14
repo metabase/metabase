@@ -8,6 +8,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [compojure.core :as compojure]
+   [ring.middleware.not-modified :as not-modified]
    [ring.util.mime-type :as mime]
    [ring.util.response :as response]))
 
@@ -94,9 +95,16 @@
 (defn precompressed-resources
   "A Ring handler that serves classpath resources from `root`, preferring
    pre-compressed (.br, .gz) variants when the client supports them.
-   Drop-in replacement for `compojure.route/resources`."
+   Drop-in replacement for `compojure.route/resources`.
+
+   Wrapped in `wrap-not-modified` so a resource the client already holds is
+   answered with a 304 rather than its whole body. Everything under `/app` that
+   carries no content hash is served `no-cache, must-revalidate`, which obliges
+   the client to ask every time; without this it has to be sent the file every
+   time as well."
   [path {root :root}]
-  (compojure/GET (add-wildcard path) request
-    (let [{{request-path :*} :route-params} request
-          resource-path (str root "/" request-path)]
-      (static-resource request resource-path))))
+  (not-modified/wrap-not-modified
+   (compojure/GET (add-wildcard path) request
+     (let [{{request-path :*} :route-params} request
+           resource-path (str root "/" request-path)]
+       (static-resource request resource-path)))))
