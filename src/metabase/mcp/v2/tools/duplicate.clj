@@ -6,16 +6,17 @@
    neither, so the new name and collection are folded into the create itself. The tool absorbs that
    difference so one call is one copy, and the caller never has to follow a copy with a move."
   (:require
+   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.dashboards.write :as dashboards.write]
    [metabase.documents.core :as documents]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resolve :as v2.resolve]
    [metabase.mcp.v2.write :as v2.write]
    [metabase.metabot.scope :as metabot.scope]
-   [metabase.queries.core :as queries]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.queries.core :as queries]))
 
 (set! *warn-on-reflection* true)
 
@@ -28,8 +29,9 @@
    check, so an unreadable source still collapses to not-found rather than admitting it exists."
   [model item]
   (when (:archived item)
+    ;; `model` is a server-declared model keyword.
     (common/throw-teaching-error
-     (format "%s %s is in the trash — restore it before duplicating." (name model) (:id item))))
+     (message/msg ["%s %s is in the trash — restore it before duplicating."] (message/raw (name model)) (:id item))))
   item)
 
 (defn- fetch-question
@@ -38,8 +40,8 @@
                     (check-not-archived! :model/Card))]
     (when (not= :question (:type card))
       (common/throw-teaching-error
-       (format "Card %s is a %s — duplicate_content supports type \"question\" only."
-               (:id card) (name (:type card)))))
+       (message/msg ["Card %s has type %s — duplicate_content supports type \"question\" only."]
+                    (:id card) (name (:type card)))))
     ;; A Card scoped to a Document is gated by that Document, not by its collection:
     ;; `mi/can-read? :model/Card` conjoins `parent-document-permits?`, which short-circuits to true
     ;; on a nil `document_id`. So a copy that dropped the column would be adjudicated by collection
@@ -51,9 +53,8 @@
     ;; `collection-id`", so refuse and name the operation that does work.
     (when (:document_id card)
       (common/throw-teaching-error
-       (format (str "Card %s is saved inside a document — duplicate the document instead, which "
-                    "copies the questions saved in it.")
-               (:id card))))
+       (message/msg ["Card %s is saved inside a document — duplicate the document instead, which copies the questions saved in it."]
+                    (:id card))))
     card))
 
 (defn- copy-question!
@@ -85,7 +86,7 @@
   [dashboard collection-id new-name deep-copy?]
   (when (and (not deep-copy?) (dashboards.write/contains-dashboard-questions? (:id dashboard)))
     (common/throw-teaching-error
-     "This dashboard has questions saved inside it, so it can't be copied without them — pass is_deep_copy: true to copy the questions too."))
+     (message/msg ["This dashboard has questions saved inside it, so it can't be copied without them — pass is_deep_copy: true to copy the questions too."])))
   (dashboards.write/copy-dashboard! (:id dashboard)
                                     {:name          new-name
                                      :collection_id collection-id
@@ -123,6 +124,11 @@
   [args]
   (v2.resolve/resolve-collection-id-or-personal (:collection_id args)))
 
+(defn- copy-name
+  "The default name of a copy of `source`. A content name, not agent prose, so the source name goes in as it is."
+  [source]
+  (str/join " " ["Copy of" (:name source)]))
+
 (def ^:private duplicate-content-args-schema
   [:map {:closed true}
    [:type [:enum {:description "The kind of content to copy. Card flavors other than question (model, metric) aren't supported yet."}
@@ -152,10 +158,10 @@
     ;; published strict inputSchema marks every property required, so a strict client must send it.
     (when (and (true? is_deep_copy) (not= type "dashboard"))
       (common/throw-teaching-error
-       (format "`is_deep_copy` applies to dashboards only — omit it when duplicating a %s." type)))
+       (message/msg ["`is_deep_copy` applies to dashboards only — omit it when duplicating type %s."] type)))
     (let [source        (fetch id)
           collection-id (destination-collection-id args)
-          copy          (copy! source collection-id (or new_name (tru "Copy of {0}" (:name source)))
+          copy          (copy! source collection-id (or new_name (copy-name source))
                                (boolean is_deep_copy))]
       (common/success-content
        ;; `new_name` defaults to "Copy of <source name>", so echoing the copy's name hands back the

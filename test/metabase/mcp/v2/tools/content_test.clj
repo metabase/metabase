@@ -590,7 +590,7 @@
       (mt/with-test-user :crowberto
         (let [error (:error (content-one {:items [{:type "question" :id card-id}]}))]
           (is (some? error))
-          (is (re-find #"is a model" error))
+          (is (re-find #"has type \"model\"" error))
           (is (re-find #"type: \"model\"" error)))))))
 
 (deftest get-content-batch-cap-test
@@ -1010,7 +1010,7 @@
     (mt/with-temp [:model/Card {card-id :id} {:dataset_query (venues-query)}]
       (mt/with-test-user :crowberto
         (let [error (content-error {:items [{:type "question" :id card-id}] :include ["layout"]})]
-          (is (re-find #"does not apply to type question" error))
+          (is (re-find #"does not apply to type \"question\"" error))
           (is (re-find #"available for: dashboard, document" error)))))))
 
 (deftest get-content-settings-include-test

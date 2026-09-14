@@ -195,7 +195,7 @@
   (testing "GHY-4151: a model or metric passed as a question is a teaching error saying so, rather than
             silently copying it as a question — the other card flavors aren't supported yet"
     (mt/with-temp [:model/Card {card-id :id} {:type :model :dataset_query (venues-query)}]
-      (is (= (format "Card %d is a model — duplicate_content supports type \"question\" only." card-id)
+      (is (= (format "Card %d has type \"model\" — duplicate_content supports type \"question\" only." card-id)
              (tool-error (call-tool! :crowberto {:type "question" :id card-id})))))))
 
 (deftest duplicate-archived-source-test
@@ -392,7 +392,7 @@
                                                        :collection_id coll-id
                                                        :is_deep_copy  false})))))
         (testing "an explicit true is still a teaching error on a non-dashboard"
-          (is (= "`is_deep_copy` applies to dashboards only — omit it when duplicating a question."
+          (is (= "`is_deep_copy` applies to dashboards only — omit it when duplicating type \"question\"."
                  (tool-error (call-tool! :crowberto {:type "question" :id card-id :is_deep_copy true})))))))))
 
 (deftest duplicate-dashboard-shallow-with-dashboard-questions-test
@@ -412,7 +412,7 @@
 (deftest duplicate-deep-copy-wrong-type-test
   (testing "GHY-4151: is_deep_copy is dashboards-only and says so"
     (mt/with-temp [:model/Card {card-id :id} {:type :question :dataset_query (venues-query)}]
-      (is (= "`is_deep_copy` applies to dashboards only — omit it when duplicating a question."
+      (is (= "`is_deep_copy` applies to dashboards only — omit it when duplicating type \"question\"."
              (tool-error (call-tool! :crowberto {:type "question" :id card-id :is_deep_copy true})))))))
 
 ;;; -------------------------------------------------- document ----------------------------------------------------

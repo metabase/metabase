@@ -27,6 +27,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.redaction :as redaction]
    [metabase.mcp.v2.registry :as registry]
@@ -39,7 +40,6 @@
    [metabase.queries.core :as queries]
    [metabase.transforms.core :as transforms]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -93,6 +93,10 @@
   "Character budget for the query text rendered into a native card's `query_summary`."
   300)
 
+(def ^:private native-summary-prefix
+  "The label a native query summary starts with. The summary is a JSON value, not prose."
+  "SQL: ")
+
 (defn- native-query-summary
   "A one-line summary of a native `query`: the head of the query text itself, whitespace-collapsed
    and truncated to [[max-native-summary-length]]. nil when the stage holds no text or holds a
@@ -103,7 +107,7 @@
     (when (string? sql)
       (let [one-line (str/trim (str/replace sql #"\s+" " "))]
         (when-not (str/blank? one-line)
-          (str "SQL: " (u/truncate one-line max-native-summary-length)
+          (str native-summary-prefix (u/truncate one-line max-native-summary-length)
                (when (> (count one-line) max-native-summary-length) "…")))))))
 
 (defn- database-name
@@ -148,7 +152,7 @@
     (when (not= (:type card) tool-type)
       (let [actual (name (:type card))]
         (common/throw-teaching-error
-         (format "Card %s is a %s — request it with type: \"%s\"." (:id card) actual actual))))
+         (message/msg ["Card %s has type %s — request it with type: %s."] (:id card) actual actual))))
     (card-content-row card)))
 
 (defn- card-definition
@@ -402,8 +406,9 @@
    no entity_id column, so entity_id strings are a teaching error for these types."
   [tool-type payload-type id-or-eid]
   (when-not (int? id-or-eid)
+    ;; `tool-type` is the literal type name from `type->spec`.
     (common/throw-teaching-error
-     (format "%ss take a numeric id — they have no entity_id." (str/capitalize tool-type))))
+     (message/msg ["%ss take a numeric id — they have no entity_id."] (message/raw (str/capitalize tool-type)))))
   (let [notification (mcp.db/notification-by-payload-type id-or-eid payload-type)]
     (when-not (and notification (mi/can-read? notification))
       (common/throw-not-found (keyword tool-type) id-or-eid))
@@ -596,12 +601,13 @@
   (doseq [inc-name includes]
     (let [applicable (get include->types inc-name)]
       (when-not (some applicable batch-types)
+        ;; The applicable types are `type->spec`'s own names; the section and batch types are the caller's.
         (common/throw-teaching-error
-         (format "`include: \"%s\"` does not apply to type%s %s — it is available for: %s."
-                 inc-name
-                 (if (= 1 (count batch-types)) "" "s")
-                 (str/join ", " (sort batch-types))
-                 (str/join ", " (sort applicable))))))))
+         (message/msg ["`include` section %s does not apply to type%s %s — it is available for: %s."]
+                      inc-name
+                      (message/raw (if (= 1 (count batch-types)) "" "s"))
+                      (common/list-message (sort batch-types))
+                      (message/raw (str/join ", " (sort applicable)))))))))
 
 (defn- build-include
   "Apply the `inc-name` section builder that `type` declares in [[type->spec]] to `row`, or nil
@@ -671,12 +677,12 @@
   [{:keys [items include] :as args} _]
   (when (> (count items) max-items)
     (common/throw-teaching-error
-     (format "`items` accepts at most %d entries per call — you passed %d; split the batch."
-             max-items (count items))))
+     (message/msg ["`items` accepts at most %d entries per call — you passed %d; split the batch."]
+                  max-items (count items))))
   ;; Surface an invalid response_format once, before any item work.
   (common/response-format args)
   ;; Reject include sections no item in the batch supports, before any per-item work.
   (when (seq include)
     (check-includes! (into #{} (map :type) items) (distinct include)))
   (common/success-content
-   (json/encode {:results (mapv #(content-item-result args %) items)})))
+   {:results (mapv #(content-item-result args %) items)}))
