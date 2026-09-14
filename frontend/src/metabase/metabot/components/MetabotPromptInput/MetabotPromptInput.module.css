@@ -70,7 +70,3 @@
   font-weight: 500;
   vertical-align: baseline;
 }
-
-.content :global([data-smart-link-icon]) {
-  color: var(--mb-color-text-secondary);
-}
