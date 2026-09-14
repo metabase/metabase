@@ -134,12 +134,17 @@
           (is (= (str "ALLOW-FROM " (first embedding-app-origins))
                  (x-frame-options-header))))))))
 
-(defn- headers-for-uri
-  "Run the security-headers middleware for a request to `uri` and return its headers."
-  [uri]
+(defn- headers-for-request
+  "Run the security-headers middleware for `request` and return its headers."
+  [request]
   (let [handler (mw.security/add-security-headers
                  (fn [_request respond _raise] (respond {:status 200 :headers {} :body "ok"})))]
-    (:headers (handler {:uri uri :headers {}} identity identity))))
+    (:headers (handler (merge {:headers {}} request) identity identity))))
+
+(defn- headers-for-uri
+  "Run the security-headers middleware for a signed-in request to `uri` and return its headers."
+  [uri]
+  (headers-for-request {:uri uri :metabase-user-id 1}))
 
 (defn- frame-ancestors-for [uri]
   (->> (str/split (get (headers-for-uri uri) "Content-Security-Policy") #"; *")
@@ -227,6 +232,25 @@
         (let [frame-src (csp-directive-for "/embed/dashboard/abc" "frame-src")]
           (is (str/includes? frame-src "wikipedia"))
           (is (not (str/includes? frame-src "https://example.com"))))))))
+
+(deftest data-app-hosts-only-for-signed-in-users-test
+  (testing "a signed-out request never sees an app's allowed_hosts in its CSP, and never triggers the lookup"
+    (let [lookups (atom 0)]
+      (with-redefs [mw.security/data-app-connect-src-hosts (fn [_slug] (swap! lookups inc) ["https://example.com"])]
+        (doseq [uri ["/embed/apps/sales" "/embed/apps/sales/sub/route" "/apps/sales"]]
+          (let [csp (get (headers-for-request {:uri uri}) "Content-Security-Policy")]
+            (is (not (str/includes? csp "https://example.com")) uri)))
+        (is (= "form-action 'none'"
+               (-> (headers-for-request {:uri "/embed/apps/sales"})
+                   (get "Content-Security-Policy")
+                   (header->directive "form-action"))))
+        (is (zero? @lookups)))))
+  (testing "a signed-in request gets them"
+    (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://example.com"])]
+      (doseq [uri ["/embed/apps/sales" "/apps/sales"]]
+        (is (str/includes? (get (headers-for-request {:uri uri :metabase-user-id 1}) "Content-Security-Policy")
+                           "https://example.com")
+            uri)))))
 
 (deftest data-app-instance-origin-excluded-test
   (testing "the Metabase instance origin is dropped from a data app's allowlist even if listed"

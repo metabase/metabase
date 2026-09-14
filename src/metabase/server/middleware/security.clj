@@ -653,9 +653,13 @@
                  :data-app-iframe?            (data-app-iframe-request? request)
                  ;; Per-app `allowed_hosts` → `connect-src`/`form-action` (iframe
                  ;; doc) and `frame-src` (both the iframe doc and the top page,
-                 ;; whose `frame-src` gates the iframe's own navigations).
-                 :data-app-connect-hosts      (when-let [slug (data-app-slug request)]
-                                                (drop-instance-origin (data-app-connect-src-hosts slug)))
+                 ;; whose `frame-src` gates the iframe's own navigations). Only for
+                 ;; a signed-in user: the header would otherwise hand an app's
+                 ;; `allowed_hosts` to anyone who can guess its slug, and let them
+                 ;; probe which slugs exist.
+                 :data-app-connect-hosts      (when (:metabase-user-id request)
+                                                (when-let [slug (data-app-slug request)]
+                                                  (drop-instance-origin (data-app-connect-src-hosts slug))))
                  ;; Data apps and the EAJS embed page both render custom viz icons as blob: <img> URLs
                  :allow-blob-img?             (or (data-app-iframe-request? request)
                                                   (request/embed-sdk-eajs-entrypoint? request)))
