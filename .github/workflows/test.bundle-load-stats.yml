@@ -11,12 +11,12 @@ name: Bundle Load Stats
 # Triggered by "Run tests", which is the workflow that builds the uberjar on a
 # master merge.
 on:
-  workflow_run:
-    workflows: ["Run tests"]
-    types: [completed]
-    # Master only: a release forms a non-linear line whose times cannot be
-    # compared against the commit before it.
-    branches: [master]
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: "Commit SHA to measure."
+        type: string
+        required: true
   workflow_call:
     inputs:
       commit:
@@ -28,20 +28,16 @@ on:
 # A later attempt must not cancel the first one: the concurrency group applies
 # before any job `if`, so a run that goes on to skip every job still cancels.
 concurrency:
-  group: bundle-load-stats-${{ inputs.commit || github.event.workflow_run.head_sha }}
+  group: bundle-load-stats-${{ inputs.commit }}
   cancel-in-progress: false
 
 jobs:
-  # "Run tests" concludes `failure` on master more often than `success`, from
-  # jobs that have nothing to do with the jar, so its conclusion is not a usable
-  # gate. The artifact is one: the uberjar job publishes it, and a docs-only
-  # merge that skipped that job publishes none.
-  #
-  # Only the first attempt counts. `rerun-workflows.yml` re-runs a failed "Run
-  # tests", and every attempt that completes fires this again for the same
-  # commit, which would measure it again and write its rows twice.
+  # The artifact is the gate: the uberjar job publishes it, and a docs-only merge
+  # that skipped that job publishes none. `run-tests.yml` starts this as soon as
+  # the uberjar is built, and only on the first attempt, so nothing is measured
+  # twice.
   uberjar-built:
-    if: ${{ github.repository == 'metabase/metabase' && (inputs.commit != '' || github.event.workflow_run.run_attempt == 1) }}
+    if: ${{ github.repository == 'metabase/metabase' }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
@@ -51,7 +47,7 @@ jobs:
       - id: probe
         uses: ./.github/actions/fetch-artifact
         with:
-          commit: ${{ inputs.commit || github.event.workflow_run.head_sha }}
+          commit: ${{ inputs.commit }}
           edition: ee
           download: false
 
@@ -61,7 +57,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     env:
-      HEAD_SHA: ${{ inputs.commit || github.event.workflow_run.head_sha }}
+      HEAD_SHA: ${{ inputs.commit }}
       MB_JETTY_PORT: "4000"
       SITE: http://localhost:4000
       # Loads per condition. The first is the cold reading and the rest give the
@@ -72,6 +68,15 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: ${{ env.HEAD_SHA }}
+      - name: Read the commit
+        run: |
+          # %s is the subject, so it holds no newline. Both go through the
+          # environment rather than the shell, so a commit message that looks
+          # like a command stays a string.
+          {
+            echo "COMMIT_MESSAGE=$(git log -1 --format=%s)"
+            echo "COMMIT_TIMESTAMP=$(git log -1 --format=%cI)"
+          } >> "$GITHUB_ENV"
       - uses: ./.github/actions/prepare-node-bun
       - name: Prepare JDK 25
         uses: actions/setup-java@v5.2.0
@@ -125,8 +130,6 @@ jobs:
           ROWS: artifacts/load-times.json
           # Passed via env (not interpolated into the shell) so the commit
           # message can't inject commands; the script keeps only the subject.
-          COMMIT_MESSAGE: ${{ github.event.workflow_run.head_commit.message }}
-          COMMIT_TIMESTAMP: ${{ github.event.workflow_run.head_commit.timestamp }}
           ENG_STATS_URL: ${{ secrets.ENG_STATS_URL }}
           API_KEY: ${{ secrets.ENG_STATS_API_KEY }}
         run: bun .github/scripts/upload-bundle-load-stats.ts

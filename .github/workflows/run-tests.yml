@@ -152,6 +152,29 @@ jobs:
       containerize: ${{ (github.event_name == 'push' && github.ref_name == 'master') || contains(github.event.pull_request.labels.*.name, 'build-docker-uberjar') }}
     secrets: inherit
 
+  # Both stats workflows measure the uberjar built above. Starting them here
+  # rather than on this run's completion gets them the jar about 45 minutes
+  # sooner, and starting them as their own runs keeps a Chrome failure from
+  # turning this run red, which `rerun-workflows.yml` would answer by re-running
+  # master CI.
+  #
+  # `github.run_attempt` keeps a re-run from measuring the same commit twice.
+  start-stats:
+    needs: [uberjar]
+    if: ${{ github.event_name == 'push' && github.ref_name == 'master' && github.run_attempt == 1 }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - uses: actions/checkout@v6
+      - name: Start the stats workflows
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run test.bundle-load-stats.yml --ref master -f commit="${GITHUB_SHA}"
+          gh workflow run bundle-size-stats.yml --ref master -f commit="${GITHUB_SHA}"
+
   # Compile CLJS in parallel with the uberjar and pass it to each e2e group.
   # The compile is doesn't depend on MB_EDITION
   e2e-cljs:
