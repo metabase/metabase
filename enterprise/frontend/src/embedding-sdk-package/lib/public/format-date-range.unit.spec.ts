@@ -23,6 +23,20 @@ describe("parseDateString", () => {
     expect(parseDateString("09/01/2026")).toBeNull();
     expect(parseDateString("")).toBeNull();
   });
+
+  // `new Date(2026, 1, 31)` is March 3, not an invalid date, so a NaN check
+  // would let a malformed value through relabelled as a real day.
+  it("rejects well-formed strings that name a day that does not exist", () => {
+    expect(parseDateString("2026-02-31")).toBeNull();
+    expect(parseDateString("2026-13-01")).toBeNull();
+    expect(parseDateString("2026-04-31")).toBeNull();
+    expect(parseDateString("2026-00-10")).toBeNull();
+  });
+
+  it("accepts the leap day only in a leap year", () => {
+    expect(parseDateString("2024-02-29")?.getDate()).toBe(29);
+    expect(parseDateString("2026-02-29")).toBeNull();
+  });
 });
 
 describe("formatDate", () => {
@@ -34,6 +48,7 @@ describe("formatDate", () => {
     expect(formatDate(null, EN)).toBe("");
     expect(formatDate(undefined, EN)).toBe("");
     expect(formatDate("not a date", EN)).toBe("");
+    expect(formatDate("2026-02-31", EN)).toBe("");
   });
 
   it("takes Intl options", () => {

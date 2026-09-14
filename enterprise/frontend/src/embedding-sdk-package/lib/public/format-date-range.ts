@@ -30,10 +30,17 @@ export const parseDateString = (value: string): Date | null => {
     return null;
   }
 
-  const [, year, month, day] = match;
-  const date = new Date(Number(year), Number(month) - 1, Number(day));
+  const [, year, month, day] = match.map(Number);
+  const date = new Date(year, month - 1, day);
 
-  return Number.isNaN(date.getTime()) ? null : date;
+  // The constructor normalizes out-of-range parts rather than failing, so
+  // `2026-02-31` would come back as March 3. Only a round-trip proves it valid.
+  const isSameDate =
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day;
+
+  return isSameDate ? date : null;
 };
 
 export const formatDate = (

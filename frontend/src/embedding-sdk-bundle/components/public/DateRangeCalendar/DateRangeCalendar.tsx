@@ -41,6 +41,9 @@ export const DateRangeCalendar = ({
       type="range"
       value={value}
       defaultValue={defaultValue}
+      // The bare calendar opens on today's month whatever the value is; start it
+      // on the selected range instead, so a reopened popover shows the pick.
+      defaultDate={value?.[0] ?? defaultValue?.[0] ?? undefined}
       onChange={onChange}
       minDate={minDate}
       maxDate={maxDate}
