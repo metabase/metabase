@@ -376,9 +376,11 @@
     (let [{:keys [user device-info saml-data]} request
           session (auth-session/create-session-with-auth-tracking!
                    user device-info provider nil
-                   ;; SAML logins carry the IdP's SessionIndex; single logout needs it to name the
-                   ;; session to end. Other providers have none and store NULL.
-                   {:saml-session-index (:session-index saml-data)})]
+                   ;; SAML logins carry the IdP's own identifiers; single logout needs them to
+                   ;; name the session and subject to end. Other providers have none and store NULL.
+                   {:saml-session-index  (:session-index saml-data)
+                    :saml-name-id        (:name-id saml-data)
+                    :saml-name-id-format (:name-id-format saml-data)})]
       (assoc request :session session))))
 
 (methodical/defmethod login! ::provider

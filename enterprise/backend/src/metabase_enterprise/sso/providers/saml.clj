@@ -64,12 +64,19 @@
                       {:status-code 401})))
     attrs))
 
-(defn- saml-response->session-index
-  "The SessionIndex the IdP issued for this login, or nil if it sent none.
+(defn- saml-response->session-identity
+  "What the IdP used to identify this login: its `SessionIndex`, and the `NameID` (with `Format`)
+  naming the subject.
 
-  Recorded on the session so single logout can name the session the IdP should end."
+  Recorded on the session because single logout must address the session and subject the IdP knows.
+  The IdP's NameID is not necessarily the user's email - Auth0, for instance, sends an opaque
+  `auth0|<id>` - so a LogoutRequest built from the email names a subject the IdP never issued.
+  Any of these may be nil if the IdP did not send them."
   [saml-response]
-  (-> (saml/assertions saml-response) first :session-index))
+  (let [{:keys [session-index name-id]} (first (saml/assertions saml-response))]
+    {:session-index  session-index
+     :name-id        (:value name-id)
+     :name-id-format (:format name-id)}))
 
 (methodical/defmethod auth-identity/authenticate :provider/saml
   [_provider {:keys [redirect-url relay-state] :as request}]
@@ -123,7 +130,7 @@
                                                                                :issuer]
                                                         :issuer (sso-settings/saml-identity-provider-issuer)})
             attrs (saml-response->attributes validated-response)
-            session-index (saml-response->session-index validated-response)
+            session-identity (saml-response->session-identity validated-response)
             email (get attrs (sso-settings/saml-attribute-email))
             first-name (get attrs (sso-settings/saml-attribute-firstname))
             last-name (get attrs (sso-settings/saml-attribute-lastname))
@@ -145,11 +152,11 @@
                      :sso_source :saml
                      :login_attributes user-attributes}
          :tenant-slug tenant-slug
-         :saml-data {:group-names groups
-                     :user-attributes user-attributes
-                     ;; Kept so the session row can record it: single logout sends it back to name
-                     ;; the session the IdP should end.
-                     :session-index session-index}
+         :saml-data (merge {:group-names groups
+                            :user-attributes user-attributes}
+                           ;; Kept so the session row can record them: single logout sends them
+                           ;; back to name the session and subject the IdP should end.
+                           session-identity)
          :provider-id email})
       (catch clojure.lang.ExceptionInfo e
         (log/errorf "SAML authentication failed: %s" (.getMessage e))

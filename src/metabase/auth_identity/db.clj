@@ -121,15 +121,18 @@
 (mu/defn insert-session!
   "Insert a Session and return the inserted instance.
 
-  `opts` carries provider-specific extras: `:saml-session-index` is the SessionIndex from a SAML
-  login assertion, stored so single logout can name the session to end."
+  `opts` carries provider-specific extras. The `:saml-*` keys come from a SAML login assertion and
+  are stored so single logout can name the session and subject the IdP knows."
   [session-id           :- :string
    user-id              :- ::lib.schema.id/user
    auth-identity-id     :- [:maybe ms/PositiveInt]
    session-key          :- :string
    expires-at           :- [:maybe ms/TemporalInstant]
    mfa-auth-identity-id :- [:maybe ms/PositiveInt]
-   opts                 :- [:map [:saml-session-index {:optional true} [:maybe :string]]]]
+   opts                 :- [:map {:closed true}
+                            [:saml-session-index  {:optional true} [:maybe :string]]
+                            [:saml-name-id        {:optional true} [:maybe :string]]
+                            [:saml-name-id-format {:optional true} [:maybe :string]]]]
   (t2/insert-returning-instance! :model/Session
                                  ;; Without setting the ID here we can't return an instance on MySQL
                                  :id session-id
@@ -138,4 +141,6 @@
                                  :session_key session-key
                                  :expires_at expires-at
                                  :mfa_auth_identity_id mfa-auth-identity-id
-                                 :saml_session_index (:saml-session-index opts)))
+                                 :saml_session_index (:saml-session-index opts)
+                                 :saml_name_id (:saml-name-id opts)
+                                 :saml_name_id_format (:saml-name-id-format opts)))
