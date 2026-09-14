@@ -254,46 +254,15 @@ describe("DashCard", () => {
   });
 
   describe("timeline event availability", () => {
-    afterEach(() => {
-      jest.restoreAllMocks();
-    });
-
     it.each([
-      {
-        name: "a supported chart",
-        display: "line",
-        width: 500,
-        height: 300,
-        eventsVisible: true,
-      },
-      {
-        name: "an unsupported chart",
-        display: "table",
-        width: 500,
-        height: 300,
-        eventsVisible: false,
-      },
-      {
-        name: "a chart narrower than 240 pixels",
-        display: "line",
-        width: 239,
-        height: 300,
-        eventsVisible: false,
-      },
-      {
-        name: "a chart shorter than 200 pixels",
-        display: "line",
-        width: 500,
-        height: 199,
-        eventsVisible: false,
-      },
+      { name: "a supported chart", display: "line", eventsVisible: true },
+      { name: "an unsupported chart", display: "table", eventsVisible: false },
     ] as const)(
       "shows the appropriate event controls for $name",
-      async ({ display, width, height, eventsVisible }) => {
+      async ({ display, eventsVisible }) => {
         const user = userEvent.setup({
           advanceTimers: jest.advanceTimersByTime,
         });
-        mockGetBoundingClientRect({ width, height });
         const event = createMockTimelineEvent({
           id: 100,
           timeline_id: 10,
@@ -441,7 +410,6 @@ describe("DashCard", () => {
         const user = userEvent.setup({
           advanceTimers: jest.advanceTimersByTime,
         });
-        mockGetBoundingClientRect({ width: 500, height: 300 });
         setupTimelinesEndpoints([
           createMockTimeline({
             id: 10,

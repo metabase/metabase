@@ -500,7 +500,7 @@ export function DashCardVisualization({
     onSelectTimelineEvents,
     onDeselectTimelineEvents,
     onTimelineEventsShown,
-  } = useDashCardTimelineEvents(dashcard, containerRef);
+  } = useDashCardTimelineEvents(dashcard);
 
   const actionButtons = useMemo(() => {
     const cardId = dashcard.card_id ?? dashcard.card?.id;

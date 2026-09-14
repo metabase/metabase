@@ -17,7 +17,6 @@ import { getTimelineEventCheckbox } from "__support__/timelines";
 import {
   act,
   getTestStoreAndWrapper,
-  mockGetBoundingClientRect,
   renderWithProviders,
   screen,
   waitFor,
@@ -312,7 +311,6 @@ describe("dashboard timeline events", () => {
   });
 
   it("loads the timelines once however many charts show the event", async () => {
-    mockGetBoundingClientRect({ width: 500, height: 300 });
     setupTimelinesEndpoints([TIMELINE]);
     const question = createMockCard({
       display: "line",
