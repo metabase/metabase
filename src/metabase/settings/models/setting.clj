@@ -787,7 +787,7 @@
   stored right now. Returns `value` unchanged for a setting that is not a `:sensitive?` `:string` with an `:audience`,
   for `nil`, and for a value that is already a Secret.
 
-  A credential declaring `{}` is wrapped too: it opens only to a `:disclosure/` reason or
+  A credential declaring `{}` is wrapped too: it opens only to the empty audience `{}` or
   [[metabase.util.secret/derive-with]], and is still redacted, refused by the JSON encoder, and refused by [[set!]]."
   [{:keys [sensitive? audience], setting-type :type, setting-name :name} value]
   (if (and sensitive?

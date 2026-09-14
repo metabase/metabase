@@ -175,10 +175,10 @@
   :audience   {})
 
 (defn slack-connect-client-secret-for-slack-api
-  "The plaintext of [[slack-connect-client-secret]], or nil; opened with `:disclosure/fixed-endpoint` because Slack's
+  "The plaintext of [[slack-connect-client-secret]], or nil; opened with `{}` because Slack's
   OIDC endpoint is not configurable."
   []
-  (some-> (slack-connect-client-secret) (u.secret/expose :disclosure/fixed-endpoint)))
+  (some-> (slack-connect-client-secret) (u.secret/expose {})))
 
 (def slack-connect-auth-mode-sso
   "Authentication mode for full SSO login."

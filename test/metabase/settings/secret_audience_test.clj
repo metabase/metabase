@@ -129,12 +129,12 @@
              "shrinking:\n  "
              (str/join "\n  " (sort gone))))))
 
-;;; Call sites that open a credential without comparing an audience, because there is nothing to compare it against.
-;;; `to-creator` hands a just-created credential to the person who made it; `fixed-endpoint` presents one to a peer no
-;;; setting selects; `local-keystore` unlocks a keystore file on this instance's own disk. None is verifiable by
-;;; construction, so each site is a deliberate, reviewed decision and the count may only shrink. It stays small because
-;;; each credential gets one accessor, not one per call site.
-(def ^:private disclosure-call-site-budget 19)
+;;; Call sites that open a credential without comparing an audience, because there is nothing to compare it against:
+;;; `to-creator` hands a just-created credential to the person who made it. A credential whose destination is fixed
+;;; rather than configured is not one of these; it is bound to the empty audience and opened with `{}`, which the
+;;; comparison still checks. Nothing verifies a disclosure by construction, so each site is a deliberate, reviewed
+;;; decision and the count may only shrink.
+(def ^:private disclosure-call-site-budget 3)
 
 (defn- code-only
   "`source` with its string literals (docstrings included) and `;` comments blanked out, so that a mention of a keyword
@@ -199,10 +199,11 @@
     "src/metabase/sso/ldap.clj"})
 
 (deftest secret-opening-sinks-ratchet-test
-  ;; only an audience-comparing open is a sink in this sense. Opening with a `:disclosure/` reason compares nothing,
-  ;; so there is no refusal for a handler to swallow and neither rule applies. The reason may sit on the line after
+  ;; only an open against a configured destination is a sink in this sense. Opening with a `:disclosure/` reason
+  ;; compares nothing, and opening with the empty audience `{}` compares against nothing a request can move, so
+  ;; there is no refusal for a handler to swallow and neither rule applies. The audience may sit on the line after
   ;; the call, so the lookahead is a bounded window rather than the rest of the line.
-  (let [current (disj (files-matching #"(?<![\w-])maybe-expose(?![\w-])(?![\s\S]{0,160}:disclosure/)")
+  (let [current (disj (files-matching #"(?<![\w-])maybe-expose(?![\w-])(?![\s\S]{0,160}(?::disclosure/|\{\}\)))")
                       "src/metabase/util/secret.clj")
         new     (remove secret-opening-sinks current)
         gone    (remove (set current) secret-opening-sinks)]

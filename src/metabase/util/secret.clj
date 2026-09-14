@@ -105,21 +105,16 @@
 ;;; ------------------------------------------------ disclosure ------------------------------------------------------
 
 (def disclosure-reasons
-  "The closed set of reasons a secret may be handed out as plaintext to something other than a network peer.
+  "The closed set of reasons a secret may be handed out as plaintext to something other than an audience.
 
-  Deliberately tiny. Anything whose *output* is non-sensitive by construction belongs on the type as a method
-  ([[prefix]], [[mask]]) rather than here, and anything needing caller-supplied logic should use [[derive-with]], which
-  confines the plaintext to one expression. What is left is the case no mechanism can verify: handing a credential to
-  a person.
+  Deliberately tiny. A credential sent to a peer no setting selects (the Slack API, a keystore on local disk) is not
+  a reason: it is bound to the empty audience and is opened with `{}`. Anything whose *output* is non-sensitive by
+  construction belongs on the type as a method ([[prefix]], [[mask]]), and anything needing caller-supplied logic
+  should use [[derive-with]], which confines the plaintext to one expression. What is left is the case no mechanism
+  can verify:
 
-  * `to-creator` -- showing a just-created credential to its creator, once.
-  * `fixed-endpoint` -- presenting it to a peer no setting selects, so there is no audience to compare. The Slack API
-    is the example: its address is not configurable, so nothing a caller writes can redirect the credential.
-  * `local-keystore` -- unlocking a keystore file on this instance's own disk, which never leaves the process but
-    needs the plaintext as a `char[]` rather than a derivation."
-  #{:disclosure/to-creator
-    :disclosure/fixed-endpoint
-    :disclosure/local-keystore})
+  * `to-creator` -- showing a just-created credential to its creator, once."
+  #{:disclosure/to-creator})
 
 (def ^:const mask-string
   "The fixed, value-independent portion of a mask. Constant width so it leaks neither the length nor any character of
@@ -159,12 +154,17 @@
 
 (defn- assert-same-audience!
   "Throw a 400 with `:error-code :secret-audience-mismatch` unless `requested` names the audience `bound`, comparing
-  both under `schema`. `bound` is `nil` for a secret not bound to any network peer, which is refused outright."
+  both under `schema`. `bound` is `nil` for a secret not bound to any audience, which is refused outright.
+
+  A `bound` of `{}` is the empty audience: the secret's destination is fixed rather than configured. It matches only a
+  literal `{}` from the caller, never a record that merely canonicalizes to nothing, because a caller holding a
+  destination is presenting the secret to something it was not saved for."
   [schema bound requested]
   (when (nil? bound)
     (throw (ex-info "This secret has no bound audience, so it cannot be presented to a network peer."
                     {:error-code :secret-unbound})))
-  (when-not (same-audience? schema bound requested)
+  (when-not (and (same-audience? schema bound requested)
+                 (or (seq bound) (empty? requested)))
     ;; the only way to reach a mismatch is a caller-supplied destination, so this is always a client error
     (throw (ex-info (tru "This secret is not bound to the requested audience.")
                     {:status-code 400
@@ -231,7 +231,8 @@
     normalize the audience a caller later presents to [[expose]], so both sides are compared the same way.
   * `:audience` -- the record the secret lives in, from which the schema selects the audience fields. Nothing is
     persisted, so changing what counts as an audience never invalidates a stored secret. When the schema selects
-    nothing from it the secret is unbound: it opens to a disclosure reason, never to a network peer.
+    nothing from it the secret is bound to the empty audience and opens only to a literal `{}`: the caller's
+    statement that the destination is fixed rather than configured.
   * `:prefix-length` -- how many leading characters this *kind* of secret may reveal, for kinds whose prefix is a
     non-sensitive lookup identifier (an API key's `mb_1234`). Drives both [[prefix]] and [[mask]]. Omit it and the
     secret has no revealable part and masks opaquely."
@@ -243,9 +244,7 @@
                      {:error-code :secret-missing-audience-schema})))
    (->Secret (constantly value)
              schema
-             ;; a record the schema selects nothing from binds to no destination: `{}` would compare equal to every
-             ;; requested map under an empty schema and so open to any peer
-             (when aud (not-empty (canonical-audience schema aud)))
+             (when aud (canonical-audience schema aud))
              prefix-length)))
 
 (defn secret?

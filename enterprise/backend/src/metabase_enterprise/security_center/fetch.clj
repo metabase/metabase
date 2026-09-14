@@ -106,7 +106,7 @@
   "GET advisories from the MetaStore. Returns a seq of advisory maps or nil on failure.
    Sends the latest `updated_at` as a `since` cursor so only changed advisories are returned."
   []
-  (when-let [token (u.secret/maybe-expose (premium-features/premium-embedding-token) :disclosure/fixed-endpoint)]
+  (when-let [token (u.secret/maybe-expose (premium-features/premium-embedding-token) {})]
     (let [site-uuid    (premium-features/site-uuid-for-premium-features-token-checks)
           url          (advisories-url token hm-url)
           since        (latest-updated-at)

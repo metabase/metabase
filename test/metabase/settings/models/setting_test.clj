@@ -2202,14 +2202,15 @@
         (is (u.secret/secret? s))
         (is (= "env-secret" (u.secret/expose s {:test-audience-host "db.example.com" :test-audience-port 5432})))))))
 
-(deftest unbound-secret-is-wrapped-but-opens-to-no-peer-test
+(deftest empty-audience-secret-opens-only-to-the-empty-audience-test
   (mt/with-temporary-setting-values [test-audience-unbound-secret "signing-key"]
     (let [s (test-audience-unbound-secret)]
       (is (u.secret/secret? s))
-      (testing "it can be derived from in-process"
+      (testing "it opens to `{}`, the caller's statement that its destination is fixed, and to a derivation"
+        (is (= "signing-key" (u.secret/expose s {})))
         (is (= "signing-key" (u.secret/derive-with s identity))))
-      (testing "but there is no network peer it is bound to"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no bound audience"
+      (testing "but not to a caller holding a configured destination"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not bound to the requested audience"
                               (u.secret/expose s {:test-audience-host "db.example.com"})))))))
 
 (deftest custom-getter-is-bound-too-test

@@ -105,7 +105,7 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
   :encryption :when-encryption-key-set
   :default    "changeit"
   :sensitive? true
-  ;; the keystore is a file on local disk, not a network peer; the sink opens this with :disclosure/local-keystore
+  ;; the keystore is a file on local disk, not a network peer; the sink opens this with the empty audience `{}`
   :audience   {}
   :feature    :sso-saml
   :audit      :getter)

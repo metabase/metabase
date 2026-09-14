@@ -150,35 +150,43 @@
         (is (= :secret-audience-mismatch (:error-code (ex-data e))))))))
 
 (deftest ^:parallel expose-disclosure-reason-test
-  (testing "each non-network reason is accepted, bound audience or not"
+  (testing "handing a credential to a person is the one reason that is not an audience, bound or not"
     (is (= "mb_abc" (u.secret/expose (u.secret/secret "mb_abc") :disclosure/to-creator)))
-    (is (= "xoxb-1" (u.secret/expose (u.secret/secret "xoxb-1") :disclosure/fixed-endpoint)))
-    (is (= "changeit" (u.secret/expose (u.secret/secret "changeit") :disclosure/local-keystore)))
-    (is (= "xoxb-1" (u.secret/expose (u.secret/secret "xoxb-1" {:audience-schema db-schema :audience {:host "h"}})
-                                     :disclosure/fixed-endpoint))))
+    (is (= "mb_abc" (u.secret/expose (u.secret/secret "mb_abc" {:audience-schema db-schema :audience {:host "h"}})
+                                     :disclosure/to-creator))))
   (testing "the reason set is closed"
-    (is (= #{:disclosure/to-creator :disclosure/fixed-endpoint :disclosure/local-keystore}
-           u.secret/disclosure-reasons))
+    (is (= #{:disclosure/to-creator} u.secret/disclosure-reasons))
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown disclosure reason"
-                          (u.secret/expose (u.secret/secret "mb_abc") :derive/hash)))))
+                          (u.secret/expose (u.secret/secret "mb_abc") :disclosure/fixed-endpoint)))))
 
 (deftest ^:parallel expose-network-audience-on-unbound-secret-throws-test
-  (testing "a secret with no bound audience cannot be sent to a network peer"
+  (testing "a secret with no bound audience cannot be sent to a network peer, not even the empty one"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no bound audience"
-                          (u.secret/expose (u.secret/secret "s") {:host "h" :port 1 :ssl true})))))
+                          (u.secret/expose (u.secret/secret "s") {:host "h" :port 1 :ssl true})))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no bound audience"
+                          (u.secret/expose (u.secret/secret "s") {})))))
 
-(deftest ^:parallel secret-whose-schema-selects-nothing-is-unbound-test
-  (testing "a record the schema picks no field from binds to no peer, rather than to the empty audience every map
-           would match"
-    (doseq [[schema record] [[[:map]                                    {:host "db.example.com"}]
+(deftest ^:parallel empty-audience-test
+  (testing "a secret whose destination no field selects -- a fixed endpoint, a file on local disk -- is bound to the
+           empty audience, and opens only to a caller that states there is no destination by passing `{}`"
+    (doseq [[schema record] [[[:map]                                    {}]
+                             [[:map]                                    {:host "db.example.com"}]
                              [[:map [:host {:optional true} :string]] {}]
                              [[:map [:host {:optional true} :string]] {:host ""}]]]
       (let [s (u.secret/secret "hunter2" {:audience-schema schema :audience record})]
-        (is (nil? (u.secret/bound-audience s)))
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no bound audience"
-                              (u.secret/expose s {:host "evil.example.com"})))
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no bound audience"
-                              (u.secret/expose s {})))))))
+        (is (= {} (u.secret/bound-audience s)))
+        (is (= "hunter2" (u.secret/expose s {})))
+        (testing "a caller that does hold a destination is refused: the secret was not saved for one"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not bound to the requested audience"
+                                (u.secret/expose s {:host "evil.example.com"})))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not bound to the requested audience"
+                                (u.secret/expose s {:unrelated "field"}))))))))
+
+(deftest ^:parallel bound-secret-does-not-open-to-the-empty-audience-test
+  (testing "`{}` says there is no destination, which is false for a secret that has one"
+    (let [s (u.secret/secret "hunter2" {:audience-schema db-schema :audience {:host "db.example.com"}})]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not bound to the requested audience"
+                            (u.secret/expose s {}))))))
 
 (deftest ^:parallel expose-to-something-that-is-not-an-audience-throws-test
   (testing "an audience is a map or a reason keyword; anything else is refused before the plaintext is touched"

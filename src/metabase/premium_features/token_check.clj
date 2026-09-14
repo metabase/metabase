@@ -217,7 +217,7 @@
   "Send metering events for billing purposes"
   []
   (when-let [token (u.secret/maybe-expose (premium-features.settings/premium-embedding-token)
-                                          :disclosure/fixed-endpoint)]
+                                          {})]
     (when (mr/validate [:re RemoteCheckedToken] token)
       (tracing/with-span :tasks "metering.send-events" {}
         (let [site-uuid (premium-features.settings/site-uuid-for-premium-features-token-checks)]
@@ -612,7 +612,7 @@
     "Get the features associated with the system's premium features token."
     []
     (let [token (some-> (premium-features.settings/premium-embedding-token)
-                        (u.secret/maybe-expose :disclosure/fixed-endpoint))]
+                        (u.secret/maybe-expose {}))]
       (try
         (or (some-> token check-token :features set)
             #{})
@@ -626,14 +626,14 @@
   "Getter for the [[metabase.premium-features.settings/token-status]] setting."
   []
   (some-> (premium-features.settings/premium-embedding-token)
-          (u.secret/maybe-expose :disclosure/fixed-endpoint)
+          (u.secret/maybe-expose {})
           (check-token)))
 
 (mu/defn plan-alias :- [:maybe :string]
   "Returns a string representing the instance's current plan, if included in the last token status request."
   []
   (some-> (premium-features.settings/premium-embedding-token)
-          (u.secret/maybe-expose :disclosure/fixed-endpoint)
+          (u.secret/maybe-expose {})
           (check-token)
           :plan-alias))
 
@@ -642,7 +642,7 @@
   []
   (clear-cache!)
   (some-> (premium-features.settings/premium-embedding-token)
-          (u.secret/maybe-expose :disclosure/fixed-endpoint)
+          (u.secret/maybe-expose {})
           (check-token)
           :quotas))
 
@@ -651,7 +651,7 @@
   []
   (clear-cache!)
   (some-> (premium-features.settings/premium-embedding-token)
-          (u.secret/maybe-expose :disclosure/fixed-endpoint)
+          (u.secret/maybe-expose {})
           (check-token)
           :meters))
 
@@ -672,7 +672,7 @@
   "Returns `true` if the token definitively has `feature`, `false` if it definitively does not, or `nil` if the token
   status is indeterminate (e.g., network failure, timeout). Returns `false` (not `nil`) when no token is configured."
   [feature]
-  (if-let [token (u.secret/maybe-expose (premium-features.settings/premium-embedding-token) :disclosure/fixed-endpoint)]
+  (if-let [token (u.secret/maybe-expose (premium-features.settings/premium-embedding-token) {})]
     (let [result (check-token token)]
       (when (:canonical? result)
         (boolean (contains? (set (:features result)) (name feature)))))

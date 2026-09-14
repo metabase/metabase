@@ -363,7 +363,8 @@
 
   `opts` are passed to [[u.secret/secret]], so a column whose leading characters are a non-sensitive lookup
   identifier can pass `{:prefix-length n}`. No `:audience` is bound here: a Toucan transform sees a column value with
-  no row context, so the secret comes back unbound and opens only to a `:disclosure/` reason or `derive-with`."
+  no row context, so the secret comes back unbound and opens only to a `:disclosure/` reason or `derive-with`;
+  the record it lives in is what a caller binds it to."
   ([source]
    (transform-secret-text source nil))
   ([source opts]

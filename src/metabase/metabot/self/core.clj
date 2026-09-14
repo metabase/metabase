@@ -1069,7 +1069,7 @@
   [provider-slug llm-type auth ai-proxy?]
   (let [proxy-auth (when-let [base (llm/llm-proxy-base-url)]
                      (let [token (u.secret/maybe-expose (premium-features/premium-embedding-token)
-                                                        :disclosure/fixed-endpoint)]
+                                                        {})]
                        (cond-> {:url     (str (str/replace base #"/+$" "") "/" provider-slug)
                                 :headers {"x-metabase-instance-token" token}}
                          ;; only an environment-supplied URL is deployment-controlled: a superuser can write the

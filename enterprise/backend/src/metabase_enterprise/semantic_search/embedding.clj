@@ -496,7 +496,7 @@
                  {:endpoint endpoint :documents (count texts) :tokens (count-tokens-batch texts)})
       (let [instance-token       (when (and (empty? api-key) instance-token?)
                                    (u/prog1 (u.secret/maybe-expose (premium-features/premium-embedding-token)
-                                                                   :disclosure/fixed-endpoint)
+                                                                   {})
                                      (when (nil? <>)
                                        (throw (ex-info "Premium embedding token not set" {:provider provider})))))
             headers              (merge {"Content-Type" "application/json"}

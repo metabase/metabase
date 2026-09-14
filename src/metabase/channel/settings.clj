@@ -20,10 +20,10 @@
   :audience   {})
 
 (defn slack-app-token-for-slack-api
-  "The plaintext of [[slack-app-token]], or nil; opened with `:disclosure/fixed-endpoint` because Slack's endpoint is
-  not configurable. Use [[slack-app-token]] wherever only its presence matters."
+  "The plaintext of [[slack-app-token]], or nil;
+  Use [[slack-app-token]] wherever only its presence matters."
   []
-  (some-> (slack-app-token) (u.secret/expose :disclosure/fixed-endpoint)))
+  (some-> (slack-app-token) (u.secret/expose {})))
 
 (defsetting slack-token-valid?
   (deferred-tru
