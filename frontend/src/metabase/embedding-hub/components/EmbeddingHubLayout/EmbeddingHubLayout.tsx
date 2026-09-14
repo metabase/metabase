@@ -157,11 +157,6 @@ export function isUnder(pathname: string, base: string) {
   return pathname === base || pathname.startsWith(`${base}/`);
 }
 
-/**
- * Pinned to the bottom of the nav, per the design.
- * The wizard it opens is rendered by EmbedSetupModals, which AppComponent mounts,
- * so the embedding hub's routes have to mount inside AppComponent.
- */
 function NewEmbedNavButton({ showLabel }: { showLabel: boolean }) {
   const dispatch = useDispatch();
 

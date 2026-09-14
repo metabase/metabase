@@ -7,14 +7,7 @@ import {
 import { useDispatch, useSelector } from "metabase/redux";
 import { useLocation } from "metabase/router";
 
-/**
- * The embed setup modals, fetched when one is opened.
- *
- * `EmbedSetupModals` is mounted for the whole session, so importing these directly
- * would put them in the initial bundle. They reach the dashboard actions and
- * selectors, which is most of the dashboard feature. Nothing renders while they
- * load: a modal that has just been asked for has no earlier state to preserve.
- */
+// These reach the dashboard actions and selectors, so they load when a modal opens rather than with the app.
 const SdkIframeEmbedSetupModal = lazy(() =>
   import("./SdkIframeEmbedSetupModal").then(({ SdkIframeEmbedSetupModal }) => ({
     default: SdkIframeEmbedSetupModal,
@@ -38,7 +31,6 @@ export const EmbedSetupModals = () => {
     dispatch(closeEmbedSetupModal());
   }, [dispatch]);
 
-  // Hide the modals on location change
   useEffect(() => {
     handleClose();
   }, [handleClose, pathname]);
