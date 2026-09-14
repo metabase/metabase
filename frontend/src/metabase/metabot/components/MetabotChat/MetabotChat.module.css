@@ -133,6 +133,10 @@
   }
 }
 
+.messageUser :global([data-smart-link-icon]) {
+  color: var(--mb-color-text-secondary);
+}
+
 .messageUser :global([data-smart-link="link"]) {
   color: var(--mb-color-text-primary);
 

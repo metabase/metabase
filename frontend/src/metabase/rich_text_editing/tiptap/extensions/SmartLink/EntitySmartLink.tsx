@@ -46,6 +46,7 @@ export function EntitySmartLink({
           {...getIcon({ model: libraryEntity.model })}
           size="0.75rem"
           className={S.tokenIcon}
+          data-smart-link-icon
         />
       )}
       {name}

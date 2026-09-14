@@ -12,7 +12,7 @@
   &:hover,
   &:focus-visible {
     color: var(--mb-color-text-brand-hover);
-    text-decoration: underline;
+    text-decoration: underline dotted;
   }
 }
 

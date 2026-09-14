@@ -1,6 +1,6 @@
 .link {
   color: var(--mb-color-text-brand);
-  text-decoration: underline;
+  text-decoration: underline dotted;
   text-underline-offset: 0.125rem;
   outline: none;
   transition: color 200ms;
@@ -34,4 +34,6 @@
 
 .tokenIcon {
   flex-shrink: 0;
+  margin-bottom: -1px;
+  color: var(--mb-color-text-brand);
 }
