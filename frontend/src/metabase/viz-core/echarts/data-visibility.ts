@@ -1,4 +1,8 @@
 import { registerAction } from "echarts/core";
+// `instanceof` only matches ECharts' own zrender copy, so keep zrender pinned to ECharts' version.
+import Path from "zrender/lib/graphic/Path.js";
+
+import { GOAL_LINE_SERIES_ID } from "./cartesian/constants/dataset";
 
 export const DATA_VISIBILITY_ACTION = "metabaseCheckDataVisibility";
 export const DATA_VISIBILITY_EVENT = "metabaseDataVisibility";
@@ -22,8 +26,35 @@ type SeriesView = ReturnType<ExtensionApi["getViewOfSeriesModel"]>;
 
 type PlotArea = { x: number; y: number; width: number; height: number };
 
-// A clipped mark can touch the plot edge with nothing actually visible.
+// Area charts sill draw a line for a 0 value
 const EDGE_TOLERANCE = -0.5;
+
+// We want to ignore goal lines for this calculation
+const isGoalLineSeries = (seriesId: string) =>
+  seriesId === GOAL_LINE_SERIES_ID ||
+  seriesId.startsWith(`${GOAL_LINE_SERIES_ID}_`);
+
+const isTransparent = (path: Path) => path.style.opacity === 0;
+
+// zrender pads stroke-only paths out to a hit area that reaches well past the painted line.
+const getPaintedBounds = (path: Path) => {
+  const bounds = path.getBoundingRect().clone();
+
+  if (!path.hasStroke() || path.hasFill()) {
+    return bounds;
+  }
+
+  const lineWidth = path.style.lineWidth ?? 1;
+  const hitAreaInset =
+    (Math.max(lineWidth, path.strokeContainThreshold) - lineWidth) / 2;
+
+  bounds.x += hitAreaInset;
+  bounds.y += hitAreaInset;
+  bounds.width -= hitAreaInset * 2;
+  bounds.height -= hitAreaInset * 2;
+
+  return bounds;
+};
 
 const hasMarkInsidePlotArea = (view: SeriesView, plotArea: PlotArea) => {
   let found = false;
@@ -33,12 +64,16 @@ const hasMarkInsidePlotArea = (view: SeriesView, plotArea: PlotArea) => {
       return;
     }
 
+    const path = element instanceof Path ? element : null;
+
     // Groups aggregate their children's bounds, so we compare against children instead
-    if (element.isGroup || element.ignore) {
+    if (element.isGroup || element.ignore || (path && isTransparent(path))) {
       return;
     }
 
-    const bounds = element.getBoundingRect().clone();
+    const bounds = path
+      ? getPaintedBounds(path)
+      : element.getBoundingRect().clone();
     if (element.transform) {
       bounds.applyTransform(element.transform);
     }
@@ -65,6 +100,10 @@ export const DataVisibilityExtension = {
         let anythingRendered = false;
 
         ecModel.eachSeries((seriesModel) => {
+          if (isGoalLineSeries(seriesModel.id)) {
+            return;
+          }
+
           const plotArea =
             seriesModel.coordinateSystem?.getArea?.(EDGE_TOLERANCE);
 
