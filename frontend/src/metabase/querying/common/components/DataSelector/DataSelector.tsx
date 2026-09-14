@@ -17,18 +17,12 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { canUserCreateQueries } from "metabase/current-user";
-import { getMetadata } from "metabase/metadata-store";
+import { getShallowQuestions } from "metabase/metadata-store";
 import { connect } from "metabase/redux";
 import type { Dispatch, State } from "metabase/redux/store";
 import { fetchTableMetadata } from "metabase/redux/tables";
 import { getSetting } from "metabase/settings";
 import { Box, Popover } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type Field from "metabase-lib/v1/metadata/Field";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type Schema from "metabase-lib/v1/metadata/Schema";
-import type Table from "metabase-lib/v1/metadata/Table";
 import {
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
   getQuestionIdFromVirtualTableId,
@@ -62,8 +56,15 @@ import {
   type TriggerComponentProps,
 } from "./TriggerComponents";
 import { CONTAINER_WIDTH, DATA_BUCKET } from "./constants";
+import { type EntityLookups, getEntityLookups } from "./entity-lookups";
 import { SavedEntityPicker } from "./saved-entity-picker/SavedEntityPicker";
-import type { DataPickerDataType } from "./types";
+import type {
+  DataPickerDataType,
+  DataSelectorDatabase,
+  DataSelectorField,
+  DataSelectorSchema,
+  DataSelectorTable,
+} from "./types";
 import { getDataTypes } from "./utils";
 
 // chooses a data source bucket (datasets / raw data (tables) / saved questions)
@@ -114,22 +115,20 @@ export interface DataSelectorOwnProps {
   selectedCollectionId?: CollectionId;
 
   databaseQuery?: ListDatabasesRequest;
-  // TODO(dataselector-api-vs-metabase-lib-casts): these entity props are typed
-  // as metabase-lib classes, but some consumers pass plain metabase-types/api
-  // entities and cast. Replace with minimal structural interfaces (threaded
-  // through the pickers) so both representations type-check without casts.
-  databases?: Database[];
-  schemas?: Schema[];
-  tables?: Table[];
-  fields?: Field[];
+  databases?: DataSelectorDatabase[];
+  schemas?: DataSelectorSchema[];
+  tables?: DataSelectorTable[];
+  fields?: DataSelectorField[];
 
   setDatabaseFn?: (databaseId: DatabaseId) => void;
   setFieldFn?: (fieldId: FieldId) => void;
   setSourceTableFn?: (tableId: TableId, databaseId?: DatabaseId) => void;
-  tableFilter?: (table: Table) => boolean;
-  fieldFilter?: (field: Field) => boolean;
-  databaseIsDisabled?: (database: Database) => boolean;
-  databaseDisabledTooltip?: (database: Database) => string | undefined;
+  tableFilter?: (table: DataSelectorTable) => boolean;
+  fieldFilter?: (field: DataSelectorField) => boolean;
+  databaseIsDisabled?: (database: DataSelectorDatabase) => boolean;
+  databaseDisabledTooltip?: (
+    database: DataSelectorDatabase,
+  ) => string | undefined;
 
   canChangeDatabase?: boolean;
   canSelectModel?: boolean;
@@ -142,14 +141,14 @@ export interface DataSelectorOwnProps {
 
 interface DataSelectorStateProps {
   availableModels: SearchModel[];
-  metadata: Metadata;
-  databases: Database[];
+  lookups: EntityLookups;
+  databases: DataSelectorDatabase[];
   hasLoadedDatabasesWithTablesSaved: boolean;
   hasLoadedDatabasesWithSaved: boolean;
   hasLoadedDatabasesWithTables: boolean;
   hasDataAccess: boolean;
   hasNestedQueriesEnabled: boolean;
-  selectedQuestion: Question | null;
+  selectedCardType?: CardType;
 }
 
 interface DataSelectorDispatchProps {
@@ -176,14 +175,14 @@ type DataSelectorProps = DataSelectorOwnProps &
   AvailableModelsInjectedProps;
 
 interface ComputedDataSelectorState {
-  databases: Database[];
-  selectedDatabase: Database | null;
-  schemas: Schema[];
-  selectedSchema: Schema | null;
-  tables: Table[];
-  selectedTable: Table | null;
-  fields: Field[];
-  selectedField: Field | null;
+  databases: DataSelectorDatabase[];
+  selectedDatabase: DataSelectorDatabase | null;
+  schemas: DataSelectorSchema[];
+  selectedSchema: DataSelectorSchema | null;
+  tables: DataSelectorTable[];
+  selectedTable: DataSelectorTable | null;
+  fields: DataSelectorField[];
+  selectedField: DataSelectorField | null;
 }
 
 interface DataSelectorState extends ComputedDataSelectorState {
@@ -336,13 +335,14 @@ export class UnconnectedDataSelector extends Component<
     return this.state.isPopoverOpen;
   }
 
-  // computes selected metadata objects (`selectedDatabase`, etc) and options (`databases`, etc)
-  // from props (`metadata`, `databases`, etc) and state (`selectedDatabaseId`, etc)
+  // computes selected entities (`selectedDatabase`, etc) and options
+  // (`databases`, etc) from props (`lookups`, `databases`, etc) and state
+  // (`selectedDatabaseId`, etc)
   //
   // NOTE: this is complicated because we allow you to:
   // 1. pass in databases/schemas/tables/fields as props
-  // 2. pull them from the currently selected "parent" metadata object
-  // 3. pull them out of metadata
+  // 2. pull them from the currently selected "parent" entity
+  // 3. pull them out of the store
   //
   // We also want to recompute the selected objects from their selected ID
   // each time rather than storing the object itself in case new metadata is
@@ -352,7 +352,7 @@ export class UnconnectedDataSelector extends Component<
     props: DataSelectorProps,
     state: SelectedIdsState,
   ): ComputedDataSelectorState {
-    const { metadata, tableFilter, fieldFilter } = props;
+    const { lookups, tableFilter, fieldFilter } = props;
     const {
       selectedDatabaseId,
       selectedSchemaId,
@@ -361,38 +361,43 @@ export class UnconnectedDataSelector extends Component<
     } = state;
 
     let { databases, schemas, tables, fields } = props;
-    let selectedDatabase: Database | null = null;
-    let selectedSchema: Schema | null = null;
-    let selectedTable: Table | null = null;
-    let selectedField: Field | null = null;
+    let selectedDatabase: DataSelectorDatabase | null = null;
+    let selectedSchema: DataSelectorSchema | null = null;
+    let selectedTable: DataSelectorTable | null = null;
+    let selectedField: DataSelectorField | null = null;
 
     const getDatabase = (id: DatabaseId) =>
-      _.findWhere(databases, { id }) || metadata.database(id);
+      _.findWhere(databases, { id }) || lookups.database(id);
     const getSchema = (id: SchemaId) =>
-      _.findWhere(schemas ?? [], { id }) || metadata.schema(id);
+      _.findWhere(schemas ?? [], { id }) || lookups.schema(id);
     const getTable = (id: TableId) =>
-      _.findWhere(tables ?? [], { id }) || metadata.table(id);
+      _.findWhere(tables ?? [], { id }) || lookups.table(id);
     const getField = (id: FieldId | FieldReference) =>
-      _.findWhere(fields ?? [], { id }) || metadata.field(id);
+      _.findWhere(fields ?? [], { id }) || lookups.field(id);
 
-    const deriveFromDatabase = (database: Database | null) => {
+    // The schema a table belongs to, as the store resolves it: a table the
+    // store does not hold, and a schema it has not loaded, both give nothing.
+    const getSchemaOfTable = (table: DataSelectorTable) =>
+      lookups.tableSchema(table.id);
+
+    const deriveFromDatabase = (database: DataSelectorDatabase | null) => {
       if (!schemas && database) {
-        schemas = database.schemas;
+        schemas = lookups.databaseSchemas(database.id);
       }
       if (!tables && Array.isArray(schemas) && schemas.length === 1) {
-        tables = schemas[0].tables;
+        tables = lookups.schemaTables(schemas[0].id);
       }
     };
 
-    const deriveFromSchema = (schema: Schema | null) => {
+    const deriveFromSchema = (schema: DataSelectorSchema | null) => {
       if (!tables && schema) {
-        tables = schema.tables;
+        tables = lookups.schemaTables(schema.id);
       }
     };
 
-    const deriveFromTable = (table: Table | null) => {
+    const deriveFromTable = (table: DataSelectorTable | null) => {
       if (!fields && table) {
-        fields = table.fields;
+        fields = lookups.tableFields(table.id);
       }
     };
 
@@ -413,15 +418,15 @@ export class UnconnectedDataSelector extends Component<
     }
     // now do it in in reverse to propagate it back up
     if (!selectedTable && selectedField) {
-      selectedTable = selectedField.table ?? null;
+      selectedTable = lookups.table(selectedField.table_id) ?? null;
       deriveFromTable(selectedTable);
     }
     if (!selectedSchema && selectedTable) {
-      selectedSchema = selectedTable.schema ?? null;
+      selectedSchema = getSchemaOfTable(selectedTable) ?? null;
       deriveFromSchema(selectedSchema);
     }
     if (!selectedDatabase && selectedSchema) {
-      selectedDatabase = selectedSchema.database ?? null;
+      selectedDatabase = lookups.database(selectedSchema.database) ?? null;
       deriveFromDatabase(selectedDatabase);
     }
 
@@ -491,7 +496,7 @@ export class UnconnectedDataSelector extends Component<
     }
     if (Object.keys(newState).length > 0) {
       this.setStateWithComputedState(newState, nextProps);
-    } else if (nextProps.metadata !== this.props.metadata) {
+    } else if (nextProps.lookups !== this.props.lookups) {
       this.setStateWithComputedState({}, nextProps);
     }
   }
@@ -519,7 +524,7 @@ export class UnconnectedDataSelector extends Component<
         await fetchQuestion(sourceId);
 
         this.showSavedEntityPicker({
-          entityType: this.props.selectedQuestion?.type(),
+          entityType: this.props.selectedCardType,
         });
       }
     }
@@ -548,12 +553,17 @@ export class UnconnectedDataSelector extends Component<
       schemas,
     } = this.state;
 
+    const { lookups } = this.props;
+    const selectedSchemaDatabase = selectedSchema
+      ? lookups.database(selectedSchema.database)
+      : undefined;
+
     const invalidSchema =
       selectedDatabase &&
       selectedSchema &&
-      selectedSchema.database &&
-      selectedSchema.database.id !== selectedDatabase.id &&
-      selectedSchema.database.id !== SAVED_QUESTIONS_VIRTUAL_DB_ID;
+      selectedSchemaDatabase &&
+      selectedSchemaDatabase.id !== selectedDatabase.id &&
+      selectedSchemaDatabase.id !== SAVED_QUESTIONS_VIRTUAL_DB_ID;
 
     const onStepMissingSchemaAndTable =
       !selectedSchema &&
@@ -566,12 +576,12 @@ export class UnconnectedDataSelector extends Component<
       selectedSchema &&
       selectedTable &&
       !isVirtualCardId(selectedTable.id) &&
-      selectedTable.schema?.id !== selectedSchema.id;
+      lookups.tableSchema(selectedTable.id)?.id !== selectedSchema.id;
 
     const invalidField =
       selectedTable &&
       selectedField &&
-      selectedField.table?.id !== selectedTable.id;
+      selectedField.table_id !== selectedTable.id;
 
     // A database with a single schema auto-selects it (see `skipSteps`). When the
     // schema list arrives asynchronously *after* we already switched to the schema
@@ -966,7 +976,7 @@ export class UnconnectedDataSelector extends Component<
     }
   };
 
-  onChangeDatabase = async (database: Database) => {
+  onChangeDatabase = async (database: DataSelectorDatabase) => {
     if (database.is_saved_questions) {
       this.showSavedEntityPicker({ entityType: "question" });
       return;
@@ -984,19 +994,19 @@ export class UnconnectedDataSelector extends Component<
     await this.nextStep({ selectedDatabaseId: database && database.id });
   };
 
-  onChangeSchema = async (schema?: Schema) => {
+  onChangeSchema = async (schema?: DataSelectorSchema) => {
     // NOTE: not really any need to have a setSchemaFn since schemas are just a namespace
     await this.nextStep({ selectedSchemaId: schema?.id ?? null });
   };
 
-  onChangeTable = async (table?: Table) => {
+  onChangeTable = async (table?: DataSelectorTable) => {
     if (this.props.setSourceTableFn && table?.id != null) {
       this.props.setSourceTableFn(table.id, table.db_id);
     }
     await this.nextStep({ selectedTableId: table?.id ?? null });
   };
 
-  onChangeField = async (field?: Field) => {
+  onChangeField = async (field?: DataSelectorField) => {
     const fieldId = field?.id;
     if (this.props.setFieldFn && typeof fieldId === "number") {
       this.props.setFieldFn(fieldId);
@@ -1022,6 +1032,16 @@ export class UnconnectedDataSelector extends Component<
 
     const { selectedDatabase, selectedTable, selectedField } = this.state;
 
+    // Only the field trigger reads this, to tell a schema-qualified table name
+    // from a plain one.
+    const hasMultipleSchemas =
+      selectedField != null &&
+      selectedDatabase != null &&
+      _.uniq(
+        this.props.lookups.databaseTables(selectedDatabase.id),
+        (table) => table.schema_name,
+      ).length > 1;
+
     return (
       <Trigger
         className={className}
@@ -1035,6 +1055,7 @@ export class UnconnectedDataSelector extends Component<
             database={selectedDatabase}
             table={selectedTable}
             field={selectedField}
+            hasMultipleSchemas={hasMultipleSchemas}
           />
         )}
       </Trigger>
@@ -1095,6 +1116,8 @@ export class UnconnectedDataSelector extends Component<
       hasInitialFocus: true,
       databaseIsDisabled: this.props.databaseIsDisabled,
       databaseDisabledTooltip: this.props.databaseDisabledTooltip,
+      getDatabaseSchemas: this.props.lookups.databaseSchemas,
+      getFieldDisplayName: this.props.lookups.fieldName,
     };
 
     switch (this.state.activeStep) {
@@ -1145,7 +1168,7 @@ export class UnconnectedDataSelector extends Component<
   handleSavedEntitySelect = async (tableOrCardId: string) => {
     await this.props.fetchFields(tableOrCardId);
     if (this.props.setSourceTableFn) {
-      const table = this.props.metadata.table(tableOrCardId);
+      const table = this.props.lookups.table(tableOrCardId);
       this.props.setSourceTableFn(tableOrCardId, table?.db_id);
     }
     this.togglePopoverOpen();
@@ -1352,15 +1375,18 @@ const mapStateToProps = (
   };
   const queriedDatabases =
     databaseApi.endpoints.listDatabases.select(databaseQuery)(state).data?.data;
-  const metadata = getMetadata(state);
+  const lookups = getEntityLookups(state);
+  const selectedCardId = getQuestionIdFromVirtualTableId(
+    ownProps.selectedTableId,
+  );
   return {
     availableModels: ownProps.availableModelsResult?.available_models ?? [],
-    metadata,
+    lookups,
     databases:
       ownProps.databases ||
       queriedDatabases
-        ?.map(({ id }) => metadata.database(id))
-        .filter((database): database is Database => database != null) ||
+        ?.map(({ id }) => lookups.database(id))
+        .filter((database) => database != null) ||
       [],
     hasLoadedDatabasesWithTablesSaved: isListDatabasesQuerySuccess(state, {
       include: "tables",
@@ -1377,9 +1403,10 @@ const mapStateToProps = (
     }),
     hasDataAccess: canUserCreateQueries(state),
     hasNestedQueriesEnabled: getSetting(state, "enable-nested-queries"),
-    selectedQuestion: getMetadata(state).question(
-      getQuestionIdFromVirtualTableId(ownProps.selectedTableId),
-    ),
+    selectedCardType:
+      selectedCardId != null
+        ? getShallowQuestions(state)[selectedCardId]?.type
+        : undefined,
   };
 };
 
