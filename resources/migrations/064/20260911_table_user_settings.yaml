@@ -269,20 +269,42 @@ databaseChangeLog:
                 AND NOT EXISTS (SELECT 1 FROM metabase_table_user_settings s WHERE s.table_id = t.id)
       rollback: # not necessary; the table is dropped by the rollback of v64.2026-09-11T00:00:00
 
-  ## owner_email and owner_user_id have no `_set` flag, because sync never writes either and so a NULL in the
-  ## settings row can only mean "the user set nothing". That only holds once the values live in one place: leaving
-  ## the originals in metabase_table would let COALESCE resurrect them the moment a user cleared the setting.
   - changeSet:
       id: v64.2026-09-11T00:00:06
       author: ranquild
-      comment: Clear the owner columns the backfill moved into metabase_table_user_settings
+      comment: Clear the user-set columns the backfill moved into metabase_table_user_settings
       changes:
         - sql:
             sql: >-
               UPDATE metabase_table
-              SET owner_email = NULL, owner_user_id = NULL
+              SET caveats = NULL,
+                  points_of_interest = NULL,
+                  owner_email = NULL,
+                  owner_user_id = NULL,
+                  is_published = FALSE,
+                  collection_id = NULL,
+                  field_order = 'database',
+                  show_in_getting_started = FALSE,
+                  data_authority = 'unconfigured',
+                  data_layer = 'internal',
+                  visibility_type = CASE WHEN visibility_type = 'cruft' THEN 'cruft' ELSE NULL END
               WHERE EXISTS (SELECT 1 FROM metabase_table_user_settings s WHERE s.table_id = metabase_table.id)
-      rollback: # not necessary; the values are preserved in metabase_table_user_settings
+      rollback:
+        - sql:
+            sql: >-
+              UPDATE metabase_table
+              SET caveats = (SELECT s.caveats FROM metabase_table_user_settings s WHERE s.table_id = metabase_table.id),
+                  points_of_interest = (SELECT s.points_of_interest FROM metabase_table_user_settings s WHERE s.table_id = metabase_table.id),
+                  owner_email = (SELECT s.owner_email FROM metabase_table_user_settings s WHERE s.table_id = metabase_table.id),
+                  owner_user_id = (SELECT s.owner_user_id FROM metabase_table_user_settings s WHERE s.table_id = metabase_table.id),
+                  is_published = COALESCE((SELECT s.is_published FROM metabase_table_user_settings s WHERE s.table_id = metabase_table.id), FALSE),
+                  collection_id = (SELECT s.collection_id FROM metabase_table_user_settings s WHERE s.table_id = metabase_table.id),
+                  field_order = COALESCE((SELECT s.field_order FROM metabase_table_user_settings s WHERE s.table_id = metabase_table.id), 'database'),
+                  show_in_getting_started = COALESCE((SELECT s.show_in_getting_started FROM metabase_table_user_settings s WHERE s.table_id = metabase_table.id), FALSE),
+                  data_authority = COALESCE((SELECT s.data_authority FROM metabase_table_user_settings s WHERE s.table_id = metabase_table.id), 'unconfigured'),
+                  data_layer = COALESCE((SELECT s.data_layer FROM metabase_table_user_settings s WHERE s.table_id = metabase_table.id), 'internal'),
+                  visibility_type = COALESCE((SELECT s.visibility_type FROM metabase_table_user_settings s WHERE s.table_id = metabase_table.id), visibility_type)
+              WHERE EXISTS (SELECT 1 FROM metabase_table_user_settings s WHERE s.table_id = metabase_table.id)
 
   - changeSet:
       id: v64.2026-09-11T00:00:07

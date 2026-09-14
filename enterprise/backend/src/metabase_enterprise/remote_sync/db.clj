@@ -183,15 +183,15 @@
     :model/Field   {:alias  "f"
                     :select [:f.name :f.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
                     :from   [[:metabase_field :f]]
-                    :join   [[:metabase_table :t] [:= :f.table_id :t.id]]}
+                    :join   [(warehouse-schema-overlay/table-query {:alias :t}) [:= :f.table_id :t.id]]}
     :model/Segment {:alias  "s"
                     :select [:s.name :s.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
                     :from   [[:segment :s]]
-                    :join   [[:metabase_table :t] [:= :s.table_id :t.id]]}
+                    :join   [(warehouse-schema-overlay/table-query {:alias :t}) [:= :s.table_id :t.id]]}
     :model/Measure {:alias  "s"
                     :select [:s.name :s.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
                     :from   [[:measure :s]]
-                    :join   [[:metabase_table :t] [:= :s.table_id :t.id]]}))
+                    :join   [(warehouse-schema-overlay/table-query {:alias :t}) [:= :s.table_id :t.id]]}))
 
 (mu/defn tracking-details-by-id
   "The name, table id, collection id, and table name of the `model-key` (Field, Segment, or Measure) instance with
