@@ -13,8 +13,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.registry :as mr]))
 
 (defn- with-optional-lib-type
   "Create a version of `schema` where `:lib/type` is optional rather than required."
@@ -45,7 +44,7 @@
    [:transforms {:optional true}
     [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/transform :metadata/transform)]]]
    [:settings {:optional true}
-    [:maybe ms/DatabaseSettings]]])
+    [:maybe :metabase.lib.schema.common/database-settings]]])
 
 (defn- mock-database [metadata]
   (some-> (:database metadata)

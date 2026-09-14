@@ -14,7 +14,6 @@
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
    [metabase.util.performance :refer [empty? get-in]]))
 
 ;;; Column vs Field?
@@ -962,7 +961,7 @@
                                                 [:flavor           {:optional true} [:maybe :string]]
                                                 [:version          {:optional true} [:maybe :string]]
                                                 [:semantic-version {:optional true} [:maybe [:sequential :int]]]]]]
-   [:details         {:optional true} ms/DatabaseDetails]
+   [:details         {:optional true} ::lib.schema.common/database-details]
    [:engine          {:optional true} [:keyword {:decode/normalize lib.schema.common/normalize-keyword}]]
    [:features        {:optional true} [:set [:keyword {:decode/normalize lib.schema.common/normalize-keyword}]]]
    [:is-audit        {:optional true} :boolean]

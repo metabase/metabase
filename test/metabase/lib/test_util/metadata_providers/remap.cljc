@@ -7,15 +7,14 @@
    [metabase.lib.test-util.metadata-providers.mock :as lib.tu.metadata-providers.mock]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli :as mu]))
 
 (def ^:private InternalRemap
   "Hardcoded remap values: a sequence of human-readable values keyed positionally to the original Field's values, or a
   map of original value to human-readable value."
   [:or
    [:sequential :string]
-   [:map-of ms/FieldValue :string]])
+   [:map-of :metabase.lib.schema.literal/literal :string]])
 
 (def ^:private Remap
   "Something [[remapped-column]] can remap `original` to: a remapped Field (metadata or ID) for an external remap, or

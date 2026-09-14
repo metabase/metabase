@@ -150,6 +150,14 @@
   only."
   [:map {:closed false, ::mr/deliberately-open true, :description "visualization settings", :decode/normalize normalize-map-no-kebab-case}])
 
+(mr/def ::database-details
+  "Connection details for a Database; the `.cljc` equivalent of [[metabase.util.malli.schema/DatabaseDetails]]."
+  [:map {:closed false, ::mr/deliberately-open true, :description "database connection details"}])
+
+(mr/def ::database-settings
+  "A Database's `:settings`; the `.cljc` equivalent of [[metabase.util.malli.schema/DatabaseSettings]]."
+  [:map {:closed false, ::mr/deliberately-open true, :description "database settings"}])
+
 (mr/def ::uuid
   [:string
    {:decode/normalize (fn [x]

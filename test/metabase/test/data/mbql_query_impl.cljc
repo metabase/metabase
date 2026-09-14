@@ -7,8 +7,7 @@
              [metabase.lib.metadata :as lib.metadata]))
    [clojure.string :as str]
    [clojure.walk :as walk]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli :as mu]))
 
 #?(:clj (set! *warn-on-reflection* true))
 
@@ -96,7 +95,7 @@
 (mu/defn- field-ref-update-options
   [a-ref :- vector?
    f     :- ifn?
-   & args :- [:* [:or :keyword ms/NonBlankString]]]
+   & args :- [:* [:or :keyword :metabase.lib.schema.common/non-blank-string]]]
   (field-ref (field-ref->id-or-name a-ref)
              (apply f (field-ref->opts a-ref) args)))
 
