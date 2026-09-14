@@ -5,10 +5,6 @@ import { Form, FormProvider, FormSwitch } from "metabase/forms";
 
 import { FormInlineUpdater } from "./FormInlineUpdater";
 
-type FormValues = {
-  enabled: boolean;
-};
-
 describe("FormInlineUpdater", () => {
   it("rolls back form values when an update fails", async () => {
     const error = new Error("Update failed");
@@ -16,10 +12,7 @@ describe("FormInlineUpdater", () => {
     const onError = jest.fn();
 
     render(
-      <FormProvider<FormValues>
-        initialValues={{ enabled: false }}
-        onSubmit={jest.fn()}
-      >
+      <FormProvider initialValues={{ enabled: false }} onSubmit={jest.fn()}>
         <Form>
           <FormInlineUpdater update={update} onError={onError} debounceMs={0} />
           <FormSwitch name="enabled" label="Enabled" />
