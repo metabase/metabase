@@ -4,6 +4,7 @@
   (:require
    [metabase.actions.schema :as actions.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -82,6 +83,11 @@
   "Delete the DashboardCards of the Action with `action-id`, returning the number deleted."
   [action-id :- ::lib.schema.id/action]
   (t2/delete! :model/DashboardCard :action_id action-id))
+
+(mu/defn insert-query-execution!
+  "Insert the QueryExecution `row` and return its id."
+  [row :- ::queries.schema/query-execution.update]
+  (t2/insert-returning-pk! :model/QueryExecution row))
 
 (mu/defn insert-action!
   "Insert the Action `row` and return the inserted instance."
