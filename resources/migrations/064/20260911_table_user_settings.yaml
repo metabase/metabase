@@ -275,6 +275,40 @@ databaseChangeLog:
       comment: Clear the user-set columns the backfill moved into metabase_table_user_settings
       changes:
         - sql:
+            dbms: postgresql
+            sql: >-
+              UPDATE metabase_table AS t
+              SET caveats = NULL,
+                  points_of_interest = NULL,
+                  owner_email = NULL,
+                  owner_user_id = NULL,
+                  is_published = FALSE,
+                  collection_id = NULL,
+                  field_order = 'database',
+                  show_in_getting_started = FALSE,
+                  data_authority = 'unconfigured',
+                  data_layer = 'internal',
+                  visibility_type = CASE WHEN t.visibility_type = 'cruft' THEN 'cruft' ELSE NULL END
+              FROM metabase_table_user_settings AS s
+              WHERE s.table_id = t.id
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE metabase_table t
+              JOIN metabase_table_user_settings s ON s.table_id = t.id
+              SET t.caveats = NULL,
+                  t.points_of_interest = NULL,
+                  t.owner_email = NULL,
+                  t.owner_user_id = NULL,
+                  t.is_published = FALSE,
+                  t.collection_id = NULL,
+                  t.field_order = 'database',
+                  t.show_in_getting_started = FALSE,
+                  t.data_authority = 'unconfigured',
+                  t.data_layer = 'internal',
+                  t.visibility_type = CASE WHEN t.visibility_type = 'cruft' THEN 'cruft' ELSE NULL END
+        - sql:
+            dbms: h2
             sql: >-
               UPDATE metabase_table
               SET caveats = NULL,
@@ -291,6 +325,40 @@ databaseChangeLog:
               WHERE EXISTS (SELECT 1 FROM metabase_table_user_settings s WHERE s.table_id = metabase_table.id)
       rollback:
         - sql:
+            dbms: postgresql
+            sql: >-
+              UPDATE metabase_table AS t
+              SET caveats = s.caveats,
+                  points_of_interest = s.points_of_interest,
+                  owner_email = s.owner_email,
+                  owner_user_id = s.owner_user_id,
+                  is_published = COALESCE(s.is_published, FALSE),
+                  collection_id = s.collection_id,
+                  field_order = COALESCE(s.field_order, 'database'),
+                  show_in_getting_started = COALESCE(s.show_in_getting_started, FALSE),
+                  data_authority = COALESCE(s.data_authority, 'unconfigured'),
+                  data_layer = COALESCE(s.data_layer, 'internal'),
+                  visibility_type = COALESCE(s.visibility_type, t.visibility_type)
+              FROM metabase_table_user_settings AS s
+              WHERE s.table_id = t.id
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE metabase_table t
+              JOIN metabase_table_user_settings s ON s.table_id = t.id
+              SET t.caveats = s.caveats,
+                  t.points_of_interest = s.points_of_interest,
+                  t.owner_email = s.owner_email,
+                  t.owner_user_id = s.owner_user_id,
+                  t.is_published = COALESCE(s.is_published, FALSE),
+                  t.collection_id = s.collection_id,
+                  t.field_order = COALESCE(s.field_order, 'database'),
+                  t.show_in_getting_started = COALESCE(s.show_in_getting_started, FALSE),
+                  t.data_authority = COALESCE(s.data_authority, 'unconfigured'),
+                  t.data_layer = COALESCE(s.data_layer, 'internal'),
+                  t.visibility_type = COALESCE(s.visibility_type, t.visibility_type)
+        - sql:
+            dbms: h2
             sql: >-
               UPDATE metabase_table
               SET caveats = (SELECT s.caveats FROM metabase_table_user_settings s WHERE s.table_id = metabase_table.id),
@@ -354,6 +422,21 @@ databaseChangeLog:
       comment: Copy the custom field positions in metabase_field into existing metabase_field_user_settings rows
       changes:
         - sql:
+            dbms: postgresql
+            sql: >-
+              UPDATE metabase_field_user_settings AS s
+              SET custom_position = f.custom_position
+              FROM metabase_field AS f
+              WHERE f.id = s.field_id AND f.custom_position <> 0
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE metabase_field_user_settings s
+              JOIN metabase_field f ON f.id = s.field_id
+              SET s.custom_position = f.custom_position
+              WHERE f.custom_position <> 0
+        - sql:
+            dbms: h2
             sql: >-
               UPDATE metabase_field_user_settings
               SET custom_position = (SELECT f.custom_position FROM metabase_field f WHERE f.id = metabase_field_user_settings.field_id)
@@ -367,4 +450,24 @@ databaseChangeLog:
       changes:
         - sql:
             sql: UPDATE metabase_field SET custom_position = 0 WHERE custom_position <> 0
-      rollback: # not necessary; the positions are preserved in metabase_field_user_settings
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              UPDATE metabase_field AS f
+              SET custom_position = s.custom_position
+              FROM metabase_field_user_settings AS s
+              WHERE s.field_id = f.id AND s.custom_position IS NOT NULL
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE metabase_field f
+              JOIN metabase_field_user_settings s ON s.field_id = f.id
+              SET f.custom_position = s.custom_position
+              WHERE s.custom_position IS NOT NULL
+        - sql:
+            dbms: h2
+            sql: >-
+              UPDATE metabase_field
+              SET custom_position = (SELECT s.custom_position FROM metabase_field_user_settings s WHERE s.field_id = metabase_field.id)
+              WHERE EXISTS (SELECT 1 FROM metabase_field_user_settings s WHERE s.field_id = metabase_field.id AND s.custom_position IS NOT NULL)
