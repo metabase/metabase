@@ -255,12 +255,36 @@ export function getExplorationSidebarTree(
 }
 
 type PageKey = string;
+type MetricDimensionKey = string;
 
 // every query in a page has the same card_id, dimension_id, and query_type
 // we use this to identify the same shaped pages across threads
 function getPageKey(query: ExplorationQuery): PageKey {
   const { card_id, dimension_id, query_type } = query;
   return `${card_id}-${dimension_id}-${query_type}`;
+}
+
+function metricDimensionKey(query: ExplorationQuery): MetricDimensionKey {
+  return `${query.card_id}-${query.dimension_id}`;
+}
+
+// Variant pages (hour-of-day, top-n, etc.) are bonus charts, not research-plan
+// rows. If the planned default for the same metric+dimension exists, hide a
+// failed variant rather than showing an error the user didn't ask for.
+function shouldOmitFailedVariantPage(
+  queries: ExplorationQuery[],
+  status: ExplorationQueryStatus,
+  defaultCombos: Set<MetricDimensionKey>,
+): boolean {
+  if (status !== "error") {
+    return false;
+  }
+  const query = queries[0];
+  return (
+    query != null &&
+    query.query_type !== "default" &&
+    defaultCombos.has(metricDimensionKey(query))
+  );
 }
 
 // max interestingness (contextual preferred) across all queries in a page
@@ -367,6 +391,11 @@ function getExplorationQueryTree(
   const queriesById = new Map<ExplorationQueryId, ExplorationQuery>(
     (thread.queries ?? []).map((query) => [query.id, query]),
   );
+  const defaultCombos = new Set(
+    (thread.queries ?? [])
+      .filter((query) => query.query_type === "default")
+      .map(metricDimensionKey),
+  );
 
   const blocks = (thread.blocks ?? []).filter(
     (block) => block.name != null, // don't show anything missing a name
@@ -382,6 +411,9 @@ function getExplorationQueryTree(
           return null;
         }
         const status = getExplorationQueryGroupStatus(queries);
+        if (shouldOmitFailedVariantPage(queries, status, defaultCombos)) {
+          return null;
+        }
         const pageKey = getPageKey(queries[0]);
         return {
           id: String(page.id),

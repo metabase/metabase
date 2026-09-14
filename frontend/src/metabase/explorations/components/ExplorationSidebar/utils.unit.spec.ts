@@ -825,6 +825,152 @@ describe("getExplorationSidebarTree inherits a heading status from its pages", (
   });
 });
 
+describe("getExplorationSidebarTree omits failed variant pages", () => {
+  const BLOCK_ID = 10;
+  const DEFAULT_PAGE_ID = 1;
+  const VARIANT_PAGE_ID = 2;
+
+  function treeWithDefaultAndVariant(
+    defaultQuery: ReturnType<typeof createQuery>,
+    variantQuery: ReturnType<typeof createQuery>,
+  ) {
+    return getAllTabExplorationSidebarTree({
+      queries: [defaultQuery, variantQuery],
+      blocks: [
+        createBlock({
+          id: BLOCK_ID,
+          name: "Revenue",
+          position: 0,
+          pages: [
+            createPage({
+              id: DEFAULT_PAGE_ID,
+              name: "Created At",
+              position: 0,
+              query_ids: [defaultQuery.id],
+            }),
+            createPage({
+              id: VARIANT_PAGE_ID,
+              name: "Created At (Hour of day)",
+              position: 1,
+              query_ids: [variantQuery.id],
+            }),
+          ],
+        }),
+      ],
+    });
+  }
+
+  it("omits an errored variant when a default query exists for the same metric and dimension", () => {
+    const tree = treeWithDefaultAndVariant(
+      createQuery({
+        id: 1,
+        name: "Created At",
+        status: "done",
+        card_id: 10,
+        dimension_id: "created_at",
+      }),
+      createQuery({
+        id: 2,
+        name: "Created At (Hour of day)",
+        status: "error",
+        error_message: "boom",
+        card_id: 10,
+        dimension_id: "created_at",
+        query_type: "temporal-pattern-hour",
+      }),
+    );
+
+    expect(getLeafIds(getMetricHeadings(tree)[0])).toEqual(["1"]);
+  });
+
+  it("omits a zero-row variant when a default query exists for the same combo", () => {
+    const tree = treeWithDefaultAndVariant(
+      createQuery({
+        id: 1,
+        name: "Created At",
+        status: "done",
+        card_id: 10,
+        dimension_id: "created_at",
+        row_count: 5,
+      }),
+      createQuery({
+        id: 2,
+        name: "Created At (Hour of day)",
+        status: "done",
+        card_id: 10,
+        dimension_id: "created_at",
+        query_type: "temporal-pattern-hour",
+        row_count: 0,
+      }),
+    );
+
+    expect(getLeafIds(getMetricHeadings(tree)[0])).toEqual(["1"]);
+  });
+
+  it("keeps an errored top-n-other page when there is no default for that combo", () => {
+    const variant = createQuery({
+      id: 2,
+      name: "User ID (Top values + Other)",
+      status: "error",
+      error_message: "boom",
+      card_id: 10,
+      dimension_id: "user_id",
+      query_type: "top-n-other",
+    });
+    const tree = getAllTabExplorationSidebarTree({
+      queries: [variant],
+      blocks: [
+        createBlock({
+          id: BLOCK_ID,
+          name: "Revenue",
+          position: 0,
+          pages: [
+            createPage({
+              id: VARIANT_PAGE_ID,
+              name: "User ID (Top values + Other)",
+              position: 0,
+              query_ids: [variant.id],
+            }),
+          ],
+        }),
+      ],
+    });
+
+    expect(getLeafIds(getMetricHeadings(tree)[0])).toEqual(["2"]);
+  });
+
+  it("keeps an errored default page", () => {
+    const erroredDefault = createQuery({
+      id: 1,
+      name: "Created At",
+      status: "error",
+      error_message: "boom",
+      card_id: 10,
+      dimension_id: "created_at",
+    });
+    const tree = getAllTabExplorationSidebarTree({
+      queries: [erroredDefault],
+      blocks: [
+        createBlock({
+          id: BLOCK_ID,
+          name: "Revenue",
+          position: 0,
+          pages: [
+            createPage({
+              id: DEFAULT_PAGE_ID,
+              name: "Created At",
+              position: 0,
+              query_ids: [erroredDefault.id],
+            }),
+          ],
+        }),
+      ],
+    });
+
+    expect(getLeafIds(getMetricHeadings(tree)[0])).toEqual(["1"]);
+  });
+});
+
 describe("getExplorationSidebarTree last-activity timestamps", () => {
   function headingData(node: ITreeNodeItem<ExplorationTreeNode> | undefined) {
     return node?.data?.type === "heading" ? node.data : undefined;
