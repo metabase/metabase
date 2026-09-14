@@ -122,7 +122,9 @@
        (rf result row)))))
 
 (mu/defn- query-execution-info
-  "Return the info for the QueryExecution entry for this `query`."
+  "Return the info for the QueryExecution entry for this `query`.
+
+  Mirrored by `execution-row` in `metabase.actions.audit`; keep the two in step."
   {:arglists '([query])}
   [{{:keys       [executed-by query-hash context action-id card-id dashboard-id pulse-id]
      :pivot/keys [original-query]} :info
