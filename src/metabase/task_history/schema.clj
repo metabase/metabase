@@ -5,9 +5,6 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
-;; Shapes of `:task_details` for the tasks that actually record one (see `with-task-history` call sites). A
-;; task-name-less sync step or operation (see below) never sets `:task_details` on insert, so its shape here is
-;; nominal (`{:closed true}`, no keys).
 (mr/def ::task-details.channel-send
   [:map {:closed true}
    [:retry_config      [:map {:closed true}
@@ -112,7 +109,6 @@
    [:stacktrace    {:optional true} [:maybe [:sequential :string]]]
    [:ex-data       {:optional true} [:maybe ms/OpaqueJSONObject]]
    [:original-info {:optional true} [:maybe [:ref ::task-history.task-details]]]
-   ;; extra keys an `:on-fail-info` callback merges in, e.g. `metabase.notification.send`'s retry report.
    [:reason              {:optional true} :string]
    [:attempted_retries   {:optional true} :int]
    [:retry_errors        {:optional true} [:sequential :string]]])

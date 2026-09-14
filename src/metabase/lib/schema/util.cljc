@@ -2,7 +2,6 @@
   (:refer-clojure :exclude [ref run! every? mapv reduce empty? first second])
   (:require
    [medley.core :as m]
-   [metabase.lib.options :as lib.options]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :as perf :refer [run! every? mapv reduce empty? first second]]))
@@ -10,7 +9,7 @@
 (declare collect-uuids*)
 
 (defn- collect-uuids-in-map [m result]
-  (when-let [our-uuid (or (:lib/uuid (lib.options/options m))
+  (when-let [our-uuid (or (:lib/uuid (:lib/options m))
                           (:lib/uuid m))]
     ;; Keep duplicates in metadata of the result.
     (if (@result our-uuid)

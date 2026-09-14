@@ -4,7 +4,6 @@
    [malli.core :as mc]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
-   [metabase.lib.options :as lib.options]
    [metabase.lib.schema.common :as common]
    [metabase.types.core :as types]
    [metabase.util :as u]
@@ -260,7 +259,7 @@
     {:error/message "expressions must have unique names"}
     (fn [expressions]
       (or (empty? expressions)
-          (apply distinct? (map #(:lib/expression-name (lib.options/options %)) expressions))))]])
+          (apply distinct? (map (fn [[_tag opts]] (:lib/expression-name opts)) expressions))))]])
 
 (mr/def ::positive-integer-or-numeric-expression
   [:and

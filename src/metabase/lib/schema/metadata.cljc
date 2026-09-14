@@ -858,6 +858,15 @@
    ;; ID of the collection this Card is saved in. `nil` means it is saved in the "Root Collection". Important for
    ;; perms-checking purposes.
    [:collection-id   {:optional true} [:maybe ::lib.schema.id/collection]]
+   [:entity-id              {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:created-at             {:optional true} [:maybe [:or :string #?(:clj (lib.schema.common/instance-of-class java.time.temporal.Temporal))]]]
+   [:card-schema            {:optional true} [:maybe :int]]
+   [:visualization-settings {:optional true} [:maybe [:ref ::lib.schema.common/visualization-settings]]]
+   [:description            {:optional true} [:maybe :string]]
+   [:display                {:optional true} [:maybe [:or :keyword :string]]]
+   [:archived               {:optional true} [:maybe :boolean]]
+   [:source-card-id         {:optional true} [:maybe ::lib.schema.id/card]]
+   [:dashboard-id           {:optional true} [:maybe pos-int?]]
    ;;
    ;; PERSISTED INFO: This comes from the [[metabase.model-persistence.models.persisted-info]] model.
    ;;
@@ -880,8 +889,12 @@
    [:table-id   ::lib.schema.id/table]
    ;; the MBQL snippet defining this Segment; this may still be in legacy
    ;; format. [[metabase.lib.segment/segment-definition]] handles conversion to MBQL 5 if needed.
-   [:definition [:maybe [:ref :metabase.lib.schema/query]]]
-   [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
+   [:definition [:maybe [:or
+                         [:ref :metabase.lib.schema/query]
+                         [:ref :metabase.legacy-mbql.schema/MBQLInnerQuery]]]]
+   [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:entity-id   {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:archived    {:optional true} [:maybe :boolean]]])
 
 (defn- normalize-measure-definition [definition]
   (when definition
@@ -946,7 +959,20 @@
    ;; Optional `:db` AST slot for cross-DB references (BigQuery `project.dataset.table`,
    ;; SQL Server / Snowflake `db.schema.table`). Sync doesn't populate it on standard
    ;; reads — only cross-DB rewriters fill it.
-   [:db           {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
+   [:db           {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:db-id                   {:optional true} ::lib.schema.id/database]
+   [:active                  {:optional true} [:maybe :boolean]]
+   [:visibility-type         {:optional true} [:maybe [:or :keyword :string]]]
+   [:database-require-filter {:optional true} [:maybe :boolean]]
+   [:description             {:optional true} [:maybe :string]]
+   [:entity-type             {:optional true} [:maybe [:or :keyword :string]]]
+   [:caveats                 {:optional true} [:maybe :string]]
+   [:points-of-interest      {:optional true} [:maybe :string]]
+   [:field-order             {:optional true} [:maybe [:or :keyword :string]]]
+   [:initial-sync-status     {:optional true} [:maybe [:or :string :keyword]]]
+   [:show-in-getting-started {:optional true} [:maybe :boolean]]
+   [:is-upload               {:optional true} [:maybe :boolean]]
+   [:entity-id               {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
 (mr/def ::database
   "Malli schema for the DatabaseMetadata as returned by `GET /api/database/:id/metadata` -- what should be available to
@@ -966,7 +992,27 @@
    [:features        {:optional true} [:set [:keyword {:decode/normalize lib.schema.common/normalize-keyword}]]]
    [:is-audit        {:optional true} :boolean]
    [:is-attached-dwh {:optional true} :boolean]
-   [:settings        {:optional true} [:maybe [:ref ::lib.schema.common/visualization-settings]]]])
+   [:settings        {:optional true} [:maybe [:ref ::lib.schema.common/visualization-settings]]]
+   [:name                        {:optional true} [:maybe :string]]
+   [:description                 {:optional true} [:maybe :string]]
+   [:timezone                    {:optional true} [:maybe :string]]
+   [:write-data-details          {:optional true} [:maybe ::lib.schema.common/database-details]]
+   [:admin-details               {:optional true} [:maybe ::lib.schema.common/database-details]]
+   [:router-database-id          {:optional true} [:maybe ::lib.schema.id/database]]
+   [:auto-run-queries            {:optional true} [:maybe :boolean]]
+   [:cache-field-values-schedule {:optional true} [:maybe :string]]
+   [:metadata-sync-schedule      {:optional true} [:maybe :string]]
+   [:cache-ttl                   {:optional true} [:maybe :int]]
+   [:caveats                     {:optional true} [:maybe :string]]
+   [:points-of-interest          {:optional true} [:maybe :string]]
+   [:creator-id                  {:optional true} [:maybe pos-int?]]
+   [:initial-sync-status         {:optional true} [:maybe [:or :string :keyword]]]
+   [:is-full-sync                {:optional true} [:maybe :boolean]]
+   [:is-on-demand                {:optional true} [:maybe :boolean]]
+   [:is-sample                   {:optional true} [:maybe :boolean]]
+   [:native-permissions          {:optional true} [:maybe [:or :keyword :string]]]
+   [:options                     {:optional true} [:maybe [:ref ::lib.schema.common/database-settings]]]
+   [:refingerprint               {:optional true} [:maybe :boolean]]])
 
 (mr/def ::metadata-provider
   "Schema for something that satisfies the [[metabase.lib.metadata.protocols/MetadataProvider]] protocol."

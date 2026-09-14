@@ -34,9 +34,14 @@
    [:cat [:or :keyword :string] [:* ::clause-arg]]])
 
 (mr/def ::clause-or-column
-  [:multi {:dispatch (fn [x] (if (map? x) :column :clause))}
-   [:column :metabase.lib.schema.metadata/column]
-   [:clause ::clause]])
+  [:multi {:dispatch (fn [x] (if (map? x) (:lib/type x ::legacy-query) ::clause))}
+   [:metadata/column    :metabase.lib.schema.metadata/column]
+   [:mbql/query         :metabase.lib.schema/query]
+   [:mbql.stage/mbql    :metabase.lib.schema/stage.mbql]
+   [:mbql.stage/native  :metabase.lib.schema/stage.native]
+   [:mbql/join          :metabase.lib.schema.join/join]
+   [::legacy-query      :metabase.legacy-mbql.schema/Query]
+   [::clause            ::clause]])
 
 (mu/defn options :- [:maybe map?]
   "Return the Metabase lib options map associated with an `x`. Lib options is currently used mostly for

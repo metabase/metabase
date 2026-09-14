@@ -34,7 +34,9 @@
 
 (mr/def ::schema-form
   "A Malli schema, in its unparsed (vector/keyword/registry-name) form."
-  [:and any? [:fn {:description "a malli schema"} mc/schema]])
+  [:fn
+   {:description "a malli schema form"}
+   #(or (keyword? %) (mc/schema? %) (and (vector? %) (keyword? (first %))))])
 
 (mu/defn- mbql-clause-tag :- [:maybe :keyword]
   "If `x` is a (possibly not-yet-normalized) MBQL clause, return its `tag`."

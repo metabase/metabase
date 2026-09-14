@@ -42,7 +42,7 @@
    [:middleware {:optional true} [:ref ::lib.schema.middleware-options/middleware-options]]])
 
 (mr/def ::maybe-legacy-or-internal-query
-  [:multi {:dispatch    (fn [query] (and (map? query) (= (lib.util/normalized-query-type query) :internal)))
+  [:multi {:dispatch    (fn [query] (and (map? query) (contains? #{:internal "internal"} (or (:type query) (get query "type")))))
            :description (deferred-tru "value must be a valid MBQL query, or an internal audit query.")}
    [true  ::internal-query]
    [false ::maybe-legacy-query]])

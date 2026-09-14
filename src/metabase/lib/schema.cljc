@@ -186,7 +186,7 @@
         source-field->names       (update-vals source-field->refs
                                                (fn [field-refs]
                                                  (into #{}
-                                                       (keep #(:source-field-name (lib.options/options %)))
+                                                       (keep (fn [[_tag opts]] (:source-field-name opts)))
                                                        field-refs)))
         ignore-source-field-name? (fn [[_tag {:keys [source-field source-field-name], :as _opts} _id-or-name :as _ref]]
                                     (when source-field-name

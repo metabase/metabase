@@ -179,9 +179,15 @@
    #'metadata-providerable?])
 
 (mr/def ::metadata
-  [:map {:closed true}
-   [:lib/type ::metadata-type-excluding-database]
-   [:id       pos-int?]])
+  [:multi {:dispatch :lib/type}
+   [:metadata/table                [:ref ::lib.schema.metadata/table]]
+   [:metadata/column               [:ref ::lib.schema.metadata/column]]
+   [:metadata/card                 [:ref ::lib.schema.metadata/card]]
+   [:metadata/measure              [:ref ::lib.schema.metadata/measure]]
+   [:metadata/metric               [:ref ::lib.schema.metadata/metric]]
+   [:metadata/segment              [:ref ::lib.schema.metadata/segment]]
+   [:metadata/native-query-snippet [:ref ::lib.schema.metadata/native-query-snippet]]
+   [:metadata/transform            [:ref ::lib.schema.metadata/transform]]])
 
 (mu/defn- metadata-by-id :- [:maybe ::metadata]
   [metadata-provider :- ::metadata-provider
