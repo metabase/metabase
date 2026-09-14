@@ -32,7 +32,7 @@
                               :parameters []}])]
     ;; only model 42 has an action, so model 43 is omitted
     (is (= ["model42"]
-           (map :key (schema.model/model-schemas #{1} nil))))))
+           (map :key (:models (schema.model/model-schemas #{1} nil)))))))
 
 ; Ensures we are not doing N+1 queries for action rows and details
 (deftest model-schemas-bulk-loads-actions-test
@@ -47,10 +47,92 @@
                   actions/select-actions-non-http-for-models (fn [known-models model-ids]
                                                                (swap! action-details-calls conj [known-models model-ids])
                                                                [])]
-      (is (= [] (vec (schema.model/model-schemas #{1} nil))))
+      (is (= {:models [] :errors []} (schema.model/model-schemas #{1} nil)))
       (is (= [#{42 43}] @action-rows-calls))
       (is (= [[models #{42 43}]]
              @action-details-calls)))))
+
+(deftest model-schemas-collects-broken-model-errors-test
+  (testing "a broken model becomes an :errors entry while healthy models still build"
+    (with-redefs [schema.common/select-schema-cards
+                  (constantly [{:id 42 :name "Model 42"}
+                               {:id 43 :name "Broken model"}])
+                  schema.model/action-rows
+                  (constantly [{:id 5 :model_id 42 :name "Create" :type :query}
+                               ;; model 43's action row resolves to no action details
+                               {:id 6 :model_id 43 :name "Broken action" :type :broken}])
+                  actions/select-actions-non-http-for-models
+                  (constantly [{:id         5
+                                :model_id   42
+                                :name       "Create"
+                                :type       :query
+                                :parameters []}])]
+      (let [{:keys [models errors]} (schema.model/model-schemas #{1} nil)]
+        (is (= ["model42"] (map :key models)))
+        (is (=? [{:type      "modelError"
+                  :modelId   43
+                  :modelName "Broken model"
+                  :message   #".*Broken model.*could not be resolved.*"}]
+                errors))))))
+
+(deftest model-schemas-falls-back-when-bulk-lookup-fails-test
+  (testing "a broken model poisoning the bulk action lookup does not hide other models"
+    (with-redefs [schema.common/select-schema-cards
+                  (constantly [{:id 42 :name "Model 42"}
+                               {:id 43 :name "Broken model"}])
+                  ;; bulk lookup blows up for the whole batch
+                  actions/select-actions-non-http-for-models
+                  (fn [& _] (throw (ex-info "bulk lookup exploded" {})))
+                  ;; per-model fallback: model 42 resolves, model 43 still fails
+                  schema.model/action-rows
+                  (fn [model-ids]
+                    (if (contains? model-ids 42)
+                      [{:id 5 :model_id 42 :name "Create" :type :query}]
+                      []))
+                  actions/select-actions
+                  (fn [_ & {:keys [model_id]}]
+                    (if (= model_id 42)
+                      [{:id 5 :model_id 42 :name "Create" :type :query :parameters []}]
+                      (throw (ex-info "action lookup failed" {:status-code 500}))))]
+      (let [{:keys [models errors]} (schema.model/model-schemas #{1} nil)]
+        (is (= ["model42"] (map :key models)))
+        (is (=? [{:type      "modelError"
+                  :modelId   43
+                  :modelName "Broken model"
+                  :message   #".*Broken model.*action lookup failed.*"}]
+                errors))))))
+
+(deftest model-schemas-does-not-swallow-interruption-test
+  (testing "an interruption while bulk-resolving actions propagates instead of collecting an error"
+    (with-redefs [schema.common/select-schema-cards
+                  (constantly [{:id 42 :name "Model 42"}])
+                  schema.model/action-rows (constantly [])
+                  actions/select-actions-non-http-for-models
+                  (fn [& _] (throw (InterruptedException. "cancelled")))]
+      (let [thrown (is (thrown? clojure.lang.ExceptionInfo
+                                (schema.model/model-schemas #{1} nil)))]
+        (is (instance? InterruptedException (ex-cause thrown))))))
+  (testing "an interruption wrapped in the structured error propagates instead of collecting an error"
+    (with-redefs [schema.common/select-schema-cards
+                  (constantly [{:id 42 :name "Model 42"}])
+                  schema.model/action-rows (constantly [])
+                  actions/select-actions-non-http-for-models (constantly [])
+                  schema.model/model-action-schemas
+                  (fn [& _] (throw (ex-info "cancelled" {} (InterruptedException. "cancelled"))))]
+      (let [thrown (is (thrown? clojure.lang.ExceptionInfo
+                                (schema.model/model-schemas #{1} nil)))]
+        (is (instance? InterruptedException (ex-cause thrown)))))))
+
+(deftest model-schemas-propagates-unexpected-errors-test
+  (testing "an unexpected, unstructured failure propagates instead of downgrading to partial data"
+    (with-redefs [schema.common/select-schema-cards
+                  (constantly [{:id 42 :name "Model 42"}])
+                  schema.model/action-rows (constantly [])
+                  actions/select-actions-non-http-for-models (constantly [])
+                  schema.model/model-action-schemas
+                  (fn [& _] (throw (NullPointerException. "boom")))]
+      (is (thrown? NullPointerException
+                   (schema.model/model-schemas #{1} nil))))))
 
 (deftest model-schema-surfaces-action-selection-errors-test
   (with-redefs [schema.model/action-rows (constantly [])

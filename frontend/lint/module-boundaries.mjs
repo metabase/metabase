@@ -41,6 +41,12 @@ const elements = [
   }),
   createElement({
     type: "lib",
+    name: "redux-core",
+    pattern: "frontend/src/metabase/redux/context.tsx",
+    mode: "full",
+  }),
+  createElement({
+    type: "lib",
     name: "types",
     pattern: "frontend/src/metabase-types/*/**",
   }),
@@ -238,7 +244,7 @@ const elements = [
   createElement({ type: "shared", name: "notifications" }),
   createElement({ type: "shared", name: "palette" }),
   createElement({ type: "shared", name: "parameters" }),
-  createElement({ type: "shared", name: "plugins", enforceSharedTiers: false }),
+  createElement({ type: "shared", name: "plugins" }),
   createElement({ type: "shared", name: "pulse" }),
   createElement({
     type: "shared",
