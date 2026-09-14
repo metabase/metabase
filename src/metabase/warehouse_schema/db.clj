@@ -197,7 +197,7 @@
   "The FieldUserSettings of the Fields of `table-ids`, each with its Field's `:table_id`, in Field name order."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select :model/FieldUserSettings
-             {:select   [:u.* [:f.table_id :table_id]]
+             {:select   [:u.* [:f.table_id :table_id] [:f.name :field_name]]
               :from     [[(t2/table-name :model/FieldUserSettings) :u]]
               :join     [(warehouse-schema-overlay/field-query {:alias :f, :user-settings? false}) [:= :f.id :u.field_id]]
               :where    [:in :f.table_id table-ids]

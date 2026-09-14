@@ -203,7 +203,8 @@
                                :import-with-context (fn [current _ _]
                                                       (serdes/*import-table-fk* (table-path->table-ref (serdes/path current))))}
                :fields        (serdes/nested :model/FieldUserSettings :table_id
-                                             {:delete-children! warehouse-schema.db/delete-field-user-settings-for-table!})}})
+                                             {:sort-by          :field_name
+                                              :delete-children! warehouse-schema.db/delete-field-user-settings-for-table!})}})
 
 (def ^:private table-user-settings-slug "___tableusersettings")
 
