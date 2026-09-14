@@ -22,6 +22,7 @@
    [metabase.util.memoize :as u.memo]
    [metabase.util.performance :as perf :refer [get-in]]
    [metabase.util.snake-hating-map :as u.snake-hating-map]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [methodical.core :as methodical]
    [potemkin :as p]
    [pretty.core :as pretty]
@@ -113,7 +114,8 @@
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
   (merge (next-method query-type model parsed-args honeysql)
-         {:select [:id :db_id :name :display_name :schema :active :visibility_type :database_require_filter]}))
+         {:select [:id :db_id :name :display_name :schema :active :visibility_type :database_require_filter]
+          :from   [(warehouse-schema-overlay/table-query)]}))
 
 (t2/define-after-select :metadata/table
   [table]
@@ -182,7 +184,7 @@
                 :dimension/type
                 :values/human_readable_values
                 :values/values]
-    :from      [[(t2/table-name :model/Field) :field]]
+    :from      [(warehouse-schema-overlay/field-query {:alias :field})]
     :left-join [[(t2/table-name :model/Table) :table]
                 [:= :field/table_id :table/id]
                 [(t2/table-name :model/Dimension) :dimension]

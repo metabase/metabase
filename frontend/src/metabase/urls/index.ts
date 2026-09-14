@@ -10,6 +10,7 @@ export * from "./data-apps";
 export * from "./data-studio";
 export * from "./dependencies";
 export * from "./documents";
+export * from "./embedding-hub";
 export * from "./explorations";
 export { PLUGIN_HOST_NAVIGATION, type HostNavigation } from "./plugins";
 export * from "./indexed-entities";

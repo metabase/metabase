@@ -23,24 +23,30 @@ interface Condition {
   coldLargestPaintMs: number;
   coldPageReadyMs: number;
   warmPageReadyMs: number;
+  locale: string;
   scripts: number;
   scriptKb: number;
+  totalKb: number;
   runs: number;
 }
 
 interface CommitStamp {
   sha: string;
   subject: string;
+  /** ISO 8601, in UTC. */
+  timestamp: string;
 }
 
 type LoadTimeRow = Record<string, string | number>;
 
 function buildRows(
   conditions: Condition[],
-  { sha, subject }: CommitStamp,
+  { sha, subject, timestamp }: CommitStamp,
 ): LoadTimeRow[] {
   return conditions.map((condition) => ({
-    Date: new Date().toISOString().slice(0, 10),
+    // The commit's own time rather than the day it was measured, so the merges
+    // of one day keep their order and a backfilled row lands on its commit.
+    Date: timestamp,
     // Truncated the same way the bundle-size table does, so the two join.
     Commit: sha.slice(0, 12),
     // The stats table carries a free-text Description column. Populate it with
@@ -63,8 +69,10 @@ function buildRows(
     "Cold largest paint ms": condition.coldLargestPaintMs,
     "Cold page ready ms": condition.coldPageReadyMs,
     "Warm page ready ms": condition.warmPageReadyMs,
+    Locale: condition.locale,
     Scripts: condition.scripts,
     "Script kb": condition.scriptKb,
+    "Total kb": condition.totalKb,
     Runs: condition.runs,
   }));
 }
@@ -77,6 +85,7 @@ async function main() {
   const rows = buildRows(conditions, {
     sha: process.env.HEAD_SHA || "",
     subject: process.env.COMMIT_MESSAGE || "",
+    timestamp: new Date(process.env.COMMIT_TIMESTAMP || Date.now()).toISOString(),
   });
 
   console.table(rows);

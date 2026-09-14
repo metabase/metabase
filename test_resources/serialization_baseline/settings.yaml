@@ -77,6 +77,7 @@ show-homepage-data: null
 show-homepage-pin-message: null
 show-homepage-xrays: null
 show-metabot: null
+show-modular-embed-terms: null
 show-sdk-embed-terms: null
 show-simple-embed-terms: null
 show-static-embed-terms: null

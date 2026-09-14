@@ -14,6 +14,9 @@ module.exports = {
 
     doNotFollow: { path: "node_modules" },
 
+    // No rules here, so the cycle and orphan analysis has no consumer and only costs time.
+    skipAnalysisNotInRules: true,
+
     // Resolve the `"*": ["./frontend/src/*", ...]` aliases so bare imports like
     // `metabase/lib/foo` map back to a real file.
     tsConfig: { fileName: "tsconfig.json" },

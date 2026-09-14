@@ -2,7 +2,7 @@
 // the upsell branch below.
 // import { t } from "ttag";
 //
-// import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
+// import { SettingsPageWrapper } from "metabase/settings-components";
 // import { UpsellDataApps } from "metabase/admin/upsells";
 // import { useHasTokenFeature } from "metabase/common/hooks";
 import { PLUGIN_DATA_APPS } from "metabase/plugins";
@@ -27,4 +27,8 @@ export function DataAppsManagePage() {
   // }
 
   return <PLUGIN_DATA_APPS.ManageDataAppsPage />;
+}
+
+export function DataAppUsersManagePage() {
+  return <PLUGIN_DATA_APPS.ManageDataAppUsersPage />;
 }

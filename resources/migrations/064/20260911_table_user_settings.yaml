@@ -1,0 +1,473 @@
+## Adds metabase_table_user_settings, the mirror of metabase_table recording the values a user set
+## through the UI, as metabase_field_user_settings does for Fields. metabase_table keeps sync's
+## values; readers merge the two (see metabase.warehouse-schema-overlay.core/table-query).
+##
+## A NULL here normally means "the user did not set this". For a column that is nullable on
+## metabase_table a user's NULL is indistinguishable from that, so those carry a `_set` flag saying
+## the user made the call. collection_id is the exception: it only means anything alongside
+## is_published, which is NOT NULL, so is_published answers for the pair.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-09-11T00:00:00
+      author: ranquild
+      comment: Add metabase_table_user_settings
+      changes:
+        - createTable:
+            tableName: metabase_table_user_settings
+            remarks: The values a user set on a Table; metabase_table keeps the ones sync wrote
+            columns:
+              - column:
+                  remarks: The related Table
+                  name: table_id
+                  type: int
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                    referencedTableName: metabase_table
+                    referencedColumnNames: id
+                    foreignKeyName: fk_table_user_settings_table_id
+                    deleteCascade: true
+              - column:
+                  name: created_at
+                  remarks: The timestamp of when the user setting was created
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  remarks: The timestamp of when the user setting was updated
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: User-set display_name for the Table
+                  name: display_name
+                  type: varchar(256)
+              - column:
+                  remarks: User-set description for the Table
+                  name: description
+                  type: ${text.type}
+              - column:
+                  remarks: User-set entity_type for the Table
+                  name: entity_type
+                  type: varchar(254)
+              - column:
+                  remarks: User-set visibility_type for the Table
+                  name: visibility_type
+                  type: varchar(254)
+              - column:
+                  remarks: User-set caveats for the Table
+                  name: caveats
+                  type: ${text.type}
+              - column:
+                  remarks: User-set points_of_interest for the Table
+                  name: points_of_interest
+                  type: ${text.type}
+              - column:
+                  remarks: User-set data_layer for the Table
+                  name: data_layer
+                  type: varchar(254)
+              - column:
+                  remarks: User-set data_source for the Table
+                  name: data_source
+                  type: varchar(254)
+              - column:
+                  remarks: User-set owner_email for the Table
+                  name: owner_email
+                  type: ${text.type}
+              - column:
+                  remarks: User-set owner_user_id for the Table
+                  name: owner_user_id
+                  type: int
+              - column:
+                  remarks: User-set field_order for the Table; NOT NULL on metabase_table, so a NULL here means unset
+                  name: field_order
+                  type: varchar(254)
+              - column:
+                  remarks: User-set show_in_getting_started for the Table; NOT NULL on metabase_table, so a NULL here means unset
+                  name: show_in_getting_started
+                  type: ${boolean.type}
+              - column:
+                  remarks: User-set data_authority for the Table; NOT NULL on metabase_table, so a NULL here means unset
+                  name: data_authority
+                  type: varchar(20)
+              - column:
+                  remarks: User-set is_published for the Table; NOT NULL on metabase_table, so a NULL here means unset
+                  name: is_published
+                  type: ${boolean.type}
+              - column:
+                  remarks: User-set collection_id for the Table; set when is_published is, which answers for the pair
+                  name: collection_id
+                  type: int
+              - column:
+                  remarks: Whether the user set description, so a NULL description overrides the sync value
+                  name: description_set
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Whether the user set visibility_type, so a NULL visibility_type overrides the sync value
+                  name: visibility_type_set
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Whether the user set caveats, so a NULL caveats overrides the sync value
+                  name: caveats_set
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Whether the user set points_of_interest, so a NULL points_of_interest overrides the sync value
+                  name: points_of_interest_set
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Whether the user set data_layer, so a NULL data_layer overrides the sync value
+                  name: data_layer_set
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Whether the user set data_source, so a NULL data_source overrides the sync value
+                  name: data_source_set
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
+  ## The indexes come before the FK constraints: MySQL/MariaDB require an index behind every FK and
+  ## reuse an existing one, so this keeps rollback working (the FK is dropped before the index it
+  ## would otherwise still need). Postgres does not auto-index FKs, which fks-are-indexed-test checks.
+  - changeSet:
+      id: v64.2026-09-11T00:00:01
+      author: ranquild
+      comment: Index metabase_table_user_settings.collection_id
+      changes:
+        - createIndex:
+            tableName: metabase_table_user_settings
+            indexName: idx_table_user_settings_collection_id
+            columns:
+              - column:
+                  name: collection_id
+
+  - changeSet:
+      id: v64.2026-09-11T00:00:02
+      author: ranquild
+      comment: Add FK constraint on metabase_table_user_settings.collection_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_table_user_settings
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_table_user_settings_collection_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v64.2026-09-11T00:00:03
+      author: ranquild
+      comment: Index metabase_table_user_settings.owner_user_id
+      changes:
+        - createIndex:
+            tableName: metabase_table_user_settings
+            indexName: idx_table_user_settings_owner_user_id
+            columns:
+              - column:
+                  name: owner_user_id
+
+  - changeSet:
+      id: v64.2026-09-11T00:00:04
+      author: ranquild
+      comment: Add FK constraint on metabase_table_user_settings.owner_user_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_table_user_settings
+            baseColumnNames: owner_user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_table_user_settings_owner_user_id
+            onDelete: SET NULL
+
+  ## Backfill, best effort: a published Table's metadata is treated as the user's wherever it cannot be
+  ## attributed to sync, so an existing instance keeps showing what it shows today.
+  ##
+  ## Only published Tables: those are the ones git sync carries, and a settings row for every active Table
+  ## would have it write a file per Table -- most of them recording nothing a user ever did. An unpublished
+  ## Table needs no row: with none, every column falls through to metabase_table, which is what it shows
+  ## today, and the first user edit creates the row.
+  ##
+  ## display_name is copied unconditionally: it has no `_set` flag (the user cannot clear it, so a
+  ## non-NULL value is itself the signal -- the humanization strategy is env-configurable anyway, so
+  ## there is no default to compare against). The purely user-authored caveats and points_of_interest,
+  ## and owner_email and owner_user_id, are copied and marked set. description is copied and marked set
+  ## only when it is non-NULL: it may be user-written or synced from a database comment, and a user
+  ## clearing a synced description is far rarer than never having written one, so NULL reads as "not set".
+  ##
+  ## Recorded only when they differ from the value the system writes: data_layer 'internal',
+  ## data_authority 'unconfigured', field_order 'database' (every in-tree driver's
+  ## default-field-order), visibility_type NULL or the sync-authored 'cruft', and
+  ## is_published/show_in_getting_started FALSE. collection_id rides along with is_published.
+  ##
+  ## entity_type and data_source stay unset: the sync classifier writes a name-derived entity_type on
+  ## every Table, and uploads and transforms write data_source, so recording either would pin the
+  ## system's own output as the user's.
+  ##
+  ## Inactive Tables are skipped, and the audit/instance-analytics database is excluded (Metabase
+  ## curates it), via NOT EXISTS rather than NOT IN (SELECT ...) since NOT IN degrades on large
+  ## instances (#78271). Rows that already exist are left alone, and created_at/updated_at are
+  ## omitted so their current_timestamp defaults apply.
+  - changeSet:
+      id: v64.2026-09-11T00:00:05
+      author: ranquild
+      comment: Backfill metabase_table_user_settings for active published tables
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO metabase_table_user_settings
+                (table_id, display_name, description, description_set,
+                 caveats, caveats_set, points_of_interest, points_of_interest_set,
+                 owner_email, owner_user_id,
+                 visibility_type, visibility_type_set, data_layer, data_layer_set,
+                 data_authority, field_order, show_in_getting_started, is_published, collection_id,
+                 created_at, updated_at)
+              SELECT
+                t.id,
+                t.display_name,
+                t.description,
+                CASE WHEN t.description IS NOT NULL THEN TRUE ELSE FALSE END,
+                t.caveats,
+                CASE WHEN t.caveats IS NOT NULL THEN TRUE ELSE FALSE END,
+                t.points_of_interest,
+                CASE WHEN t.points_of_interest IS NOT NULL THEN TRUE ELSE FALSE END,
+                t.owner_email,
+                t.owner_user_id,
+                CASE WHEN t.visibility_type <> 'cruft' THEN t.visibility_type END,
+                CASE WHEN t.visibility_type IS NOT NULL AND t.visibility_type <> 'cruft' THEN TRUE ELSE FALSE END,
+                CASE WHEN t.data_layer <> 'internal' THEN t.data_layer END,
+                CASE WHEN t.data_layer IS NOT NULL AND t.data_layer <> 'internal' THEN TRUE ELSE FALSE END,
+                CASE WHEN t.data_authority <> 'unconfigured' THEN t.data_authority END,
+                CASE WHEN t.field_order <> 'database' THEN t.field_order END,
+                CASE WHEN t.show_in_getting_started = TRUE THEN t.show_in_getting_started END,
+                CASE WHEN t.is_published = TRUE THEN t.is_published END,
+                CASE WHEN t.is_published = TRUE THEN t.collection_id END,
+                t.created_at,
+                t.updated_at
+              FROM metabase_table t
+              WHERE t.active = TRUE
+                AND t.is_published = TRUE
+                AND NOT EXISTS (SELECT 1 FROM metabase_database d WHERE d.id = t.db_id AND d.is_audit = TRUE)
+                AND NOT EXISTS (SELECT 1 FROM metabase_table_user_settings s WHERE s.table_id = t.id)
+      rollback: # not necessary; the table is dropped by the rollback of v64.2026-09-11T00:00:00
+
+  - changeSet:
+      id: v64.2026-09-11T00:00:06
+      author: ranquild
+      comment: Clear the user-set columns the backfill moved into metabase_table_user_settings
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              UPDATE metabase_table AS t
+              SET caveats = NULL,
+                  points_of_interest = NULL,
+                  owner_email = NULL,
+                  owner_user_id = NULL,
+                  is_published = FALSE,
+                  collection_id = NULL,
+                  field_order = 'database',
+                  show_in_getting_started = FALSE,
+                  data_authority = 'unconfigured',
+                  data_layer = 'internal',
+                  visibility_type = CASE WHEN t.visibility_type = 'cruft' THEN 'cruft' ELSE NULL END
+              FROM metabase_table_user_settings AS s
+              WHERE s.table_id = t.id
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE metabase_table t
+              JOIN metabase_table_user_settings s ON s.table_id = t.id
+              SET t.caveats = NULL,
+                  t.points_of_interest = NULL,
+                  t.owner_email = NULL,
+                  t.owner_user_id = NULL,
+                  t.is_published = FALSE,
+                  t.collection_id = NULL,
+                  t.field_order = 'database',
+                  t.show_in_getting_started = FALSE,
+                  t.data_authority = 'unconfigured',
+                  t.data_layer = 'internal',
+                  t.visibility_type = CASE WHEN t.visibility_type = 'cruft' THEN 'cruft' ELSE NULL END
+        - sql:
+            dbms: h2
+            sql: >-
+              UPDATE metabase_table
+              SET caveats = NULL,
+                  points_of_interest = NULL,
+                  owner_email = NULL,
+                  owner_user_id = NULL,
+                  is_published = FALSE,
+                  collection_id = NULL,
+                  field_order = 'database',
+                  show_in_getting_started = FALSE,
+                  data_authority = 'unconfigured',
+                  data_layer = 'internal',
+                  visibility_type = CASE WHEN visibility_type = 'cruft' THEN 'cruft' ELSE NULL END
+              WHERE EXISTS (SELECT 1 FROM metabase_table_user_settings s WHERE s.table_id = metabase_table.id)
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              UPDATE metabase_table AS t
+              SET caveats = s.caveats,
+                  points_of_interest = s.points_of_interest,
+                  owner_email = s.owner_email,
+                  owner_user_id = s.owner_user_id,
+                  is_published = COALESCE(s.is_published, FALSE),
+                  collection_id = s.collection_id,
+                  field_order = COALESCE(s.field_order, 'database'),
+                  show_in_getting_started = COALESCE(s.show_in_getting_started, FALSE),
+                  data_authority = COALESCE(s.data_authority, 'unconfigured'),
+                  data_layer = COALESCE(s.data_layer, 'internal'),
+                  visibility_type = COALESCE(s.visibility_type, t.visibility_type)
+              FROM metabase_table_user_settings AS s
+              WHERE s.table_id = t.id
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE metabase_table t
+              JOIN metabase_table_user_settings s ON s.table_id = t.id
+              SET t.caveats = s.caveats,
+                  t.points_of_interest = s.points_of_interest,
+                  t.owner_email = s.owner_email,
+                  t.owner_user_id = s.owner_user_id,
+                  t.is_published = COALESCE(s.is_published, FALSE),
+                  t.collection_id = s.collection_id,
+                  t.field_order = COALESCE(s.field_order, 'database'),
+                  t.show_in_getting_started = COALESCE(s.show_in_getting_started, FALSE),
+                  t.data_authority = COALESCE(s.data_authority, 'unconfigured'),
+                  t.data_layer = COALESCE(s.data_layer, 'internal'),
+                  t.visibility_type = COALESCE(s.visibility_type, t.visibility_type)
+        - sql:
+            dbms: h2
+            sql: >-
+              UPDATE metabase_table
+              SET caveats = (SELECT s.caveats FROM metabase_table_user_settings s WHERE s.table_id = metabase_table.id),
+                  points_of_interest = (SELECT s.points_of_interest FROM metabase_table_user_settings s WHERE s.table_id = metabase_table.id),
+                  owner_email = (SELECT s.owner_email FROM metabase_table_user_settings s WHERE s.table_id = metabase_table.id),
+                  owner_user_id = (SELECT s.owner_user_id FROM metabase_table_user_settings s WHERE s.table_id = metabase_table.id),
+                  is_published = COALESCE((SELECT s.is_published FROM metabase_table_user_settings s WHERE s.table_id = metabase_table.id), FALSE),
+                  collection_id = (SELECT s.collection_id FROM metabase_table_user_settings s WHERE s.table_id = metabase_table.id),
+                  field_order = COALESCE((SELECT s.field_order FROM metabase_table_user_settings s WHERE s.table_id = metabase_table.id), 'database'),
+                  show_in_getting_started = COALESCE((SELECT s.show_in_getting_started FROM metabase_table_user_settings s WHERE s.table_id = metabase_table.id), FALSE),
+                  data_authority = COALESCE((SELECT s.data_authority FROM metabase_table_user_settings s WHERE s.table_id = metabase_table.id), 'unconfigured'),
+                  data_layer = COALESCE((SELECT s.data_layer FROM metabase_table_user_settings s WHERE s.table_id = metabase_table.id), 'internal'),
+                  visibility_type = COALESCE((SELECT s.visibility_type FROM metabase_table_user_settings s WHERE s.table_id = metabase_table.id), visibility_type)
+              WHERE EXISTS (SELECT 1 FROM metabase_table_user_settings s WHERE s.table_id = metabase_table.id)
+
+  - changeSet:
+      id: v64.2026-09-11T00:00:07
+      author: ranquild
+      comment: Delete metabase_field_user_settings rows that hold no user value
+      changes:
+        - sql:
+            sql: >-
+              DELETE FROM metabase_field_user_settings
+              WHERE semantic_type IS NULL AND description IS NULL AND display_name IS NULL AND visibility_type IS NULL
+                AND fk_target_field_id IS NULL AND has_field_values IS NULL AND effective_type IS NULL
+                AND coercion_strategy IS NULL AND caveats IS NULL AND points_of_interest IS NULL AND nfc_path IS NULL
+                AND json_unfolding IS NULL AND settings IS NULL AND data_sensitivity IS NULL
+                AND description_set = FALSE AND semantic_type_set = FALSE AND fk_target_field_id_set = FALSE
+      rollback: # not necessary; the rows held nothing
+
+  - changeSet:
+      id: v64.2026-09-11T00:00:08
+      author: ranquild
+      comment: Add custom_position to metabase_field_user_settings
+      changes:
+        - addColumn:
+            tableName: metabase_field_user_settings
+            columns:
+              - column:
+                  remarks: User-set custom_position for the Field
+                  name: custom_position
+                  type: int
+
+  - changeSet:
+      id: v64.2026-09-11T00:00:09
+      author: ranquild
+      comment: Create metabase_field_user_settings rows for the custom field positions in metabase_field
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO metabase_field_user_settings (field_id, custom_position)
+              SELECT f.id, f.custom_position
+              FROM metabase_field f
+              WHERE f.custom_position <> 0
+                AND NOT EXISTS (SELECT 1 FROM metabase_field_user_settings s WHERE s.field_id = f.id)
+      rollback: # not necessary; the positions are still in metabase_field
+
+  - changeSet:
+      id: v64.2026-09-11T00:00:10
+      author: ranquild
+      comment: Copy the custom field positions in metabase_field into existing metabase_field_user_settings rows
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              UPDATE metabase_field_user_settings AS s
+              SET custom_position = f.custom_position
+              FROM metabase_field AS f
+              WHERE f.id = s.field_id AND f.custom_position <> 0
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE metabase_field_user_settings s
+              JOIN metabase_field f ON f.id = s.field_id
+              SET s.custom_position = f.custom_position
+              WHERE f.custom_position <> 0
+        - sql:
+            dbms: h2
+            sql: >-
+              UPDATE metabase_field_user_settings
+              SET custom_position = (SELECT f.custom_position FROM metabase_field f WHERE f.id = metabase_field_user_settings.field_id)
+              WHERE EXISTS (SELECT 1 FROM metabase_field f WHERE f.id = metabase_field_user_settings.field_id AND f.custom_position <> 0)
+      rollback: # not necessary; the positions are still in metabase_field
+
+  - changeSet:
+      id: v64.2026-09-11T00:00:11
+      author: ranquild
+      comment: Clear the custom field positions the backfill moved into metabase_field_user_settings
+      changes:
+        - sql:
+            sql: UPDATE metabase_field SET custom_position = 0 WHERE custom_position <> 0
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              UPDATE metabase_field AS f
+              SET custom_position = s.custom_position
+              FROM metabase_field_user_settings AS s
+              WHERE s.field_id = f.id AND s.custom_position IS NOT NULL
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE metabase_field f
+              JOIN metabase_field_user_settings s ON s.field_id = f.id
+              SET f.custom_position = s.custom_position
+              WHERE s.custom_position IS NOT NULL
+        - sql:
+            dbms: h2
+            sql: >-
+              UPDATE metabase_field
+              SET custom_position = (SELECT s.custom_position FROM metabase_field_user_settings s WHERE s.field_id = metabase_field.id)
+              WHERE EXISTS (SELECT 1 FROM metabase_field_user_settings s WHERE s.field_id = metabase_field.id AND s.custom_position IS NOT NULL)

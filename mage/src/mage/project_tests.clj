@@ -11,6 +11,9 @@
   '[dev.modules-config-test
     metabase.core.modules-test])
 
+(def ^:private honey-sql-check-namespaces
+  '[metabase.core.table-or-field-raw-usage-test])
+
 (def ^:private ratchet-test-namespaces
   ;; These test the tooling itself. `./bin/mage kondo-ratchets` checks the source tree.
   '[metabase.core.kondo-ratchet-test
@@ -20,7 +23,10 @@
   '[metabase.core.namespace-uniqueness-test])
 
 (def ^:private backend-check-namespaces
-  (vec (concat module-check-namespaces ratchet-test-namespaces source-layout-check-namespaces)))
+  (vec (concat module-check-namespaces
+               ratchet-test-namespaces
+               source-layout-check-namespaces
+               honey-sql-check-namespaces)))
 
 (def ^:private default-suites
   "Suites the bare `project-tests` command runs, in order."

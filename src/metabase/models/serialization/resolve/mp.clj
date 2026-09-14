@@ -277,6 +277,16 @@
 ;;; Content store - Metabase asset lookups by portable entity id or numeric id
 ;;; ============================================================
 
+(def ^:dynamic *audit-refusals?*
+  "Whether a permission-aware [[ContentStore]] audits a refusal, i.e. leaves the ERROR log line
+  and `:event/read-permission-failure` that `api/read-check` does, rather than throwing a bare
+  403. Bind to false around a lookup whose refusal you catch and discard.
+
+  The permission check itself is unaffected; an unreadable row never reaches the caller either
+  way. The stores defined below are permission-agnostic and ignore this var. It is honoured by
+  `metabase.metabot.tools.shared.content-store/read-checked`."
+  true)
+
 (p.types/defprotocol+ ContentStore
   "Lookup of Metabase content (\"assets\") by portable entity id or numeric id.
 
@@ -475,6 +485,47 @@
       :else
       (:id card))))
 
+(defn- import-card-by-id
+  "Read-check a bare numeric `source-card` and return its id, on a surface that accepts numeric
+  ids.
+
+  The numeric dialect's counterpart to [[import-card-by-entity-id]]. It resolves to the id it
+  was handed, so the return value is not the point — routing the lookup through `content-store`
+  is: the agent-facing store is `read-checked`, so this is where a card the caller cannot read
+  is turned away instead of flowing on into repair. The store collapses that denial to `nil`,
+  which the `(nil? card)` branch below reports as the same not-found error an absent id gets —
+  deliberately, so the response cannot be used to tell a hidden card from a missing one. Without it a numeric id skips the store
+  entirely (`portable-id?` matches strings only), and the repair pass's column-name inference
+  would name the card's columns back to a caller who cannot read it.
+
+  Carries the same cross-database guard as the portable path, for the same reason."
+  [metadata-provider content-store card-id]
+  (let [current-db-id (:id (lib.metadata/database metadata-provider))
+        card          (card-by-id content-store card-id)
+        card-db-id    (when card (or (:database-id card) (:database_id card)))]
+    (cond
+      (nil? card)
+      (throw (ex-info (tru "No saved question or model found with id {0}." (str card-id))
+                      {:agent-error? true
+                       :status-code  400
+                       :error        :unknown-card-id
+                       :card-id      card-id}))
+
+      (not= card-db-id current-db-id)
+      (throw (ex-info (tru "Saved question / model {0} belongs to database {1}, but this query targets database {2}. Cross-database queries are not supported."
+                           (str card-id)
+                           (str card-db-id)
+                           (str current-db-id))
+                      {:agent-error?      true
+                       :status-code       400
+                       :error             :cross-database-card
+                       :card-id           card-id
+                       :card-database-id  card-db-id
+                       :expected-database current-db-id}))
+
+      :else
+      (:id card))))
+
 (defn- import-measure-by-entity-id
   "Resolve a measure by its portable `entity_id` to its numeric id.
 
@@ -502,6 +553,39 @@
                        :status-code       400
                        :error             :cross-database-measure
                        :entity-id         entity-id
+                       :measure-table-id  measure-table-id
+                       :expected-database current-db-id}))
+
+      :else
+      (:id measure))))
+
+(defn- import-measure-by-id
+  "Read-check a bare numeric measure id and return it, on a surface that accepts numeric ids.
+
+  The numeric counterpart to [[import-measure-by-entity-id]]; see [[import-card-by-id]] for why
+  the lookup has to go through `content-store` even though the id needs no translation. Carries
+  the same table-scoped cross-database guard as the portable path."
+  [metadata-provider content-store measure-id]
+  (let [measure          (measure-by-id content-store measure-id)
+        measure-table-id (when measure (or (:table-id measure) (:table_id measure)))
+        measure-table    (when measure-table-id
+                           (table-belongs-to-current-database? metadata-provider measure-table-id))
+        current-db-id    (:id (lib.metadata/database metadata-provider))]
+    (cond
+      (nil? measure)
+      (throw (ex-info (tru "No measure found with id {0}." (str measure-id))
+                      {:agent-error? true
+                       :status-code  400
+                       :error        :unknown-measure-id
+                       :measure-id   measure-id}))
+
+      (nil? measure-table)
+      (throw (ex-info (tru "Measure {0} belongs to a table in a different database than this query (target database id {1}). Cross-database queries are not supported."
+                           (str measure-id) (str current-db-id))
+                      {:agent-error?      true
+                       :status-code       400
+                       :error             :cross-database-measure
+                       :measure-id        measure-id
                        :measure-table-id  measure-table-id
                        :expected-database current-db-id}))
 
@@ -606,6 +690,38 @@
       :else
       (:id segment))))
 
+(defn- import-segment-by-id
+  "Read-check a bare numeric segment id and return it, on a surface that accepts numeric ids.
+
+  The numeric counterpart to [[import-segment-by-entity-id]]; see [[import-card-by-id]] for why
+  the lookup has to go through `content-store`. Same table-scoped cross-database guard."
+  [metadata-provider content-store segment-id]
+  (let [segment          (segment-by-id content-store segment-id)
+        segment-table-id (when segment (or (:table-id segment) (:table_id segment)))
+        segment-table    (when segment-table-id
+                           (table-belongs-to-current-database? metadata-provider segment-table-id))
+        current-db-id    (:id (lib.metadata/database metadata-provider))]
+    (cond
+      (nil? segment)
+      (throw (ex-info (tru "No segment found with id {0}." (str segment-id))
+                      {:agent-error? true
+                       :status-code  400
+                       :error        :unknown-segment-id
+                       :segment-id   segment-id}))
+
+      (nil? segment-table)
+      (throw (ex-info (tru "Segment {0} belongs to a table in a different database than this query (target database id {1}). Cross-database queries are not supported."
+                           (str segment-id) (str current-db-id))
+                      {:agent-error?      true
+                       :status-code       400
+                       :error             :cross-database-segment
+                       :segment-id        segment-id
+                       :segment-table-id  segment-table-id
+                       :expected-database current-db-id}))
+
+      :else
+      (:id segment))))
+
 (defn import-resolver
   "Build a `SerdesImportResolver` backed by `metadata-provider` (warehouse metadata) and
   `content-store` (Metabase content / assets).
@@ -630,6 +746,17 @@
      (import-fk       [_ eid model]
        (cond
          (nil? eid)             nil
+         ;; A bare numeric id, which only the numeric-id surface may author. It needs no
+         ;; translation, but it still has to go through the (read-checked) content store —
+         ;; see [[import-card-by-id]]. Every content model gets this, not just Card: a numeric
+         ;; metric / segment / measure ref reaches the resolver by exactly the same route.
+         (int? eid)
+         (cond
+           (card-model? model)    (import-card-by-id metadata-provider content-store eid)
+           (measure-model? model) (import-measure-by-id metadata-provider content-store eid)
+           (segment-model? model) (import-segment-by-id metadata-provider content-store eid)
+           :else                  (not-implemented! :import-fk))
+
          (card-model? model)    (import-card-by-entity-id metadata-provider content-store eid)
          (measure-model? model) (import-measure-by-entity-id metadata-provider content-store eid)
          (segment-model? model) (import-segment-by-entity-id metadata-provider content-store eid)

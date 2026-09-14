@@ -37,14 +37,26 @@
                                                    :name "Root Dashboard"}]
       (testing "Normal cards and dashboards in root appear, but in_document cards do not"
         (let [items (mt/user-http-request :rasta :get 200 "collection/root/items")
-              root-test-items (filter #(#{normal-card-id dash-id in-document-card-id} (:id %))
+              ;; Match on (id, model) pairs: a bare id set both throws `Duplicate key` when a Card
+              ;; and a Dashboard draw the same id from their separate sequences (guaranteed in a
+              ;; fresh app DB, where both start at 1) and would pull in an unrelated same-id row.
+              root-test-items (filter (comp #{[normal-card-id "card"]
+                                              [in-document-card-id "card"]
+                                              [dash-id "dashboard"]}
+                                            (juxt :id :model))
                                       (:data items))]
           (is (= #{[normal-card-id "card"]
                    [dash-id "dashboard"]}
                  (set (map (juxt :id :model) root-test-items))))))
       (testing "Even with show-dashboard-questions=true, in_document cards do not appear"
         (let [items (mt/user-http-request :rasta :get 200 "collection/root/items?show-dashboard-questions=true")
-              root-test-items (filter #(#{normal-card-id dash-id in-document-card-id} (:id %))
+              ;; Match on (id, model) pairs: a bare id set both throws `Duplicate key` when a Card
+              ;; and a Dashboard draw the same id from their separate sequences (guaranteed in a
+              ;; fresh app DB, where both start at 1) and would pull in an unrelated same-id row.
+              root-test-items (filter (comp #{[normal-card-id "card"]
+                                              [in-document-card-id "card"]
+                                              [dash-id "dashboard"]}
+                                            (juxt :id :model))
                                       (:data items))]
           (is (= #{[normal-card-id "card"]
                    [dash-id "dashboard"]}
@@ -103,7 +115,11 @@
                                                             :archived_directly true}]
       (testing "Archived documents appear alongside other archived items in trash"
         (let [items (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (collection/trash-collection-id)))
-              trash-test-items (filter #(#{archived-doc-id normal-doc-id archived-card-id archived-dash-id} (:id %))
+              trash-test-items (filter (comp #{[archived-doc-id "document"]
+                                               [normal-doc-id "document"]
+                                               [archived-card-id "card"]
+                                               [archived-dash-id "dashboard"]}
+                                             (juxt :id :model))
                                        (:data items))]
           (is (= #{[archived-doc-id "document" true true]
                    [archived-card-id "card" true true]

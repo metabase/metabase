@@ -1,5 +1,6 @@
 (ns metabase.actions.schema
   (:require
+   [metabase.actions.http-action :as http-action]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -94,7 +95,7 @@
    [:fn
     {:error/fn (fn [_ _]
                  (deferred-tru "must be a valid json-query, something like ''.item.title''"))}
-    #((requiring-resolve 'metabase.actions.http-action/apply-json-query) {} %)]])
+    #(http-action/apply-json-query {} %)]])
 
 (mr/def ::http-action.template
   [:map {:closed true}

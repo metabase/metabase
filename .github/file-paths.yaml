@@ -63,12 +63,10 @@ frontend_specs: &frontend_specs
   - "frontend/**/tests/**"
   - "frontend/**/*.unit.*"
   - "enterprise/frontend/**/*.unit.*"
-  - ".github/**/*.unit.spec.*"
-  # file-paths.unit.spec.ts asserts what this file's own patterns match, so a change to it has to
-  # run the specs that guard it.
-  - ".github/file-paths.yaml"
   - "jest.config.js"
-  - "jest.tz.unit.conf.json"
+  - "jest.base.conf.js"
+  - "jest.esm-packages.js"
+  - "jest.tz.unit.conf.js"
 
 release_source: &release_sources
   - "release/**"
@@ -87,14 +85,37 @@ frontend_unit_infra: &frontend_unit_infra
   - *frontend_configs
   - *frontend_ci
   - "jest.config.js"
-  - "jest.tz.unit.conf.json"
+  - "jest.base.conf.js"
+  - "jest.esm-packages.js"
+  - "jest.tz.unit.conf.js"
   - "frontend/test/**"
   - "frontend/**/__mocks__/**"
+  - "frontend/src/embedding-sdk-shared/jest/**"
 
 frontend_loki_infra: &frontend_loki_infra
   - *frontend_configs
   - *shared_ci
   - *frontend_loki_ci
+
+# Everything the ci-scripts jest project runs or depends on.
+# test-unit ignores that project, so this filter is the only thing that reruns it.
+ci_scripts:
+  - *frontend_ci
+  - ".nvmrc"
+  # file-paths.unit.spec.ts asserts what this file's own patterns match, so a change to it has to
+  # run the specs that guard it.
+  - ".github/file-paths.yaml"
+  - ".github/scripts/**"
+  - ".github/actions/**"
+  - "frontend/lint/module-boundaries.mjs"
+  - "frontend/lint/shared-tiers.mjs"
+  - "frontend/test/jest-test-paths-filter.ts"
+  - ".dependency-cruiser.cjs"
+  - "jest.config.js"
+  - "jest.base.conf.js"
+  - "jest.esm-packages.js"
+  - "package.json"
+  - "bun.lock"
 
 # e2e harness/support code (commands, support file, runner). Not in the
 # instrumented bundle, so it maps to no covered module — a change here forces a
@@ -115,10 +136,10 @@ backend_sources: &backend_sources
   - "src/**"
   - "modules/drivers/{*,*/{*,!(test)/**}}"
   - "resources/**"
-  # The ratchets file drives project_ratchet_checks alone, so the automation PR that lowers the budgets
-  # runs the Project tests job by itself. Patterns are OR-ed, so a separate "!..." entry would match
+  # Ratchet files drive project_ratchet_checks alone, so automation PRs that lower budgets
+  # run the Project tests job by themselves. Patterns are OR-ed, so a separate "!..." entry would match
   # every other path instead of excluding this one.
-  - ".clj-kondo/{!(ratchets.edn),*/**}"
+  - ".clj-kondo/**/!(ratchets.edn)"
 
 backend_specs: &backend_specs
   - *shared_specs
@@ -169,6 +190,7 @@ project_backend_checks:
 # Only the ratchet check reads the budgets, so a diff that touches nothing else runs that suite alone.
 project_ratchet_checks:
   - ".clj-kondo/ratchets.edn"
+  - ".clj-kondo/config/modules/ratchets.edn"
 
 project_migration_checks:
   - *project_tests_infra
@@ -268,6 +290,13 @@ cljs:
   - *shared_specs
   - ".github/workflows/cljs.yml"
   - "shadow-cljs.edn"
+
+build_scripts:
+  - ".github/actions/prepare-backend/**"
+  - ".github/file-paths.yaml"
+  - ".github/workflows/build-scripts.yml"
+  - "bin/**"
+  - "deps.edn"
 
 embedder_plugin:
   - ".github/actions/prepare-backend/**"
