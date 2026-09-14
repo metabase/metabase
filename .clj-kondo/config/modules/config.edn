@@ -1300,6 +1300,7 @@
    :uses #{activity-feed
            ai-tracing
            api
+           api-scope
            api.eid-translation
            app-db
            bookmarks

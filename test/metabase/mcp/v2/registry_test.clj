@@ -401,3 +401,47 @@
                 (is (str/includes? (:message error)
                                    (str "Requires " (:scope (get @@#'registry/tools* tool-name)))))
                 (is (str/includes? (:message error) "your token holds agent:content:read."))))))))))
+
+;;; ------------------------------------ Required permission in descriptions ---------------------------------------
+
+(defn- published-descriptions
+  "`{tool-name description}` as the manifest behind `tools/list` publishes them."
+  []
+  (into {} (map (juxt :name :description)) (@#'registry/manifest)))
+
+(def ^:private test-echo-permission-text
+  "Requires the \"See your Metabase content and data structure\" permission (agent:content:read).")
+
+(deftest ^:parallel description-names-required-permission-test
+  (testing "GHY-4543: clients hide a scope denial's error text from the model, so a scoped tool's description names
+            the permission it needs — by its consent-screen label, which is what the user sees, and by scope string"
+    (let [description (get (published-descriptions) "test_echo")]
+      (is (str/starts-with? description "Test-only tool. Echoes `message` back")
+          "the tool's own description comes first")
+      (is (str/includes? description test-echo-permission-text)))))
+
+;; not ^:parallel: flushes the shared manifest cache
+(deftest description-permission-text-ignores-caller-locale-test
+  (testing "GHY-4543: the manifest is cached once for every caller, so the permission text must not take the locale
+            of whoever happened to list tools first — it is model-facing and stays English"
+    (mt/with-mock-i18n-bundles! {"zz" {:messages {"See your Metabase content and data structure" "ZZ CONTENT READ"}}}
+      (try
+        (reset! @#'registry/manifest-cache nil)
+        (mt/with-user-locale "zz"
+          (is (str/includes? (get (published-descriptions) "test_echo") test-echo-permission-text)))
+        (is (str/includes? (get (published-descriptions) "test_echo") test-echo-permission-text))
+        (finally
+          (reset! @#'registry/manifest-cache nil))))))
+
+;; not ^:parallel: registers a throwaway tool
+(deftest description-permission-text-without-registered-scope-description-test
+  (testing "GHY-4543: a scope with no consent-screen label is named by its scope string alone"
+    (do-with-temp-tool!
+     {:name        "unlabelled_scope_probe"
+      :scope       "agent:unlabelled:probe"
+      :description "Probe."
+      :args        [:map]
+      :handler     (fn [_ _] nil)}
+     (fn []
+       (is (= "Probe.\n\nRequires the agent:unlabelled:probe permission."
+              (get (published-descriptions) "unlabelled_scope_probe")))))))

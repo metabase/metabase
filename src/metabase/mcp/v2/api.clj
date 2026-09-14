@@ -115,12 +115,23 @@
   mcp.validation/+mcp-enabled)
 
 (def ^:private server-instructions
-  "The `initialize` result's `instructions` — the only channel that reaches the model before any tool call, so it points
-  at the `learn` skills once, in three lines."
+  "The `initialize` result's `instructions` — the only channel that reaches the model before any tool call. It points
+  at the `learn` skills once, and explains the scope-denial failures that clients rewrite before the model sees them."
   (str "This server ships task-shaped docs as skills. learn() lists the topics; learn(topic) returns one.\n"
        "Before your first complex write — native template_tags, dashboard parameter wiring, an MBQL query, "
        "visualization settings — read the matching skill unless it is already in context.\n"
-       "Teaching errors embed the relevant contract, so a failed call always names its fix."))
+       "Teaching errors embed the relevant contract, so a failed call always names its fix.\n"
+       ;; Must match what the consent screen shows: one Authorize button, no per-permission choices. Given less, the
+       ;; model invents a step asking the user to tick the permission.
+       "Your client may hide that error. If a Metabase tool call fails with a message about re-authorization, an "
+       "expired token, \"insufficient scope\", \"Unauthorized\", or just \"tool execution failed\", the usual cause is a "
+       "missing permission on this connection, not an expired login. Tell the user which tool failed and which "
+       "permission it needs, using the name in the \"Requires the … permission\" sentence that ends the tool's "
+       "description, which is how Metabase's consent screen names it. To grant it, the user reconnects Metabase in "
+       "their client and clicks Authorize on the consent screen, e.g. in Claude Code: /mcp, select this server, "
+       "Re-authenticate; in Codex: "
+       "`codex mcp login <server>`, then start a new session. The consent screen has no per-permission choices, so "
+       "don't ask the user to check or select anything. Don't retry the tool until the user says they have reconnected."))
 
 (def ^:private default-ask-scopes
   "What an uninstructed client is asked to request for this surface: everything the surface accepts.

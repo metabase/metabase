@@ -110,6 +110,76 @@
       (testing "the handshake carries the skills instructions — the one pre-tool-call channel"
         (is (re-find #"learn\(\)" (get-in response [:body :result :instructions])))))))
 
+(deftest initialize-instructions-explain-scope-failures-test
+  (testing "GHY-4543: clients replace a scope denial with their own text (Claude Code: \"requires re-authorization
+            (token expired)\", Codex: \"Insufficient scope\", mcp-remote: \"Tool execution failed\"), so the model
+            tells the user their login expired. The instructions are the one channel that reaches the model first,
+            so they must say what that failure really means and how the user fixes it."
+    (let [[_ response]  (initialize!)
+          instructions (get-in response [:body :result :instructions])]
+      (testing "the client-side failure texts are recognized"
+        (doseq [re [#"(?i)re-authoriz" #"(?i)expired" #"(?i)insufficient scope" #"Unauthorized"
+                    #"(?i)tool execution failed"]]
+          (is (re-find re instructions) (str re))))
+      (testing "the cause is a missing permission, not an expired login"
+        (is (re-find #"(?i)missing permission" instructions))
+        (is (re-find #"(?i)not an expired login" instructions)))
+      (testing "the model names the tool and the permission, as the consent screen names it"
+        (is (re-find #"(?i)which tool" instructions))
+        (is (re-find #"(?i)which permission" instructions))
+        (is (re-find #"(?i)consent screen" instructions)))
+      (testing "the user reconnects, with steps for common clients"
+        (is (re-find #"(?i)re-?authenticate|reconnect" instructions))
+        (is (str/includes? instructions "/mcp"))
+        (is (str/includes? instructions "codex mcp login")))
+      (testing "no retry until the user has reconnected"
+        (is (re-find #"(?i)(don't|do not) retry" instructions)))
+      (testing "the consent screen is all-or-nothing, so the model must not invent a step to tick a permission"
+        (is (re-find #"(?i)no per-permission" instructions)))
+      (testing "the skills guidance is kept"
+        (is (re-find #"learn\(\)" instructions))))))
+
+(deftest tools-list-descriptions-are-token-independent-test
+  (testing "GHY-4543: a tool's description is byte-identical whatever the caller's token holds. Claude Code keeps the
+            first description it loads for the whole session, so text that varied with the grant (\"not available on
+            this connection\") would outlive a successful re-auth and the model would refuse a tool that now works."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (oauth-server.tu/with-oauth-client [client-id]
+        (mt/with-model-cleanup [:model/OAuthAccessToken]
+          (let [descriptions        (fn [response]
+                                      (into {} (map (juxt :name :description)) (get-in response [:body :result :tools])))
+                bearer-descriptions (fn [scopes]
+                                      (let [token   (str (random-uuid))
+                                            headers {"authorization" (str "Bearer " token)}]
+                                        (t2/insert! :model/OAuthAccessToken
+                                                    {:token     (oidc.util/hash-token token)
+                                                     :user_id   (mt/user->id :crowberto)
+                                                     :client_id client-id
+                                                     :scope     scopes
+                                                     :expiry    (+ (System/currentTimeMillis) 3600000)})
+                                        (let [session-id (-> (client/client-full-response
+                                                              :post 200 endpoint
+                                                              {:request-options {:headers headers}}
+                                                              (jsonrpc-request "initialize" {:capabilities {}}))
+                                                             (get-in [:headers "Mcp-Session-Id"]))]
+                                          (descriptions (client/client-full-response
+                                                         :post 200 endpoint
+                                                         {:request-options {:headers (assoc headers "mcp-session-id" session-id)}}
+                                                         (jsonrpc-request "tools/list"))))))
+                unrestricted        (let [[session-id _] (initialize!)]
+                                      (descriptions (mcp-request (jsonrpc-request "tools/list")
+                                                                 {"mcp-session-id" session-id})))
+                by-grant            {"content:read"  (bearer-descriptions ["agent:content:read"])
+                                     "query:run"     (bearer-descriptions ["agent:query:run"])
+                                     "all v2 scopes" (bearer-descriptions (vec mcp.paths/v2-surface-scopes))}]
+            (doseq [[grant listed]            by-grant
+                    [tool-name description] listed]
+              (testing (str grant " " tool-name)
+                (is (= (get unrestricted tool-name) description))))
+            (testing "the comparison has teeth: callers with different grants see the same permission text"
+              (doseq [listed [unrestricted (by-grant "query:run") (by-grant "all v2 scopes")]]
+                (is (str/includes? (get listed "execute_query") "permission (agent:query:run)."))))))))))
+
 (deftest tools-list-test
   (let [[session-id _] (initialize!)
         response       (mcp-request (jsonrpc-request "tools/list")

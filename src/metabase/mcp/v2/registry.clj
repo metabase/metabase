@@ -20,6 +20,7 @@
    [clojure.string :as str]
    [malli.error :as me]
    [metabase.ai-tracing.core :as ait]
+   [metabase.api-scope.core :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
    [metabase.mcp.scope :as mcp.scope]
@@ -28,6 +29,7 @@
    [metabase.mcp.usage :as mcp.usage]
    [metabase.mcp.v2.common :as common]
    [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]))
 
@@ -162,9 +164,20 @@
    :destructiveHint false
    :openWorldHint   false})
 
+(defn- with-required-permission
+  "`description` followed by a sentence naming the permission `scope` requires. `scope-label` is the scope's
+   consent-screen description, or nil when it has none."
+  [description scope scope-label]
+  (str description "\n\nRequires the "
+       (if scope-label
+         (str "\"" scope-label "\" permission (" scope ").")
+         (str scope " permission."))))
+
 (defn- tool->manifest-entry
-  [{:keys [args annotations output-schema] :as tool}]
+  "The published manifest entry for `tool`; `scope-label` is as for [[with-required-permission]]."
+  [{:keys [args annotations output-schema description scope] :as tool} scope-label]
   (cond-> (assoc tool
+                 :description (with-required-permission description scope scope-label)
                  :inputSchema (-> args
                                   tools-manifest/malli->json-schema
                                   tools-manifest/strict-tool-input-schema)
@@ -173,11 +186,18 @@
     ;; for arguments the model produces, and outputs aren't constrained by them.
     output-schema (assoc :outputSchema (tools-manifest/malli->json-schema output-schema))))
 
+(defn- english-scope-label
+  "The consent-screen description registered for `scope`, in English, or nil."
+  [scope]
+  ;; Model-facing, and the manifest is cached for every caller — never the locale of whoever listed tools first.
+  (binding [i18n/*user-locale* "en"]
+    (some-> (api-scope/scope-description scope) str)))
+
 (defn- generate-manifest
   []
   (->> (vals @tools*)
        (sort-by :name)
-       (mapv tool->manifest-entry)))
+       (mapv #(tool->manifest-entry % (english-scope-label (:scope %))))))
 
 (defn- manifest
   "Cached manifest entries for all registered tools."
