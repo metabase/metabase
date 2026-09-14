@@ -2202,6 +2202,18 @@
        (remove (partial = :source-query)))
       (apply-top-level-clauses driver honeysql-form inner-query))))
 
+(defmulti apply-cte-hoist?
+  "True iff a UNION ALL pivot compiled for `driver` should hoist the shared pre-pivot subquery into a
+  `WITH` binding that every branch references by alias, rather than inlining it once per branch. On
+  by default; drivers whose planner doesn't support the resulting shape override to false."
+  {:added "0.64.0", :arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod apply-cte-hoist? :sql
+  [_driver]
+  true)
+
 (defmulti preprocess
   "Do miscellaneous transformations to the MBQL before compiling the query. These changes are idempotent, so it is safe
   to use this function in your own implementations of [[driver/mbql->native]], if you want to apply changes to the
@@ -2217,15 +2229,13 @@
   ;; Nest a pivot stage's joins into a prior stage only for drivers that opt into the UA CTE hoist —
   ;; the nesting exists so [[metabase.driver.sql.pivot/compile-union-all-pivot]] can lift the shared
   ;; subquery into a `WITH` binding. Drivers that don't hoist would just carry an unnecessary
-  ;; subquery layer on their GS / multi-query paths. `requiring-resolve` avoids a namespace-load
-  ;; cycle between this driver-facing namespace and the pivot compiler that already requires it.
-  (let [apply-cte-hoist? @(requiring-resolve 'metabase.driver.sql.pivot/apply-cte-hoist?)]
-    (-> mbql5-query
-        driver-api/nest-breakouts-in-stages-with-window-aggregation
-        (cond-> (apply-cte-hoist? driver) driver-api/nest-pivot-joins)
-        driver-api/nest-expressions
-        driver-api/add-alias-info
-        :stages)))
+  ;; subquery layer on their GS / multi-query paths.
+  (-> mbql5-query
+      driver-api/nest-breakouts-in-stages-with-window-aggregation
+      (cond-> (apply-cte-hoist? driver) driver-api/nest-pivot-joins)
+      driver-api/nest-expressions
+      driver-api/add-alias-info
+      :stages))
 
 (defn- desired-col-alias-ident [col]
   (h2x/identifier :field (:lib/desired-column-alias col)))

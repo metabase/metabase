@@ -47,7 +47,7 @@ title: Driver interface changelog
   Dialects that don't coerce untyped `NULL` across branches override to emit `CAST(NULL AS <type>)`, typically by
   mapping the breakout `:base-type` to a driver-specific SQL type name.
 
-- `metabase.driver.sql.pivot/apply-cte-hoist?` `[driver]` -- whether a `UNION ALL` pivot compiled for `driver`
+- `metabase.driver.sql.query-processor/apply-cte-hoist?` `[driver]` -- whether a `UNION ALL` pivot compiled for `driver`
   should hoist the shared pre-pivot subquery into a `WITH` binding that every branch references by alias, rather
   than inlining it once per branch. Defaults to `true`.
 
