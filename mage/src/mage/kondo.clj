@@ -50,7 +50,7 @@
   (shell/sh "rm" "-rf" ".clj-kondo/.cache"))
 
 (def ^:private ^java.io.File warm-cache-marker
-  "Written when a warm pass finishes. Lives inside the cache, so [[clear-cache!]] removes it too."
+  "Written when a warm pass over every root finishes. Lives inside the cache, so [[clear-cache!]] removes it too."
   (io/file u/project-root-directory ".clj-kondo" ".cache" "warmed"))
 
 (defn warm-cache!
@@ -64,8 +64,10 @@
    (warm-cache! nil))
   ([roots]
    (println "Warming the Kondo cache so cache-reading hooks can see every namespace...")
-   ;; Drop the marker first, so an interrupted pass can't leave an old one next to a partial cache.
-   (io/delete-file warm-cache-marker true)
+   ;; Only a pass over every root may mark the cache warm. Drop the marker first, so an interrupted pass can't leave
+   ;; an old one next to a partial cache.
+   (when-not (seq roots)
+     (io/delete-file warm-cache-marker true))
    (let [command            (if (seq roots)
                               (list* "-M:kondo" "--lint" roots)
                               ["-M:kondo:kondo/all" "dev/src"])
@@ -75,8 +77,9 @@
      (when-not (#{0 2 3} exit)
        (throw (ex-info (str "Warming the Kondo cache failed:\n" (str/join "\n" err))
                        {:exit-code 1})))
-     (io/make-parents warm-cache-marker)
-     (spit warm-cache-marker ""))))
+     (when-not (seq roots)
+       (io/make-parents warm-cache-marker)
+       (spit warm-cache-marker "")))))
 
 (defn- kondo*
   [args]
