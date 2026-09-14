@@ -26,6 +26,7 @@ import { setup as baseSetup } from "./setup";
 
 // Jest renders with React 18, which is itself a usage problem on localhost.
 jest.mock("embedding-sdk-bundle/lib/host-react-version", () => ({
+  ...jest.requireActual("embedding-sdk-bundle/lib/host-react-version"),
   getHostReactMajorVersion: () => 19,
 }));
 

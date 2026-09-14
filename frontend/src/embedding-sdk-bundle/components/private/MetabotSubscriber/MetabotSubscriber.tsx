@@ -2,6 +2,7 @@ import { useEffect } from "react";
 
 import { METABOT_SDK_EE_PLUGIN } from "embedding-sdk-bundle/components/public/MetabotQuestion/MetabotQuestion";
 import { useMetabot } from "embedding-sdk-bundle/hooks/public/use-metabot";
+import { isHostReactVersionSupported } from "embedding-sdk-bundle/lib/host-react-version";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import { publishMetabotState } from "embedding-sdk-shared/lib/metabot-state-channel";
 import { MetabaseReduxProvider } from "metabase/redux";
@@ -19,10 +20,18 @@ const MetabotStatePublisher = () => {
   return null;
 };
 
-export const MetabotSubscriber = ({ store }: Props) => (
-  <MetabaseReduxProvider store={store}>
-    <METABOT_SDK_EE_PLUGIN.MetabotProvider>
-      <MetabotStatePublisher />
-    </METABOT_SDK_EE_PLUGIN.MetabotProvider>
-  </MetabaseReduxProvider>
-);
+export const MetabotSubscriber = ({ store }: Props) => {
+  // The package renders this before any SDK component; ComponentProvider
+  // shows the unsupported React error, this one only has to stay quiet.
+  if (!isHostReactVersionSupported()) {
+    return null;
+  }
+
+  return (
+    <MetabaseReduxProvider store={store}>
+      <METABOT_SDK_EE_PLUGIN.MetabotProvider>
+        <MetabotStatePublisher />
+      </METABOT_SDK_EE_PLUGIN.MetabotProvider>
+    </MetabaseReduxProvider>
+  );
+};
