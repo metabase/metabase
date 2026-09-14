@@ -61,11 +61,17 @@
   ;; the same reason [[metabase.search.core]]'s engine wrapper does: they are single-process test
   ;; scenarios, and leases refuse to be acquired inside a transaction.
   (if search.ingestion/*force-sync*
-    (thunk)
+    (let [result (thunk)]
+      (when (some? result)
+        (search.engine/record-freshness! :search.engine/appdb))
+      result)
     (let [{:keys [acquired? result]}
           (search.lease/do-with-lease (search.lease/coordinates :search.engine/appdb) thunk {:wait? false})]
       (if acquired?
-        result
+        (do
+          (when (some? result)
+            (search.engine/record-freshness! :search.engine/appdb))
+          result)
         (log/infof "Skipping appdb search %s; another node holds its lease" operation)))))
 
 (defn- parse-datetime [s]

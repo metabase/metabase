@@ -123,11 +123,18 @@
   ;; A forced-synchronous run is a single-process test scenario: there is no other node to coordinate with, and the
   ;; index writes should stay on the caller's connection (and roll back with a test's transaction). Leases refuse to
   ;; be acquired inside a transaction, so skipping acquisition here is what lets those tests exist at all.
+  ;; A nil result means the engine did no synchronous rebuild (a no-op init, or the semantic engine's
+  ;; asynchronous paths), so only a non-nil result stamps freshness.
   (if search.ingestion/*force-sync*
-    {:acquired? true, :result (thunk)}
-    (let [{:keys [acquired?] :as outcome}
+    (let [result (thunk)]
+      (when (some? result)
+        (search.engine/record-freshness! engine))
+      {:acquired? true, :result result})
+    (let [{:keys [acquired? result] :as outcome}
           (search.lease/do-with-lease (search.lease/coordinates engine) thunk)]
-      (when-not acquired?
+      (if acquired?
+        (when (some? result)
+          (search.engine/record-freshness! engine))
         (log/infof "Skipping search %s for %s; another node holds its lease" operation engine))
       outcome)))
 
