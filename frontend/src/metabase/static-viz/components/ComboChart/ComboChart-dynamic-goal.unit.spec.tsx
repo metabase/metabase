@@ -135,19 +135,22 @@ function getTickY(svg: string, label: string) {
       `transform="translate\\([\\d.]+ ([\\d.]+)\\)"[^>]*>${label}</text>`,
     ),
   );
+
   if (match == null) {
     throw new Error(`no ${label} tick in ${svg}`);
   }
+
   return Number(match[1]);
 }
 
 function getGoalLineY(svg: string) {
-  // the goal line is the only dashed path
   const match = svg.match(
     /<path d="M[\d.]+ ([\d.]+)L[^"]*"[^>]*stroke-dasharray=/,
   );
+
   if (match == null) {
     throw new Error(`no goal line in ${svg}`);
   }
+
   return Number(match[1]);
 }
