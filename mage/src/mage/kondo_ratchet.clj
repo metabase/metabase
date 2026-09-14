@@ -337,7 +337,7 @@
   An `--audit` removal that sticks takes its stale marker comment with it."
   [parsed]
   ;; Without this, hooks reading the analysis cache report nothing and their ignores all look redundant.
-  (kondo/warm-cache!)
+  (kondo/warm-cache! lint-roots)
   (println "Running kondo with :redundant-ignore enabled (full lint, takes a minute or two)...")
   (let [audit?     (get-in parsed [:options :audit])
         findings   (kondo-findings! :redundant-ignore lint-roots)
@@ -478,7 +478,7 @@
   (when (str/blank? (str linter-arg))
     (throw (ex-info "Usage: ./bin/mage kondo-insert-ignores LINTER [PATHS...]" {:exit-code 1})))
   ;; Without this, a cache-reading hook linter finds no sites at all.
-  (kondo/warm-cache!)
+  (kondo/warm-cache! lint-roots)
   (let [linter   (keyword (str/replace-first linter-arg #"^:" ""))
         roots    (or (seq paths) lint-roots)
         _        (println (format "Running kondo with %s enabled over %s..." linter (str/join " " roots)))

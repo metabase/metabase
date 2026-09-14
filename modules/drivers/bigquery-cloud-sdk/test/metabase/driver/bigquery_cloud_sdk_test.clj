@@ -300,16 +300,19 @@
           remaining (atom (- n-rows @#'bigquery/initial-page-rows))
           sizes     (atom [])
           requests  (atom 0)
-          orig-next-page-size (mt/original-fn #'bigquery/next-page-size)]
-      (mt/with-dynamic-fn-redefs [bigquery/next-page-size    (fn ^long [^long budget ^long bytes ^long rows ^long rem]
-                                                               (let [n (long (orig-next-page-size budget bytes rows rem))]
-                                                                 (swap! sizes conj n)
-                                                                 n))
-                                  bigquery/query-results-page (fn [_job _opts]
-                                                                (swap! requests inc)
-                                                                (let [k    (min (long (peek @sizes)) @remaining)
-                                                                      rem  (swap! remaining - k)]
-                                                                  (page rem (vec (repeat k wide-row)))))]
+          orig-next-page-size @#'bigquery/next-page-size]
+      ;; `next-page-size` takes and returns primitive longs, so compiled callers invoke it through `IFn$LLLLL`.
+      ;; The dynamic-redefs proxy is a plain variadic fn, and would throw ClassCastException there.
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+      (with-redefs [bigquery/next-page-size    (fn ^long [^long budget ^long bytes ^long rows ^long rem]
+                                                 (let [n (long (orig-next-page-size budget bytes rows rem))]
+                                                   (swap! sizes conj n)
+                                                   n))
+                    bigquery/query-results-page (fn [_job _opts]
+                                                  (swap! requests inc)
+                                                  (let [k    (min (long (peek @sizes)) @remaining)
+                                                        rem  (swap! remaining - k)]
+                                                    (page rem (vec (repeat k wide-row)))))]
         (let [{:keys [rows]}  (#'bigquery/bigquery-execute-response
                                (page (- n-rows 10) (vec (repeat 10 wide-row)))
                                nil nil

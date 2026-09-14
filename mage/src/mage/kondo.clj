@@ -1,5 +1,6 @@
 (ns mage.kondo
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [mage.shell :as shell]
    [mage.util :as u]))
@@ -49,15 +50,25 @@
   (shell/sh "rm" "-rf" ".clj-kondo/.cache"))
 
 (defn warm-cache!
-  "Lint everything once, discarding the findings, to fill the cache Kondo keeps under `.clj-kondo/.cache`.
+  "Lint `roots` once, discarding the findings, to fill the cache Kondo keeps under `.clj-kondo/.cache`.
+  With no `roots`, lints everything [[kondo]] does plus `dev/src`, which defines vars that `dev/test` redefines.
 
   Hooks that ask about another namespace's vars (`hooks/ns-analysis`) read that cache and nothing else,
   and Kondo writes it only after every file in a run has been analysed. A single pass over a cold cache
-  therefore tells those hooks nothing, and they silently skip their checks -- which is how
-  `:metabase/prefer-with-dynamic-fn-redefs` came to pass in CI while flagging the same code locally."
-  []
-  (println "Warming the Kondo cache so cache-reading hooks can see every namespace...")
-  (shell/sh* {:quiet? true} "clojure" "-M:kondo:kondo/all"))
+  therefore tells those hooks nothing, and they silently skip their checks."
+  ([]
+   (warm-cache! nil))
+  ([roots]
+   (println "Warming the Kondo cache so cache-reading hooks can see every namespace...")
+   (let [command            (if (seq roots)
+                              (list* "-M:kondo" "--lint" roots)
+                              ["-M:kondo:kondo/all" "dev/src"])
+         {:keys [exit err]} (apply shell/sh* {:quiet? true} "clojure" command)]
+     ;; Kondo exits 2 for warnings and 3 for errors. Any other nonzero exit means the pass did not finish, and a
+     ;; partial cache would silence the same hooks this exists to feed.
+     (when-not (#{0 2 3} exit)
+       (throw (ex-info (str "Warming the Kondo cache failed:\n" (str/join "\n" err))
+                       {:exit-code 1}))))))
 
 (defn- kondo*
   [args]
@@ -93,6 +104,9 @@
     (println "Files:")
     (doseq [filename updated-files]
       (println "  " filename))
+    ;; Reuse whatever cache exists so this stays fast. Only a missing one leaves cache-reading hooks silent.
+    (when-not (.exists (io/file u/project-root-directory ".clj-kondo" ".cache"))
+      (warm-cache!))
     (let [{:keys [exit], :or {exit -1}} (apply shell/sh* "clojure" "-M:kondo" "--lint" updated-files)]
       (System/exit exit))))
 
