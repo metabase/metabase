@@ -35,7 +35,8 @@
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2])
   (:import
-   (com.google.cloud.bigquery BigQuery BigQueryException Field FieldValue FieldValue$Attribute FieldValueList JobId LegacySQLTypeName Schema TableResult)
+   (com.google.auth.oauth2 AccessToken GoogleCredentials ServiceAccountCredentials)
+   (com.google.cloud.bigquery BigQuery BigQueryException BigQueryOptions Field FieldValue FieldValue$Attribute FieldValueList JobId LegacySQLTypeName QueryJobConfiguration Schema TableResult)
    (com.google.cloud.http HttpTransportOptions)))
 
 (set! *warn-on-reflection* true)
@@ -124,7 +125,10 @@
                  {:service-account-json (service-account-json :token_uri "http://sts.internal/token")})))))
   (testing "credentials we cannot read fail closed rather than reporting only the endpoints we can see"
     (is (thrown? Exception
-                 (driver/connection-hosts :bigquery-cloud-sdk {:service-account-json "{not json"})))))
+                 (driver/connection-hosts :bigquery-cloud-sdk {:service-account-json "{not json"}))))
+  (testing "no service account JSON (Application Default Credentials) still reports the fixed endpoints"
+    (is (= #{"bigquery.googleapis.com" "oauth2.googleapis.com"}
+           (set (driver/connection-hosts :bigquery-cloud-sdk {}))))))
 
 (deftest client-honors-network-policy-test
   (testing "the network policy is enforced when the client is built, not only when the database is saved"
@@ -135,6 +139,37 @@
            #"Cannot connect to a private or internal network address"
            (#'bigquery/database-details->client {:host                 "https://169.254.169.254"
                                                  :service-account-json (service-account-json)}))))))
+
+(deftest application-default-credentials-test
+  (let [fake-credential (GoogleCredentials/create (AccessToken. "fake-adc-token" nil))]
+    (mt/with-dynamic-fn-redefs [bigquery.common/application-default-credential (constantly fake-credential)
+                                bigquery.common/application-default-project-id (constantly "adc-project")]
+      (testing "a blank or missing service account JSON resolves to Application Default Credentials (#19941)"
+        (doseq [details [{} {:service-account-json nil} {:service-account-json ""}]]
+          (testing (pr-str details)
+            (is (= fake-credential (bigquery.common/database-details->credential details))))))
+      (testing "the project-id comes from the ADC environment"
+        (is (= "adc-project" (bigquery.common/database-details->credential-project-id {})))
+        (is (= "adc-project" (bigquery.common/get-project-id {}))))
+      (testing "an explicit project-id still wins"
+        (is (= "explicit-project" (bigquery.common/get-project-id {:project-id "explicit-project"}))))
+      (testing "a client can be built without a service account JSON"
+        (let [^BigQuery client (#'bigquery/database-details->client {:billing-project-id "adc-billing-project"})]
+          (is (= "adc-billing-project" (.getProjectId (.getOptions client))))
+          (is (= fake-credential (.getCredentials (.getOptions client)))))))
+    (testing "when the ADC environment implies no project at all, get-project-id fails with a useful message"
+      (mt/with-dynamic-fn-redefs [bigquery.common/application-default-credential (constantly fake-credential)
+                                  bigquery.common/application-default-project-id (constantly nil)]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Could not determine a Google Cloud project ID"
+             (bigquery.common/get-project-id {})))))))
+
+(deftest ^:parallel service-account-json-takes-precedence-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "an uploaded service account JSON is used directly, never the ADC environment"
+      (is (instance? ServiceAccountCredentials
+                     (bigquery.common/database-details->credential (:details (mt/db))))))))
 
 (deftest can-connect?-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -1047,6 +1082,47 @@
                  (catch Throwable t t))]
         (is (= :invalid-query (some-> ex ex-data :type)))))))
 
+(deftest ^:parallel max-bytes-billed-request-test
+  (testing ":max-bytes-billed is applied to query requests (#22421)"
+    (let [request-max-bytes (fn [details]
+                              (let [^QueryJobConfiguration request (#'bigquery/build-bigquery-request "SELECT 1" nil details)]
+                                (.getMaximumBytesBilled request)))]
+      (testing "set as a number or a numeric string"
+        (is (= 1000000000 (request-max-bytes {:max-bytes-billed 1000000000})))
+        (is (= 1000000000 (request-max-bytes {:max-bytes-billed "1000000000"}))))
+      (testing "left unset"
+        (is (nil? (request-max-bytes {})))
+        (is (nil? (request-max-bytes {:max-bytes-billed nil})))
+        (is (nil? (request-max-bytes {:max-bytes-billed "  "}))))
+      (testing "invalid values fail loudly rather than silently removing the cost cap"
+        (doseq [value ["one billion" 0 -1]]
+          (testing (pr-str value)
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Invalid value for maximum bytes billed per query"
+                 (request-max-bytes {:max-bytes-billed value})))))))))
+
+(deftest max-bytes-billed-query-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "queries that would bill more than :max-bytes-billed fail without running (#22421)"
+      (mt/with-temp [:model/Database temp-db {:engine  :bigquery-cloud-sdk
+                                              :details (assoc (:details (mt/db)) :max-bytes-billed 1000)}]
+        (mt/with-db temp-db
+          (testing "a query that scans table data exceeds the 1000-byte cap"
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"(?i)bytes billed"
+                 (qp/process-query
+                  {:database (mt/id)
+                   :type     :native
+                   :native   {:query (format "select sum(total) from `%s.orders`" (get-test-data-name))}}))))
+          (testing "a query that scans no table data still runs"
+            (is (= [[1]]
+                   (mt/rows (qp/process-query
+                             {:database (mt/id)
+                              :type     :native
+                              :native   {:query "select 1"}}))))))))))
+
 (deftest project-id-override-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "Querying a different project-id works"
@@ -1619,6 +1695,17 @@
           (is (= "bigquery.example.com"
                  (.getHost (.getOptions client)))
               "BigQuery client should be configured with alternate host"))))))
+
+(deftest ^:parallel processing-location-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing ":processing-location sets the location the client runs query jobs in (#21309)"
+      (let [^BigQuery client (#'bigquery/database-details->client
+                              (assoc (:details (mt/db)) :processing-location "asia-southeast1"))]
+        (is (= "asia-southeast1"
+               (.getLocation ^BigQueryOptions (.getOptions client))))))
+    (testing "when unset, no location is configured and BigQuery determines it automatically"
+      (let [^BigQuery client (#'bigquery/database-details->client (:details (mt/db)))]
+        (is (nil? (.getLocation ^BigQueryOptions (.getOptions client))))))))
 
 (deftest ^:parallel user-agent-is-set-test
   (mt/test-driver :bigquery-cloud-sdk

@@ -108,7 +108,7 @@
 (mu/defn- database-details->client
   ^BigQuery [details :- :map]
   (driver.u/validate-connection-hosts! :bigquery-cloud-sdk details)
-  (let [base-creds   (bigquery.common/database-details->service-account-credential details)
+  (let [base-creds   (bigquery.common/database-details->credential details)
         creds        (.createScoped base-creds bigquery-scopes)
         mb-version   (:tag driver-api/mb-version-info)
         run-mode     (name driver-api/run-mode)
@@ -133,6 +133,9 @@
     (when-let [^String billing-project-id (perf/not-empty (:billing-project-id details))]
       ;; Jobs are created and billed in this project; queried tables can live elsewhere.
       (.setProjectId bq-bldr billing-project-id))
+    (when-let [^String processing-location (perf/not-empty (:processing-location details))]
+      ;; Query jobs run in this location; needed for datasets outside the US/EU multi-regions (#21309).
+      (.setLocation bq-bldr processing-location))
     (.. bq-bldr build getService)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -873,17 +876,36 @@
     (driver-api/system-timezone-id)
     "UTC"))
 
-(defn- build-bigquery-request [^String sql parameters]
-  (.build
-   (doto (QueryJobConfiguration/newBuilder sql)
-     ;; if the query contains a `#legacySQL` directive then use legacy SQL instead of standard SQL
-     (.setUseLegacySql (str/includes? (u/lower-case-en sql) "#legacysql"))
-     (bigquery.params/set-parameters! parameters)
-     ;; .setMaxResults is very misleading; it's actually the page size, and it only takes
-     ;; effect for RPC (a.k.a. "fast") calls
-     ;; there is no equivalent of .setMaxRows on a JDBC Statement; we rely on our middleware to stop
-     ;; realizing more rows as per the maximum result size
-     (.setMaxResults *page-size*))))
+(defn- details->max-bytes-billed
+  "The `:max-bytes-billed` connection detail as a positive Long, or nil when unset. A value that is present but not a
+  positive integer throws rather than running the query uncapped -- this is a cost control, so it must fail closed."
+  ^Long [details]
+  (let [value (:max-bytes-billed details)]
+    (when-not (or (nil? value) (and (string? value) (str/blank? value)))
+      (let [parsed (cond
+                     (number? value) (long value)
+                     (string? value) (parse-long (str/trim value)))]
+        (when-not (and parsed (pos? parsed))
+          (throw (ex-info (tru "Invalid value for maximum bytes billed per query: {0}" (pr-str value))
+                          {:type             driver-api/qp.error-type.db
+                           :max-bytes-billed value})))
+        parsed))))
+
+(defn- build-bigquery-request
+  ^QueryJobConfiguration [^String sql parameters details]
+  (let [bldr (doto (QueryJobConfiguration/newBuilder sql)
+               ;; if the query contains a `#legacySQL` directive then use legacy SQL instead of standard SQL
+               (.setUseLegacySql (str/includes? (u/lower-case-en sql) "#legacysql"))
+               (bigquery.params/set-parameters! parameters)
+               ;; .setMaxResults is very misleading; it's actually the page size, and it only takes
+               ;; effect for RPC (a.k.a. "fast") calls
+               ;; there is no equivalent of .setMaxRows on a JDBC Statement; we rely on our middleware to stop
+               ;; realizing more rows as per the maximum result size
+               (.setMaxResults *page-size*))]
+    (when-let [max-bytes-billed (details->max-bytes-billed details)]
+      ;; queries estimated to bill more than this fail without incurring a charge (#22421)
+      (.setMaximumBytesBilled bldr max-bytes-billed))
+    (.build bldr)))
 
 (defn- query-results-page
   "Fetch one page of query-job results from `job` with the given `options`. A thin wrapper over `.getQueryResults`
@@ -1011,7 +1033,7 @@
   ;; - Running the BigQuery execution in another thread, since it's blocking.
   (let [^BigQuery client (database-details->client database-details)
         result-promise   (promise)
-        request          (build-bigquery-request sql parameters)
+        request          (build-bigquery-request sql parameters database-details)
         _                (driver.conn/track-connection-acquisition! database-details)
         ;; Wrap exception to avoid responding with HTTP 500 and reporting "We're experiencing server issues"
         ;; in the UI. (#71558)
