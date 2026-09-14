@@ -96,6 +96,43 @@ To get Jetty logs, add the following lines to the Log4J2 XML file in the <Logger
 <Logger name="org.eclipse.jetty" level="DEBUG"/>
 ```
 
+## Debug LDAP authentication
+
+If people can't log in with LDAP, you can turn up logging for the code that talks to your LDAP server. Metabase connects to LDAP servers using the [UnboundID LDAP SDK](https://ldap.com/unboundid-ldap-sdk/), so that's where the interesting details show up: connection attempts, bind results (including error codes such as result code 49, invalid credentials), and the search filters and attributes Metabase uses to find users.
+
+To temporarily debug LDAP without restarting Metabase, use **Monitor** > **Application logs** > **Customize log levels** with this JSON:
+
+```json
+{
+  "com.unboundid.ldap.sdk": "debug",
+  "metabase.integrations.ldap": "debug",
+  "metabase.api.ldap": "debug",
+  "metabase-enterprise.enhancements.integrations.ldap": "debug"
+}
+```
+
+To debug LDAP in a [custom log configuration file](#use-a-custom-log-configuration-file), add these loggers to the <Loggers> node:
+
+```
+<!-- The UnboundID LDAP SDK: connection, bind, and search details -->
+<Logger name="com.unboundid.ldap.sdk" level="DEBUG"/>
+
+<!-- Metabase's own LDAP integration and API endpoints -->
+<Logger name="metabase.integrations.ldap" level="DEBUG"/>
+<Logger name="metabase.api.ldap" level="DEBUG"/>
+
+<!-- Only needed for Metabase Enterprise (user attribute syncing) -->
+<Logger name="metabase-enterprise.enhancements.integrations.ldap" level="DEBUG"/>
+```
+
+Then try logging in as an LDAP user (or use **Admin settings** > **Authentication** > **LDAP** > **Save and sync** to test the connection) and watch the logs for:
+
+- Connection failures (host, port, timeouts, TLS handshake errors)
+- Bind errors, such as result code 49 (invalid credentials) or a bind DN/password problem
+- Search problems, such as a user not found (the search filter doesn't match) or missing attributes
+
+Keep in mind that debug logging can include usernames and directory entry details, so turn logging back down once you're done debugging. For more on setting up LDAP, see [LDAP](../people-and-groups/ldap.md).
+
 ## Configure how logs are displayed
 
 ### Turn off emojis in logs
