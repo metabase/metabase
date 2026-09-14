@@ -11,6 +11,7 @@
 .headerRow {
   border-bottom: 1px solid var(--mb-color-border-neutral);
   background-color: var(--mb-color-background_page-primary);
+  user-select: none;
 }
 
 .cell {

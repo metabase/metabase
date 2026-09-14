@@ -268,8 +268,8 @@ function ApiKeyUsageEventsTableInner({
         id: column.key,
         header: column.title,
         ...(column.grow
-          ? { minWidth: 120 }
-          : { width: "auto" as const, minWidth: 120, maxAutoWidth: 320 }),
+          ? { minWidth: 280 }
+          : { width: "auto" as const, minWidth: 120, maxAutoWidth: 200 }),
         enableSorting: !!column.sort,
         sortDescFirst: column.sort === "occurred_at",
         accessorFn: (row) => row[column.key],
