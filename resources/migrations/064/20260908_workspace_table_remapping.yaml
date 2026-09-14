@@ -1,4 +1,4 @@
-## Workspace mode: when the `workspace-mode` setting is on, transform runs write their output into
+## Workspace mode: while the `workspaces-enabled` setting is on, transform runs write their output into
 ## each database's workspace schema under a random table name instead of the configured target.
 ## `workspace_table_remapping` records, per database, which canonical (schema, table) is backed by
 ## which workspace (schema, table) so the query processor, metadata reads and serdes can translate
@@ -12,7 +12,7 @@ databaseChangeLog:
       changes:
         - createTable:
             tableName: workspace_table_remapping
-            remarks: Maps canonical transform output tables to their workspace workspace-schema tables
+            remarks: Maps canonical transform output tables to their workspace-schema tables
             columns:
               - column:
                   name: id

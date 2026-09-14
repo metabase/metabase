@@ -17,8 +17,8 @@
    table-name :- ::lib.schema.common/non-blank-string]
   (ws.impl/remap-table! db-id schema table-name))
 
-(defenterprise-schema unmap-table! :- :nil
-  "Delete the remapping of the canonical table `table-name` in `schema`."
+(defenterprise-schema unmap-table! :- :boolean
+  "Delete the remapping of the canonical table `table-name` in `schema`, returning whether there was one."
   :feature :workspaces
   [db-id      :- ::lib.schema.id/database
    schema     :- [:maybe :string]

@@ -110,13 +110,14 @@
         {:keys [to_schema to_table]} (get-or-create-remapping! db-id schema table-name to-schema)]
     {:schema to_schema, :name to_table}))
 
-(mu/defn unmap-table! :- :nil
-  "Delete the remapping of the canonical table `table-name` in `schema`."
+(mu/defn unmap-table! :- :boolean
+  "Delete the remapping of the canonical table `table-name` in `schema`, returning whether there was one."
   [db-id      :- ::lib.schema.id/database
    schema     :- [:maybe :string]
    table-name :- ::lib.schema.common/non-blank-string]
-  (ws.db/delete-remapping-for-source! db-id schema table-name)
-  (clear-remappings-cache!))
+  (let [deleted (ws.db/delete-remapping-for-source! db-id schema table-name)]
+    (clear-remappings-cache!)
+    (pos? deleted)))
 
 (mu/defn workspace-table :- ::ws.schema/table-info
   "The workspace table backing the canonical table `table-name` in `schema`, or that table itself."

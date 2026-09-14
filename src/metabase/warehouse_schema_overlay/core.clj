@@ -131,10 +131,6 @@
     :owner_email :owner_user_id :points_of_interest :schema :show_in_getting_started :transform_id :transform_target
     :unique_table_helper :updated_at :view_count :visibility_type})
 
-(def ^:private sync-owned-table-columns
-  "The columns of `metabase_table` users cannot set."
-  (sort (remove user-settable-table-columns table-columns)))
-
 (mu/defn- table-user-settings-join
   "The `:left-join` entries joining `metabase_table_user_settings` as `settings-alias` to the Table table aliased
   `table-alias`; see [[table-user-settings-column]]."
@@ -223,10 +219,13 @@
                     [:and
                      [:= :st.db_id :s.db_id]
                      [:= :st.schema :s.to_schema]
-                     [:= :st.name :s.to_table]]]
+                     [:= :st.name :s.to_table]
+                     [:= :st.active true]]]
            :where  [:and
                     [:= :s.db_id (u/qualified-key table-alias :db_id)]
-                    [:= :s.from_schema (u/qualified-key table-alias :schema)]
+                    [:or
+                     [:= :s.from_schema (u/qualified-key table-alias :schema)]
+                     [:and [:= :s.from_schema nil] [:= (u/qualified-key table-alias :schema) nil]]]
                     [:= :s.from_table (u/qualified-key table-alias :name)]]}]]
    [:or
     [:not= (u/qualified-key remapping-alias :id) nil]

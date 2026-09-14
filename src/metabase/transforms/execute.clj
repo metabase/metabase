@@ -11,25 +11,37 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- resolve-target
-  "Redirects the target to its workspace table when workspaces are enabled (otherwise unmaps it, since the run
-  writes the canonical table again), forcing a full run the first time an incremental transform lands in the
-  workspace.
-  Runs before `transforms.i/execute!` dispatches so every transform type writes to the same place. Hydrates the
-  declared indexes
-  and their request ids onto the target so the base reads them off `(:indexes target)` and
-  `(:index-request-ids target)` at every table-creation seam, and stashes `:full-incremental-run?` so that
-  (DB-backed) decision is made once and stays stable for the whole run."
+(defn- remap-target
+  "Redirect `transform`'s target to its workspace table when workspaces are enabled, else unmap it; an incremental
+  transform whose target just moved back out of the workspace runs in full."
   [transform]
+  (if-let [db-id (transforms-base.i/target-db-id transform)]
+    (let [{:keys [schema name]} (:target transform)]
+      (if (workspaces/enabled?)
+        (let [{:keys [schema name]} (workspaces/remap-table! db-id schema name)]
+          (update transform :target assoc :schema schema :name name))
+        (cond-> transform
+          (and (workspaces/unmap-table! db-id schema name)
+               (transforms-base.u/incremental-target? transform))
+          (assoc :full-incremental-run? true))))
+    transform))
+
+(defn delete-target-table!
+  "Drop `transform`'s output table and deactivate its Table, the workspace table standing in for it included."
+  [{:keys [target] :as transform}]
+  (when-let [db-id (transforms-base.i/target-db-id transform)]
+    (let [{:keys [schema name]} target
+          workspace (workspaces/workspace-table db-id schema name)]
+      (when (not= (select-keys workspace [:schema :name]) (select-keys target [:schema :name]))
+        (transforms-base.u/delete-target-table! (update transform :target merge workspace))
+        (workspaces/unmap-table! db-id schema name))))
+  (transforms-base.u/delete-target-table! transform))
+
+(defn- resolve-target
+  "Hydrate the declared indexes onto `remapped`'s target and decide `:full-incremental-run?` once for the run: an
+  incremental transform runs in full the first time it lands in the workspace."
+  [transform remapped]
   (let [requests  (table-index/select-applicable-for-transform (:id transform))
-        remapped  (if-let [db-id (transforms-base.i/target-db-id transform)]
-                    (let [{:keys [schema name]} (:target transform)]
-                      (if (workspaces/enabled?)
-                        (let [{:keys [schema name]} (workspaces/remap-table! db-id schema name)]
-                          (update transform :target assoc :schema schema :name name))
-                        (do (workspaces/unmap-table! db-id schema name)
-                            transform)))
-                    transform)
         full-run? (or (transforms-base.u/full-incremental-run? remapped)
                       (and (transforms-base.u/incremental-target? remapped)
                            (not= (:target remapped) (:target transform))
@@ -40,17 +52,11 @@
         (assoc :full-incremental-run? full-run?))))
 
 (defn- discard-unused-remapping!
-  "After a failed run, unmap the target if its workspace table was never created, so the canonical table is not
-  redirected to a table that does not exist."
-  [transform resolved]
+  "Unmap `transform`'s target when `remapped` points it at a workspace table that does not exist."
+  [transform remapped]
   (when-let [db-id (transforms-base.i/target-db-id transform)]
-    ;; compare only the table's location: `resolve-target` also hangs indexes off the target, so comparing the
-    ;; whole map would be true even for a run that was never remapped
-    (when (and (not= (select-keys (:target resolved) [:schema :name])
-                     (select-keys (:target transform) [:schema :name]))
-               ;; not `false?`: a probe that throws tells us nothing, and leaving the remapping would point the
-               ;; canonical table at a workspace table that may never have been created
-               (not (true? (u/ignore-exceptions (transforms-base.u/target-table-exists? resolved)))))
+    (when (and (not= (:target remapped) (:target transform))
+               (not (true? (u/ignore-exceptions (transforms-base.u/target-table-exists? remapped)))))
       (let [{:keys [schema name]} (:target transform)]
         (workspaces/unmap-table! db-id schema name)))))
 
@@ -71,13 +77,11 @@
                                   (when on-start
                                     (on-start run-id)))})]
      (try
-       ;; inside the `try` because resolving the target can throw -- a database with workspaces on but no
-       ;; workspace schema, say -- and a caller awaiting the start would otherwise hang forever
-       (let [resolved (resolve-target transform)]
+       (let [remapped (remap-target transform)]
          (try
-           (transforms.i/execute! resolved opts)
+           (transforms.i/execute! (resolve-target transform remapped) opts)
            (catch Throwable t
-             (discard-unused-remapping! transform resolved)
+             (discard-unused-remapping! transform remapped)
              (throw t))))
        (catch Throwable t
          ;; so a caller awaiting the start isn't left hanging on a pre-start failure;

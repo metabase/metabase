@@ -318,8 +318,7 @@
   "Delete a transform's output table."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (api/write-check :model/Transform id)
-  (transforms-base.u/delete-target-table-by-id! id)
+  (transforms.core/delete-target-table! (api/write-check :model/Transform id))
   nil)
 
 (api.macros/defendpoint :post "/:id/cancel" :- :nil

@@ -47,13 +47,13 @@
    table-name :- ::lib.schema.common/non-blank-string]
   {:schema schema, :name table-name})
 
-(defenterprise-schema unmap-table! :- :nil
-  "Delete the remapping of the canonical table `table-name` in `schema`, if any."
+(defenterprise-schema unmap-table! :- :boolean
+  "Delete the remapping of the canonical table `table-name` in `schema`, returning whether there was one."
   metabase-enterprise.workspaces.core
   [_db-id      :- ::lib.schema.id/database
    _schema     :- [:maybe :string]
    _table-name :- ::lib.schema.common/non-blank-string]
-  nil)
+  false)
 
 (defenterprise-schema workspace-table :- ::ws.schema/table-info
   "The workspace table backing the canonical table `table-name` in `schema`, or that table when it has no remapping.

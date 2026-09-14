@@ -128,3 +128,39 @@
                                   :db_id (mt/id) :name "someone_elses_output"
                                   {:from [(warehouse-schema-overlay/table-query
                                            {:workspace-remapping? false})]})))))))))))
+
+(deftest a-schemaless-canonical-table-is-remapped-too-test
+  (mt/with-premium-features #{:workspaces}
+    (mt/with-temporary-setting-values [workspaces-enabled true]
+      (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:workspaces-schema workspace-schema}}
+        (mt/with-temp [:model/Table                   _ {:db_id (mt/id) :schema nil :name "schemaless"}
+                       :model/WorkspaceTableRemapping _ {:db_id       (mt/id)
+                                                         :from_schema nil
+                                                         :from_table  "schemaless"
+                                                         :to_schema   workspace-schema
+                                                         :to_table    workspace-table}
+                       :model/Table                   _ {:db_id  (mt/id)
+                                                         :schema workspace-schema
+                                                         :name   workspace-table}]
+          (#'ws.impl/clear-remappings-cache!)
+          (is (= 1 (count (t2/select :model/Table :db_id (mt/id) :name "schemaless"
+                                     {:from [(warehouse-schema-overlay/table-query)]})))))))))
+
+(deftest an-inactive-workspace-table-does-not-hide-the-canonical-one-test
+  (mt/with-premium-features #{:workspaces}
+    (mt/with-temporary-setting-values [workspaces-enabled true]
+      (let [{:keys [schema name]} (t2/select-one [:model/Table :schema :name] :id (mt/id :orders))]
+        (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:workspaces-schema workspace-schema}}
+          (mt/with-temp [:model/WorkspaceTableRemapping _ {:db_id       (mt/id)
+                                                           :from_schema schema
+                                                           :from_table  name
+                                                           :to_schema   workspace-schema
+                                                           :to_table    workspace-table}
+                         :model/Table                   _ {:db_id  (mt/id)
+                                                           :schema workspace-schema
+                                                           :name   workspace-table
+                                                           :active false}]
+            (#'ws.impl/clear-remappings-cache!)
+            (is (contains? (t2/select-pks-set :model/Table :db_id (mt/id) :active true
+                                              {:from [(warehouse-schema-overlay/table-query)]})
+                           (mt/id :orders)))))))))

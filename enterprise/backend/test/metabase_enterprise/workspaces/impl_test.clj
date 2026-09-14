@@ -45,8 +45,9 @@
       (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:workspaces-schema "PUBLIC"}}
         (ws.impl/remap-table! (mt/id) nil "orders")
         (is (= 1 (count (ws.impl/table-remappings (mt/id)))))
-        (ws.impl/unmap-table! (mt/id) nil "orders")
-        (is (empty? (ws.impl/table-remappings (mt/id))))))))
+        (is (true? (ws.impl/unmap-table! (mt/id) nil "orders")))
+        (is (empty? (ws.impl/table-remappings (mt/id))))
+        (is (false? (ws.impl/unmap-table! (mt/id) nil "orders")))))))
 
 (deftest workspace-table+canonical-table-test
   (mt/with-premium-features #{:workspaces}

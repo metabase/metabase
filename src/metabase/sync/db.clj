@@ -1,7 +1,6 @@
 (ns metabase.sync.db
-  "Application database queries for the sync module. Table reads go through [[raw-table-query]]. Table reads go through [[raw-table-query]]. Table reads here ask for the rows sync itself wrote
-  (`{:user-settings? false}`): it reconciles them against what the warehouse reports, so it has to see a Table as it
-  recorded it, whatever a reader would be shown instead.
+  "Application database queries for the sync module. Table reads go through [[raw-table-query]]: sync reconciles what
+  it wrote against what the warehouse reports, so it has to see a Table as it recorded it.
 
   Every function here is a direct Toucan 2 call with no additional logic, so the rest of the module never talks to
   `toucan2.core` itself."
@@ -72,11 +71,11 @@
   (t2/update! :model/Database database-id changes))
 
 (defn- raw-table-query
-  "What a sync query reads Tables from: `warehouse-schema-overlay/table-query` with neither overlay applied. Sync
-  reconciles what it wrote against what the warehouse reports, so it has to see the tables as they really are -- not
-  wearing the values a user set, and not with a workspace table standing in for one of them."
-  []
-  (warehouse-schema-overlay/table-query {:user-settings? false, :workspace-remapping? false}))
+  "The Table source sync reads from: neither user settings nor workspace remapping applied."
+  ([]
+   (raw-table-query nil))
+  ([opts]
+   (warehouse-schema-overlay/table-query (assoc opts :user-settings? false :workspace-remapping? false))))
 
 ;;; ------------------------------------------------- Table -------------------------------------------------
 
@@ -207,7 +206,7 @@
   [database-id :- ::lib.schema.id/database]
   (t2/reducible-select :model/Table
                        {:select    [:t.*]
-                        :from      [(warehouse-schema-overlay/table-query {:alias :t})]
+                        :from      [(raw-table-query {:alias :t})]
                         :left-join [[^:allow-subquery {:select   [:table_id
                                                                   [[:min :last_analyzed] :earliest_last_analyzed]]
                                                        :from     [(warehouse-schema-overlay/field-query)]
@@ -416,7 +415,7 @@
    schema+table+names :- [:sequential [:tuple :string :string :string]]]
   (t2/reducible-query {:select     [[:f.id]]
                        :from      [(warehouse-schema-overlay/field-query {:alias :f})]
-                       :inner-join [(warehouse-schema-overlay/table-query {:alias :t}) [:= :f.table_id :t.id]]
+                       :inner-join [(raw-table-query {:alias :t}) [:= :f.table_id :t.id]]
                        :where      [:and
                                     [:in [:composite [:coalesce :t.schema "__null__"] :t.name :f.name] schema+table+names]
                                     [:= :t.db_id database-id]
@@ -433,7 +432,7 @@
   (t2/select-pks-set :model/Field
                      {:from [(warehouse-schema-overlay/field-query)]}
                      :table_id [:in ^:allow-subquery {:select [[:t.id]]
-                                                      :from   [(warehouse-schema-overlay/table-query {:alias :t})]
+                                                      :from   [(raw-table-query {:alias :t})]
                                                       :where  [:= :t.db_id database-id]}]
                      :parent_id nil
                      :database_indexed true))
@@ -515,7 +514,7 @@
   ^:allow-subquery
   {:select    [[[:min :f.id] :id]]
    :from      [(warehouse-schema-overlay/field-query {:alias :f})]
-   :join      [(warehouse-schema-overlay/table-query {:alias :t}) [:= :f.table_id :t.id]]
+   :join      [(raw-table-query {:alias :t}) [:= :f.table_id :t.id]]
    :left-join [[:metabase_field_user_settings :u] [:= :f.id :u.field_id]]
    :where     [:and
                [:= :u.fk_target_field_id nil]
