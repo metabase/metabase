@@ -375,11 +375,6 @@ export class UnconnectedDataSelector extends Component<
     const getField = (id: FieldId | FieldReference) =>
       _.findWhere(fields ?? [], { id }) || lookups.field(id);
 
-    // The schema a table belongs to, as the store resolves it: a table the
-    // store does not hold, and a schema it has not loaded, both give nothing.
-    const getSchemaOfTable = (table: DataSelectorTable) =>
-      lookups.tableSchema(table.id);
-
     const deriveFromDatabase = (database: DataSelectorDatabase | null) => {
       if (!schemas && database) {
         schemas = lookups.databaseSchemas(database.id);
@@ -422,7 +417,7 @@ export class UnconnectedDataSelector extends Component<
       deriveFromTable(selectedTable);
     }
     if (!selectedSchema && selectedTable) {
-      selectedSchema = getSchemaOfTable(selectedTable) ?? null;
+      selectedSchema = lookups.tableSchema(selectedTable.id) ?? null;
       deriveFromSchema(selectedSchema);
     }
     if (!selectedDatabase && selectedSchema) {

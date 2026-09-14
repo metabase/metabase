@@ -175,7 +175,8 @@ export const getShallowSchemaTables = createSelector(
 );
 
 /**
- * A lookup from a table id to the schema it belongs to.
+ * A lookup from a table id to the schema it belongs to. A table the store does
+ * not hold, and a schema it has not loaded, both give nothing.
  */
 export const getShallowTableSchema = createSelector(
   [getMetadataForShallowReads, getNormalizedSchemas],
