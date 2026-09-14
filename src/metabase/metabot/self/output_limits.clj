@@ -7,6 +7,11 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private documented-max-output-tokens
+  "Maximum output tokens each vendor documents per model, keyed by the vendor's own undated model id.
+
+  A number is sent as the chat cap. Nil means we looked the model up and deliberately send it no cap — the
+  row's comment says why. No row at all means we have no documented figure, and the adapter's own fallback
+  applies."
   {;; documented model max: https://platform.claude.com/docs/en/models/fable-5/overview
    "claude-fable-5"     128000
    ;; documented model max: https://platform.claude.com/docs/en/models/opus-5/overview
@@ -31,11 +36,13 @@
    ;; https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-anthropic-claude-opus-4-1.html
    "claude-opus-4-1"     32000
    ;; Every GPT row below documents a 128,000 max output, one page per key:
-   ;; https://developers.openai.com/api/docs/models/<id>. Metabase sends none of them: OpenAI bills a sent cap
-   ;; against the rate limit ("Your rate limit is calculated as the maximum of `max_tokens` and the estimated
-   ;; number of tokens", https://developers.openai.com/api/docs/guides/rate-limits) and Azure's quota estimate
-   ;; includes it (https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/quota). 128,000 is the ceiling
-   ;; the server already enforces, so sending it would only reserve quota.
+   ;; https://developers.openai.com/api/docs/models/<id>. Metabase sends none of them. OpenAI's rate-limit page
+   ;; states the rule for `max_tokens` ("Your rate limit is calculated as the maximum of `max_tokens` and the
+   ;; estimated number of tokens", https://developers.openai.com/api/docs/guides/rate-limits); we take the
+   ;; Responses API's `max_output_tokens`, the field these rows actually govern, to behave the same, which is
+   ;; unconfirmed. Azure's quota estimate includes it
+   ;; (https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/quota). Either way 128,000 is the ceiling
+   ;; the server already enforces, so omitting the cap reserves nothing and costs nothing.
    "gpt-5.6-sol"           nil
    "gpt-5.6-terra"         nil
    "gpt-5.6-luna"          nil
@@ -45,9 +52,8 @@
    "gpt-5.4-pro"           nil
    "gpt-5.4-mini"          nil
    "gpt-5.4-nano"          nil
-   ;; documented model max: https://api-docs.deepseek.com/api/create-chat-completion
+   ;; documented model max for both V4 models: https://api-docs.deepseek.com/api/create-chat-completion
    "deepseek-v4-pro"    393216
-   ;; documented model max: https://api-docs.deepseek.com/api/create-chat-completion
    "deepseek-v4-flash"  393216
    ;; documented model max for the GLM-5.3 and GLM-5.2 series: https://docs.z.ai/api-reference/llm/chat-completion
    ;; The page's prose ("128K maximum output") and its max_tokens schema maximum of 131072 are the same number,

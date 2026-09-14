@@ -36,6 +36,8 @@
 (defn- build-request-body
   "Build the request body for Anthropic messages API."
   [{:keys [model system messages max-tokens]}]
+  ;; `:max_tokens` is unconditional because `llm.api`'s generate-sql path is the only caller and always passes
+  ;; its own constant; a nil would serialise as `"max_tokens": null`.
   (cond-> {:model       model
            :max_tokens  max-tokens
            :messages    messages

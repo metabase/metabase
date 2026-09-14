@@ -235,12 +235,12 @@
   Bedrock and Azure each serve two wire families, so their ids are split by the prefix that selects one."
   []
   (concat
-   (for [id (concat (keys claude/supported-models) (registry-models "anthropic"))]     [:anthropic id])
-   (for [id (concat (keys openai/supported-models) (registry-models "openai"))]        [:openai id])
-   (for [id (concat (keys deepseek/supported-models) (registry-models "deepseek"))]    [:deepseek id])
-   (for [id (concat (keys moonshot/supported-models) (registry-models "moonshot"))]    [:moonshot id])
-   (for [id (concat (keys mistral/supported-models) (registry-models "mistral"))]      [:mistral id])
-   (for [id (concat (keys zai/supported-models) (registry-models "zai"))]              [:zai id])
+   (for [id (concat (keys claude/supported-models) (registry-models "anthropic"))] [:anthropic id])
+   (for [id (concat (keys openai/supported-models) (registry-models "openai"))] [:openai id])
+   (for [id (concat (keys deepseek/supported-models) (registry-models "deepseek"))] [:deepseek id])
+   (for [id (concat (keys moonshot/supported-models) (registry-models "moonshot"))] [:moonshot id])
+   (for [id (concat (keys mistral/supported-models) (registry-models "mistral"))] [:mistral id])
+   (for [id (concat (keys zai/supported-models) (registry-models "zai"))] [:zai id])
    (for [id (concat (keys openrouter/supported-models) (registry-models "openrouter"))] [:openrouter id])
    (for [id (concat (keys bedrock/supported-models) (registry-models "bedrock"))]
      [(if (str/starts-with? id "anthropic.") :bedrock-anthropic :bedrock-openai) id])

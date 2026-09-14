@@ -231,7 +231,9 @@
         id    (str/replace-first model #"^[^/]+/" "")]
     ;; The dot rewrite is Anthropic-only: OpenRouter spells Claude's minor version with a dot where Anthropic
     ;; uses a dash, but qwen3.8-max, glm-5.3 and the gpt-5.x ids are spelled with dots by their own vendors, so
-    ;; rewriting theirs would miss their rows. Only the snapshot-suffix strip applies to every vendor.
+    ;; rewriting theirs would miss their rows. Only the snapshot-suffix strip applies to every vendor, and it
+    ;; strips four digits because OpenRouter dates snapshots `-0813`, where Anthropic dates its own ids
+    ;; `-20250929` (which is why `claude.clj` strips eight).
     (-> (cond-> id (anthropic-model? model) (str/replace "." "-"))
         (str/replace #"-\d{4}$" ""))))
 

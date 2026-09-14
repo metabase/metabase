@@ -344,7 +344,9 @@
   "The `max_tokens` cap for a model with no documented maximum.
 
   A cap is sent rather than omitted because the Messages API reference does not mark `max_tokens` as optional:
-  https://platform.claude.com/docs/en/api/messages"
+  https://platform.claude.com/docs/en/api/messages
+  64000 is the lowest documented maximum among the Claude models still offered; the only lower one, Opus 4.1
+  at 32000, is retired and carries its own row in [[output-limits/max-output-tokens]]."
   64000)
 
 (defn- supported-model?
