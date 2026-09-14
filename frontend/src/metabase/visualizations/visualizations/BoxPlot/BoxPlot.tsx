@@ -1,4 +1,3 @@
-import type { EChartsType } from "echarts/core";
 import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 import { useSet } from "react-use";
 
@@ -14,6 +13,7 @@ import {
   CartesianChartRoot,
 } from "metabase/visualizations/visualizations/CartesianChart/CartesianChart.styled";
 import { useTooltipMouseLeave } from "metabase/visualizations/visualizations/CartesianChart/use-tooltip-mouse-leave";
+import type { EChartsType } from "metabase/viz-core";
 import {
   extractRemappings,
   getBoxPlotLayoutModel,

@@ -1,4 +1,3 @@
-import type { EChartsType } from "echarts/core";
 import { type MutableRefObject, useMemo } from "react";
 
 import { isNative } from "metabase/common/utils/card";
@@ -10,6 +9,7 @@ import {
   type ComputedVisualizationSettings,
   type EChartsEventHandler,
   type EChartsSeriesMouseEvent,
+  type EChartsType,
   type TreemapChartColumns,
   type TreemapTree,
   getNodesFromPath,

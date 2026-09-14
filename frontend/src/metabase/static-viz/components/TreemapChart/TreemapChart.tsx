@@ -1,10 +1,10 @@
 import { Group } from "@visx/group";
-import { type EChartsType, init } from "echarts/core";
 
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
 import {
   type ComputedVisualizationSettings,
+  type EChartsType,
   type RenderingContext,
   type TreemapChartOptionConfig,
   type TreemapTree,
@@ -15,8 +15,8 @@ import {
   getTreemapData,
   getTreemapFormatters,
   getTreemapLayoutNodes,
+  init,
   measureTreemapLabelLayouts,
-  registerEChartsModules,
   shouldShowParentLabels,
 } from "metabase/viz-core";
 
@@ -28,8 +28,6 @@ import { LEGEND_WIDTH, getTreemapLegendModel } from "./legend";
 const CHART_WIDTH = 965;
 const CHART_HEIGHT = 764;
 const LEGEND_GAP = 48;
-
-registerEChartsModules();
 
 export function TreemapChart({
   rawSeries,

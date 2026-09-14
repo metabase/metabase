@@ -1,9 +1,9 @@
 import { renderHook } from "@testing-library/react";
-import type { EChartsType } from "echarts/core";
 import type { MutableRefObject } from "react";
 
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
+  type EChartsType,
   OTHER_SLICE_KEY,
   type PieChartModel,
   type SliceTreeNode,

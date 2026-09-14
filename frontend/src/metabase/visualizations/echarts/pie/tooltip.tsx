@@ -1,11 +1,10 @@
-import type { TooltipOption } from "echarts/types/dist/shared";
-
 import { reactNodeToHtmlString } from "metabase/utils/react-to-html";
 import { getTooltipModel } from "metabase/visualizations/visualizations/PieChart/use-chart-events";
 import {
   EChartsTooltip,
   type PieChartFormatters,
   type PieChartModel,
+  type TooltipOption,
   getSliceKeyPath,
   getTooltipBaseOption,
 } from "metabase/viz-core";

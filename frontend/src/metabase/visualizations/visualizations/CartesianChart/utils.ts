@@ -1,11 +1,10 @@
-import type { EChartsCoreOption } from "echarts/core";
-
 import { dayjs } from "metabase/dayjs";
 import { isNotNull } from "metabase/utils/types";
 import {
   type BaseCartesianChartModel,
   type ChartDataset,
   type DataKey,
+  type EChartsCoreOption,
   type HighlightedObject,
   type HoveredObject,
   type SeriesModel,

@@ -1,8 +1,8 @@
-import type { EChartsType } from "echarts/core";
 import { useEffect, useRef } from "react";
 import _ from "underscore";
 
 import type { VisualizationProps } from "metabase/visualizations/types";
+import type { EChartsType } from "metabase/viz-core";
 import { ECHARTS_TOOLTIP_CONTAINER_CLASS } from "metabase/viz-core";
 
 const ECHARTS_TOOLTIP_SELECTOR = `.${ECHARTS_TOOLTIP_CONTAINER_CLASS} > div`;

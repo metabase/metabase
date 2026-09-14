@@ -1,9 +1,9 @@
-import type { EChartsType } from "echarts/core";
 import { useLayoutEffect, useMemo } from "react";
 
 import { getHoveredSeriesDataKey } from "metabase/visualizations/visualizations/CartesianChart/utils";
 import {
   type DataKey,
+  type EChartsType,
   type HoveredObject,
   type SeriesModel,
   createAxisVisibilityOption,

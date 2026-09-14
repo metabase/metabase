@@ -1,8 +1,8 @@
-import type { EChartsType } from "echarts/core";
 import { type MutableRefObject, useCallback, useRef, useState } from "react";
 import _ from "underscore";
 
 import {
+  type EChartsType,
   type NodeId,
   type ParentLabelLayout,
   type RenderingContext,

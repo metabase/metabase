@@ -1,11 +1,11 @@
 import { useDebouncedCallback } from "@mantine/hooks";
-import type { EChartsOption } from "echarts";
-import type { EChartsType } from "echarts/core";
 import { useEffect, useRef } from "react";
 
 import {
   type BaseCartesianChartModel,
   type ChartLayout,
+  type EChartsOption,
+  type EChartsType,
   EMPTY_TIMELINE_SELECTION_SERIES,
   type RenderingContext,
   type TimelineEventGroup,

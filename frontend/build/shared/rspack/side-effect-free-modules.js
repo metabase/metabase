@@ -24,6 +24,8 @@ const SIDE_EFFECT_PATHS = [
   "frontend/src/metabase/ui/components/overlays/Popover/register-popover-dropdown.ts",
   // Registers its endpoints on the shared Api at import, so a bundle that only reaches them by name still has to evaluate it.
   "frontend/src/metabase/query_builder/api/model-index.ts",
+  // Registers the echarts chart and component modules that `init` renders with.
+  "frontend/src/metabase/viz-core/echarts/index.ts",
 ].map((file) => path.join(REPO_ROOT, file));
 
 // Only script files are ever marked side-effect free.
