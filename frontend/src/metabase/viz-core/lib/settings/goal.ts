@@ -9,11 +9,10 @@ import { getNumericGoalValue, isDynamicGoalSetting } from "../dynamic-goals";
 
 import { getStackOffset } from "./stacking";
 
-// Users enter a normalized goal as a percentage (50 for 50%), while the axis holds fractions.
+// Users enter "50" for 50%, while the axis will use 0.5
 export const getGoalAxisValue = (goalValue: number, isNormalized = false) =>
   isNormalized ? goalValue / 100 : goalValue;
 
-/** The axis value the goal line is drawn at, or null when it is hidden or not (yet) a number. */
 export const getGoalLineValue = (
   settings: VisualizationSettings,
   isNormalized = false,
