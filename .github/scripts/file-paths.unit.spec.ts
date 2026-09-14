@@ -61,6 +61,32 @@ describe("file-paths.yaml", () => {
     expect(matches("ci_scripts", ".nvmrc")).toBe(true);
   });
 
+  it.each([
+    "jest.config.js",
+    "jest.base.conf.js",
+    "jest.esm-packages.js",
+    "jest.tz.unit.conf.js",
+  ])("runs every frontend unit test when %s changes", (path) => {
+    expect(matches("frontend_specs", path)).toBe(true);
+    expect(matches("frontend_unit_infra", path)).toBe(true);
+  });
+
+  it("runs every frontend unit test when an SDK jest setup file changes", () => {
+    expect(
+      matches(
+        "frontend_unit_infra",
+        "frontend/src/embedding-sdk-shared/jest/setup-env.ts",
+      ),
+    ).toBe(true);
+  });
+
+  it.each(["jest.config.js", "jest.base.conf.js", "jest.esm-packages.js"])(
+    "runs CI script tests when %s changes",
+    (path) => {
+      expect(matches("ci_scripts", path)).toBe(true);
+    },
+  );
+
   it("runs the ratchet check on the ratchets file", () => {
     expect(matches("project_ratchet_checks", ".clj-kondo/ratchets.edn")).toBe(
       true,

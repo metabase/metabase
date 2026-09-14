@@ -64,7 +64,9 @@ frontend_specs: &frontend_specs
   - "frontend/**/*.unit.*"
   - "enterprise/frontend/**/*.unit.*"
   - "jest.config.js"
-  - "jest.tz.unit.conf.json"
+  - "jest.base.conf.js"
+  - "jest.esm-packages.js"
+  - "jest.tz.unit.conf.js"
 
 release_source: &release_sources
   - "release/**"
@@ -83,9 +85,12 @@ frontend_unit_infra: &frontend_unit_infra
   - *frontend_configs
   - *frontend_ci
   - "jest.config.js"
-  - "jest.tz.unit.conf.json"
+  - "jest.base.conf.js"
+  - "jest.esm-packages.js"
+  - "jest.tz.unit.conf.js"
   - "frontend/test/**"
   - "frontend/**/__mocks__/**"
+  - "frontend/src/embedding-sdk-shared/jest/**"
 
 frontend_loki_infra: &frontend_loki_infra
   - *frontend_configs
@@ -107,6 +112,7 @@ ci_scripts:
   - "frontend/test/jest-test-paths-filter.ts"
   - ".dependency-cruiser.cjs"
   - "jest.config.js"
+  - "jest.base.conf.js"
   - "jest.esm-packages.js"
   - "package.json"
   - "bun.lock"
