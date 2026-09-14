@@ -56,10 +56,12 @@
 (deftest ^:parallel gpt-models-send-no-chat-cap-test
   (testing "GPT models omit max_output_tokens when the caller passes no cap (BOT-1858 D11)"
     (doseq [model (concat
-                   ;; OpenAI, as sent — this catalog covers every GPT row in the table
+                   ;; OpenAI, as sent — every GPT row in the table but gpt-5.4-nano, which the catalog
+                   ;; does not offer
                    (keys openai/supported-models)
                    ;; Bedrock `openai.*` and Azure `openai/<deployment>` resolve to those same rows through
-                   ;; output-limits-key, so these spellings check the translation rather than more rows
+                   ;; output-limits-key, so these spellings check the translation rather than more rows —
+                   ;; except gpt-5.4-nano, which is here because it is the one table row the catalog omits
                    ["openai.gpt-5.5" "openai.gpt-5.5-2026-04-23"
                     "GPT-5.5" "gpt-5.4-nano" "gpt-5.4-2026-03-05"])]
       (is (not (contains? (openai/openai-request-body {:model model :input []}) :max_output_tokens))
