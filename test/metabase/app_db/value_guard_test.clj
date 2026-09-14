@@ -16,12 +16,12 @@
 (deftest auto-param-lifts-inline-values-test
   (testing "a marked value is lifted into HoneySQL's params map and binds as ?"
     (let [[form params] (value-guard/auto-param
-                         {:select [:*] :from [:t] :where [:= :id [:param* 4]]})]
+                         {:select [:*] :from [:t] :where [:= :id [:auto/param 4]]})]
       (is (= ["SELECT * FROM t WHERE id = ?" 4]
              (sql/format form {:params params})))))
   (testing "a hostile non-scalar passed through [:param*] binds opaquely instead of compiling to SQL"
     (let [evil          {:raw "(SELECT password FROM core_user)"}
-          [form params] (value-guard/auto-param {:select [:*] :from [:t] :where [:= :id [:param* evil]]})
+          [form params] (value-guard/auto-param {:select [:*] :from [:t] :where [:= :id [:auto/param evil]]})
           [sql & args]  (sql/format form {:params params})]
       (is (= "SELECT * FROM t WHERE id = ?" sql))
       (is (= [evil] args) "the value is a bound parameter, not SQL text"))))
@@ -91,6 +91,12 @@
                                                      :where [:= :id :evil]}]})))
   (testing "an unmarked subquery in a value slot is still rejected"
     (is (rejects? {:where [:= :id {:select [:x] :from :core_user}]}))))
+
+(deftest unresolved-auto-param-is-rejected-test
+  (testing "a marker that was never lifted by `bound` would compile to a PARAM() call, so it throws"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"unresolved"
+                          (value-guard/assert-values-wrapped!
+                           {:where [:= :locale [:auto/param "de"]]} {} false)))))
 
 (deftest str-coercion-test
   (is (= "de" (value-guard/str* "de")))

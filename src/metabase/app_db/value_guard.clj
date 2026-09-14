@@ -21,6 +21,7 @@
    [clojure.walk :as walk]
    [metabase.util.honey-sql-2 :as h2x]
    [methodical.core :as methodical]
+   [toucan2.honeysql2 :as t2.honeysql]
    [toucan2.pipeline :as t2.pipeline]))
 
 (set! *warn-on-reflection* true)
@@ -28,17 +29,17 @@
 ;;; ------------------------------------------- auto-param (GHY-4473) --------------------------------------------
 
 (defn auto-param
-  "Rewrite `[:param* v]` markers into HoneySQL's `[:param :kN]` plus the params map they refer to.
-  Returns `[rewritten-form params-map]`, ready for `(sql/format form {:params params})`.
+  "Rewrite `[:auto/param v]` markers into HoneySQL's `[:param :kN]` plus the params map they refer to.
+  Returns `[rewritten-form params-map]`.
 
-  Only acts on values that were explicitly marked. The guarantee that nothing was *missed* is
-  `assert-values-wrapped!`, not this."
+  Callers normally want [[bound]], which also hands the params to HoneySQL. Only acts on values
+  that were explicitly marked; the guarantee that nothing was *missed* is `assert-values-wrapped!`."
   [form]
   (let [params  (atom {})
         counter (atom 0)]
     [(walk/postwalk
       (fn [x]
-        (if (and (vector? x) (= :param* (first x)))
+        (if (and (vector? x) (= :auto/param (first x)))
           (let [k (keyword (str "p" (swap! counter inc)))]
             (swap! params assoc k (second x))
             [:param k])
@@ -109,6 +110,10 @@
   [x]
   (and (sequential? x) (= :param (first x))))
 
+(defn- auto-param-form?
+  [x]
+  (and (sequential? x) (= :auto/param (first x))))
+
 (declare ^:private check-nested!)
 
 (defn- allow-column-ref?
@@ -163,6 +168,10 @@
   [v strict?]
   (cond
     (param-form? v)      true
+    ;; An `[:auto/param v]` that reached compilation was never lifted by `bound`, and HoneySQL would
+    ;; happily compile it to a `PARAM(?)` function call rather than erroring. Catch it here.
+    (auto-param-form? v) (throw (ex-info "[:auto/param ...] reached the database unresolved -- wrap the query in `bound`."
+                                         {:type ::unresolved-auto-param, :value v}))
     (allow-column-ref? v) true
     ;; A marker asserts the *structure* is dev-authored. It says nothing about the values inside,
     ;; which are just as reachable, so descend into the subquery rather than passing it wholesale.
@@ -286,6 +295,28 @@
   (when (enforcing-caller?)
     (assert-values-wrapped! built-query {:model model} false))
   built-query)
+
+(defn bound*
+  "Implementation of [[bound]]."
+  [query thunk]
+  (let [[form params] (auto-param query)]
+    (binding [t2.honeysql/*options* (assoc (t2.honeysql/options) :params params)]
+      (thunk form))))
+
+(defmacro bound
+  "Run `body` with every `[:auto/param v]` in `query` bound as a SQL parameter, passing the
+  rewritten query to `body` as `query-sym`.
+
+  Write the value where it belongs and it is bound as a `?` rather than compiled:
+
+    (bound [q {:select [:*] :from [:t] :where [:= :locale [:auto/param locale]]}]
+      (t2/query q))
+
+  HoneySQL wants the values in a map separate from the query; this keeps them inline and does the
+  lifting, so a caller never has to hold the two in sync."
+  {:style/indent [[:block 1]]}
+  [[query-sym query] & body]
+  `(bound* ~query (fn [~query-sym] ~@body)))
 
 (defn keep-me
   "No-op so a requiring namespace can reference this one without the linter pruning the require."

@@ -3,8 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`).
 
   This namespace is listed in [[metabase.app-db.value-guard/enforcing-namespace-prefixes]], so every query it issues is
-  checked: a value slot holding anything that could compile as SQL fails the query. `locale` reaches the query from a
-  request parameter, so it is coerced where it enters."
+  checked: a value slot holding anything that could compile as SQL fails the query."
   (:require
    [metabase.app-db.value-guard :as value-guard]
    [metabase.util.malli :as mu]
@@ -13,9 +12,11 @@
 (mu/defn translations-for-locale
   "The ContentTranslations for `locale`, ordered by message id."
   [locale :- :string]
-  (t2/select :model/ContentTranslation
-             :locale (value-guard/str* locale)
-             {:order-by [:msgid]}))
+  ;; `locale` arrives from a request parameter, so it is bound as a SQL parameter rather than
+  ;; compiled into the query.
+  (value-guard/bound [query {:where    [:= :locale [:auto/param locale]]
+                             :order-by [:msgid]}]
+                     (t2/select :model/ContentTranslation query)))
 
 (mu/defn all-translations
   "Every ContentTranslation, ordered by locale and message id."
