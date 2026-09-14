@@ -146,7 +146,7 @@
                                (:max_tokens (zai/zai-request-body {:model model :input input})))
         "glm-5.3" 131072
         "glm-5.2" 131072))
-    (testing "a model with no documented maximum is still sent uncapped"
+    (testing "a model with no row in the table is still sent uncapped"
       (is (not (contains? (zai/zai-request-body {:model "glm-4.7" :input input})
                           :max_tokens))))
     (testing "the caller's own task cap wins over the documented maximum"
