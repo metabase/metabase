@@ -170,8 +170,8 @@
 (mu/defn request-body
   "Builds the `streamGenerateContent` request body for an LLM request.
 
-  A request that names a catalog model and carries no `:max-tokens` is capped at that model's documented
-  maximum output (see [[output-limits/max-output-tokens]])."
+  A request that carries no `:max-tokens` is capped at the model's documented maximum output, where
+  [[output-limits/max-output-tokens]] knows one."
   [{:keys [system input tools schema tool_choice temperature max-tokens model reasoning?]
     :or   {reasoning? true}} :- core/LLMRequestOpts]
   (let [fdecls     (when (seq tools) (mapv tool->function-declaration tools))
