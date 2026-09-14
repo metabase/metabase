@@ -8,6 +8,7 @@ import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { screen, waitFor, within } from "__support__/ui";
 import * as IsLocalhostModule from "embedding-sdk-bundle/lib/get-is-localhost";
+import { getHostReactMajorVersion } from "embedding-sdk-bundle/lib/host-react-version";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import {
   createMockApiKeyConfig,
@@ -30,15 +31,28 @@ jest.mock("metabase/visualizations/register", () => ({
   registerVisualizations: jest.fn(),
 }));
 
+// Jest renders with React 18, which is itself a usage problem on localhost.
+// The host React major is controlled per test instead.
+jest.mock("embedding-sdk-bundle/lib/host-react-version", () => ({
+  getHostReactMajorVersion: jest.fn(),
+}));
+
 interface Options {
   authConfig: MetabaseAuthConfig;
   hasEmbeddingFeature?: boolean;
   isEmbeddingSdkEnabled?: boolean;
   isDevelopmentMode?: boolean;
   hasExpirationClaim?: boolean;
+  hostReactMajorVersion?: number;
 }
 
-const setup = ({ hasExpirationClaim = true, ...options }: Options) => {
+const setup = ({
+  hasExpirationClaim = true,
+  hostReactMajorVersion = 19,
+  ...options
+}: Options) => {
+  jest.mocked(getHostReactMajorVersion).mockReturnValue(hostReactMajorVersion);
+
   const tokenFeatures = createMockTokenFeatures({
     embedding_sdk: options.hasEmbeddingFeature ?? true,
     development_mode: options.isDevelopmentMode ?? false,
@@ -311,6 +325,75 @@ describe("SdkUsageProblemDisplay", () => {
       "href",
       "https://www.metabase.com/docs/latest/embedding/sdk/authentication#2-add-a-new-endpoint-to-your-backend-to-handle-authentication",
     );
+  });
+
+  it("shows a warning when the host app runs React 18 on localhost", async () => {
+    expect(window.location.origin).toBe("http://localhost");
+
+    setup({ authConfig: createMockSdkConfig(), hostReactMajorVersion: 18 });
+
+    await userEvent.click(screen.getByTestId(PROBLEM_INDICATOR_TEST_ID));
+
+    const card = screen.getByTestId(PROBLEM_CARD_TEST_ID);
+
+    expect(
+      within(card).getByText("This embed is powered by the Metabase SDK."),
+    ).toBeInTheDocument();
+
+    expect(
+      within(card).getByText(
+        "This embed is running on React 18. The SDK will require React 19 in an upcoming release. Please upgrade your application to React 19 to keep receiving updates.",
+      ),
+    ).toBeInTheDocument();
+
+    const docsLink = within(card).getByRole("link", {
+      name: "Documentation",
+    });
+
+    expect(docsLink).toHaveAttribute(
+      "href",
+      "https://www.metabase.com/docs/latest/embedding/sdk/introduction#modular-embedding-sdk-prerequisites",
+    );
+  });
+
+  it("does not show the React 18 warning outside localhost", () => {
+    const mock = jest
+      .spyOn(IsLocalhostModule, "getIsLocalhost")
+      .mockImplementation(() => false);
+
+    setup({ authConfig: createMockSdkConfig(), hostReactMajorVersion: 18 });
+
+    expect(
+      screen.queryByTestId(PROBLEM_INDICATOR_TEST_ID),
+    ).not.toBeInTheDocument();
+
+    mock.mockRestore();
+  });
+
+  it("does not show the React 18 warning when the host app runs React 19", () => {
+    setup({ authConfig: createMockSdkConfig(), hostReactMajorVersion: 19 });
+
+    expect(
+      screen.queryByTestId(PROBLEM_INDICATOR_TEST_ID),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the API key warning over the React 18 warning on localhost", async () => {
+    setup({ authConfig: createMockApiKeyConfig(), hostReactMajorVersion: 18 });
+
+    await userEvent.click(screen.getByTestId(PROBLEM_INDICATOR_TEST_ID));
+
+    const card = screen.getByTestId(PROBLEM_CARD_TEST_ID);
+
+    expect(
+      within(card).getByText(
+        /This is intended for evaluation purposes and works only on localhost. To use on other sites, implement SSO./,
+      ),
+    ).toBeInTheDocument();
+
+    expect(
+      within(card).queryByText(/This embed is running on React 18/),
+    ).not.toBeInTheDocument();
   });
 
   it("hides the problem when 'hide' is clicked", async () => {

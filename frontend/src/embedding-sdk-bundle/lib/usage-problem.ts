@@ -5,6 +5,7 @@ import type {
   SdkUsageProblem,
   SdkUsageProblemKey,
 } from "embedding-sdk-bundle/types/usage-problem";
+import { isHostAppInDevMode } from "embedding-sdk-shared/lib/is-host-app-in-dev-mode";
 import {
   EMBEDDING_SDK_CONFIG,
   isEmbeddingEajs,
@@ -12,6 +13,7 @@ import {
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
 
 import { getIsLocalhost } from "./get-is-localhost";
+import { getHostReactMajorVersion } from "./host-react-version";
 
 interface SdkProblemOptions {
   authConfig: MetabaseAuthConfig;
@@ -28,6 +30,14 @@ interface SdkProblemOptions {
    * @see getIsLocalhost()
    */
   isLocalHost?: boolean;
+
+  /**
+   * Major version of the React the host app renders the SDK with.
+   * If not provided, it will be read from the `react` module.
+   *
+   * @see getHostReactMajorVersion()
+   */
+  hostReactMajorVersion?: number | null;
 }
 
 export const USAGE_PROBLEM_MESSAGES = {
@@ -41,6 +51,7 @@ export const USAGE_PROBLEM_MESSAGES = {
   // eslint-disable-next-line metabase/no-literal-metabase-strings -- only shown in development.
   DEVELOPMENT_MODE_CLOUD_INSTANCE: `This Metabase is in development mode intended exclusively for testing. Using this Metabase for everyday BI work or when embedding in production is considered unfair usage.`,
   JWT_EXP_NULL: `The JWT token is missing the "exp" (expiration) claim. We will disallow tokens without "exp" in a future release. Please add "exp" to the token payload.`,
+  REACT_18_DEPRECATED: `This embed is running on React 18. The SDK will require React 19 in an upcoming release. Please upgrade your application to React 19 to keep receiving updates.`,
 } as const;
 
 export const SDK_AUTH_DOCS_URL =
@@ -53,6 +64,10 @@ export const SDK_INTRODUCTION_DOCS_URL =
   // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- these links are used in the SDK banner which is only shown to developers
   "https://www.metabase.com/docs/latest/embedding/sdk/introduction#in-metabase";
 
+const SDK_PREREQUISITES_DOCS_URL =
+  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- these links are used in the SDK banner which is only shown to developers
+  "https://www.metabase.com/docs/latest/embedding/sdk/introduction#modular-embedding-sdk-prerequisites";
+
 /** Documentation for each kind of SDK usage problems */
 export const USAGE_PROBLEM_DOC_URLS: Record<SdkUsageProblemKey, string> = {
   API_KEYS_WITHOUT_LICENSE: METABASE_UPGRADE_URL,
@@ -61,6 +76,7 @@ export const USAGE_PROBLEM_DOC_URLS: Record<SdkUsageProblemKey, string> = {
   EMBEDDING_SDK_NOT_ENABLED: SDK_INTRODUCTION_DOCS_URL,
   DEVELOPMENT_MODE_CLOUD_INSTANCE: METABASE_UPGRADE_URL,
   JWT_EXP_NULL: SDK_AUTH_DOCS_URL,
+  REACT_18_DEPRECATED: SDK_PREREQUISITES_DOCS_URL,
 } as const;
 
 /**
@@ -78,6 +94,7 @@ export function getSdkUsageProblem(
     isDevelopmentMode,
     session,
     isLocalHost,
+    hostReactMajorVersion = getHostReactMajorVersion(),
   } = options;
 
   const { apiKey } = authConfig;
@@ -90,6 +107,8 @@ export function getSdkUsageProblem(
   // but we want to allow overriding it via the isLocalHost parameter
   // in case of a local app running a distant MB instance
   const isLocalhost = isLocalHost ?? getIsLocalhost();
+
+  const isDevelopmentHost = isLocalhost || isHostAppInDevMode();
 
   if (isDevelopmentMode) {
     return toWarning("DEVELOPMENT_MODE_CLOUD_INSTANCE");
@@ -116,6 +135,9 @@ export function getSdkUsageProblem(
       isEnabled,
       session,
       isMcpApp,
+      isDevelopmentHost,
+      hostReactMajorVersion,
+      isEajs: isEmbeddingEajs(),
     })
       // MCP Apps uses temporary sessions created by MCP backend.
       .with({ isMcpApp: true }, () => null)
@@ -145,6 +167,12 @@ export function getSdkUsageProblem(
         toError("API_KEYS_WITH_LICENSE"),
       )
       .with({ session: { exp: P.nullish } }, () => toWarning("JWT_EXP_NULL"))
+      // The iframe embed renders with the React shipped by Metabase, so the
+      // host app's React version is not the customer's to upgrade there.
+      .with(
+        { hostReactMajorVersion: 18, isDevelopmentHost: true, isEajs: false },
+        () => toWarning("REACT_18_DEPRECATED"),
+      )
       .otherwise(() => null)
   );
 }

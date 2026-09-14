@@ -26,6 +26,11 @@ jest.mock("metabase/visualizations/register", () => ({
   registerVisualizations: jest.fn(),
 }));
 
+// Jest renders with React 18, which is itself a usage problem on localhost.
+jest.mock("embedding-sdk-bundle/lib/host-react-version", () => ({
+  getHostReactMajorVersion: () => 19,
+}));
+
 jest.mock("metabase/embedding-sdk/config", () => ({
   ...jest.requireActual("metabase/embedding-sdk/config"),
   EMBEDDING_SDK_CONFIG: {
