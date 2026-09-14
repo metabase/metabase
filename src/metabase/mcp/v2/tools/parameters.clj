@@ -30,6 +30,7 @@
    [clojure.string :as str]
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resolve :as v2.resolve]
    [metabase.metabot.scope :as metabot.scope]
@@ -311,8 +312,9 @@
       (format "No values at offset %d — %d available." offset total))
 
     :else
-    (or (common/truncation-line {:param :query :offset offset :limit limit :returned returned
-                                 :total total :total-floor? more?})
+    (or (some-> (common/truncation-line {:param :query :offset offset :limit limit :returned returned
+                                         :total total :total-floor? more?})
+                message/render)
         (when more?
           (format "Returned %d — the source holds more values than it will return; narrow with `query` to reach the rest."
                   returned)))))

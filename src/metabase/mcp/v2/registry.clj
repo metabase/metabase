@@ -26,6 +26,7 @@
    [metabase.mcp.ui-resource :as mcp.ui-resource]
    [metabase.mcp.usage :as mcp.usage]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]))
@@ -50,20 +51,20 @@
     (throw (ex-info "v2 MCP tool registered without a :name" {:tool tool})))
   (doseq [[k v] {:scope scope :description description}]
     (when-not (and (string? v) (not (str/blank? v)))
-      (throw (ex-info (format "v2 MCP tool %s registered without a %s string" tool-name k)
+      (throw (ex-info (format "v2 MCP tool %s registered without a %s string" (pr-str tool-name) (pr-str k))
                       {:tool-name tool-name k v}))))
   (when-not args
-    (throw (ex-info (format "v2 MCP tool %s registered without an :args Malli schema" tool-name)
+    (throw (ex-info (format "v2 MCP tool %s registered without an :args Malli schema" (pr-str tool-name))
                     {:tool-name tool-name})))
   (when-not (ifn? handler)
-    (throw (ex-info (format "v2 MCP tool %s registered without a :handler fn" tool-name)
+    (throw (ex-info (format "v2 MCP tool %s registered without a :handler fn" (pr-str tool-name))
                     {:tool-name tool-name})))
   ;; Dispatch gates on :required-extensions, so a misspelled key (:require-extensions,
   ;; :requires-extension) would silently disable the gate — reject unknown keys loudly instead.
   (when-let [unknown (seq (remove #{:name :scope :description :args :handler :annotations
                                     :output-schema :required-extensions :title :_meta}
                                   (keys tool)))]
-    (throw (ex-info (format "v2 MCP tool %s registered with unknown option(s) %s" tool-name (vec unknown))
+    (throw (ex-info (format "v2 MCP tool %s registered with unknown option(s) %s" (pr-str tool-name) (pr-str (vec unknown)))
                     {:tool-name tool-name :unknown-keys (vec unknown)})))
   ;; Only the extensions a client can actually advertise are gateable: an unknown keyword is never in
   ;; `ui-resource/supported-extensions`'s output, so the tool would be hidden from and refused to every
@@ -71,11 +72,11 @@
   (when (contains? tool :required-extensions)
     (let [exts (:required-extensions tool)]
       (when-not (and (set? exts) (every? keyword? exts))
-        (throw (ex-info (format "v2 MCP tool %s :required-extensions must be a set of keywords" tool-name)
+        (throw (ex-info (format "v2 MCP tool %s :required-extensions must be a set of keywords" (pr-str tool-name))
                         {:tool-name tool-name :required-extensions exts})))
       (when-let [unknown (seq (remove mcp.ui-resource/known-extensions exts))]
         (throw (ex-info (format "v2 MCP tool %s requires unknown client extension(s) %s — no client can satisfy them"
-                                tool-name (vec unknown))
+                                (pr-str tool-name) (pr-str (vec unknown)))
                         {:tool-name tool-name :unknown-extensions (vec unknown)})))))
   ;; Fail at load time (not first list) on a schema strict clients can't consume.
   (tools-manifest/assert-optional-fields-nullable! args tool-name)
@@ -86,7 +87,7 @@
   (let [handler-sym (fn [h] (when (var? h) (symbol h)))]
     (when-let [existing (get @tools* tool-name)]
       (when-not (= (handler-sym (:handler existing)) (handler-sym handler))
-        (throw (ex-info (format "v2 MCP tool %s is already registered by a different handler" tool-name)
+        (throw (ex-info (format "v2 MCP tool %s is already registered by a different handler" (pr-str tool-name))
                         {:tool-name tool-name})))))
   (swap! tools* assoc tool-name tool)
   ;; flush cache to allow for repl/test redefinition.
@@ -227,14 +228,14 @@
 ;;; ------------------------------------------------ Dispatch ------------------------------------------------------
 
 (defn- validation-error-message
-  "Validate `arguments` against the tool's Malli schema; returns a teaching-style message
-   string on failure, nil when valid."
+  "Validate `arguments` against the tool's Malli schema; returns a teaching-style message on failure, nil when
+   valid."
   [schema arguments]
   (when-let [explanation ((mr/explainer schema) arguments)]
-    (str "Invalid arguments: " (common/humanize-detail (me/humanize explanation)))))
+    (message/msg ["Invalid arguments: %s"] (common/humanize-detail (me/humanize explanation)))))
 
 (defn- insufficient-scope-message
-  "The scope-denial error text. Names the scope the tool requires and the ones the token holds — both are
+  "The scope-denial error message. Names the scope the tool requires and the ones the token holds — both are
    in hand here, and a message that names only the tool leaves the caller with nothing to act on, against
    the server's own `initialize` instructions promising that a failed call always names its fix.
 
@@ -242,14 +243,17 @@
    `token-scopes` may carry the `::api.scope/unrestricted` keyword alongside its strings, which is not a
    scope a caller can request, so only strings are listed back."
   [tool-name required token-scopes]
+  ;; The tool name and its required scopes are server-declared; the held scopes come from the token, and a client can
+  ;; register any scope string.
   (let [held  (sort (filter string? token-scopes))
         needs (if (set? required)
-                (str "one of " (str/join ", " (sort required)))
-                (str required))]
-    (str "Insufficient scope to call tool: " tool-name ". Requires " needs "; "
-         (if (seq held)
-           (str "your token holds " (str/join ", " held) ".")
-           "your token holds no scopes."))))
+                (message/msg ["one of %s"] (message/raw (str/join ", " (sort required))))
+                (message/msg ["%s"] (message/raw (str required))))]
+    (if (seq held)
+      (message/msg ["Insufficient scope to call tool: %s. Requires %s; your token holds %s."]
+                   (message/raw tool-name) needs (common/list-message held))
+      (message/msg ["Insufficient scope to call tool: %s. Requires %s; your token holds no scopes."]
+                   (message/raw tool-name) needs))))
 
 (defn- dispatch-tool-call
   [token-scopes session-id tool-name arguments options]
@@ -261,10 +265,10 @@
       ;; calling a tool that never existed.
       (or (nil? tool)
           (contains? (disabled-tool-names) tool-name))
-      {:error {:code common/error-code-method-not-found :message (str "Unknown tool: " tool-name)}}
+      {:error {:code common/error-code-method-not-found :message (message/msg ["Unknown tool: %s"] tool-name)}}
 
       (not (map? (or arguments {})))
-      {:error {:code common/error-code-invalid-params :message "Invalid arguments: expected a JSON object."}}
+      {:error {:code common/error-code-invalid-params :message (message/msg ["Invalid arguments: expected a JSON object."])}}
 
       (not (mcp.scope/matches? token-scopes (:scope tool)))
       {:error {:code common/error-code-invalid-request
@@ -273,7 +277,8 @@
       ;; A UI tool the client can't render is a caller error, not a hidden tool: unlike the
       ;; scope/disabled cases it stays listed for capable clients, so name what's missing.
       (seq missing)
-      {:error {:code common/error-code-invalid-params :message (mcp.ui-resource/missing-extensions-error tool-name missing)}}
+      {:error {:code    common/error-code-invalid-params
+               :message (message/msg ["%s"] (mcp.ui-resource/missing-extensions-error tool-name missing))}}
 
       :else
       ;; Strict MCP clients (ChatGPT) send every declared property with `null` for the ones they
@@ -295,7 +300,7 @@
               {:result (common/->mcp-error-content e)})))))))
 
 (defn call-tool
-  "Dispatch a v2 MCP `tools/call`. Returns `{:error {:code ... :message ...}}` when the registry rejects the request before dispatch, or `{:result mcp-content}` after handler execution. Only an executed handler can produce an MCP result carrying `:isError`.
+  "Dispatch a v2 MCP `tools/call`. Returns `{:error {:code ... :message ...}}`, with a message built by `msg`, when the registry rejects the request before dispatch, or `{:result mcp-content}` after handler execution. Only an executed handler can produce an MCP result carrying `:isError`.
 
    Every call is recorded to `mcp_tool_call_log` (EE-only, best-effort) with its timing, success/error status, and on error the JSON-RPC `error_code` + `error_message` (the latter gated/truncated by the writer)."
   ([token-scopes session-id tool-name arguments]
@@ -322,7 +327,7 @@
                result-error-code
                (::common/error-code result)]
            (if error
-             (record! "error" (:code error) (:message error))
+             (record! "error" (:code error) (message/render (:message error)))
              (if (:isError result)
                (record! "error"
                         (or result-error-code common/error-code-internal)

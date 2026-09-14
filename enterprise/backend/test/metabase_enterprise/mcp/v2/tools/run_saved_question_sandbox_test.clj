@@ -11,6 +11,7 @@
    [metabase-enterprise.test :as met]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    ;; registers the run_saved_question tool for the call-tool seam below
    [metabase.mcp.v2.tools.query]
@@ -47,7 +48,7 @@
 (defn- response-text
   "A dispatch outcome's text block, or a registry-level rejection's message."
   [{:keys [result error]}]
-  (if error (:message error) (-> result :content first :text)))
+  (if error (message/render (:message error)) (-> result :content first :text)))
 
 (defn- dispatch-error?
   "Whether a dispatch outcome is an error, at either layer: a registry-level rejection

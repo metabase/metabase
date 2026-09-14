@@ -12,6 +12,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.queries :as v2.queries]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.tools.content]
@@ -49,7 +50,7 @@
 (defn- response-text
   "The outcome's text block, or a registry-level rejection's message."
   [{:keys [result error]}]
-  (if error (:message error) (-> result :content first :text)))
+  (if error (message/render (:message error)) (-> result :content first :text)))
 
 (defn- payload
   "Parse the JSON payload line of a successful execute_query response. Throws if the call
@@ -588,7 +589,7 @@
       (testing "GHY-4142: a token without the execute scope is denied before dispatch"
         ;; A scope denial is a JSON-RPC error, not `isError` tool content — nothing reaches the handler.
         (let [{:keys [error]} (registry/call-tool #{"agent:content:read"} sid "execute_query" {})]
-          (is (re-find #"^Insufficient scope to call tool: execute_query\." (:message error)))))
+          (is (re-find #"^Insufficient scope to call tool: execute_query\." (message/render (:message error))))))
       (testing "GHY-4142: the identical call with the execute scope reaches the handler (positive control)"
         ;; It fails input validation — proof it got past the scope gate without minting anything.
         (is (str/starts-with? (error-text (registry/call-tool execute-scope sid "execute_query" {}))

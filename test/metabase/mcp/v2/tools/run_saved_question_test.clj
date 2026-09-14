@@ -10,6 +10,7 @@
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    ;; registers the run_saved_question tool for the call-tool seam below; aliased for the
    ;; direct unit test of the private `check-parameter-value!`
@@ -38,7 +39,7 @@
 (defn- response-text
   "The outcome's text block, or a registry-level rejection's message."
   [{:keys [result error]}]
-  (if error (:message error) (-> result :content first :text)))
+  (if error (message/render (:message error)) (-> result :content first :text)))
 
 (defn- tool-result
   "The decoded JSON payload of a successful call, with the steering line (the text after the
@@ -335,7 +336,7 @@
     (mt/with-current-user (mt/user->id :rasta)
       (testing "row_limit above the 2000 cap is a schema-level teaching error"
         (is (str/includes? (tool-error (call-run-saved-question {:id card-id :row_limit 3000}))
-                           "row_limit: should be at most 2000")))
+                           "\"row_limit\": \"should be at most 2000\"")))
       (testing "an id that is neither numeric nor a 21-char entity_id is a teaching error"
         (is (= "Invalid id \"garbage\" — pass the positive numeric id, or the 21-character entity_id from a search or list result."
                (tool-error (call-run-saved-question {:id "garbage"}))))))))

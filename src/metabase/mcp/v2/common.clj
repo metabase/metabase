@@ -85,6 +85,13 @@
 
 ;;; ------------------------------------------------ Teaching errors -----------------------------------------------
 
+(defn message-ex-info
+  "An `ex-info` whose message is the rendering of message `msg`, with `data` and `msg` itself under `::message` as
+   its `ex-data`, and optional `cause`."
+  ([msg data] (message-ex-info msg data nil))
+  ([msg data cause]
+   (ex-info (message/render msg) (assoc data ::message msg) cause)))
+
 (defn throw-teaching-error
   "Throw an `ex-info` whose message is `msg`, a message or a string: a complete caller-facing sentence
    naming the fix. A message is rendered into the exception message and carried in `ex-data` under
@@ -92,17 +99,17 @@
   ([msg] (throw-teaching-error msg nil))
   ([msg data]
    (if (message/message? msg)
-     (throw (ex-info (message/render msg) (merge {:status-code 400} data {::message msg})))
+     (throw (message-ex-info msg (merge {:status-code 400} data)))
      (throw (ex-info msg (merge {:status-code 400} data))))))
 
 (defn throw-not-found
-  "Throw the collapsed not-found teaching error. Deliberately identical for \"doesn't exist\"
-   and \"exists but not readable\", so responses never form an existence oracle across the
-   permission boundary."
+  "Throw the collapsed not-found teaching error for `model`, a server-declared model keyword, and the caller's `id`.
+   Deliberately identical for \"doesn't exist\" and \"exists but not readable\", so responses never form an
+   existence oracle across the permission boundary."
   [model id]
-  (throw (ex-info (format "%s %s not found — it may not exist, or you may not have access to it."
-                          (name model) id)
-                  {:status-code 404})))
+  (throw-teaching-error (message/msg ["%s %s not found — it may not exist, or you may not have access to it."]
+                                     (message/raw (name model)) id)
+                        {:status-code 404}))
 
 (defn- status-code->error-code
   [status-code]
@@ -144,11 +151,12 @@
   [e]
   (let [{:keys [type fn-name humanized]} (ex-data e)]
     (when (contains? schema-failure-types type)
+      ;; `fn-name` is the symbol of a server function, not caller input.
       (if (= type :metabase.util.malli.fn/invalid-input)
-        (format "Server-side schema check failed in `%s`: %s. This is a bug in Metabase, not something to retry — report it."
-                fn-name (pr-str humanized))
-        (format "Server-side schema check failed in `%s` (on its return value). This is a bug in Metabase, not something to retry — report it."
-                fn-name)))))
+        (message/msg ["Server-side schema check failed in `%s`: %s. This is a bug in Metabase, not something to retry — report it."]
+                     (message/raw (str fn-name)) humanized)
+        (message/msg ["Server-side schema check failed in `%s` (on its return value). This is a bug in Metabase, not something to retry — report it."]
+                     (message/raw (str fn-name)))))))
 
 (defn- caller-facing-message
   "The message of caller-facing exception `e`: the message it carries under `::message`, else its
@@ -189,20 +197,52 @@
         (error-content message error-code-internal))
       (do
         (log/error e "Unhandled error dispatching MCP v2 tool call")
-        (error-content "Internal error" error-code-internal)))))
+        (error-content (message/msg ["Internal error"]) error-code-internal)))))
 
 ;;; ------------------------------------------------ Message helpers ----------------------------------------------
 
-(defn ellipsize
-  "`s` truncated to `limit` characters, with an ellipsis marking the cut."
+(defn- cut
   [s limit]
-  (let [s (str s)]
-    (if (> (count s) limit)
-      (str (subs s 0 limit) "…")
-      s)))
+  (if (> (count s) limit)
+    (str (subs s 0 limit) "…")
+    s))
+
+(defn ellipsize
+  "`x` cut to `limit` characters, with an ellipsis marking the cut. A message within the limit is returned as is,
+   and one over it becomes a message of its cut rendering as a single cleaned argument. Anything else is cut as a
+   string."
+  [x limit]
+  (if (message/message? x)
+    (let [text (message/render x)]
+      (if (> (count text) limit)
+        (message/msg ["%s"] (cut text limit))
+        x))
+    (cut (str x) limit)))
+
+(defn- join-messages
+  "One message of `parts`, each cleaned unless it is a message, joined pairwise by `join-two`."
+  [join-two parts]
+  (let [parts (vec parts)]
+    (case (count parts)
+      0 (message/msg [""])
+      1 (message/msg ["%s"] (first parts))
+      ;; Halving keeps the nesting, and so the rendering's recursion, logarithmic in the number of parts.
+      (let [half (quot (count parts) 2)]
+        (join-two (join-messages join-two (subvec parts 0 half))
+                  (join-messages join-two (subvec parts half)))))))
+
+(defn list-message
+  "A message of `items` separated by commas, each cleaned unless it is a message."
+  [items]
+  (join-messages #(message/msg ["%s, %s"] %1 %2) items))
+
+(defn- semicolon-list-message
+  [items]
+  (join-messages #(message/msg ["%s; %s"] %1 %2) items))
 
 (defn humanize-detail
-  "Flatten a [[malli.error/humanize]] explanation into one line of `path: expectation`.
+  "Flatten a [[malli.error/humanize]] explanation into a one-line message of `path: expectation`, with the paths
+   and expectations cleaned.
 
    Sequential positions are labelled `[i]` and satisfied entries dropped, so a failure inside a
    multi-element collection names which element it is in; a run of plain strings is a single
@@ -210,19 +250,20 @@
   [errors]
   (cond
     (map? errors)
-    (str/join "; " (map (fn [[k v]] (str (u/qualified-name k) ": " (humanize-detail v))) errors))
-
-    (and (sequential? errors) (every? string? errors))
-    (str/join ", " errors)
-
-    (sequential? errors)
-    (str/join "; " (keep-indexed (fn [i v]
-                                   (when (some? v)
-                                     (format "[%d] %s" i (humanize-detail v))))
+    (semicolon-list-message (map (fn [[k v]] (message/msg ["%s: %s"] (u/qualified-name k) (humanize-detail v)))
                                  errors))
 
+    (and (sequential? errors) (every? string? errors))
+    (list-message errors)
+
+    (sequential? errors)
+    (semicolon-list-message (keep-indexed (fn [i v]
+                                            (when (some? v)
+                                              (message/msg ["[%d] %s"] i (humanize-detail v))))
+                                          errors))
+
     :else
-    (str errors)))
+    (message/msg ["%s"] (str errors))))
 
 ;;; ------------------------------------------------ Response shaping ----------------------------------------------
 
@@ -288,16 +329,19 @@
    (select-fields type response-map fields nil))
   ([type response-map fields {:keys [response-format include]}]
    (when (or response-format include)
-     (throw-teaching-error "Use `fields` OR `response_format`/`include`, not both."))
+     (throw-teaching-error (message/msg ["Use `fields` OR `response_format`/`include`, not both."])))
    (when (empty? fields)
-     (throw-teaching-error "`fields` must name at least one path."))
+     (throw-teaching-error (message/msg ["`fields` must name at least one path."])))
+   ;; `type` and the catalog paths are server-declared.
    (let [catalog (or (projections/catalog type)
-                     (throw-teaching-error (format "`fields` is not supported for type %s." (name type))))]
+                     (throw-teaching-error (message/msg ["`fields` is not supported for type %s."]
+                                                        (message/raw (name type)))))]
      (doseq [path fields]
        (when-not (valid-path? path catalog)
-         (throw-teaching-error (format "Unknown field path %s for type %s. Nearest valid paths: %s."
-                                       (pr-str path) (name type)
-                                       (str/join ", " (nearest-paths path catalog))))))
+         (throw-teaching-error (message/msg ["Unknown field path %s for type %s. Nearest valid paths: %s."]
+                                            path
+                                            (message/raw (name type))
+                                            (message/raw (str/join ", " (nearest-paths path catalog)))))))
      (select-tree response-map (paths->tree fields)))))
 
 (defn response-format
@@ -307,15 +351,22 @@
   (case (get args :response_format)
     (nil "concise") :concise
     "detailed"      :detailed
-    (throw-teaching-error (format "Invalid response_format %s — use \"concise\" or \"detailed\"."
-                                  (pr-str (get args :response_format))))))
+    (throw-teaching-error (message/msg ["Invalid response_format %s — use \"concise\" or \"detailed\"."]
+                                       (get args :response_format)))))
 
 ;;; ------------------------------------------------ List envelopes ------------------------------------------------
 
+(defn- total-message
+  "`total` as a message, read as a lower bound when `total-floor?`."
+  [total total-floor?]
+  (if total-floor?
+    (message/msg ["at least %d"] total)
+    (message/msg ["%d"] total)))
+
 (defn truncation-line
-  "The steering sentence appended to a truncated list response: names the narrowing `param` when
-   one narrows this list, and always the next offset. Returns nil when the page isn't truncated
-   (or `total` is unknown). `:returned` is the actual page size — the caller's ground truth, e.g.
+  "The steering message appended to a truncated list response: names the narrowing `param` (a
+   server-declared argument keyword) when one narrows this list, and always the next offset.
+   Returns nil when the page isn't truncated (or `total` is unknown). `:returned` is the actual page size — the caller's ground truth, e.g.
    `(count data)` — not derived arithmetically, since a post-fetch drop (a stale index hit, an
    unreadable row) can leave a page shorter than `limit`/`total`/`offset` alone would predict.
    `:total-floor?` marks `total` as a lower bound rather than an exact count — e.g. a search total
@@ -325,30 +376,30 @@
   [{:keys [param offset limit total total-floor? returned]}]
   (let [offset (or offset 0)]
     (when (and total limit (< (+ offset limit) total))
-      (let [total-str (str (when total-floor? "at least ") total)
-            next      (+ offset limit)]
+      (let [total (total-message total total-floor?)
+            next  (+ offset limit)]
         (if param
-          (format "Returned %d of %s — narrow with `%s`, or continue with `offset: %d`."
-                  returned total-str (name param) next)
-          (format "Returned %d of %s — continue with `offset: %d`."
-                  returned total-str next))))))
+          (message/msg ["Returned %d of %s — narrow with `%s`, or continue with `offset: %d`."]
+                       returned total (message/raw (name param)) next)
+          (message/msg ["Returned %d of %s — continue with `offset: %d`."]
+                       returned total next))))))
 
 (defn- empty-page-line
-  "The steering sentence for a page that returned nothing while `total` says matches exist.
+  "The steering message for a page that returned nothing while `total` says matches exist.
    [[truncation-line]] only fires on arithmetic truncation, so an offset at or past the end — or a
    page whose every row was dropped after the count — otherwise carries no line at all, and an
    empty `data` reads as \"nothing matches\" rather than \"nothing *here*\". Nil when `total` is
    unknown or genuinely zero: that envelope already says it."
   [{:keys [offset total total-floor?]}]
   (when (and total (pos? total))
-    (let [total-str (str (when total-floor? "at least ") total)]
+    (let [total (total-message total total-floor?)]
       (if (pos? (or offset 0))
-        (format "No results at offset %d — %s available; page back with a smaller `offset`."
-                offset total-str)
+        (message/msg ["No results at offset %d — %s available; page back with a smaller `offset`."]
+                     offset total)
         ;; offset 0 with a positive total: the matches were counted, then dropped downstream
         ;; (a stale index hit, a row gone unreadable). Paging cannot help, so don't suggest it.
-        (format "Returned 0 of %s — the matches found are no longer readable or have been removed."
-                total-str)))))
+        (message/msg ["Returned 0 of %s — the matches found are no longer readable or have been removed."]
+                     total)))))
 
 (defn list-envelope
   "The literal list-response envelope `{:data … :returned … :total?}`. `total` is included
@@ -362,7 +413,7 @@
   "Build the MCP success content for a list response: the envelope (compact JSON) in the text
    block, with a steering line appended. `data` is already the page; `opts` carries
    `:offset`/`:limit`, an optional `:param` naming what narrows this list, and an optional
-   `:empty-hint` — the domain reason a genuinely empty result set (`total` 0) is empty, never an
+   `:empty-hint` message — the domain reason a genuinely empty result set (`total` 0) is empty, never an
    override of a computed line. Text-only — list data never rides `structuredContent` by reflex."
   [data total {:keys [empty-hint offset] :as opts}]
   (let [envelope (list-envelope data total)
@@ -377,8 +428,9 @@
                    (or (empty-page-line opts)
                        (when (and (= 0 total) (not (pos? (or offset 0)))) empty-hint))
                    (truncation-line opts))]
-    (success-content (cond-> (json/encode envelope)
-                       line (str "\n" line)))))
+    (success-content (if line
+                       (message/msg ["%s" "%s"] (message/raw (json/encode envelope)) line)
+                       envelope))))
 
 ;;; ------------------------------------------------- Frontend URLs ------------------------------------------------
 

@@ -9,6 +9,7 @@
    [metabase-enterprise.test :as met]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.redaction :as redaction]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.tools.content :as tools.content]
@@ -55,7 +56,7 @@
                                                    {:items [{:type "question" :id card-id}]
                                                     :include ["fields"]})]
     (when error
-      (throw (ex-info (str "get_content rejected: " (:message error)) {:error error})))
+      (throw (ex-info (str "get_content rejected: " (message/render (:message error))) {:error error})))
     (first (:results (json/decode+kw (-> result :content first :text))))))
 
 (deftest sandboxed-caller-does-not-receive-fingerprints-test

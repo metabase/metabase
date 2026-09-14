@@ -159,11 +159,15 @@
   (some-> (get-in request [:headers "accept"])
           (str/includes? "text/event-stream")))
 
+(def ^:private sse-message-prefix
+  "The SSE framing that opens each JSON-RPC message event."
+  "event: message\ndata: ")
+
 (defn- sse-body
   "Format a sequence of JSON-RPC messages as SSE event text."
   [messages]
   (str/join (for [message messages]
-              (str "event: message\ndata: " (json/encode message) "\n\n"))))
+              (str sse-message-prefix (json/encode message) "\n\n"))))
 
 ;;; -------------------------------------------------- Responses ---------------------------------------------------
 
@@ -279,7 +283,7 @@
                   (if-let [instance-origin (mw.security/site-origin)]
                     (same-origin-as-instance? origin instance-origin)
                     (same-origin-host? origin (get-in request [:headers "host"]))))
-      (json-response 403 (jsonrpc-error nil -32600 "Origin not allowed")))))
+      (json-response 403 (jsonrpc-error nil -32600 (message/msg ["Origin not allowed"]))))))
 
 (defn- require-valid-session
   "Validate the Mcp-Session-Id header value. Checks UUID format and, when a
@@ -287,13 +291,13 @@
   [user-id session-id]
   (cond
     (str/blank? session-id)
-    {:error (json-response 400 (jsonrpc-error nil -32600 "Missing Mcp-Session-Id header"))}
+    {:error (json-response 400 (jsonrpc-error nil -32600 (message/msg ["Missing Mcp-Session-Id header"])))}
 
     (not (mcp.session/valid-id? session-id))
-    {:error (json-response 404 (jsonrpc-error nil -32600 "Invalid or expired session"))}
+    {:error (json-response 404 (jsonrpc-error nil -32600 (message/msg ["Invalid or expired session"])))}
 
     (not (mcp.session/owned-by-user? session-id user-id))
-    {:error (json-response 404 (jsonrpc-error nil -32600 "Invalid or expired session"))}
+    {:error (json-response 404 (jsonrpc-error nil -32600 (message/msg ["Invalid or expired session"])))}
 
     :else
     {:session-id session-id}))
@@ -313,21 +317,21 @@
                                (string? (:method message))))]
     (cond
       (nil? body)
-      (json-response 400 (jsonrpc-error nil -32700 "Parse error: empty body"))
+      (json-response 400 (jsonrpc-error nil -32700 (message/msg ["Parse error: empty body"])))
 
       (and (not batch?)
            (or (not (valid-message? body))
                (and (= "initialize" (:method body))
                     (not (contains? body :id)))))
-      (json-response 400 (jsonrpc-error nil -32600 "Invalid request"))
+      (json-response 400 (jsonrpc-error nil -32600 (message/msg ["Invalid request"])))
 
       ;; JSON-RPC 2.0: empty batch is invalid
       (and batch? (empty? body))
-      (json-response 400 (jsonrpc-error nil -32600 "Invalid request: empty batch"))
+      (json-response 400 (jsonrpc-error nil -32600 (message/msg ["Invalid request: empty batch"])))
 
       ;; MCP spec: "The initialize request MUST NOT be part of a JSON-RPC batch"
       (and batch? (some #(and (valid-message? %) (= "initialize" (:method %))) body))
-      (json-response 400 (jsonrpc-error nil -32600 "initialize must not be batched"))
+      (json-response 400 (jsonrpc-error nil -32600 (message/msg ["initialize must not be batched"])))
 
       ;; Initialize: create session and return response with session header
       (and (not batch?) (valid-message? body) (= "initialize" (:method body)))
@@ -374,7 +378,7 @@
                 handle-msg      (fn [msg]
                                   (cond
                                     (not (valid-message? msg))
-                                    (jsonrpc-error nil -32600 "Invalid request")
+                                    (jsonrpc-error nil -32600 (message/msg ["Invalid request"]))
 
                                     :else
                                     (let [response (dispatch-request dispatch-method-fn msg session-id
@@ -449,9 +453,8 @@
   "The JSON-RPC error every keepalive refusal carries, whether it goes out as a 429 body or as an SSE frame on a
   stream whose headers are already sent."
   (jsonrpc-error nil -32000
-                 (str "Too many concurrent MCP event streams open for this user "
-                      "(limit " max-concurrent-keepalive-streams
-                      "). Close an existing stream before opening another.")))
+                 (message/msg ["Too many concurrent MCP event streams open for this user (limit %d). Close an existing stream before opening another."]
+                              max-concurrent-keepalive-streams)))
 
 (defn- at-keepalive-cap?
   "Is `user-id` already holding [[max-concurrent-keepalive-streams]] running streams?
@@ -602,21 +605,28 @@
    A client connecting via an alias is pointed at that same alias as the protected resource;
    any other path falls back to `default-path` (the surface's canonical URL).
 
-   `default-ask-scopes`, when non-empty, is emitted as the challenge's `scope` parameter."
-  [endpoint-paths default-path default-ask-scopes request]
-  ;; Routing matches on the first path segment, so a trailing slash (e.g. `/api/metabase-mcp/`) still
-  ;; reaches the handler — strip it so the alias is recognized rather than falling back to canonical.
-  (let [uri  (str/replace (:uri request) #"/+$" "")
-        path (if (contains? endpoint-paths uri) uri default-path)]
-    ;; Comma-separated per RFC 7235's `#auth-param`. Both MCP SDKs currently pull each parameter
-    ;; with an unanchored per-field regex and would accept spaces, but every spec and vendor example
-    ;; uses commas and the stricter parsers proposed upstream would not.
-    (str "Bearer realm=\"mcp\", resource_metadata=\"" (system/site-url) "/.well-known/oauth-protected-resource" path "\""
-         ;; A client that reads this prefers it over the resource metadata's `scopes_supported`,
-         ;; which is what lets a surface ask for less than it accepts: the wider set stays
-         ;; advertised and requestable, this is only what an uninstructed client asks for.
-         (when (seq default-ask-scopes)
-           (str ", scope=\"" (str/join " " default-ask-scopes) "\"")))))
+   `default-ask-scopes`, when non-empty, is emitted as the challenge's `scope` parameter, and `error`, when given,
+   as its `error` parameter."
+  ([endpoint-paths default-path default-ask-scopes request]
+   (www-authenticate-discovery endpoint-paths default-path default-ask-scopes request nil))
+  ([endpoint-paths default-path default-ask-scopes request error]
+   ;; Routing matches on the first path segment, so a trailing slash (e.g. `/api/metabase-mcp/`) still
+   ;; reaches the handler — strip it so the alias is recognized rather than falling back to canonical.
+   (let [uri  (str/replace (:uri request) #"/+$" "")
+         path (if (contains? endpoint-paths uri) uri default-path)]
+     ;; Comma-separated per RFC 7235's `#auth-param`. Both MCP SDKs currently pull each parameter
+     ;; with an unanchored per-field regex and would accept spaces, but every spec and vendor example
+     ;; uses commas and the stricter parsers proposed upstream would not.
+     (str/join " "
+               ["Bearer"
+                (str/join ", "
+                          (cond-> ["realm=\"mcp\""
+                                   (str "resource_metadata=\"" (system/site-url) "/.well-known/oauth-protected-resource" path "\"")]
+                            ;; A client that reads this prefers it over the resource metadata's `scopes_supported`,
+                            ;; which is what lets a surface ask for less than it accepts: the wider set stays
+                            ;; advertised and requestable, this is only what an uninstructed client asks for.
+                            (seq default-ask-scopes) (conj (str "scope=\"" (str/join " " default-ask-scopes) "\""))
+                            error                    (conj (str "error=\"" error "\""))))]))))
 
 (defn make-handler
   "Build a Ring async handler for one MCP surface. Uses JSON-RPC 2.0 over HTTP rather than REST,
@@ -667,7 +677,7 @@
                            (respond (handle-delete user-id request))
 
                            :else
-                           (respond (json-response 405 (jsonrpc-error nil -32600 "Method not allowed")))))
+                           (respond (json-response 405 (jsonrpc-error nil -32600 (message/msg ["Method not allowed"]))))))
                        (catch Throwable e
                          (raise e))))))]
          (cond
@@ -692,14 +702,14 @@
            bearer-token
            ;; RFC 6750 `invalid_token`, still carrying the RFC 9728 discovery parameters: a client whose
            ;; token expired re-discovers the protected-resource metadata from this 401 (MCP auth spec MUST).
-           (respond (json-response 401 (jsonrpc-error nil -32603 "Invalid bearer token")
-                                   {"WWW-Authenticate" (str (www-authenticate-discovery endpoint-paths default-path
-                                                                                        default-ask-scopes request)
-                                                            ", error=\"invalid_token\"")}))
+           (respond (json-response 401 (jsonrpc-error nil -32603 (message/msg ["Invalid bearer token"]))
+                                   {"WWW-Authenticate" (www-authenticate-discovery endpoint-paths default-path
+                                                                                   default-ask-scopes request
+                                                                                   "invalid_token")}))
 
            ;; No auth at all — return 401 with discovery
            :else
-           (respond (json-response 401 (jsonrpc-error nil -32603 "Authentication required")
+           (respond (json-response 401 (jsonrpc-error nil -32603 (message/msg ["Authentication required"]))
                                    {"WWW-Authenticate" (www-authenticate-discovery endpoint-paths default-path
                                                                                    default-ask-scopes request)}))))))
    (constantly nil)))

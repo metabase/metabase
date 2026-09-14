@@ -20,6 +20,7 @@
    [metabase.documents.core :as documents]
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resolve :as v2.resolve]
@@ -158,7 +159,7 @@
         ;; `mi/can-read?` below is one permission check per database; load them in one query first.
         _    (perms/prime-database-perms-cache {:db-ids (into #{} (map :id) rows)})
         dbs  (filterv mi/can-read? rows)]
-    (paged-list-content args dbs {:empty-hint "No databases are visible to you. Browsing data needs query-builder or table-metadata permission on at least one database."}
+    (paged-list-content args dbs {:empty-hint (message/msg ["No databases are visible to you. Browsing data needs query-builder or table-metadata permission on at least one database."])}
                         #(project-rows :database args %))))
 
 (defn- list-schemas
@@ -696,8 +697,9 @@
         projected (project-rows :collection-item args rows)
         line      (when (< (+ offset (count rows)) total)
                     (if (nil? ns-str)
-                      (common/truncation-line {:param :type :offset offset :limit limit :total total
-                                               :returned (count rows)})
+                      (some-> (common/truncation-line {:param :type :offset offset :limit limit :total total
+                                                       :returned (count rows)})
+                              message/render)
                       (format "Returned %d of %d — continue with `offset: %d`."
                               (count rows) total (+ offset limit))))]
     (common/success-content (cond-> (json/encode (common/list-envelope projected total))

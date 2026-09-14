@@ -19,6 +19,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.tools.browse :as tools.browse]
@@ -46,7 +47,7 @@
   [user args]
   (mt/with-test-user user
     (let [{:keys [result error]} (registry/call-tool nil nil "browse_collection" args)
-          text                   (if error (:message error) (-> result :content first :text))]
+          text                   (if error (message/render (:message error)) (-> result :content first :text))]
       (if (or error (:isError result))
         {:error text}
         (let [[body line] (str/split text #"\n" 2)]
@@ -395,7 +396,7 @@
                                                     (mt/user->id :crowberto)))}]
       (mt/with-test-user :rasta
         (let [{:keys [result error]} (registry/call-tool nil nil "browse_collection" {:id (:id c)})
-              text                   (if error (:message error) (-> result :content first :text))]
+              text                   (if error (message/render (:message error)) (-> result :content first :text))]
           (is (or error (:isError result)))
           (is (str/includes? text "may not exist")))))))
 
@@ -1086,7 +1087,7 @@
   "[[dispatch-data]]'s text block, or a registry-level rejection's message."
   [token-scopes args]
   (let [{:keys [result error]} (dispatch-data token-scopes args)]
-    (if error (:message error) (-> result :content first :text))))
+    (if error (message/render (:message error)) (-> result :content first :text))))
 
 (def ^:private content-read #{metabot.scope/agent-content-read})
 
@@ -1119,11 +1120,11 @@
                            (and (dispatch-error? outcome)
                                 (str/starts-with? text "Invalid arguments: ")
                                 (str/includes? text expected)))
-      {:action "list_databases" :databse_id 1}                "databse_id: disallowed key"
-      {:action "get_fields"     :table_ids "7"}               "table_ids: invalid type"
+      {:action "list_databases" :databse_id 1}                "\"databse_id\": \"disallowed key\""
+      {:action "get_fields"     :table_ids "7"}               "\"table_ids\": \"invalid type\""
       {:action "list_tables" :database_id (mt/id) :limit 9999} "should be at most 500"
       {:action "list_tables" :database_id (mt/id) :limit 0}    "should be at least 1"
-      {:action "list_fields"}                                  "action: should be either")))
+      {:action "list_fields"}                                  "\"action\": \"should be either")))
 
 (deftest ^:parallel browse-data-strips-top-level-nils-test
   (testing (str "GHY-4138: a strict MCP client sends every declared property, nulling the ones it "
@@ -1156,6 +1157,6 @@
     (are [args expected] (let [text (dispatch-text content-read args)]
                            (and (str/starts-with? text "Invalid arguments: ")
                                 (str/includes? text expected)))
-      {:action "get_fields" :table_ids [nil]}   "table_ids: [0] should be an integer"
-      {:action "get_fields" :table_ids [8 nil]} "[1] should be an integer"
-      {:action "get_fields" :fields [nil]}      "fields: [0] should be a string")))
+      {:action "get_fields" :table_ids [nil]}   "\"table_ids\": [0] \"should be an integer\""
+      {:action "get_fields" :table_ids [8 nil]} "[1] \"should be an integer\""
+      {:action "get_fields" :fields [nil]}      "\"fields\": [0] \"should be a string\"")))

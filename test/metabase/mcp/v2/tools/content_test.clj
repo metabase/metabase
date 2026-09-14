@@ -5,6 +5,7 @@
    [clojure.walk :as walk]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.tools.content :as tools.content]
@@ -30,7 +31,7 @@
    ;; refusal text as a value, so a wrapper that threw would turn those into errors.
    (let [{:keys [result error]} (registry/call-tool token-scopes "test-session" "get_content" args)]
      (if error
-       {:isError true :content [{:type "text" :text (:message error)}]}
+       {:isError true :content [{:type "text" :text (message/render (:message error))}]}
        result))))
 
 (defn- content-results

@@ -10,6 +10,7 @@
    [metabase.lib.core :as lib]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.recovery-hints :as v2.recovery-hints]
    [metabase.metabot.tools.construct :as metabot.construct]
    [metabase.models.serialization.resolve :as serdes.resolve]
@@ -24,18 +25,25 @@
    and an unbounded dump would crowd out the rest of the agent's context."
   500)
 
+(defn- exception-message
+  "The message `e` carries under `::common/message`, else its exception message as text to clean."
+  [e]
+  (or (::common/message (ex-data e)) (ex-message e)))
+
 (defn- with-schema-detail
-  "`e` with its humanized schema explanation folded into the message, or unchanged when it carries
-   none. The representations pipeline computes the explanation and files it under `:humanized` but
+  "`e` with its humanized schema explanation folded into its message, or unchanged when it carries
+   none. The rewrapped exception keeps `e`'s data and cause, and carries the new message under
+   `::common/message`. The representations pipeline computes the explanation and files it under `:humanized` but
    states only the bare verdict, which leaves an agent nothing to edit; only structural validation
    failures carry the key, so the dialect steering is always apt where it lands."
   [^clojure.lang.ExceptionInfo e]
   (if-let [humanized (:humanized (ex-data e))]
-    (ex-info (str (ex-message e)
-                  " Invalid at " (common/ellipsize (common/humanize-detail humanized) max-schema-detail-length)
-                  ". Fix the named paths, or call `learn` with \"query-dialect\" for the clause shapes.")
-             (ex-data e)
-             (ex-cause e))
+    (common/message-ex-info
+     (message/msg ["%s Invalid at %s. Fix the named paths, or call `learn` with \"query-dialect\" for the clause shapes."]
+                  (exception-message e)
+                  (common/ellipsize (common/humanize-detail humanized) max-schema-detail-length))
+     (ex-data e)
+     (ex-cause e))
     e))
 
 (defn execute-representations-query
@@ -70,7 +78,7 @@
    and return the serialized MBQL 5 query. Resolution only: the pipeline does not execute.
 
    The pipeline's own agent-facing failures become a teaching error about the `definition`
-   argument, ending in `hint` (a sentence naming the shapes the calling tool accepts); permission
+   argument, ending in `hint` (a message naming the shapes the calling tool accepts); permission
    failures and anything unrecognized pass through."
   [external-query hint]
   (try
@@ -82,7 +90,9 @@
     (catch clojure.lang.ExceptionInfo e
       (if (:agent-error? (ex-data e))
         (common/throw-teaching-error
-         (format "`definition` could not be resolved: %s %s" (common/ellipsize (ex-message e) 300) hint))
+         (message/msg ["`definition` could not be resolved: %s %s"]
+                      (common/ellipsize (exception-message e) 300)
+                      hint))
         (throw e)))))
 
 ;;; ------------------------------------------------ Query handles -------------------------------------------------
@@ -113,7 +123,7 @@
                   (catch Exception _ ::invalid))]
     (if (map? decoded) ;; catch ::invalid and non-map values
       decoded
-      (common/throw-teaching-error "Query handle contents are invalid — run the query again to get a fresh handle."))))
+      (common/throw-teaching-error (message/msg ["Query handle contents are invalid — run the query again to get a fresh handle."])))))
 
 (defn resolve-query-handle!
   "Resolve `handle` for `user-id` and re-run the fresh-query guards on the stored query, so a
@@ -127,7 +137,7 @@
   [mcp-session-id user-id handle]
   (let [{:keys [encoded_query prompt]}
         (or (mcp.session/resolve-query-handle mcp-session-id user-id handle)
-            (common/throw-teaching-error "Query handle not found — it may have expired; run the query again."))
+            (common/throw-teaching-error (message/msg ["Query handle not found — it may have expired; run the query again."])))
         query (decode-stored-query encoded_query)]
     (query-guards/reject-native-query! query)
     (query-guards/validate-serialized-query! query)
@@ -143,7 +153,7 @@
   [mcp-session-id user-id handle]
   (let [{:keys [encoded_query prompt]}
         (or (mcp.session/resolve-query-handle mcp-session-id user-id handle)
-            (common/throw-teaching-error "Query handle not found — it may have expired; run the query again."))
+            (common/throw-teaching-error (message/msg ["Query handle not found — it may have expired; run the query again."])))
         query (decode-stored-query encoded_query)]
     (query-guards/validate-serialized-query! query)
     (query-guards/check-token-query-permissions! query)
@@ -152,7 +162,7 @@
 ;;; ------------------------------------------------ Raw-SQL kill switch -------------------------------------------
 
 (defn check-execute-sql-enabled!
-  "Throw a 403 unless the instance-level `mcp-execute-sql-enabled` kill switch is on. `subject`
+  "Throw a 403 unless the instance-level `mcp-execute-sql-enabled` kill switch is on. `subject`, a message,
    opens the refusal sentence, naming what the instance refused.
 
    The gate covers every v2 path on which the AGENT AUTHORS the SQL — `execute_sql` itself, and
@@ -167,7 +177,7 @@
    instance's ability to run questions it already has."
   [subject]
   (when-not (agent-api.settings/mcp-execute-sql-enabled)
-    (throw (ex-info (format (str "%s is disabled on this instance — an admin can re-enable it "
-                                 "with the mcp-execute-sql-enabled setting.")
-                            subject)
-                    {:status-code 403}))))
+    (common/throw-teaching-error
+     (message/msg ["%s is disabled on this instance — an admin can re-enable it with the mcp-execute-sql-enabled setting."]
+                  subject)
+     {:status-code 403})))

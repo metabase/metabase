@@ -7,6 +7,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.channel.settings :as channel.settings]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    ;; Registers the tool the assertions below drive.
    [metabase.mcp.v2.tools.subscription :as tools.subscription]
@@ -34,7 +35,7 @@
 (defn- response-text
   "The outcome's text block, or a registry-level rejection's message."
   [{:keys [result error]}]
-  (if error (:message error) (-> result :content first :text)))
+  (if error (message/render (:message error)) (-> result :content first :text)))
 
 (defn- tool-result
   [outcome]

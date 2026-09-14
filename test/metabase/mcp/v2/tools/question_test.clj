@@ -7,6 +7,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.queries :as v2.queries]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.tools.question :as v2.question]
@@ -29,7 +30,7 @@
   (let [{:keys [result error]} (registry/call-tool scopes session-id tool-name args)]
     (or result
         {:isError true
-         :content [{:type "text" :text (:message error)}]})))
+         :content [{:type "text" :text (message/render (:message error))}]})))
 
 (defn- orders-query
   "A Lib query over ORDERS — a runnable `:dataset_query` for fixtures that only need the card to

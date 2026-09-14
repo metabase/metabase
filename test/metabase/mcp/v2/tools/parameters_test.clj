@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.tools.parameters :as parameters]
    [metabase.parameters.chain-filter :as chain-filter]
@@ -33,7 +34,7 @@
    dispatch, so a rejection can never masquerade as a result."
   [{:keys [result error]}]
   (when error
-    (throw (ex-info (str "get_parameter_values was rejected before dispatch: " (:message error))
+    (throw (ex-info (str "get_parameter_values was rejected before dispatch: " (message/render (:message error)))
                     {:error error})))
   (when (:isError result)
     (throw (ex-info (str "get_parameter_values returned a tool-level error: "
@@ -60,7 +61,7 @@
   ([token-scopes args]
    (let [{:keys [result error]} (call-params token-scopes args)]
      (cond
-       error             (:message error)
+       error             (message/render (:message error))
        (:isError result) (-> result :content first :text)
        :else             (throw (ex-info "expected a tool error, got success" {:result result}))))))
 

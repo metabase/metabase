@@ -6,6 +6,7 @@
    [metabase.documents.core :as documents]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.tools.document :as v2.document]
    [metabase.permissions.core :as perms]
@@ -324,7 +325,7 @@
    that went through can never satisfy an assertion about a refusal."
   [{:keys [result error]}]
   (cond
-    error             (:message error)
+    error             (message/render (:message error))
     (:isError result) (-> result :content first :text)))
 
 (defn- write-error

@@ -12,6 +12,7 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    ;; Registers the tools the assertions below drive.
    [metabase.mcp.v2.tools.content :as tools.content]
@@ -43,7 +44,7 @@
   (mt/with-current-user (if (keyword? user) (mt/user->id user) user)
     (let [{:keys [result error]} (registry/call-tool scopes nil tool args)]
       (if error
-        {:isError true :content [{:type "text" :text (:message error)}]}
+        {:isError true :content [{:type "text" :text (message/render (:message error))}]}
         result))))
 
 (defn- tool-result

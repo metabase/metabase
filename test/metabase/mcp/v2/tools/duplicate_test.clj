@@ -8,6 +8,7 @@
    [metabase.documents.test-util :as documents.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    ;; Registers the tool the assertions below drive.
    [metabase.mcp.v2.tools.duplicate :as tools.duplicate]
@@ -38,7 +39,7 @@
 (defn- tool-result
   [{:keys [result error]}]
   (when error
-    (throw (ex-info (str "tool call rejected: " (:message error)) {:error error})))
+    (throw (ex-info (str "tool call rejected: " (message/render (:message error))) {:error error})))
   (when (:isError result)
     (throw (ex-info (str "tool call failed: " (-> result :content first :text))
                     {:result result})))
@@ -47,7 +48,7 @@
 (defn- tool-error
   [{:keys [result error]}]
   (cond
-    error             (:message error)
+    error             (message/render (:message error))
     (:isError result) (-> result :content first :text)
     :else             (throw (ex-info "expected a tool error, got success" {:result result}))))
 

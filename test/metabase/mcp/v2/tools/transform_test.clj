@@ -9,6 +9,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.queries :as v2.queries]
    [metabase.mcp.v2.registry :as registry]
    ;; Registers the :transform projection the write echo projects through.
@@ -49,7 +50,7 @@
    (mt/with-current-user (mt/user->id user)
      (let [{:keys [result error]} (registry/call-tool scopes session-id tool args)]
        (if error
-         {:isError true :content [{:type "text" :text (:message error)}]}
+         {:isError true :content [{:type "text" :text (message/render (:message error))}]}
          result)))))
 
 (defn- write!
