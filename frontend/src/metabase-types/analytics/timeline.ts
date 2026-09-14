@@ -1,3 +1,5 @@
+import type { TimelineEventSource } from "metabase-types/api";
+
 type TimelineEventSchema = {
   event: string;
   source?: string | null;
@@ -13,7 +15,7 @@ type ValidateEvent<
 
 export type NewEventCreatedEvent = ValidateEvent<{
   event: "new_event_created";
-  source: "question" | "dashboard" | "collections" | "api";
+  source: TimelineEventSource;
   question_id: number | null;
   collection_id: number | null;
   time_matters: boolean;

@@ -254,7 +254,9 @@ describe("DashCard", () => {
   });
 
   describe("timeline event availability", () => {
-    afterEach(() => mockGetBoundingClientRect());
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
 
     it.each([
       {

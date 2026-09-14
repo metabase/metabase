@@ -1,6 +1,6 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import type { Card, VisualizationSettings } from "metabase-types/api";
+import type { Card, CardId, VisualizationSettings } from "metabase-types/api";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -29,7 +29,7 @@ describe("scenarios > organization > timelines > question persistence", () => {
     );
     createTimeSeries();
 
-    cy.get<number>("@questionId").then((id) => H.visitQuestion(id));
+    H.visitQuestion("@questionId");
     expectEvents([], EVENT_NAMES);
     openQuestionEvents();
     H.rightSidebar().within(() => {
@@ -50,7 +50,7 @@ describe("scenarios > organization > timelines > question persistence", () => {
     cy.reload();
     expectEvents(["Swallows return"], ["Swifts return"]);
 
-    cy.get<number>("@dashboardId").then((id) => H.visitDashboard(id));
+    H.visitDashboard("@dashboardId");
     expectEvents(["Swallows return"], ["Swifts return"]);
   });
 
@@ -62,7 +62,7 @@ describe("scenarios > organization > timelines > question persistence", () => {
       createTimeSeries({ "timeline.selected_timeline_ids": [timeline.id] }),
     );
 
-    cy.get<number>("@questionId").then((id) => H.visitQuestion(id));
+    H.visitQuestion("@questionId");
     expectEvents(EVENT_NAMES);
     openQuestionEvents();
     H.rightSidebar().within(() =>
@@ -71,7 +71,7 @@ describe("scenarios > organization > timelines > question persistence", () => {
     expectEvents([], EVENT_NAMES);
     H.saveSavedQuestion();
 
-    cy.get<number>("@questionId").then((id) => {
+    cy.get<CardId>("@questionId").then((id) => {
       cy.request<Card>(`/api/card/${id}`)
         .its("body.visualization_settings")
         .should("have.property", "timeline.selected_timeline_ids")
@@ -84,7 +84,7 @@ describe("scenarios > organization > timelines > question persistence", () => {
       H.timelineVisibility("Migration seasons").should("not.be.checked"),
     );
 
-    cy.get<number>("@dashboardId").then((id) => H.visitDashboard(id));
+    H.visitDashboard("@dashboardId");
     expectEvents([], EVENT_NAMES);
   });
 
@@ -97,7 +97,7 @@ describe("scenarios > organization > timelines > question persistence", () => {
       createTimeSeries({ "timeline.selected_timeline_ids": [timeline.id] }),
     );
 
-    cy.get<number>("@questionId").then((id) => H.visitQuestion(id));
+    H.visitQuestion("@questionId");
     expectEvents(EVENT_NAMES);
     openQuestionEvents();
     H.rightSidebar().within(() =>
@@ -107,7 +107,7 @@ describe("scenarios > organization > timelines > question persistence", () => {
     cy.findByTestId("qb-header").button("Save").should("be.visible");
 
     cy.log("reopen the question without saving");
-    cy.get<number>("@questionId").then((id) => H.visitQuestion(id));
+    H.visitQuestion("@questionId");
     expectEvents(EVENT_NAMES);
     cy.get("@updateQuestion.all").should("have.length", 0);
   });
@@ -119,7 +119,7 @@ describe("scenarios > organization > timelines > question persistence", () => {
     });
     createTimeSeries();
 
-    cy.get<number>("@questionId").then((id) => H.visitQuestion(id));
+    H.visitQuestion("@questionId");
     expectEvents(EVENT_NAMES);
     H.openVizSettingsSidebar();
     H.vizSettingsSidebar().within(() => {
@@ -129,7 +129,7 @@ describe("scenarios > organization > timelines > question persistence", () => {
     H.openVizSettingsSidebar();
     H.saveSavedQuestion();
 
-    cy.get<number>("@questionId").then((id) => {
+    cy.get<CardId>("@questionId").then((id) => {
       cy.request<Card>(`/api/card/${id}`)
         .its("body.visualization_settings")
         .should((settings) => {
@@ -146,7 +146,7 @@ describe("scenarios > organization > timelines > question persistence", () => {
     expectEvents(EVENT_NAMES);
 
     cy.log("the dashboard only shows events saved on the question");
-    cy.get<number>("@dashboardId").then((id) => H.visitDashboard(id));
+    H.visitDashboard("@dashboardId");
     expectEvents([], EVENT_NAMES);
   });
 });

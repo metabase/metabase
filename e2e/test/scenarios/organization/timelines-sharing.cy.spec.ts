@@ -1,5 +1,7 @@
 const { H } = cy;
 
+import type { CardId, DashboardId, TimelineId } from "metabase-types/api";
+
 import {
   createQuestionAndDashboardWithEvents,
   expectChartWithoutEvents,
@@ -15,13 +17,13 @@ describe("scenarios > organization > timelines > public links and embeds", () =>
   });
 
   it("should not show events on a public question", () => {
-    cy.get<number>("@questionId").then((id) => H.visitPublicQuestion(id));
+    cy.get<CardId>("@questionId").then((id) => H.visitPublicQuestion(id));
 
     expectChartWithoutEvents();
   });
 
   it("should not show events on a static embedded question", () => {
-    cy.get<number>("@questionId").then((id) =>
+    cy.get<CardId>("@questionId").then((id) =>
       H.visitEmbeddedPage({ resource: { question: id }, params: {} }),
     );
 
@@ -29,7 +31,9 @@ describe("scenarios > organization > timelines > public links and embeds", () =>
   });
 
   it("should show only saved events read-only on a public dashboard for anonymous and signed-in viewers, and none once the timeline is archived", () => {
-    cy.get<number>("@dashboardId").then((id) => H.visitPublicDashboard(id));
+    cy.get<DashboardId>("@dashboardId").then((id) =>
+      H.visitPublicDashboard(id),
+    );
 
     expectSharedDashboardEvents();
 
@@ -40,7 +44,7 @@ describe("scenarios > organization > timelines > public links and embeds", () =>
     expectSharedDashboardEvents();
 
     cy.log("archiving the timeline removes its events");
-    cy.get<number>("@timelineId").then((id) =>
+    cy.get<TimelineId>("@timelineId").then((id) =>
       cy.request("PUT", `/api/timeline/${id}`, { archived: true }),
     );
     cy.reload();
@@ -49,7 +53,7 @@ describe("scenarios > organization > timelines > public links and embeds", () =>
   });
 
   it("should show only saved events read-only on a static embedded dashboard", () => {
-    cy.get<number>("@dashboardId").then((id) =>
+    cy.get<DashboardId>("@dashboardId").then((id) =>
       H.visitEmbeddedPage({ resource: { dashboard: id }, params: {} }),
     );
 
@@ -57,7 +61,7 @@ describe("scenarios > organization > timelines > public links and embeds", () =>
   });
 
   it("should not show events on a public document", () => {
-    cy.get<number>("@questionId").then((id) => {
+    cy.get<CardId>("@questionId").then((id) => {
       H.createDocument({
         name: "Document with events",
         document: {
@@ -81,14 +85,12 @@ describe("scenarios > organization > timelines > public links and embeds", () =>
   });
 
   it("should not show events in a question embed preview", () => {
-    cy.get<number>("@questionId").then((id) => {
-      H.visitQuestion(id);
-      H.timelineEventChip("RC1").should("be.visible");
+    H.visitQuestion("@questionId");
+    H.timelineEventChip("RC1").should("be.visible");
 
-      interceptTimelineRequests("previewTimelineRequests");
-      cy.intercept("GET", "/api/preview_embed/card/*/query*").as(
-        "previewQuery",
-      );
+    interceptTimelineRequests("previewTimelineRequests");
+    cy.intercept("GET", "/api/preview_embed/card/*/query*").as("previewQuery");
+    cy.get<CardId>("@questionId").then((id) => {
       H.openLegacyStaticEmbeddingModal({
         resource: "question",
         resourceId: id,
@@ -105,15 +107,14 @@ describe("scenarios > organization > timelines > public links and embeds", () =>
   });
 
   it("should show only saved events read-only in a dashboard embed preview", () => {
-    cy.get<number>("@dashboardId").then((id) => {
-      H.visitDashboard(id);
-      H.timelineEventChip("RC1").should("be.visible");
+    H.visitDashboard("@dashboardId");
+    H.timelineEventChip("RC1").should("be.visible");
 
-      interceptTimelineRequests("previewTimelineRequests");
-      cy.intercept(
-        "GET",
-        "/api/preview_embed/dashboard/*/dashcard/*/card/*",
-      ).as("previewQuery");
+    interceptTimelineRequests("previewTimelineRequests");
+    cy.intercept("GET", "/api/preview_embed/dashboard/*/dashcard/*/card/*").as(
+      "previewQuery",
+    );
+    cy.get<DashboardId>("@dashboardId").then((id) => {
       H.openLegacyStaticEmbeddingModal({
         resource: "dashboard",
         resourceId: id,
