@@ -20,6 +20,7 @@ const DEFAULT_INLINE_UPDATE_DEBOUNCE_MS = 300;
  * Processes updates sequentially to avoid race conditions.
  *
  * Failed updates roll back to the latest successfully updated values.
+ * Use `enableReinitialize` when the form should also adopt changing external `initialValues`.
  *
  * @param update - Async function called with new form values
  * @param onSuccess - Optional callback called with the update result on success
