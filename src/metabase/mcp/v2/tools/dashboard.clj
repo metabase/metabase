@@ -71,9 +71,8 @@
   (doseq [[idx op] (map-indexed vector ops)
           card-id  (concat [(:card_id op)] (:series op) (:card_ids op))
           :when    (and card-id (not (contains? cards card-id)))]
-    ;; `op` is one of the server's op names, checked by the args schema. `op-error!` takes a string.
-    (dashboard-ops/op-error!
-     idx (message/render (message/msg ["%s): no card with id %s that you can read."] (message/raw (:op op)) card-id)))))
+    ;; `op` is one of the server's op names, checked by the args schema.
+    (dashboard-ops/op-error! idx (:op op) (message/msg ["no card with id %s that you can read."] card-id))))
 
 ;;; ------------------------------------------------ Response ------------------------------------------------------
 

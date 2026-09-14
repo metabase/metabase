@@ -89,6 +89,25 @@
          clojure.lang.ExceptionInfo #"op 0.*frobnicate"
          (dashboard-ops/compile-ops empty-dash [{:op "frobnicate"}])))))
 
+(defn- op-error-text
+  "The message of the teaching error `compile-ops` throws for `ops` against `current`."
+  [current ops]
+  (try
+    (dashboard-ops/compile-ops current ops)
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      (ex-message e))))
+
+(deftest op-error-text-test
+  (testing "GHY-4544: op errors name the index and op once, with caller-sent values quoted once"
+    (is (= "op 0 (\"frobnicate\"): unknown op — see the tool description for the supported list."
+           (op-error-text empty-dash [{:op "frobnicate"}])))
+    (is (= "op 0 (add_link): pass exactly one of `url` or `entity`."
+           (op-error-text empty-dash [{:op "add_link" :id -1}])))
+    (is (= "op 0 (patch_dashcard): \"nonsense\" is not a patchable property."
+           (op-error-text (dash-with [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4}])
+                          [{:op "patch_dashcard" :dashcard_id 7 :patch {:nonsense "x"}}])))))
+
 (deftest add-text-test
   (testing "GHY-4147: add_text produces a virtual text dashcard with no card_id"
     (let [{:keys [dashcards]} (dashboard-ops/compile-ops
