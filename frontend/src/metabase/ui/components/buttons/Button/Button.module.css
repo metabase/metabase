@@ -49,6 +49,8 @@
     --mb-button-padding-x: 0px;
     --mb-button-loader-size: 13.75px;
 
+    /* 16px height with 16px line-height: Mantine's overflow: hidden on the root clips
+       the descenders of g/p/y. Text truncation is unaffected, it lives on .label. */
     overflow: visible;
   }
 
