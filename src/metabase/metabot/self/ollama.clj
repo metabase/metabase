@@ -12,6 +12,7 @@
    [metabase.llm.settings :as llm]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
+   [metabase.metabot.self.ollama.forced-calls :as forced]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -207,19 +208,18 @@
                 :error-code  :ollama-preflight-failed}))
 
 (defn- probe-chat!
-  "One non-streaming Chat Completions turn, returning the first choice. `finish_reason` comes with it
-  because truncation and a model that cannot call tools both produce empty `tool_calls`."
-  [auth model tool-choice]
+  "One non-streaming Chat Completions turn, returning the first choice. `body` carries what differs
+  between probes — the messages, and either a tool or a `response_format`. `finish_reason` comes back
+  with it because truncation and a model that cannot call tools both produce empty `tool_calls`."
+  [auth model body]
   (let [res (core/request auth (merge {:method  :post
                                        :url     "/chat/completions"
                                        :as      :json
                                        :headers {"Content-Type" "application/json"}
-                                       :body    (json/encode {:model       model
-                                                              :messages    probe-messages
-                                                              :tools       [probe-tool]
-                                                              :tool_choice tool-choice
-                                                              :temperature 0
-                                                              :max_tokens  probe-max-tokens})}
+                                       :body    (json/encode (merge {:model       model
+                                                                     :temperature 0
+                                                                     :max_tokens  probe-max-tokens}
+                                                                    body))}
                                       (probe-timeouts)))]
     (get-in res [:body :choices 0])))
 
@@ -227,7 +227,8 @@
   "Check that the model can call tools; Ollama drives this from the model's own template, so the fix
   is always a different model. Returns whether it emitted reasoning — the only signal we get."
   [auth model]
-  (let [{:keys [message finish_reason]} (probe-chat! auth model "auto")
+  (let [{:keys [message finish_reason]} (probe-chat! auth model {:messages probe-messages
+                                                                 :tools    [probe-tool]})
         content    (str (:content message))
         ;; `reasoning` is the OpenAI-compatible spelling; `reasoning_content` is the older one some
         ;; builds still emit.
@@ -269,18 +270,30 @@
                    (str model)))))))
 
 (defn- check-structured-output!
-  "Check that the model honors a forced tool call. A different failure from [[check-tool-calling!]]: a
-  model can manage an optional tool call and still ignore a forced one, which chats fine but breaks
-  titling and the whole `sql` profile."
-  [auth model]
-  (let [{:keys [message finish_reason]} (probe-chat! auth model "required")]
-    (when (empty? (:tool_calls message))
+  "Check that the connection can actually deliver structured output, through the mechanism it will
+  really use — [[forced/probe-body]] decides which that is, and [[forced/probe-verdict]] reads the
+  answer.
+
+  The remedy is what differs between deployments, so only the message branches here. Self-hosted can
+  fail on the *server* rather than the model, because an Ollama too old to read `response_format`
+  ignores it and the model answers in prose. Cloud cannot fail that way: nothing there was ever going
+  to enforce it, so a model that will not take the instruction has to be caught at connect — nothing
+  downstream can repair it."
+  [auth model cloud?]
+  (let [choice (probe-chat! auth model (forced/probe-body cloud?))]
+    (when-let [verdict (forced/probe-verdict cloud? choice)]
       (throw (preflight-ex
-              (if (= "length" finish_reason)
-                (tru "{0} reached the {1} token connection-test ceiling without producing a forced tool call. Metabot needs structured output support for conversation titles and SQL generation."
+              (case verdict
+                :truncated
+                (tru "{0} reached the {1} token connection-test ceiling before completing the structured answer it was asked for. Metabot needs structured output for conversation titles and SQL generation."
                      (str model) (str probe-max-tokens))
-                (tru "{0} did not honor a forced tool call. Metabot needs structured output support for conversation titles and SQL generation — pull a larger or more capable model."
-                     (str model))))))))
+
+                :not-honored
+                (if cloud?
+                  (tru "{0} would not answer Ollama Cloud''s structured-output request with a tool call. Cloud cannot force one, so Metabot needs a model that does it when asked — pick a larger or more capable one."
+                       (str model))
+                  (tru "{0} did not answer with JSON matching the schema it was given. Metabot needs structured output for conversation titles and SQL generation — upgrade Ollama to a version that supports `response_format`, or pull a larger or more capable model."
+                       (str model)))))))))
 
 (defn- no-models-ex []
   (preflight-ex (tru "Ollama is reachable but is offering no models.")))
@@ -305,14 +318,17 @@
 (defn- run-probes!
   "Run both contract probes and return whether the model streamed reasoning.
 
+  Which structured-output probe runs depends on the deployment, because the mechanism does — see
+  [[metabase.metabot.self.ollama.forced-calls/probe-body]].
+
   Sequential, tool calling first: structured output only means anything once tool calling works, so
   stopping at the first failure is strictly less work. Concurrency would not help — Ollama serializes
   generation per model unless `OLLAMA_NUM_PARALLEL` is raised, and a losing probe cannot be called
   off: `future-cancel` interrupts, and a blocking socket read ignores interrupts."
-  [auth model]
+  [auth model cloud?]
   (try
     (let [reasoning? (check-tool-calling! auth model)]
-      (check-structured-output! auth model)
+      (check-structured-output! auth model cloud?)
       reasoning?)
     (catch SocketTimeoutException _
       (throw (preflight-ex
@@ -328,11 +344,11 @@
 
   No context-window check, unlike vLLM's: Ollama's catalog carries no `max_model_len`, so nothing at
   connect time can see the window. Too small a window shows up as truncation in the probes above."
-  [auth entries requested-model]
+  [auth entries requested-model cloud?]
   (let [entry (probe-target entries requested-model)
         model (:id entry)]
     {:model      model
-     :reasoning? (run-probes! auth model)}))
+     :reasoning? (run-probes! auth model cloud?)}))
 
 (defn list-models
   "The models the server has pulled. Pass-through — there is nothing to whitelist.
@@ -347,7 +363,7 @@
          proposed (when (some #(= proposed-model (:id %)) entries)
                     proposed-model)
          probed   (when probe?
-                    (preflight! auth entries (or model proposed)))
+                    (preflight! auth entries (or model proposed) (cloud? credentials)))
          models   (mapv (fn [{:keys [id] :as entry}]
                           {:id id :display_name (or (:name entry) id)})
                         entries)]
@@ -385,26 +401,37 @@
   (update body :messages #(mapv (fn [m] (set/rename-keys m {:reasoning_content :reasoning})) %)))
 
 (mu/defn ollama-request-body
-  "The Chat Completions body, as [[chat-completions/request-body]] builds it plus three adapter-local
+  "The Chat Completions body, as [[chat-completions/request-body]] builds it plus the adapter-local
   adjustments: `max_tokens` is always sent (uncapped, a looping small model burns the whole context
   window in one call), raised to the floors above where they apply; `temperature` falls back to
   [[default-temperature]]; and the model's thinking is replayed (see [[reasoning-message]]). They
   stay here rather than in the shared builder, which also serves Z.AI, Mistral and OpenRouter.
 
+  A forced tool call is [[metabase.metabot.self.ollama.forced-calls]]' subject, because `tool_choice`
+  does nothing on Ollama and what can be done instead depends on the deployment. All this passes it is
+  which server is being talked to. `plan` may be supplied by a caller that already has one — the
+  streaming path does — so that a request derives it once.
+
   We never tell Ollama whether to think, just as vLLM does not. Both run whatever model the operator
   installed, so we take that model's own default and leave room for it with the floors above.
   Ollama does have a `reasoning_effort` switch, but turning thinking off would only save tokens on
   the operator's own hardware, and it errors on models that cannot think at all."
-  [{:keys [max-tokens temperature schema tool_choice credentials reasoning?] :as opts
-    :or   {reasoning? true}} :- core/LLMRequestOpts]
-  (let [forced? (or (some? schema) (= "required" (some-> tool_choice name)))]
+  ([opts :- core/LLMRequestOpts]
+   (ollama-request-body opts (forced/plan opts (cloud? (:credentials opts)))))
+
+  ([{:keys [max-tokens temperature credentials reasoning?] :as opts
+     :or   {reasoning? true}} :- core/LLMRequestOpts
+    plan                      :- [:maybe :map]]
+   (forced/body-for
+    plan
     (assoc (ollama-reasoning-spelling
             (chat-completions/request-body
-             (cond-> opts (nil? temperature) (assoc :temperature default-temperature))
+             (cond-> (forced/opts-for plan opts)
+               (nil? temperature) (assoc :temperature default-temperature))
              (when reasoning? {:reasoning-part->message reasoning-message})))
            :max_tokens (cond-> (or max-tokens (llm/llm-max-tokens))
-                         forced?                             (max forced-tool-call-token-floor)
-                         (reasoning-connection? credentials) (max reasoning-model-token-floor)))))
+                         (some? plan)                        (max forced-tool-call-token-floor)
+                         (reasoning-connection? credentials) (max reasoning-model-token-floor))))))
 
 (defn- stream-io-ex
   "Transport failure while *consuming* a stream. `:retryable? false` is required, not decorative:
@@ -455,41 +482,47 @@
 
 (mu/defn ollama-raw
   "Stream a Chat Completions request. `:credentials` come from the connection serving it;
-  `:ai-proxy?` is unsupported and throws."
-  [{:keys [model tools credentials ai-proxy?] :as opts} :- core/LLMRequestOpts]
-  (when ai-proxy? (throw (ai-proxy-unsupported-ex)))
-  (when (str/blank? model) (throw (missing-model-ex)))
-  (let [req        (ollama-request-body opts)
-        timeout-ms (llm/llm-ollama-request-timeout-ms)
-        ;; before the `try`, so the IO handler can name the address actually called — a Cloud
-        ;; connection carries no `:base-url` of its own
-        auth       (ollama-auth credentials ai-proxy?)]
-    (log/debug "Ollama request" {:model model :msg-count (count (:messages req)) :tools (count (or tools []))})
-    (with-span :info {:name       :metabot.ollama/request
-                      :model      model
-                      :msg-count  (count (:messages req))
-                      :tool-count (count (or tools []))}
-      (try
-        (let [response (core/request auth
-                                     (merge {:method  :post
-                                             :url     "/chat/completions"
-                                             :as      :stream
-                                             :headers {"Content-Type" "application/json"}
-                                             :body    (json/encode req)}
-                                            (inference-timeouts)))]
-          (-> (core/sse-reducible (:body response))
-              (debug/capture-stream {:provider "ollama"
-                                     :model    model
-                                     :url      "/chat/completions"
-                                     :request  req})
-              (io-guarded timeout-ms)
-              (core/reducible-with-api-errors "ollama" ollama-error-msg)))
-        ;; Ordered: clj-http raises an `IOException` only when there is no response at all, so this
-        ;; cannot swallow one `ollama-error-msg` would have translated.
-        (catch IOException e
-          (throw (request-io-ex e auth timeout-ms)))
-        (catch Exception e
-          (core/rethrow-api-error! "ollama" ollama-error-msg e))))))
+  `:ai-proxy?` is unsupported and throws. `plan` may be supplied by a caller that already has one, so
+  that a request derives it once."
+  ([opts :- core/LLMRequestOpts]
+   (ollama-raw opts (forced/plan opts (cloud? (:credentials opts)))))
+
+  ([{:keys [model tools credentials ai-proxy?] :as opts} :- core/LLMRequestOpts
+    plan                                                 :- [:maybe :map]]
+   (when ai-proxy? (throw (ai-proxy-unsupported-ex)))
+   (when (str/blank? model) (throw (missing-model-ex)))
+   (let [req        (ollama-request-body opts plan)
+         timeout-ms (llm/llm-ollama-request-timeout-ms)
+         ;; before the `try`, so the IO handler can name the address actually called — a Cloud
+         ;; connection carries no `:base-url` of its own
+         auth       (ollama-auth credentials ai-proxy?)]
+     (log/debug "Ollama request" {:model model :msg-count (count (:messages req)) :tools (count (or tools []))})
+     (with-span :info {:name       :metabot.ollama/request
+                       :model      model
+                       :msg-count  (count (:messages req))
+                       :tool-count (count (or tools []))
+                       :forced     (:mechanism plan)}
+       (try
+         (let [response (core/request auth
+                                      (merge {:method  :post
+                                              :url     "/chat/completions"
+                                              :as      :stream
+                                              :headers {"Content-Type" "application/json"}
+                                              :body    (json/encode req)}
+                                             (inference-timeouts)))]
+           (-> (core/sse-reducible (:body response))
+               (debug/capture-stream {:provider "ollama"
+                                      :model    model
+                                      :url      "/chat/completions"
+                                      :request  req})
+               (io-guarded timeout-ms)
+               (core/reducible-with-api-errors "ollama" ollama-error-msg)))
+         ;; Ordered: clj-http raises an `IOException` only when there is no response at all, so this
+         ;; cannot swallow one `ollama-error-msg` would have translated.
+         (catch IOException e
+           (throw (request-io-ex e auth timeout-ms)))
+         (catch Exception e
+           (core/rethrow-api-error! "ollama" ollama-error-msg e)))))))
 
 (defn ollama->aisdk-chunks-xf
   "Chat Completions chunks to AI SDK v5. Reasoning is forwarded when present, which is self-gating —
@@ -500,6 +533,8 @@
 
 (defn ollama
   "Call an Ollama server's Chat Completions API, return AISDK stream."
-  [& args]
-  (let [raw (apply ollama-raw args)]
-    (eduction (ollama->aisdk-chunks-xf) raw)))
+  [{:keys [credentials] :as opts}]
+  (let [plan (forced/plan opts (cloud? credentials))]
+    (eduction (comp (or (forced/read-back-xf plan) identity)
+                    (ollama->aisdk-chunks-xf))
+              (ollama-raw opts plan))))

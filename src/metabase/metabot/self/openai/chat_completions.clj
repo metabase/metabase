@@ -127,6 +127,13 @@
                    :content (or (:content part) "")})))
         merge-consecutive-assistant-messages)))
 
+(def structured-output-tool-name
+  "The tool a `:schema` request is expressed as, and the name `call-llm-structured` reads its result
+  back out of. Named here because this is where it is minted: an adapter that has to recognize or
+  re-mint that tool — see [[metabase.metabot.self.ollama.forced-calls]] — should reference it rather
+  than repeat the string, which would break silently if it ever changed."
+  "structured_output")
+
 ;;; Tool definition format
 
 (defn- tool->cc-tool
@@ -342,7 +349,7 @@
          all-tools (or (when schema
                          ;; Structured output: force a tool call with the given JSON schema
                          [{:type     "function"
-                           :function {:name        "structured_output"
+                           :function {:name        structured-output-tool-name
                                       :description "Output structured data"
                                       :parameters  schema}}])
                        (seq (mapv tool->cc-tool tools)))]

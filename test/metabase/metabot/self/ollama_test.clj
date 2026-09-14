@@ -62,6 +62,18 @@
 ;;; ollama-request-body
 ;;; ──────────────────────────────────────────────────────────────────
 
+(def ^:private fake-tool
+  {:tool-name "fake_tool"
+   :doc       "Do a fake thing."
+   :schema    [:=> [:cat [:map [:a :string]]] :any]
+   :fn        identity})
+
+(def ^:private other-fake-tool
+  {:tool-name "other_fake_tool"
+   :doc       "Do another fake thing."
+   :schema    [:=> [:cat [:map [:b :int]]] :any]
+   :fn        identity})
+
 (deftest ^:parallel request-body-applies-default-max-tokens-test
   (testing "an explicit max_tokens is always sent — without one a looping small model consumes the
            whole context window in a single call"
@@ -85,7 +97,7 @@
                                                        :input      [{:role :user :content "hi"}]
                                                        :schema     {:type "object"}
                                                        :max-tokens 128})))))
-    (testing "tool_choice required"
+    (testing "tool_choice required, even with no tools to choose among"
       (is (= 2048
              (:max_tokens (ollama/ollama-request-body {:model       "good-model"
                                                        :input       [{:role :user :content "hi"}]
@@ -106,6 +118,73 @@
                                                      :input       [{:role :user :content "hi"}]
                                                      :credentials credentials
                                                      :max-tokens  128}))))))
+
+(deftest ^:parallel request-body-constrains-the-decoder-on-a-self-hosted-schema-test
+  (testing "Ollama discards `tool_choice`, so the shared builder's forced-tool framing is only a
+           suggestion. Self-hosted has a real substitute: compile the schema into a decoding grammar."
+    (let [body (ollama/ollama-request-body {:model       "good-model"
+                                            :input       [{:role :user :content "hi"}]
+                                            :schema      {:type "object"}
+                                            :credentials credentials})]
+      (is (= {:type        "json_schema"
+              :json_schema {:name "structured_output" :schema {:type "object"}}}
+             (:response_format body)))
+      (testing "and nothing is left for the model to call — a tool here would be the suggestion again"
+        (is (nil? (:tools body)))
+        (is (nil? (:tool_choice body)))))))
+
+(deftest ^:parallel request-body-forces-a-real-tool-call-with-a-union-grammar-test
+  (testing "a `:required-tool-call?` profile needs a call among its own tools, which no single schema
+           describes. The union Ollama's maintainers endorsed for this does: one arm per tool, each
+           pinning `name` to that tool, so the only way to satisfy the grammar is to call one."
+    (let [body   (ollama/ollama-request-body {:model       "good-model"
+                                              :input       [{:role :user :content "hi"}]
+                                              :tools       [fake-tool other-fake-tool]
+                                              :tool_choice "required"
+                                              :credentials credentials})
+          arms   (get-in body [:response_format :json_schema :schema :anyOf])]
+      (is (= [["fake_tool"] ["other_fake_tool"]]
+             (mapv #(get-in % [:properties :name :enum]) arms)))
+      (is (every? #(= ["name" "parameters"] (:required %)) arms))
+      (testing "each arm carries that tool's own parameter schema, so arguments are constrained too"
+        (is (= [:a :b] (mapv #(-> % :properties :parameters :properties keys first) arms))))
+      (testing "the tools stay on the request — the template still has to render their definitions"
+        (is (= ["fake_tool" "other_fake_tool"] (mapv #(get-in % [:function :name]) (:tools body)))))
+      (testing "and the discarded `tool_choice` is dropped rather than sent as decoration"
+        (is (nil? (:tool_choice body)))))))
+
+(deftest ^:parallel request-body-leaves-an-auto-tool-call-unconstrained-test
+  (testing "a grammar makes a tool call unavoidable, which is `required` and emphatically not `auto` —
+           applying one to an ordinary turn would stop the model ever answering in text"
+    (let [body (ollama/ollama-request-body {:model       "good-model"
+                                            :input       [{:role :user :content "hi"}]
+                                            :tools       [fake-tool]
+                                            :credentials credentials})]
+      (is (nil? (:response_format body)))
+      (is (= "auto" (:tool_choice body))))))
+
+(deftest ^:parallel request-body-asks-cloud-for-the-call-in-words-test
+  (testing "Ollama Cloud serves no structured outputs and discards `format` as silently as
+           `tool_choice`, so there is no grammar to reach for — the tool stays and the request says
+           what it wants. Nothing here pretends that is a guarantee."
+    (let [body (ollama/ollama-request-body {:model       "good-model"
+                                            :input       [{:role :user :content "hi"}]
+                                            :schema      {:type "object"}
+                                            :credentials cloud-credentials})]
+      (is (nil? (:response_format body)))
+      (is (= ["structured_output"] (mapv #(get-in % [:function :name]) (:tools body))))
+      (is (= "Answer by calling the `structured_output` tool. Do not reply in chat."
+             (:content (last (:messages body))))
+          "last, where an instruction carries furthest"))))
+
+(deftest ^:parallel request-body-leaves-an-unstructured-request-alone-test
+  (testing "the instruction is for structured requests only — appending it to ordinary chat would put
+           a tool the model does not have in front of it"
+    (let [body (ollama/ollama-request-body {:model       "good-model"
+                                            :input       [{:role :user :content "hi"}]
+                                            :credentials cloud-credentials})]
+      (is (= ["hi"] (mapv :content (:messages body))))
+      (is (nil? (:response_format body))))))
 
 (deftest ^:parallel request-body-supplies-a-default-temperature-test
   (testing "a self-hosted server picks no sane default server-side, so the adapter supplies one"
@@ -232,16 +311,26 @@
 ;;; Preflight
 ;;; ──────────────────────────────────────────────────────────────────
 
+(defn- probe-kind
+  "Which probe a stubbed `POST /chat/completions` is serving, read off the body.
+
+  Never off `tool_choice`: Ollama discards that field, so a stub that answered differently for it
+  would let a check that proves nothing look like one that proves something."
+  [req]
+  (if (or (:response_format req)
+          (some #(= "structured_output" (get-in % [:function :name])) (:tools req)))
+    :structured
+    :tools))
+
 (defn- probing-server
   "Stub `http/request` for the preflight path: `GET /models` returns `models`, and each
-  `POST /chat/completions` returns whatever `choice-by-tool-choice` holds for the `tool_choice` it was
-  sent, so the two probes can disagree."
-  [models choice-by-tool-choice]
+  `POST /chat/completions` returns whatever `choice-by-probe` holds for the probe it was sent, so the
+  two probes can disagree."
+  [models choice-by-probe]
   (fn [{:keys [url body]}]
     (if (re-find #"/models$" (str url))
       {:status 200 :body {:data models}}
-      (let [tool-choice (:tool_choice (json/decode+kw (str body)))]
-        {:status 200 :body {:choices [(get choice-by-tool-choice tool-choice)]}}))))
+      {:status 200 :body {:choices [(get choice-by-probe (probe-kind (json/decode+kw (str body))))]}})))
 
 (def ^:private tool-calling-message
   {:content    ""
@@ -249,16 +338,34 @@
                  :type     "function"
                  :function {:name "record_table_name" :arguments "{\"table_name\": \"orders\"}"}}]})
 
+(def ^:private constrained-message
+  "What a self-hosted server honoring `response_format` returns: the JSON as ordinary content, with no
+  tool call anywhere in sight."
+  {:content "{\"title\": \"Late orders\"}"})
+
+(def ^:private structured-tool-message
+  "What Cloud returns when the model takes the instruction it was given in place of a forced call."
+  {:content    ""
+   :tool_calls [{:id       "call-2"
+                 :type     "function"
+                 :function {:name "structured_output" :arguments "{\"title\": \"Late orders\"}"}}]})
+
+(def ^:private structured-success
+  {:message constrained-message :finish_reason "stop"})
+
 (defn- probe-choice!
-  ([models chat-choice] (probe-choice! models chat-choice chat-choice))
-  ([models auto-choice required-choice]
-   (mt/with-dynamic-fn-redefs [http/request (probing-server models {"auto"     auto-choice
-                                                                    "required" required-choice})]
-     (ollama/list-models {:credentials credentials :probe? true}))))
+  "Drive a probing connect against stubbed probe answers. `creds` decides which structured-output probe
+  preflight runs, so it decides which of the two answers is reached."
+  ([models tool-calling-choice structured-choice]
+   (probe-choice! models tool-calling-choice structured-choice credentials))
+  ([models tool-calling-choice structured-choice creds]
+   (mt/with-dynamic-fn-redefs [http/request (probing-server models {:tools      tool-calling-choice
+                                                                    :structured structured-choice})]
+     (ollama/list-models {:credentials creds :probe? true}))))
 
 (defn- probe!
   [models chat-message]
-  (probe-choice! models {:message chat-message :finish_reason "tool_calls"}))
+  (probe-choice! models {:message chat-message :finish_reason "tool_calls"} structured-success))
 
 (deftest preflight-passes-on-a-model-that-calls-tools-test
   (testing "a model that returns a well-formed tool call passes and is adopted as the one to run on"
@@ -300,15 +407,81 @@
          #"streamed its reasoning as chat text"
          (probe! [{:id "good-model"}] {:content "<think>hmm</think> orders"})))))
 
-(deftest preflight-rejects-a-model-that-ignores-a-forced-tool-call-test
-  (testing "a model can manage an optional call and still ignore a forced one, which chats fine but
-           breaks titling and the whole sql profile"
+(deftest preflight-probes-structured-output-the-way-the-runtime-asks-for-it-test
+  (testing "`tool_choice` is discarded by Ollama, so a probe that only sets it re-runs the tool-calling
+           check and can only pass. Each deployment is probed through the mechanism it will really use."
+    (let [bodies (atom [])
+          record (fn [models choice-by-probe]
+                   (let [server (probing-server models choice-by-probe)]
+                     (fn [{:keys [body] :as req}]
+                       (when body (swap! bodies conj (json/decode+kw (str body))))
+                       (server req))))]
+      (testing "self-hosted constrains the decoder, and offers no tool to call"
+        (reset! bodies [])
+        (mt/with-dynamic-fn-redefs
+          [http/request (record [{:id "good-model"}] {:tools      {:message tool-calling-message :finish_reason "tool_calls"}
+                                                      :structured structured-success})]
+          (ollama/list-models {:credentials credentials :probe? true}))
+        (let [structured (m/find-first :response_format @bodies)]
+          (is (some? structured)
+              "the structured probe must send response_format")
+          (is (= "json_schema" (get-in structured [:response_format :type])))
+          (is (nil? (:tools structured))
+              "nothing to call under a grammar — a tool here would probe the wrong path")))
+      (testing "Cloud has no grammar to fall back on, so it probes the instruction-and-tool path"
+        (reset! bodies [])
+        (mt/with-dynamic-fn-redefs
+          [http/request (record [{:id "good-model"}] {:tools      {:message tool-calling-message :finish_reason "tool_calls"}
+                                                      :structured {:message structured-tool-message :finish_reason "tool_calls"}})]
+          (ollama/list-models {:credentials cloud-credentials :probe? true}))
+        (let [structured (m/find-first #(some (fn [t] (= "structured_output" (get-in t [:function :name])))
+                                              (:tools %))
+                                       @bodies)]
+          (is (some? structured)
+              "the structured probe must offer the schema tool under the name the agent loop reads")
+          (is (nil? (:response_format structured))
+              "Cloud serves no structured outputs — probing one would pass on a promise it cannot keep")
+          (is (some #(re-find #"structured_output" (str (:content %))) (:messages structured))
+              "and must carry the instruction that stands in for the discarded tool_choice"))))))
+
+(deftest preflight-rejects-a-self-hosted-server-that-ignores-the-schema-test
+  (testing "an Ollama too old to read `response_format` ignores it and the model answers in prose.
+           That is a server problem, not a model one, so the message names both remedies."
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"did not honor a forced tool call"
+         #"did not answer with JSON matching the schema.*response_format"
          (probe-choice! [{:id "good-model"}]
                         {:message tool-calling-message :finish_reason "tool_calls"}
-                        {:message {:content "no thanks"} :finish_reason "stop"})))))
+                        {:message {:content "Sure! How about \"Late orders\"?"} :finish_reason "stop"})))))
+
+(deftest preflight-rejects-a-self-hosted-answer-that-is-json-but-not-the-schema-test
+  (testing "JSON alone is not the contract — the caller reads named fields out of it"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"did not answer with JSON matching the schema"
+         (probe-choice! [{:id "good-model"}]
+                        {:message tool-calling-message :finish_reason "tool_calls"}
+                        {:message {:content "{\"summary\": \"Late orders\"}"} :finish_reason "stop"})))))
+
+(deftest preflight-rejects-a-cloud-model-that-will-not-call-the-tool-test
+  (testing "Cloud cannot force the call, and the runtime re-ask cannot rescue a model that never makes
+           it, so this has to fail at connect rather than on every title"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"would not answer Ollama Cloud's structured-output request with a tool call"
+         (probe-choice! [{:id "good-model"}]
+                        {:message tool-calling-message :finish_reason "tool_calls"}
+                        {:message {:content "Late orders"} :finish_reason "stop"}
+                        cloud-credentials)))))
+
+(deftest preflight-truncated-structured-output-is-its-own-diagnosis-test
+  (testing "a schema too large for the token budget looks nothing like a model that cannot follow one"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"ceiling before completing the structured answer"
+         (probe-choice! [{:id "good-model"}]
+                        {:message tool-calling-message :finish_reason "tool_calls"}
+                        {:message {:content "{\"title\": \"Late or"} :finish_reason "length"})))))
 
 (deftest preflight-rejects-a-model-the-server-has-not-pulled-test
   (testing "falling back to another pulled model would pass every check and then persist a provider
@@ -387,6 +560,186 @@
       401 #"Ollama rejected the API key"
       404 #"base URL should end in /v1"
       500 #"internal server error")))
+
+(defn- chunk-with
+  "One Chat Completions chunk carrying `delta`, plus the top-level fields the shared translation reads
+  to open the stream."
+  ([delta] (chunk-with delta nil))
+  ([delta finish-reason]
+   {:id      "chatcmpl-1"
+    :model   "good-model"
+    :choices [(cond-> {:index 0 :delta delta}
+                finish-reason (assoc :finish_reason finish-reason))]}))
+
+(defn- streamed-parts!
+  "Run `ollama` end to end over `responses` — one realized chunk sequence per HTTP request, in order —
+  and return the AISDK parts a caller would read, along with how many requests it took."
+  [responses opts]
+  (let [remaining (atom (vec responses))
+        calls     (atom 0)]
+    (with-redefs [self.core/sse-reducible identity
+                  debug/capture-stream    (fn [r _] r)
+                  http/request            (fn [_]
+                                            (swap! calls inc)
+                                            (let [[head & tail] @remaining]
+                                              (reset! remaining (vec tail))
+                                              {:body head}))]
+      {:parts (into [] (self.core/aisdk-xf) (ollama/ollama opts))
+       :calls @calls})))
+
+(defn- parts-of
+  "The parts of one `:type` from a [[streamed-parts!]] result. Every streaming test asks this question,
+  and inlining the filter made the assertions about the filter rather than about the answer."
+  [result kind]
+  (filterv #(= kind (:type %)) (:parts result)))
+
+(defn- usage-part [result] (first (parts-of result :usage)))
+
+(def ^:private usage-chunk
+  "The separate final chunk carrying usage, which is where the finish reason is reported."
+  {:id "chatcmpl-1" :model "good-model" :choices []
+   :usage {:prompt_tokens 10 :completion_tokens 5}})
+
+(defn- structured-opts
+  "A `:schema` request against `creds` — the shape `call-llm-structured` sends."
+  ([] (structured-opts credentials))
+  ([creds]
+   {:model       "good-model"
+    :input       [{:role :user :content "hi"}]
+    :schema      {:type "object"}
+    :credentials creds}))
+
+(def ^:private constrained-stream
+  "What a self-hosted server under a decoding grammar streams back: JSON in the content channel, split
+  across deltas like any other text, and no tool call anywhere."
+  [(chunk-with {:role "assistant" :content ""})
+   (chunk-with {:content "{\"title\":"})
+   (chunk-with {:content " \"Late orders\"}"})
+   (chunk-with {} "stop")])
+
+(deftest constrained-output-reaches-the-caller-as-a-tool-call-test
+  (testing "`call-llm-structured` reads a tool call, but a constrained answer arrives as content. The
+           adapter owns that difference: downstream must see what a forced-tool provider produces."
+    (let [result (streamed-parts! [constrained-stream]
+                                  (structured-opts))]
+      (is (= [{:type      :tool-input
+               :function  "structured_output"
+               :arguments {:title "Late orders"}}]
+             (mapv #(select-keys % [:type :function :arguments])
+                   (parts-of result :tool-input))))
+      (testing "and no text part — the raw JSON must not also surface as an answer"
+        (is (empty? (parts-of result :text)))))))
+
+(deftest constrained-output-reports-the-finish-reason-of-a-tool-call-test
+  (testing "a constrained answer finishes with `stop`; the stream should say what it really produced"
+    (let [result (streamed-parts! [(conj (vec (butlast constrained-stream))
+                                         (chunk-with {} "stop")
+                                         usage-chunk)]
+                                  (structured-opts))]
+      (is (= "tool-calls" (:finish-reason (usage-part result)))))))
+
+(deftest constrained-output-keeps-truncation-visible-test
+  (testing "`length` must survive the rewrite — a schema too large for the budget is a real failure,
+           and dressing it up as a completed tool call would hide it behind a JSON parse error"
+    (let [result (streamed-parts! [[(chunk-with {:role "assistant" :content ""})
+                                    (chunk-with {:content "{\"title\": \"Late or"})
+                                    (chunk-with {} "length")
+                                    usage-chunk]]
+                                  (structured-opts))]
+      (is (= "length" (:finish-reason (usage-part result)))))))
+
+(deftest constrained-output-forwards-reasoning-alongside-the-json-test
+  (testing "the grammar binds the answer channel only, so a thinking model still streams its thinking"
+    (let [result (streamed-parts! [[(chunk-with {:role "assistant" :content ""})
+                                    (chunk-with {:reasoning "which orders..."})
+                                    (chunk-with {:content "{\"title\": \"Late orders\"}"})
+                                    (chunk-with {} "stop")]]
+                                  (structured-opts))]
+      (is (= ["which orders..."] (mapv :text (parts-of result :reasoning))))
+      (is (= [{:title "Late orders"}]
+             (mapv :arguments (parts-of result :tool-input)))))))
+
+(def ^:private tool-union-stream
+  "What a self-hosted server under the union grammar streams back: a tool call named and argued in the
+  content channel, with `tool_calls` empty."
+  [(chunk-with {:role "assistant" :content ""})
+   (chunk-with {:content "{\"name\": \"fake_tool\","})
+   (chunk-with {:content " \"parameters\": {\"a\": \"x\"}}"})
+   (chunk-with {} "stop")])
+
+(defn- forced-tool-opts []
+  {:model       "good-model"
+   :input       [{:role :user :content "hi"}]
+   :tools       [fake-tool other-fake-tool]
+   :tool_choice "required"
+   :credentials credentials})
+
+(deftest union-grammar-answer-reaches-the-agent-loop-as-the-tool-it-named-test
+  (testing "the grammar guarantees a call, but puts it in the content channel. The agent loop reads
+           tool calls, so the adapter has to name the tool the answer chose — not a fixed one"
+    (let [result (streamed-parts! [tool-union-stream] (forced-tool-opts))]
+      (is (= [{:type      :tool-input
+               :function  "fake_tool"
+               :arguments {:a "x"}}]
+             (mapv #(select-keys % [:type :function :arguments])
+                   (parts-of result :tool-input))))
+      (testing "and the JSON must not also surface as an answer the user would see"
+        (is (empty? (parts-of result :text)))))))
+
+(deftest union-grammar-truncation-is-not-dressed-up-as-a-call-test
+  (testing "a half-written union answer has no readable tool name. Emitting a call anyway would turn a
+           truncation into a confusing parse error; `length` is the true diagnosis and must survive"
+    (let [result (streamed-parts! [[(chunk-with {:role "assistant" :content ""})
+                                    (chunk-with {:content "{\"name\": \"fake_to"})
+                                    (chunk-with {} "length")
+                                    usage-chunk]]
+                                  (forced-tool-opts))]
+      (is (empty? (parts-of result :tool-input)))
+      (is (= "length" (:finish-reason (usage-part result)))))))
+
+(deftest an-auto-tool-turn-is-left-unconstrained-test
+  (testing "no grammar on an `auto` turn, so nothing rewrites the model's text into a tool call it
+           never made — forcing every turn would stop these profiles ever answering"
+    (let [result (streamed-parts! [[(chunk-with {:role "assistant" :content ""})
+                                    (chunk-with {:content "no tool needed"})
+                                    (chunk-with {} "stop")]]
+                                  (dissoc (forced-tool-opts) :tool_choice))]
+      (is (= ["no tool needed"] (mapv :text (parts-of result :text))))
+      (is (empty? (parts-of result :tool-input))))))
+
+(deftest cloud-forced-calls-are-asked-for-not-rewritten-test
+  (testing "Cloud has neither lever, so its tool call arrives the ordinary way and must pass through
+           untouched — and a model that answers in chat produces the caller's ordinary failure rather
+           than anything this adapter invents"
+    (let [taken (streamed-parts! [[(chunk-with {:role "assistant" :content ""})
+                                   (chunk-with {:tool_calls [{:id       "call-9"
+                                                              :type     "function"
+                                                              :function {:name      "structured_output"
+                                                                         :arguments "{\"title\": \"Late orders\"}"}}]})
+                                   (chunk-with {} "tool_calls")]]
+                                 (structured-opts cloud-credentials))
+          ignored (streamed-parts! [[(chunk-with {:role "assistant" :content ""})
+                                     (chunk-with {:content "How about \"Late orders\"?"})
+                                     (chunk-with {} "stop")]]
+                                   (structured-opts cloud-credentials))]
+      (is (= [{:title "Late orders"}]
+             (mapv :arguments (parts-of taken :tool-input))))
+      (testing "no re-ask: one request, and the missing call stays missing for the caller to report"
+        (is (= 1 (:calls ignored)))
+        (is (empty? (parts-of ignored :tool-input)))
+        (is (= ["How about \"Late orders\"?"]
+               (mapv :text (parts-of ignored :text))))))))
+
+(deftest an-unstructured-request-is-streamed-straight-through-test
+  (testing "none of the structured machinery may touch ordinary chat — no buffering, no rewriting"
+    (let [result (streamed-parts! [[(chunk-with {:role "assistant" :content ""})
+                                    (chunk-with {:content "hello"})
+                                    (chunk-with {} "stop")]]
+                                  {:model       "good-model"
+                                   :input       [{:role :user :content "hi"}]
+                                   :credentials credentials})]
+      (is (= 1 (:calls result)))
+      (is (= ["hello"] (mapv :text (parts-of result :text)))))))
 
 (deftest a-request-without-a-model-fails-before-any-io-test
   (testing "a blank model is a configuration problem, not something to discover from the server"
