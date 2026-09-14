@@ -54,6 +54,8 @@ jobs:
       e2e_specs: ${{ steps.changes.outputs.e2e_specs }}
       e2e_infra: ${{ steps.changes.outputs.e2e_infra }}
       backend_all: ${{ steps.changes.outputs.backend_all }}
+      build_scripts: ${{ steps.changes.outputs.build_scripts }}
+      embedder_plugin: ${{ steps.changes.outputs.embedder_plugin }}
       frontend_all: ${{ steps.changes.outputs.frontend_all }}
       frontend_sources: ${{ steps.changes.outputs.frontend_sources }}
       frontend_unit_infra: ${{ steps.changes.outputs.frontend_unit_infra }}
@@ -359,6 +361,22 @@ jobs:
       skip: >-
         ${{ needs.embedding-sdk-package.result != 'success' ||
         needs.uberjar.result != 'success' }}
+
+  build-scripts-tests:
+    needs: [should-run, files-changed]
+    if: |
+      !cancelled() &&
+      (needs.should-run.outputs.verdict == 'force-run' ||
+      needs.files-changed.result == 'success')
+    uses: ./.github/workflows/build-scripts.yml
+    secrets: inherit
+    with:
+      skip-build-scripts: >-
+        ${{ needs.should-run.outputs.verdict != 'force-run' &&
+        needs.files-changed.outputs.build_scripts != 'true' }}
+      skip-embedder-plugin: >-
+        ${{ needs.should-run.outputs.verdict != 'force-run' &&
+        needs.files-changed.outputs.embedder_plugin != 'true' }}
 
   bundle-size:
     needs: [uberjar, files-changed]
