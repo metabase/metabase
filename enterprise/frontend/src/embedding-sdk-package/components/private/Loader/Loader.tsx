@@ -11,20 +11,15 @@ type SpinnerProps = {
 
 const SPINNER_CLASS_NAME = "metabase-spinner-loader";
 
-// The generated CSS is keyed on the class name, so two spinners of different sizes
-// on one page would otherwise overwrite each other's rules.
-const getSpinnerClassName = (size: string) =>
-  `${SPINNER_CLASS_NAME}-${size.replace(/[^a-z0-9]/gi, "")}`;
-
 // eslint-disable-next-line metabase/no-color-literals
 const Spinner = ({ size = "1.5rem", color = "#509EE3" }: SpinnerProps) => {
-  const className = getSpinnerClassName(size);
-
   return (
     <div>
-      <style>{getSdkLoaderCss({ className, size, color })}</style>
+      <style>
+        {getSdkLoaderCss({ className: SPINNER_CLASS_NAME, size, color })}
+      </style>
 
-      <span className={className} />
+      <span className={SPINNER_CLASS_NAME} />
     </div>
   );
 };
@@ -33,8 +28,7 @@ export const Loader = ({
   className,
   style,
   theme,
-  size,
-}: CommonStylingProps & { theme?: MetabaseTheme; size?: string }) => {
+}: CommonStylingProps & { theme?: MetabaseTheme }) => {
   const {
     state: { props: metabaseProviderProps },
   } = useMetabaseProviderPropsStore();
@@ -57,7 +51,7 @@ export const Loader = ({
       {LoaderComponent ? (
         <LoaderComponent />
       ) : (
-        <Spinner size={size} color={theme?.colors?.brand} />
+        <Spinner color={theme?.colors?.brand} />
       )}
     </div>
   );
