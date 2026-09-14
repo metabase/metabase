@@ -5,7 +5,6 @@ import { PLUGIN_EMBEDDING } from "metabase/plugins";
 import { EmbeddingDataPickerContext } from "metabase/querying/notebook/components/NotebookDataPicker/EmbeddingDataPicker/context";
 import { useSelector } from "metabase/redux";
 import {
-  DEFAULT_EMBEDDING_ENTITY_TYPES,
   getDataPicker,
   getEntityTypes,
 } from "metabase/redux/embedding-data-picker";
@@ -94,7 +93,7 @@ export function EmbeddingDataPicker({
     const simpleDataPickerEntityTypes =
       filteredEntityTypes.length > 0
         ? filteredEntityTypes
-        : DEFAULT_EMBEDDING_ENTITY_TYPES;
+        : ALLOWED_SIMPLE_DATA_PICKER_ENTITY_TYPES;
     return (
       <PLUGIN_EMBEDDING.SimpleDataPicker
         filterByDatabaseId={canChangeDatabase ? null : databaseId}
@@ -141,6 +140,9 @@ export function EmbeddingDataPicker({
       canSelectModel={entityTypes.includes("model")}
       canSelectTable={entityTypes.includes("table")}
       canSelectQuestion={entityTypes.includes("question")}
+      // Metrics are a starting source, not a join target, matching the core
+      // app's `JoinTablePicker`. `canChangeDatabase` is false at the join step.
+      canSelectMetric={canChangeDatabase && entityTypes.includes("metric")}
       popoverAriaLabel={title}
       triggerElement={
         <DataPickerTarget

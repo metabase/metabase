@@ -167,7 +167,7 @@ export type SdkQuestionTitleProps =
   // TODO: turn this into (question: Question) => ReactNode once we have the public-facing question type (metabase#50487)
   | (() => ReactNode);
 
-export type EntityTypeFilterKeys = "table" | "model";
+export type EntityTypeFilterKeys = "table" | "model" | "metric";
 
 export type SqlParameterValues = Record<
   string,

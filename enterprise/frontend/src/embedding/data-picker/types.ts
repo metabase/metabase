@@ -1,5 +1,9 @@
 import type { CardType, IconName } from "metabase-types/api";
-export type DataPickerDataType = "models" | "raw-data" | "questions";
+export type DataPickerDataType =
+  | "models"
+  | "raw-data"
+  | "questions"
+  | "metrics";
 
 export type DataTypeInfoItem = {
   id: DataPickerDataType;
@@ -8,4 +12,7 @@ export type DataTypeInfoItem = {
   description: string;
 };
 
-export type SavedEntityType = Extract<CardType, "model" | "question">;
+export type SavedEntityType = Extract<
+  CardType,
+  "model" | "question" | "metric"
+>;

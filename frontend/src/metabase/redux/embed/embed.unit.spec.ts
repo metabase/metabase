@@ -118,10 +118,11 @@ describe("embed reducer", () => {
         expect(store.getState().embeddingDataPicker.entityTypes).toEqual([
           "model",
           "table",
+          "metric",
         ]);
       });
 
-      it('should set "entity_types" option to the default value `["model", "table"]` when "entity_types" are empty', () => {
+      it('should set "entity_types" option to the default value `["model", "table", "metric"]` when "entity_types" are empty', () => {
         const store = createMockStore();
 
         store.dispatch(
@@ -134,6 +135,7 @@ describe("embed reducer", () => {
         expect(store.getState().embeddingDataPicker.entityTypes).toEqual([
           "model",
           "table",
+          "metric",
         ]);
 
         store.dispatch(
@@ -146,6 +148,21 @@ describe("embed reducer", () => {
         expect(store.getState().embeddingDataPicker.entityTypes).toEqual([
           "model",
           "table",
+          "metric",
+        ]);
+      });
+
+      it('should accept "metric" as an "entity_types" option', () => {
+        const store = createMockStore();
+
+        store.dispatch(
+          setInitialUrlOptions({
+            search: "entity_types=metric",
+          }),
+        );
+
+        expect(store.getState().embeddingDataPicker.entityTypes).toEqual([
+          "metric",
         ]);
       });
 

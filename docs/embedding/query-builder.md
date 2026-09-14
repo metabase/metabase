@@ -38,7 +38,7 @@ With the SDK:
 {% include_file "{{ dirname }}/sdk/snippets/questions/new-question.tsx" %}
 ```
 
-To narrow down what people can start from, list the entity types you want in the data picker with the `entity-types` attribute (web component) or the `entityTypes` prop (SDK). For example, `entity-types="['table']"` limits the picker to raw tables. The attribute takes `"table"`, `"model"`, or both.
+By default, the picker shows tables, models, and metrics. To narrow that down, list the entity types you want with the `entity-types` attribute (web component) or the `entityTypes` prop (SDK). For example, `entity-types="['table']"` limits the picker to raw tables. The attribute takes `"table"`, `"model"`, `"metric"`, or any combination of them. `"metric"` only works with the staged data picker.
 
 ## Embed the SQL editor
 
