@@ -58,6 +58,7 @@
   ;;
   ;; globally-enabled custom linters
   ;;
+  :metabase/agent-message-exit                               {:level :off} ; enabled for `agent-prose-namespaces`
   :metabase/agent-message-lines                              {:level :warning}
   :metabase/check-defmulti-arglists                          {:level :warning}
   :metabase/check-def-check-not-uppercase-name               {:level :warning}
@@ -589,6 +590,7 @@
    clojure.core/defprotocol                                                                                                  hooks.clojure.core.def/lint-def
    clojure.core/defrecord                                                                                                    hooks.clojure.core.def/lint-def
    clojure.core/deftype                                                                                                      hooks.clojure.core.def/lint-def
+   clojure.core/ex-info                                                                                                      hooks.metabase.prose-interpolation/lint-ex-info
    clojure.core/format                                                                                                       hooks.metabase.prose-interpolation/lint-format
    clojure.core/ns                                                                                                           hooks.clojure.core.ns/lint-ns
    clojure.core/require                                                                                                      hooks.clojure.core.require/lint-require
@@ -686,6 +688,10 @@
    metabase.lib.test-util.macros/mbql-query                                                                                  hooks.metabase.test.data/mbql-query
    metabase.lib.test-util.macros/mbql-5-query                                                                                hooks.metabase.test.data/mbql-query
    metabase.lib.test-util.macros/with-testing-against-standard-queries                                                       hooks.metabase.lib.test-util.macros/with-testing-against-standard-queries
+   metabase.mcp.transport/jsonrpc-error                                                                                      hooks.metabase.prose-interpolation/lint-jsonrpc-error
+   metabase.mcp.v2.common/error-content                                                                                      hooks.metabase.prose-interpolation/lint-teaching-exit
+   metabase.mcp.v2.common/success-content                                                                                    hooks.metabase.prose-interpolation/lint-success-content
+   metabase.mcp.v2.common/throw-teaching-error                                                                               hooks.metabase.prose-interpolation/lint-teaching-exit
    metabase.mcp.v2.message/msg                                                                                               hooks.metabase.prose-interpolation/lint-msg
    metabase.mcp.v2.tools.parameters-test/with-fixtures                                                                       hooks.common/with-one-binding
    metabase.metrics.api-dimension-test/with-seeded-metric                                                                    hooks.common/with-one-binding
@@ -928,7 +934,8 @@
   {:linters {:metabase/t2-query-namespace {:level :off}}}
 
   agent-prose-namespaces
-  {:linters {:metabase/unquoted-prose-interpolation {:level :warning}}}
+  {:linters {:metabase/agent-message-exit           {:level :warning}
+             :metabase/unquoted-prose-interpolation {:level :warning}}}
 
   ;; .cljc tests run in both Clojure and ClojureScript — `with-dynamic-fn-redefs` is JVM-only,
   ;; so leave these alone.

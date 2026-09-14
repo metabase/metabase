@@ -1,5 +1,5 @@
 (ns hooks.metabase.prose-interpolation
-  "Lint that values interpolated into prose are quoted with `pr-str`.
+  "Lint agent-facing prose: interpolated values are quoted, and the exits to the agent receive `msg`-built text.
 
   Agent-facing prose (teaching errors, paging hints, steering lines) reads to an LLM as the server speaking. A value
   interpolated into it unquoted -- a warehouse table name, a driver error, a card name -- can carry newlines and text
@@ -14,6 +14,13 @@
   Also checks `metabase.mcp.v2.message/msg` calls, reporting `:metabase/agent-message-lines`: the lines must be a
   literal vector of string literals, one line of the message each, with no line breaks, `%n`, or control characters,
   and the arguments must match the lines' format specifiers.
+
+  Also checks the exits that carry text to the agent, reporting `:metabase/agent-message-exit`, which is `:off` except
+  in the namespaces `config.edn` enables it for. The message argument of `throw-teaching-error`, `error-content`,
+  `jsonrpc-error`, and `success-content` must not be syntactically text -- a string literal, a string-building call,
+  or a threading, branching, or body form that yields one -- so that it is built with `msg`. An `ex-info` whose data
+  literal carries a 4xx `:status-code` or an `error-code` key must be a `throw-teaching-error` instead. The check is
+  syntactic; text that reaches an exit another way is cleaned at runtime.
 
   Every hook returns its input unchanged."
   (:require
@@ -94,7 +101,7 @@
   [arg-node]
   (hooks/reg-finding!
    (assoc (meta arg-node)
-          :message (format "`%s` is interpolated into prose unquoted; wrap it in `pr-str` so untrusted text can't pose as server-authored text."
+          :message (format "`%s` is interpolated into prose unquoted; build agent-facing text with `msg`, which cleans interpolated values."
                            (pr-str (hooks/sexpr arg-node)))
           :type    linter)))
 
@@ -149,7 +156,7 @@
         (when fmt-node
           (hooks/reg-finding!
            (assoc (meta fmt-node)
-                  :message "The format string must be a literal so its interpolated arguments can be checked for quoting."
+                  :message "The format string must be a literal so its interpolated arguments can be checked; build agent-facing text with `msg`."
                   :type    linter))))))
   input)
 
@@ -223,4 +230,110 @@
               (when (not= expected given)
                 (reg-msg-finding! node (format "The `msg` lines take %s but %d %s given."
                                                (plural expected "argument") given (if (= 1 given) "is" "are"))))))))))
+  input)
+
+(def ^:private exit-linter :metabase/agent-message-exit)
+
+(defn- exit-enabled?
+  [config]
+  (not= :off (get-in config [:linters exit-linter :level] :off)))
+
+(defn- reg-exit-finding!
+  [node message]
+  (hooks/reg-finding! (assoc (meta node) :message message :type exit-linter)))
+
+(defn- calls-core?
+  "Whether `node` is a call to a `clojure.core` var or special form named in `var-names`."
+  [node var-names]
+  (when-let [sym (call-name node)]
+    (and (contains? var-names (name sym))
+         (contains? core-ns (namespace sym)))))
+
+(defn- calls-i18n?
+  [node]
+  (when-let [sym (call-name node)]
+    (contains? #{"tru" "trs" "deferred-tru" "deferred-trs"} (name sym))))
+
+(defn- calls-json-encode?
+  "Whether `node` calls `encode` in a namespace or alias whose name ends in `json`."
+  [node]
+  (when-let [sym (call-name node)]
+    (and (= "encode" (name sym))
+         (boolean (some-> (namespace sym) (str/ends-with? "json"))))))
+
+(defn- stringy?
+  "Whether `node` syntactically evaluates to text: a string literal, a call that builds a string, or a threading,
+  branching, or body form whose result is one."
+  [node]
+  (let [args (rest (:children node))]
+    (boolean
+     (or (hooks/string-node? node)
+         (calls-core? node #{"str" "format" "pr-str"})
+         (calls-i18n? node)
+         (calls? node string-ns "join")
+         (calls-json-encode? node)
+         (and (calls-core? node #{"->" "->>" "cond->" "cond->>"})
+              (stringy? (first args)))
+         (and (calls-core? node #{"if" "if-not" "if-let"})
+              (some stringy? (rest args)))
+         (and (calls-core? node #{"when" "when-not" "when-let" "let"})
+              (next args)
+              (stringy? (last args)))
+         (and (calls-core? node #{"do"})
+              (stringy? (last args)))
+         (and (calls-core? node #{"or"})
+              (some stringy? args))))))
+
+(defn- lint-exit-text!
+  "Flag the argument of exit call `node` at child `index` when it is text rather than a `msg`."
+  [node index]
+  (let [arg (nth (:children node) index nil)]
+    (when (and arg (stringy? arg))
+      (reg-exit-finding! arg (format "`%s` passes text to `%s`; build agent-facing text with `msg` so interpolated values are cleaned."
+                                     (pr-str (hooks/sexpr arg))
+                                     (name (call-name node)))))))
+
+(defn lint-teaching-exit
+  "Flag a teaching-error exit whose message, the first argument, is text rather than a `msg`."
+  [{:keys [node config] :as input}]
+  (when (exit-enabled? config)
+    (lint-exit-text! node 1))
+  input)
+
+(defn lint-jsonrpc-error
+  "Flag a `jsonrpc-error` whose message, the third argument, is text rather than a `msg`."
+  [{:keys [node config] :as input}]
+  (when (exit-enabled? config)
+    (lint-exit-text! node 3))
+  input)
+
+(defn lint-success-content
+  "Flag a `success-content` whose first argument is text rather than a payload or a `msg`."
+  [{:keys [node config] :as input}]
+  (when (exit-enabled? config)
+    (let [text (second (:children node))]
+      (when (and text (stringy? text))
+        (reg-exit-finding! text "`success-content` takes data to JSON-encode or a `msg`; pass the payload itself, or build the text with `msg`."))))
+  input)
+
+(defn- caller-facing-data?
+  "Whether `node` is a map literal with a 4xx `:status-code` literal or an `error-code` key."
+  [node]
+  (and (hooks/map-node? node)
+       (some (fn [[k v]]
+               (when (hooks/keyword-node? k)
+                 (let [kw (hooks/sexpr k)]
+                   (or (= "error-code" (name kw))
+                       (and (= :status-code kw)
+                            (hooks/token-node? v)
+                            (let [status (hooks/sexpr v)]
+                              (and (number? status) (<= 400 status 499))))))))
+             (partition 2 (:children node)))))
+
+(defn lint-ex-info
+  "Flag an `ex-info` whose data marks it as a caller-facing error."
+  [{:keys [node config] :as input}]
+  (when (exit-enabled? config)
+    (when (caller-facing-data? (nth (:children node) 2 nil))
+      (reg-exit-finding! node "Caller-facing errors must be thrown with `throw-teaching-error` and a `msg`, so their text is rendered and cleaned.")))
   input)

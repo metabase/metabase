@@ -6,17 +6,18 @@
    [hooks.metabase.prose-interpolation :as prose-interpolation]))
 
 (defn- findings
-  "Run `hook-fn` over `form` with the linter at `level`; return the findings' messages."
+  "Run `hook-fn` over `form`, a form or its source string, with the linters at `level`; return the findings' messages."
   ([hook-fn form]
    (findings hook-fn form :warning))
   ([hook-fn form level]
    (let [config {:linters {:metabase/unquoted-prose-interpolation {:level level}
-                           :metabase/agent-message-lines          {:level level}}}]
+                           :metabase/agent-message-lines          {:level level}
+                           :metabase/agent-message-exit           {:level level}}}]
      (binding [clj-kondo.impl.utils/*ctx* {:config     config
                                            :ignores    (atom nil)
                                            :findings   (atom [])
                                            :namespaces (atom {})}]
-       (let [input  {:node   (hooks/parse-string (pr-str form))
+       (let [input  {:node   (hooks/parse-string (if (string? form) form (pr-str form)))
                      :ns     'metabase.mcp.v2.tools.browse
                      :config config}
              output (hook-fn input)]
@@ -26,7 +27,7 @@
 
 (deftest ^:parallel format-test
   (testing "GHY-4544: a %s argument that isn't quoted is flagged"
-    (is (=? [#"`table-name`.*pr-str.*"]
+    (is (=? [#"`table-name`.*`msg`.*"]
             (findings prose-interpolation/lint-format '(format "%s: %d of %d fields" table-name n total)))))
   (testing "quoted, literal, and non-%s arguments are fine"
     (is (empty? (findings prose-interpolation/lint-format '(format "Schema %s not found in database %d" (pr-str schema) db-id))))
@@ -42,7 +43,7 @@
     (is (empty? (findings prose-interpolation/lint-format '(format "Available: %s." (str/join ", " (map pr-str cols))))))
     (is (empty? (findings prose-interpolation/lint-format '(format "Available: %s." (->> cols (map pr-str) (str/join ", ")))))))
   (testing "a list joined over raw items is flagged"
-    (is (=? [#".*pr-str.*"]
+    (is (=? [#".*`msg`.*"]
             (findings prose-interpolation/lint-format '(format "Available: %s." (str/join ", " (map :name cols)))))))
   (testing "a format string that isn't a literal can't be checked, so it is flagged"
     (is (=? [#".*literal.*"]
@@ -50,7 +51,7 @@
 
 (deftest ^:parallel str-test
   (testing "GHY-4544: an unquoted value concatenated onto prose is flagged"
-    (is (=? [#"`\(:error result\)`.*pr-str.*"]
+    (is (=? [#"`\(:error result\)`.*`msg`.*"]
             (findings prose-interpolation/lint-str '(str "Query failed: " (:error result))))))
   (testing "quoted values are fine"
     (is (empty? (findings prose-interpolation/lint-str '(str "Query failed: " (pr-str (:error result)))))))
@@ -61,7 +62,7 @@
 
 (deftest ^:parallel i18n-test
   (testing "GHY-4544: an unquoted placeholder argument is flagged"
-    (is (=? [#".*pr-str.*"]
+    (is (=? [#".*`msg`.*"]
             (findings prose-interpolation/lint-i18n
                       '(tru "No column named {0}. Available column names: {1}."
                             (pr-str (nth bad 2))
@@ -111,3 +112,85 @@
             (findings prose-interpolation/lint-msg '(msg ["only %s"] a b)))))
   (testing "nothing is reported when the linter is off"
     (is (empty? (findings prose-interpolation/lint-msg '(msg lines x) :off)))))
+
+(def ^:private stringy-texts
+  "Message arguments built as text rather than with `msg`."
+  ['"Query failed."
+   '(str "Query failed: " err)
+   '(format "Table %s not found" (pr-str t))
+   '(cond-> (json/encode body) message (str "\n" message))
+   '(if x "a" (str "b" y))
+   '(if x (msg ["a"]) (str "b" y))
+   '(when-let [e (:error r)] (str/join ", " e))
+   '(or (:message r) (tru "Unknown error"))
+   '(let [s (pr-str x)] (str "Bad value " s))])
+
+(def ^:private message-texts
+  "Message arguments that aren't syntactically text."
+  ['(msg ["Table %s not found."] t)
+   'message
+   '(if x (msg ["a"]) (msg ["b"]))
+   '(render-error e)])
+
+(deftest ^:parallel teaching-exit-test
+  (doseq [fn-name ["throw-teaching-error" "error-content"]]
+    (testing (str "GHY-4544: text passed to `" fn-name "` is flagged")
+      (doseq [text stringy-texts]
+        (testing (pr-str text)
+          (is (=? [(re-pattern (str ".*passes text to `" fn-name "`.*`msg`.*"))]
+                  (findings prose-interpolation/lint-teaching-exit (list (symbol "common" fn-name) text)))))))
+    (testing (str "`" fn-name "` accepts a `msg`, a symbol, and other calls")
+      (doseq [text message-texts]
+        (testing (pr-str text)
+          (is (empty? (findings prose-interpolation/lint-teaching-exit (list (symbol fn-name) text {:status-code 404}))))))))
+  (testing "only the message argument is checked"
+    (is (empty? (findings prose-interpolation/lint-teaching-exit '(error-content (msg ["x"]) (str "code"))))))
+  (testing "nothing is reported when the linter is off"
+    (is (empty? (findings prose-interpolation/lint-teaching-exit '(throw-teaching-error "x") :off)))))
+
+(deftest ^:parallel jsonrpc-error-test
+  (testing "GHY-4544: text passed as the JSON-RPC error message is flagged"
+    (doseq [text stringy-texts]
+      (testing (pr-str text)
+        (is (=? [#".*passes text to `jsonrpc-error`.*`msg`.*"]
+                (findings prose-interpolation/lint-jsonrpc-error (list 'transport/jsonrpc-error 'id -32602 text)))))))
+  (testing "a `msg`, symbol, or other call as the message is accepted"
+    (doseq [text message-texts]
+      (testing (pr-str text)
+        (is (empty? (findings prose-interpolation/lint-jsonrpc-error (list 'jsonrpc-error 'id -32602 text)))))))
+  (testing "only the third argument is the message"
+    (is (empty? (findings prose-interpolation/lint-jsonrpc-error '(jsonrpc-error "id" (str "code") (msg ["x"])))))))
+
+(deftest ^:parallel success-content-test
+  (testing "GHY-4544: text passed to `success-content` is flagged"
+    (doseq [text stringy-texts]
+      (testing (pr-str text)
+        (is (=? [#"`success-content` takes data to JSON-encode or a `msg`.*"]
+                (findings prose-interpolation/lint-success-content (list 'common/success-content text)))))))
+  (testing "a payload, a `msg`, or a symbol is accepted"
+    (doseq [text (conj message-texts '{:data rows} '[a b])]
+      (testing (pr-str text)
+        (is (empty? (findings prose-interpolation/lint-success-content (list 'success-content text))))))
+    (is (empty? (findings prose-interpolation/lint-success-content '(success-content {:data rows} (str "structured")))))))
+
+(deftest ^:parallel ex-info-test
+  (testing "GHY-4544: an ex-info carrying a 4xx status code or an error code is flagged"
+    (doseq [form ["(ex-info \"Card not found\" {:status-code 404})"
+                  "(ex-info (str \"Bad \" x) {:status-code 400 :field f})"
+                  "(ex-info \"Nope\" {::common/error-code c})"
+                  "(ex-info \"Nope\" {:error-code c})"
+                  "(ex-info (msg [\"Nope\"]) {:error-code c})"]]
+      (testing form
+        (is (=? [#".*`throw-teaching-error` and a `msg`.*"]
+                (findings prose-interpolation/lint-ex-info form))))))
+  (testing "other ex-info calls aren't flagged"
+    (doseq [form ["(ex-info \"boom\" {:status-code 500})"
+                  "(ex-info \"boom\" {:status-code code})"
+                  "(ex-info \"boom\" {:foo 1})"
+                  "(ex-info \"boom\" data)"
+                  "(ex-info \"boom\" (merge {:status-code 400} data))"
+                  "(ex-info \"boom\")"]]
+      (testing form
+        (is (empty? (findings prose-interpolation/lint-ex-info form))))))
+  (testing "nothing is reported when the linter is off"
+    (is (empty? (findings prose-interpolation/lint-ex-info "(ex-info \"x\" {:status-code 404})" :off)))))
