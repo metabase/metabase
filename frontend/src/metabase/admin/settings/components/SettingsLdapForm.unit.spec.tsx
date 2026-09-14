@@ -528,7 +528,7 @@ describe("SettingsLdapForm", () => {
       // the reason sits under the field, not in a toast as well
       expect(screen.getAllByText(reason)).toHaveLength(1);
       expect(nameInput).toBeInvalid();
-      expect(nameInput).toHaveAccessibleDescription(reason);
+      expect(nameInput).toHaveAccessibleErrorMessage(reason);
       expect(screen.getByRole("alert")).toHaveTextContent(reason);
       expect(nameInput).toHaveValue("qwf");
       expect(screen.getByRole("button", { name: "Add mapping" })).toBeEnabled();
