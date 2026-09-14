@@ -10,6 +10,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema]
    [metabase.metabot.db :as metabot.db]
+   [metabase.metabot.util :as metabot.u]
    [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -46,12 +47,15 @@
            ;; "Stage 0 does not exist" (BOT-1604 follow-up).
            (or (:lib/type query) (:stages query)))
     (try
-      (lib/->legacy-MBQL (lib/normalize :metabase.lib.schema/query query))
+      (-> (lib/normalize :metabase.lib.schema/query query)
+          ;; Normalizing a `:lib/*`-stripped query orphans its aggregation refs. Rebind before
+          ;; converting: otherwise conversion throws, the catch below emits raw MBQL 5, and the
+          ;; frontend posts that to `/api/dataset` for an "Invalid :aggregation reference" 400.
+          metabot.u/repair-orphaned-aggregation-refs
+          lib/->legacy-MBQL)
       (catch Exception e
-        ;; Normalizing a `:lib/*`-stripped query can mint fresh `:lib/uuid`s that don't
-        ;; match positional aggregation/expression refs embedded elsewhere in the query
-        ;; (e.g. an order-by on the query's own aggregation), which fails conversion.
-        ;; Fall back to the raw query rather than failing the whole agent turn over a link.
+        ;; Refs the repair can't disambiguate still fail here. Fall back to the raw query rather
+        ;; than failing the whole agent turn over a link.
         (log/warn e "Failed to convert MBQL 5 query to legacy MBQL for link resolution")
         query))
     query))
