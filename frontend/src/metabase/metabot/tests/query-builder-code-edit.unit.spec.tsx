@@ -72,6 +72,7 @@ const ChatMessagesProbe = () => {
 
   return (
     <Messages
+      size="md"
       messages={messages}
       isDoingScience={false}
       debug={false}

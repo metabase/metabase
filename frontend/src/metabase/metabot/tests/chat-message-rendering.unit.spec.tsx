@@ -58,6 +58,7 @@ const setup = (
       debug={false}
       readonly={false}
       conversationId="convo-1"
+      size="md"
       setFeedbackMessage={() => {}}
       submittedFeedback={undefined}
       message={{
@@ -81,6 +82,7 @@ describe("AgentMessage", () => {
   it("hides the action bar on the last agent message while processing", () => {
     renderWithProviders(
       <Messages
+        size="md"
         messages={[
           createMockMetabotTextMessage("user", "hi"),
           createMockMetabotTextMessage("agent", "hello"),
@@ -100,6 +102,7 @@ describe("AgentMessage", () => {
   it("hides the copy action when the agent response has no text", () => {
     renderWithProviders(
       <Messages
+        size="md"
         messages={[
           createMockMetabotTextMessage("user", "hi"),
           createMockMetabotMessage({
@@ -160,6 +163,7 @@ describe("AgentMessage", () => {
     it("shows feedback ratings in an interactive conversation", async () => {
       renderWithProviders(
         <Messages
+          size="md"
           messages={conversation}
           isDoingScience={false}
           debug={false}
@@ -175,6 +179,7 @@ describe("AgentMessage", () => {
     it("hides feedback ratings in a read-only conversation", () => {
       renderWithProviders(
         <Messages
+          size="md"
           messages={conversation}
           isDoingScience={false}
           debug={false}
@@ -471,6 +476,7 @@ describe("UserMessage chart mentions", () => {
 
     renderWithProviders(
       <Messages
+        size="md"
         messages={[
           createMockMetabotTextMessage(
             "user",
