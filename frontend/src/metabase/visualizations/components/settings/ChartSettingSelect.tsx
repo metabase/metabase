@@ -99,6 +99,11 @@ export const ChartSettingSelect = ({
     value: encodeWidgetValue(value) || "",
   }));
 
+  const encodedValue = encodeWidgetValue(value);
+  const selectedValue = data.some((option) => option.value === encodedValue)
+    ? encodedValue
+    : null;
+
   const inputPaddingRight = rightSectionWidth
     ? `${parseInt(rightSectionWidth, 10) + 8}px`
     : undefined;
@@ -128,7 +133,7 @@ export const ChartSettingSelect = ({
       }}
       data={data}
       disabled={disabled}
-      value={value === null ? value : encodeWidgetValue(value)}
+      value={selectedValue}
       //Mantine V7 select onChange has 2 arguments passed. This breaks the assumption in visualizations/lib/settings.js where the onChange function is defined
       onChange={(v) => {
         onChange(
