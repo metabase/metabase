@@ -336,27 +336,38 @@
     (for [[id fs] by-rule]
       (format "  %s  %s" (str (name id) (apply str (repeat (- width (count (name id))) " "))) (severity-counts fs)))))
 
+(defn- summary-lines
+  "The header and the overview: when it ran, the totals, one line per rule with its counts. Nothing that names a
+  file or a line."
+  [findings by-rule now]
+  (let [header ["# Security lint report"
+                ""
+                (str "Ran " (.format timestamp-format (or now (java.time.ZonedDateTime/now))))]]
+    (if (empty? findings)
+      (concat header ["No security findings." ""])
+      (concat header
+              [(format "%s in %s across %s: %s" (plural (count findings) "finding")
+                       (plural (count (distinct (map :file findings))) "file")
+                       (plural (count by-rule) "rule")
+                       (severity-counts findings))
+               ""]
+              (overview-lines by-rule)
+              [""]))))
+
+(defn summary
+  "The report's header and overview alone: counts by rule and severity, no locations, no code, no paths. What a
+  public CI log may show.
+
+  `:now` is the run time, a `ZonedDateTime`; it defaults to now."
+  [findings {:keys [now]}]
+  (str/join "\n" (summary-lines findings (rule-order findings) now)))
+
 (defn text
-  "Human-readable findings, for running this locally: a header with when it ran and the totals, an overview by
-  rule, then the findings grouped by rule and severity.
+  "Human-readable findings, for running this locally: the [[summary]], then the findings grouped by rule and
+  severity, each with its location, message, origins, call paths and code.
 
   `:now` is the run time, a `ZonedDateTime`; it defaults to now."
   [findings {:keys [root now]}]
-  (let [by-rule (rule-order findings)
-        header  ["# Security lint report"
-                 ""
-                 (str "Ran " (.format timestamp-format (or now (java.time.ZonedDateTime/now))))]]
-    (str/join
-     "\n"
-     (if (empty? findings)
-       (concat header ["No security findings." ""])
-       (concat
-        header
-        [(format "%s in %s across %s: %s" (plural (count findings) "finding")
-                 (plural (count (distinct (map :file findings))) "file")
-                 (plural (count by-rule) "rule")
-                 (severity-counts findings))
-         ""]
-        (overview-lines by-rule)
-        [""]
-        (mapcat (fn [[_ fs]] (rule-lines root fs)) by-rule))))))
+  (let [by-rule (rule-order findings)]
+    (str/join "\n" (concat (summary-lines findings by-rule now)
+                           (mapcat (fn [[_ fs]] (rule-lines root fs)) by-rule)))))

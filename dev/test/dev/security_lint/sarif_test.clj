@@ -229,3 +229,15 @@
                               [:runs 0 :results 0 :locations 0 :physicalLocation :artifactLocation :uri]))]
       (is (= "src/metabase/a.clj" (uri (assoc (first findings) :file "./src/metabase/a.clj"))))
       (is (= "src/metabase/a.clj" (uri (assoc (first findings) :file "/repo/./src/metabase/a.clj")))))))
+
+(deftest summary-test
+  (let [out (sarif/summary findings {:now fixed-now})]
+    (testing "the summary is the header and the counts by rule"
+      (is (str/includes? out "3 findings in 3 files across 2 rules: 2 errors, 1 note"))
+      (is (str/includes? out "command-injection  2 errors")))
+    (testing "and nothing that names a file, a line or the code -- it is what a public CI log shows"
+      (is (not (str/includes? out "a.clj")))
+      (is (not (str/includes? out "shell/sh")))
+      (is (not (str/includes? out "dynamic arg"))))
+    (testing "the full text begins with the summary"
+      (is (str/starts-with? (sarif/text findings {:root "/repo" :now fixed-now}) out)))))
