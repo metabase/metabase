@@ -29,7 +29,7 @@ To create an API key:
 
 ### Creating API keys from the config file
 
-If you're on a [Pro or Enterprise self-hosted plan](https://www.metabase.com/pricing/), you can [create API keys via the configuration file](../configuring-metabase/config-file.md#api-keys).
+If you're on a [Pro or Enterprise self-hosted plan](https://www.metabase.com/pricing), you can [create API keys via the configuration file](../configuring-metabase/config-file.md#api-keys).
 
 ## Managing API Keys
 
@@ -89,7 +89,7 @@ Assuming you've set your key as an environment variable like so:
 export METABASE_API_KEY="YOUR_API_KEY"
 ```
 
-Here's a basic `GET` request using `fetch` to get the list of groups. You can copy the code, save it as file (e.g., as `api-test.js`), and run the code with `node api-test.js`.
+Here's a basic `GET` request using `fetch` to get the list of groups. You can copy the code, save it as a file (e.g., as `api-test.js`), and run the code with `node api-test.js`.
 
 ```js
 // Assuming you've set the key in process with

@@ -165,10 +165,10 @@
                                                                         :document {:type "doc"
                                                                                    :content [{:type "paragraph"
                                                                                               :content [{:type "smartLink"
-                                                                                                         :attrs {:entityId card-id
-                                                                                                                 :model "card"}}]}
+                                                                                                         :attrs {"entityId" card-id
+                                                                                                                 "model" "card"}}]}
                                                                                              {:type "cardEmbed"
-                                                                                              :attrs {:id embedded-card-id}}]}}]
+                                                                                              :attrs {"id" embedded-card-id}}]}}]
            (events/publish-event! :event/document-create {:object document :user-id api/*current-user-id*})
            (assert-stale :document document-id)
            (deps.test/synchronously-run-backfill!)
@@ -185,11 +185,11 @@
            (let [updated-doc (assoc document :document {:type "doc"
                                                         :content [{:type "paragraph"
                                                                    :content [{:type "smartLink"
-                                                                              :attrs {:entityId dashboard-id
-                                                                                      :model "dashboard"}}
+                                                                              :attrs {"entityId" dashboard-id
+                                                                                      "model" "dashboard"}}
                                                                              {:type "smartLink"
-                                                                              :attrs {:entityId products-id
-                                                                                      :model "table"}}]}]})]
+                                                                              :attrs {"entityId" products-id
+                                                                                      "model" "table"}}]}]})]
              (t2/update! :model/Document document-id updated-doc)
              (events/publish-event! :event/document-update {:object updated-doc :user-id api/*current-user-id*})
              (deps.test/synchronously-run-backfill!)

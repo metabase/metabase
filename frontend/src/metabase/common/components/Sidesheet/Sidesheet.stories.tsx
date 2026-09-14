@@ -64,7 +64,7 @@ const PagedSidesheetTemplate = () => <TestPagedSidesheet />;
 const TabbedSidesheetTemplate = () => <TestTabbedSidesheet />;
 
 const SidesheetButtonTemplate = () => (
-  <Flex maw="30rem" direction="column" gap="lg">
+  <Flex maw="30rem" direction="column" gap="xl">
     <SidesheetCard title="normal">
       <SidesheetButton>Do something fun</SidesheetButton>
     </SidesheetCard>

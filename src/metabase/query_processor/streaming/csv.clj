@@ -28,6 +28,13 @@
                                                               (streaming.common/export-filename-timestamp))}
     :write-keepalive-newlines? false}))
 
+(defn- escape-cell
+  "Stringify a cell the way [[clojure.data.csv/write-cell]] would, then neutralize spreadsheet formula injection. The
+  `str` matters: a formatter may hand us a wrapper record (e.g. `TextWrapper`) whose `toString` is what actually gets
+  written, so checking the raw value would miss it."
+  [cell]
+  (streaming.common/escape-spreadsheet-formula (str cell)))
+
 (defn- write-csv
   "Custom implementation of `clojure.data.csv/write-csv` with a more efficient quote? predicate and configurable
   separator."
@@ -47,7 +54,11 @@
                              true
                              (recur (unchecked-inc i))))))))
         newline "\n"]
-    (#'clojure.data.csv/write-csv* writer data separator quote quote? newline)))
+    ;; Escaping here rather than at each call site covers header rows, plain rows and pivot output in one place. It
+    ;; deliberately does *not* go in the `write-cell` rebind below: that is a global root binding, and formula escaping
+    ;; must not reach the other `data.csv` writers -- the content-translation dictionary is exported, edited and
+    ;; re-uploaded, and `setting/serialize-csv` writes to the app DB.
+    (#'clojure.data.csv/write-csv* writer (map #(mapv escape-cell %) data) separator quote quote? newline)))
 
 ;; Rebind write-cell to avoid using clojure.core/escape. Instead, use String.replace with known arguments (we never
 ;; change quote symbol anyway).

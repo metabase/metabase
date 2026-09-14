@@ -12,7 +12,7 @@ export const dateTimePickerOverrides = {
         styles: {
           dropdown: {
             /* Padding workaround since popover padding is overridden to zero */
-            "--popover-padding": "var(--mantine-spacing-md)",
+            "--popover-padding": "var(--mantine-spacing-lg)",
           },
         },
       },
@@ -23,6 +23,7 @@ export const dateTimePickerOverrides = {
     classNames: {
       levelsGroup: Styles.levelsGroup,
       timeWrapper: Styles.timeWrapper,
+      timeInput: Styles.timeInput,
       day: CalendarStyles.day,
       weekday: CalendarStyles.weekday,
       month: CalendarStyles.month,
@@ -39,6 +40,9 @@ export const dateTimePickerOverrides = {
       calendarHeaderControl: CalendarStyles.calendarHeaderControl,
     },
     styles: {
+      levelsGroup: {
+        gap: "var(--mantine-spacing-lg)",
+      },
       weekdaysRow: {
         boxSizing: "border-box",
       },

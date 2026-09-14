@@ -11,11 +11,11 @@
    [metabase.tracing.core :as tracing]
    [metabase.transforms-base.ordering :as ordering]
    [metabase.transforms.coordinated-run :as coordinated-run]
+   [metabase.transforms.db :as transforms.db]
    [metabase.transforms.jobs :as jobs]
    [metabase.transforms.models.dag-run :as dag-run]
    [metabase.transforms.util :as transforms.u]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -53,11 +53,11 @@
   "Transforms with only the columns the ordering walk needs — avoids loading every transform's full
   row just to compute the dependency graph (full rows are fetched only for the resulting closure)."
   []
-  (t2/select [:model/Transform :id :target :target_table_id :created_at :table_dependencies]))
+  (transforms.db/transform-dependency-rows))
 
 (defn- full-transforms [ids]
   (if (seq ids)
-    (t2/select :model/Transform :id [:in ids])
+    (transforms.db/transforms ids)
     []))
 
 (defn- dag-run-plan

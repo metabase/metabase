@@ -51,6 +51,10 @@ export type CustomVizPluginWarning =
       type: "metabase-version-mismatch";
       metabase_version: string;
       current_version: string;
+    }
+  | {
+      type: "invalid-identifier";
+      identifier: string;
     };
 
 /**

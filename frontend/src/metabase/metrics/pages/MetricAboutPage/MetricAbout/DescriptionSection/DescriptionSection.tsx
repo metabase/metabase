@@ -72,7 +72,7 @@ export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
 
   return (
     <Stack
-      p="md"
+      p="lg"
       gap={0}
       align="stretch"
       data-testid="metric-description-sidebar"
@@ -89,7 +89,7 @@ export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
           {t`Last updated ${getRelativeTime(card.updated_at)}`}
         </Text>
       </Tooltip>
-      <Box mt="md" data-testid="metric-description-section">
+      <Box mt="lg" data-testid="metric-description-section">
         {card.can_write ? (
           <EditableText
             initialValue={card.description ?? ""}
@@ -106,7 +106,7 @@ export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
       </Box>
 
       {hasSource && (
-        <MetricSubSection title={t`Source`} mt="xl">
+        <MetricSubSection title={t`Source`} mt="xxl">
           <MetadataCard>
             {database && (
               <MetadataRow icon="database">
@@ -135,7 +135,7 @@ export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
       )}
 
       {canSeeRelationships && (
-        <MetricSubSection title={t`Relationships`} mt="xl">
+        <MetricSubSection title={t`Relationships`} mt="xxl">
           <MetadataCard>
             <MetadataRow icon="dependencies" muted={dependenciesCount === 0}>
               {dependenciesCount > 0 ? (

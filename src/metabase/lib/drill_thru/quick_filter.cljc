@@ -72,9 +72,7 @@
 (mu/defn- operators-for :- [:sequential ::lib.schema.drill-thru/drill-thru.quick-filter.operator]
   [column :- ::lib.schema.metadata/column
    value]
-  (let [field-ref (cond-> (lib.ref/ref column)
-                    (:temporal-unit column)
-                    (lib.temporal-bucket/with-temporal-bucket (:temporal-unit column)))]
+  (let [field-ref (lib.ref/ref column)]
     (cond
       (lib.types.isa/structured? column)
       []
@@ -141,8 +139,8 @@
       (let [temporal-unit (lib.temporal-bucket/temporal-bucket column-ref)
             binning (lib.binning/binning column-ref)
             column (cond-> (:column drill-details)
-                     temporal-unit (assoc :temporal-unit temporal-unit)
-                     binning       (assoc :lib/binning binning))]
+                     temporal-unit (lib.temporal-bucket/with-temporal-bucket temporal-unit)
+                     binning       (lib.binning/with-binning binning))]
         (merge drill-details
                {:lib/type   :metabase.lib.drill-thru/drill-thru
                 :type       :drill-thru/quick-filter

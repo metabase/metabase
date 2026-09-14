@@ -92,7 +92,7 @@ export function ArchivedSnippetsPage() {
         <TextInput
           placeholder={t`Search...`}
           leftSection={<Icon name="search" />}
-          bdrs="md"
+          bdrs="sm"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />

@@ -42,14 +42,14 @@ export function CustomVizListItem({ plugin, onDelete }: Props) {
     <Flex
       justify="space-between"
       align="center"
-      gap="md"
-      p="md"
+      gap="lg"
+      p="lg"
       className={S.customVizListItem}
     >
       <CustomVizPluginSummary plugin={plugin} />
 
       {!plugin.enabled && (
-        <Group align="center" flex="0 0 auto" gap="xs">
+        <Group align="center" flex="0 0 auto" gap="xxs">
           <Text c="text-secondary" fw={500}>
             {t`Disabled`}
           </Text>

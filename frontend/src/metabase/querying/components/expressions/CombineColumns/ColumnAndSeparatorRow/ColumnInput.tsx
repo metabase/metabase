@@ -98,7 +98,7 @@ export function ColumnInput({
       styles={{
         root: { width: "100%" },
         label: {
-          marginBottom: theme.spacing?.xs,
+          marginBottom: theme.spacing?.xxs,
           fontSize: theme.fontSizes?.md,
           color: color("text-secondary"),
         },

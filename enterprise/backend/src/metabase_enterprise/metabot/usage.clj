@@ -2,13 +2,13 @@
   "Enterprise implementation of metabot usage logging and limit checking."
   (:require
    [clojure.core.memoize :as memoize]
+   [metabase-enterprise.metabot.db :as metabot.db]
    [metabase-enterprise.metabot.models.metabot-group-limit :as group-limit]
    [metabase-enterprise.metabot.models.metabot-instance-limit :as instance-limit]
    [metabase-enterprise.metabot.settings :as metabot.settings]
    [metabase.api.common :as api]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.util.log :as log])
   (:import
    (java.time DayOfWeek LocalDate YearMonth ZoneOffset)
    (java.time.temporal TemporalAdjusters)))
@@ -68,20 +68,20 @@
       (let [cache-creation (or cache-creation-tokens 0)
             cache-read     (or cache-read-tokens 0)
             total-tokens   (+ prompt-tokens completion-tokens)]
-        (t2/insert! :model/AiUsageLog
-                    {:source                 source
-                     :model                  model
-                     :prompt_tokens          prompt-tokens
-                     :completion_tokens      completion-tokens
-                     :total_tokens           total-tokens
-                     :cache_creation_tokens  cache-creation
-                     :cache_read_tokens      cache-read
-                     :user_id                (or user-id api/*current-user-id*)
-                     :tenant_id              (or tenant-id (some-> api/*current-user* deref :tenant_id))
-                     :conversation_id        conversation-id
-                     :profile_id             (some-> profile-id name)
-                     :request_id             request-id
-                     :ai_proxied             ai-proxied}))
+        (metabot.db/insert-usage-log!
+         {:source                 source
+          :model                  model
+          :prompt_tokens          prompt-tokens
+          :completion_tokens      completion-tokens
+          :total_tokens           total-tokens
+          :cache_creation_tokens  cache-creation
+          :cache_read_tokens      cache-read
+          :user_id                (or user-id api/*current-user-id*)
+          :tenant_id              (or tenant-id (some-> api/*current-user* deref :tenant_id))
+          :conversation_id        conversation-id
+          :profile_id             (some-> profile-id name)
+          :request_id             request-id
+          :ai_proxied             ai-proxied}))
       (catch Exception e
         (log/warnf "Failed to log LLM usage to ai_usage_log: %s" (ex-message e))))))
 
@@ -99,34 +99,25 @@
      ZoneOffset/UTC)))
 
 (defn- usage-query
-  "Query ai_usage_log for current-period usage. `where-clauses` are additional HoneySQL where conditions.
+  "Query ai_usage_log for current-period usage, narrowed by the optional `user-id` and `tenant-id`.
   Returns a token sum or row count depending on `metabot-limit-unit`."
-  [where-clauses]
+  [& {:keys [user-id tenant-id]}]
   (let [limit-type (metabot.settings/metabot-limit-unit)
-        start      (period-start)
-        base-where [:and
-                    [:>= :created_at start]]
-        full-where (if (seq where-clauses)
-                     (into base-where where-clauses)
-                     base-where)]
+        start      (period-start)]
     (case limit-type
       :tokens
-      (quot (or (:sum (t2/query-one {:select [[[:sum :total_tokens] :sum]]
-                                     :from   [:ai_usage_log]
-                                     :where  full-where}))
+      (quot (or (:sum (metabot.db/usage-token-sum start user-id tenant-id))
                 0)
             1000000)
 
       :messages
-      (:cnt (t2/query-one {:select [[[:count :*] :cnt]]
-                           :from   [:ai_usage_log]
-                           :where  full-where})))))
+      (:cnt (metabot.db/usage-message-count start user-id tenant-id)))))
 
 (defn- check-instance-limit
   "Check the instance-wide limit. Returns an error message string if exceeded, nil otherwise."
   []
   (when-let [max-usage (:max_usage (instance-limit/instance-limit nil))]
-    (let [usage (usage-query [])]
+    (let [usage (usage-query)]
       (when (>= usage max-usage)
         (metabot.settings/metabot-quota-reached-message)))))
 
@@ -135,7 +126,7 @@
   [tenant-id]
   (when tenant-id
     (when-let [max-usage (:max_usage (instance-limit/instance-limit tenant-id))]
-      (let [usage (usage-query [[:= :tenant_id tenant-id]])]
+      (let [usage (usage-query :tenant-id tenant-id)]
         (when (>= usage max-usage)
           (metabot.settings/metabot-quota-reached-message))))))
 
@@ -144,7 +135,7 @@
   [user-id]
   (when user-id
     (when-let [max-usage (group-limit/limit-for-user user-id)]
-      (let [usage (usage-query [[:= :user_id user-id]])]
+      (let [usage (usage-query :user-id user-id)]
         (when (>= usage max-usage)
           (metabot.settings/metabot-quota-reached-message))))))
 

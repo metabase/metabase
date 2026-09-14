@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useAdminSetting } from "metabase/settings";
+import { SettingsSection } from "metabase/settings-components";
 import { Box, Radio, Select, Stack, Switch, Text } from "metabase/ui";
 import {
   getCurrencyOptions,
@@ -254,7 +254,7 @@ function FormattingInput({
 
   return (
     <Box data-testid={`${id}-formatting-setting`}>
-      <Text htmlFor={id} component="label" fw="bold" display="block" mb="xs">
+      <Text htmlFor={id} component="label" fw="bold" display="block" mb="xxs">
         {label}
       </Text>
       {inputType === "select" && (

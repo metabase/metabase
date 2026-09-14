@@ -9,6 +9,9 @@
    entries carry their `dimension_mappings`, `:dimensions` entries carry the dim type
    snapshot — so a block is self-contained for both planning and per-row materialization."
   (:require
+   [metabase.explorations.db :as explorations.db]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -36,22 +39,46 @@
   {:in  (:in mi/transform-json)
    :out (comp keywordize-dim-types (:out mi/transform-json))})
 
+(defn- normalize-explore-filters
+  "The explore filters on a metric selection store the legacy `field_ref` of the chart column that was clicked; read
+  it back as the normalized reference the API validates and hands out. A reference that will not normalize is left as
+  it is stored."
+  [metrics]
+  (when metrics
+    (mapv (fn [metric]
+            (cond-> metric
+              (seq (:explore_filters metric))
+              (update :explore_filters
+                      (fn [explore-filters]
+                        (mapv (fn [{:keys [field_ref] :as explore-filter}]
+                                (cond-> explore-filter
+                                  field_ref (assoc :field_ref
+                                                   (try
+                                                     (lib/normalize ::lib.schema.parameter/dimension.target field_ref)
+                                                     (catch Exception _ field_ref)))))
+                              explore-filters)))))
+          metrics)))
+
+(def ^:private transform-metrics
+  {:in  (:in mi/transform-json)
+   :out (comp normalize-explore-filters (:out mi/transform-json))})
+
 (t2/deftransforms :model/ExplorationBlock
-  {:metrics    mi/transform-json
+  {:metrics    transform-metrics
    :dimensions transform-dimensions})
 
 (defmethod mi/can-read? :model/ExplorationBlock
   ([instance]
    (mi/can-read? :model/ExplorationThread (:exploration_thread_id instance)))
   ([_model pk]
-   (when-let [g (t2/select-one [:model/ExplorationBlock :exploration_thread_id] :id pk)]
+   (when-let [g (explorations.db/block-thread-id-row pk)]
      (mi/can-read? :model/ExplorationThread (:exploration_thread_id g)))))
 
 (defmethod mi/can-write? :model/ExplorationBlock
   ([instance]
    (mi/can-write? :model/ExplorationThread (:exploration_thread_id instance)))
   ([_model pk]
-   (when-let [g (t2/select-one [:model/ExplorationBlock :exploration_thread_id] :id pk)]
+   (when-let [g (explorations.db/block-thread-id-row pk)]
      (mi/can-write? :model/ExplorationThread (:exploration_thread_id g)))))
 
 (defn dimension-label

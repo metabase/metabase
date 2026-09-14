@@ -188,7 +188,7 @@ const SdkInternalNavigationProviderInner = ({
 
   const maybeButton = shouldRenderBackButton ? (
     // Same padding as when the button is rendered inside the question, to minimize movement while navigating
-    <Stack align="flex-start" p="md">
+    <Stack align="flex-start" p="lg">
       <SdkInternalNavigationBackButton />
     </Stack>
   ) : null;

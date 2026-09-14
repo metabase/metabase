@@ -12,9 +12,12 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
+   [metabase.models.interface :as mi]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.pulse.api :as pulse.api]
+   [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.pulse.models.pulse-test :as pulse-test]
    [metabase.pulse.test-util :as pulse.test-util]
@@ -1065,7 +1068,7 @@
 (deftest send-test-alert-with-http-channel-test
   (testing "POST /api/pulse/test send test alert to a http channel"
     (notification.tu/with-send-notification-sync
-      (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
+      (mt/with-temporary-setting-values [http-channel-allowed-networks :allow-all]
         (let [requests (atom [])
               endpoint (channel.http-test/make-route
                         :post "/test"
@@ -1436,3 +1439,65 @@
                    :model/Pulse      {pulse-id :id} {:dashboard_id dash-id}]
       (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id) {:collection_id (:id coll)})
       (is (true? (:archived (mt/user-http-request :crowberto :put 200 (str "pulse/" pulse-id) {:archived true})))))))
+
+(deftest update-pulse-with-perm-checks!-validates-cards-test
+  (testing "I3: a non-coercible :cards ref is a clean 400, not a 500. `update-pulse-with-perm-checks!` is
+            called directly (e.g. from the agent API), not only through the PUT endpoint whose schema coerces
+            :cards, so a bad ref must be rejected with a :status-code before check-card-read-permissions'
+            (assert (integer? card-id)) / u/the-id can throw a status-less error that surfaces as a 500."
+    (mt/with-current-user (mt/user->id :crowberto)
+      (doseq [bad [["not-a-card-ref"] [{:not "a card"}] [42.5]]]
+        (let [ex (try (pulse.api/update-pulse-with-perm-checks! Integer/MAX_VALUE {:cards bad})
+                      nil
+                      (catch clojure.lang.ExceptionInfo e e)
+                      (catch Throwable e e))]
+          (is (instance? clojure.lang.ExceptionInfo ex)
+              (str "expected an ExceptionInfo (status-carrying), got " (some-> ex type) " for " (pr-str bad)))
+          (is (= 400 (:status-code (ex-data ex)))
+              (str "expected a 400 for a bad :cards ref " (pr-str bad))))))))
+
+(deftest tenant-hidden-recipients-survive-update-test
+  (mt/when-ee-evailable
+   (testing "a tenant-scoped caller that reads a pulse and submits it back must not delete the
+            recipients the read filter hid from it. The submitted :channels are authoritative
+            (update-notification-channels! deletes anything absent), so every recipient hidden on
+            read is merged back on write."
+     (mt/with-premium-features #{:tenants}
+       ;; Build the fixture as an admin: Pulse/PulseCard/PulseChannel writes run permission checks,
+       ;; and this test is about the update path, not about who may create a subscription.
+       (mt/with-current-user (mt/user->id :crowberto)
+         (mt/with-temp [:model/Tenant {tenant-id :id}       {:name "PulseRT T1" :slug "pulse-rt-t1"}
+                        :model/Tenant {other-tenant-id :id} {:name "PulseRT T2" :slug "pulse-rt-t2"}
+                        :model/User   {caller-id :id}       {:tenant_id tenant-id}
+                        :model/User   {same-id :id}         {:tenant_id tenant-id}
+                        :model/User   {other-id :id}        {:tenant_id other-tenant-id}
+                        :model/User   {internal-id :id}     {}
+                        :model/Card   {card-id :id}         {}
+                        :model/Pulse  {pulse-id :id}        {:name "Round trip"}
+                        :model/PulseCard _                  {:pulse_id pulse-id :card_id card-id}
+                        :model/PulseChannel {chan-id :id}   {:pulse_id      pulse-id
+                                                             :channel_type  :email
+                                                             :schedule_type :daily
+                                                             :schedule_hour 12
+                                                             :details       {}}]
+           (doseq [uid [same-id other-id internal-id]]
+             (t2/insert! :model/PulseChannelRecipient {:pulse_channel_id chan-id :user_id uid}))
+           (let [recipient-ids #(t2/select-fn-set :user_id :model/PulseChannelRecipient
+                                                  :pulse_channel_id chan-id)]
+             (is (= #{same-id other-id internal-id} (recipient-ids))
+                 "all three user recipients exist before the round trip")
+             ;; The tenant caller must be able to write the pulse, otherwise the update 403s before
+             ;; it ever reaches the recipient merge this test is about. Collection permissions are
+             ;; orthogonal to the recipient filtering under test.
+             (with-redefs [mi/can-write? (constantly true)
+                           mi/current-user-has-full-permissions? (constantly true)]
+               (mt/with-current-user caller-id
+                 (let [read-back (-> (models.pulse/retrieve-pulse pulse-id)
+                                     models.pulse/maybe-filter-pulse-recipients)
+                       visible   (->> read-back :channels (mapcat :recipients) (keep :id) set)]
+                   (testing "the read filter hides the other-tenant and tenantless recipients"
+                     (is (= #{same-id} visible)))
+                   (testing "submitting what was read back preserves the hidden recipients"
+                     (pulse.api/update-pulse-with-perm-checks! pulse-id (select-keys read-back [:channels]))
+                     (is (= #{same-id other-id internal-id} (recipient-ids))
+                         "hidden recipients must survive; if they are gone the read filter silently deleted them"))))))))))))

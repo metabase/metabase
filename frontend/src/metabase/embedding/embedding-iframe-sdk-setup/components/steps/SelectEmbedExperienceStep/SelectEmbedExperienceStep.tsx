@@ -28,7 +28,7 @@ export const SelectEmbedExperienceStep = () => {
   };
 
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       <Box {...dimmedProps}>
         <ExperienceCard />
       </Box>

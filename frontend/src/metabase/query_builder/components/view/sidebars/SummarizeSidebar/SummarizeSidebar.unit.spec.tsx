@@ -2,11 +2,11 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 import { setupDatabaseEndpoints } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import {
   createMockQueryBuilderState,
   createMockState,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import { createMockCard } from "metabase-types/api/mocks";

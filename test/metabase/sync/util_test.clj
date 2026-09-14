@@ -14,10 +14,13 @@
    [metabase.sync.util :as sync-util]
    [metabase.task-history.models.task-history :as task-history]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Duplicate Sync Prevention                                            |

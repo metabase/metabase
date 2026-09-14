@@ -15,7 +15,7 @@ interface Props {
 
 /**
  * Rendered under the SSO radio when modular embedding
- * (`enable-embedding-simple`) isn't enabled yet or its terms haven't been
+ * (`enable-embedding-modular`) isn't enabled yet or its terms haven't been
  * accepted. Lets the admin enable the feature and accept the terms in a
  * single click from inside the wizard.
  */
@@ -36,8 +36,8 @@ export const EnableModularEmbeddingSection = ({
   const handleEnable = async () => {
     try {
       await updateSettings({
-        "enable-embedding-simple": true,
-        ...(!termsAccepted && { "show-simple-embed-terms": false }),
+        "enable-embedding-modular": true,
+        ...(!termsAccepted && { "show-modular-embed-terms": false }),
       });
     } catch (error) {
       sendToast({ message: t`Failed to enable modular embedding` });
@@ -69,7 +69,13 @@ export const EnableModularEmbeddingSection = ({
   }
 
   return (
-    <Stack gap={0} pl="xl" data-testid="enable-embedding-card" mt="xs" mb="sm">
+    <Stack
+      gap={0}
+      pl="xxl"
+      data-testid="enable-embedding-card"
+      mt="xxs"
+      mb="sm"
+    >
       <Text fz="md" c="text-primary">
         {title}
 
@@ -80,7 +86,7 @@ export const EnableModularEmbeddingSection = ({
         )}
       </Text>
 
-      <Group justify="flex-start" mt="xs">
+      <Group justify="flex-start" mt="xxs">
         <Button
           variant={isAccepted ? "default" : "filled"}
           onClick={handleEnable}

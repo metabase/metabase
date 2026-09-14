@@ -11,7 +11,7 @@ const args = {
   size: "md",
   disabled: false,
   fullWidth: false,
-  radius: "md",
+  radius: "sm",
   loading: false,
 };
 
@@ -52,7 +52,7 @@ const argTypes = {
     control: { type: "boolean" },
   },
   radius: {
-    options: ["md", "xl"],
+    options: ["sm", "md", "xl"],
     control: { type: "inline-radio" },
   },
   loading: {

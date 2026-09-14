@@ -22,7 +22,7 @@ export const TestTabbedSidesheet = () => {
       removeBodyPadding
     >
       <Tabs defaultValue="two" className={SideSheetStyles.FlexScrollContainer}>
-        <Tabs.List mx="lg">
+        <Tabs.List mx="xl">
           <Tabs.Tab value="one">One</Tabs.Tab>
           <Tabs.Tab value="two">Two</Tabs.Tab>
           <Tabs.Tab value="three">Three</Tabs.Tab>
@@ -32,7 +32,7 @@ export const TestTabbedSidesheet = () => {
             <SidesheetCard>Tab 1 content</SidesheetCard>
           </Tabs.Panel>
           <Tabs.Panel value="two" h="100%">
-            <Stack gap="lg">
+            <Stack gap="xl">
               <SidesheetCard title="Sidesheets with tabs">
                 Lots of side sheets have tabs, which can be tricky to set up to
                 handle scrolling properly. Fortunately, there are a couple

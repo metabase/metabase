@@ -48,11 +48,30 @@
                  (mapcat (fn [group]
                            (if (and (< 1 (count group))
                                     (= "assistant" (:role (first group))))
-                             (let [text       (->> group (keep :content) (str/join ""))
-                                   tool-calls (into [] (mapcat :tool_calls) group)]
+                             (let [tool-calls (into [] (mapcat :tool_calls) group)
+                                   ;; :reasoning_content exists on a member only when the replay
+                                   ;; hook of [[parts->cc-messages]] minted it — today only
+                                   ;; Moonshot, whose dialect replays reasoning as a top-level
+                                   ;; sibling of :content (see
+                                   ;; [[metabase.metabot.self.moonshot/reasoning-message]]).
+                                   ;; Joined in part order: the wire has a single field per
+                                   ;; message, so order is the only fidelity available.
+                                   reasoning  (apply str (keep :reasoning_content group))
+                                   ;; Vector (chunk-array) content exists only when the reasoning
+                                   ;; replay hook of [[parts->cc-messages]] produced it — today
+                                   ;; only Mistral's think chunks. Every other provider's members
+                                   ;; are strings or nil, so they always take the original string
+                                   ;; join below.
+                                   content    (if (some (comp vector? :content) group)
+                                                (into [] (mapcat (fn [{c :content}]
+                                                                   (cond (vector? c)   c
+                                                                         (not-empty c) [{:type "text" :text c}])))
+                                                      group)
+                                                (->> group (keep :content) (str/join "")))]
                                ;; :content should be always there, even if empty/nil
-                               [(cond-> {:role "assistant" :content text}
-                                  (seq tool-calls) (assoc :tool_calls tool-calls))])
+                               [(cond-> {:role "assistant" :content content}
+                                  (seq tool-calls)      (assoc :tool_calls tool-calls)
+                                  (not-empty reasoning) (assoc :reasoning_content reasoning))])
                              group))))
         messages))
 
@@ -66,30 +85,47 @@
     {:type :tool-output, :id ..., :result ...}
 
   Output: Chat Completions messages (user, assistant with tool_calls, tool)."
-  [parts]
-  (->> parts
-       (keep (fn [part]
-               (case (:type part)
-                 ;; reasoning is not replayable over Chat Completions
-                 :reasoning   nil
-                 :text        {:role "assistant" :content (:text part)}
-                 :tool-input  {:role       "assistant"
-                               :content    nil
-                               :tool_calls [{:id       (:id part)
-                                             :type     "function"
-                                             :function {:name      (:function part)
-                                                        :arguments (let [args (:arguments part)]
-                                                                     (if (string? args) args (json/encode (or args {}))))}}]}
-                 :tool-output {:role         "tool"
-                               :tool_call_id (:id part)
-                               :content      (or (get-in part [:result :output])
-                                                 (when-let [err (:error part)]
-                                                   (str "Error: " (:message err)))
-                                                 (pr-str (:result part)))}
-                 ;; User messages pass through
-                 {:role    (name (or (:role part) "user"))
-                  :content (or (:content part) "")})))
-       merge-consecutive-assistant-messages))
+  ([parts] (parts->cc-messages parts nil))
+  ([parts {:keys [reasoning-part->message]}]
+   ;; coalescing runs only when a dialect passes a replay hook — today Mistral (think chunks)
+   ;; and Moonshot (top-level reasoning_content), the two Chat Completions dialects that define
+   ;; a reasoning replay channel
+   (->> (cond-> parts reasoning-part->message core/merge-reasoning-parts)
+        (keep (fn [part]
+                (case (:type part)
+                  ;; The generic Chat Completions dialect has no replay channel for
+                  ;; reasoning, so by default it drops here — this arm returns nil for
+                  ;; every provider that doesn't pass a hook. A dialect that defines a
+                  ;; channel passes :reasoning-part->message, a fn from a coalesced
+                  ;; :reasoning part to a replayed assistant message (or nil); today
+                  ;; Mistral (think chunks — see
+                  ;; [[metabase.metabot.self.mistral/think-message]]) and Moonshot
+                  ;; (top-level reasoning_content — see
+                  ;; [[metabase.metabot.self.moonshot/reasoning-message]]) do. Z.AI and
+                  ;; vLLM define no such channel yet; when they grow one, each gets its
+                  ;; own hook fn here rather than more shared code.
+                  :reasoning   (when reasoning-part->message
+                                 (reasoning-part->message part))
+                  :text        {:role "assistant" :content (:text part)}
+                  :tool-input  {:role       "assistant"
+                                :content    nil
+                                :tool_calls [{:id       (:id part)
+                                              :type     "function"
+                                              :function {:name      (:function part)
+                                                         :arguments (let [args (:arguments part)]
+                                                                      (if (string? args)
+                                                                        args
+                                                                        (json/encode (or args {}))))}}]}
+                  :tool-output {:role         "tool"
+                                :tool_call_id (:id part)
+                                :content      (or (get-in part [:result :output])
+                                                  (when-let [err (:error part)]
+                                                    (str "Error: " (:message err)))
+                                                  (pr-str (:result part)))}
+                  ;; User messages pass through
+                  {:role    (name (or (:role part) "user"))
+                   :content (or (:content part) "")})))
+        merge-consecutive-assistant-messages)))
 
 ;;; Tool definition format
 
@@ -186,14 +222,22 @@
                 delta         (:delta choice)
                 finish-reason (:finish_reason choice)
                 tool-call     (first (:tool_calls delta))
+                reasoning-md  (:reasoning_metadata delta)
                 ;; Determine what kind of content this chunk carries.
                 ;; Empty-string content (common between tool calls) is ignored
                 ;; to avoid spurious text blocks that would close open tools.
                 chunk-type    (cond
                                 (not-empty (:content delta))  :text
+                                ;; tool_calls outrank reasoning: a delta carrying both would
+                                ;; otherwise classify as :reasoning, and the tool call's opening
+                                ;; chunk — the only one carrying its id and name — would be
+                                ;; lost, breaking the tool loop. Ranked this way, such a delta
+                                ;; loses its reasoning fragment instead: display text,
+                                ;; recoverable. No probed provider combines the two in one
+                                ;; delta today.
+                                (some? tool-call)             :function_call
                                 (and forward-reasoning?
                                      (delta-reasoning delta)) :reasoning
-                                (some? tool-call)             :function_call
                                 :else                         nil)
                 ;; For new tool calls, the id comes from the chunk; for deltas
                 ;; on the same tool, we keep current-id.
@@ -236,6 +280,18 @@
               (= chunk-type :reasoning)                        (rf {:type  :reasoning-delta
                                                                     :id    @current-id
                                                                     :delta (delta-reasoning delta)})
+              ;; A delta may carry ready-namespaced provider metadata for the
+              ;; open reasoning block, ridden out on its end chunk the way
+              ;; openai.clj rides out encrypted_content. :reasoning_metadata is
+              ;; not a wire key — no Chat Completions server emits it; only a
+              ;; dialect's own pre-transform mints it (today Mistral's
+              ;; flatten-content-chunks, carrying a think-chunk signature) — so
+              ;; this clause never fires for any other dialect. It is carried
+              ;; opaquely: the minting side owns the namespace inside it.
+              (and reasoning-md
+                   (= @current-type :reasoning))               (u/prog1
+                                                                 (vswap! payload assoc
+                                                                         :providerMetadata reasoning-md))
               ;; Start a new tool call block
               (and (= chunk-type :function_call)
                    (:id tool-call)
@@ -273,28 +329,34 @@
 ;;; Request body
 
 (mu/defn request-body
-  "Build the Chat Completions request body for an LLM request."
-  [{:keys [model system input tools temperature max-tokens tool_choice schema]} :- core/LLMRequestOpts]
-  (let [messages  (cond-> (parts->cc-messages input)
-                    system (as-> msgs (into [{:role "system" :content system}] msgs)))
-        all-tools (or (when schema
-                        ;; Structured output: force a tool call with the given JSON schema
-                        [{:type     "function"
-                          :function {:name        "structured_output"
-                                     :description "Output structured data"
-                                     :parameters  schema}}])
-                      (seq (mapv tool->cc-tool tools)))]
-    (cond-> {:model          model
-             :stream         true
-             :stream_options {:include_usage true}
-             :messages       messages}
-      all-tools   (assoc :tools       (vec all-tools)
-                         :tool_choice (cond
-                                        schema      "required"
-                                        tool_choice tool_choice
-                                        :else       "auto"))
-      temperature (assoc :temperature temperature)
-      max-tokens  (assoc :max_tokens max-tokens))))
+  "Build the Chat Completions request body for an LLM request.
+
+  The optional `cc-opts` map holds dialect hooks that are not request options —
+  today only `:reasoning-part->message`, threaded to [[parts->cc-messages]]. A
+  fn-valued hook stays out of the traced and logged `LLMRequestOpts` on purpose."
+  ([opts] (request-body opts nil))
+  ([{:keys [model system input tools temperature max-tokens tool_choice schema]} :- core/LLMRequestOpts
+    cc-opts]
+   (let [messages  (cond-> (parts->cc-messages input cc-opts)
+                     system (as-> msgs (into [{:role "system" :content system}] msgs)))
+         all-tools (or (when schema
+                         ;; Structured output: force a tool call with the given JSON schema
+                         [{:type     "function"
+                           :function {:name        "structured_output"
+                                      :description "Output structured data"
+                                      :parameters  schema}}])
+                       (seq (mapv tool->cc-tool tools)))]
+     (cond-> {:model          model
+              :stream         true
+              :stream_options {:include_usage true}
+              :messages       messages}
+       all-tools   (assoc :tools       (vec all-tools)
+                          :tool_choice (cond
+                                         schema      "required"
+                                         tool_choice tool_choice
+                                         :else       "auto"))
+       temperature (assoc :temperature temperature)
+       max-tokens  (assoc :max_tokens max-tokens)))))
 
 ;;; Model catalog
 

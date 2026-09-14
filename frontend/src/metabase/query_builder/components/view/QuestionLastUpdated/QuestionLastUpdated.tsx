@@ -43,7 +43,7 @@ const QuestionLastUpdatedBody = ({
   return (
     <Tooltip label={longExplanation}>
       <Flex
-        gap="xs"
+        gap="xxs"
         align="center"
         fw="bold"
         aria-label={longExplanation}

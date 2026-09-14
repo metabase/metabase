@@ -60,7 +60,7 @@ function ModalTitle({ title }: ModalTitleProps) {
         h="2rem"
         c="core-brand"
         bg="background_surface-brand-subtle"
-        bdrs="md"
+        bdrs="sm"
       >
         <FixedSizeIcon name="repository" />
       </Center>
@@ -114,7 +114,7 @@ function ModalBody({ explanatorySentence, onCreate, onClose }: ModalBodyProps) {
             />
           </List>
         </Stack>
-        <Group mt="xl" gap="sm">
+        <Group mt="xxl" gap="sm">
           <Box flex={1}>
             <FormErrorMessage />
           </Box>

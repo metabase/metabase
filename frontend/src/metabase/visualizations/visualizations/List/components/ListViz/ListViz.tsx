@@ -1,13 +1,14 @@
 import cx from "classnames";
 import { useMemo } from "react";
 
+import { getShallowTables, useQuestionFromCard } from "metabase/metadata-store";
+import { useSelector } from "metabase/redux";
 import { Box } from "metabase/ui";
 import type {
   VisualizationPassThroughProps,
   VisualizationProps,
 } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
 import type { DatasetColumn } from "metabase-types/api";
 
 import { LIST_DEFINITION } from "../../definition";
@@ -17,7 +18,6 @@ import S from "./ListViz.module.css";
 
 const ListVizComponent = ({
   card,
-  metadata,
   data,
   settings,
   onVisualizationClick,
@@ -25,12 +25,12 @@ const ListVizComponent = ({
   isDashboard,
   onZoomRow,
 }: VisualizationProps & VisualizationPassThroughProps) => {
-  const question = useMemo(() => {
-    if (!card || !metadata) {
-      return null;
-    }
-    return new Question(card, metadata);
-  }, [card, metadata]);
+  const buildQuestion = useQuestionFromCard();
+  const tables = useSelector(getShallowTables);
+  const question = useMemo(
+    () => (card ? buildQuestion(card) : null),
+    [card, buildQuestion],
+  );
 
   const { sortedColumnName, sortingDirection } = useMemo(() => {
     if (!question) {
@@ -56,17 +56,15 @@ const ListVizComponent = ({
     try {
       const query = question.query();
       const sourceTableId = Lib.sourceTableOrCardId(query);
-      const table = question.metadata().table(sourceTableId);
-
-      // Return the entity type if available, otherwise undefined
-      // Use type assertion since entity_type exists in the database but not in TypeScript types
-      return (table as any)?.entity_type;
+      return sourceTableId != null
+        ? (tables[sourceTableId]?.entity_type ?? undefined)
+        : undefined;
     } catch (error) {
       // If there's an error getting the entity type, return undefined
       console.warn("Could not determine entity type:", error);
       return undefined;
     }
-  }, [question]);
+  }, [question, tables]);
 
   const handleSort = (column: DatasetColumn) => {
     onVisualizationClick({ column });

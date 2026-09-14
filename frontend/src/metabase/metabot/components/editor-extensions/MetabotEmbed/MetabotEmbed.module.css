@@ -1,7 +1,7 @@
 .codeBlockTextArea {
   color: var(--mb-color-text-primary);
-  padding: var(--mantine-spacing-md);
-  padding-right: var(--mantine-spacing-lg);
+  padding: var(--mantine-spacing-lg);
+  padding-right: var(--mantine-spacing-xl);
   height: 110px;
 
   &[contenteditable="false"] {
@@ -13,12 +13,12 @@
 .placeholder {
   position: absolute;
   pointer-events: none;
-  padding: var(--mantine-spacing-md);
+  padding: var(--mantine-spacing-lg);
   color: var(--mb-color-text-disabled);
 }
 
 .borderRadius {
-  border-radius: var(--mantine-radius-xs);
+  border-radius: var(--mantine-radius-xxs);
 }
 
 .closeButton {

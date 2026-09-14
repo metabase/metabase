@@ -14,9 +14,9 @@ import {
   setupUpdateSettingsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, waitFor } from "__support__/ui";
 import type { SdkIframeEmbedSetupModalInitialState } from "metabase/embedding/types";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { Dashboard } from "metabase-types/api";
 import {
   createMockCollection,
@@ -31,9 +31,8 @@ import { SdkIframeEmbedSetupModal } from "../SdkIframeEmbedSetupModal";
 
 export const setup = (options?: {
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
-  simpleEmbeddingEnabled?: boolean;
-  showSimpleEmbedTerms?: boolean;
-  guestEmbeddingEnabled?: boolean;
+  modularEmbeddingEnabled?: boolean;
+  showModularEmbedTerms?: boolean;
   showStaticEmbedTerms?: boolean;
   jwtReady?: boolean;
   initialState?: SdkIframeEmbedSetupModalInitialState;
@@ -58,14 +57,13 @@ export const setup = (options?: {
   }
 
   const tokenFeatures = createMockTokenFeatures({
-    embedding_simple: options?.simpleEmbeddingEnabled ?? false,
+    embedding_simple: options?.modularEmbeddingEnabled ?? false,
   });
   const settingValues = createMockSettings({
     "token-features": tokenFeatures,
-    "show-simple-embed-terms": options?.showSimpleEmbedTerms ?? false,
-    "enable-embedding-simple": options?.simpleEmbeddingEnabled ?? false,
+    "show-modular-embed-terms": options?.showModularEmbedTerms ?? false,
     "show-static-embed-terms": options?.showStaticEmbedTerms ?? false,
-    "enable-embedding-static": options?.guestEmbeddingEnabled ?? false,
+    "enable-embedding-modular": options?.modularEmbeddingEnabled ?? false,
     "jwt-enabled": options?.jwtReady ?? false,
     "jwt-configured": options?.jwtReady ?? false,
     "jwt-enabled-and-configured": options?.jwtReady ?? false,

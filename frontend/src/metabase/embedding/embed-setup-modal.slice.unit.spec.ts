@@ -1,6 +1,6 @@
 import { configureStore } from "@reduxjs/toolkit";
 
-import { createMockState } from "metabase/redux/store/mocks";
+import { createMockState } from "__support__/state";
 import { modal, setOpenModal } from "metabase/redux/ui";
 
 import {

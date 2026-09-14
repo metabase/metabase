@@ -488,8 +488,8 @@ export const CommandSuggestion = forwardRef<
                             size="sm"
                             c="text-primary"
                             px="sm"
-                            pt="xs"
-                            pb="xs"
+                            pt="xxs"
+                            pb="xxs"
                           >
                             {section.title}
                           </Text>

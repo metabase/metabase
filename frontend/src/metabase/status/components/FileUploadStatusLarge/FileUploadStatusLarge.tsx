@@ -3,10 +3,10 @@ import { useInterval } from "react-use";
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
-import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
 import { type FileUpload, UploadMode } from "metabase/redux/store/upload";
 import { Box, Button, Stack } from "metabase/ui";
 
+import { PLUGIN_FILE_UPLOAD_STATUS } from "../../plugins";
 import {
   isUploadAborted,
   isUploadCompleted,
@@ -121,7 +121,7 @@ const Description = ({ upload }: { upload: FileUpload }) => {
 
   if (upload.status === "error") {
     return (
-      <Stack align="start" gap="xs">
+      <Stack align="start" gap="xxs">
         <Box>{upload.message}</Box>
         <UploadErrorDisplay upload={upload} />
       </Stack>
@@ -148,13 +148,13 @@ const UploadErrorDisplay = ({ upload }: { upload: FileUpload }) => {
         {t`Show error details`}
       </Button>
       {showErrorModal && (
-        <PLUGIN_UPLOAD_MANAGEMENT.FileUploadErrorModal
+        <PLUGIN_FILE_UPLOAD_STATUS.FileUploadErrorModal
           fileName={upload.name}
           onClose={() => setShowErrorModal(false)}
           opened={showErrorModal}
         >
           {String(upload.error)}
-        </PLUGIN_UPLOAD_MANAGEMENT.FileUploadErrorModal>
+        </PLUGIN_FILE_UPLOAD_STATUS.FileUploadErrorModal>
       )}
     </>
   );

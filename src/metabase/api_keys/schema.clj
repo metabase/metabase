@@ -3,6 +3,9 @@
    [clojure.math :as math]
    [clojure.string :as str]
    [malli.core :as mc]
+   [malli.util :as mut]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.users.schema :as users.schema]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.secret]))
@@ -102,7 +105,9 @@
    [:name                 [:ref ::name]]
    [:updated_by_id        pos-int?]
    [:scope                {:optional true} [:maybe [:ref ::scope]]]
-   [:single_collection_id {:optional true} [:maybe pos-int?]]])
+   [:single_collection_id {:optional true} [:maybe pos-int?]]
+   ;; added by the model's after-select hook
+   [:masked_key           {:optional true} :string]])
 
 (defn- insert-schema [map-schema]
   (into [:map]
@@ -128,3 +133,24 @@
 
 (mr/def ::api-key.update
   (update-schema ::api-key))
+
+(mr/def ::api-key.create
+  "What an insert of a ApiKey accepts: every column of `:api_key` except `id`, all optional, plus `:metabase.api-keys.core/unhashed-key` consumed by the model's hooks."
+  [:map {:closed true}
+   [:user_id                             {:optional true} [:maybe ::lib.schema.id/user]]
+   [:key                                 {:optional true} [:maybe :string]]
+   [:key_prefix                          {:optional true} [:maybe :string]]
+   [:creator_id                          {:optional true} [:maybe ::lib.schema.id/user]]
+   [:created_at                          {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at                          {:optional true} [:maybe ms/TemporalInstant]]
+   [:name                                {:optional true} [:maybe :string]]
+   [:updated_by_id                       {:optional true} [:maybe ms/PositiveInt]]
+   [:scope                               {:optional true} [:maybe [:or :keyword :string]]]
+   [:metabase.api-keys.core/unhashed-key {:optional true} ::key.unhashed-or-secret]])
+
+(mr/def ::api-key.inserted
+  "What inserting an ApiKey returns: the selected row plus the `:group` and `:updated_by` hydrated by the after-insert hook."
+  (mut/merge ::api-key
+             [:map
+              [:group      {:optional true} [:map {:closed true} [:id [:maybe pos-int?]] [:name [:maybe :string]]]]
+              [:updated_by {:optional true} ::users.schema/user]]))

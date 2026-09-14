@@ -6,6 +6,7 @@ import {
   setupTasksEndpoints,
   setupUniqueTasksEndpoint,
 } from "__support__/server-mocks";
+import { createMockLocation } from "__support__/state";
 import {
   act,
   mockGetBoundingClientRect,
@@ -16,7 +17,6 @@ import {
   within,
 } from "__support__/ui";
 import { URL_UPDATE_DEBOUNCE_DELAY } from "metabase/common/hooks/use-url-state";
-import { createMockLocation } from "metabase/redux/store/mocks";
 import type { Location } from "metabase/router";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";

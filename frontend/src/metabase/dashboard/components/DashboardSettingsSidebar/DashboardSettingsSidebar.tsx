@@ -98,7 +98,6 @@ const DashboardSidesheetBody = ({
           label={t`Auto-apply filters`}
           labelPosition="left"
           variant="stretch"
-          size="sm"
           id={autoApplyFilterToggleId}
           checked={dashboard.auto_apply_filters}
           onChange={(e) => handleToggleAutoApplyFilters(e.target.checked)}

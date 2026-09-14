@@ -139,6 +139,8 @@ export type LineSize = "S" | "M" | "L";
 export type SeriesSettings = {
   title?: string;
   color?: string;
+  /** Palette color the series was given, so it can follow the active palette */
+  color_name?: string;
   show_series_values?: boolean;
   display?: VisualizationDisplay;
   axis?: string;
@@ -450,6 +452,9 @@ export type VisualizationSettings = {
 
   /** Use compact formatting for the primary scalar number. */
   "scalar.compact_primary_number"?: boolean;
+
+  /** Show the absolute comparison value next to the percent change in trend cards. */
+  "scalar.show_comparison_value"?: boolean;
 
   /** Segment configuration for scalar visualizations. */
   "scalar.segments"?: ScalarSegment[];

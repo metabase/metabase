@@ -1,9 +1,7 @@
 import { useState } from "react";
 
-import {
-  QueryEditor,
-  getInitialUiState,
-} from "metabase/querying/editor/components/QueryEditor";
+import { QueryEditorWithParameters } from "metabase/parameters/components/QueryEditorWithParameters";
+import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { useQueryResults } from "metabase/querying/editor/hooks/use-query-results";
 import { VisualizeButton } from "metabase/querying/notebook/components/Notebook";
 import type * as Lib from "metabase-lib";
@@ -49,7 +47,7 @@ export function QueryEditorAndResults(props: QueryEditorAndResultsProps) {
 
   return (
     <>
-      <QueryEditor
+      <QueryEditorWithParameters
         query={currentQuestion.query()}
         uiState={uiState}
         onChangeQuery={onQueryChange}

@@ -20,7 +20,7 @@ export function TrendInfo({ value, dateLabel, change }: TrendInfoProps) {
       <Title order={2} className={S.value}>
         {value}
       </Title>
-      <Flex align="center" gap="xs" mt="xs" wrap="wrap">
+      <Flex align="center" gap="xxs" mt="xxs" wrap="wrap">
         <Text fw={700} c="text-secondary">
           {dateLabel}
         </Text>

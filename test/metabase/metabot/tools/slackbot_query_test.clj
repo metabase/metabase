@@ -19,6 +19,7 @@
    [malli.json-schema :as mjs]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.tools.construct :as construct]
+   [metabase.metabot.tools.recovery-hints :as recovery-hints]
    [metabase.metabot.tools.slackbot-query :as slackbot-query]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
@@ -97,10 +98,12 @@
                 "execute-representations-query, wraps the result in an adhoc_viz data part\n"
                 "with the provided title + display, and returns structured-output + instructions.")
     (let [captured-query (atom nil)
+          captured-opts  (atom :not-called)
           fake-query     {:lib/type :mbql/query :database 1 :stages [{:source-table 10}]}]
       (with-repr-stub!
-        (fn [external-query]
+        (fn [external-query & [opts]]
           (reset! captured-query external-query)
+          (reset! captured-opts opts)
           {:structured-output {:query-id       "q-1"
                                :query          fake-query
                                :result-columns []}
@@ -117,6 +120,10 @@
                               :display   "bar"})]
             (testing "external-query passed through verbatim"
               (is (= query-input @captured-query)))
+            (testing "the v1 recovery-hint fn is threaded into the pipeline as `:recovery-hint`"
+              ;; Guards F1's regression class: without this, dropping the `:recovery-hint` arg from
+              ;; the caller would leave every stubbed test green while agent errors lose their hint.
+              (is (= recovery-hints/recovery-hint (:recovery-hint @captured-opts))))
             (testing "structured-output is returned upstream"
               (is (= "q-1" (get-in result [:structured-output :query-id])))
               (is (= fake-query (get-in result [:structured-output :query]))))
@@ -137,7 +144,7 @@
                 "include them with nil values) but the link is still built and returned.")
     (let [fake-query {:lib/type :mbql/query :database 1 :stages [{:source-table 10}]}]
       (with-repr-stub!
-        (fn [_external-query]
+        (fn [_external-query & _]
           {:structured-output {:query-id       "q-x"
                                :query          fake-query
                                :result-columns []}
@@ -162,7 +169,7 @@
                 "returns `{:output <message>}` so the message reaches the LLM verbatim -\n"
                 "no stack trace, no data-parts.")
     (with-repr-stub!
-      (fn [_external-query]
+      (fn [_external-query & _]
         (throw (ex-info "Unknown database: `Sample`. Use the exact database name as reported by search / read_resource."
                         {:agent-error? true
                          :status-code  400
@@ -184,7 +191,7 @@
                 "`Failed to construct notebook query: ...` prefix. Protects the LLM from\n"
                 "leaking internal stack-trace-style messages.")
     (with-repr-stub!
-      (fn [_external-query]
+      (fn [_external-query & _]
         (throw (RuntimeException. "something went sideways")))
       (fn []
         (let [result (slackbot-query/slackbot-construct-notebook-query-tool

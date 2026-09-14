@@ -1,7 +1,7 @@
 (ns metabase.models.serialization.resolve.mp
   "Metadata-provider-backed implementations of the serdes resolver protocols.
 
-  Unlike `metabase.models.serialization.resolve.db`, this resolver does not touch toucan2 /
+  Unlike `metabase.models.serialization.resolve.default`, this resolver does not touch toucan2 /
   the application database for *warehouse-schema* lookups (tables, fields) - it works off a
   `lib.metadata/MetadataProvider`, which may be the live application-DB-backed provider, a
   test-only mock provider, or any cached variant.
@@ -37,11 +37,11 @@
    [metabase.app-db.core :as mdb]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.models.db :as models.db]
    [metabase.models.serialization :as serdes]
    [metabase.models.serialization.resolve :as resolve]
    [metabase.util.i18n :refer [tru]]
-   [potemkin.types :as p.types]
-   [toucan2.core :as t2]))
+   [potemkin.types :as p.types]))
 
 (set! *warn-on-reflection* true)
 
@@ -74,7 +74,7 @@
 
 (defn- matching-tables-via-app-db
   "Return all tables matching the `(db-id, schema, table-name)` triple by direct application-DB
-  query — same shape `resolve.db/import-table-fk` has always used. Bypasses the metadata
+  query — same shape `resolve.default/import-table-fk` has always used. Bypasses the metadata
   provider entirely.
 
   Returns inactive rows too: the app DB is authoritative for *existence*, and
@@ -85,7 +85,7 @@
   `001_update_migrations.yaml` `is_defective_duplicate` carve-out for pre-constraint rows)
   return more than one candidate so [[find-table]] can raise `:ambiguous-table`."
   [db-id schema table-name]
-  (t2/select :metadata/table :db_id db-id :schema schema :name table-name))
+  (models.db/metadata-tables db-id schema table-name))
 
 (defn- app-db-backed-provider?
   "True when `metadata-provider` is part of the production app-DB-backed wrapper chain
@@ -116,10 +116,9 @@
   oracle, so both get this identical message.
 
   The LLM can still self-correct in one turn by listing the parent database's tables with
-  `read_resource`; the message points it at that path."
+  the calling surface's discovery tool; the message points it at that path."
   [_metadata-provider [_path-db-name _path-schema _path-table-name :as path]]
-  (ex-info (tru "No table found matching portable FK {0}. Call `read_resource` with `metabase://database/<numeric id>/tables` to list available tables and schemas, then retry with an exact portable FK from the response."
-                (pr-str path))
+  (ex-info (tru "No table found matching portable FK {0}." (pr-str path))
            {:status-code  400
             :error        :unknown-table
             :agent-error? true
@@ -177,7 +176,7 @@
         ;; Deliberately do NOT enumerate the matching `[schema name id]` tuples — the metadata
         ;; provider is un-sandboxed, so a leaked candidate list could surface tables the caller
         ;; cannot otherwise see (parity with the `unknown-table-ex-info` strip above).
-        (throw (ex-info (tru "Ambiguous portable table FK {0}: {1} candidates. Call `read_resource` with `metabase://database/<numeric id>/tables` to list available tables and retry with a more specific portable FK."
+        (throw (ex-info (tru "Ambiguous portable table FK {0}: {1} candidates."
                              (pr-str path) (count candidates))
                         {:status-code  400
                          :error        :ambiguous-table
@@ -204,10 +203,10 @@
         ;; column name. The metadata provider is un-sandboxed, the `:agent-error?` flag
         ;; relays this message verbatim to the user, and a leaked FK-candidate path would
         ;; reveal table names the caller may not be permitted to see. The LLM can recover
-        ;; by reading the parent table's fields with `read_resource`.
+        ;; by listing the parent table's fields with the calling surface's discovery tool.
         unknown-field-ex
         (fn [segment]
-          (ex-info (tru "No column {0} on table {1}.{2}.{3}. Call `read_resource` with `metabase://table/<numeric id>/fields` to list this table''s columns."
+          (ex-info (tru "No column {0} on table {1}.{2}.{3}."
                         (pr-str segment) (pr-str db) (pr-str schema) (pr-str table-name))
                    {:status-code  400
                     :error        :unknown-field
@@ -278,6 +277,16 @@
 ;;; Content store - Metabase asset lookups by portable entity id or numeric id
 ;;; ============================================================
 
+(def ^:dynamic *audit-refusals?*
+  "Whether a permission-aware [[ContentStore]] audits a refusal, i.e. leaves the ERROR log line
+  and `:event/read-permission-failure` that `api/read-check` does, rather than throwing a bare
+  403. Bind to false around a lookup whose refusal you catch and discard.
+
+  The permission check itself is unaffected; an unreadable row never reaches the caller either
+  way. The stores defined below are permission-agnostic and ignore this var. It is honoured by
+  `metabase.metabot.tools.shared.content-store/read-checked`."
+  true)
+
 (p.types/defprotocol+ ContentStore
   "Lookup of Metabase content (\"assets\") by portable entity id or numeric id.
 
@@ -337,13 +346,13 @@
         ;; transforming the entire dataset_query just to export one stable identifier.
         ;; `:card_schema` must ride along: selecting `:database_id` makes the after-select
         ;; treat this as a full card row and demand it.
-        (t2/select-one [:model/Card :id :entity_id :collection_id :database_id :card_schema] :id card-id)))
+        (models.db/card-serdes-columns card-id)))
     (measure-by-id [_ measure-id]
       (when measure-id
-        (t2/select-one [:model/Measure :id :entity_id :table_id] :id measure-id)))
+        (models.db/measure-serdes-columns measure-id)))
     (segment-by-id [_ segment-id]
       (when segment-id
-        (t2/select-one [:model/Segment :id :entity_id :table_id] :id segment-id)))))
+        (models.db/segment-serdes-columns segment-id)))))
 
 ;;; ============================================================
 ;;; Resolver implementations
@@ -378,7 +387,7 @@
       (if (= database-id (:id current-db))
         (:name current-db)
         (throw (ex-info (tru "Cannot export database id {0}: metadata provider is for database id {1}."
-                             database-id (:id current-db))
+                             (str database-id) (str (:id current-db)))
                         {:status-code 400
                          :error       :unknown-database-id
                          :database-id database-id
@@ -416,14 +425,14 @@
           entity-id     (when card (or (:entity-id card) (:entity_id card)))]
       (cond
         (nil? card)
-        (throw (ex-info (tru "No saved question, model, or metric found with id {0}." card-id)
+        (throw (ex-info (tru "No saved question, model, or metric found with id {0}." (str card-id))
                         {:status-code 400
                          :error       :unknown-card-id
                          :card-id     card-id}))
 
         (not= card-db-id current-db-id)
-        (throw (ex-info (tru "Saved question / model / metric id {0} belongs to database {1}, but this resolver targets database {2}."
-                             card-id card-db-id current-db-id)
+        (throw (ex-info (tru "Saved question / model / metric id {0} belongs to database {1}, but this query targets database {2}. Cross-database queries are not supported."
+                             (str card-id) (str card-db-id) (str current-db-id))
                         {:status-code      400
                          :error            :cross-database-card
                          :card-id          card-id
@@ -431,7 +440,8 @@
                          :expected-database current-db-id}))
 
         (or (not (string? entity-id)) (str/blank? entity-id))
-        (throw (ex-info (tru "Saved question, model, or metric id {0} does not have an entity_id, so it cannot be exported as a portable representation." card-id)
+        (throw (ex-info (tru "Saved question, model, or metric id {0} does not have an entity_id, so it cannot be exported as a portable representation."
+                             (str card-id))
                         {:status-code 400
                          :error       :missing-card-entity-id
                          :card-id     card-id}))
@@ -454,8 +464,7 @@
         card-db-id    (when card (or (:database-id card) (:database_id card)))]
     (cond
       (nil? card)
-      (throw (ex-info (tru "No saved question or model found with entity_id {0}. Do not invent or guess entity_ids: call `read_resource` with `metabase://question/<numeric id>` or `metabase://model/<numeric id>` first, then copy the exact `portable_entity_id` from the response into `source-card:`."
-                           (pr-str entity-id))
+      (throw (ex-info (tru "No saved question or model found with entity_id {0}." (pr-str entity-id))
                       {:agent-error? true
                        :status-code  400
                        :error        :unknown-card
@@ -476,6 +485,47 @@
       :else
       (:id card))))
 
+(defn- import-card-by-id
+  "Read-check a bare numeric `source-card` and return its id, on a surface that accepts numeric
+  ids.
+
+  The numeric dialect's counterpart to [[import-card-by-entity-id]]. It resolves to the id it
+  was handed, so the return value is not the point — routing the lookup through `content-store`
+  is: the agent-facing store is `read-checked`, so this is where a card the caller cannot read
+  is turned away instead of flowing on into repair. The store collapses that denial to `nil`,
+  which the `(nil? card)` branch below reports as the same not-found error an absent id gets —
+  deliberately, so the response cannot be used to tell a hidden card from a missing one. Without it a numeric id skips the store
+  entirely (`portable-id?` matches strings only), and the repair pass's column-name inference
+  would name the card's columns back to a caller who cannot read it.
+
+  Carries the same cross-database guard as the portable path, for the same reason."
+  [metadata-provider content-store card-id]
+  (let [current-db-id (:id (lib.metadata/database metadata-provider))
+        card          (card-by-id content-store card-id)
+        card-db-id    (when card (or (:database-id card) (:database_id card)))]
+    (cond
+      (nil? card)
+      (throw (ex-info (tru "No saved question or model found with id {0}." (str card-id))
+                      {:agent-error? true
+                       :status-code  400
+                       :error        :unknown-card-id
+                       :card-id      card-id}))
+
+      (not= card-db-id current-db-id)
+      (throw (ex-info (tru "Saved question / model {0} belongs to database {1}, but this query targets database {2}. Cross-database queries are not supported."
+                           (str card-id)
+                           (str card-db-id)
+                           (str current-db-id))
+                      {:agent-error?      true
+                       :status-code       400
+                       :error             :cross-database-card
+                       :card-id           card-id
+                       :card-database-id  card-db-id
+                       :expected-database current-db-id}))
+
+      :else
+      (:id card))))
+
 (defn- import-measure-by-entity-id
   "Resolve a measure by its portable `entity_id` to its numeric id.
 
@@ -490,8 +540,7 @@
         current-db-id    (:id (lib.metadata/database metadata-provider))]
     (cond
       (nil? measure)
-      (throw (ex-info (tru "No measure found with entity_id {0}. Do not invent or guess entity_ids: read the table that owns the measure with `read_resource` (`metabase://table/<numeric id>`) and copy the exact `portable_entity_id` from its `<measure>` tag."
-                           (pr-str entity-id))
+      (throw (ex-info (tru "No measure found with entity_id {0}." (pr-str entity-id))
                       {:agent-error? true
                        :status-code  400
                        :error        :unknown-measure
@@ -510,6 +559,39 @@
       :else
       (:id measure))))
 
+(defn- import-measure-by-id
+  "Read-check a bare numeric measure id and return it, on a surface that accepts numeric ids.
+
+  The numeric counterpart to [[import-measure-by-entity-id]]; see [[import-card-by-id]] for why
+  the lookup has to go through `content-store` even though the id needs no translation. Carries
+  the same table-scoped cross-database guard as the portable path."
+  [metadata-provider content-store measure-id]
+  (let [measure          (measure-by-id content-store measure-id)
+        measure-table-id (when measure (or (:table-id measure) (:table_id measure)))
+        measure-table    (when measure-table-id
+                           (table-belongs-to-current-database? metadata-provider measure-table-id))
+        current-db-id    (:id (lib.metadata/database metadata-provider))]
+    (cond
+      (nil? measure)
+      (throw (ex-info (tru "No measure found with id {0}." (str measure-id))
+                      {:agent-error? true
+                       :status-code  400
+                       :error        :unknown-measure-id
+                       :measure-id   measure-id}))
+
+      (nil? measure-table)
+      (throw (ex-info (tru "Measure {0} belongs to a table in a different database than this query (target database id {1}). Cross-database queries are not supported."
+                           (str measure-id) (str current-db-id))
+                      {:agent-error?      true
+                       :status-code       400
+                       :error             :cross-database-measure
+                       :measure-id        measure-id
+                       :measure-table-id  measure-table-id
+                       :expected-database current-db-id}))
+
+      :else
+      (:id measure))))
+
 (defn- export-measure-by-id
   "Resolve a measure by numeric id to its portable `entity_id`. Validates that the measure's
   table belongs to the metadata provider's database (cross-database guard)."
@@ -522,21 +604,21 @@
           entity-id        (when measure (or (:entity-id measure) (:entity_id measure)))]
       (cond
         (nil? measure)
-        (throw (ex-info (tru "No measure found with id {0}." measure-id)
+        (throw (ex-info (tru "No measure found with id {0}." (str measure-id))
                         {:status-code 400
                          :error       :unknown-measure-id
                          :measure-id  measure-id}))
 
         (nil? measure-table)
-        (throw (ex-info (tru "Measure id {0} belongs to a table outside this metadata provider''s database."
-                             measure-id)
+        (throw (ex-info (tru "Measure id {0} belongs to a table in a different database than this query. Cross-database queries are not supported."
+                             (str measure-id))
                         {:status-code 400
                          :error       :cross-database-measure
                          :measure-id  measure-id}))
 
         (not (and (string? entity-id) (seq entity-id)))
         (throw (ex-info (tru "Measure id {0} does not have an entity_id, so it cannot be exported as a portable representation."
-                             measure-id)
+                             (str measure-id))
                         {:status-code 400
                          :error       :missing-measure-entity-id
                          :measure-id  measure-id}))
@@ -556,21 +638,21 @@
           entity-id        (when segment (or (:entity-id segment) (:entity_id segment)))]
       (cond
         (nil? segment)
-        (throw (ex-info (tru "No segment found with id {0}." segment-id)
+        (throw (ex-info (tru "No segment found with id {0}." (str segment-id))
                         {:status-code 400
                          :error       :unknown-segment-id
                          :segment-id  segment-id}))
 
         (nil? segment-table)
-        (throw (ex-info (tru "Segment id {0} belongs to a table outside this metadata provider''s database."
-                             segment-id)
+        (throw (ex-info (tru "Segment id {0} belongs to a table in a different database than this query. Cross-database queries are not supported."
+                             (str segment-id))
                         {:status-code 400
                          :error       :cross-database-segment
                          :segment-id  segment-id}))
 
         (not (and (string? entity-id) (seq entity-id)))
         (throw (ex-info (tru "Segment id {0} does not have an entity_id, so it cannot be exported as a portable representation."
-                             segment-id)
+                             (str segment-id))
                         {:status-code 400
                          :error       :missing-segment-entity-id
                          :segment-id  segment-id}))
@@ -589,8 +671,7 @@
         current-db-id    (:id (lib.metadata/database metadata-provider))]
     (cond
       (nil? segment)
-      (throw (ex-info (tru "No segment found with entity_id {0}. Do not invent or guess entity_ids: read the table that owns the segment with `read_resource` (`metabase://table/<numeric id>`) and copy the exact `portable_entity_id` from its `<segment>` tag."
-                           (pr-str entity-id))
+      (throw (ex-info (tru "No segment found with entity_id {0}." (pr-str entity-id))
                       {:agent-error? true
                        :status-code  400
                        :error        :unknown-segment
@@ -603,6 +684,38 @@
                        :status-code       400
                        :error             :cross-database-segment
                        :entity-id         entity-id
+                       :segment-table-id  segment-table-id
+                       :expected-database current-db-id}))
+
+      :else
+      (:id segment))))
+
+(defn- import-segment-by-id
+  "Read-check a bare numeric segment id and return it, on a surface that accepts numeric ids.
+
+  The numeric counterpart to [[import-segment-by-entity-id]]; see [[import-card-by-id]] for why
+  the lookup has to go through `content-store`. Same table-scoped cross-database guard."
+  [metadata-provider content-store segment-id]
+  (let [segment          (segment-by-id content-store segment-id)
+        segment-table-id (when segment (or (:table-id segment) (:table_id segment)))
+        segment-table    (when segment-table-id
+                           (table-belongs-to-current-database? metadata-provider segment-table-id))
+        current-db-id    (:id (lib.metadata/database metadata-provider))]
+    (cond
+      (nil? segment)
+      (throw (ex-info (tru "No segment found with id {0}." (str segment-id))
+                      {:agent-error? true
+                       :status-code  400
+                       :error        :unknown-segment-id
+                       :segment-id   segment-id}))
+
+      (nil? segment-table)
+      (throw (ex-info (tru "Segment {0} belongs to a table in a different database than this query (target database id {1}). Cross-database queries are not supported."
+                           (str segment-id) (str current-db-id))
+                      {:agent-error?      true
+                       :status-code       400
+                       :error             :cross-database-segment
+                       :segment-id        segment-id
                        :segment-table-id  segment-table-id
                        :expected-database current-db-id}))
 
@@ -633,6 +746,17 @@
      (import-fk       [_ eid model]
        (cond
          (nil? eid)             nil
+         ;; A bare numeric id, which only the numeric-id surface may author. It needs no
+         ;; translation, but it still has to go through the (read-checked) content store —
+         ;; see [[import-card-by-id]]. Every content model gets this, not just Card: a numeric
+         ;; metric / segment / measure ref reaches the resolver by exactly the same route.
+         (int? eid)
+         (cond
+           (card-model? model)    (import-card-by-id metadata-provider content-store eid)
+           (measure-model? model) (import-measure-by-id metadata-provider content-store eid)
+           (segment-model? model) (import-segment-by-id metadata-provider content-store eid)
+           :else                  (not-implemented! :import-fk))
+
          (card-model? model)    (import-card-by-entity-id metadata-provider content-store eid)
          (measure-model? model) (import-measure-by-entity-id metadata-provider content-store eid)
          (segment-model? model) (import-segment-by-entity-id metadata-provider content-store eid)
@@ -692,7 +816,7 @@
        (when table-id
          (let [t (lib.metadata.protocols/table metadata-provider table-id)]
            (when-not t
-             (throw (ex-info (tru "No table with id {0} in metadata provider." table-id)
+             (throw (ex-info (tru "No table found with id {0}." (str table-id))
                              {:status-code 400
                               :error       :unknown-table-id
                               :table-id    table-id})))
@@ -701,7 +825,7 @@
        (when field-id
          (let [f (lib.metadata.protocols/field metadata-provider field-id)]
            (when-not f
-             (throw (ex-info (tru "No field with id {0} in metadata provider." field-id)
+             (throw (ex-info (tru "No field found with id {0}." (str field-id))
                              {:status-code 400
                               :error       :unknown-field-id
                               :field-id    field-id})))

@@ -55,7 +55,7 @@ export const SdkIframeEmbedSetupContent = () => {
   );
 
   function handleEmbedDone() {
-    // Embedding Hub: track step completion
+    // Setup guide: track step completion. The settings keep their embedding-hub names.
     // Test embed = guest or existing user session (for quick testing)
     // Production embed = full SSO setup
     const isTestEmbed = settings.isGuest || settings.useExistingUserSession;
@@ -117,8 +117,8 @@ export const SdkIframeEmbedSetupContent = () => {
     >
       <SidebarResizer>
         <Box className={S.Sidebar} component="aside">
-          <Stack className={S.SidebarContent} gap="md">
-            <Stack gap="md" flex={1}>
+          <Stack className={S.SidebarContent} gap="lg">
+            <Stack gap="lg" flex={1}>
               <StepContent />
             </Stack>
           </Stack>
@@ -154,7 +154,7 @@ export const SdkIframeEmbedSetupContent = () => {
           ) : (
             <Card h="100%">
               <Flex h="100%" align="center" justify="center">
-                <Stack align="center" gap="md">
+                <Stack align="center" gap="lg">
                   <Image
                     w={120}
                     h={120}

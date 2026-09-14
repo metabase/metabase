@@ -88,7 +88,7 @@ Click the **bookmark** icon to pin a question to your Metabase sidebar. See [Boo
 
 ## Turning a question into a model
 
-You can turn a question saved to a collection into a model to let others know that the results make a good starting point for new questions. (You can't turn a question saved to a _dashboard_ into a model; you'll first need to move the question to a collection). See [models](../data-modeling/models.md).
+You can turn a question saved to a collection into a model to let others know that the results make a good starting point for new questions. (You can't turn a question saved to a _dashboard_ into a model; you'll first need to move the question to a collection). See [models](../data-modeling/models/models.md).
 
 ## Caching question results
 
@@ -102,7 +102,7 @@ You can set up questions to run periodically and notify you if the results are i
 
 ## Viewing events on your chart
 
-If your results are a time series, you can display events on along the x-axis. See [events and timelines](../exploration-and-organization/events-and-timelines.md).
+If your results are a time series, you can display events along the x-axis. See [events and timelines](../exploration-and-organization/events-and-timelines.md).
 
 ## Deleting a question
 

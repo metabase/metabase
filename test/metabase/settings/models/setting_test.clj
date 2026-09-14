@@ -7,6 +7,7 @@
    [medley.core :as m]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.setting :as mdb.setting]
    [metabase.cloud-migration.models.cloud-migration :as cloud-migration]
    [metabase.config.core :as config]
    [metabase.settings.models.setting :as setting :refer [defsetting]]
@@ -26,7 +27,7 @@
 (set! *warn-on-reflection* true)
 
 ;; side-effect require: registers the DML build guard exercised by
-;; [[migrate-encrypted-settings!-does-not-depend-on-settings-cache-test]]
+;; [[migrate-settings!-repairs-past-the-read-only-mode-guard-test]]
 (comment cloud-migration/keep-me)
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -617,52 +618,104 @@
 
 ;;; ----------------------------------------------- Encrypted Settings -----------------------------------------------
 
-(defn- actual-value-in-db [setting-key]
-  (-> (mdb/query {:select [:value]
+(defn- raw-setting-value-with-aad
+  "The setting's `value_with_aad` exactly as it sits in the DB, bypassing the model's decrypting read."
+  [setting-key]
+  (-> (mdb/query {:select [:value_with_aad]
                   :from   [:setting]
                   :where  [:= :key (name setting-key)]})
-      first :value))
+      first :value_with_aad))
+
+(defn- aad-opts
+  "Encryption opts binding a value to `setting-key`, as the Setting model stores one."
+  [setting-key & {:as more}]
+  (merge {:aad (mdb.setting/setting-aad (name setting-key))} more))
+
+(defn- decrypt-setting-value
+  "Decrypt `raw`, a `value_with_aad`, under the AAD of `setting-key`."
+  [setting-key raw]
+  (encryption/decrypt raw (aad-opts setting-key)))
 
 (deftest encrypted-settings-test
   (testing "If encryption is *enabled*, make sure Settings get saved as encrypted!"
     ;; Setting an encryption key without running encrypt-db leaves the other encrypted settings in the shared app DB
     ;; stored plaintext, and restoring the whole-table settings cache strictly decrypts every one of them. Use an
-    ;; isolated app DB so this test's key only meets settings it wrote itself.
+    ;; isolated app DB so this test's key only meets settings it wrote itself -- and write without a key first: every
+    ;; write under a key leaves ciphertext behind (the last-updated marker included) that nothing can read once the
+    ;; key is gone.
     (mt/with-temp-empty-app-db [_conn :h2]
       (mdb/setup-db! :create-sample-content? false)
-      (encryption-test/with-secret-key "ABCDEFGH12345678"
-        (toucan-name! "Sad Can")
-        (is (u/base64-string? (actual-value-in-db :toucan-name)))
-        (testing "make sure it can be decrypted as well..."
-          (is (= "Sad Can"
-                 (toucan-name)))))
-      (testing "But if encryption is not enabled, of course Settings shouldn't get saved as encrypted."
+      (testing "If encryption is not enabled, of course Settings shouldn't get saved as encrypted."
         (encryption-test/with-secret-key nil
           (toucan-name! "Sad Can")
           (is (= "Sad Can"
-                 (actual-value-in-db :toucan-name))))))))
+                 (raw-setting-value-with-aad :toucan-name)))))
+      (encryption-test/with-secret-key "ABCDEFGH12345678"
+        ;; every row so far is plaintext, which a strict read under a key rejects -- so do what `enable-encryption`
+        ;; does before the first write restores the settings cache over them
+        (mdb/encrypt-db (mdb/db-type) (mdb/data-source) nil)
+        (toucan-name! "Sad Can")
+        (is (u/base64-string? (raw-setting-value-with-aad :toucan-name)))
+        (testing "the ciphertext is bound to the setting it belongs to: it decrypts under that name and no other"
+          (is (= "Sad Can"
+                 (decrypt-setting-value :toucan-name (raw-setting-value-with-aad :toucan-name))))
+          (is (thrown? Throwable (encryption/decrypt (raw-setting-value-with-aad :toucan-name))))
+          (is (thrown? Throwable (decrypt-setting-value :site-name (raw-setting-value-with-aad :toucan-name)))))
+        (testing "make sure it can be decrypted as well..."
+          (is (= "Sad Can"
+                 (toucan-name))))))))
 
 (deftest decrypt-error-names-setting-test
   (testing "a Setting row that fails the decrypting read names the setting in the message (and never the value)"
     (encryption-test/with-secret-key "0123456789abcdef"
       (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                                    #"Error decrypting setting \"toucan-name\": Expected an encrypted value"
-                                    (#'setting/decrypt-setting-value-on-read {:key "toucan-name" :value "plaintext-sekret"})))]
+                                    #"Error reading setting \"toucan-name\": Expected an encrypted value"
+                                    (#'setting/read-setting-value {:key "toucan-name" :value_with_aad "plaintext-sekret"})))]
         (is (not (re-find #"sekret" (ex-message e))))
         (is (= "toucan-name" (:setting-key (ex-data e))))))))
+
+(deftest setting-value-aad-test
+  (let [read #'setting/read-setting-value]
+    (encryption-test/with-secret-key "ABCDEFGH12345678"
+      (testing "a value round trips through the AAD naming its setting"
+        (is (= "Sad Can"
+               (:value (read {:key "test-setting-1"
+                              :value_with_aad (encryption/encrypt "Sad Can" (aad-opts :test-setting-1))})))))
+      (testing "a value moved to another setting's row is rejected, and the message never carries the value"
+        (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                      #"Error reading setting \"test-setting-2\""
+                                      (read {:key "test-setting-2"
+                                             :value_with_aad (encryption/encrypt "Sad Can" (aad-opts :test-setting-1))})))]
+          (is (not (re-find #"Sad Can" (ex-message e))))))
+      (testing "a plaintext value is rejected while a key is set"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Expected an encrypted value"
+                              (read {:key "test-setting-1" :value_with_aad "Sad Can"}))))
+      (testing "a row written only by a version predating `value_with_aad` reads as no value at all"
+        (is (= {:key "test-setting-1" :value nil :value_with_aad nil}
+               (read {:key "test-setting-1" :value "Sad Can" :value_with_aad nil}))))
+      (testing "a key with no `defsetting` reads as no value at all, without so much as a decrypt"
+        (is (= {:key "no-such-setting" :value nil :value_with_aad "not even ciphertext"}
+               (read {:key "no-such-setting" :value_with_aad "not even ciphertext"})))))
+    (testing "a key with no `defsetting` cannot be written: how it is stored is the setting's to decide"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown setting: no-such-setting"
+                            (#'setting/write-setting-value {:key "no-such-setting" :value "Sad Can"}))))))
 
 (deftest previously-encrypted-settings-test
   (testing "Make sure settings that were encrypted don't cause `user-facing-info` to blow up if encyrption key changed"
     (mt/with-temp-empty-app-db [_conn :h2]
       (mdb/setup-db! :create-sample-content? false)
-      (mt/discard-setting-changes [test-json-setting]
-        (encryption-test/with-secret-key "0B9cD6++AME+A7/oR7Y2xvPRHX3cHA2z7w+LbObd/9Y="
-          (test-json-setting! {:abc 123})
-          (is (not= "{\"abc\":123}"
-                    (actual-value-in-db :test-json-setting))))
-        (testing (str "If fetching the Setting fails (e.g. because key changed) `user-facing-info` should return `nil` "
-                      "rather than failing entirely")
-          (encryption-test/with-secret-key nil
+      ;; No `discard-setting-changes`: restoring the setting means writing it back without the key it was written
+      ;; under, and a write restores the whole settings cache over the row it cannot read. The temp app DB is thrown
+      ;; away either way.
+      (encryption-test/with-secret-key "0B9cD6++AME+A7/oR7Y2xvPRHX3cHA2z7w+LbObd/9Y="
+        (test-json-setting! {:abc 123})
+        (is (not= "{\"abc\":123}"
+                  (raw-setting-value-with-aad :test-json-setting))))
+      (testing (str "If fetching the Setting fails (e.g. because key changed) `user-facing-info` should return `nil` "
+                    "rather than failing entirely")
+        (encryption-test/with-secret-key nil
+          (binding [config/*disable-setting-cache* true]
             (is (= {:key            :test-json-setting
                     :value          nil
                     :is_env_setting false
@@ -708,7 +761,7 @@
     (testing "make sure uncached setting still saves to the DB"
       (uncached-setting! "ABCDEF")
       (is (= "ABCDEF"
-             (actual-value-in-db "uncached-setting"))))
+             (raw-setting-value-with-aad "uncached-setting"))))
     (testing "make sure that fetching the Setting always fetches the latest value from the DB"
       (uncached-setting! "ABCDEF")
       (t2/update! :model/Setting {:key "uncached-setting"}
@@ -1765,72 +1818,46 @@
         (testing (format "We have defined a setting for the %s validation tests" format)
           (is (var? (resolve (ns-validation-setting-symbol format)))))))))
 
-(deftest migrate-encrypted-settings!-works
-  ;; Isolated app DB: with a secret key active this mutates the at-rest encryption of every registered setting row,
-  ;; which would poison the shared test DB for later tests running with a different (or no) key.
-  (mt/with-temp-empty-app-db [_conn :h2]
-    (mdb/setup-db! :create-sample-content? false)
-    (testing "It works when a secret key is set"
+(deftest migrate-settings!-test
+  (testing "rows a version predating `value_with_aad` wrote get it filled in from `value` on startup"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? false)
       (encryption-test/with-secret-key "ABCDEFGH12345678"
-        (t2/insert! :setting {:key "test-never-encrypted-setting" :value (encryption/maybe-encrypt "foobar")})
-        ;; Sanity check: the value is encrypted
-        (is (not= "foobar" (actual-value-in-db :test-never-encrypted-setting)))
-        (setting/migrate-encrypted-settings!)
-        (is (= "foobar" (actual-value-in-db :test-never-encrypted-setting)))
-        (setting/migrate-encrypted-settings!)
-        (is (= "foobar" (actual-value-in-db :test-never-encrypted-setting)))))
-    (testing "It doesn't do anything when the secret key is not set"
-      (encryption-test/with-secret-key "ABCDEFGH12345678"
+        (t2/delete! :setting :key "toucan-name")
         (t2/delete! :setting :key "test-never-encrypted-setting")
-        (t2/insert! :setting {:key "test-never-encrypted-setting" :value (encryption/maybe-encrypt "foobar")}))
-      (encryption-test/with-secret-key nil
-        (is (not= "foobar" (actual-value-in-db :test-never-encrypted-setting)))
-        (setting/migrate-encrypted-settings!)
-        (is (not= "foobar" (actual-value-in-db :test-never-encrypted-setting)))))))
+        ;; `value` only, as that version writes it: encrypted for a setting that encrypts, plaintext for one that does not
+        (t2/insert! :setting [{:key "toucan-name", :value (encryption/encrypt "Lenny")}
+                              {:key "test-never-encrypted-setting", :value "foobar"}])
+        (mdb.setting/migrate-settings!)
+        (testing "an encrypted row's value is stored under its AAD"
+          (is (= "Lenny" (decrypt-setting-value :toucan-name (raw-setting-value-with-aad :toucan-name)))))
+        (testing "a plaintext row's value is too -- every setting's is, whatever its :encryption says"
+          (is (= "foobar" (decrypt-setting-value :test-never-encrypted-setting
+                                                 (raw-setting-value-with-aad :test-never-encrypted-setting)))))
+        (testing "and the values are readable again"
+          (setting.cache/restore-cache!)
+          (is (= "Lenny" (toucan-name))))
+        (testing "a row that already has a stored value is left byte-identical, whatever `value` says beside it"
+          (toucan-name! "Sad Can")
+          (let [before (raw-setting-value-with-aad :toucan-name)]
+            (t2/update! :setting :key "toucan-name" {:value (encryption/encrypt "Bird Can")})
+            (mdb.setting/migrate-settings!)
+            (is (= before (raw-setting-value-with-aad :toucan-name)))
+            (is (= "Sad Can" (decrypt-setting-value :toucan-name (raw-setting-value-with-aad :toucan-name))))))))))
 
-(deftest migrate-encrypted-settings!-does-not-depend-on-settings-cache-test
-  ;; The cloud-migration read-only-mode guard (a `t2.pipeline/build :before` method registered when
-  ;; `metabase.cloud-migration.models.cloud-migration` loads -- required above so this holds in a targeted test run
-  ;; too) runs on every DML statement and reads a setting. On a fresh JVM that read triggers a full strict
-  ;; settings-cache restore, which fails on the very plaintext row this function exists to repair -- so the repair
-  ;; itself must never go through the cache. Regression test for the chicken-and-egg startup crash.
+(deftest migrate-settings!-writes-past-the-read-only-mode-guard-test
+  ;; The cloud-migration guard on Toucan DML (registered when `metabase.cloud-migration.models.cloud-migration`
+  ;; loads -- required above so this holds in a targeted run too) reads `read-only-mode` through the model before
+  ;; every update, and the model's read is strict. The backfill's writes must not go through it: here that row holds a
+  ;; plaintext value under a key, which the strict read rejects, and the backfill still has to get its other rows done.
   (mt/with-temp-empty-app-db [_conn :h2]
     (mdb/setup-db! :create-sample-content? false)
     (encryption-test/with-secret-key "ABCDEFGH12345678"
-      (t2/insert! :setting {:key "toucan-name" :value "Lenny"})
-      (binding [config/*disable-setting-cache* false]
-        ;; Simulate a fresh JVM. `setting.cache/cache*` is the atom holding this app DB's in-memory settings map; nil
-        ;; means never populated, so the next cached read must do the full (strictly decrypting) restore. And
-        ;; `last-update-check` is the AtomicLong nanotime of the last staleness check: zeroing it defeats the
-        ;; one-minute throttle that otherwise skips the check entirely in a warm test JVM.
-        (reset! (#'setting.cache/cache*) nil)
-        (.set ^java.util.concurrent.atomic.AtomicLong @#'setting.cache/last-update-check 0)
-        (setting/migrate-encrypted-settings!))
-      (is (encryption/decryptable-string? (actual-value-in-db :toucan-name)))
-      (is (= "Lenny" (encryption/decrypt (actual-value-in-db :toucan-name)))))))
-
-(deftest migrate-encrypted-settings!-encrypts-strict-settings
-  ;; raw :setting (not :model/Setting) throughout: the model's before-insert would encrypt the value, and these tests
-  ;; need genuinely plaintext rows at rest. Isolated app DB for the same reason as [[migrate-encrypted-settings!-works]].
-  (mt/with-temp-empty-app-db [_conn :h2]
-    (mdb/setup-db! :create-sample-content? false)
-    (testing "a plaintext row of a setting that encrypts is encrypted at rest on startup (e.g. after a downgraded boot decrypted it)"
-      (encryption-test/with-secret-key "ABCDEFGH12345678"
-        (t2/insert! :setting {:key "toucan-name" :value "Lenny"})
-        (is (not (encryption/decryptable-string? (actual-value-in-db :toucan-name))))
-        (setting/migrate-encrypted-settings!)
-        (is (encryption/decryptable-string? (actual-value-in-db :toucan-name)))
-        (is (= "Lenny" (encryption/decrypt (actual-value-in-db :toucan-name))))
-        (testing "already-encrypted rows are left byte-identical"
-          (let [before (actual-value-in-db :toucan-name)]
-            (setting/migrate-encrypted-settings!)
-            (is (= before (actual-value-in-db :toucan-name)))))))
-    (testing "without an encryption key nothing happens"
-      (encryption-test/with-secret-key nil
-        (t2/delete! :setting :key "toucan-name")
-        (t2/insert! :setting {:key "toucan-name" :value "Lenny"})
-        (setting/migrate-encrypted-settings!)
-        (is (= "Lenny" (actual-value-in-db :toucan-name)))))))
+      (mdb/encrypt-db (mdb/db-type) (mdb/data-source) nil)
+      (t2/insert! :setting [{:key "read-only-mode", :value "false", :value_with_aad "false"}
+                            {:key "toucan-name", :value (encryption/encrypt "Lenny")}])
+      (mdb.setting/migrate-settings!)
+      (is (= "Lenny" (decrypt-setting-value :toucan-name (raw-setting-value-with-aad :toucan-name)))))))
 
 (deftest setter-none-does-not-imply-encryption-test
   (testing "`:setter :none` does not imply encryption -- it is decided by type or stated explicitly, like any setting"

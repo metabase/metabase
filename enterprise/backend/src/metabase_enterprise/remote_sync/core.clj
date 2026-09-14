@@ -1,6 +1,7 @@
 (ns metabase-enterprise.remote-sync.core
   (:require
    [java-time.api :as t]
+   [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
@@ -90,32 +91,17 @@
     (spec/batch-check-eligibility spec instances)
     (into {} (map (fn [inst] [(:id inst) false])) instances)))
 
-(defn- subtree-where
-  "HoneySQL predicate matching `collections` and all of their descendants."
-  [collections]
-  (into [:or [:in :id (map :id collections)]]
-        (for [collection collections]
-          [:like :location (str (collections/location-path collection) "%")])))
-
-(defn- contents-rso-where
-  "HoneySQL predicate matching the RemoteSyncObject rows of `collection-ids` and of their contents."
-  [collection-ids]
-  [:or
-   [:and [:= :model_type "Collection"] [:in :model_id collection-ids]]
-   [:in :model_collection_id collection-ids]])
-
 (defn- record-removed-rsos!
   "Records a pending removal on the RemoteSyncObject rows of the given collections and their contents, so
   the next export deletes them from the remote. Rows still in 'create' (never pushed) are dropped outright
   — the remote never received them, so there is nothing to delete there."
   [collection-ids]
-  (let [rows (t2/select [:model/RemoteSyncObject :id :status] {:where (contents-rso-where collection-ids)})
+  (let [rows (remote-sync.db/content-rso-statuses collection-ids)
         {created true tracked false} (group-by #(= "create" (:status %)) rows)]
     (when (seq created)
-      (t2/delete! :model/RemoteSyncObject :id [:in (map :id created)]))
+      (remote-sync.db/delete-rsos! (map :id created)))
     (when (seq tracked)
-      (t2/update! :model/RemoteSyncObject :id [:in (map :id tracked)]
-                  {:status "removed" :status_changed_at (t/offset-date-time)}))))
+      (remote-sync.db/set-rsos-status! (map :id tracked) "removed" (t/offset-date-time)))))
 
 (defn- restore-removed-rsos!
   "Clears any pending 'removed' status on the given collections' and contents' RemoteSyncObject rows when the
@@ -126,12 +112,8 @@
   Restores to 'update' rather than 'synced': edits made while the collection was un-synced are not tracked,
   so the entity must be re-serialized for the remote to be guaranteed to match local."
   [collection-ids]
-  (when-let [ids (seq (t2/select-pks-set :model/RemoteSyncObject
-                                         {:where [:and
-                                                  [:= :status "removed"]
-                                                  (contents-rso-where collection-ids)]}))]
-    (t2/update! :model/RemoteSyncObject :id [:in ids]
-                {:status "update" :status_changed_at (t/offset-date-time)})))
+  (when-let [ids (seq (remote-sync.db/removed-content-rso-ids collection-ids))]
+    (remote-sync.db/set-rsos-status! ids "update" (t/offset-date-time))))
 
 (defn- collection-content-specs
   "Specs for entities tracked by living directly in a remote-synced collection (Card, Dashboard, Document,
@@ -148,26 +130,23 @@
   stays a no-op)."
   [collection-ids]
   (doseq [{:keys [model-key model-type archived-key] :as spec} (collection-content-specs)
-          :let  [tracked  (t2/select-fn-set :model_id :model/RemoteSyncObject :model_type model-type)
-                 where    (if archived-key
-                            [:and [:in :collection_id collection-ids] [:= archived-key false]]
-                            [:in :collection_id collection-ids])
-                 entities (t2/select model-key {:where where})]
+          :let  [tracked  (remote-sync.db/tracked-model-ids model-type)
+                 entities (remote-sync.db/instances-in-collections model-key collection-ids archived-key)]
           entity entities
           :when  (not (contains? tracked (:id entity)))]
-    (t2/insert! :model/RemoteSyncObject
-                (merge {:model_type        model-type
-                        :model_id          (:id entity)
-                        :status            "create"
-                        :status_changed_at (t/offset-date-time)}
-                       (spec/build-sync-object-fields spec entity)))))
+    (remote-sync.db/insert-rso!
+     (merge {:model_type        model-type
+             :model_id          (:id entity)
+             :status            "create"
+             :status_changed_at (t/offset-date-time)}
+            (spec/build-sync-object-fields spec entity)))))
 
 (defn- collections-by-id
   "`{id collection}` for `ids`, carrying the fields the failure descriptions need. Nil and duplicate ids
   are tolerated so callers can pass raw `:collection_id`s straight from the entities they described."
   [ids]
   (when-let [ids (not-empty (disj (set ids) nil))]
-    (t2/select-pk->fn identity [:model/Collection :id :name :location :personal_owner_id] :id [:in ids])))
+    (remote-sync.db/collections-by-id ids)))
 
 (defn- top-level-ancestor-id
   "Id of the outermost collection containing `collection`."
@@ -198,7 +177,7 @@
   [entities]
   (into {}
         (for [[model-name group] (group-by :model entities)
-              row (t2/select [(keyword "model" model-name) :id :name] :id [:in (map :id group)])]
+              row (remote-sync.db/instance-names (keyword "model" model-name) (map :id group))]
           [[model-name (:id row)] (:name row)])))
 
 (defn- card-item-models
@@ -213,7 +192,7 @@
                        :metric "metric"
                        "card")]))
           ;; :card_schema is required alongside :type — selecting it runs Card's schema upgrades.
-          (t2/select [:model/Card :id :type :card_schema] :id [:in ids]))))
+          (remote-sync.db/card-types ids))))
 
 (defn- describe-entities
   "`[{:model :id :name}]` for `entities`, which are `{:model \"Card\" :id 412}` maps, in the order given."
@@ -351,33 +330,23 @@
                                                   {:sync-on #{} :sync-off #{}}
                                                   collection-states)
                                        (update :sync-on #(when-let [sync-on (seq %)]
-                                                           (t2/select :model/Collection :id [:in sync-on])))
+                                                           (remote-sync.db/collections sync-on)))
                                        (update :sync-off #(when-let [sync-off (seq %)]
-                                                            (t2/select :model/Collection :id [:in sync-off]))))]
+                                                            (remote-sync.db/collections sync-off))))]
     (try
       (t2/with-transaction [_]
         (when (seq sync-on)
-          (t2/query {:update (t2/table-name :model/Collection)
-                     :set {:is_remote_synced true}
-                     :where [:and
-                             [:= :is_remote_synced false]
-                             (subtree-where sync-on)]})
-          (when-let [ids (seq (t2/select-pks-set :model/Collection {:where (subtree-where sync-on)}))]
+          (remote-sync.db/mark-subtree-remote-synced! sync-on)
+          (when-let [ids (seq (remote-sync.db/subtree-collection-ids sync-on))]
             ;; Re-syncing before a recorded removal was pushed must not leave the contents marked for deletion.
             (restore-removed-rsos! ids)
             ;; ...and contents that were dropped outright (never-pushed 'create' rows) must be re-tracked, so
             ;; the next export pushes them rather than silently omitting them.
             (track-untracked-contents! ids)))
         (when (seq sync-off)
-          (let [affected-collection-ids
-                (t2/select-pks-set :model/Collection
-                                   {:where [:and
-                                            [:= :is_remote_synced true]
-                                            (subtree-where sync-off)]})]
+          (let [affected-collection-ids (remote-sync.db/remote-synced-subtree-collection-ids sync-off)]
             (when (seq affected-collection-ids)
-              (t2/query {:update (t2/table-name :model/Collection)
-                         :set {:is_remote_synced false}
-                         :where [:in :id affected-collection-ids]})
+              (remote-sync.db/unmark-collections-remote-synced! affected-collection-ids)
               (record-removed-rsos! affected-collection-ids))))
         (when-let [failures (not-empty (unsynced-dependency-failures sync-on))]
           (throw (ex-info (tru "Uses content that is not remote synced.")

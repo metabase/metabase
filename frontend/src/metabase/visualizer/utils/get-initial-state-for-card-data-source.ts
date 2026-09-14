@@ -18,6 +18,7 @@ import type {
   VisualizationDisplay,
 } from "metabase-types/api";
 
+import { DEFAULT_VISUALIZER_DISPLAY } from "../constants";
 import {
   createDimensionColumn,
   createMetricColumn,
@@ -30,10 +31,7 @@ import {
   extractReferencedColumns,
   rewriteRemappedReferences,
 } from "./column";
-import {
-  DEFAULT_VISUALIZER_DISPLAY,
-  isVisualizerSupportedVisualization,
-} from "./dashboard-card-supports-visualizer";
+import { isVisualizerSupportedVisualization } from "./dashboard-card-supports-visualizer";
 import { createDataSource, createDataSourceNameRef } from "./data-source";
 import { updateVizSettingsWithRefs } from "./update-viz-settings-with-refs";
 import { getColumnVizSettings } from "./viz-settings";

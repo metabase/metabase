@@ -20,7 +20,7 @@ You should follow along with the [migration guide](./guide.md). Once you downloa
 
 ## Install Heroku CLI for your OS
 
-To get shell access, follow the instructions for your operating system to [install the Heroku CLI](https://devcenter.heroku.com/articles/heroku-cli#download-and-install).
+To get shell access, follow the instructions for your operating system to [install the Heroku CLI](https://devcenter.heroku.com/articles/heroku-cli#install-the-heroku-cli).
 
 ### Get shell access to your Heroku server
 

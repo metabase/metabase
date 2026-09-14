@@ -80,7 +80,7 @@ export const ColumnFormattingAction: LegacyDrill = ({ question, clicked }) => {
         <WidgetPopoverPortalContext.Provider value={portalValue}>
           <Box
             ref={setScrollContainer}
-            pt="lg"
+            pt="xl"
             mah={600}
             style={{ overflowY: "auto" }}
           >

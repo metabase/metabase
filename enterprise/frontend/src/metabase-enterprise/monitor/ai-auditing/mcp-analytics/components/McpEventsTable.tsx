@@ -303,7 +303,7 @@ function McpEventsTableInner({
   const skeletonColumnWidths = columns.map(() => 1 / columns.length);
 
   return (
-    <Stack gap="md" flex={1} mih={0}>
+    <Stack gap="lg" flex={1} mih={0}>
       <MonitorTableCard aria-busy={isFetching} data-testid="mcp-events-table">
         {error ? (
           <Flex mih="60vh" align="center" justify="center">

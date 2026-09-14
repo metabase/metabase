@@ -6,6 +6,7 @@ import type {
   ColumnSettings,
   DimensionReference,
   Series,
+  VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -14,7 +15,8 @@ import type {
   SettingsExtra,
   VisualizationSettingsDefinitions,
 } from "../../types";
-import { getVisualizationRaw } from "../registry";
+import { migrateStoredCustomVizSettings } from "../custom-viz/migrate-legacy-settings";
+import { getVisualization } from "../registry";
 import {
   getComputedSettings,
   getPersistableDefaultSettings,
@@ -60,21 +62,27 @@ const COMMON_SETTINGS: VisualizationSettingsDefinitions = {
   click_behavior: {},
 };
 
+export function getSettingDefinitionsForDisplay(
+  display: VisualizationDisplay | undefined,
+): VisualizationSettingsDefinitions {
+  const visualization = getVisualization(display ?? null);
+  const definitions = {
+    ...COMMON_SETTINGS,
+    ...visualization?.settings,
+  };
+  for (const id in definitions) {
+    definitions[id].id = id;
+  }
+  return definitions;
+}
+
 export function getSettingDefinitionsForSeries(
   series: Series | null | undefined,
 ): VisualizationSettingsDefinitions {
   if (!series) {
     return {};
   }
-  const visualization = getVisualizationRaw(series);
-  const definitions = {
-    ...COMMON_SETTINGS,
-    ...(visualization?.settings || {}),
-  };
-  for (const id in definitions) {
-    definitions[id].id = id;
-  }
-  return definitions;
+  return getSettingDefinitionsForDisplay(series[0]?.card?.display);
 }
 
 function normalizeColumnSettings(
@@ -94,8 +102,10 @@ function normalizeColumnSettings(
 
 export function getStoredSettingsForSeries(
   series: Series | null | undefined,
+  definitions?: VisualizationSettingsDefinitions,
 ): VisualizationSettings {
   let storedSettings = series?.[0]?.card?.visualization_settings ?? {};
+
   if (storedSettings.column_settings) {
     // normalize any settings stored under old style keys: [ref, [fk->, 1, 2]]
     storedSettings = assocIn(
@@ -104,7 +114,21 @@ export function getStoredSettingsForSeries(
       normalizeColumnSettings(storedSettings.column_settings),
     );
   }
-  return storedSettings;
+
+  return migrateStoredCustomVizSettings(
+    series?.[0]?.card?.display,
+    storedSettings,
+    () => definitions ?? getSettingDefinitionsForSeries(series),
+  );
+}
+
+export function adoptLegacyCustomVizSettings(
+  display: VisualizationDisplay | undefined,
+  storedSettings: VisualizationSettings,
+): VisualizationSettings {
+  return migrateStoredCustomVizSettings(display, storedSettings, () => {
+    return getSettingDefinitionsForDisplay(display);
+  });
 }
 
 export function getComputedSettingsForSeries(
@@ -116,7 +140,7 @@ export function getComputedSettingsForSeries(
   }
 
   const settingsDefs = getSettingDefinitionsForSeries(series);
-  const storedSettings = getStoredSettingsForSeries(series);
+  const storedSettings = getStoredSettingsForSeries(series, settingsDefs);
   return getComputedSettings(settingsDefs, series, storedSettings, extra);
 }
 

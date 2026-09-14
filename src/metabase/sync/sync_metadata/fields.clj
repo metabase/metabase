@@ -41,6 +41,7 @@
   (:require
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
+   [metabase.sync.db :as sync.db]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.fields.our-metadata :as fields.our-metadata]
@@ -51,7 +52,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.models.table :as table]
-   [toucan2.core :as t2]
    [toucan2.util :as t2.util]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -127,11 +127,10 @@
                             (partition-by (juxt :table-name :table-schema))
                             (map (fn [table-metadata]
                                    (let [{:keys [table-name table-schema]} (first table-metadata)
-                                         table   (->> (t2/select :model/Table
-                                                                 :db_id (:id database)
-                                                                 :%lower.name (t2.util/lower-case-en table-name)
-                                                                 :%lower.schema (some-> table-schema t2.util/lower-case-en)
-                                                                 {:where sync-util/sync-tables-clause})
+                                         table   (->> (sync.db/sync-tables-by-lower-name-and-schema
+                                                       (:id database)
+                                                       (t2.util/lower-case-en table-name)
+                                                       (some-> table-schema t2.util/lower-case-en))
                                                       (sort-by (select-best-matching-name table-schema table-name))
                                                       first)
                                          updated (if table

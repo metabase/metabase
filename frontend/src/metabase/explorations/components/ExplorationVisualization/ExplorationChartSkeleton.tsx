@@ -10,18 +10,18 @@ import { ExplorationVisualizationHeader } from "./ExplorationVisualizationHeader
  */
 export function ExplorationChartSkeleton({ name }: { name: string | null }) {
   return (
-    <Stack p="lg" h="100%">
+    <Stack p="xl" h="100%">
       <ExplorationVisualizationHeader name={name ?? ""} />
 
-      <Stack gap="md" flex={1} mih={0} className={S.root}>
+      <Stack gap="lg" flex={1} mih={0} className={S.root}>
         <Stack gap={6} className={S.titleBlock}>
-          <Skeleton h={14} w="40%" radius="sm" />
-          <Skeleton h={10} w="20%" radius="sm" />
+          <Skeleton h={14} w="40%" radius="xs" />
+          <Skeleton h={10} w="20%" radius="xs" />
         </Stack>
         <div className={S.chartBlock}>
           <div className={S.yAxis}>
             {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} h={8} w="60%" radius="sm" />
+              <Skeleton key={i} h={8} w="60%" radius="xs" />
             ))}
           </div>
           <div className={S.chartCanvas}>

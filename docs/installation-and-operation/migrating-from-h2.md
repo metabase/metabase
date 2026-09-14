@@ -17,7 +17,7 @@ The main difference between a local installation and a production installation o
 
 Metabase ships with an embedded H2 application database that you should avoid using in production. The reason Metabase ships with the H2 database is because we want people to spin up Metabase on their local machine and start playing around with asking questions.
 
-If you want to run Metabase in production, you'll need to use a production-ready application database to store your application data. You can switch from using the default H2 application database at any time, but if you're planning on running Metabase in production, the sooner you migrate to a production application database, the better. If you keeping running Metabase with the default H2 application database, and you don't regularly back it up, the application database could get corrupted, and you could end up losing all of your questions, dashboards, collections, and other Metabase data.
+If you want to run Metabase in production, you'll need to use a production-ready application database to store your application data. You can switch from using the default H2 application database at any time, but if you're planning on running Metabase in production, the sooner you migrate to a production application database, the better. If you keep running Metabase with the default H2 application database, and you don't regularly back it up, the application database could get corrupted, and you could end up losing all of your questions, dashboards, collections, and other Metabase data.
 
 The migration process is a one-off process. You can execute the migration script from any computer that has the H2 application database file.
 
@@ -25,7 +25,7 @@ The migration process is a one-off process. You can execute the migration script
 
 One important thing here is that the version of Metabase you use during the migration process must be the same. Meaning, the Metabase you use to run the migration command must be the same one that was last used to create or update H2 file, which must be the same version you'll be using in production. Only _after_ completing the migration should you consider upgrading.
 
-You could also choose to run Metabase on a [Metabase Cloud](https://www.metabase.com/pricing/) plan, which takes care of all of this stuff for you. If you have an existing Metabase, here's how you can [migrate to Metabase Cloud](../cloud/migrate/guide.md).
+You could also choose to run Metabase on a [Metabase Cloud](https://www.metabase.com/pricing) plan, which takes care of all of this stuff for you. If you have an existing Metabase, here's how you can [migrate to Metabase Cloud](../cloud/migrate/guide.md).
 
 ## Supported databases for storing your Metabase application data
 
@@ -37,7 +37,7 @@ We recommend using PostgreSQL for your application database.
 
 ## How can I tell if my Metabase instance uses H2?
 
-As a Metabase admin, call the [`GET /api/bug-reporting/details`](https://www.metabase.com/docs/latest/api#tag/apibug-reporting/get/api/bug-reporting/details) API endpoint. This will return something like this:
+As a Metabase admin, call the [`GET /api/bug-reporting/details`](https://www.metabase.com/docs/latest/api#tag/apibug-reporting/GET/api/bug-reporting/details) API endpoint. This will return something like this:
 
 ```json
 {
@@ -105,7 +105,7 @@ export MB_DB_CONNECTION_URI="jdbc:postgresql://<host>:5432/metabase?user=<userna
 java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 ```
 
-You should, however, keep your old H2 file just for safe-keeping, or as a heirloom, or talisman, or whatever.
+You should, however, keep your old H2 file just for safe-keeping, or as an heirloom, or talisman, or whatever.
 
 ## Docker: how to migrate from H2 to your production application database
 
@@ -174,7 +174,7 @@ docker run -d -p 3000:3000 \
 
 ### 7. Remove the old container that was using the H2 database
 
-If you have your H2 file backed up somewhere safe, go ahead and remove the old container. See [Docker docs](https://docs.docker.com/engine/reference/commandline/rm/) for removing containers.
+If you have your H2 file backed up somewhere safe, go ahead and remove the old container. See [Docker docs](https://docs.docker.com/reference/cli/docker/container/rm/) for removing containers.
 
 ## Running Metabase application database migrations manually
 

@@ -3,7 +3,20 @@
   (:require
    [metabase.collections.models.collection :as collection]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
+
+(defn personal-collection
+  "A User's Personal Collection. It is created along with the User row itself, so a test that wants one should look it
+  up with this rather than creating its own — `personal_owner_id` is unique, so a second insert fails, and on Postgres
+  that failure poisons the surrounding transaction."
+  [user-or-id]
+  (t2/select-one :model/Collection :personal_owner_id (u/the-id user-or-id)))
+
+(defn personal-collection-id
+  "The ID of a User's Personal Collection. See [[personal-collection]]."
+  [user-or-id]
+  (u/the-id (personal-collection user-or-id)))
 
 (defmacro without-library
   "Macro that clears existing library collections, executes body, then cleans up any created library collections.

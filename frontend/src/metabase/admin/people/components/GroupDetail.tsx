@@ -2,7 +2,6 @@ import { useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { AdminPaneLayout } from "metabase/admin/components/AdminPaneLayout";
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import {
   useCreateMembershipMutation,
   useDeleteMembershipMutation,
@@ -19,6 +18,7 @@ import {
 } from "metabase/common/utils/groups";
 import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
+import { SettingsSection } from "metabase/settings-components";
 import { Box, Button, Text } from "metabase/ui";
 import type { Group, Member, Membership, User } from "metabase-types/api";
 
@@ -157,7 +157,7 @@ const GroupDescription = ({ group }: { group: Group }) => {
 
   if (isDefaultGroup(group)) {
     return (
-      <Box maw="38rem" mb="md">
+      <Box maw="38rem" mb="lg">
         <Text>
           {t`All users belong to the ${getGroupNameLocalized(
             group,
@@ -170,7 +170,7 @@ const GroupDescription = ({ group }: { group: Group }) => {
 
   if (isAdminGroup(group)) {
     return (
-      <Box maw="38rem" mb="md">
+      <Box maw="38rem" mb="lg">
         <Text>
           {t`This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the
         settings in the Admin Panel, including changing permissions! So, add people to this group with care.`}

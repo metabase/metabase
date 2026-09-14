@@ -1,6 +1,6 @@
 .moreChartsHeader {
   width: fit-content;
-  border-radius: var(--mantine-radius-md);
+  border-radius: var(--mantine-radius-sm);
   padding: 0.25rem 0.75rem;
   color: var(--mb-color-text-secondary);
 

@@ -1,10 +1,6 @@
 import type { ReactNode } from "react";
 import { jt, t } from "ttag";
 
-import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -18,6 +14,10 @@ import {
 } from "metabase/plugins";
 import { queryToSearch, useSearchParams } from "metabase/router";
 import { useAdminSetting, useSetting } from "metabase/settings";
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/settings-components";
 import { Divider, Flex, Stack, Switch, Tabs } from "metabase/ui";
 
 import { AIModelSettingsSection } from "./AIModelSettingsSection";
@@ -228,14 +228,13 @@ function ToggleSettingsSection({
     <SettingsSection
       id={id}
       title={
-        <Flex align="center" gap="md" justify="space-between" w="100%">
+        <Flex align="center" gap="lg" justify="space-between" w="100%">
           <div>{title}</div>
           <Switch
             aria-label={title}
             checked={checked}
             disabled={disabled}
             onChange={(event) => onChange(event.target.checked)}
-            size="sm"
             w="auto"
           />
         </Flex>
@@ -256,7 +255,7 @@ function DisabledSection({
 }) {
   return (
     <Stack
-      gap="lg"
+      gap="xl"
       opacity={disabled ? 0.4 : 1}
       aria-disabled={disabled || undefined}
       {...(disabled ? { inert: "" } : {})}
