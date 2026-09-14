@@ -22,6 +22,22 @@
                                               [:= :locale [:auto/param "de"]]
                                               [:= :msgid [:auto/param "hello"]]]})))))))
 
+(deftest marker-binds-on-the-write-path-test
+  (testing "a marked value is bound in an update"
+    (mt/with-temp [:model/ContentTranslation {id :id} {:locale "de" :msgid "a" :msgstr "b"}]
+      (t2/update! :model/ContentTranslation id {:msgstr [:auto/param "updated"]})
+      (is (= "updated" (:msgstr (t2/select-one :model/ContentTranslation :id id))))))
+  (testing "and in an insert"
+    (mt/with-temp [:model/ContentTranslation _ {:locale "de" :msgid "a" :msgstr "b"}]
+      (t2/insert! :model/ContentTranslation {:locale [:auto/param "fr"] :msgid "x" :msgstr "y"})
+      (is (= ["y"] (map :msgstr (t2/select :model/ContentTranslation :locale "fr")))))))
+
+(deftest a-query-without-markers-is-unchanged-test
+  (testing "a plain query still runs -- the compile step leaves it alone"
+    (mt/with-temp [:model/ContentTranslation _ {:locale "de" :msgid "a" :msgstr "b"}]
+      (is (= ["b"] (map :msgstr (t2/select :model/ContentTranslation :locale "de"))))
+      (is (= 1 (t2/count :model/ContentTranslation :locale "de"))))))
+
 (deftest unmarked-string-is-already-a-literal-test
   (testing "an unmarked string was never the danger -- HoneySQL binds it"
     (mt/with-temp [:model/ContentTranslation _ {:locale "de" :msgid "a" :msgstr "b"}]
