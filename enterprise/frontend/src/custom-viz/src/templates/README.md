@@ -331,16 +331,9 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
 | `width`            | `number \| undefined` | Pixel width of the box to render into (e.g. a dashboard grid cell in a PDF export). Undefined for natural-size rendering (email/Slack). |
 | `height`           | `number \| undefined` | Pixel height of the box to render into. Undefined for natural-size rendering.                                                           |
 
-### RenderingContext
+### `renderingContext`
 
-Same shape as the interactive [`renderingContext`](#renderingcontext) above.
-
-| Property                   | Type                                 | Description                                                                                          |
-| -------------------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------- |
-| `getColor(name)`           | `(name: string) => string`           | Returns a hex color for the given Metabase color name.                                               |
-| `measureText(text, style)` | `(text, style) => { width, height }` | Measures the rendered size of a text string in pixels. `style.family` defaults to the instance font. |
-| `fontFamily`               | `string`                             | The font family in use. Apply to root elements for consistent text rendering.                        |
-| `colorScheme`              | `"light" \| "dark"`                  | Always `"light"` for static exports (email, Slack, PDF render on a light background).                |
+Same shape as the interactive [`renderingContext`](#renderingcontext) above; `colorScheme` is always `"light"` for static exports (email, Slack, and PDF render on a light background).
 
 ### GraalJS limitations
 
