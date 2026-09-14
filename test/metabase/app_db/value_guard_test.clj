@@ -102,16 +102,6 @@
       5
       nil)))
 
-(deftest checked-test
-  (testing "passes a query whose values are scalars"
-    (is (= {:where [:= :locale "de"]}
-           (value-guard/checked {:where [:= :locale "de"]}))))
-  (testing "throws when a value slot holds something that could become SQL"
-    (are [q] (thrown? clojure.lang.ExceptionInfo (value-guard/checked q))
-      {:where [:= :locale {:raw "(SELECT 1)"}]}
-      {:where [:= :locale :evil]}
-      {:where [:= :locale {:select [:x]}]})))
-
 (deftest strict-mode-requires-bound-params-test
   (testing "strict mode rejects a bare scalar and accepts a bound param"
     (is (rejects? {:where [:= :id 1]} true))

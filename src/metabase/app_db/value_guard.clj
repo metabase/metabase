@@ -19,7 +19,9 @@
   (:refer-clojure :exclude [longs])
   (:require
    [clojure.walk :as walk]
-   [metabase.util.honey-sql-2 :as h2x]))
+   [metabase.util.honey-sql-2 :as h2x]
+   [methodical.core :as methodical]
+   [toucan2.pipeline :as t2.pipeline]))
 
 (set! *warn-on-reflection* true)
 
@@ -247,32 +249,47 @@
 
 ;;; ----------------------------------------------- adoption ----------------------------------------------------
 
-;; Adoption is per-namespace and explicit: a `db.clj` that has wrapped its own value slots calls
-;; `checked` on the query it is about to run. There is no compile hook and no ambient state -- the
-;; check is an ordinary function call, visible at the site it protects.
+;; Namespaces that have wrapped their own value slots and want the check enforced. A query issued
+;; from anywhere else compiles exactly as before, so this rolls out one `db.clj` at a time rather
+;; than as a single global switch. Entries are namespace prefixes, so `metabase.collections.` covers
+;; a whole module once it is ready.
 ;;
-;; Global enforcement is deliberately not the first step. Run against the `collections` module it
-;; errors 91 of 148 tests, and none of those is an unparameterized user value: they are correlated
-;; subqueries, a UNION used as an operand, and SQL function calls in `:set` -- all real SQL that
-;; happens to live in a value-bearing clause. Widening the allowlist to admit them would restore the
-;; original hole, since a `{:raw ...}` and a legitimate subquery are both just maps by then.
+;; The set is the audit surface: it is the list of namespaces where a value slot is known to hold
+;; only values. Keeping it here rather than in a per-file marker means one place to read.
+(def enforcing-namespace-prefixes
+  "Namespace prefixes whose app-DB queries are checked. Referenced by the clj-kondo hook so a call
+  site inside these namespaces can also be checked at author time."
+  #{"metabase.content-translation.db"})
 
-(defn checked
-  "Assert that no value slot in `query` holds something that could become SQL, then return `query`.
+;; Clojure munges `-` to `_` in class names, so match against the munged form.
+(def ^:private enforcing-class-prefixes
+  (into #{} (map #(.replace ^String % "-" "_")) enforcing-namespace-prefixes))
 
-    (t2/select :model/ContentTranslation
-               (checked {:where [:= :locale (str* locale)]}))
+(defn- enforcing-caller?
+  "Whether this query was issued from a namespace that has adopted the check.
 
-  Pair it with a coercion (`long*`, `longs`, `str*`) at the point the value enters. The coercion is
-  what rejects a hostile non-scalar; `checked` is what fails the query if a later edit drops the
-  coercion and lets a map, a `{:raw ...}`, or a bare keyword into a value slot.
+  Reads the call stack rather than an ambient binding: the check runs inside Toucan's compile step,
+  which is several frames below the caller, and a dynamic var would have to be threaded through
+  Toucan internals and would not survive a thread hand-off. The stack already carries the answer."
+  []
+  (let [frames (.getStackTrace (Throwable.))]
+    (loop [i 0]
+      (if (>= i (alength frames))
+        false
+        (let [cls (.getClassName ^StackTraceElement (aget frames i))]
+          (if (some #(.startsWith cls ^String %) enforcing-class-prefixes)
+            true
+            (recur (inc i))))))))
 
-  Note this does not assert that every value is a *bound* parameter. A coercion returns a plain
-  scalar, which is indistinguishable at runtime from an unwrapped one, so that stronger property
-  cannot be checked here -- see the note on `[:param]` below."
-  [query]
-  (assert-values-wrapped! query {} false)
-  query)
+(methodical/defmethod t2.pipeline/compile :before :default
+  [_query-type model built-query]
+  (when (enforcing-caller?)
+    (assert-values-wrapped! built-query {:model model} false))
+  built-query)
+
+(defn keep-me
+  "No-op so a requiring namespace can reference this one without the linter pruning the require."
+  [])
 
 ;; A note on `[:param ...]`, which is the form the coercions above are a fallback for.
 ;;
