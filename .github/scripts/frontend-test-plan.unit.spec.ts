@@ -3,6 +3,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -11,7 +12,10 @@ import { join, resolve } from "node:path";
 
 import { load } from "js-yaml";
 
-import { findRunnerFailure } from "./check-unit-test-results";
+import {
+  findEmptySelection,
+  findRunnerFailure,
+} from "./check-unit-test-results";
 import { prepareUnitTestSelection } from "./prepare-unit-test-selection";
 
 type Step = { name: string; run?: string; "continue-on-error"?: boolean };
@@ -32,7 +36,8 @@ describe("frontend test plan handoff", () => {
 
   beforeEach(() => {
     jest.spyOn(console, "warn").mockImplementation(() => {});
-    dir = mkdtempSync(join(tmpdir(), "frontend-test-plan-"));
+    // Jest reports real paths, and macOS's temporary directory is behind a symlink.
+    dir = realpathSync(mkdtempSync(join(tmpdir(), "frontend-test-plan-")));
     mkdirSync(join(dir, "test-plan"));
     writeFileSync(join(dir, "output"), "");
     env = {
@@ -137,29 +142,53 @@ describe("frontend test plan handoff", () => {
     },
   );
 
-  function runJest(files: Record<string, string>, useFilter = false) {
+  function jestCommand(useFilter: boolean) {
+    return [
+      process.execPath,
+      require.resolve("jest/bin/jest"),
+      "--config",
+      JSON.stringify({
+        rootDir: dir,
+        testMatch: ["**/*.spec.cjs"],
+        reporters: ["default", require.resolve("jest-junit")],
+        ...(useFilter && { filter }),
+      }),
+    ];
+  }
+
+  function runJest(
+    files: Record<string, string>,
+    useFilter = false,
+    args: string[] = [],
+  ) {
     for (const [name, source] of Object.entries(files)) {
       writeFileSync(join(dir, name), source);
     }
+    const [program, ...commandArgs] = jestCommand(useFilter);
     return spawnSync(
-      process.execPath,
+      program,
       [
-        require.resolve("jest/bin/jest"),
-        "--config",
-        JSON.stringify({
-          rootDir: dir,
-          testMatch: ["**/*.spec.cjs"],
-          reporters: ["default", require.resolve("jest-junit")],
-          ...(useFilter && { filter }),
-        }),
+        ...commandArgs,
         "--runInBand",
         "--watch=false",
         "--json",
         `--outputFile=${env.UNIT_TEST_RESULTS_FILE}`,
         ...(useFilter ? ["--passWithNoTests"] : []),
+        ...args,
       ],
       { cwd: dir, env, encoding: "utf8" },
     );
+  }
+
+  function readResults() {
+    return JSON.parse(
+      readFileSync(join(dir, "unit-test-results.json"), "utf8"),
+    );
+  }
+
+  function writeSelection(files: string[]) {
+    env.JEST_TEST_PATHS_FILE = join(dir, "unit-specs.json");
+    writeFileSync(env.JEST_TEST_PATHS_FILE, JSON.stringify(files));
   }
 
   it("lets ordinary assertion failures reach quarantine", () => {
@@ -189,6 +218,7 @@ describe("frontend test plan handoff", () => {
     expect(
       runJest({ "pass.spec.cjs": "test('passes', () => {});" }, true).status,
     ).toBe(1);
+    env.TEST_OUTCOME = "failure";
     const result = spawnSync("bun", [checkScript], { env, encoding: "utf8" });
     expect(result.status).toBe(1);
     expect(result.stderr).toContain("::error::");
@@ -233,6 +263,48 @@ describe("frontend test plan handoff", () => {
       );
       expect(result.status === 0 ? "" : result.stderr).toBe("");
       expect(result.status).toBe(0);
+      expect(readResults()).toMatchObject({
+        numTotalTestSuites: empty ? 0 : 1,
+      });
     },
   );
+
+  it("warns when a narrowed run matches none of Jest's test paths", () => {
+    writeSelection([join(dir, "renamed.spec.cjs")]);
+    expect(
+      runJest({ "pass.spec.cjs": "test('passes', () => {});" }, true).status,
+    ).toBe(0);
+    expect(findEmptySelection(env, jestCommand(true))).toContain(
+      "None of the 1 selected unit specs",
+    );
+  });
+
+  it("warns through Bun when the unit test step passed", () => {
+    writeSelection([join(dir, "renamed.spec.cjs")]);
+    runJest({ "pass.spec.cjs": "test('passes', () => {});" }, true);
+    env.TEST_OUTCOME = "success";
+    const result = spawnSync("bun", [checkScript], { env, encoding: "utf8" });
+    expect(result.status).toBe(0);
+    expect(result.stderr).toContain(
+      "::warning::None of the 1 selected unit specs",
+    );
+  });
+
+  it("does not warn for a shard the selection leaves empty", () => {
+    writeSelection([join(dir, "pass.spec.cjs")]);
+    const result = runJest(
+      { "pass.spec.cjs": "test('passes', () => {});" },
+      true,
+      ["--shard=2/2"],
+    );
+    expect(result.status).toBe(0);
+    expect(readResults()).toMatchObject({ numTotalTestSuites: 0 });
+    expect(findEmptySelection(env, jestCommand(true))).toBeNull();
+  });
+
+  it("does not list tests for an empty selection", () => {
+    writeSelection([]);
+    runJest({ "pass.spec.cjs": "test('passes', () => {});" }, true);
+    expect(findEmptySelection(env, ["false"])).toBeNull();
+  });
 });

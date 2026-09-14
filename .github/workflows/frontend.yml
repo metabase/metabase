@@ -142,8 +142,11 @@ jobs:
           bun run test-unit --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }} --json --outputFile="$UNIT_TEST_RESULTS_FILE" ${{ steps.unit-selection.outputs.paths-file && '--passWithNoTests' || '' }}
         # Ordinary assertion failures can be quarantined; runner failures cannot.
         continue-on-error: true
-      - name: Reject unit test runner failures
-        if: ${{ !cancelled() && steps.fe-tests.outcome == 'failure' }}
+      - name: Check unit test results
+        if: ${{ !cancelled() && (steps.fe-tests.outcome == 'failure' || steps.unit-selection.outputs.paths-file) }}
+        env:
+          TEST_OUTCOME: ${{ steps.fe-tests.outcome }}
+          JEST_TEST_PATHS_FILE: ${{ steps.unit-selection.outputs.paths-file }}
         run: bun .github/scripts/check-unit-test-results.ts
       - name: Report failed tests to ci-conductor
         if: ${{ !cancelled() && ( steps.fe-tests.outcome == 'failure' || github.run_attempt != '1' ) }}
