@@ -28,8 +28,10 @@ export const DataStudio = {
     DataStudio.nav().should("be.visible");
   },
   Transforms: {
-    header: (options?: MatcherOptions) =>
-      cy.findByTestId("transforms-header", options),
+    // The transform page shows a loader until the transform, databases and the
+    // lazy editor chunk have loaded, which can take longer than the default 4s
+    header: (options: MatcherOptions = {}) =>
+      cy.findByTestId("transforms-header", { timeout: 10_000, ...options }),
     sectionHeader: () => cy.findByTestId("transforms-section-header"),
     transformsTab: () =>
       DataStudio.Transforms.sectionHeader().findByText("Transforms"),

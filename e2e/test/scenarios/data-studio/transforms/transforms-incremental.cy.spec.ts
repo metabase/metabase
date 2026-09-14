@@ -200,9 +200,6 @@ def transform(animals):
           });
         });
 
-        H.DataStudio.Transforms.header({ timeout: 10_000 }).should(
-          "be.visible",
-        );
         cy.log("run the transform and make sure its table can be queried");
         H.DataStudio.Transforms.runTab().click();
         runTransformAndWaitForSuccess();
