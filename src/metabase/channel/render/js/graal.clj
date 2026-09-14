@@ -59,6 +59,23 @@
     (assert (.canExecute fn-ref) (str "cannot execute " js-fn-name))
     (.execute fn-ref (into-array Object args))))
 
+(def ^:private max-result-chars
+  "Ceiling on the length of a string a render returns from the isolate. The isolate's heap cap bounds what the guest
+  can build, but the string is then copied to the host heap, JSON-decoded and (for svg) parsed into a Batik DOM —
+  each a further copy the isolate's caps don't cover."
+  (* 16 1024 1024))
+
+(defn- result-string
+  "The string `value` a render returned, or throw if it exceeds [[max-result-chars]] (before anything downstream
+  copies it again)."
+  ^String [^Value value]
+  (let [s (.asString value)]
+    (when (> (.length s) (long max-result-chars))
+      (throw (ex-info (trs "Static-viz render returned {0} characters, more than the {1} allowed"
+                           (.length s) max-result-chars)
+                      {:type ::result-too-large, :length (.length s)})))
+    s))
+
 (defn execute-fn
   "fn-ref should be an executable org.graalvm.polyglot.Value returned from a js engine. Invoke it with args."
   ^Value [^Value fn-ref & args]
@@ -83,7 +100,9 @@
   context caps ([[max-heap-memory]]) sum above it, which is tolerable because rendering is globally
   serialized — see [[render-lock]]. If a resident builtin + plugin pair still pushes past this, the isolate
   fails closed (a resource-exhausted render → error card), never OOM-kills the pod. Must stay strictly
-  above the per-context [[max-heap-memory]] (GraalVM requires it)."
+  above the per-context [[max-heap-memory]] (GraalVM requires it). These caps end once a render's result
+  string crosses to the host: see [[max-result-chars]] and the DOCTYPE/raster-height limits in
+  [[metabase.channel.render.js.svg]] for the host-side bounds."
   "512MB")
 
 (def ^:private max-heap-memory
@@ -338,7 +357,7 @@
    args    :- [:sequential :string]]
   (do-with-untrusted-builtin-context
    (fn [^Context context]
-     (.asString ^Value (apply execute-fn-name context (str "MetabaseStaticViz." fn-name) args)))))
+     (result-string (apply execute-fn-name context (str "MetabaseStaticViz." fn-name) args)))))
 
 (defn- chart-with-custom-viz*
   "Render `input` on a pooled plugin isolate context (slim custom-viz bundle already loaded by the pool)
@@ -358,7 +377,7 @@
                         (doseq [{:keys [identifier plugin-id source]} bundles]
                           (load-js-string context source (str "custom-viz-" identifier ".js"))
                           (execute-fn-name context "MetabaseStaticViz.registerCustomVizPlugin" identifier plugin-id))
-                        (.asString ^Value (execute-fn-name context "MetabaseStaticViz.renderChartJSON" input-json))))]
+                        (result-string (execute-fn-name context "MetabaseStaticViz.renderChartJSON" input-json))))]
     (log/infof "custom-viz: static-rendered %s in %.0fms (incl. context acquire/generation)"
                (mapv :identifier bundles) (u/since-ms timer))
     result))

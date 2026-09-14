@@ -79,8 +79,16 @@
                                        "]"))]
     (str/replace svg-string allowed-chars "")))
 
+(defn- refuse-doctype!
+  "Fail the render if the svg declares a DOCTYPE or entity."
+  [^String s]
+  (when (re-find #"(?i)<!(?:DOCTYPE|ENTITY)" s)
+    (throw (ex-info (i18n/tru "SVG documents must not declare a DOCTYPE or entities")
+                    {:type ::doctype-refused}))))
+
 (defn- parse-svg-string [^String s]
   (let [s (sanitize-svg s)
+        _ (refuse-doctype! s)
         factory (SAXSVGDocumentFactory. "org.apache.xerces.parsers.SAXParser")]
     (with-open [is (ByteArrayInputStream. (.getBytes ^String s StandardCharsets/UTF_8))]
       ;; The document deliberately gets no base URI so that Batik will not fetch any external references or local files
@@ -95,6 +103,12 @@
 (def ^:dynamic ^:private *svg-render-height*
   "Height to render svg images. If not bound, will preserve aspect ratio of original image."
   nil)
+
+(def ^:private max-aspect-render-height
+  "Ceiling on the raster height when no explicit height is given and it follows the svg's aspect ratio (email/Slack).
+  The svg may come from an untrusted custom-viz plugin, and a 1:1000 svg at [[*svg-render-width*]] would otherwise
+  allocate a ~5 GB raster on the host heap. Batik scales the image down to fit rather than failing."
+  (float 6000))
 
 (def ^:dynamic *chart-size*
   "When bound to a map `{:width <px> :height <px>}`, isomorphic (ECharts) charts rendered via
@@ -145,8 +159,9 @@
           render-width                 (float (or (some-> (:width *chart-size*) (* scale)) *svg-render-width*))
           render-height                (some-> (or (some-> (:height *chart-size*) (* scale)) *svg-render-height*) float)]
       (.addTranscodingHint transcoder PNGTranscoder/KEY_WIDTH render-width)
-      (when render-height
-        (.addTranscodingHint transcoder PNGTranscoder/KEY_HEIGHT render-height))
+      (if render-height
+        (.addTranscodingHint transcoder PNGTranscoder/KEY_HEIGHT render-height)
+        (.addTranscodingHint transcoder PNGTranscoder/KEY_MAX_HEIGHT max-aspect-render-height))
       (when *svg-background-color*
         (.addTranscodingHint transcoder PNGTranscoder/KEY_BACKGROUND_COLOR *svg-background-color*))
       (try

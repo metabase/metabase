@@ -59,6 +59,17 @@
        (graal/load-resource context "metabase/channel/render/js/engine_test_resource.js")
        (is (= 3 (.asLong (graal/execute-fn-name context "engine_test_plus" 1 2))))))))
 
+(deftest result-string-caps-length-test
+  (testing "a render result larger than the cap is refused before it is JSON-decoded or parsed on the host"
+    (do-with-untrusted-context
+     (fn [^Context context]
+       (is (= (* 1024 1024)
+              (count (#'graal/result-string (graal/load-js-string context "'x'.repeat(1024 * 1024)" "ok.js"))))
+           "a result within the cap passes through")
+       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"more than the .* allowed"
+                             (#'graal/result-string
+                              (graal/load-js-string context "'x'.repeat(17 * 1024 * 1024)" "big.js"))))))))
+
 (deftest untrusted-context-enforces-heap-limit-test
   (testing "sandbox.MaxHeapMemory terminates a plugin that exhausts the isolate heap"
     (do-with-untrusted-context

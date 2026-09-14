@@ -110,6 +110,25 @@
                         (.encodeToString (Base64/getEncoder) (solid-png-bytes Color/GREEN)))]
       (is (= [0 255 0] (render-center-pixel (image-svg data-uri)))))))
 
+(deftest svg-string->bytes-clamps-aspect-ratio-height-test
+  (testing "when the raster height follows the svg's aspect ratio (email/Slack: no explicit chart size), it is
+            capped — an untrusted custom-viz svg with an extreme aspect ratio must not size a host-heap raster"
+    (let [svg   (str "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"10\" height=\"1000\">"
+                     "<rect width=\"10\" height=\"1000\" fill=\"red\"/></svg>")
+          image (ImageIO/read (ByteArrayInputStream. (js.svg/svg-string->bytes svg)))]
+      (is (<= (.getHeight image) 6000)
+          "a 1:100 svg at the default 1200px width would otherwise rasterize 120,000px tall")
+      (is (pos? (.getWidth image))
+          "the image is scaled down to fit, not refused"))))
+
+(deftest svg-string->bytes-refuses-doctype-test
+  (testing "an svg declaring a DOCTYPE or entities is refused before parsing"
+    (doseq [svg [(str "<?xml version=\"1.0\"?><!DOCTYPE svg [<!ENTITY a \"aaaa\">]>"
+                      "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"10\" height=\"10\"><text>&a;</text></svg>")
+                 (str "<!doctype svg><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"10\" height=\"10\"/>")]]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must not declare a DOCTYPE"
+                            (js.svg/svg-string->bytes svg))))))
+
 (deftest untrusted-plugin-context-loads-slim-bundle-test
   (testing "the plugin isolate pool loads the slim custom-viz bundle, exposing the interface surface it needs"
     (js.graal/do-with-untrusted-plugin-context
