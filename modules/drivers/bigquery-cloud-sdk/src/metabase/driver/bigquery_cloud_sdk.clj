@@ -29,6 +29,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.performance :as perf])
   (:import
    (clojure.lang PersistentList)
@@ -106,7 +107,7 @@
    [:api-host :token-host]))
 
 (mu/defn- database-details->client
-  ^BigQuery [details :- :map]
+  ^BigQuery [details :- ms/DatabaseDetails]
   (driver.u/validate-connection-hosts! :bigquery-cloud-sdk details)
   (let [base-creds   (bigquery.common/database-details->service-account-credential details)
         creds        (.createScoped base-creds bigquery-scopes)
@@ -1054,7 +1055,7 @@
 
 (mu/defn- ^:dynamic *process-native*
   [respond  :- fn?
-   database :- [:map [:details :map]]
+   database :- driver-api/schema.metadata.database
    sql
    parameters
    cancel-chan]

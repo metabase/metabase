@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
+   [malli.core :as mc]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
@@ -28,6 +29,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.performance :refer [mapv not-empty select-keys]])
   (:import
    (com.mchange.v2.c3p0 C3P0ProxyConnection)
@@ -112,7 +114,8 @@
    [:ssl-truststore-value          {:optional true} [:maybe string?]]
    [:ssl-truststore-path           {:optional true} [:maybe string?]]
    [:ssl-truststore-options        {:optional true} [:maybe string?]]
-   [:ssl-truststore-password-value {:optional true} [:maybe string?]]])
+   [:ssl-truststore-password-value {:optional true} [:maybe string?]]
+   [::mc/default                   ms/DatabaseDetails]])
 
 ;;; Everything after the `@` in `jdbc:oracle:thin:@...` is a *connect descriptor*, which the driver reads as
 ;;; instructions and not merely as an address: a scheme there sends it to fetch a URL, read a file, or ask an LDAP
@@ -236,9 +239,24 @@
   [_ column-type]
   (database-type->base-type column-type))
 
+(mr/def ::spec
+  [:map {:closed true}
+   [:classname                          :string]
+   [:subprotocol                        :string]
+   ["v$session.program"                 :string]
+   [:user                               {:optional true} [:maybe :string]]
+   [:password                           {:optional true} [:maybe :string]]
+   [:javax.net.ssl.keyStore             {:optional true} [:maybe (driver-api/instance-of-class java.io.File)]]
+   [:javax.net.ssl.keyStorePassword     {:optional true} [:maybe :string]]
+   [:javax.net.ssl.keyStoreType         {:optional true} [:maybe :string]]
+   [:javax.net.ssl.trustStore           {:optional true} [:maybe (driver-api/instance-of-class java.io.File)]]
+   [:javax.net.ssl.trustStorePassword   {:optional true} [:maybe :string]]
+   [:javax.net.ssl.trustStoreType       {:optional true} [:maybe :string]]
+   [:oracle.net.authentication_services {:optional true} :string]])
+
 ;;; both take the values [[validated-details]] returned, which is what makes it safe to concatenate them
 (mu/defn- non-ssl-spec :- :map
-  [spec         :- :map
+  [spec         :- ::spec
    host         :- :string
    port         :- :int
    sid          :- [:maybe :string]
@@ -251,7 +269,7 @@
                               (str "/" service-name)))))
 
 (mu/defn- ssl-spec :- :map
-  [spec         :- :map
+  [spec         :- ::spec
    host         :- :string
    port         :- :int
    sid          :- [:maybe :string]

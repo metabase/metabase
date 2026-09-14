@@ -72,7 +72,7 @@
 
 (mu/defn- substitute-one-field-filter-date-range
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   {field :field, alias :alias, {value :value} :value}]
+   {field :field, alias :alias, {value :value} :value} :- :metabase.lib.parameters.parse.types/field-filter]
   (let [{:keys [start end]} (params.dates/date-string->range value {:inclusive-end? false})
         start-condition     (when start
                               (format "{%s: {$gte: %s}}"

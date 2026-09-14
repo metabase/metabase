@@ -155,8 +155,15 @@
   "Load rows from a CSV file into a Table."
   [driver                                   :- :keyword
    conn                                     :- (lib.schema.common/instance-of-class java.sql.Connection)
-   {:keys [database-name], :as _dbdef}      :- [:map [:database-name :string]]
-   {:keys [table-name rows], :as _tabledef} :- [:map [:table-name :string]]
+   {:keys [database-name], :as _dbdef}      :- [:map {:closed true}
+                                                [:database-name     :string]
+                                                [:table-definitions [:sequential :any]]
+                                                [:options           :any]]
+   {:keys [table-name rows], :as _tabledef} :- [:map {:closed true}
+                                                [:table-name        :string]
+                                                [:field-definitions [:sequential :any]]
+                                                [:rows              [:sequential [:sequential :any]]]
+                                                [:table-comment     {:optional true} [:maybe :string]]]
    filename                                 :- :string]
   (let [table-identifier (sql.tx/qualify-and-quote driver database-name table-name)]
     (letfn [(execute! [sql]

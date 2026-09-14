@@ -96,9 +96,7 @@
    [:map
     {:closed true} ; add more stuff as needed
     [:from     :string]
-    [:let      [:map
-                [:vars {:optional true} :any]
-                [:in   {:optional true} :any]]]
+    [:let      [:map-of :string :any]]
     [:pipeline [:ref ::pipeline]]
     [:as       :string]]])
 
@@ -157,7 +155,7 @@
     (lib.schema.common/instance-of-class org.bson.Document)]
    [false
     [:and
-     :map
+     [:map-of :string :any]
      [:fn
       {:error/message "map with a single key"}
       #(= (count %) 1)]
@@ -1499,7 +1497,7 @@ function(bin) {
   [query        :- ::lib.schema/query
    stage-number :- :int
    pipeline-ctx
-   {join-alias :alias, :keys [conditions stages strategy], :as join}]
+   {join-alias :alias, :keys [conditions stages strategy], :as join} :- ::lib.schema.join/join]
   (let [join-query (assoc query :stages stages)
         {:keys [projections], pipeline :query, :or {projections [], pipeline []}} (mbql->native-rec join-query)
         ;; Get the mappings introduced by the source query.

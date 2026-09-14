@@ -1,11 +1,14 @@
 (ns metabase.driver.bigquery-cloud-sdk.common
   "Common utility functions and utilities for the bigquery-cloud-sdk driver and related namespaces."
   (:require
+   [malli.core :as mc]
    [metabase.driver.bigquery-cloud-sdk.db :as bigquery.db]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.connection :as driver.conn]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms])
   (:import
    (com.google.auth.oauth2 ServiceAccountCredentials)
    (java.io ByteArrayInputStream)))
@@ -27,7 +30,7 @@
   (ServiceAccountCredentials/fromStream (ByteArrayInputStream. (.getBytes service-account-json))))
 
 (def ^:private RequiredDetails
-  [:map [:service-account-json :string]])
+  [:map [:service-account-json :string] [::mc/default ms/DatabaseDetails]])
 
 (mu/defn database-details->service-account-credential
   "Returns a `ServiceAccountCredentials` (not scoped) for the given `db-details`, which is based upon the value
@@ -67,7 +70,7 @@
 
   Returns the calculated project-id (see [[database-details->credential-project-id]]) String from the credentials."
   {:added "0.42.0"}
-  ^String [database :- [:map [:details RequiredDetails]]]
+  ^String [database :- [:or driver-api/schema.metadata.database [:fn #(driver-api/instance-of? :model/Database %)]]]
   ;; :project-id-from-credentials is a database-level cache managed by this driver. We store and read it from
   ;; `:details` regardless of connection type. This is valid so long as read and write service accounts share a
   ;; project ID. See also: [[metabase.driver.bigquery-cloud-sdk.query-processor/project-id-for-current-query]]
