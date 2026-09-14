@@ -13,11 +13,6 @@ const propsSchema: Yup.SchemaOf<StaticDashboardProps> = Yup.object({
     otherwise: (schema) => schema.required(),
   }),
   token: Yup.mixed().optional(),
-  dataPickerProps: Yup.object({
-    entityTypes: Yup.mixed().optional(),
-  })
-    .optional()
-    .noUnknown(),
   hiddenParameters: Yup.mixed().optional(),
   initialParameters: Yup.mixed().optional(),
   parameters: Yup.mixed().optional(),
