@@ -59,6 +59,11 @@
               (.write out buf 0 n)
               (recur total))))))))
 
+(defn- count-files!
+  "Count `n` attached files under `result` in the Slack upload counter."
+  [result n]
+  (analytics/inc! :metabase-slackbot/file-uploads {:result result} n))
+
 (defn- upload-target
   "The upload database, schema, and table prefix, or nil when uploads are not configured."
   []
@@ -79,6 +84,7 @@
   (if-let [size-error (file-size-error file)]
     (do
       (log/warnf "[slackbot] File exceeds size limit: error=%s" size-error)
+      (count-files! "too-large" 1)
       {:error size-error, :filename name})
     (try
       ;; [[upload/create-csv-upload!]] reads the file more than once, so download it to disk first.
@@ -93,8 +99,8 @@
                          :schema-name   schema-name
                          :table-prefix  table-prefix
                          :collection-id nil})]
-            (log/infof "[slackbot] File uploaded: model_id=%d" (:id result))
-            (analytics/inc! :metabase-slackbot/file-uploads {:result "success"})
+            (log/infof "[slackbot] File uploaded: model_id=%s" (:id result))
+            (count-files! "success" 1)
             {:filename   name
              :model-id   (:id result)
              :model-name (:name result)})
@@ -102,7 +108,7 @@
             (io/delete-file temp-file true))))
       (catch Exception e
         (log/warn e "[slackbot] File upload failed" {:filename name})
-        (analytics/inc! :metabase-slackbot/file-uploads {:result "error"})
+        (count-files! (if (::over-size-limit (ex-data e)) "too-large" "error") 1)
         ;; Repeat back only what was written for the user: the size limit, the file type, and the upload module's
         ;; own 4xx errors, which describe a problem in the file (a row with too many columns, say).
         ;; The upload module rethrows driver and JDBC errors as a 4xx carrying a cause, and those can name hosts.
@@ -131,9 +137,11 @@
         skipped                                        (mapv :name unsupported-files)
         remote                                         (mapv :name remote-files)]
     (when (seq skipped)
-      (log/debugf "[slackbot] Skipping %d unsupported files" (count skipped)))
+      (log/debugf "[slackbot] Skipping %d unsupported files" (count skipped))
+      (count-files! "unsupported" (count skipped)))
     (when (seq remote)
-      (log/debugf "[slackbot] Refusing %d files stored outside Slack" (count remote)))
+      (log/debugf "[slackbot] Refusing %d files stored outside Slack" (count remote))
+      (count-files! "remote" (count remote)))
     {:results (mapv #(upload-file! client target %) supported-files)
      :skipped skipped
      :remote  remote}))
@@ -204,6 +212,8 @@
   (when (seq files)
     (if-let [{:keys [db schema-name] :as target} (upload-target)]
       (if-not (upload/can-create-upload? db schema-name)
-        [(assistant-history-message upload-unavailable-message)]
+        (do (count-files! "unavailable" (count files))
+            [(assistant-history-message upload-unavailable-message)])
         (build-upload-history (upload-files! client target files)))
-      [(assistant-history-message uploads-not-configured-message)])))
+      (do (count-files! "unavailable" (count files))
+          [(assistant-history-message uploads-not-configured-message)]))))

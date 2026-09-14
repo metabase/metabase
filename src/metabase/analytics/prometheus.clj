@@ -732,7 +732,7 @@
    (prometheus/counter :metabase-slackbot/responses-deleted
                        {:description "Number of Slack bot responses deleted by users."})
    (prometheus/counter :metabase-slackbot/file-uploads
-                       {:description "Number of file uploads via the Slack bot."
+                       {:description "Number of files attached to Slack bot messages, by what became of each."
                         :labels [:result]})
    (prometheus/counter :metabase-slackbot/responses-truncated
                        {:description (str "Number of Slack bot responses truncated because they exceeded "

@@ -572,3 +572,27 @@
                                    file
                                    "big.csv")))))
         (finally (io/delete-file file true))))))
+
+(deftest ^:synchronized file-uploads-metric-test
+  (testing "every attached file is counted once, under what became of it"
+    (mt/with-prometheus-system! [_ system]
+      (with-upload-mocks!
+        {:uploads-enabled? true}
+        (fn [_]
+          (slackbot.uploads/handle-file-uploads!
+           test-client
+           [tu/slack-csv-file
+            (assoc tu/slack-csv-file :name "huge.csv", :size (inc (* 200 1024 1024)))
+            {:name "notes.pdf", :filetype "pdf", :url_private "https://files.slack.com/notes.pdf", :size 10}
+            {:name "remote.csv", :filetype "csv", :mode "external", :url_private "https://example.com/x.csv", :size 10}])))
+      (mt/with-dynamic-fn-redefs [upload.db/current-database (constantly nil)]
+        (slackbot.uploads/handle-file-uploads! test-client [tu/slack-csv-file tu/slack-csv-file]))
+      (is (= {"success"     1.0
+              "error"       0.0
+              "too-large"   1.0
+              "unsupported" 1.0
+              "remote"      1.0
+              "unavailable" 2.0}
+             (into {}
+                   (for [result ["success" "error" "too-large" "unsupported" "remote" "unavailable"]]
+                     [result (mt/metric-value system :metabase-slackbot/file-uploads {:result result})])))))))

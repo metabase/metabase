@@ -183,7 +183,12 @@
    {:source "channel" :result "error"}])
 
 (defmethod analytics.core/known-labels :metabase-slackbot/file-uploads [_]
-  [{:result "success"} {:result "error"}])
+  [{:result "success"}
+   {:result "error"}
+   {:result "too-large"}
+   {:result "unsupported"}
+   {:result "remote"}
+   {:result "unavailable"}])
 
 (defn- event-source
   "Return the source label for a Slack event: \"dm\" or \"channel\"."
