@@ -212,8 +212,9 @@ describe("query builder code edits from omnibot", () => {
     });
 
     expect(
-      getMetabotState(typedStore.getState()).conversations[conversationId]
-        ?.messages.at(-1),
+      getMetabotState(typedStore.getState()).conversations[
+        conversationId
+      ]?.messages.at(-1),
     ).toMatchObject({
       role: "agent",
       externalId: "msg_test_code_edit",
