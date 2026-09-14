@@ -1,6 +1,9 @@
 import {
+  MINIMUM_SUPPORTED_REACT_MAJOR_VERSION,
   getHostReactMajorVersion,
+  getUnsupportedReactVersionMessage,
   isHostReactVersionSupported,
+  logUnsupportedReactVersionOnce,
 } from "./host-react-version";
 
 let mockReactVersion: string | undefined;
@@ -53,5 +56,34 @@ describe("isHostReactVersionSupported", () => {
     mockReactVersion = undefined;
 
     expect(isHostReactVersionSupported(19)).toBe(true);
+  });
+});
+
+describe("getUnsupportedReactVersionMessage", () => {
+  it("names the required and the detected React major versions", () => {
+    mockReactVersion = "17.0.2";
+
+    expect(getUnsupportedReactVersionMessage()).toBe(
+      `The Metabase modular embedding SDK requires React ${MINIMUM_SUPPORTED_REACT_MAJOR_VERSION} or newer, but this application is running React 17. Upgrade your application to React ${MINIMUM_SUPPORTED_REACT_MAJOR_VERSION} to display embedded content.`,
+    );
+  });
+});
+
+describe("logUnsupportedReactVersionOnce", () => {
+  it("logs the unsupported React message once across calls", () => {
+    mockReactVersion = "17.0.2";
+    const consoleError = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
+    logUnsupportedReactVersionOnce();
+    logUnsupportedReactVersionOnce();
+
+    expect(consoleError).toHaveBeenCalledTimes(1);
+    expect(consoleError).toHaveBeenCalledWith(
+      getUnsupportedReactVersionMessage(),
+    );
+
+    consoleError.mockRestore();
   });
 });
