@@ -56,6 +56,10 @@
 
 (def ^:private sql-generation-prompt-template "metabot/prompts/system/one-shot-sql-generation.mustache")
 
+(def ^:private generate-sql-max-tokens
+  "The output-token cap for one SQL generation."
+  4096)
+
 (def ^:private datetime-formatter
   (DateTimeFormatter/ofPattern "yyyy-MM-dd HH:mm:ss"))
 
@@ -216,8 +220,9 @@
               start-timer          (u/start-timer)]
           (try
             (let [{:keys [result usage duration-ms]} (llm.anthropic/chat-completion
-                                                      {:system   system-prompt
-                                                       :messages [{:role "user" :content prompt}]})]
+                                                      {:system     system-prompt
+                                                       :messages   [{:role "user" :content prompt}]
+                                                       :max-tokens generate-sql-max-tokens})]
               (analytics/track-token-usage!
                {:snowplow            true
                 :prometheus          true

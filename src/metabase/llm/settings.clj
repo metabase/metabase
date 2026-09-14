@@ -451,13 +451,6 @@
   :default    true
   :export?    true)
 
-(defsetting llm-max-tokens
-  (deferred-tru "Maximum tokens for LLM responses.")
-  :type :integer
-  :default 4096
-  :visibility :settings-manager
-  :export? false)
-
 (defsetting llm-request-timeout-ms
   (deferred-tru
    (str "Socket (inter-byte read) timeout in milliseconds for LLM API requests. "
