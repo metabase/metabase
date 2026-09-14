@@ -902,7 +902,7 @@
   ;; source namespaces whose prose reaches an LLM agent: interpolated values must be `pr-str`-quoted so untrusted
   ;; text can't pose as server-authored text.
   ;;
-  {:pattern "^metabase\\.(?:mcp\\.v2|agent-lib)\\.(?!.*-test(?:\\..*)?$)(?!.*test-util).*$"
+  {:pattern "^metabase\\.mcp\\.(?:v2\\.|transport$)(?!.*-test(?:\\..*)?$)(?!.*test-util).*$"
    :name    agent-prose-namespaces}]
 
  :config-in-ns
