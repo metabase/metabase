@@ -1,41 +1,45 @@
-import { Fragment, useMemo, useState } from "react";
-import { t } from "ttag";
+import { useMemo, useState } from "react";
+import { P, match } from "ts-pattern";
+import { msgid, ngettext, t } from "ttag";
 
 import {
   skipToken,
   useExtractSourcesQuery,
-  useGetCardQuery,
   useGetDatabaseQuery,
   useGetFieldTableIdsQuery,
-  useGetTableQuery,
 } from "metabase/api";
 import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
-import { ForwardRefLink } from "metabase/common/components/Link";
+import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { useToast } from "metabase/common/hooks";
 import { deserializeCardFromQuery } from "metabase/common/utils/card";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { getMetabotId } from "metabase/metabot/state";
 import {
   getCollectionLocationLabel,
-  getCollectionLocationParts,
-  getDatabaseLocationParts,
+  getDatabaseLocationLabel,
 } from "metabase/metabot/utils/source-location";
 import { useSelector } from "metabase/redux";
+import { EntitySmartLink } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/EntitySmartLink";
+import { useEntityData } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/use-entity-data";
 import {
   ActionIcon,
-  Collapse,
+  Box,
+  Button,
   Flex,
+  Group,
   Icon,
+  Modal,
   Skeleton,
+  Stack,
   Text,
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
-import * as Urls from "metabase/urls";
+import { getName } from "metabase/utils/name";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type {
   DatasetQuery,
-  IconName,
   MetabotCodeEdit,
   MetabotCodeEditorBufferContext,
   MetabotSourceFeedback,
@@ -46,6 +50,8 @@ import type {
 import { useSubmitMetabotSourceFeedbackMutation } from "../../api";
 
 import S from "./MetabotAgentDataPart.module.css";
+
+type SourceRef = { id: number; model: "table" | "card" };
 
 type DecodedQuery =
   | {
@@ -64,6 +70,11 @@ type DecodedQuery =
 
 const uniqueNumbers = (ids: number[]) =>
   Array.from(new Set(ids)).sort((a, b) => a - b);
+
+const toSourceRefs = (tableIds: number[], cardIds: number[]): SourceRef[] => [
+  ...tableIds.map((id) => ({ id, model: "table" as const })),
+  ...cardIds.map((id) => ({ id, model: "card" as const })),
+];
 
 type SourceFeedbackTarget = Pick<
   MetabotSourceFeedback,
@@ -98,175 +109,87 @@ const decodeQuery = (datasetQuery: DatasetQuery | undefined): DecodedQuery => {
     const question = Question.create({ dataset_query: datasetQuery });
     const query = question.query();
 
-    const tableIds = uniqueNumbers(Lib.allSourceTableIds(query));
-    const cardIds = uniqueNumbers(Lib.allSourceCardIds(query));
-    const fieldIds = uniqueNumbers(Lib.allFieldIds(query));
-
     return {
       kind: "mbql",
-      tableIds,
-      cardIds,
-      fieldIds,
+      tableIds: uniqueNumbers(Lib.allSourceTableIds(query)),
+      cardIds: uniqueNumbers(Lib.allSourceCardIds(query)),
+      fieldIds: uniqueNumbers(Lib.allFieldIds(query)),
     };
   } catch {
     return { kind: "none" };
   }
 };
 
-const SourceItem = ({
-  iconName,
-  label,
-  location,
-  messageId,
-  source,
-  to,
-}: {
-  iconName: IconName;
-  label: string;
-  location?: {
-    parts: string[];
-  };
-  messageId?: string;
-  source: SourceFeedbackTarget;
-  to: string;
-}) => {
-  return (
-    <Flex
-      className={S.sourceDataRow}
-      align="center"
-      justify="space-between"
-      gap="sm"
-      w="100%"
-      mih="3.25rem"
-      p="0.5rem"
-      bg="background_page-secondary"
-    >
-      <ForwardRefLink
-        aria-label={label}
-        className={S.sourceItemLink}
-        style={{
-          display: "inline-flex",
-          maxWidth: "100%",
-          minWidth: 0,
-          color: "var(--mb-color-text-primary)",
-          textDecoration: "none",
-          borderRadius: "0.25rem",
-        }}
-        to={to}
-        href={to}
-      >
-        <Flex direction="column" miw={0} maw="100%">
-          <Flex gap="sm" align="center" miw={0} maw="100%">
-            <Icon
-              name={iconName}
-              size={12}
-              c="text-primary"
-              style={{ display: "block", flexShrink: 0 }}
-              aria-hidden
-            />
-            <Text
-              component="span"
-              className={S.sourceItemTitleText}
-              miw={0}
-              style={{
-                overflow: "hidden",
-                fontSize: "0.75rem",
-                fontWeight: 700,
-                lineHeight: 1.5,
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {label}
-            </Text>
-          </Flex>
-          {location && (
-            <Flex
-              align="center"
-              gap="0.25rem"
-              maw="100%"
-              miw={0}
-              pl="1.25rem"
-              c="text-secondary"
-            >
-              {location.parts.map((part, index) => (
-                <Fragment key={`${part}-${index}`}>
-                  {index > 0 && (
-                    <Icon
-                      name="chevronright"
-                      size={8}
-                      c="text-secondary"
-                      style={{ display: "block", flexShrink: 0 }}
-                      aria-hidden
-                    />
-                  )}
-                  <Text
-                    component="span"
-                    miw={0}
-                    c="text-secondary"
-                    style={{
-                      overflow: "hidden",
-                      fontSize: "0.75rem",
-                      lineHeight: 1.5,
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {part}
-                  </Text>
-                </Fragment>
-              ))}
-            </Flex>
-          )}
-        </Flex>
-      </ForwardRefLink>
-      {messageId && (
-        <SourceFeedbackButtons messageId={messageId} source={source} />
-      )}
-    </Flex>
-  );
+type Source = {
+  name: string;
+  location: string;
+  iconModel: "table" | "dataset" | "metric" | "card";
+  feedbackTarget: SourceFeedbackTarget;
 };
 
-const SourceItemSkeleton = ({ hasFeedback }: { hasFeedback?: boolean }) => {
-  return (
-    <Flex
-      className={S.sourceDataRow}
-      align="center"
-      justify="space-between"
-      gap="sm"
-      w="100%"
-      mih="3.25rem"
-      p="0.5rem"
-      bg="background_page-secondary"
-      aria-hidden
-      data-testid="metabot-source-item-skeleton"
-    >
-      <Flex direction="column" gap="0.375rem" miw={0} maw="100%">
-        <Flex gap="sm" align="center" miw={0} maw="100%">
-          <Skeleton w={12} h={12} radius="xxs" />
-          <Skeleton w="7rem" h="0.75rem" radius="xxs" />
-        </Flex>
-        <Flex pl="1.25rem">
-          <Skeleton w="10rem" h="0.75rem" radius="xxs" />
-        </Flex>
-      </Flex>
-      {hasFeedback && (
-        <Flex gap="xxs" align="center" style={{ flexShrink: 0 }}>
-          <Skeleton w={24} h={24} radius="xs" />
-          <Skeleton w={24} h={24} radius="xs" />
-        </Flex>
-      )}
-    </Flex>
+const useSource = ({ id, model }: SourceRef) => {
+  const data = useEntityData(id, model);
+  const databaseId = data.model === "table" ? data.entity?.db_id : undefined;
+  const { data: database } = useGetDatabaseQuery(
+    databaseId != null ? { id: databaseId } : skipToken,
   );
+
+  return match(data)
+    .returnType<Source | undefined>()
+    .with({ model: "table", entity: P.nonNullable }, ({ entity }) => ({
+      name: entity.display_name,
+      location: entity.collection?.name
+        ? getCollectionLocationLabel(entity.collection.name)
+        : getDatabaseLocationLabel({
+            databaseName: database?.name ?? "",
+            schema: entity.schema,
+          }),
+      iconModel: "table",
+      feedbackTarget: { source_id: id, source_type: "table" },
+    }))
+    .with({ model: "card", entity: P.nonNullable }, ({ entity }) => ({
+      name: entity.name,
+      location: getCollectionLocationLabel(entity.collection?.name),
+      iconModel: match(entity.type)
+        .returnType<Source["iconModel"]>()
+        .with("model", () => "dataset")
+        .with("metric", () => "metric")
+        .otherwise(() => "card"),
+      feedbackTarget: {
+        source_id: id,
+        source_type: entity.type === "model" ? "model" : "card",
+      },
+    }))
+    .otherwise(() => undefined);
+};
+
+const SourceSkeleton = () => (
+  <Skeleton h="1.25rem" w="6rem" data-testid="metabot-source-item-skeleton" />
+);
+
+const SourceLink = ({ id, model }: SourceRef) => {
+  const { entity, isLoading, error } = useEntityData(id, model);
+
+  if (isLoading) {
+    return <SourceSkeleton />;
+  }
+  if (error || !entity) {
+    return null;
+  }
+
+  return <EntitySmartLink id={id} model={model} name={getName(entity)} />;
 };
 
 const SourceFeedbackButtons = ({
   messageId,
   source,
+  size,
 }: {
   messageId: string;
   source: SourceFeedbackTarget;
+  size: "sm" | "md";
 }) => {
+  const iconSize = size === "sm" ? 12 : 16;
   const [feedback, setFeedback] = useState<boolean | null>(null);
   const [sendToast] = useToast();
   const metabotId = useSelector(getMetabotId);
@@ -295,197 +218,211 @@ const SourceFeedbackButtons = ({
   };
 
   return (
-    <Flex gap="xxs" align="center" style={{ flexShrink: 0 }}>
+    <Group gap={size === "sm" ? 0 : "sm"} wrap="nowrap">
       <Tooltip label={t`Source is correct`}>
         <ActionIcon
           aria-label={t`Source is correct`}
           size={24}
-          variant="default"
-          className={S.sourceFeedbackButton}
-          data-active={feedback === true || undefined}
+          variant="subtle"
           bdrs="xs"
-          style={{
-            boxShadow: "0 1px 3px 0 #00000012",
-          }}
+          className={S.feedbackButton}
+          data-active={feedback === true || undefined}
           disabled={isLoading}
-          onClick={() => {
-            void submitFeedback(true);
-          }}
+          onClick={() => void submitFeedback(true)}
         >
-          <Icon name="thumbs_up" size={12} />
+          <Icon name="thumbs_up" size={iconSize} />
         </ActionIcon>
       </Tooltip>
       <Tooltip label={t`Source is wrong`}>
         <ActionIcon
           aria-label={t`Source is wrong`}
           size={24}
-          variant="default"
-          className={S.sourceFeedbackButton}
-          data-active={feedback === false || undefined}
+          variant="subtle"
           bdrs="xs"
-          style={{
-            boxShadow: "0 1px 3px 0 #00000012",
-          }}
+          className={S.feedbackButton}
+          data-active={feedback === false || undefined}
           disabled={isLoading}
-          onClick={() => {
-            void submitFeedback(false);
-          }}
+          onClick={() => void submitFeedback(false)}
         >
-          <Icon name="thumbs_down" size={12} />
+          <Icon name="thumbs_down" size={iconSize} />
         </ActionIcon>
       </Tooltip>
-    </Flex>
+    </Group>
   );
 };
 
-const TableSourceRow = ({
-  id,
+const SingleSourceFeedback = ({
   messageId,
+  source: ref,
 }: {
-  id: number;
-  messageId?: string;
+  messageId: string;
+  source: SourceRef;
 }) => {
-  const { data: table, isLoading, isError } = useGetTableQuery({ id });
-  const {
-    data: database,
-    isLoading: isLoadingDatabase,
-    isError: isErrorDatabase,
-  } = useGetDatabaseQuery(
-    table?.db_id != null ? { id: table?.db_id } : skipToken,
-  );
+  const source = useSource(ref);
 
-  if (isLoading || isLoadingDatabase) {
-    return <SourceItemSkeleton hasFeedback={Boolean(messageId)} />;
-  }
-
-  if (isError || isErrorDatabase || !database || !table) {
-    return null;
-  }
-
-  const location = table?.collection?.name
-    ? {
-        parts: getCollectionLocationParts(table.collection.name),
-      }
-    : {
-        parts: getDatabaseLocationParts({
-          databaseName: database.name,
-          schema: table?.schema,
-        }),
-      };
-
-  return (
-    <SourceItem
-      iconName="table"
-      label={table.display_name}
-      location={location}
+  return source ? (
+    <SourceFeedbackButtons
       messageId={messageId}
-      source={{ source_id: id, source_type: "table" }}
-      to={Urls.table({ id, name: table.display_name })}
+      source={source.feedbackTarget}
+      size="sm"
     />
-  );
+  ) : null;
 };
 
-const CardPill = ({ id, messageId }: { id: number; messageId?: string }) => {
-  const { data: card, isLoading, isError } = useGetCardQuery({ id });
+const SourceFeedbackRow = ({
+  messageId,
+  source: ref,
+}: {
+  messageId: string;
+  source: SourceRef;
+}) => {
+  const getIcon = useGetIcon();
+  const source = useSource(ref);
 
-  if (isLoading) {
-    return <SourceItemSkeleton hasFeedback={Boolean(messageId)} />;
-  }
-
-  if (isError || !card) {
+  if (!source) {
     return null;
   }
-
-  const iconName: IconName =
-    card.type === "model"
-      ? "model"
-      : card.type === "metric"
-        ? "metric"
-        : "table2";
-
-  return (
-    <SourceItem
-      iconName={iconName}
-      label={card?.name}
-      location={{
-        parts: [getCollectionLocationLabel(card.collection?.name)],
-      }}
-      messageId={messageId}
-      source={{
-        source_id: id,
-        source_type: card.type === "model" ? "model" : "card",
-      }}
-      to={Urls.card(card)}
-    />
-  );
-};
-
-const SourceDataSection = ({ children }: { children: React.ReactNode }) => {
-  const [isExpanded, setIsExpanded] = useState(true);
 
   return (
     <Flex
-      direction="column"
-      miw={0}
-      w="100%"
-      bg="background_page-secondary"
-      style={{
-        borderRadius: "1rem",
-        overflow: "hidden",
-        border: "1px solid var(--mb-color-border-neutral)",
-      }}
+      align="center"
+      justify="space-between"
+      gap="sm"
+      px="lg"
+      py="md"
+      className={S.feedbackRow}
     >
-      <UnstyledButton
-        aria-label={
-          isExpanded ? t`Collapse data sources` : t`Expand data sources`
-        }
-        aria-expanded={isExpanded}
-        className={S.sourceDataHeader}
-        data-expanded={isExpanded}
-        type="button"
-        w="100%"
-        mih="2.25rem"
-        px="0.5rem"
-        bg="background_page-primary"
-        onClick={() => setIsExpanded((isExpanded) => !isExpanded)}
-      >
-        <Flex align="center" justify="space-between" w="100%">
-          <Flex gap="sm" align="center" miw={0}>
-            <Icon name="database" size={12} c="text-secondary" aria-hidden />
-            <Text
-              component="span"
-              miw={0}
-              c="text-secondary"
-              fz="0.75rem"
-              lh="0.75rem"
-              style={{
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {t`Data sources used`}
-            </Text>
-          </Flex>
-          <Icon
-            name={isExpanded ? "chevronup" : "chevrondown"}
-            size={12}
-            c="text-secondary"
-            style={{ flexShrink: 0 }}
-            aria-hidden
+      <Stack gap="xxs" miw={0}>
+        <Group gap="sm" wrap="nowrap">
+          <EntityIcon
+            {...getIcon({ model: source.iconModel })}
+            size="0.75rem"
+            c="brand"
           />
-        </Flex>
-      </UnstyledButton>
-      <Collapse in={isExpanded} mah="11rem" style={{ overflow: "auto" }}>
-        <Flex direction="column" w="100%">
-          {children}
-        </Flex>
-      </Collapse>
+          <Text fz="md" lh="sm" fw="bold" truncate>
+            {source.name}
+          </Text>
+        </Group>
+        <Text fz="sm" lh="lg" c="text-secondary" pl="1.25rem" truncate>
+          {source.location}
+        </Text>
+      </Stack>
+      <SourceFeedbackButtons
+        messageId={messageId}
+        source={source.feedbackTarget}
+        size="md"
+      />
     </Flex>
   );
 };
 
-const MbqlSourcesRow = ({
+const SourceFeedbackModal = ({
+  messageId,
+  sources,
+  onClose,
+}: {
+  messageId: string;
+  sources: SourceRef[];
+  onClose: () => void;
+}) => (
+  <Modal
+    opened
+    onClose={onClose}
+    size="lg"
+    radius="lg"
+    title={t`Give feedback`}
+    data-testid="metabot-source-feedback-modal"
+  >
+    <Stack gap="lg">
+      <Stack gap={0} bdrs="sm" bd="1px solid var(--mb-color-border-neutral)">
+        {sources.map((source) => (
+          <SourceFeedbackRow
+            key={`${source.model}-${source.id}`}
+            messageId={messageId}
+            source={source}
+          />
+        ))}
+      </Stack>
+      <Group justify="flex-end">
+        <Button variant="filled" onClick={onClose}>{t`Done`}</Button>
+      </Group>
+    </Stack>
+  </Modal>
+);
+
+const SourcesSection = ({
+  messageId,
+  sources,
+  isLoading,
+}: {
+  messageId?: string;
+  sources: SourceRef[];
+  isLoading?: boolean;
+}) => {
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+
+  if (!isLoading && sources.length === 0) {
+    return null;
+  }
+
+  return (
+    <Stack gap="lg" className={S.sources}>
+      <Stack gap="sm">
+        <Text fz="sm" lh="lg" c="text-secondary">
+          {ngettext(
+            msgid`Data source used`,
+            `Data sources used`,
+            sources.length,
+          )}
+        </Text>
+        {isLoading ? (
+          <SourceSkeleton />
+        ) : (
+          <Group gap="xxs" mih="1.5rem">
+            {sources.map((source, index) => (
+              <Group
+                key={`${source.model}-${source.id}`}
+                gap="xxxs"
+                wrap="nowrap"
+              >
+                <SourceLink {...source} />
+                {index < sources.length - 1 && <Text component="span">,</Text>}
+              </Group>
+            ))}
+            {messageId && sources.length === 1 && (
+              <Box ml="xxs">
+                <SingleSourceFeedback
+                  messageId={messageId}
+                  source={sources[0]}
+                />
+              </Box>
+            )}
+          </Group>
+        )}
+      </Stack>
+      {messageId && !isLoading && sources.length > 1 && (
+        <UnstyledButton
+          fz="sm"
+          fw="bold"
+          c="text-brand"
+          w="fit-content"
+          onClick={() => setIsFeedbackOpen(true)}
+        >
+          {t`Give feedback`}
+        </UnstyledButton>
+      )}
+      {messageId && isFeedbackOpen && (
+        <SourceFeedbackModal
+          messageId={messageId}
+          sources={sources}
+          onClose={() => setIsFeedbackOpen(false)}
+        />
+      )}
+    </Stack>
+  );
+};
+
+const MbqlSources = ({
   tableIds,
   cardIds,
   fieldIds,
@@ -496,53 +433,26 @@ const MbqlSourcesRow = ({
   fieldIds: number[];
   messageId?: string;
 }) => {
-  const {
-    data: fieldTableIdsResponse,
-    isLoading,
-    isError,
-  } = useGetFieldTableIdsQuery(
+  const { data, isLoading, isError } = useGetFieldTableIdsQuery(
     fieldIds.length > 0 ? { field_ids: fieldIds } : skipToken,
   );
-
-  if (isLoading) {
-    const skeletonCount = Math.max(
-      4,
-      tableIds.length + cardIds.length + fieldIds.length,
-    );
-
-    return (
-      <SourceDataSection>
-        {Array.from({ length: skeletonCount }, (_, index) => (
-          <SourceItemSkeleton
-            key={`source-skeleton-${index}`}
-            hasFeedback={Boolean(messageId)}
-          />
-        ))}
-      </SourceDataSection>
-    );
-  }
 
   if (isError) {
     return null;
   }
 
-  const allTableIds = uniqueNumbers(
-    tableIds.concat(fieldTableIdsResponse?.table_ids ?? []),
-  );
+  const allTableIds = uniqueNumbers(tableIds.concat(data?.table_ids ?? []));
 
   return (
-    <SourceDataSection>
-      {allTableIds.map((id) => (
-        <TableSourceRow key={`t-${id}`} id={id} messageId={messageId} />
-      ))}
-      {cardIds.map((id) => (
-        <CardPill id={id} key={id} messageId={messageId} />
-      ))}
-    </SourceDataSection>
+    <SourcesSection
+      messageId={messageId}
+      sources={toSourceRefs(allTableIds, cardIds)}
+      isLoading={isLoading}
+    />
   );
 };
 
-const NativeSourcesRow = ({
+const NativeSources = ({
   databaseId,
   messageId,
   sql,
@@ -558,52 +468,16 @@ const NativeSourcesRow = ({
     sql,
     ...(templateTags ? { template_tags: templateTags } : {}),
   });
-  const { data: database } = useGetDatabaseQuery({ id: databaseId });
-  const tables = data?.tables ?? [];
-  const cardIds = data?.card_ids ?? [];
-
-  if (isLoading) {
-    return (
-      <SourceDataSection>
-        <SourceItemSkeleton hasFeedback={Boolean(messageId)} />
-      </SourceDataSection>
-    );
-  }
-
-  if (tables.length === 0 && cardIds.length === 0) {
-    return null;
-  }
 
   return (
-    <SourceDataSection>
-      {tables.map((table) => {
-        const label = table.display_name || table.name;
-        const databaseName = database?.name;
-        const location = databaseName
-          ? {
-              parts: getDatabaseLocationParts({
-                databaseName,
-                schema: table.schema,
-              }),
-            }
-          : undefined;
-
-        return (
-          <SourceItem
-            key={table.id}
-            iconName="table"
-            label={label}
-            location={location}
-            messageId={messageId}
-            source={{ source_id: table.id, source_type: "table" }}
-            to={Urls.table({ id: table.id, name: label })}
-          />
-        );
-      })}
-      {cardIds.map((id) => (
-        <CardPill id={id} key={`c-${id}`} messageId={messageId} />
-      ))}
-    </SourceDataSection>
+    <SourcesSection
+      messageId={messageId}
+      sources={toSourceRefs(
+        (data?.tables ?? []).map((table) => table.id),
+        data?.card_ids ?? [],
+      )}
+      isLoading={isLoading}
+    />
   );
 };
 
@@ -622,7 +496,7 @@ const DatasetQueryTablePills = ({
 
   if (decoded.kind === "native") {
     return (
-      <NativeSourcesRow
+      <NativeSources
         databaseId={decoded.databaseId}
         messageId={messageId}
         sql={decoded.sql}
@@ -640,7 +514,7 @@ const DatasetQueryTablePills = ({
   }
 
   return (
-    <MbqlSourcesRow
+    <MbqlSources
       tableIds={decoded.tableIds}
       cardIds={decoded.cardIds}
       fieldIds={decoded.fieldIds}
@@ -697,7 +571,7 @@ export const CodeEditTablePills = ({
   }
 
   return (
-    <NativeSourcesRow
+    <NativeSources
       databaseId={databaseId}
       messageId={messageId}
       sql={value.value}
