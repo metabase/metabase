@@ -8,6 +8,7 @@
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
+   [metabase.metabot.self.output-limits :as output-limits]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -124,8 +125,11 @@
   - Prompt caching is opt-in per request via `prompt_cache_key` (cache reads bill at 10% of the input price), so a
     `:prompt-cache-key` — the conversation id — is forwarded when present.
   - Whitelisted models get a `reasoning_effort` directive and replay their in-turn reasoning as think chunks
-    (see [[think-message]])."
-  [{:keys [model prompt-cache-key reasoning? schema] :as opts
+    (see [[think-message]]).
+
+  A caller that names no `:max-tokens` gets the model's documented maximum output (see
+  [[output-limits/max-output-tokens]]). Mistral documents none, so today that means no cap."
+  [{:keys [model prompt-cache-key reasoning? schema max-tokens] :as opts
     :or   {model default-model reasoning? true}} :- core/LLMRequestOpts]
   ;; mistral-medium-3-5 accepts exactly "high" and "none" — the server 400s the other four
   ;; enum values, enumerating these two (probed 2026-09-01) — and its server default sends NO
@@ -140,7 +144,12 @@
         ;; from the replayed input, honoring the LLMRequestOpts contract.
         thinking?    (and whitelisted? reasoning? (not schema))]
     (-> (chat-completions/request-body
-         (assoc opts :model model)
+         ;; Mistral ids reach the adapter as the vendor's own — `mistral-medium-3-5` — so they are already
+         ;; output-limits keys and need no translation. Catalog aliases stay unresolved, as they do for
+         ;; [[context-window-tokens]], so an alias finds no row and is sent uncapped.
+         (assoc opts
+                :model      model
+                :max-tokens (or max-tokens (output-limits/max-output-tokens model)))
          (when thinking? {:reasoning-part->message think-message}))
         (dissoc :stream_options)
         (cond-> prompt-cache-key (assoc :prompt_cache_key prompt-cache-key)

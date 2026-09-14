@@ -8,6 +8,7 @@
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
+   [metabase.metabot.self.output-limits :as output-limits]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -161,8 +162,11 @@
     otherwise; their in-turn reasoning is replayed (see [[reasoning-message]]) and forced tool calls get a
     `max_tokens` floor (see [[forced-tool-call-token-floor]]).
   - **`prompt_cache_key`.** Moonshot caching is automatic and hits without it, but a `:prompt-cache-key` — the
-    conversation id — is forwarded when present."
-  [{:keys [model prompt-cache-key reasoning? schema tool_choice] :as opts
+    conversation id — is forwarded when present.
+
+  A caller that names no `:max-tokens` gets the model's documented maximum output (see
+  [[output-limits/max-output-tokens]]). Kimi documents none, so today that means no cap."
+  [{:keys [model prompt-cache-key reasoning? schema tool_choice max-tokens] :as opts
     :or   {model default-model reasoning? true}} :- core/LLMRequestOpts]
   ;; kimi-k3 always thinks — there is no off switch, so `reasoning_effort` ("low" | "high" | "max", server default
   ;; "max") is the only knob (https://platform.kimi.ai/docs/guide/kimi-k3-quickstart). "max" on the chat path pins
@@ -184,7 +188,11 @@
         thinking?      (and whitelisted? reasoning?
                             (if thinking-only? (not schema) (not forced?)))]
     (-> (chat-completions/request-body
-         (assoc opts :model model)
+         ;; Moonshot ids reach the adapter as the vendor's own — `kimi-k3` — so they are already
+         ;; output-limits keys and need no translation.
+         (assoc opts
+                :model      model
+                :max-tokens (or max-tokens (output-limits/max-output-tokens model)))
          ;; Replay only where the dialect mandates it: k3's Preserved Thinking. k2.6 cannot use
          ;; `thinking.keep "all"` — that mode obliges the caller to send back EVERY historical assistant
          ;; message's reasoning_content, but reasoning parts are never persisted across turns, so we could

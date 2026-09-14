@@ -13,6 +13,7 @@
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
+   [metabase.metabot.self.output-limits :as output-limits]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -220,6 +221,20 @@
              (re-find #"^openai/o\d" model)
              (anthropic-current-gen? model)))))
 
+(defn- output-limits-key
+  "The [[output-limits/max-output-tokens]] key for `model`: the vendor's own undated model id.
+
+      anthropic/claude-opus-4.8     → claude-opus-4-8
+      deepseek/deepseek-v4-pro-0813 → deepseek-v4-pro"
+  [model]
+  (let [model (str model)
+        id    (str/replace-first model #"^[^/]+/" "")]
+    ;; The dot rewrite is Anthropic-only: OpenRouter spells Claude's minor version with a dot where Anthropic
+    ;; uses a dash, but qwen3.8-max, glm-5.3 and the gpt-5.x ids are spelled with dots by their own vendors, so
+    ;; rewriting theirs would miss their rows. Only the snapshot-suffix strip applies to every vendor.
+    (-> (cond-> id (anthropic-model? model) (str/replace "." "-"))
+        (str/replace #"-\d{4}$" ""))))
+
 (def ^:private required-tool-choice-unsupported-models
   "Models that don't support `:tool_choice \"required\"`"
   #{"qwen/qwen3.8-max"})
@@ -298,10 +313,17 @@
 
   `:temperature` is dropped for models that reject it (see [[model-supports-temperature?]]). Gating it in the shared
   builder instead would apply these OpenRouter-specific rules to every Chat Completions adapter, including vLLM,
-  whose model names are customer-chosen free text."
-  [{:keys [model system] :as opts
+  whose model names are customer-chosen free text.
+
+  A caller that names no `:max-tokens` gets the model's documented maximum output (see
+  [[output-limits/max-output-tokens]]), so a model served here is capped the same way it is on its own provider.
+  A model with no documented maximum is sent uncapped."
+  [{:keys [model system max-tokens] :as opts
     :or   {model "anthropic/claude-haiku-4.5"}} :- core/LLMRequestOpts]
-  (-> (cond-> (chat-completions/request-body (assoc opts :model model))
+  (-> (cond-> (chat-completions/request-body
+               (assoc opts
+                      :model      model
+                      :max-tokens (or max-tokens (output-limits/max-output-tokens (output-limits-key model)))))
         (and system (anthropic-model? model))
         (update-in [:messages 0 :content] claude/system->cached-content-blocks)
 
