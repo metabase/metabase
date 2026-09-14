@@ -1,0 +1,98 @@
+name: API Contracts
+
+permissions:
+  contents: read
+  pull-requests: read
+
+on:
+  push:
+    branches:
+      - 'master'
+      - 'release-**'
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  files-changed:
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 10
+    outputs:
+      api_contracts: ${{ steps.changes.outputs.api_contracts }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Test which files changed
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
+
+  api-contracts:
+    needs: files-changed
+    if: needs.files-changed.outputs.api_contracts == 'true'
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Build CLJS
+        run: bun run build-pure:cljs
+      - name: Generate OpenAPI spec
+        run: bun run generate-openapi
+      - name: Validate OpenAPI spec
+        run: bun run lint-openapi
+      - name: Generate TypeScript declarations
+        run: bun run types:generate
+      - name: Check API contracts
+        run: bun run api-contract-check-pure
+      - name: Upload API contracts report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: api-contracts-report
+          path: .tmp/openapi/contracts-report.json
+          include-hidden-files: true
+          retention-days: 7
+
+  api-contracts-result:
+    needs:
+      - files-changed
+      - api-contracts
+    if: always() && !cancelled()
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - name: Check API contracts job status
+        uses: actions/github-script@v9
+        env:
+          needs: ${{ toJson(needs) }}
+        with:
+          script: | # js
+            const needs = JSON.parse(process.env.needs);
+            const jobs = Object.entries(needs).map(
+              ([jobName, jobValues]) => ({
+                name: jobName,
+                result: jobValues.result
+              }));
+
+            if (jobs.every(job => (job.result === 'skipped' || job.result === 'success'))) {
+              console.log('All jobs are skipped or successful');
+              process.exit(0);
+            }
+
+            console.log('Some API contracts jobs failed');
+            jobs.forEach((job) => {
+              if (job.result !== 'success') {
+                console.log(`${job.name} - ${job.result}`);
+              }
+            });
+            process.exit(1);

@@ -16,11 +16,11 @@
 (set! *warn-on-reflection* true)
 
 (def openapi-file-path
-  "Path to the local OpenAPI specification file."
-  "resources/openapi/openapi.json")
+  "Path to the generated OpenAPI specification."
+  ".tmp/openapi/openapi.json")
 
 (defn- sort-keys
-  "Sort maps and sets alphabetically to reduce diff noise on openapi.json"
+  "Sort maps and sets alphabetically so the generated file is identical between runs."
   [data]
   (walk/postwalk
    (fn [x]
@@ -30,23 +30,50 @@
        :else    x))
    data))
 
-(defn write-openapi-spec-to-file!
-  "Generate and write the OpenAPI specification to a local file.
-  Takes the root handler and generates the complete OpenAPI spec, writing it to [[openapi-file-path]]."
+(def ^:private non-public-path-prefixes
+  ["/api/testing" "/api/dev"])
+
+(defn- public-path?
+  [path]
+  (not-any? #(or (= path %) (str/starts-with? path (str % "/"))) non-public-path-prefixes))
+
+(defn- schema-refs
+  [x]
+  (into #{}
+        (keep #(when (map? %)
+                 (some->> (:$ref %) (re-matches #"#/components/schemas/(.+)") second)))
+        (tree-seq coll? seq x)))
+
+(defn- reachable-schemas
+  [schemas roots]
+  (loop [seen #{}, stack (vec roots)]
+    (if-let [schema-name (peek stack)]
+      (if (or (contains? seen schema-name) (not (contains? schemas schema-name)))
+        (recur seen (pop stack))
+        (recur (conj seen schema-name)
+               (into (pop stack) (schema-refs (get schemas schema-name)))))
+      seen)))
+
+(defn open-api-object
+  "The public API document for `root-handler`, excluding development routes and unreachable schemas."
   [root-handler]
-  (try
-    (let [spec (merge
-                (open-api/root-open-api-object root-handler)
-                {:servers [{:url         ""
-                            :description "Metabase API"}]})
-          file (io/file openapi-file-path)]
-      ;; Create parent directory if it doesn't exist
-      (when-let [parent-dir (.getParentFile file)]
-        (.mkdirs parent-dir))
-      (json/encode-to (sort-keys spec) (io/writer file) {:pretty true})
-      (log/info "OpenAPI specification written to" openapi-file-path))
-    (catch Throwable e
-      (log/errorf "Failed to write OpenAPI specification to file: %s" (ex-message e)))))
+  (let [spec    (open-api/root-open-api-object root-handler)
+        paths   (into {} (filter (comp public-path? key)) (:paths spec))
+        schemas (get-in spec [:components :schemas])]
+    (-> spec
+        (assoc :paths   paths
+               :servers [{:url "" :description "Metabase API"}])
+        (assoc-in [:components :schemas]
+                  (select-keys schemas (reachable-schemas schemas (schema-refs paths)))))))
+
+(defn write-openapi-spec-to-file!
+  "Write the [[open-api-object]] for `root-handler` to [[openapi-file-path]]. Throws if the file can't be written."
+  [root-handler]
+  (let [file (io/file openapi-file-path)]
+    (io/make-parents file)
+    (with-open [writer (io/writer file)]
+      (json/encode-to (sort-keys (open-api-object root-handler)) writer {:pretty true}))
+    (log/info "OpenAPI specification written to" openapi-file-path)))
 
 (defonce ^:private openapi-regen-state
   (atom {:executing? false
@@ -124,10 +151,7 @@
                       (read-openapi-spec-from-file))
                     (do
                       (log/warn "OpenAPI spec file not found, generating on-the-fly")
-                      (merge
-                       (open-api/root-open-api-object root-handler)
-                       {:servers [{:url         ""
-                                   :description "Metabase API"}]})))]
+                      (open-api-object root-handler)))]
        {:status 200
         :body   spec}))
 

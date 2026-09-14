@@ -18,7 +18,6 @@ jobs:
     outputs:
       codeql: ${{ steps.changes.outputs.codeql }}
       i18n: ${{ steps.changes.outputs.i18n }}
-      openapi: ${{ steps.changes.outputs.openapi }}
       snowplow: ${{ steps.changes.outputs.snowplow }}
       workflows: ${{ steps.changes.outputs.workflows }}
       workflows_files: ${{ steps.changes.outputs.workflows_files }}
@@ -42,12 +41,10 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Setup frontend env
-        if: |
-          needs.files-changed.outputs.yaml == 'true' ||
-          needs.files-changed.outputs.openapi == 'true'
+        if: needs.files-changed.outputs.yaml == 'true'
         uses: ./.github/actions/prepare-frontend
 
-      # Always required by whitespace linter, also used by OpenAPI spec validation
+      # Always required by whitespace linter
       - name: Setup backend env
         uses: ./.github/actions/prepare-backend
 
@@ -87,18 +84,6 @@ jobs:
         - name: Check every workflow job sets a timeout
           if: needs.files-changed.outputs.workflows == 'true'
           run: .github/scripts/check-job-timeouts.sh ${{ needs.files-changed.outputs.workflows_files }}
-
-        # Generate and Lint OpenAPI spec
-        - name: Generate OpenAPI spec
-          if: needs.files-changed.outputs.openapi == 'true'
-          run: bun run generate-openapi
-
-      # Parallel steps run asynchronously, and explicitly waiting for a parallel step means "if" statements are ignored.
-      # Move OpenAPI validation outside the parallel block so that spec generation happens asynchronously without requiring
-      # an explicit "wait".
-      - name: Validate OpenAPI spec
-        if: needs.files-changed.outputs.openapi == 'true'
-        run: bun run lint-openapi
 
   i18n:
     needs: files-changed

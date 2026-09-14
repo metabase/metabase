@@ -95,3 +95,7 @@ description: Write TypeScript and JavaScript code following Metabase coding stan
 ## Verify before done
 
 - **Run the project type-check** when finished (see the shared TypeScript commands above).
+
+## Related skills
+
+- **[fix-api-contract](../fix-api-contract/SKILL.md)** - Investigate API contract checker diagnostics or bring an RTK endpoint under enforcement.

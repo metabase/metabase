@@ -143,7 +143,9 @@
 
 (mu/defn- schema->params* :- [:sequential :metabase.api.open-api/parameter]
   [schema in-fn renames]
-  (let [{:keys [properties required]} (mjs-collect-definitions schema)
+  ;; Named parameter schemas need dereferencing before their map entries are visible.
+  (let [schema                        (-> schema mc/schema mc/deref-all)
+        {:keys [properties required]} (mjs-collect-definitions schema)
         required                      (set required)]
     (for [[k param-schema] properties
           :let             [k (get renames k k)]
