@@ -325,6 +325,30 @@
    query  :- :metabase.lib.schema/native-only-query]
   (into #{} (sql-tools/referenced-tables-raw driver (driver-api/raw-native-query query))))
 
+(mu/defn- remapped-table-replacements :- [:map-of ::sql-tools/table-spec ::sql-tools/table-spec]
+  "The `:tables` replacements for [[sql-tools/replace-names]]; a table in the driver's default schema also matches
+  unqualified."
+  [driver     :- :keyword
+   remappings :- [:sequential ::driver/table-remapping]]
+  (let [default-schema (when (get-method metabase.driver.sql.normalize/default-schema driver)
+                         (metabase.driver.sql.normalize/default-schema driver))
+        table-spec     (fn [schema table]
+                         (cond-> {:table table}
+                           (some? schema) (assoc :schema schema)))]
+    (into {}
+          (mapcat (fn [{:keys [from-schema from-table to-schema to-table]}]
+                    (let [to (table-spec to-schema to-table)]
+                      (cond-> [[(table-spec from-schema from-table) to]]
+                        (and (some? from-schema) (= from-schema default-schema))
+                        (conj [(table-spec nil from-table) to])))))
+          remappings)))
+
+(mu/defmethod driver/remap-native-query-tables :sql :- :string
+  [driver     :- :keyword
+   sql        :- :string
+   remappings :- [:sequential ::driver/table-remapping]]
+  (sql-tools/replace-names driver sql {:tables (remapped-table-replacements driver remappings)} {:allow-unused? true}))
+
 (mu/defmethod driver/native-query-deps :sql :- ::driver/native-query-deps
   [driver :- :keyword
    query  :- :metabase.lib.schema/native-only-query]

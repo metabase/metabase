@@ -6,6 +6,11 @@ title: Driver interface changelog
 
 ## Metabase 0.64.0
 
+- `metabase.driver/remap-native-query-tables` `[driver native-query remappings]` -- new multimethod. Returns the raw
+  native query reading the `:to-schema`/`:to-table` of each remapping in place of its `:from-schema`/`:from-table`;
+  the query processor uses it to point native queries at the tables standing in for the ones they name. `:sql`
+  drivers get an implementation based on SQL parsing; the default returns the query unchanged.
+
 - `metabase.driver.sql-jdbc.execute/cancelation-poisons-connection?` `[driver]` -- whether canceling a `Statement`
   leaves the `Connection` unfit for the next query, so that it must be discarded rather than returned to the
   connection pool. The query processor cancels a `Statement` whenever reduction stops before the `ResultSet` runs out

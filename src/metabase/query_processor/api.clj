@@ -28,6 +28,7 @@
    [metabase.query-processor.db :as query-processor.db]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.middleware.table-remapping :as table-remapping]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.schema :as qp.schema]
@@ -42,7 +43,6 @@
    ;; defendpoint param schemas (ms/PositiveInt etc.); lib.schema has no API-param coercion schemas
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms]
    [metabase.util.performance :refer [get-in select-keys]]
-   [metabase.workspaces.core :as workspaces]
    [steffan-westcott.clj-otel.api.trace.span :as span]))
 
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------
@@ -206,9 +206,9 @@
    {:keys [database pretty] :as query} :- [:map {:closed true}
                                            [:pretty {:default true} [:maybe :boolean]]
                                            [::mc/default ::lib-be.schema/maybe-legacy-query]]]
-  ;; The SQL is shown to (and can be saved by) a person, so it names the canonical tables: a native question
-  ;; pinned to a workspace table would break as soon as the remapping changed.
-  (workspaces/with-table-remapping-disabled
+  ;; The SQL is shown to (and can be saved by) a person, so it names the tables as the person knows them: a native
+  ;; question pinned to a remapped table would break as soon as the remapping changed.
+  (table-remapping/with-table-remappings []
     (model-persistence/with-persisted-substituion-disabled
       (let [query (-> (lib-be/normalize-query (dissoc query :pretty))
                       (dissoc :constraints :middleware)

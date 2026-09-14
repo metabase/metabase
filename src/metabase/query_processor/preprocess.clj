@@ -39,6 +39,7 @@
    [metabase.query-processor.middleware.resolve-joins :as resolve-joins]
    [metabase.query-processor.middleware.resolve-referenced :as qp.resolve-referenced]
    [metabase.query-processor.middleware.resolve-source-table :as qp.resolve-source-table]
+   [metabase.query-processor.middleware.table-remapping :as table-remapping]
    [metabase.query-processor.middleware.validate :as validate]
    [metabase.query-processor.middleware.validate-temporal-bucketing :as validate-temporal-bucketing]
    [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
@@ -109,7 +110,8 @@
    #'optimize-temporal-clauses/optimize-temporal-clauses
    #'limit/add-default-limit
    #'qp.middleware.enterprise/apply-download-limit
-   #'qp.middleware.enterprise/apply-workspace-remapping
+   #'qp.middleware.enterprise/check-workspace-table-access
+   #'table-remapping/apply-table-remappings
    #'check-features/check-features])
 
 (def ^:private ^Long slow-middleware-warning-threshold-ms

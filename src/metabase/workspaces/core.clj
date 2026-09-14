@@ -15,23 +15,6 @@
    [metabase.premium-features.core :refer [defenterprise-schema]]
    [metabase.workspaces.schema :as ws.schema]))
 
-(def ^:dynamic *allow-table-remapping*
-  "Whether the query processor may redirect canonical table references to their workspace tables. Bound to false
-  where the compiled SQL is shown to or saved by a person rather than run: they think in canonical tables, and a
-  query pinned to a workspace table would break as soon as the remapping changed."
-  true)
-
-(defn allow-table-remapping?
-  "Whether the query processor may redirect canonical table references to their workspace tables."
-  []
-  *allow-table-remapping*)
-
-(defmacro with-table-remapping-disabled
-  "Execute `body` with [[*allow-table-remapping*]] set to `false`, so compiled queries name the canonical tables."
-  [& body]
-  `(binding [*allow-table-remapping* false]
-     ~@body))
-
 (defenterprise-schema enabled? :- :boolean
   "Whether workspaces are enabled on this instance."
   metabase-enterprise.workspaces.core
