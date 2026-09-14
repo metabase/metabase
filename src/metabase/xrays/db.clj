@@ -86,7 +86,7 @@
 (mu/defn field-name
   "The name of the Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :name :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select-one-fn :name :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn metadata-column
   "The `:metadata/column` with `field-id`, or nil."
@@ -120,7 +120,7 @@
 (mu/defn active-field-ids-for-table
   "The ids of the active Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-fn-set :id :model/Field :table_id table-id :active true {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select-fn-set :id :model/Field :table_id table-id :active true {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn table-ids-of-fields-targeting
   "The Table ids of the active Fields whose FK target is one of `field-ids`."

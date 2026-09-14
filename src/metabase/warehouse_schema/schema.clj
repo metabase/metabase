@@ -144,6 +144,7 @@
    [:json_unfolding     [:maybe :boolean]]
    [:settings           [:maybe ::field-user-settings.settings]]
    [:data_sensitivity   [:maybe [:or :keyword :string]]]
+   [:custom_position    [:maybe :int]]
    [:description_set        :boolean]
    [:semantic_type_set      :boolean]
    [:fk_target_field_id_set :boolean]])
@@ -168,6 +169,7 @@
    [:json_unfolding     {:optional true} [:maybe :boolean]]
    [:settings           {:optional true} [:maybe ::field-user-settings.settings]]
    [:data_sensitivity   {:optional true} [:maybe [:or :keyword :string]]]
+   [:custom_position    {:optional true} [:maybe :int]]
    [:description_set        {:optional true} :boolean]
    [:semantic_type_set      {:optional true} :boolean]
    [:fk_target_field_id_set {:optional true} :boolean]])
@@ -198,6 +200,63 @@
    [:type                  {:optional true} [:maybe [:or :keyword :string]]]
    [:hash_key              {:optional true} [:maybe :string]]
    [:last_used_at          {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::table-user-settings
+  "A TableUserSettings as selected from the app DB: every column of `:metabase_table_user_settings`."
+  [:map {:closed true}
+   [:table_id                ::lib.schema.id/table]
+   [:created_at              ms/TemporalInstant]
+   [:updated_at              ms/TemporalInstant]
+   [:display_name            [:maybe :string]]
+   [:description             [:maybe :string]]
+   [:entity_type             [:maybe [:or :keyword :string]]]
+   [:visibility_type         [:maybe [:or :keyword :string]]]
+   [:caveats                 [:maybe :string]]
+   [:points_of_interest      [:maybe :string]]
+   [:data_layer              [:maybe [:or :keyword :string]]]
+   [:data_source             [:maybe [:or :keyword :string]]]
+   [:owner_email             [:maybe :string]]
+   [:owner_user_id           [:maybe ::lib.schema.id/user]]
+   [:field_order             [:maybe [:or :keyword :string]]]
+   [:show_in_getting_started [:maybe :boolean]]
+   [:data_authority          [:maybe [:or :keyword :string]]]
+   [:is_published            [:maybe :boolean]]
+   [:collection_id           [:maybe ::lib.schema.id/collection]]
+   [:description_set         :boolean]
+   [:visibility_type_set     :boolean]
+   [:caveats_set             :boolean]
+   [:points_of_interest_set  :boolean]
+   [:data_layer_set          :boolean]
+   [:data_source_set         :boolean]])
+
+(mr/def ::table-user-settings.update
+  "What an update (or insert) of a TableUserSettings accepts: every column of
+  `:metabase_table_user_settings`, all optional."
+  [:map {:closed true}
+   [:table_id                {:optional true} [:maybe ::lib.schema.id/table]]
+   [:created_at              {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]
+   [:display_name            {:optional true} [:maybe :string]]
+   [:description             {:optional true} [:maybe :string]]
+   [:entity_type             {:optional true} [:maybe [:or :keyword :string]]]
+   [:visibility_type         {:optional true} [:maybe [:or :keyword :string]]]
+   [:caveats                 {:optional true} [:maybe :string]]
+   [:points_of_interest      {:optional true} [:maybe :string]]
+   [:data_layer              {:optional true} [:maybe [:or :keyword :string]]]
+   [:data_source             {:optional true} [:maybe [:or :keyword :string]]]
+   [:owner_email             {:optional true} [:maybe :string]]
+   [:owner_user_id           {:optional true} [:maybe ::lib.schema.id/user]]
+   [:field_order             {:optional true} [:maybe [:or :keyword :string]]]
+   [:show_in_getting_started {:optional true} [:maybe :boolean]]
+   [:data_authority          {:optional true} [:maybe [:or :keyword :string]]]
+   [:is_published            {:optional true} [:maybe :boolean]]
+   [:collection_id           {:optional true} [:maybe ::lib.schema.id/collection]]
+   [:description_set         {:optional true} :boolean]
+   [:visibility_type_set     {:optional true} :boolean]
+   [:caveats_set             {:optional true} :boolean]
+   [:points_of_interest_set  {:optional true} :boolean]
+   [:data_layer_set          {:optional true} :boolean]
+   [:data_source_set         {:optional true} :boolean]])
 
 (mr/def ::table
   "A Table as selected from the app DB: every column of `:metabase_table`."

@@ -42,7 +42,7 @@
 (mu/defn field-ids-and-table-ids
   "The id and Table id of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :table_id] :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select [:model/Field :id :table_id] :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn card-dimensions
   "The dimensions and dimension mappings of the Card with `card-id`, or nil."
@@ -65,7 +65,7 @@
 (mu/defn field-table-id
   "The Table id of the Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :table_id :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select-one-fn :table_id :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn active-tables-in-scope
   "The active Tables among `database-ids` and/or `table-ids` (either nil for unscoped), in name then id order."

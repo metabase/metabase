@@ -12,12 +12,12 @@
 (mu/defn table-database-ids
   "The set of Database IDs of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select-fn-set :db_id [:model/Table :db_id] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-fn-set :db_id [:model/Table :db_id] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn table-database-id
   "The Database ID of the raw table row with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id (t2/table-name :model/Table) :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one-fn :db_id (t2/table-name :model/Table) :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn database
   "The Database with `database-id`, or nil."

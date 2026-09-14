@@ -48,16 +48,15 @@
 (def ^:private allowed-raw-usages
   "Files where a `:metabase_table`/`:metabase_field` literal survives review: every hit in the file was read back and
   confirmed to select only columns `table-query`/`field-query` don't touch (an id, a count, a foreign key used purely
-  to join or filter), or the file has its own structural reason to want the raw row. Add an entry here only after
+  to join or filter), or the file has its own structural reason to want the raw row. Note that a Table's
+  `display_name`, `description`, `is_published` and `collection_id` are user values like a Field's -- a rationale
+  resting on those being sync-owned no longer holds. Add an entry here only after
   checking every hit it covers -- see the check's failure message for the two helpers this is standing in for.
 
   Keep this in sync with what the scan actually finds: [[stale-allowed-raw-usage-test]] fails on an entry that no
   longer matches anything, same as clj-kondo's ignore ratchets flag a stale exemption."
   {"src/metabase/usage_metadata/db.clj"
    "raw-field-fingerprint selects only :fingerprint, a sync-owned column with no user override."
-
-   "src/metabase/collections_rest/db.clj"
-   "published-table-collection-ids{,-in} select only :collection_id as a grouping key."
 
    "src/metabase/collections/children.clj"
    "the :model case joins metabase_table only for :is_upload, which is sync-owned."
@@ -77,12 +76,9 @@
    "both joins bring in the Table only to filter (.active, .db_id) or project its :id; neither selects
    :schema/:name."
 
-   "enterprise/backend/src/metabase_enterprise/data_studio/permissions/published_tables.clj"
-   "both subqueries select only :id, used to build an IN/join permission predicate."
-
    "enterprise/backend/src/metabase_enterprise/dependencies/db.clj"
-   "the dependency-graph joins select only :id/:display_name for filtering and labeling; the :table entity's name
-   column is :entity.display_name, not the overlaid :schema/:name."
+   "the remaining hits select only :id, to build permission and dependency filters. The two that read a Table's
+   display_name -- a user value -- now go through table-query."
 
    "enterprise/backend/src/metabase_enterprise/remote_sync/db.clj"
    "remote sync matches and tracks content by its actual physical (db, schema, table) location across instances --

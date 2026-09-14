@@ -122,6 +122,12 @@
    ::permissions.schema/data-permission-type
    [:or ::permissions.schema/data-permission-value [:tuple ::permissions.schema/data-permission-value [:enum :most :least]]]])
 
+(defn- table-source
+  "The plain `metabase_table`, aliased `mt`: permission queries read only sync-owned columns, and the overlay's
+  derived table is costly here and breaks on MariaDB."
+  []
+  (warehouse-schema-overlay/table-query {:alias :mt, :user-settings? false}))
+
 (mu/defn visible-table-filter-select
   "Selects a column from tables that are visible to the provided user given a mapping of permission types to the required value or the required
   value and a directive if we should test against the most or least permissive permission the user has.
@@ -136,7 +142,7 @@
   {:select [(case select-column
               :id :mt.id
               :db_id :mt.db_id)]
-   :from   [(warehouse-schema-overlay/table-query {:alias :mt})]
+   :from   [(table-source)]
    :where  (if (or is-superuser?
                    (and is-data-analyst?
                         (contains? permission-mapping :perms/manage-table-metadata)))
@@ -228,7 +234,7 @@
                                        ^:allow-subquery
                                        {:select [:mt.id :dp.perm_type :dp.perm_value]
                                         :from   [[:data_permissions :dp]]
-                                        :join   [(warehouse-schema-overlay/table-query {:alias :mt}) [:= :mt.id :dp.table_id]]
+                                        :join   [(table-source) [:= :mt.id :dp.table_id]]
                                         :where  (into [:and
                                                        [:not= :dp.table_id nil]
                                                        user-groups-clause
@@ -238,7 +244,7 @@
                                        ^:allow-subquery
                                        {:select [:mt.id :dp.perm_type :dp.perm_value]
                                         :from   [[:data_permissions :dp]]
-                                        :join   [(warehouse-schema-overlay/table-query {:alias :mt}) [:= :mt.db_id :dp.db_id]]
+                                        :join   [(table-source) [:= :mt.db_id :dp.db_id]]
                                         :where  (into [:and
                                                        [:= :dp.table_id nil]
                                                        user-groups-clause
@@ -263,7 +269,7 @@
    permission-mapping              :- PermissionMapping]
   ^:allow-subquery
   {:select [:mt.id :dp.group_id :dp.perm_type :dp.perm_value]
-   :from   [(warehouse-schema-overlay/table-query {:alias :mt})]
+   :from   [(table-source)]
    :join   [[:data_permissions :dp] [:or
                                      [:and
                                       [:= :mt.db_id :dp.db_id]

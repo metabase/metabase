@@ -50,7 +50,7 @@
 (mu/defn field-table-id
   "The Table id of the Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :table_id :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select-one-fn :table_id :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn target-table
   "The Table named `table-name` in `schema` of the Database with `database-id` also matching the key-value
@@ -107,7 +107,7 @@
   [table-id :- ::lib.schema.id/table]
   (t2/select-fn-vec :name [:model/Field :name :position]
                     :table_id table-id :active true
-                    {:from [(warehouse-schema-overlay/field-query)]
+                    {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]
                      :order-by [[:position :asc]]}))
 
 (mu/defn table-refs-matching
@@ -115,7 +115,7 @@
   triple; `schema` may be nil)."
   [refs :- [:sequential [:tuple ms/PositiveInt [:maybe :string] :string]]]
   (t2/select [:model/Table :id :db_id :schema :name]
-             {:from [(warehouse-schema-overlay/table-query)]
+             {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]
               :where (into [:or]
                            (map (fn [[db-id schema table-name]]
                                   [:and
@@ -129,4 +129,4 @@
 (mu/defn table-refs
   "The id, Database id, schema, and name of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :db_id :schema :name] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select [:model/Table :id :db_id :schema :name] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))

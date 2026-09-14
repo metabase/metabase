@@ -43,7 +43,8 @@
    database-ids :- [:sequential ::lib.schema.id/database]]
   (t2/query {:select [[:t.db_id :db_id]]
              :from   [[(t2/table-name :model/Sandbox) :s]]
-             :join   [(warehouse-schema-overlay/table-query {:alias :t}) [:= :s.table_id :t.id]]
+             :join   [(warehouse-schema-overlay/table-query {:alias :t, :user-settings? false})
+                      [:= :s.table_id :t.id]]
              :where  [:and
                       [:= :s.group_id group-id]
                       [:in :t.db_id database-ids]]}))
@@ -84,7 +85,8 @@
    group-ids   :- [:sequential ms/PositiveInt]]
   (t2/query {:select [[:s.group_id :group_id]]
              :from   [[(t2/table-name :model/Sandbox) :s]]
-             :join   [(warehouse-schema-overlay/table-query {:alias :t}) [:= :t.id :s.table_id]]
+             :join   [(warehouse-schema-overlay/table-query {:alias :t, :user-settings? false})
+                      [:= :t.id :s.table_id]]
              :where  [:and
                       [:in :s.group_id group-ids]
                       [:= :t.db_id database-id]]}))
