@@ -26,18 +26,19 @@
 ;;; ------------------------------------------- auto-param (GHY-4473) --------------------------------------------
 
 (defn auto-param
-  "Rewrite `[:auto/param v]` markers into HoneySQL's `[:param :kN]` plus the params map they refer to.
+  "Rewrite `[:auto/param v]` markers into HoneySQL's `[:param :kN]`, returning
+  `[rewritten-form params-map]`.
 
-  The marker only protects a value once this has run. HoneySQL itself does not recognise it and
-  compiles it as a function call over its argument, so a marker handed straight to `sql/format`
-  splices its payload into the SQL rather than binding it. Queries that go through Toucan are
-  rewritten here at the compile step; `assert-values-wrapped!` rejects a marker that arrives
-  anywhere else.
-  Returns `[rewritten-form params-map]`.
+  Called by the compile step, so a caller writes the marker inline and never handles the params
+  map. Only acts on values that were explicitly marked; the guarantee that nothing was *missed* is
+  `assert-values-wrapped!`.
 
-  Called by the compile step, so a caller writes `[:auto/param v]` inline and never handles the
-  params map. Only acts on values that were explicitly marked; the guarantee that nothing was
-  *missed* is `assert-values-wrapped!`."
+  The marker only protects a value once this has run. HoneySQL does not recognise it and compiles
+  it as a call to a function named PARAM, which the database then refuses.
+
+  Put the marker in a query map rather than a kv-arg. Toucan builds kv-args into the where clause
+  after this runs, so a marker passed as `:locale [:auto/param v]` ends up inside a PARAM call
+  instead of a comparison. Write `{:where [:= :locale [:auto/param v]]}`."
   [form]
   (let [params  (atom {})
         counter (atom 0)]
@@ -291,8 +292,9 @@
   site inside these namespaces can also be checked at author time."
   #{"metabase.content-translation.db"})
 
-;; Clojure munges `-` to `_` in class names, so match against the munged form.
-(def ^:private enforcing-class-prefixes
+;; Clojure munges `-` to `_` in class names, so the stack frames carry the munged form.
+(defn- munged-prefixes
+  []
   (into #{} (map #(.replace ^String % "-" "_")) enforcing-namespace-prefixes))
 
 (defn- enforcing-caller?
@@ -302,12 +304,13 @@
   which is several frames below the caller, and a dynamic var would have to be threaded through
   Toucan internals and would not survive a thread hand-off. The stack already carries the answer."
   []
-  (let [frames (.getStackTrace (Throwable.))]
+  (let [frames   (.getStackTrace (Throwable.))
+        prefixes (munged-prefixes)]
     (loop [i 0]
       (if (>= i (alength frames))
         false
         (let [cls (.getClassName ^StackTraceElement (aget frames i))]
-          (if (some #(.startsWith cls ^String %) enforcing-class-prefixes)
+          (if (some #(.startsWith cls ^String %) prefixes)
             true
             (recur (inc i))))))))
 
@@ -322,10 +325,6 @@
       (binding [t2.honeysql/*options* (assoc (t2.honeysql/options) :params params)]
         (next-method query-type model query))
       (next-method query-type model built-query))))
-
-(defn keep-me
-  "No-op so a requiring namespace can reference this one without the linter pruning the require."
-  [])
 
 ;; A note on `[:param ...]`, which is the form the coercions above are a fallback for.
 ;;

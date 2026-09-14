@@ -5,7 +5,6 @@
   This namespace is listed in [[metabase.app-db.value-guard/enforcing-namespace-prefixes]], so every query it issues is
   checked: a value slot holding anything that could compile as SQL fails the query."
   (:require
-   [metabase.app-db.value-guard :as value-guard]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -22,10 +21,3 @@
   "Every ContentTranslation, ordered by locale and message id."
   []
   (t2/select :model/ContentTranslation {:order-by [:locale :msgid]}))
-
-(defn ^:private ^:no-doc unchecked-value-query-for-tests
-  "A query with a bare keyword in a value slot, which `honeysql-guard` permits and the value guard
-  does not. Exists so a test can prove the value guard is actually scoped to this namespace; there
-  is no other way to observe the difference from outside it."
-  []
-  (t2/select :model/ContentTranslation {:where [:= :locale :not-a-value]}))

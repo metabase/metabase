@@ -26,6 +26,16 @@
                                       [:= :locale [:auto/param "de"]]
                                       [:= :msgid [:auto/param "x"]]]})))))))
 
+(deftest a-plain-string-is-already-a-literal-test
+  (testing "an unmarked string is compared as a literal, so a SQL-looking one matches nothing"
+    ;; This is the baseline the marker improves on. A *string* was never the danger -- HoneySQL
+    ;; binds it. The danger is a value that is not a string, which HoneySQL compiles as structure.
+    (mt/with-temp [:model/ContentTranslation _ {:locale "de" :msgid "a" :msgstr "b"}]
+      (is (empty? (t2/select :model/ContentTranslation
+                             {:where [:= :locale "de' OR '1'='1"]})))
+      (is (seq (t2/select :model/ContentTranslation
+                          {:where [:= :locale "de"]}))))))
+
 (deftest hostile-non-scalar-never-becomes-sql-test
   (testing "a subquery map in a value slot is refused rather than compiled into the query"
     ;; Handed straight to HoneySQL, a map in a value slot compiles into SQL structure. Through the
