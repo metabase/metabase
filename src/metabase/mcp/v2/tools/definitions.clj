@@ -14,6 +14,7 @@
    [metabase.lib.core :as lib]
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.queries :as v2.queries]
    [metabase.mcp.v2.registry :as registry]
@@ -73,28 +74,31 @@
   (case method
     :create (doseq [k [:id :archived :revision_message]]
               (when (contains? args k)
+                ;; `k` is one of the tool's own argument keys.
                 (common/throw-teaching-error
-                 (format "`%s` applies to method \"update\" only — remove it from this create call." (name k)))))
+                 (message/msg ["`%s` applies to method \"update\" only — remove it from this create call."]
+                              (message/raw (name k))))))
     :update (when (contains? args :table_id)
               (common/throw-teaching-error
-               "`table_id` cannot be changed on update — the server derives it from `definition`'s source table."))))
+               (message/msg ["`table_id` cannot be changed on update — the server derives it from `definition`'s source table."])))))
 
 (defn- check-name!
   "Reject a present-but-blank `name`. The REST endpoints these tools delegate to take
    `ms/NonBlankString`; the tools' own JSON schema can only say `:min 1`, which \" \" satisfies, so
-   without this the tools would be laxer than the endpoints whose checks they inherit."
+   without this the tools would be laxer than the endpoints whose checks they inherit. `entity` is the
+   server's own entity name."
   [{entity-name :name} entity]
   (when (and (some? entity-name) (str/blank? entity-name))
     (common/throw-teaching-error
-     (format "`name` cannot be blank — pass a short descriptive name for the %s." entity))))
+     (message/msg ["`name` cannot be blank — pass a short descriptive name for the %s."] (message/raw entity)))))
 
 (defn- check-revision-message!
+  "Reject a blank `revision_message` on update. `entity` is the server's own entity name."
   [{:keys [revision_message]} entity]
   (when (str/blank? revision_message)
     (common/throw-teaching-error
-     (format (str "`revision_message` is required when method is \"update\" — pass a short sentence describing "
-                  "the change; it is recorded in the %s's revision history.")
-             entity))))
+     (message/msg ["`revision_message` is required when method is \"update\" — pass a short sentence describing the change; it is recorded in the %s's revision history."]
+                  (message/raw entity)))))
 
 ;;; --------------------------------------------- Definition handling ----------------------------------------------
 
@@ -117,13 +121,8 @@
   "The sentence every definition-shape teaching error ends with, naming both accepted shapes."
   [kind]
   (case kind
-    :segment (str "`definition` accepts either the bare clause form — the array of filter clauses get_content's "
-                  "\"definition\" include returns for a segment, reassembled onto `table_id` — or a full "
-                  "single-stage query holding only filters.")
-    :measure (str "`definition` accepts either the bare clause form — the aggregation clause get_content's "
-                  "\"definition\" include returns for a measure, as the one-element array or the bare clause, "
-                  "reassembled onto `table_id` — or a full single-stage query holding exactly one "
-                  "aggregation.")))
+    :segment (message/msg ["`definition` accepts either the bare clause form — the array of filter clauses get_content's \"definition\" include returns for a segment, reassembled onto `table_id` — or a full single-stage query holding only filters."])
+    :measure (message/msg ["`definition` accepts either the bare clause form — the aggregation clause get_content's \"definition\" include returns for a measure, as the one-element array or the bare clause, reassembled onto `table_id` — or a full single-stage query holding exactly one aggregation."])))
 
 (defn- check-normalizable!
   "Probe `definition` against strict MBQL normalization before handing it to the domain layer.
@@ -135,8 +134,8 @@
     (lib-be/normalize-query nil definition {:strict? true})
     (catch Exception e
       (common/throw-teaching-error
-       (format "`definition` is not a valid MBQL query: %s %s"
-               (common/ellipsize (ex-message e) 300) (accepted-shapes kind))))))
+       (message/msg ["`definition` is not a valid MBQL query: %s %s"]
+                    (common/ellipsize (ex-message e) 300) (accepted-shapes kind))))))
 
 ;; measure_write is deliberately MBQL-5-only, stricter than POST /api/measure — that endpoint's
 ;; schema still decodes legacy MBQL, but that is a back-compatibility affordance, not an agent path
@@ -146,9 +145,8 @@
   [definition]
   (when-not (= :mbql-version/mbql5 (lib/normalized-mbql-version definition))
     (common/throw-teaching-error
-     (str "A full-query `definition` must be a map with "
-          "\"lib/type\": \"mbql/query\", \"database\", and one entry in \"stages\". "
-          (accepted-shapes :measure)))))
+     (message/msg ["A full-query `definition` must be a map with \"lib/type\": \"mbql/query\", \"database\", and one entry in \"stages\". %s"]
+                  (accepted-shapes :measure)))))
 
 (defn- clause-form->definition
   "Reassemble the bare clause form onto `table` and resolve it. The clause form names no source of
@@ -196,9 +194,8 @@
   (when-let [defn-table-id (lib/primary-source-table-id (lib-be/normalize-query definition))]
     (when (not= defn-table-id (:id table))
       (common/throw-teaching-error
-       (format (str "`table_id` (%d) and `definition`'s source table (%d) must be the same table. "
-                    "Pass table_id %d, or point `definition` at table %d.")
-               (:id table) defn-table-id defn-table-id (:id table))))))
+       (message/msg ["`table_id` (%d) and `definition`'s source table (%d) must be the same table. Pass table_id %d, or point `definition` at table %d."]
+                    (:id table) defn-table-id defn-table-id (:id table))))))
 
 ;;; ---------------------------------------------- Error translation -----------------------------------------------
 
@@ -222,12 +219,13 @@
     :else           []))
 
 (defn- schema-error-summary
+  "A message listing up to three of `humanized`'s messages, preferring the schema authors' own."
   [humanized]
   (->> (or (seq (distinct (custom-messages humanized)))
            (distinct (humanized-messages humanized)))
        (take 3)
        (map #(common/ellipsize % 200))
-       (str/join "; ")))
+       common/list-message))
 
 (defn- run-domain-write
   "Call `thunk` (a domain create/update fn), translating the model layer's raw validation
@@ -247,13 +245,13 @@
           ;; mu/validate-throw: pre-humanized malli explain output under :error
           (and (:error data) (= (ex-message e) "Value does not match schema"))
           (common/throw-teaching-error
-           (format "Invalid `definition`: %s." (schema-error-summary (:error data))))
+           (message/msg ["Invalid `definition`: %s."] (schema-error-summary (:error data))))
 
           ;; lib cycle detection and referenced-id existence checks
           (or (contains? data :cycle-path)
               (contains? data :segment-id)
               (contains? data :measure-id))
-          (common/throw-teaching-error (ex-message e))
+          (common/throw-teaching-error (message/msg ["%s"] (ex-message e)))
 
           :else
           (throw e))))))
@@ -261,17 +259,19 @@
 ;;; -------------------------------------------------- Schemas -----------------------------------------------------
 
 (defn- write-args-schema
+  "The args schema of a `_write` tool for `entity`, the server's own entity name."
   [{:keys [entity definition-desc name-desc]}]
   [:map {:closed true}
    [:method
-    [:enum {:description (format (str "\"create\" makes a new %s (requires `table_id`, `name`, `definition`); "
-                                      "\"update\" edits the one named by `id` (requires `revision_message`).")
-                                 entity)}
+    [:enum {:description (message/render
+                          (message/msg ["\"create\" makes a new %s (requires `table_id`, `name`, `definition`); \"update\" edits the one named by `id` (requires `revision_message`)."]
+                                       (message/raw entity)))}
      "create" "update"]]
    [:id {:optional true}
     [:maybe [:or
-             [:int {:description (format "Numeric id of the %s to update." entity)}]
-             [:string {:description (format "21-character entity_id of the %s to update." entity)}]]]]
+             [:int {:description (message/render (message/msg ["Numeric id of the %s to update."] (message/raw entity)))}]
+             [:string {:description (message/render (message/msg ["21-character entity_id of the %s to update."]
+                                                                 (message/raw entity)))}]]]]
    [:table_id {:optional true}
     [:maybe [:int {:description (str "Create only: numeric table id (tables have no entity_ids). A bare-clause "
                                      "`definition` is reassembled into a query on this table; a full-query one "

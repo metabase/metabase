@@ -16,6 +16,7 @@
    [metabase.lib.core :as lib]
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.queries :as v2.queries]
    [metabase.mcp.v2.registry :as registry]
@@ -29,10 +30,7 @@
 
 (def ^:private accepted-shapes
   "The sentence every definition-shape teaching error ends with, naming what `definition` accepts."
-  (str "`definition` accepts a full single-stage query holding exactly one aggregation: MBQL 5 with "
-       "numeric ids — what get_content's \"definition\" include returns for a metric and what "
-       "execute_query takes — or the older name-based dialect, still resolved on input. "
-       "Alternatively pass a query_handle from an execute tool instead of `definition`."))
+  (message/msg ["`definition` accepts a full single-stage query holding exactly one aggregation: MBQL 5 with numeric ids — what get_content's \"definition\" include returns for a metric and what execute_query takes — or the older name-based dialect, still resolved on input. Alternatively pass a query_handle from an execute tool instead of `definition`."]))
 
 (def ^:private accepted-displays
   "Card display types `display` accepts. Enumerated so an LLM-invented value is an argument error
@@ -46,8 +44,7 @@
 
 (def ^:private shape-rule
   "The metric shape rule, quoted verbatim in every gate error so the caller learns it once."
-  (str "A metric needs exactly one aggregation and at most one grouping, in a single "
-       "query stage."))
+  (message/msg ["A metric needs exactly one aggregation and at most one grouping, in a single query stage."]))
 
 ;; This tool's write echo is built from the `:metric` projection, which `get_content` reads too, so
 ;; the registration lives in [[metabase.mcp.v2.projections]] — the namespace both require. Owning it
@@ -65,14 +62,14 @@
                      (lib-be/normalize-query nil definition {:strict? true})
                      (catch Exception e
                        (common/throw-teaching-error
-                        (format "`definition` is not a valid MBQL query: %s %s"
-                                (common/ellipsize (ex-message e) 300) accepted-shapes))))]
+                        (message/msg ["`definition` is not a valid MBQL query: %s %s"]
+                                     (common/ellipsize (ex-message e) 300) accepted-shapes))))]
     ;; normalize-query short-circuits an empty query to `{}` before its strict validation runs, so
     ;; an empty `definition` arrives here unvalidated instead of throwing above.
     (when (empty? normalized)
       (common/throw-teaching-error
-       (str "`definition` is empty. Pass the metric's query in it, or leave `definition` out of the "
-            "call entirely — on update that keeps the stored query as it is. " accepted-shapes)))
+       (message/msg ["`definition` is empty. Pass the metric's query in it, or leave `definition` out of the call entirely — on update that keeps the stored query as it is. %s"]
+                    accepted-shapes)))
     normalized))
 
 (defn- resolve-definition
@@ -83,8 +80,7 @@
   [{:keys [definition query_handle]} session-id]
   (when (and definition query_handle)
     (common/throw-teaching-error
-     (str "Pass exactly one query source: `definition` (the metric's query) or `query_handle` "
-          "(a handle from an execute tool).")))
+     (message/msg ["Pass exactly one query source: `definition` (the metric's query) or `query_handle` (a handle from an execute tool)."])))
   (some-> (cond
             definition   (if (v2.queries/portable-query? definition)
                            (v2.queries/resolve-external-query definition accepted-shapes)
@@ -105,13 +101,11 @@
   ;; a metric must refuse, and would otherwise fall through to the generic "can't be saved" message.
   (when (query-guards/native-query? dataset-query)
     (common/throw-teaching-error
-     (str "A metric can't be built from a native (SQL) query — metrics are MBQL so other queries can "
-          "reuse them. Save it with question_write instead, or rebuild the aggregation with execute_query.")))
+     (message/msg ["A metric can't be built from a native (SQL) query — metrics are MBQL so other queries can reuse them. Save it with question_write instead, or rebuild the aggregation with execute_query."])))
   (when-not (lib/can-save? dataset-query :metric)
     (common/throw-teaching-error
-     (format (str "This query can't be saved as a metric. %s Build it with execute_query first — "
-                  "a single summarize (count, sum, average…) with at most one grouping.")
-             shape-rule))))
+     (message/msg ["This query can't be saved as a metric. %s Build it with execute_query first — a single summarize (count, sum, average…) with at most one grouping."]
+                  shape-rule))))
 
 ;;; ------------------------------------------------- Responses ----------------------------------------------------
 
@@ -138,7 +132,7 @@
   [{:keys [name description display collection_position] :as args} session-id]
   (let [dataset-query (or (resolve-definition args session-id)
                           (common/throw-teaching-error
-                           "Pass the metric's query: `definition` (inline) or `query_handle` (from an execute tool)."))
+                           (message/msg ["Pass the metric's query: `definition` (inline) or `query_handle` (from an execute tool)."])))
         collection-id (v2.resolve/resolve-collection-id-or-personal (:collection_id args))]
     (check-metric-shape! dataset-query)
     (queries/check-allowed-to-create-card! {:dataset_query dataset-query :collection_id collection-id} :metric)
@@ -165,8 +159,8 @@
   [card]
   (when-not (= :metric (:type card))
     (common/throw-teaching-error
-     (format "Card %d is a %s, not a metric — use question_write to update it."
-             (:id card) (name (:type card))))))
+     (message/msg ["Card %d has type %s, not metric — use question_write to update it."]
+                  (:id card) (name (:type card))))))
 
 (defn- update!
   "Write-check the existing metric, patch only the caller-supplied fields, then run the shared REST
@@ -284,10 +278,10 @@
                                         (let [[_ body] dispatched]
                                           (doseq [k [:id :archived]]
                                             (when (contains? body k)
+                                              ;; `k` is one of the tool's own argument keys.
                                               (common/throw-teaching-error
-                                               (format (str "`%s` applies to method \"update\" only — "
-                                                            "remove it from this create call.")
-                                                       (name k)))))
+                                               (message/msg ["`%s` applies to method \"update\" only — remove it from this create call."]
+                                                            (message/raw (name k))))))
                                           (create! (dissoc body :id) session-id))
 
                                         :update
