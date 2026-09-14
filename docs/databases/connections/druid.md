@@ -34,7 +34,7 @@ See our [guide to SSH tunneling](../ssh-tunnel.md).
 
 This enables unfolding of JSON columns into their component fields.
 
-See [JSON unfolding](../../data-modeling/json-unfolding.md).
+See [JSON unfolding](../../data-modeling/metadata/json-unfolding.md).
 
 ### Authentication
 
@@ -79,6 +79,6 @@ See [Danger Zone](../danger-zone.md).
 ## Further reading
 
 - [Managing databases](../../databases/connecting.md)
-- [Metadata editing](../../data-modeling/metadata-editing.md)
-- [Models](../../data-modeling/models.md)
+- [Metadata editing](../../data-modeling/metadata/metadata-editing.md)
+- [Models](../../data-modeling/models/models.md)
 - [Setting data access permissions](../../permissions/data.md)

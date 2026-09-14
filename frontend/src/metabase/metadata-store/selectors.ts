@@ -20,6 +20,7 @@ import {
 } from "metabase-lib/v1/queries/utils/field";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
+  Field as ApiField,
   Table as ApiTable,
   Card,
   FieldId,
@@ -35,6 +36,7 @@ import type {
   NormalizedSegment,
   NormalizedTable,
   Segment,
+  TableId,
 } from "metabase-types/api";
 
 import { type FieldEntity, FieldSchema } from "./schema";
@@ -123,6 +125,54 @@ export const getShallowDatabases = getNormalizedDatabases;
 export const getShallowTables = getNormalizedTables;
 export const getShallowFields = getNormalizedFields;
 export const getShallowSegments = getNormalizedSegments;
+
+const getVisibleTable = (state: MetadataState, tableId: TableId) =>
+  getNormalizedTables(state)[tableId];
+
+const getVisibleFields = (state: MetadataState) => getNormalizedFields(state);
+
+// Field values can arrive before the field itself, which leaves a stub record
+// with no `uniqueId`. `getMetadata` drops those.
+const isResolvedField = (
+  field: NormalizedField | undefined,
+): field is NormalizedField => field?.uniqueId != null;
+
+/**
+ * The ids of a table's fields, as `getMetadata` resolves `Table.fields`: the
+ * table's `original_fields` when it has them, otherwise its visible fields.
+ */
+export const getShallowTableFieldIds = createSelector(
+  [getVisibleTable, getVisibleFields],
+  (table, fields): ApiField["id"][] => {
+    if (table == null) {
+      return [];
+    }
+    if (table.original_fields) {
+      return table.original_fields.map((field) => field.id);
+    }
+    return (table.fields ?? [])
+      .map((fieldKey) => fields[fieldKey])
+      .filter(isResolvedField)
+      .map((field) => field.id);
+  },
+);
+
+export type ShallowForeignKey = Omit<NormalizedForeignKey, "origin"> & {
+  origin: NormalizedField;
+};
+
+/**
+ * A table's foreign keys whose origin field is visible, with that field in
+ * place of its id. `undefined` until the table's foreign keys are loaded.
+ */
+export const getShallowTableForeignKeys = createSelector(
+  [getVisibleTable, getVisibleFields],
+  (table, fields): ShallowForeignKey[] | undefined =>
+    table?.fks?.flatMap((foreignKey) => {
+      const origin = fields[foreignKey.origin_id];
+      return isResolvedField(origin) ? [{ ...foreignKey, origin }] : [];
+    }),
+);
 
 // Takes the whole `State`, not `MetadataState`: it composes `getSettings`,
 // which reads settings out of the RTK Query cache. It narrows when that does.

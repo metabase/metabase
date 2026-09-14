@@ -32,3 +32,9 @@ jobs:
           fail: true
           args: docs --config ./.lychee/config.toml --offline
           format: markdown
+
+      # lychee can't read the YAML nav, so this script renders it as markdown first. lychee is on PATH
+      # from the step above.
+      - name: Check nav.yml links
+        if: ${{ !cancelled() }}
+        run: docs/util/check-links.sh nav

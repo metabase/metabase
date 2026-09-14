@@ -158,7 +158,7 @@
                              "  `avg` ASC,"
                              "  `v4_test_data.venues`.`price` ASC"]
                 :params     nil
-                :table-name "venues"
+                :qp/table-name "venues"
                 :mbql?      true})
              (-> (mt/mbql-query venues
                    {:aggregation [[:avg $category_id]]
@@ -568,6 +568,26 @@
                                     [:field {:base-type :type/Date} "date"]
                                     (t/local-date-time "2019-11-11T12:00:00")
                                     (t/local-date-time "2019-11-12T12:00:00")]))))))))))
+
+(deftest datetime-diff-day-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (mt/with-report-timezone-id! "America/Los_Angeles"
+      (let [mp    (mt/metadata-provider)
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                      (lib/join (lib/join-clause
+                                 (lib.metadata/table mp (mt/id :orders))
+                                 [(lib/= (lib.metadata/field mp (mt/id :products :id))
+                                         (lib.metadata/field mp (mt/id :orders :product_id)))]))
+                      (lib/expression "daydiff"
+                                      (lib/expression-clause
+                                       :datetime-diff
+                                       [(lib.metadata/field mp (mt/id :products :created_at))
+                                        (lib.metadata/field mp (mt/id :orders :created_at))
+                                        :day]
+                                       nil)))
+            query (lib/aggregate query (lib/sum (lib/expression-ref query "daydiff")))]
+        (is (= [[7555207]]
+               (mt/formatted-rows [int] (qp/process-query query))))))))
 
 (defn- do-with-datetime-timestamp-table [f]
   (driver/with-driver :bigquery-cloud-sdk
@@ -1101,7 +1121,7 @@
                                  "LIMIT"
                                  "  1"]
                     :params     nil
-                    :table-name "checkins"
+                    :qp/table-name "checkins"
                     :mbql?      true})
                  (-> (qp.compile/compile query)
                      (update :query #(str/split-lines (driver/prettify-native-form :bigquery-cloud-sdk %)))))))))))
@@ -1171,7 +1191,7 @@
                                  "LIMIT"
                                  "  2"]
                     :params     nil
-                    :table-name "__mb_source"
+                    :qp/table-name "__mb_source"
                     :mbql?      true})
                  (-> (qp.compile/compile query)
                      (update :query #(str/split-lines (driver/prettify-native-form :bigquery-cloud-sdk %))))))
@@ -1185,7 +1205,7 @@
       (testing "Arguments to custom aggregation expression functions have backticks applied properly"
         (is (= {:mbql?      true
                 :params     nil
-                :table-name "orders"
+                :qp/table-name "orders"
                 :query      (for [line ["SELECT"
                                         "  APPROX_QUANTILES("
                                         "    `v4_sample_dataset.orders`.`quantity`,"
@@ -1225,7 +1245,7 @@
                              "ORDER BY"
                              "  `source` ASC"]
                 :params     nil
-                :table-name "__mb_source"
+                :qp/table-name "__mb_source"
                 :mbql?      true}
                (-> (qp.compile/compile query)
                    (update :query #(str/split-lines (driver/prettify-native-form :bigquery-cloud-sdk %))))))

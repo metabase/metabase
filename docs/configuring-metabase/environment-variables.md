@@ -1784,7 +1784,7 @@ Controls which networks Metabase may connect to for map tile servers.
 - Default: `https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png`
 - [Configuration file name](./config-file.md): `map-tile-server-url`
 
-The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.
+The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox. This URL is visible to clients, so do not include private keys.
 
 ### `MB_MCP_APPS_CORS_CUSTOM_ORIGINS`
 
@@ -2188,7 +2188,7 @@ Git synchronization type - :read-write or :read-only.
 - Default: `null`
 - [Configuration file name](./config-file.md): `remote-sync-url`
 
-The location of your git repository, e.g. https://github.com/acme-inco/metabase.git.
+The location of your git repository, e.g. `https://github.com/acme-inco/metabase.git`.
 
 ### `MB_REPORT_TIMEZONE`
 
@@ -2514,7 +2514,7 @@ Value for the session cookie's `SameSite` directive.
 
 See [Embedding Metabase in a different domain](../embedding/full-app-embedding.md#embedding-metabase-in-a-different-domain).
         Read more about [Full app embedding](../embedding/full-app-embedding.md).
-        Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).
+        Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie#samesitesamesite-value).
 
 ### `MB_SESSION_COOKIES`
 
@@ -3533,4 +3533,4 @@ Setting `MB_JETTY_SKIP_SNI=true` (the default setting) turns off the Server Name
 Type: string<br>
 Default: `null`
 
-Base-64 encoded public key for this sites SSL certificate. Specify this to enable HTTP Public Key Pinning. Using HPKP is no longer recommended. See http://mzl.la/1EnfqBf for more information.
+Base-64 encoded public key for this sites SSL certificate. Specify this to enable HTTP Public Key Pinning. Using HPKP is no longer recommended. See https://developer.mozilla.org/en-US/docs/Web/Security/Defenses/Certificate_Transparency for more information.

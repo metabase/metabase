@@ -31,11 +31,11 @@ To the right of each step in the query builder is a **Preview** button (looks li
 
 ## Pick data
 
-To start building a question with the query builder, you need to select the data you want to work with. You can pick a table from a database, a [model](../../data-modeling/models.md), a [metric](../../data-modeling/metrics.md), or another saved question. You can search by typing, or browse your databases and collections.
+To start building a question with the query builder, you need to select the data you want to work with. You can pick a table from a database, a [model](../../data-modeling/models/models.md), a [metric](../../data-modeling/semantic-layer/metrics.md), or another saved question. You can search by typing, or browse your databases and collections.
 
 ![data picker](../images/data-picker.png)
 
-If your Metabase has the [Library collection](../../data-studio/library.md), then by default you'll only see the Data (tables) and Metrics from the library. To query other data sources, select "Browse all".
+If your Metabase has the [Library collection](../../data-modeling/semantic-layer/library.md), then by default you'll only see the Data (tables) and Metrics from the library. To query other data sources, select "Browse all".
 
 ![library data picker](../images/library-data-picker.png)
 

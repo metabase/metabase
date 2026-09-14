@@ -16,8 +16,11 @@
   '[metabase.core.kondo-ratchet-test
     metabase.core.kondo-ratchet-check-test])
 
+(def ^:private source-layout-check-namespaces
+  '[metabase.core.namespace-uniqueness-test])
+
 (def ^:private backend-check-namespaces
-  (vec (concat module-check-namespaces ratchet-test-namespaces)))
+  (vec (concat module-check-namespaces ratchet-test-namespaces source-layout-check-namespaces)))
 
 (def ^:private default-suites
   "Suites the bare `project-tests` command runs, in order."

@@ -27,7 +27,7 @@ The map tile server sets the background imagery for pin and grid maps. It's not 
 To change the map tile server:
 
 1. Go to **Admin > Settings > Maps**.
-2. Under **Map tile server URL**, enter the URL template for your tile server.
+2. Under **Map tile server public URL**, enter the URL template for your tile server.
 
 ### Use a raster tile URL template
 

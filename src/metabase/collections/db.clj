@@ -4,6 +4,7 @@
   and transactions."
   (:require
    [malli.util :as mut]
+   [metabase.app-db.core :as app-db]
    [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.serialization :as serdes]
@@ -84,8 +85,13 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one-fn :location :model/Collection :id collection-id))
 
+(defn collection-location-columns
+  "The location, id, and type of the Collection with `collection-id`, or nil."
+  [collection-id]
+  (t2/select-one [:model/Collection :location :id :type] :id collection-id))
+
 (mu/defn root-collection-type-by-id
-  "The type of the top-level ::collections.schema/collection with `collection-id`, or nil if it is not top-level."
+  "The type of the top-level Collection with `collection-id`, or nil if it is not top-level."
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one-fn :type :model/Collection :id collection-id :location "/"))
 
@@ -269,7 +275,20 @@
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-fn->pk :personal_owner_id :model/Collection :personal_owner_id [:in user-ids]))
 
-;;; ---------------------------------------------- ::collections.schema/collection writes ----------------------------------------------
+(defn other-users-personal-collection-ids
+  "The IDs of the personal Collections owned by Users other than `user-id`."
+  [user-id]
+  (t2/select-fn-set :id :model/Collection
+                    {:where [:and [:!= :personal_owner_id nil] [:!= :personal_owner_id user-id]]}))
+
+(defn collections-matching
+  "The Collections matching the Honey SQL `query` map. The caller builds the whole query because it needs clause
+  builders like `visible-collection-filter-clause`, which live in `metabase.collections.models.collection` and so
+  can't be called from here without a require cycle (that namespace already requires this one)."
+  [query]
+  (t2/select :model/Collection query))
+
+;;; ---------------------------------------------- Collection writes ----------------------------------------------
 
 (mu/defn insert-collection!
   "Insert `collection` and return the new instance."
@@ -437,8 +456,13 @@
   (t2/select-pks-set :model/Dashboard
                      {:where [:and [:= :collection_id collection-id] (when skip-archived? [:not :archived])]}))
 
+(defn cards-in-collection
+  "The Cards in the Collection with `collection-id`."
+  [collection-id]
+  (t2/select :model/Card :collection_id collection-id))
+
 (mu/defn card-ids-in-collection
-  "The IDs of the Cards in the ::collections.schema/collection with `collection-id`, excluding archived ones when `skip-archived?` and
+  "The IDs of the Cards in the Collection with `collection-id`, excluding archived ones when `skip-archived?` and
   excluding Cards materialized by an exploration Summary."
   [collection-id  :- [:maybe ::lib.schema.id/collection]
    skip-archived? :- [:maybe :boolean]]
@@ -508,6 +532,61 @@
                                                           :where  [:and
                                                                    [:= :report_dashboardcard.card_id :report_card.id]
                                                                    [:= :report_dashboardcard.dashboard_id :report_card.dashboard_id]]}]]}))
+
+(defn unarchived-card-collection-types-in-reducible
+  "A reducible of the distinct Collection ID and type of the unarchived Cards in the Collections with
+  `collection-ids`, leaving out dashboard questions when `exclude-dashboard-questions?`."
+  [collection-ids exclude-dashboard-questions?]
+  (t2/reducible-query {:select-distinct [:collection_id :type]
+                       :from            [:report_card]
+                       :where           [:and
+                                         (when exclude-dashboard-questions?
+                                           [:= :dashboard_id nil])
+                                         [:= :archived false]
+                                         [:in :collection_id collection-ids]]}))
+
+(defn published-table-collection-ids-in
+  "The distinct `:collection_id`s of the published, unarchived Tables in the Collections with `collection-ids`."
+  [collection-ids]
+  (t2/query {:select-distinct [:collection_id]
+             :from            :metabase_table
+             :where           [:and
+                               [:= :is_published true]
+                               [:= :archived_at nil]
+                               [:in :collection_id collection-ids]]}))
+
+(defn transform-collection-ids-in
+  "The distinct `:collection_id`s of the Transforms with one of `source-types` in the Collections with
+  `collection-ids`."
+  [collection-ids source-types]
+  (t2/query {:select-distinct [:collection_id]
+             :from            :transform
+             :where           [:and
+                               [:in :collection_id collection-ids]
+                               [:in :source_type source-types]]}))
+
+(defn unarchived-dashboard-collection-ids-in
+  "The distinct `:collection_id`s of the unarchived Dashboards in the Collections with `collection-ids`."
+  [collection-ids]
+  (t2/query {:select-distinct [:collection_id]
+             :from            :report_dashboard
+             :where           [:and
+                               [:= :archived false]
+                               [:in :collection_id collection-ids]]}))
+
+(defn collection-children-rows
+  "The rows matching the collection-children Honey SQL `query`, built by `metabase.collections.children` from the
+  per-model item queries for a Collection's paginated child listing. Follows the same exception as
+  `metabase.search.db` for spec-driven Honey SQL that can't be reduced to plain-data parameters."
+  [query]
+  (app-db/query query))
+
+(defn collection-filter-metadata-rows
+  "The rows matching the collection-filter-metadata Honey SQL `query`, built by `metabase.collections.children` to
+  probe which item models have at least one visible child in a Collection. Follows the same exception as
+  `metabase.search.db` for spec-driven Honey SQL that can't be reduced to plain-data parameters."
+  [query]
+  (app-db/query query))
 
 ;;; ------------------------------------------------ Permissions ------------------------------------------------
 

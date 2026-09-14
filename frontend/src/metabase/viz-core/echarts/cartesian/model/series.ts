@@ -1,4 +1,4 @@
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { getNullDisplayValue } from "metabase/utils/constants";
 import { memoize } from "metabase/utils/memoize";
 import { isEmpty } from "metabase/utils/validate";
 import { formatValue } from "metabase/value-formatting";
@@ -85,7 +85,7 @@ export const formatBreakoutValue = (
   column: DatasetColumn,
 ): string => {
   return String(
-    formatValue(isEmpty(value) ? NULL_DISPLAY_VALUE : value, { column }),
+    formatValue(isEmpty(value) ? getNullDisplayValue() : value, { column }),
   );
 };
 

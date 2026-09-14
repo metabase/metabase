@@ -142,7 +142,7 @@
      [:projections {:optional true} [:maybe [:sequential :string]]]
      [:mbql? {:optional true} [:maybe :boolean]]
      ;; the table the query was compiled from; BigQuery's compiled native form carries it
-     [:table-name {:optional true} [:maybe :string]]
+     [:qp/table-name {:optional true} [:maybe :string]]
      ;; optional template tag declarations. Template tags are things like `{{x}}` in the query (the value of the
      ;; `:native` key), but their definition lives under this key.
      ;;
