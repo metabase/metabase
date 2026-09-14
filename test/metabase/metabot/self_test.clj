@@ -78,8 +78,6 @@
       (is (=? {:provider "google" :model "google/gemini-3.5-flash" :ai-proxy? false}
               (#'self/parse-provider-model "google/google/gemini-3.5-flash"))))
     (testing "resolves the provider type, not the admin's name for the connection"
-      ;; Every case above uses a connection whose key equals its type, so the two are
-      ;; indistinguishable there and nothing catches a provider read off the key.
       (llm.tu/with-connections [{:key    "openrouter-1"
                                  :type   "openrouter"
                                  :name   "openrouter-1"
