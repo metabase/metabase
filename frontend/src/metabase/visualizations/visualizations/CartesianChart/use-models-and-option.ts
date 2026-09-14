@@ -35,16 +35,20 @@ export function useModelsAndOption(
     timelineEvents,
     selectedTimelineEventIds = NO_SELECTED_TIMELINE_EVENT_IDS,
     onRender,
-    isFullscreen,
+    isDashboard,
+    isCompact,
     gridSize,
   }: VisualizationProps,
   containerRef: React.RefObject<HTMLDivElement>,
+  dashboardCardSize: Pick<VisualizationProps, "width" | "height">,
 ) {
   const tc = useTranslateContent();
 
   const renderingContext = useBrowserRenderingContext({
     fontFamily,
-    isFullscreen,
+    isDashboard,
+    isCompact,
+    dashboardCardSize,
   });
 
   const seriesToRender = useMemo(

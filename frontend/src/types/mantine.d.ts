@@ -23,6 +23,7 @@ declare module "@mantine/core" {
    **/
   export interface MantineThemeOther extends EmbeddingThemeOptions {
     colorScheme: "light" | "dark";
+    hasCustomChartFontSize?: boolean;
     updateColorSettings: (settings: ColorSettings) => void;
   }
 

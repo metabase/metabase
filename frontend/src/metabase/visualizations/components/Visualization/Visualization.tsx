@@ -651,6 +651,7 @@ class Visualization extends PureComponent<
       highlighted,
       isAction,
       isDashboard,
+      isCompact,
       isDocument,
       isEditing,
       isEmbeddingSdk,
@@ -934,6 +935,7 @@ class Visualization extends PureComponent<
                       hovered={hovered}
                       highlighted={highlighted}
                       isDashboard={!!isDashboard}
+                      isCompact={isCompact}
                       isDocument={!!isDocument}
                       isEditing={!!isEditing}
                       isEmbeddingSdk={isEmbeddingSdk}

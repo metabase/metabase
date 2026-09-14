@@ -36,11 +36,10 @@ export const CHART_STYLE = {
     barWidth: 0.8,
     histogramBarWidth: 0.995,
   },
-  axisTicksMarginX: 8,
-  axisTicksMarginY: 12,
   axisTicks: {
     weight: 400,
   },
+  hiddenYAxisWidth: 12,
   seriesLabels: {
     weight: 700,
     size: 13,

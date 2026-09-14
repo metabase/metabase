@@ -183,6 +183,7 @@ function MetricDimensionCard({
               hideLegend
               onChangeCardAndRun={_.noop}
               isMetricsViewer
+              isCompact
             />
           ) : (
             <ChartSkeleton display={displayType} className={S.visualization} />

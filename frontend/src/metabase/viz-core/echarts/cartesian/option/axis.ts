@@ -100,7 +100,7 @@ export const getTicksDefaultOption = ({
   return {
     hideOverlap: true,
     color: getColor("text-primary"),
-    fontSize: theme.cartesian.label.fontSize,
+    fontSize: theme.cartesian.ticks.fontSize,
     fontWeight: CHART_STYLE.axisTicks.weight,
     fontFamily,
   };
@@ -123,7 +123,7 @@ const getHistogramTicksOptions = (
   chartLayout: ChartLayout,
   { theme }: RenderingContext,
 ) => {
-  const { fontSize } = theme.cartesian.label;
+  const { fontSize } = theme.cartesian.ticks;
 
   if (settings["graph.x_axis.scale"] !== "histogram") {
     return {};
@@ -137,7 +137,7 @@ const getHistogramTicksOptions = (
     return {
       ...options,
       padding: [0, topOffset, 0, 0],
-      margin: -histogramDimensionWidth / 2 + CHART_STYLE.axisTicksMarginX,
+      margin: -histogramDimensionWidth / 2 + theme.cartesian.ticks.marginX,
     };
   } else if (settings["graph.x_axis.axis_enabled"] === "rotate-90") {
     const rightOffset = histogramDimensionWidth / 2 - fontSize / 2;
@@ -269,7 +269,7 @@ export const buildNumericDimensionAxis = (
     type: "value",
     scale: true,
     axisLabel: {
-      margin: CHART_STYLE.axisTicksMarginX,
+      margin: renderingContext.theme.cartesian.ticks.marginX,
       ...getDimensionTicksDefaultOption(settings, renderingContext),
       ...(alignEndpoints
         ? {
@@ -312,7 +312,7 @@ export const buildTimeSeriesDimensionAxis = (
     axisLabel: {
       margin: hasTimelineEvents
         ? CHART_STYLE.timelineEvents.height
-        : CHART_STYLE.axisTicksMarginX,
+        : renderingContext.theme.cartesian.ticks.marginX,
       ...getDimensionTicksDefaultOption(settings, renderingContext),
       formatter: (rawValue: number) => {
         const value = xAxisModel.fromEChartsAxisValue(rawValue);
@@ -360,7 +360,7 @@ export const buildCategoricalDimensionAxis = (
     ...getCommonDimensionAxisOptions(chartLayout, settings, renderingContext),
     type: "category",
     axisLabel: {
-      margin: CHART_STYLE.axisTicksMarginX,
+      margin: renderingContext.theme.cartesian.ticks.marginX,
       ...getDimensionTicksDefaultOption(settings, renderingContext),
       interval: () => true,
       ...(settings["graph.x_axis.scale"] !== "histogram"
@@ -436,7 +436,7 @@ export const buildMetricAxis = (
       show: false,
     },
     axisLabel: {
-      margin: CHART_STYLE.axisTicksMarginY,
+      margin: renderingContext.theme.cartesian.ticks.marginY,
       show: !!settings["graph.y_axis.axis_enabled"],
       ...getTicksDefaultOption(renderingContext),
       formatter: (rawValue) =>

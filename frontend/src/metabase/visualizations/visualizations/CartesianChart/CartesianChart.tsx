@@ -103,6 +103,7 @@ function CartesianChartInner(props: VisualizationProps) {
       timelineEvents,
     },
     containerRef,
+    { width: outerWidth, height: outerHeight },
   );
   useChartDebug({ isQueryBuilder, rawSeries, option, chartModel });
 

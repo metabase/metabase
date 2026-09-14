@@ -7,6 +7,10 @@ import {
 import { color, staticVizOverrides } from "metabase/ui/colors";
 
 import type { VisualizationTheme } from "../../types";
+import {
+  LARGE_CARTESIAN_CARD_MIN_HEIGHT,
+  LARGE_CARTESIAN_CARD_MIN_WIDTH,
+} from "../constants/layout";
 
 import { getSizeInPx } from "./size-in-px";
 
@@ -24,16 +28,28 @@ function getPieBorderColor(
   return questionBg;
 }
 
+export function isLargeCartesianCard(size?: { width: number; height: number }) {
+  return (
+    size != null &&
+    size.width >= LARGE_CARTESIAN_CARD_MIN_WIDTH &&
+    size.height >= LARGE_CARTESIAN_CARD_MIN_HEIGHT
+  );
+}
+
 /**
  * Computes the visualization style from the Mantine theme.
  */
 export function getVisualizationTheme({
   theme,
   isDashboard,
+  isCompact,
+  isLargeCard,
   isStaticViz,
 }: {
   theme: Partial<MantineThemeOther>;
   isDashboard?: boolean;
+  isCompact?: boolean;
+  isLargeCard?: boolean;
   isStaticViz?: boolean;
 }): VisualizationTheme {
   const { cartesian, dashboard, question } = theme;
@@ -49,9 +65,24 @@ export function getVisualizationTheme({
   const px = (value: string) =>
     getSizeInPx(value, baseFontSize) ?? baseFontSize ?? 14;
 
+  const isCard = isDashboard || isCompact;
+  let tickMarginY = 24;
+  if (isCard) {
+    tickMarginY = isLargeCard ? 16 : 12;
+  }
+  let tickFontSize = isCard ? 12 : 14;
+  if (theme.hasCustomChartFontSize) {
+    tickFontSize = px(cartesian.label.fontSize);
+  }
+
   return {
     cartesian: {
       label: { fontSize: px(cartesian.label.fontSize) },
+      ticks: {
+        fontSize: tickFontSize,
+        marginX: isCard ? 8 : 12,
+        marginY: tickMarginY,
+      },
       goalLine: {
         label: { fontSize: px(cartesian.goalLine.label.fontSize) },
       },
