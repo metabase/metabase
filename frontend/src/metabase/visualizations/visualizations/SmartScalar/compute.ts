@@ -706,12 +706,15 @@ function computeComparisonStrPreviousValue({
   prevDate: string;
   nextDate: string | undefined;
 }) {
-  const isSameDay = dayjs.parseZone(prevDate).isSame(nextDate, "day");
-  const isSameYear = dayjs.parseZone(prevDate).isSame(nextDate, "year");
+  const prevDateTime = dayjs.parseZone(prevDate);
+  const nextDateTime = dayjs.parseZone(nextDate);
 
+  // dayjs compares day and year granularity in the machine's local calendar,
+  // so these are formatted first to keep the comparison in each timestamp's own offset.
   const options = {
-    removeDay: isSameDay,
-    removeYear: isSameYear,
+    removeDay:
+      prevDateTime.format("YYYY-MM-DD") === nextDateTime.format("YYYY-MM-DD"),
+    removeYear: prevDateTime.format("YYYY") === nextDateTime.format("YYYY"),
   };
 
   const formattedDateStr = formatDateStr({
