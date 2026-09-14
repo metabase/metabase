@@ -118,7 +118,7 @@
         (is (= 400.0  (mt/metric-value system :metabase-metabot/llm-cache-creation-tokens labels)))
         (is (= 1600.0 (mt/metric-value system :metabase-metabot/llm-cache-read-tokens labels))))
       (clear-llm-metrics!)
-      (testing "a call with no provider is labelled unknown rather than dropping the metric"
+      (testing "a call with no provider is counted under the unknown provider"
         (llm-token-usage/track-prometheus! {:model-id          "anthropic/claude-haiku-4-5"
                                             :tag               "test-tag"
                                             :prompt-tokens     100
