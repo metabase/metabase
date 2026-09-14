@@ -1217,19 +1217,15 @@
         (u/group-by :source_card_id :id conj #{} deps)))))
 
 (defn- dependent-cards-to-update
-  "Cards to rewrite when `root-card-id` moves off `old-db-id`, source cards before the cards that select from them."
+  "Return cards to rewrite when `root-card-id` moves off `old-db-id`, with sources before their dependents.
+  A card's `database_id` comes from its source card, so updating a dependent first preserves the old ID."
   [root-card-id old-db-id]
-  (let [all-dep-ids (graph/transitive (->SourceCardDependentsGraph) [root-card-id])]
-    (when (seq all-dep-ids)
-      (let [id->card (m/index-by :id (queries.db/card-queries all-dep-ids))]
-        ;; `database_id` is derived from the source card's row, so a source has to be rewritten before anything that
-        ;; selects from it. A card has one source card, so the level order the walk returns is already parent-first.
-        (into []
-              (keep (fn [dep-id]
-                      (let [{:keys [dataset_query] :as card} (id->card dep-id)]
-                        (when (= (:database dataset_query) old-db-id)
-                          card))))
-              all-dep-ids)))))
+  (when-let [all-dep-ids (seq (graph/transitive (->SourceCardDependentsGraph) [root-card-id]))]
+    (let [id->card (m/index-by :id (queries.db/card-queries all-dep-ids))]
+      (into []
+            (comp (map id->card)
+                  (filter #(= (get-in % [:dataset_query :database]) old-db-id)))
+            all-dep-ids))))
 
 (defn- cascade-database-change-to-dependents!
   "When a card's `database_id` changes, update all cards that use it as a `:source-card` (transitively) so their
