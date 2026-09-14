@@ -100,7 +100,6 @@
     [:type ::parameter.type]
     ;; TODO -- I don't think `:null` can have `:enum`
     [:enum {:optional true} [:sequential ::request.schema/json-value]]
-    ;; `mjs/transform` can attach `:definitions` to any node whose subtree uses a `$ref`, not just `:object`/`:ref`.
     [:definitions {:optional true} [:map-of :string [:ref ::parameter.schema]]]]])
 
 (mr/def ::parameter.schema.string
@@ -172,7 +171,6 @@
 
 (mr/def ::parameter.schema.typed
   [:multi
-   ;; `:type` is a JSON Schema string before `fix-json-schema` runs, a keyword after.
    {:dispatch (comp keyword :type)}
    [:string  ::parameter.schema.string]
    [:number  ::parameter.schema.number]

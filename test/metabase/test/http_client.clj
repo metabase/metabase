@@ -301,8 +301,6 @@
    [:method                            (into [:enum] (keys method->request-fn))]
    [:expected-status  {:optional true} [:maybe ms/PositiveInt]]
    [:url                               ms/NonBlankString]
-   ;; string-keyed: the client stringifies keys of both when it assembles them (see `parse-http-client-args` and
-   ;; `build-body-params`), since the real request body/query-string is JSON/form-encoded either way.
    [:http-body        {:optional true} [:maybe [:or (ms/string-keyed-map ::request.schema/json-value) [:sequential ::request.schema/json-value]]]]
    [:query-parameters {:optional true} [:maybe (ms/string-keyed-map ::request.schema/json-value)]]
    [:request-options  {:optional true} [:maybe RequestOptions]]])
@@ -466,7 +464,6 @@
       (:url parsed)              (update :url url-escape)
       ;; un-nest {:request-options {:request-options <my-options>}} => {:request-options <my-options>}
       (:request-options parsed)  (update :request-options :request-options)
-      ;; a caller writes `:http-body` as a keyword-keyed literal map, like the request body it stands for.
       (map? (:http-body parsed)) (update :http-body update-keys name)
       ;; convert query parameters into a flat map [{:k :a, :v 1} {:k :b, :v 2} {:k :b, :v 3}] => {"a" 1, "b" [2 3]}
       (:query-parameters parsed) (update :query-parameters (fn [query-params]

@@ -67,8 +67,6 @@
 (mr/def ::route
   [:map {:closed true}
    [:path string?]
-   ;; keyed by the route param name as a string, not `:keyword`: Clout itself needs these back as keywords (see
-   ;; `ns-handler-map`), but a keyword-keyed map-of can't declare its own shape.
    [:regexes {:optional true} [:map-of :string ::route-regex-value]]])
 
 (mr/def ::param-type
@@ -862,14 +860,12 @@
        (m/map-vals (fn [routes]
                      (mapv (fn [route]
                              [(clout/route-compile (get-in route [:form :route :path])
-                                                   ;; Clout wants its route-param keys back as keywords.
                                                    (update-keys (get-in route [:form :route :regexes] {}) keyword))
                               (:handler route)
                               (get-in route [:form :metadata])])
                            routes)))))
 
 (defn- decode-route-params [route-params]
-  ;; Clout hands these back keyed by keyword; normalize to string like every other param source.
   (-> route-params (update-vals ring.util.codec/url-decode) (update-keys name)))
 
 (mu/defn- find-matching-handler :- [:maybe [:tuple ::request ::handler]]

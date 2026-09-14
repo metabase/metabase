@@ -65,7 +65,6 @@
    [:multipart-params        {:optional true} [:map-of :string [:or :string ::multipart-file]]]
    [:route-params            {:optional true} [:map-of :string :string]]
    [:cookies                 {:optional true} [:map-of :string ::cookie-attrs]]
-   ;; a literal keyword rather than a require, to avoid a cycle: `metabase.api.macros` requires this namespace.
    [:route-metadata          {:optional true} [:maybe :metabase.api.macros/route-metadata]]
    [:compojure/path          {:optional true} :string]
    [:metabase-session-key    {:optional true} [:maybe :string]]
