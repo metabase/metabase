@@ -52,33 +52,6 @@
       (body-fn {:upload-calls   upload-calls
                 :download-calls download-calls}))))
 
-(defn- failed-upload-result!
-  "Run one CSV file through [[slackbot.uploads/handle-file-uploads]] with
-   `create-csv-upload!` throwing `thrown`."
-  [thrown]
-  (with-upload-mocks!
-    {:uploads-enabled? true}
-    (fn [_]
-      (mt/with-dynamic-fn-redefs [upload.impl/create-csv-upload! (fn [_] (throw thrown))]
-        (slackbot.uploads/handle-file-uploads [tu/slack-csv-file])))))
-
-(deftest csv-upload-failure-message-test
-  (testing "a deliberate upload error keeps its message, filename attached"
-    (let [result (failed-upload-result! (ex-info "Uploads are not enabled." {:status-code 422}))]
-      (is (= "Uploads are not enabled."
-             (get-in result [:upload-result :results 0 :error])))
-      (is (str/includes? (-> result :system-messages first :content)
-                         "data.csv: Uploads are not enabled."))))
-  (testing "a driver error rewrapped with its raw message is replaced with the generic line"
-    (let [raw    "Connection to db.internal.example.com:5432 refused. Check that the hostname and port are correct."
-          result (failed-upload-result! (ex-info raw {:status-code 400} (java.sql.SQLException. raw)))]
-      (is (= @#'slackbot.uploads/generic-upload-error
-             (get-in result [:upload-result :results 0 :error])))))
-  (testing "a raw driver exception is replaced with the generic line"
-    (let [result (failed-upload-result! (java.sql.SQLException. "FATAL: password authentication failed for user \"metabase\""))]
-      (is (= @#'slackbot.uploads/generic-upload-error
-             (get-in result [:upload-result :results 0 :error]))))))
-
 (deftest ^:synchronized csv-upload-disabled-test
   (testing "POST /events with file upload when uploads are disabled"
     (tu/with-slackbot-setup
@@ -508,21 +481,28 @@
                         :table-prefix "slackbot_"}
                        {:name "malformed.csv", :filetype "csv", :url_private "https://example.com/x.csv", :size 100}))))))))))
 
-(deftest upload-file-4xx-with-cause-test
-  (testing "a 4xx that carries a cause is a relayed driver error, so its message is not repeated back"
-    (mt/with-dynamic-fn-redefs
-      [slackbot.client/download-file-stream (fn [_client _url]
-                                              (io/input-stream (.getBytes "col1,col2\nval1,val2")))
-       upload.impl/create-csv-upload!       (fn [_params]
-                                              (throw (ex-info "connection to db.internal:5432 refused"
-                                                              {:status-code 400}
-                                                              (ex-info "connection to db.internal:5432 refused" {}))))]
-      (is (= {:filename "data.csv"
-              :error    "I couldn't upload data.csv because something went wrong."}
-             (#'slackbot.uploads/upload-file!
-              test-client
-              test-target
-              {:name "data.csv", :filetype "csv", :url_private "https://example.com/x.csv", :size 100}))))))
+(deftest upload-file-failure-message-test
+  (doseq [[description thrown expected]
+          [["a deliberate upload error keeps its message, filename attached"
+            (ex-info "Uploads are not enabled." {:status-code 422})
+            "I couldn't upload data.csv: Uploads are not enabled."]
+           ["a driver error rewrapped as a 4xx with its raw message is replaced with the generic line"
+            (let [raw "Connection to db.internal.example.com:5432 refused. Check that the hostname and port are correct."]
+              (ex-info raw {:status-code 400} (java.sql.SQLException. raw)))
+            "I couldn't upload data.csv because something went wrong."]
+           ["a raw driver exception is replaced with the generic line"
+            (java.sql.SQLException. "FATAL: password authentication failed for user \"metabase\"")
+            "I couldn't upload data.csv because something went wrong."]]]
+    (testing description
+      (mt/with-dynamic-fn-redefs
+        [slackbot.client/download-file-stream (fn [_client _url]
+                                                (io/input-stream (.getBytes "col1,col2\nval1,val2")))
+         upload.impl/create-csv-upload!       (fn [_params] (throw thrown))]
+        (is (= {:filename "data.csv", :error expected}
+               (#'slackbot.uploads/upload-file!
+                test-client
+                test-target
+                {:name "data.csv", :filetype "csv", :url_private "https://example.com/x.csv", :size 100})))))))
 
 (deftest build-upload-history-test
   (is (= [{:role    :assistant
