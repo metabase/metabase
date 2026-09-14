@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
+   [metabase.metabot.self.output-limits :as output-limits]
    [metabase.metabot.self.schema :as schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -327,20 +328,23 @@
 (def supported-models
   "Anthropic chat models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the account's `/v1/models` catalog."
-  {"claude-fable-5"             {:display-name "Claude Fable 5"    :max-tokens 128000 :context-window 1000000}
-   "claude-opus-5"              {:display-name "Claude Opus 5"     :max-tokens 128000 :context-window 1000000}
-   "claude-opus-4-8"            {:display-name "Claude Opus 4.8"   :max-tokens 128000 :context-window 1000000}
-   "claude-opus-4-7"            {:display-name "Claude Opus 4.7"   :max-tokens 128000 :context-window 1000000}
-   "claude-opus-4-6"            {:display-name "Claude Opus 4.6"   :max-tokens 128000 :context-window 1000000}
-   "claude-opus-4-5-20251101"   {:display-name "Claude Opus 4.5"   :max-tokens  64000 :context-window  200000}
-   "claude-opus-4-1-20250805"   {:display-name "Claude Opus 4.1"   :max-tokens  32000 :context-window  200000}
-   "claude-sonnet-5"            {:display-name "Claude Sonnet 5"   :max-tokens 128000 :context-window 1000000}
-   "claude-sonnet-4-6"          {:display-name "Claude Sonnet 4.6" :max-tokens 128000 :context-window 1000000}
-   "claude-sonnet-4-5-20250929" {:display-name "Claude Sonnet 4.5" :max-tokens  64000 :context-window  200000}
-   "claude-haiku-4-5-20251001"  {:display-name "Claude Haiku 4.5"  :max-tokens  64000 :context-window  200000}})
+  {"claude-fable-5"             {:display-name "Claude Fable 5"    :context-window 1000000}
+   "claude-opus-5"              {:display-name "Claude Opus 5"     :context-window 1000000}
+   "claude-opus-4-8"            {:display-name "Claude Opus 4.8"   :context-window 1000000}
+   "claude-opus-4-7"            {:display-name "Claude Opus 4.7"   :context-window 1000000}
+   "claude-opus-4-6"            {:display-name "Claude Opus 4.6"   :context-window 1000000}
+   "claude-opus-4-5-20251101"   {:display-name "Claude Opus 4.5"   :context-window  200000}
+   "claude-opus-4-1-20250805"   {:display-name "Claude Opus 4.1"   :context-window  200000}
+   "claude-sonnet-5"            {:display-name "Claude Sonnet 5"   :context-window 1000000}
+   "claude-sonnet-4-6"          {:display-name "Claude Sonnet 4.6" :context-window 1000000}
+   "claude-sonnet-4-5-20250929" {:display-name "Claude Sonnet 4.5" :context-window  200000}
+   "claude-haiku-4-5-20251001"  {:display-name "Claude Haiku 4.5"  :context-window  200000}})
 
 (def ^:private default-max-tokens
-  "`max_tokens` for an unresolved model — low enough to be safe on any of them."
+  "The `max_tokens` cap for a model with no documented maximum.
+
+  A cap is sent rather than omitted because the Messages API reference does not mark `max_tokens` as optional:
+  https://platform.claude.com/docs/en/api/messages"
   64000)
 
 (defn- supported-model?
@@ -385,10 +389,18 @@
   [model]
   (str/replace-first (u/lower-case-en (str model)) #"^anthropic\." ""))
 
+(defn- output-limits-key
+  "The [[output-limits/max-output-tokens]] key for `model`: the vendor's own undated model id.
+
+      anthropic.claude-haiku-4-5-20251001 → claude-haiku-4-5"
+  [model]
+  ;; not folded into strip-vendor-prefix: context-window-tokens looks models up by their dated ids
+  (str/replace (strip-vendor-prefix model) #"-\d{8}$" ""))
+
 (defn- model-max-tokens
   "The `max_tokens` ceiling for `model`, or nil when it isn't one we know."
   [model]
-  (get-in supported-models [(strip-vendor-prefix model) :max-tokens]))
+  (output-limits/max-output-tokens (output-limits-key model)))
 
 (defn context-window-tokens
   "The input context window for `model`, or nil when it isn't one we know."
