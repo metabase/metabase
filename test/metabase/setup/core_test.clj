@@ -47,10 +47,7 @@
       ;; the getter
       (is (contains? #{0 1} (call-count)))))
   (testing "Return falsey for an empty instance. Values should be cached for current app DB to support swapping in tests/REPL"
-    ;; create a new completely empty database.
-    (mt/with-temp-empty-app-db [_conn :h2]
-      ;; make sure the DB is setup (e.g., run all the Liquibase migrations)
-      (mdb/setup-db! :create-sample-content? true)
+    (mt/with-sample-h2-app-db!
       (t2/with-call-count [call-count]
         (dotimes [_ 5]
           (is (= false
@@ -67,8 +64,7 @@
 
 (deftest clear-token-test
   (testing "clear-token! removes the setup token so an unusable value isn't left in (public) Settings (UXW-4359)"
-    (mt/with-temp-empty-app-db [_conn :h2]
-      (mdb/setup-db! :create-sample-content? false)
+    (mt/with-empty-h2-app-db!
       (let [token (setup/create-token!)]
         (testing "a token exists and validates before it is cleared"
           (is (string? token))
@@ -85,26 +81,22 @@
             (is (= new-token (setup/setup-token)))))))))
 
 (deftest has-example-dashboard-id-setting-test
-  (mt/with-temp-empty-app-db [_conn :h2]
-    (mdb/setup-db! :create-sample-content? true)
+  (mt/with-sample-h2-app-db!
     (testing "The example-dashboard-id setting should be set if the example content is loaded"
       (is (= 1
              (appearance/example-dashboard-id)))))
   (testing "The example-dashboard-id setting should be nil if the example content isn't loaded"
-    (mt/with-temp-empty-app-db [_conn :h2]
-      (mdb/setup-db! :create-sample-content? false)
+    (mt/with-empty-h2-app-db!
       (is (nil? (appearance/example-dashboard-id)))))
   (testing "The example-dashboard-id setting should be reset to nil if the example dashboard is archived"
-    (mt/with-temp-empty-app-db [_conn :h2]
-      (mdb/setup-db! :create-sample-content? true)
+    (mt/with-sample-h2-app-db!
       (is (= 1
              (appearance/example-dashboard-id)))
       (t2/update! :model/Dashboard 1 {:archived true})
       (is (nil? (appearance/example-dashboard-id))))))
 
 (deftest sample-content-permissions-test
-  (mt/with-temp-empty-app-db [_conn :h2]
-    (mdb/setup-db! :create-sample-content? true)
+  (mt/with-sample-h2-app-db!
     (let [dashboard  (t2/select-one :model/Dashboard :creator_id config/internal-mb-user-id)
           collection (t2/select-one :model/Collection (:collection_id dashboard))
           card       (t2/select-one :model/Card :creator_id config/internal-mb-user-id)]

@@ -293,33 +293,49 @@
   [& body]
   `(data.impl/do-with-temp-copy-of-db (^:once fn* [] ~@body)))
 
-(def h2-app-db-script
+(defn- create-h2-db-script! [create-sample-content?]
+  (schema-migrations-test.impl/with-temp-empty-app-db [conn :h2]
+    ;; since the actual group defs are not dynamic, we need with-redefs to change them here
+    (with-redefs [perms-group/all-users (#'perms-group/magic-group perms-group/all-users-magic-group-type)
+                  perms-group/admin     (#'perms-group/magic-group perms-group/admin-magic-group-type)]
+      (mdb/setup-db! :create-sample-content? create-sample-content?)
+      ;; setup-db! writes through the encrypting transforms, so with MB_ENCRYPTION_SECRET_KEY set the dump would
+      ;; carry rows only that key can read. A test that binds a key of its own then sees rows it cannot decrypt.
+      (mdb/decrypt-db :h2 (mdb/data-source))
+      (let [f (java.io.File/createTempFile "db-export" ".sql")]
+        (next.jdbc/execute! conn ["SCRIPT TO ?" (str f)])
+        f))))
+
+(def h2-app-db-script-empty
   "To save time during tests, instead of running all migrations for each new empty H2 app db, we perform the
   migrations once and dump the schema into a script. Subsequently, this script can be used to instantiate new copies
-  of H2 app db. The result is a dereffable temp file."
-  (delay
-    (schema-migrations-test.impl/with-temp-empty-app-db [conn :h2]
-      ;; since the actual group defs are not dynamic, we need with-redefs to change them here
-      (with-redefs [perms-group/all-users (#'perms-group/magic-group perms-group/all-users-magic-group-type)
-                    perms-group/admin     (#'perms-group/magic-group perms-group/admin-magic-group-type)]
-        (mdb/setup-db! :create-sample-content? false)
-        ;; setup-db! writes through the encrypting transforms, so with MB_ENCRYPTION_SECRET_KEY set the dump would
-        ;; carry rows only that key can read. A test that binds a key of its own then sees rows it cannot decrypt.
-        (mdb/decrypt-db :h2 (mdb/data-source))
-        (let [f (java.io.File/createTempFile "db-export" ".sql")]
-          (next.jdbc/execute! conn ["SCRIPT TO ?" (str f)])
-          f)))))
+  of H2 app db. The result is a dereffable temp file.
+  This script saves the *empty* H2 database (without sample content)."
+  (delay (create-h2-db-script! false)))
+
+(def h2-app-db-script-with-sample-content
+  "Same [[h2-app-db-script-empty]], but also includes generated sample content."
+  (delay (create-h2-db-script! true)))
 
 (defmacro with-empty-h2-app-db!
   "Runs `body` under a new, blank, H2 application database (randomly named), in which all model tables have been
-  created from `h2-app-db-script`. After `body` is finished, the original app DB bindings are restored.
+  created from `h2-app-db-script-empty`. After `body` is finished, the original app DB bindings are restored.
 
   Makes use of functionality in the [[metabase.app-db.schema-migrations-test.impl]] namespace since that already does what
   we need."
   {:style/indent 0}
   [& body]
   `(schema-migrations-test.impl/with-temp-empty-app-db [conn# :h2]
-     (next.jdbc/execute! conn# ["RUNSCRIPT FROM ?" (str @h2-app-db-script)])
+     (next.jdbc/execute! conn# ["RUNSCRIPT FROM ?" (str @h2-app-db-script-empty)])
+     (mdb/finish-db-setup!)
+     ~@body))
+
+(defmacro with-sample-h2-app-db!
+  "Same as `with-empty-h2-app-db!`, but creates a H2 application database prepopulated with sample data."
+  {:style/indent 0}
+  [& body]
+  `(schema-migrations-test.impl/with-temp-empty-app-db [conn# :h2]
+     (next.jdbc/execute! conn# ["RUNSCRIPT FROM ?" (str @h2-app-db-script-with-sample-content)])
      (mdb/finish-db-setup!)
      ;; This app DB must remain empty, so `with-temp` must not materialize the test-data Database in it.
      (binding [data.impl/*skip-dataset-prewarm?* true]
