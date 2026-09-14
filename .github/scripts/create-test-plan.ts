@@ -19,6 +19,7 @@ const UNIT_GLOBS = [
   "!.github/**", // the ci-scripts project, which test-unit ignores
   "!release/**", // has its own jest config
   "!enterprise/frontend/src/custom-viz/**", // modulePathIgnorePatterns in jest.config.js
+  "!**/*.leak.unit.spec.{js,jsx,ts,tsx}", // run only by jest.memory.conf.js
 ];
 
 const STORY_ROOTS = ["frontend", "enterprise/frontend"];
