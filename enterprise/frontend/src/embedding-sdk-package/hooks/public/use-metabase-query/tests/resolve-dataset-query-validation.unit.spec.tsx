@@ -10,6 +10,25 @@ import { avg, breakout, filter, orderBy, sum } from "..";
 beforeEach(resetTestState);
 
 describe("resolveDatasetQuery validation", () => {
+  it("does not emit an explicit undefined time unit", () => {
+    const field = TEST_SCHEMA.tables.orders.fields.createdAt;
+
+    expect(breakout(field, { unit: undefined })).not.toHaveProperty("unit");
+    expect(orderBy(field, "asc", { unit: undefined })).not.toHaveProperty(
+      "unit",
+    );
+  });
+
+  it("rejects unknown dynamic query properties", async () => {
+    await expect(
+      resolveDatasetQueryInBundle(createMockStore())(
+        { source: TEST_SCHEMA.tables.orders },
+        // The runtime validator must receive a shape the public type rejects.
+        { filter: [] } as never,
+      ),
+    ).rejects.toThrow("Dynamic queries only support");
+  });
+
   it("rejects invalid limits with a clear error message", async () => {
     await expect(
       resolveDatasetQueryInBundle(createMockStore())({

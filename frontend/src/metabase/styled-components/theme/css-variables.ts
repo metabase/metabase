@@ -74,6 +74,7 @@ export function getMetabaseSdkCssVariables({
   return css`
     :root {
       --mb-default-font-family: ${getFontFamilyValue(font)};
+      --mb-default-monospace-font-family: ${theme.fontFamilyMonospace};
       ${createColorVars(colorScheme, whitelabelColors)}
       ${getSdkDesignSystemCssVariables(theme)}
       ${getDynamicCssVariables(theme)}

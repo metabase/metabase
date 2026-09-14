@@ -25,6 +25,7 @@
    [:name :string]
    [:mimetype {:optional true} [:maybe :string]]
    [:filetype {:optional true} [:maybe :string]]
+   [:mode {:optional true} [:maybe :string]]
    [:url_private :string]
    [:size :int]])
 

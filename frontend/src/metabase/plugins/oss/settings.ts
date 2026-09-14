@@ -4,7 +4,9 @@ import { definePluginSlot } from "metabase/plugin-slots";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 
 const getDefaultPluginAdminSettings = () => ({
-  InteractiveEmbeddingSettingsCard: null,
+  // The origins list is its own card on the hub's Security tab, below the
+  // methods card, so it is registered separately from the settings card.
+  InteractiveEmbeddingAuthorizedOriginsWidget: null,
   LicenseAndBillingSettings: PluginPlaceholder,
   useUpsellFlow: (_props: {
     campaign: string;
@@ -17,7 +19,7 @@ const getDefaultPluginAdminSettings = () => ({
 });
 
 export const PLUGIN_ADMIN_SETTINGS: {
-  InteractiveEmbeddingSettingsCard: ComponentType | null;
+  InteractiveEmbeddingAuthorizedOriginsWidget: ComponentType | null;
   LicenseAndBillingSettings: ComponentType;
   useUpsellFlow: (props: { campaign: string; location: string }) => {
     triggerUpsellFlow: (() => void) | undefined;

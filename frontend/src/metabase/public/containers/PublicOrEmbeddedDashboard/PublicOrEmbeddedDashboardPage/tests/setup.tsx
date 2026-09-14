@@ -1,4 +1,3 @@
-import fetchMock from "fetch-mock";
 import _ from "underscore";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
@@ -89,18 +88,6 @@ export async function setup(
   });
 
   setupEmbedDashboardEndpoints(MOCK_TOKEN, dashboard, dashcards);
-
-  if (hash.locale) {
-    fetchMock.get(`path:/app/locales/${hash.locale}.json`, {
-      headers: {
-        language: "ko",
-        "plural-forms": "nplurals=1; plural=0;",
-      },
-      translations: {
-        "": {},
-      },
-    });
-  }
 
   const pathname = `/embed/dashboard/${MOCK_TOKEN}`;
   const hashString = _.isEmpty(hash) ? "" : `#${new URLSearchParams(hash)}`;

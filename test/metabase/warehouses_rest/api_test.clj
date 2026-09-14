@@ -30,6 +30,7 @@
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.task.sync-databases :as task.sync-databases]
    [metabase.sync.task.sync-databases-test :as task.sync-databases-test]
+   [metabase.sync.task.sync-databases-trigger :as sync-databases-trigger]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.data.impl :as data.impl]
@@ -373,7 +374,7 @@
 
 (defn- sync-and-analyze-trigger-name
   [db]
-  (.getName ^TriggerKey (#'task.sync-databases/trigger-key db @#'task.sync-databases/sync-analyze-task-info)))
+  (.getName ^TriggerKey (#'sync-databases-trigger/trigger-key db sync-databases-trigger/sync-analyze-task-info)))
 
 (defmacro with-test-driver-available!
   [& body]
@@ -1027,6 +1028,23 @@
                                         ["CATEGORY" "PRODUCTS :type/Text :type/Category"]
                                         ["CATEGORY_ID" "VENUES :type/Integer :type/FK"]]}]
         (is (= expected (prefix-fn (mt/id) prefix)))))))
+
+(deftest autocomplete-suggestions-honors-user-set-semantic-type-and-visibility-test
+  (testing "GET /api/database/:id/autocomplete_suggestions honors the user's semantic_type/visibility_type"
+    (let [field-id  (mt/id :venues :price)
+          base-type (t2/select-one-fn :base_type :model/Field field-id)
+          venues-row (fn [] (first (filter (fn [[_ desc]] (str/starts-with? desc "VENUES "))
+                                           (mt/user-http-request :rasta :get 200
+                                                                 (format "database/%d/autocomplete_suggestions" (mt/id))
+                                                                 :prefix "price"))))]
+      (testing "a user-set semantic_type replaces the sync value"
+        (mt/with-temp [:model/FieldUserSettings _ {:field_id          field-id
+                                                   :semantic_type     :type/Currency
+                                                   :semantic_type_set true}]
+          (is (= ["PRICE" (str "VENUES " base-type " :type/Currency")] (venues-row)))))
+      (testing "a user-set sensitive visibility_type hides the Field"
+        (mt/with-temp [:model/FieldUserSettings _ {:field_id field-id :visibility_type :sensitive}]
+          (is (nil? (venues-row))))))))
 
 (deftest ^:parallel autocomplete-suggestions-test-2
   (testing "GET /api/database/:id/autocomplete_suggestions"
