@@ -138,10 +138,10 @@
   `metabase_table_user_settings` flag recording that the user made the call: for these a user's NULL beats the sync
   value, which a NULL alone could not say. A column needs no flag when a NULL in it can only mean the user set
   nothing: when it is NOT NULL on `metabase_table`, when sync never writes it (`owner_email`, `owner_user_id`), or,
-  for `collection_id`, because it rides along with `is_published`."
-  {:display_name       :display_name_set
-   :description        :description_set
-   :entity_type        :entity_type_set
+  for `collection_id`, because it rides along with `is_published`. A column the user cannot clear (`display_name`,
+  `entity_type`: the API drops a nil for both) needs no flag either, since a non-NULL value is itself the signal
+  that the user set it, exactly like Field `display_name` already works."
+  {:description        :description_set
    :visibility_type    :visibility_type_set
    :caveats            :caveats_set
    :points_of_interest :points_of_interest_set

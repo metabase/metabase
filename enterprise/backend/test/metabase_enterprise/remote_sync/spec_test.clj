@@ -635,7 +635,7 @@
                      :model/Field      {f1 :id}       {:name "F1" :table_id table-id}
                      :model/Field      {f2 :id}       {:name "F2" :table_id table-id}]
         (t2/insert! :model/FieldUserSettings {:field_id f2 :description "curated" :description_set true})
-        (t2/insert! :model/TableUserSettings {:table_id table-id :display_name "Renamed" :display_name_set true})
+        (t2/insert! :model/TableUserSettings {:table_id table-id :display_name "Renamed"})
         (testing "a settings row that records nothing is not a user edit and is not exported"
           (t2/insert! :model/FieldUserSettings {:field_id f1}))
         (let [exportable (spec/exportable-entities)]

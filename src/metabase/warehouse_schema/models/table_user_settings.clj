@@ -189,11 +189,9 @@
 (defmethod serdes/make-spec "TableUserSettings" [_model-name _opts]
   {:copy      [:display_name :description :entity_type :visibility_type :field_order :caveats :points_of_interest
                :show_in_getting_started :data_authority :data_source :owner_email :is_published
-               :display_name_set :description_set :entity_type_set :visibility_type_set :caveats_set
+               :description_set :visibility_type_set :caveats_set
                :points_of_interest_set :data_layer_set :data_source_set]
-   :defaults  {:display_name_set       false
-               :description_set        false
-               :entity_type_set        false
+   :defaults  {:description_set        false
                :visibility_type_set    false
                :caveats_set            false
                :points_of_interest_set false

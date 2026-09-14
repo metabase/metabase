@@ -1192,7 +1192,7 @@
           (is (empty? (into [] (serdes/extract-all "FieldUserSettings" {}))))
           (is (empty? (into [] (serdes/extract-all "TableUserSettings" {}))))))
       (testing "a Table whose own user settings record something appears as TableUserSettings"
-        (t2/update! :model/TableUserSettings table-id {:display_name "Renamed" :display_name_set true})
+        (t2/update! :model/TableUserSettings table-id {:display_name "Renamed"})
         (is (contains? (set (keys (serdes/descendants "Table" table-id {})))
                        ["TableUserSettings" table-id])))
       (testing "Field and FieldUserSettings are leaf nodes in the descendants graph"
@@ -1211,8 +1211,7 @@
                        :model/Field       _              {:name "F1" :table_id table-id}
                        :model/Field       {f2-id    :id} {:name "F2" :table_id table-id}
                        :model/FieldUserSettings _ {:field_id f2-id :description "curated"}
-                       :model/TableUserSettings _ {:table_id table-id :display_name "Renamed"
-                                                   :display_name_set true}]
+                       :model/TableUserSettings _ {:table_id table-id :display_name "Renamed"}]
       (testing "targeting the collection exports the Table and its Fields, each beside its user settings"
         (let [entities (into [] (extract/extract {:targets       [["Collection" coll-id]]
                                                   :no-data-model true}))

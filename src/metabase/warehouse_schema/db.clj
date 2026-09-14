@@ -236,7 +236,7 @@
   "The columns an insert or update of a TableUserSettings accepts."
   [:table_id :created_at :updated_at :display_name :description :entity_type :visibility_type :caveats
    :points_of_interest :data_layer :data_source :owner_email :owner_user_id :field_order :show_in_getting_started
-   :data_authority :is_published :collection_id :display_name_set :description_set :entity_type_set
+   :data_authority :is_published :collection_id :description_set
    :visibility_type_set :caveats_set :points_of_interest_set :data_layer_set :data_source_set])
 
 (mu/defn table-user-settings
@@ -453,15 +453,15 @@
   (t2/select-fn->fn :id identity :model/Transform :id [:in transform-ids]))
 
 (mu/defn table-names-reducible
-  "A reducible of the id, name, and display name of every ::warehouse-schema.schema/table, plus whether the user set
-  a display name of their own (`:user_display_name_set`) and what it is (`:user_display_name`)."
+  "A reducible of the id, name, and display name of every ::warehouse-schema.schema/table, plus the user's own
+  display name (`:user_display_name`), if any."
   []
   (t2/reducible-query
-   ;; sync's display name and the user's side by side, so humanization can tell them apart. Unlike a Field's, a
-   ;; Table's display_name has a `_set` flag, and that -- not a non-NULL value -- is what says the user chose it.
+   ;; sync's display name and the user's side by side, so humanization can tell them apart. As with a Field's
+   ;; display_name, a non-NULL `:user_display_name` is what says the user chose it -- the user can't clear it, so
+   ;; there is no separate `_set` flag to check.
    {:select    [:t.id :t.name :t.display_name
-                [:u.display_name :user_display_name]
-                [[:= :u.display_name_set true] :user_display_name_set]]
+                [:u.display_name :user_display_name]]
     :from      [(warehouse-schema-overlay/table-query {:alias :t, :user-settings? false})]
     :left-join [[(t2/table-name :model/TableUserSettings) :u] [:= :u.table_id :t.id]]}))
 

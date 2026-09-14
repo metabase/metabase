@@ -103,22 +103,8 @@ databaseChangeLog:
                   name: collection_id
                   type: int
               - column:
-                  remarks: Whether the user set display_name, so a NULL display_name overrides the sync value
-                  name: display_name_set
-                  type: ${boolean.type}
-                  defaultValueBoolean: false
-                  constraints:
-                    nullable: false
-              - column:
                   remarks: Whether the user set description, so a NULL description overrides the sync value
                   name: description_set
-                  type: ${boolean.type}
-                  defaultValueBoolean: false
-                  constraints:
-                    nullable: false
-              - column:
-                  remarks: Whether the user set entity_type, so a NULL entity_type overrides the sync value
-                  name: entity_type_set
                   type: ${boolean.type}
                   defaultValueBoolean: false
                   constraints:
@@ -220,11 +206,12 @@ databaseChangeLog:
   ## Table needs no row: with none, every column falls through to metabase_table, which is what it shows
   ## today, and the first user edit creates the row.
   ##
-  ## Copied and marked set: display_name (the humanization strategy is env-configurable, so there is
-  ## no default to compare against) and the purely user-authored caveats, points_of_interest,
-  ## owner_email and owner_user_id. description is copied and marked set only when it is non-NULL: it
-  ## may be user-written or synced from a database comment, and a user clearing a synced description
-  ## is far rarer than never having written one, so NULL reads as "not set".
+  ## display_name is copied unconditionally: it has no `_set` flag (the user cannot clear it, so a
+  ## non-NULL value is itself the signal -- the humanization strategy is env-configurable anyway, so
+  ## there is no default to compare against). The purely user-authored caveats and points_of_interest,
+  ## and owner_email and owner_user_id, are copied and marked set. description is copied and marked set
+  ## only when it is non-NULL: it may be user-written or synced from a database comment, and a user
+  ## clearing a synced description is far rarer than never having written one, so NULL reads as "not set".
   ##
   ## Recorded only when they differ from the value the system writes: data_layer 'internal',
   ## data_authority 'unconfigured', field_order 'database' (every in-tree driver's
@@ -247,7 +234,7 @@ databaseChangeLog:
         - sql:
             sql: >-
               INSERT INTO metabase_table_user_settings
-                (table_id, display_name, display_name_set, description, description_set,
+                (table_id, display_name, description, description_set,
                  caveats, caveats_set, points_of_interest, points_of_interest_set,
                  owner_email, owner_user_id,
                  visibility_type, visibility_type_set, data_layer, data_layer_set,
@@ -256,7 +243,6 @@ databaseChangeLog:
               SELECT
                 t.id,
                 t.display_name,
-                TRUE,
                 t.description,
                 CASE WHEN t.description IS NOT NULL THEN TRUE ELSE FALSE END,
                 t.caveats,

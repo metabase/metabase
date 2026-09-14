@@ -42,13 +42,12 @@
 (mu/defn re-humanize-table-and-field-names!
   "Update the non-custom display names of all Tables & Fields in the database using new values from
   `name->human-readable-name`. A display name is custom when a user set one of their own -- recorded as a non-NULL
-  `display_name` for a Field and by the `display_name_set` flag for a Table -- or when it differs from the old
+  `display_name` in the user-settings row, for both a Field and a Table -- or when it differs from the old
   strategy's humanization."
   [old-strategy :- :keyword]
   (letfn [(custom? [{internal-name :name, display-name :display_name
-                     user-display-name :user_display_name, user-set? :user_display_name_set}]
-            (or (boolean user-set?)
-                (some? user-display-name)
+                     user-display-name :user_display_name}]
+            (or (some? user-display-name)
                 (not= (name->human-readable-name old-strategy internal-name) display-name)))]
     (re-humanize-names! :model/Table warehouse-schema.db/table-names-reducible
                         warehouse-schema.db/set-table-display-name! custom?)
