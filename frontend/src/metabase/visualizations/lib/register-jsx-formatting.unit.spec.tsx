@@ -1,21 +1,16 @@
 import type { ReactElement } from "react";
 import { isElementOfType } from "react-dom/test-utils";
 
-import { setupSdkPlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { render, screen } from "__support__/ui";
-import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
-import { enterSdkMode } from "metabase/embedding-sdk/lib/enter-sdk-mode";
 import { resetPluginSlots } from "metabase/plugin-slots";
+import { PLUGIN_HOST_NAVIGATION } from "metabase/urls";
 import { formatValue } from "metabase/value-formatting";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import type { ColumnSettings } from "metabase-types/api";
-import {
-  createMockColumn,
-  createMockTokenFeatures,
-} from "metabase-types/api/mocks";
+import { createMockColumn } from "metabase-types/api/mocks";
 
 import { registerJsxFormatting } from "./register-jsx-formatting";
 
@@ -178,23 +173,13 @@ describe("registered JSX url formatting", () => {
 
   afterEach(() => {
     resetPluginSlots();
-    ensureMetabaseProviderPropsStore().cleanup();
     jest.restoreAllMocks();
   });
 
-  it("should call the host link handler and prevent default when one is installed", async () => {
-    mockSettings({
-      "token-features": createMockTokenFeatures({ embedding_sdk: true }),
-    });
-    setupSdkPlugins();
-    enterSdkMode();
-
+  it("should call the host link handler and prevent default when one is installed", () => {
     const url = "https://example.com/dashboard/1";
-    const handleLink = jest.fn().mockReturnValue({ handled: true });
-
-    ensureMetabaseProviderPropsStore().setProps({
-      pluginsConfig: { handleLink },
-    });
+    const handleLink = jest.fn().mockResolvedValue(true);
+    PLUGIN_HOST_NAVIGATION.host = { handleLink, sameOriginTarget: "_blank" };
 
     // Unjustified type cast. FIXME
     const node = formatValue(url, {
@@ -214,13 +199,8 @@ describe("registered JSX url formatting", () => {
     expect(event.defaultPrevented).toBe(true);
   });
 
-  it("should not call the host link handler when none is installed", async () => {
+  it("should not prevent default when no host link handler is installed", () => {
     const url = "https://example.com/dashboard/2";
-    const handleLink = jest.fn();
-
-    ensureMetabaseProviderPropsStore().setProps({
-      pluginsConfig: { handleLink },
-    });
 
     // Unjustified type cast. FIXME
     const node = formatValue(url, {
@@ -236,13 +216,15 @@ describe("registered JSX url formatting", () => {
     const event = new MouseEvent("click", { bubbles: true, cancelable: true });
     link.dispatchEvent(event);
 
-    expect(handleLink).not.toHaveBeenCalled();
     expect(event.defaultPrevented).toBe(false);
   });
 
   it("should return an ExternalLink for same origin links when the host opens links in a new window", () => {
     mockSettings({ "site-url": SITE_URL });
-    enterSdkMode();
+    PLUGIN_HOST_NAVIGATION.host = {
+      handleLink: null,
+      sameOriginTarget: "_blank",
+    };
 
     expect(
       isElementOfType(
