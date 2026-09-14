@@ -11,6 +11,7 @@
 
 (defrule error-data-discloses-query
   {:name        "Exception data carries a query, SQL or object definition"
+   :enabled     false
    :description (str "`api-exception-response` merges an exception's ex-data into the HTTP response body. An "
                      "`ex-info` whose data holds the query, the compiled SQL or the object being checked hands "
                      "that to the caller -- including the caller whose permission check just failed. A 403 "

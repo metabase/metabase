@@ -15,6 +15,24 @@
       (is (= [:test/demo] (map :id (rule/all))))
       (is (= "Demo" (:name (rule/by-id :test/demo)))))))
 
+(deftest enabled-test
+  (with-clean-registry
+    (fn []
+      (let [rule (fn [id enabled]
+                   (cond-> {:id id :name "n" :description "d" :severity :error :precision :high
+                            :cwe "C" :triggers '#{a/b} :detect (fn [_] nil)}
+                     (some? enabled) (assoc :enabled enabled)))]
+        (rule/register! (rule :t/on nil))
+        (rule/register! (rule :t/off false))
+        (rule/register! (rule :t/explicit true))
+        (testing "a rule is enabled unless it says otherwise"
+          (is (= [:t/explicit :t/on] (map :id (rule/enabled)))))
+        (testing "every registered rule is still known: tests and the corpus run them all, and by-id finds them"
+          (is (= [:t/explicit :t/off :t/on] (map :id (rule/all))))
+          (is (some? (rule/by-id :t/off))))
+        (testing ":enabled is a boolean"
+          (is (thrown-with-msg? Exception #"enabled" (rule/register! (rule :t/bad "yes")))))))))
+
 (deftest register-validates-test
   (with-clean-registry
     (fn []

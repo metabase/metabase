@@ -21,6 +21,7 @@
 
 (defrule weak-hash
   {:name        "Weak hash algorithm"
+   :enabled     false
    :description "MD5 and SHA-1 are broken against collisions and unsuitable for signatures or integrity checks."
    :remediation "Use SHA-256 or stronger. For passwords use bcrypt/scrypt/Argon2, not a bare digest."
    ;; A note, not an error: Metabase legitimately uses these as non-cryptographic checksums (cache keys and the
@@ -38,6 +39,7 @@
 
 (defrule weak-cipher
   {:name        "Weak cipher or mode of operation"
+   :enabled     false
    :description (str "DES, 3DES, Blowfish and RC4 are obsolete. ECB mode encrypts identical plaintext blocks to "
                      "identical ciphertext, leaking structure regardless of the cipher.")
    :remediation "Use AES in GCM mode, which provides both confidentiality and integrity."
@@ -57,6 +59,7 @@
 
 (defrule weak-ssl-protocol
   {:name        "Obsolete TLS protocol version"
+   :enabled     false
    :description "SSLv2, SSLv3, TLS 1.0 and TLS 1.1 have known attacks and are disallowed by current standards."
    :remediation "Request \"TLSv1.2\", \"TLSv1.3\", or just \"TLS\" to take the platform default."
    :severity    :error
@@ -70,6 +73,7 @@
 
 (defrule insecure-hostname-verifier
   {:name        "Hostname verification overridden"
+   :enabled     false
    :description (str "Replacing the default hostname verifier disables the check that a certificate belongs to the "
                      "host being contacted, which makes TLS interceptable.")
    :remediation (str "Leave the default verifier in place. If a self-signed certificate must be trusted, add it to "
@@ -83,6 +87,7 @@
 
 (defrule weak-random
   {:name        "Non-cryptographic random number generator"
+   :enabled     false
    :description (str "java.util.Random is a linear congruential generator: given a couple of outputs its entire "
                      "future and past sequence can be reconstructed. Anything used as a token, nonce, salt or "
                      "identifier needs an unpredictable source.")
@@ -97,6 +102,7 @@
 
 (defrule trust-all-certificates
   {:name        "Custom trust manager"
+   :enabled     false
    :description (str "Implementing X509TrustManager replaces certificate chain validation. The common form of this "
                      "accepts every certificate, which makes TLS connections trivially interceptable.")
    :remediation "Add the certificate to a trust store rather than replacing the trust manager."

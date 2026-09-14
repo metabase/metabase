@@ -46,6 +46,7 @@
 
 (defrule driver-connection-check-bypassed
   {:name        "Driver connection check that skips the shared details validation"
+   :enabled     false
    :description (str "`driver/validate-db-details!` on `:sql-jdbc` rejects JDBC properties that load classes or "
                      "write files -- `socketFactory`, `sslfactory`, `loggerFile`. A driver that overrides it "
                      "without running the parent loses that list; a driver whose `can-connect?` never calls it "

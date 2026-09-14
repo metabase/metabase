@@ -148,13 +148,15 @@
   (testing "`:only-files` narrows the text report and the verdict; the SARIF report still covers the whole tree,
             so code scanning can compare a pull request's analysis with its base's"
     (let [out    (doto (java.io.File/createTempFile "security-lint" ".sarif") .deleteOnExit)
+          ;; every rule, whatever is enabled for the tree today
           result (security-lint/scan {:paths      [(str root "/src")]
+                                      :rules      (rules/all)
                                       :root       root
                                       :quiet?     true
                                       :only-files ["src/metabase/things/render.clj"]
                                       :sarif-out  (.getAbsolutePath out)})
           sarif  (json/decode (slurp out) true)
-          whole  (security-lint/scan {:paths [(str root "/src")] :root root :quiet? true})]
+          whole  (security-lint/scan {:paths [(str root "/src")] :rules (rules/all) :root root :quiet? true})]
       (is (= #{"src/metabase/things/render.clj"} (into #{} (map #(str/replace (:file %) (str root "/") "")) (:findings result))))
       (is (= (count (:findings whole)) (count (get-in sarif [:runs 0 :results]))))
       (is (< (count (:findings result)) (count (:findings whole)))))))

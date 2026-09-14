@@ -37,6 +37,7 @@
 
 (defrule hiccup1-unescaped-value
   {:name        "Dynamic value rendered into markup unescaped"
+   :enabled     false
    :description (str "`hiccup.core/html` renders strings as they are, so a value placed in an element body is "
                      "live markup (attribute values it does escape). Building a tag with `str` is the same thing without the library. "
                      "Both have carried attacker-authored HTML into subscription emails, and an SVG attribute "

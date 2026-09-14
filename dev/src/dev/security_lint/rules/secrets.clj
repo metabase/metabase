@@ -31,6 +31,7 @@
 
 (defrule hardcoded-secret
   {:name        "Credential written into source"
+   :enabled     false
    :description (str "A var or a key that names a credential is bound to a string literal. Anything committed to "
                      "the repository is readable by everyone with clone access and lives forever in git history.")
    :remediation "Read the value from a setting or an environment variable instead."
@@ -84,6 +85,7 @@
 
 (defrule sensitive-data-in-logs
   {:name        "Credential passed to a logger"
+   :enabled     false
    :description (str "A value whose name marks it as a credential is being logged. Log output is routinely shipped "
                      "to third-party aggregators and read by people who should not see secrets.")
    :remediation "Log an identifier instead of the credential, or redact the value before logging it."
@@ -129,6 +131,7 @@
 
 (defrule unencrypted-sensitive-setting
   {:name        "Credential setting stored unencrypted"
+   :enabled     false
    :description (str "A setting whose name marks it as a credential declares `:encryption :no`, so its value is "
                      "stored as plaintext in the application database and appears in database backups.")
    :remediation "Declare `:encryption :when-encryption-key-set` so the value is encrypted at rest."

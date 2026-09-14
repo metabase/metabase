@@ -24,6 +24,7 @@
 
 (defrule public-endpoint-reaches-enablement-check
   {:name        "Public endpoint that never checks public sharing is enabled"
+   :enabled     false
    :description (str "Every endpoint under the public-sharing API must reach `check-public-sharing-enabled`, "
                      "or it serves content when an admin has turned public sharing off.")
    :remediation "Call `public-sharing.validation/check-public-sharing-enabled` at the top of the endpoint."
@@ -38,6 +39,7 @@
 
 (defrule embed-endpoint-reaches-token-verification
   {:name        "Embed endpoint that never verifies its token"
+   :enabled     false
    :description (str "Every endpoint under the embedding API takes a signed token and must reach the unsigning "
                      "chokepoint, or it trusts whatever the token claims.")
    :remediation "Route the token through `unsign-and-translate-ids` (or `embed/unsign`) before using its claims."
@@ -65,6 +67,7 @@
 
 (defrule model-read-without-authorization
   {:name        "Authenticated endpoint reads a model with no authorization on any path"
+   :enabled     false
    :description (str "The endpoint transitively reaches a Toucan select but no permission check at all -- not "
                      "`read-check`, `can-read?`, `check-superuser` or any of the others. Endpoints scoped to the "
                      "current user by construction are a legitimate exception, which is why this is a note.")
@@ -100,6 +103,7 @@
 
 (defrule credential-endpoint-without-throttle
   {:name        "Credential-checking endpoint with no throttle on any path"
+   :enabled     false
    :description (str "An endpoint that takes a password, a one-time code or a reset token verifies a secret, and "
                      "a secret with no rate limit is guessable. The password re-check on `PUT /api/user/:id/password` "
                      "let a hijacked session brute-force its way to a persistent password change.")
@@ -118,6 +122,7 @@
 
 (defrule endpoint-mounted-without-auth
   {:name        "Endpoint namespace mounted under no authentication wrapper"
+   :enabled     false
    :description (str "A namespace mounted without `+auth` serves every endpoint in it to anyone, and relies on "
                      "each handler to check for a session by hand. Where that holds it holds by convention: the "
                      "next endpoint added to the namespace is reachable unauthenticated until someone notices.")

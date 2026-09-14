@@ -60,6 +60,10 @@ identity off it, so renaming a rule orphans its alerts.
 - `:precision` is `:high`, `:medium` or `:low`, in SARIF's sense: how much to trust a match. Be honest. A rule
   that matches on shape alone is `:low` or `:medium`.
 - `:cwe` is the weakness class, for the alert's tags.
+- `:enabled false` keeps the rule registered -- its tests and its corpus case still run -- but out of a scan and
+  out of the SARIF, and the scan says which rules sat out. A rule is enabled unless it says otherwise. This is
+  how rules are being switched on one at a time while code scanning's alert tracking is checked; the flag is
+  also how a rule that misfires can be taken out of CI in one line without losing it.
 - `:exempt-files` is a vector of regexes over the repo-relative path. The namespace that legitimately owns a
   dangerous operation, such as the HTTP wrapper that is allowed to call the raw client, goes here.
 - `:taint-policy :any-local` makes every local binding count as tainted for this rule, whatever the scan runs

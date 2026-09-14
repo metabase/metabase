@@ -38,6 +38,7 @@
 
 (defrule credential-sent-to-boundary-host
   {:name        "Credential sent to a host chosen across a trust boundary"
+   :enabled     false
    :description (str "An HTTP request whose destination came from a setting, a stored row or a request carries a "
                      "credential -- an Authorization header, an API key in the body. Whoever chose the host "
                      "receives the credential: a settings manager repointing the LLM base URL collected the "
@@ -67,6 +68,7 @@
 
 (defrule stored-query-runs-as-another-user
   {:name        "Stored query executed under another user's identity"
+   :enabled     false
    :description (str "Inside `with-current-user` or `as-admin`, a query read from the application database is "
                      "executed with that identity's permissions. Whoever could write the query -- a notification "
                      "recipient repointing a card, a model editor scheduling an index refresh -- runs it as the "
@@ -100,6 +102,7 @@
 
 (defrule setting-written-from-boundary
   {:name        "Setting written from data that came from outside the instance"
+   :enabled     false
    :description (str "A setting value taken from a synced document, an HTTP response or warehouse metadata. "
                      "Git-synced content overwrote instance settings this way; a setting that steers "
                      "authentication or outbound traffic rewritten from outside is a takeover.")
@@ -129,6 +132,7 @@
 
 (defrule toucan-model-from-boundary
   {:name        "Toucan model chosen by a value from across a trust boundary"
+   :enabled     false
    :description (str "The model argument of a Toucan call is computed from a request, a document or a row, so "
                      "the caller picks the table: any table on the instance, including the ones holding "
                      "password hashes and warehouse credentials.")
