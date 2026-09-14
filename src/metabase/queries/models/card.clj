@@ -806,10 +806,18 @@
   ;; Keep this aligned with the frontend's canDisplayTimelineEvents registry check.
   (contains? #{:line :bar :area :combo :scatter :waterfall} (keyword display)))
 
+(def ^:private ^:dynamic *copying-card* false)
+
+(defmacro with-card-copy
+  "Run `body` while duplicating a Card. A copy keeps the source card's timeline selection, which the user can already
+  see through the source card, so it does not need read access to the timelines themselves."
+  [& body]
+  `(binding [*copying-card* true] ~@body))
+
 (defn- check-timeline-visibility-permissions!
   [card previous-card]
   ;; No bound user means an internal write (serdes import, migrations, tasks) rather than a request.
-  (when api/*current-user-id*
+  (when (and api/*current-user-id* (not *copying-card*))
     (let [visibility-keys         [:timeline.selected_timeline_ids :timeline.excluded_timeline_event_ids
                                    :timeline_events.enabled]
           visibility              (select-keys (:visualization_settings card) visibility-keys)
@@ -822,8 +830,9 @@
         (when-some [timeline-ids (:timeline.selected_timeline_ids visibility)]
           (api/check-400 (and (sequential? timeline-ids) (every? pos-int? timeline-ids))
                          (tru "Selected timeline IDs must be a sequence of positive integers."))
-          (doseq [timeline-id (distinct timeline-ids)]
-            (api/read-check :model/Timeline timeline-id)))))))
+          ;; Deleted timelines are skipped when rendering, so a stale id must not block saving the card.
+          (doseq [timeline (queries.db/timelines (set timeline-ids))]
+            (api/read-check timeline)))))))
 
 (t2/define-before-insert :model/Card
   [card]

@@ -2999,6 +2999,18 @@
       (is (not (contains? (t2/select-one-fn :visualization_settings :model/Card (:id card))
                           :timeline.selected_timeline_ids))))))
 
+(deftest copy-card-keeps-inaccessible-timeline-selection-test
+  (testing "POST /api/card/:id/copy keeps a timeline selection the user cannot read"
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Timeline timeline {:collection_id (:id collection)}
+                   :model/Card card {:dataset_query          (mt/mbql-query venues)
+                                     :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) collection)
+      (mt/with-model-cleanup [:model/Card]
+        (is (= [(:id timeline)]
+               (get-in (mt/user-http-request :rasta :post 200 (format "card/%d/copy" (:id card)))
+                       [:visualization_settings :timeline.selected_timeline_ids])))))))
+
 (deftest change-collection-permissions-test
   (testing "PUT /api/card/:id"
     (testing "\nChange the `collection_id` of a Card"

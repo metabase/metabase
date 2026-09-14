@@ -1838,13 +1838,13 @@
                                   (t2/update! :model/Card (:id card) {:visualization_settings settings})))))))))
 
 (deftest card-timeline-selection-deleted-timeline-test
-  (mt/with-temp [:model/Timeline timeline {}
-                 :model/Card card {}]
-    (t2/delete! :model/Timeline (:id timeline))
-    (mt/with-test-user :rasta
-      (let [settings {:timeline.selected_timeline_ids [(:id timeline)]}]
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Not found"
-                              (t2/update! :model/Card (:id card) {:visualization_settings settings})))))))
+  (testing "a selection pointing at a deleted timeline still saves, so the card is not stuck"
+    (mt/with-temp [:model/Timeline timeline {}
+                   :model/Card card {:visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}]
+      (t2/delete! :model/Timeline (:id timeline))
+      (mt/with-test-user :rasta
+        (t2/update! :model/Card (:id card) {:display :line})
+        (is (= :line (t2/select-one-fn :display :model/Card (:id card))))))))
 
 (deftest card-timeline-selection-without-user-context-test
   (mt/with-temp [:model/Timeline timeline {}]

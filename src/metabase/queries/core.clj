@@ -27,7 +27,8 @@
   card-param-values
   card-param-remapped-value]
  [metabase.queries.models.card
-  create-card!]
+  create-card!
+  with-card-copy]
  [metabase.queries.metadata
   batch-fetch-card-metadata
   ;; TODO does this belong here, or in the `dashboards` module?

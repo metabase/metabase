@@ -1270,6 +1270,24 @@
             (is (not=  (:entity_id dashboard) (:entity_id response))
                 "The copy should have a new entity ID generated")))))))
 
+(deftest copy-dashboard-keeps-inaccessible-timeline-selection-test
+  (testing "POST /api/dashboard/:id/copy deep copies a card whose selected timeline the user cannot read"
+    (mt/with-model-cleanup [:model/Dashboard :model/Card]
+      (mt/with-temp [:model/Collection collection {}
+                     :model/Timeline timeline {:collection_id (:id collection)}
+                     :model/Card card {:dataset_query          (mt/mbql-query venues)
+                                       :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}
+                     :model/Dashboard dashboard {}
+                     :model/DashboardCard _ {:dashboard_id (:id dashboard) :card_id (:id card)}]
+        (perms/revoke-collection-permissions! (perms-group/all-users) collection)
+        (let [response       (mt/user-http-request :rasta :post 200 (format "dashboard/%d/copy" (:id dashboard))
+                                                   {:is_deep_copy true})
+              copied-card-id (t2/select-one-fn :card_id :model/DashboardCard :dashboard_id (:id response))]
+          (is (not= (:id card) copied-card-id))
+          (is (= [(:id timeline)]
+                 (get-in (t2/select-one :model/Card copied-card-id)
+                         [:visualization_settings :timeline.selected_timeline_ids]))))))))
+
 (deftest copy-dashboard-with-dashboard-questions
   (testing "`is_deep_copy=true` works for dashboards regardless of whether they have dashboard questions"
     (mt/with-temp [:model/Collection {coll-id :id} {}

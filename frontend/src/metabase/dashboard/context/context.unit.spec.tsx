@@ -1,10 +1,11 @@
 import { renderHook } from "@testing-library/react";
-import fetchMock from "fetch-mock";
 import type { PropsWithChildren } from "react";
 
 import {
   setupDashboardEndpoints,
   setupDashboardQueryMetadataEndpoint,
+  setupEmbedDashboardEndpoints,
+  setupPublicDashboardEndpoint,
 } from "__support__/server-mocks";
 import { getTestStoreAndWrapper, waitFor } from "__support__/ui";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
@@ -50,10 +51,10 @@ async function setup({
     createMockDashboardQueryMetadata(),
   );
   if (uuid) {
-    fetchMock.get(`path:/api/public/dashboard/${uuid}`, dashboard);
+    setupPublicDashboardEndpoint(uuid, dashboard);
   }
   if (token) {
-    fetchMock.get(`path:/api/embed/dashboard/${token}`, dashboard);
+    setupEmbedDashboardEndpoints(token, dashboard);
   }
 
   const { wrapper: Wrapper } = getTestStoreAndWrapper({ initialRoute: "/" });

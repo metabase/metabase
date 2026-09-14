@@ -163,7 +163,7 @@ export const TimelineEventChip = ({
               miw="8rem"
               maw="16rem"
               mah="20rem"
-              p="0.75rem"
+              p="md"
               style={{ overflowY: "auto" }}
             >
               {showDetails ? (

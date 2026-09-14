@@ -560,7 +560,8 @@
         new-name  (trs "Copy of {0}" (:name orig-card))
         new-card  (assoc orig-card :name new-name)]
     (api/create-check :model/Card new-card)
-    (-> (queries/create-card! new-card @api/*current-user*)
+    (-> (queries/with-card-copy
+          (queries/create-card! new-card @api/*current-user*))
         hydrate-card-details
         (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))))
 
