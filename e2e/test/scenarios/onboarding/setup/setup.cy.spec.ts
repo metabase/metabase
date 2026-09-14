@@ -355,6 +355,10 @@ describe("scenarios > setup", () => {
 
     cy.log("Switching language before user creation should not update setting");
     selectLanguage("Dutch");
+    // A real translation, so a catalogue that never loads fails the test. The
+    // `[zz]` assertions below cannot cover this: they run after a second switch
+    // and would still pass if this first one had loaded nothing.
+    cy.findByTestId("setup-forms").button("Volgende").should("exist");
     cy.get("@updateSiteLocale.all").should("have.length", 0);
     selectLanguage("English (ZZ)");
     cy.get("@updateSiteLocale.all").should("have.length", 0);
