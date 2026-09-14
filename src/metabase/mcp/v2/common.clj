@@ -156,11 +156,21 @@
 (def ^:private internal-error
   (message/msg ["Internal error"]))
 
-(defn- caller-facing-message
-  "The message of caller-facing exception `e`: the message it carries under `::message`, else its
-   exception message as a string for the exits to clean whole, else the internal-error message."
+(defn exception-message
+  "The message of exception `e`: the message under `::message` in its `ex-data` unless its exception message differs from
+   that message's rendering (rewrapped with new text), else its exception message as a string to clean whole, else
+   nil."
   [e]
-  (or (::message (ex-data e)) (ex-message e) internal-error))
+  (let [stored (::message (ex-data e))
+        text   (ex-message e)]
+    (if (and stored (or (nil? text) (= text (message/render stored))))
+      stored
+      text)))
+
+(defn- caller-facing-message
+  "The message of caller-facing exception `e` ([[exception-message]]), else the internal-error message."
+  [e]
+  (or (exception-message e) internal-error))
 
 (defn caller-safe-error-message
   "The message of `e` when it is deliberately caller-facing, judged the same way as
@@ -205,17 +215,54 @@
     (str (subs s 0 limit) "…")
     s))
 
-(defn ellipsize
-  "`x` cut to `limit` characters, with an ellipsis marking the cut. A message within the limit is returned as is,
-   and one over it becomes a message of its cut rendering as a single cleaned argument. Anything else is cut as a
-   string."
+(defn- fits?
   [x limit]
-  (if (message/message? x)
-    (let [text (message/render x)]
-      (if (> (count text) limit)
-        (message/msg ["%s"] (cut text limit))
-        x))
-    (cut (str x) limit)))
+  (<= (count (message/render x)) limit))
+
+(defn- shorten-string-arg
+  "Message `m` with its `i`th argument, a string, cut to the most characters (and an ellipsis) that let `m` render
+   within `limit`, or to just the ellipsis when none do."
+  [m i limit]
+  (let [^String s (get-in m [:args i])
+        with-at   (fn [n]
+                    ;; Never keep half of a surrogate pair.
+                    (let [n (cond-> n (and (pos? n) (Character/isHighSurrogate (.charAt s (int (dec n))))) dec)]
+                      (assoc-in m [:args i] (str (subs s 0 n) "…"))))]
+    ;; Rendering never shrinks as characters are kept, so binary search for the most that fit.
+    (loop [lo 0, hi (dec (count s))]
+      (if (< lo hi)
+        (let [mid (quot (+ lo hi 1) 2)]
+          (if (fits? (with-at mid) limit)
+            (recur mid hi)
+            (recur lo (dec mid))))
+        (with-at lo)))))
+
+(defn- shorten-string-args
+  "Message `m` with its string arguments shortened, longest first, until it renders within `limit`, or nil when even
+   all of them shortened to an ellipsis don't fit."
+  [m limit]
+  (let [longest-first (->> (:args m)
+                           (keep-indexed (fn [i arg] (when (and (string? arg) (> (count arg) 1)) i)))
+                           (sort-by #(- (count (get-in m [:args %])))))
+        shortest      (reduce #(assoc-in %1 [:args %2] "…") m longest-first)]
+    (when (fits? shortest limit)
+      (loop [m m, [i & more] longest-first]
+        (if (fits? m limit)
+          m
+          (recur (shorten-string-arg m i limit) more))))))
+
+(defn ellipsize
+  "`x` shortened to about `limit` characters, with an ellipsis marking each cut. Anything but a message is cut as a
+   string to `limit` characters plus the ellipsis. A message over the limit first has its string arguments shortened
+   inside their quotes, longest first, which keeps its lines whole and renders within `limit`; when that can't fit, its
+   rendering is cut at `limit` with [[message/truncate]], keeping a cut value's closing quote, so it renders within
+   `limit` + 2 characters."
+  [x limit]
+  (cond
+    (not (message/message? x)) (cut (str x) limit)
+    (fits? x limit)            x
+    :else                      (or (shorten-string-args x limit)
+                                   (message/truncate x limit))))
 
 (defn- join-messages
   "One message of `parts`, each cleaned unless it is a message, joined pairwise by `join-two`."

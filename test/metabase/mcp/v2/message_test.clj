@@ -30,13 +30,30 @@
       0x202e  "\\u202e"          ; right-to-left override
       0xfeff  "\\ufeff"          ; byte order mark
       0xe0041 "\\udb40\\udc41")) ; tag character, used to smuggle invisible ASCII
-  (testing "look-alike quotes are escaped so a value can't appear to close its own quotes"
+  (testing "double-quote look-alikes are escaped so a value can't appear to close its own quotes"
     (are [code-point escaped] (= (str "\"a" escaped "b\"") (message/clean (around code-point)))
-      0x201c "\\u201c"   ; left double quotation mark
-      0x201d "\\u201d"   ; right double quotation mark
-      0x00ab "\\u00ab"   ; left guillemet
-      0x00bb "\\u00bb"   ; right guillemet
+      0x201c "\\u201c"    ; left double quotation mark
+      0x201d "\\u201d"    ; right double quotation mark
+      0x201e "\\u201e"    ; double low-9 quotation mark
+      0x201f "\\u201f"    ; double high-reversed-9 quotation mark
+      0x00ab "\\u00ab"    ; left guillemet
+      0x00bb "\\u00bb"    ; right guillemet
+      0x2033 "\\u2033"    ; double prime
+      0x2036 "\\u2036"    ; reversed double prime
+      0x301d "\\u301d"    ; reversed double prime quotation mark
+      0x301e "\\u301e"    ; double prime quotation mark
+      0x301f "\\u301f"    ; low double prime quotation mark
       0xff02 "\\uff02"))) ; fullwidth quotation mark
+
+(deftest ^:parallel clean-keeps-single-quotes-test
+  (testing "GHY-4544: single quotes can't close a double-quoted value, so names keep them for agents to copy back"
+    (is (= "\"Men’s Apparel\"" (message/clean "Men’s Apparel")))
+    (are [code-point] (= (str "\"" (around code-point) "\"") (message/clean (around code-point)))
+      0x2018   ; left single quotation mark
+      0x2019   ; right single quotation mark
+      0x201a   ; single low-9 quotation mark
+      0x2039   ; single left-pointing angle quotation mark
+      0x203a))) ; single right-pointing angle quotation mark
 
 (deftest ^:parallel clean-non-strings-test
   (testing "numbers, booleans, and nil are returned unchanged so numeric format conversions still apply"
@@ -101,4 +118,58 @@
       (is (not (str/includes? rendered "\n")))))
   (testing "a raw argument is cleaned in the fallback"
     (let [rendered (message/render (message/msg ["Count: %d"] (message/raw "x\ny")))]
-      (is (not (str/includes? rendered "\n"))))))
+      (is (not (str/includes? rendered "\n")))))
+  (testing "GHY-4544: an argument that throws when printed renders a fixed server literal"
+    (let [throwing (reify Object (toString [_] (throw (ex-info "boom" {}))))]
+      (is (= "Internal error while rendering a message."
+             (message/render (message/msg ["Rows: %s"] throwing))))
+      (is (= "Internal error while rendering a message."
+             (message/render throwing)))
+      (is (= "Internal error while rendering a message."
+             (message/render (message/raw throwing))))
+      (testing "a nested message that can't render embeds the literal in its parent"
+        (is (= "Failed: Internal error while rendering a message."
+               (message/render (message/msg ["Failed: %s"] (message/msg ["Rows: %s"] throwing)))))))))
+
+(deftest ^:parallel render-cutting-or-casing-string-specifier-test
+  (testing "GHY-4544: a %s with width, precision, or flags, or any %S, would cut or case an already-quoted value,
+            so the message renders fully cleaned"
+    (are [line] (= (str (message/clean line) " \"ab\\ncdef\"")
+                   (message/render (message/msg [line] "ab\ncdef")))
+      "Name: %.3s"
+      "Name: %10s"
+      "Name: %-10s"
+      "Name: %S"
+      "Name: %1$.3s"))
+  (testing "numeric conversions with flags and width still format"
+    (is (= "Rows: 1,234 of   12" (message/render (message/msg ["Rows: %,d of %4d"] 1234 12))))
+    (is (= "Name: \"ab\" and \"ab\"" (message/render (message/msg ["Name: %1$s and %<s"] "ab"))))))
+
+(deftest ^:parallel truncate-test
+  (testing "GHY-4544: a rendering within the limit is kept whole"
+    (is (= "Found \"a\"." (message/render (message/truncate (message/msg ["Found %s."] "a") 11))))
+    (are [x] (= (message/render x) (message/render (message/truncate x 10000)))
+      (message/msg ["%s of %,d at 100%% — %2$d again, %1$s again" "next: %s"] "a\nb" 1234 (message/raw 'sym))
+      (message/msg ["Wrapped: %s" "%s"] (message/msg ["No table %s."] :orders) (message/raw "server\ntext"))
+      (message/msg ["Values: %s, %s, %b, %s"] nil {:a "“b”"} "x" 1.5)
+      (message/msg ["Count: %d"] "x\ny")
+      (message/msg ["Name: %.3s"] "abcdef")
+      (message/msg "not a vector %s" "x")
+      "plain\nstring"
+      (message/raw "raw\nstring")))
+  (testing "GHY-4544: a quoted value cut short keeps one level of quoting and its closing quote"
+    (is (= "Found \"a\\nb…\"" (message/render (message/truncate (message/msg ["Found %s."] "a\nb\nc\nd") 11)))))
+  (testing "server text and raw arguments are cut where the limit falls"
+    (is (= "Found…" (message/render (message/truncate (message/msg ["Found %s."] "a") 5))))
+    (is (= "Call brow…" (message/render (message/truncate (message/msg ["Call %s."] (message/raw "browse_data")) 9)))))
+  (testing "nested messages are cut inside, keeping everything before the cut"
+    (is (= "Failed: No table \"ord…\""
+           (message/render (message/truncate (message/msg ["Failed: %s Retry."] (message/msg ["No table %s."] "orders"))
+                                             21)))))
+  (testing "a message that doesn't format is cut from its fully cleaned rendering"
+    (is (= "\"Count: %d\" \"x\\n…\""
+           (message/render (message/truncate (message/msg ["Count: %d"] "x\ny") 16)))))
+  (testing "a value that can't be cut to fit its budget is dropped"
+    (is (= "Found …" (message/render (message/truncate (message/msg ["Found %s."] "abc") 6)))))
+  (testing "a non-message is cut as its cleaned rendering"
+    (is (= "\"a\\nb…\"" (message/render (message/truncate "a\nb\nc" 6))))))

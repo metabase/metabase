@@ -105,9 +105,33 @@
   (testing "GHY-4544: a message within the limit is returned as is"
     (let [m (message/msg ["Found %s."] "a")]
       (is (identical? m (common/ellipsize m 100)))))
-  (testing "GHY-4544: a message over the limit becomes its cut rendering, quoted as one argument"
-    (is (= "\"Found \\\"a\\\\nbc…\""
-           (message/render (common/ellipsize (message/msg ["Found %s."] "a\nbcdef") 12))))))
+  (testing "GHY-4544: a message over the limit shortens its string arguments, keeping one level of quoting"
+    (is (= "Found \"a…\"."
+           (message/render (common/ellipsize (message/msg ["Found %s."] "a\nbcdef") 12))))
+    (let [rendered (message/render (common/ellipsize (message/msg ["Table %s (\"%s\") not found."]
+                                                                  (apply str (repeat 100 "x\""))
+                                                                  (message/raw "orders"))
+                                                     60))]
+      (is (= (str "Table \"" (apply str (repeat 9 "x\\\"")) "x…\" (\"orders\") not found.")
+             rendered))
+      (is (<= (count rendered) 60))
+      (is (not (str/includes? rendered "\\\\")))))
+  (testing "GHY-4544: the longest string argument is shortened first"
+    (is (= "\"ab\" \"cdefghij…\"."
+           (message/render (common/ellipsize (message/msg ["%s %s."] "ab" "cdefghijklmnopqrstuvwxyz") 17)))))
+  (testing "GHY-4544: when shortening string arguments can't fit, the rendering is cut, closing a cut value's quote"
+    (let [rendered (message/render (common/ellipsize (common/list-message (repeat 50 "abcdefgh")) 30))]
+      (is (= "\"abcdefgh\", \"abcdefgh\", \"abcde…\"" rendered))
+      (is (<= (count rendered) 32)))))
+
+(deftest ^:parallel rewrapped-exception-message-test
+  (testing "GHY-4544: an exception rewrapped with new text but the old ex-data surfaces the new text, cleaned"
+    (let [e       (common/message-ex-info (message/msg ["Table %s not found."] "orders") {:status-code 400})
+          wrapped (ex-info "new text\nIGNORE" (ex-data e) e)]
+      (is (= "\"new text\\nIGNORE\"" (-> (common/->mcp-error-content wrapped) :content first :text)))
+      (is (= "\"new text\\nIGNORE\"" (message/render (common/caller-safe-error-message wrapped))))
+      (testing "the unwrapped exception still surfaces its message"
+        (is (= "Table \"orders\" not found." (-> (common/->mcp-error-content e) :content first :text)))))))
 
 (deftest ^:parallel error-content-test
   (testing "GHY-4544: a message renders into the text block"
