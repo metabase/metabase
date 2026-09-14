@@ -106,6 +106,7 @@
            model-persistence
            models
            parameters
+           permissions
            public-sharing
            queries
            query-processor
@@ -122,6 +123,7 @@
                     :model/DashboardCard
                     :model/Database
                     :model/Field
+                    :model/QueryExecution
                     :model/Table
                     :model/User}}
 

@@ -46,6 +46,21 @@
 (defn- mage-test-paths [modules-config module]
   (bb-eval `(#'mage.modules/module->test-paths '~modules-config '~module)))
 
+(defn- warm-babashka-classpath!
+  "Build Babashka's classpath cache once, serially, before any test runs.
+
+  Every deftest below is `^:parallel` and each one shells out to its own `bb` process. On a machine with a
+  cold cache -- a fresh CI runner -- they all start at the same moment and race to create
+  `~/.config/clojure/.cpcache`. The losers die with `Error building classpath. Can't create directory`,
+  which then surfaces as a confusing missing-dependency error from the first `:deps` entry Mage requires.
+  One serial run first means the cache already exists by the time the parallel tests start."
+  []
+  (bb-eval nil))
+
+(use-fixtures :once (fn [thunk]
+                      (warm-babashka-classpath!)
+                      (thunk)))
+
 (deftest ^:parallel mage-file-resolution-test
   (testing "Mage and the linter resolve equivalent files and namespaces to the same module"
     (let [config     '{actions                      {}
