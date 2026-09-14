@@ -4,7 +4,7 @@ describe("apiKeyUsageEventColumnKeys", () => {
   it("returns only the base columns when tenants and PII retention are both off", () => {
     expect(apiKeyUsageEventColumnKeys(false, false)).toEqual([
       "log_id",
-      "created_at",
+      "occurred_at",
       "route_template",
       "http_method",
       "status",
@@ -32,7 +32,7 @@ describe("apiKeyUsageEventColumnKeys", () => {
   it("includes every column when both tenants and PII retention are enabled", () => {
     expect(apiKeyUsageEventColumnKeys(true, true)).toEqual([
       "log_id",
-      "created_at",
+      "occurred_at",
       "route_template",
       "http_method",
       "status",

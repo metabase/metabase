@@ -84,9 +84,9 @@ function orderByCountDesc(query: Query): Query {
   return countCol ? Lib.orderBy(query, 0, countCol, "desc") : query;
 }
 
-/** Add a `created_at` breakout bucketed by day (falls back to the raw column if the day bucket is unavailable). */
-function breakoutByCreatedAtDay(query: Query): Query {
-  const col = findColumn(query, "created_at", Lib.breakoutableColumns);
+/** Add an `occurred_at` breakout bucketed by day (falls back to the raw column if the day bucket is unavailable). */
+function breakoutByOccurredAtDay(query: Query): Query {
+  const col = findColumn(query, "occurred_at", Lib.breakoutableColumns);
   if (!col) {
     return query;
   }
@@ -154,7 +154,7 @@ export function buildCallsByDayQuery({
     tenantId,
   });
   query = Lib.aggregateByCount(query, 0);
-  query = breakoutByCreatedAtDay(query);
+  query = breakoutByOccurredAtDay(query);
   return query;
 }
 
@@ -186,7 +186,7 @@ export function buildTotalCountQuery({
 
 export const API_KEY_USAGE_EVENT_SORT_COLUMNS = [
   "log_id",
-  "created_at",
+  "occurred_at",
   "route_template",
   "http_method",
   "status",
@@ -209,7 +209,7 @@ export function apiKeyUsageEventColumnKeys(
 ): ApiKeyUsageEventSortColumn[] {
   return [
     "log_id",
-    "created_at",
+    "occurred_at",
     "route_template",
     "http_method",
     "status",
@@ -261,7 +261,7 @@ export function buildEventsQuery({
   userId,
   groupId,
   tenantId,
-  sortColumn = "created_at",
+  sortColumn = "occurred_at",
   sortDirection = "desc",
   hasTenants,
   hasPii,
