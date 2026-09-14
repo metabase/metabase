@@ -24,7 +24,10 @@ export type {
   DateRangeCalendarProps,
   DateRangeValue,
 } from "embedding-sdk-bundle/components/public/DateRangeCalendar/DateRangeCalendar";
-export type { DateRangePopoverProps } from "embedding-sdk-bundle/components/public/DateRangePopover/DateRangePopover";
+export type {
+  DateRangePopoverPosition,
+  DateRangePopoverProps,
+} from "embedding-sdk-bundle/components/public/DateRangePopover/DateRangePopover";
 export {
   formatDate,
   formatDateRange,

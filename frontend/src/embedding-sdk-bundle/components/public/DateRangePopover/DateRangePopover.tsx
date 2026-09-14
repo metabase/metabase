@@ -1,6 +1,5 @@
 import {
   Children,
-  type ComponentProps,
   type MouseEvent,
   type ReactElement,
   cloneElement,
@@ -16,6 +15,25 @@ import {
   type DateRangeValue,
 } from "../DateRangeCalendar/DateRangeCalendar";
 
+/**
+ * Where the calendar opens relative to the trigger. Spelled out rather than
+ * derived from Mantine's `Popover` props: this interface is published in the
+ * `/data-app` declarations, and a data app has no `@mantine/core` to resolve.
+ */
+export type DateRangePopoverPosition =
+  | "top"
+  | "top-start"
+  | "top-end"
+  | "right"
+  | "right-start"
+  | "right-end"
+  | "bottom"
+  | "bottom-start"
+  | "bottom-end"
+  | "left"
+  | "left-start"
+  | "left-end";
+
 export interface DateRangePopoverProps extends Omit<
   DateRangeCalendarProps,
   "className" | "style"
@@ -29,7 +47,7 @@ export interface DateRangePopoverProps extends Omit<
   onOpenedChange?: (opened: boolean) => void;
   /** Close once both ends of the range are picked. Defaults to true. */
   closeOnSelect?: boolean;
-  position?: ComponentProps<typeof Popover>["position"];
+  position?: DateRangePopoverPosition;
 }
 
 export const DateRangePopover = ({
