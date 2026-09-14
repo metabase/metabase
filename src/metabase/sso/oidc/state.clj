@@ -61,12 +61,20 @@
           (str scheme "://" host)
           (str scheme "://" host ":" port))))))
 
+(def ^:private disallowed-relative-url-chars
+  "Characters that must not appear anywhere in a relative redirect URL. Browsers normalize a backslash to a forward
+   slash and strip TAB/CR/LF while resolving a URL, so a path containing any of them can resolve to a different origin
+   than the one this predicate sees."
+  #{\\ \tab \return \newline})
+
 (defn- relative-url?
   "Returns true if the URL is a relative path (starts with /).
-   Rejects protocol-relative URLs (//example.com) which could redirect to external sites."
+   Rejects protocol-relative URLs (//example.com) which could redirect to external sites, and paths containing
+   characters that a browser would normalize away while resolving the URL."
   [^String url]
   (and (str/starts-with? url "/")
-       (not (str/starts-with? url "//"))))
+       (not (str/starts-with? url "//"))
+       (not (some disallowed-relative-url-chars url))))
 
 (defn valid-redirect-url?
   "Validates that a redirect URL is safe for use after OIDC authentication.
@@ -101,15 +109,18 @@
             (= (u/lower-case-en redirect-origin)
                (u/lower-case-en site-origin)))))))
 
-(defn- validate-redirect-url!
-  "Validates a redirect URL and throws an exception if invalid.
-   This prevents open redirect attacks by ensuring redirects stay within the application."
+(defn validate-redirect-url!
+  "Validates a redirect URL with [[valid-redirect-url?]] and throws a 400 if it is not acceptable.
+   This prevents open redirect attacks by ensuring redirects stay within the application.
+
+   Callers that want to reject a bad redirect before doing any other work (e.g. before contacting an identity
+   provider) should call this directly; it is also applied by [[create-oidc-state]]."
   [redirect-url]
   (when-not (valid-redirect-url? redirect-url)
     (log/warn "OIDC redirect URL validation failed")
+    ;; Keep the ex-data to `:status-code` only, so the exceptions middleware returns the message as the body.
     (throw (ex-info (tru "Invalid redirect URL. Redirect must be a relative path or same-origin URL.")
-                    {:status-code 400
-                     :redirect-url redirect-url}))))
+                    {:status-code 400}))))
 
 ;;; -------------------------------------------------- State Creation --------------------------------------------------
 
@@ -212,7 +223,9 @@
            ;; Valid
            :else
            state-map))
-       (catch Exception e
+       ;; Catch `Throwable` so any unusable input yields nil per this function's contract, mirroring
+       ;; [[metabase.util.encryption/maybe-decrypt]].
+       (catch Throwable e
          (log/warnf "Failed to decrypt OIDC state: %s" (ex-message e))
          nil)))))
 
