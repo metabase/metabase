@@ -452,9 +452,12 @@
           ;; Resolving it per batch is unsafe: a concurrent TTL resync can transiently blank :pending, which would
           ;; redirect writes to the live active table mid-rebuild and silently drop documents from the new index.
           reindex-table (when reindexing? (or (pending-table) (active-table)))]
+      ;; The {} init makes a successful zero-document rebuild return an empty report rather than nil, so
+      ;; callers (and the freshness gauge) can tell it apart from an engine that did no rebuild at all.
       (transduce (comp (partition-all insert-batch-size)
                        (map (partial batch-update! reindex-table)))
                  (partial merge-with +)
+                 {}
                  document-reducible))))
 
 (defmethod search.engine/update! :search.engine/appdb [_engine document-reducible]
