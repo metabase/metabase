@@ -13,6 +13,7 @@
    [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.queries.db :as queries.db]
    [metabase.queries.models.card :as card]
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.schema :as queries.schema]
@@ -1684,16 +1685,19 @@
                    :model/Card     question3    (dependent-card db1-id question1)
                    :model/Card     question4    (dependent-card db1-id question2)
                    :model/Card     question5    (dependent-card db1-id question4)]
-      (mt/with-test-user :crowberto
-        (card/update-card! {:card-before-update model
-                            :card-updates       {:dataset_query {:lib/type :mbql/query
-                                                                 :database db2-id
-                                                                 :stages   [{:lib/type :mbql.stage/native
-                                                                             :native   "SELECT 1"}]}}}))
+      ;; H2 returns these rows source-first. Reverse them to cover a valid result order from PostgreSQL.
+      (mt/with-dynamic-fn-redefs [queries.db/card-queries
+                                  (comp reverse (mt/original-fn #'queries.db/card-queries))]
+        (mt/with-test-user :crowberto
+          (card/update-card! {:card-before-update model
+                              :card-updates       {:dataset_query {:lib/type :mbql/query
+                                                                   :database db2-id
+                                                                   :stages   [{:lib/type :mbql.stage/native
+                                                                               :native   "SELECT 1"}]}}})))
       (doseq [question [question1 question2 question3 question4 question5]]
-        (let [updated-card (t2/select-one :model/Card :id (:id question))]
-          (is (= db2-id (get-in updated-card [:dataset_query :database])))
-          (is (= db2-id (:database_id updated-card))))))))
+        (is (=? {:database_id   db2-id
+                 :dataset_query {:database db2-id}}
+                (t2/select-one :model/Card :id (:id question))))))))
 
 (deftest find-stale-query-test
   (testing "the Card `find-stale-query` method selects stale cards and applies the model's own exclusions"
