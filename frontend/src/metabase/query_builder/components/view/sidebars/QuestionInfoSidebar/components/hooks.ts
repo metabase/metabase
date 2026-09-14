@@ -27,6 +27,9 @@ export const useGetJoinedTablesWithIcons = () => {
 
         return joins.flatMap((join) => {
           const thing = Lib.joinedThing(query, join);
+          if (!thing) {
+            return [];
+          }
           const href = getUrl({ query, table: thing, stageIndex });
           if (!href) {
             return [];

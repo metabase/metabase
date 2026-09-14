@@ -314,7 +314,7 @@ function getIsNativeWithoutTableVariables(
 
 function queryHasTableVariables(query: Lib.Query | null) {
   const hasTableTemplateTags = query
-    ? Object.values(Lib.templateTags(query)).some(
+    ? Object.values(Lib.templateTags(query) ?? {}).some(
         (tag) => tag.type === "table" && tag["table-id"] != null,
       )
     : false;

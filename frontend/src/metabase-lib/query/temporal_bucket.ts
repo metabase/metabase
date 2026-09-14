@@ -91,5 +91,25 @@ export function formatRelativeDateRange({
 }
 
 export function availableTemporalUnits(): TemporalUnit[] {
-  return ML.available_temporal_units();
+  return ML.available_temporal_units().filter(isTemporalUnit);
+}
+
+function isTemporalUnit(value: string): value is TemporalUnit {
+  return (
+    value === "minute" ||
+    value === "hour" ||
+    value === "day" ||
+    value === "week" ||
+    value === "quarter" ||
+    value === "month" ||
+    value === "year" ||
+    value === "minute-of-hour" ||
+    value === "hour-of-day" ||
+    value === "day-of-week" ||
+    value === "day-of-month" ||
+    value === "day-of-year" ||
+    value === "week-of-year" ||
+    value === "month-of-year" ||
+    value === "quarter-of-year"
+  );
 }

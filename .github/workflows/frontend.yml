@@ -85,6 +85,10 @@ jobs:
         uses: ./.github/actions/prepare-backend
       - run: bun run build-pure:cljs
         name: Compile CLJS
+      - run: bun run type-check-generated-cljs
+        name: Check generated CLJS declarations
+      - run: bun run check-generated-cljs-exports
+        name: Check generated CLJS runtime export parity
       - run: bun run type-check-pure
         name: Check types
 

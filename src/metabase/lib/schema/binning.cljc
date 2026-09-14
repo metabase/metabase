@@ -37,6 +37,7 @@
     :encode/serialize lib.schema.common/remove-internal-keys}
    [:multi {:dispatch (fn [x]
                         (keyword (some #(get x %) [:strategy "strategy"])))
+            :ts/dispatch-key :strategy
             :error/fn (fn [{:keys [value]} _]
                         (str "Invalid binning strategy" (pr-str value)))}
     [:default   [:map {:closed true}

@@ -86,7 +86,7 @@ export function useExtensions({
       ),
       diff
         ? unifiedMergeView({
-            original: Lib.rawNativeQuery(query),
+            original: Lib.rawNativeQuery(query) ?? "",
             mergeControls: false,
           })
         : null,

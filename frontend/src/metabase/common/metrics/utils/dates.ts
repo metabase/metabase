@@ -96,7 +96,7 @@ function getRelativeDateValue(
     value: filterParts.value,
     offsetUnit: filterParts.offsetUnit ?? undefined,
     offsetValue: filterParts.offsetValue ?? undefined,
-    options: filterParts.options,
+    options: filterParts.options ?? undefined,
   };
 }
 

@@ -61,25 +61,33 @@ function TimeseriesControls({
 
   const breakoutColumn = useMemo(
     () =>
-      breakout &&
-      (Lib.breakoutColumn(query, stageIndex, breakout) ?? undefined),
+      breakout
+        ? (Lib.breakoutColumn(query, stageIndex, breakout) ?? undefined)
+        : undefined,
     [query, stageIndex, breakout],
   );
 
   const isTemporalBucketable = useMemo(
     () =>
-      breakoutColumn &&
-      Lib.isTemporalBucketable(query, stageIndex, breakoutColumn),
+      breakoutColumn
+        ? Lib.isTemporalBucketable(query, stageIndex, breakoutColumn)
+        : false,
     [query, stageIndex, breakoutColumn],
   );
 
   const filterColumn = useMemo(
-    () => breakoutColumn && findFilterColumn(query, stageIndex, breakoutColumn),
+    () =>
+      breakoutColumn
+        ? findFilterColumn(query, stageIndex, breakoutColumn)
+        : undefined,
     [query, stageIndex, breakoutColumn],
   );
 
   const filter = useMemo(
-    () => filterColumn && findFilterClause(query, stageIndex, filterColumn),
+    () =>
+      filterColumn
+        ? findFilterClause(query, stageIndex, filterColumn)
+        : undefined,
     [query, stageIndex, filterColumn],
   );
 

@@ -28,6 +28,7 @@ import {
   multiLevelPivot,
 } from "metabase/visualizations/lib/data_grid";
 import type { VisualizationProps } from "metabase/visualizations/types";
+import type { ClickObject } from "metabase-lib";
 
 import {
   PivotTableRoot,
@@ -342,7 +343,9 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
     const topHeaderWidth =
       viewPortWidth - leftHeaderWidth - verticalScrollBarSize;
 
-    function getCellClickHandler(clicked: PivotTableClicked) {
+    function getCellClickHandler(
+      clicked: PivotTableClicked | null | undefined,
+    ) {
       if (!clicked) {
         return undefined;
       }
@@ -351,35 +354,32 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       // to avoid duplicate column metadata conversions from CLJS data structures to JS objects.
       // A value-cell click carries a top-level `colIdx` (identifying the aggregation column) AND
       // a pre-built `data` array, so column-setting and data-enrichment must be independent (#79023).
-      const { colIdx, ...updatedClicked } = clicked;
-      if (typeof colIdx === "number") {
-        updatedClicked.column = columnsWithoutPivotGroup[colIdx];
-      }
-      if (updatedClicked.data) {
-        updatedClicked.data = updatedClicked.data.map(
-          ({ colIdx, ...item }) => ({
+      const { colIdx, data, dimensions, ...clickedWithoutIndexes } = clicked;
+      const updatedData = data
+        ? data.map(({ colIdx, ...item }) => ({
             ...item,
-            col: colIdx !== undefined ? columnsWithoutPivotGroup[colIdx] : null,
-          }),
-        );
-      } else if (typeof colIdx === "number") {
-        updatedClicked.data = [
-          {
-            value: updatedClicked.value,
             col: columnsWithoutPivotGroup[colIdx] || null,
-          },
-        ];
-      }
-
-      if (updatedClicked.dimensions) {
-        updatedClicked.dimensions = updatedClicked.dimensions.flatMap(
-          ({ colIdx, ...item }) => {
-            const column =
-              colIdx !== undefined ? columnsWithoutPivotGroup[colIdx] : null;
-            return column ? [{ ...item, column }] : [];
-          },
-        );
-      }
+          }))
+        : typeof colIdx === "number"
+          ? [
+              {
+                value: clicked.value,
+                col: columnsWithoutPivotGroup[colIdx] || null,
+              },
+            ]
+          : undefined;
+      const updatedDimensions = dimensions?.flatMap(({ colIdx, ...item }) => {
+        const column = columnsWithoutPivotGroup[colIdx];
+        return column ? [{ ...item, column }] : [];
+      });
+      const updatedClicked: ClickObject = {
+        ...clickedWithoutIndexes,
+        ...(typeof colIdx === "number" && {
+          column: columnsWithoutPivotGroup[colIdx],
+        }),
+        ...(updatedData && { data: updatedData }),
+        ...(updatedDimensions && { dimensions: updatedDimensions }),
+      };
 
       return (e: React.MouseEvent) =>
         onVisualizationClick({
