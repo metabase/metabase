@@ -25,3 +25,18 @@
                              {:where [:and
                                       [:= :locale [:auto/param "de"]]
                                       [:= :msgid [:auto/param "x"]]]})))))))
+
+(deftest hostile-non-scalar-never-becomes-sql-test
+  (testing "a subquery map in a value slot is refused rather than compiled into the query"
+    ;; Handed straight to HoneySQL, a map in a value slot compiles into SQL structure. Through the
+    ;; pipeline it is stopped first: `honeysql-guard` refuses the unmarked map at the compile step,
+    ;; so the payload never reaches the driver, let alone the database.
+    (mt/with-temp [:model/ContentTranslation _ {:locale "de" :msgid "a" :msgstr "b"}]
+      (let [e (try
+                (t2/select :model/ContentTranslation
+                           {:where [:= :locale [:auto/param {:raw "(SELECT password FROM core_user)"}]]})
+                nil
+                (catch clojure.lang.ExceptionInfo e e))]
+        (is (some? e) "the query is refused")
+        (is (not (re-find #"(?i)password" (str (ex-message e))))
+            "and the payload never became part of a SQL statement")))))
