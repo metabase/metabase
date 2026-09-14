@@ -10,7 +10,8 @@
   - the *builtin* pool (1 context, full static-viz bundle) renders built-in charts and only ever evaluates
     our own bundle;
   - the *plugin* pool (1 context, slim custom-viz bundle) is the only place untrusted third-party
-    custom-viz plugin JS runs.
+    custom-viz plugin JS runs. Its context is reused across renders, so plugins are isolated from the
+    host and from builtin rendering, not from each other — see [[chart-with-custom-viz*]].
 
   Contexts on a shared engine have isolated global scopes (a plugin can't see another context's globals)
   while sharing the engine's parsed-source code cache. A context is held exclusively per render, and all
@@ -342,8 +343,11 @@
 (defn- chart-with-custom-viz*
   "Render `input` on a pooled plugin isolate context (slim custom-viz bundle already loaded by the pool)
   after evaluating and registering the custom-viz plugin `bundles` (untrusted third-party JS) into it.
-  Bundles are re-evaluated on every render: the set of plugins varies per card, and skipping re-evaluation
-  would mean trusting whatever state untrusted code left behind in the pooled context."
+  Bundles are re-evaluated on every render because the set of plugins varies per card and registration is
+  idempotent (a re-registered plugin replaces its registry entry). This does *not* reset the context: the
+  pooled context is reused across renders, so anything a plugin left on `globalThis` or patched on a
+  builtin survives until the pool recycles it. That's accepted — plugins are admin-installed and share
+  the plugin tier with each other."
   [input bundles]
   (let [timer        (u/start-timer)
         options-json (json/encode (:options input))
