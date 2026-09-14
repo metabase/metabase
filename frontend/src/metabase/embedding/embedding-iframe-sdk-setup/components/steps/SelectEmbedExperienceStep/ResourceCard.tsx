@@ -8,13 +8,13 @@ import {
   DashboardPickerModal,
   QuestionPickerModal,
 } from "metabase/common/components/Pickers";
+import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/types";
 import { Button, Card, Icon, Stack, Text } from "metabase/ui";
 import type { CollectionId, IconName } from "metabase-types/api";
 
 import { EXPERIENCES_WITHOUT_RESOURCE_SELECTION } from "../../../constants";
 import { useSdkIframeEmbedSetupContext } from "../../../context";
 import type {
-  SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupRecentItem,
   SdkIframeEmbedSetupRecentItemType,
 } from "../../../types";

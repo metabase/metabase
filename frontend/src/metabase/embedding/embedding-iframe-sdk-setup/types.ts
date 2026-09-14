@@ -14,8 +14,6 @@ import type {
 
 export type { SdkIframeEmbedSetupTheme } from "metabase-types/api";
 
-export type { SdkIframeEmbedSetupExperience } from "metabase/plugins/oss/embedding-iframe-sdk-setup";
-
 export type SdkIframeEmbedSetupStep =
   | "select-embed-experience"
   | "select-embed-options"

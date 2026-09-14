@@ -8,13 +8,13 @@ import type {
 import { getAuthSubTypeForSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-auth-sub-type-for-settings";
 import { getAuthTypeForSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-auth-type-for-settings";
 import { countEmbeddingParameterOptions } from "metabase/embedding/lib/count-embedding-parameter-options";
-import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
-import type { Card, Dashboard, EmbeddingParameters } from "metabase-types/api";
-
 import type {
   SdkIframeEmbedSetupExperience,
-  SdkIframeEmbedSetupSettings,
-} from "./types";
+  SdkIframeEmbedSetupModalInitialState,
+} from "metabase/embedding/types";
+import type { Card, Dashboard, EmbeddingParameters } from "metabase-types/api";
+
+import type { SdkIframeEmbedSetupSettings } from "./types";
 import {
   getDefaultSdkIframeEmbedSettings,
   getResourceIdFromSettings,
