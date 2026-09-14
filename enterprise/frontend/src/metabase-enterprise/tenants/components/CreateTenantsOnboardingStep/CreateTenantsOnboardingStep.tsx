@@ -139,12 +139,12 @@ export const CreateTenantsOnboardingStep = ({
                   fw="bold"
                   classNames={{ input: S.TenantNameInput }}
                 />
+                {/* TODO: replace with ActionIcon (GDGT-2457) */}
                 {tenants.length > 1 && (
                   <Button
                     variant="transparent"
-                    color="neutral"
                     size="compact-md"
-                    leftSection={<Icon name="close" />}
+                    leftSection={<Icon c="icon-primary" name="close" />}
                     onClick={() => removeTenantCard(index)}
                     aria-label={t`Remove tenant`}
                   />

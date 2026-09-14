@@ -130,13 +130,13 @@ export const DropdownSidebarFilter = ({
                   </Text>
                 </GroupOverflowHidden>
               )}
+              {/* TODO: replace with ActionIcon (GDGT-2457) */}
               <Button
                 variant="transparent"
                 size="compact-md"
-                color="neutral"
                 data-testid="sidebar-filter-dropdown-button"
                 onClick={onClearFilter}
-                leftSection={<Icon size={16} name={getDropdownIcon()} />}
+                leftSection={<Icon c="icon-primary" name={getDropdownIcon()} />}
               />
             </GroupOverflowHidden>
           </DropdownFieldSet>

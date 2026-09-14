@@ -110,9 +110,8 @@ export function EditorPanel({
                     size="sm"
                     aria-label={t`Reset main colors to defaults`}
                     onClick={editor.resetMainColors}
-                  >
-                    <Icon name="revert" size={16} />
-                  </Button>
+                    leftSection={<Icon name="revert" />}
+                  />
                 </Tooltip>
               )}
             </Flex>
@@ -154,9 +153,8 @@ export function EditorPanel({
                     size="sm"
                     aria-label={t`Regenerate from brand color`}
                     onClick={editor.regenerateAdditionalColorsFromBrand}
-                  >
-                    <Icon name="revert" size={16} />
-                  </Button>
+                    leftSection={<Icon name="revert" />}
+                  />
                 </Tooltip>
               )}
             </Flex>

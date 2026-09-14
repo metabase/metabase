@@ -396,9 +396,8 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
             size="sm"
             aria-label={t`Metric options`}
             color="neutral"
-          >
-            <Icon name="ellipsis" />
-          </Button>
+            leftSection={<Icon name="ellipsis" />}
+          />
         </Menu.Target>
         <Menu.Dropdown>
           {actions.map((action) => (

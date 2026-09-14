@@ -106,9 +106,8 @@ export function PythonEditorBody({
                   variant="light"
                   color="positive"
                   onClick={onAcceptProposed}
-                >
-                  <Icon name="check" />
-                </Button>
+                  leftSection={<Icon name="check" />}
+                />
               </Tooltip>
               <Tooltip label={t`Reject proposed changes`} position="left">
                 <Button
@@ -116,9 +115,8 @@ export function PythonEditorBody({
                   variant="light"
                   color="negative"
                   onClick={onRejectProposed}
-                >
-                  <Icon name="close" />
-                </Button>
+                  leftSection={<Icon name="close" />}
+                />
               </Tooltip>
             </>
           )}

@@ -101,9 +101,8 @@ export const RunButton = forwardRef(function RunButton(
               px="sm"
               aria-label={t`More run options`}
               data-testid="run-options-button"
-            >
-              <Icon name="chevrondown" aria-hidden />
-            </Button>
+              leftSection={<Icon name="chevrondown" aria-hidden />}
+            />
           </Menu.Target>
           <Menu.Dropdown>{menuItems}</Menu.Dropdown>
         </Menu>

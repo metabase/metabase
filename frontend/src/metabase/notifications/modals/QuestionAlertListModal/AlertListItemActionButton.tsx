@@ -14,12 +14,12 @@ export const AlertListItemActionButton = ({
   onClick,
 }: Props): JSX.Element => (
   <Tooltip label={label}>
+    {/* TODO: replace with ActionIcon (GDGT-2457) */}
     <Button
       variant="transparent"
       size="compact-md"
-      color="neutral"
       aria-label={label}
-      leftSection={<Icon name={iconName} />}
+      leftSection={<Icon c="icon-primary" name={iconName} />}
       onClick={onClick}
     />
   </Tooltip>

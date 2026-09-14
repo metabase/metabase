@@ -102,9 +102,8 @@ export function RevisionHistoryTimeline({
                       onClick={() => handleRevert(revision)}
                       data-testid="question-revert-button"
                       aria-label={t`revert to ${title}`}
-                    >
-                      <Icon name="revert" />
-                    </Button>
+                      leftSection={<Icon name="revert" />}
+                    />
                   </Tooltip>
                 )}
               </Flex>

@@ -43,10 +43,10 @@ export function Sidesheet({
             {actions}
 
             <Tooltip label={t`Close`}>
+              {/* TODO: replace with ActionIcon (GDGT-2457) */}
               <Button
                 aria-label={t`Close`}
-                color="neutral"
-                leftSection={<Icon name="close" />}
+                leftSection={<Icon c="icon-primary" name="close" />}
                 size="compact-md"
                 variant="transparent"
                 onClick={onClose}

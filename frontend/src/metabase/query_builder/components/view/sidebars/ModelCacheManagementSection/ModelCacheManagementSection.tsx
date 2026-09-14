@@ -96,12 +96,18 @@ export function ModelCacheManagementSection({ model }: Props) {
                 {t`Create now`}
               </Button>
             ) : (
+              // TODO: replace with ActionIcon (GDGT-2457)
               <Button
                 variant="transparent"
                 size="compact-md"
-                color="neutral"
                 aria-label={t`Refresh now`}
-                leftSection={<Icon name="refresh" tooltip={t`Refresh now`} />}
+                leftSection={
+                  <Icon
+                    c="icon-primary"
+                    name="refresh"
+                    tooltip={t`Refresh now`}
+                  />
+                }
                 onClick={() => onRefresh(model.id())}
               />
             ))}

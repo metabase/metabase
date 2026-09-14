@@ -397,9 +397,8 @@ export const NativeQueryEditorRoot = forwardRef<
                               onAcceptProposed(proposedQuery.datasetQuery());
                             }
                           }}
-                        >
-                          <Icon name="check" />
-                        </Button>
+                          leftSection={<Icon name="check" />}
+                        />
                       </Tooltip>
                       <Tooltip
                         label={t`Reject proposed changes`}
@@ -412,9 +411,8 @@ export const NativeQueryEditorRoot = forwardRef<
                           variant="filled"
                           color="negative"
                           onClick={onRejectProposed}
-                        >
-                          <Icon name="close" />
-                        </Button>
+                          leftSection={<Icon name="close" />}
+                        />
                       </Tooltip>
                     </>
                   )}

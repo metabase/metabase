@@ -91,13 +91,15 @@ export const NativeQueryEditorActionButtons = (
       )}
       {showFormatButton && onFormatQuery && (
         <Tooltip label={t`Auto-format`}>
+          {/* TODO: replace with ActionIcon (GDGT-2457) */}
           <Button
             variant="transparent"
             size="compact-md"
-            color="neutral"
             className={S.button}
             aria-label={t`Auto-format`}
-            leftSection={<Icon name="format_code" size={ICON_SIZE} />}
+            leftSection={
+              <Icon c="icon-primary" name="format_code" size={ICON_SIZE} />
+            }
             onClick={onFormatQuery}
           />
         </Tooltip>

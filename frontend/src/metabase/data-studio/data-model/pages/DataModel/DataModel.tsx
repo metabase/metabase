@@ -248,16 +248,16 @@ function DataModelContent() {
               px="xl"
             >
               <DataStudioBreadcrumbs>{t`Table details`}</DataStudioBreadcrumbs>
+              {/* TODO: replace with ActionIcon (GDGT-2457) */}
               <Button
                 variant="transparent"
                 size="compact-md"
-                color="neutral"
                 component={ForwardRefLink}
                 to={Urls.dataStudioData({
                   databaseId: table?.db_id,
                   schemaName: table?.schema,
                 })}
-                leftSection={<Icon name="close" c="text-secondary" />}
+                leftSection={<Icon name="close" c="icon-primary" />}
                 onClick={() => {
                   closePreview();
                   resetSelection();
@@ -314,17 +314,17 @@ function DataModelContent() {
               className={S.header}
             >
               <DataStudioBreadcrumbs>{t`Field details`}</DataStudioBreadcrumbs>
+              {/* TODO: replace with ActionIcon (GDGT-2457) */}
               <Button
                 variant="transparent"
                 size="compact-md"
-                color="neutral"
                 component={ForwardRefLink}
                 to={Urls.dataStudioData({
                   databaseId: table?.db_id,
                   schemaName: table?.schema,
                   tableId: table?.id,
                 })}
-                leftSection={<Icon name="close" c="text-secondary" />}
+                leftSection={<Icon name="close" c="icon-primary" />}
                 onClick={closePreview}
               />
             </Group>

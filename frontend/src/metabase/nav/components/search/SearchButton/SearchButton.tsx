@@ -23,12 +23,12 @@ export const SearchButton = (props: ButtonProps) => {
   const isSmallScreen = useIsSmallScreen();
 
   if (isSmallScreen) {
+    // TODO: replace with ActionIcon (GDGT-2457)
     return (
       <Button
         variant="transparent"
         size="compact-md"
-        color="neutral"
-        leftSection={<Icon name="search" />}
+        leftSection={<Icon c="icon-primary" name="search" />}
         onClick={handleClick}
         aria-label="Search"
       />

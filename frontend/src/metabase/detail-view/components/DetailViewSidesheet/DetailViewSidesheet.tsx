@@ -243,11 +243,11 @@ export function DetailViewSidesheet({
             {isNavEnabled && (
               <>
                 <Tooltip disabled={!onPreviousClick} label={t`Previous row`}>
+                  {/* TODO: replace with ActionIcon (GDGT-2457) */}
                   <Button
                     aria-label={t`Previous row`}
-                    color="neutral"
                     disabled={!onPreviousClick}
-                    leftSection={<Icon name="chevronup" />}
+                    leftSection={<Icon c="icon-primary" name="chevronup" />}
                     size="compact-md"
                     variant="transparent"
                     style={{
@@ -258,11 +258,11 @@ export function DetailViewSidesheet({
                 </Tooltip>
 
                 <Tooltip disabled={!onNextClick} label={t`Next row`}>
+                  {/* TODO: replace with ActionIcon (GDGT-2457) */}
                   <Button
                     aria-label={t`Next row`}
-                    color="neutral"
                     disabled={!onNextClick}
-                    leftSection={<Icon name="chevrondown" />}
+                    leftSection={<Icon c="icon-primary" name="chevrondown" />}
                     size="compact-md"
                     variant="transparent"
                     style={{
@@ -284,11 +284,11 @@ export function DetailViewSidesheet({
               >
                 <Menu.Target>
                   <Tooltip label={t`Actions`}>
+                    {/* TODO: replace with ActionIcon (GDGT-2457) */}
                     <Button
                       aria-label={t`Actions`}
-                      color="neutral"
                       data-testid="actions-menu"
-                      leftSection={<Icon name="ellipsis" />}
+                      leftSection={<Icon c="icon-primary" name="ellipsis" />}
                       size="compact-md"
                       variant="transparent"
                     />
@@ -313,12 +313,12 @@ export function DetailViewSidesheet({
                 <Tooltip
                   label={linkCopied ? t`Copied!` : t`Copy link to this record`}
                 >
+                  {/* TODO: replace with ActionIcon (GDGT-2457) */}
                   <Button
                     aria-label={
                       linkCopied ? t`Copied!` : t`Copy link to this record`
                     }
-                    color="neutral"
-                    leftSection={<Icon name="link" />}
+                    leftSection={<Icon c="icon-primary" name="link" />}
                     size="compact-md"
                     variant="transparent"
                     onClick={handleCopyLink}
@@ -327,11 +327,11 @@ export function DetailViewSidesheet({
 
                 <Tooltip label={t`Open in full page`}>
                   <Box>
+                    {/* TODO: replace with ActionIcon (GDGT-2457) */}
                     <Button
                       aria-label={t`Open in full page`}
-                      color="neutral"
                       component={Link}
-                      leftSection={<Icon name="expand" />}
+                      leftSection={<Icon c="icon-primary" name="expand" />}
                       size="compact-md"
                       variant="transparent"
                       to={url}

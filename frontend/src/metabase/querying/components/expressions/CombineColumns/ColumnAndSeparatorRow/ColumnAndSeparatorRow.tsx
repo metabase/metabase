@@ -49,7 +49,6 @@ export const ColumnAndSeparatorRow = ({
           onChange(index, column, separator);
         }}
       />
-
       <ColumnInput
         query={query}
         stageIndex={stageIndex}
@@ -60,15 +59,14 @@ export const ColumnAndSeparatorRow = ({
           onChange(index, column, separator);
         }}
       />
-
+      {/* TODO: replace with ActionIcon (GDGT-2457) */}
       {showRemove && (
         <Button
           variant="transparent"
           size="compact-md"
-          color="neutral"
           mb="md"
           aria-label={t`Remove column`}
-          leftSection={<Icon name="close" />}
+          leftSection={<Icon c="icon-primary" name="close" />}
           onClick={() => {
             onRemove(index);
           }}

@@ -282,13 +282,15 @@ export const MetabotComponent = memo(
             opacity="0.5"
             className={S.closeButton}
           >
+            {/* TODO: replace with ActionIcon (GDGT-2457) */}
             {editor.options.editable ? (
               <Button
                 variant="transparent"
                 size="compact-md"
-                color="neutral"
                 m="sm"
-                leftSection={<Icon name="close" data-hide-on-print />}
+                leftSection={
+                  <Icon c="icon-primary" name="close" data-hide-on-print />
+                }
                 onClick={() => deleteNode()}
               />
             ) : (
