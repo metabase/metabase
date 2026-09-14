@@ -546,6 +546,28 @@
         (is (not (re-find #"either the same numeric-id dialect execute_query takes\." error))
             "the truncated form, with `either` promising an alternative it never gives")))))
 
+(deftest transform-write-definition-without-database-names-the-fix-test
+  (testing "a `definition` in the execute_query dialect but without a top-level `database` — the field
+            execute_query infers and a transform does not — gets an error naming the field to add and
+            the query_handle route"
+    (with-transforms
+      (let [error (tool-error (write! {:method     "create"
+                                       :name       "x"
+                                       :definition {:type  "query"
+                                                    :query {:lib/type "mbql/query"
+                                                            :stages   [{:lib/type     "mbql.stage/mbql"
+                                                                        :source-table (mt/id :venues)}]}}
+                                       :target     {:name "y" :schema (venues-schema)}}))]
+        (is (re-find #"needs a top-level `database`" error))
+        (is (re-find #"pass a query_handle from execute_query instead" error))
+        (testing "and a query malformed some other way does not get the database hint"
+          (let [other (tool-error (write! {:method     "create"
+                                           :name       "x"
+                                           :definition {:type "query" :query {:stages []}}
+                                           :target     {:name "y" :schema (venues-schema)}}))]
+            (is (re-find #"not valid MBQL" other))
+            (is (not (re-find #"needs a top-level `database`" other)))))))))
+
 ;;; -------------------------------------------------- Update ------------------------------------------------------
 
 (deftest transform-write-update-swaps-source-test

@@ -34,8 +34,8 @@
   "The sentence every source-shape teaching error ends with, naming what `definition` accepts."
   (str "`definition` is a transform source: {\"type\": \"query\", \"query\": …} — exactly what "
        "get_content's \"definition\" include returns for a transform. The query inside is either "
-       "the same numeric-id dialect execute_query takes, or the older name-based dialect, still "
-       "resolved on input. "
+       "the numeric-id dialect with a top-level `database`, as question_write's `query` takes, or "
+       "the older name-based dialect, still resolved on input. "
        "Alternatively pass a query_handle from execute_query or execute_sql instead of "
        "`definition`."))
 
@@ -43,6 +43,13 @@
   "transform_write authors query transforms only — python transforms are written in Metabase.")
 
 ;;; ----------------------------------------------- Source handling ------------------------------------------------
+
+(def ^:private missing-database-hint
+  "Appended when the query has no top-level `database`. execute_query infers it from the first stage,
+   so a query written for execute_query never had one; the bare normalize message names the field
+   but not that difference."
+  (str "Unlike execute_query, a transform's query needs a top-level `database` — add one (the id of "
+       "the database `source-table` belongs to), or pass a query_handle from execute_query instead. "))
 
 (defn- normalize-transform-query
   "Normalize a numeric-ref query — hand-written MBQL 5, MBQL 4 (which normalizes into it), a
@@ -53,9 +60,12 @@
   (try
     (lib-be/normalize-query nil query {:strict? true})
     (catch Exception e
-      (common/throw-teaching-error
-       (format "The transform's query is not valid MBQL: %s %s"
-               (common/ellipsize (ex-message e) 300) accepted-shapes)))))
+      (let [msg (ex-message e)]
+        (common/throw-teaching-error
+         (format "The transform's query is not valid MBQL: %s %s%s"
+                 (common/ellipsize msg 300)
+                 (if (re-find #"must include :database" (str msg)) missing-database-hint "")
+                 accepted-shapes))))))
 
 (defn- definition->query
   "The query inside a caller-supplied `definition`, resolved to canonical MBQL 5. Source kinds this
@@ -353,8 +363,8 @@
    [:definition {:optional true}
     [:maybe [:map {:description (str "The transform's source: {\"type\": \"query\", \"query\": …}, the shape "
                                      "get_content's \"definition\" include returns for a transform. The query "
-                                     "inside is the same numeric-id dialect execute_query takes, and may be "
-                                     "native SQL. Pass this or "
+                                     "inside is what question_write's `query` takes — numeric ids and a "
+                                     "top-level `database` — and may be native SQL. Pass this or "
                                      "query_handle, not both.")}]]]
    [:query_handle {:optional true}
     [:maybe [:string {:min 1 :description (str "A query_handle from execute_query or execute_sql — saves exactly "
@@ -407,7 +417,7 @@
   warehouse, which questions and other transforms can then query. method: \"create\" requires name, target, and one
   query source; method: \"update\" requires id and changes only the fields you pass. Pass the query as definition
   ({\"type\": \"query\", \"query\": …} — the shape get_content's \"definition\" include returns, with the query in the
-  same numeric-id dialect execute_query takes) or as a query_handle from execute_query or
+  dialect question_write's query takes: numeric ids and a top-level database) or as a query_handle from execute_query or
   execute_sql — one or the other, not both. Native SQL is fine: save an execute_sql handle. target is the output table,
   {name, schema?}; a schema is required on databases that have schemas, and on update target patches the current one,
   so passing only name renames the table. The target database always follows the query's database. Creating a transform

@@ -15,10 +15,10 @@ transform_write {"method": "create", "name": "Daily revenue",
 
 ## Query source — exactly one of `query_handle` | `definition`
 
-Preferred: author and run with `execute_query` (or `execute_sql` for native — fine here), then pass the returned `query_handle`; it saves exactly what ran. The alternative, inline `definition`, is the transform's **source map**, not a bare query — the shape `get_content`'s `"definition"` include returns, so read-modify-write round-trips; the inner query is the `execute_query` dialect (`learn("query-dialect")`), numeric ids:
+Preferred: author and run with `execute_query` (or `execute_sql` for native — fine here), then pass the returned `query_handle`; it saves exactly what ran. The alternative, inline `definition`, is the transform's **source map**, not a bare query — the shape `get_content`'s `"definition"` include returns, so read-modify-write round-trips; the inner query is the `execute_query` dialect (`learn("query-dialect")`) plus a top-level `database` — the id of the database the source table belongs to, which `execute_query` infers and a transform does not:
 
 ```
-"definition": {"type": "query", "query": {"lib/type": "mbql/query", "stages": [...]}}
+"definition": {"type": "query", "query": {"lib/type": "mbql/query", "database": 2, "stages": [...]}}
 ```
 
 A bare query in `definition` is the common miss (older transforms stored it that way) and a teaching error.
