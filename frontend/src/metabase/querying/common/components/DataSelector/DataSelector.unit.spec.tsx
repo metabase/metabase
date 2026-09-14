@@ -5,7 +5,10 @@ import { createMockSettingsState, createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { getIcon, render, renderWithProviders, screen } from "__support__/ui";
 import { delay } from "__support__/utils";
-import { UnconnectedDataSelector as DataSelector, getEntityLookups  } from "metabase/querying/common/components/DataSelector";
+import {
+  UnconnectedDataSelector as DataSelector,
+  getEntityLookups,
+} from "metabase/querying/common/components/DataSelector";
 import { checkNotNull } from "metabase/utils/types";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
 import {
