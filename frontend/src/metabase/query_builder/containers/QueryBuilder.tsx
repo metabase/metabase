@@ -40,7 +40,6 @@ import {
   useParams,
 } from "metabase/router";
 import { getIsNavbarOpen } from "metabase/selectors/app";
-import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/settings";
 import { useForceUpdate } from "metabase/utils/use-force-update";
 import type { Series } from "metabase-types/api";
@@ -121,7 +120,7 @@ import {
   onOpenTimelines,
   setParameterValue,
 } from "../store/actions";
-import { getIsObjectDetail, getMode } from "../store/mode-selectors";
+import { getIsObjectDetail } from "../store/mode-selectors";
 import {
   getCard,
   getDataReferenceStack,
@@ -157,7 +156,6 @@ import {
   getShouldShowUnsavedChangesWarning,
   getSnippetCollectionId,
   getTableForeignKeyReferences,
-  getTableForeignKeys,
   getTimeseriesXDomain,
   getUiControls,
   getVisibleTimelineEventIds,
@@ -178,21 +176,16 @@ const mapStateToProps = (state: State) => {
     canManageSubscriptions: canManageSubscriptions(state),
     isAdmin: getUserIsAdmin(state),
 
-    mode: getMode(state),
-
     question: getQuestion(state),
     originalQuestion: getOriginalQuestion(state),
     lastRunCard: getLastRunCard(state),
 
     parameterValues: getParameterValues(state),
 
-    tableForeignKeys: getTableForeignKeys(state),
     tableForeignKeyReferences: getTableForeignKeyReferences(state),
 
     card: getCard(state),
     originalCard: getOriginalCard(state),
-
-    metadata: getMetadata(state),
 
     timelines: getFilteredTimelines(state),
     timelineEvents: getVisibleTimelineEvents(state),

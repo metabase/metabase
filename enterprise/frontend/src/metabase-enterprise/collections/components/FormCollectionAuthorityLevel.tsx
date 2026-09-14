@@ -13,7 +13,7 @@ interface Props extends HTMLAttributes<HTMLDivElement> {
   title?: string;
 }
 
-const OPTIONS = [
+const getOptions = () => [
   {
     label: REGULAR_COLLECTION.name,
     value: REGULAR_COLLECTION.type,
@@ -52,7 +52,7 @@ export function FormCollectionAuthorityLevel({
       <SegmentedControl
         value={String(value)}
         onChange={handleChange}
-        data={OPTIONS.map((option) => ({
+        data={getOptions().map((option) => ({
           value: String(option.value),
           label: (
             <Center style={{ gap: 10 }} c={option.selectedColor}>

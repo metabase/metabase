@@ -14,7 +14,7 @@ export const ErrorBox = ({
 }) => (
   <Box
     className={cx(S.monospace, className)}
-    p="md"
+    p="lg"
     mt="sm"
     fw="bold"
     bg="background_page-secondary"

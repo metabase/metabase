@@ -111,7 +111,7 @@
       (is (re-find #"Communicating with the user" without-queries))
       (is (re-find #"Finding data" without-queries)))
     (testing "explicit denial for query tools is included"
-      (is (re-find #"You cannot build queries or create charts" without-queries)))
+      (is (re-find #"You cannot build queries" without-queries)))
     (testing "no individual SQL/NLQ denials when both are off"
       (is (not (re-find #"You cannot write SQL" without-queries)))
       (is (not (re-find #"You cannot use natural language querying" without-queries))))))
@@ -127,7 +127,7 @@
       (is (not (re-find #"X-ray auto-generated dashboards" rendered)))
       (is (not (re-find #"# Writing SQL" rendered))))
     (testing "denial messages are present"
-      (is (re-find #"You cannot build queries or create charts" rendered))
+      (is (re-find #"You cannot build queries" rendered))
       (is (re-find #"You cannot create dashboards or documents" rendered)))))
 
 (deftest ^:parallel defaults-to-no-permissions-when-unbound-test
@@ -136,7 +136,7 @@
       (is (not (re-find #"MBQL shape rules" rendered)))
       (is (not (re-find #"Natural-language querying is your default" rendered)))
       (is (not (re-find #"X-ray auto-generated dashboards" rendered)))
-      (is (re-find #"You cannot build queries or create charts" rendered))
+      (is (re-find #"You cannot build queries" rendered))
       (is (re-find #"You cannot create dashboards or documents" rendered)))))
 
 (deftest ^:parallel prompt-no-denials-when-all-enabled-test
@@ -186,12 +186,15 @@
                                                  :permission/metabot-other-tools    :no})]
     (testing "other-tools sections included when permitted"
       (is (re-find #"static_viz" with-other))
-      (is (re-find #"Visualization Titles" with-other))
+      (is (re-find #"Saved questions and metrics" with-other))
       (is (re-find #"Visual Previews" with-other)))
     (testing "other-tools sections excluded when not permitted"
       (is (not (re-find #"static_viz" without-other)))
-      (is (not (re-find #"Visualization Titles" without-other)))
+      (is (not (re-find #"Saved questions and metrics" without-other)))
       (is (not (re-find #"Visual Previews" without-other))))
+    (testing "visualization titles heading still covers nlq ad-hoc queries when other-tools is off"
+      (is (re-find #"Visualization Titles" without-other))
+      (is (re-find #"Ad-hoc queries" without-other)))
     (testing "other-tools denial message present when not permitted"
       (is (re-find #"You cannot create inline visualizations" without-other)))))
 

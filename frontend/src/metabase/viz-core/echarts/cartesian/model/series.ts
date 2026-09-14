@@ -1,4 +1,4 @@
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { getNullDisplayValue } from "metabase/utils/constants";
 import { memoize } from "metabase/utils/memoize";
 import { isEmpty } from "metabase/utils/validate";
 import { formatValue } from "metabase/value-formatting";
@@ -85,7 +85,7 @@ export const formatBreakoutValue = (
   column: DatasetColumn,
 ): string => {
   return String(
-    formatValue(isEmpty(value) ? NULL_DISPLAY_VALUE : value, { column }),
+    formatValue(isEmpty(value) ? getNullDisplayValue() : value, { column }),
   );
 };
 
@@ -200,7 +200,7 @@ export const getCardSeriesModels = (
   isFirstCard: boolean,
   settings: ComputedVisualizationSettings,
 ): SeriesModel[] => {
-  const cardId = card.id ?? null;
+  const cardId = card.id;
   const hasBreakout = "breakout" in columns;
   // TODO: separate scatter plot and combo charts into separate models
   const hasBubbleSize = "bubbleSize" in columns;
@@ -339,15 +339,17 @@ export const getDimensionModel = (
   return {
     column: cardsColumns[0].dimension.column,
     columnIndex: cardsColumns[0].dimension.index,
-    columnByCardId: rawSeries.reduce(
+    columnByCardId: rawSeries.reduce<Record<CardId, DatasetColumn>>(
       (columnByCardId, series, index) => {
         const cardColumns = cardsColumns[index];
-        columnByCardId[series.card.id] = cardColumns.dimension.column;
+        if (series.card.id) {
+          columnByCardId[series.card.id] = cardColumns.dimension.column;
+        }
         return columnByCardId;
       },
-      // Unjustified type cast. FIXME
-      {} as Record<CardId, DatasetColumn>,
+      {},
     ),
+    columns: cardsColumns.map((cardColumns) => cardColumns.dimension.column),
   };
 };
 

@@ -19,8 +19,6 @@ describe("useHandleMcpDrillThrough", () => {
     // Unjustified type cast. FIXME
     (window as any).metabaseConfig = {
       instanceUrl: "https://metabase.example",
-      uiCredential: "ui-credential",
-      mcpSessionId: "mcp-session-id",
     };
 
     fetchMock.post("path:/api/embed-mcp/drills", { handle: "drill-handle" });
@@ -39,8 +37,13 @@ describe("useHandleMcpDrillThrough", () => {
     };
 
     const defaultNavigate = jest.fn();
-    // Unjustified type cast. FIXME
-    const { result } = renderHook(() => useHandleMcpDrillThrough(app as any));
+    const { result } = renderHook(() =>
+      useHandleMcpDrillThrough({
+        app,
+        uiCredential: "ui-credential",
+        mcpSessionId: "mcp-session-id",
+      }),
+    );
 
     await result.current(
       { drillName: "fk-details", nextCard: NEXT_CARD },
@@ -68,8 +71,13 @@ describe("useHandleMcpDrillThrough", () => {
     };
 
     const defaultNavigate = jest.fn();
-    // Unjustified type cast. FIXME
-    const { result } = renderHook(() => useHandleMcpDrillThrough(app as any));
+    const { result } = renderHook(() =>
+      useHandleMcpDrillThrough({
+        app,
+        uiCredential: "ui-credential",
+        mcpSessionId: "mcp-session-id",
+      }),
+    );
 
     await result.current(
       { drillName: "fk-details", nextCard: NEXT_CARD },

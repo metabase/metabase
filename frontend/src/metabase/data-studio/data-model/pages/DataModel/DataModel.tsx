@@ -204,7 +204,7 @@ function DataModelContent() {
               h="100%"
               justify="center"
               miw={rem(400)}
-              p="xl"
+              p="xxl"
             >
               <LoadingAndErrorWrapper error={t`Not found.`} />
             </Stack>
@@ -242,10 +242,10 @@ function DataModelContent() {
               justify="space-between"
               w="100%"
               data-testid="table-section-header"
-              py="lg"
+              py="xl"
               bg="background_page-secondary"
               className={S.header}
-              px="lg"
+              px="xl"
             >
               <DataStudioBreadcrumbs>{t`Table details`}</DataStudioBreadcrumbs>
               <Button
@@ -264,7 +264,7 @@ function DataModelContent() {
                 }}
               />
             </Group>
-            <ScrollArea flex={1} px="lg" type="hover">
+            <ScrollArea flex={1} px="xl" type="hover">
               <LoadingAndErrorWrapper error={error} loading={isLoading}>
                 {table && (
                   <TableSection
@@ -309,7 +309,7 @@ function DataModelContent() {
               justify="space-between"
               w="100%"
               data-testid="field-section-header"
-              p="lg"
+              p="xl"
               bg="background_page-secondary"
               className={S.header}
             >
@@ -327,7 +327,7 @@ function DataModelContent() {
                 onClick={closePreview}
               />
             </Group>
-            <ScrollArea flex={1} px="lg" type="hover">
+            <ScrollArea flex={1} px="xl" type="hover">
               <LoadingAndErrorWrapper error={error} loading={isLoading}>
                 {field && table && databaseId != null && (
                   <>
@@ -362,7 +362,7 @@ function DataModelContent() {
           <Box
             flex={COLUMN_CONFIG.preview.flex}
             h="100%"
-            p="lg"
+            p="xl"
             maw={COLUMN_CONFIG.preview.max}
             miw={COLUMN_CONFIG.preview.min}
             ref={scrollToPanel}

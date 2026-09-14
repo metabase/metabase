@@ -29,13 +29,13 @@
    [malli.core :as mc]
    [malli.error :as me]
    [medley.core :as m]
-   [metabase.collections.models.collection :as collection]
+   [metabase.activity-feed.db :as activity-feed.db]
+   [metabase.batch-processing.core :as grouper]
    [metabase.collections.models.collection.root :as root]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -64,10 +64,7 @@
   "Returns a set of IDs of duplicate models in the RecentViews table. Duplicate means that the same model and model_id
    shows up more than once. This returns the ids for the copies that are not the most recent entry."
   [user-id context]
-  (->> (t2/select :model/RecentViews
-                  :user_id user-id
-                  :context context
-                  {:order-by [[:timestamp :desc]]})
+  (->> (activity-feed.db/recent-views-for-user-context user-id context)
        (group-by (juxt :model :model_id))
        ;; skip the first row for each group, since it's the most recent
        (into #{} (comp (mapcat (fn [[_ rows]] (drop 1 rows)))
@@ -113,24 +110,11 @@
     (name model)))
 
 (defn- ids-to-prune-for-user+model [user-id model context]
-  (t2/select-fn-set :id
-                    :model/RecentViews
-                    {:select [:rv.id]
-                     :from [[:recent_views :rv]]
-                     :where [:and
-                             [:= :rv.model (rv-model->db-model model)]
-                             [:= :rv.user_id user-id]
-                             [:= :rv.context (h2x/literal (name context))]
-                             (when-let [card-type (rv-model->card-type model)]
-                               [:= :rc.type (h2x/literal card-type)])]
-                     :left-join [[:report_card :rc]
-                                 [:and
-                                  [:= :rc.id :rv.model_id]
-                                  [:= :rv.model (h2x/literal "card")]]]
-                     :order-by [[:rv.timestamp :desc]]
-                     ;; mysql doesn't support offset without limit :derp:
-                     :limit 100000
-                     :offset *recent-views-stored-per-user-per-model*}))
+  (activity-feed.db/recent-view-ids-to-prune (rv-model->db-model model)
+                                             user-id
+                                             (name context)
+                                             (rv-model->card-type model)
+                                             *recent-views-stored-per-user-per-model*))
 
 (defn- overflowing-model-buckets [user-id context]
   (into #{} (mapcat #(ids-to-prune-for-user+model user-id % context)) rv-models))
@@ -144,6 +128,42 @@
    (duplicate-model-ids user-id context)
    (overflowing-model-buckets user-id context)))
 
+(defn- update-users-recent-views!*
+  "Batch handler for [[update-users-recent-views!]]: inserts the given views and then prunes overflow and
+  duplicates once per affected (user, context) pair."
+  [views]
+  (when (seq views)
+    (try
+      (t2/with-transaction [_conn]
+        (activity-feed.db/insert-recent-views!
+         (for [{:keys [user-id model model-id context timestamp]} views]
+           {:user_id user-id
+            :model (u/lower-case-en (name model))
+            :model_id model-id
+            :context (name context)
+            :timestamp timestamp}))
+        ;; The prune queries are per (user, context), not per view, so collapse the batch down to its distinct
+        ;; pairs first: N views by one user become one set of prune queries instead of N.
+        (let [prune-ids (into #{}
+                              (comp (map (juxt :user-id :context))
+                                    (distinct)
+                                    (mapcat (fn [[user-id context]] (ids-to-prune user-id context))))
+                              views)]
+          (when (seq prune-ids)
+            (activity-feed.db/delete-recent-views! prune-ids))))
+      (catch Exception e
+        (log/error e "Failed to update users recent views")))))
+
+(def ^:private recent-views-interval-seconds 20)
+
+(def ^:private recent-views-queue-capacity 500)
+
+(defonce ^:private recent-views-queue
+  (delay (grouper/start!
+          #'update-users-recent-views!*
+          :capacity recent-views-queue-capacity
+          :interval (* recent-views-interval-seconds 1000))))
+
 (mu/defn update-users-recent-views!
   "Updates the RecentViews table for a given user with a new view, and prunes old views."
   [user-id :- [:maybe ms/PositiveInt]
@@ -151,29 +171,16 @@
    model-id :- ms/PositiveInt
    context :- [:enum :view :selection]]
   (when user-id
-    (t2/with-transaction [_conn]
-      (t2/insert! :model/RecentViews {:user_id user-id
-                                      :model (u/lower-case-en (name model))
-                                      :model_id model-id
-                                      :context (name context)})
-      (let [prune-ids (ids-to-prune user-id context)]
-        (when (seq prune-ids)
-          (t2/delete! :model/RecentViews :id [:in prune-ids]))))))
+    (grouper/submit! @recent-views-queue {:user-id   user-id
+                                          :model     model
+                                          :model-id  model-id
+                                          :context   context
+                                          :timestamp (t/offset-date-time)})))
 
 (defn most-recently-viewed-dashboard-id
   "Returns ID of the most recently viewed dashboard for a given user within the last 24 hours, or `nil`."
   [user-id]
-  (t2/select-one-fn
-   :model_id
-   :model/RecentViews
-   {:where    [:and
-               [:= :user_id user-id]
-               [:= :model (h2x/literal "dashboard")]
-               [:> :timestamp (t/minus (t/zoned-date-time) (t/days 1))]
-               [:not= :d.archived true]]
-    :order-by [[:recent_views.id :desc]]
-    :left-join [[:report_dashboard :d]
-                [:= :recent_views.model_id :d.id]]}))
+  (activity-feed.db/most-recently-viewed-dashboard-id user-id (t/minus (t/zoned-date-time) (t/days 1))))
 
 (def Item
   "The shape of a recent view item, returned from `GET /recent_views`."
@@ -259,38 +266,7 @@
   [card-ids]
   (if-not (seq card-ids)
     []
-    (t2/select :model/Card
-               {:select [:card.name
-                         :card.description
-                         :card.archived
-                         :card.id
-                         :card.database_id
-                         :card.display
-                         :card.card_schema
-                         :card.result_metadata
-                         :card.dataset_query
-                         :card.entity_id
-                         :card.visualization_settings
-                         [:dashboard.id :dashboard_id]
-                         [:dashboard.name :dashboard_name]
-                         [:card.collection_id :entity-coll-id]
-                         [:mr.status :moderated-status]
-                         [:collection.id :collection_id]
-                         [:collection.name :collection_name]
-                         [:collection.authority_level :collection_authority_level]]
-                :from [[:report_card :card]]
-                :where [:in :card.id card-ids]
-                :left-join [[:moderation_review :mr]
-                            [:and
-                             [:= :mr.moderated_item_id :card.id]
-                             [:= :mr.moderated_item_type "card"]
-                             [:= :mr.most_recent true]]
-                            [:collection]
-                            [:and
-                             [:= :collection.id :card.collection_id]
-                             [:= :collection.archived false]]
-                            [:report_dashboard :dashboard]
-                            [:= :dashboard.id :card.dashboard_id]]})))
+    (activity-feed.db/cards-for-recent-views card-ids)))
 
 (defn- fill-parent-coll [model-object]
   (if (:collection_id model-object)
@@ -372,27 +348,7 @@
   [dashboard-ids]
   (if (empty? dashboard-ids)
     []
-    (t2/select :model/Dashboard
-               {:select [:dash.id
-                         :dash.name
-                         :dash.description
-                         :dash.archived
-                         [:dash.collection_id :entity-coll-id]
-                         [:c.id :collection_id]
-                         [:c.name :collection_name]
-                         [:c.authority_level :collection_authority_level]
-                         [:mr.status :moderated-status]]
-                :from [[:report_dashboard :dash]]
-                :where [:in :dash.id dashboard-ids]
-                :left-join [[:moderation_review :mr]
-                            [:and
-                             [:= :mr.moderated_item_id :dash.id]
-                             [:= :mr.moderated_item_type "dashboard"]
-                             [:= :mr.most_recent true]]
-                            [:collection :c]
-                            [:and
-                             [:= :c.id :dash.collection_id]
-                             [:= :c.archived false]]]})))
+    (activity-feed.db/dashboards-for-recent-views dashboard-ids)))
 
 (defmethod fill-recent-view-info :dashboard [{:keys [_model model_id timestamp model_object]}]
   (when-let [dashboard (and (mi/can-read? model_object)
@@ -415,12 +371,7 @@
   (if-not (seq collection-ids)
     []
     (let [;; these have their parent collection id in effective_location, but we need the id, name, and authority_level.
-          collections (t2/select :model/Collection
-                                 {:select [:id :name :description :authority_level
-                                           :archived :location :type]
-                                  :where [:and
-                                          [:in :id collection-ids]
-                                          [:= :archived false]]})]
+          collections (activity-feed.db/unarchived-collections-with-details collection-ids)]
       (->> (t2/hydrate collections :effective_parent)
            (map #(m/dissoc-in % [:effective_parent :type]))))))
 
@@ -446,20 +397,7 @@
   [table-ids]
   (if-not (seq table-ids)
     []
-    (t2/select :model/Table
-               {:select [:t.id :t.name :t.description
-                         :t.display_name :t.active :t.visibility_type :t.schema
-                         [:db.name :database-name]
-                         [:db.id :db_id]
-                         [:db.initial_sync_status :initial-sync-status]]
-                :from [[:metabase_table :t]]
-                :where [:and
-                        [:or
-                         [:= :visibility_type nil]
-                         [:!= :visibility_type "hidden"]]
-                        [:in :t.id table-ids]]
-                :left-join [[:metabase_database :db]
-                            [:= :db.id :t.db_id]]})))
+    (activity-feed.db/visible-tables-for-recent-views table-ids)))
 
 (defmethod fill-recent-view-info :table [{:keys [_model model_id timestamp model_object]}]
   (let [table model_object]
@@ -493,48 +431,11 @@
   (when-not (seq context)
     (throw (ex-info "context must be non-empty" {:context context})))
   (let [db-models (rv-models->db-models models)]
-    (t2/select :model/RecentViews {:select    [:rv.* [:rc.type :card_type]]
-                                   :from      [[:recent_views :rv]]
-                                   :where     [:and
-                                               [:= :rv.user_id user-id]
-                                               [:in :rv.context (map query-context->recent-context context)]
-                                               (when (seq db-models)
-                                                 [:in :rv.model db-models])
-                                               ;; Additionally filter by card type to distinguish questions/models/metrics
-                                               (let [card-types (keep rv-model->card-type models)]
-                                                 (when (seq card-types)
-                                                   [:or
-                                                    [:!= :rv.model "card"]
-                                                    [:in :rc.type (map h2x/literal card-types)]]))
-                                               ;; include non-collections, or collections without a namespace/type.
-                                               [:or
-                                                [:= :coll.id nil]
-                                                [:and
-                                                 ;; trash collection is never returned
-                                                 [:or [:= nil :coll.type] [:not= :coll.type collection/trash-collection-type]]
-                                                 ;; collections in a different namespace can't interact with collections
-                                                 ;; in the normal NULL namespace.
-                                                 [:= nil :coll.namespace]
-                                                 ;; exclude instance analytics for selects
-                                                 (when (contains? (set context) :selections)
-                                                   [:or [:= nil :coll.type] [:not= :coll.type collection/instance-analytics-collection-type]])]]
-                                               ;; exploration documents are accessible only through their owning Exploration;
-                                               ;; hide them from recents to match search and collection-listing behavior.
-                                               [:or [:!= :rv.model "document"] [:= :doc.exploration_id nil]]]
-                                   :left-join [[:report_card :rc]
-                                               [:and
-                                                ;; only want to join on card_type if it's a card
-                                                [:= :rv.model "card"]
-                                                [:= :rc.id :rv.model_id]]
-                                               [:collection :coll]
-                                               [:and
-                                                [:= :rv.model "collection"]
-                                                [:= :coll.id :rv.model_id]]
-                                               [:document :doc]
-                                               [:and
-                                                [:= :rv.model "document"]
-                                                [:= :doc.id :rv.model_id]]]
-                                   :order-by  [[:rv.timestamp :desc]]})))
+    (activity-feed.db/recent-views-with-card-type user-id
+                                                  (map query-context->recent-context context)
+                                                  db-models
+                                                  (keep rv-model->card-type models)
+                                                  (contains? (set context) :selections))))
 
 (mu/defn- model->return-model [model :- :keyword]
   (if (= :question model) :card model))
@@ -560,20 +461,7 @@
   [document-ids]
   (if-not (seq document-ids)
     []
-    (let [documents (t2/select :model/Document
-                               {:select [:d.id
-                                         :d.name
-                                         :d.archived
-                                         [:d.collection_id :entity-coll-id]
-                                         [:c.id :collection_id]
-                                         [:c.name :collection_name]
-                                         [:c.authority_level :collection_authority_level]]
-                                :from [[:document :d]]
-                                :where [:in :d.id document-ids]
-                                :left-join [[:collection :c]
-                                            [:and
-                                             [:= :c.id :d.collection_id]
-                                             [:= :c.archived false]]]})]
+    (let [documents (activity-feed.db/documents-for-recent-views document-ids)]
       documents)))
 
 (defn- get-entity->id->data [views]

@@ -25,7 +25,6 @@ import { LEGEND_ITEM_FONT_SIZE } from "metabase/visualizations/components/legend
 import type { ClickActionsMode, OnBrush } from "metabase/visualizations/types";
 import { type HighlightedObject, isCartesianChart } from "metabase/viz-core";
 import type {
-  ExplorationBlockNodeType,
   ExplorationId,
   ExplorationPageNode,
   ExplorationQuery,
@@ -59,7 +58,6 @@ interface ExplorationGroupVisualizationProps {
   explorationId: ExplorationId;
   page: ExplorationPageNode;
   queries: ExplorationQuery[];
-  blockType: ExplorationBlockNodeType;
   exploreFilters?: HydratedExplorationExploreFilter[] | null;
   availableTimelines: Timeline[];
   selectedTimelineId: TimelineId | null;
@@ -87,7 +85,7 @@ export function ExplorationGroupVisualization(
 
   return (
     <Box flex={1} h="100%" pb="3rem" pr="1rem">
-      <Box bg="background-primary" bd="1px solid border" bdrs="md" h="100%">
+      <Box bg="background-primary" bd="1px solid border" bdrs="sm" h="100%">
         <ErrorBoundary
           errorComponent={() => (
             <Message
@@ -150,7 +148,6 @@ function ExplorationGroupVisualizationChart({
   explorationId,
   page,
   queries,
-  blockType,
   exploreFilters,
   availableTimelines,
   selectedTimelineId,
@@ -178,7 +175,6 @@ function ExplorationGroupVisualizationChart({
   const clickActionsMode = useExplorationClickActionsMode({
     explorationId,
     pageId: page.id,
-    blockType,
     queryType: queries[0].query_type,
     commentDrafts,
     setCommentDrafts,
@@ -324,7 +320,7 @@ function ExplorationGroupVisualizationChart({
 
   return (
     <Group flex={1} gap={0} h="100%">
-      <Stack flex={1} p="lg" className={S.chartGridContainer} h="100%">
+      <Stack flex={1} p="xl" className={S.chartGridContainer} h="100%">
         <ExplorationVisualizationHeader
           name={groupName}
           exploreFilters={exploreFilters}
@@ -485,14 +481,14 @@ function ExplorationMap({
   highlighted,
 }: ExplorationMapProps) {
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       {legendItems.length > 1 && (
         <Group gap="0.75rem" wrap="nowrap" role="list" aria-label={t`Legend`}>
           {legendItems.map(({ name, color }, i) => {
             return (
               <Group
                 key={i}
-                gap="xs"
+                gap="xxs"
                 align="center"
                 wrap="nowrap"
                 role="listitem"
@@ -566,6 +562,7 @@ export function ExplorationVisualization({
         className={className}
         onUpdateWarnings={setWarnings}
         mode={mode}
+        hasColumnReordering
         onChangeCardAndRun={noop} // needed to show ConnectedClickActionsPopover
         highlighted={highlighted}
         selectedTimelineEventIds={selectedTimelineEventIds}
@@ -584,7 +581,7 @@ interface MessageProps {
 
 function Message({ groupName, message, iconProps }: MessageProps) {
   return (
-    <Stack p="lg" h="100%">
+    <Stack p="xl" h="100%">
       <ExplorationVisualizationHeader name={groupName} />
       <Stack
         align="center"

@@ -1,8 +1,7 @@
 import { t } from "ttag";
 
 import { useRescanFieldValuesMutation } from "metabase/api";
-import { useTemporaryState } from "metabase/common/hooks";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts, useTemporaryState } from "metabase/common/hooks";
 import { Button } from "metabase/ui";
 import type { FieldId } from "metabase-types/api";
 

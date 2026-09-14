@@ -13,7 +13,9 @@
   [[openai/openai-request-body]] + [[openai/openai->aisdk-chunks-xf]]; the vendor prefix on the
   model id (e.g. `anthropic.claude-haiku-4-5`, `openai.gpt-5.5`) selects the API family.
 
-  Requests are authenticated with AWS Signature Version 4 computed from the `llm-bedrock-*` settings:
+  Requests are authenticated with AWS Signature Version 4 computed from the connection's access key pair, or, on a
+  self-hosted Metabase with no pair configured, from the AWS SDK default credentials chain (IRSA, EKS Pod Identity,
+  instance profile). Metabase Cloud always requires the pair:
   https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_sigv-create-signed-request.html"
   (:require
    [clojure.string :as str]
@@ -26,11 +28,14 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.o11y :refer [with-span]])
   (:import
    (java.net URI)
    (java.util.function Consumer)
+   (software.amazon.awssdk.auth.credentials DefaultCredentialsProvider)
+   (software.amazon.awssdk.core.exception SdkClientException SdkException)
    (software.amazon.awssdk.http ContentStreamProvider SdkHttpMethod SdkHttpRequest SdkHttpRequest$Builder)
    (software.amazon.awssdk.http.auth.aws.signer AwsV4HttpSigner)
    (software.amazon.awssdk.http.auth.spi.signer SignRequest$Builder SignedRequest)
@@ -40,11 +45,54 @@
 
 ;;; ------------------------------------------ AWS Signature Version 4 ------------------------------------------
 
+(defn- chain-empty-ex
+  "The chain ran out of providers. `AwsCredentialsProviderChain` catches what each provider throws and reports them
+  together once none is left, so an unconfigured process and a broken IRSA trust policy both arrive here. The AWS
+  text names roles and endpoints, so it goes to the log and the admin gets pointed at it."
+  [cause]
+  (log/warnf "AWS Bedrock default credentials chain resolved nothing: %s" (ex-message cause))
+  (ex-info (tru "AWS Bedrock got no credentials from the AWS default credentials chain. See the Metabase logs for what each provider reported.")
+           {:api-error   true
+            :error-code  :api-key-missing
+            :status-code 403}
+           cause))
+
+(defn- chain-failed-ex
+  "A provider that resolved before threw on its own rather than being folded into the chain's report: an STS
+  rejection refreshing a web identity, a throttled container-credentials refresh."
+  [cause]
+  (log/warnf "AWS Bedrock default credentials chain failed: %s" (ex-message cause))
+  (ex-info (tru "AWS Bedrock could not refresh its AWS credentials. See the Metabase logs for what AWS reported.")
+           {:api-error   true
+            :error-code  :credentials-unavailable
+            :status-code 403}
+           cause))
+
+(defn- chain-credentials
+  "Credentials resolved from the AWS SDK default provider chain
+  (https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials-chain.html). The SDK's shared
+  chain caches what it resolves, so short-lived role credentials rotate without a restart."
+  ^AwsCredentialsIdentity []
+  (.resolveCredentials (DefaultCredentialsProvider/create)))
+
 (defn- aws-identity
-  "An AWS credentials identity, carrying the session token when one is present."
-  [{:keys [access-key-id secret-access-key session-token]}]
-  (if session-token
+  "The AWS credentials identity to sign with: the connection's access key pair, carrying the session token when one
+  is present, or, on a self-hosted Metabase with no pair configured, whatever the default credentials chain
+  resolves."
+  ^AwsCredentialsIdentity [{:keys [access-key-id secret-access-key session-token]}]
+  (cond
+    (not (and access-key-id secret-access-key))
+    (try
+      (chain-credentials)
+      (catch SdkClientException e
+        (throw (chain-empty-ex e)))
+      (catch SdkException e
+        (throw (chain-failed-ex e))))
+
+    session-token
     (AwsSessionCredentialsIdentity/create access-key-id secret-access-key session-token)
+
+    :else
     (AwsCredentialsIdentity/create access-key-id secret-access-key)))
 
 (defn- unsigned-request
@@ -100,8 +148,20 @@
     (throw (invalid-region-ex region)))
   region)
 
-(defn- missing-credentials-ex []
-  (ex-info (tru "AWS Bedrock credentials are not configured")
+(defn- token-without-pair-ex []
+  (ex-info (tru "AWS Bedrock cannot use a session token without its access key pair")
+           {:api-error   true
+            :error-code  :api-key-missing
+            :status-code 403}))
+
+(defn- hosted-keyless-ex []
+  (ex-info (tru "AWS Bedrock on Metabase Cloud requires an access key pair")
+           {:api-error   true
+            :error-code  :api-key-missing
+            :status-code 403}))
+
+(defn- incomplete-credentials-ex []
+  (ex-info (tru "AWS Bedrock needs both an access key ID and a secret access key, or neither to use the default credentials chain")
            {:api-error   true
             :error-code  :api-key-missing
             :status-code 403}))
@@ -113,11 +173,25 @@
 
 (defn- ensure-credentials
   "Validate the credentials of the connection serving this request.
-  Throws when the access key pair is incomplete or the region is unknown; the region defaults to us-east-1."
+  Self-hosted, no access key pair at all is fine, signing falls back to the AWS default credentials chain; on a
+  hosted deployment, or one whose license cannot be checked, the chain would resolve the operator's own identity,
+  so the pair is required. Half a pair throws, as does a session token without the pair and an unknown region; the
+  region defaults to us-east-1."
   [credentials]
-  (when-not (llm.provider/config-complete? "bedrock" credentials)
-    (throw (missing-credentials-ex)))
-  (update credentials :region #(validate-region (or (not-empty %) "us-east-1"))))
+  (let [key-id (u/trimmed-string (:access-key-id credentials))
+        secret (u/trimmed-string (:secret-access-key credentials))
+        token  (u/trimmed-string (:session-token credentials))]
+    (when (not= (some? key-id) (some? secret))
+      (throw (incomplete-credentials-ex)))
+    (when (and token (not key-id))
+      (throw (token-without-pair-ex)))
+    (when (and (not key-id) (llm.provider/hosted?))
+      (throw (hosted-keyless-ex)))
+    (-> credentials
+        (u/assoc-dissoc :access-key-id key-id)
+        (u/assoc-dissoc :secret-access-key secret)
+        (u/assoc-dissoc :session-token token)
+        (update :region #(validate-region (or (not-empty %) "us-east-1"))))))
 
 (defn- bedrock-error-msg
   "Canonical, status-specific Bedrock error message."
@@ -171,7 +245,7 @@
     (catch Exception e
       (core/rethrow-api-error! "bedrock" bedrock-error-msg e))))
 
-(def ^:private supported-models
+(def supported-models
   "Bedrock models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the mantle `/v1/models` catalog.
   Excludes `openai.gpt-oss*`, which are not invokable through the mantle `/openai/v1` routes.
@@ -206,9 +280,10 @@
 
 (defn list-models
   "List the Bedrock models supported by this adapter (see [[supported-models]]).
-  No-arg uses the `llm-bedrock-*` settings. The opts map supports `:credentials`, a map of `:access-key-id`,
-  `:secret-access-key`, `:region`, and (for temporary credentials) `:session-token`, plus `:ai-proxy?`,
-  which is not supported for Bedrock and throws when true."
+  The opts map supports `:credentials`, a map of `:access-key-id`, `:secret-access-key`, `:region`, and (for
+  temporary credentials) `:session-token`, plus `:ai-proxy?`, which is not supported for Bedrock and throws when
+  true. On a self-hosted Metabase with no access key pair, requests are signed with whatever the AWS default
+  credentials chain resolves; Metabase Cloud requires the pair."
   ([] (list-models {}))
   ([opts]
    {:models (->> (list-all-models opts)
@@ -223,17 +298,39 @@
 
 (def ^:private anthropic-version "2023-06-01")
 
-(defn- model->family
-  "Which mantle API family serves `model`, by vendor prefix: `:anthropic` or `:openai`."
+(defn- model-family
+  "Which mantle API family serves `model`, by vendor prefix: `:anthropic`, `:openai`, or nil."
   [model]
   (cond
-    (str/starts-with? model "anthropic.") :anthropic
-    (str/starts-with? model "openai.")    :openai
-    :else
-    (throw (ex-info (tru "Unsupported Bedrock model {0}. Only anthropic.* and openai.* models are supported." model)
-                    {:api-error  true
-                     :error-code :unsupported-model
-                     :model      model}))))
+    (str/starts-with? (str model) "anthropic.") :anthropic
+    (str/starts-with? (str model) "openai.")    :openai))
+
+(defn- model->family
+  "Like [[model-family]], but throws for models outside the supported families."
+  [model]
+  (or (model-family model)
+      (throw (ex-info (tru "Unsupported Bedrock model {0}. Only anthropic.* and openai.* models are supported." model)
+                      {:api-error  true
+                       :error-code :unsupported-model
+                       :model      model}))))
+
+(defn reasoning-model?
+  "Whether `model` streams renderable reasoning back to us.
+
+  False (rather than [[model->family]]'s throw) outside the supported families:
+  the settings capability gate asks about whatever model is selected."
+  [model]
+  (case (model-family model)
+    :anthropic (claude/reasoning-model? model)
+    ;; The mantle's Responses surface accepts the reasoning request fields and
+    ;; the GPT models do reason (at a per-model default effort: gpt-5.4 "none",
+    ;; gpt-5.5 "medium"), but it never streams reasoning summaries — `summary`
+    ;; comes back empty at every effort/summary combination — so nothing will
+    ;; ever render. The request deliberately keeps its reasoning fields (see
+    ;; [[openai/openai-request-body]]): where the model reasons by default they
+    ;; buy encrypted-content replay across tool calls.
+    :openai    false
+    nil        false))
 
 (defn ->mantle-anthropic-body
   "Adapt a canonical Anthropic Messages request body for the mantle endpoint.
@@ -245,12 +342,13 @@
 
 (mu/defn bedrock-raw
   "Perform a streaming request to the Bedrock mantle endpoint.
-  Opts map takes `:credentials` from the connection serving this request — `:access-key-id`, `:secret-access-key`,
-  `:region`, and (for temporary credentials) `:session-token` — and throws when they are missing.
+  Opts map takes `:credentials` from the connection serving this request: `:access-key-id`, `:secret-access-key`,
+  `:region`, and (for temporary credentials) `:session-token`. On a self-hosted Metabase with no access key pair,
+  requests are signed with whatever the AWS default credentials chain resolves; Metabase Cloud requires the pair.
   `:ai-proxy?` is not supported for Bedrock and throws when true."
   [{:keys [model input tools credentials ai-proxy?] :as opts
     :or   {model default-model}} :- core/LLMRequestOpts]
-  (let [opts   (assoc opts :model model :reasoning? false)
+  (let [opts   (assoc opts :model model :fast? false)
         family (model->family model)
         {:keys [path headers req]}
         (case family

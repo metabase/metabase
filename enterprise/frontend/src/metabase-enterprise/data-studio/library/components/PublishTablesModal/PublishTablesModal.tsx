@@ -4,13 +4,13 @@ import { useGetTableSelectionInfoQuery } from "metabase/api";
 import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { trackDataStudioTablePublished } from "metabase/common/data-studio/analytics";
+import { useMetadataToasts } from "metabase/common/hooks";
 import {
   Form,
   FormErrorMessage,
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_LIBRARY, type PublishTablesModalProps } from "metabase/plugins";
 import { useNavigate } from "metabase/router";
 import {
@@ -169,7 +169,7 @@ function ModalBody({
             </>
           )}
           <FormCollectionPicker
-            mt="md"
+            mt="lg"
             name="collection_id"
             title={t`Publish to`}
             entityType="table"
@@ -186,7 +186,7 @@ function ModalBody({
             }}
           />
         </Stack>
-        <Group mt="xl" gap="sm" wrap="nowrap">
+        <Group mt="xxl" gap="sm" wrap="nowrap">
           <Box flex={1}>
             <FormErrorMessage />
           </Box>

@@ -4,6 +4,7 @@ import {
   setupAutoDashboardEndpoints,
   setupDatabaseListEndpoint,
 } from "__support__/server-mocks";
+import { createMockDashboardState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
   renderWithProviders,
@@ -11,7 +12,6 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { createMockDashboardState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import {
   createMockDashboard,

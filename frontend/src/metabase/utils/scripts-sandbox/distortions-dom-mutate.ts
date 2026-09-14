@@ -1,5 +1,7 @@
 import DOMPurify from "dompurify";
 
+import { coerceToString } from "./coerce";
+
 export const CREATE_ELEMENT = Document.prototype.createElement;
 export const CREATE_ELEMENT_NS = Document.prototype.createElementNS;
 export const INSERT_ADJACENT_HTML = Element.prototype.insertAdjacentHTML;
@@ -102,10 +104,11 @@ export function createElementDistortion(errorPrefix: string) {
     tag: string,
     options?: ElementCreationOptions,
   ) {
-    if (BLOCKED_TAGS.has(tag.toLowerCase())) {
-      throw new Error(`[${errorPrefix}] blocked createElement: ${tag}`);
+    const tagName = coerceToString(tag);
+    if (BLOCKED_TAGS.has(tagName.toLowerCase())) {
+      throw new Error(`[${errorPrefix}] blocked createElement: ${tagName}`);
     }
-    return CREATE_ELEMENT.call(this, tag, options);
+    return CREATE_ELEMENT.call(this, tagName, options);
   };
 }
 
@@ -124,23 +127,16 @@ export function createElementNSDistortion(errorPrefix: string) {
     qualifiedName: string,
     options?: ElementCreationOptions,
   ) {
-    if (BLOCKED_TAGS.has(getXmlElementLocalName(qualifiedName).toLowerCase())) {
-      throw new Error(
-        `[${errorPrefix}] blocked createElementNS: ${qualifiedName}`,
-      );
+    const name = coerceToString(qualifiedName);
+    if (BLOCKED_TAGS.has(getXmlElementLocalName(name).toLowerCase())) {
+      throw new Error(`[${errorPrefix}] blocked createElementNS: ${name}`);
     }
-    return CREATE_ELEMENT_NS.call(
-      this,
-      namespaceURI,
-      qualifiedName,
-      // Unjustified type cast. FIXME
-      options as ElementCreationOptions,
-    );
+    return CREATE_ELEMENT_NS.call(this, namespaceURI, name, options);
   };
 }
 
-function isInlineEventHandlerName(name: unknown): boolean {
-  return typeof name === "string" && /^on/i.test(name);
+function isInlineEventHandlerName(name: string): boolean {
+  return /^on/i.test(name);
 }
 
 const URL_VALUED_ATTRS = new Set([
@@ -155,36 +151,38 @@ const URL_VALUED_ATTRS = new Set([
   "manifest",
 ]);
 
-function isUrlValuedAttr(name: unknown): boolean {
-  return typeof name === "string" && URL_VALUED_ATTRS.has(name.toLowerCase());
+function isUrlValuedAttr(name: string): boolean {
+  return URL_VALUED_ATTRS.has(name.toLowerCase());
 }
 
-function isJavascriptUrl(value: unknown): boolean {
-  return typeof value === "string" && /^\s*javascript:/i.test(value);
+function isJavascriptUrl(value: string): boolean {
+  return /^\s*javascript:/i.test(value);
 }
 
 function assertSafeAttrAssignment(
   errorPrefix: string,
   apiName: string,
-  name: unknown,
-  value: unknown,
+  name: string,
+  value: string,
 ): void {
   if (isInlineEventHandlerName(name)) {
     throw new Error(
-      `[${errorPrefix}] blocked ${apiName} for inline event handler: ${String(name)}`,
+      `[${errorPrefix}] blocked ${apiName} for inline event handler: ${name}`,
     );
   }
   if (isUrlValuedAttr(name) && isJavascriptUrl(value)) {
     throw new Error(
-      `[${errorPrefix}] blocked ${apiName} with javascript: URL: ${String(name)}`,
+      `[${errorPrefix}] blocked ${apiName} with javascript: URL: ${name}`,
     );
   }
 }
 
 export function setAttributeDistortion(errorPrefix: string) {
   return function setAttribute(this: Element, name: string, value: string) {
-    assertSafeAttrAssignment(errorPrefix, "setAttribute", name, value);
-    return SET_ATTRIBUTE.call(this, name, value);
+    const attrName = coerceToString(name);
+    const attrValue = coerceToString(value);
+    assertSafeAttrAssignment(errorPrefix, "setAttribute", attrName, attrValue);
+    return SET_ATTRIBUTE.call(this, attrName, attrValue);
   };
 }
 
@@ -195,13 +193,15 @@ export function setAttributeNSDistortion(errorPrefix: string) {
     qualifiedName: string,
     value: string,
   ) {
+    const attrName = coerceToString(qualifiedName);
+    const attrValue = coerceToString(value);
     assertSafeAttrAssignment(
       errorPrefix,
       "setAttributeNS",
-      qualifiedName,
-      value,
+      attrName,
+      attrValue,
     );
-    return SET_ATTRIBUTE_NS.call(this, namespace, qualifiedName, value);
+    return SET_ATTRIBUTE_NS.call(this, namespace, attrName, attrValue);
   };
 }
 
@@ -210,8 +210,8 @@ export function setAttributeNodeDistortion(errorPrefix: string) {
     assertSafeAttrAssignment(
       errorPrefix,
       "setAttributeNode",
-      attr.name,
-      attr.value,
+      coerceToString(attr.name),
+      coerceToString(attr.value),
     );
     return SET_ATTRIBUTE_NODE.call(this, attr);
   };
@@ -222,8 +222,8 @@ export function setAttributeNodeNSDistortion(errorPrefix: string) {
     assertSafeAttrAssignment(
       errorPrefix,
       "setAttributeNodeNS",
-      attr.name,
-      attr.value,
+      coerceToString(attr.name),
+      coerceToString(attr.value),
     );
     return SET_ATTRIBUTE_NODE_NS.call(this, attr);
   };
@@ -234,8 +234,8 @@ export function setNamedItemDistortion(errorPrefix: string) {
     assertSafeAttrAssignment(
       errorPrefix,
       "setNamedItem",
-      attr.name,
-      attr.value,
+      coerceToString(attr.name),
+      coerceToString(attr.value),
     );
     return SET_NAMED_ITEM.call(this, attr);
   };
@@ -246,8 +246,8 @@ export function setNamedItemNSDistortion(errorPrefix: string) {
     assertSafeAttrAssignment(
       errorPrefix,
       "setNamedItemNS",
-      attr.name,
-      attr.value,
+      coerceToString(attr.name),
+      coerceToString(attr.value),
     );
     return SET_NAMED_ITEM_NS.call(this, attr);
   };
@@ -255,8 +255,14 @@ export function setNamedItemNSDistortion(errorPrefix: string) {
 
 export function attrValueSetterDistortion(errorPrefix: string) {
   return function (this: Attr, val: string) {
-    assertSafeAttrAssignment(errorPrefix, "Attr.set value", this.name, val);
-    SET_ATTR_VALUE_DESCRIPTOR?.call(this, val);
+    const value = coerceToString(val);
+    assertSafeAttrAssignment(
+      errorPrefix,
+      "Attr.set value",
+      coerceToString(this.name),
+      value,
+    );
+    SET_ATTR_VALUE_DESCRIPTOR?.call(this, value);
   };
 }
 

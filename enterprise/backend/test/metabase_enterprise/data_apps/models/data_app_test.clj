@@ -4,7 +4,8 @@
    superuser-only permission gating."
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.data-apps.models.data-app :as data-app]
+   [metabase-enterprise.data-apps.db :as data-apps.db]
+   [metabase-enterprise.data-apps.models.data-app]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
@@ -36,15 +37,11 @@
 (deftest non-blob-selects-exclude-the-bundle-test
   (mt/with-model-cleanup [:model/DataApp]
     (insert-app! :allowed_hosts ["https://api.example.com"])
-    (testing "select-one-non-blob returns metadata without the bundle blob"
-      (let [app (data-app/select-one-non-blob :name "m")]
+    (testing "non-blob-data-app-by-slug returns metadata without the bundle blob"
+      (let [app (data-apps.db/non-blob-data-app-by-slug "m")]
         (is (not (contains? app :bundle)))
         (is (= "M" (:display_name app)))
-        (is (= ["https://api.example.com"] (:allowed_hosts app)))))
-    (testing "select-non-blob returns a seq of blob-free rows"
-      (let [apps (data-app/select-non-blob :name "m")]
-        (is (= 1 (count apps)))
-        (is (not (contains? (first apps) :bundle)))))))
+        (is (= ["https://api.example.com"] (:allowed_hosts app)))))))
 
 (deftest allowed-hosts-reads-as-a-vector-never-nil-test
   (mt/with-model-cleanup [:model/DataApp]

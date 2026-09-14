@@ -1,13 +1,13 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
 
-import type { State } from "metabase/redux/store";
 import {
   getShallowDatabases as getDatabases,
   getShallowFields as getFields,
   getShallowSegments as getSegments,
   getShallowTables as getTables,
-} from "metabase/selectors/metadata";
+} from "metabase/metadata-store";
+import type { State } from "metabase/redux/store";
 import type { Card } from "metabase-types/api";
 
 import type {

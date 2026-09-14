@@ -40,7 +40,7 @@ export const RulePreview = ({
     data-testid="formatting-rule-preview"
     {...paperProps}
   >
-    <Group wrap="nowrap" px="md" bg="background_page-secondary">
+    <Group wrap="nowrap" px="lg" bg="background_page-secondary">
       <Text flex="1" fw="bold" fz="md">
         {rule.columns.length > 0 ? (
           rule.columns
@@ -60,7 +60,7 @@ export const RulePreview = ({
       </ActionIcon>
     </Group>
     <Divider></Divider>
-    <Group wrap="nowrap" p="md" gap="xs">
+    <Group wrap="nowrap" p="lg" gap="xxs">
       <RuleBackground
         rule={rule}
         className={cx(CS.mr2, CS.flexNoShrink, CS.rounded, {

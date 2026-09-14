@@ -6,12 +6,11 @@ import {
   useGetCardQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useQuestionFromCard } from "metabase/metadata-store";
 import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals/CreateOrEditQuestionAlertModal";
 import { loadMetadataForCard } from "metabase/questions/actions";
-import { useDispatch, useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
+import { useDispatch } from "metabase/redux";
 import { Flex, Stack } from "metabase/ui";
-import Question from "metabase-lib/v1/Question";
 
 import { trackAlertsManagementEditClicked } from "../analytics";
 
@@ -43,7 +42,7 @@ export const NotificationDetailSidebar = ({
   }, [notificationId]);
 
   const dispatch = useDispatch();
-  const metadata = useSelector(getMetadata);
+  const buildQuestion = useQuestionFromCard();
   const cardId = notification?.payload?.card_id;
   const { currentData: card, isFetching: isCardLoading } = useGetCardQuery(
     cardId != null ? { id: cardId } : skipToken,
@@ -56,8 +55,8 @@ export const NotificationDetailSidebar = ({
   }, [card, dispatch]);
 
   const question = useMemo(
-    () => (card ? new Question(card, metadata) : undefined),
-    [card, metadata],
+    () => (card ? buildQuestion(card) : undefined),
+    [card, buildQuestion],
   );
 
   return (
@@ -74,7 +73,7 @@ export const NotificationDetailSidebar = ({
         bg="background_page-primary"
         data-testid="notification-detail-sidebar"
       >
-        <Stack h="100%" p="lg" gap="lg" style={{ overflowY: "auto" }}>
+        <Stack h="100%" p="xl" gap="xl" style={{ overflowY: "auto" }}>
           <SidebarHeader
             isBulkLoading={isBulkLoading}
             notificationId={notificationId}

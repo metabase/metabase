@@ -8,6 +8,7 @@
    [clojure.tools.namespace.find :as ns.find]
    [clojure.tools.namespace.parse :as ns.parse]
    [clojure.walk :as walk]
+   [hooks.common.modules :as modules]
    [lambdaisland.deep-diff2 :as ddiff]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -83,19 +84,6 @@
   []
   (mapcat ns.find/find-sources-in-dir
           (list* (source-root) (enterprise-source-root) (plugin-source-roots))))
-
-(mu/defn- module :- [:maybe symbol?]
-  "E.g.
-
-    (module 'metabase.qp.middleware.wow) => 'qp
-    (module 'metabase-enterprise.whatever.core) => enterprise/whatever"
-  [ns-symb :- simple-symbol?]
-  (or (some->> (re-find #"^metabase-enterprise\.([^.]+)" (str ns-symb))
-               second
-               (symbol "enterprise"))
-      (some-> (re-find #"^metabase\.([^.]+)" (str ns-symb))
-              second
-              symbol)))
 
 (def ^:private require-symbols
   '#{require
@@ -225,7 +213,8 @@
                                               [:namespace simple-symbol?]
                                               [:module    symbol?]
                                               [:dynamic {:optional true} :keyword]]]]]
-  [file :- [:or
+  [prefix->module :- map?
+   file :- [:or
             string?
             [:fn {:error/message "Instance of a java.io.File"} #(instance? java.io.File %)]]]
   (try
@@ -249,10 +238,10 @@
                               #_defenterprise-schema-deps])]
       {:namespace ns-symb
        :filename  (file->path-relative-to-project-root file)
-       :module    (module ns-symb)
+       :module    (modules/resolve-module prefix->module ns-symb)
        :deps      (sort-by pr-str
                            (keep (fn [required-ns]
-                                   (when-let [module (module required-ns)]
+                                   (when-let [module (modules/resolve-module prefix->module required-ns)]
                                      (when-not (some-> ignored-dependencies ns-symb required-ns)
                                        (merge
                                         {:namespace required-ns
@@ -265,18 +254,24 @@
                       {:file file}
                       e)))))
 
-(comment
-  (file-dependencies "src/metabase/app_db/setup.clj")
-  ;; should ignore the entries from [[ignored-dependencies]]
-  (file-dependencies "src/metabase/config.clj")
+(declare kondo-config)
 
-  (file-dependencies "src/metabase/query_processor/middleware/permissions.clj"))
+(comment
+  (file-dependencies (modules/build-prefix->module (kondo-config)) "src/metabase/app_db/setup.clj")
+  ;; should ignore the entries from [[ignored-dependencies]]
+  (file-dependencies (modules/build-prefix->module (kondo-config)) "src/metabase/config.clj")
+
+  (file-dependencies (modules/build-prefix->module (kondo-config)) "src/metabase/query_processor/middleware/permissions.clj"))
 
 (defn dependencies
-  "Calculate information about all the modules dependencies for all *SOURCE* files in the Metabase project by parsing
-  the files."
-  []
-  (map file-dependencies (find-source-files)))
+  "Parse source files into module dependency data.
+
+  Namespaces resolve through `prefix->module`, which defaults to the current
+  module config."
+  ([]
+   (dependencies (modules/build-prefix->module (kondo-config))))
+  ([prefix->module]
+   (map (partial file-dependencies prefix->module) (find-source-files))))
 
 (defn external-usages
   "All usages of a module named by `module-symb` outside that module."
@@ -313,17 +308,23 @@
   [kondo-config module-symb]
   (get-in kondo-config [module-symb :friends]))
 
-(declare kondo-config)
-
 (defn externally-used-namespaces-ignoring-friends
-  "All namespaces from a module that are used outside that module, excluding usages by `:friends` of the module."
+  "Namespaces that external callers require from `module-symb`.
+
+  Ignores friends and descendants, which may use internal namespaces. A
+  descendant still preserves an existing API entry that it uses."
   ([module-symb]
    (externally-used-namespaces-ignoring-friends (dependencies) (kondo-config) module-symb))
 
   ([deps kondo-config module-symb]
-   (let [friends (module-friends kondo-config module-symb)]
+   (let [friends (module-friends kondo-config module-symb)
+         api     (get-in kondo-config [module-symb :api])]
      (into (sorted-set)
            (comp (remove #(contains? friends (:module %)))
+                 ;; Descendant use does not create API, but it preserves existing entries.
+                 (remove (fn [{:keys [module depends-on-namespace]}]
+                           (and (modules/descendant-of? kondo-config module module-symb)
+                                (not (and (set? api) (contains? api depends-on-namespace))))))
                  (map :depends-on-namespace))
            (external-usages deps module-symb)))))
 
@@ -397,13 +398,12 @@
   "Like [[dependencies]] but also includes transient dependencies."
   [deps]
   (let [deps-graph  (module-dependencies deps)
+        ;; Keep the seed set so cycles converge instead of oscillating.
         expand-deps (fn expand-deps [deps]
-                      (let [deps' (into (sorted-set)
-                                        (mapcat deps-graph)
-                                        deps)]
+                      (let [deps' (into deps (mapcat deps-graph deps))]
                         (if (= deps deps')
                           deps
-                          (expand-deps deps'))))]
+                          (recur deps'))))]
     (into (sorted-map)
           (map (fn [[k v]]
                  [k (expand-deps v)]))
@@ -436,6 +436,12 @@
       ;; ignore the config for [[metabase.connection-pool]] which comes from one of our libraries.
       (dissoc 'connection-pool)))
 
+(defn module-team
+  "Team owning `module`: its own `:team`, else its nearest ancestor's."
+  [config module]
+  (some #(get-in config [% :team])
+        (take-while some? (iterate #(modules/parent-module config %) module))))
+
 (defn- kondo-config-diff-ignore-any
   "Ignore entries in the config that use `:any`."
   [diff]
@@ -455,7 +461,7 @@
   ([deps]
    (let [kondo-config (kondo-config)]
      (-> (ddiff/diff
-          (update-vals kondo-config #(dissoc % :team :friends :model-imports :model-exports))
+          (update-vals kondo-config #(dissoc % :team :friends :model-imports :model-exports :module-exports :ns-prefix))
           (generate-config deps kondo-config))
          ddiff/minimize
          kondo-config-diff-ignore-any
@@ -577,23 +583,23 @@
 (defn- simulate-rename
   "Create a new version of `deps` as they would appear if you renamed namespace(s).
 
-    (simulate-rename (dependencies) '{metabase.users.api metabase.users-rest.api})"
-  ([deps old-namespace new-namespace]
+    (simulate-rename deps prefix->module '{metabase.users.api metabase.users-rest.api})"
+  ([deps prefix->module old-namespace new-namespace]
    (for [dep deps]
      (-> dep
          (cond-> (= (:namespace dep) old-namespace)
            (assoc :namespace new-namespace
-                  :module (module new-namespace)))
+                  :module (modules/resolve-module prefix->module new-namespace)))
          (update :deps (fn [deps]
                          (for [dep deps]
                            (if (= (:namespace dep) old-namespace)
-                             {:namespace new-namespace, :module (module new-namespace)}
+                             {:namespace new-namespace, :module (modules/resolve-module prefix->module new-namespace)}
                              dep)))))))
 
-  ([deps old-namespace->new-namespace]
+  ([deps prefix->module old-namespace->new-namespace]
    (reduce
     (fn [deps [old-namespace new-namespace]]
-      (simulate-rename deps old-namespace new-namespace))
+      (simulate-rename deps prefix->module old-namespace new-namespace))
     deps
     old-namespace->new-namespace)))
 
@@ -603,9 +609,10 @@
 
     (dependencies-eliminated-by-renaming-namespaces 'users '{metabase.users.api metabase.users-rest.api})"
   [module old-namespace->new-namespace]
-  (let [deps            (dependencies)
+  (let [prefix->module  (modules/build-prefix->module (kondo-config))
+        deps            (dependencies prefix->module)
         old-module-deps (into (sorted-set) (keys (all-module-deps-paths deps module)))
-        new-deps        (simulate-rename deps old-namespace->new-namespace)
+        new-deps        (simulate-rename deps prefix->module old-namespace->new-namespace)
         new-module-deps (into (sorted-set) (keys (all-module-deps-paths new-deps module)))]
     (set/difference old-module-deps new-module-deps)))
 
@@ -641,12 +648,13 @@
   "Given a collection of `test-filenames`, return the set of source filenames (relative to the project root directory)
   that when changed should trigger these tests."
   ([test-filenames]
-   (test-filenames->relevant-source-filenames (dependencies) test-filenames))
-  ([deps test-filenames]
+   (let [prefix->module (modules/build-prefix->module (kondo-config))]
+     (test-filenames->relevant-source-filenames (dependencies prefix->module) prefix->module test-filenames)))
+  ([deps prefix->module test-filenames]
    (into
     (sorted-set)
     (comp (map file->namespace)
-          (map module)
+          (map #(modules/resolve-module prefix->module %))
           (distinct)
           (mapcat (fn [module]
                     (into #{module} (module->all-deps deps module))))
@@ -700,36 +708,60 @@
 (comment
   (module->dependents (dependencies) 'settings-rest))
 
-(defn- module->test-directory [module]
-  (let [parent-dir (case (namespace module)
-                     nil          "test/metabase/"
-                     "enterprise" "enterprise/backend/test/metabase_enterprise/")
-        module-dir (str/replace (name module) #"-" "_")]
-    (str parent-dir module-dir)))
+(def ^:private test-source-file-extensions
+  [".clj" ".cljc" ".cljs" ".bb"])
+
+(defn- module->test-path-prefix [modules-config module]
+  (let [ns-prefix (modules/module-ns-prefix modules-config module)]
+    (str (when (str/starts-with? ns-prefix "metabase-enterprise.") "enterprise/backend/")
+         "test/"
+         (-> ns-prefix (str/replace "." "/") (str/replace "-" "_")))))
+
+(defn- existing-test-file-paths [path-prefix]
+  (into (sorted-set)
+        (keep (fn [extension]
+                (let [file (io/file (str path-prefix "_test" extension))]
+                  (when (.isFile file)
+                    (file->path-relative-to-project-root file)))))
+        test-source-file-extensions))
 
 (mu/defn- module->test-files :- [:set :string]
   "Return the set of test filenames associated with a `module`."
-  [module :- :symbol]
-  (let [test-dir       (module->test-directory module)
-        test-filenames (ns.find/find-sources-in-dir (io/file test-dir))]
-    (into
-     (sorted-set)
-     (map file->path-relative-to-project-root)
-     test-filenames)))
+  ([modules-config :- map?
+    module-sym :- :symbol]
+   (module->test-files modules-config (modules/build-prefix->module modules-config) module-sym))
+  ([modules-config :- map?
+    prefix->module :- map?
+    module-sym :- :symbol]
+   (let [path-prefix  (module->test-path-prefix modules-config module-sym)
+         test-dir     (io/file path-prefix)
+         nested-tests (when (.isDirectory test-dir)
+                        (into
+                         (sorted-set)
+                         (comp (filter #(= module-sym
+                                           (modules/resolve-module prefix->module (file->namespace %))))
+                               (map file->path-relative-to-project-root))
+                         (ns.find/find-sources-in-dir test-dir)))]
+     (into (existing-test-file-paths path-prefix)
+           nested-tests))))
 
 (defn source-filenames->relevant-test-filenames
   "Given a collection of `source-filenames`, return the set of test filenames (relative to the project root directory)
   that we should re-run when any of `source-filenames` change."
   ([source-filenames]
-   (source-filenames->relevant-test-filenames (dependencies) source-filenames))
-  ([deps source-filenames]
+   (let [modules-config (kondo-config)
+         prefix->module (modules/build-prefix->module modules-config)]
+     (source-filenames->relevant-test-filenames
+      (dependencies prefix->module) modules-config prefix->module source-filenames)))
+  ([deps modules-config prefix->module source-filenames]
    (into
     (sorted-set)
     (comp (map file->namespace)
-          (map module)
+          (keep #(modules/resolve-module prefix->module %))
           (distinct)
           (mapcat #(module->dependents deps %))
-          (mapcat module->test-files))
+          (distinct)
+          (mapcat #(module->test-files modules-config prefix->module %)))
     source-filenames)))
 
 (comment
@@ -782,18 +814,18 @@
     @models))
 
 (defn model-ownership
-  "Scan all source files via [[find-model-definitions]], building a map of `:model/X` => module symbol.
-  The module is derived from the defining namespace via [[module]]."
+  "Map each defined `:model/X` to the module that owns its namespace."
   []
-  (into (sorted-map)
-        (for [file  (find-source-files)
-              :let  [ns-symb (-> (ns.file/read-file-ns-decl file)
-                                 ns.parse/name-from-ns-decl)
-                     mod     (module ns-symb)
-                     models  (find-model-definitions file)]
-              :when mod
-              model models]
-          [model mod])))
+  (let [prefix->mod (modules/build-prefix->module (kondo-config))]
+    (into (sorted-map)
+          (for [file  (find-source-files)
+                :let  [ns-symb (-> (ns.file/read-file-ns-decl file)
+                                   ns.parse/name-from-ns-decl)
+                       mod     (modules/resolve-module prefix->mod ns-symb)
+                       models  (find-model-definitions file)]
+                :when mod
+                model models]
+            [model mod]))))
 
 (def ^:private model-boundary-exempt-namespaces
   "Namespaces that are exempt from model boundary checking. These are 'glue' namespaces that intentionally reference
@@ -827,24 +859,25 @@
   referenced in each module's source files. Exempt namespaces (e.g. `metabase.models.resolution`) are excluded.
   Includes all modules (including bypass modules) — callers filter as needed."
   []
-  (reduce
-   (fn [acc file]
-     (try
-       (let [ns-symb (-> (ns.file/read-file-ns-decl file)
-                         ns.parse/name-from-ns-decl)
-             mod     (module ns-symb)]
-         (if (and mod (not (contains? model-boundary-exempt-namespaces ns-symb)))
-           (let [models (find-model-keywords file)]
-             (if (seq models)
-               (update acc mod (fnil into (sorted-set)) models)
-               acc))
-           acc))
-       (catch Throwable e
-         (throw (ex-info (format "Error scanning model references in %s" (str file))
-                         {:file file}
-                         e)))))
-   (sorted-map)
-   (find-source-files)))
+  (let [prefix->mod (modules/build-prefix->module (kondo-config))]
+    (reduce
+     (fn [acc file]
+       (try
+         (let [ns-symb (-> (ns.file/read-file-ns-decl file)
+                           ns.parse/name-from-ns-decl)
+               mod     (modules/resolve-module prefix->mod ns-symb)]
+           (if (and mod (not (contains? model-boundary-exempt-namespaces ns-symb)))
+             (let [models (find-model-keywords file)]
+               (if (seq models)
+                 (update acc mod (fnil into (sorted-set)) models)
+                 acc))
+             acc))
+         (catch Throwable e
+           (throw (ex-info (format "Error scanning model references in %s" (str file))
+                           {:file file}
+                           e)))))
+     (sorted-map)
+     (find-source-files))))
 
 (defn model-boundary-violations
   "Find all model boundary violations across the codebase.
@@ -862,37 +895,140 @@
   ([kondo-config]
    (model-boundary-violations kondo-config (model-ownership)))
   ([kondo-config ownership]
-   (into []
-         (comp
-          (mapcat
-           (fn [file]
-             (try
-               (let [ns-symb (-> (ns.file/read-file-ns-decl file)
-                                 ns.parse/name-from-ns-decl)
-                     mod     (module ns-symb)]
-                 (when (and mod
-                            (not (contains? model-boundary-exempt-namespaces ns-symb)))
-                   (let [model-imports (get-in kondo-config [mod :model-imports] #{})
-                         models       (find-model-keywords file)
-                         rel-path     (file->path-relative-to-project-root file)]
-                     (for [model          models
-                           :let           [defining-mod  (get ownership model)]
-                           :when          (not= defining-mod mod)
-                           :let           [model-exports (when defining-mod
-                                                           (get-in kondo-config [defining-mod :model-exports] #{}))]
-                           violation-type (model-reference-violations
-                                           model defining-mod model-exports model-imports)]
-                       {:file            rel-path
-                        :module          mod
-                        :model           model
-                        :defining-module defining-mod
-                        :violation-type  violation-type}))))
-               (catch Throwable e
-                 (throw (ex-info (format "Error checking model boundaries in %s" (str file))
-                                 {:file file}
-                                 e)))))))
-         (find-source-files))))
+   (let [prefix->mod (modules/build-prefix->module kondo-config)]
+     (into []
+           (comp
+            (mapcat
+             (fn [file]
+               (try
+                 (let [ns-symb (-> (ns.file/read-file-ns-decl file)
+                                   ns.parse/name-from-ns-decl)
+                       mod     (modules/resolve-module prefix->mod ns-symb)]
+                   (when (and mod
+                              (not (contains? model-boundary-exempt-namespaces ns-symb)))
+                     (let [model-imports (get-in kondo-config [mod :model-imports] #{})
+                           models       (find-model-keywords file)
+                           rel-path     (file->path-relative-to-project-root file)]
+                       (for [model          models
+                             :let           [defining-mod  (get ownership model)]
+                             :when          (not= defining-mod mod)
+                             :let           [model-exports (when defining-mod
+                                                             (get-in kondo-config [defining-mod :model-exports] #{}))]
+                             violation-type (model-reference-violations
+                                             model defining-mod model-exports model-imports)]
+                         {:file            rel-path
+                          :module          mod
+                          :model           model
+                          :defining-module defining-mod
+                          :violation-type  violation-type}))))
+                 (catch Throwable e
+                   (throw (ex-info (format "Error checking model boundaries in %s" (str file))
+                                   {:file file}
+                                   e)))))))
+           (find-source-files)))))
 
 (comment
   (model-ownership)
   (model-boundary-violations (kondo-config)))
+
+;;;; Module boundary analysis
+
+(defn- graph-nodes [graph]
+  (into (set (keys graph)) (mapcat val) graph))
+
+(defn strongly-connected-components
+  "Return the strongly connected components of `graph` as a vector of sets.
+  A node outside every cycle comes back as a singleton set."
+  [graph]
+  ;; Tarjan's algorithm, kept recursive because that reads better than an explicit stack of frames.
+  ;; Each node on the search path costs a level of recursion, so the worst case is one level per node.
+  ;; As of 2026-09-11 the 206-module graph peaks at 40 levels; the default 2 MB thread stack fits about 2,600.
+  (letfn [(pop-component [state root]
+            (loop [state state, component #{}]
+              (let [node      (peek (:stack state))
+                    state     (-> state
+                                  (update :stack pop)
+                                  (update :on-stack disj node))
+                    component (conj component node)]
+                (if (= node root)
+                  (update state :components conj component)
+                  (recur state component)))))
+          (visit [state node]
+            (let [node-index (:next-index state)
+                  state      (-> state
+                                 (assoc-in [:index node] node-index)
+                                 (assoc-in [:lowlink node] node-index)
+                                 (update :next-index inc)
+                                 (update :stack conj node)
+                                 (update :on-stack conj node))
+                  state      (reduce (fn [state successor]
+                                       (cond
+                                         (not (contains? (:index state) successor))
+                                         (let [state (visit state successor)]
+                                           (update-in state [:lowlink node]
+                                                      min
+                                                      (get-in state [:lowlink successor])))
+
+                                         (contains? (:on-stack state) successor)
+                                         (update-in state [:lowlink node]
+                                                    min
+                                                    (get-in state [:index successor]))
+
+                                         :else
+                                         state))
+                                     state
+                                     (get graph node))]
+              (cond-> state
+                (= (get-in state [:lowlink node]) (get-in state [:index node]))
+                (pop-component node))))]
+    (:components
+     (reduce (fn [state node]
+               (cond-> state
+                 (not (contains? (:index state) node)) (visit node)))
+             {:components []
+              :index      {}
+              :lowlink    {}
+              :next-index 0
+              :on-stack   #{}
+              :stack      []}
+             (sort (graph-nodes graph))))))
+
+(defn cyclic-components
+  "Non-singleton [[strongly-connected-components]], largest first; ties sort by first member."
+  [graph]
+  (->> (strongly-connected-components graph)
+       (filter #(> (count %) 1))
+       (sort-by (fn [component] [(- (count component)) (str (first (sort component)))]))
+       vec))
+
+(defn- cyclic-component-sizes
+  "Module and namespace counts for each [[cyclic-components]] cluster."
+  [graph node->namespace-count]
+  (mapv (fn [component]
+          {:modules    (count component)
+           :namespaces (transduce (map #(get node->namespace-count % 0)) + 0 component)})
+        (cyclic-components graph)))
+
+(defn module-boundary-stats
+  "REPL diagnostics for the module graph:
+
+  - `:api-any-namespaces`  namespaces exposed by `:api :any` modules
+  - `:module-count`        configured modules
+  - `:scc-module-sizes`    modules per cycle, largest first
+  - `:scc-namespace-sizes` namespaces per cycle, in the same order
+
+  These values are not ratcheted because any source change can move them. Use namespace sizes to track
+  cycle reduction: splitting a module can grow a cycle's module count without removing namespaces."
+  ([]
+   (module-boundary-stats (dependencies) (kondo-config)))
+  ([deps config]
+   (let [any-modules (into #{} (keep (fn [[module cfg]] (when (= :any (:api cfg)) module))) config)
+         sizes       (cyclic-component-sizes (module-dependencies deps)
+                                             (frequencies (keep :module deps)))]
+     {:api-any-namespaces  (count (filter #(contains? any-modules (:module %)) deps))
+      :module-count        (count config)
+      :scc-module-sizes    (mapv :modules sizes)
+      :scc-namespace-sizes (mapv :namespaces sizes)})))
+
+(comment
+  (module-boundary-stats))

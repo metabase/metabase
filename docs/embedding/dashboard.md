@@ -553,4 +553,5 @@ On the OSS and Starter plans, Metabase adds a "Powered by Metabase" banner to gu
 - [Guest embeds](./guest-embedding.md)
 - [Authentication](./authentication.md)
 - [Modular embedding SDK](./sdk/introduction.md)
-- [AI chat](./sdk/ai-chat.md)
+- [Modular embedding components](./components.md)
+- [Embed an AI chat](./ai-chat.md)

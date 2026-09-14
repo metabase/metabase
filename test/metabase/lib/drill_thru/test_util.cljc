@@ -282,8 +282,9 @@
   [{:keys [mbql row]} :- [:map] ;; TODO: Better type? Does one exist?
    query-kind         :- [:enum :mbql :native]
    {:keys [column-name click-type query-type], :as _test-case} :- TestCase]
-  (let [cols       (cond->> (lib/returned-columns mbql -1 (lib.util/query-stage mbql -1))
-                     true                   (map #(assoc % ::was-breakout-in-original-query? (:lib/breakout? %)))
+  (let [returned   (lib/returned-columns mbql -1 (lib.util/query-stage mbql -1))
+        breakouts  (into #{} (comp (filter :lib/breakout?) (map :name)) returned)
+        cols       (cond->> returned
                      (= query-kind :native) (map #(-> %
                                                       (assoc :lib/source :source/native)
                                                       (dissoc :lib/breakout? :lib/expression-name :lib/join-alias))))
@@ -298,7 +299,7 @@
                        (if (some? v) v :null)))
         dimensions (when (= query-type :aggregated)
                      (for [col   cols
-                           :when (and (::was-breakout-in-original-query? col)
+                           :when (and (contains? breakouts (:name col))
                                       (not= (:name col) column-name))]
                        {:column     col
                         :column-ref (get refs (:name col))

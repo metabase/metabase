@@ -674,11 +674,11 @@ describe("issue 29304", () => {
         // This extra 1ms is crucial, without this the test would fail.
         cy.tick(WAIT_TIME + 1);
 
-        const expectedWidth = 130;
+        const expectedWidth = 100;
         cy.findByTestId("scalar-value").should(([$scalarValue]) => {
           expect($scalarValue.offsetWidth).to.be.closeTo(
             expectedWidth,
-            expectedWidth * 0.1,
+            expectedWidth * 0.2, // 20% tolerance for font rendering differences across Chrome versions
           );
         });
       });
@@ -871,15 +871,19 @@ describe("issue 31628", () => {
       });
 
       it("should follow truncation rules", () => {
-        cy.log(
-          "should not truncate value and should not show value tooltip on hover",
-        );
+        cy.log("should not truncate value");
         scalarContainer().then(($element) =>
           H.assertIsNotEllipsified($element[0]),
         );
+
+        cy.log(
+          "should show the title tooltip on hover because the smallest cards hide the inline title",
+        );
         scalarContainer().realHover();
 
-        cy.findByRole("tooltip").should("not.exist");
+        cy.findByRole("tooltip")
+          .findByText(SCALAR_QUESTION.name)
+          .should("exist");
       });
     });
 
@@ -908,7 +912,7 @@ describe("issue 31628", () => {
 
   describe("display: smartscalar", () => {
     const descendantsSelector = [
-      "[data-testid='legend-caption']",
+      "[data-testid='scalar-title']",
       "[data-testid='scalar-container']",
       "[data-testid='scalar-previous-value']",
     ].join(",");
@@ -946,70 +950,40 @@ describe("issue 31628", () => {
       });
 
       it("should follow truncation rules", () => {
-        cy.log(
-          "it should not truncate value and should not show value tooltip on hover",
-        );
+        cy.log("it should not truncate value");
         scalarContainer().then(($element) =>
           H.assertIsNotEllipsified($element[0]),
         );
-        scalarContainer().realHover();
-
-        cy.findByRole("tooltip").should("not.exist");
 
         cy.log(
-          "it should not display period because the card height is too small to fit it",
+          "it should show the title tooltip on hover because the smallest cards hide the inline title",
         );
-        cy.findByTestId("scalar-period").should("not.exist");
-
-        cy.log("it should truncate title and show title tooltip on hover");
-        cy.findByTestId("legend-caption-title")
-          .as("title")
-          .then(($element) => H.assertIsEllipsified($element[0]));
-        cy.get("@title").realHover();
+        scalarContainer().realHover();
 
         cy.findByRole("tooltip")
           .findByText(SMART_SCALAR_QUESTION.name)
           .should("exist");
 
-        cy.log("it should show previous value tooltip on hover");
-        cy.findByTestId("scalar-previous-value").realHover();
+        cy.log("it should not display the period on dashboard cards");
+        cy.findByTestId("scalar-period").should("not.exist");
+
+        cy.log(
+          "it should show the previous value as a percentage only (without truncation)",
+        );
+        previousValue().should("contain", "-34.72%").and("not.contain", "527");
+
+        previousValue().then(($element) =>
+          H.assertIsNotEllipsified($element[0]),
+        );
+
+        cy.log("it should show the full comparison in a panel on hover");
+        previousValue().realHover();
 
         cy.findByRole("tooltip").within(() => {
           cy.contains("34.72%").should("exist");
-          cy.contains("vs. previous month: 527").should("exist");
+          cy.contains("vs. previous month").should("exist");
+          cy.contains("527").should("exist");
         });
-
-        cy.log(
-          "it should show previous value as a percentage only (without truncation)",
-        );
-        previousValue()
-          .should("contain", "35%")
-          .and("not.contain", "vs. previous month: 527");
-
-        previousValue().then(($element) =>
-          H.assertIsNotEllipsified($element[0]),
-        );
-      });
-
-      it("should show previous value as a percentage without decimal places (without truncation, 1000x600)", () => {
-        cy.viewport(1000, 600);
-
-        previousValue()
-          .should("contain", "35%")
-          .and("not.contain", "34.72%")
-          .and("not.contain", "vs. previous month: 527");
-
-        previousValue().then(($element) =>
-          H.assertIsNotEllipsified($element[0]),
-        );
-      });
-
-      it("should truncate previous value (840x600)", () => {
-        cy.viewport(840, 600);
-
-        previousValue()
-          .findByText("35%")
-          .should(($element) => H.assertIsEllipsified($element[0]));
       });
     });
 
@@ -1033,22 +1007,18 @@ describe("issue 31628", () => {
 
         cy.findByRole("tooltip").should("not.exist");
 
-        cy.log("it should display the period");
-        cy.findByTestId("scalar-period").should("have.text", "Apr 2029");
+        cy.log("it should display the period as part of the comparison");
+        previousValue().should("contain", "Apr 2029");
 
-        cy.log("should truncate title and show title tooltip on hover");
-
-        cy.findByTestId("legend-caption-title")
-          .as("title")
-          .then(($element) => H.assertIsEllipsified($element[0]));
-        cy.get("@title").realHover();
+        cy.log("should truncate the inline title and show it on hover");
+        cy.findByTestId("scalar-title").realHover();
 
         cy.findByRole("tooltip")
           .findByText(SMART_SCALAR_QUESTION.name)
           .should("exist");
 
         cy.log("should show description tooltip on hover");
-        cy.findByTestId("legend-caption").icon("info").realHover();
+        cy.findByTestId("scalar-title").icon("info").realHover();
 
         cy.findByRole("tooltip")
           .findByText(SMART_SCALAR_QUESTION.description)
@@ -1056,13 +1026,15 @@ describe("issue 31628", () => {
 
         cy.log("should show previous value in full");
         previousValue()
-          .should("contain", "34.72%")
-          .and("contain", "vs. previous month: 527");
+          .should("contain", "-34.72% MoM")
+          .and("contain", "(527)");
         previousValue().then(($element) =>
           H.assertIsNotEllipsified($element[0]),
         );
 
-        cy.log("should not show previous value tooltip on hover");
+        cy.log(
+          "should not show a panel for a single fully-displayed comparison",
+        );
         cy.findByTestId("scalar-previous-value").realHover();
 
         cy.findByRole("tooltip").should("not.exist");
@@ -1089,21 +1061,18 @@ describe("issue 31628", () => {
 
         cy.findByRole("tooltip").should("not.exist");
 
-        cy.log("it should display the period");
-        cy.findByTestId("scalar-period").should("have.text", "Apr 2029");
+        cy.log("it should display the period as part of the comparison");
+        previousValue().should("contain", "Apr 2029");
 
-        cy.log("should truncate title and show title tooltip on hover");
-        cy.findByTestId("legend-caption-title")
-          .as("title")
-          .then(($element) => H.assertIsEllipsified($element[0]));
-        cy.get("@title").realHover();
+        cy.log("should truncate the inline title and show it on hover");
+        cy.findByTestId("scalar-title").realHover();
 
         cy.findByRole("tooltip")
           .findByText(SMART_SCALAR_QUESTION.name)
           .should("exist");
 
         cy.log("should show description tooltip on hover");
-        cy.findByTestId("legend-caption").icon("info").realHover();
+        cy.findByTestId("scalar-title").icon("info").realHover();
 
         cy.findByRole("tooltip")
           .findByText(SMART_SCALAR_QUESTION.description)
@@ -1111,13 +1080,15 @@ describe("issue 31628", () => {
 
         cy.log("should show previous value in full");
         previousValue()
-          .should("contain", "34.72%")
-          .and("contain", "vs. previous month: 527");
+          .should("contain", "-34.72% MoM")
+          .and("contain", "(527)");
         previousValue().then(($element) =>
           H.assertIsNotEllipsified($element[0]),
         );
 
-        cy.log("should not show previous value tooltip on hover");
+        cy.log(
+          "should not show a panel for a single fully-displayed comparison",
+        );
         cy.findByTestId("scalar-previous-value").realHover();
 
         cy.findByRole("tooltip").should("not.exist");

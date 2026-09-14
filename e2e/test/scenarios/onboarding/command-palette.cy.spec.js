@@ -171,7 +171,7 @@ describe("command palette", () => {
     cy.wait(100); // pressing page down too fast does nothing
     H.pressPageDown();
     H.commandPalette()
-      .findByRole("option", { name: "New collection" })
+      .findByRole("option", { name: "New model" })
       .should("have.attr", "aria-selected", "true");
 
     H.pressPageDown();
@@ -181,7 +181,7 @@ describe("command palette", () => {
 
     H.pressPageUp();
     H.commandPalette()
-      .findByRole("option", { name: "New collection" })
+      .findByRole("option", { name: "New model" })
       .should("have.attr", "aria-selected", "true");
 
     H.pressPageUp();

@@ -10,8 +10,11 @@ import {
   CollectionPickerModal,
   type OmniPickerItem,
 } from "metabase/common/components/Pickers";
-import { useConfirmation, useSetCollection } from "metabase/common/hooks";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import {
+  useConfirmation,
+  useMetadataToasts,
+  useSetCollection,
+} from "metabase/common/hooks";
 import type { CollectionId, RegularCollectionId } from "metabase-types/api";
 
 import { UnpublishTablesModal } from "../../components/UnpublishTablesModal";

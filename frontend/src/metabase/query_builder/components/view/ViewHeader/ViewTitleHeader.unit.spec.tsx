@@ -8,11 +8,11 @@ import {
   setupTableEndpoints,
 } from "__support__/server-mocks";
 import { setupGetUserKeyValueEndpoint } from "__support__/server-mocks/user-key-value";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
+import { getMetadata } from "metabase/metadata-store";
 import { Route } from "metabase/router";
-import { getMetadata } from "metabase/selectors/metadata";
 import MetabaseSettings from "metabase/utils/settings";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";

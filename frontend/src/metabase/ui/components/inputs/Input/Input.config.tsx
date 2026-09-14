@@ -22,7 +22,7 @@ export const inputOverrides = {
       { radius, leftSection, rightSection, rightSectionWidth, variant },
     ) => ({
       wrapper: {
-        "--input-border-radius": radius ?? theme.radius.xs,
+        "--input-border-radius": radius ?? theme.radius.xxs,
         "--input-padding-inline-start": leftSection
           ? rem(DEFAULT_ICON_WIDTH - BORDER_WIDTH)
           : rem(PADDING - BORDER_WIDTH),

@@ -2,9 +2,9 @@
   display: block;
   width: 100%;
   min-height: 4.5rem;
-  padding: var(--mantine-spacing-md);
+  padding: var(--mantine-spacing-lg);
   border: 1px solid var(--mb-color-border-neutral);
-  border-radius: var(--mantine-radius-md);
+  border-radius: var(--mantine-radius-sm);
   transition:
     border-color 120ms ease,
     background-color 120ms ease;

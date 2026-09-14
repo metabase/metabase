@@ -4,8 +4,7 @@ import { t } from "ttag";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { useDocsUrl } from "metabase/common/hooks";
 import { FormSelect } from "metabase/forms";
-import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
+import { useMetadataProviderFactory } from "metabase/metadata-store";
 import { SOURCE_STRATEGY_OPTIONS } from "metabase/transforms/constants";
 import { getLibQuery } from "metabase/transforms/utils";
 import {
@@ -54,8 +53,8 @@ export const IncrementalTransformSettings = ({
   extraActions,
   targetTableId,
 }: IncrementalTransformSettingsProps) => {
-  const metadata = useSelector(getMetadata);
-  const libQuery = getLibQuery(source, metadata);
+  const getMetadataProvider = useMetadataProviderFactory();
+  const libQuery = getLibQuery(source, getMetadataProvider);
 
   const { hasCheckpointOptions, transformType } =
     useHasCheckpointOptions(source);
@@ -96,7 +95,6 @@ export const IncrementalTransformSettings = ({
       <Switch
         disabled={readOnly || (!incremental && transformHasIssues)}
         checked={incremental}
-        size="sm"
         label={getLabel()}
         wrapperProps={{
           "data-testid": "incremental-switch",
@@ -143,11 +141,11 @@ export const IncrementalTransformSettings = ({
   if (variant === "standalone") {
     return (
       <TitleSection label={label} description={renderDescription()}>
-        <Group p="lg">{renderIncrementalSwitch()}</Group>
+        <Group p="xl">{renderIncrementalSwitch()}</Group>
         {incremental && (
           <>
             <Divider />
-            <Group p="lg">
+            <Group p="xl">
               <SourceStrategyFields
                 source={source}
                 query={libQuery}
@@ -158,7 +156,7 @@ export const IncrementalTransformSettings = ({
             {extraActions && (
               <>
                 <Divider />
-                <Group p="lg">{extraActions}</Group>
+                <Group p="xl">{extraActions}</Group>
               </>
             )}
             <TargetStrategyFields
@@ -173,7 +171,7 @@ export const IncrementalTransformSettings = ({
   }
 
   return (
-    <Stack gap="lg">
+    <Stack gap="xl">
       <Box>
         <Text fw="bold">{label}</Text>
         <Text size="sm" lh="1rem" mb="sm">
@@ -223,7 +221,7 @@ function TargetStrategyFields({
   return (
     <>
       <Divider />
-      <Group p="lg">{content}</Group>
+      <Group p="xl">{content}</Group>
     </>
   );
 }

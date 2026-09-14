@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { mergeLazily } from "metabase/utils/merge-lazily";
 import {
   type ComputedVisualizationSettings,
   GRAPH_DATA_SETTINGS,
@@ -19,8 +20,8 @@ import {
 } from "metabase/viz-core";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
-  Card,
   DatasetData,
+  SeriesCard,
   TransformedCard,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -32,28 +33,28 @@ export const ROW_CHART_DEFINITION: VisualizationDefinition = {
   getUiName: () => t`Row`,
   identifier: "row",
   iconName: "horizontal_bar",
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  noun: t`row chart`,
+  get noun() {
+    return t`row chart`;
+  },
   noHeader: true,
   hasEmptyState: true,
   minSize: getMinSize("row"),
   defaultSize: getDefaultSize("row"),
-  settings: {
-    ...ROW_CHART_SETTINGS,
-    ...GRAPH_DATA_SETTINGS,
-    ["graph.metrics"]: {
-      ...GRAPH_DATA_SETTINGS["graph.metrics"],
+  settings: mergeLazily(ROW_CHART_SETTINGS, GRAPH_DATA_SETTINGS, {
+    ["graph.metrics"]: mergeLazily(GRAPH_DATA_SETTINGS["graph.metrics"] ?? {}, {
       get title() {
         return t`X-axis`;
       },
-    },
-    ["graph.dimensions"]: {
-      ...GRAPH_DATA_SETTINGS["graph.dimensions"],
-      get title() {
-        return t`Y-axis`;
+    }),
+    ["graph.dimensions"]: mergeLazily(
+      GRAPH_DATA_SETTINGS["graph.dimensions"] ?? {},
+      {
+        get title() {
+          return t`Y-axis`;
+        },
       },
-    },
-  },
+    ),
+  }),
   isSensible: ({ cols, rows }: DatasetData) => {
     return (
       rows.length > 1 &&
@@ -121,6 +122,6 @@ export const ROW_CHART_DEFINITION: VisualizationDefinition = {
   },
 };
 
-function isTransformedCard(card: Card): card is TransformedCard {
+function isTransformedCard(card: SeriesCard): card is TransformedCard {
   return "_transformed" in card && card._transformed === true;
 }

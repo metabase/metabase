@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.channel.settings :as channel.settings]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.create-alert :as tools.create-alert]
    [metabase.metabot.tools.shared :as shared]
@@ -23,7 +24,7 @@
 (defn- create-dashboard-subscription*
   "Private helper for create-dashboard-subscription (call that instead)."
   [{:keys [dashboard-id slack-channel schedule]}]
-  (let [dashboard (some-> (t2/select-one :model/Dashboard dashboard-id)
+  (let [dashboard (some-> (metabot.db/dashboard dashboard-id)
                           api/read-check
                           (t2/hydrate [:dashcards :card]))
         cards (for [{:keys [id card]} (:dashcards dashboard)
@@ -75,32 +76,21 @@
         (-> (metabot.tools.u/handle-agent-error e)
             (set/rename-keys {:output :error}))))))
 
-(def ^:private create-dashboard-subscription-system-instructions
-  "## Dashboard Subscriptions
-
-You can create dashboard subscriptions that deliver dashboard contents to the user's current slack channel on a
-recurring schedule.
-
-### CRITICAL: You MUST call the create_dashboard_subscription tool
-
-When a user asks to subscribe to a dashboard, set up scheduled delivery, or receive regular updates for a dashboard,
-you MUST call the create_dashboard_subscription tool. Never tell the user you have created a subscription without
-actually calling the tool. If you cannot call the tool (e.g. missing required information), explain what is needed
-instead of pretending the subscription was created.
-
-### Required information
-
-Before calling the tool, ensure you have ALL of the following:
-1. **Dashboard ID** — obtained from a prior search result or conversation context
-2. **Schedule** — frequency (hourly, daily, weekly, monthly) with the appropriate time fields
-
-If any required information is missing, ask the user for it rather than assuming or fabricating values.")
-
-(mu/defn ^{:tool-name           "create_dashboard_subscription"
-           :scope               scope/agent-dashboard-subscribe
-           :system-instructions create-dashboard-subscription-system-instructions}
+(mu/defn ^{:tool-name "create_dashboard_subscription"
+           :scope     scope/agent-dashboard-subscribe}
   slackbot-create-dashboard-subscription-tool
-  "Create a recurring subscription that delivers a dashboard's contents to a Slack channel."
+  "Create a recurring subscription that delivers a dashboard's contents to the user's current
+  Slack channel. The destination channel is taken from the conversation — there is nothing to
+  pass for it, and the tool only works from a Slack channel.
+
+  When the user asks to subscribe to a dashboard, set up scheduled delivery, or receive regular
+  updates for a dashboard, you MUST call this tool; never claim a subscription was created
+  without calling it. If you are missing required information, ask the user for it rather than
+  guessing.
+
+  `dashboard_id` is the id of the dashboard, from a prior search result or the conversation
+  context. `schedule` is a frequency (hourly, daily, weekly, monthly) plus that frequency's
+  time fields."
   [{:keys [dashboard_id schedule]} :- [:map {:closed true}
                                        [:dashboard_id :int]
                                        [:schedule tools.create-alert/schedule-schema]]]

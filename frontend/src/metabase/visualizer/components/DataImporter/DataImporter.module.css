@@ -2,8 +2,8 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   grid-template-rows: 40px 1fr;
-  gap: var(--mantine-spacing-xs);
-  padding: var(--mantine-spacing-md);
+  gap: var(--mantine-spacing-xxs);
+  padding: var(--mantine-spacing-lg);
   grid-template-areas:
     "title button"
     "content content";

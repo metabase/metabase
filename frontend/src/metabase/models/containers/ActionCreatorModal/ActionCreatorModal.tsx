@@ -1,13 +1,13 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 
 import { skipToken, useGetActionQuery, useGetCardQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
+import { useQuestionFromCard } from "metabase/metadata-store";
 import { ActionCreator } from "metabase/querying/action-creator";
-import { useDispatch, useSelector } from "metabase/redux";
+import { useDispatch } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import { useNavigate } from "metabase/router";
-import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";
 import type { WritebackAction } from "metabase-types/api";
@@ -79,11 +79,15 @@ function ActionCreatorModal({
 
 function ActionCreatorModalLoader({ params, onClose }: ModalComponentProps) {
   const modelId = Urls.extractEntityId(params.slug);
-  const { isLoading, error } = useGetCardQuery(
-    modelId != null ? { id: modelId } : skipToken,
-  );
-  const model = useSelector((state) =>
-    modelId != null ? getMetadata(state).question(modelId) : undefined,
+  const {
+    data: card,
+    isLoading,
+    error,
+  } = useGetCardQuery(modelId != null ? { id: modelId } : skipToken);
+  const buildQuestion = useQuestionFromCard();
+  const model = useMemo(
+    () => (card != null ? buildQuestion(card) : undefined),
+    [card, buildQuestion],
   );
 
   if (isLoading || error != null || !model) {

@@ -62,7 +62,7 @@
 }
 
 .labelWrapper {
-  gap: rem(2px);
+  gap: var(--mantine-spacing-xxxs);
   align-self: center;
 }
 
@@ -71,10 +71,10 @@
 
   display: flex;
   align-items: flex-start;
-  gap: rem(12px);
-  padding: var(--mantine-spacing-md);
+  gap: var(--mantine-spacing-md);
+  padding: var(--mantine-spacing-lg);
   border: 0.5px solid var(--mb-color-border-neutral-strong);
-  border-radius: rem(12px);
+  border-radius: var(--mantine-radius-md);
   background-color: var(--mb-color-background_surface-primary);
   box-shadow: var(--mantine-shadow-xs), var(--card-ring);
   text-align: left;

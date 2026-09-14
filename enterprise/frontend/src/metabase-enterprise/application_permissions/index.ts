@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { PLUGIN_APPLICATION_PERMISSIONS_SELECTORS } from "metabase/current-user";
 import {
   PLUGIN_ADMIN_ALLOWED_PATH_GETTERS,
   PLUGIN_APPLICATION_PERMISSIONS,
@@ -30,10 +31,10 @@ export function initializePlugin() {
       { name: t`Application`, value: `application` },
     ];
 
-    PLUGIN_APPLICATION_PERMISSIONS.selectors = {
-      canAccessSettings,
-      canManageSubscriptions,
-    };
+    PLUGIN_APPLICATION_PERMISSIONS_SELECTORS.canAccessSettings =
+      canAccessSettings;
+    PLUGIN_APPLICATION_PERMISSIONS_SELECTORS.canManageSubscriptions =
+      canManageSubscriptions;
     PLUGIN_REDUCERS.applicationPermissionsPlugin =
       applicationPermissionsReducer;
   }

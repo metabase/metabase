@@ -83,16 +83,16 @@ export function SnippetFormModal({
   );
 
   return (
-    <Modal.Root padding="xl" opened onClose={onClose}>
+    <Modal.Root padding="xxl" opened onClose={onClose}>
       <Modal.Overlay />
       <Modal.Content>
-        <Modal.Header px="xl">
+        <Modal.Header px="xxl">
           <Modal.Title>{modalTitle}</Modal.Title>
           <Flex justify="flex-end">
             <Modal.CloseButton />
           </Flex>
         </Modal.Header>
-        <Modal.Body px="xl">
+        <Modal.Body px="xxl">
           <SnippetForm
             snippet={snippet}
             isEditing={isEditing}

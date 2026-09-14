@@ -164,15 +164,14 @@
    [metabase.audit-app.core :as audit]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
+   [metabase.permissions.db :as permissions.db]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.path :as permissions.path]
    [metabase.permissions.user :as permissions.user]
    [metabase.permissions.util :as perms.u]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
-   [metabase.settings.core :as setting]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -296,10 +295,9 @@
   [collection-id :- [:maybe ms/PositiveInt]]
   (let [collection-or-root (or collection-id
                                {:metabase.collections.models.collection.root/is-root? true})]
-    (or (t2/select-fn-set :group_id :model/Permissions
-                          {:where [:in :object
-                                   [(permissions.path/collection-read-path collection-or-root)
-                                    (permissions.path/collection-readwrite-path collection-or-root)]]})
+    (or (permissions.db/group-ids-with-permission-objects
+         [(permissions.path/collection-read-path collection-or-root)
+          (permissions.path/collection-readwrite-path collection-or-root)])
         #{})))
 
 (doto :perms/use-parent-collection-perms
@@ -328,7 +326,7 @@
 (defmethod mi/can-create? :perms/use-parent-collection-perms
   [_model m]
   (if-let [collection-id (:collection_id m)]
-    (mi/can-write? (t2/select-one :model/Collection :id collection-id))
+    (mi/can-write? (permissions.db/collection collection-id))
     (mi/can-write? (var-get (requiring-resolve 'metabase.collections.models.collection/root-collection)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -396,34 +394,23 @@
   In short, it will delete any permissions that contain `/db/1/schema/` as a prefix, or that themeselves are prefixes
   for `/db/1/schema/`.
 
-  You can optionally include `other-conditions`, which are anded into the filter clause, to further restrict what is
-  deleted.
-
   NOTE: This function is meant for internal usage in this namespace only; use one of the other functions like
   `revoke-data-perms!` elsewhere instead of calling this directly."
-  [group-or-id :- [:or :map ms/PositiveInt] path :- perms.u/PathSchema & other-conditions]
-  (let [paths (conj (perms.u/->v2-path path) path)
-        where {:where (apply list
-                             :and
-                             [:= :group_id (u/the-id group-or-id)]
-                             (into [:or
-                                    [:like path (h2x/concat :object (h2x/literal "%"))]]
-                                   (map (fn [path-form] [:like :object (str path-form "%")])
-                                        paths))
-                             other-conditions)}]
-    (when-let [revoked (t2/select-fn-set :object :model/Permissions where)]
-      (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" (u/the-id group-or-id) revoked))
-      (t2/delete! :model/Permissions where)
+  [group-or-id :- [:or :map ms/PositiveInt] path :- perms.u/PathSchema]
+  (let [group-id (u/the-id group-or-id)
+        paths    (conj (perms.u/->v2-path path) path)]
+    (when-let [revoked (permissions.db/related-permission-objects group-id path paths)]
+      (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" group-id revoked))
+      (permissions.db/delete-related-permissions! group-id path paths)
       (clear-current-user-cached-permissions!))))
 
 (defn grant-permissions!
   "Grant permissions for `group-or-id` and return the inserted permissions. Two-arity grants any arbitrary Permissions `path`."
   [group-or-id path]
   (try
-    (t2/insert! :model/Permissions
-                (map (fn [path-object]
-                       {:group_id (u/the-id group-or-id) :object path-object})
-                     (distinct (conj (perms.u/->v2-path path) path))))
+    (permissions.db/insert-permissions! (map (fn [path-object]
+                                               {:group_id (u/the-id group-or-id) :object path-object})
+                                             (distinct (conj (perms.u/->v2-path path) path))))
     (clear-current-user-cached-permissions!)
     ;; on some occasions through weirdness we might accidentally try to insert a key that's already been inserted
     (catch Throwable e
@@ -436,18 +423,9 @@
 
 ;;;; Audit Permissions helper fns
 
-(defn namespace-clause
+(def namespace-clause
   "SQL clause to filter namespaces depending on if audit app is enabled or not, and if the namespace is the default one."
-  [namespace-keyword namespace-val & [include-tenant-namespaces?]]
-  [:or
-   [:= namespace-keyword namespace-val]
-   (when (and (nil? namespace-val)
-              (premium-features/enable-audit-app?))
-     [:= namespace-keyword "analytics"])
-   (when (and include-tenant-namespaces? (nil? namespace-val) (setting/get :use-tenants))
-     [:= namespace-keyword "shared-tenant-collection"])
-   (when (and include-tenant-namespaces? (nil? namespace-val) (setting/get :use-tenants))
-     [:= namespace-keyword "tenant-specific"])])
+  permissions.db/namespace-clause)
 
 (defn can-read-via-parent-collection?
   "Read permission for rows whose read policy is a pure function of `:collection_id` and current user perms.
@@ -532,7 +510,7 @@
     `(do
        (defmethod mi/can-read? ~target
          ([instance#] (can-read-via-parent-collection? (:collection_id instance#)))
-         ([_# pk#]    (mi/can-read? (t2/select-one ~target :id pk#))))
+         ([_# pk#]    (mi/can-read? (permissions.db/instance-by-id ~target pk#))))
        (register-collection-id-only-read-method! ~target (get-method mi/can-read? ~target)))
 
     (string? target)
@@ -577,7 +555,7 @@
   [collection-or-id]
   (if (map? collection-or-id)
     collection-or-id
-    (t2/select-one :model/Collection :id (u/the-id collection-or-id))))
+    (permissions.db/collection (u/the-id collection-or-id))))
 
 (mu/defn- check-is-modifiable-collection
   "Check whether `collection-or-id` refers to a collection that can have permissions modified. Personal collections, the

@@ -8,6 +8,7 @@
    [metabase.app-db.query :as mdb.query]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.test :as qp]
+   [metabase.settings.models.setting :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -18,6 +19,25 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
+
+(defn- random-setting-name!
+  "Register a Setting under a random name and return it. The Setting model refuses to write a key it cannot resolve to
+  a definition, and these tests need a fresh key per racing thread -- more than one `defsetting` could supply."
+  []
+  (let [setting-name (keyword (str "query-test-setting-" (random-uuid)))]
+    (setting/register-setting! {:name       setting-name
+                                :namespace  (ns-name *ns*)
+                                :type       :string
+                                :encryption :no
+                                :visibility :internal})
+    (name setting-name)))
+
+(defn- random-value!
+  "A fresh value to store in `column`: the `key` column holds setting names, the `value` column anything."
+  [column]
+  (if (= column :key)
+    (random-setting-name!)
+    (str (random-uuid))))
 
 (defn- verify-same-query
   "Ensure that the formatted native query derived from an mbql query produce the same results."
@@ -85,7 +105,7 @@
 
 (deftest select-or-insert!-test
   ;; We test both a case where the database protects against duplicates, and where it does not.
-  ;; Using Setting is perfect because it has only two required fields - (the primary) key & value (with no constraint).
+  ;; Using the `setting` table is perfect because it has only two required fields - (the primary) key & value (with
   ;;
   ;; In the `:key` case using the `idempotent-insert!` rather than an `or` prevents the from application throwing an
   ;; exception when there are race conditions. For `:value` it prevents us silently inserting duplicates.
@@ -95,7 +115,7 @@
     (doseq [search-col columns]
       (testing (format "When the search column %s a uniqueness constraint in the db"
                        (if (= :key search-col) "has" "does not have"))
-        (let [search-value   (str (random-uuid))
+        (let [search-value   (random-value! search-col)
               other-col      (first (remove #{search-col} columns))]
           (try
             ;; ensure there is no database detritus to trip us up
@@ -108,7 +128,7 @@
                                                            ;; Make sure all the threads are in the mutating path
                                                            (.countDown latch)
                                                            (.await latch)
-                                                           {other-col (str (random-uuid))})))
+                                                           {other-col (random-value! other-col)})))
                   results (set (mt/repeat-concurrently threads thunk))
                   n       (count results)
                   latest  (t2/select-one :model/Setting search-col search-value)]
@@ -137,15 +157,15 @@
 
 (deftest updated-or-insert!-test
   ;; We test both a case where the database protects against duplicates, and where it does not.
-  ;; Using Setting is perfect because it has only two required fields - (the primary) key & value (with no constraint).
+  ;; Using the `setting` table is perfect because it has only two required fields - (the primary) key & value (with
   (let [columns [:key :value]]
     (doseq [search-col columns]
       (testing (format "When the search column %s a uniqueness constraint in the db"
                        (if (= :key search-col) "has" "does not have"))
         (doseq [already-exists? [true false]]
-          (let [search-value (str (random-uuid))
+          (let [search-value (random-value! search-col)
                 other-col    (first (remove #{search-col} columns))
-                other-value  (str (random-uuid))]
+                other-value  (random-value! other-col)]
             (try
               ;; ensure there is no database detritus to trip us up
               (t2/delete! :model/Setting search-col search-value)
@@ -154,7 +174,7 @@
               (let [threads    5
                     latch      (CountDownLatch. threads)
                     thunk      (fn []
-                                 (u/prog1 (str (random-uuid))
+                                 (u/prog1 (random-value! other-col)
                                    (mdb.query/update-or-insert! :model/Setting {search-col search-value}
                                                                 (fn [_]
                                                                   ;; Make sure all the threads are in the mutating path

@@ -19,7 +19,7 @@ You can choose to group a metric by week of year in the query builder.
 2. Click on the dropdown with date granularity (for example, "by month") to the right of the field name;
 3. In the popup with date granularity options, click **More...** to see additional options, and select **Week of year**.
 
-The result will be summarized by week number (as opposed to week _dates_, like when you select "by week" option):
+The result will be summarized by week number (as opposed to week _dates_, like when you select the "by week" option):
 
 ![Summarize by week of year](../../images/summarize-by-week-of-year.png)
 

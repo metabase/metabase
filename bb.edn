@@ -2,7 +2,8 @@
  ;; we put path as bin, and everything is in the ./mage subdirectory,
  ;; so the namespaces are mage.cli, mage.format, etc.
  ;; dev/src is here for tasks whose logic is shared with JVM tests (e.g. dev.kondo-ratchet)
- :paths ["mage/src" "mage/test" "bin/lint-migrations-file/src" "dev/src"]
+ ;; Let Mage use the same module-resolution rules as the Kondo hooks.
+ :paths ["mage/src" "mage/test" "bin/lint-migrations-file/src" "dev/src" ".clj-kondo/src"]
  ;; use Git version of dep temporarily until a new release > 0.16.4 is cut
  :deps {dev.weavejester/cljfmt {:git/sha "075eae26e3c8dad433b88f05927bcd50e3571328"
                                 :git/url "https://github.com/weavejester/cljfmt"} ;; run cljfmt from bb
@@ -260,6 +261,16 @@
    :requires [[mage.modules]]
    :task (task! (mage.modules/cli-print-affected-modules (:arguments parsed)))}
 
+  modules-tree
+  {:doc "Print the module hierarchy, nesting enterprise extensions under their OSS module"
+   :examples [["./bin/mage modules-tree" "Print the full tree; * marks a custom :ns-prefix"]
+              ["./bin/mage modules-tree --nested-only" "Print only roots with nested modules"]
+              ["./bin/mage modules-tree --prefixes" "Show custom prefixes instead of *"]]
+   :options [["-n" "--nested-only" "Only print modules that have nested children"]
+             ["-p" "--prefixes" "Print the :ns-prefix instead of the star"]]
+   :requires [[mage.modules]]
+   :task (task! (mage.modules/cli-print-module-tree parsed))}
+
   can-skip-driver-tests
   {:doc "Can we skip driver tests for this branch?"
    :examples [["./bin/mage can-skip-driver-tests master" "Returns zero (success) if we can skip driver tests based on changes related to `master`"]
@@ -276,10 +287,35 @@
    :requires [[mage.modules]]
    :task (task! (mage.modules/cli-fix-config (cli/parse! (current-task))))}
 
-  fix-kondo-ratchets
-  {:doc "Lower the per-linter ignore budgets in .clj-kondo/ratchets.edn to match the source tree."
-   :examples [["./bin/mage fix-kondo-ratchets" "Ratchet budgets down (never raises one; over-budget linters are only warned about)"]
-              ["./bin/mage fix-kondo-ratchets --seed :some-linter" "Also set :some-linter's budget to its actual count, for landing a new linter"]]
+  project-tests
+  {:doc "Run project-level checks."
+   :examples [["./bin/mage project-tests" "Run every suite"]
+              ["./bin/mage project-tests backend" "Run backend checks"]
+              ["./bin/mage project-tests migrations" "Run migration checks"]
+              ["./bin/mage project-tests modules" "Run module checks"]
+              ["./bin/mage project-tests ratchets" "Check the repository's kondo suppression ratchets"]]
+   :arg-schema [:or
+                [:tuple]
+                [:tuple [:enum {:name "suite"}
+                         "backend"
+                         "migrations"
+                         "modules"
+                         "ratchets"]]]
+   :requires [[mage.project-tests :as project-tests]]
+   :task (task! (if-let [suite (first (:arguments parsed))]
+                  (project-tests/run! suite)
+                  (project-tests/run!)))}
+
+  kondo-ratchets
+  {:doc "Validate the kondo and module ratchet files against the source tree (Babashka; seconds, not a test run)."
+   :examples [["./bin/mage kondo-ratchets" "Fail on an invalid ratchets file, an over-budget suppression, or a missing justification comment"]]
+   :requires [[dev.kondo-ratchet]]
+   :task (task! (dev.kondo-ratchet/check))}
+
+  kondo-ratchets-shrink
+  {:doc "Lower kondo and module budgets to match the source tree. This is the only Mage task that writes the ratchet files."
+   :examples [["./bin/mage kondo-ratchets-shrink" "Lower budgets to current counts without raising over-budget entries"]
+              ["./bin/mage kondo-ratchets-shrink --seed :some-linter" "Set :some-linter's budget to its current count when introducing the linter"]]
    :options [["-s" "--seed LINTER" "Set LINTER's budget to the actual count (may add or raise it)"]]
    :requires [[dev.kondo-ratchet]]
    :task (task! (dev.kondo-ratchet/fix! (:options parsed)))}
@@ -389,6 +425,58 @@
   ;; Private Tasks:
   ;; These tasks are more for internal tooling, e.g. for use from git hooks etc.
   ;; - hidden from `./bin/mage` listing and `bb tasks`, these all - start with a `-`
+
+  -ratchets-merge
+  {:doc "Internal three-way merge for ratchet files. Called by bin/merge-kondo-ratchets."
+   :arg-schema [:tuple
+                [:enum {:name "kind"} "kondo" "modules"]
+                [:string {:name "base" :description "Ratchets file from the merge base"}]
+                [:string {:name "ours" :description "Git stage 2: ratchets file from the branch receiving the changes"}]
+                [:string {:name "theirs" :description "Git stage 3: ratchets file from the commits being applied"}]
+                [:string {:name "output" :description "Path to write the merged ratchets file"}]]
+   :requires [[dev.kondo-ratchet]]
+   :task (task!
+          (let [[kind base-path ours-path theirs-path output-path] (:arguments parsed)
+                modules?           (= kind "modules")
+                read-stage         (fn [path]
+                                     (if modules?
+                                       (binding [dev.kondo-ratchet/*module-ratchets-file* path]
+                                         (dev.kondo-ratchet/read-module-ratchets))
+                                       (binding [dev.kondo-ratchet/*ratchets-file* path]
+                                         (dev.kondo-ratchet/read-ratchets))))
+                [base ours theirs] (map read-stage [base-path ours-path theirs-path])]
+            (if modules?
+              (spit output-path
+                    (dev.kondo-ratchet/render-module-ratchets
+                     (dev.kondo-ratchet/merge-module-ratchets base ours theirs)))
+              (let [merged (dev.kondo-ratchet/merge-ratchets base ours theirs)]
+                (spit output-path (if (dev.kondo-ratchet/disabled? merged)
+                                    (slurp ours-path)
+                                    (dev.kondo-ratchet/render merged)))))
+            (println (str "merged ratchets into " output-path))))}
+
+  -kondo-ratchets-pr-body
+  {:doc "Render the body for an automated ratchet-shrink PR."
+   :arg-schema [:tuple
+                [:string {:name "before" :description "Ratchets file before shrinking"}]
+                [:string {:name "after" :description "Ratchets file after shrinking"}]
+                [:string {:name "modules-before" :description "Module ratchets before shrinking"}]
+                [:string {:name "modules-after" :description "Module ratchets after shrinking"}]
+                [:string {:name "workflow-url" :description "URL of the workflow run"}]]
+   :requires [[dev.kondo-ratchet]]
+   :task (task!
+          (let [[before-path after-path modules-before-path modules-after-path workflow-url] (:arguments parsed)
+                read-ratchets (fn [path]
+                                (binding [dev.kondo-ratchet/*ratchets-file* path]
+                                  (dev.kondo-ratchet/read-ratchets)))
+                read-modules  (fn [path]
+                                (binding [dev.kondo-ratchet/*module-ratchets-file* path]
+                                  (dev.kondo-ratchet/read-module-ratchets)))]
+            (print (dev.kondo-ratchet/shrink-pr-body (assoc (read-ratchets before-path)
+                                                            :module-counts (read-modules modules-before-path))
+                                                     (assoc (read-ratchets after-path)
+                                                            :module-counts (read-modules modules-after-path))
+                                                     workflow-url))))}
 
   -driver-decisions
   {:doc "Determine which driver tests should run based on PR context. Outputs decisions for all drivers."

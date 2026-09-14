@@ -18,7 +18,8 @@
     '{:method :post
       :route {:path "/move"}
       :docstr "Moves a number of Cards to a single collection or dashboard."
-      :params {:route {:binding _route-params, :schema [:map]}, :query {:binding _query-params, :schema [:map]}}
+      :params {:route {:binding _route-params, :schema [:map {:closed true}]}
+               :query {:binding _query-params, :schema [:map {:closed true}]}}
       :body [(neat)]}
 
     '(:post "/move"
@@ -33,8 +34,8 @@
     '{:method :post
       :route {:path "/move"}
       :docstr "Moves a number of Cards to a single collection or dashboard."
-      :params {:route   {:binding _route-params, :schema [:map]}
-               :query   {:binding _query-params, :schema [:map]}
+      :params {:route   {:binding _route-params, :schema [:map {:closed true}]}
+               :query   {:binding _query-params, :schema [:map {:closed true}]}
                :body    {:binding {:keys [card_ids], :as body}
                          :schema [:map [:card_ids [:sequential ms/PositiveInt]]]}
                :request {:binding request
@@ -55,8 +56,8 @@
                 (raise e))))
     '{:method :post
       :route  {:path "/move"}
-      :params {:route   {:binding _route-params, :schema [:map]}
-               :query   {:binding _query-params, :schema [:map]}
+      :params {:route   {:binding _route-params, :schema [:map {:closed true}]}
+               :query   {:binding _query-params, :schema [:map {:closed true}]}
                :body    {:binding {:keys [card_ids], :as body}, :schema :map}
                :request {:binding _request}
                :respond {:binding respond}
@@ -175,7 +176,8 @@
         :route {:path "/test"}
         :docstr "Deprecated endpoint."
         :metadata {:deprecated "0.50.0", :multipart true}
-        :params {:route {:binding _route-params, :schema [:map]}, :query {:binding _query-params, :schema [:map]}}
+        :params {:route {:binding _route-params, :schema [:map {:closed true}]}
+                 :query {:binding _query-params, :schema [:map {:closed true}]}}
         :body [(test)]})))
 
 (deftest ^:parallel decode-strips-undeclared-keys-test
@@ -186,15 +188,24 @@
       {:a 1, :b 2}
       {:a 1}
 
+      ;; a closed map is stripped, not rejected: stripping happens during decoding, so by the time the schema
+      ;; validates the value the undeclared key is already gone and the request is served rather than 400ed
+      [:map {:closed true} [:a {:optional true} :int]]
+      {:a 1, :b 2}
+      {:a 1}
+
       ;; `{:closed false}` opts out, for the values we deliberately pass through as they arrived -- a query, viz
-      ;; settings, database details, a settings bag
+      ;; settings, database details, a settings bag. See the open maps in [[metabase.util.malli.schema]].
       [:map {:closed false} [:a {:optional true} :int]]
       {:a 1, :b 2}
       {:a 1, :b 2}
 
-      ;; stripping recurses. A parameter's `:options` are spliced into the filter clause the parameter becomes, so an
-      ;; option the schema does not name must not survive decoding. The schema stays open -- an unknown option is not
-      ;; a 400 -- so this is what keeps such a key from reaching the clause.
+      ;; stripping recurses: an undeclared key nested inside a declared one goes too
+      [:map [:a [:map {:closed true} [:b {:optional true} :int]]]]
+      {:a {:b 1, :c 2}}
+      {:a {:b 1}}
+
+      ;; ...through registry schemas too: a parameter's `:options` only keep the options this version knows
       ::lib.schema.parameter/parameter
       {:type :string/contains, :value ["A"], :options {:case-sensitive false, :lib/uuid "not-yours"}}
       {:type :string/contains, :value ["A"], :options {:case-sensitive false}})))

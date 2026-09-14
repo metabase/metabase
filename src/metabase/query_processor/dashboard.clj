@@ -14,6 +14,7 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.metric :as permissions.metric]
    [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.db :as query-processor.db]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.parameters.operators :as params.ops]
@@ -23,10 +24,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [some not-empty get-in]]
-   [steffan-westcott.clj-otel.api.trace.span :as span]
-   ;; 404-checks dashcard/series membership in the app db; an existence check, not query metadata
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2]))
+   [steffan-westcott.clj-otel.api.trace.span :as span]))
 
 (defn- check-card-and-dashcard-are-in-dashboard
   "Check that the Card with `card-id` is in Dashboard with `dashboard-id`, either in the already-loaded `dashcard` at the
@@ -36,9 +34,7 @@
     (api/check-404
      (and (= (:dashboard_id dashcard) dashboard-id)
           (or (= (:card_id dashcard) card-id)
-              (t2/exists? :model/DashboardCardSeries
-                          :card_id          card-id
-                          :dashboardcard_id dashcard-id))))))
+              (query-processor.db/dashcard-series-exists? card-id dashcard-id))))))
 
 (defn- current-dimension-mapping?
   [provider query mapping]

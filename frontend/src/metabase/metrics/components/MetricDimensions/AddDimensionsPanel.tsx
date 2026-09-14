@@ -82,14 +82,14 @@ export function AddDimensionsPanel({
   };
 
   return (
-    <Stack gap="md" className={S.column} data-testid="add-dimensions-panel">
+    <Stack gap="lg" className={S.column} data-testid="add-dimensions-panel">
       <Group justify="space-between" align="flex-start" wrap="nowrap">
         <Box>
           <Title order={4}>{t`Add available dimensions`}</Title>
           <Text
             c="text-secondary"
             size="sm"
-            mt="xs"
+            mt="xxs"
           >{t`You can pick one or many.`}</Text>
         </Box>
         <Button variant="filled" onClick={onDone} size="sm">{t`Done`}</Button>

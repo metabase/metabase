@@ -176,7 +176,7 @@ function handleCollectionItemsResponse({
 }) {
   const url = new URL(call.url);
   const models = modelsParam ?? url.searchParams.getAll("models");
-  const pinnedState = url.searchParams.get("pinned_state");
+  const pinnedState = url.searchParams.get("pinned-state");
 
   // As in the API, requesting no models at all returns every item.
   const matchedItems: CollectionItem[] = models.includes("no_models")
@@ -193,23 +193,32 @@ function handleCollectionItemsResponse({
   const limit = Number(url.searchParams.get("limit")) || searchedItems.length;
   const offset = Number(url.searchParams.get("offset")) || 0;
 
-  const response = {
+  return {
     data: searchedItems.slice(offset, offset + limit),
     total: searchedItems.length,
     models,
     limit,
     offset,
   };
+}
 
-  if (url.searchParams.get("include_available_models") !== "true") {
-    return response;
-  }
+// Mirrors GET /api/collection/:id/items/metadata: available models and the item
+// count for the requested models, independent of any search filter.
+function collectionItemsMetadata(
+  call: { url: string },
+  collectionItems: CollectionItem[],
+) {
+  const models = new URL(call.url).searchParams.getAll("models");
+  const requestedItems =
+    models.length === 0
+      ? collectionItems
+      : collectionItems.filter((item) => models.includes(item.model));
 
   return {
-    ...response,
     available_models: Array.from(
-      new Set(collectionItems.map((item) => item.model)),
+      new Set(requestedItems.map((item) => item.model)),
     ),
+    total_items: requestedItems.length,
   };
 }
 
@@ -232,6 +241,11 @@ export function setupCollectionItemsEndpoint({
       });
     },
     { name: `collection-${collection.id}-items` },
+  );
+  fetchMock.get(
+    `path:/api/collection/${collection.id}/items/metadata`,
+    (call) => collectionItemsMetadata(call, collectionItems),
+    { name: `collection-${collection.id}-items-metadata` },
   );
 }
 

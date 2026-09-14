@@ -42,11 +42,12 @@
       (testing "keeps the query in structured-output so chart memory stores it for later edits"
         (is (= stub-query (get-in result [:structured-output :query])))))))
 
-(deftest create-chart-treemap-test
-  (testing "the tool schema accepts treemap as a chart type"
-    (let [result (run-create-chart "treemap")]
-      (is (= :treemap (get-in result [:structured-output :chart-type])))
-      (is (= "treemap" (get-in result [:data-parts 0 :data :display]))))))
+(deftest create-chart-new-chart-types-test
+  (testing "the tool schema accepts newly added chart types"
+    (doseq [chart-type ["treemap" "boxplot"]]
+      (let [result (run-create-chart chart-type)]
+        (is (= (keyword chart-type) (get-in result [:structured-output :chart-type])))
+        (is (= chart-type (get-in result [:data-parts 0 :data :display])))))))
 
 (deftest edit-chart-query-fallback-test
   (testing "edit_chart resolves the query from queries-state when chart memory has no query"

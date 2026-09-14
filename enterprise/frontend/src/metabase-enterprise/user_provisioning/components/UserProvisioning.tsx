@@ -2,14 +2,6 @@ import { useDisclosure } from "@mantine/hooks";
 import { P, isMatching } from "ts-pattern";
 import { t } from "ttag";
 
-import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
-import {
-  AdminSettingInput,
-  BasicAdminSettingInput,
-} from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
@@ -20,6 +12,12 @@ import {
   useSetting,
   useUpdateSettingMutation,
 } from "metabase/settings";
+import {
+  AdminSettingInput,
+  BasicAdminSettingInput,
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/settings-components";
 import {
   Alert,
   Box,
@@ -156,8 +154,8 @@ export const UserProvisioning = () => {
           loading={maskedTokenRequest.isLoading}
           error={scimTokenError}
         >
-          <Stack pl="md" gap="lg" maw="35rem">
-            <Stack gap="lg" mb="lg" data-testid="scim-enabled-setting">
+          <Stack pl="lg" gap="xl" maw="35rem">
+            <Stack gap="xl" mb="xl" data-testid="scim-enabled-setting">
               <Text
                 fz="1.25rem"
                 fw="bold"
@@ -245,7 +243,7 @@ export const UserProvisioning = () => {
 
             {isAdminNotificationInputVisisble && (
               <>
-                <Divider my="lg" />
+                <Divider my="xl" />
                 <AdminSettingInput
                   name="send-new-sso-user-admin-email?"
                   title={t`Notify admins of new users provisioned from SSO`}

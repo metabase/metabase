@@ -50,7 +50,7 @@
                                        (when-not (= collection-id "root")
                                          collection-id))}
                         pos-int?]]
-       [:file [:map
+       [:file [:map {:closed true}
                [:filename :string]
                [:tempfile (ms/InstanceOfClass java.io.File)]]]]]
   ;; parse-long returns nil with "root" as the collection ID, which is what we want anyway

@@ -2,12 +2,13 @@
   (:require
    [clojure.string :as str]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]))
 
 (defn wildcard-match
-  "Returns a string pattern to match a wildcard search term."
+  "Returns a LIKE right-hand side matching `s` as a literal substring."
   [s]
-  (str "%" s "%"))
+  (h2x/like-substring s))
 
 (mu/defn normalize :- :string
   "Normalize a `query` to lower-case."

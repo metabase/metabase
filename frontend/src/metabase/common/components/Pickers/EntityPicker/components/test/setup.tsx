@@ -10,13 +10,13 @@ import {
   setupRootCollectionItemsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import {
   mockGetBoundingClientRect,
   renderWithProviders,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
-import { createMockState } from "metabase/redux/store/mocks";
 import type {
   Collection,
   CollectionItem,

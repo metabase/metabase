@@ -9,7 +9,7 @@ redirect_from:
 
 Dashboard subscriptions allow you to send the results of questions on a dashboard to people via email or Slack - even to people who lack an account in your Metabase.
 
-If your Metabase has email or Slack set up, all you need to do is create a dashboard, add subscribers to it, and tell Metabase how often you'd like the send out an update. You can set up as many subscriptions to a dashboard as you like, and if you make any changes to the dashboard, Metabase will update the subscriptions the next time they're delivered.
+If your Metabase has email or Slack set up, all you need to do is create a dashboard, add subscribers to it, and tell Metabase how often you'd like to send out an update. You can set up as many subscriptions to a dashboard as you like, and if you make any changes to the dashboard, Metabase will update the subscriptions the next time they're delivered.
 
 ## Enabling dashboard subscriptions
 
@@ -155,7 +155,7 @@ See [Remove Metabase branding from exports](../questions/exporting-results.md#re
 
 ## Subscriptions in embedded dashboards exclude links
 
-Since people viewing embedded dashboards likely don't have direct access to your Metabase, Metabase will omit the links to Metabase items in subscriptions sent from embedded dashboards. That way people don't get broken links in their email. See [embedded dashboards](../embedding/components.md).
+Since people viewing embedded dashboards likely don't have direct access to your Metabase, Metabase will omit the links to Metabase items in subscriptions sent from embedded dashboards. That way people don't get broken links in their email. See [Embed a dashboard](../embedding/dashboard.md).
 
 ## Custom visualizations fall back to the default chart
 

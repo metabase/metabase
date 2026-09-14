@@ -4,7 +4,7 @@ import styled from "@emotion/styled";
 import { color } from "metabase/ui/utils/colors";
 
 export const ParameterFormSection = styled.div`
-  margin-top: var(--mantine-spacing-md);
+  margin-top: var(--mantine-spacing-lg);
 `;
 
 interface ParameterFormLabelProps {
@@ -25,6 +25,6 @@ export const ParameterFormLabel = styled.label<ParameterFormLabelProps>`
 export const ParameterFormBadge = styled.span`
   color: var(--mb-color-text-primary);
   background-color: var(--mb-color-background_page-tertiary);
-  padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
-  border-radius: var(--mantine-spacing-xs);
+  padding: var(--mantine-spacing-xxs) var(--mantine-spacing-sm);
+  border-radius: var(--mantine-spacing-xxs);
 `;

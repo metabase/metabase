@@ -12,6 +12,7 @@ import type {
   SingleSeries,
   TransformedSeries,
   VisualizationSettings,
+  WidgetMount,
 } from "metabase-types/api";
 import type { VisualizationDisplay } from "metabase-types/api/visualization";
 
@@ -24,6 +25,7 @@ import type {
   ChartSettingSegmentsEditorProps,
   ChartSettingSeriesOrderProps,
   ChartSettingTableColumnsProps,
+  CustomVizSettingWidgetProps,
   DimensionsWidgetProps,
   SmartScalarComparisonWidgetProps,
   TreemapGroupsPickerProps,
@@ -68,7 +70,10 @@ export type VisualizationSettingDefinition<
   group?: string;
   index?: number;
   showColumnSetting?: boolean;
-  widget?: string | ComponentType<TProps & { id: string }>;
+  widget?:
+    | string
+    | ComponentType<TProps & { id: string }>
+    | WidgetMount<CustomVizSettingWidgetProps>;
   isValid?: (
     object: T,
     settings: T extends DatasetColumn
@@ -103,7 +108,7 @@ export type VisualizationSettingDefinition<
       ? ColumnSettings
       : ComputedVisualizationSettings,
     extra?: SettingsExtra,
-  ) => string;
+  ) => string | undefined;
   getWrapperStyle?: (
     object: T,
     settings: T extends DatasetColumn
@@ -322,6 +327,7 @@ export type VisualizationSettingsDefinitions = {
     SmartScalarComparisonWidgetProps
   >;
   "scalar.field"?: SeriesSettingDefinition<Value, Props>;
+  "scalar.show_comparison_value"?: SeriesSettingDefinition<Value, Props>;
   "scalar.switch_positive_negative"?: SeriesSettingDefinition<Value, Props>;
   scale?: DatasetColumnSettingDefinition<Value, Props>;
   "scatter.bubble"?: SeriesSettingDefinition<Value, Props>;
@@ -367,7 +373,10 @@ export type Widget = {
   hidden?: boolean;
   props?: Record<string, unknown>;
   title?: string;
-  widget?: string | ComponentType<any>;
+  widget?:
+    | string
+    | ComponentType<any>
+    | WidgetMount<CustomVizSettingWidgetProps>;
 };
 
 export type VisualizationGridSize = {
@@ -394,6 +403,7 @@ export type VisualizationDefinition = {
   disableClickBehavior?: boolean;
   canSavePng?: boolean;
   noHeader?: boolean;
+  noLoadingHeader?: boolean;
   hidden?: boolean;
   disableSettingsConfig?: boolean;
   supportPreviewing?: boolean;

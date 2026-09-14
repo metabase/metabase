@@ -82,6 +82,67 @@
                                            :temperature 0.2
                                            :max-tokens  128})))))
 
+(deftest ^:parallel reasoning-model?-test
+  (testing "exactly the whitelist streams renderable thinking; aliases are not resolved"
+    (is (true?  (mistral/reasoning-model? "mistral-medium-3-5")))
+    (is (false? (mistral/reasoning-model? "mistral-medium-latest")))
+    (is (false? (mistral/reasoning-model? "mistral-large-2")))
+    (is (false? (mistral/reasoning-model? nil)))))
+
+(deftest ^:parallel request-body-reasoning-effort-test
+  (let [body-for (fn [opts]
+                   (:reasoning_effort
+                    (mistral/mistral-request-body
+                     (merge {:model "mistral-medium-3-5" :input [{:role :user :content "hi"}]} opts))))]
+    (testing "a whitelisted model asks for thinking by default — the server default sends none"
+      (is (= "high" (body-for {}))))
+    (testing "tool_choice \"required\" keeps thinking on — Mistral accepts the combination"
+      (is (= "high" (body-for {:tool_choice "required"
+                               :tools       [{:tool-name "t" :doc "d"
+                                              :schema    [:=> [:cat [:map [:x :string]]] :any]
+                                              :fn        identity}]}))))
+    (testing "structured output and :reasoning? false pin thinking off"
+      (is (= "none" (body-for {:schema {:type "object"}})))
+      (is (= "none" (body-for {:reasoning? false})))
+      (is (= "none" (body-for {:reasoning? false :schema {:type "object"}}))))
+    (testing "an off-whitelist model gets no directive at all"
+      (is (nil? (:reasoning_effort
+                 (mistral/mistral-request-body {:model "mistral-large-2"
+                                                :input [{:role :user :content "hi"}]})))))))
+
+(deftest ^:parallel request-body-replays-think-chunks-test
+  (let [input [{:role :user :content "check the weather"}
+               ;; a block streams as several small parts plus an empty-text metadata carrier
+               {:type :reasoning :id "r1" :text "I should "}
+               {:type :reasoning :id "r1" :text "use the tool."}
+               {:type :reasoning :id "r1" :text "" :provider-metadata {:mistral {:signature "sig-abc"}}}
+               {:type :text :text "Checking now."}
+               {:type :tool-input :id "call-1" :function "get_weather" :arguments {:city "Paris"}}
+               {:type :tool-output :id "call-1" :result {:output "18C"}}]]
+    (testing "in-turn reasoning replays as ONE think chunk folded into the step's assistant message"
+      (is (= {:role       "assistant"
+              :content    [{:type "thinking" :thinking [{:type "text" :text "I should use the tool."}]}
+                           {:type "text" :text "Checking now."}]
+              :tool_calls [{:id       "call-1"
+                            :type     "function"
+                            :function {:name "get_weather" :arguments "{\"city\":\"Paris\"}"}}]}
+             (nth (:messages (mistral/mistral-request-body {:model "mistral-medium-3-5" :input input})) 1))))
+    (testing "the replayed chunk carries neither :closed (400 on replay, error 3240) nor the captured
+             :signature (rejected today, error 3051) — the equality assertion above pins both absences"
+      (let [chunk (-> (mistral/mistral-request-body {:model "mistral-medium-3-5" :input input})
+                      :messages (nth 1) :content first)]
+        (is (not (contains? chunk :closed)))
+        (is (not (contains? chunk :signature)))))
+    (testing "the structured path, :reasoning? false, and off-whitelist models replay nothing"
+      (doseq [opts [{:schema {:type "object"}}
+                    {:reasoning? false}
+                    {:model "mistral-large-2"}]]
+        (testing (pr-str opts)
+          (is (= "Checking now."
+                 (-> (mistral/mistral-request-body
+                      (merge {:model "mistral-medium-3-5" :input input} opts))
+                     :messages (nth 1) :content))))))))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Streaming chunk conversion tests
 ;;;
@@ -149,6 +210,124 @@
                                                                 :arguments "{\"tz\":"}}]}}]}
                    {:choices [{:delta {:tool_calls [{:function {:arguments "\"Europe/Kyiv\"}"}}]}}]}
                    {:choices [{:delta {} :finish_reason "tool_calls"}]}])))))
+
+(deftest ^:parallel flatten-content-chunks-test
+  (let [flatten* @#'mistral/flatten-content-chunks]
+    (testing "string and absent content pass through untouched, including usage-only events"
+      (are [event] (= [event] (flatten* event))
+        {:id "m" :choices [{:delta {:role "assistant" :content ""}}]}
+        {:choices [{:delta {:content "plain"}}]}
+        {:choices [{:delta {} :finish_reason "stop"}] :usage {:prompt_tokens 1}}
+        {:usage {:prompt_tokens 1}}))
+    (testing "a thinking-only vector becomes a reasoning event plus an empty-content original"
+      (is (= [{:id "m" :model "mistral-medium-3-5"
+               :choices [{:delta {:reasoning "step one"}}]}
+              {:id "m" :model "mistral-medium-3-5"
+               :choices [{:delta {:content ""}}]}]
+             (flatten* {:id "m" :model "mistral-medium-3-5"
+                        :choices [{:delta {:content [{:type "thinking" :closed true
+                                                      :thinking [{:type "text" :text "step one"}]}]}}]}))))
+    (testing "the transition event splits reasoning-first, keeping finish/tool keys on the content event"
+      (is (= [{:choices [{:delta {:reasoning "1."}}]}
+              {:choices [{:delta {:content "3"} :finish_reason "stop"}]}]
+             (flatten* {:choices [{:delta {:content [{:type "thinking" :closed true
+                                                      :thinking [{:type "text" :text "1."}]}
+                                                     {:type "text" :text "3"}]}
+                                   :finish_reason "stop"}]}))))
+    (testing "dispatch is structural — spec-legal chunks without :type still translate"
+      (is (= [{:choices [{:delta {:reasoning "quiet"}}]}
+              {:choices [{:delta {:content "answer"}}]}]
+             (flatten* {:choices [{:delta {:content [{:thinking [{:text "quiet"}]}
+                                                     {:text "answer"}]}}]}))))
+    (testing "chunk kinds carrying neither :thinking nor :text are dropped, at both nesting levels"
+      (is (= [{:choices [{:delta {:reasoning "kept"}}]}
+              {:choices [{:delta {:content "ans"}}]}]
+             (flatten* {:choices [{:delta {:content [{:type "reference" :reference_ids [1 2]}
+                                                     {:type "thinking"
+                                                      :thinking [{:type "text" :text "kept"}
+                                                                 {:type "reference" :reference_ids [3]}]}
+                                                     {:type "text" :text "ans"}]}}]}))))
+    (testing "a think-chunk signature is lifted out, ready-namespaced, for the shared xf to carry"
+      (is (=? [{:choices [{:delta {:reasoning          "hmm"
+                                   :reasoning_metadata {:mistral {:signature "sig-abc"}}}}]}
+               {:choices [{:delta {:content ""}}]}]
+              (flatten* {:choices [{:delta {:content [{:type "thinking" :signature "sig-abc"
+                                                       :thinking [{:type "text" :text "hmm"}]}]}}]}))))
+    (testing "a signature-only think chunk — the likely closing shape — still gets its synthetic event"
+      (is (=? [{:choices [{:delta {:reasoning_metadata {:mistral {:signature "sig-tail"}}}}]}
+               {:choices [{:delta {:content ""}}]}]
+              (flatten* {:choices [{:delta {:content [{:type "thinking" :signature "sig-tail"
+                                                       :thinking []}]}}]}))))))
+
+(deftest ^:parallel mistral-reasoning-conv-test
+  ;; Transcribed from a live mistral-medium-3-5 stream with reasoning_effort "high"
+  ;; (2026-09-01): prelude string deltas, think-chunk deltas, ONE transition delta
+  ;; carrying the closing think chunk and the first text chunk, then plain strings.
+  (let [chunks [{:id      "20260901-1"
+                 :model   "mistral-medium-3-5"
+                 :choices [{:delta {:role "assistant" :content ""}}]}
+                {:choices [{:delta {:content ""}}]}
+                {:choices [{:delta {:content [{:type "thinking"
+                                               :thinking [{:type "text" :text "Let me calculate "}]}]}}]}
+                {:choices [{:delta {:content [{:type "thinking" :closed true
+                                               :thinking [{:type "text" :text "17 times 23."}]}]}}]}
+                {:choices [{:delta {:content [{:type "thinking" :closed true
+                                               :thinking [{:type "text" :text "1."}]}
+                                              {:type "text" :text "3"}]}}]}
+                {:choices [{:delta {:content "91"}}]}
+                {:choices [{:delta {} :finish_reason "stop"}]
+                 :usage   {:prompt_tokens 30 :completion_tokens 262 :total_tokens 292}}]]
+    (testing ":start precedes every reasoning chunk, and one reasoning block precedes the text"
+      (is (=? [{:type :start}
+               {:type :reasoning-start}
+               {:type :reasoning-delta :delta "Let me calculate "}
+               {:type :reasoning-delta :delta "17 times 23."}
+               {:type :reasoning-delta :delta "1."}
+               {:type :reasoning-end}
+               {:type :text-start}
+               {:type :text-delta :delta "3"}
+               {:type :text-delta :delta "91"}
+               {:type :text-end}
+               {:type :usage}]
+              (into [] (mistral/mistral->aisdk-chunks-xf) chunks))))
+    (testing "through the full pipeline: coalesced reasoning, then the answer, then usage"
+      (is (=? [{:type :start}
+               {:type :reasoning :text "Let me calculate 17 times 23.1."}
+               {:type :text :text "391"}
+               {:type  :usage :model "mistral-medium-3-5"
+                :usage {:promptTokens 30 :completionTokens 262}}]
+              (into [] (comp (mistral/mistral->aisdk-chunks-xf)
+                             (self.core/aisdk-xf))
+                    chunks))))))
+
+(deftest ^:parallel mistral-signature-capture-conv-test
+  (testing "a streamed think-chunk signature lands in the reasoning part's provider metadata,
+           including when it arrives on a signature-only closing chunk"
+    (is (=? [{:type :start}
+             {:type :reasoning :text "hmm"}
+             {:type :reasoning :text "" :provider-metadata {:mistral {:signature "sig-abc"}}}
+             {:type :text :text "done"}]
+            (into [] (comp (mistral/mistral->aisdk-chunks-xf)
+                           (self.core/lite-aisdk-xf))
+                  [{:id      "20260901-2"
+                    :model   "mistral-medium-3-5"
+                    :choices [{:delta {:role "assistant" :content ""}}]}
+                   {:choices [{:delta {:content [{:type "thinking"
+                                                  :thinking [{:type "text" :text "hmm"}]}]}}]}
+                   ;; the signature alone on the block's closing chunk
+                   {:choices [{:delta {:content [{:type "thinking" :signature "sig-abc"
+                                                  :thinking []}]}}]}
+                   {:choices [{:delta {:content "done"}}]}
+                   {:choices [{:delta {} :finish_reason "stop"}]}]))))
+  (testing "and the coalescing replay fold reunites the carrier with its block's text"
+    (is (= [{:type "thinking" :thinking [{:type "text" :text "hmm"}]}]
+           (-> (mistral/mistral-request-body
+                {:model "mistral-medium-3-5"
+                 :input [{:role :user :content "q"}
+                         {:type :reasoning :id "r1" :text "hmm"}
+                         {:type :reasoning :id "r1" :text ""
+                          :provider-metadata {:mistral {:signature "sig-abc"}}}]})
+               :messages (nth 1) :content)))))
 
 (deftest ^:parallel mistral-usage-final-chunk-test
   (testing "usage is extracted from the final chunk; without a cache hit Mistral reports cached_tokens 0"

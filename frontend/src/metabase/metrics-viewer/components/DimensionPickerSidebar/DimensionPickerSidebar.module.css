@@ -8,7 +8,7 @@
 }
 
 .searchInput {
-  border-radius: var(--mantine-radius-md);
+  border-radius: var(--mantine-radius-sm);
   font-size: var(--mantine-font-size-md);
 }
 

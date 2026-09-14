@@ -95,14 +95,14 @@ export const OutOfSyncOptions = (props: BranchSwitchOptionsProps) => {
   );
 
   return (
-    <Box mt="xl">
-      <Text fw="bold" mb="sm" pb="xs">{t`Choose how to proceed:`}</Text>
+    <Box mt="xxl">
+      <Text fw="bold" mb="sm" pb="xxs">{t`Choose how to proceed:`}</Text>
       <Radio.Group
         // Unjustified type cast. FIXME
         onChange={(value) => handleOptionChange(value as OptionValue)}
         value={optionValue}
       >
-        <Stack gap="lg">
+        <Stack gap="xl">
           {safeOptions.length > 0 && (
             <OptionGroup title={t`Keep all changes`} options={safeOptions} />
           )}
@@ -141,7 +141,7 @@ const OptionGroup = ({ title, options, destructive }: OptionGroupProps) => (
           key={option.value}
           value={option.value}
           label={option.label}
-          pb="xs"
+          pb="xxs"
         />
       ))}
     </Stack>

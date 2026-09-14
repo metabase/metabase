@@ -4,14 +4,16 @@
   OAuth scopes are mapped onto `:token-scopes` for the scope-enforcement middleware."
   (:require
    [clojure.test :refer [deftest is testing]]
-   ;; Loaded for its load-time side effects: the OAuth provider's scopes-supported is derived by
-   ;; reflecting over the agent API route table (see [[metabase.mcp.core/all-scopes]]), which in a
-   ;; full server boot is loaded by [[metabase.api-routes.routes]]. The isolated test classpath does
-   ;; not mount the routes, so require it here as that route ns does.
+   ;; Loaded for its load-time side effects: it registers the agent API endpoints, from which the
+   ;; OAuth provider derives its scopes-supported (see [[metabase.mcp.core/all-scopes]]). In a full
+   ;; server boot [[metabase.api-routes.routes]] loads it; the isolated test classpath does not
+   ;; mount the routes, so require it here as that route ns does.
    [metabase.agent-api.api]
    [metabase.api.macros.scope :as scope]
    [metabase.initialization-status.core :as init-status]
    [metabase.oauth-server.core :as oauth-server]
+   [metabase.oauth-server.events.revoke-on-deactivation] ; for side effects: revokes tokens on deactivation
+   [metabase.oauth-server.test-util :as oauth-server.tu]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
    [oidc-provider.store :as oidc.store]
@@ -31,10 +33,11 @@
 
 (defn- save-access-token!
   "Persist an OAuth access token into the live provider's token store (the one [[oauth-server/resolve-access-token]]
-   reads from) for the given user, scopes, and expiry (epoch millis)."
-  [token user-id scopes expiry]
+   reads from) for the given user, client, scopes, and expiry (epoch millis). `client-id` should come from
+   [[oauth-server.tu/with-oauth-client]]."
+  [token user-id client-id scopes expiry]
   (oidc.store/save-access-token (:token-store (oauth-server/get-provider))
-                                token (str user-id) "test-client" (vec scopes) expiry nil))
+                                token (str user-id) client-id (vec scopes) expiry nil))
 
 (defn- revoke-access-token!
   "Revoke a token in the live provider's token store, as the `/oauth/revoke` endpoint does on logout."
@@ -82,37 +85,40 @@
 (deftest bearer-bridge-full-access-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
     (t2/with-transaction [_conn nil {:rollback-only true}]
-      (let [user-id (mt/user->id :rasta)
-            token   (str (random-uuid))]
-        (save-access-token! token user-id [oauth-server/full-access-scope] (in-one-hour))
-        (let [req (merge-current-user-info (bearer-request token))]
-          (testing "resolves the bearer token to the user"
-            (is (= user-id (:metabase-user-id req))))
-          (testing "marks the request as oauth-authenticated"
-            (is (= "oauth" (:embedding/auth-method req))))
-          (testing "grants unrestricted token-scopes so the whole REST API is reachable"
-            (is (= #{::scope/unrestricted} (:token-scopes req)))))))))
+      (oauth-server.tu/with-oauth-client [client-id]
+        (let [user-id (mt/user->id :rasta)
+              token   (str (random-uuid))]
+          (save-access-token! token user-id client-id [oauth-server/full-access-scope] (in-one-hour))
+          (let [req (merge-current-user-info (bearer-request token))]
+            (testing "resolves the bearer token to the user"
+              (is (= user-id (:metabase-user-id req))))
+            (testing "marks the request as oauth-authenticated"
+              (is (= "oauth" (:embedding/auth-method req))))
+            (testing "grants unrestricted token-scopes so the whole REST API is reachable"
+              (is (= #{::scope/unrestricted} (:token-scopes req))))))))))
 
 (deftest bearer-bridge-narrow-scope-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
     (t2/with-transaction [_conn nil {:rollback-only true}]
-      (let [user-id (mt/user->id :rasta)
-            token   (str (random-uuid))]
-        (save-access-token! token user-id ["agent:query:execute"] (in-one-hour))
-        (let [req (merge-current-user-info (bearer-request token))]
-          (testing "resolves the user but only carries the narrow granted scopes"
-            (is (= user-id (:metabase-user-id req)))
-            (is (= #{"agent:query:execute"} (:token-scopes req)))))))))
+      (oauth-server.tu/with-oauth-client [client-id]
+        (let [user-id (mt/user->id :rasta)
+              token   (str (random-uuid))]
+          (save-access-token! token user-id client-id ["agent:query:execute"] (in-one-hour))
+          (let [req (merge-current-user-info (bearer-request token))]
+            (testing "resolves the user but only carries the narrow granted scopes"
+              (is (= user-id (:metabase-user-id req)))
+              (is (= #{"agent:query:execute"} (:token-scopes req))))))))))
 
 (deftest bearer-bridge-expired-token-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
     (t2/with-transaction [_conn nil {:rollback-only true}]
-      (let [token (str (random-uuid))]
-        (save-access-token! token (mt/user->id :rasta) [oauth-server/full-access-scope] (one-hour-ago))
-        (let [req (merge-current-user-info (bearer-request token))]
-          (testing "an expired access token does not authenticate"
-            (is (nil? (:metabase-user-id req)))
-            (is (nil? (:token-scopes req)))))))))
+      (oauth-server.tu/with-oauth-client [client-id]
+        (let [token (str (random-uuid))]
+          (save-access-token! token (mt/user->id :rasta) client-id [oauth-server/full-access-scope] (one-hour-ago))
+          (let [req (merge-current-user-info (bearer-request token))]
+            (testing "an expired access token does not authenticate"
+              (is (nil? (:metabase-user-id req)))
+              (is (nil? (:token-scopes req))))))))))
 
 (deftest bearer-bridge-unknown-token-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
@@ -124,16 +130,63 @@
 (deftest bearer-bridge-revoked-token-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
     (t2/with-transaction [_conn nil {:rollback-only true}]
-      (let [user-id (mt/user->id :rasta)
-            token   (str (random-uuid))]
-        (save-access-token! token user-id [oauth-server/full-access-scope] (in-one-hour))
-        (testing "the token authenticates before it is revoked"
-          (is (= user-id (:metabase-user-id (merge-current-user-info (bearer-request token))))))
-        (revoke-access-token! token)
-        (testing "after revocation (as on logout) the same token no longer authenticates"
-          (let [req (merge-current-user-info (bearer-request token))]
-            (is (nil? (:metabase-user-id req)))
-            (is (nil? (:token-scopes req)))))))))
+      (oauth-server.tu/with-oauth-client [client-id]
+        (let [user-id (mt/user->id :rasta)
+              token   (str (random-uuid))]
+          (save-access-token! token user-id client-id [oauth-server/full-access-scope] (in-one-hour))
+          (testing "the token authenticates before it is revoked"
+            (is (= user-id (:metabase-user-id (merge-current-user-info (bearer-request token))))))
+          (revoke-access-token! token)
+          (testing "after revocation (as on logout) the same token no longer authenticates"
+            (let [req (merge-current-user-info (bearer-request token))]
+              (is (nil? (:metabase-user-id req)))
+              (is (nil? (:token-scopes req))))))))))
+
+(deftest bearer-bridge-deactivation-revokes-test
+  (testing "deactivating the user revokes the bearer token, and reactivating does NOT revive it (SEC-863)"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (oauth-server.tu/with-oauth-client [client-id]
+          (let [user-id (mt/user->id :rasta)
+                token   (str (random-uuid))]
+            (save-access-token! token user-id client-id [oauth-server/full-access-scope] (in-one-hour))
+            (testing "authenticates before deactivation"
+              (is (= user-id (:metabase-user-id (merge-current-user-info (bearer-request token))))))
+            (t2/update! :model/User user-id {:is_active false})
+            (testing "after deactivation the token no longer authenticates"
+              (is (nil? (:metabase-user-id (merge-current-user-info (bearer-request token))))))
+            (t2/update! :model/User user-id {:is_active true})
+            (testing "after reactivation the same token STILL does not authenticate"
+              (is (nil? (:metabase-user-id (merge-current-user-info (bearer-request token))))))))))))
+
+(deftest resolve-access-token-deactivated-user-test
+  (testing "S1: a still-live token for a user who has since been deactivated does NOT resolve — the shared
+            resolver gates on is_active so the v1 MCP transport (which dispatches straight on :user-id,
+            with no is_active re-check of its own) can't authenticate a deactivated user's bearer token"
+    ;; Deactivates with a raw UPDATE, not `t2/update! :model/User`: the model's before-update hook fires
+    ;; `:event/user-credentials-revoked`, whose handler stamps `revoked_at` on the token and would make the
+    ;; store lookup fail first — the resolver's own is_active gate would never be what this test exercises.
+    ;; The raw UPDATE is exactly the path the gate exists for.
+    ;; Uses :rasta (a shared fixture user) but restores `is_active` and deletes the token in a `finally`,
+    ;; so the deactivation can't leak to sibling tests. A rollback-only transaction does NOT isolate the
+    ;; update from tests running on other connections; a `with-temp` user hits an FK on teardown because the
+    ;; token row still references it.
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (oauth-server.tu/with-oauth-client [client-id]
+        (let [user-id (mt/user->id :rasta)
+              token   (str (random-uuid))]
+          (try
+            (save-access-token! token user-id client-id [oauth-server/full-access-scope] (in-one-hour))
+            (testing "resolves while the user is active"
+              (is (= user-id (:user-id (oauth-server/resolve-access-token token)))))
+            (t2/query {:update :core_user :set {:is_active false} :where [:= :id user-id]})
+            (testing "stops resolving once the user is deactivated"
+              (is (nil? (oauth-server/resolve-access-token token)))
+              (testing "and the token itself was not revoked — the resolver's gate did the refusing"
+                (is (nil? (t2/select-one-fn :revoked_at :model/OAuthAccessToken :token token)))))
+            (finally
+              (t2/query {:update :core_user :set {:is_active true} :where [:= :id user-id]})
+              (t2/delete! :model/OAuthAccessToken :token token))))))))
 
 (deftest bearer-bridge-precedence-test
   (testing "session/api-key auth takes precedence — bearer resolution is not even attempted"

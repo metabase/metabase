@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
+   [metabase.collections.test-utils :refer [personal-collection-id]]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.models.serialization :as serdes]
    [metabase.search.test-util :as search.tu]
@@ -51,10 +52,8 @@
                                                                             :database db-id
                                                                             :query    {:source-table (str "card__" card1-id)}}}
                        :model/User          user           {:email "dirk@kirk.ir"}
-                       :model/Collection    pcoll          {:name              "Personal Collection"
-                                                            :personal_owner_id (:id user)}
                        :model/Card          pcard          {:name          "Personal Card"
-                                                            :collection_id (:id pcoll)}
+                                                            :collection_id (personal-collection-id user)}
                        :model/Card          _              {:name          "External Card"
                                                             :dataset_query {:database db-id
                                                                             :type     :query

@@ -88,6 +88,11 @@ export type TableOwner = Pick<
   "id" | "email" | "first_name" | "last_name"
 >;
 
+export type TablePublishingInfo = {
+  published_at: string;
+  published_by: Pick<UserInfo, "id" | "common_name"> | null;
+};
+
 export type SchemaName = string;
 
 export interface Schema {

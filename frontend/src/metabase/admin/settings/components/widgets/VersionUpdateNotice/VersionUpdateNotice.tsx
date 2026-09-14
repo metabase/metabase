@@ -107,7 +107,7 @@ export function NewVersionInfo() {
   );
 
   return (
-    <Tabs mt="md" defaultValue="whats-new">
+    <Tabs mt="lg" defaultValue="whats-new">
       <Tabs.List>
         <Tabs.Tab value="whats-new">{t`What's new`}</Tabs.Tab>
         <Tabs.Tab value="changelog">{t`Changelog`}</Tabs.Tab>

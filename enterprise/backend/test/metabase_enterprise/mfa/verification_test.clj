@@ -6,6 +6,7 @@
    [metabase-enterprise.mfa.recovery-codes :as recovery-codes]
    [metabase-enterprise.mfa.totp :as totp]
    [metabase-enterprise.mfa.verification :as verification]
+   [metabase.app-db.core :as mdb]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util.encryption :as encryption]
@@ -28,9 +29,9 @@
                                           :confirmed_at (t/instant)
                                           :credentials  {:secret secret}}]
       (let [code (totp/generate-code secret)]
-        (is (true? (verification/verify-attempt! user-id code (fresh-jti))))
+        (is (true? (boolean (verification/verify-attempt! user-id code (fresh-jti)))))
         (testing "the same code is rejected on replay, even with a fresh challenge token (RFC 6238 SS5.2)"
-          (is (false? (verification/verify-attempt! user-id code (fresh-jti)))))))))
+          (is (false? (boolean (verification/verify-attempt! user-id code (fresh-jti))))))))))
 
 (deftest verify-rejects-used-jti-test
   (let [secret (totp/generate-secret)
@@ -43,7 +44,7 @@
                                           :credentials {:secret       secret
                                                         :used_jtis    [{:jti jti :exp (+ now 600)}]}}]
       (testing "a consumed challenge token cannot mint a second session, even with a fresh valid code"
-        (is (false? (verification/verify-attempt! user-id (totp/generate-code secret) jti)))))))
+        (is (false? (boolean (verification/verify-attempt! user-id (totp/generate-code secret) jti))))))))
 
 (deftest verify-rejects-stale-step-test
   (let [secret (totp/generate-secret)]
@@ -55,7 +56,7 @@
                                                         ;; pretend a code one step ahead was already accepted
                                                         :last_used_step (inc (totp/current-time-step))}}]
       (testing "codes at or before the last accepted step are rejected"
-        (is (false? (verification/verify-attempt! user-id (totp/generate-code secret) (fresh-jti))))))))
+        (is (false? (boolean (verification/verify-attempt! user-id (totp/generate-code secret) (fresh-jti)))))))))
 
 (deftest verify-rejects-unconfirmed-test
   (let [secret (totp/generate-secret)]
@@ -63,7 +64,7 @@
                    :model/AuthIdentity _ {:user_id     user-id
                                           :provider    "totp"
                                           :credentials {:secret secret}}]
-      (is (false? (verification/verify-attempt! user-id (totp/generate-code secret) (fresh-jti)))))))
+      (is (false? (boolean (verification/verify-attempt! user-id (totp/generate-code secret) (fresh-jti))))))))
 
 (deftest expired-jtis-are-pruned-test
   (let [secret (totp/generate-secret)
@@ -74,7 +75,7 @@
                                                     :confirmed_at (t/instant)
                                                     :credentials {:secret       secret
                                                                   :used_jtis    [{:jti "stale" :exp (- now 10)}]}}]
-      (is (true? (verification/verify-attempt! user-id (totp/generate-code secret) (fresh-jti))))
+      (is (true? (boolean (verification/verify-attempt! user-id (totp/generate-code secret) (fresh-jti)))))
       (let [jtis (get-in (t2/select-one :model/AuthIdentity :id ai-id) [:credentials :used_jtis])]
         (testing "the expired jti is gone; the fresh one is recorded"
           (is (= 1 (count jtis)))
@@ -116,7 +117,7 @@
                                        (future
                                          (.await latch)
                                          (binding [t2.conn/*current-connectable* nil]
-                                           (verification/verify-attempt! user-id code (fresh-jti)))))))]
+                                           (boolean (verification/verify-attempt! user-id code (fresh-jti))))))))]
             ;; release the gate -- all threads race
             (.countDown latch)
             (let [results (mapv #(deref % 10000 :timeout) futures)]
@@ -151,7 +152,7 @@
                                        (future
                                          (.await latch)
                                          (binding [t2.conn/*current-connectable* nil]
-                                           (verification/verify-attempt! user-id code (fresh-jti)))))))]
+                                           (boolean (verification/verify-attempt! user-id code (fresh-jti))))))))]
             (.countDown latch)
             (let [results (mapv #(deref % 10000 :timeout) futures)]
               (testing "no timeouts"
@@ -162,58 +163,64 @@
 ;;; -------------------------------------------------- Encryption-key rollover --------------------------------------------------
 
 (deftest key-rollover-test
-  (testing "an enrollment written under key A verifies after the column is rotated to key B"
-    ;; The full `rotate-encryption-key` walk over `encrypted-columns` (which includes
-    ;; [:auth_identity :credentials]) is exercised by metabase.cmd.rotate-encryption-key-test;
-    ;; this covers the MFA-specific end of it: rotate this row the way the command does —
-    ;; decrypt raw value with the old key, re-encrypt with the new — then verify a login code
-    ;; under the new key.
-    (let [secret (totp/generate-secret)
-          k1     "0123456789abcdef-key-A"
-          k2     "fedcba9876543210-key-B"]
-      (mt/with-temp [:model/User {user-id :id} {}]
-        (encryption-test/with-secret-key k1
-          (t2/insert! :model/AuthIdentity {:user_id     user-id
-                                           :provider    "totp"
-                                           :confirmed_at (t/instant)
-                                           :credentials  {:secret secret}}))
-        (let [ai-id     (t2/select-one-fn :id :auth_identity :user_id user-id :provider "totp")
-              raw       (t2/select-one-fn :credentials :auth_identity :id ai-id)
-              plaintext (encryption-test/with-secret-key k1
-                          (encryption/maybe-decrypt-accepting-plaintext raw))
-              rotated   (encryption-test/with-secret-key k2
-                          (encryption/maybe-encrypt plaintext))]
-          (is (encryption/possibly-encrypted-string? raw) "sanity: stored under key A as ciphertext")
-          (t2/update! :auth_identity ai-id {:credentials rotated}))
-        (encryption-test/with-secret-key k2
-          (is (true? (verification/verify-attempt! user-id (totp/generate-code secret) (fresh-jti)))
-              "the rotated enrollment verifies under the new key"))
-        (encryption-test/with-secret-key k1
-          ;; encrypted-json-out falls back to the raw ciphertext string, on which the
-          ;; timestamp-parsing transform then blows up — either way the old key can't read the row
-          (is (thrown? Exception
-                       (t2/select-one-fn :credentials :model/AuthIdentity
-                                         :user_id user-id :provider "totp"))
-              "sanity: the old key can no longer read the row"))))))
+  ;; isolated app DB: runs with an encryption key active, so nothing here may touch the shared test DB
+  (mt/with-temp-empty-app-db [_conn :h2]
+    (mdb/setup-db! :create-sample-content? false)
+    (testing "an enrollment written under key A verifies after the column is rotated to key B"
+      ;; The full `rotate-encryption-key` walk over `encrypted-columns` (which includes
+      ;; [:auth_identity :credentials]) is exercised by metabase.cmd.rotate-encryption-key-test;
+      ;; this covers the MFA-specific end of it: rotate this row the way the command does —
+      ;; decrypt raw value with the old key, re-encrypt with the new — then verify a login code
+      ;; under the new key.
+      (let [secret (totp/generate-secret)
+            k1     "0123456789abcdef-key-A"
+            k2     "fedcba9876543210-key-B"]
+        (mt/with-temp [:model/User {user-id :id} {}]
+          (encryption-test/with-secret-key k1
+            (t2/insert! :model/AuthIdentity {:user_id     user-id
+                                             :provider    "totp"
+                                             :confirmed_at (t/instant)
+                                             :credentials  {:secret secret}}))
+          (let [ai-id     (t2/select-one-fn :id :auth_identity :user_id user-id :provider "totp")
+                raw       (t2/select-one-fn :credentials :auth_identity :id ai-id)
+                plaintext (encryption-test/with-secret-key k1
+                            (encryption/maybe-decrypt-accepting-plaintext raw))
+                rotated   (encryption-test/with-secret-key k2
+                            (encryption/maybe-encrypt plaintext))]
+            (is (encryption/possibly-encrypted-string? raw) "sanity: stored under key A as ciphertext")
+            (t2/update! :auth_identity ai-id {:credentials rotated}))
+          (encryption-test/with-secret-key k2
+            (is (true? (boolean (verification/verify-attempt! user-id (totp/generate-code secret) (fresh-jti))))
+                "the rotated enrollment verifies under the new key"))
+          (encryption-test/with-secret-key k1
+            ;; encrypted-json-out falls back to the raw ciphertext string, on which the
+            ;; timestamp-parsing transform then blows up — either way the old key can't read the row
+            (is (thrown? Exception
+                         (t2/select-one-fn :credentials :model/AuthIdentity
+                                           :user_id user-id :provider "totp"))
+                "sanity: the old key can no longer read the row")))))))
 
 (deftest lost-encryption-key-fails-closed-test
-  (testing "an instance started with the wrong key: verify errors (no bypass, no session), and
+  ;; isolated app DB: runs with an encryption key active, so nothing here may touch the shared test DB
+  (mt/with-temp-empty-app-db [_conn :h2]
+    (mdb/setup-db! :create-sample-content? false)
+    (testing "an instance started with the wrong key: verify errors (no bypass, no session), and
             admin removal — which never decrypts — still recovers the account"
-    (let [secret (totp/generate-secret)
-          k1     "0123456789abcdef-key-A"
-          k2     "totally-different-key-B!"]
-      (mt/with-temp [:model/User {user-id :id} {}]
-        (encryption-test/with-secret-key k1
-          (t2/insert! :model/AuthIdentity {:user_id     user-id
-                                           :provider    "totp"
-                                           :confirmed_at (t/instant)
-                                           :credentials  {:secret secret}}))
-        (encryption-test/with-secret-key k2
-          (testing "verification fails closed — an error, never a false-positive login"
-            (is (thrown? Exception
-                         (verification/verify-attempt! user-id (totp/generate-code secret) (fresh-jti)))))
-          (testing "the enrollment row survives the failed attempt"
-            (is (= 1 (t2/count :auth_identity :user_id user-id :provider "totp"))))
-          (testing "disable! deletes without decrypting, so the admin escape hatch works"
-            (is (true? (enrollment/disable! user-id)))
-            (is (zero? (t2/count :auth_identity :user_id user-id :provider "totp")))))))))
+      (let [secret (totp/generate-secret)
+            k1     "0123456789abcdef-key-A"
+            k2     "totally-different-key-B!"]
+        (mt/with-temp [:model/User {user-id :id} {}]
+          (encryption-test/with-secret-key k1
+            (t2/insert! :model/AuthIdentity {:user_id     user-id
+                                             :provider    "totp"
+                                             :confirmed_at (t/instant)
+                                             :credentials  {:secret secret}}))
+          (encryption-test/with-secret-key k2
+            (testing "verification fails closed — an error, never a false-positive login"
+              (is (thrown? Exception
+                           (verification/verify-attempt! user-id (totp/generate-code secret) (fresh-jti)))))
+            (testing "the enrollment row survives the failed attempt"
+              (is (= 1 (t2/count :auth_identity :user_id user-id :provider "totp"))))
+            (testing "disable! deletes without decrypting, so the admin escape hatch works"
+              (is (true? (enrollment/disable! user-id)))
+              (is (zero? (t2/count :auth_identity :user_id user-id :provider "totp"))))))))))

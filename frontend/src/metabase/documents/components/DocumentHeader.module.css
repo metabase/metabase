@@ -1,13 +1,13 @@
 .documentHeader {
   align-items: flex-start;
   background-color: var(--mb-color-background-primary);
-  gap: var(--mantine-spacing-md);
+  gap: var(--mantine-spacing-lg);
   justify-content: space-between;
-  margin-bottom: var(--mantine-spacing-md);
+  margin-bottom: var(--mantine-spacing-lg);
   margin-inline: auto;
-  margin-top: var(--mantine-spacing-xl);
+  margin-top: var(--mantine-spacing-xxl);
   max-width: 56.25rem;
-  padding-top: var(--mantine-spacing-xl);
+  padding-top: var(--mantine-spacing-xxl);
   width: 100%;
 }
 

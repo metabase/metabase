@@ -16,7 +16,7 @@ user, these are only suggestions which they must apply themselves.
 When creating a new transform, you must provide:
 - transform_name: A descriptive name for the transform
 - transform_description: A detailed description of what the transform does
-- source_database: The database ID containing the source tables
+- database_id: The database ID containing the source tables
 - source_tables: A list of source table objects, each with `alias` (parameter name in the transform function), `table_id` (database table ID), `schema` (e.g. "PUBLIC"), and `database_id`
 
 **Edit Modes:**
@@ -46,7 +46,7 @@ When creating a new transform, you must provide:
 - Use mode="edit" for small targeted changes
 - Include surrounding context (whitespace, adjacent lines) to make PartialEdit matches unique
 - Use replace_all=true only when you want to change ALL occurrences in PartialEdit
-- Use the search_tables tool to find correct source_tables first - never guess or make up table IDs
+- Use the `search` tool to find correct source_tables first - never guess or make up table IDs
 - Use real database tables for source_tables. NEVER use metabase models or model IDs in source_tables.
 - Copy exact text including all spaces, tabs, and newlines for PartialEdit
 - Use this tool for any Python-related requests when a Python transform is present in the context

@@ -51,7 +51,7 @@ export const MetabotConversationHistory = ({
       opened={opened}
       onChange={setOpened}
       position="bottom-end"
-      shadow="md"
+      shadow="sm"
       width={320}
     >
       <Menu.Target>
@@ -97,7 +97,7 @@ const HistoryLoading = () => (
   <Stack
     gap="sm"
     px="sm"
-    py="xs"
+    py="xxs"
     data-testid="metabot-conversation-history-loading"
   >
     <Repeat times={SKELETON_COUNT}>
@@ -107,7 +107,7 @@ const HistoryLoading = () => (
 );
 
 const HistoryEmpty = () => (
-  <Text c="text-secondary" px="md" py="sm" fz="sm">
+  <Text c="text-secondary" px="lg" py="sm" fz="sm">
     {t`No past conversations`}
   </Text>
 );

@@ -270,6 +270,22 @@
       (is (=? {:database-partitioned true}
               (lib.metadata/field mp (:id buyer-id)))))))
 
+(deftest ^:parallel data-sensitivity-metadata-test
+  (mt/with-temp [:model/Database db      {:engine :h2}
+                 :model/Table    table   {:name "CONTACTS" :db_id (:id db)}
+                 :model/Field    labeled {:name "EMAIL" :table_id (:id table) :base_type :type/Text :data_sensitivity :PII}
+                 :model/Field    plain   {:name "ID"    :table_id (:id table) :base_type :type/Integer}]
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider (:id db))]
+      (testing "a labeled field carries the label as a keyword under the kebab-case key"
+        (let [col (lib.metadata/field mp (:id labeled))]
+          (is (=? {:data-sensitivity :PII} col))
+          (is (not (me/humanize (mr/explain ::lib.schema.metadata/column col))))))
+      (testing "an unlabeled field carries nil"
+        (let [col (lib.metadata/field mp (:id plain))]
+          (is (contains? col :data-sensitivity))
+          (is (nil? (:data-sensitivity col)))
+          (is (not (me/humanize (mr/explain ::lib.schema.metadata/column col)))))))))
+
 (deftest ^:parallel instance->metadata-normalize-column-test
   (testing "instance->metadata should normalize column metadata"
     (let [legacy-col {:active                                            true

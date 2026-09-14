@@ -5,7 +5,7 @@ import { alpha } from "metabase/ui/colors";
 
 export const FormContainer = styled.div`
   display: flex;
-  gap: var(--mantine-spacing-md);
+  gap: var(--mantine-spacing-lg);
   padding: 0 1.5rem 1rem;
   transition: flex 500ms ease-in-out;
   background-color: var(--mb-color-background_page-primary);
@@ -23,7 +23,7 @@ export const FieldSettingsButtonsContainer = styled.div`
 `;
 
 export const WarningBanner = styled.div`
-  padding: var(--mantine-spacing-md);
+  padding: var(--mantine-spacing-lg);
   border: 1px solid var(--mb-color-feedback-warning);
   border-radius: var(--mantine-spacing-sm);
   background: ${() => alpha("feedback-warning", 0.1)};

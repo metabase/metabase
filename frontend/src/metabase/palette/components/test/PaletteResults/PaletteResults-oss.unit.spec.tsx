@@ -148,6 +148,11 @@ describe("PaletteResults", () => {
     expect(await screen.findByText("Settings - Email")).toBeInTheDocument();
   });
 
+  it("should provide a link to Domains settings for admins", async () => {
+    setup({ query: "doma", isAdmin: true });
+    expect(await screen.findByText("Settings - Domains")).toBeInTheDocument();
+  });
+
   it("should not provide links to settings pages for non-admins", async () => {
     setup({ query: "setu", isAdmin: false });
     expect(

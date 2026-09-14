@@ -13,7 +13,11 @@ Construct a Metabase MBQL 5 query as a JSON object describing the query shape. M
 
 Return:
 - `query`: a JSON **object** (never a quoted string). The target database is inferred from the first stage's `source-table` (or `source-card`) — use the **exact** database name reported by search / `read_resource` / metadata tools.
+- `title`: required — a short, human-friendly name for the query, written like a saved-question name.
+- `description`: required — a short description of what the query returns.
 - `visualization`: optional `{"chart_type": "bar"}` (sibling of `query`, never embedded inside it).
+
+> The Slackbot variant of this tool has a different contract: `reasoning` is **required**, `title` is optional and there's no `description`; it uses `display` (a Slack-specific visualization-type enum) instead of `visualization`. See the Slackbot system prompt for its exact argument set.
 
 ## Minimal example — count of orders by month
 
@@ -45,7 +49,7 @@ Top level:
 
 Stage (`"lib/type": "mbql.stage/mbql"` — required marker):
 - `source-table` **or** `source-card` — exactly one, **first stage only**. Later stages take the previous stage's output implicitly.
-- Optional: `filters`, `aggregation`, `breakout`, `expressions`, `fields`, `joins`, `order-by`, `limit`, `page`.
+- Optional: `filters`, `aggregation`, `breakout`, `expressions`, `fields`, `joins`, `order-by`, `limit`.
 
 There is no top-level `database:` field in the LLM contract — the database is derived from the source.
 

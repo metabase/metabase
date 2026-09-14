@@ -52,7 +52,6 @@ describe("Reference utils.js", () => {
     const segmentId = segment.id;
     const field = createMockField({ table_id: tableId });
     // Unjustified type cast. FIXME
-    const fieldId = field.id as number;
     const table = createMockTable({
       id: tableId,
       db_id: dbId,
@@ -61,12 +60,12 @@ describe("Reference utils.js", () => {
     });
     const database = createMockDatabase({ id: dbId, tables: [table] });
     const metadata = createMockMetadata({ databases: [database] });
+    const metadataProvider = Lib.metadataProvider(dbId, metadata);
 
     it("should generate correct question for table raw data", () => {
       const card = getQuestion({
-        dbId,
+        metadataProvider,
         tableId,
-        metadata,
       });
 
       const query = new Question(card).query();
@@ -75,10 +74,9 @@ describe("Reference utils.js", () => {
 
     it("should generate correct question for table counts", () => {
       const card = getQuestion({
-        dbId,
+        metadataProvider,
         tableId,
         getCount: true,
-        metadata,
       });
 
       const query = new Question(card).query();
@@ -87,10 +85,9 @@ describe("Reference utils.js", () => {
 
     it("should generate correct question for field raw data", () => {
       const card = getQuestion({
-        dbId,
+        metadataProvider,
         tableId,
-        fieldId,
-        metadata,
+        breakoutField: field,
       });
 
       const query = new Question(card).query();
@@ -99,12 +96,11 @@ describe("Reference utils.js", () => {
 
     it("should generate correct question for field group by bar chart", () => {
       const card = getQuestion({
-        dbId,
+        metadataProvider,
         tableId,
-        fieldId,
+        breakoutField: field,
         getCount: true,
         visualization: "bar",
-        metadata,
       });
 
       const query = new Question(card).query();
@@ -115,12 +111,11 @@ describe("Reference utils.js", () => {
 
     it("should generate correct question for field group by pie chart", () => {
       const card = getQuestion({
-        dbId,
+        metadataProvider,
         tableId,
-        fieldId,
+        breakoutField: field,
         getCount: true,
         visualization: "pie",
-        metadata,
       });
 
       const query = new Question(card).query();
@@ -131,10 +126,9 @@ describe("Reference utils.js", () => {
 
     it("should generate correct question for segment raw data", () => {
       const card = getQuestion({
-        dbId,
+        metadataProvider,
         tableId,
         segmentId,
-        metadata,
       });
 
       const query = new Question(card).query();
@@ -143,11 +137,10 @@ describe("Reference utils.js", () => {
 
     it("should generate correct question for segment counts", () => {
       const card = getQuestion({
-        dbId,
+        metadataProvider,
         tableId,
         segmentId,
         getCount: true,
-        metadata,
       });
 
       const query = new Question(card).query();

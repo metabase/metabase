@@ -68,7 +68,7 @@ export function ModelCachingControl({ database, disabled }: Props) {
 
   return (
     <div>
-      <Flex align="center" justify="space-between" mb="xs">
+      <Flex align="center" justify="space-between" mb="xxs">
         <Label htmlFor="model-persistence-toggle">{t`Model persistence`}</Label>
         <Box>
           <Switch
@@ -96,7 +96,7 @@ export function ModelCachingControl({ database, disabled }: Props) {
             size="compact"
             variant="light"
             icon={<Icon name="info" />}
-            mb="md"
+            mb="lg"
           >
             {t`Model persistence can't be enabled when database routing is enabled.`}
           </Alert>

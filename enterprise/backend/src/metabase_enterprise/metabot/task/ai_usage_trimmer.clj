@@ -5,10 +5,10 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
+   [metabase-enterprise.metabot.db :as metabot.db]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.task.core :as task]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.util.log :as log])
   (:import
    (org.quartz DisallowConcurrentExecution)))
 
@@ -25,7 +25,7 @@
       (do
         (log/infof "Trimming AI usage log rows older than %d days." (long retention-days))
         (let [cutoff  (t/minus (t/offset-date-time) (t/days (long retention-days)))
-              deleted (t2/delete! :model/AiUsageLog {:where [:< :created_at cutoff]})]
+              deleted (metabot.db/delete-usage-logs-created-before! cutoff)]
           (log/infof "AI usage log cleanup complete. Deleted %d rows." (or deleted 0)))))))
 
 (task/defjob ^{DisallowConcurrentExecution true

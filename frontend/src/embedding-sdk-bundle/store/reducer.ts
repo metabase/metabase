@@ -13,6 +13,7 @@ import type { DashboardTabId } from "metabase-types/api";
 
 import { initAuth, refreshTokenAsync } from "./auth";
 import {
+  clearGuestToken,
   initGuestEmbed,
   refreshGuestSession,
   setGuestTokenFetchError,
@@ -71,7 +72,7 @@ const initialState: SdkState = {
   metabaseInstanceVersion: null,
   token: {
     token: null,
-    rawToken: null,
+    guestTokensByMount: {},
     loading: false,
     error: null,
   },
@@ -95,7 +96,7 @@ export const sdk = createReducer(initialState, (builder) => {
   builder.addCase(refreshTokenAsync.fulfilled, (state, action) => {
     state.token = {
       token: action.payload,
-      rawToken: null,
+      guestTokensByMount: {},
       loading: false,
       error: null,
     };
@@ -180,12 +181,14 @@ export const sdk = createReducer(initialState, (builder) => {
   });
 
   builder.addCase(setInitialGuestToken, (state, action) => {
-    state.token = {
-      ...state.token,
-      rawToken: action.payload,
-      loading: false,
-      error: null,
-    };
+    const { mountId, token } = action.payload;
+    state.token.guestTokensByMount[mountId] = token;
+    state.token.loading = false;
+    state.token.error = null;
+  });
+
+  builder.addCase(clearGuestToken, (state, action) => {
+    delete state.token.guestTokensByMount[action.payload];
   });
 
   builder.addCase(refreshGuestSession.pending, (state) => {
@@ -196,12 +199,10 @@ export const sdk = createReducer(initialState, (builder) => {
   });
 
   builder.addCase(refreshGuestSession.fulfilled, (state, action) => {
-    state.token = {
-      ...state.token,
-      rawToken: action.payload,
-      loading: false,
-      error: null,
-    };
+    const { mountId } = action.meta.arg;
+    state.token.guestTokensByMount[mountId] = action.payload;
+    state.token.loading = false;
+    state.token.error = null;
   });
 
   builder.addCase(refreshGuestSession.rejected, (state, action) => {

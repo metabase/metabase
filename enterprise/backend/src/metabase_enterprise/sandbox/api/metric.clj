@@ -3,10 +3,10 @@
    Overrides `metabase.permissions.metric/sandbox-restricted-fields` to restrict
    dimensions from sandboxed tables to only fields in the sandbox source card."
   (:require
+   [metabase-enterprise.sandbox.db :as sandbox.db]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.util :as u]))
 
 (defn- source-card-allowed-field-ids
   "Extract the set of allowed field IDs from a sandbox source card's result_metadata.
@@ -23,9 +23,7 @@
               name->fid    (when (seq col-names)
                              (into {}
                                    (map (juxt :name :id))
-                                   (t2/select [:model/Field :id :name]
-                                              :table_id table-id
-                                              :name [:in col-names])))]
+                                   (sandbox.db/fields-of-table-named table-id col-names)))]
           (not-empty (set (vals name->fid))))))))
 
 (defenterprise sandbox-restricted-fields
@@ -49,8 +47,7 @@
             cards-by-id (when (seq card-ids)
                           (into {}
                                 (map (juxt :id identity))
-                                (t2/select [:model/Card :id :result_metadata :card_schema]
-                                           :id [:in card-ids])))]
+                                (sandbox.db/cards-result-metadata card-ids)))]
         (not-empty
          (into {}
                (keep (fn [{:keys [table_id card_id]}]

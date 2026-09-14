@@ -7,6 +7,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.types.core :as types]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -14,8 +15,8 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]
    [metabase.xrays.automagic-dashboards.schema :as ads]
-   [ring.util.codec :as codec]
-   [toucan2.core :as t2]))
+   [metabase.xrays.db :as xrays.db]
+   [ring.util.codec :as codec]))
 
 (mu/defn field-isa?
   "`isa?` on a field, checking semantic_type and then base_type"
@@ -42,7 +43,15 @@
 (mu/defn filter-tables :- [:sequential ::ads/source]
   "filter `tables` by `tablespec`, which is just an entity type (eg. :entity/GenericTable)"
   [tablespec tables :- [:maybe [:sequential ::ads/source]]]
-  (filter #(-> % :entity_type (isa? tablespec)) tables))
+  (filter #(isa? types/entity-hierarchy (:entity_type %) tablespec) tables))
+
+(defn ancestor-count
+  "Number of ancestors of one entry of a template's `applies_to` / `field_type`, which mixes entity types and field
+  types. Entity types live in [[types/entity-hierarchy]]; field and semantic types are still in the global hierarchy."
+  [t]
+  (count (if (isa? types/entity-hierarchy t :entity/*)
+           (ancestors types/entity-hierarchy t)
+           (ancestors t))))
 
 (defn saved-metric?
   "Is this a saved aggregation clause? True for V2 Metrics and Measures."
@@ -84,7 +93,7 @@
     (or
      ;; Handle integer Field IDs.
      (when (integer? id-or-name)
-       (t2/select-one :model/Field :id id-or-name))
+       (xrays.db/field id-or-name))
      ;; handle field string names. Only if we have result metadata. (Not sure why)
      (when (string? id-or-name)
        (when-not result-metadata

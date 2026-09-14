@@ -115,8 +115,8 @@ export function PythonDataPicker({
 
   return (
     <Stack
-      p="md"
-      gap="md"
+      p="lg"
+      gap="lg"
       h="100%"
       w="30%"
       miw="300px"
@@ -129,7 +129,7 @@ export function PythonDataPicker({
           <Text size="sm" c="text-disabled" mb="sm">
             {t`Select tables to use as data sources and provide aliases that can be referenced in your Python script.`}
           </Text>
-          <Stack gap="md">
+          <Stack gap="lg">
             {tableSelections.map((selection, index) => (
               <SelectionInput
                 key={index}
@@ -217,7 +217,7 @@ function SelectionInput({
   }
 
   return (
-    <Stack gap="xs" align="center" w="100%">
+    <Stack gap="xxs" align="center" w="100%">
       <TableSelector
         database={database}
         table={table}

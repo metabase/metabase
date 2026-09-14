@@ -6,9 +6,9 @@ import { useUpdateMeasureMutation } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { getUserCanWriteMeasures } from "metabase/common/data-studio/selectors";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
+import { getShallowTables } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Group } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
@@ -32,8 +32,8 @@ export function MeasureDetailPage({
   breadcrumbs,
   onRemove,
 }: MeasureDetailPageProps) {
-  const metadata = useSelector(getMetadata);
-  const table = metadata.tables[measure.table_id];
+  const tables = useSelector(getShallowTables);
+  const table = tables[measure.table_id];
   const canWriteMeasures = useSelector((state) =>
     getUserCanWriteMeasures(state, !!table?.is_published),
   );
@@ -43,7 +43,7 @@ export function MeasureDetailPage({
   const [definition, setDefinition] = useState(measure.definition);
   const [savedMeasure, setSavedMeasure] = useState(measure);
 
-  const { query, aggregations } = useMeasureQuery(definition, metadata);
+  const { query, aggregations } = useMeasureQuery(definition);
 
   const isDirty = useMemo(
     () =>

@@ -37,14 +37,16 @@ First check if snapshots exist:
 ls e2e/snapshots/default.sql 2>/dev/null && echo "snapshots exist" || echo "snapshots missing"
 ```
 
+Always pass the spec path via `--spec`. The runner feeds its arguments to Cypress's CLI parser (`cypress.cli.parseRunArguments`), which silently drops bare positional paths and then runs the entire suite. A leading `run` argument is harmless, but the path itself must follow `--spec`. Sanity-check that the first `Running:` line says `(1 of 1)`.
+
 If snapshots exist, skip regeneration for speed:
 ```bash
-MB_EDITION=oss CYPRESS_VIDEO=false CYPRESS_RETRIES=0 CYPRESS_GUI=false GENERATE_SNAPSHOTS=false bun test-cypress $ARGUMENTS
+MB_EDITION=oss CYPRESS_VIDEO=false CYPRESS_RETRIES=0 CYPRESS_GUI=false GENERATE_SNAPSHOTS=false bun test-cypress --spec path/to/spec.cy.spec.js
 ```
 
 If snapshots are missing (first run), let the runner generate them:
 ```bash
-MB_EDITION=oss CYPRESS_VIDEO=false CYPRESS_RETRIES=0 CYPRESS_GUI=false bun test-cypress $ARGUMENTS
+MB_EDITION=oss CYPRESS_VIDEO=false CYPRESS_RETRIES=0 CYPRESS_GUI=false bun test-cypress --spec path/to/spec.cy.spec.js
 ```
 
 When running enterprise tests, replace `MB_EDITION=oss` with `MB_EDITION=ee` in the commands above.
@@ -67,8 +69,10 @@ GREP="test name here" MB_EDITION=oss bun test-cypress --spec path/to/spec.js
 When the user asks to verify a test is not flaky:
 
 ```bash
-MB_EDITION=oss bin/e2e-stress-test $ARGUMENTS
+MB_EDITION=oss bin/e2e-stress-test --spec path/to/spec.cy.spec.js
 ```
+
+(The stress script forwards its arguments to `bun test-cypress`, so the same `--spec` rule applies.)
 
 Set `E2E_STRESS_RUNS=N` for more iterations (default: 5). Stops on first failure and prints screenshot paths. Read those screenshots to analyze the failure.
 

@@ -8,7 +8,7 @@ redirect_from:
 
 If you can't connect to your database, you'll need to figure out if the problem is happening with Metabase or your database server.
 
-If your database connection is successful, but the tables aren't showing up in the [Data Browser](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/data-browser), go to [Troubleshooting missing tables](./cant-see-tables.md).
+If your database connection is successful, but the tables aren't showing up in the [Data Browser](../exploration-and-organization/data-model-reference.md), go to [Troubleshooting missing tables](./cant-see-tables.md).
 
 ## Troubleshooting connections to Metabase
 
@@ -52,7 +52,7 @@ If you see this error message in the Metabase interface, go to [Troubleshooting 
 
 ### Connections cannot be acquired from the underlying database
 
-If you see this error messages in the [logs](./server-logs.md) (**Admin** > **Tools** > **Logs**):
+If you see this error message in the [logs](./server-logs.md) (**Admin** > **Tools** > **Logs**):
 
 1. Go to **Admin** > **Databases** and select your database.
 2. Go to **Advanced options** > **Additional JDBC connection string options** and add `trustServerCertificate=true`.
@@ -127,7 +127,7 @@ If you can’t solve your problem using the troubleshooting guides:
 
 - Search or ask the [Metabase community][discourse].
 - Search for [known bugs or limitations][known-issues].
-- Hire a [Metabase Expert](https://www.metabase.com/partners/){:target="\_blank"}.
+- Hire a [Metabase Expert](https://www.metabase.com/partners){:target="\_blank"}.
 
 [discourse]: https://discourse.metabase.com/
 [known-issues]: ./known-issues.md

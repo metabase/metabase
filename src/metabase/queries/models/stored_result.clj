@@ -15,7 +15,7 @@
 (methodical/defmethod t2/table-name :model/StoredResult [_model] :stored_result)
 
 (t2/deftransforms :model/StoredResult
-  {:result_data       mi/transform-secret-value
+  {:result_data       (mi/transform-secret-value "stored_result.result_data")
    :dataset_query     mi/transform-json
    :data_access_token perms/data-access-token-transform})
 

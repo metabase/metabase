@@ -1,6 +1,7 @@
 import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import { SAMPLE_METADATA, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
 import {
   createMockCard,
   createMockField,
@@ -39,30 +40,25 @@ describe("parameters/utils/cards", () => {
     });
 
     describe("saved cards", () => {
-      it("should get parameter fields from param_fields via metadata", () => {
-        const metadata = createMockMetadata({
-          fields: [createMockField({ id: 1 }), createMockField({ id: 2 })],
-        });
+      it("should get parameter fields from param_fields, without duplicates", () => {
+        const firstField = createMockField({ id: 1 });
+        const secondField = createMockField({ id: 2 });
         const card = createMockCard({
           id: 1,
           parameters: [dateParameter, variableParameter],
           param_fields: {
-            [dateParameter.id]: [
-              createMockField({ id: 1 }),
-              createMockField({ id: 2 }),
-              createMockField({ id: 1 }),
-            ],
+            [dateParameter.id]: [firstField, secondField, firstField],
           },
         });
 
         const [dateUiParameter, variableUiParameter] = getCardUiParameters(
           card,
-          metadata,
+          createMockMetadata({}),
         );
 
         expect(dateUiParameter).toMatchObject({
           id: dateParameter.id,
-          fields: [metadata.field(1), metadata.field(2)],
+          fields: [firstField, secondField],
           hasVariableTemplateTagTarget: false,
         });
         expect(variableUiParameter).toMatchObject({
@@ -72,23 +68,26 @@ describe("parameters/utils/cards", () => {
         expect(variableUiParameter).not.toHaveProperty("fields");
       });
 
-      it("should ignore fields missing from metadata", () => {
-        const metadata = createMockMetadata({ fields: [] });
+      it("should use a param_fields field the metadata store never loaded", () => {
+        // the backend hydrates param_fields for this card, so a field is
+        // there to be used whether or not another request put it in the store
+        const field = createMockField({ id: 1 });
         const card = createMockCard({
           id: 1,
           parameters: [dateParameter],
-          param_fields: {
-            [dateParameter.id]: [createMockField({ id: 1 })],
-          },
+          param_fields: { [dateParameter.id]: [field] },
         });
 
-        const [dateUiParameter] = getCardUiParameters(card, metadata);
+        const [dateUiParameter] = getCardUiParameters(
+          card,
+          createMockMetadata({ fields: [] }),
+        );
 
         expect(dateUiParameter).toMatchObject({
           id: dateParameter.id,
+          fields: [field],
           hasVariableTemplateTagTarget: false,
         });
-        expect(dateUiParameter).not.toHaveProperty("fields");
       });
 
       it("should not resolve parameter fields from the query", () => {
@@ -200,6 +199,44 @@ describe("parameters/utils/cards", () => {
       const card = createMockCard({ parameters: undefined });
 
       expect(getCardUiParameters(card, metadata)).toEqual([]);
+    });
+
+    // Callers that hold a Question read its `parameters()` rather than calling
+    // this directly. The two agree, including when a caller passes the result
+    // of a first pass back in as the `parameters` argument.
+    describe("agreement with Question.parameters()", () => {
+      const parameter = createMockParameter({
+        id: "param-1",
+        name: "Quantity",
+        slug: "quantity",
+        type: "number/=",
+        target: ["dimension", ["template-tag", "quantity"]],
+      });
+
+      it.each([
+        ["a saved card", 5],
+        ["an unsaved card", undefined],
+      ])("matches on %s", (_name, id) => {
+        const card = createMockCard({
+          id,
+          dataset_query: quantityTagQuery,
+          parameters: [parameter],
+        });
+        const question = new Question(card, SAMPLE_METADATA);
+        const values = { [parameter.id]: 7 };
+
+        const viaQuestion = question.setParameterValues(values).parameters();
+        // Guards the comparison below: two empty arrays would also match.
+        expect(viaQuestion).toHaveLength(1);
+        expect(
+          getCardUiParameters(
+            card,
+            SAMPLE_METADATA,
+            values,
+            question.parameters(),
+          ),
+        ).toEqual(viaQuestion);
+      });
     });
   });
 });

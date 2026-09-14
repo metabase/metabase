@@ -164,7 +164,7 @@ export function MoveParameterMenu({ parameterId }: MoveParameterMenuProps) {
 function SelectItem({ icon, title }: { icon: IconName; title: string }) {
   return (
     <Group p="sm" w="100%">
-      <Flex direction="column" flex={1} justify="center" gap="xs" miw={0}>
+      <Flex direction="column" flex={1} justify="center" gap="xxs" miw={0}>
         <Text
           className={S.MoveParameterMenuOptionText}
           fw="400"

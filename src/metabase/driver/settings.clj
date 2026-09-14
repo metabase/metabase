@@ -13,7 +13,7 @@
 (defsetting warehouse-allowed-networks
   (deferred-tru (str "Controls which networks Metabase may connect to for warehouse connections.\n"
                      "Options:\n"
-                     "- external-only (only globally routable public addresses)\n"
+                     "- external-only (only globally reachable public addresses)\n"
                      "- allow-private (external + private networks but NOT loopback or link-local)\n"
                      "- allow-all (no restrictions).\n"
                      "Defaults to external-only on Metabase Cloud and allow-all when self-hosted.\n"
@@ -50,7 +50,7 @@
 
 (defsetting report-timezone
   (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :export?    true
   :audit      :getter
@@ -70,6 +70,7 @@
 
 (defsetting report-timezone-short
   "Current report timezone abbreviation"
+  :encryption :no
   :visibility :public
   :export?    true
   :setter     :none
@@ -86,6 +87,7 @@
 
 (defsetting report-timezone-long
   "Current report timezone string"
+  :encryption :no
   :visibility :public
   :export?    true
   :setter     :none
@@ -261,6 +263,7 @@
 
 (defsetting engines
   "Available database engines"
+  :encryption :no
   :visibility :public
   :setter     :none
   :getter     (fn []

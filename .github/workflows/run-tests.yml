@@ -54,6 +54,8 @@ jobs:
       e2e_specs: ${{ steps.changes.outputs.e2e_specs }}
       e2e_infra: ${{ steps.changes.outputs.e2e_infra }}
       backend_all: ${{ steps.changes.outputs.backend_all }}
+      build_scripts: ${{ steps.changes.outputs.build_scripts }}
+      embedder_plugin: ${{ steps.changes.outputs.embedder_plugin }}
       frontend_all: ${{ steps.changes.outputs.frontend_all }}
       frontend_sources: ${{ steps.changes.outputs.frontend_sources }}
       frontend_unit_infra: ${{ steps.changes.outputs.frontend_unit_infra }}
@@ -65,8 +67,13 @@ jobs:
       embedding_sdk_host_sample_apps: ${{ steps.changes.outputs.embedding_sdk_host_sample_apps }}
       embedding_sdk_ci: ${{ steps.changes.outputs.embedding_sdk_ci }}
       custom_viz_all: ${{ steps.changes.outputs.custom_viz_all }}
+      project_backend_checks: ${{ steps.changes.outputs.project_backend_checks }}
+      project_migration_checks: ${{ steps.changes.outputs.project_migration_checks }}
+      project_ratchet_checks: ${{ steps.changes.outputs.project_ratchet_checks }}
+      # A ratchets-only change (the shrink automation PR) needs the ratchet check, not an uberjar.
       no_source_code_changes: >-
-        ${{ steps.changes.outputs.documentation == 'true'
+        ${{ (steps.changes.outputs.documentation == 'true'
+        || steps.changes.outputs.project_ratchet_checks == 'true')
         && steps.changes.outputs.backend_all == 'false'
         && steps.changes.outputs.frontend_all == 'false'
         && steps.changes.outputs.e2e_all == 'false' }}
@@ -143,6 +150,8 @@ jobs:
       (needs.should-run.outputs.verdict == 'force-run' ||
       needs.files-changed.outputs.no_source_code_changes != 'true')
     uses: ./.github/workflows/uberjar.yml
+    with:
+      containerize: ${{ (github.event_name == 'push' && github.ref_name == 'master') || contains(github.event.pull_request.labels.*.name, 'build-docker-uberjar') }}
     secrets: inherit
 
   # Compile CLJS in parallel with the uberjar and pass it to each e2e group.
@@ -215,6 +224,9 @@ jobs:
         needs.files-changed.outputs.backend_all != 'true' &&
         needs.static-viz-files-changed.outputs.static_viz != 'true' }}
       force-run: ${{ needs.should-run.outputs.verdict == 'force-run' }}
+      run-project-backend-checks: ${{ needs.files-changed.outputs.project_backend_checks == 'true' }}
+      run-project-migration-checks: ${{ needs.files-changed.outputs.project_migration_checks == 'true' }}
+      run-project-ratchet-checks: ${{ needs.files-changed.outputs.project_ratchet_checks == 'true' }}
 
   semantic-search-tests:
     if: |
@@ -350,6 +362,22 @@ jobs:
         ${{ needs.embedding-sdk-package.result != 'success' ||
         needs.uberjar.result != 'success' }}
 
+  build-scripts-tests:
+    needs: [should-run, files-changed]
+    if: |
+      !cancelled() &&
+      (needs.should-run.outputs.verdict == 'force-run' ||
+      needs.files-changed.result == 'success')
+    uses: ./.github/workflows/build-scripts.yml
+    secrets: inherit
+    with:
+      skip-build-scripts: >-
+        ${{ needs.should-run.outputs.verdict != 'force-run' &&
+        needs.files-changed.outputs.build_scripts != 'true' }}
+      skip-embedder-plugin: >-
+        ${{ needs.should-run.outputs.verdict != 'force-run' &&
+        needs.files-changed.outputs.embedder_plugin != 'true' }}
+
   bundle-size:
     needs: [uberjar, files-changed]
     if: |
@@ -406,15 +434,3 @@ jobs:
       self_hosting: false
       analytics_dev_mode: false
       stats_dump: true
-
-  containerize:
-    needs: [uberjar]
-    if: |
-      !cancelled() &&
-      needs.uberjar.result == 'success' &&
-      (
-        (github.event_name == 'push' && contains(fromJson('["master", "metabot-v3-main", "internal-tools"]'), github.ref_name)) ||
-        (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'build-docker-uberjar'))
-      )
-    uses: ./.github/workflows/containerize-uberjar.yml
-    secrets: inherit

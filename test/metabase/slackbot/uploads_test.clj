@@ -306,4 +306,33 @@
     (is (false? (#'slackbot.uploads/csv-file? {:filetype "pdf"})))
     (is (false? (#'slackbot.uploads/csv-file? {:filetype "xlsx"})))
     (is (false? (#'slackbot.uploads/csv-file? {:filetype nil})))
-    (is (false? (#'slackbot.uploads/csv-file? {})))))
+    (is (false? (#'slackbot.uploads/csv-file? {}))))
+  (testing "a file stored outside Slack is refused whatever filetype it claims, ordinary upload modes are kept"
+    (is (true? (#'slackbot.uploads/remote-file? {:filetype "csv" :mode "external"})))
+    (is (false? (#'slackbot.uploads/remote-file? {:filetype "csv" :mode "snippet"})))
+    (is (false? (#'slackbot.uploads/remote-file? {:filetype "csv" :mode "hosted"})))
+    (is (false? (#'slackbot.uploads/remote-file? {:filetype "csv"})))))
+
+(deftest ^:parallel remote-files-are-reported-separately-test
+  (testing "a remote CSV is refused for being remote, not reported as an unsupported filetype"
+    (let [{:keys [skipped remote results]}
+          (#'slackbot.uploads/process-file-uploads
+           {:db_id 1}
+           [{:name "evil.csv" :filetype "csv" :mode "external" :url_private "https://evil.test/x.csv" :size 0}
+            {:name "notes.pdf" :filetype "pdf" :mode "hosted" :url_private "https://files.slack.com/notes.pdf" :size 10}])]
+      (is (= ["evil.csv"] remote))
+      (is (= ["notes.pdf"] skipped))
+      (is (empty? results)))))
+
+(deftest copy-to-file!-enforces-the-size-limit-test
+  (testing "a stream longer than the limit is refused, since the event only carries the size the sender declared"
+    (let [file (java.io.File/createTempFile "slackbot-cap-" ".csv")]
+      (try
+        (with-redefs-fn {#'slackbot.uploads/max-file-size-bytes 8}
+          (fn []
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"exceeds"
+                                  (#'slackbot.uploads/copy-to-file!
+                                   (io/input-stream (.getBytes "0123456789abcdefghij"))
+                                   file
+                                   "big.csv")))))
+        (finally (io/delete-file file true))))))

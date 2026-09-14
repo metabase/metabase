@@ -63,6 +63,6 @@ export const getCollectionItemsOptions = ({
     models: getValidCollectionItemModels(models),
     // After a downgrade from EE to OSS, isEnabled is false, and we want to show
     // the Library (if it exists) within Our Analytics.
-    include_library: !PLUGIN_LIBRARY.isEnabled,
+    "include-library": !PLUGIN_LIBRARY.isEnabled,
   };
 };

@@ -35,7 +35,7 @@
 
 (defsetting slack-cached-channels-and-usernames
   "A cache shared between instances for storing an instance's slack channels and users."
-  :encryption :when-encryption-key-set
+  :encryption :no
   :visibility :internal
   :type       :json
   :doc        false
@@ -315,7 +315,7 @@
   :visibility :internal
   :audit      :getter)
 
-(defsetting http-channel-host-strategy
+(defsetting http-channel-allowed-networks
   (deferred-tru (str "Controls which types of hosts are allowed as HTTP channel destinations.\n"
                      "Options:\n"
                      "- external-only (default - only external hosts)\n"
@@ -325,11 +325,12 @@
   :visibility :internal
   :default    :external-only
   :export?    false
+  :deprecated-name :http-channel-host-strategy
   :setter     (fn [new-value]
                 (when (some? new-value)
                   (assert (#{:external-only :allow-private :allow-all} (keyword new-value))
-                          (tru "Invalid http-channel-host-strategy! Only values of external-only, allow-private, and allow-all are allowed.")))
-                (setting/set-value-of-type! :keyword :http-channel-host-strategy new-value)))
+                          (tru "Invalid http-channel-allowed-networks! Only values of external-only, allow-private, and allow-all are allowed.")))
+                (setting/set-value-of-type! :keyword :http-channel-allowed-networks new-value)))
 
 (defsetting slack-configured?
   "Is Slack integration configured?"

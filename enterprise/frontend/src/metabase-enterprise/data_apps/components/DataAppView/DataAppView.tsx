@@ -9,7 +9,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { useParams } from "metabase/router";
-import { Box, Flex } from "metabase/ui";
+import { Box, Flex, Icon } from "metabase/ui";
 import { useGetDataAppQuery } from "metabase-enterprise/api";
 
 import {
@@ -225,6 +225,42 @@ export function DataAppView() {
           title={t`Data app not found`}
           message={t`This data app doesn’t exist or has been disabled.`}
         />
+      );
+    }
+
+    if (status === 409) {
+      return (
+        <Flex
+          direction="column"
+          w="100%"
+          h="100%"
+          justify="center"
+          align="center"
+        >
+          <EmptyState
+            title={t`This data app isn’t published yet`}
+            message={t`An administrator needs to publish this data app before it can be opened.`}
+            illustrationElement={<Icon name="hourglass" size={64} />}
+          />
+        </Flex>
+      );
+    }
+
+    if (status === 403) {
+      return (
+        <Flex
+          direction="column"
+          w="100%"
+          h="100%"
+          justify="center"
+          align="center"
+        >
+          <EmptyState
+            title={t`You don’t have access to this data app`}
+            message={t`Ask an administrator for access to this data app.`}
+            illustrationElement={<Icon name="key" size={64} />}
+          />
+        </Flex>
       );
     }
 

@@ -5,12 +5,12 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.driver :as driver]
+   [metabase.indexed-entities.db :as indexed-entities.db]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task.core :as task]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.util.log :as log])
   (:import
    (java.util TimeZone)
    (org.quartz ObjectAlreadyExistsException)))
@@ -41,14 +41,14 @@
   "Refresh the index on a model. Note, if the index should be removed (no longer a model, archived,
   etc, (see [[should-deindex?]])) will delete the indexing job."
   [model-index-id]
-  (let [model-index (t2/select-one :model/ModelIndex :id model-index-id)
+  (let [model-index (indexed-entities.db/model-index model-index-id)
         model       (when model-index
-                      (t2/select-one :model/Card :id (:model_id model-index)))]
+                      (indexed-entities.db/card (:model_id model-index)))]
     (if (should-deindex? model model-index)
       (u/ignore-exceptions
         (let [trigger-key (model-index-trigger-key model-index-id)]
           (task/delete-trigger! trigger-key)
-          (t2/delete! :model/ModelIndex model-index-id)))
+          (indexed-entities.db/delete-model-index! model-index-id)))
       (model-index/add-values! model-index))))
 
 (task/defjob ^{org.quartz.DisallowConcurrentExecution true
@@ -114,8 +114,8 @@
                                                (log/warnf "Error fetching existing triggers from Quartz, will recreate all triggers: %s" (ex-message e))
                                                #{}))
           missing-trigger-model-indexes (if (seq existing-trigger-model-index-ids)
-                                          (t2/select :model/ModelIndex :id [:not-in existing-trigger-model-index-ids])
-                                          (t2/select :model/ModelIndex))]
+                                          (indexed-entities.db/model-indexes-except existing-trigger-model-index-ids)
+                                          (indexed-entities.db/all-model-indexes))]
       (when (seq missing-trigger-model-indexes)
         (log/infof "Found %d model index(es) without triggers, recreating..."
                    (count missing-trigger-model-indexes))
