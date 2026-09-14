@@ -6,9 +6,10 @@ import type { SearchResultItem } from "metabase/api/ai-streaming/schemas";
 import { MarkdownSmartLink } from "metabase/metabot/components/AIMarkdown/components/MarkdownSmartLink";
 import { getToolMessage } from "metabase/metabot/constants";
 import type { MetabotChainStep } from "metabase/metabot/state";
+import type { SmartLinkEntityRef } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/use-smart-link-entity";
+import { mbProtocolModelToSuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/suggestionUtils";
 import {
   METABSE_PROTOCOL_MD_LINK,
-  type MetabaseProtocolEntityModel,
   parseMetabaseProtocolMarkdownLink,
 } from "metabase/urls";
 import { isNotNull } from "metabase/utils/types";
@@ -50,12 +51,7 @@ export const isHiddenTool = (name: string) => {
 
 export type TitleSegment =
   | { type: "text"; text: string }
-  | {
-      type: "link";
-      id: number;
-      name: string;
-      model: MetabaseProtocolEntityModel;
-    };
+  | ({ type: "link"; name: string } & SmartLinkEntityRef);
 
 export const splitTitle = (title: string): TitleSegment[] => {
   const re = new RegExp(METABSE_PROTOCOL_MD_LINK.source, "g");
@@ -69,7 +65,12 @@ export const splitTitle = (title: string): TitleSegment[] => {
     const parsed = parseMetabaseProtocolMarkdownLink(match[0]);
     segments.push(
       parsed
-        ? { type: "link", ...parsed }
+        ? {
+            type: "link",
+            id: parsed.id,
+            name: parsed.name,
+            model: mbProtocolModelToSuggestionModel(parsed.model),
+          }
         : { type: "text", text: match.groups?.name ?? match[0] },
     );
     lastIndex = start + match[0].length;

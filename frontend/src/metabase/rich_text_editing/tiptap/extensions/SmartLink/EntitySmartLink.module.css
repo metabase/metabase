@@ -1,0 +1,39 @@
+.link {
+  color: var(--mb-color-text-brand);
+  text-decoration: underline dotted;
+  text-underline-offset: 0.125rem;
+  outline: none;
+  transition: color 200ms;
+
+  &:hover,
+  &:focus-visible {
+    color: var(--mb-color-text-brand-hover);
+  }
+}
+
+.token {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding-inline: 0.25rem;
+  border-radius: 0.375rem;
+  line-height: 1.4;
+  vertical-align: baseline;
+  text-decoration: none;
+  outline: none;
+  color: var(--mb-color-text-primary);
+  background: var(--mb-color-background_surface-brand-subtle);
+  transition: background-color 200ms;
+
+  &:hover,
+  &:focus-visible {
+    color: var(--mb-color-text-primary);
+    background: var(--mb-color-background_surface-brand-subtle-hover);
+  }
+}
+
+.tokenIcon {
+  flex-shrink: 0;
+  margin-bottom: -1px;
+  color: var(--mb-color-text-brand);
+}

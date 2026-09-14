@@ -124,10 +124,26 @@
   width: fit-content;
 }
 
-.messageContainerUser :global(.smart-link) {
-  border: 1px solid var(--mb-color-border-brand);
-  position: relative;
-  bottom: -2px;
+.messageUser :global([data-smart-link="token"]) {
+  background: var(--mb-color-background_surface-secondary);
+
+  &:hover,
+  &:focus-visible {
+    background: var(--mb-color-background_surface-secondary-hover);
+  }
+}
+
+.messageUser :global([data-smart-link-icon]) {
+  color: var(--mb-color-text-secondary);
+}
+
+.messageUser :global([data-smart-link="link"]) {
+  color: var(--mb-color-text-primary);
+
+  &:hover,
+  &:focus-visible {
+    color: var(--mb-color-text-brand-hover);
+  }
 }
 
 .message {
@@ -143,6 +159,7 @@
 }
 
 .messageActions {
+  margin-top: 0.5rem;
   color: var(--mb-color-icon-primary);
   opacity: 0;
   transition: all 150ms linear;
