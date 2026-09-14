@@ -97,3 +97,27 @@ databaseChangeLog:
             dbms: h2
             path: ../instance_analytics_views/fields/v1/h2-fields.sql
             relativeToChangelogFile: true
+
+  - changeSet:
+      id: v64.2026-09-09T00:00:05
+      author: ranquild
+      comment: Clear the metabase_field copies of the values held in metabase_field_user_settings
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_field
+              SET caveats = CASE WHEN EXISTS (SELECT 1 FROM metabase_field_user_settings s WHERE s.field_id = metabase_field.id AND s.caveats IS NOT NULL) THEN NULL ELSE caveats END,
+                  points_of_interest = CASE WHEN EXISTS (SELECT 1 FROM metabase_field_user_settings s WHERE s.field_id = metabase_field.id AND s.points_of_interest IS NOT NULL) THEN NULL ELSE points_of_interest END,
+                  has_field_values = CASE WHEN EXISTS (SELECT 1 FROM metabase_field_user_settings s WHERE s.field_id = metabase_field.id AND s.has_field_values IS NOT NULL) THEN NULL ELSE has_field_values END,
+                  settings = CASE WHEN EXISTS (SELECT 1 FROM metabase_field_user_settings s WHERE s.field_id = metabase_field.id AND s.settings IS NOT NULL) THEN NULL ELSE settings END
+              WHERE EXISTS (SELECT 1 FROM metabase_field_user_settings s WHERE s.field_id = metabase_field.id)
+      rollback:
+        - sql:
+            sql: >-
+              UPDATE metabase_field
+              SET caveats = COALESCE((SELECT s.caveats FROM metabase_field_user_settings s WHERE s.field_id = metabase_field.id), caveats),
+                  points_of_interest = COALESCE((SELECT s.points_of_interest FROM metabase_field_user_settings s WHERE s.field_id = metabase_field.id), points_of_interest),
+                  has_field_values = COALESCE((SELECT s.has_field_values FROM metabase_field_user_settings s WHERE s.field_id = metabase_field.id), has_field_values),
+                  settings = COALESCE((SELECT s.settings FROM metabase_field_user_settings s WHERE s.field_id = metabase_field.id), settings)
+              WHERE EXISTS (SELECT 1 FROM metabase_field_user_settings s WHERE s.field_id = metabase_field.id)
+
