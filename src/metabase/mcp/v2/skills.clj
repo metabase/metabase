@@ -27,7 +27,7 @@
   (let [full (str skills-root "/" path)
         url  (io/resource full)]
     (when-not url
-      (throw (ex-info (format "Missing MCP skill pack file on classpath: %s" (pr-str (str "resources/" full)))
+      (throw (ex-info (str "Missing MCP skill pack file on classpath: resources/" full)
                       {:path full})))
     (delay (slurp url :encoding "UTF-8"))))
 

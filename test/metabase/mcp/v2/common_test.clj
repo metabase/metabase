@@ -248,7 +248,7 @@
 (deftest ^:parallel projection-bad-argument-test
   (testing "an unregistered type throws an ex-info naming the type"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                          #"No projection registered for type: :nope"
+                          #"No projection registered for type: nope"
                           (projections/project :nope :concise {:id 1}))))
   (testing "a format outside :concise/:detailed throws the same shape of ex-info rather than a nil-call NPE"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo

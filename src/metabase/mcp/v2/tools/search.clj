@@ -453,10 +453,10 @@
 ;;; -------------------------------------------------- The tool ----------------------------------------------------
 
 (def ^:private type-desc
-  ;; A schema description must be a string.
-  (message/render
-   (message/msg ["Restrict results to these entity types. \"snippet\" is served by a separate listing (snippets aren't in the search index), requires the %s scope, and must be requested on its own — combining it with other types is an error. Omit to search every type this tool supports except snippets."]
-                (message/raw metabot.scope/agent-content-read))))
+  (str "Restrict results to these entity types. \"snippet\" is served by a separate listing "
+       "(snippets aren't in the search index), requires the " metabot.scope/agent-content-read
+       " scope, and must be requested on its own — combining it with other types is an error. "
+       "Omit to search every type this tool supports except snippets."))
 
 (def ^:private search-args-schema
   [:map {:closed true}

@@ -51,20 +51,20 @@
     (throw (ex-info "v2 MCP tool registered without a :name" {:tool tool})))
   (doseq [[k v] {:scope scope :description description}]
     (when-not (and (string? v) (not (str/blank? v)))
-      (throw (ex-info (format "v2 MCP tool %s registered without a %s string" (pr-str tool-name) (pr-str k))
+      (throw (ex-info (format "v2 MCP tool %s registered without a %s string" tool-name k)
                       {:tool-name tool-name k v}))))
   (when-not args
-    (throw (ex-info (format "v2 MCP tool %s registered without an :args Malli schema" (pr-str tool-name))
+    (throw (ex-info (format "v2 MCP tool %s registered without an :args Malli schema" tool-name)
                     {:tool-name tool-name})))
   (when-not (ifn? handler)
-    (throw (ex-info (format "v2 MCP tool %s registered without a :handler fn" (pr-str tool-name))
+    (throw (ex-info (format "v2 MCP tool %s registered without a :handler fn" tool-name)
                     {:tool-name tool-name})))
   ;; Dispatch gates on :required-extensions, so a misspelled key (:require-extensions,
   ;; :requires-extension) would silently disable the gate — reject unknown keys loudly instead.
   (when-let [unknown (seq (remove #{:name :scope :description :args :handler :annotations
                                     :output-schema :required-extensions :title :_meta}
                                   (keys tool)))]
-    (throw (ex-info (format "v2 MCP tool %s registered with unknown option(s) %s" (pr-str tool-name) (pr-str (vec unknown)))
+    (throw (ex-info (format "v2 MCP tool %s registered with unknown option(s) %s" tool-name (vec unknown))
                     {:tool-name tool-name :unknown-keys (vec unknown)})))
   ;; Only the extensions a client can actually advertise are gateable: an unknown keyword is never in
   ;; `ui-resource/supported-extensions`'s output, so the tool would be hidden from and refused to every
@@ -72,11 +72,11 @@
   (when (contains? tool :required-extensions)
     (let [exts (:required-extensions tool)]
       (when-not (and (set? exts) (every? keyword? exts))
-        (throw (ex-info (format "v2 MCP tool %s :required-extensions must be a set of keywords" (pr-str tool-name))
+        (throw (ex-info (format "v2 MCP tool %s :required-extensions must be a set of keywords" tool-name)
                         {:tool-name tool-name :required-extensions exts})))
       (when-let [unknown (seq (remove mcp.ui-resource/known-extensions exts))]
         (throw (ex-info (format "v2 MCP tool %s requires unknown client extension(s) %s — no client can satisfy them"
-                                (pr-str tool-name) (pr-str (vec unknown)))
+                                tool-name (vec unknown))
                         {:tool-name tool-name :unknown-extensions (vec unknown)})))))
   ;; Fail at load time (not first list) on a schema strict clients can't consume.
   (tools-manifest/assert-optional-fields-nullable! args tool-name)
@@ -87,7 +87,7 @@
   (let [handler-sym (fn [h] (when (var? h) (symbol h)))]
     (when-let [existing (get @tools* tool-name)]
       (when-not (= (handler-sym (:handler existing)) (handler-sym handler))
-        (throw (ex-info (format "v2 MCP tool %s is already registered by a different handler" (pr-str tool-name))
+        (throw (ex-info (format "v2 MCP tool %s is already registered by a different handler" tool-name)
                         {:tool-name tool-name})))))
   (swap! tools* assoc tool-name tool)
   ;; flush cache to allow for repl/test redefinition.

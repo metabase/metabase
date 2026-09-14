@@ -104,11 +104,11 @@
   [type fmt row]
   (let [entry (get @registry type)]
     (when-not entry
-      (throw (ex-info (format "No projection registered for type: %s" (pr-str type))
+      (throw (ex-info (str "No projection registered for type: " (name type))
                       {:status-code 500 :type type})))
     (when-not (contains? projection-formats fmt)
-      (throw (ex-info (format "Unknown projection format: %s. Valid formats: %s"
-                              (pr-str fmt) (str/join ", " (map pr-str (sort projection-formats))))
+      (throw (ex-info (str "Unknown projection format: " (pr-str fmt)
+                           ". Valid formats: " (str/join ", " (sort (map str projection-formats))))
                       {:status-code 500 :type type :fmt fmt})))
     ((get entry fmt) row)))
 

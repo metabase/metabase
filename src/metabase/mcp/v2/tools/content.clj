@@ -93,10 +93,6 @@
   "Character budget for the query text rendered into a native card's `query_summary`."
   300)
 
-(def ^:private native-summary-prefix
-  "The label a native query summary starts with. The summary is a JSON value, not prose."
-  "SQL: ")
-
 (defn- native-query-summary
   "A one-line summary of a native `query`: the head of the query text itself, whitespace-collapsed
    and truncated to [[max-native-summary-length]]. nil when the stage holds no text or holds a
@@ -107,7 +103,7 @@
     (when (string? sql)
       (let [one-line (str/trim (str/replace sql #"\s+" " "))]
         (when-not (str/blank? one-line)
-          (str native-summary-prefix (u/truncate one-line max-native-summary-length)
+          (str "SQL: " (u/truncate one-line max-native-summary-length)
                (when (> (count one-line) max-native-summary-length) "…")))))))
 
 (defn- database-name

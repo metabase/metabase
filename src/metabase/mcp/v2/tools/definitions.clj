@@ -259,19 +259,17 @@
 ;;; -------------------------------------------------- Schemas -----------------------------------------------------
 
 (defn- write-args-schema
-  "The args schema of a `_write` tool for `entity`, the server's own entity name."
   [{:keys [entity definition-desc name-desc]}]
   [:map {:closed true}
    [:method
-    [:enum {:description (message/render
-                          (message/msg ["\"create\" makes a new %s (requires `table_id`, `name`, `definition`); \"update\" edits the one named by `id` (requires `revision_message`)."]
-                                       (message/raw entity)))}
+    [:enum {:description (format (str "\"create\" makes a new %s (requires `table_id`, `name`, `definition`); "
+                                      "\"update\" edits the one named by `id` (requires `revision_message`).")
+                                 entity)}
      "create" "update"]]
    [:id {:optional true}
     [:maybe [:or
-             [:int {:description (message/render (message/msg ["Numeric id of the %s to update."] (message/raw entity)))}]
-             [:string {:description (message/render (message/msg ["21-character entity_id of the %s to update."]
-                                                                 (message/raw entity)))}]]]]
+             [:int {:description (format "Numeric id of the %s to update." entity)}]
+             [:string {:description (format "21-character entity_id of the %s to update." entity)}]]]]
    [:table_id {:optional true}
     [:maybe [:int {:description (str "Create only: numeric table id (tables have no entity_ids). A bare-clause "
                                      "`definition` is reassembled into a query on this table; a full-query one "

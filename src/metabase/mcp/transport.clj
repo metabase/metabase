@@ -157,15 +157,11 @@
   (some-> (get-in request [:headers "accept"])
           (str/includes? "text/event-stream")))
 
-(def ^:private sse-message-prefix
-  "The SSE framing that opens each JSON-RPC message event."
-  "event: message\ndata: ")
-
 (defn- sse-body
   "Format a sequence of JSON-RPC messages as SSE event text."
   [messages]
   (str/join (for [message messages]
-              (str sse-message-prefix (json/encode message) "\n\n"))))
+              (str "event: message\ndata: " (json/encode message) "\n\n"))))
 
 ;;; -------------------------------------------------- Responses ---------------------------------------------------
 
@@ -606,28 +602,21 @@
    A client connecting via an alias is pointed at that same alias as the protected resource;
    any other path falls back to `default-path` (the surface's canonical URL).
 
-   `default-ask-scopes`, when non-empty, is emitted as the challenge's `scope` parameter, and `error`, when given,
-   as its `error` parameter."
-  ([endpoint-paths default-path default-ask-scopes request]
-   (www-authenticate-discovery endpoint-paths default-path default-ask-scopes request nil))
-  ([endpoint-paths default-path default-ask-scopes request error]
-   ;; Routing matches on the first path segment, so a trailing slash (e.g. `/api/metabase-mcp/`) still
-   ;; reaches the handler — strip it so the alias is recognized rather than falling back to canonical.
-   (let [uri  (str/replace (:uri request) #"/+$" "")
-         path (if (contains? endpoint-paths uri) uri default-path)]
-     ;; Comma-separated per RFC 7235's `#auth-param`. Both MCP SDKs currently pull each parameter
-     ;; with an unanchored per-field regex and would accept spaces, but every spec and vendor example
-     ;; uses commas and the stricter parsers proposed upstream would not.
-     (str/join " "
-               ["Bearer"
-                (str/join ", "
-                          (cond-> ["realm=\"mcp\""
-                                   (str "resource_metadata=\"" (system/site-url) "/.well-known/oauth-protected-resource" path "\"")]
-                            ;; A client that reads this prefers it over the resource metadata's `scopes_supported`,
-                            ;; which is what lets a surface ask for less than it accepts: the wider set stays
-                            ;; advertised and requestable, this is only what an uninstructed client asks for.
-                            (seq default-ask-scopes) (conj (str "scope=\"" (str/join " " default-ask-scopes) "\""))
-                            error                    (conj (str "error=\"" error "\""))))]))))
+   `default-ask-scopes`, when non-empty, is emitted as the challenge's `scope` parameter."
+  [endpoint-paths default-path default-ask-scopes request]
+  ;; Routing matches on the first path segment, so a trailing slash (e.g. `/api/metabase-mcp/`) still
+  ;; reaches the handler — strip it so the alias is recognized rather than falling back to canonical.
+  (let [uri  (str/replace (:uri request) #"/+$" "")
+        path (if (contains? endpoint-paths uri) uri default-path)]
+    ;; Comma-separated per RFC 7235's `#auth-param`. Both MCP SDKs currently pull each parameter
+    ;; with an unanchored per-field regex and would accept spaces, but every spec and vendor example
+    ;; uses commas and the stricter parsers proposed upstream would not.
+    (str "Bearer realm=\"mcp\", resource_metadata=\"" (system/site-url) "/.well-known/oauth-protected-resource" path "\""
+         ;; A client that reads this prefers it over the resource metadata's `scopes_supported`,
+         ;; which is what lets a surface ask for less than it accepts: the wider set stays
+         ;; advertised and requestable, this is only what an uninstructed client asks for.
+         (when (seq default-ask-scopes)
+           (str ", scope=\"" (str/join " " default-ask-scopes) "\"")))))
 
 (defn make-handler
   "Build a Ring async handler for one MCP surface. Uses JSON-RPC 2.0 over HTTP rather than REST,
@@ -704,9 +693,9 @@
            ;; RFC 6750 `invalid_token`, still carrying the RFC 9728 discovery parameters: a client whose
            ;; token expired re-discovers the protected-resource metadata from this 401 (MCP auth spec MUST).
            (respond (json-response 401 (jsonrpc-error nil -32603 (message/msg ["Invalid bearer token"]))
-                                   {"WWW-Authenticate" (www-authenticate-discovery endpoint-paths default-path
-                                                                                   default-ask-scopes request
-                                                                                   "invalid_token")}))
+                                   {"WWW-Authenticate" (str (www-authenticate-discovery endpoint-paths default-path
+                                                                                        default-ask-scopes request)
+                                                            ", error=\"invalid_token\"")}))
 
            ;; No auth at all — return 401 with discovery
            :else
