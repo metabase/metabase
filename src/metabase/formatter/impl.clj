@@ -220,7 +220,9 @@
    (map->NumericWrapper {:num-str   (cl-format nil (if (integer? n) "~:d" "~,2f") n)
                          :num-value n}))
 
-  ([value column viz-settings]
+  ([value        :- number?
+    column       :- :metabase.legacy-mbql.schema/legacy-column-metadata
+    viz-settings :- ms/VisualizationSettings]
    (let [fmttr (number-formatter column viz-settings true)]
      (fmttr value))))
 
@@ -287,9 +289,14 @@
 
 (mu/defn create-formatter
   "Create a formatter for a column based on its timezone, column metadata, and visualization-settings"
-  ([timezone-id :- [:maybe :string] col visualization-settings]
+  ([timezone-id            :- [:maybe :string]
+    col                    :- :metabase.legacy-mbql.schema/legacy-column-metadata
+    visualization-settings :- ms/VisualizationSettings]
    (create-formatter timezone-id col visualization-settings true))
-  ([timezone-id :- [:maybe :string] col visualization-settings apply-formatting?]
+  ([timezone-id            :- [:maybe :string]
+    col                    :- :metabase.legacy-mbql.schema/legacy-column-metadata
+    visualization-settings :- ms/VisualizationSettings
+    apply-formatting?      :- :boolean]
    (cond
      ;; for numbers, return a format function that has already computed the differences.
      ;; todo: do the same for temporal strings
@@ -351,11 +358,11 @@
   "Row/col/measure value formatters for a pivot export, keyed by `:row-formatters`/`:col-formatters`/`:val-formatters`.
   Shared by the CSV export and static-viz pivot render paths. `row-indexes`/`col-indexes`/`val-indexes` are column
   indexes into `columns`."
-  [columns      :- [:sequential :map]
+  [columns      :- [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]
    row-indexes  :- [:maybe [:sequential :int]]
    col-indexes  :- [:maybe [:sequential :int]]
    val-indexes  :- [:maybe [:sequential :int]]
-   settings     :- [:maybe :map]
+   settings     :- [:maybe ms/VisualizationSettings]
    timezone     :- [:maybe :string]
    format-rows? :- :boolean]
   {:row-formatters (create-formatters columns row-indexes timezone settings format-rows?)

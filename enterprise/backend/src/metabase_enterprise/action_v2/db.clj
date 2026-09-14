@@ -144,7 +144,7 @@
   batch `batch-num` with the opposite undone state."
   [undo?     :- :boolean
    table-ids :- [:set ::lib.schema.id/table]
-   row-pks   :- [:set :some]
+   row-pks   :- [:set ::action-v2.schema/undo.row-pk]
    batch-num :- ms/PositiveInt]
   (t2/exists? :model/Undo
               :table_id [:in table-ids]

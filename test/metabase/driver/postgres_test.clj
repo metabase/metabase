@@ -2332,7 +2332,7 @@
                                       (temp-storage/notification-rff
                                        {:budget (temp-storage/make-resident-budget
                                                  {:per-card 5000 :resident-cap Long/MAX_VALUE :floor Long/MAX_VALUE})}
-                                       {:context 'complex-types-in-notification-payload}))]
+                                       {"context" "complex-types-in-notification-payload"}))]
         (is (integer? (:data.rows-file-size results)))
         (is (temp-storage/streaming-temp-file? (-> results :data :rows)))
         (is (=? [1

@@ -205,8 +205,7 @@
   (testing "build-context extracts source tables from MBQL query"
     (let [transform {:source {:type :query
                               :query (simple-orders-query)}
-                     :target {:schema "nonexistent" :name "nonexistent_table" :type :table}
-                     :name   "test"}
+                     :target {:schema "nonexistent" :name "nonexistent_table" :type "table"}}
           ctx (context/build-context transform)]
       (is (= :mbql (:source-type ctx)))
       (is (seq (:sources ctx)))
@@ -218,8 +217,7 @@
   (testing "build-context returns nil target when target table doesn't exist"
     (let [transform {:source {:type :query
                               :query (simple-orders-query)}
-                     :target {:schema "nonexistent" :name "nonexistent_table" :type :table}
-                     :name   "test"}
+                     :target {:schema "nonexistent" :name "nonexistent_table" :type "table"}}
           ctx (context/build-context transform)]
       (is (nil? (:target ctx)))
       (is (false? (:has-column-matches? ctx))))))
@@ -229,8 +227,7 @@
     (testing "build-context extracts join structure from MBQL query with LEFT JOIN"
       (let [transform {:source {:type :query
                                 :query (joined-orders-products-query)}
-                       :target {:schema "nonexistent" :name "nonexistent_table" :type :table}
-                       :name   "test"}
+                       :target {:schema "nonexistent" :name "nonexistent_table" :type "table"}}
             ctx (context/build-context transform)]
         (is (true? (:has-joins? ctx)))
         (is (= 1 (count (:join-structure (:mbql-context ctx)))))
@@ -252,8 +249,7 @@
                                 :query (joined-orders-products-query)}
                        :target {:schema (:schema products-table)
                                 :name   (:name products-table)
-                                :type   :table}
-                       :name   "test"}
+                                :type   "table"}}
             ctx (context/build-context transform)]
         (is (some? (:target ctx)))
         (is (true? (:has-column-matches? ctx)))

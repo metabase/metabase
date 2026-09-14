@@ -13,6 +13,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
@@ -348,7 +349,9 @@
   channel ID, a user ID, or a legacy display name (\"#general\"/\"@bob\") resolved via the cached channel/user list.
   Either way the file arrives as one message with `initial-comment` (mrkdwn, optional) as its caption. A channel is
   joined first, since sharing into one requires membership; a user's DM is opened by Slack itself."
-  ([file filename channel-id]
+  ([file       :- NonEmptyByteArray
+    filename   :- ms/NonBlankString
+    channel-id :- ms/NonBlankString]
    (upload-file-to-channel! file filename channel-id nil))
   ([file            :- NonEmptyByteArray
     filename        :- ms/NonBlankString
@@ -362,25 +365,27 @@
          (join-channel! target)
          (complete-upload! file filename {:channel-id target} initial-comment))))))
 
-(def ^:private SlackBlock
-  "A Slack Block Kit block, or a legacy `attachments` entry. See https://api.slack.com/block-kit."
+(mr/def ::slack-block
+  "A Slack Block Kit block, element, or legacy `attachments` entry -- self-similar and recursive (blocks nest
+  elements, elements nest elements, and `:text`/`:accessory` nest another block-shaped object).
+  See https://api.slack.com/block-kit."
   [:map {:closed true}
-   [:type        {:optional true} :any]
-   [:text        {:optional true} :any]
-   [:fields      {:optional true} :any]
-   [:elements    {:optional true} :any]
-   [:accessory   {:optional true} :any]
-   [:block_id    {:optional true} :any]
-   [:image_url   {:optional true} :any]
-   [:alt_text    {:optional true} :any]
-   [:emoji       {:optional true} :any]
-   [:color       {:optional true} :any]
-   [:pretext     {:optional true} :any]
-   [:title       {:optional true} :any]
-   [:author_name {:optional true} :any]
-   [:footer      {:optional true} :any]
-   [:fallback    {:optional true} :any]
-   [:ts          {:optional true} :any]])
+   [:type        {:optional true} [:maybe :string]]
+   [:text        {:optional true} [:maybe [:or :string [:ref ::slack-block]]]]
+   [:fields      {:optional true} [:maybe [:sequential [:ref ::slack-block]]]]
+   [:elements    {:optional true} [:maybe [:sequential [:ref ::slack-block]]]]
+   [:accessory   {:optional true} [:maybe [:ref ::slack-block]]]
+   [:block_id    {:optional true} [:maybe :string]]
+   [:image_url   {:optional true} [:maybe :string]]
+   [:alt_text    {:optional true} [:maybe :string]]
+   [:emoji       {:optional true} [:maybe :boolean]]
+   [:color       {:optional true} [:maybe :string]]
+   [:pretext     {:optional true} [:maybe :string]]
+   [:title       {:optional true} [:maybe :string]]
+   [:author_name {:optional true} [:maybe :string]]
+   [:footer      {:optional true} [:maybe :string]]
+   [:fallback    {:optional true} [:maybe :string]]
+   [:ts          {:optional true} [:maybe [:or :string number?]]]])
 
 (mu/defn post-chat-message!
   "Calls Slack API `chat.postMessage` endpoint and posts a message to a channel.
@@ -389,9 +394,9 @@
   See: https://app.slack.com/block-kit-builder"
   [message-content :- [:map {:closed true}
                        [:channel                      :string]
-                       [:blocks      {:optional true} [:sequential SlackBlock]]
+                       [:blocks      {:optional true} [:sequential ::slack-block]]
                        [:text        {:optional true} :string]
-                       [:attachments {:optional true} [:sequential SlackBlock]]]]
+                       [:attachments {:optional true} [:sequential ::slack-block]]]]
   ;; TODO: it would be nice to have an emoji or icon image to use here
   (let [base-params    {:username "Metabot"
                         :icon_url "http://static.metabase.com/metabot_slack_avatar_whitebg.png"}

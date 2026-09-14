@@ -362,7 +362,7 @@
                nil))))))
 
 (mu/defn- query->params-map
-  ([inner-query]
+  ([inner-query :- ::mbql.s/SourceQuery]
    (query->params-map meta/metadata-provider inner-query))
   ([metadata-provider :- ::lib.schema.metadata/metadata-provider
     inner-query       :- ::mbql.s/SourceQuery]

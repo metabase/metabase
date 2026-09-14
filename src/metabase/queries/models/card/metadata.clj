@@ -48,9 +48,19 @@ saved later when it is ready."
    [:map
     [:metadata-future ::future]]])
 
+(def ^:private ModelResultMetadataOptions
+  "Options accepted by [[maybe-async-model-result-metadata]]."
+  [:map {:closed true}
+   [:original-query    {:optional true} [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]
+   [:query             {:optional true} [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]
+   [:metadata          {:optional true} analyze/ResultsMetadata]
+   [:original-metadata {:optional true} analyze/ResultsMetadata]
+   [:model?            {:optional true} [:maybe :boolean]]
+   [:entity-id         {:optional true} [:maybe :string]]
+   [:valid-metadata?   {:optional true} [:maybe :boolean]]])
+
 (mu/defn- maybe-async-model-result-metadata :- ::maybe-async-result-metadata
-  [{:keys [query metadata original-metadata valid-metadata?]} :- [:map {:closed true}
-                                                                  [:valid-metadata? :any]]]
+  [{:keys [query metadata original-metadata valid-metadata?]} :- ModelResultMetadataOptions]
   (log/debug "Querying for metadata and blending model metadata")
   (let [futur     (-> query
                       legacy-result-metadata-future)
@@ -74,7 +84,7 @@ saved later when it is ready."
       {:metadata (combiner result)})))
 
 (mu/defn- maybe-async-recomputed-metadata :- ::maybe-async-result-metadata
-  [query]
+  [query :- ::lib-be.schema/maybe-legacy-or-empty-query]
   (log/debug "Querying for metadata")
   (let [futur (legacy-result-metadata-future query)
         result (deref futur metadata-sync-wait-ms ::timed-out)]
@@ -223,10 +233,11 @@ saved later when it is ready."
                                       [:result_metadata {:optional true} [:maybe [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]]
   "When inserting/updating a Card, populate the result metadata column if not already populated by inferring the
   metadata from the query."
-  ([card]
+  ([card :- ::queries.schema/card]
    (populate-result-metadata card nil))
 
-  ([{query :dataset_query metadata :result_metadata :as card} :- ::queries.schema/card changes]
+  ([{query :dataset_query metadata :result_metadata :as card} :- ::queries.schema/card
+    changes :- [:maybe ::queries.schema/card]]
    (-> (cond
          ;; not updating the query => no-op
          (and (not-empty changes)

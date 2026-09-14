@@ -96,9 +96,26 @@
   (cond-> x
     (keyword? x) u/qualified-name))
 
+(mr/def ::clause-arg
+  "One arg of a (possibly not-yet-normalized) MBQL clause: a literal, an already-normalized options map or
+   expression, a not-yet-normalized (string-keyed) options map, or a nested not-yet-normalized clause."
+  [:or
+   :metabase.lib.schema.literal/literal
+   ::options
+   [:map-of :string [:ref ::clause-arg]]
+   :metabase.lib.schema.expression/expression
+   [:ref ::possibly-unnormalized-clause]])
+
+(mr/def ::possibly-unnormalized-clause
+  "A (possibly not-yet-normalized) MBQL clause `[tag & args]` -- `tag` a keyword, or a string before normalization
+   keywordizes it -- or a literal value."
+  [:or
+   :metabase.lib.schema.literal/literal
+   [:cat [:or :keyword :string] [:* ::clause-arg]]])
+
 (mu/defn mbql-clause-tag :- [:maybe :keyword]
   "If `x` is a (possibly not-yet-normalized) MBQL clause, return its `tag`."
-  [x]
+  [x :- ::possibly-unnormalized-clause]
   (when (and (vector? x)
              ((some-fn keyword? string?) (first x)))
     (keyword (first x))))
@@ -106,7 +123,7 @@
 ;;; TODO (Cam 9/8/25) -- overlapping functionality with [[metabase.lib.util/clause-of-type?]]
 (mu/defn is-clause?
   "Whether `x` is a (possibly not-yet-normalized) MBQL clause with `tag`. Does not check that the clause is valid."
-  [tag :- :keyword x]
+  [tag :- :keyword x :- ::possibly-unnormalized-clause]
   (= (mbql-clause-tag x) tag))
 
 (mr/def ::non-blank-string
@@ -186,7 +203,7 @@
 ;;; will throw in dev. See [[metabase.lib.schema.common-test/normalize-base-type-test]] for more info
 
 (mu/defn- normalize-base-type* :- [:maybe [:ref ::base-type]]
-  [x]
+  [x :- [:or :nil :string :keyword]]
   (normalize-keyword x))
 
 (defn normalize-base-type
@@ -391,7 +408,7 @@
    [:operator [:multi {:dispatch string?}
                [true  :string]
                [false :keyword]]]
-   [:args     [:schema {:decode/normalize vec} [:sequential :any]]]
+   [:args     [:schema {:decode/normalize vec} [:sequential [:ref :metabase.lib.schema.expression/expression]]]]
    [:options  {:optional true} ::options]])
 
 #?(:clj

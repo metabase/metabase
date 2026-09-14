@@ -47,7 +47,7 @@
 (mr/def ::checkpoint-bound
   "A bound (lo or hi) for incremental checkpoint filtering."
   [:map {:closed true}
-   [:value :any]])
+   [:value [:or number? ms/TemporalInstant]]])
 
 (mr/def ::source-range-params
   "Parameters for incremental range filtering on a source query.

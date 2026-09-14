@@ -5,9 +5,11 @@
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase.graph.core :as graph]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.core :as t2]))
@@ -178,7 +180,10 @@
 (mu/defn is-native-entity? :- :boolean
   "Checks whether an entity involves native sql.  `entity` can either be a toucan object or a metadata object."
   [entity-type :- ::deps.dependency-types/dependency-types
-   entity]
+   entity      :- [:or
+                   (ms/InstanceOf (vec deps.dependency-types/models))
+                   ::lib.schema.metadata/card
+                   [:map {:closed true} [:id {:optional true} :int]]]]
   (boolean
    (case entity-type
      :card (some-> entity

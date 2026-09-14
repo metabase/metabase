@@ -10,6 +10,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.walk :as lib.walk]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -36,7 +37,8 @@
 (mu/defn- unbucketed-fields->field-id->type-info :- [:maybe ::column-id-or-name->type-info]
   "Fetch a map of Field ID -> type information for the Fields referred to by the `unbucketed-fields`. Return an empty map
   for empty `unbucketed-fields`."
-  [metadata-providerable unbucketed-fields :- [:maybe [:sequential :mbql.clause/field]]]
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   unbucketed-fields     :- [:maybe [:sequential :mbql.clause/field]]]
   (merge
    ;; build map of field-literal-name -> {:base-type base-type}
    (into {} (for [[_tag opts id-or-name] unbucketed-fields

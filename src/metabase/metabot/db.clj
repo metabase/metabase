@@ -930,7 +930,7 @@
   archived set, and hardcoding `false` here drops every archived hit while the caller's total
   still counts it."
   [document-ids :- [:set ms/PositiveInt]
-   archived?    :- :any]
+   archived?    :- :boolean]
   (t2/select :model/Document :id [:in document-ids] :archived (boolean archived?)))
 
 (mu/defn transforms

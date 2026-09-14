@@ -28,7 +28,7 @@
   SQL. For HoneySQL forms, `Identifier` is converted to SQL automatically when it is compiled."
   [driver          :- :keyword
    identifier-type :- h2x/IdentifierType
-   & components]
+   & components    :- [:* {:min 1} [:maybe [:or :keyword :string [:fn h2x/identifier?]]]]]
   (first
    (sql.qp/format-honeysql driver (apply h2x/identifier identifier-type components))))
 

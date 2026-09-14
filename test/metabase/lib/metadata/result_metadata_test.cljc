@@ -24,7 +24,7 @@
   [query :- ::lib.schema/query
    {initial-columns :cols} :- [:maybe [:map {:closed true}
                                        [:cols    {:optional true} ::result-metadata/cols]
-                                       [:columns {:optional true} :any]]]]
+                                       [:columns {:optional true} [:sequential :keyword]]]]]
   (result-metadata/returned-columns query initial-columns))
 
 (deftest ^:parallel col-info-field-ids-test

@@ -175,11 +175,46 @@
                                (fn [response]
                                  (dissoc response :json_query :context :cached :average_execution_time))))))))))
 
+(def ^:private TableUpdateBodySingle
+  "Body of `PUT /api/table/:id`."
+  [:map {:closed true}
+   [:display_name            {:optional true} [:maybe ms/NonBlankString]]
+   [:entity_type             {:optional true} [:maybe EntityType]]
+   [:visibility_type         {:optional true} [:maybe TableVisibilityType]]
+   [:description             {:optional true} [:maybe :string]]
+   [:caveats                 {:optional true} [:maybe :string]]
+   [:points_of_interest      {:optional true} [:maybe :string]]
+   [:show_in_getting_started {:optional true} [:maybe :boolean]]
+   [:field_order             {:optional true} [:maybe FieldOrder]]
+   [:data_authority          {:optional true} [:maybe ::data-authority-write]]
+   [:data_source             {:optional true} [:maybe :string]]
+   [:data_layer              {:optional true} [:maybe :string]]
+   [:owner_email             {:optional true} [:maybe :string]]
+   [:owner_user_id           {:optional true} [:maybe :int]]
+   [:collection_id           {:optional true} [:maybe ms/PositiveInt]]])
+
+(def ^:private TableUpdateBodyBulk
+  "Body of the deprecated `PUT /api/table/`."
+  [:map {:closed true}
+   [:ids                                      [:sequential ms/PositiveInt]]
+   [:display_name            {:optional true} [:maybe ms/NonBlankString]]
+   [:entity_type             {:optional true} [:maybe EntityType]]
+   [:visibility_type         {:optional true} [:maybe TableVisibilityType]]
+   [:description             {:optional true} [:maybe :string]]
+   [:caveats                 {:optional true} [:maybe :string]]
+   [:points_of_interest      {:optional true} [:maybe :string]]
+   [:show_in_getting_started {:optional true} [:maybe :boolean]]
+   [:data_authority          {:optional true} [:maybe ::data-authority-write]]
+   [:data_source             {:optional true} [:maybe :string]]
+   [:data_layer              {:optional true} [:maybe :string]]
+   [:owner_email             {:optional true} [:maybe :string]]
+   [:owner_user_id           {:optional true} [:maybe :int]]])
+
 (mu/defn ^:private update-table!*
   "Takes an existing table and the changes, updates in the database and optionally calls `table/update-field-positions!`
   if field positions have changed."
   [{:keys [id] :as existing-table} :- [:map {:closed true} [:id ::lib.schema.id/table]]
-   body]
+   body                            :- [:or TableUpdateBodySingle TableUpdateBodyBulk]]
   (when-let [changes (-> body
                          (u/select-keys-when
                           :non-nil [:display_name :show_in_getting_started :entity_type :field_order :collection_id]
@@ -251,21 +286,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   body :- [:map {:closed true}
-            [:display_name            {:optional true} [:maybe ms/NonBlankString]]
-            [:entity_type             {:optional true} [:maybe EntityType]]
-            [:visibility_type         {:optional true} [:maybe TableVisibilityType]]
-            [:description             {:optional true} [:maybe :string]]
-            [:caveats                 {:optional true} [:maybe :string]]
-            [:points_of_interest      {:optional true} [:maybe :string]]
-            [:show_in_getting_started {:optional true} [:maybe :boolean]]
-            [:field_order             {:optional true} [:maybe FieldOrder]]
-            [:data_authority          {:optional true} [:maybe ::data-authority-write]]
-            [:data_source             {:optional true} [:maybe :string]]
-            [:data_layer              {:optional true} [:maybe :string]]
-            [:owner_email             {:optional true} [:maybe :string]]
-            [:owner_user_id           {:optional true} [:maybe :int]]
-            [:collection_id           {:optional true} [:maybe ms/PositiveInt]]]]
+   body :- TableUpdateBodySingle]
   (first (update-tables! [id] body)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -278,20 +299,7 @@
   Deprecated, should use PUT /table/edit from now on."
   [_route-params
    _query-params
-   {:keys [ids], :as body} :- [:map {:closed true}
-                               [:ids                                      [:sequential ms/PositiveInt]]
-                               [:display_name            {:optional true} [:maybe ms/NonBlankString]]
-                               [:entity_type             {:optional true} [:maybe EntityType]]
-                               [:visibility_type         {:optional true} [:maybe TableVisibilityType]]
-                               [:description             {:optional true} [:maybe :string]]
-                               [:caveats                 {:optional true} [:maybe :string]]
-                               [:points_of_interest      {:optional true} [:maybe :string]]
-                               [:show_in_getting_started {:optional true} [:maybe :boolean]]
-                               [:data_authority          {:optional true} [:maybe ::data-authority-write]]
-                               [:data_source             {:optional true} [:maybe :string]]
-                               [:data_layer              {:optional true} [:maybe :string]]
-                               [:owner_email             {:optional true} [:maybe :string]]
-                               [:owner_user_id           {:optional true} [:maybe :int]]]]
+   {:keys [ids], :as body} :- TableUpdateBodyBulk]
   (update-tables! ids body))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest

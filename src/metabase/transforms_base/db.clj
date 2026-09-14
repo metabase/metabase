@@ -57,7 +57,7 @@
   [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]
    table-name  :- :string
-   & conditions :- [:* :some]]
+   & conditions :- [:* [:or :keyword :string :int :boolean]]]
   (apply t2/select-one :model/Table :db_id database-id :schema schema :name table-name conditions))
 
 (mu/defn table

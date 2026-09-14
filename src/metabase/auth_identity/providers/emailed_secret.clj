@@ -27,7 +27,8 @@
   and `:consumed_at` (initially nil)."
   [token :- :string
    & {:keys [expires-in-ms]
-      :or {expires-in-ms (* 48 60 60 1000)}}]
+      :or {expires-in-ms (* 48 60 60 1000)}} :- [:maybe [:map {:closed true}
+                                                          [:expires-in-ms {:optional true} [:maybe :int]]]]]
   {:token_hash (u.password/hash-bcrypt token)
    :expires_at (t/plus (t/instant) (t/millis expires-in-ms))
    :consumed_at nil})
@@ -39,7 +40,9 @@
   request context information. Returns a map with `:email`, `:ip_address`, and `:request_context` (containing
   `:user_agent` and `:timestamp`)."
   [email :- ms/Email
-   & {:keys [ip-address user-agent]}]
+   & {:keys [ip-address user-agent]} :- [:maybe [:map {:closed true}
+                                                 [:ip-address {:optional true} [:maybe :string]]
+                                                 [:user-agent {:optional true} [:maybe :string]]]]]
   {:email email
    :ip_address ip-address
    :request_context {:user_agent user-agent

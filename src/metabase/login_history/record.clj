@@ -8,6 +8,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.connection :as t2.conn]))
 
 (defn- maybe-send-login-from-new-device-email
@@ -35,7 +36,7 @@
    user        :- [:map
                    {:closed true, :description ":model/User"}
                    [:id pos-int?]
-                   [:last_login {:optional true} :any]]
+                   [:last_login {:optional true} [:maybe ms/TemporalInstant]]]
    device-info :- request/DeviceInfo]
   (let [history-entry (login-history/record-login-history! session-id (u/the-id user) device-info)]
     (when-not (or (:embedded device-info) (:token_exchange device-info))

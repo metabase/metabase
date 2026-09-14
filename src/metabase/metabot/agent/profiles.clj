@@ -78,7 +78,7 @@
                [:name :keyword]
                [:prompt-template :string]
                [:max-iterations :int]
-               [:tools [:vector :any]]
+               [:tools [:vector tool-var-schema]]
                [:always-on-skills {:optional true} [:vector :keyword]]
                [:skills? {:optional true} :boolean]
                [:required-tool-call? {:optional true} :boolean]

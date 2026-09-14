@@ -171,7 +171,8 @@
 
 (mr/def ::query-execution.lens-params
   "The `:lens_params` column of a QueryExecution, decoded."
-  :map)
+  [:map {:closed true}
+   [:join_step {:optional true} [:maybe :int]]])
 
 (mr/def ::query-execution
   "A QueryExecution as selected from the app DB: every column of `:query_execution`, plus `:row_count` added by the model's after-select hook."

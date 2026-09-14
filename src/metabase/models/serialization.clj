@@ -79,6 +79,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
@@ -793,7 +794,7 @@
 (mu/defn lookup-by-id
   "Given an entity ID string, finds the matching entity. This is useful when writing [[xform-one]] to
   turn a foreign key from a portable form to an appdb ID. Returns a Toucan entity or nil."
-  [model :- ::model-keyword-or-symbol id-str]
+  [model :- ::model-keyword-or-symbol id-str :- :string]
   (models.db/entity-by-entity-id model id-str))
 
 (defn storage-default-collection-path
@@ -899,7 +900,7 @@
   Throws if the corresponding entity cannot be found.
 
   Unusual parameter order means this can be used as `(update x :some_id import-fk 'SomeModel)`."
-  [eid
+  [eid   :- [:or :string [:sequential :string]]
    model :- ::model-keyword-or-symbol]
   (resolve/import-fk (import-resolver) eid model))
 
@@ -910,9 +911,9 @@
   Unusual parameter order lets this be called as, for example, `(update x :db_id *export-fk-keyed* :model/Database :name)`.
 
   Note: This assumes the primary key is called `:id`."
-  [id
+  [id    :- [:maybe ms/PositiveInt]
    model :- ::model-keyword-or-symbol
-   field]
+   field :- :keyword]
   (resolve/export-fk-keyed (export-resolver) id model field))
 
 (defn ^:dynamic *import-fk-keyed*

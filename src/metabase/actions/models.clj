@@ -4,19 +4,25 @@
    [metabase.actions.db :as actions.db]
    [metabase.actions.schema :as actions.schema]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.parameters.core :as parameters]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.queries.models.query :as query]
    [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
-   [toucan2.tools.hydrate :as t2.hydrate]))
+   [toucan2.tools.hydrate :as t2.hydrate])
+  (:import
+   (java.time.temporal Temporal)))
 
 (set! *warn-on-reflection* true)
 
@@ -162,29 +168,29 @@
 (def ^:private ActionInsertData
   "The keys [[actions.schema/action.for-insert]] normalizes, accepted here before normalization."
   [:map {:closed true}
-   [:name                   {:optional true} :any]
-   [:type                   {:optional true} :any]
-   [:model_id               {:optional true} :any]
-   [:archived               {:optional true} :any]
-   [:description            {:optional true} :any]
-   [:parameters             {:optional true} :any]
-   [:database_id            {:optional true} :any]
-   [:parameter_mappings     {:optional true} :any]
-   [:visualization_settings {:optional true} :any]
-   [:created_at             {:optional true} :any]
-   [:updated_at             {:optional true} :any]
-   [:public_uuid            {:optional true} :any]
-   [:public_uuid_prefix     {:optional true} :any]
-   [:made_public_by_id      {:optional true} :any]
-   [:creator_id             {:optional true} :any]
-   [:entity_id              {:optional true} :any]
-   [:legacy_query           {:optional true} :any]
-   [:template               {:optional true} :any]
-   [:response_handle        {:optional true} :any]
-   [:error_handle           {:optional true} :any]
-   [:disabled               {:optional true} :any]
-   [:kind                   {:optional true} :any]
-   [:dataset_query          {:optional true} :any]])
+   [:name                   {:optional true} :string]
+   [:type                   {:optional true} [:or :keyword :string]]
+   [:model_id               {:optional true} ::lib.schema.id/card]
+   [:archived               {:optional true} :boolean]
+   [:description            {:optional true} [:maybe :string]]
+   [:parameters             {:optional true} [:maybe [:sequential ::actions.schema/action.parameter.pre-normalize]]]
+   [:database_id            {:optional true} [:maybe ::lib.schema.id/database]]
+   [:parameter_mappings     {:optional true} [:maybe ::parameters.schema/parameter-mappings]]
+   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
+   [:created_at             {:optional true} (ms/InstanceOfClass Temporal)]
+   [:updated_at             {:optional true} (ms/InstanceOfClass Temporal)]
+   [:public_uuid            {:optional true} [:maybe ms/UUIDString]]
+   [:public_uuid_prefix     {:optional true} [:maybe :string]]
+   [:made_public_by_id      {:optional true} [:maybe ::lib.schema.id/user]]
+   [:creator_id             {:optional true} [:maybe ::lib.schema.id/user]]
+   [:entity_id              {:optional true} [:maybe :string]]
+   [:legacy_query           {:optional true} [:maybe :string]]
+   [:template               {:optional true} [:maybe ::actions.schema/http-action.template]]
+   [:response_handle        {:optional true} [:maybe ::actions.schema/http-action.json-query]]
+   [:error_handle           {:optional true} [:maybe ::actions.schema/http-action.json-query]]
+   [:disabled               {:optional true} :boolean]
+   [:kind                   {:optional true} [:or :keyword :string]]
+   [:dataset_query          {:optional true} [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]])
 
 (mu/defn insert! :- ::actions.schema/id
   "Inserts an Action and related type table. Returns the action id."
@@ -457,14 +463,16 @@
    model for implicit actions.
 
    Pass in known-models to save a second Card lookup."
-  [known-models & options]
+  [known-models :- [:maybe [:sequential (ms/InstanceOf :model/Card)]]
+   & options    :- [:* [:or :keyword ms/PositiveInt :string :boolean]]]
   (enrich-actions-with-implicit-params known-models (apply select-actions-without-implicit-params options)))
 
 (mu/defn select-actions-for-ids :- [:maybe [:sequential ::actions.schema/action]]
   "Find the Actions whose `:id` is in `action-ids`, filling in implicit parameters as [[select-actions]] does.
 
    Pass in known-models to save a second Card lookup."
-  [known-models action-ids]
+  [known-models :- [:maybe [:sequential (ms/InstanceOf :model/Card)]]
+   action-ids   :- [:sequential ::lib.schema.id/action]]
   (enrich-actions-with-implicit-params known-models (normalize-actions-by-type (actions.db/actions-with-ids action-ids))))
 
 (mu/defn select-actions-for-models :- [:maybe [:sequential ::actions.schema/action]]
@@ -472,7 +480,8 @@
    [[select-actions]] does.
 
    Pass in known-models to save a second Card lookup."
-  [known-models model-ids]
+  [known-models :- [:maybe [:sequential (ms/InstanceOf :model/Card)]]
+   model-ids    :- [:sequential ms/PositiveInt]]
   (enrich-actions-with-implicit-params known-models (normalize-actions-by-type (actions.db/unarchived-actions-for-models model-ids))))
 
 (mu/defn select-actions-non-http-for-models :- [:maybe [:sequential ::actions.schema/action]]
@@ -480,13 +489,14 @@
    [[select-actions]] does.
 
    Pass in known-models to save a second Card lookup."
-  [known-models model-ids]
+  [known-models :- [:maybe [:sequential (ms/InstanceOf :model/Card)]]
+   model-ids    :- [:set ms/PositiveInt]]
   (enrich-actions-with-implicit-params known-models (normalize-actions-by-type (actions.db/unarchived-non-http-actions-for-models model-ids))))
 
 (mu/defn select-action :- [:maybe ::actions.schema/action]
   "Selects an Action and fills in the subtype data and implicit parameters.
    `options` is interpreted by [[select-actions-matching-options]]."
-  [& options]
+  [& options :- [:* [:or :keyword ms/PositiveInt :string :boolean]]]
   ;; TODO -- it's dumb that we're selecting all matches rather than a single one above, limiting like this should
   ;; never be done server-side. I don't have time to fix this right now. -- Cam
   (first (apply select-actions nil options)))

@@ -18,11 +18,12 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]
    [metabase.util.performance :refer [get-in]]))
 
 (mu/defn- operator-arity :- [:maybe [:enum :unary :binary :variadic]]
-  [param-type]
+  [param-type :- ::lib.schema.parameter/type]
   (get-in lib.schema.parameter/types [param-type :operator]))
 
 (defn operator?
@@ -32,8 +33,8 @@
 
 (mu/defn- verify-type-and-arity
   [field       :- [:or :mbql.clause/field :mbql.clause/expression]
-   param-type
-   param-value]
+   param-type  :- ::lib.schema.parameter/type
+   param-value :- [:sequential ms/FieldValue]]
   (letfn [(maybe-arity-error [n]
             (when (not= n (count param-value))
               (throw (ex-info (format "Operations Invalid arity: expected %s but received %s"
@@ -78,7 +79,7 @@
 (mu/defn to-clause :- ::lib.schema.expression/boolean
   "Convert an operator style parameter into an mbql clause. Will also do arity checks and throws an ex-info with
   `:type qp.error-type/invalid-parameter` if arity is incorrect."
-  [param]
+  [param :- ::lib.schema.parameter/parameter]
   (let [{param-type :type, [a b :as param-value] :value, target :target, options :options} (normalize-param param)
         field-ref (or (match/match-one target
                         [#{:field :expression} & _]

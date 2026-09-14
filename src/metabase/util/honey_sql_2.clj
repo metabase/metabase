@@ -9,6 +9,7 @@
    [honey.sql.protocols :as sql.protocols]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [potemkin.types :as p.types])
   (:import
@@ -152,6 +153,17 @@
    ;; for [[quoted-cast]]
    :type-name])
 
+(mr/def ::expr
+  "A Honey SQL 2 expression: a literal value, a column/table identifier keyword, or a vector-form SQL clause
+  (recursively, e.g. a function call, cast, or tagged form like [[identifier]] or a `TypedHoneySQLForm`)."
+  [:or
+   :keyword
+   :string
+   number?
+   :boolean
+   nil?
+   [:sequential [:ref ::expr]]])
+
 (defn identifier?
   "Whether `x` is a valid `::identifier`."
   [x]
@@ -224,7 +236,7 @@
   this won't handle wacky cases like three single quotes in a row.
 
   DON'T USE `LITERAL` FOR THINGS THAT MIGHT BE WACKY (USER INPUT). Only use it for things that are hardcoded."
-  [s]
+  [s :- [:or :string :keyword]]
   [::literal (u/qualified-name s)])
 
 (defn- format-at-time-zone [_tag [expr zone]]
@@ -272,10 +284,17 @@
       (fn [s]
         (= s (u/lower-case-en s)))]]]])
 
+(def ^:private TypeInfo
+  "Type info for a `TypedHoneySQLForm`, before it is normalized by [[normalize-type-info]]."
+  [:map {:closed true}
+   [:database-type  {:optional true} [:maybe ms/KeywordOrString]]
+   [:base-type      {:optional true} [:maybe :keyword]]
+   [:effective-type {:optional true} [:maybe :keyword]]])
+
 (mu/defn- normalize-type-info :- NormalizedTypeInfo
   "Normalize the values in the `type-info` for a `TypedHoneySQLForm` for easy comparisons (e.g., normalize
   `:database-type` to a lower-case string)."
-  [type-info]
+  [type-info :- [:maybe TypeInfo]]
   (cond-> type-info
     (:database-type type-info)
     (update :database-type (comp u/lower-case-en name))))
@@ -371,13 +390,25 @@
     (with-database-type-info :field \"text\")
     ;; -> [::typed :field \"text\"]"
   {:style/indent [:form]}
-  [honeysql-form db-type :- [:maybe ms/KeywordOrString]]
+  [honeysql-form :- ::honeysql-expr
+   db-type       :- [:maybe ms/KeywordOrString]]
   (if (some? db-type)
     (with-type-info honeysql-form {:database-type db-type})
     (unwrap-typed-honeysql-form honeysql-form)))
 
 (def ^:private TypedExpression
   [:fn {:error/message "::h2x/typed Honey SQL form"} typed?])
+
+(mr/def ::honeysql-expr
+  "A Honey SQL 2 expression: a literal value, a column/identifier keyword, or a clause vector whose args are
+  themselves Honey SQL expressions."
+  [:or
+   :string
+   :keyword
+   number?
+   :boolean
+   nil?
+   [:sequential [:ref ::honeysql-expr]]])
 
 (def ^:private raw-cast-type-name-re
   #"(?i)[a-z][a-z0-9_ ]*(?:\(\d+(?:, ?\d+)?\))?")
@@ -392,7 +423,8 @@
 
 (mu/defn cast :- TypedExpression
   "Generate a statement like `cast(expr AS sql-type)`. Returns a typed HoneySQL form."
-  [sql-type expr]
+  [sql-type :- ms/KeywordOrString
+   expr     :- ::honeysql-expr]
   (-> (if (raw-type-name? sql-type)
         [:cast expr ^:allow-raw-sql [:raw (name sql-type)]]
         [:cast expr (identifier :type-name (name sql-type))])
@@ -400,7 +432,8 @@
 
 (mu/defn maybe-cast :- TypedExpression
   "Cast `expr` to `sql-type`, unless `expr` is typed and already of that type. Returns a typed HoneySQL form."
-  [sql-type expr]
+  [sql-type :- [:maybe ms/KeywordOrString]
+   expr     :- ::honeysql-expr]
   (if (or (nil? sql-type)
           (is-of-type? expr sql-type))
     expr

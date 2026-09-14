@@ -12,6 +12,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.premium-features.core :as premium-features]
@@ -19,6 +20,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]))
 
 (defn- mbql-graph
@@ -36,7 +38,7 @@
 
 (mu/defn- dependent-mbql-cards :- [:sequential ::lib.schema.id/card]
   "Returns a list of all card dependencies in the transitive children of `[start-type start-id]` using `graph`."
-  [graph
+  [graph      :- ::graph/graph
    start-type :- ::deps.dependency-types/dependency-types
    start-id   :- ::deps.dependency-types/entity-id]
   (let [start [start-type start-id]]
@@ -48,14 +50,14 @@
 
 (mr/def ::column-metadata-edits
   [:map {:closed true}
-   [:id                       {:optional true} :any]
-   [:description              {:optional true} :any]
-   [:display-name             {:optional true} :any]
-   [:semantic-type            {:optional true} :any]
-   [:fk-target-field-id       {:optional true} :any]
-   [:settings                 {:optional true} :any]
-   [:visibility-type          {:optional true} :any]
-   [:lib/source-display-name  {:optional true} :any]])
+   [:id                       {:optional true} [:maybe ::lib.schema.id/field]]
+   [:description              {:optional true} [:maybe :string]]
+   [:display-name             {:optional true} [:maybe :string]]
+   [:semantic-type            {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
+   [:fk-target-field-id       {:optional true} [:maybe ::lib.schema.id/field]]
+   [:settings                 {:optional true} [:maybe ::lib.schema.common/visualization-settings]]
+   [:visibility-type          {:optional true} [:maybe ::lib.schema.metadata/column.visibility-type]]
+   [:lib/source-display-name  {:optional true} [:maybe :string]]])
 (mr/def ::card-metadata-edits [:map-of :string ::column-metadata-edits])
 (mr/def ::card-list-metadata-edits [:map-of ::lib.schema.id/card ::card-metadata-edits])
 
@@ -128,7 +130,8 @@
   [original-mp     :- ::lib.schema.metadata/metadata-providerable
    start-type      :- ::deps.dependency-types/dependency-types
    start-id        :- ::deps.dependency-types/entity-id
-   previous-object :- :any
+   previous-object :- (ms/InstanceOf [:model/Database :model/Table :model/Field :model/Card :model/Segment
+                                      :model/Measure :model/NativeQuerySnippet :model/Transform])
    metadata-type   :- :keyword]
   ;; Notes on metadata providers:
   ;;

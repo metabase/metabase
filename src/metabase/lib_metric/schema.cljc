@@ -3,6 +3,7 @@
   (:refer-clojure :exclude [some])
   (:require
    [metabase.lib-metric.operators :as operators]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.literal :as lib.schema.literal]
@@ -384,7 +385,7 @@
    [:expression        ::metric-math-expression]
    [:filters           ::instance-filters]
    [:projections       ::typed-projections]
-   [:metadata-provider [:maybe :some]]])
+   [:metadata-provider [:maybe ::lib.metadata.protocols/metadata-providerable]]])
 
 ;;; ------------------------------------------------- Fetchable Dimension Metadata -------------------------------------------------
 ;;; These schemas support dimensions as first-class metadata entities

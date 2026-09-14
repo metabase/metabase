@@ -337,8 +337,8 @@
    [:+conn-props {:optional true} [:sequential :string]]
    [:-conn-props {:optional true} [:sequential :string]]
    [:+parent {:optional true} :keyword]
-   [:+fns {:optional true} [:sequential [:function [:=> [:cat :keyword] :any]]]]
-   [:-fns {:optional true} [:sequential [:function [:=> [:cat :keyword] :any]]]]])
+   [:+fns {:optional true} [:sequential [:function [:=> [:cat :keyword] [:or :boolean [:maybe :keyword]]]]]]
+   [:-fns {:optional true} [:sequential [:function [:=> [:cat :keyword] [:or :boolean [:maybe :keyword]]]]]]])
 
 (mu/defn driver-select :- [:set :keyword]
   "Select drivers to be tested.

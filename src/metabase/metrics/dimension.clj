@@ -210,7 +210,7 @@
    Returns the metrics seq with `:dimensions` updated in place. `metrics` is the
    last arg so this composes cleanly with `->>` pipelines."
   [field-cols :- [:sequential :keyword]
-   metrics    :- [:sequential :map]]
+   metrics    :- [:sequential (ms/InstanceOf :model/Card)]]
   ;; Resolve each (metric, dimension) pair exactly once and carry the field id alongside its
   ;; dimension, so the merge pass below reads it instead of resolving all over again.
   (let [dims+fids  (mapv (fn [metric]

@@ -13,6 +13,9 @@
 (mr/def ::source-entity-type
   [:enum :card :table :transform])
 
+(mr/def ::source-ref
+  [:tuple ::source-entity-type ::source-entity-id])
+
 (mr/def ::run-id
   pos-int?)
 

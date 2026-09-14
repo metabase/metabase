@@ -859,13 +859,13 @@
               :effective-type :type/Text
               :base-type :type/Text}
              {:field-name "as_bytes"
-              :base-type {:natives {:postgres "BYTEA"
-                                    :h2       "BYTEA"
-                                    :mysql    "VARBINARY(100)"
-                                    :redshift "VARBYTE"
-                                    :presto-jdbc "VARBINARY"
-                                    :oracle "BLOB"
-                                    :sqlite "BLOB"}}}]
+              :base-type {:natives {"postgres" "BYTEA"
+                                    "h2"       "BYTEA"
+                                    "mysql"    "VARBINARY(100)"
+                                    "redshift" "VARBYTE"
+                                    "presto-jdbc" "VARBINARY"
+                                    "oracle" "BLOB"
+                                    "sqlite" "BLOB"}}}]
     [["foo" (.getBytes "20190421164300")]
      ["bar" (.getBytes "20200421164300")]
      ["baz" (.getBytes "20210421164300")]]]])
@@ -875,13 +875,13 @@
               :effective-type :type/Text
               :base-type :type/Text}
              {:field-name "as_bytes"
-              :base-type {:natives {:postgres "BYTEA"
-                                    :h2       "BYTEA"
-                                    :mysql    "VARBINARY(100)"
-                                    :redshift "VARBYTE"
-                                    :presto-jdbc "VARBINARY"
-                                    :oracle "BLOB"
-                                    :sqlite "BLOB"}}}]
+              :base-type {:natives {"postgres" "BYTEA"
+                                    "h2"       "BYTEA"
+                                    "mysql"    "VARBINARY(100)"
+                                    "redshift" "VARBYTE"
+                                    "presto-jdbc" "VARBINARY"
+                                    "oracle" "BLOB"
+                                    "sqlite" "BLOB"}}}]
     [["foo" (.getBytes "2019-04-21 16:43:00")]
      ["bar" (.getBytes "2020-04-21T16:43:00")]
      ["baz" (.getBytes "2021-04-21 16:43:00")]]]])

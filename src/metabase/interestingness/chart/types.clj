@@ -2,9 +2,14 @@
   "Malli schemas for chart statistics computation."
   (:require
    [metabase.lib-be.schema :as lib-be.schema]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
 
 ;;; -------------------------------------------------- Input Schemas -------------------------------------------------
+
+(mr/def ::axis-value
+  "A value along a chart axis: the category name, x/y coordinate, or date/time label for a data point."
+  [:or :string number? :boolean ms/TemporalInstant])
 
 (mr/def ::column-type
   "Type of data in a column."
@@ -21,7 +26,7 @@
   [:map {:closed true}
    [:x ::column-metadata]
    [:y ::column-metadata]
-   [:x_values [:sequential :any]]
+   [:x_values [:sequential ::axis-value]]
    [:y_values [:sequential number?]]
    [:display_name :string]
    [:chart_type {:optional true} [:maybe :string]]
@@ -59,8 +64,8 @@
 (mr/def ::time-range
   "Time range covered by the chart data."
   [:map {:closed true}
-   [:start :any]
-   [:end :any]
+   [:start ::axis-value]
+   [:end ::axis-value]
    [:span-description :string]])
 
 (mr/def ::trend-direction
@@ -89,8 +94,8 @@
 (mr/def ::significant-change
   "A significant change detected in the data."
   [:map {:closed true}
-   [:from-date :any]
-   [:to-date :any]
+   [:from-date ::axis-value]
+   [:to-date ::axis-value]
    [:from-value number?]
    [:to-value number?]
    [:change-abs number?]
@@ -105,8 +110,8 @@
   [:map {:closed true}
    [:type ::pattern-type]
    [:description :string]
-   [:from-date {:optional true} [:maybe :any]]
-   [:to-date {:optional true} [:maybe :any]]])
+   [:from-date {:optional true} [:maybe ::axis-value]]
+   [:to-date {:optional true} [:maybe ::axis-value]]])
 
 (mr/def ::correlation-strength
   "Strength of correlation between series."
@@ -129,15 +134,15 @@
   "An outlier detected in the data."
   [:map {:closed true}
    [:index :int]
-   [:label :any]
+   [:label ::axis-value]
    [:value number?]
    [:modified-z-score number?]])
 
 (mr/def ::cumulative-outlier
   "An outlier detected in cumulative data (via period-over-period diffs)."
-  [:map
+  [:map {:closed true}
    [:index :int]
-   [:label :any]
+   [:label ::axis-value]
    [:value number?]
    [:diff number?]
    [:modified-z-score number?]])
@@ -155,7 +160,7 @@
 (mr/def ::extremum
   "An extreme point (peak or trough) in a series, paired with its x-coordinate."
   [:map {:closed true}
-   [:x :any]
+   [:x ::axis-value]
    [:y number?]])
 
 (mr/def ::time-series-series-stats
@@ -171,6 +176,8 @@
    [:patterns {:optional true} [:maybe [:sequential ::pattern-insight]]]
    [:significant-changes {:optional true} [:maybe [:sequential ::significant-change]]]
    [:most-recent-change {:optional true} [:maybe ::significant-change]]
+   [:x-name {:optional true} [:maybe :string]]
+   [:y-name {:optional true} [:maybe :string]]
    [:peak {:optional true} [:maybe ::extremum]]
    [:trough {:optional true} [:maybe ::extremum]]
    [:above-mean {:optional true} [:maybe :int]]])
@@ -198,7 +205,9 @@
    [:category-count :int]
    [:top-categories [:sequential ::category-stat]]
    [:bottom-categories {:optional true} [:maybe [:sequential ::category-stat]]]
-   [:outliers {:optional true} [:maybe [:sequential ::outlier]]]])
+   [:outliers {:optional true} [:maybe [:sequential ::outlier]]]
+   [:x-name {:optional true} [:maybe :string]]
+   [:y-name {:optional true} [:maybe :string]]])
 
 (mr/def ::categorical-stats
   "Statistics for categorical charts (bar, pie, etc.)."
@@ -221,13 +230,15 @@
    [:x-summary [:maybe ::series-summary]]
    [:y-summary [:maybe ::series-summary]]
    [:data-points :int]
-   [:sampled-points {:optional true} [:maybe [:sequential [:sequential :any]]]]
+   [:sampled-points {:optional true} [:maybe [:sequential [:sequential number?]]]]
    [:correlation {:optional true} [:maybe [:map {:closed true}
                                            [:coefficient number?]
                                            [:strength ::correlation-strength]
                                            [:direction ::correlation-direction]]]]
    [:regression {:optional true} [:maybe ::regression-stats]]
-   [:outliers {:optional true} [:maybe [:sequential ::outlier]]]])
+   [:outliers {:optional true} [:maybe [:sequential ::outlier]]]
+   [:x-name {:optional true} [:maybe :string]]
+   [:y-name {:optional true} [:maybe :string]]])
 
 (mr/def ::scatter-stats
   "Statistics for scatter plots."
@@ -258,7 +269,7 @@
 (mr/def ::histogram-structure
   "Structural properties of histogram bin distribution."
   [:map {:closed true}
-   [:mode-bin [:maybe [:sequential :any]]]
+   [:mode-bin [:maybe [:tuple number? :int]]]
    [:peak-count :int]
    [:concentration-top3 number?]
    [:gap-count :int]
@@ -271,9 +282,11 @@
    [:estimated-summary ::histogram-summary]
    [:total-count :int]
    [:data-points :int]
-   [:bin-data [:sequential [:sequential :any]]]
+   [:bin-data [:sequential [:sequential number?]]]
    [:distribution ::estimated-distribution-stats]
-   [:structure ::histogram-structure]])
+   [:structure ::histogram-structure]
+   [:x-name {:optional true} [:maybe :string]]
+   [:y-name {:optional true} [:maybe :string]]])
 
 (mr/def ::histogram-stats
   "Statistics for histogram charts."

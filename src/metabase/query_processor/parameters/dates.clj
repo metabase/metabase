@@ -23,6 +23,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.performance :refer [every? some get-in]]
    [metabase.util.time :as u.time])
   (:import
@@ -165,7 +166,8 @@
       :unit – finds a matching date unit and merges date unit operations to the result
       :int-value, :int-value-1 – converts the group value to integer
       :date, :date1, date2 – converts the group value to absolute date"
-  [regex :- [:fn {:error/message "regular expression"} m/regexp?] group-labels]
+  [regex        :- [:fn {:error/message "regular expression"} m/regexp?]
+   group-labels :- [:sequential :keyword]]
   (fn [param-value]
     (when-let [regex-result (re-matches regex param-value)]
       (into {} (mapcat expand-parser-groups group-labels (rest regex-result))))))
@@ -275,8 +277,8 @@
 
 (mu/defn- range->filter :- :mbql.clause/between
   [{:keys [start end]} :- [:map {:closed true}
-                           [:start :any]
-                           [:end   :any]]
+                           [:start (ms/InstanceOfClass Temporal)]
+                           [:end   (ms/InstanceOfClass Temporal)]]
    field-clause        :- :mbql.clause/field]
   (lib/between (with-temporal-unit-if-field field-clause :day) (->iso-8601-date start) (->iso-8601-date end)))
 
@@ -400,10 +402,13 @@
   "Returns the first successfully decoded value, run through both parser and a range/filter decoder depending on
   `decoder-type`. This generates an *inclusive* range by default. The range is adjusted to be exclusive as needed: see
   dox for [[date-string->range]] for more details."
-  [decoders
-   decoder-type :- [:enum :range :filter]
-   decoder-param
-   date-string :- :string]
+  [decoders      :- [:sequential [:map {:closed true}
+                                  [:parser fn?]
+                                  [:range  {:optional true} fn?]
+                                  [:filter {:optional true} fn?]]]
+   decoder-type   :- [:enum :range :filter]
+   decoder-param  :- [:or [:maybe (ms/InstanceOfClass java.time.LocalDateTime)] :mbql.clause/field :mbql.clause/expression]
+   date-string    :- :string]
   (some (fn [{parser :parser, parser-result-decoder decoder-type}]
           (when-let [parser-result (and parser-result-decoder (parser date-string))]
             (parser-result-decoder parser-result decoder-param)))
@@ -494,7 +499,7 @@
 
   Note that some ranges are open-ended on one side, and will have only a `:start` or an `:end`."
   ;; 1-arg version returns inclusive start/end; 2-arg version can adjust as needed
-  ([date-string]
+  ([date-string :- ::lib.schema.common/non-blank-string]
    (date-string->range date-string nil))
 
   ([date-string  :- ::lib.schema.common/non-blank-string
@@ -568,7 +573,8 @@
   This function is meant to be used for generating inclusive intervals for `:type/DateTime` field filters.
 
   * End-exclusive gte lt filters are generated for `:type/DateTime` fields."
-  [raw-date-str field-type]
+  [raw-date-str :- ::lib.schema.common/non-blank-string
+   field-type   :- ::lib.schema.common/base-type]
   (let [;; `raw-date-str` is sanitized in case it contains millis and timezone which are incompatible
         ;; with [[date-string->range]]. `substitute-field-filter-test` expects that to happen.
         [range-raw unit] (try (let [r (date-string->raw-range raw-date-str)]

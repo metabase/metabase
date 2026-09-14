@@ -6,6 +6,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -79,11 +80,11 @@
                 :query)))))
 
 (mu/defn- add-implicit-joins :- ::qp.schema/any-query
-  ([query]
+  ([query :- ::qp.schema/any-query]
    (add-implicit-joins meta/metadata-provider query))
 
-  ([metadata-provider
-    query :- ::qp.schema/any-query]
+  ([metadata-provider :- ::lib.schema.metadata/metadata-providerable
+    query             :- ::qp.schema/any-query]
    (if (:lib/type query)
      (qp.add-implicit-joins/add-implicit-joins query)
      (-> (lib/query metadata-provider query)

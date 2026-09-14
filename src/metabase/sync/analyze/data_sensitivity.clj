@@ -40,8 +40,8 @@
        (not (sync.settings/data-sensitivity-scan-enabled))))
 
 (mu/defn- fields-to-scan :- [:sequential i/FieldInstance]
-  [table :- i/TableInstance
-   force?]
+  [table  :- i/TableInstance
+   force? :- [:maybe :boolean]]
   (sync.db/fields-to-scan-for-data-sensitivity (u/the-id table) force?))
 
 (mu/defn- classify-and-save!
@@ -77,14 +77,17 @@
 
 (mu/defn- table-ids-with-unscanned-fields :- [:maybe [:set pos-int?]]
   [database :- i/DatabaseInstance
-   force?]
+   force?   :- [:maybe :boolean]]
   (sync.db/table-ids-with-fields-to-scan-for-data-sensitivity (u/the-id database) force?))
+
+(def ^:private LogProgressFn
+  [:=> [:cat :string [:schema i/TableInstance]] :nil])
 
 (mu/defn scan-fields-for-db! :- Stats
   "Label every unscanned Field in every active table of `database`. `log-fn` is accepted for parity with the other
   analyze steps and not called: the step reports per table through the log, not the progress bar."
   [database :- i/DatabaseInstance
-   _log-fn
+   _log-fn  :- LogProgressFn
    & {:keys [force? ignore-setting?]} :- [:maybe ScanOptions]]
   (if (skip? ignore-setting?)
     zero-stats

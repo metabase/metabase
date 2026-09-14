@@ -21,6 +21,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.performance :refer [mapv not-empty]])
   (:import
    (clojure.lang IPersistentVector Keyword)
@@ -46,7 +47,8 @@
 
 (mu/defn make-stmt-subs :- PreparedStatementSubstitution
   "Create a `PreparedStatementSubstitution` map for `sql-string` and the `param-seq`"
-  [sql-string param-seq]
+  [sql-string :- :string
+   param-seq  :- [:maybe [:sequential ms/FieldValue]]]
   {:sql-string   sql-string
    :param-values param-seq})
 
@@ -114,10 +116,26 @@
 
 ;;; ------------------------------------------- ->replacement-snippet-info -------------------------------------------
 
+(mr/def ::substitutable-value
+  "A value (or nested sequence of values) that [[->replacement-snippet-info]] and [[->prepared-substitution]] know how
+  to turn into SQL: a raw scalar, a temporal literal, or one of the structured parsed date shapes."
+  [:or
+   :string
+   number?
+   :boolean
+   :keyword
+   uuid?
+   nil?
+   (driver-api/instance-of-class Temporal)
+   [:sequential [:ref ::substitutable-value]]
+   :metabase.lib.parameters.parse.types/date
+   :metabase.lib.parameters.parse.types/date-range
+   :metabase.lib.parameters.parse.types/date-time-range])
+
 (mr/def ::param-snippet-info
   [:map {:closed true}
    [:replacement-snippet     {:optional true} :string] ; allowed to be blank if this is an optional param
-   [:prepared-statement-args {:optional true} [:maybe [:sequential :any]]]])
+   [:prepared-statement-args {:optional true} [:maybe [:sequential ms/FieldValue]]]])
 
 ;; TODO (Cam 2026-05-21) Update this to take an explicit `metadata-providerable`
 (defmulti ->replacement-snippet-info
@@ -169,7 +187,7 @@
      :prepared-statement-args (apply concat (map :prepared-statement-args values))}))
 
 (mu/defn- maybe-parse-temporal-literal :- (driver-api/instance-of-class java.time.temporal.Temporal)
-  [x]
+  [x :- [:or :string (driver-api/instance-of-class Temporal)]]
   (condp instance? x
     String   (u.date/parse x)
     Temporal x
@@ -237,24 +255,28 @@
 
 ;; for relative dates convert the param to a `DateRange` record type and call `->replacement-snippet-info` on it
 (mu/defn- date-range-field-filter->replacement-snippet-info :- ::param-snippet-info
-  [driver value]
+  [driver :- :keyword
+   value  :- driver-api/schema.common.non-blank-string]
   (let [{:keys [start end]} (params.dates/date-string->range value)]
     (->> (lib/parsed-date-range-param start end)
          (->replacement-snippet-info driver))))
 
 (mu/defn- field-filter->equals-clause-sql :- ::param-snippet-info
-  [driver value]
+  [driver :- :keyword
+   value  :- ::substitutable-value]
   (-> (->replacement-snippet-info driver value)
       (update :replacement-snippet (partial str "= "))))
 
 (mu/defn- field-filter-multiple-values->in-clause-sql :- ::param-snippet-info
-  [driver values]
+  [driver :- :keyword
+   values :- [:sequential ::substitutable-value]]
   (-> (->replacement-snippet-info driver (vec values))
       (update :replacement-snippet (partial format "IN (%s)"))))
 
 (mu/defn- honeysql->replacement-snippet-info :- ::param-snippet-info
   "Convert `hsql-form` to a replacement snippet info map by passing it to HoneySQL's `format` function."
-  [driver hsql-form]
+  [driver    :- :keyword
+   hsql-form :- ::h2x/expr]
   (let [[snippet & args] (sql.qp/format-honeysql driver hsql-form)]
     {:replacement-snippet     snippet
      :prepared-statement-args args}))
@@ -263,7 +285,7 @@
   [driver     :- :keyword
    col        :- driver-api/schema.metadata.column
    param-type :- driver-api/schema.parameter.type
-   value]
+   value      :- ::substitutable-value]
   ;; The [[metabase.query-processor.middleware.parameters/substitute-parameters]] QP middleware actually happens before
   ;; the [[metabase.query-processor.middleware.resolve-fields/resolve-fields]] middleware that would normally fetch all
   ;; the Fields we need in a single pass, so this is actually necessary here. I don't think switching the order of the
@@ -282,7 +304,10 @@
   "Return an appropriate snippet to represent this `field` in SQL given its param type.
    For non-date Fields, this is just a quoted identifier; for dates, the SQL includes appropriately bucketing based on
    the `param-type`."
-  [driver field param-type value]
+  [driver     :- :keyword
+   field      :- driver-api/schema.metadata.column
+   param-type :- driver-api/schema.parameter.type
+   value      :- ::substitutable-value]
   (->> (field->field-ref driver field param-type value)
        (->honeysql driver)
        (honeysql->replacement-snippet-info driver)
@@ -301,7 +326,8 @@
 
 (mu/defn- field-filter->replacement-snippet-info :- ::param-snippet-info
   "Return `[replacement-snippet & prepared-statement-args]` appropriate for a field filter parameter."
-  [driver {{param-type :type, value :value, :as params} :value, field :field, :as field-filter}
+  [driver :- :keyword
+   {{param-type :type, value :value, :as params} :value, field :field, :as field-filter}
    :- :metabase.lib.parameters.parse.types/field-filter]
   (assert (:id field) (format "Why doesn't Field have an ID?\n%s" (u/pprint-to-str field)))
   (letfn [(prepend-field [x]

@@ -85,7 +85,7 @@
 
 (mu/defn all-segment-ids :- [:maybe [:set {:min 1} ::lib.schema.id/segment]]
   "Return a set of all segment IDs anywhere in the query."
-  [query]
+  [query :- ::lib.schema/query]
   (let [segment-ids (volatile! (transient #{}))]
     (lib.walk/walk-clauses
      query
@@ -100,7 +100,7 @@
 
 (mu/defn all-measure-ids :- [:maybe [:set {:min 1} ::lib.schema.id/measure]]
   "Return a set of all measure IDs anywhere in the query."
-  [query]
+  [query :- ::lib.schema/query]
   (let [measure-ids (volatile! (transient #{}))]
     (lib.walk/walk-clauses
      query

@@ -206,7 +206,7 @@
   "Rewrite the card FK (`[:attrs \"id\"]`) of every cardEmbed node found in `card-id-map`.
   Touches nothing else on the node — in particular a node's `:_id` never changes here."
   [document :- [:map {:closed true}
-                [:document :any]
+                [:document ::documents.schema/document.document]
                 [:content_type :string]]
    card-id-map :- [:maybe [:map-of :int ms/PositiveInt]]]
   (cond-> document
@@ -318,7 +318,7 @@
   [{:keys [name document collection_id collection_position cards]}
    :- [:map {:closed true}
        [:name DocumentName]
-       [:document :any]
+       [:document ::documents.schema/document.document]
        [:collection_id {:optional true} [:maybe ms/PositiveInt]]
        [:collection_position {:optional true} [:maybe ms/PositiveInt]]
        [:cards {:optional true} [:maybe [:map-of [:int {:max -1}] CardCreateSchema]]]]]
@@ -375,7 +375,7 @@
    {:keys [name document collection_id collection_position cards] :as body}
    :- [:map {:closed true}
        [:name {:optional true} DocumentName]
-       [:document {:optional true} :any]
+       [:document {:optional true} ::documents.schema/document.document]
        [:collection_id {:optional true} [:maybe ms/PositiveInt]]
        [:collection_position {:optional true} [:maybe ms/PositiveInt]]
        ;; Any int key, matching the REST `DocumentUpdateOptions` this backs: with no `:document`

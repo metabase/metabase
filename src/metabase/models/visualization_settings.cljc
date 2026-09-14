@@ -66,7 +66,7 @@
 (def ^:private click-behavior-schema
   [:map {:closed true}
    [::click-behavior-type {:optional true} keyword?]
-   [::link-type {:optional true} :any]
+   [::link-type {:optional true} [:or [:= ::card] [:= ::dashboard] [:= ::url]]]
    [::parameter-mapping {:optional true} parameter-mapping-schema]
    [::link-template {:optional true} string?]
    [::link-text {:optional true} string?]

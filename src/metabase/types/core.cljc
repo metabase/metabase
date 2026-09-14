@@ -387,7 +387,8 @@
   "E.g. the version coming back from the app DB as opposed to Lib metadata. This should eventually be considered
   deprecated."
   [:map {:closed true}
-   [:base_type :any]])
+   [:base_type      :metabase.lib.schema.common/base-type]
+   [:effective_type {:optional true} [:maybe :metabase.lib.schema.common/base-type]]])
 
 (mu/defn field-is-type?
   "True if a Metabase `Field` instance has a temporal base or semantic type, i.e. if this Field represents a value

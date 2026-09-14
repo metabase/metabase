@@ -7,6 +7,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.i18n :as i18n]
@@ -39,10 +40,16 @@
 
 (mr/def ::root
   [:map {:closed true}
-   [:database     ::lib.schema.id/database]
-   [:entity       {:optional true} [:ref ::root.entity]]
-   [:query-filter {:optional true} [:maybe [:sequential ::filter-clause]]]
-   [:cell-query   {:optional true} [:maybe [:ref ::root.cell-query]]]])
+   [:database                   ::lib.schema.id/database]
+   [:entity                     {:optional true} [:ref ::root.entity]]
+   [:query-filter               {:optional true} [:maybe [:sequential ::filter-clause]]]
+   [:cell-query                 {:optional true} [:maybe [:ref ::root.cell-query]]]
+   [:full-name                  {:optional true} [:maybe ::string-or-18n-string]]
+   [:short-name                 {:optional true} [:maybe ::string-or-18n-string]]
+   [:comparison-name            {:optional true} [:maybe ::string-or-18n-string]]
+   [:source                     {:optional true} [:maybe ::source]]
+   [:url                        {:optional true} :string]
+   [:dashboard-templates-prefix {:optional true} [:sequential :string]]])
 
 (mr/def ::source
   [:or
@@ -72,7 +79,7 @@
    [:map
     [:args [:sequential [:multi
                          {:dispatch coll?, :error/message "Should be a literal or column metadata"}
-                         [false :any]
+                         [false ::lib.schema.literal/param-value]
                          [true  ::lib.schema.metadata/column]]]]]])
 
 (mr/def ::aggregation
@@ -116,7 +123,7 @@
   "A specification for the basic keys in the value of a metric template."
   [:map
    {:closed true}
-   [:metric [:vector some?]]
+   [:metric ::lib.schema.common/possibly-unnormalized-clause]
    [:score  {:optional true} nat-int?]
    [:name   {:optional true} ::string-or-18n-string]])
 
@@ -130,7 +137,7 @@
 (mr/def ::filter-value
   "A specification for the basic keys in the value of a filter template."
   [:map {:closed true}
-   [:filter [:vector some?]]
+   [:filter ::lib.schema.common/possibly-unnormalized-clause]
    [:score nat-int?]])
 
 (mr/def ::filter-template
@@ -173,7 +180,7 @@
    [:name        {:optional true} ::string-or-18n-string]
    [:metric-name :string]
    [:score       nat-int?]
-   [:metric      vector?]])
+   [:metric      ::lib.schema.common/possibly-unnormalized-clause]])
 
 (mr/def ::grounded-metric.definition
   [:map
@@ -263,7 +270,7 @@
 (mr/def ::dashboard
   [:map {:closed true}
    [:dashcards {:optional true} [:sequential ::dashcard]]
-   [:filters   {:optional true} [:sequential :any]]])
+   [:filters   {:optional true} [:sequential ::item]]])
 
 (mr/def ::card-template
   "A grounded, combined metric augmented with the extra keys the dashboard-populating code

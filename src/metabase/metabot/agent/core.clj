@@ -108,7 +108,7 @@
   [:map {:closed true}
    [:id :string]
    [:name :string]
-   [:arguments [:or :string :map]]])
+   [:arguments :string]])
 
 (mr/def ::user-message
   "A user message: plain text or a sequence of tool_result content blocks."
@@ -134,7 +134,7 @@
   [:map {:closed true}
    [:role [:= :tool]]
    [:tool_call_id :string]
-   [:content [:or :string :map]]])
+   [:content :string]])
 
 (mr/def ::message
   "A single message in the conversation history.

@@ -135,7 +135,7 @@
   ([query  :- ::lib.schema/query]
    (expand-macros query 0))
 
-  ([query recursion-depth]
+  ([query :- ::lib.schema/query recursion-depth :- :int]
    (when (> recursion-depth max-recursion-depth)
      (throw (ex-info (tru "Segment expansion failed. Check mutually recursive segment definitions.")
                      {:type qp.error-type/invalid-query, :query query})))

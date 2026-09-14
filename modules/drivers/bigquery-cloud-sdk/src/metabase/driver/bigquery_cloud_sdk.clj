@@ -32,6 +32,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.performance :as perf])
   (:import
+   (clojure.core.async.impl.channels ManyToManyChannel)
    (clojure.lang PersistentList)
    (com.google.api.gax.rpc FixedHeaderProvider)
    (com.google.cloud.bigquery
@@ -49,6 +50,7 @@
     DatasetId
     Field
     Field$Mode
+    FieldList
     FieldValue
     FieldValueList
     Job
@@ -247,7 +249,9 @@
     (.getTable client dataset-id table-id empty-table-options)))
 
 (mu/defn- get-table :- (driver-api/instance-of-class Table)
-  (^Table [database dataset-id table-id]
+  (^Table [database   :- [:or driver-api/schema.metadata.database [:fn #(driver-api/instance-of? :model/Database %)]]
+           dataset-id :- driver-api/schema.common.non-blank-string
+           table-id   :- driver-api/schema.common.non-blank-string]
    (let [details    (driver.conn/effective-details database)
          project-id (:project-id details)]
      (get-table (database-details->client details) project-id dataset-id table-id)))
@@ -395,9 +399,11 @@
     [database-type (database-type->base-type database-type)]))
 
 (mu/defn- fields->metabase-field-info
-  ([fields]
+  ([fields :- (driver-api/instance-of-class FieldList)]
    (fields->metabase-field-info nil nil fields))
-  ([database-position nfc-path fields]
+  ([database-position :- [:maybe :int]
+    nfc-path          :- [:maybe [:sequential :string]]
+    fields            :- (driver-api/instance-of-class FieldList)]
    (into
     []
     (map
@@ -1054,11 +1060,11 @@
         :ready  (bigquery-execute-response result job client respond cancel-chan)))))
 
 (mu/defn- ^:dynamic *process-native*
-  [respond  :- fn?
-   database :- driver-api/schema.metadata.database
-   sql
-   parameters
-   cancel-chan]
+  [respond     :- fn?
+   database    :- driver-api/schema.metadata.database
+   sql         :- :string
+   parameters  :- [:maybe [:sequential ms/FieldValue]]
+   cancel-chan :- [:maybe (ms/InstanceOfClass ManyToManyChannel)]]
   {:pre [(map? database) (map? (:details database))]}
   ;; automatically retry the query if it times out or otherwise fails. This is on top of the auto-retry added by
   ;; `execute`

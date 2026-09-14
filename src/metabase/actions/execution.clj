@@ -16,6 +16,7 @@
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.model-persistence.core :as model-persistence]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.queries.models.query :as query]
@@ -30,6 +31,16 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+(def ^:private RequestParameters
+  "Parameters as passed in from an endpoint, of shape `{<parameter-id> <value>}`."
+  [:maybe [:map-of ::lib.schema.parameter/id ::lib.schema.parameter/parameter.value]])
+
+(def ^:private ExecuteActionOpts
+  [:map {:closed true}
+   [:allow-http-actions? {:optional true} [:maybe :boolean]]
+   [:context             {:optional true} [:maybe :keyword]]
+   [:dashboard-id        {:optional true} [:maybe ms/PositiveInt]]])
+
 (mu/defn- execute-query-action!
   "Execute a `QueryAction` with parameters as passed in from an
   endpoint of shape `{<parameter-id> <value>}`.
@@ -38,8 +49,8 @@
   [{query :dataset_query, model-id :model_id, :as action} :- [:map {:closed true}
                                                               [:model_id      ::lib.schema.id/card]
                                                               [:dataset_query ::lib.schema/native-only-query]]
-   request-parameters
-   opts]
+   request-parameters :- RequestParameters
+   opts                :- [:maybe ExecuteActionOpts]]
   (log/tracef "Executing action for model %d" model-id)
   (driver.conn/with-write-connection
     (try
@@ -149,11 +160,16 @@
    :row/update :model.row/update
    :row/delete :model.row/delete})
 
+(def ^:private ImplicitActionKind
+  [:enum :model.row/create :model.row/update :model.row/delete :bulk/create :bulk/update :bulk/delete])
+
 (mu/defn- build-implicit-query :- [:map
                                    [:query          ::mbql.s/Query]
                                    [:row-parameters ::actions.args/row]
                                    [:prefetch-parameters {:optional true} [:maybe ::parameters.schema/parameters]]]
-  [{:keys [model_id parameters] :as _action} :- ::actions.schema/action implicit-action request-parameters]
+  [{:keys [model_id parameters] :as _action} :- ::actions.schema/action
+   implicit-action                           :- ImplicitActionKind
+   request-parameters                        :- RequestParameters]
   (let [{database-id :db_id
          table-id    :id :as table} (implicit-action-table model_id)
         table-fields             (:fields table)
@@ -229,17 +245,14 @@
                                                         :dashboard-id (:dashboard-id opts)
                                                         :context      (:context opts :action-execute)}))))
 
-(def ^:private ExecuteActionOpts
-  [:map {:closed true}
-   [:allow-http-actions? {:optional true} [:maybe :boolean]]
-   [:context             {:optional true} [:maybe :keyword]]
-   [:dashboard-id        {:optional true} [:maybe ms/PositiveInt]]])
-
 (mu/defn execute-action!
   "Execute the given action with the given parameters of shape `{<parameter-id> <value>}."
-  ([action request-parameters]
+  ([action              :- (ms/InstanceOf :model/Action)
+    request-parameters  :- RequestParameters]
    (execute-action! action request-parameters nil))
-  ([action request-parameters {:keys [allow-http-actions?] :or {allow-http-actions? true} :as opts} :- [:maybe ExecuteActionOpts]]
+  ([action              :- (ms/InstanceOf :model/Action)
+    request-parameters  :- RequestParameters
+    {:keys [allow-http-actions?] :or {allow-http-actions? true} :as opts} :- [:maybe ExecuteActionOpts]]
    (when (and (= (:type action) :http) (not allow-http-actions?))
      (throw (ex-info (tru "HTTP actions cannot be executed from public endpoints.")
                      {:status-code 403})))
@@ -270,12 +283,14 @@
 (mu/defn execute-dashcard!
   "Execute the given action in the dashboard/dashcard context with the given parameters
    of shape `{<parameter-id> <value>}."
-  ([dashboard-id dashcard-id request-parameters]
+  ([dashboard-id       :- ::lib.schema.id/dashboard
+    dashcard-id        :- ::lib.schema.id/dashcard
+    request-parameters :- RequestParameters]
    (execute-dashcard! dashboard-id dashcard-id request-parameters nil))
   ([dashboard-id       :- ::lib.schema.id/dashboard
     dashcard-id        :- ::lib.schema.id/dashcard
-    request-parameters :- [:maybe [:map-of :string :any]]
-    opts]
+    request-parameters :- RequestParameters
+    opts               :- [:maybe ExecuteActionOpts]]
    (let [dashcard (api/check-404 (actions.db/dashcard-in-dashboard dashcard-id dashboard-id))
          action (api/check-404 (action/select-action :id (:action_id dashcard)))]
      (analytics/track-event! :snowplow/action

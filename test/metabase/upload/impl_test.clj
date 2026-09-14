@@ -341,7 +341,7 @@
        [:csv-file-prefix       {:optional true} [:maybe :string]]
        [:file                  {:optional true} [:maybe [:fn #(instance? File %)]]]
        [:schema-name           {:optional true} [:maybe :string]]]
-   f :- [:=> [:cat [:map {:closed true} [:id ::lib.schema.id/card]]] :any]]
+   f :- fn?]
   {:pre [(keyword? driver/*driver*)]}
   (mt/with-discard-model-updates! [:model/Database]
     (t2/update! :model/Database :uploads_enabled true {:uploads_enabled false})

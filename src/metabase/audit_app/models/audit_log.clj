@@ -175,14 +175,19 @@
     {:previous (select-keys previous-object shared-updated-keys)
      :new (select-keys object shared-updated-keys)}))
 
+(def ^:private AuditedInstance
+  "A Toucan instance of any model: `:object`/`:previous-object` are audited generically via `model-details`, which
+  dispatches on the instance's own model and falls back to `:default` for models it doesn't know about."
+  [:fn {:error/message "a Toucan instance"} t2/instance?])
+
 (mr/def ::event-params [:map {:closed true
                               :doc "Used when inserting a value to the Audit Log."}
-                        [:object           {:optional true} [:maybe :map]]
-                        [:previous-object  {:optional true} [:maybe :map]]
+                        [:object           {:optional true} [:maybe AuditedInstance]]
+                        [:previous-object  {:optional true} [:maybe AuditedInstance]]
                         [:user-id          {:optional true} [:maybe pos-int?]]
                         [:model            {:optional true} [:maybe [:or :keyword :string]]]
                         [:model-id         {:optional true} [:maybe pos-int?]]
-                        [:details          {:optional true} [:maybe :map]]
+                        [:details          {:optional true} [:maybe ms/OpaqueJSONObject]]
                         [:details-changed? {:optional true} [:maybe :boolean]]])
 
 (mu/defn construct-event

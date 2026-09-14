@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [metabase.config.core :as config]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
@@ -248,7 +249,7 @@
    [:name          :string]
    [:base_type     :keyword]
    [:semantic_type {:optional true} [:maybe :keyword]]
-   [:fingerprint   {:optional true} :any]])
+   [:fingerprint   {:optional true} [:maybe ::lib.schema.metadata.fingerprint/fingerprint]]])
 
 (def ^:private TableContext
   [:maybe

@@ -9,6 +9,7 @@
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.events.core :as events]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.model-persistence.db :as model-persistence.db]
    [metabase.model-persistence.models.persisted-info :as persisted-info]
    [metabase.model-persistence.settings :as model-persistence.settings]
@@ -20,6 +21,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [potemkin.types :as p]
    [toucan2.core :as t2])
   (:import
@@ -85,10 +87,20 @@
   [results]
   (some-> results :error-details seq))
 
+(def ^:private TaskDetails
+  [:map {:closed true}
+   [:success       :int]
+   [:error         :int]
+   [:trigger       :string]
+   [:error-details {:optional true} [:sequential [:map {:closed true}
+                                                   [:persisted-info-id ms/PositiveInt]
+                                                   [:error {:optional true} [:maybe :string]]]]]])
+
 (mu/defn- publish-refresh-error-event!
   "Fire off an event that will eventually send an email to the admin if there are any errors in the persisted model
   refresh task."
-  [db-id task-details]
+  [db-id        :- [:maybe ::lib.schema.id/database]
+   task-details :- TaskDetails]
   (try
     (let [error-details       (error-details task-details)
           error-details-by-id (m/index-by :persisted-info-id error-details)

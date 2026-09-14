@@ -10,6 +10,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
@@ -19,8 +20,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -121,20 +121,11 @@
                      (ddl.i/format-name driver (u/qualified-name component)))]
     (sql.qp/->honeysql driver (apply h2x/identifier :table components))))
 
-(mr/def ::rf
-  [:function
-   [:=> [:cat]           :any]
-   [:=> [:cat :any]      :any]
-   [:=> [:cat :any :any] :any]])
-
-(mr/def ::xform
-  [:=> [:cat ::rf] ::rf])
-
 (mu/defn- reducible-chunked-rows :- (lib.schema.common/instance-of-class clojure.lang.IReduceInit)
   [rows        :- [:sequential :any]    ; rows is allowed to be empty.
    chunk-size  :- [:maybe [:int {:min 1}]]
-   row-xform   :- ::xform
-   chunk-xform :- ::xform]
+   row-xform   :- ::qp.schema/xform
+   chunk-xform :- ::qp.schema/xform]
   (let [xform (comp (map (fn [chunk]
                            (into [] row-xform chunk)))
                     chunk-xform)]
@@ -187,7 +178,7 @@
 (mu/defn do-insert*!
   [driver                    :- :keyword
    ^java.sql.Connection conn :- (lib.schema.common/instance-of-class java.sql.Connection)
-   table-identifier
+   table-identifier          :- ::h2x/expr
    rows
    {:keys [transaction?] :or {transaction? true}} :- [:map {:closed true}
                                                        [:transaction? {:optional true} [:maybe :boolean]]]]

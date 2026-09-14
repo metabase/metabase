@@ -9,10 +9,15 @@
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.join :as lib.schema.join]
+   [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.schema :as transforms.schema]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -92,69 +97,39 @@
 ;;; -------------------------------------------------- Field Metadata --------------------------------------------------
 
 (mu/defn- get-field-stats :- [:maybe ::transforms-inspector.schema/field-stats]
-  "Extract fingerprint stats for a field."
-  [field]
-  (let [fp (:fingerprint field)]
-    (not-empty
-     (into {}
-           (remove (comp nil? val))
-           (cond-> (merge (when-let [dc (get-in fp [:global :distinct-count])]
-                            {:distinct_count dc})
-                          (select-keys (get-in fp [:type :type/Number]) [:min :max :avg :q1 :q3])
-                          (select-keys (get-in fp [:type :type/DateTime]) [:earliest :latest]))
-             (some? (get-in fp [:global :nil%]))
-             (assoc :nil_percent (get-in fp [:global :nil%])))))))
+  "Extract fingerprint stats for a field's fingerprint."
+  [fingerprint :- [:maybe ::lib.schema.metadata.fingerprint/fingerprint]]
+  (not-empty
+   (into {}
+         (remove (comp nil? val))
+         (cond-> (merge (when-let [dc (get-in fingerprint [:global :distinct-count])]
+                          {:distinct_count dc})
+                        (select-keys (get-in fingerprint [:type :type/Number]) [:min :max :avg :q1 :q3])
+                        (select-keys (get-in fingerprint [:type :type/DateTime]) [:earliest :latest]))
+           (some? (get-in fingerprint [:global :nil%]))
+           (assoc :nil_percent (get-in fingerprint [:global :nil%]))))))
 
 (mu/defn- collect-field-metadata :- [:sequential ::transforms-inspector.schema/field]
   "Collect metadata for fields in a table."
-  [table-id]
+  [table-id :- ::lib.schema.id/table]
   (let [fields (transforms-inspector.db/active-fields-for-table table-id)]
     (mapv (fn [field]
-            (cond-> (select-keys field [:id :name :display_name :base_type :semantic_type])
-              (get-field-stats field)
-              (assoc :stats (get-field-stats field))))
+            (let [stats (get-field-stats (:fingerprint field))]
+              (cond-> (select-keys field [:id :name :display_name :base_type :semantic_type])
+                stats (assoc :stats stats))))
           fields)))
 
-(def ^:private TargetTableInfo
-  "Either the minimal source-table-info shape, or a renamed target Table row with its `:db` hydration."
+(def ^:private TableRef
+  "A table reference: table, name, schema, and owning database, keyed for lookups."
   [:map {:closed true}
-   [:table-id                {:optional true} :any]
-   [:table-name              {:optional true} :any]
-   [:schema                  {:optional true} :any]
-   [:db-id                   {:optional true} :any]
-   [:id                      {:optional true} :any]
-   [:created_at              {:optional true} :any]
-   [:updated_at              {:optional true} :any]
-   [:name                    {:optional true} :any]
-   [:description             {:optional true} :any]
-   [:entity_type             {:optional true} :any]
-   [:active                  {:optional true} :any]
-   [:db_id                   {:optional true} :any]
-   [:display_name            {:optional true} :any]
-   [:visibility_type         {:optional true} :any]
-   [:points_of_interest      {:optional true} :any]
-   [:caveats                 {:optional true} :any]
-   [:show_in_getting_started {:optional true} :any]
-   [:field_order             {:optional true} :any]
-   [:initial_sync_status     {:optional true} :any]
-   [:is_upload               {:optional true} :any]
-   [:database_require_filter {:optional true} :any]
-   [:estimated_row_count     {:optional true} :any]
-   [:view_count              {:optional true} :any]
-   [:is_defective_duplicate  {:optional true} :any]
-   [:unique_table_helper     {:optional true} :any]
-   [:deactivated_at          {:optional true} :any]
-   [:archived_at             {:optional true} :any]
-   [:is_writable             {:optional true} :any]
-   [:data_authority          {:optional true} :any]
-   [:data_source             {:optional true} :any]
-   [:data_layer              {:optional true} :any]
-   [:entity_id               {:optional true} :any]
-   [:db                      {:optional true} :any]])
+   [:table-id ::lib.schema.id/table]
+   [:table-name :string]
+   [:schema [:maybe :string]]
+   [:db-id ::lib.schema.id/database]])
 
 (mu/defn- build-table-info :- ::transforms-inspector.schema/table
   "Build table info map with fields."
-  [{:keys [table-id table-name schema db-id]} :- TargetTableInfo]
+  [{:keys [table-id table-name schema db-id]} :- TableRef]
   (let [fields (collect-field-metadata table-id)]
     {:table_id     table-id
      :table_name   table-name
@@ -233,29 +208,46 @@
                         :name              (:name returned-col)
                         :id                (:id returned-col)}]})))
 
+(mr/def ::honeysql-value
+  "A HoneySQL scalar value from a parsed native join clause: an identifier or a lifted SQL literal."
+  [:or h2x/Identifier [:tuple [:= :lift] [:maybe [:or :string number? :boolean]]]])
+
+(mr/def ::honeysql-condition
+  "A single HoneySQL boolean condition from a parsed native join clause's ON expression."
+  [:or
+   [:tuple :keyword [:ref ::honeysql-condition] [:ref ::honeysql-condition]]
+   [:tuple :keyword ::honeysql-value ::honeysql-value]])
+
+(mr/def ::honeysql-table-ref
+  "A HoneySQL FROM/JOIN table reference: an identifier, optionally aliased."
+  [:or [:tuple h2x/Identifier] [:tuple h2x/Identifier :keyword]])
+
 (mr/def ::join-structure-entry
   [:map {:closed true}
    [:strategy       {:optional true} [:maybe [:or :keyword :string]]]
    [:alias          {:optional true} [:maybe :string]]
-   [:source-table   {:optional true} :any]
-   [:conditions     {:optional true} :any]
-   [:join-table     {:optional true} :any]
-   [:join-condition {:optional true} :any]])
+   [:source-table   {:optional true} [:maybe ::lib.schema.id/table]]
+   [:conditions     {:optional true} ::lib.schema.join/conditions]
+   [:join-table     {:optional true} ::honeysql-table-ref]
+   [:join-condition {:optional true} [:maybe [:or ::honeysql-condition
+                                              [:cat [:= :and] [:+ [:ref ::honeysql-condition]]]]]]])
 
 (def ^:private QueryInfo
   [:map {:closed true}
    [:preprocessed-query {:optional true} [:maybe ::lib.schema/query]]
    [:driver             {:optional true} [:maybe :keyword]]
-   [:from-table-id      {:optional true} :any]
-   [:from-table         {:optional true} :any]
+   [:from-table-id      {:optional true} [:maybe ::lib.schema.id/table]]
+   [:from-table         {:optional true} [:maybe ::honeysql-table-ref]]
    [:join-structure     {:optional true} [:maybe [:sequential ::join-structure-entry]]]
-   [:visited-fields     {:optional true} [:maybe [:map {:closed true} [:all {:optional true} [:maybe [:set :any]]]]]]])
+   [:visited-fields     {:optional true} [:maybe [:map {:closed true} [:all {:optional true} [:maybe [:set ::lib.schema.id/field]]]]]]])
 
 (mu/defn- match-columns :- [:maybe [:sequential ::column-match]]
   "Find columns that relate between input and output tables.
    Uses field ID-based matching for MBQL queries (more accurate),
    falls back to name-based matching for native queries."
-  [sources target {:keys [preprocessed-query join-structure]} :- [:maybe QueryInfo]]
+  [sources :- [:sequential ::transforms-inspector.schema/table]
+   target :- ::transforms-inspector.schema/table
+   {:keys [preprocessed-query join-structure]} :- [:maybe QueryInfo]]
   (if preprocessed-query
     (match-columns-mbql preprocessed-query sources target)
     (match-columns-by-name sources target join-structure)))
@@ -307,14 +299,22 @@
    [:has-column-matches? :boolean]
    [:column-matches [:maybe [:sequential ::column-match]]]])
 
+(def ^:private TransformInput
+  "The parts of a transform `build-context` needs: its source and target specification."
+  [:map {:closed true}
+   [:source ::transforms.schema/transform.source]
+   [:target ::transforms.schema/transform.target]
+   [:target_db_id {:optional true} [:maybe ::lib.schema.id/database]]])
+
 (mu/defn build-context :- ::context
   "Build context for lens discovery and generation."
-  [transform]
+  [transform :- TransformInput]
   (let [source-type (transforms-base.u/transform-source-type (:source transform))
         sources-info (mapv build-table-info (extract-sources transform))
         target-table (get-target-table transform)
         target-info (when target-table
-                      (build-table-info (set/rename-keys target-table {:id :table-id :name :table-name :db_id :db-id})))
+                      (build-table-info (select-keys (set/rename-keys target-table {:id :table-id :name :table-name :db_id :db-id})
+                                                      [:table-id :table-name :schema :db-id])))
         query-info (query-analysis/analyze-query transform source-type sources-info)
         join-structure (:join-structure query-info)
         column-matches (when (and (seq sources-info) target-info)

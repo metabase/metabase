@@ -17,7 +17,8 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr])
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms])
   (:import
    (com.google.api.client.googleapis.json
     GoogleJsonResponseException)
@@ -66,13 +67,19 @@
 
 (def ^:private to-cleanup (atom #{}))
 
+(def ^:private DatabaseDefinitionOptions
+  [:map {:closed true}
+   [:native-ddl        {:optional true} [:sequential [:or :string [:map-of :keyword :any]]]]
+   [:disable-fk-checks {:optional true} :boolean]
+   [:static            {:optional true} :boolean]])
+
 (mu/defn test-dataset-id :- ::dataset-id
   "Prepend `database-name` with the hash of the db-def so we don't stomp on any other jobs running at the same
   time."
   [{:keys [database-name options] :as db-def} :- [:map {:closed true}
                                                   [:database-name     :string]
-                                                  [:table-definitions [:sequential :any]]
-                                                  [:options           :any]]]
+                                                  [:table-definitions [:sequential (ms/InstanceOfClass metabase.test.data.interface.TableDefinition)]]
+                                                  [:options           DatabaseDefinitionOptions]]]
   (cond (already-qualified? database-name) database-name
         (:static options) (str "sha_" (tx/hash-dataset (update db-def :options
                                                                dissoc :static))
@@ -197,7 +204,7 @@
   [:re #"^[A-Za-z_](\w| ){0,127}$"])
 
 (mu/defn- valid-field-name :- ValidFieldName
-  ^String [field-name]
+  ^String [field-name :- ::lib.schema.common/non-blank-string]
   field-name)
 
 (defn- field-definitions->Fields [field-definitions]
@@ -230,7 +237,7 @@
 (mu/defn- create-table!
   [^String dataset-id :- ::lib.schema.common/non-blank-string
    ^String table-id :- ::lib.schema.common/non-blank-string
-   field-definitions]
+   field-definitions :- [:sequential (ms/InstanceOfClass metabase.test.data.interface.FieldDefinition)]]
   (create-table*! dataset-id table-id field-definitions)
   ;; now verify that the Table was created
   (.listTables (bigquery) dataset-id (u/varargs BigQuery$TableListOption))

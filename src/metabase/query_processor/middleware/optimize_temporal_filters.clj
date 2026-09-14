@@ -212,7 +212,9 @@
       (lib/relative-datetime (inc (if (= n :current) 0 n)) target-unit))))
 
 (mu/defn- date-field-with-day-bucketing?
-  [query path expr :- [:maybe ::lib.schema.expression/expression]]
+  [query :- ::lib.schema/query
+   path  :- ::lib.walk/stage-path
+   expr  :- [:maybe ::lib.schema.expression/expression]]
   (and (isa? (lib.walk/apply-f-for-stage-at-path lib/type-of query path expr) :type/Date)
        (= (lib/raw-temporal-bucket expr) :day)))
 
@@ -244,7 +246,11 @@
       (lib/negate-boolean-expression optimized))))
 
 (mu/defn- optimize-comparison-clause :- [:maybe ::lib.schema.mbql-clause/clause]
-  [query path optimize-temporal-value-fn [tag opts field temporal-value] new-clause-type :- [:enum :< :>=]]
+  [query                       :- ::lib.schema/query
+   path                        :- ::lib.walk/stage-path
+   optimize-temporal-value-fn  :- fn?
+   [tag opts field temporal-value] :- [:or :mbql.clause/< :mbql.clause/<= :mbql.clause/> :mbql.clause/>=]
+   new-clause-type             :- [:enum :< :>=]]
   (b/cond
     (date-field-with-day-bucketing? query path field)
     [tag opts (change-temporal-unit-to-default field) (change-temporal-unit-to-default temporal-value)]

@@ -17,6 +17,8 @@
    [metabase.formatter.core :as formatter]
    [metabase.geojson.api :as geojson.api]
    [metabase.geojson.settings :as geojson.settings]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.pivot.core :as pivot.core]
    [metabase.pivot.postprocess :as pivot.postprocess]
@@ -72,7 +74,10 @@
 ;;; --------------------------------------------------- Formatting ---------------------------------------------------
 
 (mu/defn- format-scalar-value
-  [timezone-id :- [:maybe :string] value col visualization-settings]
+  [timezone-id            :- [:maybe :string]
+   value                  :- ms/FieldValue
+   col                    :- :metabase.legacy-mbql.schema/legacy-column-metadata
+   visualization-settings :- ms/VisualizationSettings]
   (cond
     ;; legacy usage -- do not use going forward
     #_{:clj-kondo/ignore [:deprecated-var]}
@@ -127,7 +132,10 @@
 
 (mu/defn- query-results->row-seq
   "Returns a seq of stringified formatted rows that can be rendered into HTML"
-  [timezone-id :- [:maybe :string] visible-cols rows viz-settings]
+  [timezone-id  :- [:maybe :string]
+   visible-cols :- [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]
+   rows         :- [:sequential [:sequential ms/FieldValue]]
+   viz-settings :- ms/VisualizationSettings]
   (let [formatters (mapv #(formatter/create-formatter timezone-id % viz-settings) visible-cols)]
     (for [row rows]
       {:row (mapv (fn [col fmt-fn]
@@ -135,41 +143,63 @@
                   visible-cols
                   formatters)})))
 
+(def ^:private TrendlineFormula
+  "One of the fixed curve shapes [[metabase.analyze.fingerprint.insights/trendline-function-families]] can fit."
+  [:or
+   [:tuple [:= :+] number? [:tuple [:= :*] number? [:= :x]]]
+   [:tuple [:= :*] number? [:tuple [:= :exp] [:tuple [:= :*] number? [:= :x]]]]
+   [:tuple [:= :+] number? [:tuple [:= :*] number? [:tuple [:= :log] [:= :x]]]]
+   [:tuple [:= :*] number? [:tuple [:= :pow] [:= :x] number?]]])
+
+(def ^:private Insight
+  "One entry of the `:insights` computed by `metabase.analyze.fingerprint.insights/insights`."
+  [:map {:closed true}
+   [:last-value     {:optional true} [:maybe number?]]
+   [:previous-value {:optional true} [:maybe number?]]
+   [:last-change    {:optional true} [:maybe number?]]
+   [:slope          {:optional true} [:maybe number?]]
+   [:offset         {:optional true} [:maybe number?]]
+   [:best-fit       {:optional true} [:maybe TrendlineFormula]]
+   [:col            {:optional true} [:maybe :string]]
+   [:unit           {:optional true} [:maybe :keyword]]])
+
 (mr/def ::QPResultData
   "The `:data` of a QP result, as the render pipeline reads it."
   [:map {:closed true}
-   [:cols             {:optional true} [:maybe [:sequential :any]]]
-   [:rows             {:optional true} [:maybe [:sequential :any]]]
+   [:cols             {:optional true} [:maybe [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]]]
+   [:rows             {:optional true} [:maybe [:sequential [:sequential ms/FieldValue]]]]
    [:viz-settings     {:optional true} [:maybe ms/VisualizationSettings]]
-   [:results_metadata {:optional true} :any]
-   [:results_timezone {:optional true} :any]
-   [:format-rows?     {:optional true} :any]
-   [:native_form      {:optional true} :any]
-   [:insights         {:optional true} :any]
-   [:rows_truncated   {:optional true} :any]
-   [:card-error       {:optional true} :any]])
+   [:results_metadata {:optional true} [:maybe [:map {:closed true}
+                                                [:columns [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]]]]]
+   [:results_timezone {:optional true} [:maybe :string]]
+   [:format-rows?     {:optional true} [:maybe :boolean]]
+   [:native_form      {:optional true} [:maybe [:map {:closed true}
+                                                [:query  [:or :string [:map-of :keyword :any]]]
+                                                [:params {:optional true} [:maybe [:sequential ms/FieldValue]]]]]]
+   [:insights         {:optional true} [:maybe [:sequential Insight]]]
+   [:rows_truncated   {:optional true} [:maybe :int]]])
 
 (mr/def ::QPResult
   "A QP result map (`{:data ..., :error ...}`), as the render pipeline receives it."
   [:map {:closed true}
    [:data                    {:optional true} [:maybe ::QPResultData]]
-   [:error                   {:optional true} :any]
-   [:row_count               {:optional true} :any]
-   [:status                  {:optional true} :any]
-   [:database_id             {:optional true} :any]
-   [:started_at              {:optional true} :any]
-   [:running_time            {:optional true} :any]
-   [:json_query              {:optional true} :any]
-   [:average_execution_time  {:optional true} :any]
-   [:context                 {:optional true} :any]
-   [:card_id                 {:optional true} :any]
-   [:card-error              {:optional true} :any]])
+   [:error                   {:optional true} [:maybe :string]]
+   [:row_count               {:optional true} [:maybe :int]]
+   [:status                  {:optional true} [:maybe [:enum :completed :failed]]]
+   [:database_id             {:optional true} [:maybe ::lib.schema.id/database]]
+   [:started_at              {:optional true} [:maybe :string]]
+   [:running_time            {:optional true} [:maybe :int]]
+   [:json_query              {:optional true} [:maybe [:or ::lib.schema/query :metabase.legacy-mbql.schema/Query]]]
+   [:average_execution_time  {:optional true} [:maybe :int]]
+   [:context                 {:optional true} [:maybe :keyword]]
+   [:card_id                 {:optional true} [:maybe ::lib.schema.id/card]]
+   [:card-error              {:optional true} [:maybe :boolean]]])
 
 (mu/defn- prep-for-html-rendering
   "Convert the query results (`cols` and `rows`) into a formatted seq of rows (list of strings) that can be rendered as
   HTML"
   ([timezone-id :- [:maybe :string]
-    card
+    card        :- [:maybe ::card]
     {:keys [cols rows viz-settings], :as _data} :- ::QPResultData]
    (let [visible-cols (table-data/visible-columns cols)
          row-limit    (min (channel.settings/attachment-table-row-limit) 100)]
@@ -204,11 +234,48 @@
 ;;; |                                                     render                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(mr/def ::hiccup
+  "A node of a Hiccup form: a scalar, a `[tag attrs? & children]` vector (left unstructured -- HTML attribute keys
+  are open-ended), or a seq of such nodes."
+  [:or :string number? :boolean nil? vector? [:sequential [:ref ::hiccup]]])
+
+(mr/def ::adhoc-card
+  "Schema for an ad-hoc (unsaved) card."
+  [:map {:closed true}
+   [:display :keyword]
+   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
+   [:name {:optional true} [:maybe :string]]])
+
+(mr/def ::card
+  "A card as `render`ed for a Pulse/Dashboard Subscription: either a real Card, or an ad-hoc (unsaved) card."
+  [:or (ms/InstanceOf :model/Card) ::adhoc-card])
+
+(mr/def ::dashcard
+  "A DashboardCard as `render`ed for a Dashboard Subscription."
+  (ms/InstanceOf :model/DashboardCard))
+
+(mr/def ::render-type
+  [:enum :inline :attachment])
+
+;;; I gave these keys below namespaces to make them easier to find usages for but didn't use `metabase.channel.render` so
+;;; we can keep this as an internal namespace you don't need to know about outside of the module.
+(mr/def ::options
+  "Options for Pulse (i.e. Alert/Dashboard Subscription) rendering."
+  [:map {:closed true}
+   [:channel.render/include-buttons?           {:description "default: false", :optional true} :boolean]
+   [:channel.render/include-title?             {:description "default: false", :optional true} :boolean]
+   [:channel.render/include-description?       {:description "default: false", :optional true} :boolean]
+   [:channel.render/disable-links?             {:description "default: false", :optional true} :boolean]
+   [:channel.render/include-inline-parameters? {:description "default: false", :optional true} :boolean]
+   [:channel.render/padding-x                  {:description "default: 0, horizontal pixels around image", :optional true} [:maybe :int]]
+   [:channel.render/padding-y                  {:description "default: 0, vertical pixels around image", :optional true} [:maybe :int]]
+   [:channel.render/scale                      {:description "default: 1.0, a factor, or a fn of the laid-out content's logical width/height returning one", :optional true} [:maybe [:or number? ifn?]]]])
+
 (mr/def ::RenderedPartCard
   "Schema used for functions that operate on pulse card contents and their attachments"
   [:map {:closed true}
    [:attachments {:optional true} [:maybe [:map-of :string (ms/InstanceOfClass URL)]]]
-   [:content                      [:sequential :any]]
+   [:content                      [:sequential ::hiccup]]
    [:render/text {:optional true} [:maybe :string]]])
 
 (defmulti render

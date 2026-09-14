@@ -69,7 +69,7 @@
 
   DEPRECATED -- use [[metabase.lib.metadata/general-cached-value]] going forward."
   {:deprecated "0.57.0"}
-  [ks :- [:sequential :any]
+  [ks :- [:sequential [:or :keyword :int :string]]
    v]
   (swap! *store* assoc-in ks v))
 
@@ -78,10 +78,10 @@
 
   DEPRECATED -- use [[metabase.lib.metadata/general-cached-value]] going forward."
   {:deprecated "0.57.0"}
-  ([ks]
+  ([ks :- [:sequential [:or :keyword :int :string]]]
    (miscellaneous-value ks nil))
 
-  ([ks :- [:sequential :any]
+  ([ks :- [:sequential [:or :keyword :int :string]]
     not-found]
    (get-in @*store* ks not-found)))
 
@@ -186,7 +186,7 @@
 (mu/defn do-with-metadata-provider
   "Implementation for [[with-metadata-provider]]."
   [database-id-or-metadata-providerable :- ::database-id-or-metadata-providerable
-   thunk                                :- [:=> [:cat] :any]]
+   thunk                                :- fn?]
   (cond
     (not (initialized?))
     (binding [*store* (atom {})]

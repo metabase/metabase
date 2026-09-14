@@ -23,11 +23,13 @@
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
+   [metabase.pulse.schema :as pulse.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
@@ -240,23 +242,29 @@
   "Schema for functions accepting either a `HybridPulseCard`, `CardRef`, or `CardBase`."
   [:or HybridPulseCard CardRef CardBase])
 
+(def ^:private RecipientInput
+  "One entry of `PulseChannelInput`'s `:recipients`: either a Metabase User (by `:id`) or a raw email address."
+  [:map {:closed true}
+   [:id    {:optional true} ms/PositiveInt]
+   [:email {:optional true} :string]])
+
 (def ^:private PulseChannelInput
   "A PulseChannel as [[update-notification-channels!]]/[[create-pulse!]] accept it: a subset of `::pulse-channel`
   columns (`:id`/`:pulse_id` filled in server-side when absent) plus `:recipients`."
   [:map {:closed true}
-   [:id             {:optional true} :any]
-   [:channel_type   {:optional true} :any]
-   [:channel_id     {:optional true} :any]
-   [:details        {:optional true} :any]
-   [:enabled        {:optional true} :any]
-   [:pulse_id       {:optional true} :any]
-   [:recipients     {:optional true} [:maybe [:sequential :any]]]
-   [:schedule_type  {:optional true} :any]
-   [:schedule_day   {:optional true} :any]
-   [:schedule_hour  {:optional true} :any]
-   [:schedule_frame {:optional true} :any]
-   [:created_at     {:optional true} :any]
-   [:updated_at     {:optional true} :any]])
+   [:id             {:optional true} ms/PositiveInt]
+   [:channel_type   {:optional true} [:or :keyword :string]]
+   [:channel_id     {:optional true} [:maybe ms/PositiveInt]]
+   [:details        {:optional true} ::pulse.schema/pulse-channel.details]
+   [:enabled        {:optional true} :boolean]
+   [:pulse_id       {:optional true} ::lib.schema.id/pulse]
+   [:recipients     {:optional true} [:maybe [:sequential RecipientInput]]]
+   [:schedule_type  {:optional true} [:or :keyword :string]]
+   [:schedule_day   {:optional true} [:maybe :string]]
+   [:schedule_hour  {:optional true} [:maybe :int]]
+   [:schedule_frame {:optional true} [:maybe [:or :keyword :string]]]
+   [:created_at     {:optional true} ms/TemporalInstant]
+   [:updated_at     {:optional true} ms/TemporalInstant]])
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
@@ -274,7 +282,7 @@
   false)
 
 (mu/defn- cards* :- [:sequential HybridPulseCard]
-  [pulse-ids]
+  [pulse-ids :- [:sequential ms/PositiveInt]]
   (pulse.db/pulse-cards-for-pulses pulse-ids *allow-hydrate-archived-cards*))
 
 (methodical/defmethod t2/batched-hydrate [:model/Pulse :cards]
@@ -313,7 +321,7 @@
 (mu/defn retrieve-pulse :- [:maybe (ms/InstanceOf :model/Pulse)]
   "Fetch a single *Pulse*, and hydrate it with a set of 'standard' hydrations; remove Alert columns, since this is a
   *Pulse* and they will all be unset."
-  [pulse-or-id]
+  [pulse-or-id :- [:or ms/PositiveInt (ms/InstanceOf :model/Pulse)]]
   (some-> (pulse.db/pulse (u/the-id pulse-or-id))
           hydrate-notification
           notification->pulse))
@@ -321,7 +329,8 @@
 (mu/defn retrieve-notification :- [:maybe (ms/InstanceOf :model/Pulse)]
   "Fetch an Alert or Pulse, and do the 'standard' hydrations, adding `:channels` with `:recipients`, `:creator`, and
   `:cards`."
-  [notification-or-id & additional-conditions]
+  [notification-or-id :- [:or ms/PositiveInt (ms/InstanceOf :model/Pulse)]
+   & additional-conditions :- [:* [:or :keyword :boolean :nil]]]
   {:pre [(even? (count additional-conditions))]}
   (let [id   (u/the-id notification-or-id)
         opts (apply hash-map additional-conditions)]
@@ -344,7 +353,7 @@
 
 (mu/defn retrieve-alert :- [:maybe (ms/InstanceOf :model/Pulse)]
   "Fetch a single Alert by its `id` value, do the standard hydrations, and put it in the standard `Alert` format."
-  [alert-or-id]
+  [alert-or-id :- [:or ms/PositiveInt (ms/InstanceOf :model/Pulse)]]
   (some-> (pulse.db/alert (u/the-id alert-or-id))
           hydrate-notification
           notification->alert))
@@ -522,7 +531,8 @@
   *  If a Card ID in `card-refs` has no corresponding existing `PulseCard` object, one will be created.
   *  If an existing `PulseCard` has no corresponding ID in CARD-IDs, it will be deleted.
   *  All cards will be updated with a `position` according to their place in the collection of `card-ids`"
-  [notification-or-id card-refs :- [:maybe [:sequential CardRef]]]
+  [notification-or-id :- [:or ms/PositiveInt (ms/InstanceOf :model/Pulse)]
+   card-refs           :- [:maybe [:sequential CardRef]]]
   ;; first off, just delete any cards associated with this pulse (we add them again below)
   (pulse.db/delete-pulse-cards-for-pulse! (u/the-id notification-or-id))
   ;; now just insert all of the cards that were given to us
@@ -548,7 +558,8 @@
     * If an existing `PulseChannel` has no corresponding entry in `channels`, it will be deleted.
 
     * All previously existing channels will be updated with their most recent information."
-  [notification-or-id channels :- [:sequential PulseChannelInput]]
+  [notification-or-id :- [:or ms/PositiveInt (ms/InstanceOf :model/Pulse)]
+   channels           :- [:sequential PulseChannelInput]]
   (let [existing-channels   (pulse.db/pulse-channels-for-pulse (u/the-id notification-or-id))
         channels            (map-indexed
                              (fn [idx channel]
@@ -582,7 +593,9 @@
 (mu/defn- create-notification-and-add-cards-and-channels!
   "Create a new Pulse/Alert with the properties specified in `notification`; add the `card-refs` to the Notification and
   add the Notification to `channels`. Returns the `id` of the newly created Notification."
-  [notification card-refs :- [:maybe [:sequential CardRef]] channels]
+  [notification :- ::pulse.schema/pulse.update
+   card-refs    :- [:maybe [:sequential CardRef]]
+   channels     :- [:sequential PulseChannelInput]]
   (t2/with-transaction [_conn]
     (let [notification (pulse.db/insert-pulse! notification)]
       (update-notification-cards! notification card-refs)
@@ -621,15 +634,18 @@
     (retrieve-alert id)))
 
 (mu/defn- notification-or-id->existing-card-refs :- [:sequential CardRef]
-  [notification-or-id]
+  [notification-or-id :- [:or ms/PositiveInt (ms/InstanceOf :model/Pulse)]]
   (pulse.db/pulse-card-refs (u/the-id notification-or-id)))
 
 (mu/defn- card-refs-have-changed? :- :boolean
-  [notification-or-id new-card-refs :- [:sequential CardRef]]
+  [notification-or-id :- [:or ms/PositiveInt (ms/InstanceOf :model/Pulse)]
+   new-card-refs      :- [:sequential CardRef]]
   (not= (notification-or-id->existing-card-refs notification-or-id)
         new-card-refs))
 
-(mu/defn- update-notification-cards-if-changed! [notification-or-id new-card-refs]
+(mu/defn- update-notification-cards-if-changed!
+  [notification-or-id :- [:or ms/PositiveInt (ms/InstanceOf :model/Pulse)]
+   new-card-refs      :- [:sequential CardRef]]
   (when (card-refs-have-changed? notification-or-id new-card-refs)
     (update-notification-cards! notification-or-id new-card-refs)))
 

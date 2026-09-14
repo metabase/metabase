@@ -24,7 +24,7 @@
    Returns structural metadata and available lens types.
    This is a cheap operation - no query execution."
   [transform :- ::transforms.schema/transform]
-  (let [{:keys [sources target] :as ctx} (context/build-context transform)]
+  (let [{:keys [sources target] :as ctx} (context/build-context (select-keys transform [:source :target :target_db_id]))]
     (if-not target
       {:name             (tru "Transform Inspector: {0}" (:name transform))
        :description      (tru "Transform has not been run yet.")
@@ -47,5 +47,5 @@
   [transform :- ::transforms.schema/transform
    lens-id :- :string
    params :- [:maybe ::inspector.schema/lens-params.request]]
-  (let [ctx (context/build-context transform)]
+  (let [ctx (context/build-context (select-keys transform [:source :target :target_db_id]))]
     (lens.core/get-lens ctx lens-id params)))

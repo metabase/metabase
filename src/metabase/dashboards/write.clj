@@ -16,6 +16,8 @@
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.embedding.validation :as embedding.validation]
    [metabase.events.core :as events]
+   [metabase.lib-be.schema :as lib-be.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.parameters.core :as parameters]
@@ -116,7 +118,8 @@
     (api/check-superuser)))
 
 (mu/defn- param-target->field-id :- [:maybe ::lib.schema.id/field]
-  [target query]
+  [target :- ::lib.schema.common/possibly-unnormalized-clause
+   query  :- [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]
   (params/param-target->field-id target {:dataset_query query}))
 
 ;; TODO -- should we only check *new* or *modified* mappings?
@@ -415,7 +418,7 @@
   Questions (questions stored 'in' the dashboard rather than a collection) and reference the rest (assuming
   permissions)."
   [deep-copy? :- ms/MaybeBooleanValue
-   dashcards :- [:sequential :any]]
+   dashcards :- [:sequential (ms/InstanceOf :model/DashboardCard)]]
   (let [card->cards (fn [{:keys [card series]}] (into [card] series))
         readable? (fn [card] (and (mi/model card) (mi/can-read? card)))
         card->decision (fn [parent-card card]

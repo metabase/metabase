@@ -112,8 +112,8 @@
 (mr/def ::exploration-query.params
   "The `:params` column of a ExplorationQuery, decoded."
   [:map {:closed true}
-   [:segment_id  {:optional true} :any]
-   [:value_index {:optional true} :any]])
+   [:segment_id  {:optional true} [:maybe ms/PositiveInt]]
+   [:value_index {:optional true} [:maybe nat-int?]]])
 
 (mr/def ::exploration-query.data-access-token
   "The `:data_access_token` column of a ExplorationQuery, decoded."
@@ -199,25 +199,49 @@
    [:metric_description               {:optional true} [:maybe :string]]
    [:chart_description                {:optional true} [:maybe :string]]])
 
+(mr/def ::exploration-thread.query-plan-transcript.plan-item
+  "One entry of the `:plan` a query planner emits."
+  [:map {:closed true}
+   [:block_id     ms/PositiveInt]
+   [:metric_id    ms/PositiveInt]
+   [:dimension_id ms/UUIDString]
+   [:variant      :string]
+   [:params       {:optional true} [:map {:closed true}
+                                    [:segment_id {:optional true} ms/PositiveInt]
+                                    [:k          {:optional true} :int]]]
+   [:rationale    {:optional true} [:maybe :string]]])
+
+(mr/def ::exploration-thread.query-plan-transcript.planner-transcript
+  "The planner-implementation-specific `:transcript` a query planner emits (see
+  `metabase.explorations.query-plan.planner/plan!`); shape is per-implementation, only `:mechanical` exists today."
+  [:or
+   [:map {:closed true}
+    [:reason   :string]
+    [:n-blocks :int]]
+   [:map {:closed true}
+    [:strategy :string]
+    [:n-items  :int]
+    [:n-blocks :int]]])
+
 (mr/def ::exploration-thread.query-plan-transcript.body
   "The `:transcript` entry of a query-plan transcript, decoded."
   [:map {:closed true}
-   [:outcome      {:optional true} :any]
-   [:rationale    {:optional true} :any]
-   [:plan         {:optional true} :any]
-   [:final-errors {:optional true} :any]
-   [:planner      {:optional true} :any]])
+   [:outcome      {:optional true} [:maybe [:enum :ok :failed :skip-not-applicable]]]
+   [:rationale    {:optional true} [:maybe :string]]
+   [:plan         {:optional true} [:maybe [:sequential ::exploration-thread.query-plan-transcript.plan-item]]]
+   [:final-errors {:optional true} [:maybe [:sequential :string]]]
+   [:planner      {:optional true} [:maybe ::exploration-thread.query-plan-transcript.planner-transcript]]])
 
 (mr/def ::exploration-thread.query-plan-transcript
   "The `:query_plan_transcript` column of a ExplorationThread, decoded."
   [:map {:closed true}
-   [:generated-at {:optional true} :any]
-   [:thread-id    {:optional true} :any]
-   [:planner      {:optional true} :any]
-   [:outcome      {:optional true} :any]
-   [:rows-count   {:optional true} :any]
-   [:note         {:optional true} :any]
-   [:error        {:optional true} :any]
+   [:generated-at {:optional true} [:maybe :string]]
+   [:thread-id    {:optional true} [:maybe ms/PositiveInt]]
+   [:planner      {:optional true} [:maybe :keyword]]
+   [:outcome      {:optional true} [:maybe [:enum :ok :skip-empty :failed :error]]]
+   [:rows-count   {:optional true} [:maybe :int]]
+   [:note         {:optional true} [:maybe :keyword]]
+   [:error        {:optional true} [:maybe :string]]
    [:transcript   {:optional true} [:maybe ::exploration-thread.query-plan-transcript.body]]])
 
 (def ^:private DataAccessToken

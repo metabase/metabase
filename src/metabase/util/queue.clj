@@ -113,11 +113,13 @@
    (when-let [fst (.poll queue max-first-ms TimeUnit/MILLISECONDS)]
      (take-batch* queue max-batch-messages max-next-ms [(if (instance? DelayQueue queue) (:value fst) fst)]))))
 
-(mr/def ::listener-options [:map {:closed true} [:success-handler {:optional true} [:=> [:cat :any :double :string] :any]
-                                  :err-handler {:optional true} [:=> [:cat [:fn (ms/InstanceOfClass Throwable) :string]] :any]
-                                  :pool-size {:optional true} number?
-                                  :max-batch-messages {:optional true} number?
-                                  :max-next-ms {:optional true} number?]])
+(mr/def ::listener-options
+  [:map {:closed true}
+   [:success-handler    {:optional true} fn?]
+   [:err-handler        {:optional true} fn?]
+   [:pool-size          {:optional true} number?]
+   [:max-batch-messages {:optional true} number?]
+   [:max-next-ms        {:optional true} number?]])
 
 (defonce
   ^:private
@@ -132,7 +134,7 @@
 
 (mu/defn- listener-thread [listener-name :- :string
                            queue :- (ms/InstanceOfClass BlockingQueue)
-                           handler :- [:=> [:cat [:sequential :any]] :any]
+                           handler :- fn?
                            {:keys [success-handler err-handler max-batch-messages max-next-ms]} :- ::listener-options]
   (log/debugf "Thread for listener %s started" listener-name)
   (while true
@@ -192,7 +194,7 @@
   - max-next-ms: Max number of ms to wait for each additional message before calling the handler. Default 100"
   [listener-name :- :string
    queue :- (ms/InstanceOfClass BlockingQueue)
-   handler :- [:=> [:cat [:sequential :any]] :any]
+   handler :- fn?
    {:keys [success-handler
            err-handler
            pool-size

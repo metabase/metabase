@@ -77,9 +77,16 @@
    {:error/message "Valid Graph instance"}
    #'graph?])
 
-(mr/def ::node :any)
+(mr/def ::node
+  "A graph node key: an entity ID, or an `[entity-type entity-id]` pair."
+  [:or
+   pos-int?
+   [:tuple :keyword pos-int?]])
 
 (mr/def ::child-map [:map-of ::node [:set ::node]])
+
+(mr/def ::stop
+  [:= ::stop])
 
 (mu/defn transitive :- [:sequential ::node]
   "Given a graph and `key-seq`, returns a seq of all transitive children of those starting keys.
@@ -138,7 +145,7 @@
 
   If `f` ever returns `:metabase.graph.core/stop`, `keep-children` does not include that in the results and does not
   recurse down the current node's children."
-  [f :- [:-> ::node :any]
+  [f :- [:-> ::node [:maybe [:or ::stop ::node]]]
    children :- ::child-map]
   (let [all-nodes (all-map-nodes children)
         full-parent-map (or (->> children

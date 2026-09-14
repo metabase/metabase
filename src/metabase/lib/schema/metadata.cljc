@@ -1013,7 +1013,11 @@
 
 (mr/def ::transform
   "TODO (Cam 10/1/25) -- I'm putting this here as a placeholder until you guys go fill it out a little more."
-  [:map
+  [:map {:closed true}
    [:id     ::lib.schema.id/transform]
-   [:source {:optional true} [:map
-                              [:query {:optional true} [:ref :metabase.lib.schema/query]]]]])
+   [:name   {:optional true} :string]
+   [:source {:optional true} [:map {:closed true}
+                              [:query {:optional true} [:ref ::card.query]]]]
+   [:target {:optional true} [:map {:closed true}
+                              [:schema {:optional true} [:maybe :string]]
+                              [:name   {:optional true} :string]]]])

@@ -8,6 +8,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.version.core :as version]
    [toucan2.core :as t2])
   (:import
@@ -57,7 +58,7 @@
    :snowplow/ai_service_event "1-0-0"
    :snowplow/data_complexity  "1-0-0"})
 
-(def ^:private SnowplowSchema
+(def SnowplowSchema
   "Malli enum for valid Snowplow schemas"
   (into [:enum] (keys schema->version)))
 
@@ -152,7 +153,7 @@
   ([schema :- SnowplowSchema data]
    (track-event! schema data api/*current-user-id*))
 
-  ([schema :- SnowplowSchema data user-id]
+  ([schema :- SnowplowSchema data user-id :- [:maybe ms/PositiveInt]]
    (boolean
     (when (analytics.settings/snowplow-enabled)
       (try

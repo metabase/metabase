@@ -525,7 +525,7 @@
   name and base type). If provided these are merged with the columns the query is expected to return.
 
   Note this `initial-cols` is more or less required for native queries unless they have metadata attached."
-  ([query]
+  ([query :- ::lib.schema/query]
    (returned-columns query []))
 
   ([query         :- ::lib.schema/query

@@ -311,7 +311,7 @@
   Pass false when the query itself is not changing, so that an unrelated update (rename, archive, ...) doesn't wipe
   a previously-valid table_id just because the derivation can no longer resolve it (e.g. the source card was
   deleted)."
-  ([card]
+  ([card :- ::queries.schema/card]
    (populate-query-fields card true))
   ([{query :dataset_query, :as card} :- ::queries.schema/card
     clear-stale-table-id? :- :boolean]
@@ -719,7 +719,7 @@
     card))
 
 (mu/defn- upgrade-card-schema-to-latest :- ::queries.schema/card
-  [card :- :map]
+  [card :- ::queries.schema/card]
   (-> (if (and (:id card)
                (or (:dataset_query card)
                    (:result_metadata card)
@@ -836,7 +836,9 @@
   "If we have fresh result_metadata, we don't have to populate it anew. When result_metadata doesn't
   change for a native query, populate-result-metadata removes it (set to nil) unless prevented by the
   verified-result-metadata? flag (see #37009)."
-  [card changes verified-result-metadata?]
+  [card                      :- ::queries.schema/card
+   changes                   :- [:maybe ::queries.schema/card]
+   verified-result-metadata? :- [:maybe :boolean]]
   (-> (cond-> card
         (or (empty? (:result_metadata card))
             (not verified-result-metadata?)

@@ -21,23 +21,34 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+(def ^:private honeysql-registry
+  "Registry backing [[HoneySQLExpr]] and [[HoneySQLQuery]]: `::expr` is a column/table keyword, a literal, a
+  (possibly nested) operator clause, or a subquery."
+  {::expr  [:or :keyword :string number? :boolean nil?
+            [:sequential [:ref ::expr]]
+            [:ref ::query]]
+   ::query [:map {:closed true}
+            [:select    {:optional true} [:sequential [:ref ::expr]]]
+            [:from      {:optional true} [:sequential [:ref ::expr]]]
+            [:where     {:optional true} [:ref ::expr]]
+            [:with      {:optional true} [:sequential [:ref ::expr]]]
+            [:join      {:optional true} [:sequential [:ref ::expr]]]
+            [:left-join {:optional true} [:sequential [:ref ::expr]]]
+            [:union-all {:optional true} [:sequential [:ref ::expr]]]
+            [:order-by  {:optional true} [:sequential [:ref ::expr]]]
+            [:limit     {:optional true} [:ref ::expr]]]})
+
+(def ^:private HoneySQLExpr
+  [:schema {:registry honeysql-registry} [:ref ::expr]])
+
 (def ^:private HoneySQLColumn
   [:or
    :keyword
-   [:tuple :any :keyword]])
+   [:tuple HoneySQLExpr :keyword]])
 
 (def HoneySQLQuery
   "A partially-built Honey SQL query map for the legacy (index-free) search query."
-  [:map {:closed true}
-   [:select     {:optional true} [:sequential :any]]
-   [:from       {:optional true} [:sequential :any]]
-   [:where      {:optional true} :any]
-   [:with       {:optional true} [:sequential :any]]
-   [:join       {:optional true} [:sequential :any]]
-   [:left-join  {:optional true} [:sequential :any]]
-   [:union-all  {:optional true} [:sequential :any]]
-   [:order-by   {:optional true} [:sequential :any]]
-   [:limit      {:optional true} :any]])
+  [:schema {:registry honeysql-registry} [:ref ::query]])
 
 (defmethod search.engine/supported-engine? :search.engine/in-place [_]
   true)

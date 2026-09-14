@@ -447,12 +447,12 @@
 (mu/defn filter :- :metabase.lib.schema/query
   "Sets `boolean-expression` as a filter on `query`. Ignores duplicate filters (ignoring :lib/uuid)."
   ([query :- :metabase.lib.schema/query
-    boolean-expression]
+    boolean-expression :- ::lib.common/op-arg]
    (metabase.lib.filter/filter query nil boolean-expression))
 
   ([query :- :metabase.lib.schema/query
     stage-number :- [:maybe :int]
-    boolean-expression]
+    boolean-expression :- ::lib.common/op-arg]
    ;; if this is a Segment metadata, convert it to `:segment` MBQL clause before adding
    (if (clojure.core/= (lib.dispatch/dispatch-value boolean-expression) :metadata/segment)
      (recur query stage-number (lib.ref/ref boolean-expression))
@@ -550,7 +550,7 @@
   a `column`, and arguments."
   [filter-operator :- [:or ::lib.schema.filter/operator :keyword :string]
    column          :- ::lib.schema.metadata/column
-   & args]
+   & args          :- [:* ::lib.common/op-arg]]
   (let [tag (if (map? filter-operator)
               (:short filter-operator)
               (keyword filter-operator))]
@@ -568,7 +568,8 @@
 (mu/defn filter-parts :- ::filter-parts
   "Return the parts of the filter clause `a-filter-clause` in query `query` at stage `stage-number`.
   Might obsolete [[filter-operator]]."
-  ([query a-filter-clause]
+  ([query :- ::lib.schema/query
+    a-filter-clause :- ::lib.schema.expression/boolean]
    (filter-parts query -1 a-filter-clause))
 
   ([query :- ::lib.schema/query

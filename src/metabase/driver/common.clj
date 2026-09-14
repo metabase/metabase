@@ -485,7 +485,7 @@
   If `:my-driver` returns [[driver/db-start-of-week]] as `:sunday` (1 is Sunday, 2 is Monday, and so forth),
   and [[metabase.lib-be.core/start-of-week]] is `:monday` (the results should have 1 as Monday, 2 as Tuesday... 7 is
   Sunday), then the offset should be `-1`, because `:monday` returned by the driver (`2`) minus `1` = `1`."
-  [driver]
+  [driver :- :keyword]
   (start-of-week-offset-for-day (driver/db-start-of-week driver)))
 
 (defn json-unfolding-default

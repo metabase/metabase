@@ -65,7 +65,7 @@
 
   Please note that this function is *not* what is called by the scheduled tasks; those call different steps
   independently. This function is called when a Database is first added."
-  ([database]
+  ([database :- i/DatabaseInstance]
    (sync-database! database nil))
 
   ([database                         :- i/DatabaseInstance

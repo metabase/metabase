@@ -15,6 +15,7 @@
    [metabase.graph.core :as graph]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.util :as u]
@@ -148,7 +149,16 @@
    [:measure   [:ref ::measure-entity]]])
 
 (mu/defn- entity-value :- ::entity
-  [entity-type {:keys [id] :as entity} usages errors]
+  [entity-type :- ::deps.dependency-types/dependency-types
+   {:keys [id] :as entity} :- (ms/InstanceOf (vec deps.dependency-types/models))
+   usages :- [:maybe [:map-of
+                      [:tuple ::deps.dependency-types/dependency-types ::deps.dependency-types/entity-id]
+                      ::usages]]
+   errors :- [:maybe [:map-of
+                      [:tuple ::deps.dependency-types/dependency-types ::deps.dependency-types/entity-id]
+                      [:set [:map {:closed true}
+                             [:type ::lib.schema.validate/validate-error-type]
+                             [:detail {:optional true} [:maybe :string]]]]]]]
   (cond-> {:id id
            :type entity-type
            :data (-> (select-keys entity (entity-keys entity-type))

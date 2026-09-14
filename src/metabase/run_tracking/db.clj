@@ -78,7 +78,12 @@
   [model    :- :keyword
    active   :- ActivePredicate
    ids      :- [:sequential ms/PositiveInt]
-   terminal :- [:map-of :keyword [:maybe [:or :string :keyword :boolean :int]]]]
+   terminal :- [:map {:closed true}
+                [:status    {:optional true} [:maybe [:or :string :keyword]]]
+                [:end_time  {:optional true} [:maybe [:or :string :keyword]]]
+                [:ended_at  {:optional true} [:maybe [:or :string :keyword]]]
+                [:is_active {:optional true} [:maybe :boolean]]
+                [:message   {:optional true} [:maybe :string]]]]
   (t2/query {:update (t2/table-name model)
              :set    terminal
              :where  [:and (active-clause active) [:in :id ids]]}))

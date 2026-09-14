@@ -117,7 +117,8 @@
 (mu/defn add-types-to-fields
   "Add `:base-type` and `:effective-type` to options of fields in `x` using `metadata-provider`. Works on MBQL 5 fields.
   `:effective-type` is required for coerced fields to pass schema checks."
-  [x metadata-provider :- ::lib.schema.metadata/metadata-provider]
+  [x                 :- [:or ::lib.schema/query ::lib.schema/stage]
+   metadata-provider :- ::lib.schema.metadata/metadata-provider]
   (if-let [field-ids (match/match-many x
                        [:field
                         (opts :guard (and (map? opts) (not (and (:base-type opts) (:effective-type opts)))))
@@ -150,12 +151,13 @@
 
 (mu/defn query-with-stages :- ::lib.schema/query
   "Create a query from a sequence of stages."
-  ([metadata-providerable stages]
+  ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+    stages                :- ::lib.schema/stages]
    (query-with-stages (:id (lib.metadata/database metadata-providerable)) metadata-providerable stages))
 
   ([database-id           :- ::lib.schema.id/database
     metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-    stages]
+    stages                :- ::lib.schema/stages]
    (->> (merge
          {:lib/type     :mbql/query
           :lib/metadata (lib.metadata/->metadata-provider metadata-providerable)
@@ -173,9 +175,11 @@
      (let [mbql5-query (binding [lib.schema.expression/*suppress-expression-type-check?* true]
                          (lib.convert/->mbql5 (mbql.normalize/normalize-or-throw legacy-query)))
            mp          (lib.metadata/->metadata-provider metadata-providerable (:database mbql5-query))
-           mbql5-query (add-types-to-fields mbql5-query mp)]
+           converted?  (:lib.convert/converted? mbql5-query)
+           mbql5-query (-> mbql5-query (dissoc :lib.convert/converted?) (add-types-to-fields mp))]
        (merge
-        mbql5-query
+        (cond-> mbql5-query
+          converted? (assoc :lib.convert/converted? true))
         (query-with-stages mp (:stages mbql5-query)))))
    (fn [e]
      (throw (ex-info (i18n/tru "Error creating query from legacy query: {0}" (ex-message e))
@@ -299,7 +303,13 @@
   existing MBQL query or saved question or whatever. If the thing in question does not already include metadata, pass
   it in separately -- metadata is needed for most query manipulation operations."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   x :- some?]
+   x                     :- [:or
+                             ::lib.schema/query
+                             :metabase.legacy-mbql.schema/Query
+                             ::lib.schema/stage
+                             ::lib.schema.metadata/table
+                             ::lib.schema.metadata/card
+                             ::lib.schema.metadata/metric]]
   (ensure-cached-metadata-provider (query-method metadata-providerable x)))
 
 (mu/defn ->query :- ::lib.schema/query
@@ -308,7 +318,13 @@
   Create a new MBQL query from anything that could conceptually be an MBQL query, like a Database or Table or an
   existing MBQL query or saved question or whatever. If the thing in question does not already include metadata, pass
   it in separately -- metadata is needed for most query manipulation operations."
-  [x
+  [x                     :- [:or
+                             ::lib.schema/query
+                             :metabase.legacy-mbql.schema/Query
+                             ::lib.schema/stage
+                             ::lib.schema.metadata/table
+                             ::lib.schema.metadata/card
+                             ::lib.schema.metadata/metric]
    metadata-providerable :- ::lib.schema.metadata/metadata-providerable]
   (query metadata-providerable x))
 

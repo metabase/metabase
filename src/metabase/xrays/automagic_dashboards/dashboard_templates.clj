@@ -8,6 +8,7 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase.dashboards.constants :as dashboards.constants]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.query-processor.util :as qp.util]
    [metabase.types.core :as types]
    [metabase.util :as u]
@@ -40,7 +41,7 @@
 (def ^:private Score
   [:int {:min 0, :max max-score}])
 
-(def ^:private MBQL [:maybe [:sequential :any]])
+(def ^:private MBQL [:maybe ::lib.schema.common/possibly-unnormalized-clause])
 
 (def ^:private Identifier
   [:string

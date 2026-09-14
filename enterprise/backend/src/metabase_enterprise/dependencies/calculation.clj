@@ -1,15 +1,18 @@
 (ns metabase-enterprise.dependencies.calculation
   (:require
+   [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.native-validation :as deps.native]
    [metabase-enterprise.dependencies.schema :as deps.schema]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]))
 
 (defmulti calculate-deps*
   "Implementation multimethod for [[calculate-deps]]. Dispatches on entity-type keyword.
@@ -20,8 +23,8 @@
 (mu/defn calculate-deps :- ::deps.schema/upstream-deps
   "Calculate upstream dependencies for a single entity.
   Returns a map of dependency-type -> set of entity IDs."
-  [entity-type :- keyword?
-   entity]
+  [entity-type :- ::deps.dependency-types/dependency-types
+   entity      :- (ms/InstanceOf (vec deps.dependency-types/models))]
   (calculate-deps* entity-type entity))
 
 ;;; ------------------------------------------------ Helpers ------------------------------------------------
@@ -50,7 +53,7 @@
 
 (mu/defn- upstream-deps:dimension-mappings :- ::deps.schema/upstream-deps
   "Table dependencies of `dimension-mappings`, gathered from their `:table-id`s."
-  [dimension-mappings]
+  [dimension-mappings :- [:maybe [:sequential ::lib-metric.schema/dimension-mapping]]]
   {:table (into #{} (keep :table-id) dimension-mappings)})
 
 (mu/defn- upstream-deps:python-transform :- ::deps.schema/upstream-deps

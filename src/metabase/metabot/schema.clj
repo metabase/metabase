@@ -52,14 +52,46 @@
    [:description {:optional true} [:maybe :string]]
    [:timestamp :string]])
 
+(mr/def ::column-info
+  "A chart column's name and inferred type, as sent for chart analysis. Mirrors
+  `metabase.metabot.context/ColumnInfoSchema`."
+  [:map {:closed true}
+   [:name :string]
+   [:type {:optional true} [:maybe (into [:enum] #{"number" "string" "date" "datetime" "time" "boolean" "null"})]]])
+
+(mr/def ::row-value
+  "One cell value in a chart series. The `object` arm is never read by this code -- it's forwarded to the
+  interestingness stats/repr code as-is -- so it's opaque rather than typed. Mirrors
+  `metabase.metabot.context/RowValueSchema`."
+  [:maybe [:or :string number? :boolean ms/OpaqueJSONObject]])
+
+(mr/def ::chart-data
+  "One pre-materialized table of raw chart data (columns + rows). Mirrors
+  `metabase.metabot.context/ChartDataSchema`."
+  [:map {:closed true}
+   [:columns [:sequential ::column-info]]
+   [:rows [:sequential [:sequential [:or :string number?]]]]])
+
+(mr/def ::series-config
+  "One series of a chart, pre-materialized by the frontend for `analyze_chart`. Mirrors
+  `metabase.metabot.context/SeriesConfigSchema`."
+  [:map {:closed true}
+   [:x ::column-info]
+   [:y {:optional true} [:maybe ::column-info]]
+   [:x_values {:optional true} [:maybe [:sequential ::row-value]]]
+   [:y_values {:optional true} [:maybe [:sequential ::row-value]]]
+   [:display_name :string]
+   [:chart_type [:or :string :keyword]]
+   [:stacked {:optional true} [:maybe :boolean]]])
+
 (mr/def ::chart-config
   "A `chart_configs` entry: a chart's title, pre-materialized series data, and the query that produced it.
   Mirrors `metabase.metabot.context/ChartConfigSchema`."
   [:map {:closed true}
    [:title {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]
-   [:data {:optional true} [:maybe [:sequential :any]]]
-   [:series {:optional true} [:maybe (ms/string-keyed-map :any)]]
+   [:data {:optional true} [:maybe [:sequential ::chart-data]]]
+   [:series {:optional true} [:maybe (ms/string-keyed-map ::series-config)]]
    [:timeline_events {:optional true} [:maybe [:sequential ::chart-timeline-event]]]
    [:query {:optional true} [:maybe ::query]]
    [:display_type {:optional true} [:maybe [:or :string :keyword]]]])
@@ -82,6 +114,15 @@
    [:database {:optional true} [:maybe :int]]
    [:schema {:optional true} [:maybe :string]]])
 
+(mr/def ::transform.source-table
+  "One entry of a Python transform's `source-tables`. Mirrors
+  `metabase.metabot.context/TransformSourceTableSchema`."
+  [:map {:closed true}
+   [:alias :string]
+   [:table_id {:optional true} [:maybe :int]]
+   [:schema {:optional true} [:maybe :string]]
+   [:database_id {:optional true} [:maybe :int]]])
+
 (mr/def ::transform.source
   [:multi {:dispatch (comp keyword :type)}
    [:query [:map {:closed true}
@@ -91,7 +132,7 @@
              [:type [:or [:= :python] [:= "python"]]]
              [:body {:optional true} [:maybe :string]]
              [:source-database {:optional true} [:maybe :int]]
-             [:source-tables {:optional true} :any]]]])
+             [:source-tables {:optional true} [:maybe [:sequential ::transform.source-table]]]]]])
 
 (mr/def ::transform
   [:map {:closed true}

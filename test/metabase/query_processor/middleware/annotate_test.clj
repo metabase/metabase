@@ -18,7 +18,8 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -30,12 +31,13 @@
        {:cols [{:name "_id"} {:name "longitude"} {:name "category_id"} {:name "price"} {:name "name"} {:name "latitude"}]})))
 
 (mu/defn- add-column-info
-  ([query metadata]
+  ([query    :- ::lib.schema/query
+    metadata :- ::annotate/metadata]
    (add-column-info query metadata []))
 
   ([query    :- ::lib.schema/query
     metadata :- ::annotate/metadata
-    rows     :- [:maybe [:sequential [:sequential :any]]]]
+    rows     :- [:maybe [:sequential [:sequential ms/FieldValue]]]]
    (letfn [(rff [metadata]
              (fn rf
                ([]

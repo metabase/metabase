@@ -21,7 +21,8 @@
   Add the required filters if the table requires it,
   see [[metabase.warehouse-schema.metadata-queries/add-required-filters-if-needed]] for more details. Also takes an
   optional `rff`, use the default rff if not provided."
-  ([table-id query-xform]
+  ([table-id    :- ::lib.schema.id/table
+    query-xform :- [:=> [:cat ::lib.schema/query] ::lib.schema/query]]
    (table-query table-id query-xform nil))
 
   ([table-id    :- ::lib.schema.id/table
@@ -39,7 +40,9 @@
 
 (mu/defn field-distinct-count
   "Return the distinct count of `field`."
-  ([field]
+  ([field :- [:or
+              ::lib.schema.metadata/column
+              (ms/InstanceOf :model/Field)]]
    (field-distinct-count field nil))
 
   ([field :- [:or

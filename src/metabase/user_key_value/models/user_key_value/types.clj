@@ -3,6 +3,7 @@
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [malli.core :as mc]
    [metabase.config.core :as config]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
@@ -59,7 +60,7 @@
 (mu/defn- defnamespace
   "Declare a new namespace with a schema for the value"
   [namespace :- ::namespace
-   schema]
+   schema    :- [:and any? [:fn {:description "a malli schema"} mc/schema]]]
   (derive! namespace ::registered-namespace)
   (mr/register! namespace schema))
 

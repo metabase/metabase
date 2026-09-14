@@ -261,14 +261,16 @@
 
 (mu/defn set-has-application-permission-of-type? :- :boolean
   "Does `permissions-set` grant *full* access to a application permission of type `perm-type`?"
-  [permissions-set perm-type]
+  [permissions-set :- [:maybe [:set :string]]
+   perm-type       :- [:enum :setting :monitoring :subscription]]
   (set-has-full-permissions? permissions-set (permissions.path/application-perms-path perm-type)))
 
 (mu/defn perms-objects-set-for-parent-collection :- [:set perms.u/PathSchema]
   "Implementation of `perms-objects-set` for models with a `collection_id`, such as Card, Dashboard, or Pulse.
   This simply returns the `perms-objects-set` of the parent Collection (based on `collection_id`) or for the Root
   Collection if `collection_id` is `nil`."
-  ([this read-or-write]
+  ([this          :- [:map {:closed true} [:collection_id [:maybe ms/PositiveInt]]]
+    read-or-write :- [:enum :read :write]]
    (perms-objects-set-for-parent-collection nil this read-or-write))
 
   ([collection-namespace :- [:maybe ms/KeywordOrString]
@@ -396,7 +398,7 @@
 
   NOTE: This function is meant for internal usage in this namespace only; use one of the other functions like
   `revoke-data-perms!` elsewhere instead of calling this directly."
-  [group-or-id :- [:or :map ms/PositiveInt] path :- perms.u/PathSchema]
+  [group-or-id :- permissions.path/MapOrID path :- perms.u/PathSchema]
   (let [group-id (u/the-id group-or-id)
         paths    (conj (perms.u/->v2-path path) path)]
     (when-let [revoked (permissions.db/related-permission-objects group-id path paths)]
@@ -444,8 +446,8 @@
 ;;; TODO -- this is a predicate function that returns truthy or falsey, it should end in a `?` -- Cam
 (mu/defn can-read-audit-helper
   "Audit instances should only be readable if audit app is enabled."
-  [model    :- :keyword
-   instance :- :map]
+  [model    :- [:= :model/Collection]
+   instance :- (ms/InstanceOf :model/Collection)]
   (if (and (not (premium-features/enable-audit-app?))
            (case model
              :model/Collection (audit/is-collection-id-audit? (:id instance))

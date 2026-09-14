@@ -383,7 +383,9 @@
   "Convenience function for inviting a new `User` and sending them a welcome email.
   This function will create the user, which will trigger the built-in system event
   notification to send an invite via email."
-  ([new-user invitor setup?]
+  ([new-user :- users.schema/NewUser
+    invitor  :- Invitor
+    setup?   :- :boolean]
    (create-and-invite-user! new-user invitor setup? nil))
   ([new-user      :- users.schema/NewUser
     invitor       :- Invitor

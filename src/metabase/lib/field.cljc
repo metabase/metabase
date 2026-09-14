@@ -523,16 +523,17 @@
 
   Throws if narrowing the projection would strand a reference in a later stage (a column that stage no longer
   returns)."
-  ([xs]
+  ([xs :- [:maybe [:sequential ::lib.ref/referenceable]]]
    (fn [query stage-number]
      (with-fields query stage-number xs)))
 
-  ([query xs]
+  ([query :- ::lib.schema/query
+    xs :- [:maybe [:sequential ::lib.ref/referenceable]]]
    (with-fields query -1 xs))
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    xs]
+    xs           :- [:maybe [:sequential ::lib.ref/referenceable]]]
    (let [xs        (not-empty (mapv lib.ref/ref xs))
          ;; If any fields are specified, include all expressions not yet included.
          expr-cols (expression-columns query stage-number)
@@ -553,7 +554,7 @@
 (mu/defn fields :- [:maybe [:ref ::lib.schema/fields]]
   "Fetches the `:fields` for a query. Returns `nil` if there are no `:fields`. `:fields` should never be empty; this is
   enforced by the Malli schema."
-  ([query]
+  ([query :- ::lib.schema/query]
    (fields query -1))
 
   ([query        :- ::lib.schema/query
@@ -567,7 +568,7 @@
   Includes a `:selected?` key letting you know this column is already in `:fields` or not; if `:fields` is
   unspecified, all these columns are returned by default, so `:selected?` is true for all columns (this is a little
   strange but it matches the behavior of the QB UI)."
-  ([query]
+  ([query :- ::lib.schema/query]
    (fieldable-columns query -1))
 
   ([query :- ::lib.schema/query
@@ -762,12 +763,13 @@
 (mu/defn find-visible-column-for-ref :- [:maybe ::lib.schema.metadata/column]
   "Return the visible column in `query` at `stage-number` referenced by `field-ref`. If `stage-number` is omitted, the
   last stage is used. This is currently only meant for use with `:field` clauses."
-  ([query field-ref]
+  ([query :- ::lib.schema/query
+    field-ref :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]
    (find-visible-column-for-ref query -1 field-ref))
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    field-ref    :- some?]
+    field-ref    :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]
    (let [;; not 100% sure why, but [[lib.metadata.calculation/visible-columns]] doesn't seem to return aggregations,
          ;; so we have to use [[lib.metadata.calculation/returned-columns]] instead.
          columns ((if (= (lib.dispatch/dispatch-value field-ref) :aggregation)

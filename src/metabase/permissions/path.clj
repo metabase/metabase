@@ -7,8 +7,19 @@
    [metabase.util.malli.schema :as ms]))
 
 (def MapOrID
-  "Schema for a map or an ID (positive integer)."
-  [:or :map ms/PositiveInt])
+  "Schema for a Collection or PermissionsGroup, its ID, or the `RootCollection` placeholder object (which is
+  never a real Toucan instance, so it's enumerated by its known keys instead)."
+  [:or
+   ms/PositiveInt
+   (ms/InstanceOf [:model/Collection :model/PermissionsGroup])
+   [:map {:closed true}
+    [:metabase.collections.models.collection.root/is-root? {:optional true} :boolean]
+    [:namespace         {:optional true} [:maybe [:or :keyword :string]]]
+    [:name              {:optional true} :string]
+    [:is_personal       {:optional true} :boolean]
+    [:id                {:optional true} [:or ms/PositiveInt :string]]
+    [:is_remote_synced  {:optional true} :boolean]
+    [:authority_level   {:optional true} [:maybe [:or :keyword :string]]]]])
 
 (mu/defn collection-readwrite-path :- perms.u/PathSchema
   "Return the permissions path for *readwrite* access for a `collection-or-id`."
@@ -36,7 +47,7 @@
 
 (mu/defn application-perms-path :- perms.u/PathSchema
   "Returns the permissions path for *full* access a application permission."
-  [perm-type]
+  [perm-type :- [:enum :setting :monitoring :subscription]]
   (case perm-type
     :setting
     "/application/setting/"

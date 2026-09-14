@@ -150,7 +150,7 @@
    [:limit        {:optional true} [:maybe number?]]])
 
 (mr/def ::test-query-spec
-  [:map
+  [:map {:closed true}
    [:stages [:sequential ::test-stage-spec]]])
 
 (mr/def ::test-common-spec
@@ -210,6 +210,6 @@
    ::test-template-tag-spec])
 
 (mr/def ::test-native-query-spec
-  [:map
+  [:map {:closed true}
    [:query         string?]
    [:template-tags {:optional true :default []} [:maybe [:ref ::test-template-tags-spec]]]])

@@ -357,10 +357,10 @@
 (mu/defn test-query :- ::lib.schema/query
   "Creates a query from a test query spec."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   query-spec            :- :any]
+   query-spec            :- ::lib.schema.test-spec/test-query-spec]
   (let [{:keys [stages]} (parse-query-spec query-spec)
-        source (->> stages first :source (find-source metadata-providerable))
-        query  (lib.query/query metadata-providerable source)]
+        source           (->> stages first :source (find-source metadata-providerable))
+        query            (lib.query/query metadata-providerable source)]
     (reduce-kv append-stage-clauses query stages)))
 
 (mu/defn- field-id->field-ref :- :mbql.clause/field
@@ -409,13 +409,14 @@
               (mtx/transformer
                mtx/json-transformer
                (mtx/key-transformer {:decode #(-> % u/->kebab-case-en keyword)})
-               mtx/default-value-transformer
-               {:name :normalize})))
+               {:name :normalize}
+               mtx/strip-extra-keys-transformer
+               mtx/default-value-transformer)))
 
 (mu/defn test-native-query :- ::lib.schema/query
   "Creates a native query from a test native query spec."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   native-query-spec     :- :any]
+   native-query-spec     :- ::lib.schema.test-spec/test-native-query-spec]
   (let [{:keys [query template-tags]} (parse-native-query-spec native-query-spec)]
     (-> (lib.native/native-query metadata-providerable query)
         (add-template-tags template-tags))))

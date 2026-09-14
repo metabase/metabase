@@ -74,7 +74,7 @@
     (assoc v :name (name k))))
 
 (mu/defn- format-results [{:keys [results metadata]} :- [:map {:closed true}
-                                                         [:results  [:sequential :map]]
+                                                         [:results  [:sequential [:map-of :keyword ms/FieldValue]]]
                                                          [:metadata audit.i/ResultsMetadata]]]
   (check-results-and-metadata-keys-match results metadata)
   {:cols (metadata->cols metadata)
@@ -106,7 +106,7 @@
                  [:map {:closed true}
                   [:fn     :string]
                   [:type   [:enum :internal "internal"]]
-                  [:args   {:optional true} [:maybe [:sequential :any]]]
+                  [:args   {:optional true} [:maybe [:sequential [:maybe [:or :string number? :boolean]]]]]
                   [:limit  {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
                   [:offset {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]]]))))
 

@@ -22,11 +22,22 @@
     (or (m/find-first #(match-display-info query table-spec %) tables)
         (throw (ex-info "Failed to find table" {:table-spec table-spec, :found (map #(lib/display-info query %) tables)})))))
 
+(def ^:private DisplayInfoSpec
+  "A `group-spec` or `column-spec` for [[match-display-info]]: either the expected `:display-name`, or a partial
+  [[metabase.lib.metadata.calculation/display-info]] to match against."
+  [:or
+   :string
+   [:map {:closed true}
+    [:display-name      {:optional true} :string]
+    [:long-display-name {:optional true} :string]
+    [:name              {:optional true} :string]
+    [:is-main-group     {:optional true} :boolean]]])
+
 (mu/defn find-col-with-spec :- ::lib.schema.metadata/column
   [query   :- ::lib.schema/query
    columns :- [:sequential {:min 1} ::lib.schema.metadata/column]
-   group-spec
-   column-spec]
+   group-spec  :- DisplayInfoSpec
+   column-spec :- DisplayInfoSpec]
   (let [groups      (or (not-empty (lib/group-columns columns))
                         (throw (ex-info "lib/group-columns unexpectedly returned no groups"
                                         {:columns columns})))

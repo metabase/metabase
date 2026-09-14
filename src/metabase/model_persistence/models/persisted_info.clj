@@ -68,7 +68,8 @@
 
 (mu/defn metadata->definition :- ::lib.schema.metadata/persisted-info.definition
   "Returns a ddl definition datastructure. A :table-name and :field-deifinitions vector of field-name and base-type."
-  [metadata :- Metadata table-name]
+  [metadata   :- Metadata
+   table-name :- ::lib.schema.common/non-blank-string]
   {:table-name        table-name
    :field-definitions (mapv field-metadata->field-defintion metadata)})
 

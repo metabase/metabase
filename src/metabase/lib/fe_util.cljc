@@ -227,7 +227,8 @@
 
 (mu/defn expression-parts :- [:or ExpressionArg ExpressionParts]
   "Return the parts of the filter clause `arg` in query `query` at stage `stage-number`."
-  ([query value]
+  ([query :- ::lib.schema/query
+    value :- [:or ::lib.schema.expression/expression ExpressionArg ExpressionParts]]
    (expression-parts query -1 value))
 
   ([query :- ::lib.schema/query
@@ -665,7 +666,9 @@
 (mu/defn exclude-date-filter-parts :- [:maybe ExcludeDateFilterParts]
   "Destructures an exclude date filter clause created by [[exclude-date-filter-clause]]. Returns `nil` if the clause
   does not match the expected shape."
-  [query stage-number filter-clause]
+  [query         :- ::lib.schema/query
+   stage-number  :- :int
+   filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col  #(column-metadata-from-ref query stage-number %)
         date-col? #(ref-clause-with-type? % [:type/Date :type/DateTime])
         op->unit  {:get-hour :hour-of-day
@@ -797,7 +800,9 @@
    Can be expanded as needed but only currently defined for a narrow set of date filters.
 
    Falls back to the full filter display-name"
-  [query stage-number filter-clause]
+  [query         :- ::lib.schema/query
+   stage-number  :- :int
+   filter-clause :- ::lib.schema.expression/expression]
   (let [->temporal-name #(u.time/format-unit % nil)
         temporal? #(lib.util/original-isa? % :type/Temporal)
         unit= (fn [maybe-clause unit-or-units]

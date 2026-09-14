@@ -5,6 +5,7 @@
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.util :as lib.util]
@@ -19,7 +20,7 @@
    [:cat
     keyword?
     ::lib.schema.common/options
-    [:+ any?]]])
+    [:+ ::lib.schema.expression/expression]]])
 
 (mu/defn- combine-compound-filters-of-type :- [:sequential [:maybe ::mbql-clause]]
   [tag     :- [:enum :and :or]
@@ -45,7 +46,7 @@
 (mu/defn- simplify-and-or-filter :- [:maybe ::lib.schema.mbql-clause/clause]
   [tag  :- [:enum :and :or]
    opts :- ::lib.schema.common/options
-   args]
+   args :- [:sequential [:maybe ::mbql-clause]]]
   (let [args (m/distinct-by lib.schema.util/mbql-clause-distinct-key (filter some? args))]
     (case (count args)
       ;; an empty filter, toss it
@@ -68,7 +69,7 @@
   "Simplify compound `:and`, `:or`, and `:not` compound filters, combining or eliminating them where possible. This
   also fixes theoretically disallowed compound filters like `:and` with only a single subclause, and eliminates `nils`
   and duplicate subclauses from the clauses."
-  [x]
+  [x :- [:or ::lib.schema.expression/boolean ::mbql-clause]]
   (match/replace x
     ;; double negation, eliminate both
     [:not opts [:not arg-opts arg-arg]]

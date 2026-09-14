@@ -17,6 +17,8 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.actions :as lib.schema.actions]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    ;; legacy usage -- don't do things like this going forward
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
@@ -174,21 +176,27 @@
     (doseq [[event-type payloads] (u/group-by first second effects)]
       (handle-effects!* event-type sans-effects payloads))))
 
+(def ^:private RowDiff
+  [:map {:closed true}
+   [:table-id ::lib.schema.id/table]
+   [:db-id    ::lib.schema.id/database]
+   [:before   [:maybe ::lib.schema.actions/row]]
+   [:after    [:maybe ::lib.schema.actions/row]]])
+
 (def ^:private ActionContext
   [:map {:closed true}
    [:user-id          {:optional true} [:maybe ms/PositiveInt]]
    [:scope            {:optional true} [:maybe ::actions.types/scope.hydrated]]
    [:driver           {:optional true} [:maybe :keyword]]
    [:invocation-id    {:optional true} [:maybe :string]]
-   [:invocation-stack {:optional true} [:maybe [:sequential :any]]]
-   [:effects          {:optional true} [:maybe [:sequential :any]]]])
+   [:invocation-stack {:optional true} [:maybe [:sequential [:tuple qualified-keyword? :string]]]]
+   [:effects          {:optional true} [:maybe [:sequential [:tuple qualified-keyword? RowDiff]]]]])
 
 (mu/defn- perform-action-internal!
   [action-kw :- qualified-keyword?
    ctx       :- ActionContext
    ;; Since the inner map shape will depend on action-kw, we will need to dynamically validate it.
-   inputs    :- [:sequential :map]
-   & {:as _opts}]
+   inputs    :- [:sequential ::actions.args/any-arg-map]]
   (driver.conn/with-write-connection
     (lib-be/with-metadata-provider-cache
       (let [invocation-id  (u/generate-nano-id)
@@ -263,18 +271,28 @@
                              (lib-be/normalize-query arg-map))]]
       (qp.perms/check-query-action-permissions* query))))
 
+(def ^:private PerformActionOpts
+  [:map {:closed true}
+   [:policy           {:optional true} [:maybe [:enum :model-action :ad-hoc-invocation :data-editing]]]
+   [:existing-context {:optional true} [:maybe ActionContext]]
+   [:user-id          {:optional true} [:maybe ms/PositiveInt]]
+   [:action-id        {:optional true} [:maybe ms/PositiveInt]]
+   [:dashboard-id     {:optional true} [:maybe ms/PositiveInt]]
+   [:context          {:optional true} [:maybe [:enum :action-execute :public-action-execute]]]])
+
 ;; TODO rename this to just perform-action! and rename the legacy entry point to clearly deprecate it.
 (mu/defn perform-action-v2!
   "Perform an *implicit* `action`. This is the main entry point that handles validation, permissions, and more.
   Implement [[perform-action!*]] to add support for a new driver/action combo.
   The shape of `arg-map` depends on the `action` being performed. "
-  [action
-   scope
-   arg-map-or-maps
+  [action          :- [:or :keyword ms/NonBlankString]
+   scope           :- ::actions.types/scope.raw
+   arg-map-or-maps :- [:or ::actions.args/any-arg-map [:sequential ::actions.args/any-arg-map]]
    ;; `action-id`, `dashboard-id` and `audit-context` are attribution for the audit row; the scope maps are closed
    ;; schemas, so they ride along as kwargs instead.
    & {:keys [policy existing-context user-id action-id dashboard-id]
-      audit-context :context}]
+      audit-context :context}
+   :- [:maybe PerformActionOpts]]
   (when (and existing-context user-id)
     (assert (= user-id (:user-id existing-context)) "Existing context has a consistent user-id"))
   (log/with-context {:action action}
@@ -359,7 +377,10 @@
 
 (mu/defn perform-action!
   "This is the Old School version of [[perform-action!], before we returned effects and added generic bulk application."
-  [action arg-map & {:keys [scope] :as opts}]
+  [action  :- [:or :keyword ms/NonBlankString]
+   arg-map :- ::actions.args/any-arg-map
+   & {:keys [scope] :as opts}
+   :- [:maybe [:merge PerformActionOpts [:map [:scope {:optional true} [:maybe ::actions.types/scope.raw]]]]]]
   (try (let [scope             (or scope {:unknown :model-action})
              {:keys [outputs]} (perform-action-v2! action scope [arg-map] (dissoc opts :scope))]
          (assert (= 1 (count outputs)) "The legacy action APIs do not support actions with multiple outputs")

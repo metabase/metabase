@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [metabase.bookmarks.db :as bookmarks.db]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
@@ -43,10 +44,36 @@
    [:description        {:optional true} [:maybe :string]]
    [:display            {:optional true} [:maybe :string]]])
 
+(def ^:private BookmarkRow
+  "Shape of a single row returned by [[bookmarks.db/bookmark-rows-for-user]]: a bookmark left joined against the
+  card, collection, dashboard, document, and exploration tables."
+  [:map {:closed true}
+   [:created_at                (ms/InstanceOfClass java.time.temporal.Temporal)]
+   [:type                      [:enum "card" "collection" "dashboard" "document" "exploration"]]
+   [:item_id                   ms/PositiveInt]
+   [:report_card.name          [:maybe :string]]
+   [:report_card.card_type     [:maybe :string]]
+   [:report_card.display       [:maybe :string]]
+   [:report_card.description   [:maybe :string]]
+   [:report_card.archived      [:maybe :boolean]]
+   [:report_dashboard.name        [:maybe :string]]
+   [:report_dashboard.description [:maybe :string]]
+   [:report_dashboard.archived    [:maybe :boolean]]
+   [:collection.name              [:maybe :string]]
+   [:collection.authority_level   [:maybe :string]]
+   [:collection.is_remote_synced  [:maybe :boolean]]
+   [:collection.description       [:maybe :string]]
+   [:collection.archived          [:maybe :boolean]]
+   [:document.name     [:maybe :string]]
+   [:document.archived [:maybe :boolean]]
+   [:exploration.name        [:maybe :string]]
+   [:exploration.description [:maybe :string]]
+   [:exploration.archived    [:maybe :boolean]]])
+
 (mu/defn- normalize-bookmark-result :- BookmarkResult
   "Normalizes bookmark results. Bookmarks are left joined against the card, collection, dashboard, document,
   and exploration tables, but only points to one of them. Normalizes it so it has just the desired fields."
-  [result]
+  [result :- BookmarkRow]
   (let [result            (cond-> (into {} (remove (comp nil? second) result))
                             ;; If not a collection then remove collection properties
                             ;; to avoid shadowing the "real" properties.
@@ -74,7 +101,7 @@
   item_id, name, and description from the underlying bookmarked item.
 
   Bookmarks whose target `user-id` can no longer read are filtered out."
-  [user-id]
+  [user-id :- ::lib.schema.id/user]
   (let [user-scope {:current-user-id user-id
                     :is-superuser?   (perms/is-superuser? user-id)}]
     (->> (bookmarks.db/bookmark-rows-for-user user-id user-scope)

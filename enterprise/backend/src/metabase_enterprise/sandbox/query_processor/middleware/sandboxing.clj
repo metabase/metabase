@@ -50,7 +50,7 @@
                                              #_target         ::lib.schema.parameter/target]]]])
 
 (mu/defn- query->all-table-ids :- [:maybe [:set ::lib.schema.id/table]]
-  [query]
+  [query :- ::lib.schema/query]
   (u/prog1 (lib/all-source-table-ids query)
     (when (seq <>)
       (lib.metadata/bulk-metadata-or-throw query :metadata/table <>))))

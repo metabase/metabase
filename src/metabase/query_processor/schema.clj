@@ -9,6 +9,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.regex :as u.regex]))
 
 (mr/def ::any-query
@@ -22,8 +23,35 @@
    ::lib.schema/query
    ::lib-be.schema/internal-query])
 
-;; TODO -- fill this out a bit.
-(mr/def ::metadata :any)
+(mr/def ::metadata
+  "The map threaded through the post-processing `rff`/`rf` chain: an accumulator of query result metadata that grows
+  as it passes through QP middleware, and is eventually merged into the final result's `:data` key. See
+  [[metabase.query-processor.postprocess/middleware]] and [[metabase.query-processor.execute/middleware]] for the
+  middleware that add to it."
+  [:map {:closed true}
+   [:cols                    {:optional true} ::result-metadata.columns]
+   [:native_form             {:optional true} :metabase.query-processor.compile/compiled]
+   [:dataset                 {:optional true} :boolean]
+   [:model                   {:optional true} :boolean]
+   [:viz-settings            {:optional true} ms/VisualizationSettings]
+   [:format-rows?            {:optional true} :boolean]
+   [:csv-include-bom?        {:optional true} :boolean]
+   [:results_timezone        {:optional true} [:maybe :string]]
+   [:requested_timezone      {:optional true} [:maybe :string]]
+   [:cache-version           {:optional true} :int]
+   [:last-ran                {:optional true} ms/TemporalInstant]
+   [:pivot-export-options    {:optional true} [:map {:closed true}
+                                               [:pivot-rows         {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
+                                               [:pivot-cols         {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
+                                               [:pivot-measures     {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
+                                               [:show-row-totals    {:optional true} :boolean]
+                                               [:show-column-totals {:optional true} :boolean]
+                                               [:column-sort-order  {:optional true} [:maybe [:multi {:dispatch map?}
+                                                                                              [true  [:map-of [:maybe [:int {:min 0}]] [:maybe :keyword]]]
+                                                                                              [false [:fn {:error/message "map"} map?]]]]]]]
+   [:pivot?                  {:optional true} :boolean]
+   [:is_sandboxed            {:optional true} :boolean]
+   [:download_perms          {:optional true} :string]])
 
 (mr/def ::rf
   "Schema for a reducing function."

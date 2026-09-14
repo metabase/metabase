@@ -47,7 +47,8 @@
 
 (mu/defn maybe-resolve-expression :- ::lib.schema.expression/expression
   "Find the expression with `expression-name` in a given stage of a `query`, or nil if it doesn't exist."
-  ([query expression-name]
+  ([query           :- ::lib.schema/query
+    expression-name :- ::lib.schema.common/non-blank-string]
    (maybe-resolve-expression query -1 expression-name))
 
   ([query           :- ::lib.schema/query
@@ -60,7 +61,8 @@
 (mu/defn resolve-expression :- ::lib.schema.expression/expression
   "Find the expression with `expression-name` in a given stage of a `query`, or throw an Exception if it doesn't
   exist."
-  ([query expression-name]
+  ([query           :- ::lib.schema/query
+    expression-name :- ::lib.schema.common/non-blank-string]
    (resolve-expression query -1 expression-name))
 
   ([query           :- ::lib.schema/query
@@ -302,6 +304,13 @@
    ;; default: true
    [:add-to-fields? {:optional true} [:maybe :boolean]]])
 
+(mr/def ::expressionable
+  "Schema for something you can pass to [[expression]] to add to a query as an expression."
+  [:or
+   [:ref ::lib.schema.expression/expression]
+   [:ref ::lib.schema.common/external-op]
+   [:ref ::lib.schema.metadata/column]])
+
 (defn- add-expression-to-stage
   [stage
    expression
@@ -320,16 +329,21 @@
 
   * `:add-to-fields?` (default: `true`) -- whether to add an `:expression` ref to `:fields` if one is present in the
     query."
-  ([query expression-name expressionable]
+  ([query           :- ::lib.schema/query
+    expression-name :- ::lib.schema.common/non-blank-string
+    expressionable  :- ::expressionable]
    (expression query -1 expression-name expressionable))
 
-  ([query stage-number expression-name expressionable]
+  ([query           :- ::lib.schema/query
+    stage-number    :- [:maybe :int]
+    expression-name :- ::lib.schema.common/non-blank-string
+    expressionable  :- ::expressionable]
    (expression query stage-number expression-name expressionable nil))
 
   ([query           :- ::lib.schema/query
     stage-number    :- [:maybe :int]
     expression-name :- ::lib.schema.common/non-blank-string
-    expressionable
+    expressionable  :- ::expressionable
     options         :- [:maybe ::add-expression-options]]
    (let [stage-number   (or stage-number -1)
          expressionable (lib.common/->op-arg expressionable)]
@@ -405,9 +419,10 @@
 
 (mu/defn datetime :- :mbql.clause/datetime
   "Create a standalone clause of type `datetime`."
-  ([value]
+  ([value :- ::lib.common/op-arg]
    (lib.common/defop-create :datetime [value]))
-  ([value mode]
+  ([value :- ::lib.common/op-arg
+    mode  :- (into [:enum] lib.schema.expression.temporal/datetime-modes)]
    (into [:datetime {:lib/uuid (str (random-uuid))
                      :mode mode}]
          (map lib.common/->op-arg) [value])))
@@ -440,7 +455,7 @@
                      [:map
                       [:lib/uuid       {:optional true} ::lib.schema.common/uuid]
                       [:effective-type {:optional true} ::lib.schema.common/base-type]]]]
-    literal]
+    literal :- [:or :string number? :boolean [:fn {:error/message "big integer?"} u.number/bigint?]]]
    (let [base-type      (or (:base-type opts) (lib.schema.expression/type-of-resolved literal))
          effective-type (or (:effective-type opts) base-type)]
      (-> [:value
@@ -470,7 +485,7 @@
 
 (mu/defn expressions-metadata :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Get metadata about the expressions in a given stage of a `query`."
-  ([query]
+  ([query :- ::lib.schema/query]
    (expressions-metadata query -1))
 
   ([query        :- ::lib.schema/query
@@ -480,7 +495,7 @@
 
 (mu/defn expressions :- [:maybe ::lib.schema.expression/expressions]
   "Get the expressions map from a given stage of a `query`."
-  ([query]
+  ([query :- ::lib.schema/query]
    (expressions query -1))
 
   ([query        :- ::lib.schema/query
@@ -541,7 +556,8 @@
     (-> (lib/query ...)
         (lib/expression \"My Expression\" ...)
         (as-> <> (lib/aggregate <> (lib/avg (lib/expression-ref <> \"My Expression\")))))"
-  ([query expression-name]
+  ([query           :- ::lib.schema/query
+    expression-name :- ::lib.schema.common/non-blank-string]
    (expression-ref query -1 expression-name))
 
   ([query           :- ::lib.schema/query
@@ -725,7 +741,10 @@
   [query               :- ::lib.schema/query
    stage-number        :- :int
    expression-mode     :- [:enum :expression :aggregation :filter]
-   expr                :- :any
+   expr                :- [:or
+                           ::lib.schema.expression/expression
+                           ::lib.schema.aggregation/aggregation-with-no-unaggregated-refs
+                           ::lib.schema.expression/boolean]
    expression-position :- [:maybe :int]]
   (binding [lib.schema.expression/*suppress-expression-type-check?* false]
     (let [explainer (clojure.core/case expression-mode

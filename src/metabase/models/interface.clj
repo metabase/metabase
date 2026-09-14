@@ -255,23 +255,23 @@
 
 (mu/defn assert-enum
   "Assert that a value is one of the values in `enum`."
-  [enum :- [:set :any]
-   value]
+  [enum  :- [:set :keyword]
+   value :- :keyword]
   (when-not (contains? enum value)
     (throw (ex-info (format "Invalid value %s. Must be one of %s" value (str/join ", " enum)) {:status-code 400
                                                                                                :value       value}))))
 
 (mu/defn assert-optional-enum
   "Assert that a value is one of the values in `enum` or `nil`."
-  [enum :- [:set :any]
-   value :- :any]
+  [enum :- [:set :keyword]
+   value :- [:maybe :keyword]]
   (when (some? value)
     (assert-enum enum value)))
 
 (mu/defn assert-namespaced
   "Assert that a value is a namespaced keyword under `qualified-ns`."
   [qualified-ns :- string?
-   value]
+   value        :- :keyword]
   (when-not (= qualified-ns (-> value keyword namespace))
     (throw (ex-info (format "Must be a namespaced keyword under :%s, got: %s" qualified-ns value) {:status-code 400
                                                                                                    :value       value}))))
@@ -777,7 +777,7 @@
 
   ([fn-symb       :- qualified-symbol?
     read-or-write :- [:enum :read :write]
-    object        :- :map]
+    object        :- [:maybe [:fn {:error/message "a Toucan instance"} #(instance? Instance %)]]]
    (and object
         (check-perms-with-fn fn-symb (perms-objects-set object read-or-write))))
 
@@ -882,7 +882,7 @@
            {:id 2 :tables [...tables-from-db-2]}]
 
   - key->hydrated-items-fn: is a function that returns a map with key is `instance-key` and value is the hydrated data of that instance."
-  [instances                      :- [:sequential :any]
+  [instances                      :- [:sequential [:fn {:error/message "a Toucan instance"} #(instance? Instance %)]]
    hydration-key                  :- :keyword
    instance-key->hydrated-data-fn :- fn?
    instance-key                   :- :keyword

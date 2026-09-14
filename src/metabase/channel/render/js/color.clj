@@ -5,7 +5,8 @@
    [metabase.channel.render.js.protocol :as js.protocol]
    [metabase.channel.render.js.renderer :as renderer]
    [metabase.formatter.core :as formatter]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -16,12 +17,15 @@
   [:map {:closed true}
    [:cols [:sequential [:map {:closed true}
                         [:name :string]]]]
-   [:rows [:sequential [:sequential :any]]]])
+   [:rows [:sequential [:sequential ms/FieldValue]]]])
 
 (def ^:private Cell
   "One cell to color: its value (possibly a formatter wrapper), its row index (row-highlight rules read the whole row
   from the `:rows` passed alongside), and its column name."
-  [:tuple :any :int [:maybe :string]])
+  [:tuple [:or ms/FieldValue
+              (ms/InstanceOfClass metabase.formatter.impl.NumericWrapper)
+              (ms/InstanceOfClass metabase.formatter.impl.TextWrapper)]
+   :int [:maybe :string]])
 
 (defn- ->js-number
   "Coerce BigDecimal/BigInteger to primitive double/long so the JSON handed to the JS side carries plain numbers.
@@ -57,7 +61,7 @@
   string (hex or `rgba()`) or nil for cells no rule matches. The coloring rules come from `:table.column_formatting`
   in `viz-settings` (row-highlight rules are disabled when `:table.pivot` is set)."
   [{:keys [cols rows]} :- QueryResults
-   viz-settings
+   viz-settings :- ms/VisualizationSettings
    cells :- [:sequential Cell]]
   (if (or (empty? cells)
           (empty? (or (:table.column_formatting viz-settings)

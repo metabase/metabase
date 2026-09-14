@@ -9,6 +9,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -73,8 +74,8 @@
    parameters      :- [:sequential [:map {:closed true}
                                     [:id      [:string {:min 1}]]
                                     ;; TODO -- not sure whether these are optional or not
-                                    [:value   {:optional true} any?]
-                                    [:default {:optional true} some?]]]]
+                                    [:value   {:optional true} [:or ms/FieldValue [:sequential ms/FieldValue]]]
+                                    [:default {:optional true} [:or ms/FieldValue [:sequential ms/FieldValue]]]]]]
   (when (setting/get :dashboards-save-last-used-parameters)
     (grouper/submit! @user-parameter-value-queue {:user-id      user-id
                                                   :dashboard-id dashboard-id

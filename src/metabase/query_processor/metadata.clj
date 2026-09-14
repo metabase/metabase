@@ -43,7 +43,7 @@
     (assoc-in query [:info :query-hash] (qp.util/query-hash query))))
 
 (mu/defn- result-metadata-rff :- ::qp.schema/rff
-  [metadata]
+  [metadata :- ::qp.schema/metadata]
   (let [cols (:cols metadata)]
     (fn rf
       ([]
@@ -105,7 +105,8 @@
           infer-semantic-type-by-name))))
 
 (mu/defn- result-metadata* :- [:sequential :map]
-  [query current-user-id]
+  [query           :- ::qp.schema/any-query
+   current-user-id :- [:maybe ::lib.schema.id/user]]
   (or (metadata-from-preprocessing query)
       (metadata-from-driver query current-user-id)))
 
@@ -119,7 +120,7 @@
 
   Returns columns as Lib-style `kebab-case` column metadata; for legacy metadata you can use [[legacy-result-metadata]]
   instead."
-  ([query]
+  ([query :- ::qp.schema/any-query]
    (result-metadata query nil))
 
   ([query           :- ::qp.schema/any-query

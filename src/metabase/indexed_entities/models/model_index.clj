@@ -76,13 +76,13 @@
 (mr/def ::model-index
   [:map {:closed true}
    [:model_id  ::lib.schema.id/card]
-   [:value_ref some?]
-   [:pk_ref    some?]])
+   [:value_ref ::mbql.s/FieldOrExpressionRef]
+   [:pk_ref    ::mbql.s/FieldOrExpressionRef]])
 
 (mu/defn ^:private fetch-values
   [model-index :- ::model-index]
   (let [model     (indexed-entities.db/card (:model_id model-index))
-        fix       (mu/fn [field-ref :- some?
+        fix       (mu/fn [field-ref :- ::mbql.s/FieldOrExpressionRef
                           base-type :- ::lib.schema.common/base-type]
                     ;; stored value/pk refs are legacy MBQL; normalize as legacy before use
                     (-> field-ref #_{:clj-kondo/ignore [:deprecated-var]} mbql.normalize/normalize-field-ref (fix-expression-refs base-type)))

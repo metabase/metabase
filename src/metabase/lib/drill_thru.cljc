@@ -29,6 +29,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [select-keys not-empty #?(:clj for)]]))
@@ -108,7 +109,8 @@
   For a value of `NULL` from the database, use the sentinel `:null`. Most of this file only cares whether the value
   was provided or not, but some things (eg. quick filters) treat `NULL` values differently.
   See [[metabase.lib.js/available-drill-thrus]]."
-  ([query context]
+  ([query   :- ::lib.schema/query
+    context :- ::lib.schema.drill-thru/context]
    (available-drill-thrus query -1 context))
 
   ([query                                   :- ::lib.schema/query
@@ -153,14 +155,15 @@
   one of those returned by a call to [[available-drill-thrus]] with the same `query` and `stage-number`.
 
   Returns the updated query."
-  ([query drill]
+  ([query :- ::lib.schema/query
+    drill :- ::lib.schema.drill-thru/drill-thru]
    (drill-thru query -1 nil drill))
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
     card-id      :- [:maybe ::lib.schema.id/card]
     drill        :- ::lib.schema.drill-thru/drill-thru
-    & args]
+    & args :- [:* [:or :keyword ::lib.schema.literal/literal]]]
    (log/debugf "Applying drill thru: %s" (:type drill))
    (let [{:keys [query stage-number]} (lib.query/wrap-native-query-with-mbql query stage-number card-id)]
      (apply lib.drill-thru.common/drill-thru-method query stage-number drill args))))

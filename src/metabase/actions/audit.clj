@@ -8,11 +8,14 @@
   invocation is one row."
   (:require
    [java-time.api :as t]
+   [metabase.actions.args :as actions.args]
    [metabase.actions.db :as actions.db]
+   [metabase.actions.types :as actions.types]
    [metabase.analytics.settings :as analytics.settings]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.permissions.core :as perms]
    [metabase.queries.models.query :as query]
    [metabase.util :as u]
@@ -26,10 +29,22 @@
   "An action descriptor `:template` -- identifies the action, never its content."
   [:map {:closed true}
    [:type       [:= :internal]]
-   [:action     :any]
-   [:database   {:optional true} :any]
-   [:scope      {:optional true} :any]
-   [:action-id  {:optional true} :any]])
+   [:action     [:or :string :keyword]]
+   [:database   {:optional true} [:maybe pos-int?]]
+   [:scope      {:optional true} ::actions.types/scope.normalized]
+   [:action-id  {:optional true} [:maybe pos-int?]]])
+
+(def ^:private Inputs
+  "The input values that were actually supplied to an action invocation, across the various shapes an action's
+  arguments can take."
+  [:sequential [:or
+                [:= {} {}]
+                ::lib.schema.parameter/parameter
+                [:map-of ::lib.schema.parameter/id ::lib.schema.parameter/parameter.value]
+                ::actions.args/model.row.create
+                ::actions.args/model.row.update
+                ::actions.args/model.row.delete
+                ::actions.args/table.common]])
 
 (def ^:private Base
   "What a recording site knows about an invocation before it runs."
@@ -45,7 +60,7 @@
    ;; hashed, and stored in `query` -- the SQL template or an action descriptor, never the input values
    [:template     [:or ::lib.schema/query InternalTemplate]]
    ;; the input values that were actually supplied: PII-gated into `parameters`
-   [:inputs       [:sequential :any]]])
+   [:inputs       Inputs]])
 
 (defn- impersonated?
   "Whether an enforced connection-impersonation policy applies to the current user on `database-id`: the question the

@@ -21,6 +21,7 @@
    [metabase.lib.pivot :as lib.pivot]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.lib.util :as lib.util]
@@ -537,7 +538,7 @@
                              ::qp.add-remaps/new-field-dimension-id]))))
 
 (mu/defn- remapped-indexes :- ::pivot.common/remapped-indexes
-  [breakouts]
+  [breakouts :- [:maybe [:sequential ::lib.schema.expression/expression]]]
   (let [remap-pairs (first
                      (reduce (fn [[m i] breakout]
                                [(reduce-kv (fn [m remap-key id]
@@ -808,7 +809,7 @@
   [[*on-parity-mismatch*]]. Parity checking is on by default in clojure.test tests.
 
   Wrap this call in [[metabase.query-processor.streaming/streaming-response]] yourself."
-  ([query]
+  ([query :- ::qp.schema/any-query]
    (run-pivot-query query nil))
 
   ([query :- ::qp.schema/any-query

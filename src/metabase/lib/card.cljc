@@ -117,7 +117,11 @@
 
 (mu/defn ->card-metadata-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Massage possibly-legacy Card results metadata into Lib ColumnMetadata."
-  ([metadata-providerable cols]
+  ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+    cols                  :- [:maybe [:or
+                                      [:sequential ::lib.schema.metadata/lib-or-legacy-column]
+                                      [:map {:closed true}
+                                       [:columns [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]]]]
    (->card-metadata-columns metadata-providerable nil cols))
 
   ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
@@ -229,7 +233,8 @@
   - `:own-model-query?` — when true, aggregation columns are also merged (the model's own aggregation results should
     preserve user-customized names). When false (default), aggregation columns are skipped because the computed name
     (e.g. 'Sum of Price') is better than the model's custom name when the model is used as a source for an outer query."
-  ([result-cols model-cols]
+  ([result-cols :- [:maybe [:sequential ::lib.schema.metadata/column]]
+    model-cols  :- [:maybe [:sequential ::lib.schema.metadata/column]]]
    (merge-model-metadata result-cols model-cols {}))
   ([result-cols :- [:maybe [:sequential ::lib.schema.metadata/column]]
     model-cols  :- [:maybe [:sequential ::lib.schema.metadata/column]]

@@ -165,7 +165,7 @@
 
 (def TokenStatus
   "Schema for a response from the token status API."
-  [:map
+  [:map {:closed true}
    [:valid                          :boolean]
    [:status                         [:string {:min 1}]]
    [:error-details {:optional true} [:maybe [:string {:min 1}]]]
@@ -176,10 +176,13 @@
    [:valid-thru    {:optional true} [:string {:min 1}]]
    [:max-users     {:optional true} pos-int?]
    [:company       {:optional true} [:string {:min 1}]]
-   [:store-users   {:optional true} [:maybe [:sequential [:map
+   [:store-users   {:optional true} [:maybe [:sequential [:map {:closed true}
                                                           [:email :string]]]]]
-   [:meters        {:optional true} :map]
-   [:quotas        {:optional true} [:sequential [:map]]]])
+   [:meters        {:optional true} ms/OpaqueJSONObject]
+   [:quotas        {:optional true} [:sequential [:map {:closed true}
+                                                   [:hosting-feature {:optional true} :string]
+                                                   [:soft-limit      {:optional true} number?]
+                                                   [:usage           {:optional true} number?]]]]])
 
 (defn- http-fetch
   [base-url token site-uuid]

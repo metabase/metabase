@@ -67,6 +67,7 @@
   (are [schema] (= [:keyword-keyed-map-of] (kinds schema))
     [:map-of :keyword :int]
     [:map-of [:keyword {:description "a key"}] :int]
+    [:map-of [:or :keyword :string] :int]
     [:map {:closed true} [:bag [:map-of :keyword :string]]])
   (testing "a `:some` key is both an open bag of keys and a value of any type"
     (is (= [:keyword-keyed-map-of :any] (kinds [:map-of :some :string])))))

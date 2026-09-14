@@ -164,7 +164,10 @@
 
 (mu/defn breakout->resolved-column :- ::lib.schema.metadata/column
   "Given a breakout sourced column, return the resolved metadata for the column in this stage."
-  ([query stage-number column] (breakout->resolved-column query stage-number column nil))
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    column       :- ::lib.schema.metadata/column]
+   (breakout->resolved-column query stage-number column nil))
   ([query        :- ::lib.schema/query
     stage-number :- :int
     column       :- ::lib.schema.metadata/column

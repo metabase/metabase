@@ -122,17 +122,14 @@
           :from-name (channel.settings/email-from-name)}))
 
 (def ^:private EmailAttachment
-  "A postal attachment: an inline HTML body part, an inline image/logo attachment, an image-bundle attachment
-  (a single content-id -> URL entry), or a CSV/XLS result attachment."
-  [:or
-   [:map {:closed true}
-    [:type         {:optional true} [:maybe [:or :string :keyword]]]
-    [:content      {:optional true} :any]
-    [:content-id   {:optional true} :any]
-    [:content-type {:optional true} [:maybe :string]]
-    [:file-name    {:optional true} [:maybe :string]]
-    [:description  {:optional true} [:maybe :string]]]
-   [:map-of :string :any]])
+  "A postal attachment: an inline HTML body part, an inline image/logo attachment, or a CSV/XLS result attachment."
+  [:map {:closed true}
+   [:type         {:optional true} [:maybe [:or :string :keyword]]]
+   [:content      {:optional true} [:maybe [:or :string (ms/InstanceOfClass java.net.URL) (ms/InstanceOfClass java.io.File)]]]
+   [:content-id   {:optional true} [:maybe :string]]
+   [:content-type {:optional true} [:maybe :string]]
+   [:file-name    {:optional true} [:maybe :string]]
+   [:description  {:optional true} [:maybe :string]]])
 
 (def ^:private EmailMessage
   [:and

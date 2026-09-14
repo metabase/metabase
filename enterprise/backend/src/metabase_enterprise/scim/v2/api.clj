@@ -166,7 +166,7 @@
 
 (mu/defn ^:private mb-user->scim :- SCIMUser
   "Given a Metabase user, returns a SCIM user."
-  [user]
+  [user :- (ms/InstanceOf :model/User)]
   {:schemas  [user-schema-uri]
    :id       (:entity_id user)
    :userName (:email user)
@@ -187,7 +187,7 @@
 
 (mu/defn ^:private scim-user->mb :- users.schema/NewUser
   "Given a SCIM user, returns a Metabase user."
-  [user]
+  [user :- SCIMUser]
   (let [{email :userName name-obj :name locale :locale is-active? :active} user
         {:keys [givenName familyName]} name-obj]
     (merge
@@ -202,7 +202,7 @@
 
 (mu/defn ^:private get-user-by-entity-id
   "Fetches a user by entity ID, or throws a 404"
-  [entity-id]
+  [entity-id :- ms/NonBlankString]
   (or (scim.db/scim-user-by-entity-id entity-id)
       (throw-scim-error 404 "User not found")))
 
@@ -379,13 +379,13 @@
 (mu/defn ^:private get-group-by-entity-id
   "Fetches a group by entity ID, or throws a 404. Cannot fetch the Administrators or All Users groups, as these are
   static, nor data-app groups, as Metabase manages their membership itself, so none can be managed via SCIM."
-  [entity-id]
+  [entity-id :- ms/NonBlankString]
   (or (scim.db/scim-group-by-entity-id entity-id (hidden-group-ids))
       (throw-scim-error 404 "Group not found")))
 
 (mu/defn ^:private mb-group->scim :- SCIMGroup
   "Given a Metabase permissions group, returns a SCIM group."
-  [group]
+  [group :- (ms/InstanceOf :model/PermissionsGroup)]
   {:schemas     [group-schema-uri]
    :id          (:entity_id group)
    :members     (map

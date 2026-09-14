@@ -82,11 +82,13 @@
 
   Options:
     - `:include-sensitive?` - if true, includes fields with visibility_type :sensitive (default false)"
-  ([metadata-providerable table-id]
+  ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+    table-id              :- ::lib.schema.id/table]
    (active-fields metadata-providerable table-id nil))
   ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
     table-id              :- ::lib.schema.id/table
-    opts]
+    opts                  :- [:maybe [:map {:closed true}
+                                       [:include-sensitive? {:optional true} [:maybe :boolean]]]]]
    (fields* metadata-providerable table-id opts)))
 
 (mu/defn metadatas-for-table :- [:maybe [:sequential [:or

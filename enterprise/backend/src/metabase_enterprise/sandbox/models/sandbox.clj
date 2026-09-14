@@ -19,6 +19,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.request.core :as request]
@@ -143,7 +144,8 @@
      (when-let [result-metadata (not-empty (sandbox.db/card-result-metadata card-id))]
        (check-columns-match-table table-id result-metadata))))
 
-  ([table-id :- ::lib.schema.id/table result-metadata-columns]
+  ([table-id :- ::lib.schema.id/table
+    result-metadata-columns :- [:maybe ::queries.schema/card.result-metadata]]
    (let [table-cols (table-field-names->cols table-id)]
      (doseq [col   result-metadata-columns
              :let  [table-col (get table-cols (:name col))]

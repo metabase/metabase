@@ -158,7 +158,7 @@
         (empty-stats-map 0)))))
 
 (def ^:private LogProgressFn
-  [:=> [:cat :string [:schema i/TableInstance]] :any])
+  [:=> [:cat :string [:schema i/TableInstance]] :nil])
 
 (mu/defn- fingerprint-fields-for-db!*
   "Invokes `fingerprint-table!` on every table in `database`"
@@ -168,7 +168,7 @@
 
   ([database        :- i/DatabaseInstance
     log-progress-fn :- LogProgressFn
-    continue?       :- [:=> [:cat ::FingerprintStats] :any]]
+    continue?       :- [:=> [:cat ::FingerprintStats] :boolean]]
    (let [tables (if *refingerprint?*
                   (sync-util/refingerprint-reducible-sync-tables database)
                   (sync-util/reducible-sync-tables database))]

@@ -14,6 +14,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.retry :as retry]
    [toucan2.core :as t2])
   (:import
@@ -484,7 +485,8 @@
 
 (mu/defn send-notification!
   "The function to send a notification. Defaults to `notification.send/send-notification-async!`."
-  [notification & {:keys [] :as options} :- [:maybe Options]]
+  [notification :- (ms/InstanceOf :model/Notification)
+   & {:keys [] :as options} :- [:maybe Options]]
   (let [options (merge *default-options* options)
         sync?   (:notification/sync? options)]
     ;; with-task-run is a no-op if already nested (e.g., from scheduler)

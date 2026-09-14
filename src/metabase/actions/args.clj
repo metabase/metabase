@@ -62,7 +62,12 @@
 ;;;    {:database <id>, :query {:source-table <id>}}
 
 (mr/def ::query
-  [:map [:source-table ::lib.schema.id/table]])
+  [:map {:closed true} [:source-table ::lib.schema.id/table]])
+
+(mr/def ::query.filtered
+  [:map {:closed true}
+   [:source-table ::lib.schema.id/table]
+   [:filter :metabase.legacy-mbql.schema/Filter]])
 
 (mr/def ::crud.row.common
   [:merge
@@ -102,9 +107,7 @@
   [:merge
    ::crud.row.common
    [:map [:update-row ::row]
-    [:query [:merge
-             ::query
-             [:map [:filter [:sequential :any]]]]]]])
+    [:query ::query.filtered]]])
 
 (defmethod action-arg-map-schema :model.row/update
   [_action]
@@ -124,9 +127,7 @@
 (mr/def ::model.row.delete
   [:merge
    ::crud.row.common
-   [:map [:query [:merge
-                  ::query
-                  [:map [:filter [:sequential :any]]]]]]])
+   [:map [:query ::query.filtered]]])
 
 (defmethod action-arg-map-schema :model.row/delete
   [_action]
@@ -176,3 +177,28 @@
   {:database (or database (when table-id (actions.db/table-database-id table-id)))
    :table-id table-id
    :row      (update-keys (or row row-arg) u/qualified-name)})
+
+(mr/def ::implicit
+  [:map {:closed true}
+   [:database   ::lib.schema.id/database]
+   [:type       [:= :query]]
+   [:query      [:or ::query ::query.filtered]]
+   [:create-row {:optional true} ::row]
+   [:update-row {:optional true} ::row]])
+
+(mr/def ::table.insert
+  [:map {:closed true}
+   [:database ::lib.schema.id/database]
+   [:table-id ::lib.schema.id/table]
+   [:values   ::row]])
+
+(mr/def ::any-arg-map
+  "One arg map an action can be invoked with, in any of the shapes [[action-arg-map-schema]] recognizes."
+  [:or
+   ::model.row.create
+   ::model.row.update
+   ::model.row.delete
+   ::table.common
+   ::implicit
+   ::table.insert
+   [:= {} {}]])

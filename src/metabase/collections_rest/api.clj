@@ -255,7 +255,7 @@
 
 (mu/defn- dashboard-question-candidates
   "Implementation for the `dashboard-question-candidates` endpoints."
-  [collection-id]
+  [collection-id :- [:maybe :metabase.lib.schema.id/collection]]
   (api/check-403 api/*is-superuser?*)
   (let [all-cards-in-collection (t2/hydrate (collections-rest.db/top-level-cards-in-collection collection-id) :in_dashboards)]
     (filter
@@ -288,7 +288,8 @@
       (assoc :sole_dashboard_info (-> in_dashboards first (select-keys [:id :name :description])))))
 
 (mu/defn- present-dashboard-question-candidates
-  [cards]
+  [cards :- [:sequential (-> (mr/schema ::queries.schema/card)
+                             (malli.util/assoc :in_dashboards [:sequential CardInDashboard]))]]
   ;; we're paginating in Clojure rather than in the query itself because the criteria here is quite complicated to
   ;; express in SQL: we need to join to `report_dashboardcard` AND `dashboardcard_series`, and find cards that have
   ;; exactly one matching dashboard across both of those joins. I'm sure it's doable, but for now we can just do this

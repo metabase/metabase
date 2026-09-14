@@ -1745,7 +1745,7 @@
     {:decode/normalize #'remove-empty-keys-from-native-inner-query}
     ::NativeQuery.Common
     [:map {:closed true}
-     [:query :some]]]
+     [:query :string]]]
    (lib.schema.common/disallowed-keys
     {:native "A top-level native inner query should have the :query key, not :native"})])
 
@@ -1755,7 +1755,7 @@
     {:decode/normalize #'remove-empty-keys-from-native-inner-query}
     ::NativeQuery.Common
     [:map {:closed true}
-     [:native :some]]]
+     [:native :string]]]
    (lib.schema.common/disallowed-keys
     {:query "A top-level native inner query should have the :native key, not :query"})])
 

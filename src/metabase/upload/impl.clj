@@ -188,7 +188,7 @@
          (t/format time-format (strictly-monotonic-now)))))
 
 (mu/defn- database-type
-  [driver
+  [driver      :- :keyword
    column-type :- (into [:enum] upload-types/column-types)]
   (let [external-type (keyword "metabase.upload" (name column-type))]
     (driver/upload-type->database-type driver external-type)))
@@ -994,7 +994,7 @@
                            [:query_type    [:maybe [:or :string :keyword]]]
                            [:table_id      [:maybe ms/PositiveInt]]
                            ;; is_upload can be provided for an optional optimization
-                           [:is_upload {:optional true} [:maybe :any]]]]]
+                           [:is_upload {:optional true} [:maybe :boolean]]]]]
   (let [table-ids             (->> models
                                    ;; as an optimization when listing collection items (GET /api/collection/items),
                                    ;; we might already know that the table is not an upload if is_upload=false. We

@@ -202,7 +202,11 @@
 (mu/defn- source-query-cards
   "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables)."
   [card-type :- ::queries.schema/card.type
-   & {:keys [collection-scope xform], :or {xform identity}}]
+   & {:keys [collection-scope xform], :or {xform identity}}
+   :- [:maybe [:map {:closed true}
+               [:collection-scope {:optional true}
+                [:maybe [:or [:= :root] [:set ::lib.schema.id/collection] [:sequential ::lib.schema.id/collection]]]]
+               [:xform {:optional true} [:maybe [:fn ifn?]]]]]]
   (when-let [ids-of-dbs-that-support-source-queries (not-empty (ids-of-dbs-that-support-source-queries))]
     (transduce
      (comp (map (partial mi/do-after-select :model/Card))
@@ -223,13 +227,17 @@
    (This takes the Cards from `source-query-cards` and returns them in a format suitable for consumption by the Query
    Builder.)"
   [card-type :- ::queries.schema/card.type
-   & {:keys [include-fields?]}]
+   & {:keys [include-fields?]}
+   :- [:maybe [:map {:closed true} [:include-fields? {:optional true} [:maybe :boolean]]]]]
   (schema.table/cards->virtual-tables (source-query-cards card-type)
                                       :include-fields? include-fields?))
 
 (mu/defn- saved-cards-virtual-db-metadata
   [card-type :- ::queries.schema/card.type
-   & {:keys [include-tables? include-fields?]}]
+   & {:keys [include-tables? include-fields?]}
+   :- [:maybe [:map {:closed true}
+               [:include-tables? {:optional true} [:maybe :boolean]]
+               [:include-fields? {:optional true} [:maybe :boolean]]]]]
   (when (lib-be/enable-nested-queries)
     (cond-> {:name               (trs "Saved Questions")
              :id                 lib.schema.id/saved-questions-virtual-database-id
@@ -440,7 +448,7 @@
                             (= include "tables.fields") apply-sandbox-column-filter))))))
 
 (mu/defn- check-database-exists
-  ([id] (check-database-exists id {}))
+  ([id :- ms/PositiveInt] (check-database-exists id {}))
   ([id :- ms/PositiveInt
     {:keys [include-destination-databases?]}
     :- [:map {:closed true}

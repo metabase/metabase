@@ -20,7 +20,9 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms])
+  (:import
+   (clojure.lang ITransientSet)))
 
 (set! *warn-on-reflection* true)
 
@@ -339,7 +341,7 @@
   indexed by `{:name :schema}`. Queries by name only -- not schema -- since `:schema` can be `nil`
   and `IN (NULL, ...)` wouldn't match; the exact `(name, schema)` match falls out of the index key."
   [database :- i/DatabaseInstance
-   tables]
+   tables   :- [:set TableMetadataOrInstance]]
   (let [names (into [] (comp (map :name) (distinct)) tables)]
     (if (seq names)
       (m/index-by table-name+schema
@@ -352,7 +354,7 @@
   "Returns a map of `{old-schema new-schema}` for the app-DB schemas the driver re-qualifies. Streams
   the distinct schemas straight from the DB (selecting only `:schema`) so we never materialize every
   table just to read their schemas."
-  [driver
+  [driver   :- :keyword
    database :- i/DatabaseInstance]
   (transduce
    (comp (map :schema) (distinct))
@@ -420,7 +422,7 @@
    [:created           :int]                                  ; running count of created/reactivated tables
    [:updated           :int]                                  ; running count of metadata-updated tables
    [:complete?         :boolean]                              ; false once any batch fails -- then we don't retire
-   [:seen              :any]                                  ; transient set of reconciled `:model/Table` ids
+   [:seen              (ms/InstanceOfClass ITransientSet)]     ; transient set of reconciled `:model/Table` ids
    [:metabase-metadata [:vector i/DatabaseMetadataTable]]])   ; captured `_metabase_metadata` table
 
 (mu/defn- sync-table-batch! :- SyncContext

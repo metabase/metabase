@@ -15,6 +15,7 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.field :as schema.field]
    [metabase.warehouse-schema.table :as schema.table]
    [toucan2.core :as t2]))
@@ -30,7 +31,7 @@
   permissions; there was a specific option where you could give a Perms Group permissions to run existing Cards with
   native queries, but not to create new ones. With the advent of what is currently being called 'Space-Age
   Permissions', all Cards' permissions are based on their parent Collection, removing the need for native read perms."
-  [db :- [:map]]
+  [db :- (ms/InstanceOf :model/Database)]
   (if (and (not (:is_audit db))
            (= :query-builder-and-native
               (perms/full-database-permission-for-user

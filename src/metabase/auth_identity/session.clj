@@ -8,10 +8,17 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.string :as string]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(def ^:private User
+  [:map
+   {:closed true, :description ":model/User"}
+   [:id pos-int?]
+   [:last_login {:optional true} [:maybe ms/TemporalInstant]]])
 
 (mu/defn create-session-with-auth-tracking!
   "Create a new Session for a User and update the last_used_at timestamp on the corresponding AuthIdentity.
@@ -19,7 +26,10 @@
   The session row and its `login_history` row are written in one transaction: `login_history.session_id` has a foreign
   key to `core_session`, so a concurrent session delete (e.g. a password change, which invalidates the user's sessions)
   must not be able to remove the freshly-created session between the two inserts and break that reference."
-  ([user device-info provider mfa-auth-identity-id]
+  ([user :- User
+    device-info :- request/DeviceInfo
+    provider :- :keyword
+    mfa-auth-identity-id :- [:maybe ms/PositiveInt]]
    (let [user-id (u/the-id user)
          provider-str (name provider)
          auth-identity (auth-identity.db/auth-identity-expiry user-id provider-str)
@@ -37,5 +47,5 @@
      (assoc session
             :key session-key
             :type (if (some-> (request/current-request) request/embedded?) :full-app-embed :normal))))
-  ([user device-info provider]
+  ([user :- User device-info :- request/DeviceInfo provider :- :keyword]
    (create-session-with-auth-tracking! user device-info provider nil)))

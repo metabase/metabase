@@ -553,8 +553,10 @@
 
   Practically, use `user-or-site` = `:site` when insert or update the name in database,
   and `:user` when we need the name for displaying purposes"
-  [first-name last-name email user-or-site]
-  {:pre [(#{:user :site} user-or-site)]}
+  [first-name    :- [:maybe :string]
+   last-name     :- [:maybe :string]
+   email         :- [:maybe :string]
+   user-or-site  :- [:enum :user :site]]
   (if (= :user user-or-site)
     (cond
       (and first-name last-name) (tru "{0} {1}''s Personal Collection" first-name last-name)
@@ -566,14 +568,16 @@
 (mu/defn user->personal-collection-names :- [:map-of ms/PositiveInt :string]
   "Come up with a nice name for the Personal Collection for the passed `user-or-ids`.
   Returns a map of user-id -> name"
-  [user-or-ids user-or-site]
+  [user-or-ids  :- [:sequential ms/PositiveInt]
+   user-or-site :- [:enum :user :site]]
   (into {} (when-let [ids (seq (filter some? (map u/the-id user-or-ids)))]
              (update-vals (collections.db/user-name-parts-by-id ids)
                           #(format-personal-collection-name (:first_name %) (:last_name %) (:email %) user-or-site)))))
 
 (mu/defn user->personal-collection-name :- ms/NonBlankString
   "Calls `user->personal-collection-names` for a single user-id and returns the name"
-  [user-or-id user-or-site]
+  [user-or-id   :- ms/PositiveInt
+   user-or-site :- [:enum :user :site]]
   (first (vals (user->personal-collection-names [user-or-id] user-or-site))))
 
 (defn personal-collections-with-ui-details
@@ -652,13 +656,13 @@
   "For a `user-or-id`, return their personal Collection, if it already exists.
   Use [[metabase.collections.models.collection/user->personal-collection]] to fetch their personal Collection *and*
   create it if needed."
-  [user-or-id]
+  [user-or-id :- ms/PositiveInt]
   (collections.db/personal-collection-of-user (u/the-id user-or-id)))
 
 (mu/defn user->personal-collection :- [:maybe (ms/InstanceOf :model/Collection)]
   "Return the Personal Collection for `user-or-id`, if it already exists; if not, create it and return it.
   Personal collection should be created on user creation, but creates if missing for backwards compatibility"
-  [user-or-id]
+  [user-or-id :- ms/PositiveInt]
   ;; API key users do not get personal collections
   (when-not (api-key/is-api-key-user? (u/the-id user-or-id))
     (or (user->existing-personal-collection user-or-id)
@@ -696,7 +700,7 @@
   of that Collection. Exists because this needs to be known to calculate the Current User's permissions set, which is
   done for every API call; this function is an attempt to make fetching this information as efficient as reasonably
   possible."
-  [user-or-id]
+  [user-or-id :- ms/PositiveInt]
   (into []
         (when-let [personal-collection-id (user->personal-collection-id (u/the-id user-or-id))]
           (conj
@@ -1176,7 +1180,10 @@
 (mu/defn- effective-children-where-clause
   "Given a collection, return the `WHERE` clause appropriate to return all the collections we want to show as its
   effective children."
-  [collection collection-table-alias visibility-config & additional-honeysql-where-clauses]
+  [collection             :- CollectionWithLocationAndIDOrRoot
+   collection-table-alias :- :keyword
+   visibility-config      :- CollectionVisibilityConfig
+   & additional-honeysql-where-clauses :- [:* ::h2x/honeysql-expr]]
   (into
    [:and
     (effective-child-of-filter-clause collection collection-table-alias visibility-config)
@@ -1214,7 +1221,7 @@
    access, but that are children of Collections they cannot access; in the example above, E and F are such nodes."
   [collection :- CollectionWithLocationAndIDOrRoot
    visibility-config :- CollectionVisibilityConfig
-   & additional-honeysql-where-clauses]
+   & additional-honeysql-where-clauses :- [:* ::h2x/honeysql-expr]]
   ^:allow-subquery {:select [:id :name :description :type]
                     :from   [[:collection :col]]
                     :where  (apply effective-children-where-clause collection :col visibility-config additional-honeysql-where-clauses)})
@@ -1704,7 +1711,7 @@
   "Move a Collection and all its descendant Collections from its current `location` to a `new-location`."
   [collection :- CollectionWithLocationAndIDOrRoot
    new-location :- LocationPath
-   & [into-remote-synced? :- :boolean]]
+   & [into-remote-synced?] :- [:* :boolean]]
   (let [orig-children-location (children-location collection)
         new-children-location  (children-location (assoc collection :location new-location))
         will-be-in-trash? (str/starts-with? new-location (trash-path))

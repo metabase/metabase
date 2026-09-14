@@ -34,16 +34,22 @@
 (def ^:private HoneySQLQuery
   "A partially-built Honey SQL query map for the legacy (index-free) search query. Mirrors
   `metabase.search.in-place.legacy/HoneySQLQuery` (duplicated here to avoid a circular require)."
-  [:map {:closed true}
-   [:select     {:optional true} [:sequential :any]]
-   [:from       {:optional true} [:sequential :any]]
-   [:where      {:optional true} :any]
-   [:with       {:optional true} [:sequential :any]]
-   [:join       {:optional true} [:sequential :any]]
-   [:left-join  {:optional true} [:sequential :any]]
-   [:union-all  {:optional true} [:sequential :any]]
-   [:order-by   {:optional true} [:sequential :any]]
-   [:limit      {:optional true} :any]])
+  [:schema
+   {:registry
+    {::expr  [:or :keyword :string number? :boolean nil?
+              [:sequential [:ref ::expr]]
+              [:ref ::query]]
+     ::query [:map {:closed true}
+              [:select    {:optional true} [:sequential [:ref ::expr]]]
+              [:from      {:optional true} [:sequential [:ref ::expr]]]
+              [:where     {:optional true} [:ref ::expr]]
+              [:with      {:optional true} [:sequential [:ref ::expr]]]
+              [:join      {:optional true} [:sequential [:ref ::expr]]]
+              [:left-join {:optional true} [:sequential [:ref ::expr]]]
+              [:union-all {:optional true} [:sequential [:ref ::expr]]]
+              [:order-by  {:optional true} [:sequential [:ref ::expr]]]
+              [:limit     {:optional true} [:ref ::expr]]]}}
+   [:ref ::query]])
 
 (def ^:private max-document-search-length
   "Cap the number of characters of a document's prose-mirror body that the legacy engine LIKE-scans.

@@ -15,7 +15,13 @@
 
 (mr/def ::database.dbms-version
   "The `:dbms_version` column of a Database, decoded."
-  :map)
+  [:map {:closed true}
+   [:flavor           {:optional true} :string]
+   [:version          {:optional true} :string]
+   [:semantic-version {:optional true} [:or
+                                        [:sequential :int]
+                                        [:map {:closed true} [:major :int] [:minor :int]]]]
+   [:cloud            {:optional true} :boolean]])
 
 (mr/def ::database.write-data-details
   "The `:write_data_details` column of a Database, decoded."

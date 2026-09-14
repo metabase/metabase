@@ -606,7 +606,7 @@
         (:columns stage-metadata)))
 
 (mu/defn- chain-stages
-  ([m]
+  ([m :- [:map {:closed true} [:stages [:sequential ::lib.schema/stage]]]]
    (chain-stages m nil))
 
   ([{:keys [stages]}                                       :- [:map {:closed true} [:stages [:sequential ::lib.schema/stage]]]
@@ -781,12 +781,13 @@
 (mu/defn legacy-ref->mbql5 :- ::lib.schema.ref/ref
   "Convert a legacy MBQL `:field`/`:aggregation`/`:expression` reference to MBQL 5. Normalizes the reference if needed,
   and handles JS -> Clj conversion as needed."
-  ([query legacy-ref]
+  ([query      :- ::lib.schema/query
+    legacy-ref :- ::mbql.s/Reference]
    (legacy-ref->mbql5 query -1 legacy-ref))
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    legacy-ref   :- some?]
+    legacy-ref   :- ::mbql.s/Reference]
    (let [legacy-ref                  (->> #?(:clj legacy-ref :cljs (js->clj legacy-ref :keywordize-keys true))
                                           ;; input is a legacy ref; normalize as legacy MBQL before conversion
                                           #_{:clj-kondo/ignore [:deprecated-var]}

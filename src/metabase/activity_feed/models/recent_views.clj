@@ -508,10 +508,12 @@
 
   Returns a sequence of [[Item]]s. The reason this isn't a `mu/defn`, is that error-avoider validates each Item in the
   sequence, so there's no need to do it twice."
-  ([user-id] (get-recents user-id [:views :selections]))
-  ([user-id context :- [:sequential [:enum :views :selections]]]
+  ([user-id :- [:maybe ms/PositiveInt]]
+   (get-recents user-id [:views :selections]))
+  ([user-id :- [:maybe ms/PositiveInt]
+    context :- [:sequential [:enum :views :selections]]]
    (get-recents user-id context {}))
-  ([user-id
+  ([user-id :- [:maybe ms/PositiveInt]
     context :- [:sequential [:enum :views :selections]]
     options :- [:map {:closed true}
                 [:include-metadata? {:optional true} [:maybe :boolean]]

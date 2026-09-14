@@ -158,7 +158,7 @@
                            (:native base-type)
 
                            (and (map? base-type) (contains? base-type :natives))
-                           (get-in base-type [:natives driver])
+                           (get-in base-type [:natives (u/qualified-name driver)])
 
                            :else
                            ;; Use fake-sync-database-type to get the type the database reports

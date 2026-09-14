@@ -88,7 +88,7 @@
   superuser/feature check, runs the EE tenant-collection validation, and publishes both the
   create and touch events. The single source of truth for collection creation; REST and agent
   callers both go through here."
-  [coll-data]
+  [coll-data :- CreateCollectionArguments]
   (u/prog1 (collections.db/insert-collection!
             (-> (apply-defaults-to-collection coll-data)
                 write-check-authority-level

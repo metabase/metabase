@@ -42,7 +42,7 @@
                       [:resource [:map {:closed true}
                                   [:question {:optional true} ResourceId]
                                   [:dashboard {:optional true} ResourceId]]]
-                      [:params :any]])
+                      [:params api.embed.common/SlugValueMap]])
 
 (defn- conditional-update-in
   "If there's a value at `path`, apply `f`, otherwise return `m`."

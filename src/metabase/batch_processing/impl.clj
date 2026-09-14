@@ -41,7 +41,10 @@
 
 (mu/defn start! :- ::grouper-wrapper
   "Wrapper around [[grouper/start!]]."
-  [f :- ::fn-or-var & options]
+  [f :- ::fn-or-var
+   & options :- [:* [:or [:enum :capacity :interval :pool]
+                     :int
+                     (ms/InstanceOfClass java.util.concurrent.ExecutorService)]]]
   ;; this wrapper is so we can use Vars which Grouper normally doesn't allow.
   (let [f*      (fn [items]
                   (when-let [items (not-empty (remove #{flush-sentinel} items))]
@@ -70,7 +73,9 @@
 (mu/defn submit!
   "A wrapper of [[grouper.core/submit!]] that returns nil instead of a promise.
    We use grouper for fire-and-forget scenarios, so we don't care about the result."
-  [grouper-wrapper :- ::grouper-wrapper object & options]
+  [grouper-wrapper :- ::grouper-wrapper
+   object
+   & options :- [:* [:or [:enum :callback :errback] ifn?]]]
   (let [synchronous? (or (batch-processing.settings/synchronous-batch-updates)
                          ;; if we're in the middle of a transaction, we need to do this synchronously in case we roll
                          ;; back the transaction at the end (as we do in tests)

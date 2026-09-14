@@ -17,6 +17,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
@@ -94,7 +95,7 @@
 (mu/defn param-target->field-id :- [:maybe ::lib.schema.id/field]
   "Parse a Card parameter `target` form, which looks something like `[:dimension [:field-id 100]]`, and return the Field
   ID it references (if any)."
-  [target
+  [target :- ::lib.schema.common/possibly-unnormalized-clause
    ;; TODO (Cam 9/25/25) -- `card` should actually be required but I don't have all day to fix broken tests from
    ;; before I schematized this.
    card   :- [:maybe :metabase.queries.schema/card]]
@@ -228,6 +229,12 @@
    [:param-mapping         ::parameters.schema/parameter-mapping-with-dashcard]
    [:param-target-field-id [:maybe ::lib.schema.id/field]]])
 
+(mr/def ::field-id-context
+  "Accumulator threaded through [[field-id-into-context-rf]]."
+  [:map {:closed true}
+   [:card-id->filterable-columns [:map-of ::lib.schema.id/card [:map-of :int [:sequential ::lib.schema.metadata/column]]]]
+   [:param-id->field-ids        [:map-of ::lib.schema.parameter/id [:set ::lib.schema.id/field]]]])
+
 (mu/defn- card->filterable-columns-query :- [:maybe ::lib.schema/query]
   "Build the lib query whose filterable columns we want for `card` at `stage-number`, or nil when `card` has no query."
   [card         :- :metabase.queries.schema/card
@@ -328,12 +335,13 @@
    (or
     (some-> *field-id-context* deref)
     empty-field-id-context))
-  ([ctx]
+  ([ctx :- ::field-id-context]
    (when (some-> *field-id-context* deref)
      (swap! *field-id-context* update :card-id->filterable-columns
             merge (:card-id->filterable-columns ctx)))
    (:param-id->field-ids ctx))
-  ([ctx {:keys [param-mapping param-target-field-id] :as param-dashcard-info} :- ::param-dashcard-info]
+  ([ctx :- ::field-id-context
+    {:keys [param-mapping param-target-field-id] :as param-dashcard-info} :- ::param-dashcard-info]
    (let [param-id (:parameter_id param-mapping)]
      ;; Get the field id from the field-clause if it contains it. This is the common case
      ;; for mbql queries.
@@ -395,7 +403,7 @@
 
 (mu/defn dashcards->param-id->field-ids* :- [:map-of ::lib.schema.parameter/id [:set ::lib.schema.id/field]]
   "Return map of parameter ids to mapped field ids."
-  [dashcards]
+  [dashcards :- [:sequential ::parameters.schema/parameter-mapping-with-dashcard.dashcard]]
   (let [param-dashcard-infos (into []
                                    (mapcat (fn [dashcard]
                                              (for [mapping (:parameter_mappings dashcard)]
@@ -409,7 +417,7 @@
 (mu/defn- dashcards->param-id->field-ids :- [:map-of ::lib.schema.parameter/id [:set ::lib.schema.id/field]]
   "Return a map of Parameter ID to the set of Field IDs referenced by parameters in the Cards on the given `dashcards`,
   or `nil` if none are referenced. `dashcards` must be hydrated with :card."
-  [dashcards]
+  [dashcards :- [:sequential ::parameters.schema/parameter-mapping-with-dashcard.dashcard]]
   (transduce (comp (map :card)
                    (map card->template-tag-id->field-ids))
              (partial merge-with set/union)
@@ -419,7 +427,7 @@
 (mu/defn dashcards->param-field-ids :- [:set ::lib.schema.id/field]
   "Return a set of Field IDs referenced by parameters in Cards in the given `dashcards`, or `nil` if
   none are referenced. `dashcards` must be hydrated with :card."
-  [dashcards]
+  [dashcards :- [:sequential ::parameters.schema/parameter-mapping-with-dashcard.dashcard]]
   (into #{} cat (vals (dashcards->param-id->field-ids dashcards))))
 
 (mu/defn dashboard-param->field-ids :- [:set ::lib.schema.id/field]

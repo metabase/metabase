@@ -39,7 +39,7 @@
 
 (mu/defn- format-field-name :- :string
   "Format `field-name` appropriately for the current driver (e.g. uppercase it if we're testing against H2)."
-  [field-name]
+  [field-name :- :keyword]
   (name (mt/format-name (name field-name))))
 
 (defn- categories-row-count []

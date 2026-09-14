@@ -6,6 +6,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util.malli :as mu]
@@ -13,7 +14,7 @@
 
 (mr/def ::human-readable-remapping-map
   "Schema for the map of actual value -> human-readable value. Cannot be empty."
-  [:map-of {:min 1} :any [:maybe :string]])
+  [:map-of {:min 1} ::lib.schema.literal/param-value [:maybe :string]])
 
 (mr/def ::legacy-ref
   [:multi {:dispatch (fn [x]
@@ -227,8 +228,8 @@
   `:card` and `:series`, as done by the `:resolved-params` hydration."
   [:map {:closed true}
    [:id                     {:optional true} ::lib.schema.id/dashcard]
-   [:created_at             {:optional true} :any]
-   [:updated_at             {:optional true} :any]
+   [:created_at             {:optional true} ::lib.schema.literal/param-value]
+   [:updated_at             {:optional true} ::lib.schema.literal/param-value]
    [:size_x                 {:optional true} :int]
    [:size_y                 {:optional true} :int]
    [:row                    {:optional true} :int]
@@ -236,7 +237,7 @@
    [:card_id                {:optional true} [:maybe ::lib.schema.id/card]]
    [:dashboard_id           {:optional true} ::lib.schema.id/dashboard]
    [:parameter_mappings     {:optional true} [:sequential ::parameter-mapping]]
-   [:visualization_settings {:optional true} :any]
+   [:visualization_settings {:optional true} ::lib.schema.common/visualization-settings]
    [:entity_id              {:optional true} :string]
    [:action_id              {:optional true} [:maybe ::lib.schema.id/action]]
    [:dashboard_tab_id       {:optional true} [:maybe :int]]

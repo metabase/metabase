@@ -457,7 +457,7 @@
 (mr/def ::options
   [:map
    {:closed true}
-   [:globally-unique-join-aliases? {:default false} :any]])
+   [:globally-unique-join-aliases? {:default false} :boolean]])
 
 (mu/defn- escape-join-aliases :- ::lib.schema/query
   [query                                                                              :- ::lib.schema/query
@@ -533,7 +533,7 @@
 
   If this is a nested column, the path to the column, e.g. for `grandparent.parent.child` this will be `[\"grandparent\"
   \"child\"]."
-  ([query]
+  ([query :- [:or ::lib.schema/query ::mbql.s/Query ::mbql.s/MBQLInnerQuery]]
    (add-alias-info query nil))
 
   ([query   :- [:or ::lib.schema/query ::mbql.s/Query ::mbql.s/MBQLInnerQuery]

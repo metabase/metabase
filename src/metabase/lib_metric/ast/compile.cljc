@@ -12,6 +12,11 @@
 (defn- random-uuid-str []
   (str (random-uuid)))
 
+(def ^:private Options
+  "Options accepted by [[compile-to-mbql]] and [[compile-to-values-query]]."
+  [:map {:closed true}
+   [:limit {:optional true} [:maybe pos-int?]]])
+
 ;;; -------------------- Resolution --------------------
 
 (defn- find-mapping
@@ -272,7 +277,7 @@
    Options:
    - :limit - add limit to query"
   [{:keys [source] :as source-query} :- ::ast.schema/source-query
-   & {:as opts}]
+   & {:as opts} :- Options]
   (if (needs-two-stage? source)
     (compile-two-stage-query source-query opts)
     (compile-single-stage-query source-query opts)))
@@ -336,7 +341,7 @@
    Options:
    - :limit - add limit to query"
   [{:keys [source] :as source-query} :- ::ast.schema/source-query
-   & {:as opts}]
+   & {:as opts} :- Options]
   (if (needs-two-stage? source)
     (compile-two-stage-values-query source-query opts)
     (compile-single-stage-values-query source-query opts)))

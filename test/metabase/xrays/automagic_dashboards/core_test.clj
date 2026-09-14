@@ -324,7 +324,7 @@
           (test-automagic-analysis (t2/select-one :model/Card :id card-id) 2))))))
 
 (mu/defn- result-metadata-for-query :- [:maybe [:sequential :map]]
-  [query :- :map]
+  [query :- :metabase.legacy-mbql.schema/Query]
   ;; x-ray tests consume legacy-shaped result metadata (persisted card result_metadata format)
   #_{:clj-kondo/ignore [:deprecated-var]}
   (qp.metadata/legacy-result-metadata query nil))

@@ -16,6 +16,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -55,21 +56,51 @@
     (lib.dispatch/dispatch-value x))
   :hierarchy lib.hierarchy/hierarchy)
 
+(mr/def ::column-nameable
+  "Something [[column-name]] can calculate a database-friendly name for: an MBQL expression clause or literal, or
+  column, metric, or measure metadata."
+  [:or
+   ::lib.schema.expression/expression
+   ::lib.schema.metadata/column
+   ::lib.schema.metadata/metric
+   ::lib.schema.metadata/measure])
+
+(mr/def ::displayable
+  "Something [[display-name]] can calculate a human-friendly display name for: an MBQL clause or literal, a query, a
+  stage, a join, a join strategy option, a temporal bucketing option, or column, table, card, metric, measure, or
+  segment metadata."
+  [:or
+   ::lib.schema.expression/expression
+   ::lib.schema.metadata/column
+   ::lib.schema.metadata/table
+   ::lib.schema.metadata/card
+   ::lib.schema.metadata/metric
+   ::lib.schema.metadata/measure
+   ::lib.schema.metadata/segment
+   ::lib.schema/query
+   ::lib.schema/stage
+   ::lib.schema.join/join
+   ::lib.schema.join/strategy.option
+   ::lib.schema.temporal-bucketing/option])
+
 (mu/defn ^:export display-name :- :string
   "Calculate a nice human-friendly display name for something. See [[::display-name-style]] for a the difference between
   different `style`s."
-  ([query]
+  ([query :- ::lib.schema/query]
    (display-name query query))
 
-  ([query x]
+  ([query :- ::lib.schema/query
+    x     :- ::displayable]
    (display-name query -1 x))
 
-  ([query stage-number x]
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    x            :- ::displayable]
    (display-name query stage-number x *display-name-style*))
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    x
+    x            :- ::displayable
     style        :- ::display-name-style]
    (or
     ;; if this is an MBQL clause with `:display-name` in the options map, then use that rather than calculating a name.
@@ -83,12 +114,13 @@
 
 (mu/defn column-name :- ::lib.schema.common/non-blank-string
   "Calculate a database-friendly name to use for an expression."
-  ([query x]
+  ([query        :- ::lib.schema/query
+    x            :- ::column-nameable]
    (column-name query -1 x))
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    x]
+    x            :- ::column-nameable]
    (or
     ;; if this is an MBQL clause with `:name` in the options map, then use that rather than calculating a name.
     (:name (lib.options/options x))
@@ -168,7 +200,8 @@
 (mu/defn describe-top-level-key :- [:maybe ::lib.schema.common/non-blank-string]
   "'top-level' here means the top level of an individual stage. Generate a human-friendly string describing a specific
   part of an MBQL stage, or `nil` if that part doesn't exist."
-  ([query top-level-key]
+  ([query         :- ::lib.schema/query
+    top-level-key :- TopLevelKey]
    (describe-top-level-key query -1 top-level-key))
   ([query         :- ::lib.schema/query
     stage-number  :- :int
@@ -184,13 +217,24 @@
     (lib.dispatch/dispatch-value expr))
   :hierarchy lib.hierarchy/hierarchy)
 
+(mr/def ::type-of-arg
+  "Something [[type-of]] can calculate the effective type of: an MBQL expression clause or literal, or column,
+  segment, metric, or measure metadata."
+  [:or
+   ::lib.schema.expression/expression
+   ::lib.schema.metadata/column
+   ::lib.schema.metadata/segment
+   ::lib.schema.metadata/metric
+   ::lib.schema.metadata/measure])
+
 (mu/defn type-of :- ::lib.schema.common/base-type
   "Get the effective type of an MBQL expression."
-  ([query x]
+  ([query        :- ::lib.schema/query
+    x            :- ::type-of-arg]
    (type-of query -1 x))
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    x]
+    x            :- ::type-of-arg]
    ;; this logic happens here so we don't need to code up every single individual method to handle these special
    ;; cases.
    (let [{:keys [temporal-unit], :as options} (lib.options/options x)]
@@ -280,25 +324,26 @@
   "Calculate an appropriate `:metadata/*` object for something. What this looks like depends on what we're calculating
   metadata for. If it's a reference or expression of some sort, this should return a single `:metadata/column`
   map (i.e., something satisfying the `::lib.schema.metadata/column` schema."
-  ([query]
+  ([query :- ::lib.schema/query]
    (metadata query -1 query))
-  ([query x]
+  ([query :- ::lib.schema/query
+    x     :- ::displayable]
    (metadata query -1 x))
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    x]
+    x            :- ::displayable]
    (lib.metadata.cache/with-cached-value query (cache-key ::metadata query stage-number x {})
      (metadata-method query stage-number x))))
 
 (mu/defn describe-query :- ::lib.schema.common/non-blank-string
   "Convenience for calling [[display-name]] on a query to describe the results of its final stage."
-  [query]
+  [query :- ::lib.schema/query]
   (display-name query query))
 
 (mu/defn suggested-name :- [:maybe ::lib.schema.common/non-blank-string]
   "Name you might want to use for a query when saving an previously-unsaved query. This is the same
   as [[describe-query]] except for native queries, where we don't describe anything."
-  [query]
+  [query :- ::lib.schema/query]
   (when-not (= (:lib/type (lib.util/query-stage query -1)) :mbql.stage/native)
     (lib.util/recover
      (fn [] (describe-query query))
@@ -371,12 +416,13 @@
   "Given some sort of Cljs object, return a map with the info you'd need to implement UI for it. This is mostly meant to
   power the Frontend JavaScript UI; in JS, results will be converted to plain JavaScript objects, so avoid returning
   things that should remain opaque."
-  ([query x]
+  ([query :- ::lib.schema/query
+    x     :- ::displayable]
    (display-info query -1 x))
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    x]
+    x            :- ::displayable]
    (letfn [(display-info* [x]
              (lib.util/recover
               (fn [] (display-info-method query stage-number x))
@@ -401,7 +447,7 @@
   implementation and add additional information to it."
   [query        :- ::lib.schema/query
    stage-number :- :int
-   x]
+   x            :- ::displayable]
   (let [x-metadata (metadata query stage-number x)]
     (merge
      ;; TODO -- not 100% convinced the FE should actually have access to `:name`, can't it use `:display-name`
@@ -519,6 +565,17 @@
   [query _stage-number stage-number options]
   (returned-columns-method query stage-number (lib.util/query-stage query stage-number) options))
 
+(mr/def ::returned-columns-arg
+  "Something [[returned-columns]] can calculate returned columns for: an integer stage number of `query`, the query
+  itself, one of its stages, a join, a card, or a table."
+  [:or
+   :int
+   ::lib.schema/query
+   ::lib.schema/stage
+   ::lib.schema.join/join
+   ::lib.schema.metadata/card
+   ::lib.schema.metadata/table])
+
 (mu/defn returned-columns :- [:maybe ::returned-columns]
   "Return a sequence of metadata maps for all the columns expected to be 'returned' at a query, stage of the query, or
   join, and include the `:lib/source` of where they came from. This should only include columns that will be present
@@ -538,18 +595,21 @@
  * `returned-columns` for a stage have source and desired aliases relative to that stage!
 
  * `returned-columns` for a Card has the same source and desired aliases you'd see in that Card's `:result-metadata`!!"
-  ([query]
+  ([query :- ::lib.schema/query]
    (returned-columns query -1 query))
 
-  ([query x]
+  ([query :- ::lib.schema/query
+    x     :- ::returned-columns-arg]
    (returned-columns query -1 x))
 
-  ([query stage-number x]
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    x            :- ::returned-columns-arg]
    (returned-columns query stage-number x nil))
 
   ([query          :- ::lib.schema/query
     stage-number   :- :int
-    x
+    x              :- ::returned-columns-arg
     options        :- [:maybe ::returned-columns.options]]
    (binding [*propagate-binning-and-bucketing* true]
      ;; minor optimization for caching purposes: only keep the options keys that are actually relevant for
@@ -616,10 +676,11 @@
 
   Columns from joins, expressions, and implicitly joinable columns are included automatically by default;
   see `::visible-columns.options` for the options for disabling these columns."
-  ([query]
+  ([query :- [:maybe ::lib.schema/query]]
    (visible-columns query -1))
 
-  ([query stage-number]
+  ([query        :- [:maybe ::lib.schema/query]
+    stage-number :- [:maybe :int]]
    ;; apparently the FE sometimes accidentally calls this with a `nil` stage number -- see #31366 -- in that case just
    ;; return an empty vector. The FE only has access to this arity, so we don't need to do the check below.
    ;; See [[metabase.lib.metadata.calculation-test/visible-columns-test-2]]
@@ -739,14 +800,14 @@
   "If this query has an MBQL first stage with a `:source-table` ID, return the `:metadata/table` for it.
 
   Returns nil if the query is native or has a `:source-card`."
-  [query]
+  [query :- ::lib.schema/query]
   (some->> query lib.util/source-table-id (lib.metadata/table query)))
 
 (mu/defn primary-source-card :- [:maybe ::lib.schema.metadata/card]
   "If this query has an MBQL first stage with a `:source-card` ID, return the `:metadata/card` for it.
 
   Returns nil if the query is native or has a `:source-table`."
-  [query]
+  [query :- ::lib.schema/query]
   (some->> query lib.util/source-card-id (lib.metadata/card query)))
 
 (mu/defn primary-source :- [:maybe [:or ::lib.schema.metadata/card ::lib.schema.metadata/table]]
@@ -754,6 +815,6 @@
   `:metadata/table` or `:metadata/card`.
 
   Returns nil if the query is native."
-  [query]
+  [query :- ::lib.schema/query]
   (or (primary-source-table query)
       (primary-source-card  query)))

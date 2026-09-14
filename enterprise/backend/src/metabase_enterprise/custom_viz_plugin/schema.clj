@@ -6,7 +6,11 @@
 
 (mr/def ::custom-viz-plugin.manifest
   "The `:manifest` column of a CustomVizPlugin, decoded."
-  :map)
+  [:map {:closed true}
+   [:name     {:optional true} [:maybe :string]]
+   [:icon     {:optional true} [:maybe :string]]
+   [:metabase {:optional true} [:maybe [:map {:closed true} [:version {:optional true} [:maybe :string]]]]]
+   [:sdk      {:optional true} [:maybe [:map {:closed true} [:version {:optional true} [:maybe :string]]]]]])
 
 (mr/def ::custom-viz-plugin
   "A CustomVizPlugin as selected from the app DB: every column of `:custom_viz_plugin`."

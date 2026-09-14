@@ -11,6 +11,8 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -23,7 +25,7 @@
   ([]
    (describe-temporal-unit 1 nil))
 
-  ([unit]
+  ([unit :- [:maybe :keyword]]
    (describe-temporal-unit 1 unit))
 
   ([n    :- :int
@@ -56,6 +58,14 @@
 
 (def ^:private TemporalIntervalAmount
   [:or [:enum :current :last :next] :int])
+
+(def ^:private Bucketable
+  "Something that can have a temporal bucket added to or read from it: an MBQL clause, a column, or a temporal
+  bucketing option."
+  [:or
+   ::lib.schema.mbql-clause/clause
+   ::lib.schema.metadata/column
+   ::lib.schema.temporal-bucketing/option])
 
 (defn- interval-n->int [n]
   (if (number? n)
@@ -305,9 +315,10 @@
     [:field 1 {:temporal-unit :day}]
 
   Pass a `nil` `unit` to remove the temporal bucket."
-  [x option-or-unit :- [:maybe [:or
-                                ::lib.schema.temporal-bucketing/option
-                                ::lib.schema.temporal-bucketing/unit]]]
+  [x :- Bucketable
+   option-or-unit :- [:maybe [:or
+                              ::lib.schema.temporal-bucketing/option
+                              ::lib.schema.temporal-bucketing/unit]]]
   (with-temporal-bucket-method x (cond-> option-or-unit
                                    (not (keyword? option-or-unit)) :unit)))
 
@@ -327,12 +338,12 @@
 
 (mu/defn raw-temporal-bucket :- [:maybe ::lib.schema.temporal-bucketing/unit]
   "Get the raw temporal bucketing `unit` associated with something e.g. a `:field` ref or a ColumnMetadata."
-  [x]
+  [x :- Bucketable]
   (temporal-bucket-method x))
 
 (mu/defn temporal-bucket :- [:maybe ::lib.schema.temporal-bucketing/option]
   "Get the current temporal bucketing option associated with something, if any."
-  [x]
+  [x :- Bucketable]
   (when-let [unit (raw-temporal-bucket x)]
     {:lib/type :option/temporal-bucketing
      :unit     unit}))
@@ -435,18 +446,19 @@
 
 (mu/defn available-temporal-buckets :- [:sequential [:ref ::lib.schema.temporal-bucketing/option]]
   "Get a set of available temporal bucketing units for `x`. Returns nil if no units are available."
-  ([query x]
+  ([query :- ::lib.schema/query
+    x     :- Bucketable]
    (available-temporal-buckets query -1 x))
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    x]
+    x            :- Bucketable]
    (available-temporal-buckets-method query stage-number x)))
 
 (mu/defn describe-temporal-pair :- :string
   "Return a string describing the temporal pair.
    Used when comparing temporal values like `[:!= ... [:field {:temporal-unit :day-of-week} ...] \"2022-01-01\"]`"
-  [temporal-column
+  [temporal-column :- Bucketable
    temporal-value :- [:or :int :string]]
   (u.time/format-unit temporal-value (:unit (temporal-bucket temporal-column))))
 

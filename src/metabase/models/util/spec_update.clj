@@ -50,7 +50,7 @@
                                ;; other columns that are not part of compare-cols but are part of the table
                                ;; these columns will be added when create / update
                                [:extra-cols   {:optional true} [:sequential :keyword]]
-                               [:nested-specs {:optional true} [:map-of :keyword [:ref ::spec]]]]}}
+                               [:nested-specs {:optional true} [:sequential [:tuple :keyword [:ref ::spec]]]]]}}
    [:ref ::spec]])
 
 (defn decode-spec

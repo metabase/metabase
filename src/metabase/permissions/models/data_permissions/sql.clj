@@ -92,7 +92,7 @@
   [user-id          :- pos-int?
    perm-type        :- :keyword
    required-level   :- :keyword
-   & [most-or-least :- [:maybe [:enum :most :least]]]]
+   & [most-or-least] :- [:* [:enum :most :least]]]
   [:exists ^:allow-subquery
    {:select [1]
     :from   [[:data_permissions :dp]]
@@ -121,6 +121,19 @@
    ::permissions.schema/data-permission-type
    [:or ::permissions.schema/data-permission-value [:tuple ::permissions.schema/data-permission-value [:enum :most :least]]]])
 
+(def ^:private ColumnOrExp
+  "A HoneySQL column reference (or composite-key vector of columns) to filter on."
+  [:or :keyword [:vector :keyword]])
+
+(def ^:private VisibleTableFilterSelectOptions
+  [:map {:closed true}
+   [:active-only? {:optional true} :boolean]])
+
+(def ^:private VisibleTableFilterWithCteOptions
+  [:map {:closed true}
+   [:active-only? {:optional true} :boolean]
+   [:include-published-via-collection? {:optional true} :boolean]])
+
 (mu/defn visible-table-filter-select
   "Selects a column from tables that are visible to the provided user given a mapping of permission types to the required value or the required
   value and a directive if we should test against the most or least permissive permission the user has.
@@ -130,7 +143,7 @@
   [select-column                                    :- [:enum :id :db_id]
    {:keys [user-id is-superuser? is-data-analyst?]} :- UserInfo
    permission-mapping                               :- PermissionMapping
-   & [{:keys [active-only?] :or {active-only? false}}]]
+   & [{:keys [active-only?] :or {active-only? false}}] :- [:* VisibleTableFilterSelectOptions]]
   ^:allow-subquery
   {:select [(case select-column
               :id :mt.id
@@ -197,11 +210,11 @@
        published tables in collections the user can read as a source of `:perms/create-queries
        :query-builder` grants by adding a third UNION ALL branch to the table_permissions CTE.
        View-data is intentionally not synthesized; it must still come from real data_permissions."
-  [column-or-exp                                    :- :any
+  [column-or-exp                                    :- ColumnOrExp
    {:keys [user-id is-superuser? is-data-analyst?] :as user-info} :- UserInfo
    permission-mapping                               :- PermissionMapping
    & [{:keys [active-only? include-published-via-collection?]
-       :or {active-only? false include-published-via-collection? false}}]]
+       :or {active-only? false include-published-via-collection? false}}] :- [:* VisibleTableFilterWithCteOptions]]
   ;; Superusers see all tables. Data analysts see all tables when checking manage-table-metadata.
   (if (or is-superuser?
           (and is-data-analyst?
@@ -293,7 +306,7 @@
   [user-id :- pos-int?
    perm-type :- :keyword
    required-level :- :keyword
-   & [most-or-least :- [:maybe [:enum :most :least]]]]
+   & [most-or-least] :- [:* [:enum :most :least]]]
   [:exists ^:allow-subquery
    {:select [1]
     :from [[:data_permissions :dp]]

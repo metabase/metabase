@@ -19,7 +19,8 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]))
 
 (def ^:private execution-middleware
   "Middleware that happens after compilation, AROUND query execution itself. Has the form
@@ -77,7 +78,7 @@
                          :string
                          [:cat
                           :string
-                          [:* :any]]]]
+                          [:* ms/FieldValue]]]]
   (let [mp             (lib-be/application-database-metadata-provider db-id)
         [sql & params] (if (string? sql-or-sql+params)
                          (cons sql-or-sql+params nil)

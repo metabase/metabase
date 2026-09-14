@@ -39,7 +39,10 @@
    & {:keys [token-check?
              require-initialized-db?]
       :or   {token-check? true
-             require-initialized-db? true}}]
+             require-initialized-db? true}}
+   :- [:maybe [:map {:closed true}
+               [:token-check?            {:optional true} [:maybe :boolean]]
+               [:require-initialized-db? {:optional true} [:maybe :boolean]]]]]
   (plugins/load-plugins!)
   (mdb/setup-db! :create-sample-content? false)
   (when (and require-initialized-db? (not (setup/has-user-setup)))

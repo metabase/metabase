@@ -29,7 +29,8 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -108,7 +109,7 @@
    [:reasoning {:optional true} :string]
    ;; Validation stays a fully open, property-less `:map` (the repair layer fixes LLM shortcuts); the
    ;; `:json-schema` override only changes what the LLM sees. See [[construct-notebook-query-json-schema]].
-   [:query [:map {:json-schema construct-notebook-query-json-schema}]]
+   [:query (mu/with ms/OpaqueJSONObject {:json-schema construct-notebook-query-json-schema})]
    [:visualization {:optional true} construct-visualization-schema]
    [:title :string]
    [:description :string]])

@@ -6,8 +6,11 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema.common :as schema.common]
+   [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [mapv #?@(:clj [every? for])]])
   #?(:cljs (:require-macros [metabase.lib.common])))
 
@@ -16,7 +19,7 @@
 
 (mu/defn external-op :- [:maybe ::schema.common/external-op]
   "Convert the internal operator `clause` to the external format."
-  [[operator options :as clause]]
+  [[operator options :as clause] :- [:maybe ::lib.schema.mbql-clause/clause]]
   (when clause
     {:lib/type :lib/external-op
      :operator (cond-> operator
@@ -77,6 +80,43 @@
         (map ->op-arg)
         args))
 
+(defn- regex?
+  "Whether `x` is a regex pattern object."
+  [x]
+  #?(:clj  (instance? java.util.regex.Pattern x)
+     :cljs (regexp? x)))
+
+(mr/def ::op-arg
+  "A value `->op-arg` can turn into a clause argument: a literal, a metadata ref, an already-built clause, an
+  external-op map, a regex, or a (possibly nested) sequence of these."
+  [:or
+   :string
+   :boolean
+   :keyword
+   number?
+   nil?
+   [:fn regex?]
+   ::lib.schema.metadata/column
+   ::lib.schema.metadata/metric
+   ::lib.schema.metadata/segment
+   ::lib.schema.metadata/measure
+   ::schema.common/external-op
+   ::lib.schema.mbql-clause/clause
+   [:sequential [:ref ::op-arg]]])
+
+#?(:clj
+   (defn- typed-argvec
+     "Add `:- ::op-arg` to each positional arg symbol in `argvec`, and `:- [:* ::op-arg]` to a trailing `& more`."
+     [argvec]
+     (loop [args argvec, out [], variadic? false]
+       (if (empty? args)
+         out
+         (let [arg (first args)]
+           (cond
+             (= arg '&) (recur (rest args) (conj out '&) true)
+             variadic?  (recur (rest args) (conj out arg :- [:* ::op-arg]) false)
+             :else      (recur (rest args) (conj out arg :- ::op-arg) false)))))))
+
 #?(:clj
    (defmacro defop
      "Defines a clause creating function with given args.
@@ -91,5 +131,5 @@
                 :let [arglist-expr (if (contains? (set argvec) '&)
                                      (cons `list* (remove #{'&} argvec))
                                      argvec)]]
-            `([~@argvec]
+            `([~@(typed-argvec argvec)]
               (defop-create ~(keyword op-name) ~arglist-expr))))))

@@ -34,7 +34,19 @@
 
 (def ^:private open-map-of-key-schemas
   "`:map-of` key schemas that make the map an open bag of arbitrary keys."
-  #{:keyword 'keyword? :any :some 'any? 'some?})
+  #{:keyword 'keyword? :qualified-keyword 'qualified-keyword? :simple-keyword 'simple-keyword?
+    :any :some 'any? 'some?})
+
+(defn- open-map-of-key?
+  "Whether a `:map-of` key schema accepts arbitrary keywords, alone or as an alternative."
+  [key-schema]
+  (let [key-schema (try (mc/deref-all (mc/schema key-schema)) (catch Throwable _ nil))]
+    (boolean
+     (when key-schema
+       (or (contains? open-map-of-key-schemas (mc/form key-schema))
+           (contains? open-map-of-key-schemas (mc/type key-schema))
+           (and (contains? #{:or :and :maybe :schema} (mc/type key-schema))
+                (some open-map-of-key? (mc/children key-schema))))))))
 
 (def ^:private open-map-schemas
   "Predicate schemas that accept a map with any keys."
@@ -91,9 +103,7 @@
             (swap! findings conj (finding schema trail :open-map))
 
             (and (= schema-type :map-of)
-                 (let [key-schema (first (mc/children schema))]
-                   (or (contains? open-map-of-key-schemas (mc/form key-schema))
-                       (contains? open-map-of-key-schemas (mc/type key-schema)))))
+                 (open-map-of-key? (first (mc/children schema))))
             (swap! findings conj (finding schema trail :keyword-keyed-map-of))
 
             (and any? (contains? any-schemas schema-type) (not conjunct?))

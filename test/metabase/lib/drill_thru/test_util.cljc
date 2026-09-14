@@ -11,6 +11,8 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
+   [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -69,7 +71,7 @@
   [:or schema [:-> schema schema]])
 
 (def ^:private Row
-  [:map-of :string :any])
+  [:map-of :string ::lib.schema.literal/literal])
 
 (def ^:private TestCase
   [:map {:closed true}
@@ -177,7 +179,7 @@
    (append-filter-stage query column-name #(lib/> % -1)))
   ([query            :- ::lib.schema/query
     column-name      :- :string
-    column-filter-fn :- [:-> ::lib.schema.metadata/column :any]]
+    column-filter-fn :- [:-> ::lib.schema.metadata/column ::lib.schema.expression/boolean]]
    (let [query'           (lib/append-stage query)
          column-to-filter (column-by-name query' column-name)]
      (assert (some? column-to-filter) (str "Failed to find " column-name " in " query))
@@ -326,15 +328,28 @@
                        :value      value})
         :dimensions dimensions}))))
 
+(def ^:private DrillTypeSummary
+  [:map {:closed true}
+   [:type ::lib.schema.drill-thru/drill-thru.type]])
+
+(def ^:private DrillArgs
+  [:maybe [:sequential [:or :keyword ::lib.schema.literal/literal]]])
+
+(def ^:private QueryKinds
+  [:sequential [:enum :mbql :native]])
+
+(def ^:private AvailableDrillsExpected
+  [:or
+   [:-> [:sequential DrillTypeSummary] :boolean]
+   [:sequential DrillTypeSummary]])
+
 (def ^:private AvailableDrillsTestCase
   [:merge
    TestCase
    [:map
-    [:expected [:or [:-> [:sequential [:map {:closed true}
-                                       [:type ::lib.schema.drill-thru/drill-thru.type]]]
-                     :boolean]
-                [:sequential [:map {:closed true}
-                              [:type ::lib.schema.drill-thru/drill-thru.type]]]]]]])
+    [:expected      AvailableDrillsExpected]
+    [:query-kinds   {:optional true} [:maybe QueryKinds]]
+    [:native-drills {:optional true} ifn?]]])
 
 (mu/defn test-available-drill-thrus
   [{:keys [column-name click-type query-type query-table query-kinds expected native-drills]
@@ -366,8 +381,7 @@
   [:merge
    TestCaseWithDrillType
    [:map
-    [:expected [:map {:closed true}
-                [:type ::lib.schema.drill-thru/drill-thru.type]]]]])
+    [:expected DrillTypeSummary]]])
 
 (defn- drop-uuids [form]
   (walk/postwalk #(cond-> % (map? %) (dissoc :lib/uuid))
@@ -448,8 +462,10 @@
   [:merge
    ReturnsDrillTestCase
    [:map
-    [:expected-query ::lib.schema/query]
-    [:drill-args {:optional true} [:maybe [:sequential :any]]]]])
+    [:expected-query  ::lib.schema/query]
+    [:expected-native {:optional true} [:maybe ::lib.schema/query]]
+    [:query-kinds     {:optional true} [:maybe QueryKinds]]
+    [:drill-args      {:optional true} DrillArgs]]])
 
 (mu/defn test-drill-application
   "Test that a certain drill gets returned, AND when applied to a query returns the expected query."
@@ -473,6 +489,28 @@
                         (clean-expected-query expected-query))
                     query'))))))))
 
+(def ^:private TestCaseFamily
+  [:or TestCaseWithDrillType ReturnsDrillTestCase DrillApplicationTestCase AvailableDrillsTestCase])
+
+(def ^:private PartialTestCase
+  "A partial `TestCaseFamily` map: every key any of the `test-*` functions above reads, all optional, for a
+  `variant-case` that gets merged onto a `base-case`."
+  [:map {:closed true}
+   [:click-type      {:optional true} [:enum :cell :header]]
+   [:query-type      {:optional true} [:enum :aggregated :unaggregated]]
+   [:column-name     {:optional true} :string]
+   [:query-table     {:optional true} [:maybe [:enum "ORDERS" "PRODUCTS"]]]
+   [:custom-query    {:optional true} [:maybe (schema-or-update-fn ::lib.schema/query)]]
+   [:custom-native   {:optional true} [:maybe (schema-or-update-fn ::lib.schema/query)]]
+   [:custom-row      {:optional true} [:maybe (schema-or-update-fn Row)]]
+   [:drill-type      {:optional true} ::lib.schema.drill-thru/drill-thru.type]
+   [:expected        {:optional true} [:or AvailableDrillsExpected DrillTypeSummary]]
+   [:query-kinds     {:optional true} [:maybe QueryKinds]]
+   [:native-drills   {:optional true} ifn?]
+   [:expected-query  {:optional true} ::lib.schema/query]
+   [:expected-native {:optional true} [:maybe ::lib.schema/query]]
+   [:drill-args      {:optional true} DrillArgs]])
+
 (mu/defn test-drill-variants-with-merged-args
   "Run `test-fn` first with `base-case` then with each of the specified `variants`.
 
@@ -495,10 +533,10 @@
 
   If any `variant-case` is a fn, it should be of type map -> map and will be passed the `base-case` and the returned
   map will be merged with `base-case` instead."
-  [test-fn   :- [:-> :map :any]
+  [test-fn   :- [:-> TestCaseFamily [:maybe ::lib.schema.drill-thru/drill-thru]]
    base-desc :- :string
-   base-case :- :map
-   & variants]
+   base-case :- TestCaseFamily
+   & variants :- [:* [:or :string PartialTestCase [:-> PartialTestCase PartialTestCase]]]]
   (assert (even? (count variants)) "variants must come in variant-desc and variant-case pairs")
 
   (when-not (= "SKIP" base-desc)

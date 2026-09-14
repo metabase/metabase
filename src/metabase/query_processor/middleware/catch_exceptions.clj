@@ -15,6 +15,8 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.performance :refer [some get-in]])
   (:import
    (clojure.lang ExceptionInfo)
@@ -57,6 +59,18 @@
   (assoc ((get-method format-exception Throwable) e)
          :state (.getSQLState e)))
 
+(mr/def ::format-exception-result
+  "The map shape produced by one of this namespace's private `format-exception` methods."
+  [:map {:closed true}
+   [:status            [:enum :failed :interrupted]]
+   [:class             {:optional true} (ms/InstanceOfClass Class)]
+   [:error             {:optional true} [:maybe :string]]
+   [:stacktrace        {:optional true} [:maybe [:sequential :string]]]
+   [:error_type        {:optional true} :keyword]
+   [:error_is_curated  {:optional true} :boolean]
+   [:ex-data           {:optional true} ms/OpaqueJSONObject]
+   [:state             {:optional true} [:maybe :string]]])
+
 ;; TODO -- some of this logic duplicates the functionality of `clojure.core/Throwable->map`, we should consider
 ;; whether we can use that more extensively and remove some of this logic
 (defn- exception-chain
@@ -67,7 +81,7 @@
 (mu/defn- best-top-level-error
   "In cases where the top-level Exception doesn't have the best error message, return a better one to use instead. We
   usually want to show SQLExceptions at the top level since they contain more useful information."
-  [maps :- [:sequential {:min 1} :map]]
+  [maps :- [:sequential {:min 1} ::format-exception-result]]
   (some (fn [m]
           (when (isa? (:class m) SQLException)
             ;; Some JDBC drivers (e.g. Databricks) return a stacktrace in the

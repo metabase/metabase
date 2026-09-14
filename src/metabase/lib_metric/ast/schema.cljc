@@ -5,6 +5,9 @@
   (:require
    [metabase.lib-metric.operators :as operators]
    [metabase.lib-metric.schema :as lib-metric.schema]
+   [metabase.lib.schema.join :as lib.schema.join]
+   [metabase.lib.schema.literal :as lib.schema.literal]
+   [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.malli.registry :as mr]))
 
@@ -58,7 +61,7 @@
    [:node/type [:= :ast/dimension-expression]]
    [:expression-op keyword?]
    [:dimension ::dimension-ref-node]
-   [:args {:optional true} [:maybe [:sequential :any]]]])
+   [:args {:optional true} [:maybe [:sequential ::lib.schema.literal/literal]]]])
 
 (mr/def ::dimension-or-expression
   "A dimension reference or an expression wrapping one."
@@ -108,7 +111,7 @@
   "For complex/custom aggregations that don't fit standard types."
   [:map {:closed true}
    [:node/type [:= :aggregation/mbql]]
-   [:clause :any]])
+   [:clause ::lib.schema.mbql-clause/clause]])
 
 (mr/def ::aggregation-node
   "Union of all aggregation node types."
@@ -129,15 +132,15 @@
    [:node/type [:= :filter/comparison]]
    [:operator [:enum := :!= :< :<= :> :>=]]
    [:dimension ::dimension-or-expression]
-   [:values [:sequential :any]]])
+   [:values [:sequential ::lib.schema.literal/literal]]])
 
 (mr/def ::filter-between
   "Between filter for range checks."
   [:map {:closed true}
    [:node/type [:= :filter/between]]
    [:dimension ::dimension-or-expression]
-   [:min :any]
-   [:max :any]])
+   [:min ::lib.schema.literal/literal]
+   [:max ::lib.schema.literal/literal]])
 
 (mr/def ::filter-string
   "String filter operations."
@@ -161,7 +164,7 @@
    [:node/type [:= :filter/in]]
    [:operator [:enum :in :not-in]]
    [:dimension ::dimension-or-expression]
-   [:values [:sequential :any]]])
+   [:values [:sequential ::lib.schema.literal/literal]]])
 
 (mr/def ::filter-inside
   "Geographic bounding-box filter."
@@ -169,10 +172,10 @@
    [:node/type [:= :filter/inside]]
    [:lat-dimension ::dimension-or-expression]
    [:lon-dimension ::dimension-or-expression]
-   [:north :any]
-   [:east :any]
-   [:south :any]
-   [:west :any]])
+   [:north number?]
+   [:east number?]
+   [:south number?]
+   [:west number?]])
 
 (mr/def ::filter-temporal
   "Temporal filter for time-based operations."
@@ -189,7 +192,7 @@
   "Raw MBQL filter clause passthrough for source filters."
   [:map {:closed true}
    [:node/type [:= :filter/mbql]]
-   [:clause :any]])
+   [:clause ::lib.schema.mbql-clause/clause]])
 
 ;; Forward declare for recursive references
 (mr/def ::filter-node
@@ -219,7 +222,7 @@
   "A join from the source metric's query, preserved as raw MBQL 5."
   [:map {:closed true}
    [:node/type [:= :ast/join]]
-   [:mbql-join :any]])
+   [:mbql-join ::lib.schema.join/join]])
 
 ;;; -------------------- Source Nodes --------------------
 

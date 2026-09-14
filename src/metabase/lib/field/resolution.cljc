@@ -392,7 +392,9 @@
   "Find the reified implicit join (i.e., a join added by
   the [[metabase.query-processor.middleware.add-implicit-joins]] middleware) that has `:fk-field-id` if one exists;
   returns tuple of `[join join-stage-number]`."
-  [query stage-number source-field-id]
+  [query :- ::lib.schema/query
+   stage-number :- :int
+   source-field-id :- ::lib.schema.id/field]
   (or (when-some [join (m/find-first (fn [join]
                                        (= (:fk-field-id join) source-field-id))
                                      (:joins (lib.util/query-stage query stage-number)))]
@@ -555,7 +557,9 @@
       :lib/source-column-alias id-or-name})))
 
 (mu/defn- resolve-from-previous-stage-or-source* :- [:maybe ::lib.metadata.calculation/visible-column]
-  [query stage-number id-or-name]
+  [query :- ::lib.schema/query
+   stage-number :- :int
+   id-or-name :- ::id-or-name]
   (b/cond
     :let [stage (lib.util/query-stage query stage-number)
           source-table-id (:source-table stage)]
@@ -592,7 +596,9 @@
 
 (mu/defn- resolve-ref-missing-join-alias :- [:maybe ::lib.metadata.calculation/visible-column]
   "Try finding a match in joins (field ref is missing `:join-alias`)."
-  [query stage-number id-or-name]
+  [query :- ::lib.schema/query
+   stage-number :- :int
+   id-or-name :- ::id-or-name]
   (log/debugf "Assuming %s is from a join, and missing :join-alias" (pr-str id-or-name))
   (or (when (string? id-or-name)
         (let [parts (str/split id-or-name #"__" 2)]

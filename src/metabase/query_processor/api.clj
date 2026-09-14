@@ -61,7 +61,11 @@
   [query :- [:or ::lib.schema/query ::lib-be.schema/internal-query]
    & {:keys [context export-format was-pivot]
       :or   {context       :ad-hoc
-             export-format :api}}]
+             export-format :api}}
+   :- [:map {:closed true}
+       [:context       {:optional true} ::lib.schema.info/context]
+       [:export-format {:optional true} ::qp.schema/export-format]
+       [:was-pivot     {:optional true} [:maybe :boolean]]]]
   (span/with-span!
     {:name "run-query-async"}
     ;; store table id trivially iff we get a query with simple source-table
@@ -114,7 +118,7 @@
   in `export-format`.
 
     (export-format->context :json) ;-> :json-download"
-  [export-format]
+  [export-format :- ::qp.schema/export-format]
   (keyword (str (u/qualified-name export-format) "-download")))
 
 (def ^:private column-ref-regex #"^\[.+\]$")

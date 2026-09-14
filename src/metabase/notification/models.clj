@@ -523,29 +523,29 @@
    ;; the rest of the row. Authorization lives in the model's `before-update` hook (superuser-only).
    :compare-cols [:active :creator_id]
    :extra-cols   [:payload_type :internal_id :payload_id]
-   :nested-specs {:payload       {:model        :model/NotificationCard
-                                  :compare-cols [:send_condition :send_once]
-                                  :extra-cols   [:card_id]}
-                  :subscriptions {:model        :model/NotificationSubscription
-                                  :fk-column    :notification_id
-                                  :compare-cols [:notification_id :type :event_name :cron_schedule :ui_display_type]
-                                  :multi-row?   true}
-                  :handlers      {:model        :model/NotificationHandler
-                                  :fk-column    :notification_id
-                                  :compare-cols [:notification_id :channel_type :channel_id :template_id :active]
-                                  :multi-row?   true
-                                  :nested-specs {:recipients {:model        :model/NotificationRecipient
-                                                              :fk-column    :notification_handler_id
-                                                              :compare-cols [:notification_handler_id :type :user_id :permissions_group_id :details]
-                                                              :multi-row?   true}
-                                                 :template   {:model         :model/ChannelTemplate
-                                                              :ref-in-parent :template_id
-                                                              :compare-cols  [:channel_type :name :details]}}}}})
+   :nested-specs [[:payload       {:model        :model/NotificationCard
+                                   :compare-cols [:send_condition :send_once]
+                                   :extra-cols   [:card_id]}]
+                  [:subscriptions {:model        :model/NotificationSubscription
+                                   :fk-column    :notification_id
+                                   :compare-cols [:notification_id :type :event_name :cron_schedule :ui_display_type]
+                                   :multi-row?   true}]
+                  [:handlers      {:model        :model/NotificationHandler
+                                   :fk-column    :notification_id
+                                   :compare-cols [:notification_id :channel_type :channel_id :template_id :active]
+                                   :multi-row?   true
+                                   :nested-specs [[:recipients {:model        :model/NotificationRecipient
+                                                                :fk-column    :notification_handler_id
+                                                                :compare-cols [:notification_handler_id :type :user_id :permissions_group_id :details]
+                                                                :multi-row?   true}]
+                                                  [:template   {:model         :model/ChannelTemplate
+                                                                :ref-in-parent :template_id
+                                                                :compare-cols  [:channel_type :name :details]}]]}]]})
 
 (defn- update-input-entries
   "Entries from `entries` whose key `spec` uses on update."
   [entries {:keys [compare-cols extra-cols nested-specs multi-row? id-col]}]
-  (let [allowed (into (set (concat compare-cols extra-cols (keys nested-specs)))
+  (let [allowed (into (set (concat compare-cols extra-cols (map first nested-specs)))
                       ;; multi-row rows are matched by their body-supplied id, so keep the id entry
                       (when multi-row? [id-col]))]
     (filterv (comp allowed first) entries)))
@@ -554,7 +554,8 @@
   "::NotificationCard restricted to what the update spec writes - `:id` comes from the URL's notification."
   (into [:map {:closed true}]
         (update-input-entries notification-card-entries
-                              (get-in notification-update-spec [:nested-specs :payload]))))
+                              (second (m/find-first (comp #{:payload} first)
+                                                     (:nested-specs notification-update-spec))))))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                            Helpers                                              ;;
@@ -716,7 +717,8 @@
 
 (mu/defn hydrate-notification :- [:or ::FullyHydratedNotification [:sequential ::FullyHydratedNotification]]
   "Fully hydrate notifictitons."
-  [notification-or-notifications]
+  [notification-or-notifications :- [:or (ms/InstanceOf :model/Notification)
+                                      [:sequential (ms/InstanceOf :model/Notification)]]]
   (t2/hydrate notification-or-notifications :creator :payload :subscriptions [:handlers :channel :template [:recipients :recipients-detail]]))
 
 (mu/defn notifications-for-card :- [:sequential ::FullyHydratedNotification]

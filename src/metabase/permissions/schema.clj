@@ -64,11 +64,11 @@
 
 (mr/def ::collection-permission-graph-revision.before
   "The `:before` column of a CollectionPermissionGraphRevision, decoded."
-  :map)
+  [:or ms/OpaqueJSONObject :string])
 
 (mr/def ::collection-permission-graph-revision.after
   "The `:after` column of a CollectionPermissionGraphRevision, decoded."
-  :map)
+  [:or ms/OpaqueJSONObject :string])
 
 (mr/def ::collection-permission-graph-revision
   "A CollectionPermissionGraphRevision as selected from the app DB: every column of `:collection_permission_graph_revision`."

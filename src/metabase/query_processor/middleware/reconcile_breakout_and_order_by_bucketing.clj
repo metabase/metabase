@@ -77,7 +77,9 @@
       vec))
 
 (mu/defn- reconcile-bucketing-in-stage :- [:maybe ::lib.schema/stage]
-  [query stage-path {breakouts :breakout, order-bys :order-by, :as stage} :- ::lib.schema/stage]
+  [query      :- ::lib.schema/query
+   stage-path :- ::lib.walk/stage-path
+   {breakouts :breakout, order-bys :order-by, :as stage} :- ::lib.schema/stage]
   (when (and (seq breakouts)
              (seq order-bys))
     (when-let [bucketed-breakouts (not-empty (bucketed-breakouts query stage-path stage))]

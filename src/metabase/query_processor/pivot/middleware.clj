@@ -159,7 +159,7 @@
   e.g.
 
     (f [1 2 3]) => [2 nil 3 nil 1]"
-  [subquery]
+  [subquery :- ::lib.schema/query]
   (perf/juxt* (for [mapping (column-mapping subquery)]
                 (if (nat-int? mapping)
                   #(nth % mapping)

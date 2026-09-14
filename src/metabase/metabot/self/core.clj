@@ -17,6 +17,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.o11y :refer [with-span]])
   (:import
    (java.io BufferedReader Closeable InputStream)
@@ -31,12 +32,43 @@
 ;; "required" → {:type "any"} for Claude, system-message placement, tool wire
 ;; format) happens inside each adapter, but the **input contract is identical**.
 
+(def ^:private MalliSchema
+  "A malli schema, in schema-form or as a compiled instance."
+  [:and :any [:fn {:error/message "a malli schema"} mc/schema]])
+
+(def ^:private AnthropicProviderMetadata
+  "Anthropic-specific data carried on a reasoning part: a redacted-thinking block's opaque
+  payload, or a signed-thinking block's signature."
+  [:map {:closed true}
+   [:redactedData {:optional true} [:maybe :string]]
+   [:signature    {:optional true} [:maybe :string]]])
+
+(def ^:private OpenAIProviderMetadata
+  "OpenAI-specific data carried on a reasoning part, needed to replay it across tool-call
+  round-trips despite `store:false`."
+  [:map {:closed true}
+   [:encryptedContent {:optional true} [:maybe :string]]
+   [:itemId           {:optional true} [:maybe :string]]])
+
+(def ^:private GoogleProviderMetadata
+  "Google-specific data carried on a tool-input part: the thought signature Gemini 3.x requires
+  when a functionCall is replayed in the current turn."
+  [:map {:closed true}
+   [:thoughtSignature {:optional true} [:maybe :string]]])
+
+(def ^:private ProviderMetadata
+  "Vendor-specific data carried verbatim on a reasoning/tool-input part, namespaced by provider."
+  [:map {:closed true}
+   [:anthropic {:optional true} [:maybe AnthropicProviderMetadata]]
+   [:openai    {:optional true} [:maybe OpenAIProviderMetadata]]
+   [:google    {:optional true} [:maybe GoogleProviderMetadata]]])
+
 (def ToolEntry
   "A tool definition map with :tool-name, :doc, :schema, :fn, and optionally :decode/:prompt."
   [:map {:closed true}
    [:tool-name :string]
    [:doc {:optional true} [:maybe :string]]
-   [:schema :any]
+   [:schema MalliSchema]
    [:fn [:fn fn?]]
    [:decode {:optional true} [:maybe [:fn fn?]]]
    [:prompt {:optional true} [:maybe :string]]
@@ -54,14 +86,14 @@
    [:role              {:optional true} [:maybe [:enum :user :system :assistant :tool]]]
    [:id                {:optional true} [:maybe :string]]
    [:text              {:optional true} [:maybe :string]]
-   [:content           {:optional true} :any]
+   [:content           {:optional true} [:maybe :string]]
    [:function          {:optional true} [:maybe :string]]
    [:arguments         {:optional true} :any]
    [:result            {:optional true} :any]
    [:error             {:optional true} [:maybe [:map {:closed true}
                                                  [:message {:optional true} [:maybe :string]]
                                                  [:type    {:optional true} [:maybe :string]]]]]
-   [:provider-metadata {:optional true} :any]])
+   [:provider-metadata {:optional true} [:maybe ProviderMetadata]]])
 
 (def ^:private ApiKeyCredentials
   "The `{:api-key ... :base-url ...}` connection shape shared by most providers."
@@ -91,6 +123,27 @@
   [:map {:closed true}
    [:type    :string]
    [:display {:optional true} [:maybe :string]]])
+
+(def ^:private JSONSchemaLeaf
+  "A leaf JSON Schema node: no `:properties` of its own, one further leaf level of `:items` for
+  an array-typed leaf."
+  [:map {:closed true}
+   [:type        {:optional true} [:maybe :string]]
+   [:description {:optional true} [:maybe :string]]
+   [:items       {:optional true} [:map {:closed true}
+                                    [:type        {:optional true} [:maybe :string]]
+                                    [:description {:optional true} [:maybe :string]]]]
+   [:minimum     {:optional true} number?]
+   [:maximum     {:optional true} number?]])
+
+(def ^:private JSONSchemaNode
+  "A JSON Schema node, sent verbatim to an LLM provider as the structured-output schema.
+  `:properties` keys are the field names the schema itself declares, not ours to enumerate."
+  [:map {:closed true}
+   [:type                 {:optional true} [:maybe :string]]
+   [:properties           {:optional true} (ms/string-keyed-map JSONSchemaLeaf)]
+   [:required             {:optional true} [:vector :string]]
+   [:additionalProperties {:optional true} :boolean]])
 
 (def LLMRequestOpts
   "Canonical schema for the opts map passed to every LLM provider adapter.
@@ -130,7 +183,7 @@
    [:tool_choice      {:optional true} [:maybe [:enum "auto" "required"]]]
    [:temperature      {:optional true} [:maybe number?]]
    [:max-tokens       {:optional true} [:maybe :int]]
-   [:schema           {:optional true} :any]
+   [:schema           {:optional true} [:maybe JSONSchemaNode]]
    [:credentials      {:optional true} [:maybe LLMCredentials]]
    [:ai-proxy?        {:optional true} [:maybe :boolean]]
    [:reasoning?       {:optional true} [:maybe :boolean]]

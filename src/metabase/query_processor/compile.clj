@@ -14,19 +14,36 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.performance :refer [empty?]]))
+
+(mr/def ::native-query-document-value
+  "A value inside a driver's compiled native query document: a scalar, or a nested document/array of them. Covers
+  every native query shape drivers in this codebase actually produce -- SQL text (a bare `:string`) as well as
+  document-pipeline languages like Mongo's (a `:map-of`/`:sequential` tree)."
+  [:schema
+   {:registry
+    {::value [:or
+              :nil
+              :boolean
+              :string
+              :keyword
+              number?
+              [:sequential [:ref ::value]]
+              [:map-of [:or :string :keyword] [:ref ::value]]]}}
+   ::value])
 
 (mr/def ::compiled
   "Compiled query and parameters (SQL or whatever native query language)."
   [:map {:closed true}
-   [:query :any]
-   [:params {:optional true} [:maybe [:sequential :any]]]])
+   [:query ::native-query-document-value]
+   [:params {:optional true} [:maybe [:sequential ms/FieldValue]]]])
 
 (mr/def ::compiled-with-inlined-parameters
   "Query with inlined parameters (:params must be empty)"
   [:map {:closed true}
-   [:query :any]
-   [:params {:optional true} [:maybe [:sequential {:max 0} :any]]]])
+   [:query ::native-query-document-value]
+   [:params {:optional true} [:maybe [:sequential {:max 0} ms/FieldValue]]]])
 
 (mr/def ::query-with-compiled-query
   "An MBQL 5 query that also has a compiled native query attached (unless it was already a native-only query in the first

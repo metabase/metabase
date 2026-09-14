@@ -30,7 +30,7 @@
 (mu/defn- maybe-infer-semantic-type :- ResultColumnMetadata
   "Infer the semantic type and add it to the result metadata. If the inferred semantic type is nil, don't override the
   semantic type with a nil semantic type"
-  [col]
+  [col :- ResultColumnMetadata]
   (update
    col
    :semantic_type
@@ -44,7 +44,7 @@
 (mu/defn- col->ResultColumnMetadata :- ResultColumnMetadata
   "Make sure a `column` as it comes back from a driver's initial results metadata matches the schema for valid results
   column metadata, adding placeholder values and removing nil keys."
-  [column]
+  [column :- ResultColumnMetadata]
   ;; HACK - not sure why we don't have display_name yet in some cases
   (merge
    {:base_type    :type/*

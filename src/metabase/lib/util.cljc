@@ -16,6 +16,9 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.join :as lib.schema.join]
+   [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -372,7 +375,8 @@
 
 (mu/defn previous-stage :- [:maybe ::lib.schema/stage]
   "Return the previous stage of the query, if there is one; otherwise return `nil`."
-  [query stage-number :- :int]
+  [query        :- ::lib.schema/query
+   stage-number :- :int]
   (when-let [stage-num (previous-stage-number query stage-number)]
     (query-stage query stage-num)))
 
@@ -384,7 +388,16 @@
   `stage-number` can be a negative index, e.g. `-1` will update the last stage of the query."
   [query        :- ::legacy-or-mbql5-query
    stage-number :- :int
-   f & args]
+   f            :- ifn?
+   & args       :- [:* [:maybe [:or
+                                :keyword
+                                ifn?
+                                :int
+                                :string
+                                ::lib.schema.mbql-clause/clause
+                                ::lib.schema.metadata/stage
+                                ::lib.schema/pivot
+                                [:sequential [:or :keyword :int ::lib.schema.mbql-clause/clause ::lib.schema.join/join]]]]]]
   (let [{:keys [stages], :as query} (pipeline query)
         stage-number'               (canonical-stage-index query stage-number)
         stages'                     (apply update (vec stages) stage-number' f args)]
@@ -414,7 +427,7 @@
 
 (mu/defn ensure-mbql-final-stage :- ::lib.schema/query
   "Convert query to a MBQL 5 (pipeline) query, and make sure the final stage is an `:mbql` one."
-  [query]
+  [query :- ::legacy-or-mbql5-query]
   (let [query (pipeline query)]
     (cond-> query
       (native-stage? query -1)
@@ -424,19 +437,19 @@
   "If `table-id` is a legacy `card__<id>`-style string, parse the `<id>` part to an integer Card ID. Only for legacy
   queries! You don't need to use this in MBQL 5 since this is converted automatically by [[metabase.lib.convert]] to
   `:source-card`."
-  [table-id]
+  [table-id :- [:or ::lib.schema.id/table :string]]
   (when (string? table-id)
     (when-let [[_match card-id-str] (re-find #"^card__(\d+)$" table-id)]
       (parse-long card-id-str))))
 
 (mu/defn source-table-id :- [:maybe ::lib.schema.id/table]
   "If this query has a `:source-table` ID, return it."
-  [query]
+  [query :- ::lib.schema/query]
   (-> query :stages first :source-table))
 
 (mu/defn source-card-id :- [:maybe ::lib.schema.id/card]
   "If this query has a `:source-card` ID, return it."
-  [query]
+  [query :- ::lib.schema/query]
   (-> query :stages first :source-card))
 
 (def ^:private strip-id-regex

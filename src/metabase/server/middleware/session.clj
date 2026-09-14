@@ -104,7 +104,8 @@
 
 (mu/defn- current-user-info-for-session :- [:maybe ::request.schema/current-user-info]
   "Return User ID and superuser status for Session with `session-key` if it is valid and not expired."
-  [session-key anti-csrf-token]
+  [session-key     :- [:maybe :string]
+   anti-csrf-token :- [:maybe :string]]
   (when (and session-key (valid-session-key? session-key) (init-status/complete?))
     (some-> (server.db/session-user-info (session/hash-session-key session-key)
                                          anti-csrf-token

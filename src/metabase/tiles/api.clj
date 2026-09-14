@@ -70,7 +70,9 @@
   [query     :- ::lib.schema/query
    lat-field :- ::lib.schema.metadata/column
    lon-field :- ::lib.schema.metadata/column
-   x y zoom]
+   x :- ms/Int
+   y :- ms/Int
+   zoom :- ms/Int]
   (let [top-left      (x+y+zoom->lat-lon      x       y  zoom)
         bottom-right  (x+y+zoom->lat-lon (inc x) (inc y) zoom)
         inside-filter (lib/inside
@@ -151,9 +153,9 @@
   - limit query results to `tile-coordinate-limit` number of results
   - only select lat and lon fields rather than entire query's fields"
   [query                :- [:maybe [:or [:= {} {}] ::mbql.s/Query ::lib.schema/query]]
-   zoom
-   x
-   y
+   zoom                 :- ms/Int
+   x                    :- ms/Int
+   y                    :- ms/Int
    lat-field-legacy-ref :- ::legacy-ref
    lon-field-legacy-ref :- ::legacy-ref]
   (let [query     (-> query

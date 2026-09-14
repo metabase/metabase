@@ -13,7 +13,8 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
 
 (defn- with-optional-lib-type
   "Create a version of `schema` where `:lib/type` is optional rather than required."
@@ -42,9 +43,9 @@
    [:native-query-snippets {:optional true}
     [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/native-query-snippet :metadata/native-query-snippet)]]]
    [:transforms {:optional true}
-    [:maybe [:sequential (with-optional-lib-type :map :metadata/transform)]]]
+    [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/transform :metadata/transform)]]]
    [:settings {:optional true}
-    [:maybe [:map-of :keyword any?]]]])
+    [:maybe ms/DatabaseSettings]]])
 
 (defn- mock-database [metadata]
   (some-> (:database metadata)
@@ -109,7 +110,7 @@
      (mc/coercer ::mock-metadata (mtx/transformer {:name :mock}) #_respond identity #_raise :value))))
 
 (mu/defn- ->mock-metadata :- ::mock-metadata
-  [m]
+  [m :- [:maybe ::mock-metadata]]
   (->> m
        ((mock-coercer))
        (lib.normalize/normalize ::mock-metadata)))
@@ -129,12 +130,13 @@
     (lib.tu/mock-metadata-provider parent-metadata-provider {...})
     =>
     (lib/composed-metadata-provider (lib.tu/mock-metadata-provider {...}) parent-metadata-provider)"
-  ([m]
+  ([m :- [:maybe ::mock-metadata]]
    (-> m
        ->mock-metadata
        ->MockMetadataProvider))
 
-  ([parent-metadata-provider mock-metadata]
+  ([parent-metadata-provider :- ::lib.schema.metadata/metadata-providerable
+    mock-metadata            :- [:maybe ::mock-metadata]]
    (lib/composed-metadata-provider
     (mock-metadata-provider mock-metadata)
     parent-metadata-provider)))

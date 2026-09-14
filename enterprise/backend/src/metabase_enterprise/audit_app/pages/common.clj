@@ -16,7 +16,8 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -103,16 +104,16 @@
 
 (mu/defn- reduce-results* :- :some
   [honeysql-query :- [:map {:closed true}
-                       [:with       {:optional true} :any]
-                       [:select     {:optional true} :any]
-                       [:from       {:optional true} :any]
-                       [:join       {:optional true} :any]
-                       [:left-join  {:optional true} :any]
-                       [:where      {:optional true} :any]
-                       [:order-by   {:optional true} :any]
-                       [:limit      {:optional true} :any]
-                       [:offset     {:optional true} :any]
-                       [:union-all  {:optional true} :any]]
+                       [:with       {:optional true} [:sequential [:tuple :keyword ::h2x/expr]]]
+                       [:select     {:optional true} [:sequential ::h2x/expr]]
+                       [:from       {:optional true} [:sequential ::h2x/expr]]
+                       [:join       {:optional true} [:sequential ::h2x/expr]]
+                       [:left-join  {:optional true} [:sequential ::h2x/expr]]
+                       [:where      {:optional true} ::h2x/expr]
+                       [:order-by   {:optional true} [:sequential ::h2x/expr]]
+                       [:limit      {:optional true} ::h2x/expr]
+                       [:offset     {:optional true} ::h2x/expr]
+                       [:union-all  {:optional true} [:sequential ::h2x/expr]]]
    rff            :- ::qp.schema/rff
    init]
   (let [driver         (mdb/db-type)

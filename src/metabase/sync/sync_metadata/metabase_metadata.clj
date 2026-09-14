@@ -41,7 +41,7 @@
   "Set a property for a Field or Table in `database`. Returns `true` if a property was successfully set."
   [database                          :- i/DatabaseInstance
    {:keys [table-name field-name k]} :- KeypathComponents
-   value]
+   value                             :- [:maybe :string]]
   (boolean
    ;; ignore legacy entries that try to set field_type since it's no longer part of Field
    (when-not (= k :field_type)
@@ -72,7 +72,7 @@
 
   This functionality is currently only used by the Sample Database. In order to use this functionality, drivers *must*
   implement optional fn `:table-rows-seq`."
-  [driver
+  [driver                  :- :keyword
    database                :- i/DatabaseInstance
    metabase-metadata-table :- i/DatabaseMetadataTable]
   (doseq [{:keys [keypath value]} (driver/table-rows-seq driver database metabase-metadata-table)]

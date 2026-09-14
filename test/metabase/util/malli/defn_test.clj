@@ -59,7 +59,7 @@
     (is (= "Inputs: []\n  Return: [:map [:x int?] [:y int?]]"
            (:doc (meta #'baz))))))
 
-(mu/defn- boo :- :int "something very important to remember goes here" [_x])
+(mu/defn- boo :- :int "something very important to remember goes here" [_x :- :int])
 
 (mu/defn qux-1 [])
 (mu/defn qux-2 "Original docstring." [])
@@ -78,7 +78,7 @@
   ([] {:type :sized :size 3})
   ([a :- :int] {:type :sized :size a})
   ([a :- :int b :- :int] {:type :sized :size (+ a b)})
-  ([a b & c :- [:* :int]] {:type :human
+  ([a :- :int b :- :int & c :- [:* :int]] {:type :human
                            :name "Jim"
                            :address {:street (str  (+ a b (apply + c)) " ln")}}))
 

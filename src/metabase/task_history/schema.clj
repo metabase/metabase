@@ -9,16 +9,30 @@
   "The `:task_details` column of a TaskHistory, decoded."
   :map)
 
+(mr/def ::task-history.log.trunc
+  "The `:trunc` entry of a [[task-history.log]]: bookkeeping for messages dropped once the in-memory log queue fills
+  up."
+  [:map {:closed true}
+   [:levels          [:map {:closed true}
+                      [:trace {:optional true} :int]
+                      [:debug {:optional true} :int]
+                      [:info  {:optional true} :int]
+                      [:warn  {:optional true} :int]
+                      [:error {:optional true} :int]
+                      [:fatal {:optional true} :int]]]
+   [:start-timestamp [:maybe :string]]
+   [:last-timestamp  [:maybe :string]]])
+
 (mr/def ::task-history.log
   "One entry of the `:logs` column of a TaskHistory, decoded."
   [:map {:closed true}
-   [:level        {:optional true} :any]
-   [:timestamp    {:optional true} :any]
-   [:fqns         {:optional true} :any]
-   [:msg          {:optional true} :any]
-   [:process_uuid {:optional true} :any]
-   [:exception    {:optional true} :any]
-   [:trunc        {:optional true} :any]])
+   [:level        {:optional true} [:enum :trace :debug :info :warn :error :fatal]]
+   [:timestamp    {:optional true} :string]
+   [:fqns         {:optional true} :string]
+   [:msg          {:optional true} :string]
+   [:process_uuid {:optional true} :string]
+   [:exception    {:optional true} [:sequential :string]]
+   [:trunc        {:optional true} ::task-history.log.trunc]])
 
 (mr/def ::task-history
   "A TaskHistory as selected from the app DB: every column of `:task_history`."

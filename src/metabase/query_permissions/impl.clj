@@ -27,6 +27,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]
    [toucan2.core :as t2]))
@@ -120,7 +121,7 @@
 
   ([query                 :- :map ; this works on either legacy or MBQL 5 but also on inner queries or other nested maps (it calls itself recursively)
     parent-source-card-id :- [:maybe ::lib.schema.id/card]
-    in-sandbox?           :- :any]
+    in-sandbox?           :- :boolean]
    (if (:lib/type query)
      ;; convert MBQL 5 to legacy
      ;;
@@ -382,10 +383,24 @@
   (let [result-metadata (:result_metadata (card database-id card-id))]
     (check-result-metadata-data-perms database-id result-metadata)))
 
+(mr/def ::perm-value
+  "A required (or granted) permission level: either a single level, or a level per Table."
+  [:or :keyword [:map-of ::lib.schema.id/table :keyword]])
+
+(mr/def ::required-perms
+  "The permissions required to run a query, as returned by [[required-perms-for-query]]."
+  [:map {:closed true}
+   [:paths                 {:optional true} [:set :string]]
+   [:card-ids              {:optional true} [:set ::lib.schema.id/card]]
+   [:perms/view-data       {:optional true} ::perm-value]
+   [:perms/create-queries  {:optional true} ::perm-value]])
+
 (mu/defn has-perm-for-query? :- :boolean
   "Returns true when the query is accessible for the given perm-type and required-perms for individual tables, or the
   entire DB, false otherwise. Only throws if the permission format is incorrect."
-  [{db-id :database :as _query} :- ::qp.schema/any-query perm-type required-perms]
+  [{db-id :database :as _query} :- ::qp.schema/any-query
+   perm-type                    :- [:enum :perms/view-data :perms/create-queries]
+   required-perms               :- ::required-perms]
   (boolean
    (if-let [db-or-table-perms (perm-type required-perms)]
      (cond
@@ -438,7 +453,7 @@
   being answered as one: a failure to work out which permissions `query` needs (otherwise logged at
   error and folded into the answer), and any other error the checks raise, such as a missing Card in
   [[check-card-read-perms]]. A denial still returns `false`."
-  ([query]
+  ([query :- ::qp.schema/any-query]
    (can-run-query? query false))
 
   ([query :- ::qp.schema/any-query

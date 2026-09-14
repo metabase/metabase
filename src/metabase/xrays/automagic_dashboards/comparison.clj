@@ -7,9 +7,11 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.xrays.automagic-dashboards.core :refer [->related-entity ->root automagic-analysis capitalize-first]]
    [metabase.xrays.automagic-dashboards.filters :as filters]
@@ -46,26 +48,30 @@
              :collection_id nil
              :id            (gensym))))
 
-(def ^:private Card
+(mr/def ::processed-card
   "A processed \"card\" map as it flows through this namespace: the [[clone-card]] keys, plus the render-stage
   additions [[dashboard->cards]] assocs onto it."
   [:map {:closed true}
-   [:id                     {:optional true} :any]
+   [:id                     {:optional true} [:or symbol? ::lib.schema.id/card]]
    [:dataset_query          {:optional true} ::ads/query]
    [:description            {:optional true} [:maybe :string]]
    [:display                {:optional true} [:maybe :keyword]]
    [:name                   {:optional true} :string]
-   [:result_metadata        {:optional true} :any]
+   [:result_metadata        {:optional true} [:maybe ::queries.schema/card.result-metadata]]
    [:visualization_settings {:optional true} ms/VisualizationSettings]
    [:text                   {:optional true} [:maybe :string]]
-   [:series                 {:optional true} :any]
-   [:height                 {:optional true} :any]
-   [:position               {:optional true} :any]
-   [:collection_id          {:optional true} :any]
-   [:creator_id             {:optional true} :any]
-   [:query_type             {:optional true} :any]
-   [:database_id            {:optional true} :any]
-   [:table_id               {:optional true} :any]])
+   [:series                 {:optional true} [:sequential [:ref ::processed-card]]]
+   [:height                 {:optional true} number?]
+   [:position               {:optional true} number?]
+   [:collection_id          {:optional true} [:maybe ::lib.schema.id/collection]]
+   [:creator_id             {:optional true} [:maybe ::lib.schema.id/user]]
+   [:query_type             {:optional true} [:maybe [:or :keyword :string]]]
+   [:database_id            {:optional true} [:maybe ::lib.schema.id/database]]
+   [:table_id               {:optional true} [:maybe ::lib.schema.id/table]]])
+
+(def ^:private Card
+  "See [[::processed-card]]."
+  ::processed-card)
 
 (mu/defn- display-type :- [:maybe :keyword]
   [card :- Card]

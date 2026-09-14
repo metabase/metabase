@@ -36,7 +36,7 @@
 (mr/def ::auth-identity.metadata.slack-connect
   "Metadata of the `slack-connect` provider."
   [:map {:closed true}
-   [:signing_secret_version {:optional true} :any]])
+   [:signing_secret_version {:optional true} [:maybe :int]]])
 
 (mr/def ::auth-identity.metadata
   "The `:metadata` column of a AuthIdentity, decoded."

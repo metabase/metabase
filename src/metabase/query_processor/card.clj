@@ -35,6 +35,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]
    [metabase.util.performance :refer [mapv select-keys not-empty]]))
 
@@ -70,7 +71,7 @@
   (mapv (fn [{:keys [target], :as parameter}]
           (cond-> parameter
             (:stage-number (lib/parameter-target-dimension-options target))
-            (update :target lib/update-parameter-target-dimension-options assoc :stage-number -1)))
+            (update :target lib/update-parameter-target-dimension-options #(assoc % :stage-number -1))))
         parameters))
 
 (mu/defn- last-stage-number
@@ -85,7 +86,7 @@
             (and (= param-type :temporal-unit)
                  (lib/parameter-target-is-dimension? target)
                  (nil? (:stage-number (lib/parameter-target-dimension-options target))))
-            (update :target lib/update-parameter-target-dimension-options assoc :stage-number -2)))
+            (update :target lib/update-parameter-target-dimension-options #(assoc % :stage-number -2))))
         parameters))
 
 (mu/defn query-for-card :- [:maybe ::lib.schema/query]
@@ -96,7 +97,7 @@
    parameters  :- [:maybe ::parameters.schema/parameters]
    constraints :- [:maybe ::lib.schema.constraints/constraints]
    middleware  :- [:maybe ::lib.schema.middleware-options/middleware-options]
-   & [ids]]
+   & [ids] :- [:* [:map {:closed true} [:dashboard-id {:optional true} [:maybe ::lib.schema.id/dashboard]]]]]
   (when (seq dataset-query)
     (let [stage-numbers           (explict-stage-references parameters)
           explicit-stage-numbers? (boolean (seq stage-numbers))
@@ -346,13 +347,24 @@
   `card-transform` is applied after the Card read check and must preserve the Card's identity. Result metadata from a
   transformed query is returned but not persisted to the Card."
   [card :- ::queries.schema/card
-   export-format
+   export-format :- ::qp.schema/export-format
    & {:keys [parameters constraints context dashboard-id dashcard middleware qp make-run ignore-cache card-transform]
       :or   {constraints (qp.constraints/default-query-constraints)
              context     :question
              ;; param `make-run` can be used to control how the query is ran, e.g. if you need to customize the `context`
              ;; passed to the QP
-             make-run    process-query-for-card-default-run-fn}}]
+             make-run    process-query-for-card-default-run-fn}}
+   :- [:map {:closed true}
+       [:parameters     {:optional true} [:maybe ::parameters.schema/parameters]]
+       [:constraints    {:optional true} [:maybe ::lib.schema.constraints/constraints]]
+       [:context        {:optional true} [:maybe ::lib.schema.info/context]]
+       [:dashboard-id   {:optional true} [:maybe ::lib.schema.id/dashboard]]
+       [:dashcard       {:optional true} [:maybe (ms/InstanceOf :model/DashboardCard)]]
+       [:middleware     {:optional true} [:maybe ::lib.schema.middleware-options/middleware-options]]
+       [:qp             {:optional true} [:maybe ifn?]]
+       [:make-run       {:optional true} [:maybe ifn?]]
+       [:ignore-cache   {:optional true} [:maybe :boolean]]
+       [:card-transform {:optional true} [:maybe ifn?]]]]
   {:pre [(map? card) (pos-int? (:id card)) (u/maybe? sequential? parameters)]}
   (let [card        (api/read-check card)
         stored-query (:dataset_query card)

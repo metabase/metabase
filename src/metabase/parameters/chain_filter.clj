@@ -103,7 +103,7 @@
   [:map {:closed true}
    [:field-id ::lib.schema.id/field]
    [:op       :keyword] ; name of an MBQL filter clause e.g. `:=` or `:starts-with`
-   [:value    :any]
+   [:value    [:or ms/FieldValue [:sequential ms/FieldValue]]]
    [:options  {:optional true} [:maybe [:merge
                                         ::lib.schema.common/options
                                         [:map {:closed true}
@@ -112,6 +112,17 @@
 (mr/def ::constraints
   "Schema for a list of constraints."
   [:sequential ::constraint])
+
+(mr/def ::table-field-endpoint
+  [:map {:closed true}
+   [:table ::lib.schema.id/table]
+   [:field ::lib.schema.id/field]])
+
+(mr/def ::join-info
+  "Schema for one FK relationship join between a `:lhs` and `:rhs` Table/Field pair."
+  [:map {:closed true}
+   [:lhs ::table-field-endpoint]
+   [:rhs ::table-field-endpoint]])
 
 (def ^:dynamic *enable-reverse-joins*
   "Whether to chain filter via joins where we must follow relationships in reverse, e.g. child -> parent (e.g.
@@ -372,7 +383,7 @@
   two Tables and we generate the appropriate join against the other Table."
   [query           :- ::lib.schema/query
    source-table-id :- ::lib.schema.id/table
-   joins]
+   joins           :- [:sequential ::join-info]]
   (let [id->field (u/index-by :id (lib.metadata/bulk-metadata query :metadata/column
                                                               (into #{} (mapcat (juxt #(get-in % [:lhs :field])
                                                                                       #(get-in % [:rhs :field])))
@@ -619,7 +630,7 @@
   results as a sequence of `[value remapped-value]` pairs."
   [field-id    :- ::lib.schema.id/field
    constraints :- [:maybe ::constraints]
-   & options]
+   & options   :- [:* [:or :keyword :boolean ::lib.schema.id/field ms/PositiveInt]]]
   (assert (even? (count options)))
   (let [{:as options}         options
         relax-fk-requirement? (:relax-fk-requirement? options)
@@ -802,7 +813,7 @@
   [field-id     :- ::lib.schema.id/field
    constraints  :- [:maybe ::constraints]
    query-string :- [:maybe ms/NonBlankString]
-   & options]
+   & options    :- [:* [:or :keyword :boolean ::lib.schema.id/field ms/PositiveInt]]]
   (assert (even? (count options)))
   (let [{:as options}         options
         v->human-readable     (delay (schema.metadata-queries/human-readable-remapping-map field-id))

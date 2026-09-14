@@ -7,7 +7,7 @@
 
 (mr/def ::audit-log.details
   "The `:details` column of a AuditLog, decoded."
-  :map)
+  ms/OpaqueJSONObject)
 
 (mr/def ::audit-log
   "A AuditLog as selected from the app DB: every column of `:audit_log`."

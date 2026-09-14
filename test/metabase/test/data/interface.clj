@@ -63,39 +63,44 @@
 
 (p.types/defrecord+ DatabaseDefinition [database-name table-definitions options])
 
-(def ^:private FieldDefinitionSchema
-  [:map {:closed true}
-   [:field-name                          ms/NonBlankString]
-   [:base-type                           [:or
-                                          [:map {:closed true}
-                                           [:natives [:map-of :keyword ms/NonBlankString]]]
-                                          [:map {:closed true}
-                                           [:native ms/NonBlankString]]
-                                          ms/FieldType]]
-   ;; this was added pretty recently (in the 44 cycle) so it might not be supported everywhere. It should work for
-   ;; drivers using `:sql/test-extensions` and [[metabase.test.data.sql/field-definition-sql]] but you might need to add
-   ;; support for it elsewhere if you want to use it. It only really matters for testing things that modify test
-   ;; datasets e.g. [[mt/with-actions-test-data]]
-   ;; default is nullable
-   [:not-null?         {:optional true} [:maybe :boolean]]
-   [:unique?           {:optional true} [:maybe :boolean]]
-   [:pk?               {:optional true} [:maybe :boolean]]
-   [:default-expr      {:optional true} [:maybe :string]]
-   [:generated-expr    {:optional true} [:maybe :string]]
-   ;; should we create an index for this field?
-   [:indexed?          {:optional true} [:maybe :boolean]]
-   [:semantic-type     {:optional true} [:maybe ms/FieldSemanticOrRelationType]]
-   [:effective-type    {:optional true} [:maybe ms/FieldType]]
-   [:coercion-strategy {:optional true} [:maybe ms/CoercionStrategy]]
-   [:visibility-type   {:optional true} [:maybe (into [:enum] field/visibility-types)]]
-   [:fk                {:optional true} [:maybe ms/KeywordOrString]]
-   [:field-comment     {:optional true} [:maybe ms/NonBlankString]]
-   [:nested-fields     {:optional true} [:maybe [:sequential :any]]]])
+(def FieldDefinitionSchema
+  [:schema
+   {:registry
+    {::field-definition
+     [:map {:closed true}
+      [:field-name                          ms/NonBlankString]
+      [:base-type                           [:or
+                                             [:map {:closed true}
+                                              [:natives [:map-of :string ms/NonBlankString]]]
+                                             [:map {:closed true}
+                                              [:native ms/NonBlankString]]
+                                             ms/FieldType]]
+      ;; this was added pretty recently (in the 44 cycle) so it might not be supported everywhere. It should work for
+      ;; drivers using `:sql/test-extensions` and [[metabase.test.data.sql/field-definition-sql]] but you might need to
+      ;; add support for it elsewhere if you want to use it. It only really matters for testing things that modify
+      ;; test datasets e.g. [[mt/with-actions-test-data]]
+      ;; default is nullable
+      [:not-null?         {:optional true} [:maybe :boolean]]
+      [:unique?           {:optional true} [:maybe :boolean]]
+      [:pk?               {:optional true} [:maybe :boolean]]
+      [:default-expr      {:optional true} [:maybe :string]]
+      [:generated-expr    {:optional true} [:maybe :string]]
+      ;; should we create an index for this field?
+      [:indexed?          {:optional true} [:maybe :boolean]]
+      [:semantic-type     {:optional true} [:maybe ms/FieldSemanticOrRelationType]]
+      [:effective-type    {:optional true} [:maybe ms/FieldType]]
+      [:coercion-strategy {:optional true} [:maybe ms/CoercionStrategy]]
+      [:visibility-type   {:optional true} [:maybe (into [:enum] field/visibility-types)]]
+      [:fk                {:optional true} [:maybe ms/KeywordOrString]]
+      [:field-comment     {:optional true} [:maybe ms/NonBlankString]]
+      [:collection-type   {:optional true} [:maybe ms/FieldType]]
+      [:nested-fields     {:optional true} [:maybe [:sequential [:ref ::field-definition]]]]]}}
+   ::field-definition])
 
-(def ^:private ValidFieldDefinition
+(def ValidFieldDefinition
   [:and FieldDefinitionSchema (ms/InstanceOfClass FieldDefinition)])
 
-(def ^:private ValidTableDefinition
+(def ValidTableDefinition
   [:and
    [:map {:closed true}
     [:table-name                     ms/NonBlankString]
@@ -104,7 +109,7 @@
     [:table-comment {:optional true} [:maybe ms/NonBlankString]]]
    (ms/InstanceOfClass TableDefinition)])
 
-(def ^:private ValidDatabaseDefinition
+(def ValidDatabaseDefinition
   [:and
    [:map {:closed true}
     [:database-name ms/NonBlankString] ; this must be unique
@@ -850,7 +855,7 @@
    (apply dataset-table-definition tabledef))
 
   ([table-name :- ms/NonBlankString
-    field-definition-maps
+    field-definition-maps :- [:sequential DatasetFieldDefinition]
     rows]
    (map->TableDefinition
     {:table-name        table-name
@@ -861,11 +866,14 @@
   "Parse a dataset definition (from a `defdatset` form or EDN file) and return a DatabaseDefinition instance for
   comsumption by various test-data-loading methods."
   ([database-name :- ms/NonBlankString
-    table-definitions]
+    table-definitions :- [:sequential DatasetTableDefinition]]
    (dataset-definition database-name table-definitions {}))
   ([database-name :- ms/NonBlankString
-    table-definitions
-    options]
+    table-definitions :- [:sequential DatasetTableDefinition]
+    options :- [:map {:closed true}
+                [:native-ddl {:optional true} [:sequential :any]]
+                [:disable-fk-checks {:optional true} :boolean]
+                [:static {:optional true} :boolean]]]
    (mu/validate-throw
     (ms/InstanceOfClass DatabaseDefinition)
     (map->DatabaseDefinition
@@ -978,10 +986,21 @@
   (pretty [_]
     (list `transformed-dataset-definition new-name (pretty/pretty wrapped-definition))))
 
+(def ^:private AnyDatasetDefinition
+  "Any of the dataset-definition types [[get-dataset-definition]] knows how to resolve directly (dispatched
+  elsewhere, e.g. by tests, are wrapped in one of these before reaching here)."
+  [:or
+   (ms/InstanceOfClass DatabaseDefinition)
+   (ms/InstanceOfClass NativeDatasetDefinition)
+   (ms/InstanceOfClass EDNDatasetDefinition)
+   (ms/InstanceOfClass TransformedDatasetDefinition)])
+
 (mu/defn transformed-dataset-definition
   "Create a dataset definition that is a transformation of an some other one, seqentially applying `transform-fns` to
   it. The results of `transform-fns` are cached."
-  [new-name :- ms/NonBlankString wrapped-definition & transform-fns]
+  [new-name :- ms/NonBlankString
+   wrapped-definition :- AnyDatasetDefinition
+   & transform-fns :- [:* fn?]]
   (let [transform-fn (apply comp (reverse transform-fns))
         get-def      (delay
                        (transform-fn
@@ -1000,7 +1019,7 @@
 (mu/defn transform-dataset-only-tables :- fn?
   "Create a function for `transformed-dataset-definition` to only keep some subset of Tables from the original dataset
   definition."
-  [& table-names]
+  [& table-names :- [:* ms/NonBlankString]]
   (transform-dataset-update-tabledefs
    (let [names (set table-names)]
      (fn [tabledefs]
@@ -1093,7 +1112,7 @@
 (mu/defn flattened-dataset-definition
   "Create a flattened version of `dbdef` by following resolving all FKs and flattening all rows into the table with
   `table-name`. For use with timeseries databases like Druid."
-  [dataset-definition
+  [dataset-definition :- AnyDatasetDefinition
    table-name :- ms/NonBlankString]
   (transformed-dataset-definition table-name dataset-definition
                                   (fn [dbdef]

@@ -260,7 +260,7 @@
   **Revision Tracking:**
   All changes are tracked in `CollectionPermissionGraphRevision` for auditing purposes. The revision number
   is checked to prevent concurrent modification conflicts (unless `force?` is true)."
-  ([new-graph]
+  ([new-graph :- PermissionsGraph]
    (update-graph! nil new-graph false))
 
   ([collection-namespace :- [:maybe ms/KeywordOrString]

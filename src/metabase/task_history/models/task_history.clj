@@ -11,6 +11,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.task-history.db :as task-history.db]
    [metabase.task-history.models.task-run :as task-run]
+   [metabase.task-history.schema :as task-history.schema]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -124,8 +125,10 @@
   [:map {:closed true}
    [:task                             ms/NonBlankString] ; task name, i.e. `send-pulses`. Conventionally lisp-cased
    [:db_id           {:optional true} [:maybe :int]]     ; DB involved, for sync operations or other tasks where this is applicable.
-   [:on-success-info {:optional true} [:maybe [:=> [:cat TaskHistoryCallBackInfo :any] :map]]]
-   [:on-fail-info    {:optional true} [:maybe [:=> [:cat TaskHistoryCallBackInfo :any] :map]]]
+   [:on-success-info {:optional true} [:maybe [:=> [:cat TaskHistoryCallBackInfo :any]
+                                               ::task-history.schema/task-history.update]]]
+   [:on-fail-info    {:optional true} [:maybe [:=> [:cat TaskHistoryCallBackInfo (ms/InstanceOfClass Throwable)]
+                                               ::task-history.schema/task-history.update]]]
    [:task_details    {:optional true} [:maybe :map]]])   ; additional map of details to include in the recorded row
 
 (defn- ns->ms [nanoseconds]
@@ -207,7 +210,8 @@
 
 (mu/defn do-with-task-history
   "Impl for `with-task-history` macro; see documentation below."
-  [info :- TaskHistoryInfo f]
+  [info :- TaskHistoryInfo
+   f    :- ifn?]
   (let [on-success-info (or (:on-success-info info) (fn [& args] (first args)))
         on-fail-info    (or (:on-fail-info info) (fn [& args] (first args)))
         info            (dissoc info :on-success-info :on-fail-info)

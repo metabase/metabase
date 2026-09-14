@@ -504,7 +504,7 @@
 (mu/defn metadata-provider-with-cards-for-queries :- ::lib.schema.metadata/metadata-provider
   "Create an Lib metadata provider (by default, based on the app DB metadata provider) that adds a Card for each query
   in `queries`. Cards do not include result metadata. Cards have IDs starting at `1` and increasing sequentially."
-  ([queries]
+  ([queries :- [:sequential {:min 1} ::lib.schema.metadata/card.query]]
    (metadata-provider-with-cards-for-queries
     (lib-be/application-database-metadata-provider (data/id))
     queries))
@@ -519,8 +519,8 @@
   provider is built up progressively, meaning metadata for previous Cards is available when calculating metadata for
   subsequent Cards.
    `transforms` can be a map of `card-id` to a function that accepts `metadata-provider` and `result-metadata`"
-  ([queries :- [:sequential {:min 1} ::lib.schema.metadata/card.query]
-    transforms]
+  ([queries    :- [:sequential {:min 1} ::lib.schema.metadata/card.query]
+    transforms :- [:maybe [:map-of pos-int? fn?]]]
    (metadata-provider-with-cards-with-transformed-metadata-for-queries
     (lib-be/application-database-metadata-provider (data/id))
     queries
@@ -556,7 +556,7 @@
   of [[metabase.query-processor.preprocess/query->expected-cols]] as `:result-metadata` for each Card. The metadata
   provider is built up progressively, meaning metadata for previous Cards is available when calculating metadata for
   subsequent Cards."
-  ([queries]
+  ([queries :- [:sequential {:min 1} ::lib.schema.metadata/card.query]]
    (metadata-provider-with-cards-with-metadata-for-queries
     (lib-be/application-database-metadata-provider (data/id))
     queries))

@@ -46,7 +46,7 @@
   DEPRECATED: use [[mbql-5-aggregation-name]] going forward."
   {:deprecated "0.64.0"}
   [legacy-inner-query :- ::mbql.s/MBQLInnerQuery
-   legacy-ag-clause]
+   legacy-ag-clause   :- ::mbql.s/Aggregation]
   (let [ag-clause (lib/->mbql5 legacy-ag-clause)]
     (or (::add/desired-alias (lib/options ag-clause))
         (:name (lib/options ag-clause))

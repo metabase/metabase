@@ -671,9 +671,9 @@
 (mu/defn- related
   "Build a balanced list of related X-rays. General composition of the list is determined for each
    root type individually via `related-selectors`. That recipe is then filled round-robin style."
-  [root
-   available-dimensions
-   dashboard-template :- [:maybe dashboard-templates/DashboardTemplate]]
+  [root                 :- ::ads/root
+   available-dimensions :- ::ads/dim-name->matching-fields
+   dashboard-template   :- [:maybe dashboard-templates/DashboardTemplate]]
   (->> (merge (indepth root dashboard-template)
               (drilldown-fields root available-dimensions)
               (related-entities root)
@@ -805,7 +805,7 @@
   [root     :- ::ads/root
    question :- [:map {:closed true}
                 [:dataset_query ::ads/query]]
-   opts]
+   opts     :- ::automagic-analysis.opts]
   (letfn [(analyze [x]
             (try
               (automagic-analysis
@@ -825,10 +825,11 @@
 
 (mu/defn- preserve-entity-element
   "Ensure that elements of an original dataset query are preserved in dashcard queries."
-  [dashboard
-   entity
-   getter-fn
-   setter-fn]
+  [dashboard :- ::ads/dashboard
+   entity    :- [:map {:closed true}
+                 [:dataset_query ::ads/query]]
+   getter-fn :- ifn?
+   setter-fn :- ifn?]
   ;; disable ref validation because X-Rays does stuff in a wacko manner, it adds a bunch of filters and whatever that
   ;; use columns from joins before adding the joins themselves (same with expressions), which is technically invalid
   ;; at the time it happens but ends up resulting in a valid query at the end of the day. Maybe one day we can rework

@@ -15,8 +15,10 @@
    [metabase.notification.payload.core :as notification.payload]
    [metabase.parameters.dashboard :as parameters.dashboard]
    [metabase.parameters.params :as params]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.public-sharing-rest.api :as api.public]
    [metabase.queries.core :as queries]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.parameters.operators :as params.ops]
@@ -54,6 +56,27 @@
 (def ParsedQueryParams
   "Schema for [[QueryParams]] after the `:parameters` JSON blob has been decoded into real JSON scalars."
   [:map-of [:or :keyword :string] [:maybe [:ref ::lib.schema.parameter/parameter.value]]])
+
+(def ParamValue
+  "A single dashboard/card parameter value, or a sequence of them."
+  [:maybe [:ref ::lib.schema.parameter/parameter.value]])
+
+(def SlugValueMap
+  "A map of dashboard/card parameter slug to its value; slugs come back keyword-keyed off a decoded JWT and
+  string-keyed off the query string, so both are accepted."
+  [:map-of [:or :keyword :string] ParamValue])
+
+(def ^:private ResourceId
+  [:or ms/PositiveInt ms/NanoIdString])
+
+(def UnsignedToken
+  "The decoded, but not necessarily resource-id-translated, payload of an embedding JWT."
+  [:map {:closed true}
+   [:resource          {:optional true} [:map {:closed true}
+                                          [:question  {:optional true} ResourceId]
+                                          [:dashboard {:optional true} ResourceId]]]
+   [:params            {:optional true} SlugValueMap]
+   [:_embedding_params {:optional true} SlugValueMap]])
 
 (comment
   ;; load dynamic model resolution code... should already be loaded by [[metabase.core.init]] so this is mostly here for
@@ -139,8 +162,8 @@
   "Given a pre-loaded `dashboard` entity and parameters map in the format `slug->value`, return a sequence of
   parameters with `:id`s that can be passed to various functions in the [[metabase.dashboards-rest.api]] namespace such
   as [[metabase.dashboards-rest.api/process-query-for-dashcard]]."
-  [dashboard   :- :map
-   slug->value :- :map]
+  [dashboard   :- ::dashboards.schema/dashboard
+   slug->value :- SlugValueMap]
   (let [parameters (:parameters dashboard)
         slug->id (into {} (map (juxt :slug :id)) parameters)
         slug->type (into {} (map (juxt :slug :type)) parameters)]
@@ -165,7 +188,7 @@
   booleans and boolean strings. To fix this issue we introduced another query string parameter `:parameters` which
   contains serialized JSON with parameter values. If this object cannot be found or parsed, we fallback to plain query
   string parameters."
-  [query-params]
+  [query-params :- QueryParams]
   (let [parsed (when-let [parameters (some query-params [:parameters "parameters"])]
                  (try
                    (json/decode+kw parameters)
@@ -182,7 +205,7 @@
   ones that make sense as keywords. Some params, such as ones that start with a number, do not pass this test, and are
   not automatically converted. Thus we must do it ourselves here to make sure things are done as we'd expect.
   Also, any param values that are blank strings should be parsed as nil, representing the absence of a value."
-  [query-params]
+  [query-params :- [:or QueryParams ParsedQueryParams]]
   (-> query-params
       (update-keys keyword)
       (update-vals (fn [v] (if (= v "") nil v)))))
@@ -193,8 +216,8 @@
   (the object's value of `:embedding_params`). Throws a 400 if any of the checks fail. If all checks are successful,
   returns a *merged* parameters map."
   [object-embedding-params :- ms/EmbeddingParams
-   token-params            :- [:map-of :keyword :any]
-   user-params             :- [:map-of :keyword :any]]
+   token-params            :- SlugValueMap
+   user-params             :- SlugValueMap]
   (check-param-sets object-embedding-params
                     (m/filter-vals valid-param-value? token-params)
                     (m/filter-vals valid-param-value? user-params))
@@ -207,7 +230,11 @@
                        v)))))
 
 (mu/defn- param-values-merged-params :- [:map-of ms/NonBlankString :any]
-  [id->slug slug->id embedding-params token-params id-query-params]
+  [id->slug         :- [:map-of ms/NonBlankString ms/NonBlankString]
+   slug->id         :- [:map-of ms/NonBlankString ms/NonBlankString]
+   embedding-params :- ms/EmbeddingParams
+   token-params     :- SlugValueMap
+   id-query-params  :- [:or QueryParams ParsedQueryParams]]
   (let [slug-query-params  (into {}
                                  (for [[id v] id-query-params]
                                    [(or (get id->slug (name id))
@@ -233,7 +260,10 @@
   than the client, and are passed to the parameter value lookups as constraints so the values offered for the
   enabled parameters match the rows the locked values select."
   [embedding-params token-params]
-  (into {} (filter (fn [[slug _value]] (= (get embedding-params (name slug)) "locked"))) token-params))
+  (into {}
+        (comp (filter (fn [[slug _value]] (= (get embedding-params (name slug)) "locked")))
+              (map (fn [[slug value]] [(name slug) value])))
+        token-params))
 
 (defn- enabled-param-slugs
   "The set of param slugs (as keywords) from `dashboard-or-card-params` that may be exposed to embed viewers: only
@@ -249,7 +279,8 @@
   "Keep only the `:parameters` of `dashboard-or-card` whose slug is listed as `enabled` in the `embedding-params`
   whitelist, so the frontend doesn't display widgets for params (`disabled`, `locked`, or unlisted) the user can't
   set."
-  [dashboard-or-card embedding-params :- ms/EmbeddingParams]
+  [dashboard-or-card :- [:or ::dashboards.schema/dashboard (ms/InstanceOf :model/Card)]
+   embedding-params  :- ms/EmbeddingParams]
   (let [param-slugs-to-keep (enabled-param-slugs (:parameters dashboard-or-card) embedding-params)]
     (update dashboard-or-card :parameters (partial filter #(contains? param-slugs-to-keep (keyword (:slug %)))))))
 
@@ -291,7 +322,8 @@
                                          [:value :any]]]]
   "Adds `value` to parameters with `slug` matching a key in `merged-slug->value` and removes parameters without a
    `value`."
-  [parameters slug->value]
+  [parameters  :- [:sequential ::parameters.schema/parameter]
+   slug->value :- SlugValueMap]
   (when (seq parameters)
     (for [param parameters
           :let  [slug  (keyword (:slug param))
@@ -427,7 +459,10 @@
 
 (mu/defn dashboard-for-unsigned-token :- ::dashboards.schema/dashboard
   "Return the info needed for embedding about Dashboard specified in `token`."
-  [unsigned-token & {:keys [embedding-params enable-embedding?]}]
+  [unsigned-token :- UnsignedToken
+   & {:keys [embedding-params enable-embedding?]} :- [:maybe [:map {:closed true}
+                                                               [:embedding-params {:optional true} [:maybe ms/EmbeddingParams]]
+                                                               [:enable-embedding? {:optional true} [:maybe :boolean]]]]]
   (let [dashboard-id (unsigned-token->dashboard-id unsigned-token)
         embedding-params (or embedding-params
                              (embedding-rest.db/dashboard-embedding-params dashboard-id))

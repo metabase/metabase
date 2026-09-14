@@ -35,6 +35,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.join :as lib.schema.join]
+   [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.order-by :as lib.schema.order-by]
    [metabase.lib.schema.ref :as lib.schema.ref]
@@ -120,7 +121,7 @@
                               [:= :field]
                               [:map {:closed true}
                                [::new-field-dimension-id ::lib.schema.id/dimension]]
-                              :any]]]
+                              ::lib.schema.id/field]]]
     [:dimension             ::external-remapping]]
    [:fn
     {:error/message "the new field clause should have the same join alias as the original field clause"}
@@ -389,7 +390,7 @@
    ;; I'm not convinced this works if there's already a column with the same name in the results.
    [:to              ::lib.schema.common/non-blank-string]
    ;; map of original value -> human readable value
-   [:value->readable :map]
+   [:value->readable [:map-of ::lib.schema.literal/literal ::lib.schema.literal/literal]]
    ;; Info about the new column we will tack on to end of `:cols`
    [:new-column      ::qp.schema/result-metadata.column]])
 
@@ -439,7 +440,7 @@
 ;;     :name          "NAME"
 ;;     :display_name  "Sender ID"}
 (mu/defn- merge-metadata-for-externally-remapped-column* :- :map
-  [columns
+  [columns :- [:maybe ::qp.schema/result-metadata.columns]
    {{::keys [original-field-dimension-id new-field-dimension-id]} :options
     :as                                          column} :- ::qp.schema/result-metadata.column
    {dimension-id      :id
@@ -623,7 +624,8 @@
   added and each row flowing through needs to include the remapped data for the new column. For external remappings
   the column information needs to be updated with what it's being remapped from and the user specified name for the
   remapped column."
-  [{:keys [internal-only-dims]} :- ::internal-columns-info rf]
+  [{:keys [internal-only-dims]} :- ::internal-columns-info
+   rf                           :- fn?]
   (if-let [remap-fn (make-row-map-fn internal-only-dims)]
     ((map remap-fn) rf)
     rf))

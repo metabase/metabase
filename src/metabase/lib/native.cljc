@@ -422,7 +422,8 @@
 
 (mu/defn- validate-template-tag :- [:sequential [:map [:error/message :string] [:tag-name :string]]]
   "Validate a single template tag, returning a list of errors."
-  [_query {tag-type :type tag-name :name, :keys [display-name dimension table-id]} :- ::lib.schema.template-tag/template-tag]
+  [_query :- ::lib.schema/query
+   {tag-type :type tag-name :name, :keys [display-name dimension table-id]} :- ::lib.schema.template-tag/template-tag]
   (cond-> []
     (empty? display-name)
     (conj {:error/message (i18n/tru "Missing widget label: {0}" tag-name)
@@ -438,7 +439,7 @@
 
 (mu/defn validate-template-tags :- [:sequential [:map [:error/message :string] [:tag-name :string]]]
   "Given a query, returns a list of errors for each template tag in the query that is not valid."
-  [query]
+  [query :- ::lib.schema/query]
   (mapcat #(validate-template-tag query %)
           (lib.walk.util/all-template-tags query)))
 
@@ -566,7 +567,7 @@
 
 (mu/defn native-query-table-references :- [:set [:map [:table ::lib.schema.id/table]]]
   "Given a native query, find any table tags and convert them to {:table id} objects"
-  [query]
+  [query :- ::lib.schema/query]
   (let [tags (->> (lib.walk.util/all-template-tags query)
                   (filter #(= (:type %) :table)))]
     (into #{}

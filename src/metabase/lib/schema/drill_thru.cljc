@@ -11,6 +11,7 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.extraction :as lib.schema.extraction]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.order-by :as lib.schema.order-by]
    [metabase.lib.schema.ref :as lib.schema.ref]
@@ -78,7 +79,7 @@
    [:map
     [:type      [:= :drill-thru/fk-details]]
     [:column    [:ref ::drill-thru.fk-details.fk-column]]
-    [:object-id :any]
+    [:object-id [:ref ::lib.schema.literal/param-value]]
     [:many-pks? :boolean]]])
 
 (mr/def ::drill-thru.zoom
@@ -86,7 +87,7 @@
    ::drill-thru.common.with-column
    [:map
     [:type      [:= :drill-thru/zoom]]
-    [:object-id :any]
+    [:object-id [:ref ::lib.schema.literal/param-value]]
     ;; TODO -- I don't think we really need this because there is no situation in which this isn't `false`, if it were
     ;; true we'd return a `::drill-thru.pk` drill instead. See if we can remove this key without breaking the FE.
     [:many-pks? [:= false]]]])
@@ -103,7 +104,7 @@
     [:type         [:= :drill-thru/quick-filter]]
     [:operators    [:sequential ::drill-thru.quick-filter.operator]]
     [:column       [:ref ::lib.schema.metadata/column]]
-    [:value        [:maybe :any]]
+    [:value        [:maybe [:or [:= :null] ::lib.schema.literal/param-value]]]
     [:query        [:ref ::lib.schema/query]]
     [:stage-number number?]]])
 
@@ -242,7 +243,7 @@
     [:type      [:= :drill-thru/zoom-in.geographic]]
     [:subtype   [:= :drill-thru.zoom-in.geographic/country-state-city->binned-lat-lon]]
     [:column    ::drill-thru.zoom-in.geographic.column.county-state-city]
-    [:value     some?]
+    [:value     ::lib.schema.literal/param-value]
     [:latitude  [:map {:closed true}
                  [:column    [:ref ::drill-thru.zoom-in.geographic.column.latitude]]
                  [:bin-width [:ref ::lib.schema.binning/bin-width]]]]
@@ -363,7 +364,7 @@
   [:map {:closed true}
    [:column     [:maybe [:ref ::lib.schema.metadata/column]]]
    [:column-ref [:maybe [:ref ::lib.schema.ref/ref]]]
-   [:value      [:maybe :any]]
+   [:value      [:maybe [:or [:= :null] ::lib.schema.literal/param-value]]]
    [:row        {:optional true} [:ref ::context.row]]
    [:dimensions {:optional true} [:maybe [:ref ::context.row]]]
    [:card-id    {:optional true} [:maybe ::lib.schema.id/card]]])

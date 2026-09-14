@@ -23,6 +23,7 @@
   card — which is what we want, given the alternative is leaking every column."
   (:require
    [metabase-enterprise.sandbox.db :as sandbox.db]
+   [metabase.legacy-mbql.schema :as legacy-mbql.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.permissions.core :as perms]
@@ -37,11 +38,7 @@
   [:maybe
    [:or
     ::lib.schema/query
-    [:map {:closed true}
-     [:type     {:optional true} :any]
-     [:query    {:optional true} :any]
-     [:native   {:optional true} :any]
-     [:database {:optional true} :any]]]])
+    ::legacy-mbql.schema/Query]])
 
 (def ^:private Card
   [:map {:closed true}
@@ -55,12 +52,12 @@
    [:merge
     ::warehouse-schema.schema/field
     [:map {:closed true}
-     [:target     {:optional true} :any]
-     [:dimensions {:optional true} :any]
-     [:name_field {:optional true} :any]]]
+     [:target     {:optional true} [:maybe ::warehouse-schema.schema/field]]
+     [:dimensions {:optional true} [:sequential (ms/InstanceOf :model/Dimension)]]
+     [:name_field {:optional true} [:maybe ::warehouse-schema.schema/field]]]]
    [:map {:closed true}
-    [:id   {:optional true} :any]
-    [:name {:optional true} :any]]])
+    [:id   {:optional true} ms/PositiveInt]
+    [:name {:optional true} :string]]])
 
 (mu/defn find-sandbox-source-cards :- [:map-of ms/PositiveInt :map]
   "Return `{table-id => sandbox-source-card}` for the `table-ids` that have a Card-backed sandbox for the current user.

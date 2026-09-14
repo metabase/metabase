@@ -25,6 +25,11 @@
   cleanup!
   cleanable?])
 
+(def ^:private RowTimestamp
+  "A `created_at`/`updated_at` column: a `java.time` value on the way out, and -- because clients echo the
+  notification they were handed back at us on update -- the ISO string it was encoded as on the way back in."
+  [:maybe [:or ms/TemporalInstant ms/TemporalString]])
+
 (mr/def ::Notification
   "Schema for the notification."
   [:merge
@@ -33,8 +38,8 @@
     ;; allow unsaved notification to be sent
     [:id                      {:optional true} [:maybe ms/PositiveInt]]
     [:active                  {:optional true} :boolean]
-    [:created_at              {:optional true} :any]
-    [:updated_at              {:optional true} :any]
+    [:created_at              {:optional true} RowTimestamp]
+    [:updated_at              {:optional true} RowTimestamp]
     [:subscriptions           {:optional true} [:sequential ::models.notification/NotificationSubscription]]
     ;;  the subscription that triggered this notification
     [:triggering_subscription {:optional true} ::models.notification/NotificationSubscription]]

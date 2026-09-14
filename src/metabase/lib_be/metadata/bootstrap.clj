@@ -111,7 +111,7 @@
 (mu/defn resolve-database :- [:maybe [:or ::empty-map Query]]
   "If query has `:database` `-1337` (the legacy database ID for queries using a source Card that had an unknown
   database), resolve the correct database ID and assoc it into the query."
-  ([query]
+  ([query :- [:maybe [:or ::empty-map Query]]]
    (resolve-database nil query))
 
   ([metadata-provider :- [:maybe ::lib.metadata.protocols/metadata-provider]

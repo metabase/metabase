@@ -83,7 +83,7 @@
 (mu/defn returned-columns :- [:sequential :map]
   "Return appdb columns for the `native-query`."
   [driver :- :keyword
-   native-query]
+   native-query :- :metabase.lib.schema/native-only-query]
   (let [parser (sql-tools.settings/current-parser-backend)]
     (metrics/with-operation-timing [parser "returned-columns"]
       (interface/returned-columns-impl parser driver native-query))))
@@ -91,7 +91,7 @@
 (mu/defn referenced-tables :- [:set :map]
   "Return tables referenced by the `native-query`"
   [driver :- :keyword
-   native-query]
+   native-query :- :metabase.lib.schema/native-only-query]
   (let [parser (sql-tools.settings/current-parser-backend)]
     (metrics/with-operation-timing [parser "referenced-tables"]
       (interface/referenced-tables-impl parser driver native-query))))
@@ -102,7 +102,7 @@
   This includes fields in SELECT, WHERE, JOIN ON, GROUP BY, ORDER BY, etc.
   Returns a set of :metadata/column maps."
   [driver :- :keyword
-   native-query]
+   native-query :- :metabase.lib.schema/native-only-query]
   (let [parser (sql-tools.settings/current-parser-backend)]
     (metrics/with-operation-timing [parser "referenced-fields"]
       (interface/referenced-fields-impl parser driver native-query))))
@@ -123,7 +123,7 @@
 (mu/defn validate-query :- [:set :map]
   "Validate native query. Returns a set of validation errors (empty set if valid)."
   [driver :- :keyword
-   native-query]
+   native-query :- :metabase.lib.schema/native-only-query]
   (let [parser (sql-tools.settings/current-parser-backend)]
     (metrics/with-operation-timing [parser "validate-query"]
       (interface/validate-query-impl parser driver native-query))))
@@ -145,7 +145,9 @@
    without sanitization. Callers MUST ensure replacement values are system-generated
    (e.g., database metadata). Never pass
    user-controlled input as replacement values."
-  ([driver sql-string replacements]
+  ([driver :- [:maybe :keyword]
+    sql-string :- :string
+    replacements :- ::replacements]
    (replace-names driver sql-string replacements {}))
   ([driver :- [:maybe :keyword]
     sql-string :- :string

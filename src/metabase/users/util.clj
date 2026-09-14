@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.config.core :as config]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
@@ -36,9 +37,9 @@
 
 (mu/defn maybe-set-user-group-memberships!
   "Implementation for `POST /api/user` and friends; set the PermissionsGroupMemberships for a `user-or-id`."
-  [user-or-id
+  [user-or-id :- ::lib.schema.id/user
    new-user-group-memberships :- [:maybe [:sequential ::users.schema/user-group-membership]]
-   & [is-superuser?]]
+   & [is-superuser?] :- [:* [:maybe :boolean]]]
   (when new-user-group-memberships
     ;; if someone passed in both `:is_superuser` and `:group_ids`, make sure the whether the admin group is in group_ids
     ;; agrees with is_superuser -- don't want to have ambiguous behavior

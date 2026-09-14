@@ -7,6 +7,7 @@
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.metadata-provider :as deps.provider]
    [metabase-enterprise.dependencies.models.dependency :as deps.graph]
+   [metabase.graph.core :as graph]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -46,7 +47,12 @@
   `include-native` will determine whether native dependents are included in the metadata provider."
   ([base-provider    :- ::lib.schema.metadata/metadata-provider
     updated-entities :- ::updates-map
-    & {:keys [graph dependents include-native?]}]
+    & {:keys [graph dependents include-native?]}
+    :- [:maybe
+        [:map {:closed true}
+         [:graph            {:optional true} [:maybe ::graph/graph]]
+         [:dependents       {:optional true} [:maybe [:map-of ::entity-type [:set :int]]]]
+         [:include-native?  {:optional true} [:maybe :boolean]]]]]
    ;; Reusing the cache with different overrides breaks the caching of [[lib.metadata/card]] calls.
    (lib.metadata.protocols/clear-cache! base-provider)
    (let [dependents (or dependents (transitive-dependents :graph            graph
@@ -115,7 +121,12 @@
 
   When `include-native?` is false, this function will ignore any entities using native sql and their children."
   ([edits :- ::updates-map
-    & {:keys [base-provider graph include-native?]}]
+    & {:keys [base-provider graph include-native?]}
+    :- [:maybe
+        [:map {:closed true}
+         [:base-provider   {:optional true} [:maybe ::lib.schema.metadata/metadata-provider]]
+         [:graph           {:optional true} [:maybe ::graph/graph]]
+         [:include-native? {:optional true} [:maybe :boolean]]]]]
    (let [valid-edits (if include-native?
                        edits
                        (into {}
