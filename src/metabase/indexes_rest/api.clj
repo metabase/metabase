@@ -7,6 +7,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.indexes-rest.db :as indexes-rest.db]
    [metabase.indexes.models.table-index :as table-index]
    [metabase.indexes.reconcile :as reconcile]
    [metabase.indexes.schema :as schema]
@@ -65,20 +66,20 @@
   "A transform's indexes: those physically in the warehouse, merged with its managed requests. Each entry is flagged
   `:metabase_managed`; managed ones also carry `:request` (status + definition)."
   [_route-params
-   {:keys [transform-id]} :- [:map [:transform-id ms/PositiveInt]]]
+   {:keys [transform-id]} :- [:map {:closed true} [:transform-id ms/PositiveInt]]]
   (let [transform   (api/read-check :model/Transform transform-id)
         database-id (transforms-base.i/target-db-id transform)
         {:keys [schema] table-name :name} (:target transform)
         managed     (table-index/select-for-transform transform-id)
-        warehouse   (or (reconcile/fetch-warehouse-indexes (t2/select-one :model/Database database-id)
+        warehouse   (or (reconcile/fetch-warehouse-indexes (indexes-rest.db/database database-id)
                                                            schema table-name)
                         [])]
     {:data (reconcile/merge-indexes managed warehouse)}))
 
 (api.macros/defendpoint :get "/request/:id" :- RequestIndex
   "Fetch a single index request (e.g. to poll its status)."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (doto (api/check-404 (t2/select-one :model/TableIndex :id id))
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
+  (doto (api/check-404 (indexes-rest.db/table-index id))
     (read-check-owner!)))
 
 (api.macros/defendpoint :post "/request" :- RequestIndex
@@ -86,7 +87,7 @@
   not under `/request`."
   [_route-params
    _query-params
-   {:keys [transform_id structured]} :- [:map
+   {:keys [transform_id structured]} :- [:map {:closed true}
                                          [:transform_id ms/PositiveInt]
                                          [:structured ::schema/index-structured]]]
   (api/write-check :model/Transform transform_id)
@@ -95,11 +96,11 @@
     ;; (transform_id, index_name) is unique; reject a duplicate cleanly instead of hitting the constraint.
     (api/check-400 (not (table-index/exists-for-transform? transform_id idx-name)) duplicate)
     (try
-      (t2/insert-returning-instance! :model/TableIndex
-                                     {:transform_id transform_id
-                                      :index_name   idx-name
-                                      :structured   structured
-                                      :created_by   api/*current-user-id*})
+      (indexes-rest.db/insert-table-index!
+       {:transform_id transform_id
+        :index_name   idx-name
+        :structured   structured
+        :created_by   api/*current-user-id*})
       (catch Exception e
         ;; the pre-check races a concurrent create; if the row exists now, surface the same 400
         (api/check-400 (not (table-index/exists-for-transform? transform_id idx-name)) duplicate)
@@ -117,23 +118,23 @@
 
 (api.macros/defendpoint :put "/request/:id" :- RequestIndex
   "Replace the structured definition of an index request, marking it update-pending."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
-   {:keys [structured]} :- [:map [:structured ::schema/index-structured]]]
+   {:keys [structured]} :- [:map {:closed true} [:structured ::schema/index-structured]]]
   (let [existing (api/check-404 (table-index/select-applicable-by-id id))]
     (write-check-owner! existing)
     (assert-stable-key! existing structured)
     ;; toucan2 has no instance-returning update, so re-select; in a tx so we return exactly what we wrote.
     (t2/with-transaction [_conn]
-      (t2/update! :model/TableIndex id {:structured structured})
-      (t2/select-one :model/TableIndex :id id))))
+      (indexes-rest.db/set-table-index-structured! id structured)
+      (indexes-rest.db/table-index id))))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/request/:id"
   "Mark an index request `delete-pending`. The physical index is only dropped when the target table is next rebuilt
   (pending changes force a full run), so the row stays visible in this state until that rebuild removes it."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (let [existing (api/check-404 (table-index/select-applicable-by-id id))]
     (write-check-owner! existing)
-    (t2/update! :model/TableIndex id {:status :delete-pending}))
+    (indexes-rest.db/set-table-index-status! id :delete-pending))
   api/generic-204-no-content)

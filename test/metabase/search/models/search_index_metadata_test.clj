@@ -4,9 +4,12 @@
    [java-time.api :as t]
    [metabase.search.models.search-index-metadata :as search-index-metadata]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [toucan2.connection :as t2.connection]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest lifecycle-test
   (t2/with-transaction [_ t2.connection/*current-connectable* {:rollback-only true}]

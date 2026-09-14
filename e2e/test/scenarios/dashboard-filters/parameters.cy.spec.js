@@ -611,7 +611,7 @@ describe("scenarios > dashboard > parameters", () => {
     });
 
     it("should retain the last used value for a dashboard filter", () => {
-      cy.intercept("GET", "/api/**/items?pinned_state*").as("getPinnedItems");
+      cy.intercept("GET", "/api/**/items?pinned-state*").as("getPinnedItems");
 
       H.filterWidget().click();
 

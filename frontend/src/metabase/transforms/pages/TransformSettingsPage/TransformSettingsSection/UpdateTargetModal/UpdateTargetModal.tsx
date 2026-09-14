@@ -47,7 +47,7 @@ export function UpdateTargetModal({
     <Modal
       title={t`Change the target for this transform`}
       opened
-      padding="xl"
+      padding="xxl"
       onClose={onClose}
     >
       <FocusTrap.InitialFocus />
@@ -143,7 +143,7 @@ function UpdateTargetForm({
     >
       {({ dirty }) => (
         <Form>
-          <Stack gap="lg">
+          <Stack gap="xl">
             {supportsSchemas && (
               <SchemaFormSelect
                 name="schema"

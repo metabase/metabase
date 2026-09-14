@@ -3,6 +3,7 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
+   [metabase-enterprise.sandbox.db :as sandbox.db]
    [metabase.api.common :refer [*current-user-id* *is-superuser?*]]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -46,19 +47,10 @@
   [user-id]
   (when user-id
     (let [user-group-ids           (user/group-ids user-id)
-          sandboxes-with-group-ids (t2/hydrate
-                                    (t2/select :model/Sandbox
-                                               {:select [[:pgm.group_id :group_id]
-                                                         [:s.*]]
-                                                :from [[:permissions_group_membership :pgm]]
-                                                :left-join [[:sandboxes :s] [:= :s.group_id :pgm.group_id]]
-                                                :where [:and
-                                                        [:= :pgm.user_id user-id]]})
-                                    :table)
+          sandboxes-with-group-ids (t2/hydrate (sandbox.db/user-sandboxes-with-group-ids user-id) :table)
 
           impersonations-with-group-ids (when (seq user-group-ids)
-                                          (t2/select :model/ConnectionImpersonation
-                                                     :group_id [:in user-group-ids]))
+                                          (sandbox.db/impersonations-for-groups user-group-ids))
           group-id->impersonations (->> impersonations-with-group-ids
                                         (group-by :group_id))
           group-id->sandboxes (->> sandboxes-with-group-ids

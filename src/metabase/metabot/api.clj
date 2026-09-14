@@ -14,6 +14,7 @@
    [metabase.lib.core :as lib]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.memory :as memory]
+   [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.api.conversations]
    [metabase.metabot.api.document]
    [metabase.metabot.api.metabot]
@@ -21,6 +22,7 @@
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
    [metabase.metabot.conversation-title :as conversation-title]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.envelope :as metabot.envelope]
    [metabase.metabot.feedback :as metabot.feedback]
    [metabase.metabot.persistence :as metabot.persistence]
@@ -36,8 +38,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
+   [metabase.util.malli.schema :as ms])
   (:import
    (java.io OutputStream)))
 
@@ -50,7 +51,7 @@
   can originate one. Permissions are participation-based — a conversation can
   have multiple participants (e.g. multiple users in a shared Slack thread)."
   [conversation-id]
-  (when-let [conversation (t2/select-one :model/MetabotConversation :id conversation-id)]
+  (when-let [conversation (metabot.db/conversation conversation-id)]
     (api/check-403 (mi/can-read? conversation))))
 
 (defn- make-out-of-sync-fn
@@ -192,9 +193,10 @@
 
   `:assistant-msg-id` is the PK of the placeholder assistant row created by
   [[metabot.persistence/start-turn!]]; the finally block UPDATEs that row.
-  `:external-id` is the assistant row's `external_id`, emitted as the SSE
-  `start` event's `messageId` so the client can correlate streamed messages
-  with feedback. `:user-external-id` is the turn's user row `external_id`,
+  `:external-id` is the assistant row's `external_id` — the client-minted
+  `assistant_message_id` when the request supplied one — echoed as the SSE
+  `start` event's `messageId` so a client that omitted one can still tell what
+  was persisted. `:user-external-id` is the turn's user row `external_id`,
   emitted as the `start` event's `messageMetadata.userMessageId`.
   `:state` is the reconstructed [[metabot.persistence/conversation-state]] —
   it seeds the agent loop as the immutable baseline for this turn's state."
@@ -303,6 +305,9 @@
         _          (metabot.config/check-metabot-enabled! metabot-id)
         _          (metabot.usage/check-metabase-managed-free-limit!)
         profile-id (metabot.config/resolve-dynamic-profile-id profile_id metabot-id)
+        ;; reject before `start-turn!` persists anything or the title job calls the LLM
+        _          (when-not (profiles/profile-registered? (keyword profile-id))
+                     (throw (ex-info (tru "Unknown profile") {:status-code 400 :profile-id profile-id})))
         ;; Only allow debug mode in dev — never in production
         debug?     (and config/is-dev? (boolean debug))
         hostname   (analytics.core/extract-hostname (:origin request-info))
@@ -370,7 +375,7 @@
 
 (mu/defn- upgrade-viewing-queries
   "Update queries of items in viewing context vector. Handles following item types: adhoc, question, model, metric"
-  [viewing :- [:vector metabot.context/ViewingItemSchema]]
+  [viewing :- [:vector :map]]
   (letfn [(update-items-query [item] (m/update-existing item :query legacy->modern-query))
           (maybe-update-item [item] (cond-> item
                                       (contains? upgradable-item-types (:type item))
@@ -386,7 +391,7 @@
   "Send a chat message to the LLM via the AI Proxy."
   [_route-params
    _query-params
-   body :- [:map
+   body :- [:map {:closed true}
             [:profile_id {:optional true} :string]
             [:metabot_id {:optional true} :string]
             [:message ms/NonBlankString]
@@ -419,7 +424,7 @@
   "Persist Metabot feedback."
   [_route-params
    _query-params
-   body :- [:map
+   body :- [:map {:closed true}
             [:metabot_id        ms/PositiveInt]
             [:message_id        ms/NonBlankString]
             [:positive          :boolean]
@@ -435,7 +440,7 @@
   "Persist Metabot source feedback."
   [_route-params
    _query-params
-   body :- [:map
+   body :- [:map {:closed true}
             [:metabot_id   ms/PositiveInt]
             [:message_id   ms/NonBlankString]
             [:source_id    ms/PositiveInt]

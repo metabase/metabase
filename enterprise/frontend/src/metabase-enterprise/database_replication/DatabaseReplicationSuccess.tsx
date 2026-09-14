@@ -9,7 +9,7 @@ export const DatabaseReplicationSuccess = ({
   onClose: () => void;
 }) => {
   return (
-    <Stack align="center" gap="lg" my="4.5rem">
+    <Stack align="center" gap="xl" my="4.5rem">
       <Box h={96} w={96}>
         <MetabotLogo variant="cloud" />
       </Box>

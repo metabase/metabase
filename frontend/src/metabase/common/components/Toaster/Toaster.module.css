@@ -5,7 +5,7 @@
   min-width: 18.75rem;
   max-width: 31.25rem;
   width: fit-content;
-  padding: var(--mantine-spacing-md);
+  padding: var(--mantine-spacing-lg);
   background-color: var(--mb-color-tooltip-background);
 
   /* Radius from Figma, no matching step in Mantine. */
@@ -58,8 +58,8 @@
 }
 
 .button {
-  padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
-  border-radius: var(--mantine-radius-sm);
+  padding: var(--mantine-spacing-xxs) var(--mantine-spacing-sm);
+  border-radius: var(--mantine-radius-xs);
   font-size: var(--mantine-font-size-sm);
   font-weight: bold;
   line-height: var(--mantine-line-height-lg);
@@ -67,7 +67,7 @@
   flex-shrink: 0;
   cursor: pointer;
   transition: background-color 200ms ease;
-  box-shadow: var(--mantine-shadow-xs);
+  box-shadow: var(--mantine-shadow-xs_outline);
 }
 
 .button:disabled {
@@ -111,15 +111,15 @@
   min-width: 0;
   min-height: 0;
   flex-shrink: 0;
-  margin-left: var(--mantine-spacing-lg);
-  border-radius: var(--mantine-radius-xs);
+  margin-left: var(--mantine-spacing-xl);
+  border-radius: var(--mantine-radius-xxs);
   color: var(--mb-color-tooltip-text);
   cursor: pointer;
   transition: background-color 200ms ease;
 }
 
 .toast[data-has-actions] .dismiss {
-  margin-left: var(--mantine-spacing-md);
+  margin-left: var(--mantine-spacing-lg);
 }
 
 .dismiss:hover {

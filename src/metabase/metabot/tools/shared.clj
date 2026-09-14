@@ -5,6 +5,14 @@
 
 (set! *warn-on-reflection* true)
 
+(def chart-types
+  "Display types the chart tools can produce, as model-facing strings. The main
+  and document chart tool enums derive from this list; the Slackbot query tool
+  has its own smaller enum."
+  ["table" "bar" "line" "pie" "sunburst" "treemap" "boxplot" "area" "combo"
+   "row" "pivot" "scatter" "waterfall" "sankey" "scalar"
+   "smartscalar" "gauge" "progress" "funnel" "object" "map"])
+
 (def ^:dynamic *memory-atom*
   "Dynamic memory atom bound for tools that need access to agent state."
   nil)
@@ -41,6 +49,14 @@
   "Returns the current charts state map from agent memory."
   []
   (get-in (current-memory) [:state :charts] {}))
+
+(defn current-client-ids
+  "Ids of the queries and charts seeded from this request's viewing context, as opposed to
+  written by the agent's own tools. A refusal to present one of these is a real access attempt
+  and gets the audited treatment; see `metabase.metabot.tools.shared.content-store`. Request
+  local: the conversation `:state` the client round-trips carries no provenance."
+  []
+  (get (current-memory) :client-ids #{}))
 
 (defn current-chart-configs-state
   "Returns the current chart-configs state map from agent memory.

@@ -16,6 +16,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { useAdminSetting } from "metabase/settings";
+import { SettingHeader } from "metabase/settings-components";
 import {
   Box,
   Button,
@@ -33,8 +34,6 @@ import type {
   CustomGeoJSONSetting,
   GeoJSONData,
 } from "metabase-types/api";
-
-import { SettingHeader } from "../SettingHeader";
 
 export const CustomGeoJSONWidget = () => {
   const [map, setMap] = useState<CustomGeoJSONMap | undefined>();
@@ -147,7 +146,7 @@ export const CustomGeoJSONWidget = () => {
       </div>
 
       {!hasCustomMaps && (
-        <Stack p="xl" align="center" gap="md">
+        <Stack p="xxl" align="center" gap="lg">
           <Image w={120} h={120} src={noResultsSource} />
           <Text fw="700" c="text-disabled">{t`No custom maps yet`}</Text>
         </Stack>

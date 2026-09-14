@@ -2,17 +2,21 @@ import _ from "underscore";
 
 import { setupListDatabaseSchemasEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen, within } from "__support__/ui";
-import { modelIconMap } from "metabase/common/utils/icon";
 import {
   createMockQueryBuilderState,
   createMockState,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders, screen, within } from "__support__/ui";
+import { modelIconMap } from "metabase/common/utils/icon";
 import { Route } from "metabase/router";
 import { convertSavedQuestionToVirtualTable } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { Card, NormalizedTable } from "metabase-types/api";
-import { createMockCard, createMockSettings } from "metabase-types/api/mocks";
+import type { Card } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockSettings,
+  createMockTable,
+} from "metabase-types/api/mocks";
 import {
   SAMPLE_DB_ID,
   createSampleDatabase,
@@ -29,37 +33,30 @@ const setup = async ({
   card = createMockCard(),
   sourceCard,
 }: SetupOpts = {}) => {
+  const sampleDatabase = createSampleDatabase();
+
+  // A card used as a source appears as a virtual table on its own database.
+  const database = sourceCard
+    ? {
+        ...sampleDatabase,
+        tables: [
+          ...(sampleDatabase.tables ?? []),
+          createMockTable({
+            ...convertSavedQuestionToVirtualTable(sourceCard),
+            db_id: SAMPLE_DB_ID,
+          }),
+        ],
+      }
+    : sampleDatabase;
+
   const state = createMockState({
     qb: createMockQueryBuilderState({ card }),
     settings: mockSettings(createMockSettings()),
     entities: createMockEntitiesState({
-      databases: [createSampleDatabase()],
+      databases: [database],
       questions: _.compact([card, sourceCard]),
     }),
   });
-
-  // 😫 all this is necessary to test a card as a question source
-  if (sourceCard) {
-    const virtualTable = convertSavedQuestionToVirtualTable(sourceCard);
-
-    state.entities = {
-      ...state.entities,
-      tables: {
-        // Unjustified type cast. FIXME
-        ...(state.entities.tables as Record<number, NormalizedTable>),
-        [virtualTable.id]: virtualTable,
-      },
-      databases: {
-        [state.entities.databases[1].id]: {
-          ...state.entities.databases[1],
-          tables: [
-            ...(state.entities.databases[1].tables ?? []),
-            virtualTable.id,
-          ],
-        },
-      },
-    };
-  }
 
   setupListDatabaseSchemasEndpoint(SAMPLE_DB_ID, ["PUBLIC"]);
 

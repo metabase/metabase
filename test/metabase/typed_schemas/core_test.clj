@@ -42,21 +42,18 @@
   (is (= {:schemaVersion 2
           :generatedAt   "2026-01-01T00:00:00Z"
           :metabase      {:instanceUrl "https://metabase.example.com"}
-          :questions     {"ordersByMonth" {:type "card", :key "ordersByMonth", :id 1}}
           :models        {"orders" {:actions {"create" {:kind "action", :id 9}}}}
           :tables        {"orders" {:type "table", :key "orders", :id 3}}
           :metrics       {"revenue" {:type "metric", :key "revenue", :id 2}}}
          (build/create-schema
-          {:questions [{:type "card", :key "ordersByMonth", :id 1}]
-           :models    [{:key "orders", :name "Orders", :actions {"create" {:kind "action", :id 9}}}]
+          {:models [{:key "orders", :name "Orders", :actions {"create" {:kind "action", :id 9}}}]
            :tables    [{:type "table", :key "orders", :id 3}]
            :metrics   [{:type "metric", :key "revenue", :id 2}]}
           test-info))))
 
 (deftest create-schema-disambiguates-duplicate-keys-test
   (let [schema (build/create-schema
-                {:questions []
-                 :models    []
+                {:models    []
                  :tables    [{:type "table", :key "orders", :id 3}
                              {:type "table", :key "orders", :id 4}]
                  :metrics   []}
@@ -65,7 +62,7 @@
     (is (= ["orders3" "orders4"] (map :key (vals (:tables schema)))))))
 
 (deftest create-schema-defaults-info-test
-  (let [schema (build/create-schema {:questions [], :models [], :tables [], :metrics []})]
+  (let [schema (build/create-schema {:models [], :tables [], :metrics []})]
     (is (string? (:generatedAt schema)))
     (is (contains? (:metabase schema) :instanceUrl))))
 
@@ -96,12 +93,16 @@
                  :tables         [{:id 10, :type "table", :key "publishedTable"}
                                   {:id 42, :type "table", :key "mappedTable"}
                                   {:id 99, :type "table", :key "notInScope"}]})]
-    (is (= {:questions []
-            :models    []
+    (is (= {:models    []
             :tables    [{:id 10, :type "table", :key "publishedTable"}
                         {:id 42, :type "table", :key "mappedTable"}]
             :metrics   [{:type "metric", :key "revenue", :id 1, :mappedTableIds [42]}]}
            (build/fetch-items {:include-data-library? true} source)))))
+
+(deftest options-reject-question-collection-refs-test
+  (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                        #"Invalid semantic schema options\."
+                        (build/fetch-items {:question-collection-refs [{:id 1}]}))))
 
 ;; One end-to-end test over the real test-data dataset: cards for every entity
 ;; kind on real synced tables, run through the whole pipeline to TypeScript.
@@ -139,16 +140,17 @@
                 (testing "every entity kind lands in the schema with its real relationships"
                   (is (=? {:generatedAt "2026-01-01T00:00:00Z"
                            :metabase    {:instanceUrl "https://metabase.example.com"}
-                           :questions   {"orderTotals" {:type "card", :id int?}}
                            :tables      {"orders" {:fields {"total" {:jsType "number"}}}}
                            :metrics     {"orderRevenue" {:mappedTableIds [(mt/id :orders)]
                                                          :columns        [{:displayName "Sum of Total"
                                                                            :jsType      "number"}]}}
                            :models      {"orderModel" {:actions {"updateOrder" {:kind "action"}}}}}
                           schema)))
-                (testing "only the temp cards are in scope for the dataset database"
-                  (is (= {:questions ["orderTotals"], :metrics ["orderRevenue"], :models ["orderModel"]}
-                         (update-vals (select-keys schema [:questions :metrics :models])
+                (testing "saved questions are absent from the schema"
+                  (is (not (contains? schema :questions))))
+                (testing "only the temp metric and model are in scope for the dataset database"
+                  (is (= {:metrics ["orderRevenue"], :models ["orderModel"]}
+                         (update-vals (select-keys schema [:metrics :models])
                                       (comp vec keys)))))
                 (testing "the rendered module carries the real entities"
                   (is (str/includes? body "orders: {"))

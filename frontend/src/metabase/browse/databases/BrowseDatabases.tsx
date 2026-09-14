@@ -56,7 +56,7 @@ export const BrowseDatabases = () => {
       flex={1}
       direction="column"
       wrap="nowrap"
-      pt="md"
+      pt="lg"
     >
       <BrowseDataHeader />
       <Flex className={S.browseMain} direction="column" wrap="nowrap" flex={1}>
@@ -96,8 +96,8 @@ const CardImageWrapper = ({ database }: { database: string }) => {
   return (
     <Box
       bg="core-white"
-      h="xl"
-      w="xl"
+      h="xxl"
+      w="xxl"
       className={CS.rounded}
       style={{
         boxShadow:
@@ -109,9 +109,9 @@ const CardImageWrapper = ({ database }: { database: string }) => {
         component="img"
         src={getEngineLogo(database)}
         alt={t`${database} database logo`}
-        h="xl"
-        w="xl"
-        p="xs"
+        h="xxl"
+        w="xxl"
+        p="xxs"
       />
     </Box>
   );
@@ -122,10 +122,10 @@ const AddDatabaseCard = () => (
     <Stack
       h="8.5rem"
       justify="space-between"
-      p="lg"
+      p="xl"
       className={cx(CS.rounded, CS.bordered, DB.addCard)}
     >
-      <Group gap="xs">
+      <Group gap="xxs">
         <CardImageWrapper database={"postgres"} />
         <CardImageWrapper database={"mysql"} />
         <CardImageWrapper database={"snowflake"} />

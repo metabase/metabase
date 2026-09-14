@@ -10,7 +10,6 @@
    [metabase.server.settings :as server.settings]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [stencil.core :as stencil]))
 
 (defn- header->directive
@@ -67,6 +66,29 @@
         (is (= "frame-ancestors 'none'"
                (csp-directive "frame-ancestors")))))))
 
+(deftest interactive-embedding-origins-cannot-inject-csp-directives-test
+  ;; `embedding-app-origins-interactive` is admin-writable and, when interactive embedding is
+  ;; on, its value becomes ordinary pages' `frame-ancestors`. It must stay confined to that
+  ;; directive: a `;` in the value must not break out and append further CSP directives. The
+  ;; worst is `script-src-elem` — the base policy omits it, so an injected one is honored and
+  ;; overrides the hash-based `script-src` allowlist the app relies on to block XSS.
+  (mt/with-premium-features #{:embedding}
+    (let [csp-directive-names
+          (fn [origins]
+            (mt/with-temporary-setting-values [enable-embedding-interactive      true
+                                               embedding-app-origins-interactive origins]
+              (->> (str/split (get (mw.security/security-headers) "Content-Security-Policy") #";\s*")
+                   (map str/trim)
+                   (remove str/blank?)
+                   (map #(first (str/split % #"\s+")))
+                   set)))
+          injection "https://ok.example; script-src-elem https://evil.example"]
+      (testing "a `;` in the setting cannot change which CSP directives are present"
+        (is (= (csp-directive-names "https://ok.example")
+               (csp-directive-names injection))))
+      (testing "and script-src-elem specifically is never introduced"
+        (is (not (contains? (csp-directive-names injection) "script-src-elem")))))))
+
 (deftest csp-header-iframe-hosts-tests
   (testing "Allowed iframe hosts setting is used in the CSP frame-src directive."
     (mt/with-temporary-setting-values [allowed-iframe-hosts "https://www.wikipedia.org, https://www.typescriptlang.org/   https://clojure.org"]
@@ -78,6 +100,26 @@
   (testing "Includes 'self' so embed previews work (#49142)"
     (let [hosts (-> (csp-directive "frame-src") (str/split #"\s+") set)]
       (is (contains? hosts "'self'") "frame-src hosts does not include 'self'"))))
+
+(deftest csp-www-strip-keeps-the-admins-registrable-domain-test
+  ;; `add-wildcard-entries` strips a leading `www.` label with a regex whose `.` is unescaped,
+  ;; so it eats `www` + the next character instead of the literal `www.`. An entry of
+  ;; `https://wwwacme.com` must keep the admin's actual domain — not become a different
+  ;; registrable domain (`cme.com`) plus a `*.cme.com` wildcard the admin never entered.
+  (testing "a www<char> host is not rewritten to a different registrable domain + wildcard"
+    (mt/with-temporary-setting-values [allowed-iframe-hosts "https://wwwacme.com"]
+      (let [hosts (-> (csp-directive "frame-src") (str/split #"\s+") set)]
+        (is (contains? hosts "https://wwwacme.com")
+            "the admin's actual domain must be present")
+        (is (not (contains? hosts "https://cme.com"))
+            "a different registrable domain must not appear")
+        (is (not (contains? hosts "https://*.cme.com"))
+            "a wildcard over a domain the admin never entered must not appear"))))
+  (testing "a legitimate www2 host is not silently dropped"
+    (mt/with-temporary-setting-values [allowed-iframe-hosts "https://www2.example.com"]
+      (let [hosts (-> (csp-directive "frame-src") (str/split #"\s+") set)]
+        (is (contains? hosts "https://www2.example.com")
+            "a www2.* entry must survive, not vanish")))))
 
 (deftest xframeoptions-header-tests
   (mt/with-premium-features #{:embedding}
@@ -320,29 +362,46 @@
                               "https://api.example.com"))))))
 
 (deftest nonce-test
+  (mt/initialize-if-needed! :web-server)
   (testing "The nonce in the CSP header should match the nonce in the HTML from a index.html request"
-    (let [nonceJSON (atom nil)
-          render-file (mt/original-fn #'stencil/render-file)]
+    (let [template-nonce (atom nil)
+          render-file    (mt/original-fn #'stencil/render-file)]
       ;; http/get hits a real Jetty server; handler thread doesn't inherit *local-redefs*.
       (with-redefs [stencil/render-file (fn [path variables]
-                                          (reset! nonceJSON (:nonceJSON variables))
+                                          (reset! template-nonce (:nonce variables))
                                           ;; Use index_template.html instead of index.html so the frontend doesn't
                                           ;; have to be built to run the test. The only difference between them
                                           ;; should be the script tags for the webpack bundles
                                           (assert (= path "frontend_client/index.html"))
                                           (render-file "frontend_client/index_template.html" variables))]
-        (let [response  (http/get (str "http://localhost:" (server.instance/server-port)))
-              nonce     (json/decode @nonceJSON)
-              csp       (get-in response [:headers "Content-Security-Policy"])
-              style-src (->> (str/split csp #"; *")
-                             (filter #(str/starts-with? % "style-src "))
-                             first)]
+        (let [response   (http/get (str "http://localhost:" (server.instance/server-port)))
+              nonce      @template-nonce
+              csp        (get-in response [:headers "Content-Security-Policy"])
+              style-src  (header->directive csp "style-src")
+              script-src (header->directive csp "script-src")]
           (testing "The nonce is 10 characters long and alphanumeric"
             (is (re-matches #"^[a-zA-Z0-9]{10}$" nonce)))
           (testing "The same nonce is in the CSP header"
             (is (str/includes? style-src (str "nonce-" nonce))))
-          (testing "The same nonce is in the body of the rendered page"
-            (is (str/includes? (:body response) nonce))))))))
+          (testing "The app document does not get a script-src nonce"
+            (is (not (str/includes? script-src "'nonce-"))))
+          (testing "The nonce reaches the page only as a script attribute, which the browser then blanks"
+            (is (str/includes? (:body response) (format "nonce=\"%s\"" nonce)))
+            (is (not (str/includes? (:body response) "_metabaseNonce")))
+            (is (= 1 (count (re-seq (re-pattern nonce) (:body response))))
+                "the nonce appears exactly once, on the bootstrap script tag")))))))
+
+(deftest script-src-nonce-opt-in-test
+  (testing "script-src only carries a nonce for responses that opt in"
+    (with-redefs [config/is-dev? false]
+      (let [script-src-for  (fn [response-extras]
+                              (-> ((mw.security/add-security-headers
+                                    (fn [_request respond _raise]
+                                      (respond (merge {:status 200 :headers {} :body "ok"} response-extras))))
+                                   {:uri "/" :headers {}} identity identity)
+                                  (csp-directive-from-response "script-src")))]
+        (is (not (str/includes? (script-src-for {}) "'nonce-")))
+        (is (str/includes? (script-src-for {mw.security/script-nonce-response-key true}) "'nonce-"))))))
 
 (deftest data-app-inline-style-csp-test
   (testing "Only data-app iframe responses allow inline styles"
@@ -365,7 +424,7 @@
         (is (not (str/includes? app-style-src "'unsafe-inline'")))
         (is (str/includes? data-style-src "'unsafe-inline'"))
         (is (not (str/includes? data-style-src "'nonce-")))
-        (is (str/includes? data-script-src "'nonce-"))
+        (is (not (str/includes? data-script-src "'nonce-")))
         (is (not (str/includes? data-script-src "'unsafe-inline'")))))))
 
 ;; NOTE: `unsafe-eval` was removed from the data-app iframe document (it now lives
@@ -602,8 +661,7 @@
       (is (= "60" (get headers "Access-Control-Max-Age"))
           "Expected Access-Control-Max-Age header to be set to 60")))
   (testing "CORS should be enabled when origins are configured regardless of embedding flags"
-    (mt/with-temporary-setting-values [enable-embedding-simple false
-                                       enable-embedding-sdk false]
+    (mt/with-temporary-setting-values [enable-embedding-modular false]
       (let [headers (mw.security/access-control-headers "https://example.com"
                                                         "https://example.com")]
         (is (= "https://example.com"
@@ -616,8 +674,7 @@
 
 (deftest test-cors-enabled-when-origins-configured-without-embedding-features
   (testing "CORS headers should be sent when origins are configured even if embedding features are disabled"
-    (mt/with-temporary-setting-values [enable-embedding-sdk    false
-                                       enable-embedding-simple false
+    (mt/with-temporary-setting-values [enable-embedding-modular  false
                                        embedding-app-origins-sdk "https://example.com"]
       (let [wrapped-handler (mw.security/add-security-headers
                              (fn [_request respond _raise]
@@ -914,8 +971,8 @@
           (is (= "img-src 'self' data: https://*.tile.openstreetmap.org"
                  (csp-directive "img-src")))))
       (testing "custom tile server host and port are allowed; path and query (e.g. api keys) are dropped"
-        (mt/with-temporary-setting-values [map-tile-server-url "https://tiles.example.com:8443/{z}/{x}/{y}.png?apikey=SECRET"]
-          (is (= "img-src 'self' data: https://tiles.example.com:8443"
+        (mt/with-temporary-setting-values [map-tile-server-url "https://example.com:8443/{z}/{x}/{y}.png?apikey=SECRET"]
+          (is (= "img-src 'self' data: https://example.com:8443"
                  (csp-directive "img-src")))))
       (testing "a relative tile template contributes no host"
         (mt/with-temporary-setting-values [map-tile-server-url "/local/{z}/{x}/{y}.png"]

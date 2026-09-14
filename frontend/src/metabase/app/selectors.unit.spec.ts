@@ -1,4 +1,4 @@
-import { createMockState } from "metabase/redux/store/mocks";
+import { createMockState } from "__support__/state";
 import type { Location } from "metabase/router";
 import type { RouterProps } from "metabase/selectors/app";
 import { createMockUser } from "metabase-types/api/mocks";

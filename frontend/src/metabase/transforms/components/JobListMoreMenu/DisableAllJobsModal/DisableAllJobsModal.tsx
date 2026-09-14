@@ -22,7 +22,7 @@ export function DisableAllJobsModal({
     <Modal
       title={t`Disable all jobs?`}
       opened
-      padding="xl"
+      padding="xxl"
       onClose={onClose}
       onClick={(event) => event.stopPropagation()}
     >
@@ -46,7 +46,7 @@ function DisableAllJobsForm({ onConfirm, onClose }: DisableAllJobsModalProps) {
   return (
     <FormProvider initialValues={{}} onSubmit={handleSubmit}>
       <Form>
-        <Stack gap="lg">
+        <Stack gap="xl">
           <Text>
             {t`Any jobs that are currently running will finish and no new job runs will start.`}
           </Text>

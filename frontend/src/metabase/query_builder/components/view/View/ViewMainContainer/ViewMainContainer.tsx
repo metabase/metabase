@@ -3,13 +3,15 @@ import cx from "classnames";
 
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import CS from "metabase/css/core/index.css";
+import { HasResultsAlertPrompt } from "metabase/notifications/HasResultsAlertPrompt";
+import { SyncedParametersList } from "metabase/parameters/components/SyncedParametersList";
+import { Mode } from "metabase/querying/click-actions/Mode";
+import { getQueryMode } from "metabase/querying/click-actions/lib/modes";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
-import { SyncedParametersList } from "metabase/querying/components/SyncedParametersList";
 import type { SelectionRange } from "metabase/querying/editor/types";
 import { TimeseriesChrome } from "metabase/querying/filters/components/TimeseriesChrome";
 import type { QueryBuilderMode, QueryModalType } from "metabase/redux/store";
 import { Box } from "metabase/ui";
-import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -28,6 +30,10 @@ import { ViewNativeQueryEditor } from "../ViewNativeQueryEditor";
 
 import ViewMainContainerS from "./ViewMainContainer.module.css";
 
+const clickActionMode = new Mode(getQueryMode, {
+  hasColumnShortcutActions: true,
+});
+
 interface ViewMainContainerProps {
   question: Question;
   query: NativeQuery;
@@ -40,6 +46,7 @@ interface ViewMainContainerProps {
   isNativeEditorOpen: boolean;
   isRunnable: boolean;
   isRunning: boolean;
+  isDirty: boolean;
   isResultDirty: boolean;
 
   isShowingDataReference: boolean;
@@ -76,7 +83,6 @@ interface ViewMainContainerProps {
   onSetDatabaseId?: (id: DatabaseId) => void;
 
   queryBuilderMode: QueryBuilderMode;
-  mode: Mode;
   showLeftSidebar: boolean;
   showRightSidebar: boolean;
   isLiveResizable: boolean;
@@ -88,8 +94,8 @@ interface ViewMainContainerProps {
 export const ViewMainContainer = (props: ViewMainContainerProps) => {
   const {
     queryBuilderMode,
-    mode,
     question,
+    isDirty,
     showLeftSidebar,
     showRightSidebar,
     parameters,
@@ -108,7 +114,6 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
     return;
   }
 
-  const queryMode = mode && mode.queryMode();
   const { isNative } = Lib.queryDisplayInfo(question.query());
   const isSidebarOpen = showLeftSidebar || showRightSidebar;
 
@@ -145,7 +150,11 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
           {...visualizationResultProps}
           noHeader
           className={CS.spread}
-          mode={queryMode}
+          mode={clickActionMode}
+          hasColumnReordering
+          noResultsAction={
+            !isDirty && <HasResultsAlertPrompt question={question} />
+          }
           onUpdateQuestion={updateQuestion}
         />
       </DebouncedFrame>

@@ -59,7 +59,7 @@ export function PythonTransformsUpsell({
   return (
     <>
       {isLoading || error ? (
-        <Center py="xl">
+        <Center py="xxl">
           <LoadingAndErrorWrapper
             loading={isLoading}
             error={
@@ -72,7 +72,7 @@ export function PythonTransformsUpsell({
       ) : (
         <Flex>
           {shouldShowLeftColumn && (
-            <Stack flex="0 0 56%" gap="lg" p="3rem">
+            <Stack flex="0 0 56%" gap="xl" p="3rem">
               <Title order={3}>
                 {t`Go beyond SQL with advanced transforms`}
               </Title>
@@ -98,7 +98,7 @@ export function PythonTransformsUpsell({
           <Stack
             p={shouldShowLeftColumn ? "3rem 1.5rem" : "3rem"}
             flex={1}
-            gap="md"
+            gap="lg"
             bg={shouldShowLeftColumn ? "background_page-secondary" : undefined}
           >
             {!shouldShowLeftColumn && (
@@ -111,7 +111,7 @@ export function PythonTransformsUpsell({
                 </Text>
               </>
             )}
-            <Stack gap="md" mb="sm">
+            <Stack gap="lg" mb="sm">
               {bulletPoints.map((point) => (
                 <Flex direction="row" gap="sm" key={point}>
                   <Center w={24} h={24} flex="0 0 auto">

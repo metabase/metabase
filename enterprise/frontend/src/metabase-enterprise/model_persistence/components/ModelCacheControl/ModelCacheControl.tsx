@@ -83,7 +83,6 @@ export function ModelCacheToggle({
         <div>
           <Switch
             label={t`Persist model data`}
-            size="sm"
             checked={isPersisted}
             disabled
           />
@@ -99,7 +98,6 @@ export function ModelCacheToggle({
   return (
     <Switch
       label={t`Persist model data`}
-      size="sm"
       checked={isPersisted}
       onChange={toggleModelPersistence}
       disabled={false}

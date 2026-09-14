@@ -47,7 +47,7 @@ If you do not have `clojure-eval` available to you or `clj-nrepl-eval`, do not f
 ./bin/test-agent :only '[metabase.foo-test metabase.bar-test]'  # multiple namespaces
 ```
 
-For module-scoped runs — useful when validating a branch's blast radius — pass `:module` (single) or `:modules` (vector) to scope tests to the module(s) the branch touched. The test runner resolves these to test directories: `enterprise/foo` → `enterprise/backend/test/metabase_enterprise/foo`, otherwise `test/metabase/<name>` (see `metabase.test-runner/parse-options`).
+For module-scoped runs — useful when validating a branch's blast radius — pass `:module` (single) or `:modules` (vector) to scope tests to the module(s) the branch touched. The test runner resolves each module to its test directory through its `:ns-prefix`: `lib.schema` → `test/metabase/lib/schema`, `enterprise/foo` → `enterprise/backend/test/metabase_enterprise/foo` (see `metabase.test-runner/module-folders`).
 
 ```bash
 ./bin/test-agent :module enterprise/workspaces
@@ -77,41 +77,35 @@ It piggybacks on a running dev nREPL (~5s) and auto-spawns a JVM if none is runn
 the four generated keys; structural changes it can't safely make (a new module needs a human `:team`, or
 modules need reordering) are printed as `WARNING:` lines for you to resolve by hand.
 
-## Kondo Ignore Ratchets
-
-`.clj-kondo/ratchets.edn` records, per linter, how many inline `:clj-kondo/ignore` forms the backend source
-tree may contain, and how many config-level suppressions (`:off` switches and `:exclude` entries in
-`.clj-kondo/config.edn`) exist. `metabase.core.kondo-ratchet-test` fails when either budget drifts from the
-actual counts, in either direction. Prefer fixing the underlying warning over adding an ignore.
-
-Budget too high (you removed ignores): a local run of the test tightens the file for you — commit the
-change. PRs labelled `kondo-ratchets-self-healing` get the lowered budgets committed to the branch by CI.
-To tighten by hand (babashka, no JVM; a no-op prints `unchanged`):
+Run all repository-level checks, or one named suite:
 
 ```bash
-./bin/mage fix-kondo-ratchets
+./bin/mage project-tests
+./bin/mage project-tests <backend|migrations|modules|ratchets>
 ```
 
-Budget too low (you added an ignore): the task only raises a budget when told to. If the ignore is
-genuinely required, run `./bin/mage fix-kondo-ratchets --seed :the-linter` and defend the increase in the
-PR.
+### Nested modules
 
-The ignore must be the first key in its map; noncanonical forms fail the ratchet instead of being guessed
-at. Ignores of linters outside the file's `:comment-exempt` set need an explanatory `;;` comment directly
-above (or trailing on the same line). The set only shrinks: once a linter's last uncommented ignore gains
-a comment, the fixer drops its exemption.
+Module names form a tree: `lib.schema` is a child of `lib`. When OSS module `search` exists,
+`enterprise/search` is its child. Run `./bin/mage modules-tree` to inspect the hierarchy.
 
-Introducing a new linter: `./bin/mage kondo-insert-ignores :the-linter` inserts an ignore at every site it
-flags, then `./bin/mage fix-kondo-ratchets --seed :the-linter` records the budget — no big-bang cleanup.
-To burn debt down, `./bin/mage kondo-redundant-ignores` lists ignores that are no longer needed (slow:
-full kondo run). Kondo's redundancy report can't see hook-linter warnings, so `--fix` re-lints after
-removing, puts any still-working ignore back exactly as it was, and stamps it with a `[kondo-keep]`
-comment; marked sites are skipped on later runs. That verification needs a clean starting point, so
-files with pre-existing lint findings are excluded from the sweep and reported. `--fix --audit` rechecks the
-marked sites too, removing any that have become truly redundant along with their stamped marker
-comments (a marker trailing on a code line is left for a hand fix). `[kondo-keep]` can also be added
-by hand to protect an ignore whose exact form matters — it only counts on the line directly above the
-ignore, or trailing on the ignore's own line.
+- Namespace ownership uses the most specific matching prefix. Declaring `lib.schema` assigns
+  `metabase.lib.schema.*` to it without moving files. Use `:ns-prefix` when namespaces do not match the
+  module name.
+- Every cross-module dependency still requires `:uses`.
+- A child may use an ancestor's internal namespaces. Parents, siblings, and unrelated modules must use the
+  target's `:api`.
+- Each `:module-exports` entry widens a nested module's visibility by one ancestor. Export every link to
+  make it available everywhere. OSS module `X` exports its `enterprise/X` companion automatically.
+
+## Ratchets
+
+After changing Clojure suppressions or module-boundary escape hatches, run `./bin/mage kondo-ratchets`.
+Fix the underlying issue when possible; suppressions are a last resort and need a nearby explanation.
+
+Explain budget increases in the PR. Do not record reductions in feature PRs: post-merge automation opens
+a `Tighten ratchets` PR for them. Use `./bin/mage kondo-ratchets-shrink --seed :linter` only when adding an
+inline-ignore budget. If either ratchet file conflicts, run `./bin/merge-kondo-ratchets`.
 
 ## Tool Preferences
 

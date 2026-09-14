@@ -22,11 +22,7 @@ export const EmbedJsContent = ({
 }: EmbedJsContentProps) => {
   const cta = match({ variant, hasEmbeddingFeature })
     .with({ variant: "ee", hasEmbeddingFeature: true }, () => (
-      <Button
-        component={Link}
-        to={"/admin/embedding/setup-guide"}
-        variant="outline"
-      >
+      <Button component={Link} to={"/embedding/get-started"} variant="outline">
         {t`Go to setup guide`}
       </Button>
     ))
@@ -46,7 +42,7 @@ export const EmbedJsContent = ({
         color="text-secondary"
         id="embed-js-title"
       >{t`Modular embedding`}</Text>
-      <Text mb="md">
+      <Text mb="lg">
         {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins. */}
         {t`A JavaScript library built on top of Metabase’s modular embedding SDK that lets you embed individual components (charts, dashboards, query builder) using plain JS — no React setup required. You get per-component controls like drill-through, parameters, downloads, theming.`}
       </Text>
@@ -56,7 +52,7 @@ export const EmbedJsContent = ({
           alt="Modular embedding example"
         />
       )}
-      <Group gap="md">
+      <Group gap="lg">
         {cta}
 
         <ExternalLink href={embedJsDocsUrl}>

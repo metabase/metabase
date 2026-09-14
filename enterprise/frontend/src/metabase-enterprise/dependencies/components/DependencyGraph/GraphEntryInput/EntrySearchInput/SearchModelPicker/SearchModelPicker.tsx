@@ -72,7 +72,7 @@ function SearchModelPopover({
   };
 
   return (
-    <Box w="15rem" p="md">
+    <Box w="15rem" p="lg">
       {isLoading ? (
         <Center>
           <Loader />

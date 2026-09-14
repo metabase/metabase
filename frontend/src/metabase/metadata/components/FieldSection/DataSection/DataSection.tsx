@@ -124,7 +124,7 @@ const DataSectionBase = ({
 
           {canCoerceFieldType(field) && (
             <>
-              <Flex gap="xs" ml={rem(12)} wrap="nowrap">
+              <Flex gap="xxs" ml={rem(12)} wrap="nowrap">
                 {isCasting ? (
                   <SubInputFollowIllustration />
                 ) : (
@@ -139,8 +139,7 @@ const DataSectionBase = ({
                     }}
                     flex="1"
                     label={t`Cast to a specific data type`}
-                    mt="md"
-                    size="xs"
+                    mt="lg"
                     onChange={handleCastingChange}
                   />
                   {isCasting && (

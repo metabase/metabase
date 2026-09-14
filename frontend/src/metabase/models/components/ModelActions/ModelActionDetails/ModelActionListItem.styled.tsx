@@ -63,7 +63,7 @@ const baseActionCardStyles = css`
 export const CodeBlock = styled.pre`
   ${baseActionCardStyles}
 
-  font-family: Monaco, monospace;
+  font-family: var(--mb-default-monospace-font-family);
   font-size: 0.7rem;
   white-space: pre-wrap;
   margin: 0;

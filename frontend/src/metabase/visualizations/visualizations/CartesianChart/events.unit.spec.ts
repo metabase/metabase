@@ -62,6 +62,7 @@ const dimensionModel: DimensionModel = {
   column: createdAtColumn,
   columnIndex: 0,
   columnByCardId: { [CARD_ID]: createdAtColumn },
+  columns: [createdAtColumn],
 };
 
 describe("getEventDimensions", () => {
@@ -156,6 +157,7 @@ describe("getEventDimensions", () => {
       column: monthColumn,
       columnIndex: 0,
       columnByCardId: { [CARD_ID]: monthColumn },
+      columns: [monthColumn],
     };
 
     const seriesModel = createMockSeriesModel({
@@ -253,6 +255,7 @@ describe("getEventDimensions", () => {
       column: categoryColumn,
       columnIndex: 0,
       columnByCardId: { [CARD_ID]: categoryColumn },
+      columns: [categoryColumn],
     };
     const seriesModel = createMockSeriesModel({
       dataKey: countKey,
@@ -326,6 +329,7 @@ describe("getSeriesClickData", () => {
         column: createdAtColumn,
         columnIndex: 0,
         columnByCardId: { [CARD_ID]: createdAtColumn },
+        columns: [createdAtColumn],
       },
       cardsColumns: [
         {
@@ -399,6 +403,7 @@ describe("getSeriesClickData", () => {
         column: categoryColumn,
         columnIndex: 0,
         columnByCardId: { [CARD_ID]: categoryColumn },
+        columns: [categoryColumn],
       },
       cardsColumns: [
         {
@@ -561,6 +566,7 @@ describe("getBrushClickObject", () => {
         column: createdAtColumn,
         columnIndex: 0,
         columnByCardId: { [CARD_ID]: createdAtColumn },
+        columns: [createdAtColumn],
       },
       xAxisModel: {
         axisType: "time",
@@ -607,6 +613,7 @@ describe("getBrushClickObject", () => {
         column: priceColumn,
         columnIndex: 0,
         columnByCardId: { [CARD_ID]: priceColumn },
+        columns: [priceColumn],
       },
       xAxisModel: {
         axisType: "value",
@@ -657,6 +664,7 @@ describe("getAdjustedBrushEndEvent", () => {
       column: createdAtColumn,
       columnIndex: 0,
       columnByCardId: { [CARD_ID]: createdAtColumn },
+      columns: [createdAtColumn],
     },
     xAxisModel: {
       axisType: "time",

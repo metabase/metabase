@@ -113,7 +113,7 @@ export const DataReferenceLibraryPane = ({
               )}
             </NodeListContainer>
           ) : (
-            <Box ta="center" py="lg" px="md">
+            <Box ta="center" py="xl" px="lg">
               <Text c="text-secondary">
                 {t`No published tables in your library yet.`}
               </Text>

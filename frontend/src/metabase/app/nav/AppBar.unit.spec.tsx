@@ -8,12 +8,6 @@ import {
   setupDashboardEndpoints,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders } from "__support__/ui";
-import { DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS } from "metabase/redux/embed";
-import type {
-  DashboardState,
-  InteractiveEmbeddingOptions,
-} from "metabase/redux/store";
 import {
   createMockAppState,
   createMockDashboardState,
@@ -21,7 +15,13 @@ import {
   createMockEmbedState,
   createMockQueryBuilderState,
   createMockStoreDashboard,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import { renderWithProviders } from "__support__/ui";
+import { DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS } from "metabase/redux/embed";
+import type {
+  DashboardState,
+  InteractiveEmbeddingOptions,
+} from "metabase/redux/store";
 import { Route } from "metabase/router";
 import { modelToUrl } from "metabase/urls";
 import type { Card } from "metabase-types/api";

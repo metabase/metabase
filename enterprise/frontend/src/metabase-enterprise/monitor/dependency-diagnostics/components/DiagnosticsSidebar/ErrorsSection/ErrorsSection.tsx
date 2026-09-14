@@ -103,7 +103,7 @@ function ErrorListItem({ item }: ErrorListItemProps) {
     <Tooltip opened={clipboard.copied} label={t`Copied!`}>
       <Group
         className={cx(S.item, CS.hoverParent, CS.hoverVisibility)}
-        p="md"
+        p="lg"
         justify="space-between"
         wrap="nowrap"
         onClick={handleClick}

@@ -3,10 +3,15 @@
 
   For each field in the input set, builds a flat per-field arm of the shape
 
-      SELECT '<field-name>' AS field_name, <cast-to-text>(col) AS value_out
+      SELECT <arm-ordinal> AS field_idx, <cast-to-text>(col) AS value_out
       FROM <table>
       GROUP BY <cast-to-text>(col)
       <driver-correct LIMIT clause>
+
+  Arms are tagged with their ordinal in the batch rather than with the field's name. The name comes from the
+  warehouse verbatim, and an inline string literal built from it is a SQL injection sink on any engine whose
+  string lexer we don't escape for; an integer ordinal is unforgeable. It also means two fields that
+  happen to share a name stay distinct.
 
   Per-arm DISTINCT semantics come from `GROUP BY` rather than `SELECT DISTINCT` — both are
   equivalent here, but `GROUP BY` composes cleanly with every driver's
@@ -27,12 +32,13 @@
   chain-filter → params.field-values → field → field-values) would form a cycle if these
   requires lived in `metabase.warehouse-schema.models.field-values`."
   (:require
+   [clojure.string :as str]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor :as qp]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.warehouse-schema.models.field-values :as field-values]
-   [toucan2.core :as t2]))
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
+   [metabase.warehouse-schema.models.field-values :as field-values]))
 
 (set! *warn-on-reflection* true)
 
@@ -81,15 +87,15 @@
   (sql.qp/->honeysql driver [::sql.qp/cast-to-text {} (h2x/identifier :field col-name)]))
 
 (defn- build-arm
-  "HoneySQL for one UNION arm."
-  [driver table field]
+  "HoneySQL for one UNION arm. `idx` is the field's position in the batch and becomes the arm's tag."
+  [driver table field idx]
   (let [cast-expr (cast-to-text-honeysql driver (:name field))
-        inner     {:select   [[[:inline (:name field)] :field_name]
+        inner     {:select   [[[:inline idx] :field_idx]
                               [cast-expr :value_out]]
                    ;; `:from` wraps the identifier expression in an extra vector — `[[expr]]` so HoneySQL
                    ;; treats it as a single table expression rather than `[table alias …]`.
                    :from     [[(table-honeysql driver table)]]
-                   ;; Only `cast-expr` goes in `:group-by`. The `[:inline (:name field)]` tag is a literal in
+                   ;; Only `cast-expr` goes in `:group-by`. The `[:inline idx]` tag is a literal in
                    ;; the SELECT list and needs no GROUP BY entry.
                    :group-by [cast-expr]}
         limited   (sql.qp/apply-top-level-clause driver :limit inner {:limit field-values/*distinct-limit*})]
@@ -104,10 +110,19 @@
 (defn- build-union
   "Build the full HoneySQL form for one batch of fields. Single field → no UNION wrapper."
   [driver table fields]
-  (let [arms (mapv #(build-arm driver table %) fields)]
+  (let [arms (into [] (map-indexed #(build-arm driver table %2 %1)) fields)]
     (if (= 1 (count arms))
       (first arms)
       {:union-all arms})))
+
+(defn- decode-arm-idx
+  "Coerce the `field_idx` tag a driver returned back to a Clojure integer. Drivers disagree on the type they
+  hand back for an inline integer literal (`Long` on most, `BigDecimal` on Oracle/Snowflake, …), so normalize
+  rather than assume. Returns `nil` for anything unrecognizable."
+  [x]
+  (cond
+    (number? x) (long x)
+    (string? x) (try (Long/parseLong (str/trim x)) (catch NumberFormatException _ nil))))
 
 (defn run-distinct-batch
   "Execute one UNION ALL query covering `fields` from one `table`. The caller is responsible for
@@ -122,20 +137,24 @@
   (or equivalent) to decide log-and-continue vs abort semantics."
   [table fields]
   (let [db-id          (:db_id table)
-        driver         (:engine (t2/select-one :model/Database :id db-id))
+        driver         (:engine (warehouse-schema.db/database db-id))
+        fields         (vec fields)
         hsql           (build-union driver table fields)
         [sql & params] (sql.qp/format-honeysql driver hsql)
         result         (qp/process-query
                         {:database db-id
                          :type     :native
                          :native   {:query sql, :params (vec params)}})
-        rows           (-> result :data :rows)
-        by-name        (into {} (map (juxt :name identity)) fields)]
-    (reduce (fn [acc [field-name value-str]]
-              (let [field (get by-name field-name)
-                    v     (decode-value (:base_type field) value-str)]
-                (-> acc
-                    (update-in [(:id field) :values] (fnil conj []) v)
-                    (update-in [(:id field) :raw-count] (fnil inc 0)))))
+        rows           (-> result :data :rows)]
+    (reduce (fn [acc [arm-idx value-str]]
+              ;; Arms are tagged by ordinal rather than by name: the name is warehouse-controlled and has no
+              ;; business being in the query text as a literal, and ordinals also keep two
+              ;; identically-named fields in the same batch from collapsing into one.
+              (if-let [field (get fields (decode-arm-idx arm-idx))]
+                (let [v (decode-value (:base_type field) value-str)]
+                  (-> acc
+                      (update-in [(:id field) :values] (fnil conj []) v)
+                      (update-in [(:id field) :raw-count] (fnil inc 0))))
+                acc))
             (into {} (map (fn [f] [(:id f) {:values [] :raw-count 0}])) fields)
             rows)))

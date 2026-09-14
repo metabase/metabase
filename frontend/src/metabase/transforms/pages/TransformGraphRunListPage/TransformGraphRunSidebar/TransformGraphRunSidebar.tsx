@@ -147,17 +147,17 @@ export const TransformGraphRunSidebar = memo(function TransformGraphRunSidebar({
         bg="background_page-primary"
         data-testid="transform-graph-run-sidebar"
       >
-        <Box className={S.header} p="lg">
+        <Box className={S.header} p="xl">
           <TransformGraphRunSidebarHeader run={run} onClose={onClose} />
         </Box>
-        <Box className={S.scrollArea} flex={1} mih={0} p="lg">
-          <Stack gap="xl">
-            <Stack gap="md">
+        <Box className={S.scrollArea} flex={1} mih={0} p="xl">
+          <Stack gap="xxl">
+            <Stack gap="lg">
               <TransformGraphRunInfoSection run={run} />
               {canCancelRun(run) && <CancelationSection run={run} />}
             </Stack>
             {!areMembersUnavailable && (
-              <Stack gap="md">
+              <Stack gap="lg">
                 <Group gap="sm" wrap="nowrap">
                   <Badge variant="filled" bg="core-brand">
                     {transformRuns.length}
@@ -281,7 +281,7 @@ function TransformGraphRunSidebarHeader({
       <Title order={3}>
         <RunName run={run} gap="sm" />
       </Title>
-      <Group gap="xs" wrap="nowrap">
+      <Group gap="xxs" wrap="nowrap">
         <HeaderEntityActions run={run} />
         <ActionIcon aria-label={t`Close`} onClick={onClose}>
           <FixedSizeIcon name="close" />

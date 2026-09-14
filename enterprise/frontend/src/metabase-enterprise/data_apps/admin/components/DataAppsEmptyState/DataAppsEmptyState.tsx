@@ -7,12 +7,12 @@ export const DataAppsEmptyState = () => (
     direction="column"
     align="center"
     justify="center"
-    gap="md"
+    gap="lg"
     bd="1px solid var(--mb-color-border)"
-    bdrs="md"
+    bdrs="sm"
     bg="background-primary"
     mih="16rem"
-    p="xl"
+    p="xxl"
   >
     <Flex
       align="center"

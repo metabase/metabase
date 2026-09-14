@@ -1,9 +1,9 @@
 (ns metabase.actions.settings
   (:require
+   [metabase.actions.db :as actions.db]
    [metabase.settings.core :as setting]
    [metabase.util.i18n :as i18n]
-   [metabase.warehouses.models.database :as database]
-   [toucan2.core :as t2]))
+   [metabase.warehouses.models.database :as database]))
 
 (setting/defsetting database-enable-actions
   (i18n/deferred-tru "Whether to enable Actions for a specific Database.")
@@ -46,13 +46,13 @@
   :enabled-for-db? (fn [db]
                      (setting/custom-disabled-reasons!
                       [(when (database/is-destination? db) db-routing-reason)
-                       (when (t2/exists? :model/Database :router_database_id (:id db)) db-routing-reason)
+                       (when (actions.db/destination-database-exists-for-router? (:id db)) db-routing-reason)
                        (cond
                          ;; TODO we also care about re-sync after connection details are changed
                          (= (:initial_sync_status db) "incomplete") busy-sync-reason
                          ;; NOTE: we could optimize this into a single query, but the code would be less elegant.
-                         (t2/exists? :model/Table :db_id (:id db) :is_writable true) nil
-                         (t2/exists? :model/Table :db_id (:id db) :is_writable nil) missing-permissions-reason
+                         (actions.db/writable-table-exists? (:id db)) nil
+                         (actions.db/table-with-unknown-writability-exists? (:id db)) missing-permissions-reason
                          :else no-writable-tables-reason)]))
   :type             :boolean
   :visibility       :public

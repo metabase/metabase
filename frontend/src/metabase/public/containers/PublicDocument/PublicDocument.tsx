@@ -151,7 +151,7 @@ export const PublicDocument = () => {
           {document && editor && (
             <DocumentEditorHostProvider>
               <ExternalCardDataProvider value={externalCardDataValue}>
-                <Box maw={900} mx="auto" p="xl" w="100%">
+                <Box maw={900} mx="auto" p="xxl" w="100%">
                   <h1 style={{ marginBottom: "1rem" }}>{document.name}</h1>
                   <div className={S.editorContent}>
                     <EditorContent

@@ -9,6 +9,7 @@
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.connection :as driver.conn]
+   [metabase.driver.db :as driver.db]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
@@ -18,12 +19,10 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [get-in mapv select-keys]]
-   [potemkin :as p]
-   ;; pool invalidation re-fetches Database details from the app db; runs outside any query context
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2])
+   [potemkin :as p])
   (:import
-   (com.mchange.v2.c3p0 DataSources)
+   (com.mchange.v2.c3p0 C3P0ProxyConnection DataSources)
+   (java.sql Connection)
    (javax.sql DataSource)
    (org.apache.logging.log4j Level)))
 
@@ -175,7 +174,16 @@
    ;; request. IRL the Metabase server and data warehouse are likely to be located in closer geographical proximity to
    ;; one another than my trans-contintental tests. Thus in the majority of cases the overhead should be next to
    ;; nothing, and in the worst case close to imperceptible.
-   "testConnectionOnCheckout"             true
+   ;;
+   ;; Tests are the exception: CI drives remote warehouses over a slow link, and on Snowflake `isValid()` is a
+   ;; heartbeat REST call, which makes the per-checkout test one of the largest single costs in the driver test
+   ;; suite. There, verify on c3p0's background thread instead -- the same pairing the app DB pool
+   ;; uses (see [[metabase.app-db.connection-pool-setup]]) -- so a stale connection is still culled without putting
+   ;; a round trip in front of every query.
+   "testConnectionOnCheckout"             (not driver-api/is-test?)
+   ;; Seconds between background tests of idle, checked-in connections. Zero disables it, which is what we want
+   ;; whenever `testConnectionOnCheckout` is already covering every connection handed out.
+   "idleConnectionTestPeriod"             (if driver-api/is-test? 60 0)
    ;; [From dox] Number of seconds that Connections in excess of minPoolSize should be permitted to remain idle in the
    ;; pool before being culled. Intended for applications that wish to aggressively minimize the number of open
    ;; Connections, shrinking the pool back towards minPoolSize if, following a spike, the load level diminishes and
@@ -405,7 +413,7 @@
       ;; the hash didn't match, but it's possible that a stale instance of `DatabaseInstance`
       ;; was passed in (ex: from a long-running sync operation); fetch the latest one from
       ;; our app DB, and see if it STILL doesn't match
-      (not= curr-hash (-> (t2/select-one [:model/Database :id :engine :details :write_data_details :admin_details] :id database-id)
+      (not= curr-hash (-> (driver.db/database-connection-details database-id)
                           jdbc-spec-hash)))))
 
 (defn- get-canonical-pool
@@ -537,3 +545,36 @@
 
 (defmethod driver/connection-spec :sql-jdbc [_driver db]
   (db->pooled-connection-spec  db))
+
+(def ^:private raw-connection-close-method
+  ;; c3p0 exposes the pooled physical Connection only through `rawConnectionOperation`, which names the operation as a
+  ;; `java.lang.reflect.Method`. `unwrap` is not an alternative: c3p0 delegates it to the driver, and Hive's throws.
+  (.getMethod Connection "close" (make-array Class 0)))
+
+(defn discard-pooled-connection!
+  "Destroy the physical Connection behind a c3p0 proxy, so the pool acquires a fresh one rather than handing this one
+  to the next query. Use for a Connection left in a state the pool cannot reset, such as after canceling a Statement
+  on a driver where that leaves unread protocol state on the wire.
+
+  Only the caller that owns `conn` may call this: the pool has no way to tell the difference between a Connection
+  whose borrower is finished with it and one that is still in use.
+
+  A Connection with no pool behind it has no next query to poison, so it is left alone."
+  [^Connection conn]
+  (when (instance? C3P0ProxyConnection conn)
+    (try
+      (.rawConnectionOperation ^C3P0ProxyConnection conn
+                               raw-connection-close-method
+                               C3P0ProxyConnection/RAW_CONNECTION
+                               (make-array Object 0))
+      (catch Throwable e
+        (log/debugf "Closing the raw connection to discard it failed: %s" (ex-message e))))
+    ;; Closing the raw Connection is invisible to c3p0: `rawConnectionOperation` reports nothing back to the pool, and
+    ;; the check-in reset only reads properties that a driver may answer from memory once closed — Hive's
+    ;; `getAutoCommit` is a bare `return true` — so on those drivers the pool would hand the dead Connection to the
+    ;; next query. Any *proxied* call routes its exception into c3p0, which then tests the physical Connection and
+    ;; destroys it when the test fails. `createStatement` is that call: JDBC requires it to throw on a closed
+    ;; Connection.
+    (try
+      (.close (.createStatement conn))
+      (catch Throwable _))))

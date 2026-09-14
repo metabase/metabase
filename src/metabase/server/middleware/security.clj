@@ -25,10 +25,18 @@
 
 (set! *warn-on-reflection* true)
 
+(def script-nonce-response-key
+  "Response key that opts a response into a `script-src` nonce. Set it on server-rendered documents whose
+  inline script body varies per request, so no build-time hash can cover them. Everything else is expected
+  to use the hashes in [[inline-js-hashes]]."
+  ::script-nonce?)
+
 (defn- generate-nonce
-  "Generates a random nonce of 10 characters to add to the `Content-Security-Policy` header so that only scripts and
-   inline style elements with the same nonce will be allowed to run. The server generates a unique nonce value each
-   time it sends a response. For more information see
+  "Generates a random nonce of 10 characters to add to the `Content-Security-Policy` header so that only
+   style elements with the same nonce will be allowed to apply. The app document hands this value to page
+   JS, which needs it to inject styles at runtime (Emotion, CodeMirror, ECharts). The server generates a
+   unique nonce value each time it sends a response. `script-src` only carries the nonce for responses that
+   set [[script-nonce-response-key]]. For more information see
    https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/style-src."
   []
   (let [chars         "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -131,20 +139,20 @@
   So, we'll double things up and include both the wildcard and non-wildcard entry. We still keep the logic of not adding a wildcard when a
   subdomain is already specified because we want to treat this case as the user being more specific and thus intentionally less permissive."
   [domain-or-url]
-  (let [cleaned-domain (-> domain-or-url
-                           (str/replace #"/$" "")
-                           (str/replace #"www." ""))
-        {:keys [protocol domain port]} (parse-url cleaned-domain)]
-    (when domain
-      (let [split-domain (str/split domain #"\.")
+  (let [{:keys [protocol domain port]} (parse-url (str/replace domain-or-url #"/$" ""))
+        ;; Strip only a *leading* `www.` label (anchored, escaped dot). An unescaped, unanchored
+        ;; `#"www."` ate `www` + the next char — mangling `wwwevil.com` and dropping `www2.*` hosts.
+        base-domain (some-> domain (str/replace #"^www\." ""))]
+    (when base-domain
+      (let [split-domain (str/split base-domain #"\.")
             new-domains  (cond-> (if (= (count split-domain) 2)
-                                   [domain (format "*.%s" domain)]
-                                   [domain])
-                           (str/includes? domain-or-url "www.") (conj (format "www.%s" domain)))]
+                                   [base-domain (format "*.%s" base-domain)]
+                                   [base-domain])
+                           (str/starts-with? domain "www.") (conj (format "www.%s" base-domain)))]
         (for [new-domain new-domains]
           (str (when protocol (format "%s://" protocol))
                new-domain
-               (when (and port (not= domain "*")) (format ":%s" port))))))))
+               (when (and port (not= base-domain "*")) (format ":%s" port))))))))
 
 (def ^:private always-allowed-iframe-hosts
   ["'self'"
@@ -238,16 +246,20 @@
 
 (defn- content-security-policy-header
   "`Content-Security-Policy` header. See https://content-security-policy.com for more details."
-  [nonce data-app-iframe? data-app-connect-hosts allow-blob-img?]
+  [nonce script-nonce? data-app-iframe? data-app-connect-hosts allow-blob-img?]
   {"Content-Security-Policy"
    (str/join
     (for [[k vs] {:default-src  ["'none'"]
                   :script-src   (concat
                                  ["'self'"
-                                  ;; for custom viz plugin bundles loaded via fetch + inline <script> with nonce.
+                                  ;; Only responses that set [[script-nonce-response-key]] get a nonce here.
+                                  ;; The app document deliberately does not: its inline scripts are covered by
+                                  ;; the hashes below, and it hands the nonce to page JS so styles can be
+                                  ;; injected at runtime, which would make a `script-src` nonce reachable by
+                                  ;; anything that can read the page.
                                   ;; In dev mode 'unsafe-inline' covers this; adding a nonce there would
                                   ;; cause the browser to ignore 'unsafe-inline' per the CSP spec.
-                                  (when (and nonce (not config/is-dev?))
+                                  (when (and nonce script-nonce? (not config/is-dev?))
                                     (format "'nonce-%s'" nonce))
                                   "https://maps.google.com"
                                   "https://accounts.google.com"
@@ -347,12 +359,29 @@
                   :media-src    ["www.metabase.com"]}]
       (format "%s %s; " (name k) (str/join " " vs))))})
 
+(def ^:private csp-unsafe-char-re
+  "Chars that let an embedding-origin token escape the `frame-ancestors` directive: `;` (starts a
+   directive), `,` (starts a policy), and control chars (CR/LF header injection). Ordinary
+   whitespace is already removed by tokenizing on it."
+  #"[;,\p{Cntrl}]")
+
+(defn- valid-embedding-origins
+  "Drop any embedding-origin token with a CSP-structural char, so the rest can be spliced into
+   `frame-ancestors`/`X-Frame-Options` without injecting a directive. nil if none remain."
+  [raw]
+  (some->> (str/split (or raw "") #"\s+")
+           (remove str/blank?)
+           (remove #(re-find csp-unsafe-char-re %))
+           seq
+           (str/join " ")))
+
 (defn- interactive-embedding-origins
-  "The configured interactive-embedding app origins, when interactive embedding is
-   enabled; otherwise nil."
+  "The configured interactive-embedding app origins (validated to structurally-safe origins),
+   when interactive embedding is enabled; otherwise nil."
   []
   (and (setting/get-value-of-type :boolean :enable-embedding-interactive)
-       (setting/get-value-of-type :string :embedding-app-origins-interactive)))
+       (valid-embedding-origins
+        (setting/get-value-of-type :string :embedding-app-origins-interactive))))
 
 (defn- frame-ancestors-value
   "The `frame-ancestors` CSP source-list for a given framing `mode`:
@@ -365,8 +394,9 @@
     (or (interactive-embedding-origins) "'none'")))
 
 (defn- content-security-policy-header-with-frame-ancestors
-  [frame-ancestors-mode nonce data-app-iframe? data-app-connect-hosts allow-blob-img?]
-  (cond-> (update (content-security-policy-header nonce data-app-iframe? data-app-connect-hosts allow-blob-img?)
+  [frame-ancestors-mode nonce script-nonce? data-app-iframe? data-app-connect-hosts allow-blob-img?]
+  (cond-> (update (content-security-policy-header nonce script-nonce? data-app-iframe? data-app-connect-hosts
+                                                  allow-blob-img?)
                   "Content-Security-Policy"
                   #(format "%s frame-ancestors %s;" % (frame-ancestors-value frame-ancestors-mode)))
     ;; MANDATORY for data apps — do not remove/weaken. Sole barrier (no JS backstop)
@@ -492,13 +522,17 @@
   "Fetch a map of security headers that should be added to a response based on the passed options.
    `:frame-ancestors` controls clickjacking protection: `:any` (open embedding),
    `:self` (same-origin only), or `:none` (default — no framing unless interactive
-   embedding is configured)."
-  [& {:keys [origin nonce frame-ancestors allow-cache? data-app-iframe? data-app-connect-hosts allow-blob-img?]
-      :or   {frame-ancestors :none, allow-cache? false, data-app-iframe? false, allow-blob-img? false}}]
+   embedding is configured). `:script-nonce?` adds the nonce to `script-src`, see
+   [[script-nonce-response-key]]."
+  [& {:keys [origin nonce script-nonce? frame-ancestors allow-cache? data-app-iframe? data-app-connect-hosts
+             allow-blob-img?]
+      :or   {frame-ancestors :none, allow-cache? false, script-nonce? false, data-app-iframe? false,
+             allow-blob-img? false}}]
   (merge
    (if allow-cache? cache-far-future-headers (cache-prevention-headers))
    strict-transport-security-header
-   (content-security-policy-header-with-frame-ancestors frame-ancestors nonce data-app-iframe? data-app-connect-hosts allow-blob-img?)
+   (content-security-policy-header-with-frame-ancestors frame-ancestors nonce script-nonce? data-app-iframe?
+                                                        data-app-connect-hosts allow-blob-img?)
    (access-control-headers origin (embedding.settings/embedding-app-origins-sdk))
    ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
    (x-frame-options-header frame-ancestors)
@@ -535,7 +569,7 @@
   [request]
   (second (re-matches data-app-slug-regex (:uri request))))
 
-(defn- site-origin
+(defn site-origin
   "This Metabase instance's origin as `{:protocol :domain :port}` (parsed from
    `site-url`), or nil. Matches the shape [[parse-url]] returns so origins compare
    with `=`."
@@ -606,6 +640,7 @@
   (let [headers (security-headers
                  :origin                      (get (:headers request) "origin")
                  :nonce                       (:nonce request)
+                 :script-nonce?               (boolean (get response script-nonce-response-key))
                  ;; The internal data-app iframe is only ever framed by the
                  ;; same-origin Metabase app, so restrict it to `'self'` rather
                  ;; than the open embedding `*`. Check it before the broader

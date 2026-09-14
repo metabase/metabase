@@ -12,11 +12,11 @@ import {
 } from "metabase/common/components/Schedule";
 import type {
   ScheduleBuilderValue,
-  ScheduleChangeEvent,
   ScheduleValue,
   ScheduleValueType,
-} from "metabase/common/components/Schedule/types";
-import { isScheduleCronValue } from "metabase/common/components/Schedule/types";
+} from "metabase/common/components/Schedule/domain";
+import { isScheduleCronValue } from "metabase/common/components/Schedule/domain";
+import type { ScheduleChangeEvent } from "metabase/common/components/Schedule/types";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { useSetting } from "metabase/settings";
@@ -51,13 +51,13 @@ export function ScheduleSection({
       label={t`Schedule`}
       description={t`Configure when this job should run.`}
     >
-      <Box px="xl" py="lg">
+      <Box px="xxl" py="xl">
         <Box display="contents" component="fieldset" disabled={readOnly}>
           <ScheduleWidget job={job} onChangeSchedule={onScheduleChange} />
         </Box>
       </Box>
       <Divider />
-      <Group px="xl" py="md" justify="space-between">
+      <Group px="xxl" py="lg" justify="space-between">
         <RunStatus
           run={job?.last_run ?? null}
           neverRunMessage={t`This job hasn’t been run before.`}

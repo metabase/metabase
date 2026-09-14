@@ -17,7 +17,10 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.users.models.user :as user]
+   [metabase.users.settings :as users.settings]
    [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
+   [metabase.util.log.capture :as log.capture]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -625,3 +628,63 @@
         (is (= {"tenant_attr" "tenant_value"
                 "user_attr" "user_value"}
                (:attributes result)))))))
+
+;;; ------------------------------------------- Unparseable settings column --------------------------------------------
+
+(def ^:private unparseable-settings-plaintext "not-json")
+
+(defn- corrupt-settings-column!
+  "Write a value straight into `core_user.settings` that [[metabase.models.interface/encrypted-json-out]] hands back
+  un-parsed. The value is run through [[encryption/maybe-encrypt]] so it is encrypted exactly the way the column
+  expects: since #80785 the encrypted read is strict and a plaintext value would throw inside `t2/select` when
+  `MB_ENCRYPTION_SECRET_KEY` is set, never reaching the code under test. What is left after decryption is not JSON, so
+  the transform falls back to returning the raw column value (a String) instead of a map."
+  [user-id]
+  (t2/query {:update :core_user
+             :set    {:settings (encryption/maybe-encrypt unparseable-settings-plaintext)}
+             :where  [:= :id user-id]}))
+
+(deftest user-local-settings-unparseable-column-test
+  (testing "a `settings` column that can't be decrypted or parsed is treated as empty (#76900)"
+    (mt/with-temp [:model/User {user-id :id} {}]
+      (corrupt-settings-column! user-id)
+      (testing "looked up by user id"
+        (is (= {} (user/user-local-settings user-id))))
+      (testing "looked up from an already-selected user"
+        (is (= {} (user/user-local-settings (t2/select-one [:model/User :settings] :id user-id))))))))
+
+(deftest user-local-settings-unparseable-column-read-write-test
+  (testing "user-local Settings still work for a user whose `settings` column can't be decrypted or parsed (#76900)"
+    (mt/with-temp [:model/User {user-id :id} {}]
+      (corrupt-settings-column! user-id)
+      (testing "reads fall back to the Setting's default instead of throwing"
+        (request/with-current-user user-id
+          (is (nil? (users.settings/last-acknowledged-version)))))
+      (testing "writes replace the unusable value instead of throwing"
+        (request/with-current-user user-id
+          (users.settings/last-acknowledged-version! "v0.99.0")
+          (is (= "v0.99.0" (users.settings/last-acknowledged-version))))
+        (is (= {:last-acknowledged-version "v0.99.0"}
+               (user/user-local-settings user-id)))))))
+
+(deftest user-local-settings-unparseable-column-warns-on-overwrite-test
+  (testing "discarding an unreadable `settings` column is logged, because the write destroys it permanently (#76900)"
+    (mt/with-temp [:model/User {user-id :id} {}]
+      (corrupt-settings-column! user-id)
+      (testing "reading user-local settings does not warn -- nothing is destroyed, and this runs on every request"
+        (log.capture/with-log-messages-for-level [messages [metabase.settings.models.setting :warn]]
+          (request/with-current-user user-id
+            (users.settings/last-acknowledged-version))
+          (is (empty? (messages)))))
+      (testing "the write that overwrites it warns, naming the user"
+        (log.capture/with-log-messages-for-level [messages [metabase.settings.models.setting :warn]]
+          (request/with-current-user user-id
+            (users.settings/last-acknowledged-version! "v0.99.0")
+            (users.settings/dismissed-browse-models-banner! true))
+          (let [msgs (mapv :message (messages))]
+            (testing "only once, no matter how many Settings are written in the same request"
+              (is (= 1 (count msgs))))
+            (is (str/includes? (str (first msgs))
+                               (str "Discarding unreadable settings for user " user-id)))
+            (testing "without leaking the unreadable column contents, which are user data"
+              (is (not (str/includes? (str (first msgs)) unparseable-settings-plaintext))))))))))

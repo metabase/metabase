@@ -11,7 +11,7 @@ export function EmbedButton({ onClick }: { onClick: () => void }) {
     <Button
       variant="default"
       h="2rem"
-      px="md"
+      px="lg"
       py="sm"
       leftSection={<Icon name="embed" aria-hidden />}
       onClick={() => {

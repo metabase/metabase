@@ -71,11 +71,13 @@
    [metabase.documents.core :as documents]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.field-stats :as field-stats]
    [metabase.metabot.tools.shared :as shared]
+   [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.models.interface :as mi]
@@ -87,8 +89,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.match :as match]
    [metabase.warehouses.core :as warehouses]
-   [ring.util.codec :as codec]
-   [toucan2.core :as t2]))
+   [ring.util.codec :as codec]))
 
 (set! *warn-on-reflection* true)
 
@@ -114,7 +115,7 @@
                                      (if (= pages 1) " page." " pages."))
                                 {:page page :pages pages})))
         start (* (dec page) page-size)]
-    {:items (vec (take page-size (drop start items)))
+    {:items (subvec items start (min total (+ start page-size)))
      :total total
      :page  page
      :pages pages}))
@@ -281,7 +282,7 @@
 (defn- present-source-card
   "Resolve a source-card id to a typed item map (model / metric / question)."
   [source-card-id]
-  (let [src-card (t2/select-one [:model/Card :id :type :card_schema] :id source-card-id)
+  (let [src-card (metabot.db/card-type-row source-card-id)
         src-type (case (:type src-card)
                    :model  "model"
                    :metric "metric"
@@ -313,10 +314,7 @@
 ;; ----- Fetch handlers (one per URI shape) -----
 
 (defn- fetch-databases-list [query-params]
-  (let [all (t2/select [:model/Database :id :name :engine :description :is_audit]
-                       :is_audit false
-                       :router_database_id nil
-                       {:order-by [[:%lower.name :asc]]})
+  (let [all (metabot.db/non-audit-databases)
         _   (perms/prime-database-perms-cache {:db-ids (into #{} (map :id) all)})
         dbs (->> all
                  (filter mi/can-read?)
@@ -327,16 +325,7 @@
   "metabase://collections (root only) and metabase://collections?tree=true (flat list of all)."
   [{:keys [tree] :as query-params}]
   (let [tree?    (= "true" tree)
-        where    (cond-> [:and
-                          [:= :archived false]
-                          [:= :namespace nil]
-                          ;; Exclude the system Trash collection from navigation listings.
-                          [:or [:= :type nil] [:!= :type "trash"]]]
-                   (not tree?) (conj [:= :location "/"]))
-        colls    (->> (t2/select [:model/Collection :id :name :location :authority_level
-                                  :description :personal_owner_id]
-                                 {:where    where
-                                  :order-by [[:location :asc] [:%lower.name :asc]]})
+        colls    (->> (metabot.db/navigable-collections tree?)
                       (filter mi/can-read?))
         ;; For tree mode, compute path names by chaining ancestor names.
         id->name (when tree? (into {} (map (juxt :id :name)) colls))
@@ -384,10 +373,7 @@
   (let [db-id  (parse-long id-str)
         _      (warehouses/get-database db-id)
         _      (perms/prime-table-perms-cache {:db-ids #{db-id}})
-        tables (->> (t2/select [:model/Table :id :name :display_name :schema :db_id :description]
-                               :db_id  db-id
-                               :active true
-                               {:order-by [[:%lower.schema :asc] [:%lower.name :asc]]})
+        tables (->> (metabot.db/active-tables-for-database db-id)
                     (filter mi/can-read?)
                     (mapv present-table))]
     (list-result :database-tables tables query-params)))
@@ -395,12 +381,7 @@
 (defn- fetch-database-models [id-str query-params]
   (let [db-id  (parse-long id-str)
         _      (warehouses/get-database db-id)
-        models (->> (t2/select [:model/Card :id :name :type :description :card_schema
-                                :collection_id :database_id :table_id]
-                               :type        :model
-                               :database_id db-id
-                               :archived    false
-                               {:order-by [[:%lower.name :asc]]})
+        models (->> (metabot.db/models-for-database db-id)
                     (filter mi/can-read?)
                     (mapv present-card))]
     (list-result :database-models models query-params)))
@@ -408,11 +389,7 @@
 (defn- fetch-database-schemas [id-str query-params]
   (let [db-id   (parse-long id-str)
         _       (warehouses/get-database db-id)
-        rows    (t2/query
-                 {:select-distinct [:schema]
-                  :from            [:metabase_table]
-                  :where           [:and [:= :db_id db-id] [:= :active true]]
-                  :order-by        [[:schema :asc]]})
+        rows    (metabot.db/active-schemas-for-database db-id)
         schemas (->> rows
                      (keep :schema)
                      (mapv (fn [s]
@@ -425,11 +402,7 @@
 (defn- fetch-database-schema-tables [id-str schema-name query-params]
   (let [db-id  (parse-long id-str)
         _      (warehouses/get-database db-id)
-        tables (->> (t2/select [:model/Table :id :name :display_name :schema :db_id :description]
-                               :db_id  db-id
-                               :schema schema-name
-                               :active true
-                               {:order-by [[:%lower.name :asc]]})
+        tables (->> (metabot.db/active-tables-in-schema db-id schema-name)
                     (filter mi/can-read?)
                     (mapv present-table))]
     (list-result :database-schema-tables tables query-params)))
@@ -444,28 +417,14 @@
   (documents/with-content-gate-cache
     (let [coll-id        (parse-long id-str)
           coll           (api/read-check :model/Collection coll-id)
-          cards          (->> (t2/select [:model/Card :id :name :type :description :card_schema
-                                          :collection_id :database_id :table_id]
-                                         {:where    [:and [:= :collection_id coll-id] [:= :archived false]]
-                                          :order-by [[:%lower.name :asc]]})
+          cards          (->> (metabot.db/cards-in-collection coll-id)
                               (filter mi/can-read?))
-          dashboards     (->> (t2/select [:model/Dashboard :id :name :description :collection_id]
-                                         :collection_id coll-id
-                                         :archived      false
-                                         {:order-by [[:%lower.name :asc]]})
+          dashboards     (->> (metabot.db/dashboards-in-collection coll-id)
                               (filter mi/can-read?))
           ;; Exploration Summary documents are only through their exploration — so they stay out of this listing
-          documents      (->> (t2/select [:model/Document :id :name :collection_id :exploration_id]
-                                         :collection_id  coll-id
-                                         :archived       false
-                                         :exploration_id nil
-                                         {:order-by [[:%lower.name :asc]]})
+          documents      (->> (metabot.db/documents-in-collection coll-id)
                               (filter mi/can-read?))
-          subcollections (->> (t2/select [:model/Collection :id :name :location :authority_level
-                                          :description :personal_owner_id]
-                                         :location (str (:location coll) coll-id "/")
-                                         :archived false
-                                         {:order-by [[:%lower.name :asc]]})
+          subcollections (->> (metabot.db/unarchived-collections-at-location (str (:location coll) coll-id "/"))
                               (filter mi/can-read?))
           items          (concat (map present-collection subcollections)
                                  (map present-card cards)
@@ -476,11 +435,7 @@
 (defn- fetch-collection-subcollections [id-str query-params]
   (let [coll-id (parse-long id-str)
         coll    (api/read-check :model/Collection coll-id)
-        subs    (->> (t2/select [:model/Collection :id :name :location :authority_level
-                                 :description :personal_owner_id]
-                                :location (str (:location coll) coll-id "/")
-                                :archived false
-                                {:order-by [[:%lower.name :asc]]})
+        subs    (->> (metabot.db/unarchived-collections-at-location (str (:location coll) coll-id "/"))
                      (filter mi/can-read?)
                      (mapv present-collection))]
     (list-result :collection-subcollections subs query-params)))
@@ -511,7 +466,9 @@
     (check-resource-database (:database_id card))))
 
 (defn- check-measure-or-segment-resource-database [model id]
-  (when-let [table-id (t2/select-one-fn :table_id model :id id)]
+  (when-let [table-id (case model
+                        :model/Measure (metabot.db/measure-table-id id)
+                        :model/Segment (metabot.db/segment-table-id id))]
     (check-table-resource-database table-id)))
 
 (defn- table-details
@@ -548,11 +505,7 @@
         table      (api/read-check :model/Table table-id)
         db-id      (:db_id table)
         _          (check-resource-database db-id)
-        cards      (->> (t2/select [:model/Card :id :name :type :description :card_schema
-                                    :collection_id :database_id :table_id]
-                                   :table_id table-id
-                                   :archived false
-                                   {:order-by [[:%lower.name :asc]]})
+        cards      (->> (metabot.db/cards-for-table table-id)
                         (filter mi/can-read?)
                         (mapv present-card))
         ;; SQL-narrow transforms by source_database_id (a transform can only reference
@@ -560,10 +513,7 @@
         ;; table ids in memory — no per-row re-fetch. Apply the can-read? check last,
         ;; on the already-narrowed candidate set.
         transforms (when db-id
-                     (->> (t2/select [:model/Transform :id :name :description
-                                      :source_database_id :source]
-                                     :source_database_id db-id
-                                     {:order-by [[:%lower.name :asc]]})
+                     (->> (metabot.db/transforms-for-source-database db-id)
                           (filter (fn [t] (some #{table-id} (transform-source-table-ids t))))
                           (filter mi/can-read?)
                           (mapv present-transform)))]
@@ -638,8 +588,7 @@
   (let [transform        (transforms/get-transform (parse-long id-str))
         source-table-ids (transform-source-table-ids transform)
         source-tables    (when (seq source-table-ids)
-                           (->> (t2/select [:model/Table :id :name :display_name :schema :db_id :description]
-                                           :id [:in (set source-table-ids)])
+                           (->> (metabot.db/table-summaries (set source-table-ids))
                                 (filter mi/can-read?)
                                 (mapv present-table)))
         db-id            (:source_database_id transform)
@@ -709,18 +658,11 @@
   [id-str query-params]
   (let [dashboard-id (parse-long id-str)
         _            (api/read-check :model/Dashboard dashboard-id)
-        tabs         (t2/select [:model/DashboardTab :id :name] :dashboard_id dashboard-id
-                                {:order-by [[:position :asc] [:id :asc]]})
-        dashcards    (t2/select [:model/DashboardCard :id :card_id :action_id :dashboard_tab_id
-                                 :visualization_settings]
-                                :dashboard_id dashboard-id
-                                {:order-by [[:row :asc] [:col :asc]]})
+        tabs         (metabot.db/dashboard-tabs dashboard-id)
+        dashcards    (metabot.db/dashcards dashboard-id)
         card-ids     (into #{} (keep :card_id) dashcards)
         readable     (when (seq card-ids)
-                       (->> (t2/select [:model/Card :id :name :type :description :card_schema
-                                        :collection_id :database_id :table_id]
-                                       :id [:in card-ids]
-                                       :archived false)
+                       (->> (metabot.db/unarchived-card-summaries card-ids)
                             (filter mi/can-read?)
                             (into {} (map (juxt :id identity)))))
         ->item       (fn [{:keys [id card_id action_id] :as dashcard}]
@@ -755,7 +697,7 @@
   [index block]
   (let [card-ids (->> (tree-seq :content :content block)
                       (keep #(when (= (:type %) prose-mirror/card-embed-type)
-                               (-> % :attrs :id))))
+                               (get-in % [:attrs "id"]))))
         text     (prose-mirror/ast->text block)]
     (str "[" index "] " (:type block)
          (when (seq card-ids)
@@ -780,19 +722,33 @@
                           (str/join "\n" (map-indexed document-block-line blocks)))
                      "The document is empty.")})))
 
+(def ^:private query-withheld-message
+  "Names no particular grant: the body is withheld both for an unreadable database and for a
+  403 on a card, measure or segment inside the query."
+  "The query is hidden because it references content the user cannot read.")
+
+(defn- export-state-query
+  "Export a conversation-state query for presentation, nil when the user may not see it.
+  `query-id` picks the treatment: an id seeded from the client's viewing context carries
+  ids that are the caller's own, so its refusals are audited; one the agent's tools wrote
+  is routine presentation and stays quiet."
+  [query-id query]
+  (let [audited? (contains? (shared/current-client-ids) query-id)]
+    (when-let [[gated mp] (shared.content-store/query-for-export query audited?)]
+      (llm-shape/export-query-for-llm gated mp (if audited?
+                                                 shared.content-store/audited-store
+                                                 shared.content-store/default-store)))))
+
 (defn- fetch-conversation-query
   "Present a query stored in this conversation's agent state (created by tools or pasted
-  as a chart mention). Read-checks the query's database before exporting it with resolved
-  table/field names."
+  as a chart mention). A query the user may not see is withheld."
   [query-id]
   (if-let [query (get (shared/current-queries-state) query-id)]
-    (do
-      (when-let [database-id (and (map? query) (:database query))]
-        (api/read-check :model/Database database-id))
-      (entity-result
-       {:type        "conversation-query"
-        :id          query-id
-        :description (llm-shape/export-query-for-llm query)}))
+    (entity-result
+     {:type        "conversation-query"
+      :id          query-id
+      :description (or (export-state-query query-id query)
+                       query-withheld-message)})
     {:status-code 404
      :output (str "No chart or query with id '" query-id "' exists in this conversation. "
                   "It may belong to another conversation; ask the user to paste or recreate it here.")}))
@@ -802,18 +758,23 @@
   pasted as a mention). Falls back to the queries state when the id is actually a query id."
   [chart-id]
   (if-let [chart (get (shared/current-charts-state) chart-id)]
-    (let [query (or (first (:queries chart))
-                    (get (shared/current-queries-state) (:query_id chart)))]
-      (when-let [database-id (and (map? query) (:database query))]
-        (api/read-check :model/Database database-id))
+    (let [[query-id query] (if-let [q (first (:queries chart))]
+                             ;; create_chart mints a new chart id for a client-supplied query and
+                             ;; keeps the original under :query_id, so the audit polarity has to
+                             ;; follow the query rather than the chart
+                             [(or (:query_id chart) chart-id) q]
+                             [(:query_id chart) (get (shared/current-queries-state) (:query_id chart))])
+          query-text (when query (export-state-query query-id query))]
       (entity-result
        {:type        "conversation-chart"
         :id          chart-id
         :description (str "Chart type: "
                           (or (some-> (get-in chart [:visualization_settings :chart_type]) name)
                               "table")
-                          "\nQuery:\n"
-                          (llm-shape/export-query-for-llm query))}))
+                          (cond
+                            (nil? query) "\nNo query is attached to this chart."
+                            query-text   (str "\nQuery:\n" query-text)
+                            :else        (str "\n" query-withheld-message)))}))
     (fetch-conversation-query chart-id)))
 
 ;; ----- Dispatch -----

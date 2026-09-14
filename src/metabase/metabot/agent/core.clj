@@ -441,6 +441,18 @@
    state
    (:user_is_viewing context)))
 
+(defn- client-content-ids
+  "Ids of the queries and charts this request's viewing context seeds, as opposed to ones the
+  agent's own tools wrote. A refusal to present one of these is a real access attempt and gets
+  the audited treatment; see [[metabase.metabot.tools.shared.content-store]]. Seeding a fresh
+  map keeps this to the context of the turn being served, which is where the distinction comes
+  from - the conversation's `:state` carries no provenance."
+  [context]
+  (let [seeded (-> {} (seed-state context) (seed-charts context))]
+    (into (set (keys (:queries seeded)))
+          (map str)
+          (keys (:charts seeded)))))
+
 ;;; Main loop
 
 (def ^:private profile-id->required-permission
@@ -454,14 +466,14 @@
 
 (defn- check-metabot-access!
   "Throw a 403 if the user's metabot permissions do not grant access to the
-  requested profile. The base + profile-specific gating policy lives in
-  [[scope/missing-permission]], shared with [[metabase.metabot.self]]."
+  requested profile."
   [profile-id perms]
   (when-let [missing (scope/missing-permission perms (profile-id->required-permission profile-id))]
-    (api/check false
-               [403 (if (= missing :permission/metabot)
+    (throw (ex-info (if (= missing :permission/metabot)
                       "You do not have permission to use the AI assistant."
-                      (format "You do not have permission to use the %s assistant." (name profile-id)))])))
+                      (format "You do not have permission to use the %s assistant." (name profile-id)))
+                    {:status-code 403
+                     :type        :metabot/permission-denied}))))
 
 (defn- init-agent
   "Initialize agent state."
@@ -479,7 +491,8 @@
                          (seed-chart-configs context)
                          (seed-charts context))
         memory       (assoc (memory/initialize messages seeded context)
-                            :conversation-id conversation-id)
+                            :conversation-id conversation-id
+                            :client-ids (client-content-ids context))
         memory-atom  (doto (or external-memory-atom (atom nil)) (reset! memory))
         tools        (tools/wrap-tools-with-state base-tools memory-atom metabot-id profile-id)]
     (log/info "Starting agent" {:profile  profile-id

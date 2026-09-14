@@ -20,13 +20,13 @@ The display name for the database in the Metabase interface.
 
 ### Host
 
-Your database's IP address, or its domain name (e.g., `xxxxxxxxxx.cloud.databricks.com` or `adb-xxxxx.azuredatabricks.net`). This is the value of your Databrick's compute resource's Server Hostname.
+Your database's IP address, or its domain name (e.g., `xxxxxxxxxx.cloud.databricks.com` or `adb-xxxxx.azuredatabricks.net`). This is the value of your Databricks compute resource's Server Hostname.
 
 See [Compute settings for the Databricks JDBC Driver](https://docs.databricks.com/en/integrations/jdbc/compute.html).
 
 ### HTTP path
 
-This is the Databrick's compute resources HTTP Path value. This value is often a SQL warehouse endpoint in the format `/sql/1.0/endpoints/abcdef1234567890`. See [Connect to a SQL warehouse](https://docs.databricks.com/en/compute/sql-warehouse/index.html).
+This is the Databricks compute resource's HTTP Path value. This value is often a SQL warehouse endpoint in the format `/sql/1.0/endpoints/abcdef1234567890`. See [Connect to a SQL warehouse](https://docs.databricks.com/en/compute/sql-warehouse/index.html).
 
 Additionally, see [Compute settings for the Databricks JDBC Driver](https://docs.databricks.com/en/integrations/jdbc/compute.html).
 
@@ -87,7 +87,7 @@ See [Compute settings for the Databricks JDBC Driver](https://docs.databricks.co
 
 Turn this option **OFF** if people want to click **Run** (the play button) before applying any summarizations or filters in the query builder.
 
-By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](../../questions/visualizations/drill-through.md). If your database is slow, you may want to disable re-running to avoid loading data on each click.
+By default, Metabase will execute a query as soon as you choose a grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](../../questions/visualizations/drill-through.md). If your database is slow, you may want to disable re-running to avoid loading data on each click.
 
 ### Choose when syncs and scans happen
 
@@ -124,6 +124,6 @@ See [Danger zone](../danger-zone.md).
 ## Further reading
 
 - [Managing databases](../../databases/connecting.md)
-- [Metadata editing](../../data-modeling/metadata-editing.md)
-- [Models](../../data-modeling/models.md)
+- [Metadata editing](../../data-modeling/metadata/metadata-editing.md)
+- [Models](../../data-modeling/models/models.md)
 - [Setting data access permissions](../../permissions/data.md)

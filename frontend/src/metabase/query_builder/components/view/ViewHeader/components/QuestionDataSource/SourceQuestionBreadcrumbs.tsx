@@ -1,10 +1,9 @@
 import { type ReactElement, useMemo } from "react";
 
 import { skipToken, useGetCardQuery } from "metabase/api";
-import { getMetadata } from "metabase/metadata-store";
-import { useSelector } from "metabase/redux";
+import { useQuestionFromCard } from "metabase/metadata-store";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
+import type Question from "metabase-lib/v1/Question";
 import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 import { SourceModelBreadcrumbs } from "./SourceModelBreadcrumbs";
@@ -27,10 +26,10 @@ export function SourceQuestionBreadcrumbs({
   const { data: sourceCard } = useGetCardQuery(
     sourceQuestionId != null ? { id: sourceQuestionId } : skipToken,
   );
-  const metadata = useSelector(getMetadata);
+  const buildQuestion = useQuestionFromCard();
   const sourceQuestion = useMemo(() => {
-    return sourceCard ? new Question(sourceCard, metadata) : undefined;
-  }, [sourceCard, metadata]);
+    return sourceCard ? buildQuestion(sourceCard) : undefined;
+  }, [sourceCard, buildQuestion]);
 
   if (!sourceQuestion) {
     return null;

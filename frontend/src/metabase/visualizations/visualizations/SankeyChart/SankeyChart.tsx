@@ -1,6 +1,7 @@
 import type { EChartsType } from "echarts/core";
 import { useCallback, useMemo, useRef } from "react";
 
+import { assignLazily } from "metabase/utils/merge-lazily";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types";
@@ -84,7 +85,7 @@ const SankeyChartComponent = ({
   );
 };
 
-export const SankeyChart = Object.assign(
+export const SankeyChart = assignLazily(
   SankeyChartComponent,
   SANKEY_CHART_DEFINITION,
 );

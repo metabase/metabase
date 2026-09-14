@@ -174,7 +174,7 @@ export interface BrowserEmbedOptions {
   componentName: "metabase-browser";
 
   /** Which collection to start from? */
-  initialCollection: CollectionId;
+  initialCollection: CollectionId | "all";
 
   /** Whether the content manager is in read-only mode. Defaults to true. */
   readOnly?: boolean;

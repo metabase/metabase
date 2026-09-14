@@ -35,6 +35,18 @@ const knownIssues = [
   // color at runtime, so they aren't in the static @mantine/core/styles.css this script
   // reads — hence this allow-list entry.
   "--mantine-color-accent-gray-light-filled",
+
+  // Custom spacing/radius scale keys. Mantine derives
+  // `--mantine-spacing-*` / `--mantine-radius-*` variables at runtime from the
+  // theme object in frontend/src/metabase/ui/theme.ts, so they are not in the
+  // static @mantine/core/styles.css this script reads.
+  "--mantine-spacing-xxxs",
+  "--mantine-spacing-xxs",
+  "--mantine-spacing-xxl",
+  "--mantine-radius-xxs",
+  "--mantine-shadow-xs_outline",
+  "--mantine-shadow-sm_outline",
+  "--mantine-shadow-lg_outline",
 ];
 
 interface UsageMap {
@@ -45,7 +57,7 @@ interface UsageMap {
 const findFiles = (): string[] => {
   return glob
     .sync("{frontend,enterprise/frontend}/**/*.{css,module.css,js,jsx,ts,tsx}")
-    .filter(f => !/\.(unit\.spec|spec|test)\.(js|jsx|ts|tsx)$/.test(f));
+    .filter((f) => !/\.(unit\.spec|spec|test)\.(js|jsx|ts|tsx)$/.test(f));
 };
 
 const extractVariableDefinitions = (filePath: string): Set<string> => {
@@ -57,13 +69,13 @@ export const extractVariableDefinitionsFromFileContent = (
   fileContent: string,
 ): Set<string> => {
   const patterns = [
-    /--[a-zA-Z0-9-]+:/g, // css files: --my-css-variable: blue
-    /['"`]--[a-zA-Z0-9-]+['"`]\s*:/g, // css-in-js: "--my-css-variable-in-emotion": blue
+    /--[a-zA-Z0-9_-]+:/g, // css files: --my-css-variable: blue
+    /['"`]--[a-zA-Z0-9_-]+['"`]\s*:/g, // css-in-js: "--my-css-variable-in-emotion": blue
   ];
 
-  const matches = patterns.flatMap(pattern => {
+  const matches = patterns.flatMap((pattern) => {
     const found = fileContent.match(pattern) || [];
-    return found.map(match => {
+    return found.map((match) => {
       const cleaned = match.replace(/['"`{}:,\s]/g, "");
 
       return cleaned;
@@ -81,9 +93,9 @@ const extractVariableUsages = (filePath: string): Set<string> => {
 export const extractVariableUsagesFromFileContent = (
   content: string,
 ): Set<string> => {
-  const pattern = /var\(\s*(--[a-zA-Z0-9-]+)\s*([,)])/g;
+  const pattern = /var\(\s*(--[a-zA-Z0-9_-]+)\s*([,)])/g;
 
-  const usages = Array.from(content.matchAll(pattern)).flatMap(match => {
+  const usages = Array.from(content.matchAll(pattern)).flatMap((match) => {
     const [, variable, terminator] = match;
     const hasFallback = terminator === ",";
 
@@ -118,15 +130,15 @@ const main = () => {
   });
 
   // Find all variable definitions
-  files.forEach(file => {
+  files.forEach((file) => {
     const definitions = extractVariableDefinitions(file);
-    definitions.forEach(def => allDefinitions.add(def));
+    definitions.forEach((def) => allDefinitions.add(def));
   });
 
   // Find all variable usages
-  files.forEach(file => {
+  files.forEach((file) => {
     const usages = extractVariableUsages(file);
-    usages.forEach(usage => {
+    usages.forEach((usage) => {
       allUsages.add(usage);
       if (!usageLocations[usage]) {
         usageLocations[usage] = [];
@@ -137,21 +149,21 @@ const main = () => {
 
   // Filter out defined or whitelisted variables
   const undefinedVars = Array.from(allUsages)
-    .filter(usage => !allDefinitions.has(usage) && !shouldWhiteList(usage))
+    .filter((usage) => !allDefinitions.has(usage) && !shouldWhiteList(usage))
     .sort();
 
   if (undefinedVars.length > 0) {
     console.log("Found undefined CSS variables:\n");
-    undefinedVars.forEach(variable => {
+    undefinedVars.forEach((variable) => {
       console.log(`${variable} used in:`);
-      usageLocations[variable].forEach(location => {
+      usageLocations[variable].forEach((location) => {
         console.log(`  - ${location}`);
       });
       console.log("");
     });
 
     const filesWithUndefinedVars = new Set(
-      undefinedVars.map(variable => usageLocations[variable]).flat(),
+      undefinedVars.map((variable) => usageLocations[variable]).flat(),
     );
 
     console.log(

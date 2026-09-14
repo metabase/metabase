@@ -66,7 +66,7 @@ Each visualization type has its own advanced options. To change the settings for
 
 ## Combo charts
 
-[Combo charts](./combo-chart.md) let you combine bars and lines (or areas) on the same chart.
+[Combo charts](./line-bar-and-area-charts.md#combo-charts) let you combine bars and lines (or areas) on the same chart.
 
 ![Line + bar](../images/combo-chart.png)
 
@@ -90,7 +90,7 @@ The [Detail](./detail.md) visualization shows a single result record (row) in an
 
 ## Line charts
 
-[Line charts](./line-bar-and-area-charts.md) are best for displaying the trend of a number over time, especially when you have lots of x-axis values. For more, check out our [Guide to line charts](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/visualization/line-charts) and [Time series analysis](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/time-series) tutorials.
+[Line charts](./line-bar-and-area-charts.md) are best for displaying the trend of a number over time, especially when you have lots of x-axis values. For more, check out our [Time series analysis](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/time-series) tutorial.
 
 ![Trend lines](../images/trend-lines.png)
 
@@ -116,7 +116,7 @@ A [sunburst chart](./pie-or-donut-chart.md) is a pie chart with more than one ri
 
 ## Pivot tables
 
-[Pivot tables](./pivot-table.md) allow you swap rows and columns, group data, and include subtotals in your table. You can group one or more metrics by one or more dimensions.
+[Pivot tables](./pivot-table.md) allow you to swap rows and columns, group data, and include subtotals in your table. You can group one or more metrics by one or more dimensions.
 
 ![Pivot table options](../images/pivot-table-options.png)
 
@@ -176,7 +176,7 @@ If you have a bar chart like Count of Users by Age, where the x-axis is a number
 
 ## Custom visualizations
 
-On [Pro and Enterprise plans](https://www.metabase.com/pricing/), admins can add [custom visualizations](./custom.md): chart types you build with the Custom Visualizations SDK and upload to Metabase. Once a custom visualization is installed, it shows up in the visualization picker alongside the built-in charts.
+On [Pro and Enterprise plans](https://www.metabase.com/pricing), admins can add [custom visualizations](./custom.md): chart types you build with the Custom Visualizations SDK and upload to Metabase. Once a custom visualization is installed, it shows up in the visualization picker alongside the built-in charts.
 
 ## Styling and formatting data in charts
 
@@ -186,7 +186,7 @@ You can access formatting options for the columns used in a chart. Just open the
 
 Options differ depending on the chart, and can include settings for the chart's data, its display, and its axes.
 
-See also [Formatting defaults](../../data-modeling/formatting.md).
+See also [Formatting defaults](../../data-modeling/metadata/formatting.md).
 
 ## Further reading
 

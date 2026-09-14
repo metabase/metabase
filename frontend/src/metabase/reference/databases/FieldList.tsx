@@ -7,7 +7,6 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/redux";
-import { updateField } from "metabase/redux/metadata";
 import R from "metabase/reference/Reference.module.css";
 import { EditHeader } from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
@@ -15,6 +14,7 @@ import Field from "metabase/reference/components/Field";
 import F from "metabase/reference/components/Field.module.css";
 import S from "metabase/reference/components/List/List.module.css";
 import * as actions from "metabase/reference/reference";
+import { updateField } from "metabase/reference/update-actions";
 import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
 import type {
   FieldId,

@@ -133,7 +133,7 @@ export const QuestionActions = ({
 
   return (
     <>
-      <Divider orientation="vertical" my="xs" />
+      <Divider orientation="vertical" my="xxs" />
       {!question.isArchived() && (
         <Box className={ViewTitleHeaderS.ViewHeaderIconButtonContainer}>
           <BookmarkToggle

@@ -32,7 +32,7 @@ export function AdvisoryFilterBar({
   const Wrapper = isSmallScreen ? Stack : Group;
 
   return (
-    <Wrapper gap="md" data-testid="advisory-filter-bar" className={className}>
+    <Wrapper gap="lg" data-testid="advisory-filter-bar" className={className}>
       <Select
         data={severityOptions}
         value={filter.severity}

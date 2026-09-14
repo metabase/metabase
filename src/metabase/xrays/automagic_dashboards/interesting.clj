@@ -56,7 +56,7 @@
    [metabase.xrays.automagic-dashboards.dashboard-templates :as dashboard-templates]
    [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
-   [toucan2.core :as t2]))
+   [metabase.xrays.db :as xrays.db]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Code for creation of instantiated affinities
@@ -89,6 +89,12 @@
           (can-use? :hour) :hour))
       (if (can-use? :day) :day :hour))))
 
+(def ^:private xray-field-keys
+  "What X-rays pins on a Field row while it works, and what hydration added, none of which belongs on the Lib column
+  the Field becomes."
+  [:db :link :aggregation :max-cardinality :max_cardinality :field-type :field_type :links_to :score :named :dimensions
+   :name_field :target :xrays/database-id])
+
 (mu/defn field->metadata :- ::lib.schema.metadata/column
   "Convert a Field from the app DB to Lib column metadata, and do a bunch of weird additional transformations that
   I (Cam) do not really understand (see below).
@@ -97,9 +103,9 @@
  `:metadata/column`s directly or use Metadata Providers."
   [{fk-target-field-id :fk_target_field_id, base-type :base_type, :keys [id link aggregation], :as field} :- (ms/InstanceOf :model/Field)]
   (let [col (if fk-target-field-id
-              (-> (t2/select-one :metadata/column :id fk-target-field-id)
+              (-> (xrays.db/metadata-column fk-target-field-id)
                   (assoc :fk-field-id id, :lib/source :source/implicitly-joinable))
-              (lib-be/instance->metadata field :metadata/column))]
+              (lib-be/instance->metadata (apply dissoc field xray-field-keys) :metadata/column))]
     (cond-> col
       link
       (assoc :fk-field-id link, :lib/source :source/implicitly-joinable)
@@ -117,7 +123,7 @@
   (cond
     full-name full-name
     link (format "%s → %s"
-                 (-> (t2/select-one :model/Field :id link) :display_name (str/replace #"(?i)\sid$" ""))
+                 (-> (xrays.db/field link) :display_name (str/replace #"(?i)\sid$" ""))
                  display_name)
     :else display_name))
 
@@ -303,7 +309,7 @@
   [candidate-binding-values]
   (letfn [(score [a]
             (let [[_ definition] a]
-              [(reduce + (map (comp count ancestors) (:field_type definition)))
+              [(reduce + (map magic.util/ancestor-count (:field_type definition)))
                (count definition)
                (:score definition)]))]
     (map (juxt (comp score first) identity) candidate-binding-values)))
@@ -363,7 +369,7 @@
 ;; TODO - Deduplicate from core
 (mu/defn- source->db :- (ms/InstanceOf :model/Database)
   [source :- (ms/InstanceOf #{:model/Table :model/Card})]
-  (t2/select-one :model/Database :id ((some-fn :db_id :database_id) source)))
+  (xrays.db/database ((some-fn :db_id :database_id) source)))
 
 (defn- enriched-field-with-sources [{:keys [tables source]} field]
   (assoc field

@@ -9,6 +9,7 @@ import { useDispatch } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import { useAdminSetting } from "metabase/settings";
 import { Button, Flex, Modal, Radio, Stack } from "metabase/ui";
+import * as EnterpriseUrls from "metabase-enterprise/urls";
 
 interface EditUserStrategyModalProps {
   onClose: () => void;
@@ -78,7 +79,7 @@ export const EditUserStrategyModal = ({
     dispatch(
       permissionApi.util.invalidateTags([
         "permissions-group",
-        "embedding-hub-checklist",
+        "setup-guide-checklist",
       ]),
     );
 
@@ -90,7 +91,7 @@ export const EditUserStrategyModal = ({
       // This ensures `createTenantsRouteGuard` sees the updated setting.
       await refetch();
 
-      navigate("/admin/people/tenants");
+      navigate(EnterpriseUrls.tenants());
     }
   };
 
@@ -118,17 +119,17 @@ export const EditUserStrategyModal = ({
       <Modal
         opened={!confirmationModal && !isApplyingAfterConfirm}
         title={t`Pick a user strategy`}
-        padding="xl"
+        padding="xxl"
         size="md"
         onClose={onClose}
       >
         <LoadingAndErrorWrapper loading={isLoading} error={error}>
-          <Stack gap="md" mt="sm">
+          <Stack gap="lg" mt="sm">
             <Radio.Group
               value={selectedStrategy}
               onChange={setSelectedStrategy}
             >
-              <Stack gap="md">
+              <Stack gap="lg">
                 {strategyOptions.map((option) => (
                   <Radio.Card
                     key={option.value}
@@ -141,7 +142,7 @@ export const EditUserStrategyModal = ({
               </Stack>
             </Radio.Group>
 
-            <Flex justify="flex-end" gap="md" mt="md">
+            <Flex justify="flex-end" gap="lg" mt="lg">
               <Button variant="outline" onClick={handleCancel}>
                 {t`Cancel`}
               </Button>

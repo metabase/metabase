@@ -11,9 +11,9 @@ import {
   isNumeric,
 } from "metabase-lib/v1/types/utils/isa";
 import type {
-  Card,
   DatasetColumn,
   RawSeries,
+  SeriesCard,
   SeriesOrderSetting,
   VisualizationDisplay,
 } from "metabase-types/api";
@@ -157,7 +157,7 @@ export const getDefaultShowStackValues = (
 
 export const getDefaultStackingValue = (
   settings: ComputedVisualizationSettings,
-  card: Card,
+  card: SeriesCard,
 ) => {
   // legacy setting and default for D-M-M+ charts
   if (settings["stackable.stacked"]) {

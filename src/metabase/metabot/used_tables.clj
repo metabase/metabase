@@ -26,11 +26,11 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.query-analyzer :as nqa]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.util.log :as log])
   (:import
    (java.util.concurrent ArrayBlockingQueue Callable ExecutionException ExecutorService Future RejectedExecutionException ThreadFactory ThreadPoolExecutor TimeoutException TimeUnit)))
 
@@ -385,7 +385,7 @@
     (try
       (let [rows (extract-used-tables-with-timing! message-id parts)]
         (when (seq rows)
-          (t2/insert! :model/MetabotUsedTable rows)))
+          (metabot.db/insert-used-tables! rows)))
       (catch Exception e
         (log/warn "Failed to record metabot used tables for message" message-id (ex-message e))))))
 

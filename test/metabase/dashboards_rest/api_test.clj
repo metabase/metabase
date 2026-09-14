@@ -36,7 +36,6 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.pulse.dashboard-subscription-test :as dashboard-subscription-test]
-   [metabase.pulse.models.pulse :as models.pulse]
    [metabase.queries-rest.api.card-test :as api.card-test]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot.test-util :as api.pivots]
@@ -2415,14 +2414,14 @@
       (do-with-add-card-parameter-mapping-permissions-fixtures!
        (fn [{:keys [card-id mappings add-card! dashcards]}]
          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
-         (is (=? {:message "You must have data permissions to add a parameter referencing the Table \"VENUES\"."}
-                 (add-card! 403)))
+         (is (= "You must have data permissions to add a parameter referencing this Field."
+                (add-card! 403)))
          (is (= []
                 (dashcards)))
          (testing "Permissions for a different table in the same DB should not count"
            (data-perms/set-table-permission! (perms-group/all-users) (mt/id :categories) :perms/create-queries :query-builder)
-           (is (=? {:message  "You must have data permissions to add a parameter referencing the Table \"VENUES\"."}
-                   (add-card! 403)))
+           (is (= "You must have data permissions to add a parameter referencing this Field."
+                  (add-card! 403)))
            (is (= []
                   (dashcards))))
          (testing "If they have data permissions, it should be ok"
@@ -2535,8 +2534,8 @@
       (do-with-update-cards-parameter-mapping-permissions-fixtures!
        (fn [{:keys [dashboard-id card-id original-mappings update-mappings! update-size! new-dashcard-info new-mappings]}]
          (testing "Should *NOT* be allowed to update the `:parameter_mappings` without proper data permissions"
-           (is (=? {:message  "You must have data permissions to add a parameter referencing the Table \"VENUES\"."}
-                   (update-mappings! 403)))
+           (is (= "You must have data permissions to add a parameter referencing this Field."
+                  (update-mappings! 403)))
            (is (= original-mappings
                   (t2/select-one-fn :parameter_mappings :model/DashboardCard :dashboard_id dashboard-id, :card_id card-id))))
          (testing "Changing another column should be ok even without data permissions."
@@ -2745,7 +2744,13 @@
 (deftest fetch-embeddable-dashboards-test
   (testing "GET /api/dashboard/embeddable"
     (testing "Test that we can fetch a list of embeddable-accessible dashboards"
-      (mt/with-temporary-setting-values [enable-embedding-static true]
+      (mt/with-temporary-setting-values [enable-embedding-modular true]
+        (mt/with-temp [:model/Dashboard _ {:enable_embedding true}]
+          (is (= [{:name true, :id true}]
+                 (for [dash (mt/user-http-request :crowberto :get 200 "dashboard/embeddable")]
+                   (m/map-vals boolean (select-keys dash [:name :id]))))))))
+    (testing "and that we can still see them once guest embeds are turned off"
+      (mt/with-temporary-setting-values [enable-embedding-modular false]
         (mt/with-temp [:model/Dashboard _ {:enable_embedding true}]
           (is (= [{:name true, :id true}]
                  (for [dash (mt/user-http-request :crowberto :get 200 "dashboard/embeddable")]
@@ -4569,124 +4574,6 @@
         (is (= ["A   sian" "As"]
                (mt/user-http-request :crowberto :get 200 (url list-param-id "A   sian"))))))))
 
-(deftest broken-subscription-data-logic-test
-  (testing "Ensure underlying logic of fixing broken pulses works (#30100)"
-    (let [{param-id :id :as param} {:name "Source"
-                                    :slug "source"
-                                    :id   "_SOURCE_PARAM_ID_"
-                                    :type :string/=}]
-      (mt/dataset test-data
-        (mt/with-temp
-          [:model/Card {card-id :id} {:name          "Native card"
-                                      :database_id   (mt/id)
-                                      :dataset_query {:database (mt/id)
-                                                      :type     :query
-                                                      :query    {:source-table (mt/id :people)}}
-                                      :type          :model}
-           :model/Dashboard {dash-id :id} {:name "My Awesome Dashboard"}
-           :model/DashboardCard {dash-card-id :id} {:dashboard_id dash-id
-                                                    :card_id      card-id}
-           ;; Broken pulse
-           :model/Pulse {bad-pulse-id :id
-                         :as          bad-pulse} {:name         "Bad Pulse"
-                                                  :dashboard_id dash-id
-                                                  :creator_id   (mt/user->id :trashbird)
-                                                  :parameters   [(assoc param :value ["Twitter", "Facebook"])]}
-           :model/PulseCard _ {:pulse_id          bad-pulse-id
-                               :card_id           card-id
-                               :dashboard_card_id dash-card-id}
-           :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
-                                                       :pulse_id     bad-pulse-id
-                                                       :enabled      true}
-           :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
-                                           :user_id          (mt/user->id :rasta)}
-           :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
-                                           :user_id          (mt/user->id :crowberto)}
-           ;; Broken slack pulse
-           :model/Pulse {bad-slack-pulse-id :id} {:name         "Bad Slack Pulse"
-                                                  :dashboard_id dash-id
-                                                  :creator_id   (mt/user->id :trashbird)
-                                                  :parameters   [(assoc param :value ["LinkedIn"])]}
-           :model/PulseCard _ {:pulse_id          bad-slack-pulse-id
-                               :card_id           card-id
-                               :dashboard_card_id dash-card-id}
-           :model/PulseChannel _ {:channel_type :slack
-                                  :pulse_id     bad-slack-pulse-id
-                                  :details      {:channel "#my-channel"}
-                                  :enabled      true}
-           ;; Non broken pulse
-           :model/Pulse {good-pulse-id :id} {:name         "Good Pulse"
-                                             :dashboard_id dash-id
-                                             :creator_id   (mt/user->id :trashbird)}
-           :model/PulseCard _ {:pulse_id          good-pulse-id
-                               :card_id           card-id
-                               :dashboard_card_id dash-card-id}
-           :model/PulseChannel {good-pulse-channel-id :id} {:channel_type :email
-                                                            :pulse_id     good-pulse-id
-                                                            :enabled      true}
-           :model/PulseChannelRecipient _ {:pulse_channel_id good-pulse-channel-id
-                                           :user_id          (mt/user->id :rasta)}
-           :model/PulseChannelRecipient _ {:pulse_channel_id good-pulse-channel-id
-                                           :user_id          (mt/user->id :crowberto)}]
-          (testing "We can identify the broken parameter ids"
-            (is (=? [{:archived     false
-                      :name         "Bad Pulse"
-                      :creator_id   (mt/user->id :trashbird)
-                      :id           bad-pulse-id
-                      :parameters
-                      [{:name "Source" :slug "source" :id "_SOURCE_PARAM_ID_" :type "string/=" :value ["Twitter" "Facebook"]}]
-                      :dashboard_id dash-id}
-                     {:archived     false
-                      :name         "Bad Slack Pulse"
-                      :creator_id   (mt/user->id :trashbird)
-                      :id           bad-slack-pulse-id
-                      :parameters   [{:name  "Source"
-                                      :slug  "source"
-                                      :id    "_SOURCE_PARAM_ID_"
-                                      :type  "string/="
-                                      :value ["LinkedIn"]}],
-                      :dashboard_id dash-id}]
-                    ;; `broken-pulses` doesn't order its results, so sort them for a stable comparison
-                    (sort-by :id (#'api.dashboard/broken-pulses dash-id {param-id param})))))
-          (testing "We can gather all needed data regarding broken params"
-            (let [bad-pulses    (mapv
-                                 #(update % :affected-users (partial sort-by :email))
-                                 (sort-by :pulse-id (#'api.dashboard/broken-subscription-data dash-id {param-id param})))
-                  bad-pulse-ids (set (map :pulse-id bad-pulses))]
-              (testing "We only detect the bad pulse and not the good one"
-                (is (true? (contains? bad-pulse-ids bad-pulse-id)))
-                (is (false? (contains? bad-pulse-ids good-pulse-id))))
-              (is (=? [{:pulse-creator     {:email "trashbird@metabase.com"}
-                        :dashboard-creator {:email "rasta@metabase.com"}
-                        :pulse-id          bad-pulse-id
-                        :pulse-name        "Bad Pulse"
-                        :dashboard-id      dash-id
-                        :bad-parameters    [{:name "Source" :value ["Twitter" "Facebook"]}]
-                        :dashboard-name    "My Awesome Dashboard"
-                        :affected-users    [{:notification-type :email
-                                             :recipient         "Crowberto Corv"}
-                                            {:notification-type :email
-                                             :recipient         "Rasta Toucan"}]}
-                       {:pulse-creator     {:email "trashbird@metabase.com"}
-                        :affected-users    [{:notification-type :slack
-                                             :recipient         "#my-channel"}]
-                        :dashboard-creator {:email "rasta@metabase.com"}
-                        :pulse-id          bad-slack-pulse-id
-                        :pulse-name        "Bad Slack Pulse"
-                        :dashboard-id      dash-id
-                        :bad-parameters    [{:name  "Source"
-                                             :slug  "source"
-                                             :id    "_SOURCE_PARAM_ID_"
-                                             :type  "string/="
-                                             :value ["LinkedIn"]}]
-                        :dashboard-name    "My Awesome Dashboard"}]
-                      bad-pulses))))
-          (testing "Pulse can be archived"
-            (testing "Pulse starts as unarchived"
-              (is (false? (:archived bad-pulse))))
-            (testing "Pulse is now archived"
-              (is (true? (:archived (models.pulse/update-pulse! {:id bad-pulse-id :archived true})))))))))))
-
 (deftest handle-broken-subscriptions-due-to-bad-parameters-test
   (defn- test-handle-broken-subscription-notification!
     [{:keys [disable-links? email-body-pattern match-email-body-pattern?]}]
@@ -5191,7 +5078,6 @@
                                                                  :type :temporal-unit
                                                                  :sectionId "temporal-unit"}]})
     (t2/update! :model/DashboardCard :id dashcard-id {:parameter_mappings [{:parameter_id "30d7efb0"
-                                                                            :type :temporal-unit
                                                                             :card_id card-id
                                                                             :target [:dimension
                                                                                      (mt/$ids orders !day.$created_at)]}]})
@@ -5691,7 +5577,7 @@
 (deftest update-dashboard-embedding-type-to-nil-test
   (testing "PUT /api/dashboard/:id"
     (testing "Admin should be able to set embedding_type to nil to clear it"
-      (mt/with-temporary-setting-values [enable-embedding-static true]
+      (mt/with-temporary-setting-values [enable-embedding-modular true]
         (mt/with-temp [:model/Dashboard dashboard {:enable_embedding true
                                                    :embedding_type "static-legacy"}]
           (with-dashboards-in-writeable-collection! [dashboard]
@@ -5857,7 +5743,7 @@
                                                 {:dashcards [{:id -1 :card_id card-id :row 0 :col 0 :size_x 4 :size_y 4
                                                               :parameter_mappings mapping}]
                                                  :tabs      []}))]
-            (is (=? {:message #"(?i).*data permissions.*PRODUCTS.*"} (put! 403)))
+            (is (= "You must have data permissions to add a parameter referencing this Field." (put! 403)))
             (data-perms/set-table-permission! (perms-group/all-users) (mt/id :products) :perms/view-data :unrestricted)
             (data-perms/set-table-permission! (perms-group/all-users) (mt/id :products) :perms/create-queries :query-builder)
             (is (=? [{:parameter_mappings [{:parameter_id "_ID_"
@@ -6398,7 +6284,7 @@
 
 (deftest update-embedding-type-to-guest-embed-and-static-legacy-test
   (testing "PUT /api/dashboard/:id sets/echoes/persists embedding_type for guest-embed and static-legacy"
-    (mt/with-temporary-setting-values [enable-embedding-static true]
+    (mt/with-temporary-setting-values [enable-embedding-modular true]
       (mt/with-temp [:model/Dashboard dashboard {}]
         (doseq [embedding-type ["guest-embed" "static-legacy"]]
           (let [resp (mt/user-http-request :crowberto :put 200 (str "dashboard/" (u/the-id dashboard))

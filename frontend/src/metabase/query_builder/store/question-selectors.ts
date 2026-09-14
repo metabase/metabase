@@ -1,9 +1,8 @@
 import { createSelector } from "@reduxjs/toolkit";
 
-import { getMetadata } from "metabase/metadata-store";
+import { selectQuestionFromCardBuilder } from "metabase/metadata-store";
 import { isSavedQuestionChanged } from "metabase/querying/common/utils/question";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
 
 import type { QueryBuilderStoreState } from "./state";
 
@@ -27,24 +26,29 @@ export const getOriginalCard = (state: QueryBuilderStoreState) =>
 export const getParameterValues = (state: QueryBuilderStoreState) =>
   state.qb.parameterValues;
 
+// Typed against this store's state so every input to the selectors below takes
+// the same argument. A wider `State` here makes reselect merge the parameter
+// lists into a signature that needs two arguments.
+const getQuestionBuilder = (state: QueryBuilderStoreState) =>
+  selectQuestionFromCardBuilder(state);
+
 export const getQueryBuilderMode = createSelector(
   [getUiControls],
   (uiControls) => uiControls.queryBuilderMode,
 );
 
 export const getOriginalQuestion = createSelector(
-  [getMetadata, getOriginalCard],
-  (metadata, card) =>
-    (metadata && card && new Question(card, metadata)) ?? undefined,
+  [getQuestionBuilder, getOriginalCard],
+  (buildQuestion, card) => (card && buildQuestion(card)) ?? undefined,
 );
 
 export const getQuestionWithoutComposing = createSelector(
-  [getCard, getMetadata, getParameterValues],
-  (card, metadata, parameterValues) => {
-    if (!card || !metadata) {
+  [getCard, getQuestionBuilder, getParameterValues],
+  (card, buildQuestion, parameterValues) => {
+    if (!card) {
       return;
     }
-    return new Question(card, metadata, parameterValues);
+    return buildQuestion(card, parameterValues);
   },
 );
 

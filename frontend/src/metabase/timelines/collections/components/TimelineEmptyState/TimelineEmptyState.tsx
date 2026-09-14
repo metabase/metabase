@@ -28,7 +28,7 @@ const TimelineEmptyState = ({
 
   const applicationName = useSelector(getApplicationName);
   return (
-    <Stack align="center" ta="center" gap="lg">
+    <Stack align="center" ta="center" gap="xl">
       <Tooltip label={t`Launch of v2.0`} offset={-24} opened>
         <Box maw="6rem">
           <img src={EmptyEvent} alt={t`Collection event illustration`} />

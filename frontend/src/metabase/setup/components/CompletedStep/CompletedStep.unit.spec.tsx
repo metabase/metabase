@@ -1,10 +1,7 @@
 import { mockSettings } from "__support__/settings";
+import { createMockSetupState, createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { SetupState, SetupStep } from "metabase/redux/store";
-import {
-  createMockSetupState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import type { EnterpriseSettings } from "metabase-types/api";
 import { createMockSettings } from "metabase-types/api/mocks";
 

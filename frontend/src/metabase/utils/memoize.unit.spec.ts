@@ -1,78 +1,33 @@
-import { memoizeClass } from "./memoize";
+import { memoize } from "metabase/utils/memoize";
 
-describe("memoize", () => {
-  it("should memoize method", () => {
-    let x = 0;
-    class fooInner {
-      bar() {
-        return ++x;
-      }
-    }
-    const foo = memoizeClass<fooInner>("bar")(fooInner);
-    const f = new foo();
-    expect(f.bar()).toEqual(1);
-    expect(f.bar()).toEqual(1);
+class Chart {
+  series = memoize(() => ({ rows: [1, 2, 3] }));
+
+  slice = memoize((index: number, options: { label: string }) => ({
+    index,
+    label: options.label,
+  }));
+}
+
+describe("a memoized class field", () => {
+  it("returns the identical result for one instance", () => {
+    const chart = new Chart();
+
+    expect(chart.series()).toBe(chart.series());
   });
 
-  it("should memoize method with objects", () => {
-    class fooInner {
-      bar() {
-        return {};
-      }
-    }
-    const foo = memoizeClass<fooInner>("bar")(fooInner);
-    const f = new foo();
-    const x = f.bar();
-    expect(f.bar()).toEqual(x);
+  it("keeps instances apart", () => {
+    expect(new Chart().series()).not.toBe(new Chart().series());
   });
 
-  it("should use args in cache key", () => {
-    class fooInner {
-      bar(a: number, b: number, c: number) {
-        return a + b + c;
-      }
-    }
-    const foo = memoizeClass<fooInner>("bar")(fooInner);
-    const f = new foo();
-    expect(f.bar(1, 2, 3)).toEqual(6);
-    expect(f.bar(1, 2, 4)).toEqual(7);
-  });
+  it("keys on every argument", () => {
+    const chart = new Chart();
+    const options = { label: "first" };
 
-  it("should allow calling with variable number of args", () => {
-    class fooInner {
-      bar(x?: number) {
-        return x;
-      }
-    }
-    const foo = memoizeClass<fooInner>("bar")(fooInner);
-    const f = new foo();
-    expect(f.bar()).toEqual(undefined);
-    expect(f.bar(1)).toEqual(1);
-  });
-
-  it("should memoize multiple methods", () => {
-    let x = 0;
-    class fooInner {
-      bar() {
-        return ++x;
-      }
-
-      biz() {
-        return ++x;
-      }
-    }
-    const foo = memoizeClass<fooInner>("bar", "biz")(fooInner);
-    const f = new foo();
-    expect(f.bar()).toEqual(1);
-    expect(f.bar()).toEqual(1);
-    expect(f.biz()).toEqual(2);
-    expect(f.biz()).toEqual(2);
-  });
-
-  it("should throw on nonexistent keys", () => {
-    expect(() => {
-      class fooInner {}
-      memoizeClass("bar")(fooInner);
-    }).toThrow();
+    expect(chart.slice(1, options)).toBe(chart.slice(1, options));
+    expect(chart.slice(1, options)).not.toBe(chart.slice(2, options));
+    expect(chart.slice(1, options)).not.toBe(
+      chart.slice(1, { label: "first" }),
+    );
   });
 });

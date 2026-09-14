@@ -184,7 +184,7 @@
   (add-search-clause {} \"birds\" :t.name :db.name)"
   [query query-string & fields-to-search]
   (sql.helpers/where query (when (seq query-string)
-                             (let [query-string (str \% (u/lower-case-en query-string) \%)]
+                             (let [query-string (h2x/like-substring query-string)]
                                (cons
                                 :or
                                 (for [field fields-to-search]

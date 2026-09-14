@@ -6,7 +6,9 @@
   `:direction`) to strings; [[keywordize-structured]] turns them back into keywords so a driver can dispatch on
   `:kind`."
   (:require
-   [metabase.util.malli.registry :as mr]))
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -20,13 +22,13 @@
   [:string {:min 1 :max 255}])
 
 (mr/def ::column
-  [:map
+  [:map {:closed true}
    [:name ::column-name]
    [:direction {:optional true} [:enum :asc :desc]]])
 
 (mr/def ::classical-index
   "Postgres / MySQL / SQL Server secondary index."
-  [:map
+  [:map {:closed true}
    [:kind [:enum :btree :hash :gin :gist :brin :spgist :fulltext :spatial
            :clustered :nonclustered :columnstore]]
    [:name ::index-name]
@@ -36,7 +38,7 @@
 
 (mr/def ::sortkey
   "Redshift sort key, inline."
-  [:map
+  [:map {:closed true}
    [:kind [:= :sortkey]]
    [:style [:enum :compound :interleaved]]
    [:columns [:vector {:min 1} ::column]]])
@@ -44,7 +46,7 @@
 (mr/def ::distkey
   "Redshift distribution, inline. Only `:key` uses a column (the one DISTKEY column); `:all`/`:even` take none."
   [:and
-   [:map
+   [:map {:closed true}
     [:kind    [:= :distkey]]
     [:style   [:enum :key :all :even]]
     [:columns {:optional true} [:vector {:min 1 :max 1} ::column]]]
@@ -53,21 +55,21 @@
 
 (mr/def ::clustering
   "Snowflake (standalone) / BigQuery (inline) clustering. `:name` is required for the standalone form."
-  [:map
+  [:map {:closed true}
    [:kind [:= :clustering]]
    [:name {:optional true} ::index-name]
    [:columns [:vector {:min 1} ::column]]])
 
 (mr/def ::order-by
   "ClickHouse ORDER BY, inline."
-  [:map
+  [:map {:closed true}
    [:kind [:= :order-by]]
    [:columns [:vector {:min 1} ::column]]])
 
 (mr/def ::skip-index
   "ClickHouse data-skipping index, standalone. Only arg-free types; the parameterized ones need type-args the form
   can't supply yet."
-  [:map
+  [:map {:closed true}
    [:kind [:= :skip-index]]
    [:name ::index-name]
    [:columns [:vector {:min 1} ::column]]
@@ -99,3 +101,34 @@
 (def statuses
   "Valid lifecycle states for a table index request."
   #{:create-pending :update-pending :delete-pending :running :succeeded :failed})
+
+(mr/def ::table-index.structured
+  "The `:structured` column of a TableIndex, decoded."
+  :map)
+
+(mr/def ::table-index
+  "A TableIndex as selected from the app DB: every column of `:metabase_table_indexes`."
+  [:map {:closed true}
+   [:id               ms/PositiveInt]
+   [:transform_id     ::lib.schema.id/transform]
+   [:index_name       :string]
+   [:structured       ::table-index.structured]
+   [:status           [:or :keyword :string]]
+   [:error_message    [:maybe :string]]
+   [:created_by       [:maybe :int]]
+   [:created_at       ms/TemporalInstant]
+   [:updated_at       ms/TemporalInstant]
+   [:last_executed_at [:maybe ms/TemporalInstant]]])
+
+(mr/def ::table-index.update
+  "What an update (or insert) of a TableIndex accepts: every column of `:metabase_table_indexes` except `id`, all optional."
+  [:map {:closed true}
+   [:transform_id     {:optional true} [:maybe ::lib.schema.id/transform]]
+   [:index_name       {:optional true} [:maybe :string]]
+   [:structured       {:optional true} [:maybe ::table-index.structured]]
+   [:status           {:optional true} [:maybe [:or :keyword :string]]]
+   [:error_message    {:optional true} [:maybe :string]]
+   [:created_by       {:optional true} [:maybe :int]]
+   [:created_at       {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at       {:optional true} [:maybe ms/TemporalInstant]]
+   [:last_executed_at {:optional true} [:maybe ms/TemporalInstant]]])

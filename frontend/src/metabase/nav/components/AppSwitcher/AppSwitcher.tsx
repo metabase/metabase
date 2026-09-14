@@ -7,6 +7,8 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackDataStudioOpened } from "metabase/common/data-studio/analytics";
 import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/common/data-studio/selectors";
+import { canAccessEmbeddingHub as canAccessEmbeddingHubSelector } from "metabase/common/embedding-hub/selectors";
+import { useHelpLink } from "metabase/common/hooks";
 import { trackMonitorOpened } from "metabase/common/monitor/analytics";
 import { canAccessMonitor as canAccessMonitorSelector } from "metabase/common/monitor/selectors";
 import { prepareInitials } from "metabase/common/utils/user";
@@ -40,7 +42,6 @@ import { AboutModal } from "../AboutModal/AboutModal";
 
 import S from "./AppSwitcher.module.css";
 import { useGetCurrentApp } from "./useGetCurrentApp";
-import { useHelpLink } from "./useHelpLink";
 
 const CURRENT_APP_ICON_OVERRIDES: {
   name: IconName;
@@ -61,6 +62,7 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
   const canAccessOnboardingPage = useSelector(getCanAccessOnboardingPage);
   const canAccessDataStudio = useSelector(canAccessDataStudioSelector);
   const canAccessMonitor = useSelector(canAccessMonitorSelector);
+  const canAccessEmbeddingHub = useSelector(canAccessEmbeddingHubSelector);
   const isNewInstance = useSelector(getIsNewInstance);
   const helpLink = useHelpLink();
 
@@ -77,7 +79,12 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
   const appsSection = useMemo(() => {
     const showAdminSettingsItem = adminItems?.length > 0;
 
-    if (!canAccessDataStudio && !canAccessMonitor && !showAdminSettingsItem) {
+    if (
+      !canAccessDataStudio &&
+      !canAccessMonitor &&
+      !canAccessEmbeddingHub &&
+      !showAdminSettingsItem
+    ) {
       return null;
     }
 
@@ -97,6 +104,21 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
       </Menu.Item>,
     ];
 
+    if (showAdminSettingsItem) {
+      items.push(
+        <Menu.Item
+          key="admin-app-link"
+          component={ForwardRefLink}
+          to={"/admin"}
+          leftSection={
+            <Icon
+              name="io"
+              {...(currentApp === "admin" ? CURRENT_APP_ICON_OVERRIDES : null)}
+            />
+          }
+        >{t`Admin`}</Menu.Item>,
+      );
+    }
     if (canAccessDataStudio) {
       items.push(
         <Menu.Item
@@ -139,36 +161,46 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
         </Menu.Item>,
       );
     }
-    if (showAdminSettingsItem) {
+    if (canAccessEmbeddingHub) {
       items.push(
         <Menu.Item
-          key="admin-app-link"
+          key="embedding-hub-link"
           component={ForwardRefLink}
-          to={"/admin"}
+          to={Urls.embeddingHub()}
           leftSection={
             <Icon
-              name="io"
-              {...(currentApp === "admin" ? CURRENT_APP_ICON_OVERRIDES : null)}
+              name="embed"
+              {...(currentApp === "embedding-hub"
+                ? CURRENT_APP_ICON_OVERRIDES
+                : null)}
             />
           }
-        >{t`Admin`}</Menu.Item>,
+        >
+          {t`Embedding hub`}
+        </Menu.Item>,
       );
     }
 
     return (
       <>
         <Divider key="app-sectiondivider" w="100%" my="sm" />
-        <Box px="md">{items}</Box>
+        <Box px="lg">{items}</Box>
       </>
     );
-  }, [canAccessDataStudio, canAccessMonitor, adminItems, currentApp]);
+  }, [
+    canAccessDataStudio,
+    canAccessMonitor,
+    canAccessEmbeddingHub,
+    adminItems,
+    currentApp,
+  ]);
 
   // If the instance is not new, we remove the link from the sidebar automatically and show it here instead!
   const showOnboardingLink = !isNewInstance && canAccessOnboardingPage;
 
   return (
     <>
-      <Menu position="bottom-end" shadow="md" width={200} offset={9}>
+      <Menu position="bottom-end" shadow="sm" width={200} offset={9}>
         <Menu.Target>
           {appsSection ? (
             <ActionIcon
@@ -207,7 +239,7 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
         </Menu.Target>
         <Menu.Dropdown w={320} px="0">
           {/* Avatar Stuff */}
-          <Box px="md">
+          <Box px="lg">
             <Menu.Item
               component={ForwardRefLink}
               to={Urls.accountSettings()}
@@ -217,7 +249,7 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
                 <Avatar color="core-brand" radius="lg" size={32}>
                   {user ? prepareInitials(user) : "?"}
                 </Avatar>
-                <Stack gap="xs">
+                <Stack gap="xxs">
                   <Text lh="xs">{user?.first_name}</Text>
                   <Text c="text-disabled" fz="md" lh="xs">
                     {user?.email}
@@ -232,7 +264,7 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
 
           {/* Logout and Help */}
           <Divider w="100%" my="sm" />
-          <Box px="md">
+          <Box px="lg">
             <Menu.Sub position="left-start" offset={20} closeDelay={350}>
               <Menu.Sub.Target>
                 <Menu.Sub.Item>{t`Help`}</Menu.Sub.Item>

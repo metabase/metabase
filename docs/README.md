@@ -28,7 +28,7 @@ Run as a JAR, using Docker, or on [Metabase Cloud](https://store.metabase.com/ch
 
 Once installed, set up your Metabase and connect to your data.
 
-### [Getting started](https://www.metabase.com/learn/metabase-basics/getting-started/index)
+### [Getting started](https://www.metabase.com/learn/metabase-basics/getting-started)
 
 With your data connected, get started asking questions, creating dashboards, and sharing your work.
 
@@ -96,7 +96,7 @@ Metabase's reference documentation.
 
 - [Visualizing data](./questions/visualizations/visualizing-results.md)
 - [Box plots](./questions/visualizations/box-plot.md)
-- [Combo charts](./questions/visualizations/combo-chart.md)
+- [Combo charts](./questions/visualizations/line-bar-and-area-charts.md#combo-charts)
 - [Custom visualizations](./questions/visualizations/custom.md)
 - [Detail](./questions/visualizations/detail.md)
 - [Funnel charts](./questions/visualizations/funnel.md)
@@ -131,27 +131,28 @@ Metabase's reference documentation.
 ### Data modeling
 
 - [Data modeling overview](./data-modeling/start.md)
-- [Models](./data-modeling/models.md)
-- [Model persistence](./data-modeling/model-persistence.md)
-- [Metrics](./data-modeling/metrics.md)
-- [Table metadata admin settings](./data-modeling/metadata-editing.md)
-- [Field types](./data-modeling/semantic-types.md)
-- [Formatting defaults](./data-modeling/formatting.md)
-- [Working with JSON](./data-modeling/json-unfolding.md)
-- [Segments](./data-modeling/segments.md)
+- [Models](./data-modeling/models/models.md)
+- [Model persistence](./data-modeling/models/model-persistence.md)
+- [Metrics](./data-modeling/semantic-layer/metrics.md)
+- [Table metadata admin settings](./data-modeling/metadata/metadata-editing.md)
+- [Field types](./data-modeling/metadata/semantic-types.md)
+- [Formatting defaults](./data-modeling/metadata/formatting.md)
+- [Working with JSON](./data-modeling/metadata/json-unfolding.md)
+- [Segments](./data-modeling/semantic-layer/segments.md)
 
 ### Actions
 
-- [Actions overview](./actions/start.md)
-- [Introduction to actions](./actions/introduction.md)
-- [Basic actions](./actions/basic.md)
-- [Custom actions](./actions/custom.md)
+- [Actions overview](./data-modeling/models/actions/start.md)
+- [Introduction to actions](./data-modeling/models/actions/introduction.md)
+- [Basic actions](./data-modeling/models/actions/basic.md)
+- [Custom actions](./data-modeling/models/actions/custom.md)
 
 ### AI
 
 - [AI overview](./ai/start.md)
 - [Metabot](./ai/metabot.md)
 - [AI settings](./ai/settings.md)
+- [Supported AI providers](./ai/providers.md)
 - [AI usage controls](./ai/usage-controls.md)
 - [AI usage auditing](./ai/usage-auditing.md)
 - [AI customization](./ai/customization.md)
@@ -328,8 +329,8 @@ Contribute to the Metabase open source project!
 
 Data jargon explained.
 
-### [Metabase Experts](https://www.metabase.com/partners/)
+### [Metabase Experts](https://www.metabase.com/partners)
 
-If you’d like more technical resources to set up your data stack with Metabase, connect with a [Metabase Expert](https://www.metabase.com/partners/).
+If you’d like more technical resources to set up your data stack with Metabase, connect with a [Metabase Expert](https://www.metabase.com/partners).
 
 <!-- bump 2 -->

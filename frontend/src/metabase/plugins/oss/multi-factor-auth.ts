@@ -4,6 +4,8 @@ import {
 } from "metabase/plugins/components/PluginPlaceholder";
 import type { MfaMethod } from "metabase-types/api";
 
+import { definePluginSlot } from "../slot";
+
 export type AuthChallengeFormProps = {
   challengeToken: string;
   methods: MfaMethod[];
@@ -11,19 +13,23 @@ export type AuthChallengeFormProps = {
   onCancel: () => void;
 };
 
+export type AuthEnrollmentFormProps = {
+  enrollmentToken: string;
+  secret: string;
+  otpauthUri: string;
+  remember?: boolean;
+  onCancel: () => void;
+};
+
 const getDefaultPluginMultiFactorAuth = () => ({
   AuthChallengeForm: PluginPlaceholder<AuthChallengeFormProps>,
+  AuthEnrollmentForm: PluginPlaceholder<AuthEnrollmentFormProps>,
   AccountSecurityPanel: PluginPlaceholder,
   AdminAuthCard: PluginPlaceholder,
   enrolledUsersPage: pluginPlaceholderRoute,
   unenrolledUsersPage: pluginPlaceholderRoute,
 });
 
-export const PLUGIN_MULTI_FACTOR_AUTH = getDefaultPluginMultiFactorAuth();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(PLUGIN_MULTI_FACTOR_AUTH, getDefaultPluginMultiFactorAuth());
-}
+export const PLUGIN_MULTI_FACTOR_AUTH = definePluginSlot(
+  getDefaultPluginMultiFactorAuth,
+);

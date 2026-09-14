@@ -86,7 +86,7 @@ export function GraphDependencyPanel({
       {isLoading || error != null ? (
         <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
       ) : nodes.length === 0 ? (
-        <Box p="lg" c="text-secondary" ta="center">
+        <Box p="xl" c="text-secondary" ta="center">
           {t`Didn't find any results`}
         </Box>
       ) : (

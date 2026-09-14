@@ -14,13 +14,13 @@ This guide assumes that you have the VisualVM tool installed locally. VisualVM i
 
 ## Connecting to a local Metabase
 
-If you have VisualVM installed on your Metabase server and are able to run VisualVM there, this is the easiest path as there is no need to setup remote communication with your metabase instance. In this scenario, start Metabase like you would normally and separately start VisualVM.
+If you have VisualVM installed on your Metabase server and are able to run VisualVM there, this is the easiest path as there is no need to set up remote communication with your metabase instance. In this scenario, start Metabase like you would normally and separately start VisualVM.
 
 ![localprocess](images/LocalProcessVisualVM.png)
 
 ## Connecting to a remote Metabase
 
-Monitoring a remote Metabase instance (or a local instance running in a docker container) is probably more common, but requires a more setup. First we need to specify some system properties that lets the JVM know that we want to allow remote monitoring. Assuming we are running Metabase using `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar`, we'd need change the invocation to the below command, which includes the properties:
+Monitoring a remote Metabase instance (or a local instance running in a docker container) is probably more common, but requires more setup. First we need to specify some system properties that let the JVM know that we want to allow remote monitoring. Assuming we are running Metabase using `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar`, we'd need to change the invocation to the below command, which includes the properties:
 
 ```sh
 java --add-to-start=jmx,jmx-remote \
@@ -77,13 +77,13 @@ Connecting to a running Metabase with VisualVM makes a lot of runtime informatio
 
 ### Heap dump
 
-When running into memory-related issues, typically the first question to ask is: what is consuming extra memory? A heap dump will take a snapshot of everything in memory at that specific point of time. That memory snapshot can be analyzed later by tools like the [Eclipse Memory Analyzer Tool](https://www.eclipse.org/mat/). Create a heap dump from the "Monitor" tab:
+When running into memory-related issues, typically the first question to ask is: what is consuming extra memory? A heap dump will take a snapshot of everything in memory at that specific point of time. That memory snapshot can be analyzed later by tools like the [Eclipse Memory Analyzer Tool](https://eclipse.dev/mat/). Create a heap dump from the "Monitor" tab:
 
 ![heapdump](images/HeapDump.png)
 
 ### Thread dump
 
-Another useful picture of a running Metabase system is a Thread Dump. In cases when Metabase appears stalled or slow, a thread dump will indicate what each thread is executing (or blocked on) for that specific point in time Collect a thread dump via the "Threads" tab:
+Another useful picture of a running Metabase system is a Thread Dump. In cases when Metabase appears stalled or slow, a thread dump will indicate what each thread is executing (or blocked on) for that specific point in time. Collect a thread dump via the "Threads" tab:
 
 ![threaddump](images/ThreadDump.png)
 

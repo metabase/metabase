@@ -8,7 +8,7 @@ import {
 } from "metabase/api";
 import { useInitialCollectionId } from "metabase/common/collections/hooks";
 import { CopyModal } from "metabase/common/components/CopyModal";
-import { entityTypeForObject } from "metabase/schema";
+import { entityTypeForObject } from "metabase/metadata-store";
 
 const getTitle = (entityObject: any, isShallowCopy: boolean) => {
   if (entityObject.model !== "dashboard") {

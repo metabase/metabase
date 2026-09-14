@@ -14,7 +14,7 @@ export const CommitMessageSection = ({
   <Box>
     <Textarea
       value={value}
-      label={<Text mb="xs">{t`Describe your changes`}</Text>}
+      label={<Text mb="xxs">{t`Describe your changes`}</Text>}
       onChange={(e) => onChange(e.target.value)}
       placeholder={t`What did you change and why?`}
       minRows={3}

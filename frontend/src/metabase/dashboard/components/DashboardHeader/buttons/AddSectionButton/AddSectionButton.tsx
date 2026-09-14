@@ -38,7 +38,7 @@ export const AddSectionButton = () => {
         <Flex
           direction="column"
           align="center"
-          gap="md"
+          gap="lg"
           p="12px"
           className={AddSectionButtonS.AddSectionButton}
         >

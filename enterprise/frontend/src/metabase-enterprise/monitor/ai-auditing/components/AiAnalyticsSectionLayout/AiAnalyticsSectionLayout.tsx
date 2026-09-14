@@ -51,10 +51,10 @@ export function AiAnalyticsSectionLayout({
     return (
       <Flex h="100%" wrap="nowrap">
         <MonitorMain>
-          <Stack gap="lg" flex={1} mih={0}>
+          <Stack gap="xl" flex={1} mih={0}>
             <MonitorHeaderTitle>{title}</MonitorHeaderTitle>
             <Stack
-              gap="md"
+              gap="lg"
               flex={1}
               mih={0}
               display="flex"
@@ -70,9 +70,9 @@ export function AiAnalyticsSectionLayout({
 
   return (
     <MonitorMain>
-      <Stack gap="lg">
+      <Stack gap="xl">
         <MonitorHeaderTitle>{title}</MonitorHeaderTitle>
-        <Stack gap="md">{sectionContent}</Stack>
+        <Stack gap="lg">{sectionContent}</Stack>
       </Stack>
     </MonitorMain>
   );

@@ -222,7 +222,7 @@ function TransformLink({ table }: { table: Table }) {
       <Box
         component={Link}
         to={Urls.transform(transform.id)}
-        py="xs"
+        py="xxs"
         px="sm"
         style={{
           borderRadius: 4,

@@ -213,7 +213,7 @@ export const DashCardCardParameterMapperContent = ({
           <Ellipsified>{headerContent}</Ellipsified>
         </Title>
       )}
-      <Flex align="center" justify="center" gap="xs" pos="relative">
+      <Flex align="center" justify="center" gap="xxs" pos="relative">
         <DashCardCardParameterMapperButton
           key={editingParameter?.id}
           handleChangeTarget={handleChangeTarget}

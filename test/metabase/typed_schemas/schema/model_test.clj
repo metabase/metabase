@@ -24,7 +24,7 @@
                              {:id 43 :name "Model 43"}])
                 schema.model/action-rows
                 (constantly [{:id 5 :model_id 42 :name "Create" :type :query}])
-                actions/select-actions
+                actions/select-actions-non-http-for-models
                 (constantly [{:id         5
                               :model_id   42
                               :name       "Create"
@@ -44,14 +44,12 @@
                   schema.model/action-rows (fn [model-ids]
                                              (swap! action-rows-calls conj model-ids)
                                              [])
-                  actions/select-actions (fn [known-models & options]
-                                           (swap! action-details-calls conj [known-models options])
-                                           [])]
+                  actions/select-actions-non-http-for-models (fn [known-models model-ids]
+                                                               (swap! action-details-calls conj [known-models model-ids])
+                                                               [])]
       (is (= [] (vec (schema.model/model-schemas #{1} nil))))
       (is (= [#{42 43}] @action-rows-calls))
-      (is (= [[models [:model_id [:in #{42 43}]
-                       :archived false
-                       :type [:not= "http"]]]]
+      (is (= [[models #{42 43}]]
              @action-details-calls)))))
 
 (deftest model-schema-surfaces-action-selection-errors-test

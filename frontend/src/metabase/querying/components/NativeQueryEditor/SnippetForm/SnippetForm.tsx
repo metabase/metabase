@@ -83,7 +83,7 @@ function SnippetFormInner({
       {({ dirty }) => (
         <Form
           as={Stack}
-          gap="md"
+          gap="lg"
           disabled={!dirty && !isInitiallyDirty}
           className={S.SnippetForm}
         >

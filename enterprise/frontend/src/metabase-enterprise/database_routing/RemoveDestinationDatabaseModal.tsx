@@ -30,7 +30,7 @@ export const RemoveDestinationDatabaseModal = () => {
 
   if (isLoading || error || !db) {
     return (
-      <Modal opened onClose={handleCloseModal} padding="xl">
+      <Modal opened onClose={handleCloseModal} padding="xxl">
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
       </Modal>
     );

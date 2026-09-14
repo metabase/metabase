@@ -8,7 +8,7 @@ export const MetabotQuestionEmptyState = () => (
   <Stack h="100%" w="100%" gap="sm" align="center" justify="center">
     <Icon name="ai" c="text-disabled" size="3rem" opacity={0.7} />
 
-    <Stack gap="xs" align="center">
+    <Stack gap="xxs" align="center">
       <Text lh="sm">{t`Ask questions to AI.`}</Text>
       <Text lh="sm">{t`Results will appear here.`}</Text>
     </Stack>
