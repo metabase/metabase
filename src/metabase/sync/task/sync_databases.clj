@@ -163,7 +163,7 @@
 
 (def ^:private TaskInfo
   "One-off schema for information about the various sync tasks we run for a DB."
-  [:map
+  [:map {:closed true}
    [:key                :keyword]
    [:db-schedule-column :keyword]
    [:job-class          ::class]

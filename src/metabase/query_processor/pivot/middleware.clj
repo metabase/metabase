@@ -69,7 +69,7 @@
 (mu/defn- column-mapping-for-subquery :- ::pivot-column-mapping
   [{num-remapped-cols      :qp.pivot/num-remapped-cols
     num-remapped-breakouts :qp.pivot/num-remapped-breakouts
-    :as                    _subquery} :- [:map
+    :as                    _subquery} :- [:map {:closed true}
                                           [:qp.pivot/num-remapped-cols      nat-int?]
                                           [:qp.pivot/num-remapped-breakouts ::pivot.common/num-breakouts]]
    subquery-breakout-combination :- ::pivot.common/breakout-combination]
@@ -118,7 +118,7 @@
   index is selected, we have to shift the indexes before which a mapped index is inserted."
   [{breakout-combination :qp.pivot/remapped-breakout-combination
     remap                :qp.pivot/remapped-indexes
-    :as                  _subquery} :- [:map
+    :as                  _subquery} :- [:map {:closed true}
                                         [:qp.pivot/remapped-breakout-combination ::pivot.common/breakout-combination]
                                         [:qp.pivot/remapped-indexes              ::pivot.common/remapped-indexes]]]
   (if (or (empty? remap)

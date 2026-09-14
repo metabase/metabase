@@ -374,7 +374,7 @@
     {:ident ":ident is deprecated and should not be included in options maps"})])
 
 (mr/def ::external-op
-  [:map
+  [:map {:closed true}
    [:lib/type [:= :lib/external-op]]
    [:operator [:multi {:dispatch string?}
                [true  :string]

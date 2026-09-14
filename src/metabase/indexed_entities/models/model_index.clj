@@ -74,7 +74,7 @@
                      :valid-clauses [:field :expression]}))))
 
 (mr/def ::model-index
-  [:map
+  [:map {:closed true}
    [:model_id  ::lib.schema.id/card]
    [:value_ref some?]
    [:pk_ref    some?]])

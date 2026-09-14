@@ -278,7 +278,7 @@
    (api-graph {}))
 
   ([& {:as opts}
-    :- [:map
+    :- [:map {:closed true}
         [:group-id  {:optional true} [:maybe pos-int?]]
         [:group-ids {:optional true} [:maybe [:sequential pos-int?]]]
         [:db-id     {:optional true} [:maybe pos-int?]]

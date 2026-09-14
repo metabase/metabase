@@ -158,7 +158,7 @@
 (mu/defn store-previous-result-metadata!
   "Store the previous value of a card's result metadata in the qp.store"
   [card :- [:maybe
-            [:map
+            [:map {:closed true}
              [:result_metadata {:optional true} [:maybe [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]]]]
   (when-let [result-metadata (:result_metadata card)]
     (if-let [error (me/humanize (mr/explain [:sequential ::lib.schema.metadata/lib-or-legacy-column] result-metadata))]

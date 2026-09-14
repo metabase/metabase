@@ -42,7 +42,7 @@
 
 (def ^:private CreateCollectionArguments
   "The arguments to a create-collection call — what the public API surface accepts."
-  [:map
+  [:map {:closed true}
    [:name            ms/NonBlankString]
    [:description     {:optional true} [:maybe ms/NonBlankString]]
    [:parent_id       {:optional true} [:maybe ms/PositiveInt]]

@@ -21,7 +21,7 @@
 (mu/defn normalize-preprocessing-middleware :- ::lib.schema/query
   "Preprocessing middleware. Normalize a query, meaning do things like convert keys and MBQL clause tags to kebab-case
   keywords. Convert query to MBQL 5 if needed."
-  [query :- [:map [:database ::lib.schema.id/database]]]
+  [query :- [:map {:closed true} [:database ::lib.schema.id/database]]]
   (try
     (normalize* query)
     (catch Throwable e

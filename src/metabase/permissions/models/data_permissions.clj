@@ -82,7 +82,7 @@
          ~@body))))
 
 (mu/defn- with-cluster-lock-fn
-  [m :- [:map
+  [m :- [:map {:closed true}
          [:db-id ms/PositiveInt]
          [:perm-type :string]]
    f :- fn?]
@@ -959,7 +959,7 @@
 
 (def ^:private TheIdable
   "An ID, or something with an ID."
-  [:or pos-int? [:map [:id pos-int?]]])
+  [:or pos-int? [:map {:closed true} [:id pos-int?]]])
 
 (defn- merge-perm-changes
   "Merges `{:to-delete [...] :to-insert [...]}` maps, deduping as it concatenates: several implication

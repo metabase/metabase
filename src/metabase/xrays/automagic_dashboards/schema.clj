@@ -38,7 +38,7 @@
   ::filter-clause)
 
 (mr/def ::root
-  [:map
+  [:map {:closed true}
    [:database     ::lib.schema.id/database]
    [:entity       {:optional true} [:ref ::root.entity]]
    [:query-filter {:optional true} [:maybe [:sequential ::filter-clause]]]
@@ -47,7 +47,7 @@
 (mr/def ::source
   [:or
    (ms/InstanceOf #{:model/Table :model/Card})
-   [:map
+   [:map {:closed true}
     [:entity_type [:and
                    qualified-keyword?
                    [:fn
@@ -56,7 +56,7 @@
 
 (mr/def ::context
   "The big ball of mud data object from which we generate x-rays"
-  [:map
+  [:map {:closed true}
    [:source       {:optional true} ::source]
    [:root         {:optional true} [:ref ::root]]
    [:tables       {:optional true} any?]
@@ -99,7 +99,7 @@
 
 (mr/def ::dimension-value
   "A specification for the basic keys in the value of a dimension template."
-  [:map
+  [:map {:closed true}
    [:field_type      ::field-type]
    [:score           {:optional true} nat-int?]
    [:max_cardinality {:optional true} nat-int?]
@@ -129,7 +129,7 @@
 
 (mr/def ::filter-value
   "A specification for the basic keys in the value of a filter template."
-  [:map
+  [:map {:closed true}
    [:filter [:vector some?]]
    [:score nat-int?]])
 
@@ -142,7 +142,7 @@
 
 (mr/def ::item
   "A \"thing\" that we bind to, consisting, generally, of at least a name and id"
-  [:map
+  [:map {:closed true}
    [:id {:optional true} nat-int?]
    [:name {:optional true} string?]])
 
@@ -155,7 +155,7 @@
    and a sequence of matching items satisfying this dimension"
   [:map-of
    :string
-   [:map
+   [:map {:closed true}
     [:matches [:sequential ::item]]]])
 
 (mr/def ::dim-name->dim-defs+matches
@@ -233,7 +233,7 @@
 
 (mr/def ::field
   [:and
-   [:map
+   [:map {:closed true}
     ;; as mentioned elsewhere X-Rays does some kind of insane nonsense and creates fields with types like
     ;; `:type/GenericNumber` when instantiating templates
     [:base_type {:optional true} ::lib.schema.common/base-type]]
@@ -242,12 +242,12 @@
     (complement :base-type)]])
 
 (mr/def ::card
-  [:map
+  [:map {:closed true}
    [:id            {:optional true} [:or symbol? ::lib.schema.id/card]]
    [:dataset_query {:optional true} ::query]])
 
 (mr/def ::dashcard
-  [:map
+  [:map {:closed true}
    [:id                     {:optional true} [:or symbol? ::lib.schema.id/dashcard]]
    [:card                   {:optional true} ::card]
    [:card_id                {:optional true} [:or symbol? ::lib.schema.id/card]]
@@ -260,7 +260,7 @@
    [:card-score             {:optional true} number?]])
 
 (mr/def ::dashboard
-  [:map
+  [:map {:closed true}
    [:dashcards {:optional true} [:sequential ::dashcard]]
    [:filters   {:optional true} [:sequential :any]]])
 
@@ -270,7 +270,7 @@
 (mr/def ::dashboard-template
   "This is somewhat different [[metabase.xrays.automagic-dashboards.schema/DashboardTemplate]], I haven't exactly worked
   out what the schema is supposed to be yet."
-  [:map
+  [:map {:closed true}
    [:cards {:optional true} [:maybe [:sequential ::card-template]]]])
 
 (mr/def ::grounded-values

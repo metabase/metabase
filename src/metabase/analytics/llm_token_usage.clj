@@ -10,7 +10,7 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private SnowplowArgs
-  [:map
+  [:map {:closed true}
    [:request-id                                     :string]
    [:model-id                                       :string]
    [:total-tokens                                   ms/IntGreaterThanOrEqualToZero]
@@ -54,7 +54,7 @@
                                 user-id))
 
 (def ^:private PrometheusArgs
-  [:map
+  [:map {:closed true}
    [:model-id                              :string]
    [:tag                                   :string]
    [:prompt-tokens                         ms/IntGreaterThanOrEqualToZero]

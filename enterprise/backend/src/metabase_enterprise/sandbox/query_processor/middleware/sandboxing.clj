@@ -41,7 +41,7 @@
 ;;; from [[metabase-enterprise.sandbox.api.util/enforced-sandboxes-for-tables]] for consistency with all of the rest
 ;;; of the QP code. Or maybe add this to the Metadata Provider (or a special "Enterprise" Metadata Provider)?
 (mr/def ::sandbox
-  [:map
+  [:map {:closed true}
    [:table_id             ::lib.schema.id/table]
    [:card_id              {:optional true} [:maybe ::lib.schema.id/card]]
    [:attribute_remappings {:optional true} [:maybe
@@ -449,12 +449,12 @@
 
 ;;;; Post-processing
 
-(mu/defn- merge-metadata :- [:map
+(mu/defn- merge-metadata :- [:map {:closed true}
                              [:cols [:sequential ::mbql.s/legacy-column-metadata]]]
   "Merge column metadata from the non-sandboxed version of the query into the sandboxed results `metadata`. This way the
   final results metadata coming back matches what we'd get if the query was not running in a sandbox."
   [original-metadata :- [:sequential ::mbql.s/legacy-column-metadata]
-   metadata          :- [:map
+   metadata          :- [:map {:closed true}
                          [:cols [:sequential ::mbql.s/legacy-column-metadata]]]]
   (letfn [(merge-cols [cols]
             (let [col-name->expected-col (m/index-by :name original-metadata)]

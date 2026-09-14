@@ -44,7 +44,7 @@
 
 (mr/def ::binning-option
   "Schema for a binning option as presented to the UI."
-  [:map
+  [:map {:closed true}
    [:lib/type [:= :option/binning]]
    [:display-name :string]
    [:mbql [:maybe ::binning]]
@@ -348,7 +348,7 @@
    Persisted dimensions include additional metadata about their status
    and any issues that prevent them from being used.
    Note: target field references are stored in dimension-mappings, not here."
-  [:map
+  [:map {:closed true}
    [:id               ::dimension-id]
    [:name             {:optional true} [:maybe :string]]
    [:display-name     {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
@@ -379,7 +379,7 @@
 
    Metadata is loaded lazily from the provider in the AST builder,
    not stored in the definition."
-  [:map
+  [:map {:closed true}
    [:lib/type          [:= :metric/definition]]
    [:expression        ::metric-math-expression]
    [:filters           ::instance-filters]
@@ -398,7 +398,7 @@
   "Schema for dimension metadata fetchable via metadata provider.
    Dimensions are extracted from metrics/measures at fetch time, with source
    tracking to identify their parent entity."
-  [:map
+  [:map {:closed true}
    [:lib/type         [:= :metadata/dimension]]
    [:id               ::dimension-id]  ; UUID string
    [:name             {:optional true} [:maybe :string]]
@@ -434,7 +434,7 @@
 (mr/def ::computed-dimension
   "A dimension computed from a visible column, before reconciliation.
    The :id is nil until assigned during reconciliation."
-  [:map
+  [:map {:closed true}
    [:id [:maybe ::dimension-id]]
    [:name :string]
    [:display-name {:optional true} [:maybe :string]]
@@ -446,9 +446,9 @@
 
 (mr/def ::computed-pair
   "A computed dimension paired with its mapping (before ID assignment)."
-  [:map
+  [:map {:closed true}
    [:dimension ::computed-dimension]
-   [:mapping [:map
+   [:mapping [:map {:closed true}
               [:type ::dimension-mapping.type]
               [:table-id {:optional true} [:maybe ::lib.schema.id/table]]
               [:target ::dimension-mapping.target]]]])

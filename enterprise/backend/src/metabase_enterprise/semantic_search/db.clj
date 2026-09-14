@@ -92,7 +92,7 @@
   [search-results :- [:sequential [:map {:closed true}
                                    [:id [:or :string ms/PositiveInt]]
                                    [:model :string]]]
-   search-ctx     :- [:map
+   search-ctx     :- [:map {:closed true}
                       [:current-user-id {:optional true} [:maybe ms/PositiveInt]]
                       [:context {:optional true} [:maybe :keyword]]
                       [:weights {:optional true} [:maybe [:map-of :keyword number?]]]]]

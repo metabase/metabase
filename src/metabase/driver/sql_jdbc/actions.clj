@@ -550,7 +550,7 @@
       :xform   (mapcat #(map (partial input-fn database (:table-id %)) (:rows %)))})))
 
 (mr/def ::table-row-input
-  [:map
+  [:map {:closed true}
    [:table-id driver-api/schema.id.table]
    [:row driver-api/schema.actions.args.row]])
 

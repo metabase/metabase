@@ -70,7 +70,7 @@
   "Asynchronously delete params with a nil `value` and upsert the rest."
   [user-id         :- pos-int?
    dashboard-id    :- pos-int?
-   parameters      :- [:sequential [:map
+   parameters      :- [:sequential [:map {:closed true}
                                     [:id      [:string {:min 1}]]
                                     ;; TODO -- not sure whether these are optional or not
                                     [:value   {:optional true} any?]

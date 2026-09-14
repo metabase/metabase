@@ -160,8 +160,8 @@
 
 (mu/defn- reducible-chunks  :- (lib.schema.common/instance-of-class clojure.lang.IReduceInit)
   [driver   :- :keyword
-   dbdef    :- [:map [:database-name :string]]
-   tabledef :- [:map [:table-name :string]]]
+   dbdef    :- [:map {:closed true} [:database-name :string]]
+   tabledef :- [:map {:closed true} [:table-name :string]]]
   (let [rows        (:rows tabledef)
         chunk-size  (chunk-size driver dbdef tabledef)
         row-xform   (comp

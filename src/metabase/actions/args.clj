@@ -52,7 +52,7 @@
 ;;; Anything else required depends on the action type.
 
 (mr/def ::common
-  [:map [:database ::lib.schema.id/database]])
+  [:map {:closed true} [:database ::lib.schema.id/database]])
 
 (mr/def ::row
   [:map-of :string [:ref ::lib.schema.parameter/parameter.value]])

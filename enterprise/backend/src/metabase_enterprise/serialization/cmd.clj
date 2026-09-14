@@ -32,7 +32,7 @@
 
   `opts` are passed to [[v2.load/load-metabase]]."
   [path :- :string
-   opts :- [:map
+   opts :- [:map {:closed true}
             [:continue-on-error {:optional true} [:maybe :boolean]]
             [:reindex? {:optional true} [:maybe :boolean]]]
    ;; Deliberately separate from the opts so it can't be set from the CLI.
@@ -59,7 +59,7 @@
 
    opts are passed to load-metabase"
   [path :- :string
-   opts :- [:map
+   opts :- [:map {:closed true}
             [:continue-on-error {:optional true} [:maybe :boolean]]
             [:full-stacktrace {:optional true} [:maybe :boolean]]]]
   (let [timer    (u/start-timer)

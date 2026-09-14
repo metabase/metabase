@@ -34,7 +34,7 @@
    :keyword])
 
 (mr/def ::state
-  [:map
+  [:map {:closed true}
    [:queries {:optional true} [:map-of ::state-map-key :map]]
    [:charts {:optional true} [:map-of ::state-map-key :map]]
    [:chart-configs {:optional true} [:map-of ::state-map-key :map]]

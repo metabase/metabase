@@ -1295,7 +1295,7 @@
 
 (mu/defn fully-parameterized?
   "Given a Card, returns `true` if its query is fully parameterized."
-  [{query :dataset_query, :as _card} :- [:map
+  [{query :dataset_query, :as _card} :- [:map {:closed true}
                                          [:dataset_query [:maybe [:or ::lib.schema/query ::lib-be.schema/empty-query]]]]]
   (if (empty? query)
     true

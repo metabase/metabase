@@ -453,7 +453,7 @@
   nil)
 
 (def ^:private Options
-  [:map
+  [:map {:closed true}
    [:notification/sync? :boolean]])
 
 (def ^:dynamic *default-options*

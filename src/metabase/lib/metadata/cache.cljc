@@ -77,7 +77,7 @@
    [unique-key x])
 
   ([unique-key   :- qualified-keyword?
-    query        :- [:map
+    query        :- [:map {:closed true}
                      [:lib/type [:= :mbql/query]]]
     stage-number :- :int
     x            :- :any

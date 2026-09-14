@@ -18,7 +18,7 @@
 
 (mr/def ::version-range
   "A single affected version range with inclusive min and exclusive fixed."
-  [:map
+  [:map {:closed true}
    [:min   ::semver]
    [:fixed ::semver]])
 
@@ -27,7 +27,7 @@
 
 (mr/def ::download-jar-url
   "A downloadable JAR for a given fixed version."
-  [:map
+  [:map {:closed true}
    [:version ::semver]
    [:url     :string]])
 

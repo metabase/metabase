@@ -196,7 +196,7 @@
 (mu/defn update!
   "Updates an Action and the related type table.
    Deletes the old type table row if the type has changed."
-  [updates         :- [:map
+  [updates         :- [:map {:closed true}
                        [:id ::actions.schema/id]]
    existing-action :- ::actions.schema/action]
   (let [updates (merge (select-keys existing-action [:type]) updates)] ; in case the updates do not include it.

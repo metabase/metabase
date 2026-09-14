@@ -72,7 +72,7 @@
   [:map-of :string :any])
 
 (def ^:private TestCase
-  [:map
+  [:map {:closed true}
    [:click-type    [:enum :cell :header]]
    [:query-type    [:enum :aggregated :unaggregated]]
    [:column-name   :string]
@@ -327,10 +327,10 @@
   [:merge
    TestCase
    [:map
-    [:expected [:or [:-> [:sequential [:map
+    [:expected [:or [:-> [:sequential [:map {:closed true}
                                        [:type ::lib.schema.drill-thru/drill-thru.type]]]
                      :boolean]
-                [:sequential [:map
+                [:sequential [:map {:closed true}
                               [:type ::lib.schema.drill-thru/drill-thru.type]]]]]]])
 
 (mu/defn test-available-drill-thrus
@@ -363,7 +363,7 @@
   [:merge
    TestCaseWithDrillType
    [:map
-    [:expected [:map
+    [:expected [:map {:closed true}
                 [:type ::lib.schema.drill-thru/drill-thru.type]]]]])
 
 (defn- drop-uuids [form]

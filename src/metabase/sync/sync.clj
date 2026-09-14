@@ -69,7 +69,7 @@
    (sync-database! database nil))
 
   ([database                         :- i/DatabaseInstance
-    {:keys [scan], :or {scan :full}} :- [:maybe [:map
+    {:keys [scan], :or {scan :full}} :- [:maybe [:map {:closed true}
                                                  [:scan {:optional true} [:maybe [:enum :schema :full]]]]]]
    (tracing/with-span :sync "sync.database" {:db/id (:id database)}
      (sync-util/sync-operation :sync database (format "Sync %s" (sync-util/name-for-logging database))

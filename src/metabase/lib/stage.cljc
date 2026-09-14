@@ -162,7 +162,7 @@
 (mu/defn- expressions-metadata :- [:maybe ::lib.metadata.calculation/visible-columns]
   [query                         :- ::lib.schema/query
    stage-number                  :- :int
-   {:keys [include-late-exprs?]} :- [:map [:include-late-exprs? {:optional true} :boolean]]]
+   {:keys [include-late-exprs?]} :- [:map {:closed true} [:include-late-exprs? {:optional true} :boolean]]]
   (not-empty
    (for [[clause col] (map vector
                            (:expressions (lib.util/query-stage query stage-number))

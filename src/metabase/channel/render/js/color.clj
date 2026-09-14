@@ -13,8 +13,8 @@
   "This is a pretty loose schema, more as a safety net as we have a long feedback loop for this being broken as it's
   being handed to the JS color picking code. Currently it just needs column names from `:cols`, and the query results
   from `:rows`"
-  [:map
-   [:cols [:sequential [:map
+  [:map {:closed true}
+   [:cols [:sequential [:map {:closed true}
                         [:name :string]]]]
    [:rows [:sequential [:sequential :any]]]])
 

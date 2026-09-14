@@ -182,7 +182,7 @@
         datetime-interval-units))
 
 (mr/def ::option
-  [:map
+  [:map {:closed true}
    [:lib/type [:= :option/temporal-bucketing]]
    [:unit ::unit]
    [:default {:optional true} :boolean]])

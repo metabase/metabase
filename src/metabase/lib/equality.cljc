@@ -416,7 +416,7 @@ are known to be the same."
      (disambiguate-matches-ignoring-join-alias a-ref columns))))
 
 (def ^:private FindMatchingColumnOptions
-  [:map [:generous? {:optional true} :boolean]])
+  [:map {:closed true} [:generous? {:optional true} :boolean]])
 
 (mu/defn find-matching-column :- [:maybe ::lib.schema.metadata/column]
   "Given `a-ref-or-column` and a list of `columns`, finds the column that best matches this ref or column.

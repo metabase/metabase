@@ -34,7 +34,7 @@
 
 (mr/def ::incomplete-template-tag
   "An unfinished template tag; must be completed by [[finish-tag]]."
-  [:map
+  [:map {:closed true}
    [:type ::lib.schema.template-tag/type]
    [:name ::lib.schema.template-tag/name]])
 
@@ -215,7 +215,7 @@
   #{:collection})
 
 (mr/def ::native-extras
-  [:map
+  [:map {:closed true}
    [:collection {:optional true} ::common/non-blank-string]])
 
 (mu/defn required-native-extras :- set?

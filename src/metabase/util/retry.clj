@@ -10,7 +10,7 @@
 (set! *warn-on-reflection* true)
 
 (mr/def ::retry-config
-  [:map
+  [:map {:closed true}
    [:max-retries              :int]
    [:initial-interval-millis  :int]
    [:multiplier               :float]

@@ -124,7 +124,7 @@
     card-or-id-or-nil     :- [:maybe [:or ::lib.schema.id/card ::lib.schema.metadata/card]]
     cols                  :- [:maybe [:or
                                       [:sequential ::lib.schema.metadata/lib-or-legacy-column]
-                                      [:map
+                                      [:map {:closed true}
                                        [:columns [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]]]]
    ;; Card `result-metadata` SHOULD be a sequence of column infos, but just to be safe handle a map that
    ;; contains` :columns` as well.

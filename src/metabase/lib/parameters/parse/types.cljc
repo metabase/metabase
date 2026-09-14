@@ -20,7 +20,7 @@
   [:= ::no-value])
 
 (mr/def ::field-filter.value.map
-  [:map
+  [:map {:closed true}
    [:type ::lib.schema.parameter/type]
    [:value :any]])
 
@@ -47,7 +47,7 @@
   *  A vector of maps like the one above (for multiple values)
 
   * Alias is optional and added by #61118 (not sure what it does, look at PR for more info)"
-  [:map
+  [:map {:closed true}
    [:lib/type [:= ::field-filter]]
    [:field    ::lib.schema.metadata/column]
    [:value    ::field-filter.value]
@@ -69,7 +69,7 @@
   (= (:lib/type x) ::field-filter))
 
 (mr/def ::temporal-unit
-  [:map
+  [:map {:closed true}
    [:lib/type [:= ::temporal-unit]]
    [:field    ::lib.schema.metadata/column]
    ;; TODO (Cam 7/16/25) -- constrain `:value`
@@ -129,7 +129,7 @@
    * `:field-id` - the ID of the field to filter on
    * `:op`       - the comparison operator, one of :>, :>=, :<, :<=, :=, :!=
    * `:value`    - the value to compare against"
-  [:map
+  [:map {:closed true}
    [:field-id ::lib.schema.id/field]
    [:op       [:enum :> :>= :< :<= := :!=]]
    [:value    any?]])
@@ -207,7 +207,7 @@
 ;; TODO (Cam 2026-05-14) -- rename to `::datetime`
 (mr/def ::date
   "As in a literal date, defined by date-string `s`."
-  [:map
+  [:map {:closed true}
    [:lib/type [:= ::date]]
    [:s        ::date.value]])
 
@@ -256,7 +256,7 @@
   (= (:lib/type x) ::date-time-range))
 
 (mr/def ::param
-  [:map
+  [:map {:closed true}
    [:lib/type [:= ::param]]
    [:k        :string]])
 
@@ -272,7 +272,7 @@
   (= (:lib/type x) ::param))
 
 (mr/def ::function-param
-  [:map
+  [:map {:closed true}
    [:lib/type      [:= ::function-param]]
    [:function-name :string]
    ;; TODO (Cam 7/16/25) -- constrain further; I think these have to be valid parameters
@@ -289,7 +289,7 @@
   (= (:lib/type x) ::function-param))
 
 (mr/def ::optional
-  [:map
+  [:map {:closed true}
    [:lib/type [:= ::optional]]
    ;; TODO (Cam 7/16/25) -- constrain further
    [:args     [:sequential :any]]])

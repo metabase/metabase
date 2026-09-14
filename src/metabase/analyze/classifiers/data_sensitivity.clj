@@ -244,7 +244,7 @@
         category))))
 
 (def ^:private Field
-  [:map
+  [:map {:closed true}
    [:name          :string]
    [:base_type     :keyword]
    [:semantic_type {:optional true} [:maybe :keyword]]
@@ -252,7 +252,7 @@
 
 (def ^:private TableContext
   [:maybe
-   [:map
+   [:map {:closed true}
     [:name        {:optional true} [:maybe :string]]
     [:entity_type {:optional true} [:maybe :keyword]]]])
 

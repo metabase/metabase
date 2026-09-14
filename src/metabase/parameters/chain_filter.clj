@@ -99,7 +99,7 @@
 
 (mr/def ::constraint
   "Schema for a constraint on a field."
-  [:map
+  [:map {:closed true}
    [:field-id ::lib.schema.id/field]
    [:op       :keyword] ; name of an MBQL filter clause e.g. `:=` or `:starts-with`
    [:value    :any]

@@ -272,7 +272,7 @@
    (perms-objects-set-for-parent-collection nil this read-or-write))
 
   ([collection-namespace :- [:maybe ms/KeywordOrString]
-    this                 :- [:map
+    this                 :- [:map {:closed true}
                              [:collection_id [:maybe ms/PositiveInt]]]
     read-or-write        :- [:enum :read :write]]
    ;; based on value of read-or-write determine the appropriate function used to calculate the perms path

@@ -369,7 +369,7 @@
 
 (def ^:private Invitor
   "Map with info about the admin creating the user, used in the new user notification code"
-  [:map
+  [:map {:closed true}
    [:email      ms/Email]
    [:first_name [:maybe ms/NonBlankString]]])
 
@@ -435,7 +435,7 @@
   "Adds the `:attributes` key to a user. Only personal users carry attributes; for other user types (API-key, internal)
   this is always `{}`, so e.g. sandboxed queries made with an API key report a missing user attribute instead of
   reading attributes stored on the user row."
-  [{:keys [login_attributes jwt_attributes] :as user} :- [:map [:type (into [:enum] allowed-user-types)]]]
+  [{:keys [login_attributes jwt_attributes] :as user} :- [:map {:closed true} [:type (into [:enum] allowed-user-types)]]]
   (assoc user :attributes (if (= (:type user) :personal)
                             (merge {} (tenants/login-attributes user) jwt_attributes login_attributes)
                             {})))

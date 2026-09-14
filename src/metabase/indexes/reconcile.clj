@@ -27,7 +27,7 @@
 
 (mu/defn match-key :- ::match-key
   "The [[::match-key]] for a warehouse index map (see the schema for how each kind is keyed)."
-  [{:keys [kind key-columns] am :access-method nm :name} :- [:map
+  [{:keys [kind key-columns] am :access-method nm :name} :- [:map {:closed true}
                                                              [:kind :keyword]
                                                              [:key-columns [:sequential [:maybe :string]]]
                                                              [:access-method {:optional true} [:maybe :string]]
@@ -40,14 +40,14 @@
 (mu/defn index-name :- :string
   "Physical index name for a structured def: a named kind's `:name`, else its `:kind` as a string (one inline key per
   transform)."
-  [structured :- [:map
+  [structured :- [:map {:closed true}
                   [:name {:optional true} [:maybe :string]]
                   [:kind [:or :keyword :string]]]]
   (or (:name structured) (name (:kind structured))))
 
 (mu/defn managed-match-key :- ::match-key
   "The [[match-key]] for an index request, from its stored structured definition and index name."
-  [{:keys [index_name structured]} :- [:map
+  [{:keys [index_name structured]} :- [:map {:closed true}
                                        [:index_name [:maybe :string]]
                                        [:structured :map]]]
   (let [{:keys [kind style columns]} structured

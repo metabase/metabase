@@ -583,13 +583,13 @@
 ;;; ------------------------------------------------- Table DDL -------------------------------------------------
 
 (mr/def ::column-definition
-  [:map
+  [:map {:closed true}
    [:name :string]
    [:type ::lib.schema.common/base-type]
    [:nullable? {:optional true} :boolean]])
 
 (mr/def ::table-definition
-  [:map
+  [:map {:closed true}
    [:name :keyword]
    [:columns [:sequential ::column-definition]]
    [:primary-key {:optional true} [:sequential :string]]
@@ -811,7 +811,7 @@
   For entries with only :database_id/:schema/:table, looks up :table_id.
   Throws if an integer table ID references a non-existent table.
   Map refs with non-existent tables get nil table_id (resolved later at execute time)."
-  [source-tables :- [:sequential [:map [:alias :string]]]]
+  [source-tables :- [:sequential [:map {:closed true} [:alias :string]]]]
   (let [;; Entries that have table_id but lack table metadata need lookup
         needs-metadata   (filter (fn [e] (and (:table_id e) (not (:table e)))) source-tables)
         int-id->metadata (when (seq needs-metadata)

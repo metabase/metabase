@@ -181,9 +181,9 @@
 (mu/defn register-plugin-with-info!
   "Register a plugin using parsed info from its manifest. Returns truthy if the plugin was successfully registered;
   falsey otherwise."
-  [info :- [:map
+  [info :- [:map {:closed true}
             [:metabase-plugin-api-version {:optional true} :int]
-            [:info [:map
+            [:info [:map {:closed true}
                     [:name    :string]
                     [:version :string]]]]]
   (validate-plugin-api-version! info)

@@ -61,7 +61,7 @@
 
 (mu/defn table-name :- [:maybe :string]
   "Computes a table name from a table reference"
-  [raw-col :- [:map
+  [raw-col :- [:map {:closed true}
                [:database {:optional true} :string]
                [:schema {:optional true} :string]
                [:table {:optional true} :string]]]

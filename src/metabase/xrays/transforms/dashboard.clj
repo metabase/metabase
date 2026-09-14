@@ -36,7 +36,7 @@
           cards))
 
 (mu/defn- card-for-source-table
-  [table :- [:map
+  [table :- [:map {:closed true}
              [:db_id ::lib.schema.id/database]]]
   {:pre [(map? table)]}
   {:creator_id             api/*current-user-id*

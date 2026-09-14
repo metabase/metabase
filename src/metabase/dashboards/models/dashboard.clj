@@ -242,11 +242,11 @@
         (update-field-values-for-on-demand-dbs! old-param-field-ids new-param-field-ids)))))
 
 (def ^:private DashboardWithSeriesAndCard
-  [:map
+  [:map {:closed true}
    [:id ms/PositiveInt]
-   [:dashcards [:sequential [:map
+   [:dashcards [:sequential [:map {:closed true}
                              [:card_id {:optional true} [:maybe ms/PositiveInt]]
-                             [:card {:optional true} [:maybe [:map
+                             [:card {:optional true} [:maybe [:map {:closed true}
                                                               [:id ms/PositiveInt]]]]]]]])
 
 (mu/defn update-dashcards!
@@ -378,9 +378,9 @@
   "Return map of Dashboard parameter key -> param with resolved `:mappings` (see the `:resolved-params` hydration
   below for an example). Callers that only need the mappings (e.g. the QP) can pass slim dashcards instead of paying
   for the full hydration."
-  [dashboard :- [:map
+  [dashboard :- [:map {:closed true}
                  [:parameters [:maybe [:sequential :map]]]
-                 [:dashcards [:maybe [:sequential [:map
+                 [:dashcards [:maybe [:sequential [:map {:closed true}
                                                    [:parameter_mappings [:maybe [:sequential :map]]]]]]]]]
   (let [param-key->mappings (apply
                              merge-with set/union

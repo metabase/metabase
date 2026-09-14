@@ -220,7 +220,7 @@
            (lib.filter/filter query stage-number (lib.filter/between temporal-column start end))))))))
 
 (mr/def ::lat-lon.bounds
-  [:map
+  [:map {:closed true}
    [:north number?]
    [:east  number?]
    [:south number?]

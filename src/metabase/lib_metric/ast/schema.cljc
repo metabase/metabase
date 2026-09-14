@@ -11,14 +11,14 @@
 
 (mr/def ::table-node
   "Reference to a database table."
-  [:map
+  [:map {:closed true}
    [:node/type [:= :ast/table]]
    [:id pos-int?]
    [:name {:optional true} [:maybe string?]]])
 
 (mr/def ::column-node
   "Reference to a database column/field."
-  [:map
+  [:map {:closed true}
    [:node/type [:= :ast/column]]
    [:id [:or pos-int? string?]]
    [:name {:optional true} [:maybe string?]]
@@ -29,7 +29,7 @@
 
 (mr/def ::dimension-node
   "A dimension definition - the abstract dimension."
-  [:map
+  [:map {:closed true}
    [:node/type [:= :ast/dimension]]
    [:id ::lib-metric.schema/dimension-id]
    [:name {:optional true} [:maybe string?]]
@@ -40,20 +40,20 @@
 
 (mr/def ::dimension-ref-options
   "Options for dimension references (bucketing, binning, etc.)."
-  [:map
+  [:map {:closed true}
    [:temporal-unit {:optional true} [:maybe keyword?]]
    [:binning {:optional true} [:maybe :map]]])
 
 (mr/def ::dimension-ref-node
   "A reference to a dimension, used in filters and group-by."
-  [:map
+  [:map {:closed true}
    [:node/type [:= :ast/dimension-ref]]
    [:dimension-id ::lib-metric.schema/dimension-id]
    [:options {:optional true} [:maybe ::dimension-ref-options]]])
 
 (mr/def ::dimension-expression-node
   "A dimension reference wrapped in an expression (e.g. temporal extraction like :get-day-of-week)."
-  [:map
+  [:map {:closed true}
    [:node/type [:= :ast/dimension-expression]]
    [:expression-op keyword?]
    [:dimension ::dimension-ref-node]
@@ -65,7 +65,7 @@
 
 (mr/def ::dimension-mapping-node
   "Connects a dimension to a physical column."
-  [:map
+  [:map {:closed true}
    [:node/type [:= :ast/dimension-mapping]]
    [:dimension-id ::lib-metric.schema/dimension-id]
    [:table-id {:optional true} [:maybe pos-int?]]
@@ -74,38 +74,38 @@
 ;;; -------------------- Aggregation Nodes --------------------
 
 (mr/def ::aggregation-count
-  [:map
+  [:map {:closed true}
    [:node/type [:= :aggregation/count]]
    [:column {:optional true} [:maybe ::column-node]]])
 
 (mr/def ::aggregation-sum
-  [:map
+  [:map {:closed true}
    [:node/type [:= :aggregation/sum]]
    [:column ::column-node]])
 
 (mr/def ::aggregation-avg
-  [:map
+  [:map {:closed true}
    [:node/type [:= :aggregation/avg]]
    [:column ::column-node]])
 
 (mr/def ::aggregation-min
-  [:map
+  [:map {:closed true}
    [:node/type [:= :aggregation/min]]
    [:column ::column-node]])
 
 (mr/def ::aggregation-max
-  [:map
+  [:map {:closed true}
    [:node/type [:= :aggregation/max]]
    [:column ::column-node]])
 
 (mr/def ::aggregation-distinct
-  [:map
+  [:map {:closed true}
    [:node/type [:= :aggregation/distinct]]
    [:column ::column-node]])
 
 (mr/def ::aggregation-mbql
   "For complex/custom aggregations that don't fit standard types."
-  [:map
+  [:map {:closed true}
    [:node/type [:= :aggregation/mbql]]
    [:clause :any]])
 
@@ -124,7 +124,7 @@
 
 (mr/def ::filter-comparison
   "Comparison filter (=, !=, <, <=, >, >=)."
-  [:map
+  [:map {:closed true}
    [:node/type [:= :filter/comparison]]
    [:operator [:enum := :!= :< :<= :> :>=]]
    [:dimension ::dimension-or-expression]
@@ -132,7 +132,7 @@
 
 (mr/def ::filter-between
   "Between filter for range checks."
-  [:map
+  [:map {:closed true}
    [:node/type [:= :filter/between]]
    [:dimension ::dimension-or-expression]
    [:min :any]
@@ -140,23 +140,23 @@
 
 (mr/def ::filter-string
   "String filter operations."
-  [:map
+  [:map {:closed true}
    [:node/type [:= :filter/string]]
    [:operator [:enum :contains :starts-with :ends-with :does-not-contain]]
    [:dimension ::dimension-or-expression]
    [:value string?]
-   [:options {:optional true} [:map [:case-sensitive {:optional true} [:maybe boolean?]]]]])
+   [:options {:optional true} [:map {:closed true} [:case-sensitive {:optional true} [:maybe boolean?]]]]])
 
 (mr/def ::filter-null
   "Null/empty check filter."
-  [:map
+  [:map {:closed true}
    [:node/type [:= :filter/null]]
    [:operator [:enum :is-null :not-null :is-empty :not-empty]]
    [:dimension ::dimension-or-expression]])
 
 (mr/def ::filter-in
   "Multi-value filter (in, not-in)."
-  [:map
+  [:map {:closed true}
    [:node/type [:= :filter/in]]
    [:operator [:enum :in :not-in]]
    [:dimension ::dimension-or-expression]
@@ -164,7 +164,7 @@
 
 (mr/def ::filter-inside
   "Geographic bounding-box filter."
-  [:map
+  [:map {:closed true}
    [:node/type [:= :filter/inside]]
    [:lat-dimension ::dimension-or-expression]
    [:lon-dimension ::dimension-or-expression]
@@ -175,7 +175,7 @@
 
 (mr/def ::filter-temporal
   "Temporal filter for time-based operations."
-  [:map
+  [:map {:closed true}
    [:node/type [:= :filter/temporal]]
    [:operator [:enum :time-interval :relative-time-interval]]
    [:dimension ::dimension-or-expression]
@@ -186,7 +186,7 @@
 
 (mr/def ::filter-mbql
   "Raw MBQL filter clause passthrough for source filters."
-  [:map
+  [:map {:closed true}
    [:node/type [:= :filter/mbql]]
    [:clause :any]])
 
@@ -202,13 +202,13 @@
    ::filter-in
    ::filter-temporal
    ::filter-mbql
-   [:map
+   [:map {:closed true}
     [:node/type [:= :filter/and]]
     [:children [:sequential [:ref ::filter-node]]]]
-   [:map
+   [:map {:closed true}
     [:node/type [:= :filter/or]]
     [:children [:sequential [:ref ::filter-node]]]]
-   [:map
+   [:map {:closed true}
     [:node/type [:= :filter/not]]
     [:child [:ref ::filter-node]]]])
 
@@ -216,7 +216,7 @@
 
 (mr/def ::join-node
   "A join from the source metric's query, preserved as raw MBQL 5."
-  [:map
+  [:map {:closed true}
    [:node/type [:= :ast/join]]
    [:mbql-join :any]])
 
@@ -225,7 +225,7 @@
 (defn- source-node-schema
   "Create a source node schema with the given node-type keyword."
   [node-type]
-  [:map
+  [:map {:closed true}
    [:node/type [:= node-type]]
    [:id pos-int?]
    [:name {:optional true} [:maybe string?]]
@@ -253,7 +253,7 @@
 (mr/def ::source-query
   "A single-source query node with source, dimensions, mappings, filters, and group-by.
    Used inside expression leaves as the compilable sub-query."
-  [:map
+  [:map {:closed true}
    [:node/type [:= :ast/source-query]]
    [:source ::source-node]
    [:dimensions [:sequential ::dimension-node]]

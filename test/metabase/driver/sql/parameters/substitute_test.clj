@@ -521,10 +521,10 @@
    (expand** meta/metadata-provider query))
   ([mp
     {:keys [parameters], :as query} :- [:or
-                                        [:map
+                                        [:map {:closed true}
                                          [:lib/type [:= :mbql/query]]]
-                                        [:map
-                                         [:native [:map
+                                        [:map {:closed true}
+                                         [:native [:map {:closed true}
                                                    [:query some?]]]]]]
    (driver/with-driver :h2
      (-> (if (:lib/type query)

@@ -38,8 +38,8 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private ResourceId [:or ms/PositiveInt ms/NanoIdString])
-(def ^:private Token [:map
-                      [:resource [:map
+(def ^:private Token [:map {:closed true}
+                      [:resource [:map {:closed true}
                                   [:question {:optional true} ResourceId]
                                   [:dashboard {:optional true} ResourceId]]]
                       [:params :any]])

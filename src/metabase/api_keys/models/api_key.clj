@@ -69,7 +69,7 @@
 
 (mu/defn- add-prefix :- [:map
                          [:key_prefix {:optional true} ::api-keys.schema/prefix]]
-  [{unhashed-key ::api-keys/unhashed-key, :as api-key} :- [:map
+  [{unhashed-key ::api-keys/unhashed-key, :as api-key} :- [:map {:closed true}
                                                            [::api-keys/unhashed-key {:optional true} ::api-keys.schema/key.unhashed-or-secret]]]
   (cond-> api-key
     (contains? api-key ::api-keys/unhashed-key) (assoc :key_prefix (some-> unhashed-key prefix))))
@@ -97,7 +97,7 @@
 
 (mu/defn- add-key
   "Adds the `key` based on the `:metabase.api-keys/unhashed-qkey passed in."
-  [{unhashed-key ::api-keys/unhashed-key, :as api-key} :- [:map
+  [{unhashed-key ::api-keys/unhashed-key, :as api-key} :- [:map {:closed true}
                                                            [::api-keys/unhashed-key {:optional true} ::api-keys.schema/key.unhashed-or-secret]]]
   (-> api-key
       (cond-> (contains? api-key ::api-keys/unhashed-key) (assoc :key (some-> unhashed-key hash-bcrypt)))

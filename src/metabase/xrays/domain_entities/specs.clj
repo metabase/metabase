@@ -82,10 +82,10 @@
 (def ^:private Description :string)
 
 (mr/def ::attribute
-  [:map
+  [:map {:closed true}
    [:field         {:optional true} BrokenFieldNameTypeKeyword]
    [:domain_entity {:optional true} DomainEntityReference]
-   [:has_many      {:optional true} [:map
+   [:has_many      {:optional true} [:map {:closed true}
                                      [:domain_entity DomainEntityReference]]]])
 
 (mr/def ::attributes

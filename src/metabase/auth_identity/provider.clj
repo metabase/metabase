@@ -259,8 +259,8 @@
 
   If the user does not have `:is_active true`, the response is not successful and an error message is returned. A
   request that resolved no user at all is left alone: link-only flows legitimately finish without one."
-  [request :- [:map
-               [:user {:optional true} [:maybe [:map
+  [request :- [:map {:closed true}
+               [:user {:optional true} [:maybe [:map {:closed true}
                                                 [:id ms/PositiveInt]
                                                 [:is_active :boolean]]]]]]
   (cond-> request
@@ -273,11 +273,11 @@
 (mu/defn- create-session!
   "Create a new session for a user with the given provider.
    Updates the last_used_at timestamp on the corresponding AuthIdentity."
-  [request :- [:map
-               [:user [:map
+  [request :- [:map {:closed true}
+               [:user [:map {:closed true}
                        [:id ms/PositiveInt]
                        [:is_active :boolean]]]
-               [:device-info {:optional true} [:maybe [:map
+               [:device-info {:optional true} [:maybe [:map {:closed true}
                                                        [:device_id {:optional true} [:maybe ms/NonBlankString]]
                                                        [:device_description {:optional true} [:maybe ms/NonBlankString]]
                                                        [:ip_address {:optional true} [:maybe ms/NonBlankString]]]]]]
@@ -364,8 +364,8 @@
 
 (mu/defn update-user!
   "Updates a user from user-data in the request"
-  [{user-id :id} :- [:map [:id ms/PositiveInt]]
-   user-data :- [:map
+  [{user-id :id} :- [:map {:closed true} [:id ms/PositiveInt]]
+   user-data :- [:map {:closed true}
                  [:email :string]
                  [:first_name {:optional true} [:maybe :string]]
                  [:last_name {:optional true} [:maybe :string]]
@@ -388,7 +388,7 @@
 
 (mu/defn- create-user!
   "Create a user from user-data in the request "
-  [user-data :- [:map
+  [user-data :- [:map {:closed true}
                  [:email :string]
                  [:first_name {:optional true} [:maybe :string]]
                  [:last_name {:optional true} [:maybe :string]]

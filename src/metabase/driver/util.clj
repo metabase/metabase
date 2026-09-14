@@ -297,9 +297,9 @@
   over the duration of a single API request or sync operation.)"
   [database-or-id :- [:or
                       {:error/message "Database or ID"}
-                      [:map
+                      [:map {:closed true}
                        [:engine [:or :keyword :string]]]
-                      [:map
+                      [:map {:closed true}
                        [:id ::lib.schema.id/database]]
                       ::lib.schema.id/database]]
   (if-let [driver (:engine database-or-id)]
@@ -350,12 +350,12 @@
                     [driver feature (mdb/unique-identifier) (:id database) (:updated-at database)])))))
 
 ;;; this can get called in post-select which doesn't always have ID
-(mu/defn ensure-lib-database :- [:map
+(mu/defn ensure-lib-database :- [:map {:closed true}
                                  [:lib/type [:= :metadata/database]]]
   "Ensures the database is in Lib metadata format (SnakeHatingMap with kebab-case keys).
    If passed a Toucan2 instance, converts it. If already Lib metadata, returns as-is."
   [database :- [:or
-                [:map
+                [:map {:closed true}
                  [:lib/type [:= :metadata/database]]]
                 (ms/InstanceOf :model/Database)]]
   (if-not (:lib/type database)
@@ -376,7 +376,7 @@
    database :- [:maybe
                 [:or
                  ;; this can get called with an incomplete object in post-select
-                 [:map
+                 [:map {:closed true}
                   [:lib/type [:= :metadata/database]]]
                  (ms/InstanceOf :model/Database)]]]
   (let [database (some-> database ensure-lib-database)
@@ -429,7 +429,7 @@
   [driver   :- :keyword
    database :- [:or
                 ;; this can get called in post-select which doesn't always have ID
-                [:map
+                [:map {:closed true}
                  [:lib/type [:= :metadata/database]]]
                 (ms/InstanceOf :model/Database)]]
   (let [database (ensure-lib-database database)]

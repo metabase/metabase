@@ -353,7 +353,7 @@
 (mr/def ::source-field-info
   "The subset of field ref options that identify which implicit join a ref refers to: `:source-field` (the FK field ID,
   required), and optionally `:source-field-name` and `:source-field-join-alias` for disambiguation."
-  [:map
+  [:map {:closed true}
    [:source-field            ::lib.schema.id/field]
    [:source-field-name       {:optional true} :string]
    [:source-field-join-alias {:optional true} :string]])

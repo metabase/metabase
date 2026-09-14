@@ -142,7 +142,7 @@
   [:sequential
    [:and
     (ms/InstanceOf :model/Table)
-    [:map
+    [:map {:closed true}
      [:domain_entity [:maybe ::domain-entities.specs/instantiated-domain-entity]]]]])
 
 (mu/defn- find-tables-with-domain-entity :- Tableset

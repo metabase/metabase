@@ -330,7 +330,7 @@
          auxiliary-sync-steps     :never
          csv-file-prefix          "example csv file"}
     :as options}
-   f :- [:=> [:cat [:map [:id ::lib.schema.id/card]]] :any]]
+   f :- [:=> [:cat [:map {:closed true} [:id ::lib.schema.id/card]]] :any]]
   {:pre [(keyword? driver/*driver*)]}
   (mt/with-discard-model-updates! [:model/Database]
     (t2/update! :model/Database :uploads_enabled true {:uploads_enabled false})

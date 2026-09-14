@@ -55,7 +55,7 @@
 
 (mu/defn- upstream-deps:python-transform :- ::deps.schema/upstream-deps
   [{{tables :source-tables} :source :as _py-transform}
-   :- [:map [:source-tables {:optional true} [:sequential ::transforms-base.u/source-table-entry]]]]
+   :- [:map {:closed true} [:source-tables {:optional true} [:sequential ::transforms-base.u/source-table-entry]]]]
   {:table (into #{} (keep :table_id) tables)})
 
 ;; Modified implementation of documents.models.document/document-deps

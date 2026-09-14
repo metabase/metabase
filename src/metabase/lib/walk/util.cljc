@@ -272,7 +272,7 @@
          (all-template-tags query))))
 
 (mr/def ::referenced-entity-ids
-  [:map
+  [:map {:closed true}
    [:table [:set ::lib.schema.id/table]]
    [:card [:set ::lib.schema.id/card]]
    [:metric [:set ::lib.schema.id/metric]]
@@ -281,7 +281,7 @@
    [:snippet [:set ::lib.schema.id/snippet]]])
 
 (mr/def ::referenced-entity-ids.options
-  [:map
+  [:map {:closed true}
    [:include-implicitly-joinable? {:optional true} :boolean]])
 
 (mu/defn- implicitly-joinable-table-ids :- [:set ::lib.schema.id/table]

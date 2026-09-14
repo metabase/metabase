@@ -174,7 +174,7 @@
   "Since cumulative count and cumulative sum aggregations are done in Clojure-land we can't use Cards that use queries
   with those aggregations as source queries. This function determines whether `card` is using one of those queries so
   we can filter it out in Clojure-land."
-  [{query :dataset_query, :as _card} :- [:map
+  [{query :dataset_query, :as _card} :- [:map {:closed true}
                                          [:dataset_query ::lib-be.schema/maybe-legacy-or-empty-query]]]
   (match/match-one (lib/aggregations query) [#{:cum-count :cum-sum} & _] true))
 
@@ -439,7 +439,7 @@
   ([id] (check-database-exists id {}))
   ([id :- ms/PositiveInt
     {:keys [include-destination-databases?]}
-    :- [:map
+    :- [:map {:closed true}
         [:include-destination-databases? {:optional true :default false} ms/MaybeBooleanValue]]]
    (api/check-404 (if (and include-destination-databases? api/*is-superuser?*)
                     (warehouses-rest.db/database-exists? id)

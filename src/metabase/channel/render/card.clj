@@ -22,7 +22,7 @@
 ;;; we can keep this as an internal namespace you don't need to know about outside of the module.
 (mr/def ::options
   "Options for Pulse (i.e. Alert/Dashboard Subscription) rendering."
-  [:map
+  [:map {:closed true}
    [:channel.render/include-buttons?           {:description "default: false", :optional true} :boolean]
    [:channel.render/include-title?             {:description "default: false", :optional true} :boolean]
    [:channel.render/include-description?       {:description "default: false", :optional true} :boolean]
@@ -33,7 +33,7 @@
 
 (mr/def ::adhoc-card
   "Schema for an ad-hoc (unsaved) card."
-  [:map
+  [:map {:closed true}
    [:display :keyword]
    [:visualization_settings {:optional true} [:maybe :map]]
    [:name {:optional true} [:maybe :string]]])
@@ -342,7 +342,7 @@
    (render-adhoc-card-to-png adhoc-card results width nil))
 
   (^bytes [adhoc-card :- ::adhoc-card
-           results    :- [:map [:data :map]]
+           results    :- [:map {:closed true} [:data :map]]
            width
            options    :- [:maybe ::options]]
    (let [timezone-id (qp.timezone/system-timezone-id)]

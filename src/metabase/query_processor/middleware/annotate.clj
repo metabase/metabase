@@ -23,7 +23,7 @@
 (comment metabase.query-processor.middleware.annotate.legacy-helper-fns/keep-me)
 
 (mr/def ::col
-  [:map
+  [:map {:closed true}
    [:source    {:optional true} ::lib.schema.metadata/column.legacy-source]
    [:field_ref {:optional true} ::mbql.s/Reference]])
 
@@ -42,7 +42,7 @@
   [:maybe [:sequential ::col]])
 
 (mr/def ::metadata
-  [:map
+  [:map {:closed true}
    [:cols {:optional true} ::cols]])
 
 (mu/defn expected-cols :- [:sequential ::qp-results-cased-col]

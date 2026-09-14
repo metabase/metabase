@@ -223,7 +223,7 @@
   "Internal bookkeeping for one parameter `mapping` on a hydrated `dashcard`: the dashcard, the mapping, and the
   parameter target's Field ID when the target is already field-id-based (nil when it must be resolved from filterable
   columns)."
-  [:map
+  [:map {:closed true}
    [:dashcard              :map]
    [:param-mapping         ::parameters.schema/parameter-mapping-with-dashcard]
    [:param-target-field-id [:maybe ::lib.schema.id/field]]])

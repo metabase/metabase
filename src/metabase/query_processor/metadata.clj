@@ -121,7 +121,7 @@
   ([query]
    (result-metadata query nil))
 
-  ([query           :- [:map [:database ::lib.schema.id/database]]
+  ([query           :- [:map {:closed true} [:database ::lib.schema.id/database]]
     current-user-id :- [:maybe ::lib.schema.id/user]]
    (mapv
     (fn [col]

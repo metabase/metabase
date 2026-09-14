@@ -454,7 +454,7 @@
 (mu/defn retrieve-user-alerts-for-card
   "Find all alerts for `card-id` that `user-id` is set to receive"
   [{:keys [archived? card-id user-id]
-    :or   {archived? false}} :- [:map
+    :or   {archived? false}} :- [:map {:closed true}
                                  [:card-id pos-int?]
                                  [:user-id pos-int?]
                                  [:archived? {:optional true} boolean?]]]
@@ -465,7 +465,7 @@
 (mu/defn retrieve-alerts-for-cards
   "Find all alerts for `card-ids`, used for admin users"
   [{:keys [archived? card-ids]
-    :or   {archived? false}} :- [:map
+    :or   {archived? false}} :- [:map {:closed true}
                                  [:card-ids [:maybe [:or
                                                      [:sequential pos-int?]
                                                      [:set pos-int?]]]]
@@ -567,7 +567,7 @@
   Returns the newly created Pulse, or throws an Exception."
   [cards    :- [:sequential [:map-of :keyword :any]]
    channels :- [:sequential [:map-of :keyword :any]]
-   kvs      :- [:map
+   kvs      :- [:map {:closed true}
                 [:name                                 ms/NonBlankString]
                 [:creator_id                           ms/PositiveInt]
                 [:skip_if_empty       {:optional true} [:maybe :boolean]]
@@ -606,7 +606,7 @@
 
 (mu/defn update-notification!
   "Update the supplied keys in a `notification`."
-  [notification :- [:map
+  [notification :- [:map {:closed true}
                     [:id                    ms/PositiveInt]
                     [:name                {:optional true} ms/NonBlankString]
                     [:alert_condition     {:optional true} AlertConditions]

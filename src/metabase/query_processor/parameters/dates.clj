@@ -274,7 +274,7 @@
   (t/format :iso-local-date-time t))
 
 (mu/defn- range->filter :- :mbql.clause/between
-  [{:keys [start end]} :- [:map
+  [{:keys [start end]} :- [:map {:closed true}
                            [:start :any]
                            [:end   :any]]
    field-clause        :- :mbql.clause/field]
@@ -413,7 +413,7 @@
   (into [:enum] u.date/add-units))
 
 (mr/def ::temporal-range
-  [:map
+  [:map {:closed true}
    [:start {:optional true} (lib.schema.common/instance-of-class Temporal)]
    [:end   {:optional true} (lib.schema.common/instance-of-class Temporal)]
    [:unit                   ::temporal-unit]])

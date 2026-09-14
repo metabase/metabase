@@ -180,7 +180,7 @@
       (dashboards.db/insert-dashcard-series! card-series))))
 
 (def ^:private DashboardCardUpdates
-  [:map
+  [:map {:closed true}
    [:id                                      ms/PositiveInt]
    [:action_id              {:optional true} [:maybe ms/PositiveInt]]
    [:parameter_mappings     {:optional true} [:maybe [:sequential :map]]]
@@ -217,7 +217,7 @@
 
 (def ^:private NewDashboardCard
   ;; TODO - make the rest of the options explicit instead of just allowing whatever for other keys (#40021)
-  [:map
+  [:map {:closed true}
    [:dashboard_id                            ms/PositiveInt]
    [:action_id              {:optional true} [:maybe ms/PositiveInt]]
    ;; TODO - use ParamMapping. Breaks too many tests right now tho (#40021)

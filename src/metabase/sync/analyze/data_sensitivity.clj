@@ -31,7 +31,7 @@
   {:fields-scanned 0 :fields-labeled 0 :fields-failed 0})
 
 (def ^:private ScanOptions
-  [:map
+  [:map {:closed true}
    [:force?          {:optional true} [:maybe :boolean]]
    [:ignore-setting? {:optional true} [:maybe :boolean]]])
 
@@ -115,7 +115,7 @@
   is recomputed under the current rules, and `:fields-reset` is added to the stats. User-set labels survive in
   every mode because the `FieldUserSettings` overlay is applied on every Field update."
   [database-or-table :- [:or i/DatabaseInstance i/TableInstance]
-   & {:keys [force? reset?]} :- [:maybe [:map
+   & {:keys [force? reset?]} :- [:maybe [:map {:closed true}
                                          [:force? {:optional true} [:maybe :boolean]]
                                          [:reset? {:optional true} [:maybe :boolean]]]]]
   (let [reset (when reset? (reset-data-sensitivity! database-or-table))

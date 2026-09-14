@@ -56,7 +56,7 @@
   does exactly what it suggests."
   #'get-or-create-default-dataset!)
 
-(mu/defn db :- [:map [:id ::lib.schema.id/database]]
+(mu/defn db :- [:map {:closed true} [:id ::lib.schema.id/database]]
   []
   (*db-fn*))
 
@@ -192,7 +192,7 @@
 
 (mu/defn do-with-db
   "Internal impl of [[metabase.test.data/with-db]]."
-  [db    :- [:map [:id ::lib.schema.id/database]]
+  [db    :- [:map {:closed true} [:id ::lib.schema.id/database]]
    thunk :- fn?]
   (binding [*db-fn*                   (constantly db)
             *db-id-fn*                (constantly (u/the-id db))
@@ -216,7 +216,7 @@
 
 (mu/defn database-source-dataset-name :- :string
   "Get the name of the test dataset this Database was created from, e.g. `test-data`."
-  [database :- [:map [:settings [:map [:database-source-dataset-name :string]]]]]
+  [database :- [:map {:closed true} [:settings [:map {:closed true} [:database-source-dataset-name :string]]]]]
   (get-in database [:settings :database-source-dataset-name]))
 
 (mu/defn the-table-id :- ::lib.schema.id/table

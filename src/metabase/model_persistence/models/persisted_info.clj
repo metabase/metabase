@@ -60,7 +60,7 @@
   "Spec for metadata. Just asserting we have base types and names, not the full metadata of the qp."
   [:maybe
    [:sequential
-    [:map
+    [:map {:closed true}
      [:name      :string]
      [:base_type ::lib.schema.common/base-type]
      [:effective_type {:optional true} ::lib.schema.common/base-type]]]])

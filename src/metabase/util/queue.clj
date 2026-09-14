@@ -113,7 +113,7 @@
    (when-let [fst (.poll queue max-first-ms TimeUnit/MILLISECONDS)]
      (take-batch* queue max-batch-messages max-next-ms [(if (instance? DelayQueue queue) (:value fst) fst)]))))
 
-(mr/def ::listener-options [:map [:success-handler {:optional true} [:=> [:cat :any :double :string] :any]
+(mr/def ::listener-options [:map {:closed true} [:success-handler {:optional true} [:=> [:cat :any :double :string] :any]
                                   :err-handler {:optional true} [:=> [:cat [:fn (ms/InstanceOfClass Throwable) :string]] :any]
                                   :pool-size {:optional true} number?
                                   :max-batch-messages {:optional true} number?

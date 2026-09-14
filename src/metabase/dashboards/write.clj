@@ -71,7 +71,7 @@
   Requires create permission on `:collection_id` (nil = root). Publishes `:event/dashboard-create`."
   [{:keys [name description parameters cache_ttl collection_id collection_position
            width auto_apply_filters]}
-   :- [:map
+   :- [:map {:closed true}
        [:name                ms/NonBlankString]
        [:parameters          {:optional true} [:maybe ::parameters.schema/parameters]]
        [:description         {:optional true} [:maybe :string]]

@@ -17,7 +17,7 @@
     {:keys [include-editable-data-model?
             exclude-uneditable-details?
             include-destination-databases?]}
-    :- [:map
+    :- [:map {:closed true}
         [:include-editable-data-model? {:optional true :default false} ms/MaybeBooleanValue]
         [:exclude-uneditable-details? {:optional true :default false} ms/MaybeBooleanValue]
         [:include-destination-databases? {:optional true :default false} ms/MaybeBooleanValue]]]

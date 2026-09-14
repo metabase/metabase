@@ -119,13 +119,13 @@
 (mu/defn add-users-to-groups!
   "Creates permission group memberships from aa sequence of maps of users, groups and is-group-manager?."
   [pgms :- [:sequential
-            [:map
+            [:map {:closed true}
              [:group [:or
                       pos-int?
-                      [:map [:id pos-int?]]]]
+                      [:map {:closed true} [:id pos-int?]]]]
              [:user [:or
                      pos-int?
-                     [:map [:id pos-int?]]]]
+                     [:map {:closed true} [:id pos-int?]]]]
              [:is-group-manager? {:optional true}
               :boolean]]]]
   (when (seq pgms)

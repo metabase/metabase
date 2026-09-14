@@ -205,7 +205,7 @@
 (mu/defn table-identifier :- :string
   "Returns a string that can be used as a table identifier in SQL, including a schema if provided."
   [{:keys [schema name] :as _table}
-   :- [:map
+   :- [:map {:closed true}
        [:schema {:optional true} [:maybe :string]]
        [:name :string]]]
   (if (str/blank? schema)
@@ -603,7 +603,7 @@
   - `schema-name`: the name of the schema to create the table in (optional).
   - `table-prefix`: the prefix to use for the table name (optional)."
   [{:keys [collection-id filename ^File file db-id schema-name table-prefix]}
-   :- [:map
+   :- [:map {:closed true}
        [:collection-id [:maybe ms/PositiveInt]]
        [:filename :string]
        [:file (ms/InstanceOfClass File)]
@@ -961,7 +961,7 @@
   This will create an auto-incrementing primary key (auto-pk) column in the table for drivers that supported uploads
   before auto-pk columns were introduced by metabase#36249, if it does not already exist."
   [{:keys [filename ^File file table-id action]}
-   :- [:map
+   :- [:map {:closed true}
        [:table-id ms/PositiveInt]
        [:filename :string]
        [:file (ms/InstanceOfClass File)]
@@ -987,7 +987,7 @@
 
 (mu/defn model-hydrate-based-on-upload
   "Batch hydrates `:based_on_upload` for each item of `models`. Assumes each item of `model` represents a model."
-  [models :- [:sequential [:map
+  [models :- [:sequential [:map {:closed true}
                            ;; query_type and dataset_query can be null in tests, so we make them nullable here.
                            ;; they should never be null in production
                            [:dataset_query [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]

@@ -11,13 +11,13 @@
 
 (mr/def ::column-metadata
   "Metadata about a column in the chart data."
-  [:map
+  [:map {:closed true}
    [:name :string]
    [:type ::column-type]])
 
 (mr/def ::series-config
   "Configuration for a single series in a chart."
-  [:map
+  [:map {:closed true}
    [:x ::column-metadata]
    [:y ::column-metadata]
    [:x_values [:sequential :any]]
@@ -28,7 +28,7 @@
 
 (mr/def ::timeline-event
   "A timeline event that may be relevant to the chart."
-  [:map
+  [:map {:closed true}
    [:name :string]
    [:timestamp :string]
    [:description {:optional true} [:maybe :string]]
@@ -36,7 +36,7 @@
 
 (mr/def ::chart-config
   "Full chart configuration received from ai-service."
-  [:map
+  [:map {:closed true}
    [:series [:map-of :string ::series-config]]
    [:timeline_events {:optional true} [:maybe [:sequential ::timeline-event]]]
    [:query {:optional true} [:maybe :map]]
@@ -47,7 +47,7 @@
 
 (mr/def ::series-summary
   "Basic statistical summary of a series."
-  [:map
+  [:map {:closed true}
    [:min number?]
    [:max number?]
    [:mean number?]
@@ -57,7 +57,7 @@
 
 (mr/def ::time-range
   "Time range covered by the chart data."
-  [:map
+  [:map {:closed true}
    [:start :any]
    [:end :any]
    [:span-description :string]])
@@ -68,7 +68,7 @@
 
 (mr/def ::trend-summary
   "Summary of trend in time series data."
-  [:map
+  [:map {:closed true}
    [:direction ::trend-direction]
    [:overall-change-pct number?]
    [:start-value number?]
@@ -80,14 +80,14 @@
 
 (mr/def ::volatility
   "Volatility metrics for time series data."
-  [:map
+  [:map {:closed true}
    [:level ::volatility-level]
    [:coefficient-of-variation number?]
    [:max-period-change-pct number?]])
 
 (mr/def ::significant-change
   "A significant change detected in the data."
-  [:map
+  [:map {:closed true}
    [:from-date :any]
    [:to-date :any]
    [:from-value number?]
@@ -101,7 +101,7 @@
 
 (mr/def ::pattern-insight
   "A pattern detected in the data."
-  [:map
+  [:map {:closed true}
    [:type ::pattern-type]
    [:description :string]
    [:from-date {:optional true} [:maybe :any]]
@@ -117,7 +117,7 @@
 
 (mr/def ::correlation
   "Correlation between two series."
-  [:map
+  [:map {:closed true}
    [:series-a :string]
    [:series-b :string]
    [:coefficient number?]
@@ -126,7 +126,7 @@
 
 (mr/def ::outlier
   "An outlier detected in the data."
-  [:map
+  [:map {:closed true}
    [:index :int]
    [:label :any]
    [:value number?]
@@ -145,7 +145,7 @@
 
 (mr/def ::options
   "Options map for chart statistics computation."
-  [:map
+  [:map {:closed true}
    [:deep? {:optional true} [:maybe :boolean]]
    [:max-correlation-series {:optional true} [:maybe :int]]])
 
@@ -153,13 +153,13 @@
 
 (mr/def ::extremum
   "An extreme point (peak or trough) in a series, paired with its x-coordinate."
-  [:map
+  [:map {:closed true}
    [:x :any]
    [:y number?]])
 
 (mr/def ::time-series-series-stats
   "Statistics for a single time series."
-  [:map
+  [:map {:closed true}
    [:summary ::series-summary]
    [:time-range ::time-range]
    [:data-points :int]
@@ -176,7 +176,7 @@
 
 (mr/def ::time-series-stats
   "Statistics for time series charts."
-  [:map
+  [:map {:closed true}
    [:chart-type [:= :time-series]]
    [:series-count :int]
    [:series [:map-of :string ::time-series-series-stats]]
@@ -184,14 +184,14 @@
 
 (mr/def ::category-stat
   "Statistics for a single category."
-  [:map
+  [:map {:closed true}
    [:name :string]
    [:value number?]
    [:percentage {:optional true} number?]])
 
 (mr/def ::categorical-series-stats
   "Statistics for a single categorical series."
-  [:map
+  [:map {:closed true}
    [:summary [:maybe ::series-summary]]
    [:data-points :int]
    [:category-count :int]
@@ -201,7 +201,7 @@
 
 (mr/def ::categorical-stats
   "Statistics for categorical charts (bar, pie, etc.)."
-  [:map
+  [:map {:closed true}
    [:chart-type [:= :categorical]]
    [:series-count :int]
    [:series [:map-of :string ::categorical-series-stats]]
@@ -209,19 +209,19 @@
 
 (mr/def ::regression-stats
   "Linear regression statistics."
-  [:map
+  [:map {:closed true}
    [:slope number?]
    [:intercept number?]
    [:r-squared number?]])
 
 (mr/def ::scatter-series-stats
   "Statistics for a single scatter series."
-  [:map
+  [:map {:closed true}
    [:x-summary [:maybe ::series-summary]]
    [:y-summary [:maybe ::series-summary]]
    [:data-points :int]
    [:sampled-points {:optional true} [:maybe [:sequential [:sequential :any]]]]
-   [:correlation {:optional true} [:maybe [:map
+   [:correlation {:optional true} [:maybe [:map {:closed true}
                                            [:coefficient number?]
                                            [:strength ::correlation-strength]
                                            [:direction ::correlation-direction]]]]
@@ -230,23 +230,23 @@
 
 (mr/def ::scatter-stats
   "Statistics for scatter plots."
-  [:map
+  [:map {:closed true}
    [:chart-type [:= :scatter]]
    [:series-count :int]
    [:series [:map-of :string ::scatter-series-stats]]])
 
 (mr/def ::histogram-summary
   "Weighted summary statistics estimated from binned histogram data."
-  [:map
+  [:map {:closed true}
    [:weighted-mean number?]
    [:weighted-std-dev number?]
    [:data-range number?]])
 
 (mr/def ::estimated-distribution-stats
   "Distribution statistics estimated from binned histogram data using weighted approximations."
-  [:map
+  [:map {:closed true}
    [:estimated-percentiles [:map-of :int number?]]
-   [:estimated-quartiles [:map
+   [:estimated-quartiles [:map {:closed true}
                           [:q1 number?]
                           [:median number?]
                           [:q3 number?]
@@ -256,7 +256,7 @@
 
 (mr/def ::histogram-structure
   "Structural properties of histogram bin distribution."
-  [:map
+  [:map {:closed true}
    [:mode-bin [:maybe [:sequential :any]]]
    [:peak-count :int]
    [:concentration-top3 number?]
@@ -266,7 +266,7 @@
 
 (mr/def ::histogram-series-stats
   "Statistics for a single histogram series."
-  [:map
+  [:map {:closed true}
    [:estimated-summary ::histogram-summary]
    [:total-count :int]
    [:data-points :int]
@@ -276,14 +276,14 @@
 
 (mr/def ::histogram-stats
   "Statistics for histogram charts."
-  [:map
+  [:map {:closed true}
    [:chart-type [:= :histogram]]
    [:series-count :int]
    [:series [:map-of :string ::histogram-series-stats]]])
 
 (mr/def ::unknown-stats
   "Fallback stats for chart types that don't have dedicated analysis (e.g. scalar)."
-  [:map
+  [:map {:closed true}
    [:chart-type [:= :unknown]]
    [:series-count :int]
    [:message :string]])
@@ -301,7 +301,7 @@
 
 (mr/def ::generate-repr-context
   "Context map for generating chart statistics representation."
-  [:map
+  [:map {:closed true}
    [:stats ::chart-stats]
    [:title {:optional true} [:maybe :string]]
    [:display-type {:optional true} [:maybe :string]]

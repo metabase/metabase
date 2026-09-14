@@ -30,7 +30,7 @@
 
 (mu/defn inherited-column? :- :boolean
   "Is the `column` coming directly from a card, a native query, or a previous query stage?"
-  [column :- [:map
+  [column :- [:map {:closed true}
               [:lib/source {:optional true} [:maybe ::lib.schema.metadata/column.source]]]]
   (some? (#{:source/card :source/native :source/previous-stage} (:lib/source column))))
 
@@ -119,13 +119,13 @@
                          :lib/source-column-alias  source-alias
                          :lib/desired-column-alias desired-alias)))))))
 
-(mu/defn update-keys-for-col-from-previous-stage :- [:map
+(mu/defn update-keys-for-col-from-previous-stage :- [:map {:closed true}
                                                      [:lib/type [:= :metadata/column]]]
   "For a column that came from a previous stage, change the keys for things that mean 'this happened in the current
   stage' to the equivalent keys that mean 'this happened at some stage in the past' e.g.
   `:lib/join-alias` and `:lib/expression-name` become `:lib/original-join-alias` and
   `:lib/original-expression-name` respectively."
-  [col :- [:map
+  [col :- [:map {:closed true}
            [:lib/type [:= :metadata/column]]]]
   (-> col
       (set/rename-keys {:fk-field-id                      :lib/original-fk-field-id

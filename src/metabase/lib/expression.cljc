@@ -298,7 +298,7 @@
       (some #(-> % :name u/lower-case-en (= expr-name)) cols)))
 
 (mr/def ::add-expression-options
-  [:map
+  [:map {:closed true}
    ;; default: true
    [:add-to-fields? {:optional true} [:maybe :boolean]]])
 

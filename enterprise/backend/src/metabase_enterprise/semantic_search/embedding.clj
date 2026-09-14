@@ -476,7 +476,7 @@
   [{:keys [provider endpoint api-key model-name vector-dimensions texts record-tokens? extra-body snowplow?
            network-policy-floor instance-token?]
     :as opts}
-   :- [:map
+   :- [:map {:closed true}
        [:provider       :string]
        [:endpoint       :string]
        [:api-key        {:optional true} [:maybe :string]]

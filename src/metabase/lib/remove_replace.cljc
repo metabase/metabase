@@ -256,7 +256,7 @@
    replacement       :- [:maybe [:or
                                  ::lib.schema.mbql-clause/clause
                                  ;; a metadata or `:lib/external-op` or something
-                                 [:map
+                                 [:map {:closed true}
                                   [:lib/type qualified-keyword?]]]]]
   {:pre [(vector? target-clause)]}
   (mu/disable-enforcement

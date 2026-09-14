@@ -709,7 +709,7 @@
   ([a-query stage-number] (filterable-columns a-query stage-number nil))
   ([a-query      :- ::lib.schema/query
     stage-number :- :int
-    options      :- [:maybe [:map [:include-sensitive-fields? :boolean]]]]
+    options      :- [:maybe [:map {:closed true} [:include-sensitive-fields? :boolean]]]]
    (lib.filter/filterable-columns a-query stage-number options)))
 
 ;;; ### Building filters in code

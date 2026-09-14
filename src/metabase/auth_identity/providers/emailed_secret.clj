@@ -53,7 +53,7 @@
   - `:consumed` if the token has already been used
   - `:invalid` if the token doesn't match the stored hash"
   [token :- :string
-   credentials :- [:map
+   credentials :- [:map {:closed true}
                    [:token_hash :string]
                    [:expires_at inst?]
                    [:consumed_at [:maybe inst?]]]]
@@ -67,12 +67,12 @@
     :else
     :invalid))
 
-(mu/defn mark-token-consumed :- [:map [:credentials :map]]
+(mu/defn mark-token-consumed :- [:map {:closed true} [:credentials :map]]
   "Marks a token as consumed by setting the `:consumed_at` timestamp in the auth-identity's credentials.
 
   Takes an `auth-identity` map and returns an updated version with the current instant set as the `:consumed_at`
   value in the credentials map."
-  [auth-identity :- [:map [:credentials :map]]]
+  [auth-identity :- [:map {:closed true} [:credentials :map]]]
   (assoc-in auth-identity [:credentials :consumed_at] (t/instant)))
 
 (mu/defn- parse-token-user-id :- [:maybe ms/PositiveInt]

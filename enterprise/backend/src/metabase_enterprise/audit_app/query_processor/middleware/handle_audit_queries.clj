@@ -73,7 +73,7 @@
   (for [[k v] metadata]
     (assoc v :name (name k))))
 
-(mu/defn- format-results [{:keys [results metadata]} :- [:map
+(mu/defn- format-results [{:keys [results metadata]} :- [:map {:closed true}
                                                          [:results  [:sequential :map]]
                                                          [:metadata audit.i/ResultsMetadata]]]
   (check-results-and-metadata-keys-match results metadata)

@@ -64,7 +64,7 @@
   1000)
 
 (mr/def ::values-from-card-query.options
-  [:map
+  [:map {:closed true}
    ;; despite this being called "query string" it can actually be any value because it just gets used in an `:=`
    ;; filter clause. :eyeroll:
    [:query-string {:optional true} :any]

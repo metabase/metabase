@@ -33,7 +33,7 @@
 (def ^:private ColumnGroup
   "Schema for the metadata returned by [[group-columns]], and accepted by [[columns-group-columns]]."
   [:and
-   [:map
+   [:map {:closed true}
     [:lib/type    [:= :metadata/column-group]]
     [::group-type GroupType]
     [::columns    [:sequential [:ref ::lib.schema.metadata/column]]]]

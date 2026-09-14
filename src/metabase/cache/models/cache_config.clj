@@ -22,7 +22,7 @@
 
 (def SortParams
   "Schema for sort parameters."
-  [:map
+  [:map {:closed true}
    [:sort_column    {:default :name} (into [:enum] available-sort-columns)]
    [:sort_direction {:default :asc}  [:enum :asc :desc]]])
 

@@ -95,7 +95,7 @@
 
 (mr/def ::content-block
   "A content block in a multi-part message (Claude format, backward-compat)."
-  [:map
+  [:map {:closed true}
    [:type :string]]) ;; "text", "tool_use", "tool_result", etc.
 
 (mr/def ::content
@@ -104,33 +104,33 @@
 
 (mr/def ::tool-call
   "A tool call in an assistant message."
-  [:map
+  [:map {:closed true}
    [:id :string]
    [:name :string]
    [:arguments [:or :string :map]]])
 
 (mr/def ::user-message
   "A user message: plain text or a sequence of tool_result content blocks."
-  [:map
+  [:map {:closed true}
    [:role [:= :user]]
    [:content ::content]])
 
 (mr/def ::assistant-message
   "An assistant message with optional text and/or tool calls."
-  [:map
+  [:map {:closed true}
    [:role [:= :assistant]]
    [:content {:optional true} [:maybe ::content]]
    [:tool_calls {:optional true} [:maybe [:sequential ::tool-call]]]])
 
 (mr/def ::system-message
   "A system message."
-  [:map
+  [:map {:closed true}
    [:role [:= :system]]
    [:content :string]])
 
 (mr/def ::tool-message
   "A tool result message, referencing a previous tool call by ID."
-  [:map
+  [:map {:closed true}
    [:role [:= :tool]]
    [:tool_call_id :string]
    [:content [:or :string :map]]])
@@ -158,7 +158,7 @@
 
 (mr/def ::tracking-opts
   "Options for snowplow and prometheus analytics tracking."
-  [:map
+  [:map {:closed true}
    [:session-id          {:optional true} [:maybe ms/UUIDString]]
    [:source              {:optional true} [:maybe :string]]
    [:tag                 {:optional true} [:maybe :string]]])
@@ -686,7 +686,7 @@
     (into [] (run-agent-loop opts))
     (transduce xf rf (run-agent-loop opts))
     (into [] (run-agent-loop (assoc opts :debug? true)))  ;; with debug log"
-  [opts :- [:map
+  [opts :- [:map {:closed true}
             [:messages ::messages]
             [:profile-id ::profile-id]
             [:metabot-id {:optional true} [:maybe :string]]

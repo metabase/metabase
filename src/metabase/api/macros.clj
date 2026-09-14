@@ -47,7 +47,7 @@
 ;;;;
 
 (mr/def ::route
-  [:map
+  [:map {:closed true}
    [:path string?]
    [:regexes {:optional true} [:map-of :keyword [:or
                                                  (ms/InstanceOfClass java.util.regex.Pattern)
@@ -62,7 +62,7 @@
 (mr/def ::params
   [:map-of
    ::param-type
-   [:map
+   [:map {:closed true}
     [:binding some?]
     [:schema {:optional true} [:any {:description "Malli map schema for all the params of this type"}]]]])
 
@@ -70,7 +70,7 @@
   [:enum :get :post :put :delete :patch])
 
 (mr/def ::parsed-args
-  [:map
+  [:map {:closed true}
    [:method          ::method]
    [:route           ::route]
    [:params          ::params]
@@ -137,7 +137,7 @@
 
 (mr/def ::info
   "The info about an individual endpoint that gets stored in the namespace metadata."
-  [:map
+  [:map {:closed true}
    [:core-fn ::core-fn]
    [:handler ::handler]
    [:form    ::parsed-args]])
@@ -700,7 +700,7 @@
   {:style/indent [:form]}
   [middleware       :- [:maybe [:sequential ::middleware]]
    core-fn          :- ::core-fn
-   {:keys [async?]} :- [:map
+   {:keys [async?]} :- [:map {:closed true}
                         [:async? :boolean]]]
   (let [handler (if async?
                   (fn async-handler [request respond raise]

@@ -30,7 +30,7 @@
   [:or (ms/InstanceOfClass clojure.lang.Var) fn?])
 
 (mr/def ::grouper-wrapper
-  [:map
+  [:map {:closed true}
    [:f       ::fn-or-var]
    [:grouper (ms/InstanceOfClass Grouper)]])
 

@@ -46,7 +46,7 @@
     (sync.db/set-fields-fingerprint-version! ids i/*latest-fingerprint-version*)))
 
 (mr/def ::FingerprintStats
-  [:map
+  [:map {:closed true}
    [:no-data-fingerprints   ms/IntGreaterThanOrEqualToZero]
    [:failed-fingerprints    ms/IntGreaterThanOrEqualToZero]
    [:updated-fingerprints   ms/IntGreaterThanOrEqualToZero]

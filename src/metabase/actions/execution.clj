@@ -33,7 +33,7 @@
   endpoint of shape `{<parameter-id> <value>}`.
 
   `action` should already be hydrated with its `:card`. `opts` carries the audit attribution from the endpoint."
-  [{query :dataset_query, model-id :model_id, :as action} :- [:map
+  [{query :dataset_query, model-id :model_id, :as action} :- [:map {:closed true}
                                                               [:model_id      ::lib.schema.id/card]
                                                               [:dataset_query ::lib.schema/native-only-query]]
    request-parameters

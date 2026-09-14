@@ -494,14 +494,14 @@
 
 (def ^:private ModelWithPosition
   "Intended to cover Cards/Dashboards/Pulses, it only asserts collection id and position, allowing extra keys"
-  [:map
+  [:map {:closed true}
    [:collection_id       [:maybe ms/PositiveInt]]
    [:collection_position [:maybe ms/PositiveInt]]])
 
 (def ^:private ModelWithOptionalPosition
   "Intended to cover Cards/Dashboards/Pulses updates. Collection id and position are optional, if they are not
   present, they didn't change. If they are present, they might have changed and we need to compare."
-  [:map
+  [:map {:closed true}
    [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
    [:collection_position {:optional true} [:maybe ms/PositiveInt]]])
 
@@ -603,7 +603,7 @@
   and an `:id`. The `f` function is called like `(f model all-items-with-that-model)` and should return a collection
   of maps. `:id` is the only required key for these maps, and order *does not matter* - `present-items` is responsible
   for reordering items the way they were."
-  [f items :- [:sequential [:map
+  [f items :- [:sequential [:map {:closed true}
                             [:id ms/PositiveInt]
                             [:model :keyword]]]]
   (let [id+model->order (into {} (map-indexed (fn [i row] [[(:id row) (:model row)] i]) items))]

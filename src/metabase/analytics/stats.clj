@@ -584,7 +584,7 @@
      (transform-metrics))))
 
 (mu/defn- snowplow-metrics
-  [stats metric-info :- [:map
+  [stats metric-info :- [:map {:closed true}
                          [:models :int]
                          [:new_embedded_dashboards :int]
                          [:new_users_last_24h :int]

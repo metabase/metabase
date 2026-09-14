@@ -13,12 +13,12 @@
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::test-table-source-spec
-  [:map
+  [:map {:closed true}
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :table]]
    [:id [:ref ::lib.schema.id/table]]])
 
 (mr/def ::test-card-source-spec
-  [:map
+  [:map {:closed true}
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :card]]
    [:id [:ref ::lib.schema.id/card]]])
 
@@ -29,7 +29,7 @@
    [:card ::test-card-source-spec]])
 
 (mr/def ::test-column-spec
-  [:map
+  [:map {:closed true}
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :column]]
    [:name string?]
    [:table-id {:optional true} [:maybe ::lib.schema.id/table]]
@@ -70,7 +70,7 @@
     [:direction {:optional true} [:maybe [:ref ::lib.schema.order-by/direction]]]]])
 
 (mr/def ::test-literal-expression-spec
-  [:map
+  [:map {:closed true}
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :literal]]
    [:value [:ref ::literal/literal]]])
 
@@ -79,7 +79,7 @@
   keyword?)
 
 (mr/def ::test-operator-expression-spec
-  [:map
+  [:map {:closed true}
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :operator]]
    [:operator ::test-operator-spec]
    [:args {:default []} [:sequential [:ref ::test-expression-spec]]]])
@@ -92,27 +92,27 @@
    [:operator [:ref ::test-operator-expression-spec]]])
 
 (mr/def ::test-segment-spec
-  [:map
+  [:map {:closed true}
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :segment]]
    [:id [:ref ::lib.schema.id/segment]]])
 
 (mr/def ::test-named-expression-spec
-  [:map
+  [:map {:closed true}
    [:name string?]
    [:value [:ref ::test-expression-spec]]])
 
 (mr/def ::test-measure-spec
-  [:map
+  [:map {:closed true}
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :measure]]
    [:id [:ref ::lib.schema.id/measure]]])
 
 (mr/def ::test-metric-spec
-  [:map
+  [:map {:closed true}
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :metric]]
    [:id [:ref ::lib.schema.id/metric]]])
 
 (mr/def ::test-join-spec
-  [:map
+  [:map {:closed true}
    [:source     [:ref ::test-source-spec]]
    [:strategy   ::lib.schema.join/strategy]
    [:conditions {:optional true} [:maybe [:sequential ::test-join-condition-spec]]]])
@@ -125,7 +125,7 @@
    [:operator [:ref ::test-operator-expression-spec]]])
 
 (mr/def ::test-join-condition-spec
-  [:map
+  [:map {:closed true}
    [:operator {:decode/normalize lib.schema.common/normalize-keyword} ::test-operator-spec]
    [:left [:ref ::test-join-source-spec]]
    [:right [:ref ::test-join-source-spec]]])
@@ -138,7 +138,7 @@
    [:ref ::test-metric-spec]])
 
 (mr/def ::test-stage-spec
-  [:map
+  [:map {:closed true}
    [:source       {:optional true} [:maybe ::test-source-spec]]
    [:fields       {:optional true} [:maybe [:sequential ::test-column-spec]]]
    [:expressions  {:optional true} [:maybe [:sequential ::test-named-expression-spec]]]

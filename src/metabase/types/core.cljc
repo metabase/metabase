@@ -386,7 +386,7 @@
 (mr/def ::snake-cased-type-info
   "E.g. the version coming back from the app DB as opposed to Lib metadata. This should eventually be considered
   deprecated."
-  [:map
+  [:map {:closed true}
    [:base_type :any]])
 
 (mu/defn field-is-type?

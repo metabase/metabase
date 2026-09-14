@@ -608,9 +608,9 @@
   ([m]
    (chain-stages m nil))
 
-  ([{:keys [stages]}                                       :- [:map [:stages [:sequential :map]]]
+  ([{:keys [stages]}                                       :- [:map {:closed true} [:stages [:sequential :map]]]
     {:keys [top-level?], :or {top-level? true}, :as _opts} :- [:maybe
-                                                               [:map
+                                                               [:map {:closed true}
                                                                 [:top-level? [:maybe :boolean]]]]]
    ;; :source-metadata aka :lib/stage-metadata is handled differently in the two formats.
    ;; In legacy, an inner query might have both :source-query, and :source-metadata giving the metadata for that nested

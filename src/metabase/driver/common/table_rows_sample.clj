@@ -31,7 +31,7 @@
 (mr/def ::table-rows-sample.options
   "Schema for `table-rows-sample` options"
   [:maybe
-   [:map
+   [:map {:closed true}
     [:truncation-size {:optional true} :int]
     [:limit           {:optional true} :int]
     [:order-by        {:optional true} [:maybe [:sequential :some]]] ; something that can be passed to [[metabase.lib.core/order-by]]
@@ -94,7 +94,7 @@
 
   ([table  :- [:and
                (ms/InstanceOf :model/Table)
-               [:map
+               [:map {:closed true}
                 [:id    ::lib.schema.id/table]
                 [:db_id ::lib.schema.id/database]]]
     fields :- [:sequential (ms/InstanceOf :model/Field)]

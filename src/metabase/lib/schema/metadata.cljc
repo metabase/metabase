@@ -341,7 +341,7 @@
   share, so a self-referential `::column` entry makes any `[:merge ...]` of two column-bearing maps -- for instance
   `:metabase.lib.schema.drill-thru/drill-thru.column-filter`, which merges two maps that both have a `:column` --
   recur until the stack blows. This shallow shape says what the value is without reintroducing the cycle."
-  [:map
+  [:map {:closed true}
    [:lib/type  [:= {:decode/normalize lib.schema.common/normalize-keyword} :metadata/column]]
    [:name      :string]
    [:base-type {:optional true} ::lib.schema.common/base-type]])
@@ -710,17 +710,17 @@
 
 (mr/def ::persisted-info.definition
   "Definition spec for a cached table."
-  [:map
+  [:map {:closed true}
    [:table-name        ::lib.schema.common/non-blank-string]
    [:field-definitions [:maybe [:sequential
-                                [:map
+                                [:map {:closed true}
                                  [:field-name ::lib.schema.common/non-blank-string]
                                  ;; TODO check (isa? :type/Integer :type/*)
                                  [:base-type  ::lib.schema.common/base-type]]]]]])
 
 (mr/def ::persisted-info
   "Persisted Info = Cached Table (?). See [[metabase.model-persistence.models.persisted-info]]"
-  [:map
+  [:map {:closed true}
    [:active     :boolean]
    [:state      ::lib.schema.common/non-blank-string]
    [:table-name ::lib.schema.common/non-blank-string]
@@ -839,7 +839,7 @@
 
   See [[metabase.lib.card/card-metadata-columns]] that converts these as needed."
   [:map
-   {:decode/normalize normalize-card
+   {:closed true, :decode/normalize normalize-card
     :decode/mock      mock-card
     :error/message    "Valid Card metadata"}
    [:lib/type    [:= :metadata/card]]
@@ -872,7 +872,7 @@
 (mr/def ::segment
   "More or less the same as a [[metabase.segments.models.segment]], but with kebab-case keys."
   [:map
-   {:error/message "Valid Segment metadata"
+   {:closed true, :error/message "Valid Segment metadata"
     :decode/mock   mock-segment}
    [:lib/type   [:= :metadata/segment]]
    [:id         ::lib.schema.id/segment]
@@ -905,7 +905,7 @@
 (mr/def ::measure
   "More or less the same as a [[metabase.measures.models.measure]], but with kebab-case keys."
   [:map
-   {:error/message "Valid Measure metadata"
+   {:closed true, :error/message "Valid Measure metadata"
     :decode/mock   mock-measure}
    [:lib/type   [:= :metadata/measure]]
    [:id         ::lib.schema.id/measure]
@@ -927,7 +927,7 @@
     [:lib/join-alias {:optional true} ::lib.schema.common/non-blank-string]]])
 
 (mr/def ::native-query-snippet
-  [:map
+  [:map {:closed true}
    [:lib/type      [:= :metadata/native-query-snippet]]
    [:id            ::lib.schema.id/native-query-snippet]
    [:template-tags {:optional true} [:maybe [:ref ::lib.schema.template-tag/template-tag-map]]]])
@@ -937,7 +937,7 @@
   "Schema for metadata about a specific [[metabase.warehouse-schema.models.table]]. More or less the same but with
   kebab-case keys."
   [:map
-   {:error/message "Valid Table metadata"}
+   {:closed true, :error/message "Valid Table metadata"}
    [:lib/type [:= :metadata/table]]
    [:id       ::lib.schema.id/table]
    [:name     ::lib.schema.common/non-blank-string]
@@ -952,7 +952,7 @@
   "Malli schema for the DatabaseMetadata as returned by `GET /api/database/:id/metadata` -- what should be available to
   the frontend Query Builder."
   [:map
-   {:error/message "Valid Database metadata"}
+   {:closed true, :error/message "Valid Database metadata"}
    [:lib/type [:= :metadata/database]]
    [:id ::lib.schema.id/database]
    ;; TODO -- this should validate against the driver features list in [[metabase.driver/features]] if we're in

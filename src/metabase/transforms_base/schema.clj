@@ -25,7 +25,7 @@
 
 (mr/def ::transform-target
   "Target specification for a transform. Must include at least :type and :name."
-  [:map
+  [:map {:closed true}
    [:type :string]
    [:database {:optional true} :int]
    [:schema {:optional true} [:maybe :string]]
@@ -34,9 +34,9 @@
 
 (mr/def ::transform
   "A transform map as expected by execute-base! implementations."
-  [:map
+  [:map {:closed true}
    [:id {:optional true} pos-int?]
-   [:source [:map [:type [:or :string :keyword]]]]
+   [:source [:map {:closed true} [:type [:or :string :keyword]]]]
    [:target ::transform-target]
    [:name {:optional true} :string]
    [:description {:optional true} [:maybe :string]]])
@@ -45,13 +45,13 @@
 
 (mr/def ::checkpoint-bound
   "A bound (lo or hi) for incremental checkpoint filtering."
-  [:map
+  [:map {:closed true}
    [:value :any]])
 
 (mr/def ::source-range-params
   "Parameters for incremental range filtering on a source query.
    Returned by get-source-range-params."
-  [:map
+  [:map {:closed true}
    [:column ::lib.schema.metadata/column]
    [:checkpoint-filter-field-id ::lib.schema.id/field]
    [:lo {:optional true} [:maybe ::checkpoint-bound]]
@@ -63,7 +63,7 @@
 
 (mr/def ::execute-base-options
   "Options map for execute-base! and its implementations."
-  [:map
+  [:map {:closed true}
    [:cancelled? {:optional true} ifn?]
    [:run-id {:optional true} [:maybe pos-int?]]
    [:with-stage-timing-fn {:optional true} ifn?]

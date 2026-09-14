@@ -113,7 +113,7 @@
 
 (mu/defn shared-tenant-collection?
   "Whether or not a collection is a tenant collection."
-  [{:keys [namespace]} :- [:or RootCollection [:map [:namespace {:optional true} [:maybe [:or :keyword :string]]]]]]
+  [{:keys [namespace]} :- [:or RootCollection [:map {:closed true} [:namespace {:optional true} [:maybe [:or :keyword :string]]]]]]
   (= (some-> namespace name)
      (name shared-tenant-ns)))
 
@@ -503,7 +503,7 @@
 (def ^:private CollectionWithLocationOrRoot
   [:or
    RootCollection
-   [:map
+   [:map {:closed true}
     [:location LocationPath]]])
 
 (def CollectionWithLocationAndIDOrRoot
@@ -511,7 +511,7 @@
   `root-collection` placeholder object."
   [:or
    RootCollection
-   [:map
+   [:map {:closed true}
     [:location LocationPath]
     [:id       ms/PositiveInt]]])
 
@@ -620,7 +620,7 @@
 (def ^:private CollectionWithLocationAndPersonalOwnerID
   "Schema for a Collection instance that has a valid `:location`, and a `:personal_owner_id` key *present* (but not
   necessarily non-nil)."
-  [:map
+  [:map {:closed true}
    [:location          LocationPath]
    [:personal_owner_id [:maybe ms/PositiveInt]]])
 
@@ -639,7 +639,7 @@
 (def ^:private CollectionWithNamespace
   "Schema for a Collection instance that has a valid `:location`, and a `:namespace` key *present* (but not
   necessarily non-nil)."
-  [:map
+  [:map {:closed true}
    [:namespace [:maybe [:or :keyword :string]]]])
 
 (mu/defn is-dedicated-tenant-collection-or-descendant? :- :boolean
@@ -767,7 +767,7 @@
 ;; breadcrumbing in the frontend.
 
 (def ^:private CollectionVisibilityConfig
-  [:map
+  [:map {:closed true}
    [:cte-name {:optional true} [:maybe :keyword]]
    [:include-trash-collection? {:optional true} :boolean]
    [:include-archived-items {:optional true} [:enum :only :exclude :all]]
@@ -776,7 +776,7 @@
    [:effective-child-of {:optional true} [:maybe CollectionWithLocationAndIDOrRoot]]])
 
 (def ^:private UserScope
-  [:map
+  [:map {:closed true}
    [:current-user-id pos-int?]
    [:is-superuser?   :boolean]])
 
@@ -1639,7 +1639,7 @@
   [collection :- CollectionWithLocationAndIDOrRoot
    ;; `updates` is a map *possibly* containing `parent_id`. This allows us to distinguish
    ;; between specifying a `nil` parent_id (move to the root) and not specifying a parent_id.
-   updates :- [:map [:parent_id {:optional true} [:maybe ms/PositiveInt]]]]
+   updates :- [:map {:closed true} [:parent_id {:optional true} [:maybe ms/PositiveInt]]]]
   (assert (:archive_operation_id collection))
   (let [archive-operation-id    (:archive_operation_id collection)
         current-parent-id       (:parent_id (t2/hydrate collection :parent_id))
@@ -1694,7 +1694,7 @@
   [collection :- CollectionWithLocationAndIDOrRoot
    ;; `updates` is a map *possibly* containing `parent_id`. This allows us to distinguish
    ;; between specifying a `nil` parent_id (move to the root) and not specifying a parent_id.
-   updates :- [:map [:parent_id {:optional true} [:maybe ms/PositiveInt]
+   updates :- [:map {:closed true} [:parent_id {:optional true} [:maybe ms/PositiveInt]
                      :archived :boolean]]]
   (if (:archived updates)
     (archive-collection! collection)

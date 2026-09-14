@@ -19,7 +19,7 @@
    [metabase.util.malli.schema :as ms]))
 
 (def ^:private KeypathComponents
-  [:map
+  [:map {:closed true}
    [:table-name [:maybe ms/NonBlankString]]
    [:field-name [:maybe ms/NonBlankString]]
    [:k          :keyword]])

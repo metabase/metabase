@@ -142,7 +142,7 @@
     session-type :type
     anti-csrf-token :anti_csrf_token
     session-expires-at :expires_at
-    :as _session-instance} :- [:map [:key [:or
+    :as _session-instance} :- [:map {:closed true} [:key [:or
                                            uuid?
                                            [:re u/uuid-regex]]]]
    request-time]

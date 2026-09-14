@@ -200,11 +200,11 @@
   (api/create-check :model/Card {:collection_id (:collection_id card)})
   (card/create-card! (assoc card :type :question :dashboard_id nil) creator))
 
-(mu/defn update-cards-in-ast :- [:map [:document :any]
+(mu/defn update-cards-in-ast :- [:map {:closed true} [:document :any]
                                  [:content_type :string]]
   "Rewrite the card FK (`[:attrs \"id\"]`) of every cardEmbed node found in `card-id-map`.
   Touches nothing else on the node — in particular a node's `:_id` never changes here."
-  [document :- [:map
+  [document :- [:map {:closed true}
                 [:document :any]
                 [:content_type :string]]
    card-id-map :- [:maybe [:map-of :int ms/PositiveInt]]]
@@ -231,7 +231,7 @@
   [cards-to-create :- [:map-of [:int {:max -1}] CardCreateSchema]
    document-id :- ms/PositiveInt
    document-collection-id :- [:or :nil ms/PositiveInt]
-   creator :- [:map [:id ms/PositiveInt]]]
+   creator :- [:map {:closed true} [:id ms/PositiveInt]]]
   (when (seq cards-to-create)
     (reduce-kv
      (fn [result-map original-key card-data]
@@ -315,7 +315,7 @@
   (`api/create-check`) are the caller's job, run before this — the same split the REST
   `POST /api/document/` handler uses."
   [{:keys [name document collection_id collection_position cards]}
-   :- [:map
+   :- [:map {:closed true}
        [:name DocumentName]
        [:document :any]
        [:collection_id {:optional true} [:maybe ms/PositiveInt]]
@@ -370,9 +370,9 @@
   and return the updated document. Permission checks (write-check, archived state,
   collection-move) are the caller's job, run before this — the same split the REST
   `PUT /api/document/:id` handler uses."
-  [existing-document :- [:map [:id ms/PositiveInt]]
+  [existing-document :- [:map {:closed true} [:id ms/PositiveInt]]
    {:keys [name document collection_id collection_position cards] :as body}
-   :- [:map
+   :- [:map {:closed true}
        [:name {:optional true} DocumentName]
        [:document {:optional true} :any]
        [:collection_id {:optional true} [:maybe ms/PositiveInt]]

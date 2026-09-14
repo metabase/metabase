@@ -74,13 +74,14 @@
   Tool vars are validated at registration time to ensure they have required metadata; any
   `:always-on-skills` are validated to refer to registered skills, and any `:terminal-tools` to
   refer to tools the profile actually exposes."
-  [profile :- [:map
+  [profile :- [:map {:closed true}
                [:name :keyword]
                [:prompt-template :string]
                [:max-iterations :int]
                [:tools [:vector :any]]
                [:always-on-skills {:optional true} [:vector :keyword]]
                [:skills? {:optional true} :boolean]
+               [:required-tool-call? {:optional true} :boolean]
                [:terminal-tools {:optional true} [:set :string]]
                [:system-prompt-context {:optional true} [:fn ifn?]]]]
   (let [tool-vars     (:tools profile)

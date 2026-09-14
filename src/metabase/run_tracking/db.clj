@@ -20,7 +20,7 @@
 (def ^:private StaleSpec
   "A single staleness cutoff: a `model` row is stale under this spec when `column` is older than `age`
   `unit`s ago."
-  [:map
+  [:map {:closed true}
    [:column :keyword]
    [:age pos-int?]
    [:unit StaleUnit]])

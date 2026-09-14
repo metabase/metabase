@@ -589,7 +589,7 @@
   share, so a self-referential `::query` entry makes `[:merge ::query [:map [<same key> ::query]]]` -- which
   [[metabase.query-processor.util.add-alias-info]] uses -- recur until the stack blows. This shallow shape says what
   the value is without reintroducing the cycle."
-  [:map
+  [:map {:closed true}
    [:lib/type [:= {:decode/normalize common/normalize-keyword} :mbql/query]]
    [:stages   [:ref ::stages]]])
 
@@ -646,7 +646,7 @@
   Deliberately NOT closed: drivers add their own keys, e.g. Mongo adds `:collection`, `:projections` and `:mbql?`
   (see `:metabase.driver.mongo.query-processor/compiled-pipeline`), and for a query that was already native the
   compiled form is the native stage itself, carrying every key a `::stage.native` has."
-  [:map
+  [:map {:closed true}
    [:query  :some]
    [:params {:optional true} [:maybe [:sequential [:ref ::literal/param-value]]]]])
 

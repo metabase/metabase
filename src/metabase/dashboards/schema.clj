@@ -8,7 +8,7 @@
    [metabase.util.malli.schema :as ms]))
 
 (mr/def ::dashcard
-  [:map
+  [:map {:closed true}
    [:id   {:optional true} ::lib.schema.id/dashcard]
    [:card {:optional true} [:ref ::queries.schema/card]]])
 
@@ -21,7 +21,7 @@
      [:type {:optional true} [:ref ::lib.schema.parameter/type]]]]])
 
 (mr/def ::dashboard
-  [:map
+  [:map {:closed true}
    [:id         {:optional true} ::lib.schema.id/dashboard]
    [:parameters {:optional true} [:maybe ::parameters]]
    [:dashcards  {:optional true} [:maybe [:sequential ::dashcard]]]])

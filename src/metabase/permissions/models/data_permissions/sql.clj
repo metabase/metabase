@@ -108,7 +108,7 @@
 
 (def UserInfo
   "The user-id to use in the visibility query and their superuser status."
-  [:map
+  [:map {:closed true}
    [:user-id          pos-int?]
    [:is-superuser?    :boolean]
    [:is-data-analyst? {:optional true} :boolean]])

@@ -178,7 +178,7 @@
 (mu/defn ^:private update-table!*
   "Takes an existing table and the changes, updates in the database and optionally calls `table/update-field-positions!`
   if field positions have changed."
-  [{:keys [id] :as existing-table} :- [:map [:id ::lib.schema.id/table]]
+  [{:keys [id] :as existing-table} :- [:map {:closed true} [:id ::lib.schema.id/table]]
    body]
   (when-let [changes (-> body
                          (u/select-keys-when
@@ -440,7 +440,7 @@
 
 (mu/defn- update-csv!
   "This helper function exists to make testing the POST /api/table/:id/{action}-csv endpoints easier."
-  [options :- [:map
+  [options :- [:map {:closed true}
                [:table-id ms/PositiveInt]
                [:filename :string]
                [:file (ms/InstanceOfClass java.io.File)]

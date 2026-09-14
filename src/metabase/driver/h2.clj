@@ -190,7 +190,7 @@
       (let [[_ {:strs [USER]}] (connection-string->file+options db)]
         USER)))
 
-(mu/defn- check-native-query-not-using-default-user [{query-type :type, :as query} :- [:map
+(mu/defn- check-native-query-not-using-default-user [{query-type :type, :as query} :- [:map {:closed true}
                                                                                        [:type [:enum :native :query]]]]
   (u/prog1 query
     ;; For :native queries check to make sure the DB in question has a (non-default) NAME property specified in the
@@ -341,10 +341,10 @@
                     CommandInterface/CALL} cmd-type-nums)
           (nil? remaining-sql)))))
 
-(mu/defn- check-read-only-statements [{{sql :query} :native, :as _query} :- [:map
+(mu/defn- check-read-only-statements [{{sql :query} :native, :as _query} :- [:map {:closed true}
                                                                              [:type [:enum :query :native]]
                                                                              [:native
-                                                                              [:map
+                                                                              [:map {:closed true}
                                                                                [:query string?]]]]]
   (when sql
     (check-no-unsupported-functions sql)
@@ -362,9 +362,9 @@
 
 (mu/defmethod driver/execute-write-query! :h2
   [driver :- :keyword
-   query  :- [:map
+   query  :- [:map {:closed true}
               [:type   [:= :native]]
-              [:native [:map
+              [:native [:map {:closed true}
                         [:query :string]]]]]
   (check-native-query-not-using-default-user query)
   (check-action-commands-allowed query)

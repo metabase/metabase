@@ -431,7 +431,7 @@
   [context :- ::ads/context
    {:keys [dimension-specs
            metric-specs
-           filter-specs]} :- [:map
+           filter-specs]} :- [:map {:closed true}
                               [:dimension-specs [:maybe [:sequential ::ads/dimension-template]]]
                               [:metric-specs    [:maybe [:sequential ::ads/metric-template]]]
                               [:filter-specs    [:maybe [:sequential ::ads/filter-template]]]]]

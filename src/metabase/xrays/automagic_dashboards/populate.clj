@@ -190,7 +190,7 @@
    occupied."
   [grid                                  :- ::grid
    [x y]                                 :- [:tuple nat-int? nat-int?]
-   {:keys [width height], :as _dashcard} :- [:map
+   {:keys [width height], :as _dashcard} :- [:map {:closed true}
                                              [:width nat-int?]
                                              [:height nat-int?]]]
   (reduce (fn [grid xy]
@@ -206,7 +206,7 @@
    it suffices to check just the first (top) row."
   [grid                   :- ::grid
    [x y]                  :- [:tuple nat-int? nat-int?]
-   {:keys [width height]} :- [:map
+   {:keys [width height]} :- [:map {:closed true}
                               [:width nat-int?]
                               [:height nat-int?]]]
   (and (<= (+ x height) (count grid))

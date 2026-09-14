@@ -33,7 +33,7 @@
   "Record login history for a user, and send them an email if this is their first time logging in from this device."
   [session-id  :- string?
    user        :- [:map
-                   {:description ":model/User"}
+                   {:closed true, :description ":model/User"}
                    [:id pos-int?]
                    [:last_login {:optional true} :any]]
    device-info :- request/DeviceInfo]

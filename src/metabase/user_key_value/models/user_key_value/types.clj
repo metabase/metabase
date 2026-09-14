@@ -75,7 +75,7 @@
   "Build the schema for a `::user-key-value`"
   []
   [:and
-   [:map
+   [:map {:closed true}
     [:expires-at [:maybe ::expires-at]]
     [:namespace ::namespace]
     [:value {:encode/database json/encode

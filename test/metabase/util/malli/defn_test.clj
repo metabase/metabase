@@ -24,7 +24,7 @@
   (are [fn-tail expected] (= expected
                              (#'mu.defn/annotated-docstring (mc/parse mx/SchematizedParams fn-tail)))
     '(bar
-      [x :- [:map [:x int?] [:y int?]]]
+      [x :- [:map {:closed true} [:x int?] [:y int?]]]
       (str x))
     (str "Inputs: [x :- [:map [:x int?] [:y int?]]]\n"
          "  Return: :any")
@@ -39,9 +39,9 @@
          "           [x :- :int y :- :int])\n"
          "  Return: :int")))
 
-(mu/defn bar [x :- [:map [:x int?] [:y int?]]] (str x))
+(mu/defn bar [x :- [:map {:closed true} [:x int?] [:y int?]]] (str x))
 
-(mu/defn baz :- [:map [:x int?] [:y int?]] [] {:x "3"})
+(mu/defn baz :- [:map {:closed true} [:x int?] [:y int?]] [] {:x "3"})
 
 (deftest ^:parallel mu-defn-test
   (testing "invalid input"

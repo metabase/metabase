@@ -72,7 +72,7 @@
 (mr/def ::external-remapping
   "Schema for the info we fetch about `external` type Dimensions that will be used for remappings in this Query. Fetched
   by the pre-processing portion of the middleware, and passed along to the post-processing portion."
-  [:map
+  [:map {:closed true}
    [:id                        ::lib.schema.id/dimension]              ; unique ID for the remapping
    [:name                      ::lib.schema.common/non-blank-string]   ; display name for the remapping
    [:field-id                  ::lib.schema.id/field]                  ; ID of the Field being remapped
@@ -104,13 +104,13 @@
 
 (mr/def ::remap-info
   [:and
-   [:map
+   [:map {:closed true}
     [:original-field-clause :mbql.clause/field]
     [:new-field-clause      [:and
                              :mbql.clause/field
                              [:tuple
                               [:= :field]
-                              [:map
+                              [:map {:closed true}
                                [::new-field-dimension-id ::lib.schema.id/dimension]]
                               :any]]]
     [:dimension             ::external-remapping]]
@@ -373,7 +373,7 @@
 ;;;; Post-processing
 
 (mr/def ::internal-remapping-info
-  [:map
+  [:map {:closed true}
    ;; index of original column
    [:col-index      :int]
    ;; names
@@ -386,7 +386,7 @@
    [:new-column      :map]])
 
 (mr/def ::internal-columns-info
-  [:map
+  [:map {:closed true}
    [:internal-only-dims [:maybe [:sequential ::internal-remapping-info]]]
    ;; this is just (map :new-column internal-only-dims)
    [:internal-only-cols [:maybe [:sequential :map]]]])
@@ -601,7 +601,7 @@
 (mu/defn- add-remapped-to-and-from-metadata
   "Add remapping info `:remapped_from` and `:remapped_to` to each existing column in the results metadata, and add
   entries for each newly added column to the end of `:cols`."
-  [metadata                                             :- [:map
+  [metadata                                             :- [:map {:closed true}
                                                             [:cols [:maybe [:sequential :map]]]]
    remapping-dimensions                                 :- [:maybe [:sequential ::external-remapping]]
    {:keys [internal-only-cols], :as internal-cols-info} :- [:maybe ::internal-columns-info]]

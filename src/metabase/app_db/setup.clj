@@ -286,7 +286,7 @@
     data-source :- (ms/InstanceOfClass javax.sql.DataSource)
     {:keys [auto-migrate? create-sample-content? manage-encryption-state?]
      :or   {auto-migrate? true, create-sample-content? false, manage-encryption-state? true}}
-    :- [:map
+    :- [:map {:closed true}
         [:auto-migrate?          {:optional true} :boolean]
         [:create-sample-content? {:optional true} :boolean]
         [:manage-encryption-state?      {:optional true} :boolean]]]

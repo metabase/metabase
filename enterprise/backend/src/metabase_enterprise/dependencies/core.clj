@@ -23,7 +23,7 @@
 
 (mr/def ::updates-map
   ;; TODO: Make this more specific.
-  [:map-of ::entity-type [:sequential [:map [:id {:optional true} :int]]]])
+  [:map-of ::entity-type [:sequential [:map {:closed true} [:id {:optional true} :int]]]])
 
 (defn- transitive-dependents
   [& {:keys [graph updated-entities include-native?]}]

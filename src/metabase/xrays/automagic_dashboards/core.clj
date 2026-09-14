@@ -240,30 +240,30 @@
      :url                        (format "%sfield/%s" public-endpoint (:id field))
      :dashboard-templates-prefix ["field"]}))
 
-(mu/defn- source-card-id [card-or-question :- [:map
+(mu/defn- source-card-id [card-or-question :- [:map {:closed true}
                                                [:dataset_query ::ads/query]]]
   (lib/primary-source-card-id (:dataset_query card-or-question)))
 
 (mu/defn- nested-query?
   "Is this card or question derived from another model or question?"
-  [card-or-question :- [:map
+  [card-or-question :- [:map {:closed true}
                         [:dataset_query ::ads/query]]]
   (some? (source-card-id card-or-question)))
 
 (mu/defn- native-query?
   "Is this card or question native (SQL)?"
-  [{query :dataset_query, :as _card-or-question} :- [:map
+  [{query :dataset_query, :as _card-or-question} :- [:map {:closed true}
                                                      [:dataset_query ::ads/query]]]
   (lib/native-only-query? query))
 
 (mu/defn- source-question :- [:maybe (ms/InstanceOf :model/Card)]
-  [card-or-question :- [:map
+  [card-or-question :- [:map {:closed true}
                         [:dataset_query ::ads/query]]]
   (when-let [source-card-id (source-card-id card-or-question)]
     (xrays.db/card source-card-id)))
 
 (mu/defn- table-like?
-  [{query :dataset_query, :as _card-or-question} :- [:map
+  [{query :dataset_query, :as _card-or-question} :- [:map {:closed true}
                                                      [:dataset_query ::ads/query]]]
   (and
    (empty? (lib/aggregations query))
@@ -279,7 +279,7 @@
   ((some-fn :table-id :table_id) card-or-question))
 
 (mu/defn- source
-  [card :- [:map
+  [card :- [:map {:closed true}
             [:dataset_query ::ads/query]]]
   (cond
     ;; This is a model
@@ -293,7 +293,7 @@
     :else                   (->> card table-id xrays.db/table)))
 
 (mu/defmethod ->root :model/Card :- ::ads/root
-  [card :- [:map
+  [card :- [:map {:closed true}
             [:dataset_query ::ads/query]]]
   (let [source (source card)]
     {:entity                     card
@@ -561,7 +561,7 @@
          (hash-map :drilldown-fields))))
 
 (mu/defn- comparisons
-  [root :- [:map
+  [root :- [:map {:closed true}
             [:database ::lib.schema.id/database]]]
   {:compare (concat
              (for [segment (->> root :entity related/related :segments (map ->root))]
@@ -777,7 +777,7 @@
                                                    (ms/InstanceOf :xrays/Metric)
                                                    ::ads/metric]]]
   [root     :- ::ads/root
-   question :- [:map
+   question :- [:map {:closed true}
                 [:dataset_query ::ads/query]]]
   (map (mu/fn [aggregation-clause :- ::lib.schema.aggregation/aggregation]
          (if (lib/clause-of-type? aggregation-clause :metric)
@@ -792,7 +792,7 @@
 
 (mu/defn- collect-breakout-fields :- [:maybe [:sequential (ms/InstanceOf :model/Field)]]
   [root     :- ::ads/root
-   question :- [:map
+   question :- [:map {:closed true}
                 [:dataset_query ::ads/query]]]
   (for [breakout     (lib/breakouts (:dataset_query question))
         field-clause (take 1 (magic.util/collect-field-references breakout))
@@ -803,7 +803,7 @@
 
 (mu/defn- decompose-question
   [root     :- ::ads/root
-   question :- [:map
+   question :- [:map {:closed true}
                 [:dataset_query ::ads/query]]
    opts]
   (letfn [(analyze [x]

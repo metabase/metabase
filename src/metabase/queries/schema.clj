@@ -38,7 +38,7 @@
 
 (mr/def ::card
   "Schema for an instance of a `:model/Card` (everything is optional to support updates)."
-  [:map
+  [:map {:closed true}
    [:id                 {:optional true} [:maybe ::lib.schema.id/card]]
    [:collection_id      {:optional true} [:maybe ::lib.schema.id/collection]]
    [:dashboard_id       {:optional true} [:maybe ::lib.schema.id/dashboard]]

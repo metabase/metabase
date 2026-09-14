@@ -47,7 +47,7 @@ saved later when it is ready."
     [:metadata-future ::future]]])
 
 (mu/defn- maybe-async-model-result-metadata :- ::maybe-async-result-metadata
-  [{:keys [query metadata original-metadata valid-metadata?]} :- [:map
+  [{:keys [query metadata original-metadata valid-metadata?]} :- [:map {:closed true}
                                                                   [:valid-metadata? :any]]]
   (log/debug "Querying for metadata and blending model metadata")
   (let [futur     (-> query
@@ -144,7 +144,7 @@ saved later when it is ready."
   "Save metadata when (and if) it is ready. Takes a chan that will eventually return metadata. Waits up
   to [[metadata-async-timeout-ms]] for the metadata, and then saves it if the query of the card has not changed."
   [result-metadata-future :- ::future
-   card                   :- [:map
+   card                   :- [:map {:closed true}
                               [:id            ::lib.schema.id/card]
                               [:dataset_query :map]]]
   (let [id (u/the-id card)]

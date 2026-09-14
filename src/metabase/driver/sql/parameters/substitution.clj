@@ -115,7 +115,7 @@
 ;;; ------------------------------------------- ->replacement-snippet-info -------------------------------------------
 
 (mr/def ::param-snippet-info
-  [:map
+  [:map {:closed true}
    [:replacement-snippet     {:optional true} :string] ; allowed to be blank if this is an optional param
    [:prepared-statement-args {:optional true} [:maybe [:sequential :any]]]])
 

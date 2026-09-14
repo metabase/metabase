@@ -254,7 +254,7 @@
 
 (mr/def ::ValueTypeInfo
   [:map
-   {:decode/normalize (fn [m]
+   {:closed true, :decode/normalize (fn [m]
                         (when (map? m)
                           (update-keys m (comp keyword u/->snake_case_en))))
     :description      (str "Type info about a value in a `:value` clause. Added automatically by `wrap-value-literals`"
@@ -824,7 +824,7 @@
         lib.schema.expression.temporal/datetime-modes))
 
 (mr/def ::DatetimeOptions
-  [:map {:decode/normalize lib.schema.common/normalize-map}
+  [:map {:closed true, :decode/normalize lib.schema.common/normalize-map}
    [:mode {:optional true} [:ref ::DatetimeOptionsMode]]])
 
 (defclause datetime
@@ -1080,7 +1080,7 @@
 
 (mr/def ::StringFilterOptions
   [:map
-   {:decode/normalize lib.schema.common/normalize-map}
+   {:closed true, :decode/normalize lib.schema.common/normalize-map}
    ;; default true
    [:case-sensitive {:optional true} :boolean]])
 
@@ -1103,7 +1103,7 @@
 
 (mr/def ::TimeIntervalOptions
   [:map
-   {:decode/normalize lib.schema.common/normalize-map}
+   {:closed true, :decode/normalize lib.schema.common/normalize-map}
    ;; Should we include partial results for the current day/month/etc? Defaults to `false`; set this to `true` to
    ;; include them.
    [:include-current {:optional true} :boolean]])
@@ -1207,7 +1207,7 @@
 
 (mr/def ::CaseOptions
   [:map
-   {:decode/normalize lib.schema.common/normalize-map
+   {:closed true, :decode/normalize lib.schema.common/normalize-map
     :error/message    ":case options"}
    [:default {:optional true} [:ref ::ExpressionArg]]])
 
@@ -1370,7 +1370,7 @@
 (mr/def ::AggregationOptionsOptions
   "Additional options for any aggregation clause when wrapping it in `:aggregation-options`."
   [:map
-   {:error/message    ":aggregation-options options"
+   {:closed true, :error/message    ":aggregation-options options"
     :decode/normalize (fn [m]
                         (let [m (if (nil? m)
                                   {}
@@ -1548,7 +1548,7 @@
 
 (mr/def ::TemplateTag.SourceFilter
   "Schema for a single source-filter applied to a table template tag."
-  [:map
+  [:map {:closed true}
    [:field-id ::lib.schema.id/field]
    [:op       (into [:enum] lib.schema.template-tag/allowed-source-filter-ops)]
    [:value    [:ref ::lib.schema.parameter/parameter.value]]])
@@ -1594,7 +1594,7 @@
   `:metabase.lib.schema.template-tag/field-filter.options`; the map stays open there and here because these options
   are merged into the parameter value the QP builds for the tag."
   [:map
-   {:decode/normalize (fn [m]
+   {:closed true, :decode/normalize (fn [m]
                         (when (map? m)
                           (update-keys m lib.schema.common/normalize-keyword)))}
    [:case-sensitive  {:optional true} :boolean]
@@ -1970,7 +1970,7 @@
     [:field \"my_field\" {:base-type :field/Integer, :join-alias \"my_join_alias\"}]"
   [:and
    [:map
-    {:decode/normalize lib.schema.common/normalize-map}
+    {:closed true, :decode/normalize lib.schema.common/normalize-map}
     [:source-table
      {:optional true
       :description "*What* to JOIN. Self-joins can be done by using the same `:source-table` as in the query where
@@ -2114,7 +2114,7 @@
 (mr/def ::MBQLInnerQuery
   [:and
    [:map
-    {:decode/normalize lib.schema.common/normalize-map}
+    {:closed true, :decode/normalize lib.schema.common/normalize-map}
     [:source-query {:optional true} [:ref ::SourceQuery]]
     [:source-table {:optional true} [:ref ::SourceTable]]
     [:aggregation  {:optional true} [:ref ::Aggregations]]
@@ -2254,7 +2254,7 @@
    {:decode/normalize #'normalize-query}
    ;; need to move source metadata to the correct location FIRST so it gets normalized by the schema below
    [:ref ::CheckQueryDoesNotHaveSourceMetadata]
-   [:map
+   [:map {:closed true}
     [:database   {:optional true} ::DatabaseID]
     [:type
      [:enum

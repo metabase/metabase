@@ -62,7 +62,7 @@
 (mr/def ::pivot-measures [:sequential ::pivot.common/index])
 
 (mr/def ::pivot-opts [:maybe
-                      [:map
+                      [:map {:closed true}
                        [:pivot-rows         {:optional true} [:maybe ::pivot-rows]]
                        [:pivot-cols         {:optional true} [:maybe ::pivot-cols]]
                        [:pivot-measures     {:optional true} [:maybe ::pivot-measures]]
@@ -314,7 +314,7 @@
 (mu/defn- column-name-pivot-options :- ::pivot-opts
   "Looks at the `pivot_table.column_split` key in the card's visualization settings and generates `pivot-rows` and
   `pivot-cols` to use for generating subqueries. Supports column name-based settings only."
-  [query        :- [:map
+  [query        :- [:map {:closed true}
                     [:database ::lib.schema.id/database]]
    viz-settings :- [:maybe :map]]
   (let [{:keys [rows columns values]} (:pivot_table.column_split viz-settings)
@@ -346,7 +346,7 @@
 (mu/defn- column-sort-order :- ::pivot-opts
   "Looks at the `pivot_table.column_sort_order` key in the card's visualization settings and generates a map from the
   column's index to the setting (either ascending or descending)."
-  [query        :- [:map
+  [query        :- [:map {:closed true}
                     [:database ::lib.schema.id/database]]
    viz-settings :- [:maybe :map]]
   (let [metadata-provider  (or (:lib/metadata query)
@@ -367,7 +367,7 @@
 (mu/defn- field-ref-pivot-options :- ::pivot-opts
   "Looks at the `pivot_table.column_split` key in the card's visualization settings and generates `pivot-rows` and
   `pivot-cols` to use for generating subqueries. Supports field ref-based settings only."
-  [query        :- [:map
+  [query        :- [:map {:closed true}
                     [:database ::lib.schema.id/database]]
    viz-settings :- [:maybe :map]]
   (let [{:keys [rows columns values]} (:pivot_table.column_split viz-settings)
@@ -414,7 +414,7 @@
 
   Field ref-based visualization settings are considered legacy and are not used for new questions. To not break existing
   questions we need to support both old- and new-style settings until they are fully migrated."
-  [query        :- [:map
+  [query        :- [:map {:closed true}
                     [:database ::lib.schema.id/database]]
    viz-settings :- [:maybe :map]]
   (when viz-settings

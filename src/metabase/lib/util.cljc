@@ -295,12 +295,12 @@
 
 (mr/def ::legacy-query
   [:map
-   {:error/message "legacy query"}
+   {:closed true, :error/message "legacy query"}
    [:type [:enum :native :query]]])
 
 (mr/def ::mbql5-query
   [:map
-   {:error/message "MBQL 5 query"}
+   {:closed true, :error/message "MBQL 5 query"}
    [:lib/type [:= :mbql/query]]])
 
 (mr/def ::legacy-or-mbql5-query

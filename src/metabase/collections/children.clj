@@ -198,7 +198,7 @@
 
 (def CollectionChildrenOptions
   "The `options` map accepted by [[collection-children]] and [[collection-filter-metadata]]."
-  [:map
+  [:map {:closed true}
    [:show-dashboard-questions?     :boolean]
    [:show-exploration-documents?   {:optional true} [:maybe :boolean]]
    [:collection-type {:optional true} [:maybe CollectionType]]
@@ -211,7 +211,7 @@
    ;; column (see [[creator-filterable-models]]) return nothing.
    [:created-by-id {:optional true} [:maybe pos-int?]]
    [:search-text  {:optional true} [:maybe :string]]
-   [:sort-info    {:optional true} [:maybe [:map
+   [:sort-info    {:optional true} [:maybe [:map {:closed true}
                                             [:sort-column (into [:enum {:error/message "sort-columns"}]
                                                                 (map normalize-sort-choice)
                                                                 valid-sort-columns)]

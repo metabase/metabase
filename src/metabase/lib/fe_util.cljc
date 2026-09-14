@@ -49,7 +49,7 @@
 (def ^:private ExpressionParts
   [:schema
    {:registry {::expression-parts
-               [:map
+               [:map {:closed true}
                 [:lib/type [:= :mbql/expression-parts]]
                 [:operator [:or :keyword :string]]
                 [:options :map]

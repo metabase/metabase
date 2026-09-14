@@ -82,7 +82,7 @@
    [:dashboard_id :int]
    [:email {:optional true} [:maybe :string]]
    [:slack_channel {:optional true} [:maybe :string]]
-   [:schedule [:map
+   [:schedule [:map {:closed true}
                [:frequency [:enum "hourly" "daily" "weekly" "monthly"]]
                [:hour {:optional true} [:maybe :int]]
                [:day_of_week {:optional true} [:maybe :string]]

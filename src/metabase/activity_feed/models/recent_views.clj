@@ -513,7 +513,7 @@
    (get-recents user-id context {}))
   ([user-id
     context :- [:sequential [:enum :views :selections]]
-    options :- [:map
+    options :- [:map {:closed true}
                 [:include-metadata? {:optional true} [:maybe :boolean]]
                 [:models {:optional true} [:maybe [:sequential (into [:enum] rv-models)]]]]]
    (let [models (:models options)

@@ -25,7 +25,7 @@
 (def LDAPSettings
   "Options passed to LDAP integration implementations. These are just the various LDAP Settings from
   [[metabase.sso.ldap]], packaged up as a single map so implementations don't need to fetch Setting values directly."
-  [:map
+  [:map {:closed true}
    [:first-name-attribute ms/NonBlankString]
    [:last-name-attribute  ms/NonBlankString]
    [:email-attribute      ms/NonBlankString]

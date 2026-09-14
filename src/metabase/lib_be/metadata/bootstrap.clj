@@ -106,7 +106,7 @@
 (mu/defn resolve-database :- [:maybe
                               [:or
                                ::empty-map
-                               [:map
+                               [:map {:closed true}
                                 [:database ::lib.schema.id/database]]]]
   "If query has `:database` `-1337` (the legacy database ID for queries using a source Card that had an unknown
   database), resolve the correct database ID and assoc it into the query."
@@ -117,7 +117,7 @@
     query             :- [:maybe
                           [:or
                            ::empty-map
-                           [:map
+                           [:map {:closed true}
                             [:database ::maybe-unresolved-database-id]]]]]
    (when (seq query)
      (if (pos-int? (:database query))

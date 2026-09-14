@@ -39,7 +39,7 @@
 
 (mu/defn metrics
   "The metric Cards (`:metadata/metric`) picked out by `metadata-spec`."
-  [metadata-spec :- [:map
+  [metadata-spec :- [:map {:closed true}
                      [:id        {:optional true} [:maybe [:set ms/PositiveInt]]]
                      [:name      {:optional true} [:maybe [:set :string]]]
                      [:table-ids {:optional true} [:maybe [:set ::lib.schema.id/table]]]
@@ -60,7 +60,7 @@
 
 (mu/defn measures
   "The `:metadata/measure` rows picked out by `metadata-spec`."
-  [metadata-spec :- [:map
+  [metadata-spec :- [:map {:closed true}
                      [:id        {:optional true} [:maybe [:set ms/PositiveInt]]]
                      [:name      {:optional true} [:maybe [:set :string]]]
                      [:table-ids {:optional true} [:maybe [:set ::lib.schema.id/table]]]]]

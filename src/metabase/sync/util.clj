@@ -463,7 +463,7 @@
   Returns tables ordered by `[schema name]` so results match the order expected by [[metabase.driver/describe-fks]]."
   [database-or-id                       :- [:or
                                             ::lib.schema.id/database
-                                            [:map
+                                            [:map {:closed true}
                                              [:id ::lib.schema.id/database]]]
    & {:keys [schema-names table-names]} :- ::driver/describe-fks.options]
   (eduction (map t2.realize/realize)
@@ -570,7 +570,7 @@
   "Defines a step. `:sync-fn` runs the step, returns a map that contains step specific metadata. `log-summary-fn`
   takes that metadata and turns it into a string for logging. `:essential?` marks a step whose failure leaves the
   database unusable (e.g. field sync), so initial sync should be reported as failed rather than complete."
-  [:map
+  [:map {:closed true}
    [:sync-fn        [:=> [:cat StepRunMetadata] i/DatabaseInstance]]
    [:step-name      :string]
    [:log-summary-fn [:maybe LogSummaryFunction]]

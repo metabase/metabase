@@ -34,12 +34,12 @@
   [^OutputStream os                                              :- (ms/InstanceOfClass OutputStream)
    {:keys [export-format format-rows? pivot? csv-include-bom?]
     :or   {csv-include-bom? true}
-    :as   _options}                                              :- [:map
+    :as   _options}                                              :- [:map {:closed true}
                                                                      [:export-format    :keyword]
                                                                      [:format-rows?     {:optional true} [:maybe :boolean]]
                                                                      [:pivot?           {:optional true} [:maybe :boolean]]
                                                                      [:csv-include-bom? {:optional true} [:maybe :boolean]]]
-   {{:keys [rows]} :data, database-id :database_id, :as results} :- [:map
+   {{:keys [rows]} :data, database-id :database_id, :as results} :- [:map {:closed true}
                                                                      [:database_id ::lib.schema.id/database]]]
   ;; make sure Database/driver info is available for the streaming results writers -- they might need this in order to
   ;; get timezone information when writing results

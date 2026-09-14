@@ -65,14 +65,14 @@
 (mu/defn- inject-filter
   "Inject filter clause into card."
   [{:keys [query-filter cell-query] :as root} :- ::ads/root
-   card                                       :- [:map
+   card                                       :- [:map {:closed true}
                                                   [:dataset_query ::ads/query]]]
   (-> card
       (update :dataset_query #(add-filter-clauses % (cons cell-query query-filter)))
       (update :series (partial map (partial inject-filter root)))))
 
 (mu/defn- multiseries?
-  [card :- [:map
+  [card :- [:map {:closed true}
             [:dataset_query {:optional true} ::ads/query]]]
   (or (-> card :series not-empty)
       (when-let [query (not-empty (:dataset_query card))]
@@ -80,7 +80,7 @@
             (-> query lib/breakouts count (> 1))))))
 
 (mu/defn- overlay-comparison?
-  [card :- [:map
+  [card :- [:map {:closed true}
             [:dataset_query {:optional true} ::ads/query]]]
   (and (-> card display-type (#{:bar :line}))
        (not (multiseries? card))))
@@ -175,7 +175,7 @@
     [dashboard (max height-left height-right)]))
 
 (mu/defn- series-labels
-  [card :- [:map
+  [card :- [:map {:closed true}
             [:dataset_query {:optional true} ::ads/query]]]
   (let [database-id (get-in card [:dataset_query :database])]
     (get-in card [:visualization_settings :graph.series_labels]
@@ -183,7 +183,7 @@
                  (lib/aggregations (:dataset_query card))))))
 
 (mu/defn- unroll-multiseries
-  [card :- [:map
+  [card :- [:map {:closed true}
             [:dataset_query {:optional true} ::ads/query]]]
   (if (and (multiseries? card)
            (-> card :display (= :line)))
@@ -209,7 +209,7 @@
 
 (mu/defn- update-related
   [related
-   left :- [:map
+   left :- [:map {:closed true}
             [:database ::lib.schema.id/database]]
    right]
   (-> related

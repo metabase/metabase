@@ -64,7 +64,7 @@
            source
            tenant-id
            invite-target]
-    :as   attributes} :- [:map
+    :as   attributes} :- [:map {:closed true}
                           [:source {:optional true, :default :admin} [:enum :setup :admin]]]]
   (api/check-superuser)
   (api/check-400 (not (users.db/user-email-exists? (u/lower-case-en email)))

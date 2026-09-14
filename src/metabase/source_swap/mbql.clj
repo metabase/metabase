@@ -67,7 +67,7 @@
   [query               :- ::lib.schema/query
    stage-number        :- :int
    clauses             :- [:sequential :any]
-   {:keys [distinct?]} :- [:map [:distinct? :boolean]]]
+   {:keys [distinct?]} :- [:map {:closed true} [:distinct? :boolean]]]
   (into []
         (cond-> (map (fn [clause]
                        (walk-clause-field-refs clause #(upgrade-field-ref query stage-number %))))
@@ -232,7 +232,7 @@
    stage-number        :- :int
    field-id-mapping    :- ::field-id-mapping
    clauses             :- [:sequential :any]
-   {:keys [distinct?]} :- [:map [:distinct? :boolean]]]
+   {:keys [distinct?]} :- [:map {:closed true} [:distinct? :boolean]]]
   (into []
         (cond-> (map (fn [clause]
                        (walk-clause-field-refs clause #(swap-field-ref query stage-number field-id-mapping %))))

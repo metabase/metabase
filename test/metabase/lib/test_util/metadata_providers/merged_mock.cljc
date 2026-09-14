@@ -23,10 +23,10 @@
   [:map
    {:closed true}
    [:database {:optional true} [:maybe :map]]
-   [:tables   {:optional true} [:maybe [:sequential [:map [:id ::lib.schema.id/table]]]]]
-   [:fields   {:optional true} [:maybe [:sequential [:map [:id ::lib.schema.id/field]]]]]
-   [:cards    {:optional true} [:maybe [:sequential [:map [:id ::lib.schema.id/card]]]]]
-   [:segments {:optional true} [:maybe [:sequential [:map [:id ::lib.schema.id/segment]]]]]])
+   [:tables   {:optional true} [:maybe [:sequential [:map {:closed true} [:id ::lib.schema.id/table]]]]]
+   [:fields   {:optional true} [:maybe [:sequential [:map {:closed true} [:id ::lib.schema.id/field]]]]]
+   [:cards    {:optional true} [:maybe [:sequential [:map {:closed true} [:id ::lib.schema.id/card]]]]]
+   [:segments {:optional true} [:maybe [:sequential [:map {:closed true} [:id ::lib.schema.id/segment]]]]]])
 
 (mu/defn- merged-metadata-map :- ::lib.tu.metadata-providers.mock/mock-metadata
   [parent-metadata-provider :- ::lib.schema.metadata/metadata-provider

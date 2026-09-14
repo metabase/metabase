@@ -132,7 +132,7 @@
 (def ^:private FieldOrColumn
   "Schema that allows a `:model/Field` or a column from a query resultset"
   [:and
-   [:map
+   [:map {:closed true}
     ;; Some DBs such as MSSQL can return columns with blank name
     [:name      :string]
     [:base_type :keyword]

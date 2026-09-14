@@ -17,7 +17,7 @@
                         ::lib.schema.common/base-type
                         ::lib.schema.common/semantic-or-relation-type]
   "Return the most specific type of a given field."
-  [field :- [:map
+  [field :- [:map {:closed true}
              [:base_type ::lib.schema.common/base-type]]]
   ((some-fn :semantic_type :base_type) field))
 
@@ -40,7 +40,7 @@
   `DimensionBindings`."
   [:map-of
    SourceName
-   [:map
+   [:map {:closed true}
     [:dimensions DimensionBindings]
     [:entity {:optional true} SourceEntity]]])
 
@@ -69,7 +69,7 @@
 
 (mu/defn mbql-reference :- MBQL
   "Return MBQL clause for a given field-like object."
-  [{:keys [id name base_type]} :- [:map
+  [{:keys [id name base_type]} :- [:map {:closed true}
                                    [:base_type ::lib.schema.common/base-type]]]
   (if id
     [:field id nil]

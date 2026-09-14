@@ -146,7 +146,7 @@
   "Humanize binning: extend interval to start and end on a \"nice\" number and, when number of bins is fixed, have a
   \"nice\" step (bin width)."
   [strategy                                         :- ::lib.schema.binning/strategy
-   {:keys [min-value max-value bin-width num-bins]} :- [:map
+   {:keys [min-value max-value bin-width num-bins]} :- [:map {:closed true}
                                                         [:min-value number?]
                                                         [:max-value number?]
                                                         [:bin-width {:optional true} ::lib.schema.binning/bin-width]

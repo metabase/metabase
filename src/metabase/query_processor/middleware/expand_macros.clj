@@ -23,7 +23,7 @@
 ;;; "legacy macro" as used below means legacy Segment.
 (mr/def ::legacy-macro
   [:and
-   [:map
+   [:map {:closed true}
     [:lib/type [:enum :metadata/segment]]]
    [:multi
     {:dispatch :lib/type}
