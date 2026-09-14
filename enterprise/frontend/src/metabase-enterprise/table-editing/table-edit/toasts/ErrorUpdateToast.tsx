@@ -76,7 +76,7 @@ export const ErrorUpdateToast = ({ error }: ErrorUpdateToastProps) => {
       </Group>
 
       <Button
-        variant="filled"
+        variant="default"
         onClick={() => setShowDetails(true)}
       >{t`More info`}</Button>
     </Group>
