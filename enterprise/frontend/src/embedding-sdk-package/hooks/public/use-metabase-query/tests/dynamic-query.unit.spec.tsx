@@ -1,12 +1,13 @@
-/* eslint-disable import/order */
-
+// Register mocks before loading the modules under test.
+// oxfmt-ignore
 import { createMockStore, resetTestState, stagesOf } from "./setup";
-import { TEST_SCHEMA } from "./fixtures";
 
 import { resolveDatasetQuery as resolveDatasetQueryInBundle } from "embedding-sdk-bundle/lib/create-metabase-query";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 
 import { count, filter, orderBy } from "..";
+
+import { TEST_SCHEMA } from "./fixtures";
 
 beforeEach(resetTestState);
 afterEach(() => {

@@ -8,8 +8,8 @@ import {
   useMetabaseQuery,
   useMetabaseQueryObject,
 } from "..";
-import { useAction, useDataAppAction } from "../../use-action";
 import { defineAction, defineQuery } from "../../../../data-app";
+import { useAction, useDataAppAction } from "../../use-action";
 
 import { TEST_SCHEMA } from "./fixtures";
 
