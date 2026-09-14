@@ -2134,7 +2134,7 @@ describe("scenarios > metrics > explorer", () => {
 
     it("should allow me to do brush style time range filtering", () => {
       H.ensureChartIsActive();
-      H.applyBrush(100, 250);
+      H.applyBrushToPoints(2, 7);
       H.MetricsViewer.getMetricVisualization().within(() => {
         cy.findByText(/June/).should("be.visible");
         cy.findByText(/July/).should("be.visible");
