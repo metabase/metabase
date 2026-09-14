@@ -65,7 +65,7 @@
     (is (= ["Creates or changes content."]
            (remove nil? (#'mcp-tools-dox/effect-bullets {:annotations {:destructiveHint false}})))))
   (testing "a destructive tool is called out, and idempotence is worth saying about a writer"
-    (is (= ["Can overwrite or delete existing content."
+    (is (= ["Can overwrite or delete existing data or content."
             "Running it again with the same arguments has the same effect as running it once."]
            (remove nil? (#'mcp-tools-dox/effect-bullets
                          {:annotations {:destructiveHint true :idempotentHint true}}))))))

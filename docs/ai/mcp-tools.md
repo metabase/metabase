@@ -261,7 +261,7 @@ Arguments:
 
 - Tool name: `collection_write`
 - Permission scope: `agent:content:write` — Create, edit and trash Metabase content
-- Can overwrite or delete existing content.
+- Can overwrite or delete existing data or content.
 
 Create, rename, move, archive, or restore a collection — the folders that hold questions, dashboards, models, and documents. method: "create" requires name and accepts description, parent_id, namespace, and authority_level; method: "update" requires id and accepts name, description, parent_id, archived, and authority_level. parent_id nests a new collection or moves an existing one: pass a numeric id, a 21-character entity_id, or "root" for the top level; omitting it on create means your personal collection (the root collection for a namespaced one), and omitting it on update leaves the collection where it is. You need write access to the parent. archived: true moves the collection and everything in it to the trash, false restores it — there is no hard delete, and omitting archived leaves the trashed state alone. To move something out of the trash, pass archived: false together with parent_id; parent_id on its own would leave it trashed. namespace is create-only ("snippets" for SQL snippet folders, "transforms" for the transform folders transform_write files transforms into); collections cannot move between namespaces. authority_level "official" marks the collection Official and needs an admin on an instance with that feature. description and authority_level can be set, rewritten, and cleared — to erase one, name it in clear (clear: ["description"]); sending null does not work, because unset properties are stripped before the tool sees them. Personal collections themselves cannot be created or moved, but you can nest collections inside one by passing its id as parent_id. Returns the resulting collection, including authority_level and namespace, so no follow-up read is needed.
 
@@ -283,7 +283,7 @@ Arguments:
 
 - Tool name: `dashboard_write`
 - Permission scope: `agent:content:write` — Create, edit and trash Metabase content
-- Can overwrite or delete existing content.
+- Can overwrite or delete existing data or content.
 
 Create or update a dashboard and edit its layout with ordered ops. On update the ops are one atomic save — nothing is written unless every op succeeds, so a failed call leaves the dashboard untouched and a retry cannot double-add. Create is not atomic: the dashboard row is written first and the ops applied second, so a failure on that second save leaves an empty dashboard behind (the ops are compiled beforehand, but per-field parameter-mapping permission checks run only on the real save). Find it by name and finish it with method "update" — calling create again leaves a second one. method: "create" requires name; "update" requires id and accepts archived (true trashes, false restores — there is no hard delete). Give each new card or tab its own negative id (-1, -2, …); later ops in the same call reference it, and the server assigns real ids on save. Ops: add_card, add_text, add_heading, add_link, add_iframe, add_action, duplicate_card, replace_card, move, resize, remove, set_series, patch_dashcard, add_tab, rename_tab, move_tab, duplicate_tab, remove_tab, add_parameter, update_parameter, remove_parameter, move_parameter, wire_parameter, unwire_parameter. Before your first add_parameter or wire_parameter, read learn("dashboard-filters") unless already loaded — parameter types, target grammar, linked filters, value sources; learn("dashboard-layout") covers the 24-column grid, per-display default sizes, and layout conventions. validate_only: true returns the layout the ops would produce without writing — but per-field parameter-mapping permission checks run only on the real save, so a clean dry run can still be rejected. Returns the resulting dashboard, so no follow-up read is needed. Requires write permission on the dashboard and read permission on every referenced card.
 
@@ -349,7 +349,7 @@ Arguments:
 
 - Tool name: `execute_sql`
 - Permission scope: `agent:sql:run` — Write and run its own raw SQL on your connected databases
-- Can overwrite or delete existing content.
+- Can overwrite or delete existing data or content.
 
 Execute a raw SQL string against a database, returning rows plus a query_handle. Requires native-query permission on the database and the instance-level mcp-execute-sql-enabled setting — both enforced even with validate_only: true. Prefer execute_query for anything MBQL can express — a card saved from raw SQL cannot be filtered on a dashboard until rewritten with template tags, so a card bound for a filtered dashboard should be MBQL. The sql runs verbatim against the warehouse, so it is the injection surface — never splice caller- or user-supplied values into it; put values behind {{tag}} placeholders bound via template_tag_values, driver-level prepared-statement parameters that are injection-safe for the values. {{snippet: …}} and {{#123}} card-reference tags splice server-side SQL text and can never be populated through template_tag_values. validate_only: true mints a query_handle without executing (tags and permissions checked; the SQL text itself is not) — stage SQL for saving or visualizing without pulling rows into context. The query_handle is accepted by question_write; execute_query is MBQL-only and rejects it. Results are cols + rows with returned/truncated counts. No cursor pagination: the server cannot know whether arbitrary SQL has a total order, so page it yourself — ORDER BY a unique key plus WHERE <key> > <last value returned>, which is exact where an offset would silently repeat or skip rows. Otherwise narrow the SQL (filters/aggregation) or raise row_limit (max 2000).
 
@@ -368,7 +368,7 @@ Arguments:
 
 - Tool name: `measure_write`
 - Permission scope: `agent:content:write` — Create, edit and trash Metabase content
-- Can overwrite or delete existing content.
+- Can overwrite or delete existing data or content.
 
 Create or update a measure: a named, reusable MBQL aggregation attached to one table, referenced inside another query's aggregation as ["measure", id]. A measure is not a metric — metrics are standalone saved cards queryable on their own; a measure belongs to a table and is only usable inside a query against it. method: "create" requires table_id, name, definition; "update" requires id and revision_message and accepts name, description, definition, archived (true trashes, false restores — no hard delete). definition holds exactly one aggregation, in either shape: the aggregation clause get_content's "definition" include returns for a measure (the same clause execute_query takes in stages[0].aggregation), as the one-element array or bare clause, reassembled onto table_id; or a full single-stage query. For a full query table_id must name the definition's own source table; a mismatch is a teaching error. Not admin-only: writing requires superuser OR a data analyst with unrestricted view-data on the table, and the table must not live in a read-only remote-synced collection.
 
@@ -390,7 +390,7 @@ Arguments:
 
 - Tool name: `metric_write`
 - Permission scope: `agent:content:write` — Create, edit and trash Metabase content
-- Can overwrite or delete existing content.
+- Can overwrite or delete existing data or content.
 
 Create or update a metric: a saved, reusable aggregation that lives in a collection and can be queried on its own or referenced from other queries. A metric is not a measure — a measure belongs to one table and is only usable inside a query against that table, while a metric is standalone content. method: "create" requires name and one query source; method: "update" requires id and accepts archived (true trashes, false restores — there is no hard delete). Pass the query as definition (a full single-stage query in the same numeric-id shape execute_query takes and get_content's "definition" include returns) or as a query_handle from execute_query — one or the other, not both. The query must have exactly one aggregation (count, sum, average…) and at most one grouping; anything else is a teaching error, so build it with execute_query first. Native SQL cannot be a metric — save it with question_write. Optional: description, display (how the result is visualized; defaults to "scalar", so a metric with a grouping usually wants "line" or "bar"), collection_id (omit to save to your personal collection; pass "root" for the root collection), collection_position to pin. Updating a card that is a question or a model is refused rather than retyping it. Requires write permission on the metric and curate permission on the target collection.
 
@@ -414,7 +414,7 @@ Arguments:
 
 - Tool name: `question_write`
 - Permission scope: `agent:content:write` — Create, edit and trash Metabase content
-- Can overwrite or delete existing content.
+- Can overwrite or delete existing data or content.
 
 Create, update, or archive a saved question or model. method: "create" | "update". On create, pass a name and exactly one query source: query_handle (from an execute tool — MBQL or native SQL), query (an inline query — numeric ids and a top-level database id, learn("query-dialect"); prefer query_handle, which saves exactly the query execute_query validated), or native ({database_id, sql, template_tags?} — the template_tags shape is MCP-specific and not guessable: before first passing it, call learn("native-parameters") unless already read; on create or update, native additionally requires the agent:sql:run scope and the instance-level mcp-execute-sql-enabled setting, since the saved card is raw SQL). Optional: card_type ("question" default, or "model"), description, collection_id (omit = your personal collection; "root" = the root collection) or dashboard_id (saves the question inside that dashboard, whose collection it inherits — passing both is an error), display, visualization_settings (learn("visualization-settings") covers display choice and settings keys), cache_ttl, column_metadata (list of {name, display_name?, description?, semantic_type?, visibility_type?} — sets result_metadata; typically used with card_type "model"). On update, pass id and the fields to change; archived: true trashes, false restores; dashboard_id moves the card into that dashboard (collection follows; a question saved in another dashboard can't move to a different one; moving a card OUT of a dashboard isn't supported yet). Updating a card that is a metric is refused rather than retyping it — use metric_write.
 
@@ -444,7 +444,7 @@ Arguments:
 
 - Tool name: `segment_write`
 - Permission scope: `agent:content:write` — Create, edit and trash Metabase content
-- Can overwrite or delete existing content.
+- Can overwrite or delete existing data or content.
 
 Create or update a segment: a named, reusable MBQL filter attached to one table, referenced from other queries' filters. method: "create" requires table_id, name, definition; "update" requires id and revision_message and accepts name, description, definition, archived (true trashes, false restores — no hard delete). definition holds only filters, in either shape: the array of filter clauses get_content's "definition" include returns for a segment (the same clauses execute_query takes in stages[0].filters), reassembled onto table_id; or a full single-stage query. For a full query table_id must name the definition's own source table; a mismatch is a teaching error. Not admin-only: writing requires superuser OR a data analyst with unrestricted view-data on the table, and the table must not live in a read-only remote-synced collection.
 

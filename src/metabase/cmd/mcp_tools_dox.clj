@@ -137,7 +137,7 @@
   (let [{:keys [readOnlyHint destructiveHint idempotentHint]} annotations]
     [(cond
        readOnlyHint             "Read-only. It doesn't create, change, or delete anything in your Metabase."
-       destructiveHint          "Can overwrite or delete existing content."
+       destructiveHint          "Can overwrite or delete existing data or content."
        ;; `destructiveHint false` is the tool's claim to make additive changes. It's a hint, not a contract:
        ;; `document_write` carries it while its description explains a full-body rewrite, so the page promises
        ;; nothing about what the tool won't touch and leaves that to the description.

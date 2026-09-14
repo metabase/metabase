@@ -97,6 +97,10 @@ https://mcp.internal.example.com https://*.staging.example.com
 
 The field accepts wildcards (`*`) for subdomains. Changes take effect in about a minute. Might be a good time to get up and pour yourself a glass of water.
 
+### Turn off the execute SQL tool
+
+The `execute_sql` tool lets an AI client run raw SQL against a database. People still need [native query permissions](../permissions/data.md) on that database to use it. The tool is on by default. To remove it from your MCP server entirely, set the `MB_MCP_EXECUTE_SQL_ENABLED` environment variable to `false`.
+
 ## Authentication
 
 MCP clients authenticate with Metabase using OAuth 2.0. Metabase runs its own embedded OAuth server, so you don't need to set up an external OAuth provider.
