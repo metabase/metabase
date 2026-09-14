@@ -31,7 +31,7 @@ jest.mock("metabase/embedding-sdk/config", () => ({
   EMBEDDING_SDK_CONFIG: {
     isEmbeddingSdk: true,
     metabaseClientRequestHeader: "embedding-simple",
-    enableEmbeddingSettingKey: "enable-embedding-simple",
+    enableEmbeddingSettingKey: "enable-embedding-modular",
     tokenFeatureKey: "embedding_simple",
   },
   EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG: {
@@ -52,7 +52,7 @@ const setup = (options: Options) => {
 
   const settingValues = createMockSettings({
     "token-features": tokenFeatures,
-    "enable-embedding-simple": options.isSimpleEmbeddingEnabled ?? true,
+    "enable-embedding-modular": options.isSimpleEmbeddingEnabled ?? true,
   });
 
   const MINUTE = 60;

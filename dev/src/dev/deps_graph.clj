@@ -930,3 +930,105 @@
 (comment
   (model-ownership)
   (model-boundary-violations (kondo-config)))
+
+;;;; Module boundary analysis
+
+(defn- graph-nodes [graph]
+  (into (set (keys graph)) (mapcat val) graph))
+
+(defn strongly-connected-components
+  "Return the strongly connected components of `graph` as a vector of sets.
+  A node outside every cycle comes back as a singleton set."
+  [graph]
+  ;; Tarjan's algorithm, kept recursive because that reads better than an explicit stack of frames.
+  ;; Each node on the search path costs a level of recursion, so the worst case is one level per node.
+  ;; As of 2026-09-11 the 206-module graph peaks at 40 levels; the default 2 MB thread stack fits about 2,600.
+  (letfn [(pop-component [state root]
+            (loop [state state, component #{}]
+              (let [node      (peek (:stack state))
+                    state     (-> state
+                                  (update :stack pop)
+                                  (update :on-stack disj node))
+                    component (conj component node)]
+                (if (= node root)
+                  (update state :components conj component)
+                  (recur state component)))))
+          (visit [state node]
+            (let [node-index (:next-index state)
+                  state      (-> state
+                                 (assoc-in [:index node] node-index)
+                                 (assoc-in [:lowlink node] node-index)
+                                 (update :next-index inc)
+                                 (update :stack conj node)
+                                 (update :on-stack conj node))
+                  state      (reduce (fn [state successor]
+                                       (cond
+                                         (not (contains? (:index state) successor))
+                                         (let [state (visit state successor)]
+                                           (update-in state [:lowlink node]
+                                                      min
+                                                      (get-in state [:lowlink successor])))
+
+                                         (contains? (:on-stack state) successor)
+                                         (update-in state [:lowlink node]
+                                                    min
+                                                    (get-in state [:index successor]))
+
+                                         :else
+                                         state))
+                                     state
+                                     (get graph node))]
+              (cond-> state
+                (= (get-in state [:lowlink node]) (get-in state [:index node]))
+                (pop-component node))))]
+    (:components
+     (reduce (fn [state node]
+               (cond-> state
+                 (not (contains? (:index state) node)) (visit node)))
+             {:components []
+              :index      {}
+              :lowlink    {}
+              :next-index 0
+              :on-stack   #{}
+              :stack      []}
+             (sort (graph-nodes graph))))))
+
+(defn cyclic-components
+  "Non-singleton [[strongly-connected-components]], largest first; ties sort by first member."
+  [graph]
+  (->> (strongly-connected-components graph)
+       (filter #(> (count %) 1))
+       (sort-by (fn [component] [(- (count component)) (str (first (sort component)))]))
+       vec))
+
+(defn- cyclic-component-sizes
+  "Module and namespace counts for each [[cyclic-components]] cluster."
+  [graph node->namespace-count]
+  (mapv (fn [component]
+          {:modules    (count component)
+           :namespaces (transduce (map #(get node->namespace-count % 0)) + 0 component)})
+        (cyclic-components graph)))
+
+(defn module-boundary-stats
+  "REPL diagnostics for the module graph:
+
+  - `:api-any-namespaces`  namespaces exposed by `:api :any` modules
+  - `:module-count`        configured modules
+  - `:scc-module-sizes`    modules per cycle, largest first
+  - `:scc-namespace-sizes` namespaces per cycle, in the same order
+
+  These values are not ratcheted because any source change can move them. Use namespace sizes to track
+  cycle reduction: splitting a module can grow a cycle's module count without removing namespaces."
+  ([]
+   (module-boundary-stats (dependencies) (kondo-config)))
+  ([deps config]
+   (let [any-modules (into #{} (keep (fn [[module cfg]] (when (= :any (:api cfg)) module))) config)
+         sizes       (cyclic-component-sizes (module-dependencies deps)
+                                             (frequencies (keep :module deps)))]
+     {:api-any-namespaces  (count (filter #(contains? any-modules (:module %)) deps))
+      :module-count        (count config)
+      :scc-module-sizes    (mapv :modules sizes)
+      :scc-namespace-sizes (mapv :namespaces sizes)})))
+
+(comment
+  (module-boundary-stats))

@@ -7,9 +7,11 @@ export {
   getShallowDatabases,
   getShallowFields,
   getShallowSegments,
+  getShallowTableFieldIds,
+  getShallowTableForeignKeys,
   getShallowTables,
 } from "./selectors";
-export type { MetadataSelectorOpts } from "./selectors";
+export type { MetadataSelectorOpts, ShallowForeignKey } from "./selectors";
 
 export {
   selectMetadataProvider,

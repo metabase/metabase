@@ -242,19 +242,73 @@
       :keyDisambiguator id
       :actions          (common/keyed-map action-schemas)})))
 
+(defn- interrupted-exception?
+  "Returns true when `exception`, or one of its causes, is an InterruptedException."
+  [exception]
+  (or (instance? InterruptedException exception)
+      (some-> (ex-cause exception) interrupted-exception?)))
+
+(defn- rethrow-if-interrupted!
+  "Rethrows `exception` when interrupted, so cancellations are not swallowed as errors."
+  [exception]
+  (when (interrupted-exception? exception)
+    (throw exception)))
+
+(defn- model-error-entry
+  "Returns a schema error entry for a model that could not be built."
+  [model exception]
+  (m/assoc-some
+   {:type    "modelError"
+    :modelId (:id model)
+    :message (or (ex-message exception) "unknown error")}
+   :modelName (:name model)))
+
+(defn- bulk-action-schema-builder
+  "Returns a `model -> action-schemas` function backed by one bulk action lookup,
+  or nil when that lookup fails so [[model-schemas]] resolves each model on its own."
+  [models model-ids]
+  (try
+    (let [action-rows-by-model-id    (group-by :model_id (action-rows model-ids))
+          action-details-by-model-id (group-by :model_id (resolved-action-details-for-models models))]
+      (fn [model]
+        (model-action-schemas model
+                              (get action-rows-by-model-id (:id model))
+                              (get action-details-by-model-id (:id model)))))
+    ;; Broad on purpose: the per-model fallback recomputes the same result, so degrading masks nothing.
+    (catch Exception exception
+      (rethrow-if-interrupted! exception)
+      nil)))
+
+(defn- collect-model-schema
+  "Reduces one model into `{:models [...] :errors [...]}`.
+
+  Only the structured `ExceptionInfo` a bad model raises becomes an error entry;
+  anything else is an unexpected bug and propagates instead of masking it."
+  [acc build-action-schemas model]
+  (let [{:keys [schema error]}
+        (try
+          {:schema (model-schema model (build-action-schemas model))}
+          (catch clojure.lang.ExceptionInfo exception
+            (rethrow-if-interrupted! exception)
+            {:error (model-error-entry model exception)}))]
+    (cond-> acc
+      schema (update :models conj schema)
+      error  (update :errors conj error))))
+
 (defn model-schemas
-  "Returns model schemas, with optional database and collection scopes."
+  "Returns `{:models [...] :errors [...]}`, with optional database and collection scopes.
+
+  A model that cannot be built becomes an `:errors` entry instead of failing the rest."
   [database-ids collection-ids]
   (let [models (schema.common/select-schema-cards :model database-ids collection-ids)]
     (if (seq models)
-      (let [model-ids                  (set (map :id models))
-            action-rows-by-model-id    (group-by :model_id (action-rows model-ids))
-            action-details-by-model-id (group-by :model_id (resolved-action-details-for-models models))]
-        (for [model models
-              :let [action-schemas (model-action-schemas model
-                                                         (get action-rows-by-model-id (:id model))
-                                                         (get action-details-by-model-id (:id model)))
-                    schema         (model-schema model action-schemas)]
-              :when schema]
-          schema))
-      [])))
+      (let [model-ids            (set (map :id models))
+            ;; The bulk lookup avoids N+1s; when a broken model makes it throw we
+            ;; fall back to resolving each model's actions on its own.
+            build-action-schemas (or (bulk-action-schema-builder models model-ids)
+                                     model-action-schemas)]
+        (reduce (fn [acc model]
+                  (collect-model-schema acc build-action-schemas model))
+                {:models [] :errors []}
+                models))
+      {:models [] :errors []})))

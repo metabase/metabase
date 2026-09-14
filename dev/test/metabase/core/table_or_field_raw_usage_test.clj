@@ -58,9 +58,8 @@
   {"src/metabase/usage_metadata/db.clj"
    "raw-field-fingerprint selects only :fingerprint, a sync-owned column with no user override."
 
-   "src/metabase/collections_rest/children_query.clj"
-   "the one remaining hit is the :model case's join, which reads only :is_upload -- sync-owned, with no user value.
-   The :table case goes through table-query, since publishing and display_name are user values."
+   "src/metabase/collections/children.clj"
+   "the :model case joins metabase_table only for :is_upload, which is sync-owned."
 
    "src/metabase/queries/db.clj"
    "field-database-info-for-ids reads the Field's own raw :name (sync-owned, not user-settable); its Table join is
