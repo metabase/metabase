@@ -84,6 +84,15 @@
       (is (string? rendered))
       (is (not (str/includes? rendered "\n"))))))
 
+(deftest ^:parallel message?-test
+  (testing "GHY-4544: only a value built by `msg` is a message"
+    (is (message/message? (message/msg ["Hello."])))
+    (are [x] (not (message/message? x))
+      "Hello."
+      nil
+      (message/raw "Hello.")
+      {:lines ["Hello."] :args []})))
+
 (deftest ^:parallel render-never-throws-test
   (testing "a format failure falls back to a safe rendering instead of throwing"
     (let [rendered (message/render (message/msg ["Count: %d"] "x\ny"))]

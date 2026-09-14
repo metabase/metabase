@@ -8,6 +8,7 @@
    [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.transport :as mcp.transport]
    [metabase.mcp.v2.common :as v2.common]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.test-util]
    [metabase.oauth-server.test-util :as oauth-server.tu]
    [metabase.server.streaming-response :as streaming-response]
@@ -27,6 +28,15 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
+
+(deftest ^:parallel jsonrpc-error-test
+  (testing "GHY-4544: a message renders into the error message"
+    (is (= "Table \"a\\nb\" not found."
+           (get-in (mcp.transport/jsonrpc-error 1 -32602 (message/msg ["Table %s not found."] "a\nb"))
+                   [:error :message]))))
+  (testing "a string is used as is"
+    (is (= {:jsonrpc "2.0" :id 1 :error {:code -32600 :message "a\nb"}}
+           (mcp.transport/jsonrpc-error 1 -32600 "a\nb")))))
 
 (defn- signaling-writer!
   "A `Writer` that copies everything written to `sink` and then offers `::request-canceled` on `chan`. Cancelling at

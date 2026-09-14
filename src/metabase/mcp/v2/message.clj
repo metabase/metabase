@@ -73,7 +73,9 @@
 
 (declare render)
 
-(defn- message? [x]
+(defn message?
+  "Whether `x` is a message built by [[msg]]."
+  [x]
   (instance? Message x))
 
 (def ^:private format-specifier

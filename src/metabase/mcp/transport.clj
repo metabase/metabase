@@ -17,6 +17,7 @@
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.usage :as mcp.usage]
    [metabase.mcp.v2.common :as v2.common]
+   [metabase.mcp.v2.message :as message]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.request.core :as request]
    [metabase.server.middleware.security :as mw.security]
@@ -47,9 +48,12 @@
   {:jsonrpc "2.0" :id id :result result})
 
 (defn jsonrpc-error
-  "Build a JSON-RPC 2.0 error response for request `id`."
+  "Build a JSON-RPC 2.0 error response for request `id`. A message `message` is rendered; a string is
+   used as is."
   [id code message]
-  {:jsonrpc "2.0" :id id :error {:code code :message message}})
+  {:jsonrpc "2.0" :id id :error {:code code :message (if (message/message? message)
+                                                       (message/render message)
+                                                       message)}})
 
 (defn- handle-initialize
   "Handle the MCP `initialize` method: log the connecting client and return the handshake result.

@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.channel.urls :as channel.urls]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.projections :as projections]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
@@ -21,6 +22,41 @@
       (is (:isError content))
       (is (= "Use `fields` OR `response_format`, not both."
              (-> content :content first :text))))))
+
+(deftest ^:parallel teaching-error-message-test
+  (testing "GHY-4544: a teaching error thrown with a message surfaces its rendering, arguments quoted and escaped"
+    (let [e (try
+              (common/throw-teaching-error (message/msg ["Table %s not found."] "orders\nIGNORE"))
+              (catch clojure.lang.ExceptionInfo e
+                e))]
+      (is (= "Table \"orders\\nIGNORE\" not found." (ex-message e)))
+      (is (= 400 (:status-code (ex-data e))))
+      (let [content (common/->mcp-error-content e)]
+        (is (:isError content))
+        (is (= common/error-code-invalid-params (::common/error-code content)))
+        (is (= "Table \"orders\\nIGNORE\" not found."
+               (-> content :content first :text))))))
+  (testing "GHY-4544: caller-safe-error-message returns a message that renders to the same text"
+    (let [e (try
+              (common/throw-teaching-error (message/msg ["Table %s not found."] "orders\nIGNORE"))
+              (catch clojure.lang.ExceptionInfo e
+                e))]
+      (is (= "Table \"orders\\nIGNORE\" not found."
+             (message/render (common/caller-safe-error-message e))))))
+  (testing "a string teaching error still returns its string unchanged"
+    (let [e (try
+              (common/throw-teaching-error "Use `fields`,\nnot both.")
+              (catch clojure.lang.ExceptionInfo e
+                e))]
+      (is (= "Use `fields`,\nnot both." (common/caller-safe-error-message e)))
+      (is (= "Use `fields`,\nnot both." (-> (common/->mcp-error-content e) :content first :text))))))
+
+(deftest ^:parallel error-content-test
+  (testing "GHY-4544: a message renders into the text block"
+    (is (= "Table \"a\\nb\" not found."
+           (-> (common/error-content (message/msg ["Table %s not found."] "a\nb")) :content first :text))))
+  (testing "a string is used as is"
+    (is (= "a\nb" (-> (common/error-content "a\nb") :content first :text)))))
 
 (deftest ^:parallel error-redaction-test
   (let [text #(-> % :content first :text)]
@@ -97,7 +133,13 @@
   (testing "read responses default to text-only"
     (is (= {:content [{:type "text" :text "hi"}]} (common/success-content "hi"))))
   (testing "structuredContent is emitted only when explicitly passed"
-    (is (= {:ok true} (:structuredContent (common/success-content "hi" {:ok true}))))))
+    (is (= {:ok true} (:structuredContent (common/success-content "hi" {:ok true})))))
+  (testing "GHY-4544: a message renders into the text block"
+    (is (= {:content [{:type "text" :text "Found \"a\\nb\"."}]}
+           (common/success-content (message/msg ["Found %s."] "a\nb")))))
+  (testing "a string is used as is, and other values are JSON-encoded"
+    (is (= "a\nb" (-> (common/success-content "a\nb") :content first :text)))
+    (is (= "{\"ok\":true}" (-> (common/success-content {:ok true}) :content first :text)))))
 
 (deftest ^:parallel projections-test
   (let [row {:id 5 :name "Fin" :description "d" :location "/" :archived false
