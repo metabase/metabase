@@ -11,6 +11,7 @@
    [metabase.search.impl :as search.impl]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.ingestion.query :as search.ingestion.query]
+   [metabase.search.lease :as search.lease]
    [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
    [metabase.settings.core :as setting]
@@ -76,6 +77,13 @@
   (for [model (keys (search.spec/specifications))]
     {:model model}))
 
+(defmethod analytics.core/known-labels :metabase-search/reindex-lease-events
+  [_]
+  (for [engine (map name (search.engine/known-engines))
+        event  [:acquired :busy :taken-over :heartbeat-error :lost :coordinate-obsolete :release-error
+                :refused-in-transaction]]
+    {:engine engine, :event event}))
+
 (defmethod analytics.core/known-labels :metabase-search/engine-default
   [_]
   (analytics.core/known-labels :metabase-search/engine-active))
@@ -100,6 +108,23 @@
   "Does this instance support a search index, of any sort?"
   []
   (seq (search.engine/active-engines)))
+
+(defn- report-failure!
+  "Log an `operation` failure and count it unless it is an expected lease abort."
+  [operation e]
+  (if (search.lease/expected-abort? e)
+    (log/infof "Search %s stopped safely: %s" operation (ex-message e))
+    (do
+      (log/errorf "Search %s failed: %s" operation (ex-message e))
+      (analytics/inc! :metabase-search/index-error))))
+
+(defn- with-engine-lease
+  [engine operation thunk]
+  (let [{:keys [acquired?] :as outcome}
+        (search.lease/do-with-lease (search.lease/coordinates engine) thunk)]
+    (when-not acquired?
+      (log/infof "Skipping search %s for %s; another node holds its lease" operation engine))
+    outcome))
 
 (defn check-for-removed-env-vars!
   "Fail startup when the removed MB_SEMANTIC_SEARCH_ENABLED kill switch is false, and would have been
@@ -162,10 +187,13 @@
         ;; If there are multiple indexes, return the peak inserted for each type. In practice, they should all be the same.
         (try
           (let [timer    (u/start-timer)
+                outcomes (for [engine engines]
+                           (with-engine-lease engine "initialization"
+                             #(search.engine/init! engine opts)))
+                acquired? (some :acquired? outcomes)
                 report   (reduce (partial merge-with max)
                                  nil
-                                 (for [e engines]
-                                   (search.engine/init! e opts)))
+                                 (keep :result outcomes))
                 duration (u/since-ms timer)]
             (if (seq report)
               (do
@@ -175,9 +203,10 @@
                   (analytics/inc! :metabase-search/index-reindexes {:model model} cnt))
                 (log/infof "Index initialized in %.0fms %s" duration (sort-by (comp - val) report))
                 report)
-              (log/info "Found existing search index, and using it.")))
+              (when acquired?
+                (log/info "Found existing search index, and using it."))))
           (catch Exception e
-            (analytics/inc! :metabase-search/index-error)
+            (report-failure! "initialization" e)
             (throw e)))))))
 
 (defn- reindex-logic! [opts]
@@ -186,38 +215,36 @@
       (lib-be/with-metadata-provider-cache
         (try
           (log/info "Reindexing searchable entities")
-          (let [timer    (u/start-timer)
-                report   (reduce (partial merge-with max)
-                                 nil
-                                 (for [e engines]
-                                   (search.engine/reindex! e opts)))
+          (let [timer     (u/start-timer)
+                outcomes  (for [engine engines]
+                            (with-engine-lease engine "reindex"
+                              #(search.engine/reindex! engine opts)))
+                acquired? (some :acquired? outcomes)
+                report    (reduce (partial merge-with max)
+                                  nil
+                                  (keep :result outcomes))
                 duration (u/since-ms timer)]
-            (analytics/inc! :metabase-search/index-reindex-ms duration)
-            (analytics/observe! :metabase-search/index-reindex-duration-ms duration)
-            (doseq [[model cnt] report]
-              (analytics/inc! :metabase-search/index-reindexes {:model model} cnt))
-            (log/infof "Done reindexing in %.0fms %s" duration (sort-by (comp - val) report))
+            (when acquired?
+              (analytics/inc! :metabase-search/index-reindex-ms duration)
+              (analytics/observe! :metabase-search/index-reindex-duration-ms duration)
+              (doseq [[model cnt] report]
+                (analytics/inc! :metabase-search/index-reindexes {:model model} cnt))
+              (log/infof "Done reindexing in %.0fms %s" duration (sort-by (comp - val) report)))
             report)
           (catch Exception e
-            (analytics/inc! :metabase-search/index-error)
+            (report-failure! "reindex" e)
             (throw e)))))))
 
 (defn reindex!
   "Build and activate a new index while continuing to update the current one.
+  Each engine uses a renewable app-db lease scoped to its engine, index version, and locale.
   By default, runs asynchronously and returns a future.
   Runs synchronously and returns a delivered promise when `search.ingestion/*force-sync*` is true or
   `:async?` is false."
   [& {:keys [async?] :or {async? true} :as opts}]
-  (let [f (fn []
-            (try
-              (reindex-logic! opts)
-              (catch Exception e
-                (log/errorf "Reindex failed: %s" (ex-message e))
-                (analytics/inc! :metabase-search/index-error)
-                (throw e))))]
-    (if (or search.ingestion/*force-sync* (not async?))
-      (doto (promise) (deliver (f)))
-      (future (f)))))
+  (if (or search.ingestion/*force-sync* (not async?))
+    (doto (promise) (deliver (reindex-logic! opts)))
+    (future (reindex-logic! opts))))
 
 (defn reset-tracking!
   "Stop tracking the current indexes. Used when resetting the appdb."

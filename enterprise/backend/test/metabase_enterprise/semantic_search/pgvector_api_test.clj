@@ -12,6 +12,7 @@
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.lease :as search.lease]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -86,6 +87,28 @@
         (testing "Initialization re-creates missing index table"
           (semantic.pgvector-api/init-semantic-search! pgvector index-metadata model1)
           (is (true? (@#'semantic.index-metadata/index-table-exists? pgvector index))))))))
+
+(deftest init-refuses-to-activate-after-lease-loss-test
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
+        index-metadata (semantic.tu/unique-index-metadata)
+        model          semantic.tu/mock-embedding-model
+        lost-context   {:claim {:engine "semantic", :owner "stale"}, :lost? (atom true)}]
+    (try
+      (semantic.pgvector-api/init-semantic-search! pgvector index-metadata model)
+      (let [active-before (semantic.index-metadata/get-active-index-state pgvector index-metadata)]
+        (testing "a force reset from a deposed lease owner aborts before activating its fresh index"
+          (is (thrown-with-msg? Exception #"lease was lost"
+                                (binding [search.lease/*lease-context* lost-context]
+                                  (semantic.pgvector-api/init-semantic-search!
+                                   pgvector index-metadata model {:force-reset? true}))))
+          (is (= active-before (semantic.index-metadata/get-active-index-state pgvector index-metadata))))
+        (testing "a deposed owner stops gating documents"
+          (is (thrown-with-msg? Exception #"lease was lost"
+                                (binding [search.lease/*lease-context* lost-context]
+                                  (semantic.pgvector-api/gate-updates!
+                                   pgvector index-metadata [{:model "card", :id "1", :name "Dog Training Guide", :searchable_text "dogs"}]))))))
+      (finally
+        (semantic.tu/cleanup-index-metadata! pgvector index-metadata)))))
 
 (deftest ensure-active-hnsw-index!-test
   (mt/with-premium-features #{:semantic-search}

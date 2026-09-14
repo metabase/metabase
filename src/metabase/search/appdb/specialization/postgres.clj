@@ -24,8 +24,8 @@
     "CREATE INDEX IF NOT EXISTS %s_model_archived_idx ON %s (model, archived)"
     "CREATE INDEX IF NOT EXISTS %s_archived_idx ON %s (archived)"]))
 
-(defmethod specialization/batch-upsert! :postgres [table entries]
-  (search.db/postgres-batch-upsert! table entries))
+(defmethod specialization/batch-upsert! :postgres [conn table entries]
+  (search.db/postgres-batch-upsert! conn table entries))
 
 (defmethod specialization/base-query :postgres
   [active-table search-term search-ctx select-items]
