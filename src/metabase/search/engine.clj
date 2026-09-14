@@ -2,10 +2,25 @@
 (ns metabase.search.engine
   (:require
    [clojure.string :as str]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.search.hierarchy :as search.hierarchy]
    [metabase.search.settings :as settings]
    [metabase.util :as u]
    [metabase.util.log :as log]))
+
+(defn record-freshness!
+  "Stamp the per-engine freshness gauge that staleness alerting watches.
+
+  Call it when `engine` reports a completed rebuild.
+  Absence of the series means this process never completed one; the gauge is deliberately not
+  pre-registered, since a zero would read as stale-since-1970 for engines that are simply inactive."
+  [engine]
+  (try
+    (analytics/set-gauge! :metabase-search/last-successful-reindex-timestamp-seconds
+                          {:engine (name engine)}
+                          (/ (System/currentTimeMillis) 1000.0))
+    (catch Throwable e
+      (log/warnf "Failed to record search index freshness for %s: %s" engine (ex-message e)))))
 
 (def ^:private default-engine-precedence
   "The engines to use as the default, in decreasing order of preference.

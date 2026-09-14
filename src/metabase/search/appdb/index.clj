@@ -456,6 +456,7 @@
        (transduce (comp (partition-all insert-batch-size)
                         (map (partial batch-update! reindex-table)))
                   (partial merge-with +)
+                  {}
                   document-reducible)))))
 
 (defmethod search.engine/update! :search.engine/appdb [_engine document-reducible]
