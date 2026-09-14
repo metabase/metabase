@@ -123,9 +123,16 @@ describe("getChartLayout", () => {
         createMockChartContext({ measureText: (text) => text.length * 8 }),
       ).ticksDimensions.yTicksWidthLeft;
 
+    const withoutGoal = getLeftTicksWidth({ "graph.show_goal": false });
+    const withGoal = (goalValue: number) =>
+      getLeftTicksWidth({
+        "graph.show_goal": true,
+        "graph.goal_value": goalValue,
+      });
+
     // the user enters 100 for 100%, which is no wider than the widest tick
-    expect(
-      getLeftTicksWidth({ "graph.show_goal": true, "graph.goal_value": 100 }),
-    ).toBe(getLeftTicksWidth({ "graph.show_goal": false }));
+    expect(withGoal(100)).toBe(withoutGoal);
+    // while 1000% is one character wider than 100%
+    expect(withGoal(1000)).toBe(withoutGoal + 8);
   });
 });
