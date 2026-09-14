@@ -64,6 +64,13 @@
                       {:status-code 401})))
     attrs))
 
+(defn- saml-response->session-index
+  "The SessionIndex the IdP issued for this login, or nil if it sent none.
+
+  Recorded on the session so single logout can name the session the IdP should end."
+  [saml-response]
+  (-> (saml/assertions saml-response) first :session-index))
+
 (methodical/defmethod auth-identity/authenticate :provider/saml
   [_provider {:keys [redirect-url relay-state] :as request}]
   (cond
@@ -116,6 +123,7 @@
                                                                                :issuer]
                                                         :issuer (sso-settings/saml-identity-provider-issuer)})
             attrs (saml-response->attributes validated-response)
+            session-index (saml-response->session-index validated-response)
             email (get attrs (sso-settings/saml-attribute-email))
             first-name (get attrs (sso-settings/saml-attribute-firstname))
             last-name (get attrs (sso-settings/saml-attribute-lastname))
@@ -138,7 +146,10 @@
                      :login_attributes user-attributes}
          :tenant-slug tenant-slug
          :saml-data {:group-names groups
-                     :user-attributes user-attributes}
+                     :user-attributes user-attributes
+                     ;; Kept so the session row can record it: single logout sends it back to name
+                     ;; the session the IdP should end.
+                     :session-index session-index}
          :provider-id email})
       (catch clojure.lang.ExceptionInfo e
         (log/errorf "SAML authentication failed: %s" (.getMessage e))

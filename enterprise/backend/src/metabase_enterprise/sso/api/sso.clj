@@ -102,7 +102,7 @@
   [_route-params _query-params _body {cookies :cookies, :as _request}]
   (let [metabase-session-key (get-in cookies [request/metabase-session-cookie :value])
         metabase-session-key-hashed (session/hash-session-key metabase-session-key)
-        {:keys [email sso_source]}
+        {:keys [email sso_source saml_session_index]}
         (sso.db/session-user-email-and-source metabase-session-key-hashed)]
     ;; If a user doesn't have SLO setup on their IdP,
     ;; they will never hit "/handle_slo" so we must delete the session here:
@@ -116,6 +116,10 @@
         :idp-url (sso-settings/saml-identity-provider-slo-uri)
         :issuer (sso-settings/saml-application-name)
         :user-email email
+        ;; Identifies which session to end. IdPs that map several sessions to one email (Auth0)
+        ;; reject a LogoutRequest without it. Omitted when we have none, which keeps the request
+        ;; unchanged for IdPs that never sent one.
+        :session-index saml_session_index
         :relay-state (u/encode-base64
                       (str (system/site-url) metabase-slo-redirect-url))))}))
 
