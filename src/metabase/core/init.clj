@@ -44,6 +44,7 @@
    [metabase.login-history.init]
    [metabase.mcp.init]
    [metabase.metabot.init]
+   [metabase.mfa.init]
    [metabase.model-persistence.init]
    [metabase.models.init]
    [metabase.mq.init]
@@ -86,6 +87,7 @@
    [metabase.util.experiment.init]
    [metabase.version.init]
    [metabase.view-log.init]
+   [metabase.warehouse-schema.init]
    [metabase.warehouses.init]
    [metabase.xrays.init]))
 

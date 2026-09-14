@@ -18,7 +18,7 @@ _Admin > Settings > Appearance_
 
 Appearance settings give admins the option to whitelabel Metabase to match your company’s branding.
 
-If you're looking for date, time, number, or currency formatting, see [Formatting defaults](../data-modeling/formatting.md).
+If you're looking for date, time, number, or currency formatting, see [Formatting defaults](../data-modeling/metadata/formatting.md).
 
 ## Changing Metabase's appearance
 

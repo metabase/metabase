@@ -131,21 +131,21 @@ Metabase's reference documentation.
 ### Data modeling
 
 - [Data modeling overview](./data-modeling/start.md)
-- [Models](./data-modeling/models.md)
-- [Model persistence](./data-modeling/model-persistence.md)
-- [Metrics](./data-modeling/metrics.md)
-- [Table metadata admin settings](./data-modeling/metadata-editing.md)
-- [Field types](./data-modeling/semantic-types.md)
-- [Formatting defaults](./data-modeling/formatting.md)
-- [Working with JSON](./data-modeling/json-unfolding.md)
-- [Segments](./data-modeling/segments.md)
+- [Models](./data-modeling/models/models.md)
+- [Model persistence](./data-modeling/models/model-persistence.md)
+- [Metrics](./data-modeling/semantic-layer/metrics.md)
+- [Table metadata admin settings](./data-modeling/metadata/metadata-editing.md)
+- [Field types](./data-modeling/metadata/semantic-types.md)
+- [Formatting defaults](./data-modeling/metadata/formatting.md)
+- [Working with JSON](./data-modeling/metadata/json-unfolding.md)
+- [Segments](./data-modeling/semantic-layer/segments.md)
 
 ### Actions
 
-- [Actions overview](./actions/start.md)
-- [Introduction to actions](./actions/introduction.md)
-- [Basic actions](./actions/basic.md)
-- [Custom actions](./actions/custom.md)
+- [Actions overview](./data-modeling/models/actions/start.md)
+- [Introduction to actions](./data-modeling/models/actions/introduction.md)
+- [Basic actions](./data-modeling/models/actions/basic.md)
+- [Custom actions](./data-modeling/models/actions/custom.md)
 
 ### AI
 

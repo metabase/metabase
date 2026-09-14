@@ -22,6 +22,7 @@
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.sync.core :as sync]
+   [metabase.types.core :as types]
    [metabase.upload.core :as upload]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -32,6 +33,7 @@
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema-rest.db :as warehouse-schema-rest.db]
    [metabase.warehouse-schema.models.table :as table]
+   [metabase.warehouse-schema.models.table-user-settings :as schema.table-user-settings]
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.xrays.core :as xrays]
    [steffan-westcott.clj-otel.api.trace.span :as span]
@@ -46,6 +48,12 @@
 (def ^:private FieldOrder
   "Schema for a valid table field ordering."
   (into [:enum] (map name table/field-orderings)))
+
+(def ^:private EntityType
+  "Schema for a valid table entity type, as either a keyword or a string."
+  (mu/with-api-error-message
+   [:fn #(isa? types/entity-hierarchy (keyword %) :entity/*)]
+   (deferred-tru "value must be a valid entity type (keyword or string).")))
 
 (mr/def ::data-authority-write
   "Schema for writing a valid table data authority."
@@ -132,7 +140,8 @@
   (let [api-perm-check-fn (if include_editable_data_model
                             api/write-check
                             api/read-check)]
-    (-> (api-perm-check-fn :model/Table id)
+    (-> (api/check-404 (warehouse-schema-rest.db/table id))
+        api-perm-check-fn
         (t2/hydrate :db :pk_field :collection)
         schema.table/present-table)))
 
@@ -181,7 +190,7 @@
                          (u/update-some :data_layer keyword)
                          (u/update-some :data_source keyword)
                          not-empty)]
-    (warehouse-schema-rest.db/update-table! id changes))
+    (schema.table-user-settings/upsert-user-settings existing-table changes))
   (let [updated-table        (warehouse-schema-rest.db/table id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
     (if changed-field-order?
@@ -246,7 +255,7 @@
    _query-params
    body :- [:map {:closed true}
             [:display_name            {:optional true} [:maybe ms/NonBlankString]]
-            [:entity_type             {:optional true} [:maybe ms/EntityTypeKeywordOrString]]
+            [:entity_type             {:optional true} [:maybe EntityType]]
             [:visibility_type         {:optional true} [:maybe TableVisibilityType]]
             [:description             {:optional true} [:maybe :string]]
             [:caveats                 {:optional true} [:maybe :string]]
@@ -274,7 +283,7 @@
    {:keys [ids], :as body} :- [:map {:closed true}
                                [:ids                                      [:sequential ms/PositiveInt]]
                                [:display_name            {:optional true} [:maybe ms/NonBlankString]]
-                               [:entity_type             {:optional true} [:maybe ms/EntityTypeKeywordOrString]]
+                               [:entity_type             {:optional true} [:maybe EntityType]]
                                [:visibility_type         {:optional true} [:maybe TableVisibilityType]]
                                [:description             {:optional true} [:maybe :string]]
                                [:caveats                 {:optional true} [:maybe :string]]
@@ -428,7 +437,9 @@
             [:sequential ms/PositiveInt]
             [:map {:closed true} [:field_order [:sequential ms/PositiveInt]]]]]
   (let [field-order (if (map? body) (:field_order body) body)]
-    (-> (warehouse-schema-rest.db/table id) api/write-check (table/custom-order-fields! field-order)))
+    (-> (warehouse-schema-rest.db/table id) api/write-check (schema.table-user-settings/custom-order-fields! field-order))
+    (events/publish-event! :event/table-update {:object  (warehouse-schema-rest.db/table id)
+                                                :user-id api/*current-user-id*}))
   {:success true})
 
 (mu/defn- update-csv!

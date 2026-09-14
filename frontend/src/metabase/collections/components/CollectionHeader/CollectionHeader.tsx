@@ -4,6 +4,7 @@ import {
   isLibraryCollection,
   isTrashedCollection,
 } from "metabase/common/collections/utils";
+import { PLUGIN_AUDIT } from "metabase/plugins";
 import { Flex } from "metabase/ui";
 import type { Collection, UpdateCollectionRequest } from "metabase-types/api";
 
@@ -11,7 +12,6 @@ import { CollectionMenu } from "../CollectionMenu";
 
 import CollectionBookmark from "./CollectionBookmark";
 import { CollectionCaption } from "./CollectionCaption";
-import { CollectionExportAnalytics } from "./CollectionExportAnalytics";
 import S from "./CollectionHeader.module.css";
 import { CollectionInfoSidebarToggle } from "./CollectionInfoSidebarToggle";
 import { CollectionNewButton } from "./CollectionNewButton";
@@ -96,7 +96,7 @@ export const CollectionHeader = ({
           {showTimelinesButton && (
             <CollectionTimeline collection={collection} />
           )}
-          {showExportButton && <CollectionExportAnalytics />}
+          {showExportButton && <PLUGIN_AUDIT.CollectionExportAnalytics />}
           {isInstanceAnalytics && (
             <CollectionPermissions collection={collection} />
           )}

@@ -441,6 +441,18 @@
    state
    (:user_is_viewing context)))
 
+(defn- client-content-ids
+  "Ids of the queries and charts this request's viewing context seeds, as opposed to ones the
+  agent's own tools wrote. A refusal to present one of these is a real access attempt and gets
+  the audited treatment; see [[metabase.metabot.tools.shared.content-store]]. Seeding a fresh
+  map keeps this to the context of the turn being served, which is where the distinction comes
+  from - the conversation's `:state` carries no provenance."
+  [context]
+  (let [seeded (-> {} (seed-state context) (seed-charts context))]
+    (into (set (keys (:queries seeded)))
+          (map str)
+          (keys (:charts seeded)))))
+
 ;;; Main loop
 
 (def ^:private profile-id->required-permission
@@ -479,7 +491,8 @@
                          (seed-chart-configs context)
                          (seed-charts context))
         memory       (assoc (memory/initialize messages seeded context)
-                            :conversation-id conversation-id)
+                            :conversation-id conversation-id
+                            :client-ids (client-content-ids context))
         memory-atom  (doto (or external-memory-atom (atom nil)) (reset! memory))
         tools        (tools/wrap-tools-with-state base-tools memory-atom metabot-id profile-id)]
     (log/info "Starting agent" {:profile  profile-id

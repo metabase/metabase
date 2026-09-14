@@ -2168,3 +2168,47 @@ serdes/meta:
                                  :base-snapshot nil)]
         (is (= :conflict (:status result)))
         (is (str/includes? (:message result) "rewritten"))))))
+
+;;; --------------------------------- Table/Field user-settings inline round trip ---------------------------------
+
+(deftest table-and-field-user-settings-round-trip-test
+  (testing "a full export writes one file per published Table with user edits -- the TableUserSettings entity at
+            the Table's own path, inlining its edited Fields' settings under :fields -- and a later import
+            restores it, pruning field edits the file no longer lists"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Database   {db-id :id}    {:name "test-db"}
+                     :model/Collection {coll-id :id}  {:name "RS" :is_remote_synced true :location "/"}
+                     :model/Table      {table-id :id} {:name "Test Table" :db_id db-id
+                                                       :is_published true :collection_id coll-id}
+                     :model/Field      {f1-id :id}    {:name "F1" :table_id table-id :base_type :type/Text}
+                     :model/Field      {f2-id :id}    {:name "F2" :table_id table-id :base_type :type/Text}]
+        (t2/insert! :model/TableUserSettings {:table_id table-id :display_name "Renamed"})
+        (t2/insert! :model/FieldUserSettings {:field_id f1-id :description "curated"})
+        (let [export-task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})
+              mock-source    (test-helpers/create-mock-source)
+              export-result  (impl/export! (source.p/snapshot mock-source) export-task-id "Test export" :force? true)]
+          (is (= :success (:status export-result)))
+          (remote-sync.task/complete-sync-task! export-task-id)
+          (let [files       (get @(:files-atom mock-source) "main")
+                table-files (into {} (filter (fn [[p _]] (str/includes? p "test_table"))) files)]
+            (is (= 1 (count table-files))
+                (str "expected exactly one Table-related file, got " (keys table-files)))
+            (let [[path content] (first table-files)]
+              (is (str/ends-with? path "test_table.yaml")
+                  "the file lives at the Table's own path, not a ___tableusersettings/___fieldusersettings file")
+              (is (not (str/includes? path "___tableusersettings")))
+              (is (not (str/includes? path "___fieldusersettings")))
+              (is (str/includes? content "Renamed"))
+              (is (str/includes? content "fields:"))
+              (is (str/includes? content "curated"))))
+          (t2/insert! :model/FieldUserSettings {:field_id f2-id :description "stale"})
+          (t2/update! :model/TableUserSettings :table_id table-id {:display_name "Local Edit"})
+          (let [import-task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+                import-result  (impl/import! (source.p/snapshot mock-source) import-task-id :force? true)]
+            (is (= :success (:status import-result)))
+            (is (= "Renamed" (:display_name (t2/select-one :model/TableUserSettings :table_id table-id)))
+                "T's user display_name is restored from the import")
+            (is (= "curated" (:description (t2/select-one :model/FieldUserSettings :field_id f1-id)))
+                "F1's edited description is present")
+            (is (not (t2/exists? :model/FieldUserSettings :field_id f2-id))
+                "F2's stale local row, absent from the imported file's :fields, is gone")))))))

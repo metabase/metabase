@@ -65,6 +65,7 @@
     :model/Field
     :model/FieldValues
     :model/FieldUserSettings
+    :model/TableUserSettings
     :model/Segment
     :model/ModerationReview
     :model/Revision
@@ -409,6 +410,7 @@
     :model/ImplicitAction
     :model/HTTPAction
     :model/FieldUserSettings
+    :model/TableUserSettings
     :model/QueryAction
     :model/MetabotConversation
     :model/ModelIndexValue

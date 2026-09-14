@@ -18,6 +18,7 @@ import {
 import type { PermissionEditorEntity } from "metabase/admin/permissions/types";
 import { assertNumericId } from "metabase/admin/permissions/types";
 import { useListCollectionsTreeQuery } from "metabase/api";
+import { getPermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useNavigate, useParams } from "metabase/router";
 import type { Collection, CollectionId } from "metabase-types/api";
@@ -63,7 +64,7 @@ function TenantSpecificCollectionPermissionsPageView() {
 
   const navigateToItem = useCallback(
     ({ id }: { id: CollectionId }) => {
-      navigate(`/admin/permissions/tenant-specific-collections/${id}`);
+      navigate(`${getPermissionsBasePath()}/tenant-specific-collections/${id}`);
     },
     [navigate],
   );

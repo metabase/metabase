@@ -10,6 +10,7 @@
    [metabase.search.scoring :as search.scoring]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn library-root-collections
@@ -27,7 +28,8 @@
   authoritative."
   []
   (t2/reducible-select [:model/Table :id :is_published :data_layer :data_authority]
-                       {:where [:and
+                       {:from [(warehouse-schema-overlay/table-query)]
+                        :where [:and
                                 [:= :active true]
                                 [:or [:= :is_published true]
                                  [:= :data_authority ^:allow-raw-sql [:inline "authoritative"]]]]}))

@@ -127,4 +127,13 @@ describe("SettingsLdapForm", () => {
       ATTRS["ldap-attribute-lastname"],
     );
   });
+
+  it("does not offer user provisioning on OSS", async () => {
+    await setup();
+
+    expect(screen.queryByText("User provisioning")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("switch", { name: "User provisioning" }),
+    ).not.toBeInTheDocument();
+  });
 });

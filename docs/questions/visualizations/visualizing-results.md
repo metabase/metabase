@@ -186,7 +186,7 @@ You can access formatting options for the columns used in a chart. Just open the
 
 Options differ depending on the chart, and can include settings for the chart's data, its display, and its axes.
 
-See also [Formatting defaults](../../data-modeling/formatting.md).
+See also [Formatting defaults](../../data-modeling/metadata/formatting.md).
 
 ## Further reading
 

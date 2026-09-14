@@ -4,17 +4,17 @@ title: Actions on dashboards
 
 # Actions on dashboards
 
-You can add buttons to dashboards to perform [actions](../actions/start.md) like creating or updating records, and combine them with dashboard [filters](./filters.md).
+You can add buttons to dashboards to perform [actions](../data-modeling/models/actions/start.md) like creating or updating records, and combine them with dashboard [filters](./filters.md).
 
 ![Dashboard with filter, action button, and detail card view](./images/dashboard-filter-action.png)
 
 ## Create an action
 
-To add an action button to a dashboard, you'll first need to create an action on a model. See [Model actions](../actions/introduction.md).
+To add an action button to a dashboard, you'll first need to create an action on a model. See [Model actions](../data-modeling/models/actions/introduction.md).
 
 ## Add an action button to a dashboard
 
-Once you've [created an action](../actions/introduction.md), you can add a button to a dashboard to perform that action:
+Once you've [created an action](../data-modeling/models/actions/introduction.md), you can add a button to a dashboard to perform that action:
 
 1. Visit a dashboard page and click the **pencil** icon to start editing the dashboard.
 2. Click on the **box with a mouse pointer** to add an action.
@@ -54,9 +54,9 @@ To connect an action field to a filter on a dashboard:
 
 While you can add actions to dashboards and use them in your Metabase, actions won't work on dashboards accessed via [public links](./introduction.md#sharing-dashboards-with-public-links), or dashboards in guest embeds.
 
-If you want people outside of your Metabase to use an action, you can create a [public form for an action](../actions/custom.md#make-public), or expose actions via [modular embedding](../embedding/modular-embedding.md) with SSO or [full app embedding](../embedding/full-app-embedding.md).
+If you want people outside of your Metabase to use an action, you can create a [public form for an action](../data-modeling/models/actions/custom.md#make-public), or expose actions via [modular embedding](../embedding/modular-embedding.md) with SSO or [full app embedding](../embedding/full-app-embedding.md).
 
 ## Further reading
 
-- [Actions](../actions/start.md)
+- [Actions](../data-modeling/models/actions/start.md)
 - [Editable tables](../data-modeling/editable-tables.md)
