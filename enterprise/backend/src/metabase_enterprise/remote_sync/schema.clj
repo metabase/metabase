@@ -202,7 +202,24 @@
 
 (mr/def ::remote-sync-task.outcome
   "The `:outcome` column of a RemoteSyncTask, decoded."
-  :map)
+  [:multi {:dispatch :kind}
+   ["pulled"       [:map {:closed true}
+                    [:kind   [:= "pulled"]]
+                    [:count  :int]
+                    [:branch :string]]]
+   ["pull-skipped" [:map {:closed true}
+                    [:kind [:= "pull-skipped"]]]]
+   ["pushed"       [:map {:closed true}
+                    [:kind   [:= "pushed"]]
+                    [:count  :int]
+                    [:branch :string]]]
+   ["push-skipped" [:map {:closed true}
+                    [:kind [:= "push-skipped"]]]]
+   ["merged"       [:map {:closed true}
+                    [:kind   [:= "merged"]]
+                    [:pulled :int]
+                    [:pushed :int]
+                    [:branch :string]]]])
 
 (mr/def ::remote-sync-task
   "A RemoteSyncTask as selected from the app DB: every column of `:remote_sync_task`."

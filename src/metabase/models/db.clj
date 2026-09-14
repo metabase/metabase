@@ -132,7 +132,7 @@
 (mu/defn insert-entities!
   "Insert the `model` `rows`, returning the number inserted."
   [model :- [:or :keyword symbol?]
-   rows  :- [:sequential :map]]
+   rows  :- [:sequential [:map-of :keyword [:maybe :some]]]]
   (t2/insert! model rows))
 
 (mu/defn delete-entity!

@@ -189,7 +189,8 @@
    ^java.sql.Connection conn :- (lib.schema.common/instance-of-class java.sql.Connection)
    table-identifier
    rows
-   {:keys [transaction?] :or {transaction? true}}]
+   {:keys [transaction?] :or {transaction? true}} :- [:map {:closed true}
+                                                       [:transaction? {:optional true} [:maybe :boolean]]]]
   (let [statements (ddl/insert-rows-dml-statements driver table-identifier rows)]
     ;; `set-parameters` might try to look at DB timezone; we don't want to do that while loading the data because the
     ;; DB hasn't been synced yet

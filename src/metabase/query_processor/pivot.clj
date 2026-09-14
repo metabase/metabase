@@ -45,6 +45,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.performance :refer [empty? every? get-in mapv not-empty select-keys some update-keys]]))
 
 (set! *warn-on-reflection* true)
@@ -314,9 +315,8 @@
 (mu/defn- column-name-pivot-options :- ::pivot-opts
   "Looks at the `pivot_table.column_split` key in the card's visualization settings and generates `pivot-rows` and
   `pivot-cols` to use for generating subqueries. Supports column name-based settings only."
-  [query        :- [:map {:closed true}
-                    [:database ::lib.schema.id/database]]
-   viz-settings :- [:maybe :map]]
+  [query        :- ::qp.schema/any-query
+   viz-settings :- [:maybe ms/VisualizationSettings]]
   (let [{:keys [rows columns values]} (:pivot_table.column_split viz-settings)
         show-row-totals    (get viz-settings :pivot.show_row_totals true)
         show-column-totals (get viz-settings :pivot.show_column_totals true)
@@ -346,9 +346,8 @@
 (mu/defn- column-sort-order :- ::pivot-opts
   "Looks at the `pivot_table.column_sort_order` key in the card's visualization settings and generates a map from the
   column's index to the setting (either ascending or descending)."
-  [query        :- [:map {:closed true}
-                    [:database ::lib.schema.id/database]]
-   viz-settings :- [:maybe :map]]
+  [query        :- ::qp.schema/any-query
+   viz-settings :- [:maybe ms/VisualizationSettings]]
   (let [metadata-provider  (or (:lib/metadata query)
                                (lib-be/application-database-metadata-provider (:database query)))
         query              (lib/query metadata-provider query)
@@ -367,9 +366,8 @@
 (mu/defn- field-ref-pivot-options :- ::pivot-opts
   "Looks at the `pivot_table.column_split` key in the card's visualization settings and generates `pivot-rows` and
   `pivot-cols` to use for generating subqueries. Supports field ref-based settings only."
-  [query        :- [:map {:closed true}
-                    [:database ::lib.schema.id/database]]
-   viz-settings :- [:maybe :map]]
+  [query        :- ::qp.schema/any-query
+   viz-settings :- [:maybe ms/VisualizationSettings]]
   (let [{:keys [rows columns values]} (:pivot_table.column_split viz-settings)
         show-row-totals    (get viz-settings "pivot.show_row_totals" true)
         show-column-totals (get viz-settings "pivot.show_column_totals" true)
@@ -414,9 +412,8 @@
 
   Field ref-based visualization settings are considered legacy and are not used for new questions. To not break existing
   questions we need to support both old- and new-style settings until they are fully migrated."
-  [query        :- [:map {:closed true}
-                    [:database ::lib.schema.id/database]]
-   viz-settings :- [:maybe :map]]
+  [query        :- ::qp.schema/any-query
+   viz-settings :- [:maybe ms/VisualizationSettings]]
   (when viz-settings
     (let [{:keys [rows columns]} (:pivot_table.column_split viz-settings)]
       (merge
@@ -447,7 +444,7 @@
   against the last stage's breakouts in `query`. Returns nil when there is no `:pivot_table.column_split` or when
   neither rows nor columns resolve."
   [query        :- :metabase.lib.schema/query
-   viz-settings :- [:maybe :map]]
+   viz-settings :- [:maybe ms/VisualizationSettings]]
   (when-let [{:keys [rows columns]} (:pivot_table.column_split viz-settings)]
     (let [row-uuids (resolve-refs-to-uuids query rows)
           col-uuids (resolve-refs-to-uuids query columns)]
@@ -464,7 +461,7 @@
   Returns `query` unchanged when the last stage already has `:pivot`, when `viz-settings` is empty, or when no refs
   resolve."
   [query        :- ::lib.schema/query
-   viz-settings :- [:maybe :map]]
+   viz-settings :- [:maybe ms/VisualizationSettings]]
   (let [clause (when (and (not (lib.pivot/has-pivot? query))
                           (seq viz-settings))
                  (build-pivot-clause query viz-settings))]

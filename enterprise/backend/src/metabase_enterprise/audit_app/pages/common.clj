@@ -102,7 +102,17 @@
                       e)))))
 
 (mu/defn- reduce-results* :- :some
-  [honeysql-query :- :map
+  [honeysql-query :- [:map {:closed true}
+                       [:with       {:optional true} :any]
+                       [:select     {:optional true} :any]
+                       [:from       {:optional true} :any]
+                       [:join       {:optional true} :any]
+                       [:left-join  {:optional true} :any]
+                       [:where      {:optional true} :any]
+                       [:order-by   {:optional true} :any]
+                       [:limit      {:optional true} :any]
+                       [:offset     {:optional true} :any]
+                       [:union-all  {:optional true} :any]]
    rff            :- ::qp.schema/rff
    init]
   (let [driver         (mdb/db-type)

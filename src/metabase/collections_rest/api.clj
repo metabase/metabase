@@ -21,6 +21,7 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.queries.core :as queries]
+   [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -268,8 +269,20 @@
            (-> card :in_dashboards first :collection_id))))
      all-cards-in-collection)))
 
+(def ^:private CardInDashboard
+  [:map {:closed true}
+   [:card_id          :metabase.lib.schema.id/card]
+   [:name             :string]
+   [:collection_id    [:maybe :metabase.lib.schema.id/collection]]
+   [:description      [:maybe :string]]
+   [:id               :metabase.lib.schema.id/dashboard]
+   [:archived         :boolean]
+   [:enable_embedding :boolean]])
+
 (mu/defn- present-dashboard-question-candidate
-  [{:keys [in_dashboards] :as card}]
+  [{:keys [in_dashboards] :as card}
+   :- (-> (mr/schema ::queries.schema/card)
+          (malli.util/assoc :in_dashboards [:sequential CardInDashboard]))]
   (-> card
       (select-keys [:id :name :description])
       (assoc :sole_dashboard_info (-> in_dashboards first (select-keys [:id :name :description])))))

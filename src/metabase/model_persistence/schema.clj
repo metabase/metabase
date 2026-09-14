@@ -2,12 +2,13 @@
   "Malli schemas for the model-persistence module."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
 (mr/def ::persisted-info.definition
   "The `:definition` column of a PersistedInfo, decoded."
-  :map)
+  ::lib.schema.metadata/persisted-info.definition)
 
 (mr/def ::persisted-info
   "A PersistedInfo as selected from the app DB: every column of `:persisted_info`."

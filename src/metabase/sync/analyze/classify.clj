@@ -80,7 +80,9 @@
                   (sync.db/field-fingerprint (u/the-id field)))))
 
   ([field       :- i/FieldInstance
-    {:keys [exists-name]}
+    {:keys [exists-name]} :- [:map {:closed true}
+                              [:fields-failed :int]
+                              [:exists-name :boolean]]
     fingerprint :- [:maybe ::lib.schema.metadata.fingerprint/fingerprint]]
    (sync-util/with-error-handling (format "Error classifying %s" (sync-util/name-for-logging field))
      (let [classified (analyze/run-classifiers field fingerprint)

@@ -397,7 +397,7 @@
   "Build a 'location path' from a sequence of `collections-or-ids`.
 
      (location-path 10 20) ; -> \"/10/20/\""
-  [& collections-or-ids :- [:* [:or ms/PositiveInt :map]]]
+  [& collections-or-ids :- [:* [:or ms/PositiveInt ::collections.schema/collection]]]
   (if-not (seq collections-or-ids)
     "/"
     (str
@@ -1045,7 +1045,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (mu/defn- ancestors* :- [:maybe [:sequential (ms/InstanceOf :model/Collection)]]
-  [{:keys [location]}]
+  [{:keys [location]} :- CollectionWithLocationOrRoot]
   (when-let [ancestor-ids (seq (location-path->ids location))]
     (collections.db/ancestor-summaries ancestor-ids)))
 
@@ -1059,7 +1059,7 @@
 (mu/defn- effective-ancestors*
   "Given a collection, return the effective ancestors of that collection."
   [collection :- [:maybe CollectionWithLocationOrRoot]
-   collection-id->collection :- :map]
+   collection-id->collection :- [:map-of :metabase.lib.schema.id/collection ::collections.schema/collection]]
   (if (or (nil? collection)
           (collection.root/is-root-collection? collection))
     []
@@ -1815,7 +1815,7 @@
   allowed. Personal Collections and TCs have lots of restrictions -- you can't archive them, for example, nor can you
   transfer them to other Users."
   [collection-before-updates :- CollectionWithLocationAndIDOrRoot
-   collection-updates        :- :map]
+   collection-updates        :- ::collections.schema/collection.update]
   ;; you're not allowed to change the `:personal_owner_id` of a Collection!
   ;; double-check and make sure it's not just the existing value getting passed back in for whatever reason
   (let [ctype        (if (:personal_owner_id collection-before-updates)

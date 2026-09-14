@@ -16,6 +16,7 @@
    [metabase.cache.core :as cache]
    [metabase.config.core :as config]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.query-processor.middleware.cache.impl :as impl]
@@ -274,7 +275,7 @@
     - `[::canceled nil]` -- the request was canceled."
   [ignore-cache?
    query-hash :- bytes?
-   strategy   :- :map
+   strategy   :- ::lib.schema/cache-strategy
    rff        :- ::qp.schema/rff]
   (if ignore-cache?
     [::miss nil]

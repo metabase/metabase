@@ -418,9 +418,15 @@
    [:end   {:optional true} (lib.schema.common/instance-of-class Temporal)]
    [:unit                   ::temporal-unit]])
 
+(mr/def ::inclusive-options
+  [:map {:closed true}
+   [:inclusive-start? {:optional true} [:maybe :boolean]]
+   [:inclusive-end?   {:optional true} [:maybe :boolean]]])
+
 (mu/defn- adjust-inclusive-range-if-needed :- [:maybe ::temporal-range]
   "Make an inclusive date range exclusive as needed."
-  [temporal-range :- [:maybe ::temporal-range] {:keys [inclusive-start? inclusive-end?]}]
+  [temporal-range :- [:maybe ::temporal-range]
+   {:keys [inclusive-start? inclusive-end?]} :- ::inclusive-options]
   (-> temporal-range
       (m/update-existing :start #(if inclusive-start?
                                    %
@@ -493,7 +499,7 @@
 
   ([date-string  :- ::lib.schema.common/non-blank-string
     {:keys [inclusive-start? inclusive-end?]
-     :or   {inclusive-start? true inclusive-end? true}}]
+     :or   {inclusive-start? true inclusive-end? true}} :- [:maybe ::inclusive-options]]
    (let [options {:inclusive-start? inclusive-start?, :inclusive-end? inclusive-end?}]
      (-> (date-string->raw-range date-string)
          (adjust-inclusive-range-if-needed options)

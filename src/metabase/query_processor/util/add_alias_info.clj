@@ -45,6 +45,7 @@
    [medley.core :as m]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.options :as lib.options]
@@ -535,7 +536,7 @@
   ([query]
    (add-alias-info query nil))
 
-  ([query   :- :map
+  ([query   :- [:or ::lib.schema/query ::mbql.s/Query ::mbql.s/MBQLInnerQuery]
     options :- [:maybe ::options]]
    (cond
      ;; MBQL 5 query

@@ -222,6 +222,28 @@
      {:in  (comp mi/json-in normalize-parameter-mappings)
       :out (comp (mi/catch-normalization-exceptions normalize-parameter-mappings) mi/json-out-with-keywordization)}))
 
+(mr/def ::parameter-mapping-with-dashcard.dashcard
+  "Shape of the `:dashcard` attached to a `::parameter-mapping-with-dashcard`: a DashboardCard row hydrated with
+  `:card` and `:series`, as done by the `:resolved-params` hydration."
+  [:map {:closed true}
+   [:id                     {:optional true} ::lib.schema.id/dashcard]
+   [:created_at             {:optional true} :any]
+   [:updated_at             {:optional true} :any]
+   [:size_x                 {:optional true} :int]
+   [:size_y                 {:optional true} :int]
+   [:row                    {:optional true} :int]
+   [:col                    {:optional true} :int]
+   [:card_id                {:optional true} [:maybe ::lib.schema.id/card]]
+   [:dashboard_id           {:optional true} ::lib.schema.id/dashboard]
+   [:parameter_mappings     {:optional true} [:sequential ::parameter-mapping]]
+   [:visualization_settings {:optional true} :any]
+   [:entity_id              {:optional true} :string]
+   [:action_id              {:optional true} [:maybe ::lib.schema.id/action]]
+   [:dashboard_tab_id       {:optional true} [:maybe :int]]
+   [:inline_parameters      {:optional true} [:maybe [:sequential :string]]]
+   [:card                   {:optional true} [:maybe :metabase.queries.schema/card]]
+   [:series                 {:optional true} [:maybe [:sequential :metabase.queries.schema/card]]]])
+
 (mr/def ::parameter-mapping-with-dashcard
   "A `::parameter-mapping` resolved against the DashboardCard that carries it. The `:dashcard` is attached server-side
   by the `:resolved-params` hydration, so it is deliberately not part of `::parameter-mapping`: no client ever sends
@@ -229,7 +251,7 @@
   [:merge
    [:ref ::parameter-mapping]
    [:map
-    [:dashcard {:optional true} :map]]])
+    [:dashcard {:optional true} ::parameter-mapping-with-dashcard.dashcard]]])
 
 (mr/def ::resolved-parameter
   "A dashboard parameter with its `:mappings` resolved against the DashboardCards that carry them, as the

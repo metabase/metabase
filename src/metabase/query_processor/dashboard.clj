@@ -168,7 +168,7 @@
   [dashboard      :- ::dashboards.schema/dashboard
    dashcard       :- ::dashboards.schema/dashcard
    card-id        :- ::lib.schema.id/card
-   request-params :- [:maybe [:sequential :map]]]
+   request-params :- [:maybe ::dashboards.schema/parameters]]
   (let [dashboard-id              (:id dashboard)
         dashcard-id               (:id dashcard)
         _                         (log/tracef "Resolving Dashboard %d Card %d query request parameters" dashboard-id card-id)

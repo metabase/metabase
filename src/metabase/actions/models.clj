@@ -159,9 +159,36 @@
           :implicit (actions.db/insert-implicit-action! row))
         (:id action)))))
 
+(def ^:private ActionInsertData
+  "The keys [[actions.schema/action.for-insert]] normalizes, accepted here before normalization."
+  [:map {:closed true}
+   [:name                   {:optional true} :any]
+   [:type                   {:optional true} :any]
+   [:model_id               {:optional true} :any]
+   [:archived               {:optional true} :any]
+   [:description            {:optional true} :any]
+   [:parameters             {:optional true} :any]
+   [:database_id            {:optional true} :any]
+   [:parameter_mappings     {:optional true} :any]
+   [:visualization_settings {:optional true} :any]
+   [:created_at             {:optional true} :any]
+   [:updated_at             {:optional true} :any]
+   [:public_uuid            {:optional true} :any]
+   [:public_uuid_prefix     {:optional true} :any]
+   [:made_public_by_id      {:optional true} :any]
+   [:creator_id             {:optional true} :any]
+   [:entity_id              {:optional true} :any]
+   [:legacy_query           {:optional true} :any]
+   [:template               {:optional true} :any]
+   [:response_handle        {:optional true} :any]
+   [:error_handle           {:optional true} :any]
+   [:disabled               {:optional true} :any]
+   [:kind                   {:optional true} :any]
+   [:dataset_query          {:optional true} :any]])
+
 (mu/defn insert! :- ::actions.schema/id
   "Inserts an Action and related type table. Returns the action id."
-  [action-data :- :map]
+  [action-data :- ActionInsertData]
   (insert*! (lib/normalize ::actions.schema/action.for-insert action-data)))
 
 (mu/defn- update*!

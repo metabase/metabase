@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [empty?])
   (:require
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib-be.metadata.bootstrap :as lib-be.bootstrap]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
@@ -35,7 +36,7 @@
    (normalize-query metadata-providerable query nil))
 
   ([metadata-providerable :- [:maybe ::lib.metadata.protocols/metadata-providerable]
-    query                 :- [:maybe :map]
+    query                 :- [:maybe [:or [:= {} {}] ::mbql.s/Query ::lib.schema/query]]
     {:keys [strict?]}     :- [:maybe
                               [:map
                                {:closed true}

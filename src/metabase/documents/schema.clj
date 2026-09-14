@@ -1,5 +1,6 @@
 (ns metabase.documents.schema
   (:require
+   [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -10,7 +11,7 @@
 
 (mr/def ::document.document
   "The `:document` column of a Document, decoded."
-  :map)
+  ::prose-mirror/ast)
 
 (mr/def ::document
   "A Document as selected from the app DB: every column of `:document`."

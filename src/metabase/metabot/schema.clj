@@ -2,6 +2,8 @@
   (:require
    [malli.core :as mc]
    [malli.transform :as mtx]
+   [metabase.legacy-mbql.schema :as legacy-mbql.schema]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
@@ -33,13 +35,79 @@
    :string
    :keyword])
 
+(mr/def ::query
+  "Either an MBQL 5 query or a legacy MBQL query, whichever format the tool that produced it stored."
+  [:or ::lib.schema/query ::legacy-mbql.schema/Query])
+
+(mr/def ::todo
+  [:map {:closed true}
+   [:id :string]
+   [:content :string]
+   [:status [:enum "pending" "in_progress" "completed" "cancelled"]]
+   [:priority [:enum "high" "medium" "low"]]])
+
+(mr/def ::chart-timeline-event
+  [:map {:closed true}
+   [:name :string]
+   [:description {:optional true} [:maybe :string]]
+   [:timestamp :string]])
+
+(mr/def ::chart-config
+  "A `chart_configs` entry: a chart's title, pre-materialized series data, and the query that produced it.
+  Mirrors `metabase.metabot.context/ChartConfigSchema`."
+  [:map {:closed true}
+   [:title {:optional true} [:maybe :string]]
+   [:description {:optional true} [:maybe :string]]
+   [:data {:optional true} [:maybe [:sequential :any]]]
+   [:series {:optional true} [:maybe (ms/string-keyed-map :any)]]
+   [:timeline_events {:optional true} [:maybe [:sequential ::chart-timeline-event]]]
+   [:query {:optional true} [:maybe ::query]]
+   [:display_type {:optional true} [:maybe [:or :string :keyword]]]])
+
+(mr/def ::chart
+  [:map {:closed true}
+   [:chart_id {:optional true} [:maybe :string]]
+   [:query_id {:optional true} [:maybe :string]]
+   [:queries {:optional true} [:maybe [:sequential [:maybe ::query]]]]
+   [:visualization_settings {:optional true}
+    [:maybe [:map {:closed true}
+             [:chart_type {:optional true} [:maybe [:or :string :keyword]]]]]]
+   [:timeline_events {:optional true} [:maybe [:sequential ::chart-timeline-event]]]
+   [:chart_config {:optional true} [:maybe ::chart-config]]])
+
+(mr/def ::transform.target
+  [:map {:closed true}
+   [:type [:or [:= :table] [:= "table"]]]
+   [:name {:optional true} [:maybe :string]]
+   [:database {:optional true} [:maybe :int]]
+   [:schema {:optional true} [:maybe :string]]])
+
+(mr/def ::transform.source
+  [:multi {:dispatch (comp keyword :type)}
+   [:query [:map {:closed true}
+            [:type [:or [:= :query] [:= "query"]]]
+            [:query {:optional true} [:maybe ::query]]]]
+   [:python [:map {:closed true}
+             [:type [:or [:= :python] [:= "python"]]]
+             [:body {:optional true} [:maybe :string]]
+             [:source-database {:optional true} [:maybe :int]]
+             [:source-tables {:optional true} :any]]]])
+
+(mr/def ::transform
+  [:map {:closed true}
+   [:id {:optional true} [:maybe :string]]
+   [:name {:optional true} [:maybe :string]]
+   [:description {:optional true} [:maybe :string]]
+   [:target {:optional true} [:maybe ::transform.target]]
+   [:source {:optional true} [:maybe ::transform.source]]])
+
 (mr/def ::state
   [:map {:closed true}
-   [:queries {:optional true} [:map-of ::state-map-key :map]]
-   [:charts {:optional true} [:map-of ::state-map-key :map]]
-   [:chart-configs {:optional true} [:map-of ::state-map-key :map]]
-   [:todos {:optional true} [:sequential :map]]
-   [:transforms {:optional true} [:map-of ::state-map-key :map]]
+   [:queries {:optional true} [:map-of ::state-map-key ::query]]
+   [:charts {:optional true} [:map-of ::state-map-key ::chart]]
+   [:chart-configs {:optional true} [:map-of ::state-map-key ::chart-config]]
+   [:todos {:optional true} [:sequential ::todo]]
+   [:transforms {:optional true} [:map-of ::state-map-key ::transform]]
    [:link-registry {:optional true} [:map-of ::state-map-key :string]]])
 
 (defn normalize-state
@@ -230,11 +298,13 @@
 
 (mr/def ::metabot-message.usage
   "The `:usage` column of a MetabotMessage, decoded."
-  :map)
+  [:map-of :string [:map {:closed true}
+                    [:prompt :int]
+                    [:completion :int]]])
 
 (mr/def ::metabot-message.state
   "The `:state` column of a MetabotMessage, decoded."
-  :map)
+  ::state)
 
 (mr/def ::metabot-message
   "A MetabotMessage as selected from the app DB: every column of `:metabot_message`."

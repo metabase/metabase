@@ -204,6 +204,23 @@
   don't include them in our deps tree."
   '{metabase.config.core #{metabase-enterprise.core.dummy-namespace metabase.test.dummy-namespace}})
 
+(def ^:private ModuleConfig
+  [:map {:closed true}
+   [:team           {:optional true} :string]
+   [:ns-prefix      {:optional true} :string]
+   [:api            {:optional true} [:or [:= :any] [:set :symbol]]]
+   [:uses           {:optional true} [:or [:= :any] [:set :symbol]]]
+   [:friends        {:optional true} [:set :symbol]]
+   [:model-exports  {:optional true} [:or [:= :any] [:set :keyword]]]
+   [:model-imports  {:optional true} [:or [:= :bypass] [:set :keyword]]]
+   [:module-exports {:optional true} [:set :symbol]]])
+
+(def ^:private ModulesConfig
+  [:map-of :symbol ModuleConfig])
+
+(def ^:private PrefixToModule
+  [:map-of :string :symbol])
+
 (mu/defn- file-dependencies :- [:map
                                 [:namespace simple-symbol?]
                                 [:filename  string?] ; filename is relative to [[project-root]]
@@ -213,7 +230,7 @@
                                               [:namespace simple-symbol?]
                                               [:module    symbol?]
                                               [:dynamic {:optional true} :keyword]]]]]
-  [prefix->module :- map?
+  [prefix->module :- PrefixToModule
    file :- [:or
             string?
             [:fn {:error/message "Instance of a java.io.File"} #(instance? java.io.File %)]]]
@@ -727,11 +744,11 @@
 
 (mu/defn- module->test-files :- [:set :string]
   "Return the set of test filenames associated with a `module`."
-  ([modules-config :- map?
+  ([modules-config :- ModulesConfig
     module-sym :- :symbol]
    (module->test-files modules-config (modules/build-prefix->module modules-config) module-sym))
-  ([modules-config :- map?
-    prefix->module :- map?
+  ([modules-config :- ModulesConfig
+    prefix->module :- PrefixToModule
     module-sym :- :symbol]
    (let [path-prefix  (module->test-path-prefix modules-config module-sym)
          test-dir     (io/file path-prefix)

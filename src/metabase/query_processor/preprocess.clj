@@ -119,7 +119,7 @@
 
 (mu/defn preprocess :- ::lib.schema/query
   "Fully preprocess a query, but do not compile it to a native query or execute it."
-  [query :- :map]
+  [query :- ::qp.schema/any-query]
   (when config/is-test?
     ((requiring-resolve 'mb.hawk.init/assert-tests-are-not-initializing) "do not preprocess queries in top-level forms"))
   (qp.setup/with-qp-setup [query query]
@@ -159,7 +159,7 @@
   "Return the `:cols` you would normally see in MBQL query results by preprocessing the query and calling `annotate` on
   it. This only works for pure MBQL queries, since it does not actually run the queries. Native queries or MBQL
   queries with native source queries won't work, since we don't need the results."
-  [query :- :map]
+  [query :- ::qp.schema/any-query]
   (qp.setup/with-qp-setup [query query]
     (let [preprocessed (-> query preprocess)]
       ;; TODO - we should throw an Exception if the query has a native source query with no attached metadata or at

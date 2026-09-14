@@ -7,6 +7,7 @@
    [honey.sql.helpers :as sql.helpers]
    [malli.util :as mut]
    [metabase.app-db.core :as mdb]
+   [metabase.channel.schema :as channel.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.notification.schema :as notification.schema]
    [metabase.util :as u]
@@ -48,7 +49,7 @@
    [:type                    {:optional true} [:maybe [:or :keyword :string]]]
    [:user_id                 {:optional true} [:maybe ::lib.schema.id/user]]
    [:permissions_group_id    {:optional true} [:maybe ms/PositiveInt]]
-   [:details                 {:optional true} [:maybe :map]]])
+   [:details                 {:optional true} [:maybe ::notification.schema/notification-recipient.details]]])
 
 (def ^:private NotificationSubscriptionRow
   "A whole NotificationSubscription row for insert."
@@ -61,10 +62,7 @@
 
 (def ^:private ChannelTemplateRow
   "A whole ChannelTemplate row for insert."
-  [:map {:closed true}
-   [:name         {:optional true} [:maybe :string]]
-   [:channel_type {:optional true} [:maybe [:or :keyword :string]]]
-   [:details      {:optional true} [:maybe :map]]])
+  ::channel.schema/channel-template.update)
 
 (def ^:private AdminFilters
   "The filters accepted by [[admin-notifications-page]] and [[admin-notifications-count]]."

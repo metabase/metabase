@@ -280,7 +280,9 @@
 
 (mu/defn function-param :- ::function-param
   "Create a new parsed `function-param` from map `m`."
-  [m :- :map]
+  [m :- [:map {:closed true}
+         [:function-name :string]
+         [:args          [:sequential :any]]]]
   (assoc m :lib/type ::function-param))
 
 (defn function-param?

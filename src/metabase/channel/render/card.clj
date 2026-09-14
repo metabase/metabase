@@ -16,6 +16,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.markdown :as markdown]))
 
 ;;; I gave these keys below namespaces to make them easier to find usages for but didn't use `metabase.channel.render` so
@@ -35,7 +36,7 @@
   "Schema for an ad-hoc (unsaved) card."
   [:map {:closed true}
    [:display :keyword]
-   [:visualization_settings {:optional true} [:maybe :map]]
+   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
    [:name {:optional true} [:maybe :string]]])
 
 (defn- card-href
@@ -209,7 +210,7 @@
    timezone-id :- [:maybe :string]
    card
    dashcard
-   {:keys [data error] :as results}]
+   {:keys [data error] :as results} :- ::body/QPResult]
   (try
     (when error
       (throw (ex-info (tru "Card has errors: {0}" error) (assoc results :card-error true))))
@@ -305,13 +306,20 @@
   ([timezone-id card results options :- [:maybe ::options]]
    (:content (render-pulse-card :inline timezone-id card nil results options))))
 
+(mr/def ::part
+  "The `{:card :dashcard :result}` shape a Pulse/Dashboard Subscription section carries."
+  [:map {:closed true}
+   [:card     {:optional true} :any]
+   [:dashcard {:optional true} :any]
+   [:result   {:optional true} [:maybe ::body/QPResult]]])
+
 (mu/defn render-pulse-section :- ::body/RenderedPartCard
   "Render a single Card section of a Pulse to a Hiccup form (representing HTML)."
   ([timezone-id part]
    (render-pulse-section timezone-id part {}))
 
   ([timezone-id
-    {card :card, dashcard :dashcard, result :result, :as _part}
+    {card :card, dashcard :dashcard, result :result, :as _part} :- ::part
     options :- [:maybe ::options]]
    (log/with-context {:card_id (:id card)}
      (let [options                       (merge {:channel.render/include-title?       true
@@ -342,7 +350,7 @@
    (render-adhoc-card-to-png adhoc-card results width nil))
 
   (^bytes [adhoc-card :- ::adhoc-card
-           results    :- [:map {:closed true} [:data :map]]
+           results    :- ::body/QPResult
            width
            options    :- [:maybe ::options]]
    (let [timezone-id (qp.timezone/system-timezone-id)]

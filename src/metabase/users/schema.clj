@@ -21,7 +21,7 @@
 
 (def NewUser
   "Required/optionals parameters needed to create a new user (for any backend)"
-  [:map
+  [:map {:closed true}
    [:first_name       {:optional true} [:maybe ms/NonBlankString]]
    [:last_name        {:optional true} [:maybe ms/NonBlankString]]
    [:email                             ms/Email]

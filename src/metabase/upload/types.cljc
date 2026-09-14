@@ -211,7 +211,9 @@
                     (remove non-inferable-types value-types))))
 
 (mu/defn- settings->type->check :- type->check-schema
-  [{:keys [number-separators] :as _settings}]
+  [{:keys [number-separators] :as _settings}
+   :- [:map {:closed true}
+       [:number-separators [:enum "." ".," ",." ", " ".’"]]]]
   (let [int-string?   (regex-matcher (int-regex number-separators))
         float-or-int? (regex-matcher (float-or-int-regex number-separators))
         float-string? (regex-matcher (float-regex number-separators))]

@@ -7,6 +7,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.parameters.schema :as parameters.schema]
+   [metabase.permissions.schema :as permissions.schema]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -271,11 +272,11 @@
 
 (mr/def ::stored-result.dataset-query
   "The `:dataset_query` column of a StoredResult, decoded."
-  :map)
+  ::lib-be.schema/maybe-legacy-or-empty-query)
 
 (mr/def ::stored-result.data-access-token
   "The `:data_access_token` column of a StoredResult, decoded."
-  :map)
+  ::permissions.schema/data-access-token)
 
 (mr/def ::stored-result
   "A StoredResult as selected from the app DB: every column of `:stored_result`."

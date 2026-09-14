@@ -322,7 +322,7 @@
 (mu/defn canonical-stage-index :- [:int {:min 0}]
   "If `stage-number` index is a negative number e.g. `-1` convert it to a positive index so we can use `nth` on
   `stages`. `-1` = the last stage, `-2` = the penultimate stage, etc."
-  [{:keys [stages], :as _query} :- :map
+  [{:keys [stages], :as _query} :- ::lib.schema/query
    stage-number                 :- :int]
   (let [stage-number' (if (neg? stage-number)
                         (+ (count stages) stage-number)
@@ -335,7 +335,7 @@
 
 (mu/defn previous-stage-number :- [:maybe [:int {:min 0}]]
   "The index of the previous stage, if there is one. `nil` if there is no previous stage."
-  [query        :- :map
+  [query        :- ::lib.schema/query
    stage-number :- :int]
   (let [stage-number (canonical-stage-index query stage-number)]
     (when (pos? stage-number)
@@ -348,7 +348,7 @@
 
 (mu/defn next-stage-number :- [:maybe :int]
   "The index of the next stage, if there is one. `nil` if there is no next stage."
-  [{:keys [stages], :as _query} :- :map
+  [{:keys [stages], :as _query} :- ::lib.schema/query
    stage-number                 :- :int]
   (let [stage-number (if (neg? stage-number)
                        (+ (count stages) stage-number)

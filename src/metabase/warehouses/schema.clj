@@ -7,11 +7,11 @@
 
 (mr/def ::database.details
   "The `:details` column of a Database, decoded."
-  :map)
+  ms/DatabaseDetails)
 
 (mr/def ::database.settings
   "The `:settings` column of a Database, decoded."
-  :map)
+  ms/DatabaseSettings)
 
 (mr/def ::database.dbms-version
   "The `:dbms_version` column of a Database, decoded."
@@ -19,11 +19,11 @@
 
 (mr/def ::database.write-data-details
   "The `:write_data_details` column of a Database, decoded."
-  :map)
+  ms/DatabaseDetails)
 
 (mr/def ::database.admin-details
   "The `:admin_details` column of a Database, decoded."
-  :map)
+  ms/DatabaseDetails)
 
 (mr/def ::database
   "A Database as selected from the app DB: every column of `:metabase_database`, plus `:features` added by the model's after-select hook."

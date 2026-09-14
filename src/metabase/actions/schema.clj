@@ -243,7 +243,7 @@
 
 (mr/def ::query-action.dataset-query
   "The `:dataset_query` column of a QueryAction, decoded."
-  :map)
+  ::lib-be.schema/maybe-legacy-or-empty-query)
 
 (mr/def ::query-action.row
   "A QueryAction as selected from the app DB: every column of `:query_action`."

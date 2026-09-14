@@ -2,6 +2,7 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is]]
+   [malli.util :as mut]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -22,7 +23,7 @@
 (def ^:private MergeableProperties
   [:map
    {:closed true}
-   [:database {:optional true} [:maybe :map]]
+   [:database {:optional true} [:maybe (mut/optional-keys ::lib.schema.metadata/database)]]
    [:tables   {:optional true} [:maybe [:sequential [:map {:closed true} [:id ::lib.schema.id/table]]]]]
    [:fields   {:optional true} [:maybe [:sequential [:map {:closed true} [:id ::lib.schema.id/field]]]]]
    [:cards    {:optional true} [:maybe [:sequential [:map {:closed true} [:id ::lib.schema.id/card]]]]]

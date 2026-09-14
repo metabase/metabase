@@ -10,6 +10,7 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.util.i18n :as i18n]
@@ -46,7 +47,7 @@
     ;; joinable -- either the Card we're joining, or the Table we're joining. See #32493
     [:group-type/join.explicit
      [:and
-      [:map
+      [:map {:closed true}
        [:join-alias {:optional true} [:ref ::lib.schema.common/non-blank-string]]
        [:table-id   {:optional true} [:ref ::lib.schema.id/table]]
        [:card-id    {:optional true} [:ref ::lib.schema.id/card]]]
@@ -55,8 +56,10 @@
        (fn [m]
          (>= (count (keys (select-keys m [:join-alias :table-id :card-id]))) 1))]]]
     [:group-type/join.implicit
-     [:map
-      [:fk-field-id [:ref ::lib.schema.id/field]]]]]])
+     [:map {:closed true}
+      [:fk-field-id   [:ref ::lib.schema.id/field]]
+      [:fk-field-name {:optional true} [:maybe :string]]
+      [:fk-join-alias {:optional true} [:maybe ::lib.schema.join/alias]]]]]])
 
 (defmethod lib.metadata.calculation/metadata-method :metadata/column-group
   [_query _stage-number column-group]

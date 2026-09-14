@@ -1,7 +1,10 @@
 (ns metabase.explorations.schema
   "Malli schemas for the explorations module."
   (:require
+   [metabase.interestingness.chart.types :as chart.types]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.metrics.core :as metrics]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -36,11 +39,17 @@
 
 (mr/def ::exploration-block.metric
   "One entry of the `:metrics` column of a ExplorationBlock, decoded."
-  :map)
+  [:map {:closed true}
+   [:card_id ms/PositiveInt]
+   [:dimension_mappings {:optional true} [:maybe [:sequential ::metrics/dimension-mapping]]]])
 
 (mr/def ::exploration-block.dimension
   "One entry of the `:dimensions` column of a ExplorationBlock, decoded."
-  :map)
+  [:map {:closed true}
+   [:dimension-id   ms/UUIDString]
+   [:display-name   {:optional true} [:maybe :string]]
+   [:effective-type {:optional true} [:maybe :string]]
+   [:semantic-type  {:optional true} [:maybe :string]]])
 
 (mr/def ::exploration-block
   "A ExplorationBlock as selected from the app DB: every column of `:exploration_block`."
@@ -94,19 +103,21 @@
 
 (mr/def ::exploration-query.visualization-settings
   "The `:visualization_settings` column of a ExplorationQuery, decoded."
-  :map)
+  ms/VisualizationSettings)
 
 (mr/def ::exploration-query.dataset-query
   "The `:dataset_query` column of a ExplorationQuery, decoded."
-  :map)
+  ::lib.schema/query)
 
 (mr/def ::exploration-query.params
   "The `:params` column of a ExplorationQuery, decoded."
-  :map)
+  [:map {:closed true}
+   [:segment_id  {:optional true} :any]
+   [:value_index {:optional true} :any]])
 
 (mr/def ::exploration-query.data-access-token
   "The `:data_access_token` column of a ExplorationQuery, decoded."
-  :map)
+  ::exploration-thread.data-access-token)
 
 (mr/def ::exploration-query
   "A ExplorationQuery as selected from the app DB: every column of `:exploration_query`."
@@ -161,7 +172,7 @@
 
 (mr/def ::exploration-query-result.chart-stats
   "The `:chart_stats` column of a ExplorationQueryResult, decoded."
-  :map)
+  ::chart.types/chart-stats)
 
 (mr/def ::exploration-query-result
   "A ExplorationQueryResult as selected from the app DB: every column of `:exploration_query_result`."
@@ -188,13 +199,38 @@
    [:metric_description               {:optional true} [:maybe :string]]
    [:chart_description                {:optional true} [:maybe :string]]])
 
+(mr/def ::exploration-thread.query-plan-transcript.body
+  "The `:transcript` entry of a query-plan transcript, decoded."
+  [:map {:closed true}
+   [:outcome      {:optional true} :any]
+   [:rationale    {:optional true} :any]
+   [:plan         {:optional true} :any]
+   [:final-errors {:optional true} :any]
+   [:planner      {:optional true} :any]])
+
 (mr/def ::exploration-thread.query-plan-transcript
   "The `:query_plan_transcript` column of a ExplorationThread, decoded."
-  :map)
+  [:map {:closed true}
+   [:generated-at {:optional true} :any]
+   [:thread-id    {:optional true} :any]
+   [:planner      {:optional true} :any]
+   [:outcome      {:optional true} :any]
+   [:rows-count   {:optional true} :any]
+   [:note         {:optional true} :any]
+   [:error        {:optional true} :any]
+   [:transcript   {:optional true} [:maybe ::exploration-thread.query-plan-transcript.body]]])
+
+(def ^:private DataAccessToken
+  "A digested effective-data-access token: sandbox/impersonation/routing fingerprints, keyed by table or database
+  id."
+  [:map {:closed true}
+   [:sandbox       {:optional true} [:map-of ::lib.schema.id/table :string]]
+   [:impersonation {:optional true} [:map-of ::lib.schema.id/database :string]]
+   [:routing       {:optional true} [:map-of ::lib.schema.id/database :string]]])
 
 (mr/def ::exploration-thread.data-access-token
   "The `:data_access_token` column of a ExplorationThread, decoded."
-  :map)
+  DataAccessToken)
 
 (mr/def ::exploration-thread
   "A ExplorationThread as selected from the app DB: every column of `:exploration_thread`."

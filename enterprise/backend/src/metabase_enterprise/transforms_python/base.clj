@@ -8,6 +8,7 @@
    [clojure.core.async :as a]
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [malli.util :as mut]
    [metabase-enterprise.transforms-python.db :as transforms-python.db]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase-enterprise.transforms-python.s3 :as s3]
@@ -261,7 +262,10 @@
 
    Options:
    - `with-stage-timing-fn` - optional, (fn [run-id stage thunk] result) for instrumentation"
-  [{:keys [source] :as transform} db run-id cancel-chan message-log {:keys [with-stage-timing-fn source-range-params]}]
+  [{:keys [source] :as transform} :- ::transforms-base.schema/transform
+   db run-id cancel-chan message-log
+   {:keys [with-stage-timing-fn source-range-params]}
+   :- (mut/select-keys ::transforms-base.schema/execute-base-options [:with-stage-timing-fn :source-range-params])]
   ;; Resolve name-based source table refs to table IDs (throws if any not found)
   (let [resolved-source-tables (transforms-base.u/resolve-source-tables (:source-tables source))]
     (with-open [shared-storage-ref (s3/open-shared-storage! resolved-source-tables)]

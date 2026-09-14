@@ -7,6 +7,7 @@
    [metabase-enterprise.semantic-search.schema :as semantic-search.schema]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.search.config :as search.config]
    [metabase.search.scoring :as search.scoring]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -95,7 +96,7 @@
    search-ctx     :- [:map {:closed true}
                       [:current-user-id {:optional true} [:maybe ms/PositiveInt]]
                       [:context {:optional true} [:maybe :keyword]]
-                      [:weights {:optional true} [:maybe [:map-of :keyword number?]]]]]
+                      [:weights {:optional true} [:maybe [:map-of (into [:enum] search.config/known-rankers) number?]]]]]
   (let [scorers (appdb-scoring/appdb-scorers search-ctx)]
     (t2/query (cond-> (search.scoring/with-scores search-ctx scorers (search-index-select search-results))
                 (:bookmarked scorers) (search.scoring/join-bookmarks (:current-user-id search-ctx))))))

@@ -8,6 +8,7 @@
    [metabase.actions.db :as actions.db]
    [metabase.actions.http-action :as http-action]
    [metabase.actions.models :as action]
+   [metabase.actions.schema :as actions.schema]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.driver.connection :as driver.conn]
@@ -26,6 +27,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (mu/defn- execute-query-action!
@@ -151,7 +153,7 @@
                                    [:query          ::mbql.s/Query]
                                    [:row-parameters ::actions.args/row]
                                    [:prefetch-parameters {:optional true} [:maybe ::parameters.schema/parameters]]]
-  [{:keys [model_id parameters] :as _action} implicit-action request-parameters]
+  [{:keys [model_id parameters] :as _action} :- ::actions.schema/action implicit-action request-parameters]
   (let [{database-id :db_id
          table-id    :id :as table} (implicit-action-table model_id)
         table-fields             (:fields table)
@@ -227,11 +229,17 @@
                                                         :dashboard-id (:dashboard-id opts)
                                                         :context      (:context opts :action-execute)}))))
 
+(def ^:private ExecuteActionOpts
+  [:map {:closed true}
+   [:allow-http-actions? {:optional true} [:maybe :boolean]]
+   [:context             {:optional true} [:maybe :keyword]]
+   [:dashboard-id        {:optional true} [:maybe ms/PositiveInt]]])
+
 (mu/defn execute-action!
   "Execute the given action with the given parameters of shape `{<parameter-id> <value>}."
   ([action request-parameters]
    (execute-action! action request-parameters nil))
-  ([action request-parameters {:keys [allow-http-actions?] :or {allow-http-actions? true} :as opts}]
+  ([action request-parameters {:keys [allow-http-actions?] :or {allow-http-actions? true} :as opts} :- [:maybe ExecuteActionOpts]]
    (when (and (= (:type action) :http) (not allow-http-actions?))
      (throw (ex-info (tru "HTTP actions cannot be executed from public endpoints.")
                      {:status-code 403})))

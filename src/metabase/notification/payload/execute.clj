@@ -19,6 +19,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (defn is-card-empty?
@@ -319,6 +320,12 @@
                 [:type [:= :tab-title]]]]
    [::mc/default :map]])
 
+(def ^:private ExecuteDashboardOpts
+  [:map {:closed true}
+   [:spill-budget      {:optional true} :any]
+   [:only-card-ids     {:optional true} [:maybe [:set ms/PositiveInt]]]
+   [:attached-card-ids {:optional true} [:maybe [:set ms/PositiveInt]]]])
+
 (mu/defn execute-dashboard :- [:sequential ::Part]
   "Execute a dashboard and return its parts.
 
@@ -333,7 +340,7 @@
   ([dashboard-id user-id parameters]
    (execute-dashboard dashboard-id user-id parameters nil))
   ([dashboard-id user-id parameters {:keys [spill-budget only-card-ids attached-card-ids]
-                                     :or   {spill-budget (new-spill-budget)}}]
+                                     :or   {spill-budget (new-spill-budget)}} :- [:maybe ExecuteDashboardOpts]]
    (let [opts            {:spill-budget      spill-budget
                           :attached-card-ids attached-card-ids}
          keep-dashcards  (fn [dashcards]

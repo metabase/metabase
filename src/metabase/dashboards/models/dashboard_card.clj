@@ -6,6 +6,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.parameters.core :as parameters]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -183,8 +184,8 @@
   [:map {:closed true}
    [:id                                      ms/PositiveInt]
    [:action_id              {:optional true} [:maybe ms/PositiveInt]]
-   [:parameter_mappings     {:optional true} [:maybe [:sequential :map]]]
-   [:visualization_settings {:optional true} [:maybe :map]]
+   [:parameter_mappings     {:optional true} [:maybe [:sequential ::parameters.schema/parameter-mapping]]]
+   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
    [:inline_parameters      {:optional true} [:maybe [:sequential ms/NonBlankString]]]
    ;; series is a sequence of IDs of additional cards after the first to include as "additional serieses"
    [:series                 {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
@@ -220,9 +221,8 @@
   [:map {:closed true}
    [:dashboard_id                            ms/PositiveInt]
    [:action_id              {:optional true} [:maybe ms/PositiveInt]]
-   ;; TODO - use ParamMapping. Breaks too many tests right now tho (#40021)
-   [:parameter_mappings     {:optional true} [:maybe [:sequential map?]]]
-   [:visualization_settings {:optional true} [:maybe map?]]
+   [:parameter_mappings     {:optional true} [:maybe [:sequential ::parameters.schema/parameter-mapping]]]
+   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
    [:inline_parameters      {:optional true} [:maybe [:sequential ms/NonBlankString]]]
    [:series                 {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
 

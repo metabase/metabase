@@ -286,7 +286,7 @@
 
 (def ^:private ClientParamsMap
   [:map {:closed true}
-   [:credentials      {:optional true} [:maybe [:or ms/UUIDString map?]]]
+   [:credentials      {:optional true} [:maybe [:or ms/UUIDString Credentials]]]
    [:method                            (into [:enum] (keys method->request-fn))]
    [:expected-status  {:optional true} [:maybe ms/PositiveInt]]
    [:url                               ms/NonBlankString]

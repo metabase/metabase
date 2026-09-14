@@ -53,7 +53,15 @@
   [:tuple
    [:enum :field :expression :aggregation]
    [:and
-    :map
+    [:map {:closed true}
+     [:semantic-type   {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
+     [:database-type   {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+     [:name            {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+     [:display-name    {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+     [:case-sensitive  {:optional true} :boolean]
+     [:include-current {:optional true} :boolean]
+     [:default         {:optional true} [:ref :metabase.lib.schema.expression/expression]]
+     [:join-alias      {:optional true} [:ref ::lib.schema.join/alias]]]
     [:fn
      {:error/message "options map without namespaced keys and base-type/effective-type"}
      (complement (some-fn :base-type :effective-type :lib/uuid))]]
@@ -383,24 +391,24 @@
    ;; map of original value -> human readable value
    [:value->readable :map]
    ;; Info about the new column we will tack on to end of `:cols`
-   [:new-column      :map]])
+   [:new-column      ::qp.schema/result-metadata.column]])
 
 (mr/def ::internal-columns-info
   [:map {:closed true}
    [:internal-only-dims [:maybe [:sequential ::internal-remapping-info]]]
    ;; this is just (map :new-column internal-only-dims)
-   [:internal-only-cols [:maybe [:sequential :map]]]])
+   [:internal-only-cols [:maybe ::qp.schema/result-metadata.columns]]])
 
 ;;;; Metadata
 
 (mu/defn- merge-metadata-for-internally-remapped-column :- [:maybe [:sequential :map]]
   "If one of the internal remapped columns says it's remapped from this column, merge in the `:remapped_to` info."
-  [columns                :- [:maybe [:sequential :map]]
+  [columns                :- [:maybe ::qp.schema/result-metadata.columns]
    {:keys [col-index to]} :- ::internal-remapping-info]
   (update (vec columns) col-index assoc :remapped_to to))
 
 (mu/defn- merge-metadata-for-internal-remaps :- [:maybe [:sequential :map]]
-  [columns                      :- [:maybe [:sequential :map]]
+  [columns                      :- [:maybe ::qp.schema/result-metadata.columns]
    {:keys [internal-only-dims]} :- [:maybe ::internal-columns-info]]
   (reduce
    merge-metadata-for-internally-remapped-column
@@ -433,7 +441,7 @@
 (mu/defn- merge-metadata-for-externally-remapped-column* :- :map
   [columns
    {{::keys [original-field-dimension-id new-field-dimension-id]} :options
-    :as                                          column} :- :map
+    :as                                          column} :- ::qp.schema/result-metadata.column
    {dimension-id      :id
     from-name         :field-name
     from-display-name :name
@@ -477,13 +485,13 @@
       (log/trace "Added remapping metadata to column"))))
 
 (mu/defn- merge-metadata-for-externally-remapped-column :- [:maybe [:sequential :map]]
-  [columns :- [:maybe [:sequential :map]] dimension :- ::external-remapping]
+  [columns :- [:maybe ::qp.schema/result-metadata.columns] dimension :- ::external-remapping]
   (log/tracef "Merging metadata for external dimension %s" (:id dimension))
   (mapv #(merge-metadata-for-externally-remapped-column* columns % dimension)
         columns))
 
 (mu/defn- merge-metadata-for-external-remaps :- [:maybe [:sequential :map]]
-  [columns :- [:maybe [:sequential :map]] remapping-dimensions :- [:maybe [:sequential ::external-remapping]]]
+  [columns :- [:maybe ::qp.schema/result-metadata.columns] remapping-dimensions :- [:maybe [:sequential ::external-remapping]]]
   (reduce
    merge-metadata-for-externally-remapped-column
    columns
@@ -494,7 +502,7 @@
   To get this critical information, this uses the `remapping-dimensions` info saved by the pre-processing portion of
   this middleware for external remappings, and the internal-only remapped columns handled by post-processing
   middleware below for internal columns."
-  [columns              :- [:maybe [:sequential :map]]
+  [columns              :- [:maybe ::qp.schema/result-metadata.columns]
    remapping-dimensions :- [:maybe [:sequential ::external-remapping]]
    internal-cols-info   :- [:maybe ::internal-columns-info]]
   (-> columns
@@ -602,7 +610,7 @@
   "Add remapping info `:remapped_from` and `:remapped_to` to each existing column in the results metadata, and add
   entries for each newly added column to the end of `:cols`."
   [metadata                                             :- [:map {:closed true}
-                                                            [:cols [:maybe [:sequential :map]]]]
+                                                            [:cols [:maybe ::qp.schema/result-metadata.columns]]]
    remapping-dimensions                                 :- [:maybe [:sequential ::external-remapping]]
    {:keys [internal-only-cols], :as internal-cols-info} :- [:maybe ::internal-columns-info]]
   (update metadata :cols (fn [cols]
@@ -623,7 +631,7 @@
 (mu/defn remap-results :- ::qp.schema/rff
   "Post-processing middleware. Handles `::external-remaps` added by [[add-remapped-columns-middleware]]; transforms
   results and adds additional metadata based on these remaps, as well as internal (human-readable values) remaps."
-  [{::keys [external-remaps], {:keys [disable-remaps?]} :middleware, :as _query} :- :map
+  [{::keys [external-remaps], {:keys [disable-remaps?]} :middleware, :as _query} :- ::lib.schema/query
    rff                                                                           :- ::qp.schema/rff]
   (if disable-remaps?
     rff

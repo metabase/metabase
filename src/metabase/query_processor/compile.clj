@@ -18,13 +18,13 @@
 
 (mr/def ::compiled
   "Compiled query and parameters (SQL or whatever native query language)."
-  [:map
+  [:map {:closed true}
    [:query :any]
    [:params {:optional true} [:maybe [:sequential :any]]]])
 
 (mr/def ::compiled-with-inlined-parameters
   "Query with inlined parameters (:params must be empty)"
-  [:map
+  [:map {:closed true}
    [:query :any]
    [:params {:optional true} [:maybe [:sequential {:max 0} :any]]]])
 

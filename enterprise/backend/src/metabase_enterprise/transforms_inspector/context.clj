@@ -8,6 +8,7 @@
    [metabase-enterprise.transforms-inspector.schema :as transforms-inspector.schema]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -114,9 +115,46 @@
               (assoc :stats (get-field-stats field))))
           fields)))
 
+(def ^:private TargetTableInfo
+  "Either the minimal source-table-info shape, or a renamed target Table row with its `:db` hydration."
+  [:map {:closed true}
+   [:table-id                {:optional true} :any]
+   [:table-name              {:optional true} :any]
+   [:schema                  {:optional true} :any]
+   [:db-id                   {:optional true} :any]
+   [:id                      {:optional true} :any]
+   [:created_at              {:optional true} :any]
+   [:updated_at              {:optional true} :any]
+   [:name                    {:optional true} :any]
+   [:description             {:optional true} :any]
+   [:entity_type             {:optional true} :any]
+   [:active                  {:optional true} :any]
+   [:db_id                   {:optional true} :any]
+   [:display_name            {:optional true} :any]
+   [:visibility_type         {:optional true} :any]
+   [:points_of_interest      {:optional true} :any]
+   [:caveats                 {:optional true} :any]
+   [:show_in_getting_started {:optional true} :any]
+   [:field_order             {:optional true} :any]
+   [:initial_sync_status     {:optional true} :any]
+   [:is_upload               {:optional true} :any]
+   [:database_require_filter {:optional true} :any]
+   [:estimated_row_count     {:optional true} :any]
+   [:view_count              {:optional true} :any]
+   [:is_defective_duplicate  {:optional true} :any]
+   [:unique_table_helper     {:optional true} :any]
+   [:deactivated_at          {:optional true} :any]
+   [:archived_at             {:optional true} :any]
+   [:is_writable             {:optional true} :any]
+   [:data_authority          {:optional true} :any]
+   [:data_source             {:optional true} :any]
+   [:data_layer              {:optional true} :any]
+   [:entity_id               {:optional true} :any]
+   [:db                      {:optional true} :any]])
+
 (mu/defn- build-table-info :- ::transforms-inspector.schema/table
   "Build table info map with fields."
-  [{:keys [table-id table-name schema db-id]}]
+  [{:keys [table-id table-name schema db-id]} :- TargetTableInfo]
   (let [fields (collect-field-metadata table-id)]
     {:table_id     table-id
      :table_name   table-name
@@ -195,11 +233,29 @@
                         :name              (:name returned-col)
                         :id                (:id returned-col)}]})))
 
+(mr/def ::join-structure-entry
+  [:map {:closed true}
+   [:strategy       {:optional true} [:maybe [:or :keyword :string]]]
+   [:alias          {:optional true} [:maybe :string]]
+   [:source-table   {:optional true} :any]
+   [:conditions     {:optional true} :any]
+   [:join-table     {:optional true} :any]
+   [:join-condition {:optional true} :any]])
+
+(def ^:private QueryInfo
+  [:map {:closed true}
+   [:preprocessed-query {:optional true} [:maybe ::lib.schema/query]]
+   [:driver             {:optional true} [:maybe :keyword]]
+   [:from-table-id      {:optional true} :any]
+   [:from-table         {:optional true} :any]
+   [:join-structure     {:optional true} [:maybe [:sequential ::join-structure-entry]]]
+   [:visited-fields     {:optional true} [:maybe [:map {:closed true} [:all {:optional true} [:maybe [:set :any]]]]]]])
+
 (mu/defn- match-columns :- [:maybe [:sequential ::column-match]]
   "Find columns that relate between input and output tables.
    Uses field ID-based matching for MBQL queries (more accurate),
    falls back to name-based matching for native queries."
-  [sources target {:keys [preprocessed-query join-structure]}]
+  [sources target {:keys [preprocessed-query join-structure]} :- [:maybe QueryInfo]]
   (if preprocessed-query
     (match-columns-mbql preprocessed-query sources target)
     (match-columns-by-name sources target join-structure)))

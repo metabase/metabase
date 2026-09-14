@@ -6,6 +6,7 @@
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.notification.payload.temp-storage :as notification.payload.temp-storage]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.premium-features.core :as premium-features]
    [metabase.system.core :as system]
    [metabase.util.malli :as mu]
@@ -26,9 +27,8 @@
 
 (mr/def ::Notification
   "Schema for the notification."
-  ;; TODO: how do we make this schema closed after :merge?
-  [:merge #_{:closed true}
-   [:map
+  [:merge
+   [:map {:closed true}
     [:payload_type                   (into [:enum] models.notification/notification-types)]
     ;; allow unsaved notification to be sent
     [:id                      {:optional true} [:maybe ms/PositiveInt]]
@@ -56,11 +56,11 @@
       [:creator_id ms/PositiveInt]
       ;; replacement of pulse
       [:dashboard_subscription #_{:optional true}
-       [:map
+       [:map {:closed true}
         [:dashboard_id ms/PositiveInt]
-        [:parameters {:optional true} [:maybe [:sequential :map]]]
+        [:parameters {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]
         [:dashboard_subscription_dashcards {:optional true}
-         [:sequential [:map
+         [:sequential [:map {:closed true}
                        [:card_id                        [:maybe ms/PositiveInt]]
                        [:include_csv   {:optional true} [:maybe ms/BooleanValue]]
                        [:include_xls   {:optional true} [:maybe ms/BooleanValue]]

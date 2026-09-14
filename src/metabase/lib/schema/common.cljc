@@ -289,7 +289,19 @@
       {:error/message \":native is not allowed in an MBQL stage\"
        :decode/normalize #(cond-> % (map? %) (dissoc :native))}
       #(not (when (map? %) (contains? :native)))]]"
-  [k->message :- [:map-of :keyword :string]]
+  [k->message :- [:map-of [:enum
+                           :query :source-table :source-card :fields :filter :filters :breakout :aggregation
+                           :limit :order-by :offset :page :args :native :aggregation-idents :breakout-idents
+                           :expression-idents :source-metadata :source-query :type :database :lib/options
+                           :expressions :pivot :joins :ident :lib/expression-name :lib/join-alias :fk-field-id
+                           :binning :field-ref :model/inner-ident :source :source-alias :unit
+                           :metabase.lib.join/join-alias :metabase.lib.field/binning
+                           :metabase.lib.field/temporal-unit :metabase.lib.field/original-effective-type
+                           :metabase.lib.field/simple-display-name
+                           :metabase.lib.query/transformation-added-base-type
+                           :lib/stage-metadata :condition :parameters :dimension :strategy :lib/uuid :lib/type
+                           :model/inner_ident :stages]
+                  :string]]
   (let [fn-schemas (map (fn [[k message]]
                           [:fn
                            {:error/message    message

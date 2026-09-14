@@ -70,6 +70,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -103,7 +104,10 @@
    [:field-id ::lib.schema.id/field]
    [:op       :keyword] ; name of an MBQL filter clause e.g. `:=` or `:starts-with`
    [:value    :any]
-   [:options  {:optional true} [:maybe map?]]])
+   [:options  {:optional true} [:maybe [:merge
+                                        ::lib.schema.common/options
+                                        [:map {:closed true}
+                                         [:lib/uuid {:optional true} ::lib.schema.common/uuid]]]]]])
 
 (mr/def ::constraints
   "Schema for a list of constraints."
@@ -578,7 +582,7 @@
 (mu/defn- cached-field-values
   [field-id    :- ::lib.schema.id/field
    constraints :- [:maybe ::constraints]
-   {:keys [limit], :as _options}]
+   {:keys [limit], :as _options} :- [:maybe ::options]]
   ;; TODO: why don't we remap the human readable values here?
   (let [{:keys [values] has-more-values? :has_more_values}
         (if (empty? constraints)

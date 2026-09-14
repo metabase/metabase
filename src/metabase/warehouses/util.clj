@@ -82,7 +82,7 @@
   the details used to successfully connect. Otherwise returns a map with the connection error message. (This map will
   also contain the key `:valid` = `false`, which you can use to distinguish an error from valid details.)"
   [engine  :- [:or keyword? string?]
-   details :- :map]
+   details :- ms/DatabaseDetails]
   (let [;; Try SSL first if SSL is supported and not already enabled
         ;; If not successful or not applicable, details-with-ssl will be nil
         details-with-ssl (assoc details :ssl true)

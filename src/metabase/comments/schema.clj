@@ -3,6 +3,7 @@
   (:require
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -37,9 +38,24 @@
   [content]
   (some->> content (lib/normalize ::comment.content)))
 
+(mr/def ::comment.highlight
+  "The chart point a comment is anchored to. Identity only — which column, and which dimension values
+  pick out the point — so the client can re-find it in a result set it is separately authorized to
+  read."
+  [:map {:closed true}
+   [:columnName {:optional true} [:maybe :string]]
+   [:dimensions {:optional true}
+    [:maybe [:sequential [:map {:closed true}
+                          [:columnName {:optional true} [:maybe :string]]
+                          [:value      {:optional true} [:ref ::lib.schema.literal/literal]]]]]]])
+
 (mr/def ::comment.context
   "The `:context` column of a Comment, decoded."
-  :map)
+  [:map {:closed true}
+   [:timeline_id           {:optional true} [:maybe ms/PositiveInt]]
+   [:exploration_query_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]
+   [:highlighted           {:optional true} [:maybe ::comment.highlight]]
+   [:highlight_label       {:optional true} [:maybe [:string {:max 1000}]]]])
 
 (mr/def ::comment
   "A Comment as selected from the app DB: every column of `:comment`."

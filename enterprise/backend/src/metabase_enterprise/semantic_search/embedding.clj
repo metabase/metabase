@@ -485,7 +485,8 @@
        [:texts          [:sequential :string]]
        [:record-tokens? :boolean]
        [:snowplow?      {:optional true} [:maybe :boolean]]
-       [:extra-body     {:optional true} [:maybe :map]]
+       [:extra-body     {:optional true} [:maybe [:map {:closed true}
+                                                  [:dimensions {:optional true} pos-int?]]]]
        [:network-policy-floor {:optional true} [:maybe [:enum :external-only :allow-private :allow-all]]]
        [:instance-token?      {:optional true} [:maybe :boolean]]]]
   ;; Outside the try: a malformed endpoint is neither a service failure nor something to log per batch.

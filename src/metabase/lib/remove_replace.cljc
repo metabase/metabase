@@ -249,7 +249,7 @@
       query)))
 
 (mu/defn- remove-replace* :- :map
-  [query             :- :map
+  [query             :- ::lib.schema/query
    stage-number      :- :int
    target-clause     :- ::lib.schema.mbql-clause/clause
    remove-or-replace :- [:enum :remove :replace]

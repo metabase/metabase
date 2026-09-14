@@ -479,7 +479,7 @@
   [{root :root :as base-context} :- ::ads/context
    {template-cards      :cards
     :keys               [dashboard_filters]
-    :as                 dashboard-template}
+    :as                 dashboard-template} :- dashboard-templates/DashboardTemplate
    {grounded-dimensions :dimensions
     grounded-metrics    :metrics
     grounded-filters    :filters} :- ::ads/grounded-values]
@@ -525,7 +525,7 @@
       (->> (m/map-vals (comp (partial map ->related-entity) u/one-or-many)))))
 
 (mu/defn- indepth
-  [{:keys [dashboard-templates-prefix url] :as root}
+  [{:keys [dashboard-templates-prefix url] :as root} :- ::ads/root
    {:keys [dashboard-template-name]} :- [:maybe dashboard-templates/DashboardTemplate]]
   (let [base-context (make-base-context root)]
     (->> (dashboard-templates/get-dashboard-templates (concat dashboard-templates-prefix [dashboard-template-name]))
@@ -683,7 +683,7 @@
 (mu/defn- generate-dashboard
   "Produce a fully-populated dashboard from the base context for an item and a dashboard template."
   [{{:keys [show url query-filter] :as root} :root :as base-context} :- ::ads/context
-   {:as dashboard-template}
+   {:as dashboard-template} :- dashboard-templates/DashboardTemplate
    {grounded-dimensions :dimensions :as grounded-values} :- ::ads/grounded-values]
   (let [show      (or show max-cards)
         dashboard (generate-base-dashboard base-context dashboard-template grounded-values)]

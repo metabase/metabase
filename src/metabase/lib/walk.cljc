@@ -418,7 +418,7 @@
   Avoids creating new objects except for when `f` actually returns something different."
   [query :- ::lib.schema/query
    f     :- [:=>
-             [:cat :map ::path-type ::path ::lib.schema.mbql-clause/clause]
+             [:cat ::lib.schema/query ::path-type ::path ::lib.schema.mbql-clause/clause]
              [:maybe ::lib.schema.mbql-clause/clause]]]
   (walk
    query

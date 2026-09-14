@@ -16,6 +16,7 @@
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.util :as lib.util]
@@ -494,7 +495,7 @@
 (mu/defn- options->legacy-MBQL :- [:maybe [:map {:min 1}]]
   "Convert an options map in an MBQL clause to the equivalent shape for legacy MBQL. Remove `:lib/*` keys and
   `:effective-type`, which is not used in options maps in legacy MBQL."
-  [m :- [:maybe :map]]
+  [m :- [:maybe ::lib.schema.common/options]]
   (->> (cond-> m
          ;; Following construct ensures that transformation MBQL 4 -> MBQL 5 -> MBQL 4, does not add base-type where
          ;; those were not present originally. Base types are added in [[metabase.lib.query/add-types-to-fields]].
@@ -608,7 +609,7 @@
   ([m]
    (chain-stages m nil))
 
-  ([{:keys [stages]}                                       :- [:map {:closed true} [:stages [:sequential :map]]]
+  ([{:keys [stages]}                                       :- [:map {:closed true} [:stages [:sequential ::lib.schema/stage]]]
     {:keys [top-level?], :or {top-level? true}, :as _opts} :- [:maybe
                                                                [:map {:closed true}
                                                                 [:top-level? [:maybe :boolean]]]]]

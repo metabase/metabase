@@ -2,6 +2,7 @@
   "Tool for editing existing SQL queries."
   (:require
    [clojure.string :as str]
+   [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.tools.sql.common :as metabot.tools.sql.common]
    [metabase.metabot.tools.sql.validation :as metabot.tools.sql.validation]
    [metabase.metabot.util :as metabot.u]
@@ -47,7 +48,15 @@
   - description: New description for the query (optional)
 
   Returns an `operation-result` map. For details see its docstring."
-  [{:keys [query-id edits queries-state]}]
+  [{:keys [query-id edits queries-state]}
+   :- [:map {:closed true}
+       [:query-id [:or :string :int]]
+       [:edits [:sequential [:map {:closed true}
+                             [:old_string :string]
+                             [:new_string :string]
+                             [:replace_all {:optional true} [:maybe :boolean]]]]]
+       [:checklist :string]
+       [:queries-state [:map-of :string ::metabot.schema/query]]]]
   (log/info "Editing SQL query" {:query-id query-id :edit-count (count edits)})
 
   ;; Look up query from in-memory state

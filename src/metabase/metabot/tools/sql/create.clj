@@ -58,7 +58,9 @@
   - :query-id - The ID of the created query
   - :query-content - The SQL content
   - :database - Database ID"
-  [{:keys [database-id sql]}]
+  [{:keys [database-id sql]} :- [:map {:closed true}
+                                 [:database-id :int]
+                                 [:sql :string]]]
   (log/info "Creating SQL query"
             {:database-id database-id
              :sql-length (count sql)})

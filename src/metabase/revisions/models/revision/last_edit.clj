@@ -72,13 +72,18 @@
    [:card      {:optional true} [:map-of :int LastEditInfo]]
    [:dashboard {:optional true} [:map-of :int LastEditInfo]]])
 
+(def ^:private FetchLastEditedInfoArgs
+  [:map {:closed true}
+   [:card-ids      {:optional true} [:maybe [:sequential ms/PositiveInt]]]
+   [:dashboard-ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
+
 (mu/defn fetch-last-edited-info :- [:maybe CollectionLastEditInfo]
   "Fetch edited info from the revisions table. Revision information is timestamp, user id, email, first and last
   name. Takes card-ids and dashboard-ids and returns a map structured like
 
   {:card      {card_id      {:id :email :first_name :last_name :timestamp}}
    :dashboard {dashboard_id {:id :email :first_name :last_name :timestamp}}}"
-  [{:keys [card-ids dashboard-ids]}]
+  [{:keys [card-ids dashboard-ids]} :- FetchLastEditedInfoArgs]
   (when (seq (concat card-ids dashboard-ids))
     (let [latest-changes (revisions.db/latest-changes card-ids dashboard-ids)]
       (->> latest-changes

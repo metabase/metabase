@@ -9,8 +9,10 @@
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.constraints :as lib.schema.constraints]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
+   [metabase.lib.schema.middleware-options :as lib.schema.middleware-options]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.parameters.schema :as parameters.schema]
@@ -92,8 +94,8 @@
     card-type     :type
     :as           card} :- ::queries.schema/card
    parameters  :- [:maybe ::parameters.schema/parameters]
-   constraints :- [:maybe :map]
-   middleware  :- [:maybe :map]
+   constraints :- [:maybe ::lib.schema.constraints/constraints]
+   middleware  :- [:maybe ::lib.schema.middleware-options/middleware-options]
    & [ids]]
   (when (seq dataset-query)
     (let [stage-numbers           (explict-stage-references parameters)

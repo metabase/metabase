@@ -123,7 +123,7 @@
    insights-col-metadata))
 
 (mu/defn- insights-xform :- fn?
-  [orig-metadata :- [:maybe :map]
+  [orig-metadata :- [:maybe ::qp.schema/metadata]
    record!       :- ifn?
    rf            :- ifn?]
   (qp.reducible/combine-additional-reducing-fns

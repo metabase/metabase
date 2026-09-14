@@ -362,6 +362,26 @@
          (join-channel! target)
          (complete-upload! file filename {:channel-id target} initial-comment))))))
 
+(def ^:private SlackBlock
+  "A Slack Block Kit block, or a legacy `attachments` entry. See https://api.slack.com/block-kit."
+  [:map {:closed true}
+   [:type        {:optional true} :any]
+   [:text        {:optional true} :any]
+   [:fields      {:optional true} :any]
+   [:elements    {:optional true} :any]
+   [:accessory   {:optional true} :any]
+   [:block_id    {:optional true} :any]
+   [:image_url   {:optional true} :any]
+   [:alt_text    {:optional true} :any]
+   [:emoji       {:optional true} :any]
+   [:color       {:optional true} :any]
+   [:pretext     {:optional true} :any]
+   [:title       {:optional true} :any]
+   [:author_name {:optional true} :any]
+   [:footer      {:optional true} :any]
+   [:fallback    {:optional true} :any]
+   [:ts          {:optional true} :any]])
+
 (mu/defn post-chat-message!
   "Calls Slack API `chat.postMessage` endpoint and posts a message to a channel.
   message-blocks if provided should be a map containing slack message blocks
@@ -369,9 +389,9 @@
   See: https://app.slack.com/block-kit-builder"
   [message-content :- [:map {:closed true}
                        [:channel                      :string]
-                       [:blocks      {:optional true} [:sequential :map]]
+                       [:blocks      {:optional true} [:sequential SlackBlock]]
                        [:text        {:optional true} :string]
-                       [:attachments {:optional true} [:sequential :map]]]]
+                       [:attachments {:optional true} [:sequential SlackBlock]]]]
   ;; TODO: it would be nice to have an emoji or icon image to use here
   (let [base-params    {:username "Metabot"
                         :icon_url "http://static.metabase.com/metabot_slack_avatar_whitebg.png"}

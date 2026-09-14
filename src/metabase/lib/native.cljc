@@ -422,7 +422,7 @@
 
 (mu/defn- validate-template-tag :- [:sequential [:map [:error/message :string] [:tag-name :string]]]
   "Validate a single template tag, returning a list of errors."
-  [_query {tag-type :type tag-name :name, :keys [display-name dimension table-id]}]
+  [_query {tag-type :type tag-name :name, :keys [display-name dimension table-id]} :- ::lib.schema.template-tag/template-tag]
   (cond-> []
     (empty? display-name)
     (conj {:error/message (i18n/tru "Missing widget label: {0}" tag-name)

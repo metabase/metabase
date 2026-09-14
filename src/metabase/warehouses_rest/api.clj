@@ -2,6 +2,7 @@
   "/api/database endpoints."
   (:require
    [clojure.string :as str]
+   [malli.util :as mut]
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
@@ -45,6 +46,7 @@
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.warehouses-rest.db :as warehouses-rest.db]
    [metabase.warehouses.core :as warehouses]
+   [metabase.warehouses.schema :as warehouses.schema]
    [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
@@ -114,7 +116,7 @@
   permissions; there was a specific option where you could give a Perms Group permissions to run existing Cards with
   native queries, but not to create new ones. With the advent of what is currently being called 'Space-Age
   Permissions', all Cards' permissions are based on their parent Collection, removing the need for native read perms."
-  [dbs :- [:maybe [:sequential :map]]]
+  [dbs :- [:maybe [:sequential ::warehouses.schema/database]]]
   (for [db dbs]
     (assoc db
            :native_permissions
@@ -132,7 +134,9 @@
                                           [:transforms_permissions [:enum :write :none]]]]]
   "For each database in DBS add a `:transforms_permissions` field describing the current user's permissions for
   creating/running Transforms. Will be either `:write` or `:none`."
-  [dbs :- [:maybe [:sequential :map]]]
+  [dbs :- [:maybe [:sequential
+                   (-> (mr/schema ::warehouses.schema/database)
+                       (mut/assoc :native_permissions [:enum :write :none]))]]]
   (for [db dbs]
     (assoc db
            :transforms_permissions

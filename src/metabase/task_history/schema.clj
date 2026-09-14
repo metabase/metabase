@@ -11,7 +11,14 @@
 
 (mr/def ::task-history.log
   "One entry of the `:logs` column of a TaskHistory, decoded."
-  :map)
+  [:map {:closed true}
+   [:level        {:optional true} :any]
+   [:timestamp    {:optional true} :any]
+   [:fqns         {:optional true} :any]
+   [:msg          {:optional true} :any]
+   [:process_uuid {:optional true} :any]
+   [:exception    {:optional true} :any]
+   [:trunc        {:optional true} :any]])
 
 (mr/def ::task-history
   "A TaskHistory as selected from the app DB: every column of `:task_history`."

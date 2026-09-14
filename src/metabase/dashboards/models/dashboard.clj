@@ -22,6 +22,7 @@
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.queries.core :as queries]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.search.core :as search]
@@ -255,7 +256,14 @@
    are performed when finished, for example updating FieldValues for On-Demand DBs.
    Returns `nil`."
   [dashboard     :- DashboardWithSeriesAndCard
-   new-dashcards :- [:sequential :map]]
+   new-dashcards :- [:sequential [:map {:closed true}
+                                  [:id                     ms/PositiveInt]
+                                  [:action_id              {:optional true} [:maybe ms/PositiveInt]]
+                                  [:parameter_mappings     {:optional true} [:maybe [:sequential ::parameters.schema/parameter-mapping]]]
+                                  [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
+                                  [:inline_parameters      {:optional true} [:maybe [:sequential ms/NonBlankString]]]
+                                  [:series                 {:optional true} [:maybe [:sequential [:map {:closed true} [:id ms/PositiveInt]]]]]
+                                  [:card                   {:optional true} [:maybe ::queries.schema/card]]]]]
   (let [old-dashcards    (:dashcards dashboard)
         id->old-dashcard (m/index-by :id old-dashcards)
         old-dashcard-ids (set (keys id->old-dashcard))
@@ -379,9 +387,9 @@
   below for an example). Callers that only need the mappings (e.g. the QP) can pass slim dashcards instead of paying
   for the full hydration."
   [dashboard :- [:map {:closed true}
-                 [:parameters [:maybe [:sequential :map]]]
+                 [:parameters [:maybe [:sequential ::parameters.schema/parameter]]]
                  [:dashcards [:maybe [:sequential [:map {:closed true}
-                                                   [:parameter_mappings [:maybe [:sequential :map]]]]]]]]]
+                                                   [:parameter_mappings [:maybe [:sequential ::parameters.schema/parameter-mapping]]]]]]]]]
   (let [param-key->mappings (apply
                              merge-with set/union
                              (for [dashcard (:dashcards dashboard)

@@ -10,7 +10,7 @@
 
 (mr/def ::cache-config.state
   "The `:state` column of a CacheConfig, decoded."
-  :map)
+  [:map {:closed true}])
 
 (mr/def ::cache-config
   "A CacheConfig as selected from the app DB: every column of `:cache_config`."

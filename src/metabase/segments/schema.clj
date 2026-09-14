@@ -28,7 +28,7 @@
 
 (mr/def ::segment.definition
   "The `:definition` column of a Segment, decoded."
-  :map)
+  ::lib-be.schema/maybe-legacy-query)
 
 (mr/def ::segment
   "A Segment as selected from the app DB: every column of `:segment`."

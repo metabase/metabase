@@ -121,13 +121,26 @@
          {:reply-to  (channel.settings/email-reply-to)
           :from-name (channel.settings/email-from-name)}))
 
+(def ^:private EmailAttachment
+  "A postal attachment: an inline HTML body part, an inline image/logo attachment, an image-bundle attachment
+  (a single content-id -> URL entry), or a CSV/XLS result attachment."
+  [:or
+   [:map {:closed true}
+    [:type         {:optional true} [:maybe [:or :string :keyword]]]
+    [:content      {:optional true} :any]
+    [:content-id   {:optional true} :any]
+    [:content-type {:optional true} [:maybe :string]]
+    [:file-name    {:optional true} [:maybe :string]]
+    [:description  {:optional true} [:maybe :string]]]
+   [:map-of :string :any]])
+
 (def ^:private EmailMessage
   [:and
    [:map {:closed true}
     [:subject      :string]
     [:recipients   [:or [:sequential ms/Email] [:set ms/Email]]]
     [:message-type [:enum :text :html :attachments]]
-    [:message      [:or :string [:sequential :map]]]
+    [:message      [:or :string [:sequential EmailAttachment]]]
     [:bcc?         {:optional true} [:maybe :boolean]]]
    [:fn {:error/message (str "Bad message-type/message combo: message-type `:attachments` should have a sequence of maps as its message; "
                              "other types should have a String message.")}

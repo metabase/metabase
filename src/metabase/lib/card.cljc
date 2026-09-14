@@ -69,7 +69,7 @@
   * `source-metadata-col` = (possibly snake_cased) column metadata from Card `:source-metadata`
   * `field-metadata`      = Field metadata (`:metadata/column`) from the metadata provider for the Field with ID"
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   source-metadata-col   :- :map
+   source-metadata-col   :- ::lib.schema.metadata/lib-or-legacy-column
    card-id               :- [:maybe ::lib.schema.id/card]
    field-metadata        :- [:maybe ::lib.schema.metadata/column]]
   (let [source-metadata-col (-> source-metadata-col
@@ -234,7 +234,9 @@
   ([result-cols :- [:maybe [:sequential ::lib.schema.metadata/column]]
     model-cols  :- [:maybe [:sequential ::lib.schema.metadata/column]]
     {:keys [native-model? own-model-query?]
-     :or   {native-model? false, own-model-query? false}}]
+     :or   {native-model? false, own-model-query? false}} :- [:map {:closed true}
+                                                               [:native-model?    {:optional true} :boolean]
+                                                               [:own-model-query? {:optional true} :boolean]]]
    (cond
      (empty? model-cols)
      (not-empty result-cols)

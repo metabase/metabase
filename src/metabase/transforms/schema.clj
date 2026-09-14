@@ -91,15 +91,17 @@
 
 (mr/def ::transform.source
   "The `:source` column of a Transform, decoded."
-  :map)
+  ::transform-source)
 
 (mr/def ::transform.target
   "The `:target` column of a Transform, decoded."
-  :map)
+  ::transform-target)
 
 (mr/def ::transform.table-dependency
   "One entry of the `:table_dependencies` column of a Transform, decoded."
-  :map)
+  [:or
+   [:map {:closed true} [:table ::lib.schema.id/table]]
+   [:map {:closed true} [:transform ::lib.schema.id/transform]]])
 
 (mr/def ::transform
   "A Transform as selected from the app DB: every column of `:transform`."

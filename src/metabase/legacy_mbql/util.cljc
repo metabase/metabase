@@ -75,7 +75,7 @@
 
   Prefer [[metabase.lib.core/primary-source-table-id]] going forward."
   {:arglists '([outer-query]), :deprecated "0.57.0"}
-  [{{source-table-id :source-table, source-query :source-query} :query, query-type :type, :as query} :- [:maybe :map]]
+  [{{source-table-id :source-table, source-query :source-query} :query, query-type :type, :as query} :- [:maybe ::mbql.s/Query]]
   (cond
     ;; for native queries, there's no source table to resolve
     (not= query-type :query)

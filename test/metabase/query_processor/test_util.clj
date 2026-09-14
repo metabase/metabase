@@ -510,7 +510,7 @@
     queries))
 
   ([parent-metadata-provider :- ::lib.schema.metadata/metadata-provider
-    queries                  :- [:sequential {:min 1} :map]]
+    queries                  :- [:sequential {:min 1} ::lib.schema.metadata/card.query]]
    (lib.tu/metadata-provider-with-cards-for-queries parent-metadata-provider queries)))
 
 (mu/defn metadata-provider-with-cards-with-transformed-metadata-for-queries :- ::lib.schema.metadata/metadata-provider
@@ -519,7 +519,7 @@
   provider is built up progressively, meaning metadata for previous Cards is available when calculating metadata for
   subsequent Cards.
    `transforms` can be a map of `card-id` to a function that accepts `metadata-provider` and `result-metadata`"
-  ([queries :- [:sequential {:min 1} :map]
+  ([queries :- [:sequential {:min 1} ::lib.schema.metadata/card.query]
     transforms]
    (metadata-provider-with-cards-with-transformed-metadata-for-queries
     (lib-be/application-database-metadata-provider (data/id))
@@ -527,8 +527,8 @@
     transforms))
 
   ([parent-metadata-provider :- ::lib.schema.metadata/metadata-provider
-    queries :- [:sequential {:min 1} :map]
-    transforms :- [:maybe :map]]
+    queries :- [:sequential {:min 1} ::lib.schema.metadata/card.query]
+    transforms :- [:maybe [:map-of pos-int? fn?]]]
    (transduce
     (map-indexed (fn [i {database-id :database, :as query}]
                    {:id            (inc i)
@@ -562,7 +562,7 @@
     queries))
 
   ([parent-metadata-provider :- ::lib.schema.metadata/metadata-provider
-    queries                  :- [:sequential {:min 1} :map]]
+    queries                  :- [:sequential {:min 1} ::lib.schema.metadata/card.query]]
    (metadata-provider-with-cards-with-transformed-metadata-for-queries parent-metadata-provider queries nil)))
 
 (deftest ^:parallel metadata-provider-with-cards-with-metadata-for-queries-test

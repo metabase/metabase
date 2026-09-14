@@ -135,12 +135,42 @@
                   visible-cols
                   formatters)})))
 
+(mr/def ::QPResultData
+  "The `:data` of a QP result, as the render pipeline reads it."
+  [:map {:closed true}
+   [:cols             {:optional true} [:maybe [:sequential :any]]]
+   [:rows             {:optional true} [:maybe [:sequential :any]]]
+   [:viz-settings     {:optional true} [:maybe ms/VisualizationSettings]]
+   [:results_metadata {:optional true} :any]
+   [:results_timezone {:optional true} :any]
+   [:format-rows?     {:optional true} :any]
+   [:native_form      {:optional true} :any]
+   [:insights         {:optional true} :any]
+   [:rows_truncated   {:optional true} :any]
+   [:card-error       {:optional true} :any]])
+
+(mr/def ::QPResult
+  "A QP result map (`{:data ..., :error ...}`), as the render pipeline receives it."
+  [:map {:closed true}
+   [:data                    {:optional true} [:maybe ::QPResultData]]
+   [:error                   {:optional true} :any]
+   [:row_count               {:optional true} :any]
+   [:status                  {:optional true} :any]
+   [:database_id             {:optional true} :any]
+   [:started_at              {:optional true} :any]
+   [:running_time            {:optional true} :any]
+   [:json_query              {:optional true} :any]
+   [:average_execution_time  {:optional true} :any]
+   [:context                 {:optional true} :any]
+   [:card_id                 {:optional true} :any]
+   [:card-error              {:optional true} :any]])
+
 (mu/defn- prep-for-html-rendering
   "Convert the query results (`cols` and `rows`) into a formatted seq of rows (list of strings) that can be rendered as
   HTML"
   ([timezone-id :- [:maybe :string]
     card
-    {:keys [cols rows viz-settings], :as _data}]
+    {:keys [cols rows viz-settings], :as _data} :- ::QPResultData]
    (let [visible-cols (table-data/visible-columns cols)
          row-limit    (min (channel.settings/attachment-table-row-limit) 100)]
      (cons

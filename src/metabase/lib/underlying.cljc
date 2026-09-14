@@ -12,6 +12,7 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]
@@ -146,7 +147,7 @@
 
   See issue #66715."
   [query :- ::lib.schema/query
-   dimensions :- [:maybe [:sequential :map]]]
+   dimensions :- [:maybe ::lib.schema.drill-thru/context.row]]
   (not-empty
    (for [dim   dimensions
          :when (top-level-column query (:column dim))]

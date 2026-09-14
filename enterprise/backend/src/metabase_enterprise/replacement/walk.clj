@@ -6,20 +6,22 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.util :as lib.util]
    [metabase.models.visualization-settings :as vs]
-   [metabase.util.malli :as mu]))
+   [metabase.parameters.schema :as parameters.schema]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
 (mu/defn parameter-source-card-ids :- [:set ::lib.schema.id/card]
   "Get all card IDs referenced by `:values_source_config` in the given parameters."
-  [parameters :- [:sequential :map]]
+  [parameters :- [:sequential ::parameters.schema/parameter]]
   (into #{} (keep #(-> % :values_source_config :card_id)) parameters))
 
 (mu/defn walk-parameter-source-card-ids :- [:sequential :map]
   "Walk the parameters and update the card IDs in `:values_source_config` using the provided function.
 
   `card-id-fn` will be called with a card ID and should return a new card ID."
-  [parameters :- [:sequential :map]
+  [parameters :- [:sequential ::parameters.schema/parameter]
    card-id-fn :- fn?]
   (mapv #(m/update-existing-in % [:values_source_config :card_id] card-id-fn) parameters))
 
@@ -28,7 +30,7 @@
   in the `:values_source_config` using the provided function.
 
   `ref-fn` will be called with a ref and a card ID and should return a new ref."
-  [parameters :- [:sequential :map]
+  [parameters :- [:sequential ::parameters.schema/parameter]
    ref-fn       :- fn?]
   (letfn [(update-legacy-ref [legacy-ref card-id]
             (try
@@ -47,14 +49,14 @@
 
 (mu/defn parameter-mapping-card-ids :- [:set ::lib.schema.id/card]
   "Get all card IDs referenced by the parameter mappings."
-  [parameter-mappings :- [:sequential :map]]
+  [parameter-mappings :- [:sequential ::parameters.schema/parameter-mapping]]
   (into #{} (keep :card_id) parameter-mappings))
 
 (mu/defn walk-parameter-mapping-targets :- [:sequential :map]
   "Walk the parameter mappings and update the targets using the provided function.
 
   `target-fn` will be called with a parameter target and a card ID and should return a new parameter target."
-  [parameter-mappings :- [:sequential :map]
+  [parameter-mappings :- [:sequential ::parameters.schema/parameter-mapping]
    target-fn          :- fn?]
   (mapv (fn [mapping]
           (or (when-some [card-id (:card_id mapping)]
@@ -67,7 +69,7 @@
   "Walk the viz settings and update the refs using the provided function.
 
   `ref-fn` will be called with a ref and should return either a string to be used as a column name."
-  [viz-settings :- :map
+  [viz-settings :- ms/VisualizationSettings
    ref-fn       :- fn?]
   (letfn [(update-legacy-ref-or-name [ref-or-name]
             (or (when (vector? ref-or-name)
@@ -106,13 +108,13 @@
 
 (mu/defn click-behavior-card-id :- [:maybe ::lib.schema.id/card]
   "Returns the card ID from a click behavior if it links to a card."
-  [click-behavior :- :map]
+  [click-behavior :- ms/VisualizationSettings]
   (when (= ::vs/card (::vs/link-type click-behavior))
     (::vs/link-target-id click-behavior)))
 
 (mu/defn viz-settings-click-behavior-card-ids :- [:set ::lib.schema.id/card]
   "Get all card IDs referenced by the click behaviors in the viz settings."
-  [viz-settings :- :map]
+  [viz-settings :- ms/VisualizationSettings]
   (into #{}
         (concat
          ;; global click behavior (non-table cards)
@@ -127,7 +129,7 @@
   "Walk the click behaviors in the viz settings and update the targets using the provided function.
 
   `target-fn` will be called with a parameter target and a card ID and should return a new parameter target."
-  [viz-settings :- :map
+  [viz-settings :- ms/VisualizationSettings
    target-fn    :- fn?]
   (letfn [(update-mapping [card-id mapping]
             (or (when-some [target (some->> mapping ::vs/param-mapping-target ::vs/param-dimension

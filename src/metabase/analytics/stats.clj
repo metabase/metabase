@@ -540,6 +540,15 @@
           {:group (str qe-group) :value (get executions qe-group)})
         [:interactive_embed :internal :public_link :sdk_embed :simple_embed :static_embed]))
 
+(def ^:private QueryExecutionCounts
+  [:map {:closed true}
+   [:sdk_embed :int]
+   [:interactive_embed :int]
+   [:static_embed :int]
+   [:public_link :int]
+   [:simple_embed :int]
+   [:internal :int]])
+
 (mu/defn- snowplow-grouped-metrics
   :- [:sequential
       [:map
@@ -549,7 +558,12 @@
   [{:keys [eid-translations-24h
            query-executions
            query-executions-24h]
-    :as _snowplow-grouped-metric-info}]
+    :as _snowplow-grouped-metric-info}
+   :- [:map {:closed true}
+       [:eid-translations-24h [:map {:closed true}
+                                [:ok :int] [:not-found :int] [:invalid-format :int] [:total :int]]]
+       [:query-executions     QueryExecutionCounts]
+       [:query-executions-24h QueryExecutionCounts]]]
   (deep-string-keywords
    [{:name :query_executions_by_source
      :values (get-query-exeuction-counts query-executions)

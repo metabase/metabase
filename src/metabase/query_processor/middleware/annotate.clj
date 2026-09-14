@@ -76,7 +76,7 @@
   "Native queries don't have the type information from the original `Field` objects used in the query. If the driver
   returned a base type more specific than :type/*, use that; otherwise look at the sample of rows and infer the base
   type based on the classes of the values"
-  [{:keys [cols]} :- :map]
+  [{:keys [cols]} :- ::metadata]
   (apply analyze/col-wise
          (for [{driver-base-type :base_type} cols]
            (if (contains? #{nil :type/*} driver-base-type)

@@ -23,11 +23,7 @@
 (mu/defn legacy-inner-query->mbql5-query :- ::lib.schema/query
   "Convert a legacy `inner-query` to an MBQL 5 query. Requires bound QP store."
   {:deprecated "0.57.0"}
-  [inner-query :- [:and
-                   :map
-                   [:fn
-                    {:error/message "Should be a legacy MBQL inner query"}
-                    (some-fn :query :source-table :source-query)]]]
+  [inner-query :- ::mbql.s/MBQLInnerQuery]
   ;; existing usage -- don't use going forward
   #_{:clj-kondo/ignore [:deprecated-var]}
   (qp.store/cached [:mbql5-query (hash inner-query)]
@@ -49,7 +45,7 @@
 
   DEPRECATED: use [[mbql-5-aggregation-name]] going forward."
   {:deprecated "0.64.0"}
-  [legacy-inner-query :- :map
+  [legacy-inner-query :- ::mbql.s/MBQLInnerQuery
    legacy-ag-clause]
   (let [ag-clause (lib/->mbql5 legacy-ag-clause)]
     (or (::add/desired-alias (lib/options ag-clause))
@@ -65,7 +61,7 @@
   metadata returned by the driver's impl of `execute-reducible-query` and (b) column metadata inferred by logic in
   this namespace."
   {:deprecated "0.64.0"}
-  [legacy-query {initial-cols :cols, :as _initial-metadata} :- [:maybe :map]]
+  [legacy-query {initial-cols :cols, :as _initial-metadata} :- [:maybe :metabase.query-processor.middleware.annotate/metadata]]
   (let [expected-cols (requiring-resolve 'metabase.query-processor.middleware.annotate/expected-cols)
         mbql5-query   (lib/query
                        (qp.store/metadata-provider)

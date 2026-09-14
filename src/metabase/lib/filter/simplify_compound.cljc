@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.util :as lib.util]
@@ -17,7 +18,7 @@
   [:schema
    [:cat
     keyword?
-    map?
+    ::lib.schema.common/options
     [:+ any?]]])
 
 (mu/defn- combine-compound-filters-of-type :- [:sequential [:maybe ::mbql-clause]]
@@ -43,7 +44,7 @@
 
 (mu/defn- simplify-and-or-filter :- [:maybe ::lib.schema.mbql-clause/clause]
   [tag  :- [:enum :and :or]
-   opts :- :map
+   opts :- ::lib.schema.common/options
    args]
   (let [args (m/distinct-by lib.schema.util/mbql-clause-distinct-key (filter some? args))]
     (case (count args)

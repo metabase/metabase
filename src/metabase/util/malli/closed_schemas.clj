@@ -3,7 +3,8 @@
   `:any`.
 
   Accepted instead: a map with a `::mc/default` entry (whose schema is walked), `:any` as a conjunct of an `:and`,
-  and the schemas marked `::mr/deliberately-open`. Registry schemas are walked once per `visited` set."
+  and the schemas marked `::mr/deliberately-open`. Registry schemas are walked once per `visited` set, except the ones of a
+  library."
   (:require
    [clojure.string :as str]
    [malli.core :as mc]
@@ -47,6 +48,13 @@
   "Schemas whose children are values, not schemas, and are not walked."
   #{:= :not= :enum :fn :re})
 
+(defn- external-registry-key?
+  "Whether `registry-key` belongs to a namespace outside Metabase, such as a library's schemas."
+  [registry-key]
+  (let [ns-name (namespace registry-key)]
+    (and (not (str/starts-with? ns-name "metabase"))
+         (some? (find-ns (symbol ns-name))))))
+
 (defn- deliberately-open? [schema]
   (true? (::mr/deliberately-open (mc/properties schema))))
 
@@ -64,7 +72,8 @@
           registry-key (ref-name schema)]
       (cond
         registry-key
-        (when-not (contains? @visited registry-key)
+        (when-not (or (contains? @visited registry-key)
+                      (external-registry-key? registry-key))
           (swap! visited conj registry-key)
           (when-let [dereffed (deref-safe schema)]
             (walk-schema! dereffed (conj trail registry-key) options conjunct?)))

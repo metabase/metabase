@@ -14,6 +14,7 @@
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.performance :refer [empty? get-in]]))
 
 ;;; Column vs Field?
@@ -880,7 +881,7 @@
    [:table-id   ::lib.schema.id/table]
    ;; the MBQL snippet defining this Segment; this may still be in legacy
    ;; format. [[metabase.lib.segment/segment-definition]] handles conversion to MBQL 5 if needed.
-   [:definition [:maybe :map]]
+   [:definition [:maybe [:ref :metabase.lib.schema/query]]]
    [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
 (defn- normalize-measure-definition [definition]
@@ -957,8 +958,11 @@
    [:id ::lib.schema.id/database]
    ;; TODO -- this should validate against the driver features list in [[metabase.driver/features]] if we're in
    ;; Clj mode
-   [:dbms-version    {:optional true} [:maybe :map]]
-   [:details         {:optional true} :map]
+   [:dbms-version    {:optional true} [:maybe [:map {:closed true}
+                                                [:flavor           {:optional true} [:maybe :string]]
+                                                [:version          {:optional true} [:maybe :string]]
+                                                [:semantic-version {:optional true} [:maybe [:sequential :int]]]]]]
+   [:details         {:optional true} ms/DatabaseDetails]
    [:engine          {:optional true} [:keyword {:decode/normalize lib.schema.common/normalize-keyword}]]
    [:features        {:optional true} [:set [:keyword {:decode/normalize lib.schema.common/normalize-keyword}]]]
    [:is-audit        {:optional true} :boolean]

@@ -18,6 +18,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp])
   (:import
@@ -88,8 +89,8 @@
 (mu/defn- add-extra-metadata!
   "Add extra metadata like Field base-type, etc."
   [{:keys [table-definitions], :as _database-definition} :- [:map {:closed true}
-                                                             [:table-definitions {:optional true} [:maybe [:sequential :map]]]]
-   db                                                    :- :map]
+                                                             [:table-definitions {:optional true} [:maybe [:sequential (ms/InstanceOfClass metabase.test.data.interface.TableDefinition)]]]]
+   db                                                    :- (ms/InstanceOf :model/Database)]
   (doseq [{:keys [table-name], :as table-definition} table-definitions]
     (let [table (delay (or (tx/metabase-instance table-definition db)
                            (throw (Exception. (format "Table '%s' not loaded from definition:\n%s\nFound:\n%s"

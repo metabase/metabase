@@ -55,7 +55,7 @@
   "A reducing function that calculates what is ultimately returned as `[:data :results_metadata]` in userland QP
   results. `metadata` is the usual QP results metadata e.g. as received by an `rff`."
   {:arglists '([metadata])}
-  [{:keys [cols]}]
+  [{:keys [cols]} :- ::query-processor.schema/metadata]
   (let [cols (for [col cols]
                (try
                  (maybe-infer-semantic-type (col->ResultColumnMetadata col))

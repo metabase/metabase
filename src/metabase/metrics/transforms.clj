@@ -14,7 +14,24 @@
 (mu/defn normalize-dimension :- ::lib-metric.schema/persisted-dimension
   "Normalize a dimension after JSON parsing. Keys are kebab-case and type values are keywords.
   See [[lib-metric.schema/persisted-dimension]]."
-  [dim :- :map]
+  [dim :- [:map {:closed true}
+           [:id                    ::lib-metric.schema/dimension-id]
+           [:name                  {:optional true} [:maybe :string]]
+           [:display-name          {:optional true} [:maybe :string]]
+           [:description           {:optional true} [:maybe :string]]
+           [:effective-type        {:optional true} [:maybe [:or :string :keyword]]]
+           [:semantic-type         {:optional true} [:maybe [:or :string :keyword]]]
+           [:has-field-values      {:optional true} [:maybe [:or :string :keyword]]]
+           [:status                {:optional true} [:maybe [:or :string :keyword]]]
+           [:status-message        {:optional true} [:maybe :string]]
+           [:sources               {:optional true} [:maybe [:sequential
+                                                              [:map {:closed true}
+                                                               [:type     [:or :string :keyword]]
+                                                               [:field-id {:optional true} [:maybe :int]]
+                                                               [:binning  {:optional true} [:maybe :boolean]]]]]]
+           [:group                 {:optional true} [:maybe ::lib-metric.schema/dimension-group]]
+           [:default-temporal-unit {:optional true} [:or :string :keyword]]
+           [:default               {:optional true} [:maybe :boolean]]]]
   (cond-> dim
     (:status dim)                (update :status keyword)
     (:effective-type dim)        (update :effective-type keyword)

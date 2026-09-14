@@ -34,7 +34,7 @@
 
 (mr/def ::sandbox.attribute-remappings
   "The `:attribute_remappings` column of a Sandbox, decoded."
-  :map)
+  ::attribute-remappings)
 
 (mr/def ::sandbox
   "A Sandbox as selected from the app DB: every column of `:sandboxes`."

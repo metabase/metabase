@@ -86,7 +86,8 @@
   "Schema for a valid `internal` type query."
   (into [:multi {:dispatch :fn}]
         (cond-> [["metabase-enterprise.audit-app.pages.queries/bad-table"
-                  [:map
+                  [:map {:closed true}
+                   [:fn     [:= "metabase-enterprise.audit-app.pages.queries/bad-table"]]
                    [:type   [:enum :internal "internal"]]
                    [:args   {:optional true}
                     [:maybe [:or
@@ -102,7 +103,8 @@
                    [:offset {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]]]]
           config/is-test?
           (conj [::mc/default
-                 [:map
+                 [:map {:closed true}
+                  [:fn     :string]
                   [:type   [:enum :internal "internal"]]
                   [:args   {:optional true} [:maybe [:sequential :any]]]
                   [:limit  {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
@@ -142,7 +144,7 @@
      reduce-legacy-results) rff results))
 
 (mu/defn- process-internal-query
-  [{qualified-fn-str :fn, args :args, :as query}
+  [{qualified-fn-str :fn, args :args, :as query} :- InternalQuery
    rff :- ::qp.schema/rff]
   (validate-internal-query query)
   ;; Make sure current user is a superuser or has monitoring permissions

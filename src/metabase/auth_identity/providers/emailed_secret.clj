@@ -5,6 +5,7 @@
    [metabase.auth-identity.db :as auth-identity.db]
    [metabase.auth-identity.hierarchy :as auth-identity.hierarchy]
    [metabase.auth-identity.models.auth-identity :as auth-identity]
+   [metabase.auth-identity.schema :as auth-identity.schema]
    [metabase.auth-identity.provider :as provider]
    [metabase.channel.email.messages :as messages]
    [metabase.events.core :as events]
@@ -72,7 +73,7 @@
 
   Takes an `auth-identity` map and returns an updated version with the current instant set as the `:consumed_at`
   value in the credentials map."
-  [auth-identity :- [:map {:closed true} [:credentials :map]]]
+  [auth-identity :- ::auth-identity.schema/auth-identity]
   (assoc-in auth-identity [:credentials :consumed_at] (t/instant)))
 
 (mu/defn- parse-token-user-id :- [:maybe ms/PositiveInt]

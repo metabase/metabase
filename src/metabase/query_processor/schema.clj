@@ -4,6 +4,8 @@
    ;; because the QP still returns legacy-style metadata (for now)
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib-be.schema :as lib-be.schema]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
@@ -15,19 +17,10 @@
 
   This schema is not very strict because we need to handle different types of queries (legacy MBQL, MBQL 5,
   super-legacy MBQL, internal audit app queries, etc.) and it might not be normalized yet."
-  [:and
-   [:map {:closed true}
-    [:database {:optional true} [:or
-                                 ::lib.schema.id/database
-                                 ::lib.schema.id/saved-questions-virtual-database]]]
-   [:fn
-    {:error/message "Query with a :type or :lib/type key"}
-    (some-fn :type :lib/type)]
-   [:fn
-    {:error/message "Query should have :database unless it is :type :internal"}
-    #(or
-      (:database %)
-      (= (keyword (:type %)) :internal))]])
+  [:or
+   ::mbql.s/Query
+   ::lib.schema/query
+   ::lib-be.schema/internal-query])
 
 ;; TODO -- fill this out a bit.
 (mr/def ::metadata :any)

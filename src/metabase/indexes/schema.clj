@@ -104,7 +104,7 @@
 
 (mr/def ::table-index.structured
   "The `:structured` column of a TableIndex, decoded."
-  :map)
+  ::index-structured)
 
 (mr/def ::table-index
   "A TableIndex as selected from the app DB: every column of `:metabase_table_indexes`."
@@ -116,8 +116,8 @@
    [:status           [:or :keyword :string]]
    [:error_message    [:maybe :string]]
    [:created_by       [:maybe :int]]
-   [:created_at       ms/TemporalInstant]
-   [:updated_at       ms/TemporalInstant]
+   [:created_at       {:optional true} ms/TemporalInstant]
+   [:updated_at       {:optional true} ms/TemporalInstant]
    [:last_executed_at [:maybe ms/TemporalInstant]]])
 
 (mr/def ::table-index.update

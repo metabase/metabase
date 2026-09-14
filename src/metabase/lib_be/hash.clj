@@ -4,7 +4,9 @@
    [buddy.core.hash :as buddy-hash]
    [malli.core :as mc]
    [malli.transform :as mtx]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib-be.models.transforms :as lib-be.models.transforms]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.util :as lib.schema.util]
@@ -33,9 +35,12 @@
       lib.schema.util/remove-lib-uuids
       (lib.schema.util/sorted-maps lib.schema.common/unfussy-sorted-map)))
 
+(def ^:private QueryOrInternalQuery
+  [:or ::lib-be.schema/empty-query ::lib-be.schema/internal-query ::mbql.s/Query ::lib.schema/query])
+
 (mu/defn query->hash-input :- :map
   "Normalize and strip `query` to the canonical form used for hashing."
-  [query :- :map]
+  [query :- QueryOrInternalQuery]
   (-> query
       (cond-> (not= (keyword (:type query)) :internal)
         (as-> $query (lib-be.models.transforms/normalize-query nil $query {:strict? true})))
@@ -43,7 +48,7 @@
 
 (mu/defn query-hash :- bytes?
   "Return a 256-bit SHA3 hash of `query` as a key for the cache. (This is returned as a byte array.)"
-  ^bytes [query :- :map]
+  ^bytes [query :- QueryOrInternalQuery]
   (-> query
       query->hash-input
       json/encode

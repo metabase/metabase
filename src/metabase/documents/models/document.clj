@@ -6,6 +6,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.documents.db :as documents.db]
    [metabase.documents.prose-mirror :as prose-mirror]
+   [metabase.documents.schema :as documents.schema]
    [metabase.events.core :as events]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.models.interface :as mi]
@@ -255,7 +256,7 @@
 
   Returns:
   - map of old-card-id -> cloned-card-id"
-  [{:keys [id collection_id] :as document}]
+  [{:keys [id collection_id] :as document} :- ::documents.schema/document]
   (let [card-ids (prose-mirror/collect-ast document #(when (and (= prose-mirror/card-embed-type (:type %))
                                                                 (pos-int? (get (:attrs %) "id")))
                                                        (get (:attrs %) "id")))

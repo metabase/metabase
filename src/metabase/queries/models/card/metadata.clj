@@ -5,11 +5,13 @@
    [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
    [metabase.queries.db :as queries.db]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.schema :as qp.schema]
@@ -24,7 +26,7 @@
   [:fn {:error/message "A future"} future?])
 
 (mu/defn- legacy-result-metadata-future :- ::future
-  [query :- :map]
+  [query :- ::lib-be.schema/maybe-legacy-or-empty-query]
   (future
     (try
       ;; card result_metadata is persisted in legacy shape; Lib-shape migration pending
@@ -100,7 +102,14 @@ saved later when it is ready."
 
   This is also complicated because everything is optional, so we cannot assume the client will provide metadata and
   might need to save a metadata edit, or might need to use db-saved metadata on a modified dataset."
-  [{:keys [original-query query metadata original-metadata model?], :as options}]
+  [{:keys [original-query query metadata original-metadata model?], :as options}
+   :- [:map {:closed true}
+       [:original-query    {:optional true} [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]
+       [:query             {:optional true} [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]
+       [:metadata          {:optional true} analyze/ResultsMetadata]
+       [:original-metadata {:optional true} analyze/ResultsMetadata]
+       [:model?            {:optional true} [:maybe :boolean]]
+       [:entity-id         {:optional true} [:maybe :string]]]]
   (let [valid-metadata? (and metadata
                              (mr/validate analyze/ResultsMetadata metadata))]
     (cond
@@ -146,7 +155,7 @@ saved later when it is ready."
   [result-metadata-future :- ::future
    card                   :- [:map {:closed true}
                               [:id            ::lib.schema.id/card]
-                              [:dataset_query :map]]]
+                              [:dataset_query ::lib-be.schema/maybe-legacy-or-empty-query]]]
   (let [id (u/the-id card)]
     (future
       (try
@@ -217,7 +226,7 @@ saved later when it is ready."
   ([card]
    (populate-result-metadata card nil))
 
-  ([{query :dataset_query metadata :result_metadata :as card} changes]
+  ([{query :dataset_query metadata :result_metadata :as card} :- ::queries.schema/card changes]
    (-> (cond
          ;; not updating the query => no-op
          (and (not-empty changes)

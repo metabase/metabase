@@ -240,6 +240,24 @@
   "Schema for functions accepting either a `HybridPulseCard`, `CardRef`, or `CardBase`."
   [:or HybridPulseCard CardRef CardBase])
 
+(def ^:private PulseChannelInput
+  "A PulseChannel as [[update-notification-channels!]]/[[create-pulse!]] accept it: a subset of `::pulse-channel`
+  columns (`:id`/`:pulse_id` filled in server-side when absent) plus `:recipients`."
+  [:map {:closed true}
+   [:id             {:optional true} :any]
+   [:channel_type   {:optional true} :any]
+   [:channel_id     {:optional true} :any]
+   [:details        {:optional true} :any]
+   [:enabled        {:optional true} :any]
+   [:pulse_id       {:optional true} :any]
+   [:recipients     {:optional true} [:maybe [:sequential :any]]]
+   [:schedule_type  {:optional true} :any]
+   [:schedule_day   {:optional true} :any]
+   [:schedule_hour  {:optional true} :any]
+   [:schedule_frame {:optional true} :any]
+   [:created_at     {:optional true} :any]
+   [:updated_at     {:optional true} :any]])
+
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
 (methodical/defmethod t2/batched-hydrate [:default :channels]
@@ -331,13 +349,18 @@
           hydrate-notification
           notification->alert))
 
+(def ^:private RetrieveAlertsOpts
+  [:map {:closed true}
+   [:archived? {:optional true} [:maybe :boolean]]
+   [:user-id   {:optional true} [:maybe ms/PositiveInt]]])
+
 (mu/defn retrieve-alerts :- [:sequential (ms/InstanceOf :model/Pulse)]
   "Fetch all Alerts."
   ([]
    (retrieve-alerts nil))
 
   ([{:keys [archived? user-id]
-     :or   {archived? false}}]
+     :or   {archived? false}} :- [:maybe RetrieveAlertsOpts]]
    (assert boolean? archived?)
    (for [alert (hydrate-notifications (pulse.db/alerts archived? user-id))
          :let  [alert (notification->alert alert)]
@@ -347,11 +370,17 @@
          :when (:card alert)]
      alert)))
 
+(def ^:private RetrievePulsesOpts
+  [:map {:closed true}
+   [:archived?    {:optional true} [:maybe :boolean]]
+   [:dashboard-id {:optional true} [:maybe ms/PositiveInt]]
+   [:user-id      {:optional true} [:maybe ms/PositiveInt]]])
+
 (mu/defn retrieve-pulses :- [:sequential (ms/InstanceOf :model/Pulse)]
   "Fetch all `Pulses`. When `user-id` is included, only fetches `Pulses` for which the provided user is the creator
   or a recipient."
   [{:keys [archived? dashboard-id user-id]
-    :or   {archived? false}}]
+    :or   {archived? false}} :- RetrievePulsesOpts]
   (for [pulse (pulse.db/pulses archived? dashboard-id user-id)]
     (-> pulse
         (dissoc :lower-name)
@@ -476,7 +505,7 @@
 
 (mu/defn card->ref :- CardRef
   "Create a card reference from a card or id"
-  [card :- :map]
+  [card :- CoercibleToCardRef]
   {:id                (u/the-id card)
    :include_csv       (get card :include_csv false)
    :include_xls       (get card :include_xls false)
@@ -519,7 +548,7 @@
     * If an existing `PulseChannel` has no corresponding entry in `channels`, it will be deleted.
 
     * All previously existing channels will be updated with their most recent information."
-  [notification-or-id channels :- [:sequential :map]]
+  [notification-or-id channels :- [:sequential PulseChannelInput]]
   (let [existing-channels   (pulse.db/pulse-channels-for-pulse (u/the-id notification-or-id))
         channels            (map-indexed
                              (fn [idx channel]
@@ -565,8 +594,8 @@
   PulseCards, PulseChannels, and PulseChannelRecipients.
 
   Returns the newly created Pulse, or throws an Exception."
-  [cards    :- [:sequential [:map-of :keyword :any]]
-   channels :- [:sequential [:map-of :keyword :any]]
+  [cards    :- [:sequential CardRef]
+   channels :- [:sequential PulseChannelInput]
    kvs      :- [:map {:closed true}
                 [:name                                 ms/NonBlankString]
                 [:creator_id                           ms/PositiveInt]
@@ -574,7 +603,7 @@
                 [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
                 [:collection_position {:optional true} [:maybe ms/PositiveInt]]
                 [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
-                [:parameters          {:optional true} [:maybe [:sequential :map]]]
+                [:parameters          {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]
                 [:disable_links       {:optional true} [:maybe ms/BooleanValue]]]]
   (let [pulse-id (create-notification-and-add-cards-and-channels! kvs cards channels)]
     ;; return the full Pulse (and record our create event).
@@ -616,9 +645,9 @@
                     [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
                     [:collection_position {:optional true} [:maybe ms/PositiveInt]]
                     [:cards               {:optional true} [:sequential CoercibleToCardRef]]
-                    [:channels            {:optional true} [:sequential :map]]
+                    [:channels            {:optional true} [:sequential PulseChannelInput]]
                     [:archived            {:optional true} boolean?]
-                    [:parameters          {:optional true} [:maybe [:sequential :map]]]]]
+                    [:parameters          {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]]]
   (pulse.db/update-pulse! (u/the-id notification)
                           (u/select-keys-when notification
                                               :present [:collection_id :collection_position :archived]

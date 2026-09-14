@@ -21,7 +21,7 @@
   [:multi
    {:dispatch t2/model}
    [:xrays/Metric [:ref ::metric]]
-   [::mc/default  [:map
+   [::mc/default  [:map {:closed true}
                    [:name {:optional true} :string]]]])
 
 (mr/def ::filter-clause
@@ -209,11 +209,12 @@
     [:height        {:optional true} number?]
     [:width         {:optional true} number?]
     [:title         {:optional true} :string]
-    [:visualization {:optional true} [:tuple :string :map]]
+    [:visualization {:optional true} [:tuple :string ms/VisualizationSettings]]
     [:metrics       {:optional true} [:sequential :string]]
     [:filters       {:optional true} [:sequential :string]]
     [:description   {:optional true} :string]
-    [:dimensions    {:optional true} [:sequential [:map-of :string :map]]]
+    [:dimensions    {:optional true} [:sequential [:map-of :string [:map {:closed true}
+                                                                    [:aggregation {:optional true} :string]]]]]
     ;; HUH??
     [:order_by      {:optional true} [:sequential [:map-of :string [:enum "ascending" "descending"]]]]
     [:limit         {:optional true} pos-int?]
@@ -255,7 +256,7 @@
    [:row                    {:optional true} nat-int?]
    [:size_x                 {:optional true} pos-int?]
    [:size_y                 {:optional true} pos-int?]
-   [:visualization_settings {:optional true} map?]
+   [:visualization_settings {:optional true} ms/VisualizationSettings]
    [:title                  {:optional true} string?]
    [:card-score             {:optional true} number?]])
 
@@ -265,7 +266,21 @@
    [:filters   {:optional true} [:sequential :any]]])
 
 (mr/def ::card-template
-  :map)
+  "A grounded, combined metric augmented with the extra keys the dashboard-populating code
+  ([[metabase.xrays.automagic-dashboards.populate]]) reads off a card before rendering it. A plain text/group-heading
+  card carries none of the metric keys, so they're all optional here."
+  [:merge
+   ::combined-metric
+   [:map {:closed true}
+    [:metric-name            {:optional true} :string]
+    [:metric-title           {:optional true} :string]
+    [:metric-score           {:optional true} nat-int?]
+    [:metric-definition      {:optional true} ::grounded-metric.definition]
+    [:dataset_query          {:optional true} ::query]
+    [:y_label                {:optional true} :string]
+    [:series_labels          {:optional true} [:sequential :string]]
+    [:text                   {:optional true} :string]
+    [:visualization-settings {:optional true} ms/VisualizationSettings]]])
 
 (mr/def ::dashboard-template
   "This is somewhat different [[metabase.xrays.automagic-dashboards.schema/DashboardTemplate]], I haven't exactly worked

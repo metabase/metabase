@@ -12,6 +12,7 @@
    [metabase.analytics.settings :as analytics.settings]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.schema :as lib.schema]
    [metabase.permissions.core :as perms]
    [metabase.queries.models.query :as query]
    [metabase.util :as u]
@@ -20,6 +21,15 @@
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
+
+(def ^:private InternalTemplate
+  "An action descriptor `:template` -- identifies the action, never its content."
+  [:map {:closed true}
+   [:type       [:= :internal]]
+   [:action     :any]
+   [:database   {:optional true} :any]
+   [:scope      {:optional true} :any]
+   [:action-id  {:optional true} :any]])
 
 (def ^:private Base
   "What a recording site knows about an invocation before it runs."
@@ -33,7 +43,7 @@
    [:context      [:enum :action-execute :public-action-execute]]
    [:native?      :boolean]
    ;; hashed, and stored in `query` -- the SQL template or an action descriptor, never the input values
-   [:template     :map]
+   [:template     [:or ::lib.schema/query InternalTemplate]]
    ;; the input values that were actually supplied: PII-gated into `parameters`
    [:inputs       [:sequential :any]]])
 

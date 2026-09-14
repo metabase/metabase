@@ -619,7 +619,10 @@
   ([context :- ::context]
    (create-context context nil))
   ([context :- ::context
-    opts    :- [:maybe [:map-of :keyword :any]]]
+    opts    :- [:maybe [:map {:closed true}
+                        [:metabot-id  {:optional true} [:maybe :string]]
+                        [:profile-id  {:optional true} [:maybe :keyword]]
+                        [:date-format {:optional true} [:maybe (ms/InstanceOfClass DateTimeFormatter)]]]]]
    (metabot.perms/with-cache
      (-> context
          enhance-context-with-schema

@@ -34,7 +34,9 @@
    [sql args missing] :- ::acc
    in-optional?
    k
-   {:keys [_field value], :as v}]
+   {:keys [_field value], :as v} :- [:or
+                                     :metabase.lib.parameters.parse.types/field-filter
+                                     :metabase.lib.parameters.parse.types/temporal-unit]]
   (if (and (= value lib/parsed-param-no-value-placeholder) in-optional?)
     ;; no-value field filters inside optional clauses are ignored, and eventually emitted entirely
     [sql args (conj missing k)]
@@ -99,7 +101,7 @@
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    param->value
    [sql args missing] :- ::acc
-   {subclauses :args}]
+   {subclauses :args} :- :metabase.lib.parameters.parse.types/optional]
   (let [[opt-sql opt-args opt-missing] (substitute* metadata-providerable param->value subclauses true)]
     (if (seq opt-missing)
       [sql args missing]

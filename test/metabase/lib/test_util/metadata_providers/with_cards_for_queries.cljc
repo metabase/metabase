@@ -12,7 +12,7 @@
   "Create a metadata provider that adds a Card for each query in `queries`. Cards do not include result
   metadata. Cards have IDs starting at `1` and increasing sequentially."
   [parent-metadata-provider :- ::lib.schema.metadata/metadata-provider
-   queries                  :- [:sequential {:min 1} :map]]
+   queries                  :- [:sequential {:min 1} ::lib.schema.metadata/card.query]]
   (lib.tu.metadata-providers.mock/mock-metadata-provider
    parent-metadata-provider
    {:cards (into []

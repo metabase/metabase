@@ -51,7 +51,7 @@
    [:json-unfolding             {:optional true} :boolean]
    ;; TODO (Cam 8/11/25) -- this should be required to be a sequence of strings but we'll need to go fix some code
    [:nfc-path                   {:optional true} [:maybe [:sequential [:or :keyword :string]]]]
-   [:custom                     {:optional true} :map]
+   [:custom                     {:optional true} ms/OpaqueJSONObject]
    [:database-default           {:optional true} :string]
    [:database-is-auto-increment {:optional true} :boolean]
    [:database-is-generated      {:optional true} :boolean]

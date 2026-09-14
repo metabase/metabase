@@ -1,8 +1,10 @@
 (ns metabase.lib-be.metadata.bootstrap
   (:require
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib-be.db :as lib-be.db]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
@@ -11,12 +13,15 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :as perf]))
 
+(def ^:private Query
+  [:or ::mbql.s/Query ::lib.schema/query])
+
 (mu/defn- source-card-id-for-mbql5-query :- [:maybe ::lib.schema.id/card]
-  [query :- :map]
+  [query :- ::lib.schema/query]
   (-> query :stages first :source-card))
 
 (mu/defn- source-card-id-for-legacy-query :- [:maybe ::lib.schema.id/card]
-  [query :- :map]
+  [query :- ::mbql.s/Query]
   (let [inner-query         (:query query)
         deepest-inner-query (loop [inner-query inner-query]
                               (let [source-query (:source-query inner-query)]
@@ -68,7 +73,7 @@
     (:database-id card)))
 
 (mu/defn- source-card-id :- ::lib.schema.id/card
-  [query :- :map]
+  [query :- Query]
   (case (lib/normalized-query-type query)
     :mbql/query
     (source-card-id-for-mbql5-query query)
@@ -82,7 +87,7 @@
 
 (mu/defn- resolved-database-id :- [:maybe ::lib.schema.id/database]
   [metadata-provider :- [:maybe ::lib.metadata.protocols/metadata-provider]
-   query             :- :map]
+   query             :- Query]
   (let [database-id (:database query)]
     (cond
       (pos-int? database-id)
@@ -103,22 +108,14 @@
    ::lib.schema.id/database
    ::lib.schema.id/saved-questions-virtual-database])
 
-(mu/defn resolve-database :- [:maybe
-                              [:or
-                               ::empty-map
-                               [:map {:closed true}
-                                [:database ::lib.schema.id/database]]]]
+(mu/defn resolve-database :- [:maybe [:or ::empty-map Query]]
   "If query has `:database` `-1337` (the legacy database ID for queries using a source Card that had an unknown
   database), resolve the correct database ID and assoc it into the query."
   ([query]
    (resolve-database nil query))
 
   ([metadata-provider :- [:maybe ::lib.metadata.protocols/metadata-provider]
-    query             :- [:maybe
-                          [:or
-                           ::empty-map
-                           [:map {:closed true}
-                            [:database ::maybe-unresolved-database-id]]]]]
+    query             :- [:maybe [:or ::empty-map Query]]]
    (when (seq query)
      (if (pos-int? (:database query))
        query

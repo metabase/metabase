@@ -1524,7 +1524,7 @@
   "Schema for a native query snippet template tag."
   [:merge
    ::TemplateTag.Common
-   [:map
+   [:map {:closed true}
     [:type         [:= {:decode/normalize helpers/normalize-keyword} :snippet]]
     [:snippet-name ::lib.schema.common/non-blank-string]
     [:snippet-id   ::lib.schema.id/snippet]
@@ -1542,7 +1542,7 @@
   "Schema for a source query template tag."
   [:merge
    ::TemplateTag.Common
-   [:map
+   [:map {:closed true}
     [:type    [:= {:decode/normalize helpers/normalize-keyword} :card]]
     [:card-id ::lib.schema.id/card]]])
 
@@ -1565,7 +1565,7 @@
   "Schema for a source query template tag."
   [:merge
    ::TemplateTag.Common
-   [:map
+   [:map {:closed true}
     [:type                  [:= {:decode/normalize helpers/normalize-keyword} :table]]
     [:table-id              ::lib.schema.id/table]
     [:emit-alias            {:optional true} :boolean]
@@ -1604,7 +1604,7 @@
   "Schema for a field filter template tag."
   [:merge
    ::TemplateTag.Value.Common
-   [:map
+   [:map {:closed true}
     [:type      [:= {:decode/normalize helpers/normalize-keyword} :dimension]]
     [:dimension [:ref ::field]]
     [:alias     {:optional true} :string]
@@ -1630,7 +1630,7 @@
   "Schema for a temporal unit template tag."
   [:merge
    ::TemplateTag.Value.Common
-   [:map
+   [:map {:closed true}
     [:type      [:= {:decode/normalize helpers/normalize-keyword} :temporal-unit]]
     [:dimension [:ref ::field]]
     [:alias     {:optional true} :string]]])
@@ -1647,7 +1647,7 @@
   "Schema for a raw value template tag."
   [:merge
    ::TemplateTag.Value.Common
-   [:map
+   [:map {:closed true}
     [:type
      [:ref
       {:description
@@ -1744,7 +1744,7 @@
    [:merge
     {:decode/normalize #'remove-empty-keys-from-native-inner-query}
     ::NativeQuery.Common
-    [:map
+    [:map {:closed true}
      [:query :some]]]
    (lib.schema.common/disallowed-keys
     {:native "A top-level native inner query should have the :query key, not :native"})])
@@ -1754,7 +1754,7 @@
    [:merge
     {:decode/normalize #'remove-empty-keys-from-native-inner-query}
     ::NativeQuery.Common
-    [:map
+    [:map {:closed true}
      [:native :some]]]
    (lib.schema.common/disallowed-keys
     {:query "A top-level native inner query should have the :native key, not :query"})])

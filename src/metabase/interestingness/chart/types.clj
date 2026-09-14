@@ -1,6 +1,7 @@
 (ns metabase.interestingness.chart.types
   "Malli schemas for chart statistics computation."
   (:require
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.util.malli.registry :as mr]))
 
 ;;; -------------------------------------------------- Input Schemas -------------------------------------------------
@@ -39,7 +40,7 @@
   [:map {:closed true}
    [:series [:map-of :string ::series-config]]
    [:timeline_events {:optional true} [:maybe [:sequential ::timeline-event]]]
-   [:query {:optional true} [:maybe :map]]
+   [:query {:optional true} [:maybe ::lib-be.schema/maybe-legacy-query]]
    [:display_type {:optional true} [:maybe :string]]
    [:title {:optional true} [:maybe :string]]])
 

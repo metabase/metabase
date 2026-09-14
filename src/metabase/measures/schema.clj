@@ -1,6 +1,7 @@
 (ns metabase.measures.schema
   (:require
    [metabase.lib-be.schema :as lib-be.schema]
+   [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -21,15 +22,15 @@
 
 (mr/def ::measure.definition
   "The `:definition` column of a Measure, decoded."
-  :map)
+  ::lib-be.schema/maybe-legacy-query)
 
 (mr/def ::measure.dimension
   "One entry of the `:dimensions` column of a Measure, decoded."
-  :map)
+  ::lib-metric.schema/persisted-dimension)
 
 (mr/def ::measure.dimension-mapping
   "One entry of the `:dimension_mappings` column of a Measure, decoded."
-  :map)
+  ::lib-metric.schema/dimension-mapping)
 
 (mr/def ::measure
   "A Measure as selected from the app DB: every column of `:measure`."

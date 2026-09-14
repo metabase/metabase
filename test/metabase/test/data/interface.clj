@@ -950,7 +950,11 @@
 (mu/defn edn-dataset-definition
   "Define a new test dataset using the definition in an EDN file in the `test/metabase/test/data/dataset_definitions/`
   directory. (Filename should be `dataset-name` + `.edn`.)"
-  [dataset-name :- ms/NonBlankString options :- map?]
+  [dataset-name :- ms/NonBlankString
+   options      :- [:map {:closed true}
+                    [:native-ddl        {:optional true} [:sequential :any]]
+                    [:disable-fk-checks {:optional true} :boolean]
+                    [:static            {:optional true} :boolean]]]
   (let [get-def (delay
                   (let [file-contents (edn/read-string
                                        {:eof nil, :readers {'t #'u.date/parse}}

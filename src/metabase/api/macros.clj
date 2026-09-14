@@ -77,7 +77,39 @@
    [:body            [:sequential any?]]
    [:response-schema {:optional true} [:maybe {:description "Malli schema for response. Note this is before we 'wrap if needed'"} any?]]
    [:docstr          {:optional true} [:maybe string?]]
-   [:metadata        {:optional true} [:maybe {:description "Metadata map like you'd use with `defn`"} map?]]])
+   [:metadata        {:optional true} [:maybe {:description "Metadata map like you'd use with `defn`"} ::route-metadata]]])
+
+(mr/def ::conformed-schema-specifier
+  [:maybe [:map {:closed true}
+           [:horn [:= :-]]
+           [:schema :any]]])
+
+(mr/def ::conformed-param
+  [:map {:closed true}
+   [:binding :any]
+   [:schema {:optional true} ::conformed-schema-specifier]])
+
+(mr/def ::conformed-params
+  [:map {:closed true}
+   [:route         {:optional true} ::conformed-param]
+   [:query         {:optional true} ::conformed-param]
+   [:body          {:optional true} ::conformed-param]
+   [:request       {:optional true} ::conformed-param]
+   [:respond-raise {:optional true} [:map {:closed true}
+                                      [:respond :any]
+                                      [:raise   :any]]]])
+
+(mr/def ::conformed-args
+  "Shape of `(s/conform ::defendpoint args)`, before [[parse-route]] and [[parse-params]] transform it into
+  [[::parsed-args]]."
+  [:map {:closed true}
+   [:method          ::method]
+   [:route           [:tuple [:enum :path :vector] :any]]
+   [:response-schema {:optional true} ::conformed-schema-specifier]
+   [:docstr          {:optional true} [:maybe :string]]
+   [:metadata        {:optional true} [:maybe ::route-metadata]]
+   [:params          ::conformed-params]
+   [:body            [:sequential :any]]])
 
 ;;; TODO -- consider whether unique key really needs to include params + regexes or not. Maybe we should just disallow
 ;;; having two routes with the same method and param that only differ by regex patterns. It makes using this stuff more
@@ -182,7 +214,7 @@
   property in the schema itself (see [[metabase.api.macros-test/RouteParams]] for an example of this), or if one is not
   specified, in [[metabase.api.common.internal/->matching-regex]]."
   [route :- :string
-   args  :- :map]
+   args  :- ::conformed-args]
   (when-let [ks (not-empty (metabase.api.common.internal/route-arg-keywords route))]
     (let [route-params-schema (some-> (get-in args [:params :route :schema])
                                       ;; eval runs at macroexpansion time to resolve the schema form
@@ -208,7 +240,7 @@
 
 (mu/defn- parse-route :- ::route
   [[route-type route] :- [:tuple [:enum :path :vector] :any]
-   args               :- :map]
+   args               :- ::conformed-args]
   (case route-type
     :path   (merge
              {:path route}
@@ -732,7 +764,20 @@
 
 (mr/def ::route-metadata
   "Metadata declared on a route via defendpoint, e.g. `{:scope \"agent:query\"}`."
-  :map)
+  [:map {:closed true}
+   [:scope       {:optional true} [:or :string :keyword]]
+   [:multipart   {:optional true} [:or :boolean [:map {:closed true}
+                                                  [:max-file-size  {:optional true} :int]
+                                                  [:max-file-count {:optional true} :int]]]]
+   [:deprecated  {:optional true} :boolean]
+   [:tool        {:optional true} [:map {:closed true}
+                                    [:name         :string]
+                                    [:title        {:optional true} :string]
+                                    [:description  {:optional true} :any]
+                                    [:annotations  {:optional true} [:map {:closed true}
+                                                                      [:read-only?  {:optional true} :boolean]
+                                                                      [:idempotent? {:optional true} :boolean]]]
+                                    [:task-support {:optional true} :keyword]]]])
 
 (mr/def ::handler-map
   [:map-of ::method [:sequential [:tuple

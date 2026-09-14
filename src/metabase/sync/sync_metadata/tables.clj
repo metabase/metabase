@@ -89,6 +89,29 @@
    [:name   ::lib.schema.common/non-blank-string]
    [:schema [:maybe ::lib.schema.common/non-blank-string]]])
 
+(def ^:private TableMetadata
+  "The table map `create-table!`/`create-or-reactivate-table!`/`cruft-dependent-cols` accept: a
+  `DatabaseMetadataTable`-ish shape (`:schema` optional, unlike [[i/DatabaseMetadataTable]], since callers can build
+  one with just a `:name`), plus the extra keys `create-table!` reads off it before insertion."
+  [:map {:closed true}
+   [:name                                     ::lib.schema.common/non-blank-string]
+   [:schema                   {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:is_writable              {:optional true} [:maybe :boolean]]
+   [:estimated_row_count      {:optional true} [:maybe :int]]
+   [:database_require_filter {:optional true} [:maybe :boolean]]
+   [:description             {:optional true} [:maybe :string]]
+   [:visibility_type         {:optional true} [:maybe :string]]
+   [:display_name            {:optional true} [:maybe :string]]
+   [:initial_sync_status     {:optional true} [:maybe :string]]
+   [:field_order             {:optional true} [:maybe :keyword]]
+   [:data_source             {:optional true} [:maybe :keyword]]
+   [:data_authority          {:optional true} [:maybe :keyword]]])
+
+(def ^:private TableMetadataOrInstance
+  "Either a [[TableMetadata]] (a table map fresh from the driver), or an already-selected `:model/Table` instance --
+  the two shapes [[cruft-dependent-cols]] and [[table-name+schema]] accept."
+  [:or TableMetadata (ms/InstanceOf :model/Table)])
+
 (mu/defn- update-database-metadata!
   "If there is a version in the db-metadata update the DB to have that in the DB model"
   [database    :- i/DatabaseInstance
@@ -98,7 +121,7 @@
                             {:details (assoc (:details database) :version (:version db-metadata))}))
 
 (mu/defn- cruft-dependent-cols :- :map
-  [{table-name :name :as table} :- :map
+  [{table-name :name :as table} :- TableMetadataOrInstance
    database                     :- i/DatabaseInstance
    sync-stage                   :- [:enum ::reactivate ::create ::update]]
   (let [is-crufty? (if (and (= sync-stage ::update)
@@ -129,7 +152,7 @@
   "Creates a new table in the database, ready to be synced.
    Throws an exception if there is already a table with the same name, schema and database ID."
   [database :- i/DatabaseInstance
-   table    :- :map]
+   table    :- TableMetadata]
   (sync.db/insert-table!
    (merge (cruft-dependent-cols table database ::create)
           {:active                  true
@@ -167,7 +190,7 @@
 (mu/defn create-or-reactivate-table!
   "Create a single new table in the database, or mark it as active if a matching inactive one exists."
   [database :- i/DatabaseInstance
-   {schema :schema table-name :name :as table} :- :map]
+   {schema :schema table-name :name :as table} :- TableMetadata]
   (if-let [existing (sync.db/inactive-table-by-schema-and-name (u/the-id database) schema table-name)]
     (reactivate-table! database existing)
     (create-table! database table)))
@@ -193,7 +216,7 @@
 (mu/defn- table-name-or-schema-too-long? :- :boolean
   "Whether `table`'s name or schema is too long to store in the application DB (see `table-name-max-length` /
   `table-schema-max-length`)."
-  [{table-name :name, table-schema :schema} :- :map]
+  [{table-name :name, table-schema :schema} :- i/DatabaseMetadataTable]
   (boolean
    (or (< table-name-max-length (count table-name))
        (< table-schema-max-length (count (or table-schema ""))))))
@@ -301,14 +324,14 @@
 (mu/defn- ignore-table? :- :boolean
   "Tables we never create `:model/Table` rows for: the special `_metabase_metadata` table (its
   contents are applied to other Tables/Fields instead) and temporary transform output tables."
-  [table :- :map]
+  [table :- i/DatabaseMetadataTable]
   (boolean
    (or (metabase-metadata/is-metabase-metadata-table? table)
        (sync-util/is-temp-transform-table? table))))
 
 (mu/defn- table-name+schema :- TableNameAndSchema
   "The `{:name :schema}` identity a Table is keyed on during sync."
-  [table :- :map]
+  [table :- TableMetadataOrInstance]
   (select-keys table [:name :schema]))
 
 (mu/defn- existing-tables-by-name+schema :- :map

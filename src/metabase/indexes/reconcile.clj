@@ -4,10 +4,12 @@
   `driver/fetch-table-indexes` to confirm it landed."
   (:require
    [metabase.driver :as driver]
+   [metabase.indexes.schema :as indexes.schema]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -47,9 +49,7 @@
 
 (mu/defn managed-match-key :- ::match-key
   "The [[match-key]] for an index request, from its stored structured definition and index name."
-  [{:keys [index_name structured]} :- [:map {:closed true}
-                                       [:index_name [:maybe :string]]
-                                       [:structured :map]]]
+  [{:keys [index_name structured]} :- ::indexes.schema/table-index]
   (let [{:keys [kind style columns]} structured
         ;; only a :key distkey has a meaningful column; :all/:even ignore any stray column the form sent
         key-columns (if (and (= kind :distkey) (not= style :key)) [] (mapv :name columns))]
@@ -119,8 +119,8 @@
 (mu/defn merge-indexes :- [:sequential :map]
   "Reality-first merged index list: every warehouse index, flagged `:metabase_managed` with its `:request` when a
   TableIndex `row` matches ([[match-key]]), plus any request not yet present, projected from its `:structured`."
-  [rows           :- [:sequential :map]
-   warehouse-maps :- [:sequential :map]]
+  [rows           :- [:sequential ::indexes.schema/table-index]
+   warehouse-maps :- [:sequential ::driver/table-index]]
   (let [by-key       (u/index-by managed-match-key rows)
         present-keys (warehouse-key-set warehouse-maps)
         present      (for [wh warehouse-maps
@@ -141,7 +141,7 @@
   "Physical indexes on `table-name` (`schema`) in `database` via `driver/fetch-table-indexes`.
   Returns `nil` if the driver can't introspect indexes or the warehouse is unreachable, so callers can distinguish
   fetch failure from a successful empty index list."
-  [database   :- :map
+  [database   :- (ms/InstanceOf :model/Database)
    schema     :- [:maybe :string]
    table-name :- :string]
   (try

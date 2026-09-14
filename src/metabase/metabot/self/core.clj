@@ -33,11 +33,64 @@
 
 (def ToolEntry
   "A tool definition map with :tool-name, :doc, :schema, :fn, and optionally :decode/:prompt."
-  [:map
+  [:map {:closed true}
    [:tool-name :string]
    [:doc {:optional true} [:maybe :string]]
    [:schema :any]
-   [:fn [:fn fn?]]])
+   [:fn [:fn fn?]]
+   [:decode {:optional true} [:maybe [:fn fn?]]]
+   [:prompt {:optional true} [:maybe :string]]
+   [:title-fn {:optional true} [:maybe [:fn fn?]]]
+   [:system-instructions {:optional true} [:maybe :string]]
+   [:capabilities {:optional true} [:maybe [:set :keyword]]]
+   [:scope {:optional true} [:maybe :string]]])
+
+(def ^:private AISDKPart
+  "One element of the `:input` sequence passed to a provider adapter: an AISDK part keyed by
+  `:type` (`:text`, `:reasoning`, `:tool-input`, `:tool-output`), or a plain role message keyed
+  by `:role` instead."
+  [:map {:closed true}
+   [:type              {:optional true} [:maybe :keyword]]
+   [:role              {:optional true} [:maybe [:enum :user :system :assistant :tool]]]
+   [:id                {:optional true} [:maybe :string]]
+   [:text              {:optional true} [:maybe :string]]
+   [:content           {:optional true} :any]
+   [:function          {:optional true} [:maybe :string]]
+   [:arguments         {:optional true} :any]
+   [:result            {:optional true} :any]
+   [:error             {:optional true} [:maybe [:map {:closed true}
+                                                 [:message {:optional true} [:maybe :string]]
+                                                 [:type    {:optional true} [:maybe :string]]]]]
+   [:provider-metadata {:optional true} :any]])
+
+(def ^:private ApiKeyCredentials
+  "The `{:api-key ... :base-url ...}` connection shape shared by most providers."
+  [:map {:closed true}
+   [:api-key  {:optional true} [:maybe :string]]
+   [:base-url {:optional true} [:maybe :string]]])
+
+(def ^:private BedrockCredentials
+  [:map {:closed true}
+   [:access-key-id     {:optional true} [:maybe :string]]
+   [:secret-access-key {:optional true} [:maybe :string]]
+   [:session-token     {:optional true} [:maybe :string]]
+   [:region            {:optional true} [:maybe :string]]])
+
+(def ^:private GoogleCredentials
+  [:map {:closed true}
+   [:service-account-key {:optional true} [:maybe :string]]
+   [:oauth-access-token  {:optional true} [:maybe :string]]
+   [:project-id          {:optional true} [:maybe :string]]
+   [:base-url            {:optional true} [:maybe :string]]])
+
+(def ^:private LLMCredentials
+  [:or ApiKeyCredentials BedrockCredentials GoogleCredentials])
+
+(def ^:private ReasoningConfig
+  "A dialect-shaped reasoning/thinking directive, sent verbatim to the provider."
+  [:map {:closed true}
+   [:type    :string]
+   [:display {:optional true} [:maybe :string]]])
 
 (def LLMRequestOpts
   "Canonical schema for the opts map passed to every LLM provider adapter.
@@ -69,19 +122,19 @@
                         ignore it
     :prompt-cache-key - prompt-cache affinity hint (the conversation id); adapters whose
                         provider caches opt-in per key forward it (Mistral), others ignore it"
-  [:map
+  [:map {:closed true}
    [:model            {:optional true} :string]
    [:system           {:optional true} [:maybe :string]]
-   [:input            {:optional true} [:sequential :map]]
+   [:input            {:optional true} [:sequential AISDKPart]]
    [:tools            {:optional true} [:maybe [:sequential ToolEntry]]]
    [:tool_choice      {:optional true} [:maybe [:enum "auto" "required"]]]
    [:temperature      {:optional true} [:maybe number?]]
    [:max-tokens       {:optional true} [:maybe :int]]
    [:schema           {:optional true} :any]
-   [:credentials      {:optional true} [:maybe :map]]
+   [:credentials      {:optional true} [:maybe LLMCredentials]]
    [:ai-proxy?        {:optional true} [:maybe :boolean]]
    [:reasoning?       {:optional true} [:maybe :boolean]]
-   [:reasoning-config {:optional true} [:maybe :map]]
+   [:reasoning-config {:optional true} [:maybe ReasoningConfig]]
    [:fast?            {:optional true} [:maybe :boolean]]
    [:prompt-cache-key {:optional true} [:maybe :string]]])
 

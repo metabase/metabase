@@ -9,6 +9,7 @@
    [metabase.actions.hierarchy :as actions.hierarchy]
    [metabase.actions.scope :as actions.scope]
    [metabase.actions.settings :as actions.settings]
+   [metabase.actions.types :as actions.types]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
@@ -25,6 +26,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -172,9 +174,18 @@
     (doseq [[event-type payloads] (u/group-by first second effects)]
       (handle-effects!* event-type sans-effects payloads))))
 
+(def ^:private ActionContext
+  [:map {:closed true}
+   [:user-id          {:optional true} [:maybe ms/PositiveInt]]
+   [:scope            {:optional true} [:maybe ::actions.types/scope.hydrated]]
+   [:driver           {:optional true} [:maybe :keyword]]
+   [:invocation-id    {:optional true} [:maybe :string]]
+   [:invocation-stack {:optional true} [:maybe [:sequential :any]]]
+   [:effects          {:optional true} [:maybe [:sequential :any]]]])
+
 (mu/defn- perform-action-internal!
   [action-kw :- qualified-keyword?
-   ctx       :- :map
+   ctx       :- ActionContext
    ;; Since the inner map shape will depend on action-kw, we will need to dynamically validate it.
    inputs    :- [:sequential :map]
    & {:as _opts}]

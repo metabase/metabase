@@ -77,7 +77,11 @@
   "A page of `:id`/`:model` rows from the union of `union-queries`, sorted by `sort-column` (`:name` or
   `:last_used_at`) in `sort-direction`, skipping `offset` and returning up to `limit` (either may be nil for no
   restriction)."
-  [union-queries :- [:sequential :map]
+  [union-queries :- [:sequential [:map {:closed true}
+                                   [:select    :any]
+                                   [:from      :any]
+                                   [:left-join {:optional true} :any]
+                                   [:where     {:optional true} :any]]]
    sort-column :- [:enum :name :last_used_at]
    sort-direction :- [:enum :asc :desc]
    limit :- [:maybe :int]
@@ -93,6 +97,10 @@
 
 (mu/defn stale-content-count
   "The total count of rows across every page [[stale-content-rows]] would return for `union-queries`."
-  [union-queries :- [:sequential :map]]
+  [union-queries :- [:sequential [:map {:closed true}
+                                   [:select    :any]
+                                   [:from      :any]
+                                   [:left-join {:optional true} :any]
+                                   [:where     {:optional true} :any]]]]
   (:count (t2/query-one {:select [[:%count.* :count]]
                          :from   (stale-content-union union-queries)})))

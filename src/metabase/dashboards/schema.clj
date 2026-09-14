@@ -28,7 +28,7 @@
 
 (mr/def ::dashboard.parameter
   "One entry of the `:parameters` column of a Dashboard, decoded."
-  :map)
+  ::parameters.schema/parameter)
 
 (mr/def ::dashboard.update
   "What an update (or insert) of a Dashboard accepts: every column of `:report_dashboard` except `id`, all optional."
@@ -63,11 +63,11 @@
 
 (mr/def ::dashboard-card.parameter-mapping
   "One entry of the `:parameter_mappings` column of a DashboardCard, decoded."
-  :map)
+  ::parameters.schema/parameter-mapping)
 
 (mr/def ::dashboard-card.visualization-settings
   "The `:visualization_settings` column of a DashboardCard, decoded."
-  :map)
+  ms/VisualizationSettings)
 
 (mr/def ::dashboard-card
   "A DashboardCard as selected from the app DB: every column of `:report_dashboardcard`."

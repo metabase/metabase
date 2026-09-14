@@ -7,7 +7,7 @@
 
 (mr/def ::undo.row-pk
   "The `:row_pk` column of a Undo, decoded."
-  :map)
+  (ms/string-keyed-map :any))
 
 (mr/def ::undo.raw-before
   "The `:raw_before` column of a Undo, decoded."

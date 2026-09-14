@@ -4,6 +4,7 @@
    ;; side-effect require: registers the legacy-column-metadata schema this ns's output is checked against
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema]
    [metabase.lib.normalize :as lib.normalize]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.memoize :as u.memo]))
@@ -30,7 +31,7 @@
   namespaced keywords remain in kebab case)
 
   * Remove `:lib/type`"
-  [col :- :map]
+  [col :- ::lib.schema.metadata/column]
   ;; Intentionally using vanilla update-keys here because m.u.perf's implementation would try to assoc snake keys onto
   ;; SnakeHatingMap which results in an exception.
   #_{:clj-kondo/ignore [:discouraged-var]}

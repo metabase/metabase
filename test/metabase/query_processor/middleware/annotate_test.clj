@@ -7,6 +7,7 @@
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -32,7 +33,7 @@
   ([query metadata]
    (add-column-info query metadata []))
 
-  ([query    :- :map
+  ([query    :- ::lib.schema/query
     metadata :- ::annotate/metadata
     rows     :- [:maybe [:sequential [:sequential :any]]]]
    (letfn [(rff [metadata]

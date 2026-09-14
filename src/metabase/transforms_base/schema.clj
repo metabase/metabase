@@ -5,6 +5,7 @@
    The full transforms module (metabase.transforms.schema) extends these with
    additional fields like :id (required for scheduled execution)."
   (:require
+   [metabase.indexes.schema :as indexes.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.malli.registry :as mr]
@@ -30,7 +31,7 @@
    [:database {:optional true} :int]
    [:schema {:optional true} [:maybe :string]]
    [:name :string]
-   [:indexes {:optional true} [:sequential :map]]])
+   [:indexes {:optional true} [:sequential ::indexes.schema/index-structured]]])
 
 (mr/def ::transform
   "A transform map as expected by execute-base! implementations."

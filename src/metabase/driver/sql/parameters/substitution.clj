@@ -301,7 +301,8 @@
 
 (mu/defn- field-filter->replacement-snippet-info :- ::param-snippet-info
   "Return `[replacement-snippet & prepared-statement-args]` appropriate for a field filter parameter."
-  [driver {{param-type :type, value :value, :as params} :value, field :field, :as field-filter}]
+  [driver {{param-type :type, value :value, :as params} :value, field :field, :as field-filter}
+   :- :metabase.lib.parameters.parse.types/field-filter]
   (assert (:id field) (format "Why doesn't Field have an ID?\n%s" (u/pprint-to-str field)))
   (letfn [(prepend-field [x]
             (update x :replacement-snippet

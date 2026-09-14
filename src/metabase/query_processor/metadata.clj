@@ -8,6 +8,7 @@
    [metabase.analyze.core :as analyze]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -24,11 +25,11 @@
 (mu/defn- metadata-from-preprocessing :- [:maybe [:sequential :map]]
   "For MBQL queries or native queries with result metadata attached to them already we can infer the columns just by
   preprocessing the query/looking at the last stage of the query."
-  [query :- :map]
+  [query :- ::qp.schema/any-query]
   (not-empty (u/ignore-exceptions (qp.preprocess/query->expected-cols query))))
 
 (mu/defn- query-with-limit-1 :- :map
-  [query :- :map]
+  [query :- ::qp.schema/any-query]
   ;; for purposes of calculating the actual Fields & types returned by this query we really only need the first
   ;; row in the results
   (let [query (-> query
@@ -56,7 +57,7 @@
 
 (mu/defmethod driver/query-result-metadata :default :- [:sequential :map]
   [_driver :- :keyword
-   query   :- :map]
+   query   :- ::qp.schema/any-query]
   (let [query' (query-with-limit-1 query)]
     (try
       (qp/process-query query' result-metadata-rff)
@@ -68,7 +69,7 @@
   "Get metadata from the driver's implementation of [[metabase.driver/query-result-metadata]]. For JDBC-based drivers
   this returns metadata without actually running queries; the default implementation will run the query with `LIMIT 1`
   to get results."
-  [query           :- :map
+  [query           :- ::qp.schema/any-query
    current-user-id :- [:maybe ::lib.schema.id/user]]
   (let [query  (cond-> query
                  current-user-id (assoc-in [:info :executed-by] current-user-id))
@@ -76,7 +77,7 @@
     (driver/query-result-metadata driver query)))
 
 (mu/defn- add-extra-column-metadata :- :map
-  [col           :- :map
+  [col           :- [:or ::lib.schema.metadata/column ::mbql.s/legacy-column-metadata]
    legacy-or-lib :- [:enum ::legacy ::lib]]
   (let [display-name-key (case legacy-or-lib
                            ::legacy :display_name
@@ -121,7 +122,7 @@
   ([query]
    (result-metadata query nil))
 
-  ([query           :- [:map {:closed true} [:database ::lib.schema.id/database]]
+  ([query           :- ::qp.schema/any-query
     current-user-id :- [:maybe ::lib.schema.id/user]]
    (mapv
     (fn [col]
@@ -132,7 +133,7 @@
 
 (mu/defn- ensure-legacy :- ::qp.schema/result-metadata.column
   {:deprecated "0.57.0"}
-  [col :- :map]
+  [col :- ::lib.schema.metadata/column]
   (letfn [(ensure-field-ref [col]
             ;; HACK for backward compatibility with FE stuff -- ideally we would be able to remove this entirely but
             ;; if we do some e2e tests fail that I don't really have the energy to spend all day debugging -- Cam
@@ -152,7 +153,7 @@
   Note: it is preferable to use [[metabase.lib.core/lib-metadata-column->legacy-metadata-column]] directly if you really
   need to do this sort of conversion."
   {:deprecated "0.51.0"}
-  [query           :- :map
+  [query           :- ::qp.schema/any-query
    current-user-id :- [:maybe ::lib.schema.id/user]]
   (mapv
    ;; deprecated fn delegating to its deprecated private helper; both leave together

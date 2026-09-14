@@ -30,7 +30,7 @@
 
 (mr/def ::field.settings
   "The `:settings` column of a Field, decoded."
-  :map)
+  ms/VisualizationSettings)
 
 (mr/def ::field
   "A Field as selected from the app DB: every column of `:metabase_field`."
@@ -122,7 +122,7 @@
 
 (mr/def ::field-user-settings.settings
   "The `:settings` column of a FieldUserSettings, decoded."
-  :map)
+  ms/VisualizationSettings)
 
 (mr/def ::field-user-settings
   "A FieldUserSettings as selected from the app DB: every column of `:metabase_field_user_settings`."

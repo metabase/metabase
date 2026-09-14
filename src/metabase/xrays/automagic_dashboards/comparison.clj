@@ -10,6 +10,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.xrays.automagic-dashboards.core :refer [->related-entity ->root automagic-analysis capitalize-first]]
    [metabase.xrays.automagic-dashboards.filters :as filters]
    [metabase.xrays.automagic-dashboards.names :as names]
@@ -45,8 +46,29 @@
              :collection_id nil
              :id            (gensym))))
 
+(def ^:private Card
+  "A processed \"card\" map as it flows through this namespace: the [[clone-card]] keys, plus the render-stage
+  additions [[dashboard->cards]] assocs onto it."
+  [:map {:closed true}
+   [:id                     {:optional true} :any]
+   [:dataset_query          {:optional true} ::ads/query]
+   [:description            {:optional true} [:maybe :string]]
+   [:display                {:optional true} [:maybe :keyword]]
+   [:name                   {:optional true} :string]
+   [:result_metadata        {:optional true} :any]
+   [:visualization_settings {:optional true} ms/VisualizationSettings]
+   [:text                   {:optional true} [:maybe :string]]
+   [:series                 {:optional true} :any]
+   [:height                 {:optional true} :any]
+   [:position               {:optional true} :any]
+   [:collection_id          {:optional true} :any]
+   [:creator_id             {:optional true} :any]
+   [:query_type             {:optional true} :any]
+   [:database_id            {:optional true} :any]
+   [:table_id               {:optional true} :any]])
+
 (mu/defn- display-type :- [:maybe :keyword]
-  [card :- :map]
+  [card :- Card]
   (keyword (:display card)))
 
 (mu/defn- add-filter-clauses :- ::ads/query

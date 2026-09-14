@@ -342,7 +342,7 @@
 
   Provide `page-size` to limit the number of cards returned, it does not guaranteed to return exactly `page-size` cards.
   Use `fetch-compatible-series` for that."
-  [card    :- :map
+  [card    :- ::queries.schema/card
    {:keys [query last-cursor page-size exclude-ids] :as _options}
    :- [:map {:closed true}
        [:query       {:optional true} [:maybe ms/NonBlankString]]

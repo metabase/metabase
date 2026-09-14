@@ -5,6 +5,7 @@
   (:require
    [metabase.lib-metric.operators :as operators]
    [metabase.lib-metric.schema :as lib-metric.schema]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.malli.registry :as mr]))
 
 ;;; -------------------- Primitive Nodes --------------------
@@ -42,7 +43,7 @@
   "Options for dimension references (bucketing, binning, etc.)."
   [:map {:closed true}
    [:temporal-unit {:optional true} [:maybe keyword?]]
-   [:binning {:optional true} [:maybe :map]]])
+   [:binning {:optional true} [:maybe ::lib-metric.schema/binning]]])
 
 (mr/def ::dimension-ref-node
   "A reference to a dimension, used in filters and group-by."
@@ -232,7 +233,7 @@
    [:aggregation ::aggregation-node]
    [:base-table ::table-node]
    [:source-card-id {:optional true} [:maybe pos-int?]]
-   [:metadata {:optional true} [:maybe :map]]
+   [:metadata {:optional true} [:maybe [:or ::lib.schema.metadata/metric ::lib.schema.metadata/measure]]]
    [:joins {:optional true} [:maybe [:sequential ::join-node]]]
    [:filters {:optional true} [:maybe [:ref ::filter-node]]]])
 

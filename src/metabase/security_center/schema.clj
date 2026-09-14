@@ -46,7 +46,7 @@
 
 (mr/def ::security-advisory.matching-query
   "The `:matching_query` column of a SecurityAdvisory, decoded."
-  :map)
+  ::matching-query)
 
 (mr/def ::security-advisory
   "A SecurityAdvisory as selected from the app DB: every column of `:security_advisory`."

@@ -111,7 +111,7 @@
   [:map-of
    {:decode/domain-entity-spec add-name-from-key}
    Identifier
-   [:map
+   [:map {:closed true}
     [:aggregation MBQL]
     [:name        Identifier]
     [:breakout    {:optional true} BreakoutDimensions]
@@ -122,14 +122,14 @@
   [:map-of
    {:decode/domain-entity-spec add-name-from-key}
    Identifier
-   [:map
+   [:map {:closed true}
     [:filter MBQL]
     [:name   Identifier]
     [:description {:optional true} Description]]])
 
 (def DomainEntitySpec
   "Domain entity spec"
-  [:map
+  [:map {:closed true}
    [:name                DomainEntityReference]
    [:type                DomainEntityType]
    [:required_attributes ::attributes]

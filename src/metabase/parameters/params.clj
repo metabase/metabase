@@ -224,7 +224,7 @@
   parameter target's Field ID when the target is already field-id-based (nil when it must be resolved from filterable
   columns)."
   [:map {:closed true}
-   [:dashcard              :map]
+   [:dashcard              ::parameters.schema/parameter-mapping-with-dashcard.dashcard]
    [:param-mapping         ::parameters.schema/parameter-mapping-with-dashcard]
    [:param-target-field-id [:maybe ::lib.schema.id/field]]])
 
@@ -333,7 +333,7 @@
      (swap! *field-id-context* update :card-id->filterable-columns
             merge (:card-id->filterable-columns ctx)))
    (:param-id->field-ids ctx))
-  ([ctx {:keys [param-mapping param-target-field-id] :as param-dashcard-info}]
+  ([ctx {:keys [param-mapping param-target-field-id] :as param-dashcard-info} :- ::param-dashcard-info]
    (let [param-id (:parameter_id param-mapping)]
      ;; Get the field id from the field-clause if it contains it. This is the common case
      ;; for mbql queries.
@@ -364,7 +364,7 @@
 (mu/defn- mapping->param-dashcard-info :- ::param-dashcard-info
   "Build the `param-dashcard-info` for a parameter `mapping` on `dashcard`, resolving `:param-target-field-id` when the
   target is already field-id-based."
-  [dashcard :- :map
+  [dashcard :- ::parameters.schema/parameter-mapping-with-dashcard.dashcard
    mapping  :- ::parameters.schema/parameter-mapping-with-dashcard]
   (let [card (find-card-for-mapping dashcard mapping)]
     {:dashcard              dashcard
@@ -454,7 +454,7 @@
 
   Mostly used for determining Fields referenced by Cards for purposes other than processing queries. Filters out
   `:field` clauses which use names."
-  [card :- [:maybe :map]]
+  [card :- [:maybe :metabase.queries.schema/card]]
   (some-> card :dataset_query not-empty lib-be/normalize-query lib/all-template-tags-id->field-ids))
 
 (methodical/defmethod t2/simple-hydrate [:model/Card :param_fields]
@@ -469,5 +469,5 @@
   "Returns a set of all Field IDs referenced by template tags on this card.
 
   To get these IDs broken out by the Param ID that references them, use [[card->template-tag-param-id->field-ids]]."
-  [card :- [:maybe :map]]
+  [card :- [:maybe :metabase.queries.schema/card]]
   (some-> card :dataset_query not-empty lib-be/normalize-query lib/all-template-tag-field-ids not-empty))

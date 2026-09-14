@@ -5,6 +5,7 @@
   (:require
    [medley.core :as m]
    [metabase.lib.pivot :as lib.pivot]
+   [metabase.lib.schema :as lib.schema]
    [metabase.query-processor.pivot.common :as pivot.common]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -142,7 +143,7 @@
                      selected?    (conj spliced-index)
                      mapped-index (into (take-while some? (iterate remap mapped-index)))))))))))
 
-(mu/defn- column-mapping [subquery :- :map]
+(mu/defn- column-mapping [subquery :- ::lib.schema/query]
   (let [full-breakout-combination (full-breakout-combination subquery)]
     (column-mapping-for-subquery subquery full-breakout-combination)))
 

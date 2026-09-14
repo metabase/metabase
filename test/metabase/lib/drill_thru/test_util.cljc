@@ -213,7 +213,7 @@
     (append-filter-stage-to-test-expectation expected-query my-column-name)
 
   are matching pairs."
-  ([expected-query               :- :map
+  ([expected-query               :- ::lib.schema/query
     field-matcher-or-filter-expr :- FieldMatcherOrFilterExpr]
    (assert (vector? (:stages expected-query))
            "expected-query should have a :stages key mapped to a vector")
@@ -225,10 +225,10 @@
 
   Useful for updating the `:expected-query` for [[test-drill-application]] when the `:custom-query` was modified
   by [[append-filter-stage]]."
-  ([expected-query :- :map
+  ([expected-query :- ::lib.schema/query
     field-matcher-or-filter-expr :- FieldMatcherOrFilterExpr]
    (prepend-filter-to-test-expectation-stage expected-query -1 field-matcher-or-filter-expr))
-  ([expected-query :- :map
+  ([expected-query :- ::lib.schema/query
     stage-number   :- :int
     field-matcher-or-filter-expr :- FieldMatcherOrFilterExpr]
    (assert (vector? (:stages expected-query))
@@ -239,7 +239,7 @@
                 #(into [filter-expr] %)))))
 
 (mu/defn prepend-stage-to-test-expectation
-  [expected-query :- :map]
+  [expected-query :- ::lib.schema/query]
   (assert (vector? (:stages expected-query))
           "expected-query should have a :stages key mapped to a vector")
   (update expected-query :stages #(into [{}] %)))
@@ -279,7 +279,10 @@
      :row row}))
 
 (mu/defn test-case-context :- ::lib.schema.drill-thru/context
-  [{:keys [mbql row]} :- [:map] ;; TODO: Better type? Does one exist?
+  [{:keys [mbql row]} :- [:map {:closed true}
+                          [:mbql   ::lib.schema/query]
+                          [:native {:optional true} [:maybe ::lib.schema/query]]
+                          [:row    Row]]
    query-kind         :- [:enum :mbql :native]
    {:keys [column-name click-type query-type], :as _test-case} :- TestCase]
   (let [returned   (lib/returned-columns mbql -1 (lib.util/query-stage mbql -1))
@@ -445,7 +448,7 @@
   [:merge
    ReturnsDrillTestCase
    [:map
-    [:expected-query :map]
+    [:expected-query ::lib.schema/query]
     [:drill-args {:optional true} [:maybe [:sequential :any]]]]])
 
 (mu/defn test-drill-application

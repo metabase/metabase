@@ -16,6 +16,7 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.options :as lib.options]
    [metabase.lib.util :as lib.util]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.query-processor.util.persisted-cache :as qp.persisted]
    [metabase.util :as u]
@@ -1743,7 +1744,8 @@
    ;; still typed by the deprecated legacy schema above; both go away with the MBQL 5 migration
    [type _ :as arg] :- #_{:clj-kondo/ignore [:deprecated-var]} LegacyStringValueOrFieldOrExpression
    post
-   {:keys [case-sensitive] :or {case-sensitive true} :as _options}]
+   {:keys [case-sensitive] :or {case-sensitive true} :as _options}
+   :- [:merge :metabase.lib.schema.common/options :metabase.lib.schema.filter/string-filter-options]]
   (if (= :value type)
     (->> (update arg 2 #(cond-> (str pre (escape-like-pattern driver %) post)
                           (not case-sensitive) u/lower-case-en))
@@ -2284,7 +2286,7 @@
 (mu/defn mbql->honeysql :- [:or :map [:tuple [:= :inline] :map]]
   "Build the HoneySQL form we will compile to SQL and execute."
   [driver :- :keyword
-   query  :- :map]
+   query  :- ::qp.schema/any-query]
   (if (:lib/type query)
     (binding [driver/*driver* driver]
       (let [stages (preprocess driver query)]
@@ -2308,7 +2310,7 @@
   "Transpile MBQL query into a native SQL statement. This is the `:sql` driver implementation
   of [[driver/mbql->native]] (actual multimethod definition is in [[metabase.driver.sql]]."
   [driver      :- :keyword
-   outer-query :- :map]
+   outer-query :- ::qp.schema/any-query]
   (let [honeysql-form (mbql->honeysql driver outer-query)
         [sql & args]  (format-honeysql driver honeysql-form)]
     {:query sql, :params args}))

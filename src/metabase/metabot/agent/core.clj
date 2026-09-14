@@ -16,6 +16,7 @@
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.capabilities :as capabilities]
+   [metabase.metabot.context :as metabot.context]
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.scope :as scope]
@@ -150,7 +151,7 @@
 
 (mr/def ::context
   "Context information for the agent."
-  [:map-of :keyword :any])
+  ::metabot.context/context)
 
 (mr/def ::profile-id
   "Profile identifier keyword."

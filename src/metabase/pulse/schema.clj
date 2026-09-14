@@ -2,12 +2,13 @@
   "Malli schemas for the pulse module."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
 (mr/def ::pulse.parameter
   "One entry of the `:parameters` column of a Pulse, decoded."
-  :map)
+  ::parameters.schema/parameter)
 
 (mr/def ::pulse
   "A Pulse as selected from the app DB: every column of `:pulse`."
@@ -77,7 +78,13 @@
 
 (mr/def ::pulse-channel.details
   "The `:details` column of a PulseChannel, decoded."
-  :map)
+  [:or
+   [:map {:closed true}]
+   [:map {:closed true}
+    [:emails {:optional true} [:sequential :string]]]
+   [:map {:closed true}
+    [:channel                  :string]
+    [:channel_id {:optional true} :string]]])
 
 (mr/def ::pulse-channel
   "A PulseChannel as selected from the app DB: every column of `:pulse_channel`."

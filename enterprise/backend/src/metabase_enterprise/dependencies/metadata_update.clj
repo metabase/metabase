@@ -46,7 +46,16 @@
                             (not= node start))
                    node-id))))))
 
-(mr/def ::column-metadata-edits [:map-of :keyword :any])
+(mr/def ::column-metadata-edits
+  [:map {:closed true}
+   [:id                       {:optional true} :any]
+   [:description              {:optional true} :any]
+   [:display-name             {:optional true} :any]
+   [:semantic-type            {:optional true} :any]
+   [:fk-target-field-id       {:optional true} :any]
+   [:settings                 {:optional true} :any]
+   [:visibility-type          {:optional true} :any]
+   [:lib/source-display-name  {:optional true} :any]])
 (mr/def ::card-metadata-edits [:map-of :string ::column-metadata-edits])
 (mr/def ::card-list-metadata-edits [:map-of ::lib.schema.id/card ::card-metadata-edits])
 

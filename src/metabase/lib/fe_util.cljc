@@ -17,6 +17,7 @@
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -46,13 +47,21 @@
    ::lib.schema.metadata/segment
    ::lib.schema.metadata/metric])
 
+(def ^:private ExpressionOptions
+  "Like `:metabase.lib.schema.common/options`, but `:lib/uuid` need not be set yet;
+  see [[metabase.lib.options/ensure-uuid]]."
+  [:merge
+   ::lib.schema.common/options
+   [:map {:closed true}
+    [:lib/uuid {:optional true} ::lib.schema.common/uuid]]])
+
 (def ^:private ExpressionParts
   [:schema
    {:registry {::expression-parts
                [:map {:closed true}
                 [:lib/type [:= :mbql/expression-parts]]
                 [:operator [:or :keyword :string]]
-                [:options :map]
+                [:options ExpressionOptions]
                 [:args [:sequential [:or ExpressionArg [:ref ::expression-parts]]]]]}}
    ::expression-parts])
 
@@ -288,7 +297,7 @@
 
   ([operator :- [:or :keyword :string]
     args     :- [:sequential [:or ExpressionArg ExpressionParts ::lib.schema.expression/expression]]
-    options  :- [:maybe :map]]
+    options  :- [:maybe ExpressionOptions]]
    (expression-clause-method {:lib/type :mbql/expression-parts
                               :operator operator
                               :options  options

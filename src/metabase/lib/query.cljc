@@ -316,7 +316,7 @@
   "Create a MBQL 5 query from a legacy inner query."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    database-id           :- ::lib.schema.id/database
-   inner-query           :- :map]
+   inner-query           :- :metabase.legacy-mbql.schema/SourceQuery]
   (->> (lib.convert/legacy-query-from-inner-query database-id inner-query)
        lib.convert/->mbql5
        (query metadata-providerable)))

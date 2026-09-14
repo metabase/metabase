@@ -150,7 +150,7 @@
   - add [:inside lat lon bounding-region coordings] filter
   - limit query results to `tile-coordinate-limit` number of results
   - only select lat and lon fields rather than entire query's fields"
-  [query                :- :map
+  [query                :- [:maybe [:or [:= {} {}] ::mbql.s/Query ::lib.schema/query]]
    zoom
    x
    y

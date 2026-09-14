@@ -25,6 +25,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -123,11 +124,19 @@
             graph
             sandboxes)))
 
+(def ^:private SandboxLike
+  [:map {:closed true}
+   [:id                   {:optional true} ms/PositiveInt]
+   [:table_id             ::lib.schema.id/table]
+   [:group_id             {:optional true} ms/PositiveInt]
+   [:card_id              {:optional true} [:maybe ::lib.schema.id/card]]
+   [:attribute_remappings {:optional true} [:maybe ::sandbox.schema/attribute-remappings]]])
+
 (mu/defn check-columns-match-table
   "Make sure the result metadata data columns for the Card associated with a sandbox match up with the columns in the Table
   that's getting sandboxed The base types of the Card columns can derive from the respective base types of the columns in
   the Table itself, but you cannot return an entirely different type. Extra columns in the sandboxing Card are ignored."
-  ([{card-id :card_id, table-id :table_id}]
+  ([{card-id :card_id, table-id :table_id} :- SandboxLike]
    ;; not all sandboxes have Cards
    (when card-id
      ;; not all Cards have saved result metadata

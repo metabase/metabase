@@ -198,7 +198,9 @@
   - :values_source_type = nil."
   [parameter          :- ::parameters.schema/resolved-parameter
    query-string       :- [:maybe ms/NonBlankString]
-   default-case-thunk :- [:=> [:cat :any] ms/FieldValuesResult]]
+   default-case-thunk :- [:=> [:cat :any] [:map {:closed true}
+                                           [:has_more_values :boolean]
+                                           [:values ms/FieldValuesList]]]]
   (case (:values_source_type parameter)
     :static-list (static-list-values parameter query-string)
     :card        (let [config (:values_source_config parameter)
@@ -250,7 +252,7 @@
   "For a card source configured with a `:label_field`, fetch the [value label] pair for a single
   `value` by querying the card filtered to that exact value. Returns nil when there is no label
   field, the card is unreadable/archived, or no matching row is found."
-  [{config :values_source_config :as _param} value]
+  [{config :values_source_config :as _param} :- ::parameters.schema/parameter value]
   (when-let [label-field (:label_field config)]
     (when-let [card (parameters.db/card (:card_id config))]
       (when (and (not (:archived card)) (mi/can-read? card))

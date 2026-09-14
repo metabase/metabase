@@ -6,6 +6,7 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.driver :as driver]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -101,14 +102,19 @@
                       native)})))
 
 (mu/defn- query-execution-info :- :map
-  [query-execution :- :map]
+  [query-execution :- ::queries.schema/query-execution]
   (dissoc query-execution :result_rows :hash :executor_id :dashboard_id :pulse_id :native :start_time_millis))
+
+(def ^:private ExtraInfo
+  [:map {:closed true}
+   [:native       {:optional true} [:maybe :metabase.query-processor.compile/compiled]]
+   [:preprocessed {:optional true} [:maybe :metabase.lib.schema/query]]])
 
 (mu/defn- format-exception* :- [:map [:status :keyword]]
   "Format a `Throwable` into the usual userland error-response format."
-  [query        :- :map
+  [query        :- ::qp.schema/any-query
    ^Throwable e :- (lib.schema.common/instance-of-class Throwable)
-   extra-info   :- [:maybe :map]]
+   extra-info   :- [:maybe ExtraInfo]]
   (try
     ;; [[metabase.query-processor.middleware.process-userland-query/process-userland-query-middleware]] wraps exceptions
     ;; to add query execution info, unwrap them and format the wrapped one

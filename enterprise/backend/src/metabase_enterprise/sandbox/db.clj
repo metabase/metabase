@@ -92,7 +92,7 @@
                [:table_id             ::lib.schema.id/table]
                [:card_id              {:optional true} [:maybe ::lib.schema.id/card]]
                [:group_id             ms/PositiveInt]
-               [:attribute_remappings {:optional true} [:maybe :map]]]]
+               [:attribute_remappings {:optional true} [:maybe ::sandbox.schema/attribute-remappings]]]]
   (first (t2/insert-returning-instances! :model/Sandbox sandbox)))
 
 (mu/defn update-sandbox!
