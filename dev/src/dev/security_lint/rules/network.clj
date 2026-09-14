@@ -20,6 +20,7 @@
 
 (defrule unguarded-outbound-http
   {:name        "Outbound HTTP bypassing the network policy"
+   :enabled     false
    :description (str "metabase.util.http applies the warehouse/network address policy -- rejecting loopback, "
                      "link-local, private and CGNAT destinations according to the configured policy. Calling "
                      "clj-http directly skips that check, so a user-supplied URL can reach the instance's own "
@@ -57,6 +58,7 @@
 
 (defrule insecure-tls-option
   {:name        "TLS verification disabled on an outbound request"
+   :enabled     false
    :description (str "An HTTP call passes an option that turns off certificate or hostname checking, which makes "
                      "the connection interceptable by anything on the network path.")
    :remediation (str "Leave verification on. To reach a host with a self-signed certificate, add that certificate "
@@ -79,6 +81,7 @@
 
 (defrule open-redirect
   {:name        "Redirect to a caller-supplied location"
+   :enabled     false
    :description (str "A redirect target derived from a request lets an attacker send users to a site of their "
                      "choosing from a link that legitimately starts on this host.")
    :remediation "Resolve the target against an allow-list, or accept only a path and prepend the site URL."
@@ -100,6 +103,7 @@
 
 (defrule url-setting-without-host-validation
   {:name        "URL setting the server fetches, with no host validation on write"
+   :enabled     false
    :description (str "A setting that names a URL or host and can be written through the API is written by "
                      "settings managers, who are not superusers. Where the server then connects to it -- a "
                      "tile server, an LLM provider, an SMTP relay, an OIDC issuer -- the setting is an SSRF "

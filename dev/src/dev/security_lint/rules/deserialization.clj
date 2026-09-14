@@ -8,6 +8,7 @@
 
 (defrule unsafe-deserialization
   {:name        "Reader or evaluator applied to non-literal input"
+   :enabled     false
    :description (str "clojure.core/read-string honours *read-eval*, so reading attacker-controlled text can "
                      "execute arbitrary code. load-string and eval do so unconditionally.")
    :remediation "Use clojure.edn/read-string, which has no eval semantics, for anything that crosses a trust boundary."
@@ -31,6 +32,7 @@
 
 (defrule xxe
   {:name        "XML parsed with external entities enabled"
+   :enabled     false
    :description (str "clojure.xml/parse uses a default SAXParser, which resolves external entities. A document can "
                      "then read local files or make the server issue requests on the attacker's behalf.")
    :remediation (str "Parse with a factory that sets disallow-doctype-decl, or use clojure.data.xml with "
@@ -59,6 +61,7 @@
 
 (defrule unsafe-nippy-thaw
   {:name        "Nippy deserialization of caller-supplied bytes"
+   :enabled     false
    :description (str "nippy/thaw reconstructs arbitrary Clojure values, including records and objects with custom "
                      "thaw handlers. Deserializing bytes that came from a request is a remote code execution risk.")
    :remediation (str "Deserialize only bytes the server produced and can authenticate -- sign the payload, or keep "

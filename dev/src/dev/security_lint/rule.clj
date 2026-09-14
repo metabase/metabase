@@ -62,6 +62,8 @@
   (doseq [k required-keys]
     (when (nil? (get rule k))
       (throw (ex-info (str "Security rule is missing required key " k) {:rule-id id :missing k}))))
+  (when (and (contains? rule :enabled) (not (boolean? (:enabled rule))))
+    (throw (ex-info (str ":enabled must be true or false; got " (pr-str (:enabled rule))) {:rule-id id})))
   (let [declared (if (map? severity) (vals severity) [severity])]
     (when (or (and (map? severity) (not= #{:tainted :otherwise} (set (keys severity))))
               (not (every? severities declared)))
@@ -104,9 +106,16 @@
   rule)
 
 (defn all
-  "All registered rules, in a stable order."
+  "All registered rules, in a stable order -- the disabled ones included. The tests and the corpus run every
+  rule; a scan runs [[enabled]]."
   []
   (sort-by :id (vals @*registry*)))
+
+(defn enabled
+  "The rules a scan runs: every registered rule but those declared `:enabled false`. A rule is enabled unless it
+  says otherwise."
+  []
+  (filterv #(:enabled % true) (all)))
 
 (defn by-id
   "The registered rule with `id`, or nil."
@@ -134,6 +143,9 @@
   The body receives a context map and returns nil for \"not a finding\", or a map with at least `:message`. The
   rule's `:id` is derived from `rule-name`, so it is stable across refactors as long as the name doesn't change --
   SARIF and GitHub code scanning key alert identity off it.
+
+  `:enabled false` keeps a rule registered -- its tests and its corpus case still run -- but out of a scan and
+  out of the SARIF report. A rule is enabled unless it says otherwise.
 
   A rule fires in one of two ways. With `:triggers` (or `:interop-triggers`, `:constructor-triggers`,
   `:form-triggers`) it fires per matching call site and the context carries `:node`, plus `:tainted?` when

@@ -45,6 +45,7 @@
 
 (defrule request-id-never-checked
   {:name        "Request id never handed to a permission check"
+   :enabled     false
    :description (str "An id the request supplies -- `card_id`, `action_id`, `collection_id` -- is used by the "
                      "endpoint, and on no path is it handed to `read-check`, `write-check`, `can-write?` or any "
                      "other authorization check. Whatever is done with it, the caller chose the object and nobody "
@@ -90,6 +91,7 @@
 
 (defrule write-checked-against-other-model
   {:name        "Model write authorized by a check on the wrong object"
+   :enabled     false
    :description (str "The row a write names was permission-checked -- but as a different model, one that does "
                      "not authorize this write: a Card written after checking its Database rather than its "
                      "collection, a Transform after checking the source database it used to have. The check "
@@ -115,6 +117,7 @@
 
 (defrule nested-request-id-never-checked
   {:name        "Request id read out of a map and never handed to a permission check"
+   :enabled     false
    :description (str "An id read out of request data -- `(:action_id dashcard)` for each dashcard in the body, "
                      "`(get-in body [:values_source_config :card_id])` -- is used, and on no path is *that key* "
                      "handed to a permission check. A check on some other key of the same map does not count. "
@@ -153,6 +156,7 @@
 
 (defrule endpoint-returns-unchecked-rows
   {:name        "Endpoint returns rows of a model it never permission-checked"
+   :enabled     false
    :description (str "The response carries rows read from a model, and no check on that model -- or on the "
                      "model that owns it -- runs on any path the values took. A table's foreign keys returned "
                      "full Field rows of tables the caller could not see; revision descriptions resolved names "

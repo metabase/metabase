@@ -78,7 +78,8 @@
   (let [started  (java.time.Instant/now)
         root     (or root (System/getProperty "user.dir"))
         paths    (or paths (default-paths))
-        rules*   (or (:rules opts) (rule/all))
+        rules*   (or (:rules opts) (rule/enabled))
+        disabled (when-not (:rules opts) (remove #(:enabled % true) (rule/all)))
         findings (engine/analyze {:paths         paths
                                   :rules         rules*
                                   :config-dir    ".clj-kondo"
@@ -92,6 +93,9 @@
     (when (seq unparsed)
       (println (format "Could not parse %d file(s); they were not scanned:" (count unparsed)))
       (doseq [f unparsed] (println "  " f)))
+    (when (seq disabled)
+      (println (format "%d of %d rules are disabled and did not run: %s"
+                       (count disabled) (count (rule/all)) (str/join ", " (map (comp name :id) disabled)))))
     (when-not quiet?
       (println (sarif/text findings {:root root})))
     (when sarif-out

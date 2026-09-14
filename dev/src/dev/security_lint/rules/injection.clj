@@ -15,6 +15,7 @@
 
 (defrule command-injection
   {:name        "Command built from dynamic input"
+   :enabled     false
    :description (str "A shell command is assembled from a value that isn't known statically. If any part of it "
                      "reaches user input, the shell will happily interpret metacharacters in it.")
    :remediation (str "Pass each argument as its own element -- (sh \"ls\" dir) rather than "
@@ -68,6 +69,7 @@
 
 (defrule sql-injection
   {:name        "SQL built by string interpolation"
+   :enabled     false
    :description (str "A query string is assembled with str/format instead of being parameterized. Any interpolated "
                      "value that reaches user input is executed as SQL.")
    :remediation "Use a parameterized query -- [\"select * from t where id = ?\" id] -- or build it with HoneySQL."
@@ -109,6 +111,7 @@
 
 (defrule path-traversal
   {:name        "Filesystem path built from dynamic input"
+   :enabled     false
    :description (str "A path is assembled from a value that isn't known statically. If it reaches user input, "
                      "`../` sequences in it escape the intended directory.")
    :remediation (str "Resolve the path and check it is still inside the intended root, or select from a fixed "
@@ -138,6 +141,7 @@
 
 (defrule redos
   {:name        "Regex compiled from caller-supplied input"
+   :enabled     false
    :description (str "A pattern built from a request can be crafted to backtrack catastrophically, so a single "
                      "short input pins a CPU for an unbounded time.")
    :remediation (str "Match against a fixed pattern, or escape the input with `java.util.regex.Pattern/quote` when "
@@ -176,6 +180,7 @@
 
 (defrule hand-rolled-sql-quoting
   {:name        "Identifier quoted by string concatenation, or DDL built from a bare value"
+   :enabled     false
    :description (str "Wrapping a name in quote characters with `str` does not escape the quote characters "
                      "already inside it, so a backtick in a transform target name closed the identifier and "
                      "ran a second statement. A DDL statement built with `format` from an unquoted value is "

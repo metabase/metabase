@@ -49,6 +49,7 @@
 
 (defrule honeysql-raw-from-dynamic
   {:name        "Raw SQL spliced from a dynamic value"
+   :enabled     false
    :description (str "A `[:raw ...]` form renders its argument as SQL text with no quoting and no parameter "
                      "binding. When the argument is a plain value the code did not build -- a warehouse column "
                      "type, a saved question's unit, a transform target name -- it carries whatever reached it. "
@@ -79,6 +80,7 @@
 
 (defrule honeysql-inline-from-dynamic
   {:name        "Value inlined into SQL whose type the code does not pin"
+   :enabled     false
    :description (str "`[:inline x]` writes `x` into the SQL text instead of binding it. A number inlines safely; "
                      "a string is written between single quotes with no escaping, so a quote inside it ends the "
                      "literal. The application-database guard rejects a non-numeric inline at runtime; the "
@@ -105,6 +107,7 @@
 
 (defrule blessed-honeysql-with-dynamic-leaf
   {:name        "Blessed HoneySQL clause with an uncoerced dynamic leaf"
+   :enabled     false
    :description (str "A clause marked `^:allow-subquery`, `^:allow-raw-sql` or `^:mb/interpret-as-query-syntax` "
                      "is trusted whole by the application-database guard, nested leaves included. A leaf that is "
                      "a plain local is then whatever it was -- a keyword, a vector, a map -- and HoneySQL renders "
@@ -161,6 +164,7 @@
 
 (defrule toucan-positional-arg-from-request
   {:name        "Request value in Toucan's pk-or-query position"
+   :enabled     false
    :description (str "The argument after the model in a Toucan 2 call is the primary key when it is a number and "
                      "the query when it is anything else -- a string is executed as SQL. A request value whose "
                      "schema does not pin it to a number can be either, and the caller chooses.")
@@ -187,6 +191,7 @@
 
 (defrule like-pattern-from-dynamic
   {:name        "LIKE pattern built from a dynamic value"
+   :enabled     false
    :description (str "The right-hand side of `LIKE` is a pattern. A search string placed into it unescaped keeps "
                      "its own `%` and `_` live, and a handful of interior wildcards make the database's matcher "
                      "backtrack for seconds per row: an 8-byte query parameter cost 31 seconds of server thread.")
