@@ -100,13 +100,12 @@
   (let [{:keys [required allowed]} (action->arg-spec action)]
     (doseq [k required]
       (when-not (contains? args k)
-        (common/throw-teaching-error (format "`%s` is required for action %s." (name k) action))))
+        (common/throw-teaching-error (message/msg ["%s is required for action %s."] (name k) action))))
     (when-let [bad (seq (sort (map name (remove (conj allowed :action) (keys args)))))]
       (common/throw-teaching-error
-       (format "%s not apply to action %s — remove %s."
-               (if (next bad) (str "`" (str/join "`, `" bad) "` do") (str "`" (first bad) "` does"))
-               action
-               (if (next bad) "them" "it"))))))
+       (if (next bad)
+         (message/msg ["%s do not apply to action %s — remove them."] (common/list-message bad) action)
+         (message/msg ["%s does not apply to action %s — remove it."] (first bad) action))))))
 
 (defn- check-database!
   "Read-check `database-id` and confirm it is browsable, collapsing \"doesn't exist\", \"not
@@ -177,8 +176,8 @@
       ;; be indistinguishable, so listings never form an existence oracle.
       (if (= 403 (:status-code (ex-data e)))
         (common/throw-teaching-error
-         (format "Schema %s not found in database %s — it may not exist, or you may not have access to it."
-                 (pr-str schema) database-id)
+         (message/msg ["Schema %s not found in database %s — it may not exist, or you may not have access to it."]
+                      schema database-id)
          {:status-code 404})
         (throw e)))))
 
@@ -431,8 +430,8 @@
                            (drop offset all-fields))
         next-offset (+ offset (count included))
         message     (when (< next-offset total)
-                      (format "%s: %d of %d fields, continue with `offset: %d`."
-                              (or (:name payload) (:id payload)) (count included) total next-offset))]
+                      (message/msg ["%s: %d of %d fields, continue with `offset: %d`."]
+                                   (or (:name payload) (:id payload)) (count included) total next-offset))]
     {:payload (assoc base :fields included)
      :message message}))
 
@@ -465,14 +464,14 @@
   ;; count toward the cap.
   (let [table-ids (into [] (distinct) table_ids)]
     (when (empty? table-ids)
-      (common/throw-teaching-error "`table_ids` must name at least one table."))
+      (common/throw-teaching-error (message/msg ["`table_ids` must name at least one table."])))
     (when (> (count table-ids) max-table-ids)
       (common/throw-teaching-error
-       (format "`table_ids` accepts at most %d ids per call — you passed %d; split the request."
-               max-table-ids (count table-ids))))
+       (message/msg ["`table_ids` accepts at most %d ids per call — you passed %d; split the request."]
+                    max-table-ids (count table-ids))))
     (when (and offset (> (count table-ids) 1))
       (common/throw-teaching-error
-       "`offset` with get_fields pages the fields of one large table — request that table alone."))
+       (message/msg ["`offset` with get_fields pages the fields of one large table — request that table alone."])))
     (let [{fetched :rows missing :missing} (fetch-table-metadata-rows table-ids (true? include_hidden))
           ;; A table whose database isn't browsable (a stub or router-destination database) is
           ;; collapsed into `missing` exactly like an unreadable one — enforced here against the same
@@ -507,8 +506,9 @@
                           (drop (count tables) rows))
           body      (cond-> {:tables tables}
                       (seq omitted) (assoc :omitted omitted))]
-      (common/success-content (cond-> (json/encode body)
-                                message (str "\n" message))))))
+      (common/success-content (if message
+                                (message/msg ["%s" "%s"] (message/raw (json/encode body)) message)
+                                body)))))
 
 ;;; -------------------------------------------------- The tool ----------------------------------------------------
 
@@ -584,12 +584,12 @@
   (if (= mode "tree")
     (when-let [bad (seq (sort (map name (remove collection-tree-mode-args (keys args)))))]
       (common/throw-teaching-error
-       (format "`%s` do%s not apply to tree mode — trees have no pagination or item filters; re-root with browse_collection(id: <subcollection>, mode: \"tree\"), raise `depth`, or use mode: \"items\"."
-               (str/join "`, `" bad) (if (next bad) "" "es"))))
+       (message/msg ["%s %s not apply to tree mode — trees have no pagination or item filters; re-root with browse_collection(id: <subcollection>, mode: \"tree\"), raise `depth`, or use mode: \"items\"."]
+                    (common/list-message bad) (message/raw (if (next bad) "do" "does")))))
     (when-let [bad (seq (sort (map name (remove collection-items-mode-args (keys args)))))]
       (common/throw-teaching-error
-       (format "`%s` do%s not apply to items mode — `depth` shapes the tree; pass mode: \"tree\" to get one."
-               (str/join "`, `" bad) (if (next bad) "" "es"))))))
+       (message/msg ["%s %s not apply to items mode — `depth` shapes the tree; pass mode: \"tree\" to get one."]
+                    (common/list-message bad) (message/raw (if (next bad) "do" "does")))))))
 
 (defn- namespace-arg
   "The requested namespace as collection rows carry it: nil for content."
@@ -606,8 +606,8 @@
           actual (some-> (:namespace target-collection) u/qualified-name)]
       (when (not= wanted actual)
         (common/throw-teaching-error
-         (format "Collection %s is in the %s namespace — a real collection id already carries its namespace, so drop `namespace` or pass %s."
-                 id (or actual "content") (pr-str (or actual "content"))))))))
+         (message/msg ["Collection %s is in the %s namespace — a real collection id already carries its namespace, so drop `namespace` or pass %s."]
+                      id (or actual "content") (or actual "content")))))))
 
 (defn- read-checked-collection
   [id-or-eid]
@@ -667,8 +667,8 @@
         ns-str        (some-> (:namespace collection) u/qualified-name)
         _             (when (and (seq type) (some? ns-str))
                         (common/throw-teaching-error
-                         (format "`type` applies to the content namespace only — the %s namespace returns its own model plus subfolders; drop `type`."
-                                 ns-str)))
+                         (message/msg ["`type` applies to the content namespace only — the %s namespace returns its own model plus subfolders; drop `type`."]
+                                      ns-str)))
         created-by-id (when (= created_by "me") api/*current-user-id*)
         models        (if root?
                         (collections.children/visible-model-kwds collection (root-namespace-models ns-str type))
@@ -695,15 +695,16 @@
                     (vec (:data res))
                     (into [] (comp (drop offset) (take limit)) (:data res)))
         projected (project-rows :collection-item args rows)
+        envelope  (common/list-envelope projected total)
         line      (when (< (+ offset (count rows)) total)
                     (if (nil? ns-str)
-                      (some-> (common/truncation-line {:param :type :offset offset :limit limit :total total
-                                                       :returned (count rows)})
-                              message/render)
-                      (format "Returned %d of %d — continue with `offset: %d`."
-                              (count rows) total (+ offset limit))))]
-    (common/success-content (cond-> (json/encode (common/list-envelope projected total))
-                              line (str "\n" line)))))
+                      (common/truncation-line {:param :type :offset offset :limit limit :total total
+                                               :returned (count rows)})
+                      (message/msg ["Returned %d of %d — continue with `offset: %d`."]
+                                   (count rows) total (+ offset limit))))]
+    (common/success-content (if line
+                              (message/msg ["%s" "%s"] (message/raw (json/encode envelope)) line)
+                              envelope))))
 
 ;;; --------------------------------------------- browse_collection tree -------------------------------------------
 
@@ -717,26 +718,26 @@
   "Total nodes one tree response may contain, bounding the shallow-fetch composition."
   250)
 
-(defn- pr-id
-  [id]
-  (if (number? id) id (pr-str id)))
+;; Markers are string values in the JSON tree, so they're rendered here.
 
 (defn- tree-marker
   "Marker for a node re-rooting recovers: re-rooting resets the depth and node budget, so a
    fresh `mode: \"tree\"` call at this node reveals what depth or budget cut off here."
   [more-count parent-name parent-id]
-  (format "… %s under %s — browse_collection(id: %s, mode: \"tree\")"
-          (if more-count (str more-count " more") "more")
-          (pr-str parent-name)
-          (pr-id parent-id)))
+  (message/render
+   (message/msg ["… %s under %s — browse_collection(id: %s, mode: \"tree\")"]
+                (if more-count (message/msg ["%d more"] more-count) (message/msg ["more"]))
+                parent-name
+                parent-id)))
 
 (defn- cap-marker
   "Marker for a node the per-node child cap trimmed. Re-rooting in tree mode re-applies the same
    cap and returns the identical page, so this steers to items-mode pagination — the only way to
    reach the children past the cap."
   [more parent-name parent-id offset]
-  (format "… %d more under %s — browse_collection(id: %s, mode: \"items\", type: [\"collection\"], offset: %d)"
-          more (pr-str parent-name) (pr-id parent-id) offset))
+  (message/render
+   (message/msg ["… %d more under %s — browse_collection(id: %s, mode: \"items\", type: [\"collection\"], offset: %d)"]
+                more parent-name parent-id offset)))
 
 (defn- expand-tree-node
   "Build the output node for `node` (`{:id :name :children <expandable?>}`), expanding up to
@@ -796,11 +797,11 @@
   [args {:keys [root? collection]}]
   (when (collection/is-trash? collection)
     (common/throw-teaching-error
-     "The trash never appears in tree mode — use mode: \"items\" to list trashed items."))
+     (message/msg ["The trash never appears in tree mode — use mode: \"items\" to list trashed items."])))
   (when (:archived collection)
     (common/throw-teaching-error
-     (format "Collection %s is archived — archived subtrees never appear in tree mode; browse its items instead."
-             (:id collection))))
+     (message/msg ["Collection %s is archived — archived subtrees never appear in tree mode; browse its items instead."]
+                  (:id collection))))
   (let [depth      (or (:depth args) tree-default-depth)
         ns-str     (some-> (:namespace collection) u/qualified-name)
         fetch      (tree-child-fetch #{ns-str})
@@ -810,7 +811,7 @@
                                 (:name (collection/root-collection-with-ui-details ns-str))
                                 (:name collection))
                     :children true}]
-    (common/success-content (json/encode (expand-tree-node fetch root-node depth budget)))))
+    (common/success-content (expand-tree-node fetch root-node depth budget))))
 
 ;;; --------------------------------------------- browse_collection tool -------------------------------------------
 
