@@ -43,7 +43,7 @@ const HOSTED_ITEMS = [...ADMIN_ITEMS];
 const WITH_AREAS = [...ADMIN_ITEMS, "Data studio", "Monitor"];
 
 const adminNavItem = {
-  name: `People`,
+  getName: () => `People`,
   path: "/admin/people",
   key: "people",
 } as const;

@@ -9,7 +9,6 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { getExtraFormFieldProps } from "metabase/admin/settings/utils";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -29,7 +28,7 @@ import {
   useGetAdminSettingsDetailsQuery,
 } from "metabase/settings";
 import { Box, Flex, Stack } from "metabase/ui";
-import { provisioningOptions } from "metabase-enterprise/auth/utils";
+import { UserProvisioningSection } from "metabase-enterprise/auth/components/UserProvisioningSection";
 import type {
   EnterpriseSettings,
   SettingDefinition,
@@ -142,16 +141,6 @@ export const SettingsJWTForm = () => {
 
   return (
     <SettingsPageWrapper title={t`JWT`}>
-      {jwtEnabled && (
-        <SettingsSection>
-          <AdminSettingInput
-            name="jwt-user-provisioning-enabled?"
-            title={t`User provisioning`}
-            inputType="radio"
-            options={provisioningOptions("JWT")}
-          />
-        </SettingsSection>
-      )}
       <FormProvider
         initialValues={getFormValues(settingDetails)}
         onSubmit={saveSettings}
@@ -186,6 +175,12 @@ export const SettingsJWTForm = () => {
                   />
                 </Stack>
               </SettingsSection>
+              {/* the card saves on its own, so it stays out of the form's values */}
+              <UserProvisioningSection
+                settingKey="jwt-user-provisioning-enabled?"
+                providerName="JWT"
+                disabled={!isServerConfigured}
+              />
               <CollapsibleSettingsSection
                 title={t`User attribute configuration`}
                 description={t`You can send additional user attributes to ${applicationName} by adding the attributes as key/value pairs to your JWT`}

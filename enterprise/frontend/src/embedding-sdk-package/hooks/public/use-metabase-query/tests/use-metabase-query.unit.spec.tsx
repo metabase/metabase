@@ -16,7 +16,7 @@ import type { QueryDatasetResult } from "embedding-sdk-bundle/lib/query-dataset"
 import type { QueryInput } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
 import type { DatasetQuery } from "metabase-types/api";
 
-import { useMetabaseQuery, useMetabaseQueryObject } from "..";
+import { filter, useMetabaseQuery, useMetabaseQueryObject } from "..";
 
 beforeEach(resetTestState);
 
@@ -28,7 +28,7 @@ describe("useMetabaseQueryObject", () => {
 
   it("returns a loading state until async query creation resolves", async () => {
     const deferred = createDeferred<DatasetQuery>();
-    const resolveDatasetQuery = jest.fn(() => jest.fn(() => deferred.promise));
+    const resolveDatasetQuery = jest.fn(() => () => deferred.promise);
     stubSdkBundle({ resolveDatasetQuery });
 
     const { result } = renderHook(() => useMetabaseQueryObject(query));
@@ -52,9 +52,7 @@ describe("useMetabaseQueryObject", () => {
 
   it("returns query creation errors instead of swallowing them", async () => {
     const error = new Error("No column found");
-    const resolveDatasetQuery = jest.fn(() =>
-      jest.fn(() => Promise.reject(error)),
-    );
+    const resolveDatasetQuery = jest.fn(() => () => Promise.reject(error));
 
     stubSdkBundle({ resolveDatasetQuery });
 
@@ -70,9 +68,7 @@ describe("useMetabaseQueryObject", () => {
   });
 
   it("waits for login before resolving the query", async () => {
-    const resolveDatasetQuery = jest.fn(() =>
-      jest.fn(() => Promise.resolve(TEST_DATASET_QUERY)),
-    );
+    const resolveDatasetQuery = jest.fn(() => async () => TEST_DATASET_QUERY);
 
     stubSdkBundle({ resolveDatasetQuery });
     mockUseLazySelector.mockReturnValue({ status: "loading" });
@@ -161,6 +157,76 @@ describe("useMetabaseQueryObject", () => {
 
     expect(result.current).toEqual({
       query: secondDatasetQuery,
+      error: null,
+      isLoading: false,
+    });
+  });
+
+  it.each([
+    ["query.enabled", { queryEnabled: false, dynamicEnabled: true }],
+    ["dynamicQuery.enabled", { queryEnabled: true, dynamicEnabled: false }],
+  ])(
+    "does not expose or resolve a query while %s is false",
+    async (_name, disabledProps) => {
+      const resolveDatasetQuery = jest.fn(() => async () => TEST_DATASET_QUERY);
+      stubSdkBundle({ resolveDatasetQuery });
+
+      const { result, rerender } = renderHook(
+        ({ queryEnabled, dynamicEnabled }) =>
+          useMetabaseQueryObject(
+            { ...query, enabled: queryEnabled },
+            { enabled: dynamicEnabled },
+          ),
+        { initialProps: disabledProps },
+      );
+
+      expect(result.current).toEqual({
+        query: null,
+        error: null,
+        isLoading: false,
+      });
+
+      expect(resolveDatasetQuery).not.toHaveBeenCalled();
+      rerender({ queryEnabled: true, dynamicEnabled: true });
+
+      await waitFor(() =>
+        expect(result.current.query).toEqual(TEST_DATASET_QUERY),
+      );
+
+      resolveDatasetQuery.mockClear();
+      rerender(disabledProps);
+
+      expect(result.current).toEqual({
+        query: null,
+        error: null,
+        isLoading: false,
+      });
+
+      expect(resolveDatasetQuery).not.toHaveBeenCalled();
+    },
+  );
+
+  it("does not expose a pending result after the query is disabled", async () => {
+    const deferred = createDeferred<DatasetQuery>();
+
+    stubSdkBundle({
+      resolveDatasetQuery: jest.fn(() => () => deferred.promise),
+    });
+
+    const { result, rerender } = renderHook(
+      ({ enabled }) => useMetabaseQueryObject({ ...query, enabled }),
+      { initialProps: { enabled: true } },
+    );
+
+    rerender({ enabled: false });
+
+    await act(async () => {
+      deferred.resolve(TEST_DATASET_QUERY);
+      await deferred.promise;
+    });
+
+    expect(result.current).toEqual({
+      query: null,
       error: null,
       isLoading: false,
     });
@@ -270,7 +336,7 @@ describe("useMetabaseQuery", () => {
     );
 
     stubSdkBundle({
-      resolveDatasetQuery: jest.fn(() => jest.fn(() => deferred.promise)),
+      resolveDatasetQuery: jest.fn(() => () => deferred.promise),
       queryDataset: jest.fn(() => queryDataset),
     });
 
@@ -290,5 +356,123 @@ describe("useMetabaseQuery", () => {
         datasetQuery: TEST_DATASET_QUERY,
       }),
     );
+  });
+});
+
+describe("dynamic query clauses", () => {
+  const staticQuery = { source: TEST_SCHEMA.tables.orders };
+
+  it("re-resolves when only the dynamic part changes", async () => {
+    const resolveQuery = jest.fn(() => Promise.resolve(TEST_DATASET_QUERY));
+    stubSdkBundle({ resolveDatasetQuery: jest.fn(() => resolveQuery) });
+
+    const { rerender } = renderHook(
+      ({ dynamicQuery }) => useMetabaseQueryObject(staticQuery, dynamicQuery),
+      { initialProps: { dynamicQuery: { limit: 10 } } },
+    );
+
+    await waitFor(() => expect(resolveQuery).toHaveBeenCalledTimes(1));
+
+    // The static query object is referentially identical across renders, so only
+    // the dynamic part can invalidate the cached result.
+    rerender({ dynamicQuery: { limit: 20 } });
+
+    await waitFor(() => expect(resolveQuery).toHaveBeenCalledTimes(2));
+    expect(resolveQuery).toHaveBeenLastCalledWith(staticQuery, { limit: 20 });
+  });
+
+  it("does not re-resolve when the dynamic part is deep-equal", async () => {
+    const resolveQuery = jest.fn(() => Promise.resolve(TEST_DATASET_QUERY));
+    stubSdkBundle({ resolveDatasetQuery: jest.fn(() => resolveQuery) });
+
+    const { rerender } = renderHook(
+      ({ dynamicQuery }) => useMetabaseQueryObject(staticQuery, dynamicQuery),
+      { initialProps: { dynamicQuery: { limit: 10 } } },
+    );
+
+    await waitFor(() => expect(resolveQuery).toHaveBeenCalledTimes(1));
+
+    // A new object with the same contents — a UI rebuilding it every render.
+    rerender({ dynamicQuery: { limit: 10 } });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(resolveQuery).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not refetch when a re-render rebuilds both arguments", async () => {
+    const resolveQuery = jest.fn(() => Promise.resolve(TEST_DATASET_QUERY));
+    const queryDataset = jest.fn(() =>
+      Promise.resolve({ rowCount: 0, runningTime: 1, columns: [], rows: [] }),
+    );
+    stubSdkBundle({
+      resolveDatasetQuery: jest.fn(() => resolveQuery),
+      queryDataset: jest.fn(() => queryDataset),
+    });
+
+    // Both arguments are fresh objects on every render, the way a component
+    // builds them inline. The hooks key on content, so this must not refetch.
+    const { rerender } = renderHook(() =>
+      useMetabaseQuery(
+        { source: TEST_SCHEMA.tables.orders, savedQuestionSourceId: 41 },
+        {
+          filters: [filter(TEST_SCHEMA.tables.orders.fields.status, "=", "x")],
+        },
+      ),
+    );
+
+    await waitFor(() => expect(queryDataset).toHaveBeenCalledTimes(1));
+
+    rerender();
+    rerender();
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(queryDataset).toHaveBeenCalledTimes(1);
+    expect(resolveQuery).toHaveBeenCalledTimes(1);
+  });
+
+  it("passes the dynamic part to the dataset query", async () => {
+    const resolveQuery = jest.fn(() => Promise.resolve(TEST_DATASET_QUERY));
+    const queryDataset = jest.fn(() =>
+      Promise.resolve({ rowCount: 0, runningTime: 1, columns: [], rows: [] }),
+    );
+    stubSdkBundle({
+      resolveDatasetQuery: jest.fn(() => resolveQuery),
+      queryDataset: jest.fn(() => queryDataset),
+    });
+
+    const dynamicQuery = { limit: 5 };
+
+    renderHook(() => useMetabaseQuery(staticQuery, dynamicQuery));
+
+    await waitFor(() =>
+      expect(resolveQuery).toHaveBeenCalledWith(staticQuery, dynamicQuery),
+    );
+  });
+
+  it("does not run while the dynamic part is disabled", async () => {
+    const resolveQuery = jest.fn(() => Promise.resolve(TEST_DATASET_QUERY));
+    const queryDataset = jest.fn(() =>
+      Promise.resolve({ rowCount: 0, runningTime: 1, columns: [], rows: [] }),
+    );
+    stubSdkBundle({
+      resolveDatasetQuery: jest.fn(() => resolveQuery),
+      queryDataset: jest.fn(() => queryDataset),
+    });
+
+    const { rerender } = renderHook(
+      ({ dynamicQuery }) => useMetabaseQuery(staticQuery, dynamicQuery),
+      { initialProps: { dynamicQuery: { enabled: false, limit: 10 } } },
+    );
+
+    await waitFor(() => expect(resolveQuery).not.toHaveBeenCalled());
+
+    // A UI that holds the query back until the user picks a filter value.
+    rerender({ dynamicQuery: { enabled: true, limit: 10 } });
+
+    await waitFor(() => expect(resolveQuery).toHaveBeenCalledTimes(1));
   });
 });

@@ -17,6 +17,7 @@ import { getUser, getUserIsAdmin } from "metabase/current-user";
 import { PLUGIN_LIBRARY, PLUGIN_TENANTS } from "metabase/plugins";
 import { type DispatchFn, useDispatch, useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
+import { mergeLazily } from "metabase/utils/merge-lazily";
 import type {
   Collection,
   CollectionNamespace,
@@ -33,14 +34,16 @@ import type {
 
 import { getRootCollectionItem } from "./utils";
 
-const personalCollectionsRoot: OmniPickerCollectionItem = {
-  ...PERSONAL_COLLECTIONS,
-  can_write: false,
-  model: "collection",
-  location: "/",
-  here: ["collection"],
-  below: ["collection"],
-};
+const personalCollectionsRoot: OmniPickerCollectionItem = mergeLazily(
+  PERSONAL_COLLECTIONS,
+  {
+    can_write: false,
+    model: "collection" as const,
+    location: "/",
+    here: ["collection" as const],
+    below: ["collection" as const],
+  },
+);
 
 /**
  * This will generate a list of the top level items for the entity picker

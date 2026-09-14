@@ -41,10 +41,10 @@ import { SettingHeader } from "../SettingHeader";
 import { dbHasSchema, getDatabaseOptions, getSchemaOptions } from "./utils";
 
 const FEEDBACK_TIMEOUT = 5000;
-// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-const enableErrorMessage = t`There was a problem enabling uploads. Please try again shortly.`;
-// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-const disableErrorMessage = t`There was a problem disabling uploads. Please try again shortly.`;
+const getEnableErrorMessage = () =>
+  t`There was a problem enabling uploads. Please try again shortly.`;
+const getDisableErrorMessage = () =>
+  t`There was a problem disabling uploads. Please try again shortly.`;
 
 export function UploadSettingsFormView({
   databases,
@@ -108,7 +108,7 @@ export function UploadSettingsFormView({
       toast: false,
     }).then((response) => {
       if (response.error) {
-        showError(getErrorMessage(enableErrorMessage));
+        showError(getErrorMessage(getEnableErrorMessage()));
         throw new Error(t`Error enabling uploads`);
       }
 
@@ -127,7 +127,7 @@ export function UploadSettingsFormView({
       toast: false,
     }).then((response) => {
       if (response.error) {
-        showError(getErrorMessage(disableErrorMessage));
+        showError(getErrorMessage(getDisableErrorMessage()));
         throw new Error(t`Error disabling uploads`);
       }
       setDbId(null);

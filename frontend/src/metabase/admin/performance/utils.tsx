@@ -218,9 +218,9 @@ export const translateConfigToAPI = <T extends CacheConfig>(config: T): T =>
   translateConfig(config, "toAPI");
 
 export const getPerformanceTabName = (tabId: PerformanceTabId) =>
-  PLUGIN_CACHING.getTabMetadata().find(
-    ({ key }) => key === `performance-${tabId}`,
-  )?.name;
+  PLUGIN_CACHING.getTabMetadata()
+    .find(({ key }) => key === `performance-${tabId}`)
+    ?.getName();
 
 export const getDefaultValueForField = (
   strategyType: CacheStrategyType,

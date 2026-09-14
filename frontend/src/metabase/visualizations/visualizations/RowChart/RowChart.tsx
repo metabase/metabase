@@ -5,6 +5,7 @@ import CS from "metabase/css/core/index.css";
 import { getFontFamilyValue } from "metabase/utils/fonts";
 import type { FontStyle } from "metabase/utils/measure-text";
 import { measureTextWidth } from "metabase/utils/measure-text";
+import { assignLazily } from "metabase/utils/merge-lazily";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
   getClickData,
@@ -308,7 +309,7 @@ const RowChartVisualization = ({
   );
 };
 
-export const RowChart = Object.assign(
+export const RowChart = assignLazily(
   RowChartVisualization,
   ROW_CHART_DEFINITION,
 );

@@ -1,4 +1,4 @@
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { getNullDisplayValue } from "metabase/utils/constants";
 import MetabaseSettings from "metabase/utils/settings";
 import {
   createMockDatabase,
@@ -231,7 +231,7 @@ describe("getFieldDisplayName", () => {
       display_name: "",
     });
 
-    expect(getFieldDisplayName(field)).toBe(NULL_DISPLAY_VALUE);
+    expect(getFieldDisplayName(field)).toBe(getNullDisplayValue());
   });
 
   it("should handle empty dimensions array", () => {

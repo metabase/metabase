@@ -3273,15 +3273,28 @@
    :uses #{premium-features}}
 
   enterprise/data-apps
-  {:team "Gadget"
+  {:team "Embedding"
    :api  #{metabase-enterprise.data-apps.api
            metabase-enterprise.data-apps.init
            metabase-enterprise.data-apps.sync}
    :uses #{api
+           collections
+           lib
+           lib-be
            models
+           permissions
            premium-features
+           request
            settings
-           util}}
+           util}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/DataPermissions
+                    :model/Database
+                    :model/Permissions
+                    :model/PermissionsGroup
+                    :model/Table
+                    :model/User}}
 
   enterprise/data-complexity-score
   {:team "Metabot"
