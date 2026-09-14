@@ -85,9 +85,11 @@ Custom visualizations only work when Metabase knows who's viewing the embed. [Gu
 
 Any embed with a signed-in person can load custom visualizations, including embeds you're previewing locally with an API key or your existing Metabase session. See [Authentication](./authentication.md).
 
-### Public links, subscriptions, and alerts fall back to the default visualization
+### Public links fall back to the default visualization
 
-Nobody signs in to view a [public link](./public-links.md), and nobody's signed in when Metabase renders a [dashboard subscription or alert](../questions/alerts.md), so a question that uses a custom visualization falls back to the default visualization for its results in both cases.
+Nobody signs in to view a [public link](./public-links.md), so a question that uses a custom visualization falls back to the default visualization for its results.
+
+[Dashboard subscriptions and alerts](../questions/alerts.md) render on the server instead. They show a custom visualization when its developer added static rendering support, and fall back to a table of the question's results otherwise.
 
 ## Further reading
 

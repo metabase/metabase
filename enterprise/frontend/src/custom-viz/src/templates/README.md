@@ -157,6 +157,10 @@ Host-provided helpers, so measurements and colors match what Metabase renders.
 | `fontFamily`  | `string`                             | The font family Metabase is rendering with — use it to style your own markup.                        |
 | `colorScheme` | `"light" \| "dark"`                  | The color scheme the visualization is rendered with. `getColor` already resolves against it.         |
 
+### Sandbox limitations
+
+`VisualizationComponent` runs in an isolated sandbox and only sees the `series` and `settings` it is given. The sandbox blocks network access (`fetch`, `XMLHttpRequest`, `WebSocket`), browser storage and cookies, device and credential APIs, browser UI such as `window.open` and dialogs, and any DOM outside the visualization's own container. See [Custom visualization limitations](https://www.metabase.com/docs/latest/developers-guide/custom-visualizations#custom-visualization-limitations) for the full list.
+
 ## Visualization Settings
 
 Define settings with the `defineSetting()` helper. Each setting appears in the visualization settings sidebar.
