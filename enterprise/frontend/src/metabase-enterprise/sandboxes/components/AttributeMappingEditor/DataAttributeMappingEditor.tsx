@@ -126,9 +126,11 @@ export const DataAttributeMappingEditor = ({
                 />
               </td>
               <td className={CS.pb1} style={{ verticalAlign: "top" }}>
+                {/* TODO: replace with ActionIcon (GDGT-2457) */}
                 <Button
-                  leftSection={<Icon name="close" />}
-                  variant="subtle"
+                  leftSection={<Icon name="close" c="icon-primary" />}
+                  variant="transparent"
+                  size="compact-md"
                   onClick={() =>
                     handleChange(removeEntry<ValueType>(entries, index))
                   }

@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
 import { MultiStageFilterPicker } from "metabase/querying/filters/components/FilterPicker/MultiStageFilterPicker";
-import { Button, Icon, Popover, Tooltip } from "metabase/ui";
+import { Badge, Button, Icon, Popover, Tooltip } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
@@ -66,15 +66,19 @@ export function EditTableDataFilterButton({
         <Tooltip label={label}>
           <Button
             aria-label={label}
-            className={ViewTitleHeaderS.FilterButtonAttachment}
             onClick={isExpanded ? onCollapse : onExpand}
             data-testid="filters-visibility-control"
             data-expanded={isExpanded}
-            style={{ borderLeft: "none" }} // mantine puts a double border between buttons in groups
           >
-            <div className={ViewTitleHeaderS.FilterCountChip}>
-              {items?.length}
-            </div>
+            <Badge
+              size="xs"
+              variant="filled"
+              color="neutral"
+              bg={isExpanded ? "core-filter-strong" : undefined}
+              c={isExpanded ? "text-primary-inverse" : undefined}
+            >
+              {items.length}
+            </Badge>
           </Button>
         </Tooltip>
       )}

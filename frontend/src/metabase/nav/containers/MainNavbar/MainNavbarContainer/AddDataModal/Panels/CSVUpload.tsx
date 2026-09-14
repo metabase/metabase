@@ -256,18 +256,17 @@ export const CSVUpload = ({
           <Button
             aria-label={t`Select a collection`}
             onClick={() => openCollectionPicker()}
+            leftSection={<Icon name="folder" />}
             rightSection={<Icon name="chevrondown" />}
             styles={{
               inner: {
                 justifyContent: "space-between",
               },
+              label: { flex: 1 },
               root: { flex: 1 },
             }}
           >
-            <Group gap="sm" flex={1}>
-              <Icon name="folder" />
-              <CollectionName id={uploadCollectionId} />
-            </Group>
+            <CollectionName id={uploadCollectionId} />
           </Button>
           <Button
             variant="filled"

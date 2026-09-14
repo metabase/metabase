@@ -94,12 +94,8 @@ export const SdkUsageProblemBanner = ({
               {problem.message}
             </Text>
 
-            <Flex w="100%" justify="end" mt="sm" columnGap="sm">
+            <Flex w="100%" justify="end" mt="sm" columnGap="lg">
               <Button
-                fz="sm"
-                ff={fontFamily}
-                fs="normal"
-                radius="sm"
                 variant="subtle"
                 color="brand"
                 onClick={() => {
@@ -108,19 +104,14 @@ export const SdkUsageProblemBanner = ({
               >
                 Hide {severity === "error" ? "error" : "warning"}
               </Button>
-              <ExternalLink role="link" href={problem.documentationUrl}>
-                <Button
-                  fz="sm"
-                  rightSection={
-                    <Icon aria-hidden name="external" size="1rem" />
-                  }
-                  ff={fontFamily}
-                  variant="light"
-                  radius="sm"
-                >
-                  Documentation
-                </Button>
-              </ExternalLink>
+              <Button
+                component={ExternalLink}
+                href={problem.documentationUrl}
+                rightSection={<Icon aria-hidden name="external" />}
+                variant="light"
+              >
+                Documentation
+              </Button>
             </Flex>
           </Stack>
         </Card>

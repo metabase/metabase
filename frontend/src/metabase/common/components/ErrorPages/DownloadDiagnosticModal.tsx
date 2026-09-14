@@ -73,10 +73,8 @@ export const DownloadDiagnosticModal = ({
         <FormSubmitButton
           variant="filled"
           label={c("This is a verb, not a noun").t`Download`}
-          color="brand"
           mt="xl"
           mb="sm"
-          radius="sm"
         />
         <Text>{t`Diagnostic info may contain sensitive data.`}</Text>
       </Form>

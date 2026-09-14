@@ -1,35 +1,25 @@
-import cx from "classnames";
-
-import CS from "metabase/css/core/index.css";
-import { Box, Button, Center, Icon, Text } from "metabase/ui";
+import { Box, Button, Icon } from "metabase/ui";
 import type { ChartSettingSegmentedControlProps } from "metabase/viz-core";
+
+import S from "./ChartSettingSegmentedControl.module.css";
 
 export const ChartSettingSegmentedControl = ({
   options,
   onChange,
   value,
 }: ChartSettingSegmentedControlProps) => (
-  <Button.Group w="100%">
+  <Box className={S.root}>
     {options.map((elem) => (
       <Button
-        className={cx(CS.borderBrand, CS.flexGrow1)}
+        className={S.item}
         px="xxs"
         variant={value === elem.value ? "filled" : "default"}
         key={elem.value}
+        leftSection={elem.icon ? <Icon name={elem.icon} /> : undefined}
         onClick={() => onChange(elem.value)}
       >
-        {elem.icon ? (
-          <Center>
-            <Icon name={elem.icon} size={16}></Icon>
-          </Center>
-        ) : (
-          <Box>
-            <Text inherit c="inherit" lh="normal">
-              {elem.name}
-            </Text>
-          </Box>
-        )}
+        {elem.icon ? null : elem.name}
       </Button>
     ))}
-  </Button.Group>
+  </Box>
 );

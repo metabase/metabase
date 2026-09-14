@@ -87,23 +87,28 @@ export const ClickActionControl = ({
             size="sm"
             className={S.tokenFilterActionButton}
             data-testid={`click-actions-sort-control-${action.name}`}
+            leftSection={
+              typeof action.icon === "string" ? (
+                <Icon size={14} name={action.icon} />
+              ) : undefined
+            }
             onClick={handleClick}
-          >
-            {typeof action.icon === "string" && (
-              <Icon size={14} name={action.icon} />
-            )}
-          </Button>
+          />
         </Tooltip>
       );
 
     case "formatting":
       return (
         <Tooltip label={action.tooltip}>
-          <Button size="sm" onClick={handleClick}>
-            {typeof action.icon === "string" && (
-              <Icon size={16} name={action.icon} />
-            )}
-          </Button>
+          <Button
+            size="sm"
+            leftSection={
+              typeof action.icon === "string" ? (
+                <Icon name={action.icon} />
+              ) : undefined
+            }
+            onClick={handleClick}
+          />
         </Tooltip>
       );
 

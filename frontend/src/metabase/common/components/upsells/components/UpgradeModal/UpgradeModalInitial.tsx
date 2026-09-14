@@ -129,7 +129,7 @@ export function UpgradeModalInitial({
       )}
 
       <Flex justify="flex-end" gap="lg">
-        <Button variant="subtle" onClick={onCancel}>
+        <Button variant="subtle" color="neutral" onClick={onCancel}>
           {t`Cancel`}
         </Button>
         <Button variant="filled" color="brand" onClick={onConfirm}>

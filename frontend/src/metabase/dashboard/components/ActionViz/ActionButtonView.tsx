@@ -11,7 +11,6 @@ import type { VisualizationProps } from "metabase/visualizations/types";
 import type { IconName } from "metabase-types/api";
 
 import S from "./ActionButton.module.css";
-import { StyledButtonContent } from "./ActionButton.styled";
 
 const BUTTON_VARIANT_PROPS: Record<
   string,
@@ -59,11 +58,9 @@ function ActionButtonView({
       onClick={onClick}
       fullWidth
       aria-label={tooltip}
+      leftSection={icon ? <Icon name={icon} /> : undefined}
     >
-      <StyledButtonContent>
-        {icon && <Icon name={icon} />}
-        <Ellipsified>{label ?? t`Click me`}</Ellipsified>
-      </StyledButtonContent>
+      <Ellipsified>{label ?? t`Click me`}</Ellipsified>
     </Button>
   );
 }

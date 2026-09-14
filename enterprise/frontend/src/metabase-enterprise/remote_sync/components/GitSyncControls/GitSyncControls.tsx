@@ -320,7 +320,11 @@ export const GitSyncControls = () => {
         >
           <Text mt="lg">{branchMismatch.message}</Text>
           <Group gap="sm" justify="end" mt="xxl">
-            <Button variant="subtle" onClick={() => setBranchMismatch(null)}>
+            <Button
+              variant="subtle"
+              color="neutral"
+              onClick={() => setBranchMismatch(null)}
+            >
               {t`Cancel`}
             </Button>
             <Button variant="filled" onClick={() => window.location.reload()}>

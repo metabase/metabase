@@ -106,7 +106,6 @@ export const LicenseTokenForm = ({
               onClick={onSkip}
               variant="transparent"
               size="compact-md"
-              fw="normal"
             >{t`I'll activate later`}</Button>
             <Text c="text-secondary" size="sm">
               {t`You won't have access to paid features until you activate.`}

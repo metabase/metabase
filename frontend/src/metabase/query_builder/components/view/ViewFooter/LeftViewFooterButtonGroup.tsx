@@ -1,12 +1,11 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import { ViewButton } from "metabase/common/components/ViewButton";
 import CS from "metabase/css/core/index.css";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { QueryBuilderUIControls } from "metabase/redux/store";
-import { Button, Group } from "metabase/ui";
+import { Button, Group, Icon } from "metabase/ui";
 
 import {
   onCloseChartSettings,
@@ -51,32 +50,22 @@ export const LeftViewFooterButtonGroup = () => {
 
   return (
     <Group className={cx(CS.flex1, S.Root)}>
-      <Button.Group className={S.FooterButtonGroup}>
-        <ViewButton
-          medium
-          labelBreakpoint="sm"
+      <Button.Group>
+        <Button
+          variant="light"
           data-testid="viz-type-button"
-          active={isShowingChartTypeSidebar}
-          className={S.Button}
+          aria-pressed={isShowingChartTypeSidebar}
           onClick={handleVizTypeClick}
         >
-          {t`Visualization`}
-        </ViewButton>
-        <ViewButton
+          <span className={cx(CS.hide, CS.smShow)}>{t`Visualization`}</span>
+        </Button>
+        <Button
+          variant="light"
           disabled={question?.display() === "list"}
-          className={S.Button}
-          active={isShowingChartSettingsSidebar}
-          icon="gear"
-          iconSize={16}
-          medium
-          onlyIcon
-          labelBreakpoint="sm"
           data-testid="viz-settings-button"
-          onClick={
-            isShowingChartSettingsSidebar
-              ? () => dispatch(onCloseChartSettings())
-              : () => dispatch(onOpenChartSettings())
-          }
+          aria-pressed={isShowingChartSettingsSidebar}
+          leftSection={<Icon name="gear" />}
+          onClick={handleVizSettingClick}
         />
       </Button.Group>
     </Group>

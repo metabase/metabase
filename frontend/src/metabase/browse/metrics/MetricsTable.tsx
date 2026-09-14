@@ -391,12 +391,12 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
     >
       <Menu position="bottom-end">
         <Menu.Target>
+          {/* TODO: replace with ActionIcon (GDGT-2457) */}
           <Button
-            variant="subtle"
-            size="sm"
+            variant="transparent"
+            size="compact-md"
             aria-label={t`Metric options`}
-            color="neutral"
-            leftSection={<Icon name="ellipsis" />}
+            leftSection={<Icon name="ellipsis" c="icon-primary" />}
           />
         </Menu.Target>
         <Menu.Dropdown>

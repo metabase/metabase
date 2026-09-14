@@ -130,18 +130,13 @@ export function NewExplorationEntry({ selection }: NewExplorationEntryProps) {
           <Flex justify="space-between" align="center">
             <Button
               variant="subtle"
-              className={S.buttonHoverSecondary}
               leftSection={<Icon name="collection" />}
               onClick={() => setIsCollectionPickerOpen(true)}
             >
               {collection.name}
             </Button>
             <Flex gap="sm">
-              <Button
-                variant="subtle"
-                className={S.buttonHoverSecondary}
-                onClick={handleManualSetup}
-              >
+              <Button variant="subtle" onClick={handleManualSetup}>
                 {t`Manual setup`}
               </Button>
               <Button

@@ -100,17 +100,18 @@ export function BucketPickerPopover({
           variant="transparent"
           c="core-white"
           classNames={{ label: S.triggerButtonLabel }}
+          rightSection={
+            hasChevronDown ? (
+              <Icon
+                name="chevrondown"
+                className={cx(S.chevronDown, classNames.chevronDown)}
+              />
+            ) : (
+              <Icon name="chevronright" className={S.chevronIcon} />
+            )
+          }
         >
           <Ellipsified>{triggerLabel}</Ellipsified>
-          {!hasChevronDown && (
-            <Icon name="chevronright" className={S.chevronIcon} />
-          )}
-          {hasChevronDown && (
-            <Icon
-              name="chevrondown"
-              className={cx(S.chevronDown, classNames.chevronDown)}
-            />
-          )}
         </Button>
       </Popover.Target>
       <Popover.Dropdown

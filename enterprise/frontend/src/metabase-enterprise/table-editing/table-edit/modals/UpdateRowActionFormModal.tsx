@@ -159,7 +159,7 @@ export function UpdateRowActionFormModal({
               gap="xl"
               justify="flex-end"
             >
-              <Button variant="subtle" onClick={handleClose}>
+              <Button variant="subtle" color="neutral" onClick={handleClose}>
                 {t`Cancel`}
               </Button>
               <Button

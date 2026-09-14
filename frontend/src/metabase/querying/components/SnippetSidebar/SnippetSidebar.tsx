@@ -192,11 +192,12 @@ class SnippetSidebarInner extends Component<
                       }
                     }}
                   />
+                  {/* TODO: replace with ActionIcon (GDGT-2457) */}
                   <Button
-                    variant="subtle"
+                    variant="transparent"
+                    size="compact-md"
                     onClick={this.hideSearch}
-                    className={S.HeaderButton}
-                    leftSection={<Icon name="close" />}
+                    leftSection={<Icon name="close" c="icon-primary" />}
                   />
                 </>
               ) : (
@@ -220,21 +221,23 @@ class SnippetSidebarInner extends Component<
                     )}
 
                     {snippets.length >= MIN_SNIPPETS_FOR_SEARCH && (
+                      // TODO: replace with ActionIcon (GDGT-2457)
                       <Button
-                        variant="subtle"
+                        variant="transparent"
+                        size="compact-md"
                         onClick={this.showSearch}
-                        className={S.HeaderButton}
-                        leftSection={<Icon name="search" />}
+                        leftSection={<Icon name="search" c="icon-primary" />}
                       />
                     )}
 
                     {showAddMenu && (
                       <Menu position="bottom-end">
                         <Menu.Target>
+                          {/* TODO: replace with ActionIcon (GDGT-2457) */}
                           <Button
-                            variant="subtle"
-                            className={S.HeaderButton}
-                            leftSection={<Icon name="add" />}
+                            variant="transparent"
+                            size="compact-md"
+                            leftSection={<Icon name="add" c="icon-primary" />}
                           />
                         </Menu.Target>
                         <Menu.Dropdown>

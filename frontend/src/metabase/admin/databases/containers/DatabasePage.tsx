@@ -80,9 +80,9 @@ export function DatabasePage() {
                   style={{ verticalAlign: "baseline" }}
                   variant="transparent"
                   size="compact-md"
+                  rightSection={<Icon name="chevronright" size={12} />}
                 >
                   {t`Help is here`}
-                  <Icon name="chevronright" size={12} ml="xxs" />
                 </Button>
               </Text>
             )}

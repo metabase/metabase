@@ -88,7 +88,11 @@ export function IndexEditorForm({
         ))}
 
         <Group justify="flex-end">
-          <Button variant="subtle" onClick={onClose}>{t`Cancel`}</Button>
+          <Button
+            variant="subtle"
+            color="neutral"
+            onClick={onClose}
+          >{t`Cancel`}</Button>
           <FormSubmitButton label={submitLabel} variant="filled" />
         </Group>
       </Stack>

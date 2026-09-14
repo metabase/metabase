@@ -11,8 +11,6 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import CS from "metabase/css/core/index.css";
-import { MetabotIcon } from "metabase/metabot/components/MetabotIcon";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
@@ -283,7 +281,7 @@ export const MetabotComponent = memo(
             className={S.closeButton}
           >
             {/* TODO: replace with ActionIcon (GDGT-2457) */}
-            {editor.options.editable ? (
+            {editor.options.editable && (
               <Button
                 variant="transparent"
                 size="compact-md"
@@ -293,10 +291,6 @@ export const MetabotComponent = memo(
                 }
                 onClick={() => deleteNode()}
               />
-            ) : (
-              <Box p="lg">
-                <MetabotIcon />
-              </Box>
             )}
           </Box>
           <Flex flex={1} direction="column" className={S.contentWrapper}>
@@ -338,12 +332,10 @@ export const MetabotComponent = memo(
                   onClick={() =>
                     isLoading ? handleStopMetabot() : handleRunMetabot()
                   }
-                  classNames={{
-                    label: CS.flex, // ensures icon is vertically centered
-                  }}
+                  leftSection={isLoading ? <Icon name="close" /> : undefined}
                   data-hide-on-print
                 >
-                  {isLoading ? <Icon name="close" /> : t`Run`}
+                  {isLoading ? null : t`Run`}
                 </Button>
               </Tooltip>
             )}

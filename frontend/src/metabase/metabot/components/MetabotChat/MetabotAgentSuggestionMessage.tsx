@@ -256,7 +256,6 @@ export const AgentSuggestionMessage = ({
               <Button
                 size="compact-md"
                 variant="transparent"
-                fw="normal"
                 c={
                   canApply && !readonly ? "feedback-positive" : "text-disabled"
                 }

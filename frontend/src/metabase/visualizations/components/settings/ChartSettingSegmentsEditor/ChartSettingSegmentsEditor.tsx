@@ -96,10 +96,12 @@ export const ChartSettingSegmentsEditor = ({
                   />
                 </td>
                 <td>
+                  {/* TODO: replace with ActionIcon (GDGT-2457) */}
                   {(segments.length > 1 || canRemoveAll) && (
                     <Button
-                      size="lg"
-                      leftSection={<Icon name="trash" c="text-disabled" />}
+                      variant="transparent"
+                      size="compact-md"
+                      leftSection={<Icon name="trash" c="icon-primary" />}
                       onClick={() =>
                         onChange(segments.filter((v, i) => i !== index))
                       }

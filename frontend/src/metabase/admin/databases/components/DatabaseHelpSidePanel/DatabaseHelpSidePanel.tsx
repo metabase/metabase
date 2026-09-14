@@ -5,7 +5,6 @@ import { NewUserModal } from "metabase/admin/people/containers/NewUserModal";
 import { Link } from "metabase/common/components/Link";
 import { useDocsUrl } from "metabase/common/hooks";
 import { getHelpUrl } from "metabase/common/utils/help-url";
-import CS from "metabase/css/core/index.css";
 import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { getIsPaidPlan } from "metabase/selectors/settings";
@@ -14,7 +13,6 @@ import {
   ActionIcon,
   Box,
   Button,
-  Divider,
   Flex,
   Icon,
   ScrollArea,
@@ -22,6 +20,7 @@ import {
 } from "metabase/ui";
 import type { EngineKey } from "metabase-types/api";
 
+import S from "./DatabaseHelpSidePanel.module.css";
 import {
   ENGINE_DOC_MAP,
   EmbeddedEngineDocContent,
@@ -68,9 +67,8 @@ export const DatabaseHelpSidePanel = ({ engineKey, onClose }: Props) => {
           </ActionIcon>
         </Flex>
         {showMetabaseLinks && (
-          <>
+          <Box className={S.row} px="lg" py="md">
             <Button
-              className={CS.link}
               component={Link}
               leftSection={<Icon name="reference" />}
               target="_blank"
@@ -80,13 +78,11 @@ export const DatabaseHelpSidePanel = ({ engineKey, onClose }: Props) => {
             >
               {t`Read the full docs`}
             </Button>
-            <Divider variant="dashed" my="lg" />
-          </>
+          </Box>
         )}
         {isAdmin && (
-          <>
+          <Box className={S.row} px="lg" py="md">
             <Button
-              className={CS.link}
               leftSection={<Icon name="mail" />}
               onClick={toggleUserModal}
               variant="transparent"
@@ -94,13 +90,11 @@ export const DatabaseHelpSidePanel = ({ engineKey, onClose }: Props) => {
             >
               {t`Invite a teammate to help you`}
             </Button>
-            <Divider variant="dashed" my="lg" />
-          </>
+          </Box>
         )}
         {showMetabaseLinks && isPaidPlan && (
-          <>
+          <Box className={S.row} px="lg" py="md">
             <Button
-              className={CS.link}
               component={Link}
               leftSection={<Icon name="person" />}
               target="_blank"
@@ -110,8 +104,7 @@ export const DatabaseHelpSidePanel = ({ engineKey, onClose }: Props) => {
             >
               {t`Talk to an expert`}
             </Button>
-            <Divider variant="dashed" my="lg" />
-          </>
+          </Box>
         )}
         <EmbeddedEngineDocContent engineKey={engineKey} />
       </Box>

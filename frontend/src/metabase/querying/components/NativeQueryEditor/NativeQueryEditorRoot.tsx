@@ -385,10 +385,8 @@ export const NativeQueryEditorRoot = forwardRef<
                       >
                         <Button
                           data-testid="accept-proposed-changes-button"
-                          variant="filled"
+                          variant="light"
                           color="positive"
-                          px="0"
-                          w="2rem"
                           onClick={() => {
                             const proposedQuery =
                               proposedQuestion.legacyNativeQuery();
@@ -406,9 +404,7 @@ export const NativeQueryEditorRoot = forwardRef<
                       >
                         <Button
                           data-testid="reject-proposed-changes-button"
-                          w="2rem"
-                          px="0"
-                          variant="filled"
+                          variant="light"
                           color="negative"
                           onClick={onRejectProposed}
                           leftSection={<Icon name="close" />}

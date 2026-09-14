@@ -221,6 +221,7 @@ const actualColors = {
   "button_label-subtle-positive-hover": baseColors.palm[20],
   "core-blue-saturated": baseColors.ocean[40],
   "core-brand-hover": baseColors.brand[30],
+  "core-filter-strong": baseColors.octopus[20],
   "core-gold": baseColors.gold,
   "core-green-saturated": baseColors.palm[40],
   "core-info": baseColors.orion[50],

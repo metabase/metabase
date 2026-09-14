@@ -241,7 +241,7 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
         )}
 
         <Group gap="sm" justify="end" mt="xl">
-          <Button onClick={onClose} variant="subtle">
+          <Button onClick={onClose} variant="subtle" color="neutral">
             {t`Cancel`}
           </Button>
           <Button

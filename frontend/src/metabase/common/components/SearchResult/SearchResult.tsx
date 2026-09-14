@@ -245,7 +245,13 @@ export function SearchResult({
       )}
       {showXRayButton && (
         <Box className={S.xraySection} pos="relative">
-          <Button leftSection={<Icon name="bolt" />} onClick={onXRayClick} />
+          {/* TODO: replace with ActionIcon (GDGT-2457) */}
+          <Button
+            variant="transparent"
+            size="compact-md"
+            leftSection={<Icon name="bolt" c="icon-primary" />}
+            onClick={onXRayClick}
+          />
         </Box>
       )}
     </SearchResultContainer>

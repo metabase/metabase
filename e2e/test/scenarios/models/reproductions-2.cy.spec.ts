@@ -318,7 +318,11 @@ describe("issue 57557", () => {
     });
     H.waitForLoaderToBeRemoved();
     cy.findByTestId("editor-tabs-query").should("be.disabled");
-    cy.findByTestId("editor-tabs-columns").should("be.checked");
+    cy.findByTestId("editor-tabs-columns").should(
+      "have.attr",
+      "aria-checked",
+      "true",
+    );
   });
 });
 
@@ -372,12 +376,20 @@ describe("issue 55486", () => {
   });
 
   function checkIsShowingMetadataEditorTab() {
-    cy.findByTestId("editor-tabs-columns").should("be.checked");
+    cy.findByTestId("editor-tabs-columns").should(
+      "have.attr",
+      "aria-checked",
+      "true",
+    );
     cy.findByTestId("visualization-root").should("be.visible");
   }
 
   function checkIsShowingQueryEditorTab() {
-    cy.findByTestId("editor-tabs-query").should("be.checked");
+    cy.findByTestId("editor-tabs-query").should(
+      "have.attr",
+      "aria-checked",
+      "true",
+    );
     H.getNotebookStep("data").should("be.visible");
   }
 

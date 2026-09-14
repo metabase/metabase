@@ -15,10 +15,6 @@
     visibility: visible;
     color: var(--select-list-item-text-color, var(--mb-color-core-brand));
   }
-
-  .chevronIcon {
-    color: var(--select-list-item-text-color, var(--mb-color-core-brand));
-  }
 }
 
 .triggerButtonLabel {
@@ -27,7 +23,6 @@
 }
 
 .chevronIcon {
-  color: var(--mb-color-text-primary-inverse);
   flex: 0 0 auto;
 }
 

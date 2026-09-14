@@ -32,7 +32,6 @@ export const SidesheetSubPageTitle = ({
       color="neutral"
       h="auto"
       fz="inherit"
-      fw="inherit"
       lh="inherit"
       leftSection={<Icon name="chevronleft" />}
       onClick={onClick}

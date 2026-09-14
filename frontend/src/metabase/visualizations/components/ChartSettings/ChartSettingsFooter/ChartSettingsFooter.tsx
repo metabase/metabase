@@ -23,6 +23,6 @@ export const ChartSettingsFooter = ({
       >{t`Reset to defaults`}</Button>
     )}
     <Button onClick={onCancel}>{t`Cancel`}</Button>
-    <Button variant="filled" onClick={onDone}>{t`Done`}</Button>
+    <Button variant="filled" size="lg" onClick={onDone}>{t`Done`}</Button>
   </Flex>
 );

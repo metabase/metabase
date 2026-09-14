@@ -105,12 +105,13 @@ export function EditorPanel({
               <Text fw={600}>{t`Main colors`}</Text>
               {editor.hasMainColorChanges && (
                 <Tooltip label={t`Reset main colors to defaults`}>
+                  {/* TODO: replace with ActionIcon (GDGT-2457) */}
                   <Button
-                    variant="subtle"
-                    size="sm"
+                    variant="transparent"
+                    size="compact-md"
                     aria-label={t`Reset main colors to defaults`}
                     onClick={editor.resetMainColors}
-                    leftSection={<Icon name="revert" />}
+                    leftSection={<Icon name="revert" c="icon-primary" />}
                   />
                 </Tooltip>
               )}
@@ -148,12 +149,13 @@ export function EditorPanel({
                 <Tooltip
                   label={t`Regenerate filter, summarize, positive, negative, and chart colors from the brand color`}
                 >
+                  {/* TODO: replace with ActionIcon (GDGT-2457) */}
                   <Button
-                    variant="subtle"
-                    size="sm"
+                    variant="transparent"
+                    size="compact-md"
                     aria-label={t`Regenerate from brand color`}
                     onClick={editor.regenerateAdditionalColorsFromBrand}
-                    leftSection={<Icon name="revert" />}
+                    leftSection={<Icon name="revert" c="icon-primary" />}
                   />
                 </Tooltip>
               )}
@@ -265,7 +267,7 @@ export function EditorPanel({
         justify="space-between"
         style={{ borderTop: "1px solid var(--mb-color-border-neutral)" }}
       >
-        <Button variant="subtle" onClick={onCancel}>
+        <Button variant="subtle" color="neutral" onClick={onCancel}>
           {t`Cancel`}
         </Button>
         <Button variant="filled" onClick={onSave} disabled={!editor.canSave}>

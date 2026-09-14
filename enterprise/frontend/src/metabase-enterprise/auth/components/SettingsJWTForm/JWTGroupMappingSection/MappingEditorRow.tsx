@@ -111,7 +111,11 @@ export function MappingEditorRow({
         onKeyDown={handleGroupsKeyDown}
         searchable
       />
-      <Button variant="subtle" onClick={onCancel}>{t`Cancel`}</Button>
+      <Button
+        variant="subtle"
+        color="neutral"
+        onClick={onCancel}
+      >{t`Cancel`}</Button>
       <Button
         variant="filled"
         disabled={!canSubmit}

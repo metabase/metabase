@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Button, Group } from "metabase/ui";
+import { Tabs } from "metabase/ui";
 
 import type { GroupTab } from "../utils";
 
@@ -22,23 +22,22 @@ export const GroupCategoryTabs = (props: GroupCategoryTabsProps) => {
   ];
 
   return (
-    <Group gap="sm">
-      {tabItems.map((tabItem) => (
-        <Button
-          bd="none"
-          bg={
-            activeTab === tabItem.tab
-              ? "background_surface-selected"
-              : "transparent"
-          }
-          c={activeTab === tabItem.tab ? "core-brand" : "text-secondary"}
-          key={tabItem.tab}
-          onClick={() => setActiveTab(tabItem.tab)}
-          radius="xl"
-        >
-          {tabItem.label}
-        </Button>
-      ))}
-    </Group>
+    <Tabs
+      variant="pills"
+      value={activeTab}
+      onChange={(value) => {
+        if (value) {
+          setActiveTab(value);
+        }
+      }}
+    >
+      <Tabs.List>
+        {tabItems.map((tabItem) => (
+          <Tabs.Tab key={tabItem.tab} value={tabItem.tab}>
+            {tabItem.label}
+          </Tabs.Tab>
+        ))}
+      </Tabs.List>
+    </Tabs>
   );
 };

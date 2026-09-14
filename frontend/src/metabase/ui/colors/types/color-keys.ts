@@ -207,6 +207,7 @@ export type MetabaseColorKey =
   | "core-brand"
   | "core-brand-hover"
   | "core-filter"
+  | "core-filter-strong"
   | "core-gold"
   | "core-green-saturated"
   | "core-info"

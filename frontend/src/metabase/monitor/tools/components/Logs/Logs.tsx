@@ -83,11 +83,12 @@ export const Logs = ({
                   placeholder={t`Filter logs`}
                   rightSection={
                     query.length > 0 ? (
+                      // TODO: replace with ActionIcon (GDGT-2457)
                       <Button
                         aria-label={t`Clear`}
-                        color="neutral"
-                        leftSection={<Icon name="close" />}
-                        variant="subtle"
+                        leftSection={<Icon name="close" c="icon-primary" />}
+                        variant="transparent"
+                        size="compact-md"
                         onClick={() => {
                           patchUrlState({ query: "" });
                           refollow();

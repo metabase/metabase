@@ -67,7 +67,6 @@ export function EntitySelect({
         className={S.button}
         size="lg"
         rightSection={<Icon name="chevrondown" />}
-        fw="normal"
         maw="100%"
         onClick={openPicker}
       >

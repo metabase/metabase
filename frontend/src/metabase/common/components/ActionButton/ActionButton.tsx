@@ -10,14 +10,7 @@ import {
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import {
-  Button,
-  type ButtonProps,
-  Center,
-  Group,
-  Icon,
-  Loader,
-} from "metabase/ui";
+import { Button, type ButtonProps, Center, Icon, Loader } from "metabase/ui";
 
 export interface ActionButtonProps extends Omit<ButtonProps, "onClick"> {
   // need to expose this ref to allow Tooltip to bind to the correct element
@@ -116,7 +109,11 @@ export const ActionButton = forwardRef<ActionButtonHandle, ActionButtonProps>(
     const actionStatus = active ? "pending" : (result ?? "idle");
     const resultProps: Partial<ButtonProps> =
       result === "success"
-        ? { variant: "filled", color: "positive" }
+        ? {
+            variant: "filled",
+            color: "positive",
+            leftSection: <Icon name="check" />,
+          }
         : result === "failed"
           ? { variant: "filled", color: "negative" }
           : {};
@@ -141,10 +138,7 @@ export const ActionButton = forwardRef<ActionButtonHandle, ActionButtonProps>(
             activeText
           )
         ) : result === "success" ? (
-          <Group align="center" gap="sm">
-            <Icon name="check" />
-            <span>{successText}</span>
-          </Group>
+          successText
         ) : result === "failed" ? (
           failedText
         ) : (

@@ -125,7 +125,7 @@ export const CreateStructuredQuestionModal = ({
         />
       </Box>
       <Flex mt="xl" justify="flex-end" gap="0.5rem">
-        <Button variant="subtle" onClick={onClose}>
+        <Button variant="subtle" color="neutral" onClick={onClose}>
           {t`Cancel`}
         </Button>
         <Button

@@ -88,7 +88,6 @@ export function DimensionFilterButton({
         <Button
           className={S.controlButton}
           justify="space-between"
-          fw={400}
           px="lg"
           bdrs="sm"
           variant="subtle"

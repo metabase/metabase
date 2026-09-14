@@ -270,6 +270,7 @@ const AddUsersRow = ({
 
     <Button
       variant="subtle"
+      color="neutral"
       bg="transparent"
       onClick={onCancel}
       mr="sm"

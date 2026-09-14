@@ -96,13 +96,15 @@ export function RevisionHistoryTimeline({
               <Flex>
                 {revision && canWrite && isNotFirstEvent && (
                   <Tooltip label={t`Revert to this version`}>
+                    {/* TODO: replace with ActionIcon (GDGT-2457) */}
                     <Button
                       className={S.revertButton}
-                      variant="subtle"
+                      variant="transparent"
+                      size="compact-md"
                       onClick={() => handleRevert(revision)}
                       data-testid="question-revert-button"
                       aria-label={t`revert to ${title}`}
-                      leftSection={<Icon name="revert" />}
+                      leftSection={<Icon name="revert" c="icon-primary" />}
                     />
                   </Tooltip>
                 )}

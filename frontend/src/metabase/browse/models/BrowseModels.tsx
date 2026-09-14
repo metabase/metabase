@@ -136,9 +136,11 @@ export const BrowseModels = () => {
                   <Text ta="center">{t`Models are somewhat like virtual tables: do all your joins and custom columns once, save it as a model, then query it like a table.`}</Text>
                 </Stack>
                 {showMetabaseLinks && (
-                  <Button variant="transparent" size="compact-md">
-                    <ExternalLink href={url}>{t`Read the docs`}</ExternalLink>
-                  </Button>
+                  <Button
+                    component={ExternalLink}
+                    href={url}
+                    variant="subtle"
+                  >{t`Read the docs`}</Button>
                 )}
               </Stack>
             ) : (

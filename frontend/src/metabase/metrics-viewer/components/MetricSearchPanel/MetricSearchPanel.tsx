@@ -100,14 +100,12 @@ export function MetricSearchPanel() {
               <Button
                 variant="light"
                 color="filter"
-                px="sm"
                 leftSection={
                   <Icon
                     name={hasFilters ? "filter_plus" : "filter"}
                     size={16}
                   />
                 }
-                className={hasFilters ? S.filterButtonWithCount : undefined}
               >
                 {t`Filter`}
               </Button>
@@ -116,13 +114,11 @@ export function MetricSearchPanel() {
                   <Button
                     variant="light"
                     color="filter"
-                    px="lg"
                     aria-label={toggleLabel}
                     onClick={(event) => {
                       event.stopPropagation();
                       setIsFilterPillsExpanded((prev) => !prev);
                     }}
-                    className={S.filterButtonAttachment}
                   >
                     {filterCount}
                   </Button>

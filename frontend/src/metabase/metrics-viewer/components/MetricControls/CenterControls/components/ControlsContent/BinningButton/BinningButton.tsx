@@ -74,7 +74,6 @@ export function BinningButton({
       <Popover.Target>
         <Button
           className={S.controlButton}
-          fw={400}
           px="lg"
           bdrs="sm"
           variant="subtle"
