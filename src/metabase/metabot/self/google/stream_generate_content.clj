@@ -9,6 +9,7 @@
    [clojure.string :as str]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.google.models :as models]
+   [metabase.metabot.self.output-limits :as output-limits]
    [metabase.metabot.self.schema :as schema]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -157,8 +158,20 @@
   only the tokens actually generated are billed."
   2048)
 
+(defn- output-limits-key
+  "The [[output-limits/max-output-tokens]] key for `model`: the vendor's own model id.
+
+      google/gemini-3.7-flash → gemini-3.7-flash"
+  [model]
+  ;; (str model) because [[request-body]] is also called with no :model at all, which must miss the
+  ;; table rather than throw.
+  (str/replace-first (str model) #"^google/" ""))
+
 (mu/defn request-body
-  "Builds the `streamGenerateContent` request body for an LLM request."
+  "Builds the `streamGenerateContent` request body for an LLM request.
+
+  A request that names a catalog model and carries no `:max-tokens` is capped at that model's documented
+  maximum output (see [[output-limits/max-output-tokens]])."
   [{:keys [system input tools schema tool_choice temperature max-tokens model reasoning?]
     :or   {reasoning? true}} :- core/LLMRequestOpts]
   (let [fdecls     (when (seq tools) (mapv tool->function-declaration tools))
@@ -181,11 +194,14 @@
                        ;; The chat path streams to the browser: ask for the thought summaries the
                        ;; chain-of-thought UI renders, and leave the default thinking level alone.
                        reasoning? {:includeThoughts true}))
+        ;; The documented per-model maximum is the default cap; a caller's own task cap wins.
+        max-tokens (or max-tokens (output-limits/max-output-tokens (output-limits-key model)))
         ;; Safety net: the forced tool call must survive the un-disableable thinking spend, which
         ;; Gemini bills against maxOutputTokens (see [[forced-tool-call-token-floor]]). Only an
-        ;; existing cap is raised, and only where a tool call is actually forced — the chat path
-        ;; sends no cap at all. Independent of :reasoning?, because a catalog model thinks whether
-        ;; or not we asked it to.
+        ;; existing cap is raised, and only where a tool call is actually forced. Every catalog model
+        ;; has a documented maximum well above the floor, so this now bites only on a smaller caller
+        ;; cap; the nil check keeps a catalog model with no table row from throwing. Independent of
+        ;; :reasoning?, because a catalog model thinks whether or not we asked it to.
         max-tokens (cond-> max-tokens
                      (and max-tokens forced? (models/reasoning-model? model))
                      (max forced-tool-call-token-floor))

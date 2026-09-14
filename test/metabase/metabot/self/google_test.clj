@@ -159,7 +159,8 @@
                    :headers {"Content-Type" "application/json"}}
                   req))
           (is (= {:contents         [{:role "user" :parts [{:text "hi"}]}]
-                  :generationConfig {:thinkingConfig {:includeThoughts true}}}
+                  :generationConfig {:maxOutputTokens 65536
+                                     :thinkingConfig  {:includeThoughts true}}}
                  (json/decode+kw (:body req)))))))))
 
 (deftest google-raw-regional-location-host-test

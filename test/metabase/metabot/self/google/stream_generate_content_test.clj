@@ -361,7 +361,8 @@
                                :reasoning? false
                                :schema     {:type "object"}}))))
   (testing ":reasoning? false sends no thinkingConfig, leaving the server default"
-    (is (= {:contents [{:role "user" :parts [{:text "hi"}]}]}
+    (is (= {:contents         [{:role "user" :parts [{:text "hi"}]}]
+            :generationConfig {:maxOutputTokens 65536}}
            (sgc/request-body {:model      "google/gemini-3.6-flash"
                               :input      [{:role :user :content "hi"}]
                               :reasoning? false}))))
@@ -385,8 +386,13 @@
                                :input      [{:role :user :content "hi"}]
                                :schema     {:type "object"}
                                :max-tokens 8000}))))
-  (testing "an uncapped structured call stays uncapped — the floor raises, it never introduces a cap"
-    (is (nil? (get-in (sgc/request-body {:model  "google/gemini-3.7-flash"
+  (testing "an uncapped structured call takes the documented model maximum, already above the floor"
+    (is (= 65536 (get-in (sgc/request-body {:model  "google/gemini-3.7-flash"
+                                            :input  [{:role :user :content "hi"}]
+                                            :schema {:type "object"}})
+                         [:generationConfig :maxOutputTokens]))))
+  (testing "the floor still never introduces a cap: an off-catalog model has no documented maximum"
+    (is (nil? (get-in (sgc/request-body {:model  "google/gemini-2.5-flash"
                                          :input  [{:role :user :content "hi"}]
                                          :schema {:type "object"}})
                       [:generationConfig :maxOutputTokens]))))
@@ -415,6 +421,26 @@
               (body-for "required")))
       (is (=? {:generationConfig {:maxOutputTokens 512}}
               (body-for "auto"))))))
+
+(deftest ^:parallel request-body-documented-max-tokens-test
+  (let [input [{:role :user :content "hi"}]]
+    (testing "an uncapped call on a catalog model is capped at its documented maximum output"
+      (are [model] (= 65536 (get-in (sgc/request-body {:model model :input input})
+                                    [:generationConfig :maxOutputTokens]))
+        "google/gemini-3.5-flash"
+        "google/gemini-3.6-flash"
+        "google/gemini-3.7-flash"))
+    (testing "an off-catalog model has no documented maximum and is sent uncapped"
+      (is (nil? (get-in (sgc/request-body {:model "google/gemini-2.5-flash" :input input})
+                        [:generationConfig :maxOutputTokens]))))
+    (testing "a request naming no model at all is sent uncapped rather than throwing"
+      (is (nil? (get-in (sgc/request-body {:input input})
+                        [:generationConfig :maxOutputTokens]))))
+    (testing "the caller's own task cap wins over the documented maximum"
+      (is (= 512 (get-in (sgc/request-body {:model      "google/gemini-3.7-flash"
+                                            :input      input
+                                            :max-tokens 512})
+                         [:generationConfig :maxOutputTokens]))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Streaming event conversion tests.
