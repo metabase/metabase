@@ -183,12 +183,12 @@
   Chat Completions has no explicit start/stop events per content block like
   Claude or OpenAI Responses do — we infer transitions from the delta shape.
 
-  Parallel tool calls are tracked by tool-call `id`, not by `index`, which is
-  never read: a tool-call delta whose `id` differs from the open one closes the
-  previous block and opens a new one. That relies on providers sending `id` only
-  on a tool call's opening chunk — one that repeated it on continuation chunks
-  would lose their arguments, since neither the start branch (needs `:name`) nor
-  the argument-delta branch (needs no `:id`) would fire.
+  A delta's `tool_calls` is an array and every entry is translated, in order: a
+  server may put a whole turn's worth of calls in one delta rather than streaming
+  them one per delta. Identity comes from the tool-call `id` where there is one,
+  and from the open block otherwise, so an entry naming a different `id` closes
+  the previous block and opens a new one, while an entry with no `id` — or with
+  the open one repeated but no `:name` — carries more arguments for it.
 
   Takes the dialect's `finish_reason` table, defaulting to OpenAI's [[stop-reasons]].
 
@@ -217,7 +217,25 @@
                                                      @payload))
                             (vreset! current-type nil)
                             (vreset! current-id nil)
-                            (vreset! payload {})))]
+                            (vreset! payload {})))
+           ;; One entry from a delta's `tool_calls`. `@current-type` is `:function_call` or nil on
+           ;; entry — the outer clause closes any text or reasoning block first — and the nil case has
+           ;; to be excluded explicitly: `close!`'s `case` has no default and would throw on it.
+           emit-tool-call!
+           (fn [result {:keys [id] {tool-name :name :keys [arguments]} :function}]
+             (cond-> result
+               (and id
+                    (= :function_call @current-type)
+                    (not= id @current-id))     (close!)
+               (and id tool-name)              (-> (u/prog1
+                                                     (vreset! current-type :function_call)
+                                                     (vreset! current-id id)
+                                                     (vreset! payload {:toolCallId id
+                                                                       :toolName   tool-name}))
+                                                   (rf (merge {:type :tool-input-start} @payload)))
+               (not (str/blank? arguments))    (rf {:type           :tool-input-delta
+                                                    :toolCallId     (:toolCallId @payload)
+                                                    :inputTextDelta arguments})))]
        (fn
          ([result]
           (cond-> result
@@ -228,7 +246,7 @@
           (let [choice        (first choices)
                 delta         (:delta choice)
                 finish-reason (:finish_reason choice)
-                tool-call     (first (:tool_calls delta))
+                tool-calls    (:tool_calls delta)
                 reasoning-md  (:reasoning_metadata delta)
                 ;; Determine what kind of content this chunk carries.
                 ;; Empty-string content (common between tool calls) is ignored
@@ -242,26 +260,22 @@
                                 ;; loses its reasoning fragment instead: display text,
                                 ;; recoverable. No probed provider combines the two in one
                                 ;; delta today.
-                                (some? tool-call)             :function_call
+                                (seq tool-calls)              :function_call
                                 (and forward-reasoning?
                                      (delta-reasoning delta)) :reasoning
-                                :else                         nil)
-                ;; For new tool calls, the id comes from the chunk; for deltas
-                ;; on the same tool, we keep current-id.
-                chunk-id      (or (:id tool-call) @current-id (core/mkid))]
+                                :else                         nil)]
             (cond-> result
               ;; Emit :start on first chunk
               (and id (not @message-id))                       (-> (rf {:type :start :messageId id})
                                                                    (u/prog1
                                                                      (vreset! message-id id)
                                                                      (vreset! model-name model)))
-              ;; Close previous block when type changes, or when a new tool
-              ;; call arrives (different id = different tool in parallel)
+              ;; Close the previous block when the kind of content changes. A change of tool
+              ;; *within* a run of tool calls is `emit-tool-call!`'s to notice, since only it
+              ;; sees each call's id.
               (and @current-type
-                   (or (and chunk-type
-                            (not= chunk-type @current-type))
-                       (and (= chunk-type :function_call)
-                            (not= chunk-id @current-id))))     (close!)
+                   chunk-type
+                   (not= chunk-type @current-type))            (close!)
               ;; Start a new text block
               (and (= chunk-type :text)
                    (not= @current-type :text))                 (-> (u/prog1
@@ -299,26 +313,8 @@
                    (= @current-type :reasoning))               (u/prog1
                                                                  (vswap! payload assoc
                                                                          :providerMetadata reasoning-md))
-              ;; Start a new tool call block
-              (and (= chunk-type :function_call)
-                   (:id tool-call)
-                   (:name (:function tool-call)))              (-> (u/prog1
-                                                                     (vreset! current-type :function_call)
-                                                                     (vreset! current-id (:id tool-call))
-                                                                     (vreset! payload {:toolCallId (:id tool-call)
-                                                                                       :toolName   (:name (:function tool-call))}))
-                                                                   (rf (merge {:type :tool-input-start} @payload))
-                                                                   ;; Emit initial arguments if present
-                                                                   (cond-> (not (str/blank? (:arguments (:function tool-call))))
-                                                                     (rf {:type           :tool-input-delta
-                                                                          :toolCallId     (:id tool-call)
-                                                                          :inputTextDelta (:arguments (:function tool-call))})))
-              ;; Tool argument delta (continuation of existing tool call)
-              (and (= chunk-type :function_call)
-                   (not (:id tool-call))
-                   (some? (:arguments (:function tool-call)))) (rf {:type           :tool-input-delta
-                                                                    :toolCallId     (:toolCallId @payload)
-                                                                    :inputTextDelta (:arguments (:function tool-call))})
+              ;; Tool calls — every entry in the delta, in order
+              (= chunk-type :function_call)                    (as-> r (u/reduce-preserving-reduced emit-tool-call! r tool-calls))
               ;; Finish reason — close whatever is open
               (some? finish-reason)                            (-> (u/prog1
                                                                      (vreset! stop-reason finish-reason))
