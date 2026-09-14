@@ -2,8 +2,8 @@ import type { MetabaseCard } from "metabase/embedding-sdk/types/question";
 
 import type { MetabaseQueryOptions, UseMetabaseQueryObjectResult } from "..";
 import { breakout, count, sum, useMetabaseQuery } from "..";
-import { useAction } from "../../use-action";
 import { defineAction, defineQuery } from "../../../../data-app";
+import { useAction } from "../../use-action";
 
 import { TEST_SCHEMA } from "./fixtures";
 
