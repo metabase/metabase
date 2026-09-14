@@ -14,9 +14,9 @@
   [locale :- :string]
   ;; `locale` arrives from a request parameter, so it is bound as a SQL parameter rather than
   ;; compiled into the query.
-  (value-guard/bound [query {:where    [:= :locale [:auto/param locale]]
-                             :order-by [:msgid]}]
-                     (t2/select :model/ContentTranslation query)))
+  (t2/select :model/ContentTranslation
+             {:where    [:= :locale [:auto/param locale]]
+              :order-by [:msgid]}))
 
 (mu/defn all-translations
   "Every ContentTranslation, ordered by locale and message id."
