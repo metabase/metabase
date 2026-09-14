@@ -10,6 +10,7 @@
    [metabase.system.core :as system]
    [metabase.util :as u]
    [oidc-provider.core :as oidc]
+   [oidc-provider.protocol :as oidc.proto]
    [oidc-provider.store :as oidc.store]))
 
 (set! *warn-on-reflection* true)
@@ -66,6 +67,24 @@
   []
   ;; sorted so the `scope` echoed back in the registration response is stable across restarts
   (into (sorted-set) (supported-scopes)))
+
+(defn- with-default-grant-ceiling
+  "Wrap `client-store` so a dynamically-registered client's `:scopes` always include [[default-grant-scopes]].
+
+  A registration `scope` can only widen what the client may later request, never narrow it: MCP clients register with
+  the narrow scope they start from and then step up on the same `client_id`, which a per-client snapshot would refuse.
+  Computed on read, so a client registered before a scope existed can still request it. Static clients are unchanged."
+  [client-store]
+  (reify oidc.proto/ClientStore
+    (get-client [_ client-id]
+      (let [client (oidc.proto/get-client client-store client-id)]
+        (cond-> client
+          (= "dynamic" (:registration-type client))
+          (update :scopes #(into (vec %) (remove (set %)) (default-grant-scopes))))))
+    (register-client [_ client-config]
+      (oidc.proto/register-client client-store client-config))
+    (update-client [_ client-id updated-config]
+      (oidc.proto/update-client client-store client-id updated-config))))
 
 (def ^:private scheme-default-port
   {"http" 80, "https" 443})
@@ -160,7 +179,7 @@
      :access-token-ttl-seconds       (oauth-settings/oauth-server-access-token-ttl)
      :authorization-code-ttl-seconds (oauth-settings/oauth-server-authorization-code-ttl)
      :refresh-token-ttl-seconds      (oauth-settings/oauth-server-refresh-token-ttl)
-     :client-store                   (store/create-client-store)
+     :client-store                   (with-default-grant-ceiling (store/create-client-store))
      :code-store                     (store/create-authorization-code-store)
      :token-store                    (store/create-token-store)
      ;; OIDC provider requires a vector.

@@ -1234,8 +1234,9 @@
                                  :response_type "code"
                                  :scope         requested
                                  :state         "test-state"))]
-          (testing "before widening, the six v2 scopes are refused against the legacy snapshot"
-            (is (= "invalid_request" (:error (:body (authorize! 400))))))
+          (testing (str "GHY-4543: even before the migration widens the stored snapshot, the request reaches consent, "
+                        "because a dynamic client's ceiling always includes the default grant scopes")
+            (is (str/includes? (get-in (authorize! 200) [:headers "Content-Type"]) "text/html")))
           ;; Apply what the migration applies. The change class itself is exercised against the changelog in
           ;; `metabase.app-db.custom-migrations-test`; what this test owns is the authorize consequence.
           (t2/update! :model/OAuthClient {:client_id client-id}
@@ -1303,3 +1304,155 @@
                                       :response_type "code"
                                       :scope         oauth-server/full-access-scope
                                       :state         "test-state"))))))))
+
+;;; ------------------------------- Registration scope vs. the authorization ceiling -------------------------------
+
+(def ^:private v2-scope-set
+  #{"agent:content:read" "agent:content:write" "agent:query:run"
+    "agent:sql:run" "agent:delivery:write" "agent:resource:read"})
+
+(defn- register-then-authorize-mcp!
+  "Register a confidential DCR client with `registration` merged into the body, then run the whole
+  authorization-code flow as crowberto for `scope` against the canonical MCP resource. Returns
+  `{:authorize <consent-page response>, :token <token response or nil>}`; `:token` is nil when the
+  authorize request did not reach the consent page."
+  [registration scope]
+  (let [mcp-uri      (str "http://localhost:3000" (mcp/mcp-canonical-path))
+        {:keys [client_id client_secret]}
+        (register-client! (merge {:redirect_uris              ["https://example.com/callback"]
+                                  :client_name                "Step-up Client"
+                                  :token_endpoint_auth_method "client_secret_basic"}
+                                 registration))
+        ;; `/oauth/authorize` answers a stale session with a login 302, which the test client does not
+        ;; retry the way it retries a 401. A session cached from an earlier rolled-back transaction would
+        ;; turn every authorize below into that redirect, so revalidate it here first.
+        _            (mt/user-http-request :crowberto :get 200 "api/user/current")
+        consent-resp (mt/user-http-request-full-response
+                      :crowberto :get "oauth/authorize"
+                      :client_id     client_id
+                      :redirect_uri  "https://example.com/callback"
+                      :response_type "code"
+                      :scope         scope
+                      :resource      mcp-uri
+                      :state         "test-state")
+        body         (:body consent-resp)]
+    {:authorize consent-resp
+     :token     (when (= 200 (:status consent-resp))
+                  (let [decision (form-post-decision!
+                                  :crowberto
+                                  {:approved      "true"
+                                   :csrf_token    (extract-csrf-token-from-consent body)
+                                   :params_sig    (extract-params-sig-from-consent body)
+                                   :client_id     client_id
+                                   :redirect_uri  "https://example.com/callback"
+                                   :response_type "code"
+                                   :scope         (extract-hidden-field "scope" body)
+                                   :resource      mcp-uri
+                                   :state         "test-state"}
+                                  302
+                                  :csrf-cookie (extract-csrf-cookie consent-resp))
+                        code     (extract-query-param (get-in decision [:headers "Location"]) "code")]
+                    (token-request! {:grant_type   "authorization_code"
+                                     :code         code
+                                     :redirect_uri "https://example.com/callback"
+                                     :resource     mcp-uri}
+                                    :authorization (basic-auth-header client_id client_secret))))}))
+
+(deftest registration-scope-does-not-narrow-step-up-test
+  (testing (str "GHY-4543: Claude Code registers with the scope it read from the protected-resource metadata, then "
+                "steps up on the *same* client_id with the wider scope from a 403 `insufficient_scope` challenge. "
+                "If the registration `scope` were that client's ceiling, the step-up `/authorize` would be refused "
+                "and the user could never reach write, SQL, or delivery.")
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [{:keys [authorize token]} (register-then-authorize-mcp!
+                                         {:scope "agent:content:read agent:resource:read"}
+                                         (str/join " " (sort v2-scope-set)))]
+          (testing "the step-up request reaches the consent page"
+            (is (= 200 (:status authorize)) (pr-str (:body authorize)))
+            (is (str/includes? (get-in authorize [:headers "Content-Type"]) "text/html")))
+          (testing "and the token carries every requested v2 scope"
+            (is (= v2-scope-set (some-> (:scope token) (str/split #" ") set)))))))))
+
+(deftest registration-without-scope-uses-default-ceiling-test
+  (testing (str "GHY-4543: a client that omits `scope` at registration may authorize for every v2 scope. Pins the "
+                "default ceiling that step-up relies on.")
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [{:keys [authorize token]} (register-then-authorize-mcp! {} (str/join " " (sort v2-scope-set)))]
+          (is (= 200 (:status authorize)) (pr-str (:body authorize)))
+          (is (= v2-scope-set (some-> (:scope token) (str/split #" ") set))))))))
+
+(deftest registration-with-wide-scope-can-authorize-for-it-test
+  (testing (str "GHY-4543: the Claude Desktop native connector registers a *new* client whose `scope` is the "
+                "challenged wider set, then authorizes for that set on the new client.")
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [wide                      (str/join " " (sort v2-scope-set))
+              {:keys [authorize token]} (register-then-authorize-mcp! {:scope wide} wide)]
+          (is (= 200 (:status authorize)) (pr-str (:body authorize)))
+          (is (= v2-scope-set (some-> (:scope token) (str/split #" ") set))))))))
+
+(deftest registration-scope-step-up-is-still-narrowed-to-resource-test
+  (testing (str "GHY-4543: widening a dynamic client's ceiling happens before RFC 8707 narrowing, so a step-up that "
+                "names the MCP resource is still trimmed to the scopes that resource accepts.")
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [not-mcp                   (first (remove v2-scope-set (oauth-server/default-grant-scopes)))
+              {:keys [authorize token]} (register-then-authorize-mcp!
+                                         {:scope "agent:content:read agent:resource:read"}
+                                         (str/join " " (conj (sort v2-scope-set) not-mcp)))]
+          (is (some? not-mcp) "the default ceiling holds a scope the MCP resource does not accept")
+          (is (= 200 (:status authorize)) (pr-str (:body authorize)))
+          (is (= v2-scope-set (some-> (:scope token) (str/split #" ") set))))))))
+
+(defn- register-then-authorize-without-resource!
+  "Register a DCR client with `registration` merged into the body and GET `/oauth/authorize` for `scope` as
+  crowberto, sending no RFC 8707 resource indicator. Returns the authorize response."
+  [registration scope]
+  (let [{:keys [client_id]} (register-client! (merge {:redirect_uris              ["https://example.com/callback"]
+                                                      :token_endpoint_auth_method "client_secret_basic"}
+                                                     registration))]
+    ;; see [[register-then-authorize-mcp!]] for why the session is revalidated first
+    (mt/user-http-request :crowberto :get 200 "api/user/current")
+    (mt/user-http-request-full-response
+     :crowberto :get "oauth/authorize"
+     :client_id     client_id
+     :redirect_uri  "https://example.com/callback"
+     :response_type "code"
+     :scope         scope
+     :state         "test-state")))
+
+(deftest dynamic-client-ceiling-still-bounds-requests-test
+  (testing (str "GHY-4543: a narrow registration is widened to the default ceiling, not beyond it. A client that "
+                "omits the resource indicator is not narrowed, so the ceiling is what refuses these.")
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (testing "control: the same flow reaches consent for a scope inside the default ceiling"
+          (let [response (register-then-authorize-without-resource!
+                          {:scope "agent:content:read agent:resource:read"}
+                          "agent:content:write")]
+            (is (= 200 (:status response)) (pr-str (:body response)))))
+        (doseq [scope [oauth-server/full-access-scope "*" "agent:*" "bogus:nonsense"]]
+          (testing scope
+            (let [response (register-then-authorize-without-resource!
+                            {:scope "agent:content:read agent:resource:read"}
+                            scope)]
+              (is (= 400 (:status response)))
+              (is (= "invalid_request" (get-in response [:body :error]))))))))))
+
+(deftest dynamic-client-registered-with-extra-scope-keeps-it-test
+  (testing (str "GHY-4543: the ceiling is the registration `scope` *plus* the default, so a first-party client that "
+                "registers for `mb:full`, which the default deliberately omits, can still authorize for it.")
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [response (register-then-authorize-without-resource!
+                        {:scope oauth-server/full-access-scope}
+                        (str oauth-server/full-access-scope " agent:content:read"))]
+          (is (= 200 (:status response)) (pr-str (:body response))))))))
