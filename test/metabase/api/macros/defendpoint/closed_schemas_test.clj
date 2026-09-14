@@ -4,6 +4,7 @@
    [malli.core :as mc]
    [metabase.api.macros.defendpoint.closed-schemas :as closed-schemas]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.util.malli.closed-schemas :as mu.closed-schemas]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -58,6 +59,8 @@
     ::nested
     [:map {:closed true} [:a ::open]]
     [:or :int ::open]
+    map?
+    [:map {:closed true} [:settings map?]]
     [:multi {:dispatch :type} [:a [:map [:type [:= :a]]]]]))
 
 (deftest ^:parallel keyword-keyed-map-of-is-found-test
@@ -73,10 +76,8 @@
     :any
     any?
     :some
-    map?
     [:maybe :any]
     [:map {:closed true} [:value :any]]
-    [:map {:closed true} [:settings map?]]
     [:map-of :string :any]
     (ms/string-keyed-map :any)))
 
@@ -134,9 +135,9 @@
 
 (deftest check-throws-with-the-offending-schemas-test
   (testing "off in prod, and off when disabled"
-    (binding [closed-schemas/*enabled* false]
+    (binding [mu.closed-schemas/*enabled* false]
       (is (nil? (closed-schemas/check! :body [:map [:a :int]])))))
-  (binding [closed-schemas/*enabled* true]
+  (binding [mu.closed-schemas/*enabled* true]
     (is (nil? (closed-schemas/check! :body [:map {:closed true} [:a :int]])))
     (testing "response schemas are not checked: only a request is stripped"
       (is (nil? (closed-schemas/check! :response [:map [:a :int]]))))
