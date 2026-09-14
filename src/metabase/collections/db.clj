@@ -551,7 +551,7 @@
   "The distinct `:collection_id`s of the published, unarchived Tables in the Collections with `collection-ids`."
   [collection-ids]
   (t2/query {:select-distinct [:collection_id]
-             :from            :metabase_table
+             :from            [(warehouse-schema-overlay/table-query)]
              :where           [:and
                                [:= :is_published true]
                                [:= :archived_at nil]

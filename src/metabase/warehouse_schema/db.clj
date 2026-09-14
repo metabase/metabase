@@ -346,7 +346,7 @@
 (defn active-tables-for-database
   "The active Tables of the Database with `database-id`."
   [database-id]
-  (t2/select :model/Table :db_id database-id :active true))
+  (t2/select :model/Table :db_id database-id :active true {:from [(warehouse-schema-overlay/table-query)]}))
 
 (defn active-table-schemas
   "The distinct schemas of the active Tables of the Database with `database-id`, in schema order. When
@@ -356,7 +356,8 @@
   (let [clauses (cond-> []
                   (not include-hidden?) (conj [:= :visibility_type nil]))]
     (t2/select-fn-set :schema :model/Table :db_id database-id :active true
-                      (merge {:order-by [[:%lower.schema :asc]]}
+                      (merge {:from     [(warehouse-schema-overlay/table-query)]
+                              :order-by [[:%lower.schema :asc]]}
                              (when clauses
                                {:where (into [:and] clauses)})))))
 
@@ -367,7 +368,8 @@
              :db_id database-id
              :schema schema
              :active true
-             {:order-by [[:display_name :asc]]}))
+             {:from [(warehouse-schema-overlay/table-query)]
+              :order-by [[:display_name :asc]]}))
 
 (defn active-visible-tables-in-schema
   "The active, visible Tables in `schema` of the Database with `database-id`, in display name order."
@@ -377,7 +379,8 @@
              :schema schema
              :active true
              :visibility_type nil
-             {:order-by [[:display_name :asc]]}))
+             {:from [(warehouse-schema-overlay/table-query)]
+              :order-by [[:display_name :asc]]}))
 
 (mu/defn unarchived-segments-for-tables
   "The unarchived Segments of the Tables with `table-ids`, ordered by name."

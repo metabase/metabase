@@ -946,7 +946,8 @@
            metabot
            permissions
            premium-features
-           util.config}
+           util.config
+           warehouse-schema-overlay}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/ConnectionImpersonation
@@ -1342,6 +1343,7 @@
            users
            util
            util.config
+           warehouse-schema-overlay
            warehouses.schema}
    :model-imports #{:model/Card
                     :model/Collection

@@ -459,7 +459,7 @@
   and `:collection_id`. Handing it a trimmed row makes it answer a narrower question and deny a
   user whose access comes through that path."
   [table-id]
-  (when-let [table (t2/select-one :model/Table :id table-id :active true)]
+  (when-let [table (t2/select-one :model/Table :id table-id :active true {:from [(warehouse-schema-overlay/table-query)]})]
     (when (mi/can-read? table)
       (:db_id table))))
 

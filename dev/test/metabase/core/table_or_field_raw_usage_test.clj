@@ -59,9 +59,8 @@
    "src/metabase/collections_rest/db.clj"
    "published-table-collection-ids{,-in} select only :collection_id as a grouping key."
 
-   "src/metabase/collections_rest/children_query.clj"
-   "the :model case reads only :is_upload/:query_type; the :table case reads :display_name/:description, neither
-   overlaid by table-query (only :schema/:name are)."
+   "src/metabase/collections/children.clj"
+   "the :model case joins metabase_table only for :is_upload, which is sync-owned."
 
    "src/metabase/queries/db.clj"
    "field-database-info-for-ids reads the Field's own raw :name (sync-owned, not user-settable); its Table join is
