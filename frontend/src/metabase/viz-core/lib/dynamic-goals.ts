@@ -206,12 +206,12 @@ export function getNumericGoalValue(
 }
 
 // Users enter "50" for 50%, while the axis will use 0.5
-export const getGoalAxisValue = (goalValue: number, isNormalized = false) =>
+export const getGoalAxisValue = (goalValue: number, isNormalized: boolean) =>
   isNormalized ? goalValue / 100 : goalValue;
 
 export const getGoalLineValue = (
   settings: VisualizationSettings,
-  isNormalized = false,
+  isNormalized: boolean,
 ): number | null => {
   const goalValue = getNumericGoalValue(settings);
 

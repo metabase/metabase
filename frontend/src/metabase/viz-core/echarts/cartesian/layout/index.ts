@@ -182,7 +182,7 @@ const getYAxisTicksWidth = (
     }
   }
 
-  const goalValue = getGoalLineValue(settings, axisModel.isNormalized);
+  const goalValue = getGoalLineValue(settings, axisModel.isNormalized ?? false);
 
   if (goalValue !== null) {
     valuesToMeasure.push(goalValue);
