@@ -58,7 +58,7 @@
   ;;
   ;; globally-enabled custom linters
   ;;
-  :metabase/agent-message-exit                               {:level :off} ; enabled for `agent-prose-namespaces`
+  :metabase/agent-message-exit                               {:level :warning}
   :metabase/agent-message-lines                              {:level :warning}
   :metabase/check-defmulti-arglists                          {:level :warning}
   :metabase/check-def-check-not-uppercase-name               {:level :warning}
@@ -76,7 +76,7 @@
   :metabase/prefer-with-dynamic-fn-redefs                    {:level :warning}
   :metabase/t2-query-namespace                               {:level :warning}
   :metabase/toucan-model-ns                                  {:level :warning}
-  :metabase/unquoted-prose-interpolation                     {:level :off} ; enabled for `agent-prose-namespaces`
+  :metabase/unquoted-prose-interpolation                     {:level :warning}
   :metabase/require-shape-checker                            {:level :warning}
   :metabase/tests-must-live-in-known-modules                 {:level :warning}
   :metabase/validate-defendpoint-route-uses-kebab-case       {:level :warning}
@@ -905,13 +905,7 @@
   ;; run Toucan 2 queries anywhere.
   ;;
   {:pattern "^metabase\\.app-db\\..*"
-   :name    app-db-namespaces}
-  ;;
-  ;; source namespaces whose prose reaches an LLM agent: interpolated values must be `pr-str`-quoted so untrusted
-  ;; text can't pose as server-authored text.
-  ;;
-  {:pattern "^metabase\\.mcp\\.(?:v2\\.|transport$)(?!.*-test(?:\\..*)?$)(?!.*test-util).*$"
-   :name    agent-prose-namespaces}]
+   :name    app-db-namespaces}]
 
  :config-in-ns
  {test-namespaces
@@ -922,7 +916,6 @@
     :metabase/defsetting-must-specify-export             {:level :off}
     :metabase/defsetting-namespace                       {:level :off}
     :metabase/t2-query-namespace                         {:level :off}
-    :metabase/agent-message-lines                        {:level :off} ; tests build malformed messages on purpose
     :metabase/test-helpers-use-non-thread-safe-functions {:level :warning} ; more config in `.clj-kondo/config/test-helpers/config.edn`
 
     :discouraged-var
@@ -932,10 +925,6 @@
 
   app-db-namespaces
   {:linters {:metabase/t2-query-namespace {:level :off}}}
-
-  agent-prose-namespaces
-  {:linters {:metabase/agent-message-exit           {:level :warning}
-             :metabase/unquoted-prose-interpolation {:level :warning}}}
 
   ;; .cljc tests run in both Clojure and ClojureScript — `with-dynamic-fn-redefs` is JVM-only,
   ;; so leave these alone.

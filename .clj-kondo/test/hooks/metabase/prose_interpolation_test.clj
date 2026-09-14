@@ -6,10 +6,13 @@
    [hooks.metabase.prose-interpolation :as prose-interpolation]))
 
 (defn- findings
-  "Run `hook-fn` over `form`, a form or its source string, with the linters at `level`; return the findings' messages."
+  "Run `hook-fn` over `form`, a form or its source string, with the linters at `level` in namespace `ns` of file
+  `filename`; return the findings' messages."
   ([hook-fn form]
    (findings hook-fn form :warning))
   ([hook-fn form level]
+   (findings hook-fn form level 'metabase.mcp.v2.tools.browse "src/metabase/mcp/v2/tools/browse.clj"))
+  ([hook-fn form level ns filename]
    (let [config {:linters {:metabase/unquoted-prose-interpolation {:level level}
                            :metabase/agent-message-lines          {:level level}
                            :metabase/agent-message-exit           {:level level}}}]
@@ -17,9 +20,10 @@
                                            :ignores    (atom nil)
                                            :findings   (atom [])
                                            :namespaces (atom {})}]
-       (let [input  {:node   (hooks/parse-string (if (string? form) form (pr-str form)))
-                     :ns     'metabase.mcp.v2.tools.browse
-                     :config config}
+       (let [input  {:node     (hooks/parse-string (if (string? form) form (pr-str form)))
+                     :ns       ns
+                     :filename filename
+                     :config   config}
              output (hook-fn input)]
          (is (identical? (:node input) (:node output))
              "the hook must return the node unchanged so Kondo's normal analysis still runs")
@@ -73,11 +77,44 @@
     (is (=? [#"`x`.*"]
             (findings prose-interpolation/lint-i18n '(deferred-tru (str "Value " "{0}") x))))))
 
-(deftest ^:parallel disabled-outside-scope-test
-  (testing "nothing is reported when the linter is off for the namespace"
+(deftest ^:parallel disabled-test
+  (testing "nothing is reported when the linter is off"
     (is (empty? (findings prose-interpolation/lint-format '(format "%s" x) :off)))
     (is (empty? (findings prose-interpolation/lint-str '(str "Query failed: " x) :off)))
     (is (empty? (findings prose-interpolation/lint-i18n '(tru "Value {0}" x) :off)))))
+
+(def ^:private prose-and-exit-cases
+  "`[hook form]` pairs that each report one finding in an agent-prose namespace."
+  [[prose-interpolation/lint-format '(format "%s" x)]
+   [prose-interpolation/lint-str '(str "Query failed: " x)]
+   [prose-interpolation/lint-i18n '(tru "Value {0}" x)]
+   [prose-interpolation/lint-teaching-exit '(throw-teaching-error "x")]
+   [prose-interpolation/lint-jsonrpc-error '(jsonrpc-error id -32602 "x")]
+   [prose-interpolation/lint-success-content '(success-content "x")]
+   [prose-interpolation/lint-ex-info "(ex-info \"x\" {:status-code 404})"]])
+
+(deftest ^:parallel scope-test
+  (testing "GHY-4544: the prose and exit linters run in MCP v2 and MCP transport source namespaces"
+    (doseq [[hook form] prose-and-exit-cases
+            [ns filename]  [['metabase.mcp.v2.tools.browse "src/metabase/mcp/v2/tools/browse.clj"]
+                            ['metabase.mcp.transport "src/metabase/mcp/transport.clj"]]]
+      (testing (str ns " " (pr-str form))
+        (is (= 1 (count (findings hook form :warning ns filename)))))))
+  (testing "the prose and exit linters don't run outside MCP, or in test files"
+    (doseq [[hook form] prose-and-exit-cases
+            [ns filename]  [['metabase.queries.models.card "src/metabase/queries/models/card.clj"]
+                            ['metabase.mcp.v2.tools.browse-test "test/metabase/mcp/v2/tools/browse_test.clj"]
+                            ['metabase.mcp.v2.test-util "test/metabase/mcp/v2/test_util.clj"]
+                            ['metabase.mcp.v2.test-util "src/metabase/mcp/v2/test_util.clj"]
+                            ['metabase.mcp.v2.tools.browse-test.fixtures "src/metabase/mcp/v2/tools/fixtures.clj"]]]
+      (testing (str ns " " filename " " (pr-str form))
+        (is (empty? (findings hook form :warning ns filename))))))
+  (testing "`msg` lines are checked in any source file, but not in test files"
+    (is (=? [#".*vector.*"]
+            (findings prose-interpolation/lint-msg '(msg lines x) :warning
+                      'metabase.queries.models.card "src/metabase/queries/models/card.clj")))
+    (is (empty? (findings prose-interpolation/lint-msg '(msg lines x) :warning
+                          'metabase.mcp.v2.message-test "test/metabase/mcp/v2/message_test.clj")))))
 
 (deftest ^:parallel msg-test
   (testing "GHY-4544: a vector of single-line string literals with matching arguments is accepted"

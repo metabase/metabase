@@ -8,30 +8,50 @@
 
   Checks `format` `%s` arguments, `tru`-family `{n}` arguments, and the non-literal arguments of a `str` call that
   contains a prose literal. An argument counts as quoted when it is a literal, a `(pr-str ...)` call, or a
-  `str/join` over `(map pr-str ...)`. Reports `:metabase/unquoted-prose-interpolation`, which is `:off` except in the
-  namespaces `config.edn` enables it for.
+  `str/join` over `(map pr-str ...)`. Reports `:metabase/unquoted-prose-interpolation`.
 
-  Also checks `metabase.mcp.v2.message/msg` calls, reporting `:metabase/agent-message-lines`: the lines must be a
-  literal vector of string literals, one line of the message each, with no line breaks, `%n`, or control characters,
-  and the arguments must match the lines' format specifiers.
+  Also checks `metabase.mcp.v2.message/msg` calls in any non-test file, reporting `:metabase/agent-message-lines`: the
+  lines must be a literal vector of string literals, one line of the message each, with no line breaks, `%n`, or
+  control characters, and the arguments must match the lines' format specifiers.
 
-  Also checks the exits that carry text to the agent, reporting `:metabase/agent-message-exit`, which is `:off` except
-  in the namespaces `config.edn` enables it for. The message argument of `throw-teaching-error`, `error-content`,
+  Also checks the exits that carry text to the agent, reporting `:metabase/agent-message-exit`. The message argument of `throw-teaching-error`, `error-content`,
   `jsonrpc-error`, and `success-content` must not be syntactically text -- a string literal, a string-building call,
   or a threading, branching, or body form that yields one -- so that it is built with `msg`. An `ex-info` whose data
   literal carries a 4xx `:status-code` or an `error-code` key must be a `throw-teaching-error` instead. The check is
   syntactic; text that reaches an exit another way is cleaned at runtime.
 
-  Every hook returns its input unchanged."
+  The prose and exit checks run only in the non-test `metabase.mcp.v2.*` and `metabase.mcp.transport` namespaces. Every
+  check is skipped when its linter's level is `:off`, and every hook returns its input unchanged."
   (:require
    [clj-kondo.hooks-api :as hooks]
    [clojure.string :as str]))
 
 (def ^:private linter :metabase/unquoted-prose-interpolation)
 
+(defn- level-on?
+  [config linter-key]
+  (not= :off (get-in config [:linters linter-key :level] :off)))
+
+(defn- test-file?
+  "Whether `filename` is in a test source tree or `ns` names a test or test-util namespace."
+  [ns filename]
+  (let [ns-name (str ns)]
+    (boolean (or (and filename (re-find #"(?:^|/)test/" filename))
+                 (str/ends-with? ns-name "-test")
+                 (str/includes? ns-name "-test.")
+                 (str/includes? ns-name "test-util")))))
+
+(defn- agent-prose-ns?
+  "Whether `ns` in `filename` is a non-test namespace whose prose reaches an LLM agent."
+  [ns filename]
+  (let [ns-name (str ns)]
+    (and (or (= "metabase.mcp.transport" ns-name)
+             (str/starts-with? ns-name "metabase.mcp.v2."))
+         (not (test-file? ns filename)))))
+
 (defn- enabled?
-  [config]
-  (not= :off (get-in config [:linters linter :level] :off)))
+  [{:keys [config ns filename]}]
+  (and (level-on? config linter) (agent-prose-ns? ns filename)))
 
 (defn- call-name
   "The symbol at the head of list `node`, or nil."
@@ -145,8 +165,8 @@
 
 (defn lint-format
   "Flag `format` `%s` arguments that aren't quoted, and format strings that aren't literals."
-  [{:keys [node config] :as input}]
-  (when (enabled? config)
+  [{:keys [node] :as input}]
+  (when (enabled? input)
     (let [[_ fmt-node & args] (:children node)]
       (if-let [fmt (literal-string fmt-node)]
         (doseq [index (distinct (string-arg-indexes fmt))
@@ -169,8 +189,8 @@
 
 (defn lint-str
   "Flag unquoted arguments of a `str` call that concatenates them onto a prose literal."
-  [{:keys [node config] :as input}]
-  (when (enabled? config)
+  [{:keys [node] :as input}]
+  (when (enabled? input)
     (let [args (rest (:children node))]
       (when (some prose-literal? args)
         (doseq [arg args
@@ -180,8 +200,8 @@
 
 (defn lint-i18n
   "Flag `tru`-family `{n}` arguments that aren't quoted."
-  [{:keys [node config] :as input}]
-  (when (enabled? config)
+  [{:keys [node] :as input}]
+  (when (enabled? input)
     (let [[_ fmt-node & args] (:children node)]
       (when-let [fmt (literal-string fmt-node)]
         (doseq [index (distinct (map (comp digits->long second) (re-seq #"\{(\d+)\}" fmt)))
@@ -209,8 +229,8 @@
 (defn lint-msg
   "Flag `msg` calls whose lines aren't a literal vector of single-line string literals, or whose arguments don't match
   the lines' format specifiers."
-  [{:keys [node config] :as input}]
-  (when (not= :off (get-in config [:linters msg-linter :level] :off))
+  [{:keys [node config ns filename] :as input}]
+  (when (and (level-on? config msg-linter) (not (test-file? ns filename)))
     (let [[fn-node lines-node & args] (:children node)]
       (if-not (and lines-node (hooks/vector-node? lines-node))
         (reg-msg-finding! (or lines-node fn-node)
@@ -235,8 +255,8 @@
 (def ^:private exit-linter :metabase/agent-message-exit)
 
 (defn- exit-enabled?
-  [config]
-  (not= :off (get-in config [:linters exit-linter :level] :off)))
+  [{:keys [config ns filename]}]
+  (and (level-on? config exit-linter) (agent-prose-ns? ns filename)))
 
 (defn- reg-exit-finding!
   [node message]
@@ -295,22 +315,22 @@
 
 (defn lint-teaching-exit
   "Flag a teaching-error exit whose message, the first argument, is text rather than a `msg`."
-  [{:keys [node config] :as input}]
-  (when (exit-enabled? config)
+  [{:keys [node] :as input}]
+  (when (exit-enabled? input)
     (lint-exit-text! node 1))
   input)
 
 (defn lint-jsonrpc-error
   "Flag a `jsonrpc-error` whose message, the third argument, is text rather than a `msg`."
-  [{:keys [node config] :as input}]
-  (when (exit-enabled? config)
+  [{:keys [node] :as input}]
+  (when (exit-enabled? input)
     (lint-exit-text! node 3))
   input)
 
 (defn lint-success-content
   "Flag a `success-content` whose first argument is text rather than a payload or a `msg`."
-  [{:keys [node config] :as input}]
-  (when (exit-enabled? config)
+  [{:keys [node] :as input}]
+  (when (exit-enabled? input)
     (let [text (second (:children node))]
       (when (and text (stringy? text))
         (reg-exit-finding! text "`success-content` takes data to JSON-encode or a `msg`; pass the payload itself, or build the text with `msg`."))))
@@ -332,8 +352,8 @@
 
 (defn lint-ex-info
   "Flag an `ex-info` whose data marks it as a caller-facing error."
-  [{:keys [node config] :as input}]
-  (when (exit-enabled? config)
+  [{:keys [node] :as input}]
+  (when (exit-enabled? input)
     (when (caller-facing-data? (nth (:children node) 2 nil))
       (reg-exit-finding! node "Caller-facing errors must be thrown with `throw-teaching-error` and a `msg`, so their text is rendered and cleaned.")))
   input)
