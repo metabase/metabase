@@ -1145,7 +1145,8 @@
       (finally
         (mt/user-http-request :crowberto :put 200 (format "table/%s" (mt/id :venues))
                               {:field_order original-field-order})
-        (t2/delete! :model/TableUserSettings :table_id (mt/id :venues))))))
+        (t2/delete! :model/TableUserSettings :table_id (mt/id :venues))
+        (t2/delete! :model/FieldUserSettings :field_id [:in (t2/select-pks-vec :model/Field :table_id (mt/id :venues))])))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          POST /api/table/:id/append-csv                                        |
