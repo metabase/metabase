@@ -24,6 +24,12 @@ import { setupEmbeddingSdkEnterprisePlugins } from "../support";
 
 import { setup as baseSetup } from "./setup";
 
+// Jest runs React 18 on localhost, which shows the React 18 warning banner.
+// Mock React 19 so the spec only sees the usage problems it tests.
+jest.mock("embedding-sdk-bundle/lib/host-react-version", () => ({
+  getHostReactMajorVersion: () => 19,
+}));
+
 const setup = ({
   authConfig,
   locale,
