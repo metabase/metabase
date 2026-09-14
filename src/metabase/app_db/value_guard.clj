@@ -15,19 +15,39 @@
    [clojure.walk :as walk]
    [methodical.core :as methodical]
    [toucan2.honeysql2 :as t2.honeysql]
-   [toucan2.pipeline :as t2.pipeline]))
+   [toucan2.pipeline :as t2.pipeline])
+  (:import
+   (clojure.lang MapEntry)
+   (java.util.concurrent ThreadLocalRandom)))
 
 (set! *warn-on-reflection* true)
 
-(def ^:private marker :auto/param)
-
 (defn- marker-form?
-  [x]
-  (and (sequential? x)
-       (= marker (first x))
-       (= 2 (count x))))
+  "Whether `x` is a `[:auto/param v]` marker.
 
-(defn auto-param
+  A `MapEntry` is also a two-element vector, so the entry `{:auto/param v}` would otherwise look
+  like a marker and the map holding it would be rewritten away."
+  [x]
+  (and (vector? x)
+       (not (instance? MapEntry x))
+       (= :auto/param (first x))))
+
+(defn- check-arity!
+  "A marker-headed vector that is not `[:auto/param v]` is always a mistake: HoneySQL does not know
+  the marker and compiles the leftover form into a call to a function named PARAM, which fails at
+  the database with nothing pointing back here."
+  [x]
+  (when-not (= 2 (count x))
+    (throw (ex-info (str "[:auto/param ...] takes exactly one value, got " (dec (count x)) ": " (pr-str x))
+                    {:type ::malformed-marker, :form x}))))
+
+(defn- param-key
+  "A random key for a lifted value. Random rather than sequential so that a `[:param :k]` arriving
+  in request data cannot name a slot this query minted."
+  []
+  (keyword (str "p" (Long/toUnsignedString (.nextLong (ThreadLocalRandom/current)) 36))))
+
+(defn- auto-param
   "Rewrite `[:auto/param v]` markers in `query` into HoneySQL's `[:param :kN]`, returning
   `[rewritten-query params-map]`.
 
@@ -38,18 +58,16 @@
   cannot name a slot this query minted."
   [query]
   (let [params (volatile! {})
-        lift   (fn [x]
-                 (if (marker-form? x)
-                   (let [k (keyword (str "p" (Long/toUnsignedString (.nextLong (java.util.Random.)) 36)))]
-                     (vswap! params assoc k (second x))
-                     [:param k])
-                   x))
         walked (walk/prewalk
                 (fn [x]
-                  (if (marker-form? x)
-                    ;; Replace the whole form without recursing into its payload.
-                    (lift x)
-                    x))
+                  (if-not (marker-form? x)
+                    x
+                    ;; Replace the whole form, so the payload is never descended into.
+                    (do
+                      (check-arity! x)
+                      (let [k (param-key)]
+                        (vswap! params assoc k (second x))
+                        [:param k]))))
                 query)]
     [walked @params]))
 
@@ -61,8 +79,8 @@
     (next-method query-type model built-query)
     (let [[query params] (auto-param built-query)]
       (if (seq params)
-        ;; HoneySQL takes params as a format option rather than a query clause. Merge rather than
-        ;; replace, so a nested compile does not drop an enclosing one's params.
+        ;; HoneySQL takes params as a format option rather than a query clause. Merge so that an
+        ;; enclosing `*options*` keeps whatever params it already carried.
         (binding [t2.honeysql/*options* (update (t2.honeysql/options) :params merge params)]
           (next-method query-type model query))
         (next-method query-type model query)))))
