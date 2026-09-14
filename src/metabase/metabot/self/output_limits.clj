@@ -48,7 +48,20 @@
    ;; documented model max: https://api-docs.deepseek.com/api/create-chat-completion
    "deepseek-v4-pro"   393216
    ;; documented model max: https://api-docs.deepseek.com/api/create-chat-completion
-   "deepseek-v4-flash" 393216})
+   "deepseek-v4-flash" 393216
+   ;; documented model max for the GLM-5.3 and GLM-5.2 series: https://docs.z.ai/api-reference/llm/chat-completion
+   ;; The page's prose ("128K maximum output") and its max_tokens schema maximum of 131072 are the same number,
+   ;; 128 * 1024; we send the exact one.
+   "glm-5.3" 131072
+   "glm-5.2" 131072
+   ;; The Gemini rows cite the Gemini Enterprise Agent Platform, the surface Metabase calls; the Gemini API model
+   ;; pages document the same 65536 (e.g. https://ai.google.dev/gemini-api/docs/models/gemini-3.7-flash).
+   ;; documented model max: https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/3-5-flash
+   "gemini-3.5-flash" 65536
+   ;; documented model max: https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/3-6-flash
+   "gemini-3.6-flash" 65536
+   ;; documented model max: https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/3-7-flash
+   "gemini-3.7-flash" 65536})
 
 (defn max-output-tokens
   "The documented maximum output tokens for `model-id`, or nil.
