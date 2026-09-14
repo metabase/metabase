@@ -77,16 +77,10 @@
   [query]
   query)
 
-(defenterprise default-table-remappings
-  "The table remappings a query on the Database with `db-id` reads with when none are bound, see
-  [[metabase.query-processor.middleware.table-remapping/with-table-remappings]]."
-  metabase-enterprise.workspaces.query-processor.middleware
-  [_db-id]
-  [])
-
-(defenterprise check-workspace-table-access
-  "Pre-processing middleware. Refuses a query that reads a workspace schema directly, or is routed while workspaces
-  are on."
+(defenterprise apply-workspace-remapping
+  "Pre-processing middleware. In workspace mode, redirects references to canonical tables to their workspace
+  locations: wraps the query's metadata provider so MBQL stages compile against the workspace tables, and rewrites
+  the SQL of native stages."
   metabase-enterprise.workspaces.query-processor.middleware
   [query]
   query)

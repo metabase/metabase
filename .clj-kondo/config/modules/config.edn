@@ -2189,7 +2189,8 @@
            users
            util
            util.config
-           warehouse-schema-overlay}
+           warehouse-schema-overlay
+           workspaces}
    :model-imports #{:model/Card
                     :model/DashboardCardSeries
                     :model/Database
@@ -4387,6 +4388,7 @@
            cache
            driver
            lib
+           lib.metadata
            lib.schema
            premium-features
            query-processor

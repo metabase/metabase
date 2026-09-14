@@ -1538,26 +1538,6 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(mr/def ::table-remapping
-  "A table a query reads in place of the one it names."
-  [:map
-   {:closed true}
-   [:from-schema [:maybe :string]]
-   [:from-table  ::lib.schema.common/non-blank-string]
-   [:to-schema   [:maybe :string]]
-   [:to-table    ::lib.schema.common/non-blank-string]])
-
-(defmulti remap-native-query-tables
-  "`native-query`, the raw native form, reading the `:to-schema`/`:to-table` of each of `remappings` in place of its
-  `:from-schema`/`:from-table`; a driver whose native form cannot be parsed returns it unchanged."
-  {:added "0.64.0" :arglists '([driver native-query remappings])}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
-
-(defmethod remap-native-query-tables ::driver
-  [_driver native-query _remappings]
-  native-query)
-
 (defmulti native-result-metadata
   "Gets the result-metadata for a native query using static analysis (i.e., without actually
   going to the database).

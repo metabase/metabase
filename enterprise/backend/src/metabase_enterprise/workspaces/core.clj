@@ -6,6 +6,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.premium-features.core :refer [defenterprise-schema]]
+   [metabase.workspaces.core :as workspaces]
    [metabase.workspaces.schema :as ws.schema]))
 
 (defenterprise-schema remap-table! :- ::ws.schema/table-info
@@ -58,4 +59,6 @@
   "Every `{:db_id, :schema}` transforms write their output into while workspaces are on."
   :feature :workspaces
   []
-  (ws.impl/workspace-schemas))
+  (if (workspaces/allow-table-remapping?)
+    (ws.impl/workspace-schemas)
+    []))
