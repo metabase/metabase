@@ -68,6 +68,8 @@
   "One cell value in a test dataset row: a FieldValue scalar, a nested sequence, or a string-keyed map."
   [:or
    ms/FieldValue
+   bytes?
+   [:tuple [:= :raw] :string]
    [:sequential [:ref ::dataset-value]]
    [:map-of :string [:ref ::dataset-value]]])
 

@@ -74,15 +74,21 @@
   (let [schema (mc/schema (mr/schema namespace))]
     (case (mc/type schema)
       :map   (some (fn [[k _opts s]] (when (= k :value) s)) (mc/children schema))
-      :multi (into [:or] (keep (fn [[_dispatch-value branch]]
-                                 (some (fn [[k _opts s]] (when (= k :value) s)) (mc/children branch))))
-                   (mc/children schema)))))
+      :multi (let [value-schemas (keep (fn [[_dispatch-value _props branch]]
+                                         (some (fn [[k _opts s]] (when (= k :value) s)) (mc/children branch)))
+                                       (mc/children schema))]
+               (when (seq value-schemas)
+                 (into [:or] value-schemas)))
+      nil)))
 
 (defn- known-namespace-value-schemas
   "The union of every registered namespace's `:value` schema, so `::user-key-value` doesn't need to type `:value`
   generically."
   []
-  (into [:or] (map namespace-value-schema) (known-namespaces)))
+  (let [value-schemas (keep namespace-value-schema (known-namespaces))]
+    (if (seq value-schemas)
+      (into [:or] value-schemas)
+      :nil)))
 
 ;;; this is just a placeholder so LSP can register the place it lives for jump-to-definition functionality. Actual
 ;;; schema gets created below by [[user-key-value-schema]] and [[update-user-key-value-schema]]
