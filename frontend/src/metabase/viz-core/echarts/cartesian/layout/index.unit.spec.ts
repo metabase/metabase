@@ -1,4 +1,5 @@
 import { createMockChartContext } from "__support__/echarts";
+import type { VisualizationSettings } from "metabase-types/api";
 import {
   createMockColumn,
   createMockVisualizationSettings,
@@ -99,9 +100,9 @@ describe("getChartLayout", () => {
     );
   });
 
-  it("measures a normalized stack goal as the percentage the user entered", () => {
-    const chartContext = getChartContext();
-    const formatPercent = (value: unknown) => `${Number(value) * 100}%`;
+  it("does not widen the y-axis gutter for a goal on a normalized stack (metabase#82424)", () => {
+    const formatPercent = (value: unknown) =>
+      `${Math.round(Number(value) * 100)}%`;
     const normalizedInput: ChartLayoutInput = {
       ...input,
       leftAxisModel: {
@@ -112,24 +113,19 @@ describe("getChartLayout", () => {
         formatGoal: formatPercent,
       },
     };
+    const getLeftTicksWidth = (goalSettings: VisualizationSettings) =>
+      getChartLayout(
+        normalizedInput,
+        createMockVisualizationSettings({ ...settings, ...goalSettings }),
+        false,
+        480,
+        274,
+        createMockChartContext({ measureText: (text) => text.length * 8 }),
+      ).ticksDimensions.yTicksWidthLeft;
 
-    getChartLayout(
-      normalizedInput,
-      createMockVisualizationSettings({
-        ...settings,
-        "graph.show_goal": true,
-        "graph.goal_value": 50,
-      }),
-      false,
-      480,
-      274,
-      chartContext,
-    );
-
-    const measuredLabels = jest
-      .mocked(chartContext.measureText)
-      .mock.calls.map(([text]) => text);
-    expect(measuredLabels).toContain("50%");
-    expect(measuredLabels).not.toContain("5000%");
+    // the user enters 100 for 100%, which is no wider than the widest tick
+    expect(
+      getLeftTicksWidth({ "graph.show_goal": true, "graph.goal_value": 100 }),
+    ).toBe(getLeftTicksWidth({ "graph.show_goal": false }));
   });
 });
