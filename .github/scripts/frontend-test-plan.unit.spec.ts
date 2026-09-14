@@ -11,17 +11,16 @@ import { join, resolve } from "node:path";
 
 import { load } from "js-yaml";
 
+import { findRunnerFailure } from "./check-unit-test-results";
 import { prepareUnitTestSelection } from "./prepare-unit-test-selection";
 
-type Step = { name: string; run: string; "continue-on-error"?: boolean };
-// The workflow YAML supplies these step scripts; js-yaml returns an untyped value.
+type Step = { name: string; run?: string; "continue-on-error"?: boolean };
+// js-yaml returns an untyped value; this repository workflow defines the job's steps.
 const workflow = load(
   readFileSync(resolve(__dirname, "../workflows/frontend.yml"), "utf8"),
 ) as { jobs: { "fe-tests-unit": { steps: Step[] } } };
 const steps = workflow.jobs["fe-tests-unit"].steps;
-const guard = steps.find(
-  (step) => step.name === "Reject unit test runner failures",
-)!;
+const checkScript = resolve(__dirname, "check-unit-test-results.ts");
 const filter = resolve(
   __dirname,
   "../../frontend/test/jest-test-paths-filter.ts",
@@ -45,6 +44,7 @@ describe("frontend test plan handoff", () => {
       PLAN_DOWNLOADED: "success",
       JEST_JUNIT_OUTPUT_DIR: dir,
       JEST_JUNIT_OUTPUT_NAME: "junit.xml",
+      UNIT_TEST_RESULTS_FILE: join(dir, "unit-test-results.json"),
     };
   });
 
@@ -52,18 +52,6 @@ describe("frontend test plan handoff", () => {
     jest.restoreAllMocks();
     rmSync(dir, { recursive: true, force: true });
   });
-
-  function runStep(step: Step) {
-    return spawnSync(
-      "bash",
-      ["--noprofile", "--norc", "-e", "-o", "pipefail", "-c", step.run],
-      {
-        cwd: dir,
-        env,
-        encoding: "utf8",
-      },
-    );
-  }
 
   function plan(files: string[], total = 2) {
     return {
@@ -167,7 +155,7 @@ describe("frontend test plan handoff", () => {
         "--runInBand",
         "--watch=false",
         "--json",
-        "--outputFile=unit-test-results.json",
+        `--outputFile=${env.UNIT_TEST_RESULTS_FILE}`,
         ...(useFilter ? ["--passWithNoTests"] : []),
       ],
       { cwd: dir, env, encoding: "utf8" },
@@ -179,7 +167,20 @@ describe("frontend test plan handoff", () => {
       runJest({ "fail.spec.cjs": "test('fails', () => expect(1).toBe(2));" })
         .status,
     ).toBe(1);
-    expect(runStep(guard).status).toBe(0);
+    expect(findRunnerFailure(env)).toBeNull();
+  });
+
+  it("lets suite hook failures reach quarantine", () => {
+    expect(
+      runJest({
+        "hook.spec.cjs":
+          "test('passes', () => {}); afterAll(() => { throw new Error('hook'); });",
+      }).status,
+    ).toBe(1);
+    expect(readFileSync(join(dir, "junit.xml"), "utf8")).toContain(
+      "Test execution failure",
+    );
+    expect(findRunnerFailure(env)).toBeNull();
   });
 
   it("fails a filter crash even though the test step permits errors", () => {
@@ -188,8 +189,13 @@ describe("frontend test plan handoff", () => {
     expect(
       runJest({ "pass.spec.cjs": "test('passes', () => {});" }, true).status,
     ).toBe(1);
-    expect(runStep(guard).status).toBe(1);
-    expect(guard["continue-on-error"]).not.toBe(true);
+    const result = spawnSync("bun", [checkScript], { env, encoding: "utf8" });
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("::error::");
+    const step = steps.find((step) =>
+      step.run?.includes("check-unit-test-results.ts"),
+    );
+    expect(step?.["continue-on-error"]).toBeUndefined();
   });
 
   it("fails suite startup errors even alongside ordinary assertion failures", () => {
@@ -199,13 +205,16 @@ describe("frontend test plan handoff", () => {
         "fail.spec.cjs": "test('fails', () => expect(1).toBe(2));",
       }).status,
     ).toBe(1);
-    expect(runStep(guard).status).toBe(1);
+    expect(readFileSync(join(dir, "junit.xml"), "utf8")).not.toContain(
+      "crash.spec.cjs",
+    );
+    expect(findRunnerFailure(env)).toContain("crash.spec.cjs");
   });
 
   it("fails when JUnit results are missing", () => {
     runJest({ "fail.spec.cjs": "test('fails', () => expect(1).toBe(2));" });
     rmSync(join(dir, "junit.xml"));
-    expect(runStep(guard).status).toBe(1);
+    expect(findRunnerFailure(env)).not.toBeNull();
   });
 
   it.each([true, false])(

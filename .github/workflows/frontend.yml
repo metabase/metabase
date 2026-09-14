@@ -107,6 +107,7 @@ jobs:
       SHARDS: 2 # should match matrix above
       JEST_JUNIT_OUTPUT_DIR: ./target/junit
       JEST_JUNIT_OUTPUT_NAME: test-report-frontend-unit.xml
+      UNIT_TEST_RESULTS_FILE: unit-test-results.json
     steps:
       - uses: actions/checkout@v6
       - name: Prepare front-end environment
@@ -137,23 +138,13 @@ jobs:
           JEST_TEST_PATHS_FILE: ${{ steps.unit-selection.outputs.paths-file }}
         # Jest exits non-zero on a shard with no files unless --passWithNoTests is set.
         run: |
-          rm -f unit-test-results.json "$JEST_JUNIT_OUTPUT_DIR/$JEST_JUNIT_OUTPUT_NAME"
-          bun run test-unit --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }} --json --outputFile=unit-test-results.json ${{ steps.unit-selection.outputs.paths-file && '--passWithNoTests' || '' }}
+          rm -f "$UNIT_TEST_RESULTS_FILE" "$JEST_JUNIT_OUTPUT_DIR/$JEST_JUNIT_OUTPUT_NAME"
+          bun run test-unit --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }} --json --outputFile="$UNIT_TEST_RESULTS_FILE" ${{ steps.unit-selection.outputs.paths-file && '--passWithNoTests' || '' }}
         # Ordinary assertion failures can be quarantined; runner failures cannot.
         continue-on-error: true
       - name: Reject unit test runner failures
         if: ${{ !cancelled() && steps.fe-tests.outcome == 'failure' }}
-        run: |
-          # A filter/startup crash has no completed report. Suite setup crashes
-          # have runtime errors. Neither is an ordinary quarantinable test failure.
-          if ! jq -e '
-            .success == false and .wasInterrupted == false and
-            .numFailedTests > 0 and .numRuntimeErrorTestSuites == 0
-          ' unit-test-results.json > /dev/null ||
-            [ ! -s "$JEST_JUNIT_OUTPUT_DIR/$JEST_JUNIT_OUTPUT_NAME" ]; then
-            echo "::error::Unit test runner failed without complete assertion-failure results."
-            exit 1
-          fi
+        run: bun .github/scripts/check-unit-test-results.ts
       - name: Report failed tests to ci-conductor
         if: ${{ !cancelled() && ( steps.fe-tests.outcome == 'failure' || github.run_attempt != '1' ) }}
         # This step should NEVER fail the job!
