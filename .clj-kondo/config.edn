@@ -58,8 +58,6 @@
   ;;
   ;; globally-enabled custom linters
   ;;
-  :metabase/agent-message-exit                               {:level :warning}
-  :metabase/agent-message-lines                              {:level :warning}
   :metabase/check-defmulti-arglists                          {:level :warning}
   :metabase/check-def-check-not-uppercase-name               {:level :warning}
   :metabase/check-def-no-underscores                         {:level :warning}
@@ -76,7 +74,6 @@
   :metabase/prefer-with-dynamic-fn-redefs                    {:level :warning}
   :metabase/t2-query-namespace                               {:level :warning}
   :metabase/toucan-model-ns                                  {:level :warning}
-  :metabase/unquoted-prose-interpolation                     {:level :warning}
   :metabase/require-shape-checker                            {:level :warning}
   :metabase/tests-must-live-in-known-modules                 {:level :warning}
   :metabase/validate-defendpoint-route-uses-kebab-case       {:level :warning}
@@ -591,11 +588,9 @@
    clojure.core/defrecord                                                                                                    hooks.clojure.core.def/lint-def
    clojure.core/deftype                                                                                                      hooks.clojure.core.def/lint-def
    clojure.core/ex-info                                                                                                      hooks.metabase.prose-interpolation/lint-ex-info
-   clojure.core/format                                                                                                       hooks.metabase.prose-interpolation/lint-format
    clojure.core/ns                                                                                                           hooks.clojure.core.ns/lint-ns
    clojure.core/require                                                                                                      hooks.clojure.core.require/lint-require
    clojure.core/requiring-resolve                                                                                            hooks.clojure.core.require/lint-requiring-resolve
-   clojure.core/str                                                                                                          hooks.metabase.prose-interpolation/lint-str
    clojure.core/with-redefs                                                                                                  hooks.clojure.core.with-redefs/lint-with-redefs
    clojure.core/-                                                                                                            hooks.metabase.util.timing/discourage-millis-duration
    clojure.test/deftest                                                                                                      hooks.clojure.test/deftest
@@ -905,7 +900,13 @@
   ;; run Toucan 2 queries anywhere.
   ;;
   {:pattern "^metabase\\.app-db\\..*"
-   :name    app-db-namespaces}]
+   :name    app-db-namespaces}
+  ;;
+  ;; source namespaces whose prose reaches an LLM agent: `metabase.mcp.transport` and `metabase.mcp.v2.*`, excluding
+  ;; test namespaces.
+  ;;
+  {:pattern "^(?!.*-test(?:\\..*)?$)(?!.*test-util)^metabase\\.mcp\\.(?:transport$|v2\\..*)"
+   :name    agent-prose-namespaces}]
 
  :config-in-ns
  {test-namespaces
@@ -925,6 +926,10 @@
 
   app-db-namespaces
   {:linters {:metabase/t2-query-namespace {:level :off}}}
+
+  agent-prose-namespaces
+  {:linters {:metabase/agent-message-exit  {:level :warning}
+             :metabase/agent-message-lines {:level :warning}}}
 
   ;; .cljc tests run in both Clojure and ClojureScript — `with-dynamic-fn-redefs` is JVM-only,
   ;; so leave these alone.

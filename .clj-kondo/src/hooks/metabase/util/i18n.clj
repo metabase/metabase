@@ -1,8 +1,7 @@
 (ns hooks.metabase.util.i18n
   (:require
    [clj-kondo.hooks-api :as api]
-   [hooks.common]
-   [hooks.metabase.prose-interpolation :as prose-interpolation]))
+   [hooks.common]))
 
 (defn- valid-apostrophes?
   "Returns true if `s` contains only doubled quotes (''') or complete placeholder-escaping quotes ('{...}'), false otherwise."
@@ -68,12 +67,7 @@
               :type :metabase/validate-escaped-single-quotes-in-i18n))))
   {:node node})
 
-(defn- lint-i18n-call
-  [input]
-  (prose-interpolation/lint-i18n input)
-  (strict-apostrophes input))
-
-(def tru lint-i18n-call)
-(def trs lint-i18n-call)
-(def deferred-tru lint-i18n-call)
-(def deferred-trs lint-i18n-call)
+(def tru strict-apostrophes)
+(def trs strict-apostrophes)
+(def deferred-tru strict-apostrophes)
+(def deferred-trs strict-apostrophes)

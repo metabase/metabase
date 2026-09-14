@@ -1,57 +1,22 @@
 (ns hooks.metabase.prose-interpolation
-  "Lint agent-facing prose: interpolated values are quoted, and the exits to the agent receive `msg`-built text.
+  "Lint agent-facing prose built with `metabase.mcp.v2.message/msg` and the exits that carry it to the agent.
 
-  Agent-facing prose (teaching errors, paging hints, steering lines) reads to an LLM as the server speaking. A value
-  interpolated into it unquoted -- a warehouse table name, a driver error, a card name -- can carry newlines and text
-  that pose as server-authored instructions. `pr-str` quotes the value and escapes the newlines and quotes inside it,
-  so it stays visibly delimited as data.
+  `:metabase/agent-message-lines` checks `msg` calls: the lines must be a literal vector whose lines are each a string
+  literal or a `str` of string literals, with no line breaks, `%n`, or control characters; `%s` takes no width,
+  precision, or flags and `%S` isn't allowed; and the arguments must match the lines' format specifiers.
 
-  Checks `format` `%s` arguments, `tru`-family `{n}` arguments, and the non-literal arguments of a `str` call that
-  contains a prose literal. An argument counts as quoted when it is a literal, a `(pr-str ...)` call, or a
-  `str/join` over `(map pr-str ...)`. Reports `:metabase/unquoted-prose-interpolation`.
+  `:metabase/agent-message-exit` checks the exits: the message argument of `throw-teaching-error`, `error-content`,
+  `jsonrpc-error`, and `success-content` must not be syntactically text, and an `ex-info` whose data literal carries a
+  4xx `:status-code` or an `error-code` key is flagged.
 
-  Also checks `metabase.mcp.v2.message/msg` calls in any non-test file, reporting `:metabase/agent-message-lines`: the
-  lines must be a literal vector of string literals, one line of the message each, with no line breaks, `%n`, or
-  control characters, and the arguments must match the lines' format specifiers.
-
-  Also checks the exits that carry text to the agent, reporting `:metabase/agent-message-exit`. The message argument of `throw-teaching-error`, `error-content`,
-  `jsonrpc-error`, and `success-content` must not be syntactically text -- a string literal, a string-building call,
-  or a threading, branching, or body form that yields one -- so that it is built with `msg`. An `ex-info` whose data
-  literal carries a 4xx `:status-code` or an `error-code` key must be a `throw-teaching-error` instead. The check is
-  syntactic; text that reaches an exit another way is cleaned at runtime.
-
-  The prose and exit checks run only in the non-test `metabase.mcp.v2.*` and `metabase.mcp.transport` namespaces. Every
-  check is skipped when its linter's level is `:off`, and every hook returns its input unchanged."
+  Each check runs only when its linter's level is configured and not `:off`. Every hook returns its input unchanged."
   (:require
    [clj-kondo.hooks-api :as hooks]
    [clojure.string :as str]))
 
-(def ^:private linter :metabase/unquoted-prose-interpolation)
-
 (defn- level-on?
   [config linter-key]
   (not= :off (get-in config [:linters linter-key :level] :off)))
-
-(defn- test-file?
-  "Whether `filename` is in a test source tree or `ns` names a test or test-util namespace."
-  [ns filename]
-  (let [ns-name (str ns)]
-    (boolean (or (and filename (re-find #"(?:^|/)test/" filename))
-                 (str/ends-with? ns-name "-test")
-                 (str/includes? ns-name "-test.")
-                 (str/includes? ns-name "test-util")))))
-
-(defn- agent-prose-ns?
-  "Whether `ns` in `filename` is a non-test namespace whose prose reaches an LLM agent."
-  [ns filename]
-  (let [ns-name (str ns)]
-    (and (or (= "metabase.mcp.transport" ns-name)
-             (str/starts-with? ns-name "metabase.mcp.v2."))
-         (not (test-file? ns filename)))))
-
-(defn- enabled?
-  [{:keys [config ns filename]}]
-  (and (level-on? config linter) (agent-prose-ns? ns filename)))
 
 (defn- call-name
   "The symbol at the head of list `node`, or nil."
@@ -72,40 +37,6 @@
 (def ^:private core-ns #{nil "clojure.core"})
 (def ^:private string-ns #{"str" "string" "clojure.string"})
 
-(defn- pr-str-call? [node]
-  (calls? node core-ns "pr-str"))
-
-(defn- map-pr-str-call?
-  "`(map pr-str coll)` or `(mapv pr-str coll)`."
-  [node]
-  (and (or (calls? node core-ns "map") (calls? node core-ns "mapv"))
-       (let [f (second (:children node))]
-         (and (hooks/token-node? f)
-              (contains? '#{pr-str clojure.core/pr-str} (hooks/sexpr f))))))
-
-(defn- quoted-join?
-  "`(str/join sep (map pr-str coll))` or `(->> coll (map pr-str) (str/join sep))`."
-  [node]
-  (or (and (calls? node string-ns "join")
-           (map-pr-str-call? (last (:children node))))
-      (and (calls? node core-ns "->>")
-           (let [steps (drop 2 (:children node))]
-             (and (= 2 (count steps))
-                  (map-pr-str-call? (first steps))
-                  (calls? (second steps) string-ns "join"))))))
-
-(defn- literal?
-  [node]
-  (or (hooks/string-node? node)
-      (hooks/keyword-node? node)
-      (and (hooks/token-node? node)
-           (let [v (hooks/sexpr node)]
-             (or (nil? v) (number? v) (boolean? v) (char? v))))))
-
-(defn- quoted?
-  [node]
-  (or (literal? node) (pr-str-call? node) (quoted-join? node)))
-
 (defn- literal-string
   "The string value of `node` when it is a string literal or a `str` call over string literals, else nil."
   [node]
@@ -117,14 +48,6 @@
          (every? hooks/string-node? (rest (:children node))))
     (apply str (map hooks/sexpr (rest (:children node))))))
 
-(defn- reg-unquoted!
-  [arg-node]
-  (hooks/reg-finding!
-   (assoc (meta arg-node)
-          :message (format "`%s` is interpolated into prose unquoted; build agent-facing text with `msg`, which cleans interpolated values."
-                           (pr-str (hooks/sexpr arg-node)))
-          :type    linter)))
-
 (defn- digits->long
   "The value of a string of decimal digits."
   [s]
@@ -132,16 +55,16 @@
   (reduce (fn [n c] (+ (* 10 n) (- (int c) (int \0)))) 0 s))
 
 (def ^:private format-specifier
-  "A `java.util.Formatter` specifier: optional explicit index, flags, width, precision, and conversion."
-  #"%(?:(\d+)\$)?([-#+ 0,(<]*)(?:\d+)?(?:\.\d+)?([tT]?[a-zA-Z%])")
+  "A `java.util.Formatter` specifier; groups are explicit index, flags, width, precision, and conversion."
+  #"%(?:(\d+)\$)?([-#+ 0,(<]*)(\d+)?(?:\.(\d+))?([tT]?[a-zA-Z%])")
 
 (defn- consumed-args
   "`[index conversion]` for each argument-consuming specifier in `fmt`, with zero-based argument indexes."
   [fmt]
-  (loop [[[_ explicit flags conversion] & more] (re-seq format-specifier fmt)
-         next-index                             0
-         last-index                             nil
-         acc                                    []]
+  (loop [[[_ explicit flags _width _precision conversion] & more] (re-seq format-specifier fmt)
+         next-index                                               0
+         last-index                                               nil
+         acc                                                      []]
     (if-not conversion
       acc
       (let [consumes? (not (contains? #{"%" "n"} conversion))
@@ -157,59 +80,6 @@
                (cond-> acc
                  index (conj [index conversion])))))))
 
-(defn- string-arg-indexes
-  "Zero-based indexes of the arguments that `%s`/`%S` specifiers in `fmt` consume."
-  [fmt]
-  (keep (fn [[index conversion]] (when (contains? #{"s" "S"} conversion) index))
-        (consumed-args fmt)))
-
-(defn lint-format
-  "Flag `format` `%s` arguments that aren't quoted, and format strings that aren't literals."
-  [{:keys [node] :as input}]
-  (when (enabled? input)
-    (let [[_ fmt-node & args] (:children node)]
-      (if-let [fmt (literal-string fmt-node)]
-        (doseq [index (distinct (string-arg-indexes fmt))
-                :let  [arg (nth args index nil)]
-                :when (and arg (not (quoted? arg)))]
-          (reg-unquoted! arg))
-        (when fmt-node
-          (hooks/reg-finding!
-           (assoc (meta fmt-node)
-                  :message "The format string must be a literal so its interpolated arguments can be checked; build agent-facing text with `msg`."
-                  :type    linter))))))
-  input)
-
-(defn- prose-literal?
-  "Whether `node` is a string literal that reads as prose: it has both a letter and whitespace."
-  [node]
-  (and (hooks/string-node? node)
-       (let [s (hooks/sexpr node)]
-         (boolean (and (re-find #"[A-Za-z]" s) (re-find #"\s" s))))))
-
-(defn lint-str
-  "Flag unquoted arguments of a `str` call that concatenates them onto a prose literal."
-  [{:keys [node] :as input}]
-  (when (enabled? input)
-    (let [args (rest (:children node))]
-      (when (some prose-literal? args)
-        (doseq [arg args
-                :when (not (quoted? arg))]
-          (reg-unquoted! arg)))))
-  input)
-
-(defn lint-i18n
-  "Flag `tru`-family `{n}` arguments that aren't quoted."
-  [{:keys [node] :as input}]
-  (when (enabled? input)
-    (let [[_ fmt-node & args] (:children node)]
-      (when-let [fmt (literal-string fmt-node)]
-        (doseq [index (distinct (map (comp digits->long second) (re-seq #"\{(\d+)\}" fmt)))
-                :let  [arg (nth args index nil)]
-                :when (and arg (not (quoted? arg)))]
-          (reg-unquoted! arg)))))
-  input)
-
 (def ^:private msg-linter :metabase/agent-message-lines)
 
 (defn- reg-msg-finding!
@@ -220,31 +90,51 @@
   "Whether format string `line` contains a line-breaking or control character, or a `%n` specifier."
   [line]
   (boolean (or (re-find #"[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]" line)
-               (some #(= "n" (nth % 3)) (re-seq format-specifier line)))))
+               (some #(= "n" (nth % 5)) (re-seq format-specifier line)))))
+
+(defn- altered-string-conversion?
+  "Whether format string `line` has a `%S`, or a `%s` with a width, precision, or flags other than `<`."
+  [line]
+  (boolean
+   (some (fn [[_ _ flags width precision conversion]]
+           (or (= "S" conversion)
+               (and (= "s" conversion)
+                    (or width precision (seq (str/replace flags "<" ""))))))
+         (re-seq format-specifier line))))
 
 (defn- plural
   [n word]
   (str n " " word (when-not (= 1 n) "s")))
 
 (defn lint-msg
-  "Flag `msg` calls whose lines aren't a literal vector of single-line string literals, or whose arguments don't match
-  the lines' format specifiers."
-  [{:keys [node config ns filename] :as input}]
-  (when (and (level-on? config msg-linter) (not (test-file? ns filename)))
+  "Flag `msg` calls whose lines aren't a literal vector of single-line literal strings, that alter a `%s` value, or
+  whose arguments don't match the lines' format specifiers."
+  [{:keys [node config] :as input}]
+  (when (level-on? config msg-linter)
     (let [[fn-node lines-node & args] (:children node)]
       (if-not (and lines-node (hooks/vector-node? lines-node))
         (reg-msg-finding! (or lines-node fn-node)
                           "`msg` takes a literal vector of line strings, one string per line of the message.")
-        (let [line-nodes (:children lines-node)]
-          (doseq [line line-nodes]
+        (let [line-nodes (:children lines-node)
+              lines      (map literal-string line-nodes)]
+          (doseq [[line-node line] (map vector line-nodes lines)]
             (cond
-              (not (hooks/string-node? line))
-              (reg-msg-finding! line "Each line of a `msg` must be a string literal; pass values as arguments after the vector.")
+              (nil? line)
+              (reg-msg-finding! line-node
+                                (str "Each line of a `msg` must be a string literal or a `str` of string literals; "
+                                     "pass values as arguments after the vector."))
 
-              (line-break? (hooks/sexpr line))
-              (reg-msg-finding! line "A `msg` line can't contain a line break, `%n`, or control character; put each line in its own string.")))
-          (when (every? hooks/string-node? line-nodes)
-            (let [indexes  (map first (consumed-args (str/join "\n" (map hooks/sexpr line-nodes))))
+              (line-break? line)
+              (reg-msg-finding! line-node
+                                (str "A `msg` line can't contain a line break, `%n`, or control character; "
+                                     "put each line in its own string."))
+
+              (altered-string-conversion? line)
+              (reg-msg-finding! line-node
+                                (str "`%s` in a `msg` line can't take a width, precision, flags, or `%S`; "
+                                     "they would cut or alter the quoted value."))))
+          (when (every? some? lines)
+            (let [indexes  (map first (consumed-args (str/join "\n" lines)))
                   expected (if (seq indexes) (inc (apply max indexes)) 0)
                   given    (count args)]
               (when (not= expected given)
@@ -255,8 +145,8 @@
 (def ^:private exit-linter :metabase/agent-message-exit)
 
 (defn- exit-enabled?
-  [{:keys [config ns filename]}]
-  (and (level-on? config exit-linter) (agent-prose-ns? ns filename)))
+  [{:keys [config]}]
+  (level-on? config exit-linter))
 
 (defn- reg-exit-finding!
   [node message]
@@ -309,7 +199,8 @@
   [node index]
   (let [arg (nth (:children node) index nil)]
     (when (and arg (stringy? arg))
-      (reg-exit-finding! arg (format "`%s` passes text to `%s`; build agent-facing text with `msg` so interpolated values are cleaned."
+      (reg-exit-finding! arg (format (str "`%s` passes text to `%s`; "
+                                          "build agent-facing text with `msg` so interpolated values are cleaned.")
                                      (pr-str (hooks/sexpr arg))
                                      (name (call-name node)))))))
 
@@ -333,7 +224,8 @@
   (when (exit-enabled? input)
     (let [text (second (:children node))]
       (when (and text (stringy? text))
-        (reg-exit-finding! text "`success-content` takes data to JSON-encode or a `msg`; pass the payload itself, or build the text with `msg`."))))
+        (reg-exit-finding! text (str "`success-content` takes data to JSON-encode or a `msg`; "
+                                     "pass the payload itself, or build the text with `msg`.")))))
   input)
 
 (defn- caller-facing-data?
@@ -355,5 +247,6 @@
   [{:keys [node] :as input}]
   (when (exit-enabled? input)
     (when (caller-facing-data? (nth (:children node) 2 nil))
-      (reg-exit-finding! node "Caller-facing errors must be thrown with `throw-teaching-error` and a `msg`, so their text is rendered and cleaned.")))
+      (reg-exit-finding! node (str "Caller-facing errors must be thrown with `throw-teaching-error` and a `msg`, "
+                                   "so their text is rendered and cleaned."))))
   input)
