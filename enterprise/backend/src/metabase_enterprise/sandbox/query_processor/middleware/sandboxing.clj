@@ -120,9 +120,19 @@
     (when (not attr-value)
       (throw (ex-info (tru "Query requires user attribute `{0}`" (name attr-name))
                       {:type qp.error-type/missing-required-parameter})))
-    {:type   :category
-     :target target
-     :value  (attr-value->param-value field-base-type attr-value)}))
+    (let [param-value (attr-value->param-value field-base-type attr-value)]
+      (when (nil? param-value)
+        ;; Without this a nil `param-value` propagates and `parameters.mbql/expand` treats it as
+        ;; "no value" and the sandbox filter is silently dropped. (#81821)
+        (throw (ex-info (tru "User attribute `{0}` value `{1}` cannot be coerced to column type {2}"
+                             (name attr-name) attr-value field-base-type)
+                        {:type            qp.error-type/invalid-parameter
+                         :attribute-name  attr-name
+                         :attribute-value attr-value
+                         :field-base-type field-base-type})))
+      {:type   :category
+       :target target
+       :value  param-value})))
 
 (mu/defn- sandbox->parameters :- [:maybe [:sequential ::lib.schema.parameter/parameter]]
   [metadata-providerable                        :- ::lib.schema.metadata/metadata-providerable
