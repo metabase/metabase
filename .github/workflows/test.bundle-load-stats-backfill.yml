@@ -83,12 +83,14 @@ jobs:
     # A commit whose build failed has no jar, and the loop skips it with a warning.
     if: ${{ !cancelled() && github.repository == 'metabase/metabase' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 300
+    timeout-minutes: 350
     env:
       MB_JETTY_PORT: "4000"
       SITE: http://localhost:4000
       RUNS: "8"
       GH_TOKEN: ${{ github.token }}
+      ENG_STATS_URL: ${{ secrets.ENG_STATS_URL }}
+      API_KEY: ${{ secrets.ENG_STATS_API_KEY }}
     steps:
       - name: Check out the code
         uses: actions/checkout@v6
@@ -149,12 +151,24 @@ jobs:
 
             kill "$java_pid"
             wait "$java_pid" 2>/dev/null || true
-            return $status
+            [ $status -ne 0 ] && return $status
+
+            # The upload reports a rejection as a warning and exits 0, so read
+            # its output rather than its exit code.
+            ROWS="artifacts/${sha}.json" HEAD_SHA="$sha" \
+              COMMIT_MESSAGE="$2" COMMIT_TIMESTAMP="$3" \
+              bun .github/scripts/upload-bundle-load-stats.ts > "artifacts/${sha}.upload.log" 2>&1
+            if ! grep -q "uploaded successfully" "artifacts/${sha}.upload.log"; then
+              echo "::warning::Upload rejected for ${sha}"
+              tail -3 "artifacts/${sha}.upload.log"
+              return 1
+            fi
+            return 0
           }
 
           while IFS=$'\t' read -r sha date subject; do
             echo "::group::${date} ${sha:0:9} ${subject}"
-            if measure "$sha"; then
+            if measure "$sha" "$subject" "$date"; then
               measured=$((measured + 1))
               printf '%s\t%s\t%s\n' "$sha" "$date" "$subject" >> artifacts/measured.tsv
             else
