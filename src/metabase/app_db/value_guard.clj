@@ -10,17 +10,16 @@
       a separate `{:params ...}` map in sync.
     - `long*`/`longs` are coercions that are provably safe without `[:param]`, so the very
       common id/FK lookup stays readable.
-    - `assert-values-wrapped!` is the guarantee: at the compile chokepoint, a value slot
-      holding anything else throws.
+    - `assert-values-wrapped!` is the check: a value slot holding anything else throws.
+      It is not yet installed at the Toucan compile step -- see the rollout note at the
+      bottom of this namespace.
 
   This is an allowlist, and deliberately separate from `metabase.app-db.honeysql-guard`,
   which is a blocklist of known-dangerous shapes and is backported to older versions."
   (:refer-clojure :exclude [longs])
   (:require
    [clojure.walk :as walk]
-   [metabase.util.honey-sql-2 :as h2x]
-   [methodical.core :as methodical]
-   [toucan2.pipeline :as t2.pipeline]))
+   [metabase.util.honey-sql-2 :as h2x]))
 
 (set! *warn-on-reflection* true)
 
@@ -76,7 +75,10 @@
    :in #{1}, :not-in #{1}
    :like #{1}, :not-like #{1}, :ilike #{1}, :not-ilike #{1}
    :between #{1 2}
-   :is #{1}, :is-not #{1}})
+   :is #{1}, :is-not #{1}
+   ;; Takes a subquery rather than a value. Its argument is checked as a value like any other,
+   ;; so an unmarked subquery is still rejected and a marked one has its own values checked.
+   :exists #{0}})
 
 ;; `inst?` only covers java.util.Date and Instant, but Toucan hands java.time values
 ;; (ZonedDateTime for hook-added timestamps, LocalDate, ...) straight through to JDBC.
@@ -95,9 +97,18 @@
   [x]
   (and (sequential? x) (= :param (first x))))
 
+(declare ^:private check-nested!)
+
 (defn- allow-column-ref?
   [x]
   (boolean (some-> x meta :allow-column-ref)))
+
+;; `honeysql-guard` already requires a deliberate subquery or raw splice to be marked, and ~217
+;; sites carry those markers. Honour the same vocabulary rather than inventing a second one.
+(defn- marked-dev-authored?
+  [x]
+  (let [m (meta x)]
+    (boolean (or (:allow-subquery m) (:allow-raw-sql m)))))
 
 ;; HoneySQL's `:%fn.col` shorthand compiles to a SQL function call, so the function name comes from
 ;; the keyword rather than from data. That is only true while the keyword is written literally in
@@ -141,6 +152,10 @@
   (cond
     (param-form? v)      true
     (allow-column-ref? v) true
+    ;; A marker asserts the *structure* is dev-authored. It says nothing about the values inside,
+    ;; which are just as reachable, so descend into the subquery rather than passing it wholesale.
+    ;; `check-nested!` throws on the offending leaf so the error names it rather than this container.
+    (marked-dev-authored? v) (do (check-nested! v strict?) true)
     ;; `h2x/literal` splices an escaped string straight into SQL rather than binding it, so it
     ;; is only safe for the hardcoded constants its own docstring restricts it to. Check the
     ;; payload rather than trusting the wrapper.
@@ -187,6 +202,20 @@
   (when (and (sequential? form) (keyword? (first form)) (not (param-form? form)))
     (check-op! form ctx strict?)))
 
+(defn- check-nested!
+  "Check the value slots of a nested query, throwing on the first bad leaf. Used for subqueries
+  carrying a dev-authored marker -- the marker blesses the SQL, not the values inside it."
+  [query strict?]
+  (doseq [k value-clauses
+          :when (contains? query k)]
+    (let [clause (get query k)]
+      (case k
+        :set    (doseq [v (vals clause)]
+                  (when-not (value-ok? v strict?) (bad! v {:clause k})))
+        :values (doseq [row clause, v (if (map? row) (vals row) row)]
+                  (when-not (value-ok? v strict?) (bad! v {:clause k})))
+        (check-clause! clause {:clause k} strict?)))))
+
 (defn assert-values-wrapped!
   "Throw if any value slot in the compiled `query` holds something that could become SQL.
   Inspects only the clauses that carry user values; structure clauses are left alone."
@@ -206,19 +235,18 @@
            (check-clause! clause ctx strict?)))))
    query))
 
-;; Modules that have completed the value-slot sweep and are held to the full promise:
-;; every value is a bound param or a coercion. Grows as GHY-4477 lands modules.
-(def ^:private strict-modules #{})
-
-(defn- strict-model?
-  [model]
-  (contains? strict-modules (some-> model namespace)))
-
-(methodical/defmethod t2.pipeline/compile :before :default
-  [_query-type model built-query]
-  (assert-values-wrapped! built-query {:model model} (strict-model? model))
-  built-query)
-
-(defn keep-me
-  "No-op so requiring namespaces can reference this ns without the linter pruning it."
-  [])
+;;; ----------------------------------------------- rollout ------------------------------------------------------
+;;
+;; This namespace is deliberately not wired into `t2.pipeline/compile` yet. Installing it globally
+;; rejects legitimate dev-authored SQL that lives in value-bearing clauses -- measured against the
+;; `collections` module, 91 of 148 tests error, none of them an actual unparameterized user value:
+;;
+;;   58  a marked subquery containing a column-to-column comparison ([:= :audit_db.id :dp.db_id])
+;;   22  a :union-all subquery used as a comparison operand
+;;    8  a SQL function call in a :set slot ([:replace :location old new])
+;;    3  [:call ...] / ::h2x/identifier
+;;
+;; Those are all real SQL, so the fix is per-namespace opt-in rather than a global switch: a
+;; `db.clj` namespace adopts the check once its own value slots are wrapped. Note that the opt-in
+;; has to key off the *calling namespace*, not the model -- every Toucan model keyword is
+;; `:model/Something`, so its namespace is always "model" and carries no module information.

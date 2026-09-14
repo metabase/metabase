@@ -80,6 +80,18 @@
   (testing "and in a where clause"
     (is (not (rejects? {:where [:> :created_at (java.time.ZonedDateTime/now)]})))))
 
+(deftest dev-authored-markers-bless-structure-not-values-test
+  (testing "a subquery marked ^:allow-subquery is allowed to be SQL"
+    (is (not (rejects? {:where [:exists ^:allow-subquery {:select [1] :from [:report_card]
+                                                          :where [:= :collection_id 5]}]}))))
+  (testing "but the values inside it are still checked -- the marker blesses the SQL, not the data"
+    (is (rejects? {:where [:exists ^:allow-subquery {:select [1] :from [:report_card]
+                                                     :where [:= :collection_id {:raw "(SELECT pw FROM core_user)"}]}]}))
+    (is (rejects? {:where [:exists ^:allow-subquery {:select [1] :from [:t]
+                                                     :where [:= :id :evil]}]})))
+  (testing "an unmarked subquery in a value slot is still rejected"
+    (is (rejects? {:where [:= :id {:select [:x] :from :core_user}]}))))
+
 (deftest strict-mode-requires-bound-params-test
   (testing "strict mode rejects a bare scalar and accepts a bound param"
     (is (rejects? {:where [:= :id 1]} true))
