@@ -6,7 +6,8 @@ import type { CollectionBrowser } from "embedding-sdk-bundle/components/public/C
 import type { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import type { CreateDashboardModal } from "embedding-sdk-bundle/components/public/CreateDashboardModal";
 import type { CreateQuestion } from "embedding-sdk-bundle/components/public/CreateQuestion";
-import type { DateRangePicker } from "embedding-sdk-bundle/components/public/DateRangePicker/DateRangePicker";
+import type { DateRangeCalendar } from "embedding-sdk-bundle/components/public/DateRangeCalendar/DateRangeCalendar";
+import type { DateRangePopover } from "embedding-sdk-bundle/components/public/DateRangePopover/DateRangePopover";
 import type { InteractiveQuestion } from "embedding-sdk-bundle/components/public/InteractiveQuestion/InteractiveQuestion";
 import type { MetabotQuestion } from "embedding-sdk-bundle/components/public/MetabotQuestion";
 import type { SdkDebugInfo } from "embedding-sdk-bundle/components/public/SdkDebugInfo/SdkDebugInfo";
@@ -62,7 +63,8 @@ type PublicExports = {
   CollectionBrowser: InternalComponent<typeof CollectionBrowser>;
   CreateDashboardModal: InternalComponent<typeof CreateDashboardModal>;
   CreateQuestion: InternalComponent<typeof CreateQuestion>;
-  DateRangePicker: typeof DateRangePicker;
+  DateRangeCalendar: typeof DateRangeCalendar;
+  DateRangePopover: typeof DateRangePopover;
   EditableDashboard: InternalComponent<typeof EditableDashboard>;
   InteractiveDashboard: InternalComponent<typeof InteractiveDashboard>;
   InteractiveQuestion: InternalComponent<typeof InteractiveQuestion>;

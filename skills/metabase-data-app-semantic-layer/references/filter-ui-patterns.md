@@ -129,12 +129,15 @@ Date ranges should use ISO `YYYY-MM-DD` strings for query values. Never use `typ
 
 Include a Custom range option in date preset bars by default. Omit it only when the user explicitly asks for fixed presets only or no date range control. Order presets as durations first, then All time, then Custom last.
 
-### Use the built-in `DateRangePicker`
+### Use the built-in `DateRangePopover`
 
-`DateRangePicker` is the custom-range control. It comes from the SDK, so there is no dependency to install, no CSS to import, and no theming to match by hand — it already looks like the SDK components beside it.
+`DateRangePopover` wraps the app's own trigger and opens a Metabase-styled range calendar under it. The trigger is yours — a button styled exactly like the preset buttons beside it — and the SDK owns the calendar, the popover positioning, outside-click and Escape. No dependency to install, no CSS to import.
 
 ```tsx
-import { DateRangePicker } from "@metabase/embedding-sdk-react/data-app";
+import {
+  DateRangePopover,
+  formatDateRange,
+} from "@metabase/embedding-sdk-react/data-app";
 
 const [range, setRange] = useState<[string | null, string | null]>([
   null,
@@ -147,19 +150,25 @@ const dateFilters =
     ? [filter(ordersTable.fields.createdAt, "between", [start, end])]
     : [];
 
-<DateRangePicker value={range} onChange={setRange} clearable />;
+<DateRangePopover value={range} onChange={setRange}>
+  <button className="filter-button">
+    {formatDateRange(range) || "Custom"}
+  </button>
+</DateRangePopover>;
 ```
 
 Both ends are `YYYY-MM-DD` strings — the same shape `filter(...)` takes, so there is no `Date` conversion and no time zone to get wrong.
 
+- The trigger must be a single DOM element or a `forwardRef` component; the popover attaches a ref and a click handler to it. Give it the same class as the other filter controls so it matches them.
+- Label the trigger with `formatDateRange(range)`. Never with `new Date("YYYY-MM-DD")` — a date-only string parses as UTC and shows the previous day west of Greenwich. `formatDateRange` builds the date in local time and returns `""`, `"Sep 1, 2026 – "`, or `"Sep 1, 2026 – Sep 10, 2026"` for the three states; `formatDate` does one end. Both take `{ locale, format, separator }`.
 - `onChange` fires on every calendar click, so it reports half-picked ranges as `[start, null]`. Build the filter only when both ends are set; a half-picked range means no date filter, not a sentinel date.
-- Props: `value` / `defaultValue` / `onChange`, `label`, `placeholder`, `minDate`, `maxDate`, `clearable`, `disabled`, `numberOfColumns` (months shown side by side, default 2), `valueFormat` (dayjs format for the input text), `className`, `style`.
-- Size and place it with `style` or `className` on the picker itself. It renders at its content width by default.
-- Drop it straight into a preset bar as the Custom option — it needs no `customInput` or `forwardRef` wrapper to open its popover.
+- The popover closes itself once both ends are picked (`closeOnSelect`, default true). Pass `opened` / `onOpenedChange` to drive it yourself.
+- Other props: `defaultValue`, `minDate`, `maxDate` (`YYYY-MM-DD`), `numberOfColumns` (months side by side, default 2), `position` (default `bottom-start`).
+- `DateRangeCalendar` is the same calendar with no popover, for rendering inline in a container the app already has. Same value props, plus `className` / `style`.
 
 ### Falling back to a third-party picker
 
-Only for what `DateRangePicker` does not cover, such as single-date or date-time selection. Nothing else justifies a picker dependency — `react-datepicker`, `react-day-picker`, `flatpickr`, `@mui/x-date-pickers`, `antd` and `rsuite` are all the same mistake for a plain date range. The default data-app template ships React, React DOM, and the Metabase SDK, so this adds a dependency:
+Only for what the SDK calendar does not cover, such as single-date or date-time selection. Nothing else justifies a picker dependency — `react-datepicker`, `react-day-picker`, `flatpickr`, `@mui/x-date-pickers`, `antd` and `rsuite` are all the same mistake for a plain date range. The default data-app template ships React, React DOM, and the Metabase SDK, so this adds a dependency:
 
 ```bash
 npm install react-datepicker
@@ -170,7 +179,6 @@ npm install react-datepicker
 - Do not install a large UI suite just for one data-app date filter.
 - Import `react-datepicker/dist/react-datepicker.css`, then add small CSS overrides for the app's visual style if needed.
 - Type strict `react-datepicker` callbacks explicitly, for example `onChange={(date: Date | null) => ...}` for single-date pickers.
-- If the control should look like the other preset buttons, use `customInput` with a `forwardRef` button, spread react-datepicker's injected props, and call its injected `onClick` so the popover still opens.
 - Convert selected dates to ISO `YYYY-MM-DD` strings with local date getters (`getFullYear`, `getMonth`, `getDate`) rather than `toISOString()`.
 - For date-picker `selected` props, parse saved strings defensively and pass `null` for empty or invalid values. Never pass `new Date("")`.
 - Recent `react-datepicker` packages include their own TypeScript types; do not add `@types/react-datepicker` unless the installed version actually needs it.

@@ -5,7 +5,6 @@ export * from "./Chip";
 export * from "./Combobox";
 export * from "./DateInput";
 export * from "./DatePicker";
-export * from "./DatePickerInput";
 export * from "./DateTimePicker";
 export * from "./FileInput";
 export * from "./Input";

@@ -12,11 +12,18 @@ defineGlobalDependencies();
 
 export { DataAppRouter } from "./components/public/DataAppRouter";
 export { DataAppLink } from "./components/public/DataAppLink";
-export { DateRangePicker } from "./components/public/DateRangePicker";
+export { DateRangeCalendar } from "./components/public/DateRangeCalendar";
+export { DateRangePopover } from "./components/public/DateRangePopover";
 export type {
-  DateRangePickerProps,
+  DateRangeCalendarProps,
   DateRangeValue,
-} from "embedding-sdk-bundle/components/public/DateRangePicker/DateRangePicker";
+} from "embedding-sdk-bundle/components/public/DateRangeCalendar/DateRangeCalendar";
+export type { DateRangePopoverProps } from "embedding-sdk-bundle/components/public/DateRangePopover/DateRangePopover";
+export {
+  formatDate,
+  formatDateRange,
+  type FormatDateRangeOptions,
+} from "./lib/public/format-date-range";
 export { copy } from "./lib/public/copy";
 export { useDataAppLocation } from "./hooks/public/use-data-app-location";
 export { defineQuery } from "./hooks/public/use-metabase-query/define-query";

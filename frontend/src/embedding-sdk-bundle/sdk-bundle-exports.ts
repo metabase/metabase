@@ -32,7 +32,8 @@ import { resolveDatasetQuery } from "embedding-sdk-bundle/lib/create-metabase-qu
 import { queryDataset } from "embedding-sdk-bundle/lib/query-dataset";
 import { queryQuestion } from "embedding-sdk-bundle/lib/query-question";
 import { validateFunctionSchema } from "embedding-sdk-bundle/lib/validate-function-schema";
-import { DateRangePicker } from "embedding-sdk-bundle/components/public/DateRangePicker/DateRangePicker";
+import { DateRangeCalendar } from "embedding-sdk-bundle/components/public/DateRangeCalendar/DateRangeCalendar";
+import { DateRangePopover } from "embedding-sdk-bundle/components/public/DateRangePopover/DateRangePopover";
 
 /**
  * IMPORTANT!
@@ -43,7 +44,8 @@ export const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
   CollectionBrowser,
   CreateDashboardModal,
   CreateQuestion,
-  DateRangePicker,
+  DateRangeCalendar,
+  DateRangePopover,
   EditableDashboard,
   InteractiveDashboard,
   InteractiveQuestion,
