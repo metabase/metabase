@@ -104,6 +104,26 @@ databaseChangeLog:
       comment: Clear the metabase_field copies of the values held in metabase_field_user_settings
       changes:
         - sql:
+            dbms: postgresql
+            sql: >-
+              UPDATE metabase_field AS f
+              SET caveats = CASE WHEN s.caveats IS NULL THEN f.caveats ELSE NULL END,
+                  points_of_interest = CASE WHEN s.points_of_interest IS NULL THEN f.points_of_interest ELSE NULL END,
+                  has_field_values = CASE WHEN s.has_field_values IS NULL THEN f.has_field_values ELSE NULL END,
+                  settings = CASE WHEN s.settings IS NULL THEN f.settings ELSE NULL END
+              FROM metabase_field_user_settings AS s
+              WHERE s.field_id = f.id
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE metabase_field f
+              JOIN metabase_field_user_settings s ON s.field_id = f.id
+              SET f.caveats = CASE WHEN s.caveats IS NULL THEN f.caveats ELSE NULL END,
+                  f.points_of_interest = CASE WHEN s.points_of_interest IS NULL THEN f.points_of_interest ELSE NULL END,
+                  f.has_field_values = CASE WHEN s.has_field_values IS NULL THEN f.has_field_values ELSE NULL END,
+                  f.settings = CASE WHEN s.settings IS NULL THEN f.settings ELSE NULL END
+        - sql:
+            dbms: h2
             sql: >-
               UPDATE metabase_field
               SET caveats = CASE WHEN EXISTS (SELECT 1 FROM metabase_field_user_settings s WHERE s.field_id = metabase_field.id AND s.caveats IS NOT NULL) THEN NULL ELSE caveats END,
@@ -113,6 +133,26 @@ databaseChangeLog:
               WHERE EXISTS (SELECT 1 FROM metabase_field_user_settings s WHERE s.field_id = metabase_field.id)
       rollback:
         - sql:
+            dbms: postgresql
+            sql: >-
+              UPDATE metabase_field AS f
+              SET caveats = COALESCE(s.caveats, f.caveats),
+                  points_of_interest = COALESCE(s.points_of_interest, f.points_of_interest),
+                  has_field_values = COALESCE(s.has_field_values, f.has_field_values),
+                  settings = COALESCE(s.settings, f.settings)
+              FROM metabase_field_user_settings AS s
+              WHERE s.field_id = f.id
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE metabase_field f
+              JOIN metabase_field_user_settings s ON s.field_id = f.id
+              SET f.caveats = COALESCE(s.caveats, f.caveats),
+                  f.points_of_interest = COALESCE(s.points_of_interest, f.points_of_interest),
+                  f.has_field_values = COALESCE(s.has_field_values, f.has_field_values),
+                  f.settings = COALESCE(s.settings, f.settings)
+        - sql:
+            dbms: h2
             sql: >-
               UPDATE metabase_field
               SET caveats = COALESCE((SELECT s.caveats FROM metabase_field_user_settings s WHERE s.field_id = metabase_field.id), caveats),
@@ -120,4 +160,3 @@ databaseChangeLog:
                   has_field_values = COALESCE((SELECT s.has_field_values FROM metabase_field_user_settings s WHERE s.field_id = metabase_field.id), has_field_values),
                   settings = COALESCE((SELECT s.settings FROM metabase_field_user_settings s WHERE s.field_id = metabase_field.id), settings)
               WHERE EXISTS (SELECT 1 FROM metabase_field_user_settings s WHERE s.field_id = metabase_field.id)
-
