@@ -24,7 +24,9 @@
     (testing "and an explicit title that already spells one correctly is left alone"
       (is (= "Execute SQL" (#'mcp-tools-dox/tool-title {:name "execute_sql" :title "Execute SQL"})))))
   (testing "a word that merely contains an acronym is untouched"
-    (is (= "Validate idea" (#'mcp-tools-dox/tool-title {:name "validate_idea"})))))
+    (is (= "Validate idea" (#'mcp-tools-dox/tool-title {:name "validate_idea"}))))
+  (testing "UI is an acronym too"
+    (is (= "Refresh UI credential" (#'mcp-tools-dox/tool-title {:name "refresh_ui_credential"})))))
 
 (deftest ^:parallel description-test
   (testing "a description is flattened onto one line"
@@ -58,8 +60,9 @@
     (is (= ["Read-only. It doesn't create, change, or delete anything in your Metabase."]
            (remove nil? (#'mcp-tools-dox/effect-bullets
                          {:annotations {:readOnlyHint true :idempotentHint true}})))))
-  (testing "a non-destructive writer says what it won't do"
-    (is (= ["Not read-only, but it won't delete or overwrite existing content."]
+  (testing "a non-destructive writer says it writes, and promises nothing about what it won't touch"
+    ;; `destructiveHint false` is a hint: `document_write` carries it and rewrites whole bodies
+    (is (= ["Creates or changes content."]
            (remove nil? (#'mcp-tools-dox/effect-bullets {:annotations {:destructiveHint false}})))))
   (testing "a destructive tool is called out, and idempotence is worth saying about a writer"
     (is (= ["Can overwrite or delete existing content."
@@ -103,6 +106,13 @@
              {:type "null"}]}
     ;; the same prose reached twice is said once
     ["Once."]       {:oneOf [{:type "string" :description "Once."} {:type "string" :description "Once."}]}
+    ;; an array of objects keeps the array's own prose and drops the elements': the table can't show the
+    ;; nested shape, and `dashboard_write`'s `ops` is a union of two dozen such objects
+    ["The list."]   {:type "array" :description "The list." :items {:type "object" :description "One item."}}
+    ["The list."]   {:type "array" :description "The list."
+                     :items {:oneOf [{:type "object" :description "Op A."} {:type "object" :description "Op B."}]}}
+    ;; but a nullable object argument keeps its prose — that's the property's own shape, not a nested one
+    ["Chain filtering."] {:oneOf [{:type "object" :description "Chain filtering."} {:type "null"}]}
     []              {:type "string"}))
 
 (deftest ^:parallel enum-values-test
@@ -155,15 +165,22 @@
 (deftest all-tools-test
   (let [tools (#'mcp-tools-dox/all-tools)]
     (is (seq tools))
+    (testing "a tool the MCP App calls for itself is left off the page"
+      ;; the model never calls `refresh_ui_credential`; it takes no arguments and returns a credential
+      (is (not (some #(= "refresh_ui_credential" (:name %)) tools)))
+      (is (some #(= "refresh_ui_credential" (:name %)) (v2.registry/all-tool-entries))
+          "the tool this test guards against listing no longer exists; pick another app-only tool"))
     (testing "every tool carries a scope some defscope can explain"
       ;; `register-tool!` pins it to a non-blank string; this pins it to one the consent screen has wording for
       (doseq [{:keys [name scope]} tools]
         (is (string? scope) (str "no scope for " name))
         (is (api-scope/registered-scope? scope) (str name " uses unregistered scope " (pr-str scope)))))
-    (testing "the page covers everything a fully-authorized client can be offered"
+    (testing "the page covers everything a fully-authorized client can be offered to a model"
       ;; the manifest is the superset: `list-tools` also drops whatever `mcp-v2-disabled-tools` names
       (is (every? (set (map :name tools))
-                  (map :name (v2.registry/list-tools nil {:supports-mcp-ui? true})))))
+                  (->> (v2.registry/list-tools nil {:supports-mcp-ui? true})
+                       (remove #'mcp-tools-dox/app-only?)
+                       (map :name)))))
     (testing "the MCP Apps tools are the ones carrying a :_meta :ui block, which is how the page groups them"
       ;; `sections` keys off `:_meta`; keep it in step with the extension the tool actually requires
       (doseq [{:keys [name _meta required-extensions]} tools]
@@ -233,6 +250,15 @@
       (testing "an action hub publishes the actions it dispatches on"
         (let [section (second (str/split markdown #"\n### Browse data\n"))]
           (is (str/includes? section "`list_databases`"))))
+      (testing "an array-of-objects argument carries only its own prose, not every element's"
+        ;; `ops` is a union of two dozen op objects; before `item-descriptions` their sentences ran together
+        (let [section (second (str/split markdown #"\n### Dashboard write\n"))
+              ops-row (re-find #"(?m)^\| `ops` .*$" section)]
+          (is (some? ops-row))
+          (is (< (count ops-row) 400) ops-row)
+          (is (not (str/includes? ops-row "Add a tab.")))))
+      (testing "the app-only credential tool has no section"
+        (is (not (str/includes? markdown "refresh_ui_credential"))))
       (testing "the page ends with exactly one newline"
         (is (str/ends-with? markdown "\n"))
         (is (not (str/ends-with? markdown "\n\n")))))))

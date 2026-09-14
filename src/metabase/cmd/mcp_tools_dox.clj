@@ -26,7 +26,8 @@
   section whose `:claims?` says yes."
   [{:heading "Interactive tools"
     :blurb   (str "These render inline charts in your AI client. They only work in clients that support inline "
-                  "visualizations.")
+                  "visualizations. Such a client may also list a helper tool the chart calls for itself; it "
+                  "isn't documented here because the model never calls it.")
     ;; A UI tool is recognized by the `:_meta` `:ui` block it publishes rather than by its
     ;; `:required-extensions`, because `:_meta` is the half a client actually sees.
     ;; `metabase.cmd.mcp-tools-dox-test/all-tools-test` pins the two to the same set.
@@ -41,20 +42,23 @@
 
 ;;;; Which tools belong on the page
 
+(defn- app-only?
+  "Is `tool` one the MCP App calls for itself rather than one the model chooses? `refresh_ui_credential` marks
+  itself so with the `:_meta` `:ui` `:visibility` hint. It takes no arguments and returns a credential, so a
+  section for it would document nothing a reader can act on."
+  [tool]
+  (boolean (some #{"app"} (get-in tool [:_meta :ui :visibility]))))
+
 (defn- all-tools
-  "Every tool the MCP server publishes, name-sorted, each with its `:scope`.
+  "Every tool the MCP server publishes for a model to call, name-sorted, each with its `:scope`.
 
-  Reaches `metabase.mcp.v2.registry`'s private `manifest` rather than calling the public
-  [[v2.registry/list-tools]]. The two agree on which tools exist and on the `:inputSchema` and
-  `:annotations` each publishes, but `list-tools` answers for one session: it strips `:scope`, which is
-  half of what this page is for; it hides the MCP Apps tools from a client that can't render them; and it
-  drops whatever an admin listed in `mcp-v2-disabled-tools`. None of those are reasons for a tool to be
-  missing from the reference.
-
-  A var quote rather than a resolve, so renaming `manifest` fails this namespace at compile time instead
-  of leaving a doc build to discover it."
+  Reads [[v2.registry/all-tool-entries]] rather than [[v2.registry/list-tools]]. The two agree on which tools
+  exist and on the `:inputSchema` and `:annotations` each publishes, but `list-tools` answers for one session:
+  it strips `:scope`, which is half of what this page is for; it hides the MCP Apps tools from a client that
+  can't render them; and it drops whatever an admin listed in `mcp-v2-disabled-tools`. None of those are
+  reasons for a tool to be missing from the reference. Being [[app-only?]] is."
   []
-  ((var-get #'v2.registry/manifest)))
+  (remove app-only? (v2.registry/all-tool-entries)))
 
 ;;;; Facts about one tool
 
@@ -67,6 +71,7 @@
    "url"      "URL"
    "uri"      "URI"
    "api"      "API"
+   "ui"       "UI"
    "id"       "ID"
    "mbql"     "MBQL"
    "metabase" "Metabase"})
@@ -133,9 +138,10 @@
     [(cond
        readOnlyHint             "Read-only. It doesn't create, change, or delete anything in your Metabase."
        destructiveHint          "Can overwrite or delete existing content."
-       ;; `destructiveHint false` claims only that nothing existing is destroyed — `execute_sql` carries it
-       ;; too, so this can't promise the tool merely creates content
-       (false? destructiveHint) "Not read-only, but it won't delete or overwrite existing content.")
+       ;; `destructiveHint false` is the tool's claim to make additive changes. It's a hint, not a contract:
+       ;; `document_write` carries it while its description explains a full-body rewrite, so the page promises
+       ;; nothing about what the tool won't touch and leaves that to the description.
+       (false? destructiveHint) "Creates or changes content.")
      ;; only worth saying about a tool that changes something; that a read is repeatable goes without saying
      (when (and idempotentHint (not readOnlyHint))
        "Running it again with the same arguments has the same effect as running it once.")]))
@@ -177,6 +183,26 @@
                               "array"))
       :else               (str/join " or " types))))
 
+(defn- object-typed?
+  "Does the schema describe an object? Looks only at its own `:type`, not through wrappers."
+  [{:keys [type]}]
+  (boolean (some #{"object"} (if (coll? type) type [type]))))
+
+(declare property-descriptions)
+
+(defn- item-descriptions
+  "The descriptions an array's `:items` schema contributes. An element that is itself an object contributes
+  nothing, nor does an object branch of a union of elements: the table renders the argument as `array of object`
+  and points at the client for the nested shape, so its prose describes something the reader can't see here.
+  `dashboard_write`'s `ops` is a union of two dozen op objects, each with a sentence — collected, they ran
+  together into one cell."
+  [{:keys [oneOf anyOf] :as items}]
+  (if (object-typed? items)
+    []
+    (property-descriptions (assoc items
+                                  :oneOf (remove object-typed? oneOf)
+                                  :anyOf (remove object-typed? anyOf)))))
+
 (defn- property-descriptions
   "Every description reachable from a property, in order, deduped.
 
@@ -184,13 +210,13 @@
   leaves it there: `[:maybe [:int {:description ...}]]` publishes `{:oneOf [{:type \"integer\" :description ...}
   {:type \"null\"}]}`, so reading `(:description property)` alone would find nothing on almost every v2 argument.
   Three shapes reach one: the property, a `oneOf`/`anyOf` branch (`[:maybe ...]`, `[:or ...]`), and an array's
-  `:items` (`[:sequential [:string {:description ...}]]`). `[:or [:int {...}] [:string {...}]]` carries one per
-  branch, so this collects rather than taking the first."
+  `:items` (`[:sequential [:string {:description ...}]]`, subject to [[item-descriptions]]' object rule).
+  `[:or [:int {...}] [:string {...}]]` carries one per branch, so this collects rather than taking the first."
   [{:keys [description items oneOf anyOf]}]
   (into []
         (comp cat (remove str/blank?) (distinct))
         [[description]
-         (some-> items property-descriptions)
+         (some-> items item-descriptions)
          (mapcat property-descriptions (concat oneOf anyOf))]))
 
 (defn- enum-values

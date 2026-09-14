@@ -184,6 +184,14 @@
   (or @manifest-cache
       (reset! manifest-cache (generate-manifest))))
 
+(defn all-tool-entries
+  "Every registered tool's manifest entry, name-sorted and unfiltered: nothing is dropped for scope, the
+   `mcp-v2-disabled-tools` setting, or client extensions, and each entry still carries its `:scope` and
+   `:required-extensions`. For internal consumers that need the whole surface, such as the docs generator —
+   a `tools/list` answer goes through [[list-tools]]."
+  []
+  (manifest))
+
 (defn- disabled-tool-names
   []
   (set (mcp.settings/mcp-v2-disabled-tools)))

@@ -88,6 +88,8 @@ jobs:
 
       - name: Generate MCP tool documentation
         id: generate_mcp_tool_docs
+        # Same reason as the AI provider step: release branches without the generator would fail the command.
+        if: hashFiles('src/metabase/cmd/mcp_tools_dox.clj') != ''
         run: |
           set -e  # Exit on any error
           echo "Generating MCP tool documentation..."
