@@ -5,16 +5,16 @@
    [metabase.test :as mt]))
 
 (deftest enabled-embedding-static-test
-  (testing "true when enable embedding static is true and dashboard count is greater than 0"
-    (mt/with-temporary-setting-values [enable-embedding-static true]
+  (testing "true when modular embedding is on and dashboard count is greater than 0"
+    (mt/with-temporary-setting-values [enable-embedding-modular true]
       (is (:enabled-embedding-static (sut/embedding-settings 1 0)))))
-  (testing "true when enable embedding static is true and question count is greater than 0"
-    (mt/with-temporary-setting-values [enable-embedding-static true]
+  (testing "true when modular embedding is on and question count is greater than 0"
+    (mt/with-temporary-setting-values [enable-embedding-modular true]
       (is (:enabled-embedding-static (sut/embedding-settings 0 1)))))
-  (testing "false when enable embedding static is true and no cards are dashboards are enabled"
+  (testing "false when modular embedding is on and no cards or dashboards are enabled"
     (is (not (:enabled-embedding-static (sut/embedding-settings 0 0)))))
-  (testing "false when enable embedding static is false"
-    (mt/with-temporary-setting-values [enable-embedding-static false]
+  (testing "false when modular embedding is off"
+    (mt/with-temporary-setting-values [enable-embedding-modular false]
       (is (not (:enabled-embedding-static (sut/embedding-settings 1 1)))))))
 
 (def ^:private idp-cert (slurp "test_resources/sso/auth0-public-idp.cert"))
@@ -63,16 +63,16 @@
             (is (:enabled-embedding-interactive (sut/embedding-settings 0 0)))))))))
 
 (deftest enabled-embedding-sdk
-  (testing "with sdk enabled and jwt enabled"
-    (mt/with-temporary-setting-values [enable-embedding-sdk true
-                                       jwt-shared-secret    "asdfasdf"
-                                       jwt-enabled          true]
+  (testing "with modular embedding on and jwt enabled"
+    (mt/with-temporary-setting-values [enable-embedding-modular true
+                                       jwt-shared-secret        "asdfasdf"
+                                       jwt-enabled              true]
       (is (:enabled-embedding-sdk (sut/embedding-settings 0 0)))))
-  (testing "with sdk disabled and jwt enabled"
-    (mt/with-temporary-setting-values [enable-embedding-sdk false
-                                       jwt-enabled          true]
+  (testing "with modular embedding off and jwt enabled"
+    (mt/with-temporary-setting-values [enable-embedding-modular false
+                                       jwt-enabled              true]
       (is (not (:enabled-embedding-sdk (sut/embedding-settings 0 0))))))
-  (testing "with sdk enabled and jwt disabled"
-    (mt/with-temporary-setting-values [enable-embedding-sdk true
-                                       jwt-enabled          false]
+  (testing "with modular embedding on and jwt disabled"
+    (mt/with-temporary-setting-values [enable-embedding-modular true
+                                       jwt-enabled              false]
       (is (not (:enabled-embedding-sdk (sut/embedding-settings 0 0)))))))

@@ -25,7 +25,8 @@
 (defmethod serdes/make-spec "EmbeddingTheme"
   [_model-name _opts]
   {:copy      [:entity_id :name :settings]
-   :skip      []
+   ;; is_default means the theme is a default theme for this instance.
+   :skip      [:is_default]
    :transform {:created_at (serdes/date)
                :updated_at (serdes/date)}})
 

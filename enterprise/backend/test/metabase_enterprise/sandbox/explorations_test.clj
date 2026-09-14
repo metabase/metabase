@@ -12,6 +12,7 @@
    [metabase-enterprise.sandbox.test-util :as sandbox.tu]
    [metabase-enterprise.test :as met]
    [metabase.explorations.query-plan.variants :as variants]
+   [metabase.explorations.test-util :as explorations.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
@@ -27,6 +28,9 @@
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
+
+;; The application does not mount `/api/exploration` while explorations are disabled; serve it for these tests.
+(use-fixtures :each explorations.tu/exploration-routes-fixture)
 
 (defn- venues-count-query []
   (let [mp (mt/metadata-provider)]

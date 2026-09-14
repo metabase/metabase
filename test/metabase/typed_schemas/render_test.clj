@@ -156,6 +156,28 @@
       (is (= [:lit "string"] (obj-entry field-node :jsType)))
       (is (nil? (obj-entry field-node :displayName))))))
 
+(def ^:private schema-with-errors
+  {:schemaVersion 2
+   :metabase      {:instanceUrl "https://metabase.example.com"}
+   :questions     {}
+   :models        {}
+   :tables        {}
+   :metrics       {}
+   :errors        [{:type      "modelError"
+                    :modelId   7
+                    :modelName "Broken model"
+                    :message   "Failed to build action schemas for model \"Broken model\" (card 7): boom"}]})
+
+(deftest typescript-renderer-emits-model-errors-test
+  (let [body (typed-schemas/render-typescript schema-with-errors)]
+    ;; Broken models surface as runtime data so agents can tell users which
+    ;; models are bad instead of the whole response failing.
+    (is (str/includes? body "errors: ["))
+    (is (str/includes? body "type: \"modelError\""))
+    (is (str/includes? body "modelId: 7"))
+    (is (str/includes? body "modelName: \"Broken model\""))
+    (is (str/includes? body "message: \"Failed to build action schemas"))))
+
 (deftest typescript-renderer-omits-pick-fields-helper-for-raw-dimensions-test
   (let [body (typed-schemas/render-typescript raw-dimensions-schema)]
     ;; Dimensions that cannot be resolved to table fields stay as raw fields, so
