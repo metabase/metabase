@@ -16,6 +16,12 @@
 # So each JVM runs in its own hardlinked copy of the checkout (inodes, not disk) and
 # outputs are merged back into the workspace afterwards.
 #
+# The application DB is not safe to share either. `-Dmb.db.in.memory=true` only gives each
+# process its own app DB when it is H2; a job that points `MB_DB_TYPE` at a MySQL or Postgres
+# service would have its JVMs racing each other's migrations and `with-temp` cleanup in one
+# database. So when `MB_DB_DBNAME` is set, each JVM uses `<MB_DB_DBNAME>_p<partition>`
+# instead. The caller has to create those databases first.
+#
 # INPUTS (environment)
 # --------------------
 #   CLOJURE_ALIASES        alias string for `clojure -X`, e.g. dev:ci:ee:ee-dev:drivers:drivers-dev:test
@@ -125,6 +131,10 @@ run_partition() {
   local idx="$1" jvm_dir="$2" rc line
   (
     cd "$jvm_dir" || exit 1
+    if [ -n "${MB_DB_DBNAME:-}" ]; then
+      export MB_DB_DBNAME="${MB_DB_DBNAME}_p$idx"
+      echo "using application database $MB_DB_DBNAME"
+    fi
     # `-J` options land after the aliases' `:jvm-opts`, overriding the `:ci` alias's
     # `-Xms12g -Xmx12g`. Xms stays small so JVMs sharing a runner grow into memory on
     # demand rather than each committing its ceiling up front.
