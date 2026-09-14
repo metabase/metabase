@@ -199,7 +199,9 @@ describe("scenarios > admin > transforms", { tags: ["@external"] }, () => {
           .find(".cm-panels")
           .should("be.visible");
 
-        getPythonDataPicker().findByText("Select a table…").click();
+        getPythonDataPicker()
+          .findByRole("button", { name: "Select a table…" })
+          .click();
 
         cy.log(
           "the editor search panel must not paint over the modal (metabase#73290)",
@@ -2138,7 +2140,7 @@ LIMIT
         );
 
         cy.findByTestId("python-data-picker")
-          .findByText("Select a table…")
+          .findByRole("button", { name: "Select a table…" })
           .click();
 
         H.entityPickerModal().within(() => {
@@ -2249,7 +2251,7 @@ LIMIT
         );
 
         cy.findByTestId("python-data-picker")
-          .findByText("Select a table…")
+          .findByRole("button", { name: "Select a table…" })
           .click();
 
         H.entityPickerModal().within(() => {
@@ -4354,8 +4356,7 @@ describe("scenarios > data studio > transforms > permissions > oss", () => {
       cy.findByRole("columnheader", { name: /Transforms/ }).should("not.exist");
 
       cy.log("Visit data studio page");
-      cy.visit("/data-studio");
-      H.DataStudio.nav().should("be.visible");
+      H.DataStudio.visit();
 
       cy.log("Verify Transforms menu item is visible");
       H.DataStudio.nav()
@@ -4428,8 +4429,7 @@ describe(
         );
 
         cy.log("Visit data studio page");
-        cy.visit("/data-studio");
-        H.DataStudio.nav().should("be.visible");
+        H.DataStudio.visit();
 
         cy.log("Verify Transforms menu item is visible");
         H.DataStudio.nav()

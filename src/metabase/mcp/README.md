@@ -85,8 +85,8 @@ token missing it neither sees the tool in `tools/list` nor may call it.
 | `dashboard_write` | `agent:content:write` | Create or update a dashboard and edit its layout with ordered ops. |
 | `document_write` | `agent:content:write` | Create or update a document. |
 | `duplicate_content` | `agent:content:write` | Copy a question, dashboard, or document into a collection — cheaper and safer than reading the original and re-creating it, and it preserves everything the read projections leave out. |
-| `execute_query` | `agent:query:run` | Validate and execute a query, returning rows plus a query_handle. |
-| `execute_sql` | `agent:sql:run` | Execute a raw SQL string against a database, returning rows plus a query_handle. |
+| `execute_query` | `agent:query:run` | The default way to answer a question from data: validate and execute a structured (MBQL) query over a table, model, metric, or saved question, returning rows plus a query_handle. |
+| `execute_sql` | `agent:sql:run` | Escape hatch: execute a raw SQL string against a database, returning rows plus a query_handle. |
 | `get_content` | `agent:content:read` | Fetch content by {type, id} — the typed read for anything found via search or browse_collection. |
 | `get_parameter_values` | `agent:content:read` | Fetch the valid values for one filter on a dashboard or saved question, so you filter with real values instead of guessing. |
 | `learn` | `agent:content:read` | Read this server's task docs (skills) for the write dialects the schemas can't fully describe. |
@@ -102,8 +102,11 @@ token missing it neither sees the tool in `tools/list` nor may call it.
 | `transform_write` | `agent:content:write` | Create or update a transform: a saved query that Metabase runs to materialize its results into a real table in your warehouse, which questions and other transforms can then query. |
 | `visualize_query` | `agent:query:run` | Visualize a query as an interactive chart or table, rendered inline in the conversation. |
 
-Query results are limited to 200 rows per request. When more rows are available, the response includes a
-`continuation_token` that can be passed back to fetch the next page.
+`execute_query` returns `row_limit` rows per call (default 100, max 2000) — a page size, not a bound on the result.
+A truncated page reports `truncated: true` and, when the query has a total order, a `next_cursor` to pass back as
+`cursor` for the next page, until a page arrives with `truncated: false`. A query that wants only its first N rows
+carries `limit: N` in its stage (with an `order-by`); the server spends that limit down across pages, so the last
+page comes back complete with no cursor and pagination ends by itself.
 
 ## Resources
 

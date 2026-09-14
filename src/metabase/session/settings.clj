@@ -2,6 +2,7 @@
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.nonce :as nonce]
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.sso.core :as sso]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -58,3 +59,11 @@
   ;; race (last write wins; the loser's in-flight 5-min challenge tokens fail verification), but
   ;; the window is one first-ever MFA login. Generate eagerly at startup if this ever bites.
   :init       (fn [] (codecs/bytes->hex (nonce/random-bytes 32))))
+
+(premium-features/defenterprise mfa-required?
+  "Whether MFA is currently required for all users on the instance when using email or LDAP auth.
+
+  Always false in OSS, since that enforcement is an EE feature."
+  metabase-enterprise.mfa.core
+  []
+  false)
