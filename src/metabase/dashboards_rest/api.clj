@@ -463,9 +463,9 @@
   [deep-copy? new-dashboard old-dashboard dest-coll-id]
   (let [same-collection?                 (= (:collection_id old-dashboard) dest-coll-id)
         {:keys [copy discard reference]} (cards-to-copy deep-copy? (:dashcards old-dashboard))]
-    {:copied     (queries/with-card-copy
-                   (into {} (for [[id to-copy] copy]
-                              [id (queries/create-card!
+    {:copied     (into {} (for [[id to-copy] copy]
+                            [id (queries/with-copy-source-card to-copy
+                                  (queries/create-card!
                                    (cond-> to-copy
                                      true                    (assoc :collection_id dest-coll-id)
                                      same-collection?        (update :name #(str % " - " (tru "Duplicate")))
@@ -474,7 +474,7 @@
                                    ;; creating cards from a transaction. wait until tx complete to signal event
                                    true
                                    ;; do not autoplace these cards. we will create the dashboard cards ourselves.
-                                   false)])))
+                                   false))]))
      :discarded  discard
      :referenced reference}))
 

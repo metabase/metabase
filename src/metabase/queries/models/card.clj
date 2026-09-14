@@ -806,18 +806,10 @@
   ;; Keep this aligned with the frontend's canDisplayTimelineEvents registry check.
   (contains? #{:line :bar :area :combo :scatter :waterfall} (keyword display)))
 
-(def ^:private ^:dynamic *copying-card* false)
-
-(defmacro with-card-copy
-  "Run `body` while duplicating a Card. A copy keeps the source card's timeline selection, which the user can already
-  see through the source card, so it does not need read access to the timelines themselves."
-  [& body]
-  `(binding [*copying-card* true] ~@body))
-
 (defn- check-timeline-visibility-permissions!
   [card previous-card]
   ;; No bound user means an internal write (serdes import, migrations, tasks) rather than a request.
-  (when (and api/*current-user-id* (not *copying-card*))
+  (when api/*current-user-id*
     (let [visibility-keys         [:timeline.selected_timeline_ids :timeline.excluded_timeline_event_ids
                                    :timeline_events.enabled]
           visibility              (select-keys (:visualization_settings card) visibility-keys)
@@ -834,9 +826,21 @@
           (doseq [timeline (queries.db/timelines (set timeline-ids))]
             (api/read-check timeline)))))))
 
+(def ^:dynamic *copy-source-card*
+  "The Card a new Card is being copied from, if any. Its timeline visibility settings count as the previous state, so
+  copying a Card does not require read access to the timelines it already selects."
+  nil)
+
+(defmacro with-copy-source-card
+  "Runs `body`, treating a Card inserted within it as a copy of `source-card`: an inherited timeline selection does
+  not require read access to those timelines. `source-card` must be a Card the current user has already passed a
+  read check on, and `body` should perform only the single copy insert."
+  [source-card & body]
+  `(binding [*copy-source-card* ~source-card] ~@body))
+
 (t2/define-before-insert :model/Card
   [card]
-  (check-timeline-visibility-permissions! card nil)
+  (check-timeline-visibility-permissions! card *copy-source-card*)
   (u/prog1
     (-> card
         (assoc :metabase_version config/mb-version-string

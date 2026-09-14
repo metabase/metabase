@@ -1790,6 +1790,28 @@
       (mt/with-temp [:model/Card card {:visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}]
         (is (= [(:id timeline)] (get-in card [:visualization_settings :timeline.selected_timeline_ids])))))))
 
+(deftest with-copy-source-card-timeline-selection-permissions-test
+  (mt/with-temp [:model/Collection collection {}
+                 :model/Timeline timeline-a {:collection_id (:id collection)}
+                 :model/Timeline timeline-b {:collection_id (:id collection)}]
+    (perms/revoke-collection-permissions! (perms-group/all-users) collection)
+    ;; source cards are created outside `with-test-user` so their own insert isn't permission-checked
+    (testing "a copy inheriting the exact source selection does not need a fresh read check"
+      (mt/with-temp [:model/Card source {:visualization_settings {:timeline.selected_timeline_ids [(:id timeline-a)]}}]
+        (mt/with-test-user :rasta
+          (card/with-copy-source-card source
+            (mt/with-temp [:model/Card copy {:visualization_settings {:timeline.selected_timeline_ids [(:id timeline-a)]}}]
+              (is (= [(:id timeline-a)] (get-in copy [:visualization_settings :timeline.selected_timeline_ids]))))))))
+    (testing "a copy whose selection differs from the source is still permission-checked"
+      (mt/with-temp [:model/Card source {:visualization_settings {:timeline.selected_timeline_ids [(:id timeline-a)]}}]
+        (mt/with-test-user :rasta
+          (card/with-copy-source-card source
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo #"You don't have permissions"
+                 (mt/with-temp [:model/Card _ {:visualization_settings
+                                               {:timeline.selected_timeline_ids [(:id timeline-a) (:id timeline-b)]}}]
+                   nil)))))))))
+
 (deftest card-timeline-visibility-update-permissions-test
   (mt/with-temp [:model/Collection collection {}
                  :model/Timeline timeline {:collection_id (:id collection)}

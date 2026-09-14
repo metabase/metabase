@@ -500,7 +500,8 @@
    [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]
    [:size                   {:optional true} [:maybe [:map
                                                       [:size_x ms/PositiveInt]
-                                                      [:size_y ms/PositiveInt]]]]])
+                                                      [:size_y ms/PositiveInt]]]]
+   [:source_card_id         {:optional true} [:maybe ms/PositiveInt]]])
 
 (defn- check-parameter-permissions
   [parameters query]
@@ -517,14 +518,16 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
-  "Create a new `Card`. Card `type` can be `question`, `metric`, or `model`."
+  "Create a new `Card`. Card `type` can be `question`, `metric`, or `model`. `source_card_id`, if given, must be a
+  Card the current user can read; the new Card is then treated as a copy of it for timeline-permission purposes."
   [_route-params
    _query-params
-   {card-type :type, collection-id :collection_id, :as card} :- CardCreateSchema]
-  (let [card (cond-> card
-               (some? collection-id)
-               (update :collection_id #(eid-translation/->id-or-404 :collection %)))
-        query (:dataset_query card)]
+   {card-type :type, collection-id :collection_id, source-card-id :source_card_id, :as card} :- CardCreateSchema]
+  (let [source-card (some->> source-card-id (api/read-check :model/Card))
+        card        (cond-> (dissoc card :source_card_id)
+                      (some? collection-id)
+                      (update :collection_id #(eid-translation/->id-or-404 :collection %)))
+        query       (:dataset_query card)]
     (check-if-card-can-be-saved query card-type)
     (check-parameter-permissions (:parameters card) query)
     ;; check that we have permissions to run the query that we're trying to save.
@@ -538,7 +541,8 @@
       (lib/check-card-overwrite ::no-id query)
       (catch clojure.lang.ExceptionInfo e
         (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400)))))
-    (let [created-card (queries/create-card! card @api/*current-user*)]
+    (let [created-card (queries/with-copy-source-card source-card
+                          (queries/create-card! card @api/*current-user*))]
       (when (and (some? (:result_metadata card))
                  (= (name (:type created-card)) "question"))
         (events/publish-event! :event/card-create-with-result-metadata
@@ -560,7 +564,7 @@
         new-name  (trs "Copy of {0}" (:name orig-card))
         new-card  (assoc orig-card :name new-name)]
     (api/create-check :model/Card new-card)
-    (-> (queries/with-card-copy
+    (-> (queries/with-copy-source-card orig-card
           (queries/create-card! new-card @api/*current-user*))
         hydrate-card-details
         (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))))

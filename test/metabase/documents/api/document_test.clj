@@ -2685,6 +2685,34 @@
               (testing "the document-owned card is copied"
                 (is (t2/exists? :model/Card :document_id (:id result)))))))))))
 
+(deftest copy-document-with-inaccessible-timeline-selection-test
+  (testing "POST /api/document/:id/copy keeps a timeline selection the copier cannot read (mirrors card copy behavior)"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-model-cleanup [:model/Document :model/Card]
+        (mt/with-temp [:model/Collection {coll-id :id} {}
+                       :model/Collection {timeline-coll-id :id} {}
+                       :model/Timeline {timeline-id :id} {:collection_id timeline-coll-id}
+                       :model/Document {doc-id :id} {:name          "Doc with timeline card"
+                                                     :collection_id coll-id
+                                                     :document      (documents.test-util/text->prose-mirror-ast "placeholder")}
+                       :model/Card {card-id :id} {:name                   "Doc-owned Card"
+                                                  :collection_id          coll-id
+                                                  :document_id            doc-id
+                                                  :dataset_query          (mt/mbql-query venues)
+                                                  :visualization_settings {:timeline.selected_timeline_ids [timeline-id]}}]
+          (t2/update! :model/Document doc-id {:document (card-embed-ast card-id)})
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
+          (perms/revoke-collection-permissions! (perms/all-users-group) timeline-coll-id)
+          (let [result      (mt/user-http-request :rasta :post 200 (format "document/%d/copy" doc-id)
+                                                   {:collection_id coll-id})
+                cloned-card (t2/select-one :model/Card :document_id (:id result))]
+            (testing "the document-owned card is cloned"
+              (is (some? cloned-card))
+              (is (not= card-id (:id cloned-card))))
+            (testing "the inherited timeline selection is preserved without a fresh read check"
+              (is (= [timeline-id]
+                     (get-in cloned-card [:visualization_settings :timeline.selected_timeline_ids]))))))))))
+
 (deftest post-document-draft-native-card-still-requires-native-perms-test
   (testing "POST /api/document/ - client-supplied draft native cards still require native query perms"
     (mt/with-non-admin-groups-no-root-collection-perms
