@@ -25,11 +25,6 @@
    and an unbounded dump would crowd out the rest of the agent's context."
   500)
 
-(defn- exception-message
-  "The message `e` carries under `::common/message`, else its exception message as text to clean."
-  [e]
-  (or (::common/message (ex-data e)) (ex-message e)))
-
 (defn- with-schema-detail
   "`e` with its humanized schema explanation folded into its message, or unchanged when it carries
    none. The rewrapped exception keeps `e`'s data and cause, and carries the new message under
@@ -40,7 +35,7 @@
   (if-let [humanized (:humanized (ex-data e))]
     (common/message-ex-info
      (message/msg ["%s Invalid at %s. Fix the named paths, or call `learn` with \"query-dialect\" for the clause shapes."]
-                  (exception-message e)
+                  (common/exception-message e)
                   (common/ellipsize (common/humanize-detail humanized) max-schema-detail-length))
      (ex-data e)
      (ex-cause e))
@@ -51,7 +46,7 @@
    rewrapped exception keeps `e`'s data and cause, and carries the new message under `::common/message`."
   [^clojure.lang.ExceptionInfo e]
   (if-let [hint (v2.recovery-hints/recovery-hint (ex-data e))]
-    (common/message-ex-info (message/msg ["%s" "%s"] (exception-message e) hint)
+    (common/message-ex-info (message/msg ["%s" "%s"] (common/exception-message e) hint)
                             (ex-data e)
                             (ex-cause e))
     e))
@@ -100,7 +95,7 @@
       (if (:agent-error? (ex-data e))
         (common/throw-teaching-error
          (message/msg ["`definition` could not be resolved: %s %s"]
-                      (common/ellipsize (exception-message e) 300)
+                      (common/ellipsize (common/exception-message e) 300)
                       hint))
         (throw e)))))
 

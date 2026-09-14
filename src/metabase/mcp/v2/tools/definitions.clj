@@ -135,7 +135,7 @@
     (catch Exception e
       (common/throw-teaching-error
        (message/msg ["`definition` is not a valid MBQL query: %s %s"]
-                    (common/ellipsize (ex-message e) 300) (accepted-shapes kind))))))
+                    (common/ellipsize (common/exception-message e) 300) (accepted-shapes kind))))))
 
 ;; measure_write is deliberately MBQL-5-only, stricter than POST /api/measure — that endpoint's
 ;; schema still decodes legacy MBQL, but that is a back-compatibility affordance, not an agent path
@@ -251,7 +251,7 @@
           (or (contains? data :cycle-path)
               (contains? data :segment-id)
               (contains? data :measure-id))
-          (common/throw-teaching-error (message/msg ["%s"] (ex-message e)))
+          (common/throw-teaching-error (message/msg ["%s"] (common/exception-message e)))
 
           :else
           (throw e))))))
