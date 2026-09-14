@@ -1,5 +1,4 @@
 import { useDisclosure } from "@mantine/hooks";
-import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
@@ -8,8 +7,6 @@ import { MultiStageFilterPicker } from "metabase/querying/filters/components/Fil
 import { Badge, Button, Icon, Popover, Tooltip } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-
-import ViewTitleHeaderS from "./EditTableDataFilterButton.module.css";
 
 interface EditTableDataFilterButtonProps {
   className?: string;
@@ -45,7 +42,7 @@ export function EditTableDataFilterButton({
       <Popover opened={isOpened} position="bottom-start" onDismiss={close}>
         <Popover.Target>
           <Button
-            className={cx(className, ViewTitleHeaderS.FilterButton)}
+            className={className}
             leftSection={<Icon name={hasFilters ? "filter_plus" : "filter"} />}
             onClick={toggle}
             data-testid="table-edit-filter-header"

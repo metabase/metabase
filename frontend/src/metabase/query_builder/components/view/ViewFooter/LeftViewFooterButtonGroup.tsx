@@ -57,7 +57,7 @@ export const LeftViewFooterButtonGroup = () => {
           aria-pressed={isShowingChartTypeSidebar}
           onClick={handleVizTypeClick}
         >
-          <span className={cx(CS.hide, CS.smShow)}>{t`Visualization`}</span>
+          {t`Visualization`}
         </Button>
         <Button
           variant="light"

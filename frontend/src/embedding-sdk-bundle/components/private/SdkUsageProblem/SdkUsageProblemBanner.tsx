@@ -97,7 +97,6 @@ export const SdkUsageProblemBanner = ({
             <Flex w="100%" justify="end" mt="sm" columnGap="lg">
               <Button
                 variant="subtle"
-                color="brand"
                 onClick={() => {
                   dispatch(setUsageProblem(null));
                 }}

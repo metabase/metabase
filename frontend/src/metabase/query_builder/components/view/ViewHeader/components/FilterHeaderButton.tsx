@@ -54,7 +54,6 @@ export function FilterHeaderButton({
       <Popover opened={isOpened} position="bottom-start" onDismiss={close}>
         <Popover.Target>
           <Button
-            className={ViewTitleHeaderS.FilterButton}
             classNames={{
               root: ViewTitleHeaderS.ActionButtonRoot,
               label: ViewTitleHeaderS.ActionButtonLabel,

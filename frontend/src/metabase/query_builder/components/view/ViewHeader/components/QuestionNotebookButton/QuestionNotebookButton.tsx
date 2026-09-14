@@ -36,7 +36,6 @@ export function QuestionNotebookButton({
   return (
     <Button
       data-testid="notebook-button"
-      className={ViewTitleHeaderS.NotebookButton}
       classNames={{
         root: ViewTitleHeaderS.ActionButtonRoot,
         label: ViewTitleHeaderS.ActionButtonLabel,
