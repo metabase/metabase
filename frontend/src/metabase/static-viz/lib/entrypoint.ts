@@ -9,7 +9,6 @@ import type {
   CustomVizPluginId,
   DashCardVisualizationSettings,
   RawSeries,
-  SettingKey,
 } from "metabase-types/api";
 
 import type { RenderChartOptions, RenderedChart } from "../types";
@@ -20,11 +19,7 @@ import type { RenderChartOptions, RenderedChart } from "../types";
  */
 export function initializeContext(options: RenderChartOptions) {
   MetabaseSettings.set("token-features", options.tokenFeatures);
-  MetabaseSettings.set(
-    // Unjustified type cast. FIXME
-    "application-colors" as SettingKey,
-    options.applicationColors,
-  );
+  MetabaseSettings.set("application-colors", options.applicationColors);
   // The app loads the instance's colors from the page bootstrap, which this
   // context has no access to. Without them, a palette color looked up by name
   // would resolve to the default value rather than the instance's.
