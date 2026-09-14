@@ -45,8 +45,15 @@
 (def ^:private job-key     "metabase.task.upgrade-checks.job")
 (def ^:private trigger-key "metabase.task.upgrade-checks.trigger")
 
+(defn- rand-hours
+  "Give a random hour plus the hours 6, 12, and 18 hours away, i.e. one of [0 6 12 18], [1 7 13 19], etc"
+  []
+  (let [hour-1 (rand-int 24)]
+    (mapv #(mod (+ hour-1 %) 24) [0 6 12 18])))
+
 (defmethod task/init! ::CheckForNewVersions [_]
-  (let [rand-minute (rand-int 60)
+  (let [[h1 h2 h3 h4] (rand-hours)
+        rand-minute (rand-int 60)
         job     (jobs/build
                  (jobs/of-type CheckForNewVersions)
                  (jobs/with-identity (jobs/key job-key)))
@@ -54,6 +61,6 @@
                  (triggers/with-identity (triggers/key trigger-key))
                  (triggers/start-now)
                  (triggers/with-schedule
-                  ;; run every hour, at a random minute to spread load
-                  (cron/cron-schedule (format "0 %d * * * ? *" rand-minute))))]
+                  ;; run every 6 hours, at a random hour/minute offset to spread load
+                  (cron/cron-schedule (format "0 %d %d,%d,%d,%d * * ? *" rand-minute h1 h2 h3 h4))))]
     (task/schedule-task! job trigger)))
