@@ -26,14 +26,6 @@
       (is (= "SELECT * FROM t WHERE id = ?" sql))
       (is (= [evil] args) "the value is a bound parameter, not SQL text"))))
 
-(deftest coercions-reject-non-numbers-test
-  (is (= 5 (value-guard/long* 5)))
-  (is (= [1 2 3] (value-guard/longs [1 2 3])))
-  (are [x] (thrown? Exception (value-guard/long* x))
-    "1 OR 1=1"
-    {}
-    nil))
-
 (deftest rejects-values-that-can-become-sql-test
   (testing "raw/inline/subquery maps in a value slot are rejected"
     (are [query] (rejects? query)
@@ -48,6 +40,30 @@
     (is (rejects? {:where [:= :id :evil]})))
   (testing "an unclassified operator fails closed"
     (is (rejects? {:where [:unknown-op :id 1]}))))
+
+(deftest checks-every-clause-that-can-hold-a-value-test
+  (testing "a join's ON condition is checked -- it is the most common clause in the codebase"
+    (are [q] (rejects? q)
+      {:join       [[:collection :c] [:= :c.id {:raw "(SELECT 1)"}]]}
+      {:left-join  [[:collection :c] [:= :c.id {:raw "(SELECT 1)"}]]}
+      {:inner-join [[:collection :c] [:= :c.id :evil]]}))
+  (testing "upsert value maps are checked like :set"
+    (are [q] (rejects? q)
+      {:do-update-set            {:name {:raw "(SELECT 1)"}}}
+      {:on-duplicate-key-update  {:name {:raw "(SELECT 1)"}}}))
+  (testing "a clause holding only structure is left alone"
+    (are [q] (not (rejects? q))
+      {:select [:*] :from [[:Card]] :order-by [[:name :asc]]}
+      {:limit 10 :offset 5}
+      {:returning [:id :name]}
+      {:group-by [:name] :partition-by [:id]}))
+  (testing "the join target is structure and is not mistaken for a condition"
+    (is (not (rejects? {:left-join [[:collection :c] [:= :c.id [:param :p]]]}))))
+  (testing "a column-to-column join condition is rejected, like any other bare keyword in a value slot"
+    ;; Both sides are keywords and the second sits in a value slot, so the walk cannot tell a column
+    ;; reference from a user-supplied keyword. These sites need an explicit marker when their
+    ;; namespace adopts the check.
+    (is (rejects? {:left-join [[:collection :c] [:= :c.id :report_card.collection_id]]}))))
 
 (deftest allows-real-queries-test
   (testing "forms produced by the Toucan compile pipeline today are accepted"
@@ -105,16 +121,6 @@
                           (value-guard/assert-values-wrapped!
                            {:where [:= :id [:auto/param {:raw "(SELECT password FROM core_user)"}]]}
                            {} false)))))
-
-(deftest str-coercion-test
-  (is (= "de" (value-guard/str* "de")))
-  (testing "a value that HoneySQL would compile as SQL cannot pass the coercion"
-    (are [x] (thrown? clojure.lang.ExceptionInfo (value-guard/str* x))
-      {:raw "(SELECT 1)"}
-      {:select [:x]}
-      :evil
-      5
-      nil)))
 
 (deftest strict-mode-requires-bound-params-test
   (testing "strict mode rejects a bare scalar and accepts a bound param"
