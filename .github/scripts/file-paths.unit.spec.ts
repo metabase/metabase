@@ -125,4 +125,8 @@ describe("file-paths.yaml", () => {
   it("runs CI-script tests when the story inventory changes", () => {
     expect(matches("ci_scripts", ".storybook/story-files.cjs")).toBe(true);
   });
+
+  it("runs CI-script tests when the Loki workflow changes", () => {
+    expect(matches("ci_scripts", ".github/workflows/loki.yml")).toBe(true);
+  });
 });

@@ -115,6 +115,7 @@ ci_scripts:
   - ".github/file-paths.yaml"
   - ".github/scripts/**"
   - ".github/actions/**"
+  - ".github/workflows/loki.yml"
   - ".storybook/story-files.cjs"
   - "frontend/lint/module-boundaries.mjs"
   - "frontend/lint/shared-tiers.mjs"

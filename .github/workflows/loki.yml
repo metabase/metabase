@@ -6,8 +6,8 @@ on:
       skip:
         type: boolean
         default: false
-      story-files:
-        description: "JSON array of story files to run, '' to run the full suite."
+      test-plan-artifact-id:
+        description: "ID of this run's test-plan.json artifact, '' to run the full suite."
         type: string
         default: ""
 
@@ -16,8 +16,39 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  story-selection:
+    if: ${{ !inputs.skip && inputs.test-plan-artifact-id != '' }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    outputs:
+      count: ${{ steps.selection.outputs.count }}
+      test-plan-artifact-id: ${{ steps.selection.outputs.paths-file && inputs.test-plan-artifact-id || '' }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            .github
+            /package.json
+          sparse-checkout-cone-mode: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: "package.json"
+      - name: Download test plan
+        id: test-plan
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          artifact-ids: ${{ inputs.test-plan-artifact-id }}
+          path: ${{ runner.temp }}/test-plan
+      - name: Prepare Loki story selection
+        id: selection
+        env:
+          PLAN_DOWNLOADED: ${{ steps.test-plan.outcome }}
+        run: bun .github/scripts/prepare-test-selection.ts loki
+
   visual-test:
-    if: ${{ !inputs.skip && inputs.story-files != '[]' }}
+    needs: story-selection
+    if: ${{ !cancelled() && !inputs.skip && needs.story-selection.outputs.count != '0' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     services:
@@ -45,18 +76,30 @@ jobs:
       - name: Compile CLJS
         run: NODE_ENV=development bun run build-pure:cljs
 
+      - name: Download test plan
+        id: test-plan
+        if: ${{ needs.story-selection.outputs.test-plan-artifact-id != '' }}
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          artifact-ids: ${{ needs.story-selection.outputs.test-plan-artifact-id }}
+          path: ${{ runner.temp }}/test-plan
+
+      - name: Prepare Loki story selection
+        id: selection
+        if: ${{ needs.story-selection.outputs.test-plan-artifact-id != '' }}
+        env:
+          PLAN_DOWNLOADED: ${{ steps.test-plan.outcome }}
+        run: bun .github/scripts/prepare-test-selection.ts loki
+
       - name: Build Storybook
         env:
-          STORYBOOK_STORY_PATHS_FILE: ${{ inputs.story-files && 'loki-story-files.json' || '' }}
-        run: |
-          cat > loki-story-files.json <<'EOF'
-          ${{ inputs.story-files }}
-          EOF
-          bun run build-storybook
+          STORYBOOK_STORY_PATHS_FILE: ${{ steps.selection.outputs.paths-file }}
+        run: bun run build-storybook
 
       - name: Run Loki Visual Tests
         # All selected stories can have parameters.loki.skip set.
-        run: bun run test-visual:loki --reactUri file:./storybook-static --verboseRenderer ${{ inputs.story-files && '--passWithNoStories' || '' }}
+        run: bun run test-visual:loki --reactUri file:./storybook-static --verboseRenderer ${{ steps.selection.outputs.paths-file && '--passWithNoStories' || '' }}
 
       - name: Generate Visual Report on Failure
         if: failure()

@@ -131,7 +131,7 @@ jobs:
         if: ${{ inputs.test-plan-artifact-id != '' }}
         env:
           PLAN_DOWNLOADED: ${{ steps.test-plan.outcome }}
-        run: bun .github/scripts/prepare-unit-test-selection.ts
+        run: bun .github/scripts/prepare-test-selection.ts unit
       - name: Run frontend unit tests
         id: fe-tests
         env:
