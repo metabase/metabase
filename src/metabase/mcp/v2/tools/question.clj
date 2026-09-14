@@ -138,7 +138,9 @@
     (throw (ex-info (format (str "Saving a native (SQL) query requires the %s scope — this token can "
                                  "write content but not author raw SQL.")
                             metabot.scope/agent-sql-run)
-                    {:status-code 403 ::common/error-code common/error-code-invalid-request})))
+                    {:status-code            403
+                     ::common/error-code     common/error-code-invalid-request
+                     ::common/required-scope metabot.scope/agent-sql-run})))
   (v2.queries/check-execute-sql-enabled! "Saving a native (SQL) query"))
 
 (defn- resolve-query-source

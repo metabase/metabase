@@ -371,7 +371,9 @@
     (throw (ex-info (format (str "%s runs its question and delivers the results, which requires the %s scope — "
                                  "this token can manage alerts but not execute queries.")
                             action metabot.scope/agent-query-run)
-                    {:status-code 403 ::common/error-code common/error-code-invalid-request}))))
+                    {:status-code            403
+                     ::common/error-code     common/error-code-invalid-request
+                     ::common/required-scope metabot.scope/agent-query-run}))))
 
 (defn- execute-scope-trigger
   "The reason [[check-query-execute-scope!]] should refuse `updates` with, or nil when the update

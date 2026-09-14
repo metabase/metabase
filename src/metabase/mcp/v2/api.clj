@@ -43,6 +43,15 @@
   (let [supports-mcp-ui? (mcp.session/supports-mcp-ui? session-id)]
     (transport/jsonrpc-response id {:tools (registry/list-tools {:supports-mcp-ui? supports-mcp-ui?})})))
 
+(defn- step-up-scopes
+  "The `scope` an `insufficient_scope` challenge asks for: the `surface-scopes` that `token-scopes` holds or `required`
+   names, in `surface-scopes` order, then any `required` scope outside the surface, sorted. No scope repeats."
+  [surface-scopes token-scopes required]
+  ;; The held scopes ride along because a client may replace its grant with the challenged scope.
+  (let [wanted (into (set (filter string? token-scopes)) required)]
+    (into (filterv wanted surface-scopes)
+          (sort (distinct (remove (set surface-scopes) required))))))
+
 (defn- handle-tools-call [id params session-id token-scopes request-context]
   (let [tool-name        (:name params)
         arguments        (or (:arguments params) {})
@@ -58,8 +67,13 @@
                             {:client-info      client-info
                              :supports-mcp-ui? supports-mcp-ui?
                              :request-context  request-context})]
-    (if-let [{:keys [code message]} error]
-      (transport/jsonrpc-error id code message)
+    (if-let [{:keys [code message insufficient-scope]} error]
+      (cond-> (transport/jsonrpc-error id code message)
+        insufficient-scope (transport/insufficient-scope
+                            (step-up-scopes mcp.paths/v2-surface-scopes
+                                            token-scopes
+                                            [(:required-scope insufficient-scope)])
+                            (:description insufficient-scope)))
       (transport/jsonrpc-response id result))))
 
 (defn- handle-resources-list [id _params token-scopes]

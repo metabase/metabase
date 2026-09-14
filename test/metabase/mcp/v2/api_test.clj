@@ -713,5 +713,139 @@
                  (testing "a tool inside the granted scope (agent:content:read) is served"
                    (is (not (get-in (call! "test_echo") [:body :result :isError]))))
                  (testing "a tool gated on a scope the token lacks (agent:content:write) is refused at call time"
-                   (is (str/starts-with? (get-in (call! "scope_probe_write") [:body :error :message])
-                                         "Insufficient scope to call tool: scope_probe_write."))))))))))))
+                   (let [response (client/client-full-response
+                                   :post 403 endpoint
+                                   {:request-options {:headers (assoc headers "mcp-session-id" session-id)}}
+                                   (jsonrpc-request "tools/call" {:name "scope_probe_write" :arguments {}}))]
+                     (is (str/starts-with? (get-in response [:body :error :message])
+                                           "Insufficient scope to call tool: scope_probe_write.")))))))))))))
+
+;;; ------------------------------------------- Insufficient-scope step-up -----------------------------------------
+
+(deftest ^:parallel step-up-scopes-test
+  (let [step-up-scopes #'v2.api/step-up-scopes
+        surface        ["s:a" "s:b" "s:c" "s:d"]]
+    (testing "GHY-4543: the challenge asks for the surface scopes the token holds plus the required one, in surface
+              order, so a client that replaces its scope with the challenged one keeps what it had"
+      (is (= ["s:a" "s:c" "s:d"] (step-up-scopes surface #{"s:d" "s:a"} ["s:c"]))))
+    (testing "held scopes outside the surface, and the unrestricted sentinel, are not echoed back"
+      (is (= ["s:b"] (step-up-scopes surface #{"agent:question:create" :metabase.api.macros.scope/unrestricted}
+                                     ["s:b"]))))
+    (testing "a required scope the token already holds is not repeated"
+      (is (= ["s:a" "s:b"] (step-up-scopes surface #{"s:a" "s:b"} ["s:b" "s:b"]))))
+    (testing "a required scope outside the surface still reaches the challenge, after the surface scopes, sorted"
+      (is (= ["s:a" "x:y" "x:z"] (step-up-scopes surface #{"s:a"} ["x:z" "x:y"]))))
+    (testing "no token scopes at all yields just the required ones"
+      (is (= ["s:c"] (step-up-scopes surface nil ["s:c"]))))))
+
+(defn- bearer-session-post!
+  "Handshake with bearer `headers` and return a fn `(post! expected-status body & {:keys [path headers]})` that POSTs
+  within that session."
+  [headers]
+  (let [session-id (-> (client/client-full-response :post 200 endpoint
+                                                    {:request-options {:headers headers}}
+                                                    (jsonrpc-request "initialize" {:capabilities {}}))
+                       (get-in [:headers "Mcp-Session-Id"]))]
+    (fn [expected-status body & {:keys [path extra-headers] :or {path endpoint}}]
+      (client/client-full-response :post expected-status path
+                                   {:request-options {:headers (merge headers
+                                                                      {"mcp-session-id" session-id}
+                                                                      extra-headers)}}
+                                   body))))
+
+(def ^:private metadata-url
+  "http://localhost:3000/.well-known/oauth-protected-resource")
+
+(deftest scope-denial-is-a-403-insufficient-scope-challenge-test
+  (testing "GHY-4543: a scope denial must be a real HTTP 403 carrying an `insufficient_scope` WWW-Authenticate
+            challenge (MCP authorization spec, runtime insufficient scope). Claude Code only records a step-up
+            scope, and mcp-remote only starts a step-up, on that response; an in-body error over HTTP 200 does
+            neither."
+    (do-with-bearer-token!
+     #{"agent:content:read" "agent:question:create"}
+     (fn [headers]
+       (let [post! (bearer-session-post! headers)
+             denied (jsonrpc-request "tools/call" {:name "execute_sql" :arguments {}})]
+         (testing "a registry-gated tool the token lacks the scope for"
+           (let [response (post! 403 denied)]
+             (is (= 403 (:status response)))
+             (is (= (str "Bearer error=\"insufficient_scope\", "
+                         "scope=\"agent:content:read agent:sql:run\", "
+                         "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
+                         "error_description=\"execute_sql requires agent:sql:run "
+                         "(Write and run its own raw SQL on your connected databases)\"")
+                    (get-in response [:headers "WWW-Authenticate"]))
+                 "scope is the held v2 scopes plus the required one; the legacy non-v2 scope is not echoed")
+             (testing "the body is still the JSON-RPC error, for clients that read it"
+               (is (= "application/json" (get-in response [:headers "Content-Type"])))
+               (is (= #{:jsonrpc :id :error} (set (keys (:body response))))
+                   "no transport-internal marker leaks into the body")
+               (is (= 1 (get-in response [:body :id])))
+               (is (= -32600 (get-in response [:body :error :code])))
+               (is (str/starts-with? (get-in response [:body :error :message])
+                                     "Insufficient scope to call tool: execute_sql.")))))
+         (testing "resource_metadata names the alias the client connected through, as the 401 challenge does"
+           (is (str/includes? (get-in (post! 403 denied :path "mcp") [:headers "WWW-Authenticate"] "")
+                              (str "resource_metadata=\"" metadata-url "/api/mcp\""))))
+         (testing "a client that accepts SSE gets the same 403 challenge"
+           (let [response (post! 403 denied :extra-headers {"accept" "application/json, text/event-stream"})]
+             (is (= 403 (:status response)))
+             (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "") "error=\"insufficient_scope\""))))
+         (testing "an allowed call is still a plain 200"
+           (let [response (post! 200 (jsonrpc-request "tools/call" {:name "test_echo" :arguments {}}))]
+             (is (= 200 (:status response)))
+             (is (nil? (get-in response [:headers "WWW-Authenticate"])))
+             (is (= {:ok true :message "pong"} (get-in response [:body :result :structuredContent])))))
+         (testing "a batch keeps HTTP 200 with the denial in band, since one status cannot describe mixed results"
+           (doseq [[label batch] {"denied call and a ping"     [denied (assoc (jsonrpc-request "ping") :id 2)]
+                                  "a batch of one denied call" [denied]}]
+             (testing label
+               (let [response (post! 200 batch)]
+                 (is (= 200 (:status response)))
+                 (is (nil? (get-in response [:headers "WWW-Authenticate"])))
+                 (is (sequential? (:body response)))
+                 (is (= -32600 (:code (:error (first (filter #(= 1 (:id %)) (:body response)))))))
+                 (is (every? #(= #{:jsonrpc :id} (disj (set (keys %)) :error :result)) (:body response))
+                     "no transport-internal marker leaks into a batch element"))))))))))
+
+(deftest in-handler-scope-denial-is-a-403-insufficient-scope-challenge-test
+  (testing "GHY-4543: the scope checks inside tool handlers (here alert_write's deferred agent:query:run check) answer
+            with the same 403 challenge as the registry gate, naming their own required scope"
+    (mt/with-temp [:model/Card {card-id :id} {}]
+      (do-with-bearer-token!
+       #{"agent:content:read" "agent:delivery:write"}
+       (fn [headers]
+         (let [post!    (bearer-session-post! headers)
+               response (post! 403 (jsonrpc-request "tools/call"
+                                                    {:name      "alert_write"
+                                                     :arguments {:method   "create"
+                                                                 :card_id  card-id
+                                                                 :schedule {:schedule_type "daily" :schedule_hour 9}}}))]
+           (is (= 403 (:status response)))
+           (is (= (str "Bearer error=\"insufficient_scope\", "
+                       "scope=\"agent:content:read agent:query:run agent:delivery:write\", "
+                       "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
+                       "error_description=\"alert_write requires agent:query:run "
+                       "(Run queries against your connected databases and see the results)\"")
+                  (get-in response [:headers "WWW-Authenticate"])))
+           (is (= -32600 (get-in response [:body :error :code])))
+           (is (re-find #"requires the agent:query:run scope" (get-in response [:body :error :message])))
+           (is (zero? (t2/count :model/NotificationCard :card_id card-id))
+               "and nothing was created")))))))
+
+(deftest unscoped-callers-never-get-an-insufficient-scope-challenge-test
+  (testing "GHY-4543: a cookie session is stamped unrestricted, so a tool gated on any scope is served over 200"
+    (do-with-temp-tool!
+     {:name        "scope_probe_sql"
+      :scope       metabot.scope/agent-sql-run
+      :description "test-only tool gated on agent:sql:run"
+      :annotations {:readOnlyHint true}
+      :args        [:map]
+      :handler     (fn [_ _] {:content [{:type "text" :text "served"}]})}
+     (fn []
+       (let [[session-id] (initialize!)
+             response     (mcp-request (jsonrpc-request "tools/call" {:name "scope_probe_sql" :arguments {}})
+                                       {"mcp-session-id" session-id})]
+         (is (= 200 (:status response)))
+         (is (nil? (get-in response [:headers "WWW-Authenticate"])))
+         (is (= "served" (-> response :body :result :content first :text))))))))

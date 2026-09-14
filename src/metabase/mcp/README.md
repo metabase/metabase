@@ -62,6 +62,10 @@ Access tokens are scoped to limit what tools a client can use:
 
 Wildcard patterns (e.g. `agent:*`) match any scope with that prefix.
 
+A tool call the token lacks a scope for is refused with HTTP 403 and a
+`WWW-Authenticate: Bearer error="insufficient_scope"` challenge whose `scope` lists the v2 scopes the token already
+holds plus the one required, so a client can step up. Inside a JSON-RPC batch the refusal is an in-band error instead.
+
 OAuth protected resource metadata is available at:
 
 ```

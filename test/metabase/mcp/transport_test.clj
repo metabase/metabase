@@ -800,6 +800,25 @@
                         nil]]
         (is (= response (redact response)))))))
 
+(deftest ^:parallel insufficient-scope-challenge-test
+  (let [challenge #'mcp.transport/insufficient-scope-challenge
+        url       "http://localhost:3000/.well-known/oauth-protected-resource/api/metabase-mcp"]
+    (testing "GHY-4543: the runtime challenge carries the four parameters the MCP authorization spec names, comma-separated"
+      (is (= (str "Bearer error=\"insufficient_scope\", "
+                  "scope=\"agent:content:read agent:sql:run\", "
+                  "resource_metadata=\"" url "\", "
+                  "error_description=\"execute_sql requires agent:sql:run\"")
+             (challenge url ["agent:content:read" "agent:sql:run"] "execute_sql requires agent:sql:run"))))
+    (testing "quotes and backslashes are escaped, so the description cannot close its quoted-string early"
+      (is (str/ends-with? (challenge url ["a"] "say \"hi\" \\ bye")
+                          "error_description=\"say \\\"hi\\\" \\\\ bye\"")))
+    (testing "characters outside printable ASCII are replaced, since header values are not reliably UTF-8"
+      (is (str/ends-with? (challenge url ["a"] "café — ok\r\nX-Injected: 1")
+                          "error_description=\"caf? ? ok??X-Injected: 1\"")))
+    (testing "without a description the parameter is omitted"
+      (is (= (str "Bearer error=\"insufficient_scope\", scope=\"a b\", resource_metadata=\"" url "\"")
+             (challenge url ["a" "b"] nil))))))
+
 (deftest legacy-scoped-bearer-token-never-yields-an-empty-tool-list-test
   (testing (str "GHY-4343: `/api/metabase-mcp` now serves the v2 tool surface, but every MCP client connected to a "
                 "shipped v0.60-v0.63 release holds a token carrying the pre-v2 per-entity agent scopes. No legacy "
@@ -830,13 +849,16 @@
                                                                    (headers "mcp-session-id" sid)
                                                                    (jsonrpc-request "tools/list" {} 2))
                                 tools (get-in r [:body :result :tools])
-                                call  (client/client-full-response :post 200 "metabase-mcp"
+                                call  (client/client-full-response :post 403 "metabase-mcp"
                                                                    (headers "mcp-session-id" sid)
                                                                    (jsonrpc-request "tools/call"
                                                                                     {:name (:name (first tools)) :arguments {}}
                                                                                     3))]
                             (is (= 200 (:status r)))
                             (is (seq tools))
+                            (is (= 403 (:status call)))
+                            (is (str/includes? (get-in call [:headers "WWW-Authenticate"] "")
+                                               "error=\"insufficient_scope\""))
                             (is (str/starts-with? (get-in call [:body :error :message] "")
                                                   "Insufficient scope to call tool: "))))
                 ;; Then put the token in the state `RevokeLegacyMcpOAuthTokens` leaves it in. The migration

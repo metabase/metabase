@@ -3,7 +3,8 @@
 
   Owns everything transport-level: JSON-RPC 2.0 framing (single messages and batches), the `initialize` handshake and
   session issuance, origin validation (DNS-rebinding protection), cookie/bearer auth resolution, per-user throttling,
-  SSE responses and the GET keepalive stream, and OAuth discovery hints on 401s."
+  SSE responses and the GET keepalive stream, OAuth discovery hints on 401s, and
+  `insufficient_scope` challenges on 403s."
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
@@ -50,6 +51,13 @@
   "Build a JSON-RPC 2.0 error response for request `id`."
   [id code message]
   {:jsonrpc "2.0" :id id :error {:code code :message message}})
+
+(defn insufficient-scope
+  "Mark `error-response` (a [[jsonrpc-error]]) as a refusal for scopes the token lacks. As the only response to a
+   non-batched POST it is sent with HTTP 403 and an `insufficient_scope` challenge asking for `scopes` (a sequence,
+   in order) and explaining `description`; in a batch it is an ordinary in-band error."
+  [error-response scopes description]
+  (assoc error-response ::insufficient-scope {:scopes scopes :description description}))
 
 (defn- handle-initialize
   "Handle the MCP `initialize` method: log the connecting client and return the handshake result.
@@ -183,6 +191,38 @@
                     extra-headers)
     :body    (sse-body messages)}))
 
+;;; ---------------------------------------------- OAuth challenges ------------------------------------------------
+
+(defn- resource-metadata-url
+  "The RFC 9728 protected-resource metadata URL for the path `request` hit: an alias in `endpoint-paths` names
+   itself, any other path names `default-path`."
+  [endpoint-paths default-path request]
+  ;; Routing matches on the first path segment, so a trailing slash (e.g. `/api/metabase-mcp/`) still
+  ;; reaches the handler — strip it so the alias is recognized rather than falling back to canonical.
+  (let [uri  (str/replace (:uri request) #"/+$" "")
+        path (if (contains? endpoint-paths uri) uri default-path)]
+    (str (system/site-url) "/.well-known/oauth-protected-resource" path)))
+
+(defn- quoted-string
+  "`s` as an RFC 7230 quoted-string: `\"` and `\\` are backslash-escaped, and every character outside printable
+   ASCII becomes `?`."
+  [s]
+  (str "\""
+       (-> (str s)
+           (str/replace #"[^\x20-\x7E]" "?")
+           (str/replace #"[\"\\]" "\\\\$0"))
+       "\""))
+
+(defn- insufficient-scope-challenge
+  "The RFC 6750 `insufficient_scope` `WWW-Authenticate` value asking for `scopes` (a sequence, emitted in order),
+   pointing at `metadata-url`, with `description` as `error_description` when non-nil."
+  [metadata-url scopes description]
+  (str "Bearer error=\"insufficient_scope\""
+       ", scope=" (quoted-string (str/join " " scopes))
+       ", resource_metadata=" (quoted-string metadata-url)
+       (when description
+         (str ", error_description=" (quoted-string description)))))
+
 ;;; ------------------------------------------------- Validation --------------------------------------------------
 
 (defn- normalize-authority
@@ -298,7 +338,7 @@
 
 (defn- handle-post
   "Handle a POST request containing one or more JSON-RPC messages."
-  [{:keys [dispatch-method-fn capabilities instructions]} user-id request]
+  [{:keys [dispatch-method-fn capabilities instructions endpoint-paths default-path]} user-id request]
   (let [body            (walk/keywordize-keys (:body request))
         session-id      (get-in request [:headers "mcp-session-id"])
         eval-session-id (eval-session-override request)
@@ -378,10 +418,22 @@
                                                                      eval-session-id)]
                                       (when-not (notification? msg)
                                         response))))
-                responses       (into [] (keep handle-msg) messages)]
+                responses       (into [] (keep handle-msg) messages)
+                ;; One HTTP status cannot describe a batch's mixed outcomes, so only a single message's refusal
+                ;; becomes a 403.
+                shortfall       (when-not batch? (::insufficient-scope (first responses)))
+                responses       (mapv #(dissoc % ::insufficient-scope) responses)]
             (cond
               (empty? responses)
               {:status 202 :headers {} :body ""}
+
+              ;; JSON regardless of Accept, like the transport's other error statuses.
+              shortfall
+              (json-response 403 (first responses)
+                             {"WWW-Authenticate" (insufficient-scope-challenge
+                                                  (resource-metadata-url endpoint-paths default-path request)
+                                                  (:scopes shortfall)
+                                                  (:description shortfall))})
 
               (accepts-sse? request)
               (sse-response responses)
@@ -599,19 +651,15 @@
 
    `default-ask-scopes`, when non-empty, is emitted as the challenge's `scope` parameter."
   [endpoint-paths default-path default-ask-scopes request]
-  ;; Routing matches on the first path segment, so a trailing slash (e.g. `/api/metabase-mcp/`) still
-  ;; reaches the handler — strip it so the alias is recognized rather than falling back to canonical.
-  (let [uri  (str/replace (:uri request) #"/+$" "")
-        path (if (contains? endpoint-paths uri) uri default-path)]
-    ;; Comma-separated per RFC 7235's `#auth-param`. Both MCP SDKs currently pull each parameter
-    ;; with an unanchored per-field regex and would accept spaces, but every spec and vendor example
-    ;; uses commas and the stricter parsers proposed upstream would not.
-    (str "Bearer realm=\"mcp\", resource_metadata=\"" (system/site-url) "/.well-known/oauth-protected-resource" path "\""
-         ;; A client that reads this prefers it over the resource metadata's `scopes_supported`,
-         ;; which is what lets a surface ask for less than it accepts: the wider set stays
-         ;; advertised and requestable, this is only what an uninstructed client asks for.
-         (when (seq default-ask-scopes)
-           (str ", scope=\"" (str/join " " default-ask-scopes) "\"")))))
+  ;; Comma-separated per RFC 7235's `#auth-param`. Both MCP SDKs currently pull each parameter
+  ;; with an unanchored per-field regex and would accept spaces, but every spec and vendor example
+  ;; uses commas and the stricter parsers proposed upstream would not.
+  (str "Bearer realm=\"mcp\", resource_metadata=\"" (resource-metadata-url endpoint-paths default-path request) "\""
+       ;; A client that reads this prefers it over the resource metadata's `scopes_supported`,
+       ;; which is what lets a surface ask for less than it accepts: the wider set stays
+       ;; advertised and requestable, this is only what an uninstructed client asks for.
+       (when (seq default-ask-scopes)
+         (str ", scope=\"" (str/join " " default-ask-scopes) "\""))))
 
 (defn make-handler
   "Build a Ring async handler for one MCP surface. Uses JSON-RPC 2.0 over HTTP rather than REST,
@@ -620,7 +668,8 @@
    Options:
    - `:dispatch-method-fn` — `(fn [id method params session-id token-scopes request-context])`
      returning a JSON-RPC response map, or nil for notifications. `initialize` is handled by the
-     transport itself and never reaches this fn.
+     transport itself and never reaches this fn. A refusal for missing token scopes should be marked
+     with [[insufficient-scope]] so the transport can answer it with a 403 challenge.
    - `:capabilities` — the server capabilities the `initialize` handshake advertises. Must match
      what `:dispatch-method-fn` actually serves (e.g. advertise `:resources` only when the
      surface dispatches `resources/*`).
@@ -628,8 +677,8 @@
      field, surfaced to the model by clients that support it.
    - `:tools-hash-fn` — `(fn [])` returning a stable hash of the listed tool set,
      polled by the GET/SSE keepalive to emit `notifications/tools/list_changed`.
-   - `:endpoint-paths` — the URL paths (relative to site-url) the 401 `WWW-Authenticate`
-     challenge matches the request URI against. NOT necessarily all served by this surface:
+   - `:endpoint-paths` — the URL paths (relative to site-url) the 401 and 403 `WWW-Authenticate`
+     challenges match the request URI against. NOT necessarily all served by this surface:
      during the migration the set includes v1's paths — see [[metabase.mcp.paths/endpoint-paths]].
    - `:default-path` — the canonical path advertised when the request URI matches no entry in
      `:endpoint-paths`.

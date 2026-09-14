@@ -37,7 +37,35 @@
       (is (= (str "Insufficient scope to call tool: test_echo. Requires "
                   (:scope (get @@#'registry/tools* "test_echo"))
                   "; your token holds agent:metadata:read.")
-             (:message error))))))
+             (:message error))))
+    (testing "GHY-4543: and names the scope to step up for, with a description the transport's 403 challenge carries"
+      (let [{:keys [error]} (registry/call-tool #{"agent:metadata:read"} nil "test_echo" {})]
+        (is (= {:required-scope "agent:content:read"
+                :description    (str "test_echo requires agent:content:read "
+                                     "(See your Metabase content and data structure)")}
+               (:insufficient-scope error)))))))
+
+(deftest ^:parallel call-tool-in-handler-scope-denial-test
+  (testing "GHY-4543: a handler's own scope check — a deferred action needing a scope beyond the tool's — is a scope
+            denial like the registry gate's, not an `isError` result, so the transport can answer it with a 403"
+    (mt/with-dynamic-fn-redefs [v2.tu/test-echo (fn [_ _]
+                                                  (throw (ex-info "Doing that requires the agent:query:run scope."
+                                                                  {:status-code          403
+                                                                   ::common/error-code   common/error-code-invalid-request
+                                                                   ::common/required-scope "agent:query:run"})))]
+      (let [records (atom [])
+            outcome (mt/with-dynamic-fn-redefs [mcp.usage/record-mcp-tool-call! #(swap! records conj %)]
+                      (registry/call-tool #{"agent:content:read"} nil "test_echo" {}))]
+        (is (not (contains? outcome :result)))
+        (is (= {:code               common/error-code-invalid-request
+                :message            "Doing that requires the agent:query:run scope."
+                :insufficient-scope {:required-scope "agent:query:run"
+                                     :description    (str "test_echo requires agent:query:run (Run queries against "
+                                                          "your connected databases and see the results)")}}
+               (:error outcome)))
+        (testing "and is logged as an error"
+          (is (= [["error" common/error-code-invalid-request]]
+                 (map (juxt :status :error-code) @records))))))))
 
 (deftest ^:parallel call-tool-success-test
   (testing "a valid call dispatches to the handler; top-level nils are stripped first"
