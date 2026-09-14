@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 
-import { openEmbedJsWizard } from "metabase/embedding/embed-setup-modal.slice";
+import { openEmbedJsWizard } from "metabase/embedding/store/embed-setup-modal";
 import type { SdkIframeEmbedSetupModalInitialState } from "metabase/embedding/types";
 import { useDispatch } from "metabase/redux";
 

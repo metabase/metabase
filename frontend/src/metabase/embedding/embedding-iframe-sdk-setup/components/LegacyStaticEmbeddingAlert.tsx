@@ -1,8 +1,8 @@
 import { c, t } from "ttag";
 
-import { openLegacyStaticEmbeddingModal } from "metabase/embedding/embed-setup-modal.slice";
 import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-iframe-sdk-setup/context";
 import { getResourceTypeFromExperience } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-resource-type-from-experience";
+import { openLegacyStaticEmbeddingModal } from "metabase/embedding/store/embed-setup-modal";
 import { useDispatch } from "metabase/redux";
 import { Alert, Anchor, Icon } from "metabase/ui";
 

@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { openEmbedJsWizard } from "metabase/embedding/embed-setup-modal.slice";
+import { openEmbedJsWizard } from "metabase/embedding/store/embed-setup-modal";
 import type { SdkIframeEmbedSetupModalInitialState } from "metabase/embedding/types";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";

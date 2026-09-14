@@ -3,7 +3,7 @@ import { Suspense, lazy, useCallback, useEffect } from "react";
 import {
   closeEmbedSetupModal,
   getEmbedSetupModal,
-} from "metabase/embedding/embed-setup-modal.slice";
+} from "metabase/embedding/store/embed-setup-modal";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useLocation } from "metabase/router";
 

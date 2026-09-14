@@ -15,7 +15,7 @@ import {
   getUserPersonalCollectionId,
 } from "metabase/current-user";
 import { getHasDatabaseWithActionsEnabled } from "metabase/databases/utils/predicates";
-import { openEmbedJsWizard } from "metabase/embedding/embed-setup-modal.slice";
+import { openEmbedJsWizard } from "metabase/embedding/store/embed-setup-modal";
 import { useDispatch, useSelector } from "metabase/redux";
 import { openDiagnostics } from "metabase/redux/app";
 import type { ModalName } from "metabase/redux/store/modal";

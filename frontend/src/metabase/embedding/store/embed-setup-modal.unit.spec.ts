@@ -3,14 +3,15 @@ import { configureStore } from "@reduxjs/toolkit";
 import { createMockState } from "__support__/state";
 import { modal, setOpenModal } from "metabase/redux/ui";
 
+import type { LegacyStaticEmbeddingModalProps } from "../types";
+
 import {
   closeEmbedSetupModal,
   embedSetupModalReducer,
   getEmbedSetupModal,
   openEmbedJsWizard,
   openLegacyStaticEmbeddingModal,
-} from "./embed-setup-modal.slice";
-import type { LegacyStaticEmbeddingModalProps } from "./types";
+} from "./embed-setup-modal";
 
 const createMockStore = () => {
   return configureStore({

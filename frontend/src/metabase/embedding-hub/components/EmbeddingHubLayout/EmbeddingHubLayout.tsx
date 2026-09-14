@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useUserKeyValue } from "metabase/current-user";
-import { openEmbedJsWizard } from "metabase/embedding/embed-setup-modal.slice";
+import { openEmbedJsWizard } from "metabase/embedding/store/embed-setup-modal";
 import { useEnsureDefaultEmbeddingThemes } from "metabase/embedding/themes/hooks";
 import {
   AreaLayout,

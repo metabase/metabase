@@ -10,7 +10,7 @@ import {
 import type {
   LegacyStaticEmbeddingModalProps,
   SdkIframeEmbedSetupModalInitialState,
-} from "./types";
+} from "../types";
 
 export type EmbedSetupModalState =
   | { modal: null }

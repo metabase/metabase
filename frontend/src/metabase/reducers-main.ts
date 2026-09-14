@@ -6,7 +6,7 @@ import {
 } from "@reduxjs/toolkit";
 
 import { admin } from "metabase/admin/admin";
-import { embedSetupModalReducer } from "metabase/embedding/embed-setup-modal.slice";
+import { embedSetupModalReducer } from "metabase/embedding/store/embed-setup-modal";
 import * as pulse from "metabase/notifications/pulse/reducers";
 import { PLUGIN_REDUCERS } from "metabase/plugins";
 import { queryBuilderReducer } from "metabase/query_builder";
