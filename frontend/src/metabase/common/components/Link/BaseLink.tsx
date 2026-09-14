@@ -49,14 +49,24 @@ function hrefFor(target: To): string {
  * but react-router resolves it against the current route instead, which would
  * nest it. Anchor it so the target does not depend on where the link renders.
  *
- * Left alone: a leading `?` or `#`, which keeps the current path by design, and
- * anything carrying a scheme (`https:`, `mailto:`) or a protocol-relative `//`,
- * which is not a route at all.
+ * Three forms are left alone:
+ *
+ * 1. A leading `?` or `#`, which keeps the current path by design.
+ * 2. Anything carrying a scheme (`https:`, `mailto:`) or a protocol-relative
+ *    `//`, which is not a route at all.
+ * 3. An explicit `.` or `..`, which is route-relative on purpose. `..` means
+ *    "up one level", so a page mounted under more than one route uses it to
+ *    link back to whichever parent it currently sits under. Anchoring it would
+ *    give `/..`, which react-router resolves to `/` — the link would go to the
+ *    home page instead.
  */
 function toRootRelative(pathname: string): string {
   const isAlreadyAnchored = pathname === "" || /^[/?#]/.test(pathname);
   const hasScheme = /^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(pathname);
-  return isAlreadyAnchored || hasScheme ? pathname : `/${pathname}`;
+  const isExplicitlyRelative = /^\.{1,2}(\/|$)/.test(pathname);
+  return isAlreadyAnchored || hasScheme || isExplicitlyRelative
+    ? pathname
+    : `/${pathname}`;
 }
 
 function anchorTarget(to: To): To {

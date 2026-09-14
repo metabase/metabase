@@ -77,7 +77,7 @@ export function TagEditorSidebar({
   return (
     <SidebarContent title={t`Variables and parameters`} onClose={onClose}>
       <div data-testid="tag-editor-sidebar">
-        <Tabs radius={0} value={section} onChange={handleTabChange}>
+        <Tabs value={section} onChange={handleTabChange}>
           <Tabs.List grow>
             <Tabs.Tab value="settings">{t`Settings`}</Tabs.Tab>
             <Tabs.Tab value="help">{t`Help`}</Tabs.Tab>

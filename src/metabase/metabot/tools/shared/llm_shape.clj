@@ -89,7 +89,7 @@
   sources pass through; a `pprint`'d map is the last-resort fallback. A permission-refused
   export renders nothing at all rather than the fallback.
 
-  `store` gates the Card / Measure / Segment lookups and every caller names one: the unaudited
+  `store` gates the Card / Measure / Segment lookups and every caller names one:
   [[shared.content-store/default-store]] for queries loaded from the app DB,
   [[shared.content-store/audited-store]] for client-supplied queries so a denied lookup
   keeps its audit trail. No defaulting arity, so the choice stays visible at the call site.
@@ -104,16 +104,23 @@
      (string? query) query
      (string? (:query-content query)) (:query-content query)
      (and (map? query) (:database query))
-     (try
-       (let [normalized (if mp query (lib-be/normalize-query query))
-             mp         (or mp (lib-be/application-database-metadata-provider (:database normalized)))
-             exported   (repr.resolve/export-query mp normalized store)]
-         (or (repr-data->llm-block exported)
-             (query-edn-fallback normalized)))
-       (catch Exception e
-         (log/debugf "Failed to export query for LLM: %s" (ex-message e))
-         (when-not (= 403 (:status-code (ex-data e)))
-           (query-edn-fallback query))))
+     ;; The refusal marker, not the status code, is what distinguishes "you may not read this"
+     ;; from "the export failed". A by-id denial collapses into the same not-found a missing id
+     ;; produces — deliberately, so the agent cannot probe for hidden content — so the 403 this
+     ;; used to catch does not arrive on that path. Without the marker a refused card would fall
+     ;; through to the EDN fallback and print the raw query.
+     (binding [shared.content-store/*last-lookup-refused?* (atom false)]
+       (try
+         (let [normalized (if mp query (lib-be/normalize-query query))
+               mp         (or mp (lib-be/application-database-metadata-provider (:database normalized)))
+               exported   (repr.resolve/export-query mp normalized store)]
+           (or (repr-data->llm-block exported)
+               (query-edn-fallback normalized)))
+         (catch Exception e
+           (when-not (or (= 403 (:status-code (ex-data e)))
+                         @shared.content-store/*last-lookup-refused?*)
+             (log/debugf "Failed to export query for LLM, using EDN fallback: %s" (ex-message e))
+             (query-edn-fallback query)))))
      (string? (get-in query [:native :query])) (get-in query [:native :query])
      (map? query) (query-edn-fallback query)
      :else (some-> query str))))

@@ -4,13 +4,6 @@ import type { TestConfig } from "yup";
 import * as Yup from "yup";
 
 import {
-  CollapsibleSettingsSection,
-  SETTINGS_CARD_STACK_PROPS,
-  SETTINGS_CARD_TITLE_PROPS,
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
-import {
   getDefaultPlaceholder,
   getExtraFormFieldProps,
 } from "metabase/admin/settings/utils";
@@ -30,6 +23,13 @@ import {
   useGetAdminSettingsDetailsQuery,
   useGetSettingsQuery,
 } from "metabase/settings";
+import {
+  CollapsibleSettingsSection,
+  SETTINGS_CARD_STACK_PROPS,
+  SETTINGS_CARD_TITLE_PROPS,
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/settings-components";
 import { Box, Flex, Radio, Stack } from "metabase/ui";
 import type {
   EnterpriseSettings,

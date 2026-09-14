@@ -165,7 +165,11 @@
 (deftest suppressing-the-audit-trail-still-checks-every-method-test
   (testing (str "with `*audit-refusals?*` bound off, every method (including the audited "
                 "`-by-entity-id` ones and an `audited-by-id?` store) still admits a readable "
-                "row and still 403s an unreadable one, without going through `api/read-check`")
+                "row and still refuses an unreadable one, without going through `api/read-check`.\n\n"
+                "A refusal shows up differently per method by design: `-by-entity-id` 403s, and "
+                "`-by-id` comes back nil so a guessable id cannot be used to probe for hidden "
+                "content — see `collapses-read-check-403-for-numeric-lookups-test`. Both are the "
+                "check having run, which is what this asserts.")
     (let [row (stub-row {:opaque :marker})]
       (doseq [audited-by-id? [false true]]
         (let [store (record-store {:card row :measure-eid row :segment-eid row
@@ -179,39 +183,55 @@
                 (binding [*stub-can-read?* true]
                   (is (= row (lookup gated arg))))
                 (binding [*stub-can-read?* false]
-                  (try
-                    (lookup gated arg)
-                    (is false "expected throw")
-                    (catch clojure.lang.ExceptionInfo e
-                      (is (= 403 (:status-code (ex-data e)))))))))))))))
+                  (if (int? arg)
+                    (is (nil? (lookup gated arg))
+                        "a -by-id refusal collapses rather than throwing")
+                    (try
+                      (lookup gated arg)
+                      (is false "expected throw")
+                      (catch clojure.lang.ExceptionInfo e
+                        (is (= 403 (:status-code (ex-data e))))))))))))))))
 
-(deftest propagates-read-check-403-test
-  (testing "if read-check throws (403), the entity-id (import-direction) branch propagates the exception unchanged"
+(deftest collapses-read-check-403-for-numeric-lookups-test
+  (testing (str "a read-check denial on a NUMERIC-id lookup comes back as nil rather than
+                propagating the 403; an entity_id lookup still throws.\n\n"
+                "Callers translate nil into their own `:unknown-…` error, which is what a missing\n"
+                "id already produces — so \"exists but you may not read it\" and \"does not exist\"\n"
+                "are indistinguishable to the caller. Letting the 403 escape made the status code\n"
+                "an existence oracle for sequential, easily-guessed content ids. The store is the\n"
+                "single chokepoint every content lookup passes through, so the collapse lives here.")
     (let [row   {:opaque :marker}
           store (record-store {:card row})
           gated (shared.content-store/read-checked store)]
       (mt/with-dynamic-fn-redefs [api/read-check (fn [_]
                                                    (throw (ex-info "Forbidden" {:status-code 403})))]
         (binding [api/*current-user-id* 1]
-          (try
-            (resolve.mp/card-by-entity-id gated "x")
-            (is false "expected throw")
-            (catch clojure.lang.ExceptionInfo e
-              (is (= 403 (:status-code (ex-data e))))))))))
-  (testing "if can-read? is false, the by-id (export-direction) branch throws a 403 via check-403"
-    (let [row   (stub-row {:opaque :marker})
-          store (record-store {:card-id row :measure-id row :segment-id row})
-          gated (shared.content-store/read-checked store)]
-      (mt/with-dynamic-fn-redefs [api/read-check (fn [& _]
-                                                   (is false "api/read-check ran on a -by-id lookup"))]
-        (binding [api/*current-user-id* 1
-                  *stub-can-read?*      false]
-          (doseq [lookup [resolve.mp/card-by-id resolve.mp/measure-by-id resolve.mp/segment-by-id]]
+          (testing "numeric-id lookups collapse the denial to nil"
+            (doseq [lookup [resolve.mp/card-by-id resolve.mp/measure-by-id]]
+              (is (nil? (lookup gated 1)))))
+          (testing "entity_id lookups keep the 403 — a NanoID is not guessable, so there is no
+                    oracle to close, and callers depend on the accurate status"
             (try
-              (lookup gated 1)
-              (is false "expected throw")
+              (resolve.mp/card-by-entity-id gated "x")
+              (is false "expected the 403 to propagate for an entity_id lookup")
               (catch clojure.lang.ExceptionInfo e
                 (is (= 403 (:status-code (ex-data e))))))))))))
+
+(deftest non-403-exceptions-still-propagate-test
+  (testing (str "only the 403 is collapsed. A read-check failing for any other reason is a real\n"
+                "error, not a permission answer, and must not be reported as \"not found\".")
+    (let [row   {:opaque :marker}
+          store (record-store {:card row :card-id row})
+          ;; the audited store, so `api/read-check` is the call that runs on a `-by-id` lookup
+          gated (shared.content-store/read-checked store true)]
+      (mt/with-dynamic-fn-redefs [api/read-check (fn [_]
+                                                   (throw (ex-info "Boom" {:status-code 500})))]
+        (binding [api/*current-user-id* 1]
+          (try
+            (resolve.mp/card-by-id gated 1)
+            (is false "expected the 500 to propagate")
+            (catch clojure.lang.ExceptionInfo e
+              (is (= 500 (:status-code (ex-data e)))))))))))
 
 ;;; ============================================================
 ;;; Suppression at the repair call site
@@ -341,10 +361,15 @@
         (testing "a user who can read the source Card gets its entity_id"
           (mt/with-current-user (mt/user->id :crowberto)
             (is (= entity-id (export!)))))
-        (testing "a user who cannot read the source Card's collection gets a 403, not the entity_id"
+        (testing "a user who cannot read the source Card's collection does NOT get its entity_id"
+          ;; The denial now surfaces as the resolver's own not-found error rather than a 403 —
+          ;; the store collapses the two so the status cannot be used to probe for hidden cards.
+          ;; What matters here is unchanged: the entity_id does not leak.
           (mt/with-current-user (mt/user->id :rasta)
             (try
-              (export!)
-              (is false "expected throw")
+              (let [result (export!)]
+                (is (not= entity-id result)
+                    "an unreadable card's entity_id must never be exported"))
               (catch clojure.lang.ExceptionInfo e
-                (is (= 403 (:status-code (ex-data e))))))))))))
+                (is (= 400 (:status-code (ex-data e))))
+                (is (= :unknown-card-id (:error (ex-data e))))))))))))

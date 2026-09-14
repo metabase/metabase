@@ -4,12 +4,6 @@ import { useEffect, useId, useRef, useState } from "react";
 import { t } from "ttag";
 
 import {
-  SETTINGS_CARD_DESCRIPTION_PROPS,
-  SETTINGS_CARD_STACK_PROPS,
-  SETTINGS_CARD_TITLE_PROPS,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
-import {
   GroupMappingList,
   useGroupLookup,
   useGroupMappings,
@@ -19,6 +13,12 @@ import {
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { useAdminSetting } from "metabase/settings";
+import {
+  SETTINGS_CARD_DESCRIPTION_PROPS,
+  SETTINGS_CARD_STACK_PROPS,
+  SETTINGS_CARD_TITLE_PROPS,
+  SettingsSection,
+} from "metabase/settings-components";
 import {
   Box,
   type BoxProps,
