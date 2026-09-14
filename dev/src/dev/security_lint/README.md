@@ -219,8 +219,8 @@ execute a check" question, where a referenced-but-never-run check must not clear
    `taint/origins` says which boundaries it crossed, `taint/checks` which authorization checks it passed, and
    `taint/tainted-leaves` names the locals that carry it, for the message. Name lists belong in `vocabulary.clj`,
    with a sentence on why each entry is there, not inline in the rule.
-4. **Add a case to the example tree** in `dev/resources/security_lint/corpus/` and its expected row in
-   `corpus_test.clj`. A test there fails for any registered rule with no example.
+4. **Add a case to the example tree** in `dev/resources/security_lint/corpus/` (the files are `.clj.txt`, so no
+   source walker picks them up -- its README says why) and its expected row in `corpus_test.clj`. A test there fails for any registered rule with no example.
 5. **Run it over the real tree** with `./bin/mage security-lint --warn-only` and read every finding. A rule that
    reports a hundred instances of the same safe idiom needs a narrower trigger, an exemption, or a lower
    severity. Say in the rule's comments what you tried and what it reported; the existing rules do.

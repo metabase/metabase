@@ -170,10 +170,10 @@
     (is (contains? rows 6) "a negated membership test is a blocklist, not an allow-list")
     (is (contains? rows 7) "under `or` the validator may not have run")))
 
-(defn- temp-dir! []
-  (doto (java.io.File. (System/getProperty "java.io.tmpdir") (str "seclint" (System/nanoTime))) .mkdirs .deleteOnExit))
+(defn- temp-dir! ^java.io.File []
+  (doto (java.io.File. ^String (System/getProperty "java.io.tmpdir") (str "seclint" (System/nanoTime))) .mkdirs .deleteOnExit))
 
-(defn- spit-file! [^java.io.File dir name src]
+(defn- spit-file! [^java.io.File dir ^String name src]
   (let [f (java.io.File. dir name)] (.deleteOnExit f) (spit f src) (.getAbsolutePath f)))
 
 (deftest multimethod-implementations-are-reachable-and-tainted-test

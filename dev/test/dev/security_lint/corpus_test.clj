@@ -19,10 +19,32 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private ^java.io.File corpus-dir
+  "The fixtures are `.clj.txt`, not `.clj`: they declare namespaces that duplicate real ones on purpose
+  (`metabase.cmd.core`, `metabase.api-routes.routes`) and require fixture-only namespaces, so nothing may load
+  them, and everything that walks a directory for sources -- kondo, Eastwood, the namespace-uniqueness test,
+  the model census in `copy-test` -- selects by extension."
+  (java.io.File. "dev/resources/security_lint/corpus"))
+
 (def ^:private root
-  "Kept under dev/resources rather than a test root: these namespaces deliberately require fixture-only
-  namespaces and cannot load, and both kondo and Eastwood walk the test roots in CI."
-  (.getAbsolutePath (java.io.File. "dev/resources/security_lint/corpus")))
+  "A copy of the corpus as a `.clj` tree, made once per test run, so the linter sees the files with the names the
+  rules expect -- `db.clj` is the data-access layer, an exemption ends in `\\.clj$` -- and `expected` names them
+  as they are written."
+  (let [dir (doto (java.io.File. ^String (System/getProperty "java.io.tmpdir") (str "security-lint-corpus-" (System/nanoTime)))
+              .mkdirs .deleteOnExit)]
+    (doseq [^java.io.File f (file-seq corpus-dir)
+            :when (str/ends-with? (.getName f) ".clj.txt")
+            :let  [rel  (subs (.getPath f) (inc (count (.getPath corpus-dir))))
+                   copy (java.io.File. dir (str/replace rel #"\.txt$" ""))]]
+      (.mkdirs (.getParentFile copy))
+      (.deleteOnExit copy)
+      (spit copy (slurp f)))
+    (.getAbsolutePath dir)))
+
+(defn- corpus-path
+  "A finding's file relative to the corpus, as `expected` names it."
+  [file]
+  (str/replace file (str root "/") ""))
 
 (def ^:private expected
   "[rule file row severity reachable-from]. The last element is every kind of entry point that reaches the
@@ -119,7 +141,7 @@
 
 (deftest golden-corpus-test
   (let [findings (scan-corpus)
-        actual   (into #{} (map (fn [f] [(:rule-id f) (str/replace (:file f) (str root "/") "") (:row f) (:severity f)
+        actual   (into #{} (map (fn [f] [(:rule-id f) (corpus-path (:file f)) (:row f) (:severity f)
                                          (vec (sort (:reachable-from f)))]))
                        findings)]
     (is (empty? (:unparsed (meta findings))) "every fixture parses")
@@ -130,7 +152,7 @@
 (deftest corpus-origins-test
   (testing "a finding says which boundaries its values crossed: a stored row, a setting, the warehouse"
     (let [findings (scan-corpus)
-          origins  (fn [file row] (some #(when (and (str/ends-with? (:file %) file) (= row (:row %))) (:origins %))
+          origins  (fn [file row] (some #(when (and (str/ends-with? (corpus-path (:file %)) file) (= row (:row %))) (:origins %))
                                         findings))]
       (is (= #{:request :app-db/Thing} (origins "things/api.clj" 120))
           "the URL came off a Thing row fetched by id")
@@ -157,7 +179,7 @@
                                       :sarif-out  (.getAbsolutePath out)})
           sarif  (json/decode (slurp out) true)
           whole  (security-lint/scan {:paths [(str root "/src")] :rules (rules/all) :root root :quiet? true})]
-      (is (= #{"src/metabase/things/render.clj"} (into #{} (map #(str/replace (:file %) (str root "/") "")) (:findings result))))
+      (is (= #{"src/metabase/things/render.clj"} (into #{} (map #(corpus-path (:file %))) (:findings result))))
       (is (= (count (:findings whole)) (count (get-in sarif [:runs 0 :results]))))
       (is (< (count (:findings result)) (count (:findings whole)))))))
 

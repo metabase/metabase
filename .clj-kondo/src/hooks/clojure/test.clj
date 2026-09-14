@@ -171,6 +171,7 @@
           (str/starts-with? (name ns-symb) prefix))
         ["build-drivers."
          "build."
+         "dev." ; dev tooling, outside the module system
          "hooks." ; clj-kondo hook tests, outside the module system
          "i18n." ; bin/i18n
          "lint-migrations-file-test"
