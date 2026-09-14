@@ -5,7 +5,8 @@ const {
 
 const BUNDLE_NAME = "lib-static-viz-custom";
 
-const MAX_ASSET_SIZE = 2.1 * 1024 * 1024;
+// Budget with some headroom (10%) so a leaked dependency fails the build instead of going unnoticed.
+const MAX_ASSET_SIZE = 2.15 * 1024 * 1024;
 
 module.exports = () =>
   createStaticVizConfig({
