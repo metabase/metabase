@@ -283,18 +283,24 @@
 (defn- report-token-usage-xf
   "Transducer that reports token_usage metrics for :usage parts in the aisdk stream.
 
-  Prometheus + Snowplow:
-    - `:profile-id` — the profile id (e.g. `:internal`)
-    - `:model`      — the model reference (e.g. `openrouter/anthropic/claude-haiku-4.5`)
-    - `:provider`   — the provider type serving it (e.g. `openrouter`)
-    - `:model-name` — the model as the provider names it (e.g. `anthropic/claude-haiku-4.5`)
-    - `:tag`        — the specific purpose for which the tokens were used (e.g. 'agent', 'sql-fixing')
+  Every field except `:tag` goes to [[metabase.metabot.usage/log-ai-usage!]].
 
-   Snowplow only:
-    - `:request-id` — UUID string for this request
-    - `:session-id` — conversation UUID string
-    - `:source`     — the source of the request (e.g., 'metabot_agent', 'document_generate_content').
-                      Indicates which API endpoint or workflow initiated the LLM call."
+  Prometheus + Snowplow:
+    - `:model`      - the model reference (e.g. `openrouter/anthropic/claude-haiku-4.5`)
+    - `:tag`        - the specific purpose for which the tokens were used (e.g. 'agent', 'sql-fixing')
+
+  Prometheus only:
+    - `:provider`   - the provider type serving it (e.g. `openrouter`)
+
+  Snowplow only:
+    - `:profile-id` - the profile id (e.g. `:internal`)
+    - `:request-id` - UUID string for this request
+    - `:session-id` - conversation UUID string
+    - `:source`     - the source of the request (e.g., 'metabot_agent', 'document_generate_content').
+                      Indicates which API endpoint or workflow initiated the LLM call.
+
+  Neither:
+    - `:model-name` - the model as the provider names it (e.g. `anthropic/claude-haiku-4.5`)"
   [{:keys [model model-name provider profile-id request-id session-id source tag ai-proxy?]}]
   (let [start-ms      (u/start-timer)]
     (map (fn [part]
@@ -364,7 +370,7 @@
 (defn- with-retries
   "Execute `(thunk)` with retry logic for transient LLM errors.
   Retries up to `max-llm-retries` attempts with exponential backoff.
-  Records prometheus metrics with `:model` and `:tag` from `tracking-opts` as labels.
+  Records prometheus metrics with `:model`, `:tag` and `:provider` from `tracking-opts` as labels.
 
   `retry?` is an optional predicate on the caught exception, ANDed with
   [[retryable-error?]]; returning false surfaces the error without retrying. The
