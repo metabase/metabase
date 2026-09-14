@@ -60,6 +60,9 @@ import type {
 } from "./types";
 import { getFormattingOptionsWithoutScaling } from "./util";
 
+// Default to 5 ticks for consistent behavior between single and multiple series
+const DEFAULT_Y_AXIS_SPLIT_NUMBER = 5;
+
 const uniqueCards = (seriesModels: SeriesModel[]) =>
   _.uniq(seriesModels.map(({ cardId }) => cardId)).length;
 
@@ -558,7 +561,7 @@ export function getYAxisModel(
     splitNumber:
       settings["graph.y_axis.split_number"] > 0
         ? settings["graph.y_axis.split_number"]
-        : 5, // Default to 5 ticks for consistent behavior between single and multiple series
+        : DEFAULT_Y_AXIS_SPLIT_NUMBER,
   };
 }
 

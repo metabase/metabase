@@ -426,6 +426,40 @@ describe("scenarios > visualizations > legend", () => {
     H.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
   });
 
+  it("should preserve full Y-axis formatting and custom ticks on a public dashboard", () => {
+    H.createDashboardWithQuestions({
+      questions: [
+        {
+          ...SINGLE_AGGREGATION_QUESTION,
+          visualization_settings: {
+            "graph.label_value_formatting": "full",
+            "graph.y_axis.split_number": 5,
+          },
+        },
+      ],
+      cards: [{ col: 0, row: 0, size_x: 24, size_y: 6 }],
+    }).then(({ dashboard }) => {
+      H.visitPublicDashboard(dashboard.id);
+    });
+
+    H.echartsContainer().within(() => {
+      cy.findByText("1,800").should("be.visible");
+      cy.findByText("1,500").should("be.visible");
+      cy.findByText("1,200").should("be.visible");
+      cy.findByText("1.8k").should("not.exist");
+    });
+
+    hideSeries(1); // Gadget
+
+    H.chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 0);
+    H.echartsContainer().within(() => {
+      cy.findByText("1,800").should("be.visible");
+      cy.findByText("1,500").should("be.visible");
+      cy.findByText("1,200").should("be.visible");
+      cy.findByText("900").should("be.visible");
+    });
+  });
+
   it("should toggle series visibility in the query builder", () => {
     H.createQuestion(SINGLE_AGGREGATION_QUESTION, { visitQuestion: true });
 

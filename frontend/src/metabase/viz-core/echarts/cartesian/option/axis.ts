@@ -25,6 +25,7 @@ import type {
 import { getTicksOptions } from "./ticks";
 import { getPaddedAxisLabel } from "./utils";
 import {
+  canFitNumericAxisTicks,
   getCategoricalAxisLabelPadding,
   getContinuousAxisPadding,
   getXAxisLabelPadding,
@@ -261,18 +262,7 @@ export const buildNumericDimensionAxis = (
   const axisWidth = getXAxisWidth(chartLayout);
   const labelPadding = getXAxisLabelPadding(axisWidth);
   const ticksFit =
-    !alignEndpoints ||
-    (ticksMaxInterval !== undefined &&
-      (axisWidth * ticksMaxInterval) / (max - min) >=
-        labelPadding +
-          1.5 *
-            Math.max(
-              ...extent.map((value) =>
-                chartLayout.ticksDimensions.getXTickWidth(
-                  getPaddedAxisLabel(formatter(fromEChartsAxisValue(value))),
-                ),
-              ),
-            ));
+    !alignEndpoints || canFitNumericAxisTicks(xAxisModel, chartLayout);
 
   return {
     ...getCommonDimensionAxisOptions(chartLayout, settings, renderingContext),

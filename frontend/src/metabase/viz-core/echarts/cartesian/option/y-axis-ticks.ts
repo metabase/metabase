@@ -1,6 +1,7 @@
 import { Model, helper } from "echarts/core";
 import type { YAXisOption } from "echarts/types/dist/shared";
 
+import { PLOT_HEIGHT_BREAKPOINTS } from "../../../shared/constants/layout";
 import type { Extent } from "../../../types";
 
 type ValueAxisOption = Extract<YAXisOption, { type?: "value" }>;
@@ -20,11 +21,16 @@ export function getResponsiveYAxisTicks(
 ) {
   const scale = helper.createScale(extent, new ValueAxisScaleModel(axis));
   const [min, max] = scale.getExtent();
-  const segments = height < 300 ? 2 : 4;
+  const segments = height < PLOT_HEIGHT_BREAKPOINTS.medium ? 2 : 4;
   const gridlines = Array.from({ length: segments + 1 }, (_, index) =>
     index === segments ? max : min + ((max - min) * index) / segments,
   );
-  const labelInterval = height < 200 || (height >= 300 && height < 400) ? 2 : 1;
+  const labelInterval =
+    height < PLOT_HEIGHT_BREAKPOINTS.small ||
+    (height >= PLOT_HEIGHT_BREAKPOINTS.medium &&
+      height < PLOT_HEIGHT_BREAKPOINTS.large)
+      ? 2
+      : 1;
 
   return {
     ...axis,

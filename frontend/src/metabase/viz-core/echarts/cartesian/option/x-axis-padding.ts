@@ -1,7 +1,11 @@
 import type { XAXisOption } from "echarts/types/dist/shared";
 
+import { PLOT_WIDTH_BREAKPOINTS } from "../../../shared/constants/layout";
 import { HORIZONTAL_TICKS_GAP } from "../constants/style";
 import type { ChartLayout } from "../layout/types";
+import type { NumericXAxisModel } from "../model/types";
+
+import { getPaddedAxisLabel } from "./utils";
 
 const MAX_LABEL_PADDING_RATIO = 0.25;
 const MAX_REJECTED_LABEL_SAMPLES = 50;
@@ -15,13 +19,40 @@ export function getXAxisWidth(chartLayout: ChartLayout): number {
 }
 
 export function getXAxisLabelPadding(axisWidth: number): number {
-  if (axisWidth >= 900) {
+  if (axisWidth >= PLOT_WIDTH_BREAKPOINTS.large) {
     return 24;
   }
-  if (axisWidth >= 300) {
+  if (axisWidth >= PLOT_WIDTH_BREAKPOINTS.medium) {
     return 16;
   }
   return 8;
+}
+
+export function canFitNumericAxisTicks(
+  {
+    extent,
+    ticksMaxInterval,
+    formatter,
+    fromEChartsAxisValue,
+  }: NumericXAxisModel,
+  chartLayout: ChartLayout,
+): boolean {
+  if (ticksMaxInterval === undefined) {
+    return false;
+  }
+
+  const axisWidth = getXAxisWidth(chartLayout);
+  const [min, max] = extent;
+  const tickSpacing = (axisWidth * ticksMaxInterval) / (max - min);
+  const maxLabelWidth = Math.max(
+    ...extent.map((value) =>
+      chartLayout.ticksDimensions.getXTickWidth(
+        getPaddedAxisLabel(formatter(fromEChartsAxisValue(value))),
+      ),
+    ),
+  );
+
+  return tickSpacing >= getXAxisLabelPadding(axisWidth) + 1.5 * maxLabelWidth;
 }
 
 export function getContinuousAxisPadding(
