@@ -186,7 +186,7 @@
                            :done? true?
                            :timeout-ms 5000})
                   (is (empty? @ai-request-calls))
-                  (is (= "I couldn't upload data.csv because something went wrong. Please try again."
+                  (is (= "I couldn't upload data.csv because something went wrong."
                          (:text (first @post-calls)))))))))))))
 
 (deftest ^:synchronized unsupported-file-skipped-test
@@ -449,7 +449,7 @@
        slackbot.client/download-file-stream    (fn [_client _url]
                                                  (throw (ex-info "download should not start" {})))]
       (is (= {:filename "data.csv"
-              :error    "I couldn't upload data.csv because something went wrong. Please try again."}
+              :error    "I couldn't upload data.csv because something went wrong."}
              (#'slackbot.uploads/upload-file!
               test-client
               test-target
@@ -465,24 +465,38 @@
                                                 (reset! temp-file file)
                                                 (throw (ex-info "sensitive database details" {})))]
         (is (= {:filename "data.csv"
-                :error    "I couldn't upload data.csv because something went wrong. Please try again."}
+                :error    "I couldn't upload data.csv because something went wrong."}
                (#'slackbot.uploads/upload-file!
                 test-client
                 test-target
                 {:name "data.csv", :filetype "csv", :url_private "https://example.com/x.csv", :size 100})))
         (is (false? (.exists ^java.io.File @temp-file)))))))
 
+(deftest upload-file-unsupported-contents-test
+  (testing "a file whose contents are not a CSV or TSV says so"
+    (mt/with-dynamic-fn-redefs
+      [slackbot.client/download-file-stream (fn [_client _url]
+                                              (io/input-stream (.getBytes "col1,col2\nval1,val2")))
+       upload.impl/create-csv-upload!       (fn [_params]
+                                              (throw (ex-info "Unsupported File Type" {:status-code 415})))]
+      (is (= {:filename "data.csv"
+              :error    "I couldn't upload data.csv because its contents don't look like a CSV or TSV file."}
+             (#'slackbot.uploads/upload-file!
+              test-client
+              test-target
+              {:name "data.csv", :filetype "csv", :url_private "https://example.com/x.csv", :size 100}))))))
+
 (deftest build-upload-history-test
   (is (= [{:role    :assistant
            :content "I uploaded these files as Metabase models: data.csv as Data (ID 1), data.tsv as More Data (ID 2). I can help you query them."}
           {:role    :assistant
-           :content "I couldn't upload broken.csv because something went wrong. Please try again."}
+           :content "I couldn't upload broken.csv because something went wrong."}
           {:role    :assistant
            :content "I can only upload CSV and TSV files, so I skipped the following: notes.txt."}]
          (#'slackbot.uploads/build-upload-history
           {:results [{:filename "data.csv", :model-id 1, :model-name "Data"}
                      {:filename "data.tsv", :model-id 2, :model-name "More Data"}
-                     {:filename "broken.csv", :error "I couldn't upload broken.csv because something went wrong. Please try again."}]
+                     {:filename "broken.csv", :error "I couldn't upload broken.csv because something went wrong."}]
            :skipped ["notes.txt"]}))))
 
 (deftest handle-file-uploads!-nothing-attempted-test

@@ -103,11 +103,15 @@
       (catch Exception e
         (log/warn e "[slackbot] File upload failed" {:filename name})
         (analytics/inc! :metabase-slackbot/file-uploads {:result "error"})
-        ;; Repeat back only the size limit and the upload module's own 4xx errors, which describe a problem in the file.
+        ;; Repeat back only what was written for the user: the size limit, the file type, and the upload module's
+        ;; own 4xx errors, which describe a problem in the file (a row with too many columns, say).
         ;; The upload module rethrows driver and JDBC errors as a 4xx carrying a cause, and those can name hosts.
         {:error    (cond
                      (::over-size-limit (ex-data e))
                      (ex-message e)
+
+                     (= 415 (:status-code (ex-data e)))
+                     (format "I couldn't upload %s because its contents don't look like a CSV or TSV file." name)
 
                      (and (let [status (:status-code (ex-data e))]
                             (and (integer? status) (<= 400 status 499)))
@@ -116,7 +120,7 @@
                      (format "I couldn't upload %s: %s" name (ex-message e))
 
                      :else
-                     (format "I couldn't upload %s because something went wrong. Please try again." name))
+                     (format "I couldn't upload %s because something went wrong." name))
          :filename name}))))
 
 (defn- upload-files!
