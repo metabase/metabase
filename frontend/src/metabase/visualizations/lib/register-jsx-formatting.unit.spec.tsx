@@ -240,7 +240,7 @@ describe("registered JSX url formatting", () => {
     expect(event.defaultPrevented).toBe(false);
   });
 
-  it("should return an ExternalLink for same origin links when a host link handler is installed", () => {
+  it("should return an ExternalLink for same origin links when the host opens links in a new window", () => {
     mockSettings({ "site-url": SITE_URL });
     enterSdkMode();
 

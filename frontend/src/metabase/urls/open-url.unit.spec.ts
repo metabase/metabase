@@ -129,12 +129,22 @@ describe("openUrl()", () => {
     expect(openInSameWindow).not.toHaveBeenCalled();
     expect(openInBlankWindow).toHaveBeenCalledWith(url);
   });
+
+  // shouldOpenInBlankWindow reads window.event, which is gone after an await.
+  it("should open the url synchronously when no host link handler is installed", async () => {
+    const openInBlankWindow = jest.fn();
+
+    const opened = openUrl(url, { openInBlankWindow });
+
+    expect(openInBlankWindow).toHaveBeenCalledWith(url);
+    await opened;
+  });
 });
 
 describe("host navigation policy", () => {
   afterEach(resetPluginSlots);
 
-  it("opens same-origin links externally without a link interceptor", () => {
+  it("should open same-origin links in a new window when no link handler is installed", () => {
     PLUGIN_HOST_NAVIGATION.host = {
       handleLink: null,
       sameOriginTarget: "_blank",
@@ -144,7 +154,7 @@ describe("host navigation policy", () => {
     );
   });
 
-  it("intercepts links while keeping same-origin navigation inside the app", async () => {
+  it("should keep same-origin navigation inside the app when the host only intercepts links", async () => {
     const handleLink = jest.fn().mockResolvedValue(false);
     const openInSameOrigin = jest.fn();
     const openInBlankWindow = jest.fn();
@@ -157,7 +167,7 @@ describe("host navigation policy", () => {
     expect(openInBlankWindow).not.toHaveBeenCalled();
   });
 
-  it("restores the default navigation policy on reset", () => {
+  it("should restore the default navigation policy on reset", () => {
     PLUGIN_HOST_NAVIGATION.host = {
       handleLink: null,
       sameOriginTarget: "_blank",
