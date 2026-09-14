@@ -421,10 +421,8 @@
 (deftest execute-sql-scope-test
   (testing "the tool's scope is advertised, so a token can actually be granted it"
     (is (contains? (registry/registered-scopes) "agent:sql:run")))
-  (testing "scope gating holds on both surfaces: tools/list and tools/call"
-    (let [listed-names #(into #{} (map :name) (registry/list-tools %))]
-      (is (contains? (listed-names sql-scope) "execute_sql"))
-      (is (not (contains? (listed-names #{"agent:query:run"}) "execute_sql")))))
+  (testing "GHY-4543: tools/list shows the tool whatever the token's scopes; the gate is at tools/call"
+    (is (some #(= "execute_sql" (:name %)) (registry/list-tools))))
   (mt/with-current-user (mt/user->id :crowberto)
     (let [sid  (str (random-uuid))
           args {:database_id (mt/id) :sql "SELECT 1"}]

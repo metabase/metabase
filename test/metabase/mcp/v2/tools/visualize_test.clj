@@ -248,9 +248,8 @@
 
 (deftest mcp-app-ui-extension-gating-test
   (testing "GHY-4157: MCP Apps tools are hidden from clients that cannot render an iframe.
-            Asserted per-tool rather than by set equality: the UI tools share `agent:query:run`
-            with the execute tools, so the granting scope lists more than these two."
-    (let [visible (fn [options] (set (map :name (registry/list-tools viz-scopes options))))
+            Asserted per-tool rather than by set equality: the list holds every other tool too."
+    (let [visible (fn [options] (set (map :name (registry/list-tools options))))
           with-ui (visible {:supports-mcp-ui? true})
           no-ui   (visible {:supports-mcp-ui? false})]
       (doseq [tool-name ["visualize_query" "render_drill_through"]]
@@ -283,7 +282,7 @@
 
 (deftest ui-tool-manifest-test
   (let [by-name (into {} (map (juxt :name identity))
-                      (registry/list-tools viz-scopes mcp-ui-client))]
+                      (registry/list-tools mcp-ui-client))]
     (testing "GHY-4157: each UI tool points the host at the iframe shell it renders into"
       (is (= v2.resources/visualize-query-uri
              (get-in by-name ["visualize_query" :_meta :ui :resourceUri])))
@@ -304,9 +303,6 @@
         (let [scope     (v2.resources/resource-scope uri)
               only-this #{scope}]
           (is (some? scope) (str uri " is registered with a scope"))
-          (testing (str tool-name " is listed to a token holding only its resource scope")
-            (is (contains? (set (map :name (registry/list-tools only-this mcp-ui-client)))
-                           tool-name)))
           (testing (str tool-name " is callable by that same token")
             ;; An unknown handle: the call gets past scope and extension gating to the handle
             ;; lookup, which is the point — a scope rejection would read "Insufficient scope".

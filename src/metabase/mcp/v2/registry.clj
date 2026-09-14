@@ -2,14 +2,15 @@
   "The v2 MCP tool registry. Tools are in-code registry entries declared with [[deftool]].
   The v2 surface builds its own manifest and dispatch:
 
-   - `tools/list` ([[list-tools]]) filters by token scopes, the `mcp-v2-disabled-tools` CSV,
-     and the client extensions the caller advertised (a tool needing MCP Apps UI is hidden from
-     a client that can't render an iframe, rather than failing at call time);
-   - `tools/call` ([[call-tool]]) re-checks all three, validates arguments against the tool's
-     Malli schema with teaching errors, dispatches to the handler under the already-bound
-     current user, and logs every outcome through the shared usage path.
+   - `tools/list` ([[list-tools]]) filters by the `mcp-v2-disabled-tools` CSV and the client
+     extensions the caller advertised (a tool needing MCP Apps UI is hidden from a client that
+     can't render an iframe, rather than failing at call time). It does not filter by token
+     scopes: a client can only attempt, and step up for, a tool it can see;
+   - `tools/call` ([[call-tool]]) checks token scopes and re-checks both filters, validates
+     arguments against the tool's Malli schema with teaching errors, dispatches to the handler
+     under the already-bound current user, and logs every outcome through the shared usage path.
 
-  The three filters are not three boundaries. Scopes come from the verified token and the
+  The three call-time checks are not three boundaries. Scopes come from the verified token and the
   disabled-tools CSV from instance settings, but the extension set is reconstructed from the
   unsigned capability payload the client echoes back in its session id — a client can claim any
   extension it likes, and never has to `initialize` to do so. Treat `:required-extensions` as a
@@ -189,16 +190,16 @@
   (set (mcp.settings/mcp-v2-disabled-tools)))
 
 (defn list-tools
-  "Return the tool definitions for the v2 MCP `tools/list` response, filtered by `token-scopes`,
-   the `mcp-v2-disabled-tools` setting, and the client extensions
-   `options` advertises (`:supports-mcp-ui?` — MCP Apps tools are hidden from clients that
-   can't render an iframe rather than failing at call time).
+  "Return the tool definitions for the v2 MCP `tools/list` response, filtered by the
+   `mcp-v2-disabled-tools` setting and the client extensions `options` advertises
+   (`:supports-mcp-ui?` — MCP Apps tools are hidden from clients that can't render an iframe
+   rather than failing at call time). Token scopes don't filter the list; [[call-tool]] enforces them.
 
-   The 1-arity assumes full extension support: it backs [[tools-hash]], whose transport hook
-   sees only token scopes, so the hash must not depend on per-session capabilities."
-  ([token-scopes]
-   (list-tools token-scopes {:supports-mcp-ui? true}))
-  ([token-scopes options]
+   The 0-arity assumes full extension support: it backs [[tools-hash]], whose transport hook
+   has no session, so the hash must not depend on per-session capabilities."
+  ([]
+   (list-tools {:supports-mcp-ui? true}))
+  ([options]
    (let [disabled  (disabled-tool-names)
          supported (mcp.ui-resource/supported-extensions options)]
      (into []
@@ -207,19 +208,17 @@
             (filter #(not (contains? disabled (:name %))))
             ;; has all required extensions
             (filter #(empty? (mcp.ui-resource/missing-required-extensions % supported)))
-            ;; required scope is available
-            (filter #(mcp.scope/matches? token-scopes (:scope %)))
             (map #(select-keys % [:name :title :description :inputSchema :outputSchema :annotations :_meta])))
            (manifest)))))
 
 (defn tools-hash
-  "Stable 8-character hex hash of the tool list visible to `token-scopes`; polled by the
-   GET/SSE keepalive to emit `notifications/tools/list_changed` when the visible set changes
-   (scope changes, `mcp-v2-disabled-tools` edits, feature flips). Hashes the JSON encoding of
-   the wire-visible schema, so the result never depends on Clojure's `hash` of non-data leaves."
-  [token-scopes]
+  "Stable 8-character hex hash of the listed tools; polled by the GET/SSE keepalive to emit
+   `notifications/tools/list_changed` when the set changes (`mcp-v2-disabled-tools` edits,
+   feature flips). Hashes the JSON encoding of the wire-visible schema, so the result never
+   depends on Clojure's `hash` of non-data leaves."
+  []
   (format "%08x"
-          (hash (->> (list-tools token-scopes)
+          (hash (->> (list-tools)
                      (map (juxt :name :inputSchema :outputSchema))
                      (sort-by first)
                      json/encode))))

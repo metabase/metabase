@@ -3,7 +3,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.api.macros.scope :as scope]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.usage :as mcp.usage]
    [metabase.mcp.v2.common :as common]
@@ -30,13 +29,6 @@
                                                     :description "probe: never registers"
                                                     :args        [:map]
                                                     :handler     (fn [_ _] nil)})))))
-
-(deftest ^:parallel list-tools-scope-filtering-test
-  (testing "tools/list filters on token scopes"
-    (is (some #(= "test_echo" (:name %)) (registry/list-tools #{"agent:content:read"})))
-    (is (not (some #(= "test_echo" (:name %)) (registry/list-tools #{"agent:metadata:read"})))))
-  (testing "the unrestricted sentinel (cookie sessions) sees every tool"
-    (is (some #(= "test_echo" (:name %)) (registry/list-tools #{::scope/unrestricted})))))
 
 (deftest ^:parallel call-tool-scope-check-test
   (testing "tools/call re-checks scope even for a tool that exists"
@@ -91,7 +83,7 @@
 (deftest disabled-tools-test
   (mt/with-temporary-setting-values [mcp.settings/mcp-v2-disabled-tools ["test_echo"]]
     (testing "a disabled tool is hidden from tools/list"
-      (is (not (some #(= "test_echo" (:name %)) (registry/list-tools nil)))))
+      (is (not (some #(= "test_echo" (:name %)) (registry/list-tools)))))
     (testing "and rejected by tools/call as unknown"
       (let [{:keys [error]} (registry/call-tool nil nil "test_echo" {})]
         (is (= {:code common/error-code-method-not-found
@@ -115,11 +107,15 @@
                      #{"agent:content:read" "agent:content:write" "agent:query:run"
                        "agent:sql:run" "agent:delivery:write"}))))
 
-(deftest ^:parallel tools-hash-test
-  (testing "tools-hash is a stable 8-char hex string that reflects scope-visible tools"
-    (is (re-matches #"[0-9a-f]{8}" (registry/tools-hash nil)))
-    (is (= (registry/tools-hash nil) (registry/tools-hash nil)))
-    (is (not= (registry/tools-hash nil) (registry/tools-hash #{"agent:metadata:read"})))))
+;; not ^:parallel: changes a setting
+(deftest tools-hash-test
+  (testing "tools-hash is a stable 8-char hex string"
+    (is (re-matches #"[0-9a-f]{8}" (registry/tools-hash)))
+    (is (= (registry/tools-hash) (registry/tools-hash))))
+  (testing "it changes when the listed tool set does"
+    (let [before (registry/tools-hash)]
+      (mt/with-temporary-setting-values [mcp.settings/mcp-v2-disabled-tools ["test_echo"]]
+        (is (not= before (registry/tools-hash)))))))
 
 (defn- capture-usage-records!
   "Run `thunk` with `record-mcp-tool-call!` redefed to capture its arg maps into a vector,
@@ -314,7 +310,7 @@
       :handler     (fn [_ _] nil)}
      (fn []
        (testing "clients are told it mutates"
-         (is (false? (->> (registry/list-tools nil)
+         (is (false? (->> (registry/list-tools)
                           (filter #(= "annotation_free_mutator" (:name %)))
                           first
                           :annotations
@@ -323,6 +319,41 @@
          (is (contains? (set (keys (mutating-tools))) "annotation_free_mutator")))
        (testing "and it carries the :scope the invariants check, so they can actually run on it"
          (is (= "agent:content:read" (:scope (get (mutating-tools) "annotation_free_mutator")))))))))
+
+;; not ^:parallel: registers throwaway tools and changes a setting
+(deftest list-tools-shows-tools-the-token-cannot-call-test
+  (testing "GHY-4543: tools/list takes no token scopes, so a tool gated on each write scope is listed — a client can
+            only attempt, and then step up for, a tool it can see — and a token holding only `agent:content:read` is
+            refused when it calls one"
+    (doseq [scope (sort write-scopes)
+            :let  [tool-name (str "scope_probe_" (str/replace scope #"\W" "_"))]]
+      (testing scope
+        (do-with-temp-tool!
+         {:name        tool-name
+          :scope       scope
+          :description "test-only tool gated on a scope the token lacks"
+          :args        [:map]
+          :handler     (fn [_ _] nil)}
+         (fn []
+           (is (contains? (set (map :name (registry/list-tools))) tool-name))
+           (is (str/starts-with? (-> (registry/call-tool #{"agent:content:read"} nil tool-name {}) :error :message)
+                                 (str "Insufficient scope to call tool: " tool-name "."))))))))
+  (testing "GHY-4543: the non-scope filters still hide tools"
+    (testing "a disabled tool"
+      (mt/with-temporary-setting-values [mcp.settings/mcp-v2-disabled-tools ["test_echo"]]
+        (is (not (contains? (set (map :name (registry/list-tools))) "test_echo")))))
+    (testing "a tool needing a client extension the caller lacks"
+      (do-with-temp-tool!
+       {:name                "ui_probe"
+        :scope               "agent:content:read"
+        :description         "test-only tool that needs MCP Apps UI"
+        :args                [:map]
+        :handler             (fn [_ _] nil)
+        :required-extensions #{:mcp-app-ui}}
+       (fn []
+         (let [names (fn [options] (set (map :name (registry/list-tools options))))]
+           (is (contains? (names {:supports-mcp-ui? true}) "ui_probe"))
+           (is (not (contains? (names {:supports-mcp-ui? false}) "ui_probe")))))))))
 
 (deftest write-tools-are-annotated-as-mutating-test
   (testing "a tool named `*_write` declares `:readOnlyHint false`. This guards the enumeration the

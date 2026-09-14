@@ -302,9 +302,9 @@
           (is (contains? claims :scp))))
       (testing "it is hidden from clients that cannot render an iframe, like the shells it serves"
         (is (not (some #(= "refresh_ui_credential" (:name %))
-                       (registry/list-tools nil {:supports-mcp-ui? false}))))
+                       (registry/list-tools {:supports-mcp-ui? false}))))
         (is (some #(= "refresh_ui_credential" (:name %))
-                  (registry/list-tools nil {:supports-mcp-ui? true}))))
+                  (registry/list-tools {:supports-mcp-ui? true}))))
       (testing "and refused to them over the wire — hiding is not enforcement; a text-only model must never be
                 handed a live /api/dataset authenticator by calling the tool by name"
         (let [plain-session (-> (mcp-request (jsonrpc-request "initialize" {:capabilities {}}))
@@ -598,7 +598,7 @@
             narrow token every tool."
     ;; Register a throwaway tool on a DIFFERENT scope (`agent:content:write`, which the token below does not carry)
     ;; so the negative half of the scope contract has teeth independent of which real write tools are registered:
-    ;; this test fails if `list-tools`' scope filter is removed.
+    ;; this test fails if the bearer request dispatches unrestricted.
     (do-with-temp-tool!
      {:name        "scope_probe_write"
       :scope       metabot.scope/agent-content-write
@@ -625,15 +625,23 @@
                                                                  {:request-options {:headers headers}}
                                                                  (jsonrpc-request "initialize" {:capabilities {}}))
                                     (get-in [:headers "Mcp-Session-Id"]))
-                     tool-names (-> (client/client-full-response
-                                     :post 200 endpoint
-                                     {:request-options {:headers (assoc headers "mcp-session-id" session-id)}}
-                                     (jsonrpc-request "tools/list"))
+                     session!   (fn [body]
+                                  (client/client-full-response
+                                   :post 200 endpoint
+                                   {:request-options {:headers (assoc headers "mcp-session-id" session-id)}}
+                                   body))
+                     call!      (fn [tool-name]
+                                  (session! (jsonrpc-request "tools/call" {:name tool-name :arguments {}})))
+                     tool-names (-> (session! (jsonrpc-request "tools/list"))
                                     (get-in [:body :result :tools])
                                     (->> (map :name) set))]
                  (is (some? session-id))
+                 (testing "GHY-4543: tools/list lists tools on both sides of the token's scopes"
+                   (is (contains? tool-names "test_echo"))
+                   (is (contains? tool-names "scope_probe_write")
+                       "a client can only step up for a tool it can see"))
                  (testing "a tool inside the granted scope (agent:content:read) is served"
-                   (is (contains? tool-names "test_echo")))
-                 (testing "a tool gated on a scope the token lacks (agent:content:write) is filtered out"
-                   (is (not (contains? tool-names "scope_probe_write"))
-                       "scope filtering must hide a write-scoped tool from a read-only token")))))))))))
+                   (is (not (get-in (call! "test_echo") [:body :result :isError]))))
+                 (testing "a tool gated on a scope the token lacks (agent:content:write) is refused at call time"
+                   (is (str/starts-with? (get-in (call! "scope_probe_write") [:body :error :message])
+                                         "Insufficient scope to call tool: scope_probe_write."))))))))))))

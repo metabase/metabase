@@ -411,15 +411,15 @@
   "Emit SSE keepalive comments on `writer` every `interval-ms` until `canceled-chan` reports the client is gone.
   Re-reads the tool manifest hash on each tick and emits `notifications/tools/list_changed` when it differs from the
   previous tick, so the client knows to refetch `tools/list`. Returns nil once canceled."
-  [^Writer writer tools-hash-fn token-scopes canceled-chan interval-ms]
-  (loop [last-hash (tools-hash-fn token-scopes)]
+  [^Writer writer tools-hash-fn canceled-chan interval-ms]
+  (loop [last-hash (tools-hash-fn)]
     (.write writer ": keepalive\n\n")
     (.flush writer)
     ;; Park on the cancellation channel instead of sleeping through the interval: the cancel loop notices a
     ;; disconnected client within a second, and waiting on it releases this thread then rather than at the next tick.
     (let [[_ port] (a/alts!! [canceled-chan (a/timeout interval-ms)])]
       (when-not (= port canceled-chan)
-        (let [current-hash (tools-hash-fn token-scopes)]
+        (let [current-hash (tools-hash-fn)]
           (when (not= current-hash last-hash)
             (.write writer ^String (sse-body [tools-list-changed-notification]))
             (.flush writer))
@@ -498,10 +498,10 @@
   A slot can be missing here even though `handle-get` read the user as under the cap: that read is advisory, so
   racing connects can both pass it and one of them loses the slot. Refuse in band rather than by returning, since
   status 200 and the SSE headers are already on the wire by the time the body runs."
-  [user-id ^Writer writer tools-hash-fn token-scopes canceled-chan interval-ms]
+  [user-id ^Writer writer tools-hash-fn canceled-chan interval-ms]
   (if (acquire-keepalive-slot! user-id)
     (try
-      (keepalive-loop! writer tools-hash-fn token-scopes canceled-chan interval-ms)
+      (keepalive-loop! writer tools-hash-fn canceled-chan interval-ms)
       (finally
         (release-keepalive-slot! user-id)))
     (do
@@ -516,7 +516,6 @@
    tracks its own last-seen hash; no shared registry."
   [tools-hash-fn user-id request respond raise]
   (let [session-id (get-in request [:headers "mcp-session-id"])
-        token-scopes (:token-scopes request)
         {:keys [error]} (require-valid-session user-id session-id)]
     (cond
       (some? error)
@@ -536,7 +535,7 @@
                   [os canceled-chan]
                    (keepalive-stream-body! user-id
                                            (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
-                                           tools-hash-fn token-scopes canceled-chan keepalive-interval-ms))]
+                                           tools-hash-fn canceled-chan keepalive-interval-ms))]
         (compojure.response/send* resp request respond raise)))))
 
 (defn- handle-delete
@@ -627,7 +626,7 @@
      surface dispatches `resources/*`).
    - `:instructions` — optional string returned as the `initialize` result's `instructions`
      field, surfaced to the model by clients that support it.
-   - `:tools-hash-fn` — `(fn [token-scopes])` returning a stable hash of the visible tool set,
+   - `:tools-hash-fn` — `(fn [])` returning a stable hash of the listed tool set,
      polled by the GET/SSE keepalive to emit `notifications/tools/list_changed`.
    - `:endpoint-paths` — the URL paths (relative to site-url) the 401 `WWW-Authenticate`
      challenge matches the request URI against. NOT necessarily all served by this surface:

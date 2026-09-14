@@ -597,11 +597,10 @@
 (deftest ^:parallel scope-advertisement-test
   (testing "GHY-4142: the execute scope is grantable — advertised via registered-scopes"
     (is (contains? (registry/registered-scopes) "agent:query:run")))
-  (testing "GHY-4142: tools/list visibility follows the scope on both sides"
-    (is (some #(= "execute_query" (:name %)) (registry/list-tools #{"agent:query:run"})))
-    (is (not (some #(= "execute_query" (:name %)) (registry/list-tools #{"agent:content:read"})))))
+  (testing "GHY-4543: tools/list shows the tool whatever the token's scopes; the gate is at tools/call"
+    (is (some #(= "execute_query" (:name %)) (registry/list-tools))))
   (testing "GHY-4142: the tool advertises itself read-only"
-    (let [tool (first (filter #(= "execute_query" (:name %)) (registry/list-tools nil)))]
+    (let [tool (first (filter #(= "execute_query" (:name %)) (registry/list-tools)))]
       (is (true? (get-in tool [:annotations :readOnlyHint]))))))
 
 ;;; --------------------------------------------- Numeric-id dialect -----------------------------------------------

@@ -545,11 +545,12 @@
   )
 
 (deftest ^:parallel tools-list-visibility-test
-  (testing "GHY-4137: each tool is visible exactly to tokens carrying its scope"
+  (testing "GHY-4543: each tool is listed to every token, but only a token carrying its scope can call it"
     (doseq [[tool scope] {"segment_write" "agent:content:write"
                           "measure_write" "agent:content:write"}]
-      (is (some #(= tool (:name %)) (registry/list-tools #{scope})))
-      (is (not (some #(= tool (:name %)) (registry/list-tools #{"agent:content:read"})))))))
+      (is (some #(= tool (:name %)) (registry/list-tools)))
+      (is (str/starts-with? (-> (registry/call-tool #{"agent:content:read"} nil tool {}) :error :message)
+                            (str "Insufficient scope to call tool: " tool ". Requires " scope ";"))))))
 
 ;; not ^:parallel: creates rows through the tool; with-model-cleanup's id watermark is not parallel-safe
 (deftest readback-requires-read-scope-test

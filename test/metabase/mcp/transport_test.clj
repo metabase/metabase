@@ -53,7 +53,7 @@
   "Run the keepalive loop on a separate thread, returning `:returned` if it finished within 5s and `:timed-out` if
   it is still holding its thread."
   [writer tools-hash-fn canceled-chan interval-ms]
-  (deref (future (#'mcp.transport/keepalive-loop! writer tools-hash-fn nil canceled-chan interval-ms)
+  (deref (future (#'mcp.transport/keepalive-loop! writer tools-hash-fn canceled-chan interval-ms)
                  :returned)
          5000
          :timed-out))
@@ -72,7 +72,7 @@
     (let [canceled (a/promise-chan)
           sink     (StringWriter.)
           calls    (atom 0)
-          hash-fn  (fn [_scopes]
+          hash-fn  (fn []
                      (let [n (swap! calls inc)]
                        ;; cancel on the third read so the loop terminates after a known number of ticks
                        (when (>= n 3)
@@ -134,8 +134,8 @@
           (#'mcp.transport/keepalive-stream-body! 7
                                                   (signaling-writer! sink canceled)
                                                   ;; read the count from inside the running loop
-                                                  (fn [_] (reset! held (get (keepalive-counts) 7)) "hash")
-                                                  nil canceled 30000)
+                                                  (fn [] (reset! held (get (keepalive-counts) 7)) "hash")
+                                                  canceled 30000)
           (is (= 1 @held) "the slot is held while the stream is running")
           (is (not (contains? (keepalive-counts) 7)) "and returned once it ends")))))
   (testing "returned even when the loop throws rather than returning"
@@ -143,8 +143,8 @@
       (fn []
         (is (thrown? Exception
                      (#'mcp.transport/keepalive-stream-body! 8 nil
-                                                             (fn [_] (throw (ex-info "boom" {})))
-                                                             nil (a/promise-chan) 30000)))
+                                                             (fn [] (throw (ex-info "boom" {})))
+                                                             (a/promise-chan) 30000)))
         (is (not (contains? (keepalive-counts) 8))))))
   (testing "a user already at the cap never starts the loop — the body is where the cap is enforced now, so it
             has to refuse there too and not merely be refused by the handler"
@@ -154,8 +154,8 @@
                 {9 @#'mcp.transport/max-concurrent-keepalive-streams})
         (let [ran (atom false)]
           (#'mcp.transport/keepalive-stream-body! 9 (StringWriter.)
-                                                  (fn [_] (reset! ran true) "hash")
-                                                  nil (a/promise-chan) 30000)
+                                                  (fn [] (reset! ran true) "hash")
+                                                  (a/promise-chan) 30000)
           (is (false? @ran)))))))
 
 (deftest keepalive-slot-is-not-taken-when-the-stream-never-starts-test
@@ -211,8 +211,8 @@
               responded (promise)]
           (reset! @#'mcp.transport/keepalive-stream-counts {9 cap})
           (#'mcp.transport/keepalive-stream-body! 9 sink
-                                                  (fn [_] (reset! ran true) "hash")
-                                                  nil (a/promise-chan) 30000)
+                                                  (fn [] (reset! ran true) "hash")
+                                                  (a/promise-chan) 30000)
           (is (false? @ran) "the loop must not run without a slot")
           (let [frames (->> (str/split-lines (str sink))
                             (keep #(when (str/starts-with? % "data: ") (json/decode+kw (subs % 6)))))]
@@ -803,7 +803,7 @@
 (deftest legacy-scoped-bearer-token-never-yields-an-empty-tool-list-test
   (testing (str "GHY-4343: `/api/metabase-mcp` now serves the v2 tool surface, but every MCP client connected to a "
                 "shipped v0.60-v0.63 release holds a token carrying the pre-v2 per-entity agent scopes. No legacy "
-                "scope satisfies any v2 tool scope and `registry/list-tools` filters silently, so the pre-fix "
+                "scope satisfies any v2 tool scope and `registry/list-tools` then filtered silently, so the pre-fix "
                 "failure mode was a successful handshake followed by HTTP 200 with an empty tools list - no error, "
                 "nothing logged, and no self-heal (the refresh grant copies scope forward and can only narrow). "
                 "`RevokeLegacyMcpOAuthTokens` stamps such tokens revoked so the client is refused outright and "
@@ -820,17 +820,25 @@
                 ;; The tool list is only reachable through a session, so the handshake runs first. Its status is
                 ;; not asserted: the point is what `tools/list` can be answered, and revoking the token moves the
                 ;; refusal to this call rather than removing it.
-                _       (testing "before the migration this token reproduces the silent failure exactly"
-                          (let [sid (get-in (client/client-full-response
-                                             :post 200 "metabase-mcp" (headers)
-                                             (jsonrpc-request "initialize" {:capabilities {}}))
-                                            [:headers "Mcp-Session-Id"])
-                                r   (client/client-full-response :post 200 "metabase-mcp"
-                                                                 (headers "mcp-session-id" sid)
-                                                                 (jsonrpc-request "tools/list" {} 2))]
-                            (is (and (= 200 (:status r)) (empty? (get-in r [:body :result :tools])))
-                                (str "characterizing the bug: a legacy-scoped token handshakes, then gets 200 with "
-                                     "zero tools - no error and nothing logged. This is what the migration ends."))))
+                _       (testing (str "GHY-4543: before the migration this token handshakes and is listed every tool, "
+                                      "since tools/list no longer filters by scope, but can call none of them")
+                          (let [sid   (get-in (client/client-full-response
+                                               :post 200 "metabase-mcp" (headers)
+                                               (jsonrpc-request "initialize" {:capabilities {}}))
+                                              [:headers "Mcp-Session-Id"])
+                                r     (client/client-full-response :post 200 "metabase-mcp"
+                                                                   (headers "mcp-session-id" sid)
+                                                                   (jsonrpc-request "tools/list" {} 2))
+                                tools (get-in r [:body :result :tools])
+                                call  (client/client-full-response :post 200 "metabase-mcp"
+                                                                   (headers "mcp-session-id" sid)
+                                                                   (jsonrpc-request "tools/call"
+                                                                                    {:name (:name (first tools)) :arguments {}}
+                                                                                    3))]
+                            (is (= 200 (:status r)))
+                            (is (seq tools))
+                            (is (str/starts-with? (get-in call [:body :error :message] "")
+                                                  "Insufficient scope to call tool: "))))
                 ;; Then put the token in the state `RevokeLegacyMcpOAuthTokens` leaves it in. The migration
                 ;; class itself is exercised in `metabase.app-db.custom-migrations-test`, against the changelog;
                 ;; what this test owns is the consequence at the transport, which is the revoked stamp.

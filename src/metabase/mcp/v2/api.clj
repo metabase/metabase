@@ -39,10 +39,9 @@
 
 ;;; ------------------------------------------------ Method dispatch -----------------------------------------------
 
-(defn- handle-tools-list [id _params session-id token-scopes]
+(defn- handle-tools-list [id _params session-id]
   (let [supports-mcp-ui? (mcp.session/supports-mcp-ui? session-id)]
-    (transport/jsonrpc-response id {:tools (registry/list-tools token-scopes
-                                                                {:supports-mcp-ui? supports-mcp-ui?})})))
+    (transport/jsonrpc-response id {:tools (registry/list-tools {:supports-mcp-ui? supports-mcp-ui?})})))
 
 (defn- handle-tools-call [id params session-id token-scopes request-context]
   (let [tool-name        (:name params)
@@ -100,7 +99,7 @@
   [id method params session-id token-scopes request-context]
   (case method
     "notifications/initialized" nil
-    "tools/list"                (handle-tools-list id params session-id token-scopes)
+    "tools/list"                (handle-tools-list id params session-id)
     "tools/call"                (handle-tools-call id params session-id token-scopes request-context)
     "resources/list"            (handle-resources-list id params token-scopes)
     "resources/read"            (handle-resources-read id params session-id token-scopes)
