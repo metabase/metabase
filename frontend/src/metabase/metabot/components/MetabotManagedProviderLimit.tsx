@@ -93,7 +93,7 @@ export const MetabotManagedProviderLimitActions = ({
   }
 
   return (
-    <Flex direction="column" align="start" gap="xxs" {...rest}>
+    <Flex direction="column" align="start" gap="lg" {...rest}>
       <Button
         variant="transparent"
         size="compact-md"

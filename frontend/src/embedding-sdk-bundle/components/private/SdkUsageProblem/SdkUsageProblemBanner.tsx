@@ -101,7 +101,7 @@ export const SdkUsageProblemBanner = ({
                 fs="normal"
                 radius="sm"
                 variant="subtle"
-                color="text-brand"
+                color="brand"
                 onClick={() => {
                   dispatch(setUsageProblem(null));
                 }}
@@ -115,7 +115,7 @@ export const SdkUsageProblemBanner = ({
                     <Icon aria-hidden name="external" size="1rem" />
                   }
                   ff={fontFamily}
-                  className={S.DocsButton}
+                  variant="light"
                   radius="sm"
                 >
                   Documentation

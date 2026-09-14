@@ -20,7 +20,7 @@ export function TimeControlPopover({
           fw="normal"
           px="lg"
           variant="subtle"
-          color="text-primary"
+          color="neutral"
           classNames={{ root: S.popoverTargetButton }}
           onClick={() => setIsOpen(!isOpen)}
         >

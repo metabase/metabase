@@ -76,8 +76,8 @@ const InvalidateNowFormBody = ({
           return false;
         }}
         disabled={wasFormRecentlyPending}
-        variant="subtle"
-        c="feedback-negative"
+        variant="light"
+        color="negative"
         leftSection={<Icon name="trash" />}
         label={buttonText}
         activeLabel={

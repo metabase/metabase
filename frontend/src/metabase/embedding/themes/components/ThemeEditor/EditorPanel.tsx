@@ -250,7 +250,7 @@ export function EditorPanel({
           <Button
             mt="xl"
             variant="transparent"
-            color="feedback-negative"
+            color="negative"
             size="compact-md"
             leftSection={<Icon name="trash" size={16} />}
             onClick={onDelete}

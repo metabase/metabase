@@ -113,7 +113,7 @@ export const ClickActionControl = ({
           p="0.5rem"
           mx="-0.5rem"
           variant="subtle"
-          color="text-primary"
+          color="neutral"
           classNames={{
             root: S.horizontalButton,
             label: S.label,

@@ -102,9 +102,11 @@ export function DateIntervalPicker({
         />
         <Tooltip label={t`Starting from…`} position="bottom">
           <Button
+            variant="transparent"
+            size="compact-md"
+            color="neutral"
+            ml="sm"
             aria-label={t`Starting from…`}
-            c="text-secondary"
-            variant="subtle"
             leftSection={<Icon name="arrow_left_to_line" />}
             onClick={handleStartingFromClick}
           />

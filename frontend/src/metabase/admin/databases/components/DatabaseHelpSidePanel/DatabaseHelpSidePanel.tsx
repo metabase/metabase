@@ -80,7 +80,7 @@ export const DatabaseHelpSidePanel = ({ engineKey, onClose }: Props) => {
             >
               {t`Read the full docs`}
             </Button>
-            <Divider variant="dashed" />
+            <Divider variant="dashed" my="lg" />
           </>
         )}
         {isAdmin && (
@@ -94,7 +94,7 @@ export const DatabaseHelpSidePanel = ({ engineKey, onClose }: Props) => {
             >
               {t`Invite a teammate to help you`}
             </Button>
-            <Divider variant="dashed" />
+            <Divider variant="dashed" my="lg" />
           </>
         )}
         {showMetabaseLinks && isPaidPlan && (
@@ -110,7 +110,7 @@ export const DatabaseHelpSidePanel = ({ engineKey, onClose }: Props) => {
             >
               {t`Talk to an expert`}
             </Button>
-            <Divider variant="dashed" />
+            <Divider variant="dashed" my="lg" />
           </>
         )}
         <EmbeddedEngineDocContent engineKey={engineKey} />

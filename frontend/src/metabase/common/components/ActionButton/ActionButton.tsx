@@ -116,9 +116,9 @@ export const ActionButton = forwardRef<ActionButtonHandle, ActionButtonProps>(
     const actionStatus = active ? "pending" : (result ?? "idle");
     const resultProps: Partial<ButtonProps> =
       result === "success"
-        ? { variant: "filled", color: "feedback-positive" }
+        ? { variant: "filled", color: "positive" }
         : result === "failed"
-          ? { variant: "filled", color: "feedback-negative" }
+          ? { variant: "filled", color: "negative" }
           : {};
 
     return (

@@ -237,7 +237,6 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
         )}
         <Button
           variant="subtle"
-          c="text-secondary"
           bd="1px dashed border"
           bdrs="xl"
           leftSection={

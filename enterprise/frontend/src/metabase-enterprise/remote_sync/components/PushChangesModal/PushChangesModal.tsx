@@ -106,7 +106,7 @@ export const PushChangesModal = ({
             {t`Cancel`}
           </Button>
           <Button
-            color="core-brand"
+            color="brand"
             disabled={isPushing}
             leftSection={<Icon name="upload" />}
             loading={isPushing}

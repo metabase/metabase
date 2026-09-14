@@ -96,7 +96,7 @@ const ConnectionDetails = ({
       <Stack gap="sm" mt="sm">
         <Button
           variant="filled"
-          color="feedback-negative"
+          color="negative"
           loading={isDeleteInProgress}
           onClick={onDelete}
           w={INNER_WIDTH}

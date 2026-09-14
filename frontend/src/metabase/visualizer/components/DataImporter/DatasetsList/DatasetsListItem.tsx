@@ -32,7 +32,7 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
       flex="0 0 auto"
       pl={0}
       variant={selected ? "filled" : "subtle"}
-      color={selected ? "core-brand" : "text-primary"}
+      color={selected ? "brand" : "neutral"}
       data-testid="swap-dataset-button"
       aria-pressed={selected}
       onClick={() => {

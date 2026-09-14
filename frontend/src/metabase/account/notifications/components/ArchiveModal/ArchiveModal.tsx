@@ -52,7 +52,7 @@ function ArchiveNotificationModal({
         <Button
           key="submit"
           variant="filled"
-          color="feedback-negative"
+          color="negative"
           onClick={handleArchiveClick}
         >
           {getSubmitMessage(type, hasUnsubscribed)}

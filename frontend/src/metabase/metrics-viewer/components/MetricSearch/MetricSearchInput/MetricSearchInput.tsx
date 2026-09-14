@@ -282,7 +282,7 @@ export function MetricSearchInput({
       {isFocused && !pendingFocusRef.current && isExpressionDirty && (
         <Button
           variant="light"
-          color="core-brand"
+          color="brand"
           leftSection={<Icon size="0.75rem" name="enter_or_return" />}
           disabled={!!validationError}
           data-testid="run-expression-button"

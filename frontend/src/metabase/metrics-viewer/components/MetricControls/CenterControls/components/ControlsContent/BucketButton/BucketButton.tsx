@@ -62,7 +62,7 @@ export function BucketButton({
           px="lg"
           bdrs="sm"
           variant="subtle"
-          color="text-primary"
+          color="neutral"
           onClick={() => setIsOpen(!isOpen)}
         >
           {currentUnit

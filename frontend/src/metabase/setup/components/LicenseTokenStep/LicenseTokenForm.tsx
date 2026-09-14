@@ -101,17 +101,17 @@ export const LicenseTokenForm = ({
             />
           </Flex>
           <Divider mx={{ base: "-2rem", sm: "-4rem" }} mt="xxl" mb="lg" />
-          <Box>
+          <Stack gap="xs">
             <Button
               onClick={onSkip}
               variant="transparent"
               size="compact-md"
               fw="normal"
             >{t`I'll activate later`}</Button>
-            <Text c="text-disabled" size="sm">
+            <Text c="text-secondary" size="sm">
               {t`You won't have access to paid features until you activate.`}
             </Text>
-          </Box>
+          </Stack>
         </Form>
       )}
     </FormProvider>

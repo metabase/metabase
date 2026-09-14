@@ -12,7 +12,7 @@ export const CancelEditButton = (props: { onClick: () => void }) => {
   ]);
 
   return (
-    <Button key="cancel" variant="subtle" onClick={props.onClick}>
+    <Button key="cancel" variant="on-dark-secondary" onClick={props.onClick}>
       {t`Cancel`}
     </Button>
   );

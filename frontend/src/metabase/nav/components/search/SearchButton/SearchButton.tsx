@@ -25,10 +25,11 @@ export const SearchButton = (props: ButtonProps) => {
   if (isSmallScreen) {
     return (
       <Button
+        variant="transparent"
+        size="compact-md"
+        color="neutral"
         leftSection={<Icon name="search" />}
-        variant="subtle"
         onClick={handleClick}
-        color="text-secondary"
         aria-label="Search"
       />
     );

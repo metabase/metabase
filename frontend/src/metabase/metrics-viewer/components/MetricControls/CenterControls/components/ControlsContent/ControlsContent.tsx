@@ -124,7 +124,7 @@ export function ControlsContent(props: ControlsContentProps) {
                       justify="space-between"
                       aria-label={t`Change column`}
                       variant="subtle"
-                      color="text-primary"
+                      color="neutral"
                       leftSection={
                         columnPickerIcon ? (
                           <Icon

@@ -74,7 +74,7 @@ export function DataStep({
           <Button
             variant="transparent"
             size="compact-md"
-            c="text-primary"
+            color="neutral"
             rightSection={<Icon name="chevrondown" />}
             onClick={() => setIsOpened(true)}
           >

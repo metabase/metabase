@@ -207,12 +207,13 @@ const UploadTableRow = ({
       <td>{createdAtString}</td>
       <td>{item.schema}</td>
       <td>
-        <Flex align="center" justify="flex-end">
+        <Flex align="center" justify="flex-end" py="sm">
           <Button
             onClick={() => onTrash(item)}
-            variant="subtle"
+            variant="transparent"
+            size="compact-md"
             className="Button Button--borderless"
-            color="text-secondary"
+            color="neutral"
           >
             <Icon name="trash" />
           </Button>

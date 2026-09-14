@@ -150,7 +150,7 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
             variant="filled"
             onClick={onConfirm}
             disabled={ctaDisabled}
-            color={mutationError ? "feedback-negative" : "core-brand"}
+            color={mutationError ? "negative" : "brand"}
           >
             {t`Move these questions`}
           </Button>

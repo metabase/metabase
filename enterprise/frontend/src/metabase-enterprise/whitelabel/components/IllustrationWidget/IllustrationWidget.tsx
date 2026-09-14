@@ -248,9 +248,10 @@ export function IllustrationWidget({
                   </Text>
                   {customIllustrationSource && (
                     <Button
+                      variant="transparent"
+                      size="compact-md"
+                      color="neutral"
                       leftSection={<Icon name="close" />}
-                      variant="subtle"
-                      c="text-primary"
                       ml="lg"
                       onClick={handleRemoveCustomIllustration}
                       aria-label={t`Remove custom illustration`}

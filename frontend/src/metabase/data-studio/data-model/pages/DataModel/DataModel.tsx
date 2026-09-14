@@ -249,14 +249,15 @@ function DataModelContent() {
             >
               <DataStudioBreadcrumbs>{t`Table details`}</DataStudioBreadcrumbs>
               <Button
+                variant="transparent"
+                size="compact-md"
+                color="neutral"
                 component={ForwardRefLink}
                 to={Urls.dataStudioData({
                   databaseId: table?.db_id,
                   schemaName: table?.schema,
                 })}
                 leftSection={<Icon name="close" c="text-secondary" />}
-                variant="subtle"
-                size="sm"
                 onClick={() => {
                   closePreview();
                   resetSelection();
@@ -314,6 +315,9 @@ function DataModelContent() {
             >
               <DataStudioBreadcrumbs>{t`Field details`}</DataStudioBreadcrumbs>
               <Button
+                variant="transparent"
+                size="compact-md"
+                color="neutral"
                 component={ForwardRefLink}
                 to={Urls.dataStudioData({
                   databaseId: table?.db_id,
@@ -321,8 +325,6 @@ function DataModelContent() {
                   tableId: table?.id,
                 })}
                 leftSection={<Icon name="close" c="text-secondary" />}
-                variant="subtle"
-                size="sm"
                 onClick={closePreview}
               />
             </Group>

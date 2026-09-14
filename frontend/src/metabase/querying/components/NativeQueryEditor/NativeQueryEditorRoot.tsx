@@ -386,7 +386,7 @@ export const NativeQueryEditorRoot = forwardRef<
                         <Button
                           data-testid="accept-proposed-changes-button"
                           variant="filled"
-                          bg="feedback-positive"
+                          color="positive"
                           px="0"
                           w="2rem"
                           onClick={() => {
@@ -410,7 +410,7 @@ export const NativeQueryEditorRoot = forwardRef<
                           w="2rem"
                           px="0"
                           variant="filled"
-                          bg="feedback-negative"
+                          color="negative"
                           onClick={onRejectProposed}
                         >
                           <Icon name="close" />

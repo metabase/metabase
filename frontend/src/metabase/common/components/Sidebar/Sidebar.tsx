@@ -55,7 +55,7 @@ export function Sidebar({
                 <Button
                   leftSection={<Icon name="trash" />}
                   variant="transparent"
-                  color="feedback-negative"
+                  color="negative"
                   disabled={isRemoveDisabled}
                   onClick={onRemove}
                   size="compact-md"
@@ -67,8 +67,8 @@ export function Sidebar({
           )}
           {onCancel && (
             <Button
-              variant="subtle"
-              color="text-secondary"
+              variant="transparent"
+              size="compact-md"
               onClick={onCancel}
               aria-label={t`Cancel`}
             >{t`Cancel`}</Button>

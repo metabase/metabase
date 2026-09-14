@@ -73,7 +73,7 @@ export const DownloadDiagnosticModal = ({
         <FormSubmitButton
           variant="filled"
           label={c("This is a verb, not a noun").t`Download`}
-          color="core-brand"
+          color="brand"
           mt="xl"
           mb="sm"
           radius="sm"

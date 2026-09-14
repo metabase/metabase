@@ -192,7 +192,7 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
             </Radio.Group>
           </>
         }
-        confirmButtonProps={{ color: "core-brand", variant: "filled" }}
+        confirmButtonProps={{ color: "brand", variant: "filled" }}
         confirmButtonText={t`Done`}
       />
     );
@@ -223,7 +223,7 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
         }
         message={t`You can move it to a collection if you want to use it in both dashboards.`}
         confirmButtonText={t`Okay`}
-        confirmButtonProps={{ color: "core-brand", variant: "filled" }}
+        confirmButtonProps={{ color: "brand", variant: "filled" }}
       />
     );
   }

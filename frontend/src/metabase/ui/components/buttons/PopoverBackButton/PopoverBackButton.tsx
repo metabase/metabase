@@ -13,11 +13,12 @@ export function PopoverBackButton(props: PopoverBackButtonProps) {
   const { withArrow = true, ...rest } = props;
   return (
     <Button
+      variant="transparent"
+      size="compact-md"
+      color="neutral"
       p={0}
       aria-label={t`Back`}
-      c="text-primary"
       {...rest}
-      variant="subtle"
       leftSection={withArrow && <Icon name="chevronleft" />}
     />
   );

@@ -250,7 +250,7 @@ function GoogleSheetsDisconnectModal({
             </Button>
             <Button
               variant="filled"
-              color="feedback-negative"
+              color="negative"
               loading={isDeletingFolderLink}
               onClick={onDelete}
             >

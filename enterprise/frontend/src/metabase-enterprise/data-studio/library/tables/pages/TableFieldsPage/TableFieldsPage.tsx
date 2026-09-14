@@ -110,12 +110,13 @@ export function TableFieldsPage() {
             >
               <Text fw="bold">{t`Field Details`}</Text>
               <Button
+                variant="transparent"
+                size="compact-md"
+                color="neutral"
                 component={ForwardRefLink}
                 to={Urls.dataStudioTableFields(table.id)}
                 onClick={closePreview}
                 leftSection={<Icon name="close" c="text-secondary" />}
-                variant="subtle"
-                size="sm"
               />
             </Group>
             <FieldSection

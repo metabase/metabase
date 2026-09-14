@@ -25,11 +25,11 @@ export const ChannelSettingsBlock = ({
         </Group>
 
         <Button
+          variant="transparent"
+          size="compact-md"
+          color="neutral"
           data-testid="remove-channel-button"
           leftSection={<Icon name="close" />}
-          color="text-primary"
-          variant="subtle"
-          size="sm"
           onClick={onRemoveChannel}
         />
       </Group>

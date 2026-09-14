@@ -159,10 +159,11 @@ export const SmallGenericError = forwardRef<
           <Icon name="warning" size={32} c="text-disabled" />
         ) : (
           <Button
+            variant="transparent"
+            size="compact-md"
+            color="neutral"
             leftSection={<Icon name="warning" size={32} c="text-disabled" />}
-            color="text-disabled"
             onClick={openModal}
-            variant="subtle"
           />
         )}
       </Tooltip>

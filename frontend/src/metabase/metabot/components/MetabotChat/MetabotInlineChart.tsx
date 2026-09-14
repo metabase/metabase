@@ -242,7 +242,6 @@ function SaveChartAction({
             to={Urls.question(question.setId(savedCardId))}
             target="_blank"
             variant="transparent"
-            color="text-secondary"
             size="compact-md"
             leftSection={<Icon name="check" size={14} />}
           >

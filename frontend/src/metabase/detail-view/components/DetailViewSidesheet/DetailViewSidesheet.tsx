@@ -245,7 +245,7 @@ export function DetailViewSidesheet({
                 <Tooltip disabled={!onPreviousClick} label={t`Previous row`}>
                   <Button
                     aria-label={t`Previous row`}
-                    c="text-primary"
+                    color="neutral"
                     disabled={!onPreviousClick}
                     leftSection={<Icon name="chevronup" />}
                     size="compact-md"
@@ -260,7 +260,7 @@ export function DetailViewSidesheet({
                 <Tooltip disabled={!onNextClick} label={t`Next row`}>
                   <Button
                     aria-label={t`Next row`}
-                    c="text-primary"
+                    color="neutral"
                     disabled={!onNextClick}
                     leftSection={<Icon name="chevrondown" />}
                     size="compact-md"
@@ -286,7 +286,7 @@ export function DetailViewSidesheet({
                   <Tooltip label={t`Actions`}>
                     <Button
                       aria-label={t`Actions`}
-                      c="text-primary"
+                      color="neutral"
                       data-testid="actions-menu"
                       leftSection={<Icon name="ellipsis" />}
                       size="compact-md"
@@ -317,7 +317,7 @@ export function DetailViewSidesheet({
                     aria-label={
                       linkCopied ? t`Copied!` : t`Copy link to this record`
                     }
-                    c="text-primary"
+                    color="neutral"
                     leftSection={<Icon name="link" />}
                     size="compact-md"
                     variant="transparent"
@@ -329,7 +329,7 @@ export function DetailViewSidesheet({
                   <Box>
                     <Button
                       aria-label={t`Open in full page`}
-                      c="text-primary"
+                      color="neutral"
                       component={Link}
                       leftSection={<Icon name="expand" />}
                       size="compact-md"

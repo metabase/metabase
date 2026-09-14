@@ -29,7 +29,7 @@ export const RuleListing = ({
     <Box>
       <Button
         variant="subtle"
-        color="text-primary"
+        color="neutral"
         onClick={onAdd}
         leftSection={<Icon name="add" />}
       >

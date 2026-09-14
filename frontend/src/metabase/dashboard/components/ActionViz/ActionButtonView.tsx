@@ -1,7 +1,12 @@
 import { t } from "ttag";
 
-import { Button, type ButtonVariant, Ellipsified, Icon } from "metabase/ui";
-import type { ColorName } from "metabase/ui/colors/types";
+import {
+  Button,
+  type ButtonColor,
+  type ButtonVariant,
+  Ellipsified,
+  Icon,
+} from "metabase/ui";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type { IconName } from "metabase-types/api";
 
@@ -10,12 +15,12 @@ import { StyledButtonContent } from "./ActionButton.styled";
 
 const BUTTON_VARIANT_PROPS: Record<
   string,
-  { variant: ButtonVariant; color?: ColorName }
+  { variant: ButtonVariant; color?: ButtonColor }
 > = {
   default: { variant: "default" },
   primary: { variant: "filled" },
-  danger: { variant: "filled", color: "feedback-negative" },
-  success: { variant: "filled", color: "feedback-positive" },
+  danger: { variant: "filled", color: "negative" },
+  success: { variant: "filled", color: "positive" },
   borderless: { variant: "subtle" },
 };
 

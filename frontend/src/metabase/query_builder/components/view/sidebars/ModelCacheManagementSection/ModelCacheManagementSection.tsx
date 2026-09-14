@@ -90,7 +90,7 @@ export function ModelCacheManagementSection({ model }: Props) {
               <Button
                 variant="transparent"
                 size="compact-md"
-                c="text-primary"
+                color="neutral"
                 onClick={() => onRefresh(model.id())}
               >
                 {t`Create now`}
@@ -99,7 +99,7 @@ export function ModelCacheManagementSection({ model }: Props) {
               <Button
                 variant="transparent"
                 size="compact-md"
-                c="text-primary"
+                color="neutral"
                 aria-label={t`Refresh now`}
                 leftSection={<Icon name="refresh" tooltip={t`Refresh now`} />}
                 onClick={() => onRefresh(model.id())}

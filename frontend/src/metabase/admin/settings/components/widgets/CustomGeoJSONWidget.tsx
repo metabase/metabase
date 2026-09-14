@@ -227,7 +227,7 @@ const ListMaps = ({ maps, onEditMap, onDeleteMap }: ListMapsProps) => {
                 <td className={AdminS.TableActions}>
                   <Button
                     variant="filled"
-                    color="feedback-negative"
+                    color="negative"
                     onClick={() => setMapIdToDelete(mapId)}
                   >{t`Remove`}</Button>
                 </td>

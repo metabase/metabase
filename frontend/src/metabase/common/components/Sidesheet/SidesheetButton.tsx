@@ -14,7 +14,7 @@ export const SidesheetButtonWithChevron = ({
   >
     <Flex justify="space-between" gap="sm">
       {children}
-      <Icon name="chevronright" c="text-primary" />
+      <Icon name="chevronright" />
     </Flex>
   </SidesheetButton>
 );

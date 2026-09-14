@@ -210,11 +210,12 @@ export function Editor(props: EditorProps) {
           {source.trim() !== "" && error == null && isValidated && (
             <ButtonTooltip label={t`Auto-format`}>
               <Button
+                variant="transparent"
+                size="compact-md"
+                color="neutral"
                 aria-label={t`Auto-format`}
                 onClick={formatExpression}
                 className={S.toolbarButton}
-                size="sm"
-                variant="subtle"
                 disabled={isFormatting || error != null}
                 leftSection={<Icon name="format_code" />}
               />

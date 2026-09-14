@@ -395,7 +395,7 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
             variant="subtle"
             size="sm"
             aria-label={t`Metric options`}
-            c="text-primary"
+            color="neutral"
           >
             <Icon name="ellipsis" />
           </Button>

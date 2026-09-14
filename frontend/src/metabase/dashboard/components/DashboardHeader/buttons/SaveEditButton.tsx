@@ -54,7 +54,7 @@ export const SaveEditButton = () => {
       <span>
         <ActionButton
           actionFn={onSave}
-          variant="filled"
+          variant="on-dark-primary"
           normalText={t`Save`}
           activeText={t`Saving…`}
           failedText={t`Save failed`}

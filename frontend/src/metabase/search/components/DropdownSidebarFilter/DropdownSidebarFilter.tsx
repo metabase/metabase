@@ -131,10 +131,10 @@ export const DropdownSidebarFilter = ({
                 </GroupOverflowHidden>
               )}
               <Button
+                variant="transparent"
+                size="compact-md"
+                color="neutral"
                 data-testid="sidebar-filter-dropdown-button"
-                size="sm"
-                c="inherit"
-                variant="subtle"
                 onClick={onClearFilter}
                 leftSection={<Icon size={16} name={getDropdownIcon()} />}
               />

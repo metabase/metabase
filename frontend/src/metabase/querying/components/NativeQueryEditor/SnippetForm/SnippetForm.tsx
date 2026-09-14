@@ -121,8 +121,8 @@ function SnippetFormInner({
                   type="button"
                   className={S.ArchiveButton}
                   leftSection={<Icon name="archive" />}
-                  variant="subtle"
-                  color="text-secondary"
+                  variant="transparent"
+                  size="compact-md"
                   onClick={onArchive}
                 >
                   {t`Archive`}

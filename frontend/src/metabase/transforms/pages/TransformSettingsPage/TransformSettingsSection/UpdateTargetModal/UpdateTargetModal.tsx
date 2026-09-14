@@ -208,7 +208,7 @@ function getSubmitButtonLabel(shouldDeleteTarget: boolean) {
 }
 
 function getSubmitButtonColor(shouldDeleteTarget: boolean) {
-  return shouldDeleteTarget ? "error" : undefined;
+  return shouldDeleteTarget ? "negative" : undefined;
 }
 
 function getUpdateRequest(

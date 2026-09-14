@@ -17,7 +17,7 @@ export function NoBreakoutControls() {
             className={S.controlButton}
             aria-label={t`No breakout`}
             variant="subtle"
-            color="text-primary"
+            color="neutral"
             leftSection={<Icon c="core-brand" name="unreferenced" size={16} />}
             onClick={openSidebar}
           >

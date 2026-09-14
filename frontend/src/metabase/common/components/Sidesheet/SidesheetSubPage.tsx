@@ -1,6 +1,6 @@
 import type React from "react";
 
-import { Button, Flex, Icon, type ModalOverlayProps, Title } from "metabase/ui";
+import { Button, Icon, type ModalOverlayProps } from "metabase/ui";
 
 import { Sidesheet, type SidesheetSize } from "./Sidesheet";
 
@@ -26,11 +26,18 @@ export const SidesheetSubPageTitle = ({
   onClick,
 }: SidesheetSubPageTitleProps) => {
   return (
-    <Button variant="subtle" size="md" px={0} onClick={onClick}>
-      <Flex align="center" justify="center" gap="lg">
-        <Icon name="chevronleft" />
-        <Title order={3}>{title}</Title>
-      </Flex>
+    <Button
+      variant="transparent"
+      size="compact-md"
+      color="neutral"
+      h="auto"
+      fz="inherit"
+      fw="inherit"
+      lh="inherit"
+      leftSection={<Icon name="chevronleft" />}
+      onClick={onClick}
+    >
+      {title}
     </Button>
   );
 };

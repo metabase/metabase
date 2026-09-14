@@ -39,7 +39,6 @@ export function QuestionSummarizeWidget({
 
   return (
     <Button
-      color="core-summarize"
       variant={isShowingSummarySidebar ? "filled" : "default"}
       leftSection={<Icon name="sum" />}
       onClick={handleClick}

@@ -16,7 +16,7 @@
 }
 
 .RemoveButton {
-  &[data-variant="subtle"] {
+  &[data-variant="transparent"] {
     color: var(--mb-color-text-primary-inverse);
     background-color: transparent;
     opacity: 0.6;
@@ -51,6 +51,7 @@
 
   /* to increase specificity */
   .AddButton {
+    height: auto;
     transition: none;
   }
 

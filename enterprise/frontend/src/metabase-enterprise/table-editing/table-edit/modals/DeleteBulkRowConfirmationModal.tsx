@@ -28,12 +28,12 @@ export function DeleteBulkRowConfirmationModal({
       onClose={onClose}
     >
       <Group justify="flex-end" mt="xxl">
-        <Button variant="subtle" onClick={onClose}>
+        <Button variant="subtle" color="neutral" onClick={onClose}>
           {t`Cancel`}
         </Button>
         <Button
           variant="filled"
-          color="feedback-negative"
+          color="negative"
           onClick={onConfirm}
           loading={isLoading}
         >

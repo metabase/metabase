@@ -31,7 +31,6 @@ export const BreakoutPickerInner = ({
     <Stack gap={0} w="18.75rem">
       <Button
         size="lg"
-        color="text-secondary"
         variant="subtle"
         leftSection={<Icon name="chevronleft" />}
         onClick={() => onClose?.()}

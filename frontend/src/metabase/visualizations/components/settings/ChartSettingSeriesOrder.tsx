@@ -6,7 +6,16 @@ import _ from "underscore";
 
 import { ColorSelector } from "metabase/common/components/ColorSelector";
 import type { DragEndEvent } from "metabase/common/components/Sortable";
-import { Box, Button, Flex, Group, Icon, Select, Text } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Flex,
+  Group,
+  Icon,
+  Select,
+  Stack,
+  Text,
+} from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import { getNamedAccentColors } from "metabase/ui/colors/groups";
 import { getNullDisplayValue } from "metabase/utils/constants";
@@ -166,9 +175,9 @@ export const ChartSettingSeriesOrder = ({
               <Text truncate fw="bold">{t`Other`}</Text>
             </Group>
             <Button
-              size="sm"
-              color="text-secondary"
-              variant="subtle"
+              variant="transparent"
+              size="compact-md"
+              color="neutral"
               leftSection={<Icon name="gear" />}
               aria-label={t`Other series settings`}
               onClick={handleOtherSeriesSettingsClick}
@@ -203,24 +212,26 @@ export const ChartSettingSeriesOrder = ({
             getItemColor={getItemColor}
             dividers={dividers}
           />
-          {truncatedItems.length > 0 ? (
-            <div>
+          <Stack gap="md" mt="md" align="flex-start">
+            {truncatedItems.length > 0 && (
               <Button
-                variant="subtle"
+                variant="transparent"
+                size="compact-md"
                 onClick={() => setIsListTruncated(false)}
               >
                 {t`${truncatedItems.length} more series`}
               </Button>
-            </div>
-          ) : null}
-          {canAddSeries && !isSeriesPickerVisible && (
-            <Button
-              variant="subtle"
-              onClick={() => setSeriesPickerVisible(true)}
-            >
-              {addButtonLabel}
-            </Button>
-          )}
+            )}
+            {canAddSeries && !isSeriesPickerVisible && (
+              <Button
+                variant="transparent"
+                size="compact-md"
+                onClick={() => setSeriesPickerVisible(true)}
+              >
+                {addButtonLabel}
+              </Button>
+            )}
+          </Stack>
           {isSeriesPickerVisible && (
             <Select
               dropdownOpened

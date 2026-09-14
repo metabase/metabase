@@ -549,7 +549,7 @@ export const GroupsListing = (props: GroupsListingProps) => {
         closeButtonText={null}
         withCloseButton={false}
         confirmButtonText={t`Ok`}
-        confirmButtonProps={{ color: "core-brand" }}
+        confirmButtonProps={{ color: "brand" }}
         data-testid="alert-modal"
       />
     </AdminPaneLayout>

@@ -79,9 +79,11 @@ function _PulsesListSidebar({
         <Flex align="center">
           <Tooltip label={createSubscriptionLabel}>
             <Button
+              variant="transparent"
+              size="compact-md"
+              color="neutral"
               aria-label={createSubscriptionLabel}
               leftSection={<Icon name="add" size={16} />}
-              variant="subtle"
               mr="1rem"
               onClick={createSubscription}
             />
@@ -89,10 +91,11 @@ function _PulsesListSidebar({
 
           <Tooltip label={closeSidebarLabel}>
             <Button
+              variant="transparent"
+              size="compact-md"
+              color="neutral"
               aria-label={closeSidebarLabel}
               leftSection={<Icon name="close" size={16} />}
-              variant="subtle"
-              color="text-secondary"
               mr="-1rem"
               onClick={onCancel}
             />

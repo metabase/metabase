@@ -85,7 +85,7 @@ export const Logs = ({
                     query.length > 0 ? (
                       <Button
                         aria-label={t`Clear`}
-                        c="text-primary"
+                        color="neutral"
                         leftSection={<Icon name="close" />}
                         variant="subtle"
                         onClick={() => {

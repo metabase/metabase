@@ -10,13 +10,13 @@ import { t } from "ttag";
 import { useSetting } from "metabase/settings";
 import {
   Button,
+  type ButtonColor,
   type ButtonProps,
   Icon,
   Loader,
   Menu,
   Tooltip,
 } from "metabase/ui";
-import type { ColorName } from "metabase/ui/colors/types";
 import type {
   TransformId,
   TransformJobId,
@@ -135,7 +135,7 @@ type RunButtonOpts = {
 
 type RunButtonInfo = {
   label: string;
-  color?: ColorName;
+  color?: ButtonColor;
   leftSection?: ReactNode;
   isDisabled?: boolean;
 };
@@ -158,7 +158,6 @@ function getRunButtonInfo({
     return {
       label: t`Canceling…`,
       leftSection: <Loader size="sm" />,
-      color: "text-secondary",
       isDisabled: true,
     };
   }
@@ -182,7 +181,7 @@ function getRunButtonInfo({
   if (run.status === "succeeded") {
     return {
       label: t`Ran successfully`,
-      color: "feedback-positive",
+      color: "positive",
       leftSection: <Icon name="check" aria-hidden />,
       isDisabled,
     };
@@ -191,7 +190,7 @@ function getRunButtonInfo({
   if (run.status === "canceled") {
     return {
       label: t`Canceled`,
-      color: "feedback-warning",
+      color: "warning",
       leftSection: <Icon name="close" c="core-white" aria-hidden />,
       isDisabled,
     };
@@ -199,7 +198,7 @@ function getRunButtonInfo({
 
   return {
     label: t`Run failed`,
-    color: "feedback-negative",
+    color: "negative",
     leftSection: <Icon name="warning" aria-hidden />,
     isDisabled,
   };

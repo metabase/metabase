@@ -98,7 +98,7 @@ export function BucketPickerPopover({
           maw="50%"
           size="compact-md"
           variant="transparent"
-          color="core-white"
+          c="core-white"
           classNames={{ label: S.triggerButtonLabel }}
         >
           <Ellipsified>{triggerLabel}</Ellipsified>
@@ -146,7 +146,7 @@ export function BucketPickerPopover({
               className={S.moreButton}
               onClick={handleExpand}
               variant="subtle"
-              color="core-brand"
+              color="brand"
               fullWidth
               px="lg"
               styles={{

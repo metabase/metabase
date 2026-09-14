@@ -135,8 +135,10 @@ export function BreakoutColumnListItem({
         />
         {isSelected && (
           <Button
+            variant="transparent"
+            size="compact-md"
+            color="neutral"
             className={BreakoutColumnListItemS.RemoveButton}
-            variant="subtle"
             leftSection={<Icon name="close" />}
             onClick={handleRemoveColumn}
             aria-label={t`Remove dimension`}
@@ -146,8 +148,10 @@ export function BreakoutColumnListItem({
       {!isSelected && (
         <Tooltip label={t`Add grouping`}>
           <Button
+            variant="transparent"
+            size="compact-md"
+            color="neutral"
             className={BreakoutColumnListItemS.AddButton}
-            variant="subtle"
             leftSection={<Icon name="add" />}
             aria-label={t`Add dimension`}
             onClick={handleAddClick}

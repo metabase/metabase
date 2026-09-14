@@ -52,7 +52,7 @@ export const AddRow = ({
       onChange={onChange}
     />
     <Flex flex="0 0 auto" gap="sm">
-      <Button variant="subtle" bg="transparent" onClick={onCancel}>
+      <Button variant="subtle" onClick={onCancel}>
         {t`Cancel`}
       </Button>
       <Button
