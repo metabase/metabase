@@ -147,6 +147,10 @@
                                     (ChangeSetFilterResult. accept? "decision according to range" (class this)))))]
           change-log-service (.getChangeLogService (ChangeLogHistoryServiceFactory/getInstance) database)]
       (liquibase/with-scope-locked liquibase
+        ;; The history service is cached across Liquibase instances for equal Databases, so its ran-changeset cache
+        ;; can be stale if a rollback ran through another connection (e.g. `migrate! :down`). Reset it so run
+        ;; statuses are re-read from the database.
+        (.reset change-log-service)
         ;; Calling .listUnrunChangeSets has the side effect of creating the Liquibase tables
         ;; and initializing checksums so that they match the ones generated in production.
         (.listUnrunChangeSets liquibase nil (LabelExpression.))
