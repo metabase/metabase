@@ -1625,6 +1625,28 @@
                                     "session_id"           "00000000-0000-0000-0000-000000000002"}}]
                         token-events))))))))))
 
+;;; ===================== Usage Log Tests =====================
+
+(deftest call-llm-usage-log-test
+  (testing "call-llm and call-llm-structured log the provider type and the model as the provider names it"
+    (llm.tu/with-connections [(assoc (llm.tu/connection "openrouter") :key "openrouter-1")]
+      (let [model-ref "openrouter-1/anthropic/claude-sonnet-4.6"
+            response  (test-util/mock-llm-response
+                       [{:type :start :id "m1"}
+                        {:type :tool-input :id "call-1" :function "json" :arguments {:answer "42"}}
+                        {:type :usage :usage {:promptTokens 10 :completionTokens 5}}])
+            logged    (atom [])]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter (constantly response)
+                                    usage/log-ai-usage!   #(swap! logged conj %)]
+          (run! identity (self/call-llm model-ref nil [] {} {:tag "metabot_agent"}))
+          (self/call-llm-structured model-ref [{:role "user" :content "test"}]
+                                    {:type "object" :properties {:answer {:type "string"}}} 0.3 1024
+                                    {:tag "metabot_agent"}))
+        (is (=? (repeat 2 {:model      model-ref
+                           :provider   "openrouter"
+                           :model-name "anthropic/claude-sonnet-4.6"})
+                @logged))))))
+
 ;;; ----- gating: usage-limit + permission checks in call-llm-structured-with-trace -----
 ;;; (UXW-4126) The structured-with-trace path enforces usage limits unconditionally and
 ;;; an optional `:required-permission` against the current user's metabot perms.
