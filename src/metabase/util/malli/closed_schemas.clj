@@ -57,8 +57,8 @@
   #{:any 'any? :some 'some?})
 
 (def ^:private value-schemas
-  "Schemas whose children are values, not schemas, and are not walked."
-  #{:= :not= :enum :fn :re})
+  "Schemas whose children are not walked: values, and the signatures of function schemas, which validate as `ifn?`."
+  #{:= :not= :enum :fn :re :=> :-> :function})
 
 (defn- external-registry-key?
   "Whether `registry-key` belongs to a namespace outside Metabase, such as a library's schemas."
