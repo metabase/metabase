@@ -20,6 +20,7 @@ import { MoveQuestionsIntoDashboardsModal } from "metabase/common/components/Mov
 import { NotFoundFallbackPage } from "metabase/common/components/NotFoundFallbackPage";
 import { UnsubscribePage } from "metabase/common/components/Unsubscribe";
 import { getDataStudioRoutes } from "metabase/data-studio/routes";
+import { getEmbeddingHubRoutes } from "metabase/embedding-hub/routes";
 import { getMetabotRoutes } from "metabase/metabot/routes";
 import { getMetricRoutes } from "metabase/metrics/routes";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
@@ -539,6 +540,9 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
 
               // MONITOR
               ...toRouteObjects(getMonitorRoutes()),
+
+              // EMBEDDING HUB
+              ...toRouteObjects(getEmbeddingHubRoutes()),
             ],
           },
         ],

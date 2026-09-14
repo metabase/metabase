@@ -2,14 +2,6 @@ import { useDisclosure } from "@mantine/hooks";
 import { P, isMatching } from "ts-pattern";
 import { t } from "ttag";
 
-import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
-import {
-  AdminSettingInput,
-  BasicAdminSettingInput,
-} from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
@@ -20,6 +12,12 @@ import {
   useSetting,
   useUpdateSettingMutation,
 } from "metabase/settings";
+import {
+  AdminSettingInput,
+  BasicAdminSettingInput,
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/settings-components";
 import {
   Alert,
   Box,
