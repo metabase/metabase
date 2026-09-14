@@ -296,10 +296,9 @@ serialization_baseline:
   - ".github/workflows/serialization.yml"
   - "test_resources/serialization_baseline/**"
 
-# Shared schemas and frontend aliases can change outside endpoint definitions.
-openapi:
+api_contracts:
   - ".github/file-paths.yaml"
-  - ".github/workflows/lint.yml"
+  - ".github/workflows/api-contracts.yml"
   - "frontend/**"
   - "enterprise/frontend/**"
   - "src/**"

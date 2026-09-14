@@ -1,9 +1,5 @@
 name: Lint
 
-permissions:
-  contents: read
-  pull-requests: read
-
 on:
   push:
     branches:
@@ -22,7 +18,6 @@ jobs:
     outputs:
       codeql: ${{ steps.changes.outputs.codeql }}
       i18n: ${{ steps.changes.outputs.i18n }}
-      openapi: ${{ steps.changes.outputs.openapi }}
       snowplow: ${{ steps.changes.outputs.snowplow }}
       workflows: ${{ steps.changes.outputs.workflows }}
       workflows_files: ${{ steps.changes.outputs.workflows_files }}
@@ -49,7 +44,7 @@ jobs:
         if: needs.files-changed.outputs.yaml == 'true'
         uses: ./.github/actions/prepare-frontend
 
-      # Required by the whitespace linter.
+      # Always required by whitespace linter
       - name: Setup backend env
         uses: ./.github/actions/prepare-backend
 
@@ -89,54 +84,6 @@ jobs:
         - name: Check every workflow job sets a timeout
           if: needs.files-changed.outputs.workflows == 'true'
           run: .github/scripts/check-job-timeouts.sh ${{ needs.files-changed.outputs.workflows_files }}
-
-  api-contracts:
-    needs: files-changed
-    if: needs.files-changed.outputs.openapi == 'true'
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-      - name: Prepare frontend environment
-        uses: ./.github/actions/prepare-frontend
-      - name: Prepare backend environment
-        uses: ./.github/actions/prepare-backend
-      - name: Test the contract checker
-        run: bun run api-contract-check:test
-      - name: Generate the Enterprise spec from checked-out source
-        run: bun run openapi:generate
-      - name: Validate the OpenAPI spec
-        run: bun run openapi:lint
-      - name: Generate declarations for verification
-        run: bun run openapi:types
-      - name: Compile CLJS dependencies used by frontend types
-        run: bun run build-pure:cljs
-      - name: Check frontend API contracts against the baseline
-        run: bun run api-contract-check-pure
-      - name: Upload contract coverage and diagnostics
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: api-contracts-report
-          path: .tmp/openapi/contracts-report.json
-          include-hidden-files: true
-          retention-days: 7
-
-  api-contracts-result:
-    needs: [files-changed, api-contracts]
-    if: always() && !cancelled()
-    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
-    timeout-minutes: 5
-    steps:
-      - name: Check contract job status
-        env:
-          FILTER_RESULT: ${{ needs.files-changed.result }}
-          CONTRACT_RESULT: ${{ needs.api-contracts.result }}
-        run: |
-          test "$FILTER_RESULT" = success
-          test "$CONTRACT_RESULT" = success || test "$CONTRACT_RESULT" = skipped
 
   i18n:
     needs: files-changed

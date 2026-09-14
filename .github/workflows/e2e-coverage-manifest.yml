@@ -50,7 +50,7 @@ jobs:
           retention-days: 1
       # Generate routes from the same revision that served this run.
       - name: Generate OpenAPI route table
-        run: bun run openapi:generate
+        run: bun run generate-openapi
       - name: Upload OpenAPI route table
         uses: actions/upload-artifact@v7
         with:

@@ -16,7 +16,7 @@
  * whose shape changed in between. A consumer matches structurally with
  * matchRoute() below against whichever spec version fits its checkout. The
  * nightly generates one from the backend's defendpoint definitions with
- * `bun run openapi:generate` and ships it alongside the manifests.
+ * `bun run generate-openapi` and ships it alongside the manifests.
  *
  * The nightly build still loads the table for one thing: logging captured
  * API routes that correspond to no endpoint definition — an endpoint defined
