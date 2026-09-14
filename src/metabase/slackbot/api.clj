@@ -169,10 +169,11 @@
    event  :- slackbot.events/SlackMessageFileShareEvent]
   (let [extra-history (:extra-history (slackbot.uploads/handle-file-uploads! client (:files event)))]
     ;; When a message contains only attachments, reply directly instead of sending an empty prompt to the AI.
+    ;; A message carrying neither text nor a file leaves nothing to reply with, so say nothing at all.
     (if (str/blank? (:text event))
-      (slackbot.client/post-message client
-                                    (assoc (slackbot.events/event->reply-context event)
-                                           :text (str/join "\n\n" (map :content extra-history))))
+      (when-let [text (not-empty (str/join "\n\n" (map :content extra-history)))]
+        (slackbot.client/post-message client
+                                      (assoc (slackbot.events/event->reply-context event) :text text)))
       (slackbot.streaming/send-response client event extra-history))))
 
 (defmethod analytics.core/known-labels :metabase-slackbot/responses-generated [_]

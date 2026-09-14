@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.app-db.encryption-test-util :as encryption-tu]
+   [metabase.slackbot.api :as slackbot.api]
    [metabase.slackbot.client :as slackbot.client]
    [metabase.slackbot.test-util :as tu]
    [metabase.slackbot.uploads :as slackbot.uploads]
@@ -255,6 +256,59 @@
                   (testing "responds directly with skip message"
                     (is (= "I can only upload CSV and TSV files, so I skipped the following: query_result.xlsx."
                            (:text (first @post-calls))))))))))))))
+
+(deftest ^:synchronized remote-file-no-text-test
+  (testing "POST /events with a file stored outside Slack and no text responds directly without fetching it"
+    (tu/with-slackbot-setup
+      ;; No `:text` field because the user shared a file without typing anything.
+      (let [event-body (-> tu/base-dm-event
+                           (update :event merge
+                                   {:subtype "file_share"
+                                    :files   [{:id          "F123"
+                                               :name        "remote.csv"
+                                               :filetype    "csv"
+                                               :mode        "external"
+                                               :url_private "https://evil.test/remote.csv"
+                                               :size        100}]})
+                           (update :event dissoc :text))]
+        (with-upload-mocks!
+          {:uploads-enabled? true}
+          (fn [{:keys [upload-calls download-calls]}]
+            (tu/with-slackbot-mocks
+              {:ai-text "This should not be called"}
+              (fn [{:keys [post-calls ai-request-calls]}]
+                (let [response (mt/client :post 200 "metabot/slack/events"
+                                          (tu/slack-request-options event-body)
+                                          event-body)]
+                  (is (= "ok" response))
+                  (u/poll {:thunk #(>= (count @post-calls) 1)
+                           :done? true?
+                           :timeout-ms 5000})
+                  (testing "AI was not called"
+                    (is (empty? @ai-request-calls)))
+                  (testing "the URL the registering app chose is never fetched"
+                    (is (= 0 (count @download-calls))))
+                  (testing "no upload was attempted"
+                    (is (= 0 (count @upload-calls))))
+                  (testing "responds directly explaining the file has to live in Slack"
+                    (is (= "I can only upload files stored in Slack itself, so I skipped the following: remote.csv."
+                           (:text (first @post-calls))))))))))))))
+
+;; Driving the handler directly rather than the route: this asserts that nothing is posted, which the route's
+;; async dispatch cannot settle without racing it.
+(deftest ^:synchronized no-text-and-no-files-test
+  (testing "a file_share message carrying neither text nor files says nothing rather than posting an empty message"
+    (tu/with-slackbot-setup
+      (tu/with-slackbot-mocks
+        {:ai-text "This should not be called"}
+        (fn [{:keys [post-calls ai-request-calls]}]
+          (#'slackbot.api/handle-message-file-share
+           {:token "xoxb-test-token"}
+           (-> (:event tu/base-dm-event)
+               (merge {:subtype "file_share", :files []})
+               (dissoc :text)))
+          (is (empty? @post-calls))
+          (is (empty? @ai-request-calls)))))))
 
 (deftest ^:synchronized mixed-file-upload-test
   (testing "POST /events with supported and unsupported files"
