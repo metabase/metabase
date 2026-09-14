@@ -35,9 +35,9 @@
 
 (defn- build-request-body
   "Build the request body for Anthropic messages API."
-  [{:keys [model system messages]}]
+  [{:keys [model system messages max-tokens]}]
   (cond-> {:model       model
-           :max_tokens  (llm.settings/llm-max-tokens)
+           :max_tokens  max-tokens
            :messages    messages
            :tools       [generate-sql-tool]
            :tool_choice {:type "tool" :name "generate_sql"}}
@@ -80,20 +80,23 @@
 
 (defn chat-completion
   "Send a chat completion request to Anthropic.
+
    Returns a map with:
    - :result      - Map with :sql and optionally :explanation from the tool response
    - :usage       - Map with :model, :prompt (input tokens), :completion (output tokens)
    - :duration-ms - Request duration in milliseconds
 
    Options:
-   - :model    - Model to use; defaults to the `llm-anthropic-model` setting
-   - :system   - System prompt
-   - :messages - Vector of {:role :content} maps for conversation history"
-  [{:keys [model system messages]}]
+   - :model      - Model to use; defaults to the `llm-anthropic-model` setting
+   - :system     - System prompt
+   - :messages   - Vector of {:role :content} maps for conversation history
+   - :max-tokens - Output-token cap for the response"
+  [{:keys [model system messages max-tokens]}]
   (let [model      (or model (llm.settings/llm-anthropic-model))
-        request    {:model    model
-                    :system   system
-                    :messages messages}
+        request    {:model      model
+                    :system     system
+                    :messages   messages
+                    :max-tokens max-tokens}
         start-time (u/start-timer)
         url        (str (llm.settings/llm-anthropic-api-base-url) "/v1/messages")]
     ;; Outside the try so the e2e guard and a malformed URL fail loudly instead of being

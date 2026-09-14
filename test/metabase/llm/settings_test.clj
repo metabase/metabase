@@ -403,14 +403,6 @@
 
 ;;; ------------------------------------------- Settings Defaults Tests -------------------------------------------
 
-(deftest llm-max-tokens-test
-  (testing "default value is 4096"
-    (mt/with-temporary-setting-values [llm-max-tokens nil]
-      (is (= 4096 (llm.settings/llm-max-tokens)))))
-  (testing "can be overridden"
-    (mt/with-temporary-setting-values [llm-max-tokens 8192]
-      (is (= 8192 (llm.settings/llm-max-tokens))))))
-
 (deftest llm-request-timeout-ms-test
   (testing "default value is 120000 (120 seconds)"
     (mt/with-temporary-setting-values [llm-request-timeout-ms nil]

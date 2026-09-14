@@ -37,7 +37,7 @@
 
 (deftest ^:parallel request-body-applies-default-max-tokens-test
   (testing "an explicit max_tokens is always sent — without one vLLM falls back to the whole remaining context window"
-    (is (= (llm.settings/llm-max-tokens)
+    (is (= 4096
            (:max_tokens (vllm/vllm-request-body {:model "vllm-test"
                                                  :input [{:role :user :content "hi"}]}))))))
 
@@ -83,13 +83,13 @@
 
 (deftest ^:parallel request-body-raises-max-tokens-for-a-reasoning-model-test
   (testing "the agent path forces nothing and supplies no ceiling, so a reasoning model would otherwise get
-           the shared 4096 default for thinking, answer, and tool call combined"
+           the adapter's 4096 default for thinking, answer, and tool call combined"
     (is (= 16384
            (:max_tokens (vllm/vllm-request-body {:model       "vllm-test"
                                                  :input       [{:role :user :content "hi"}]
                                                  :credentials reasoning-credentials}))))
     (testing "and a model the probe found does not reason keeps the default"
-      (is (= (llm.settings/llm-max-tokens)
+      (is (= 4096
              (:max_tokens (vllm/vllm-request-body {:model       "vllm-test"
                                                    :input       [{:role :user :content "hi"}]
                                                    :credentials credentials})))))))
