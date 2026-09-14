@@ -6,6 +6,7 @@ import type { CollectionBrowser } from "embedding-sdk-bundle/components/public/C
 import type { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import type { CreateDashboardModal } from "embedding-sdk-bundle/components/public/CreateDashboardModal";
 import type { CreateQuestion } from "embedding-sdk-bundle/components/public/CreateQuestion";
+import type { DateRangePicker } from "embedding-sdk-bundle/components/public/DateRangePicker/DateRangePicker";
 import type { InteractiveQuestion } from "embedding-sdk-bundle/components/public/InteractiveQuestion/InteractiveQuestion";
 import type { MetabotQuestion } from "embedding-sdk-bundle/components/public/MetabotQuestion";
 import type { SdkDebugInfo } from "embedding-sdk-bundle/components/public/SdkDebugInfo/SdkDebugInfo";
@@ -14,11 +15,6 @@ import type { EditableDashboard } from "embedding-sdk-bundle/components/public/d
 import type { InteractiveDashboard } from "embedding-sdk-bundle/components/public/dashboard/InteractiveDashboard";
 import type { StaticDashboard } from "embedding-sdk-bundle/components/public/dashboard/StaticDashboard";
 import type { ResolveDatasetQuery } from "embedding-sdk-bundle/lib/create-metabase-query";
-import type { DateRangePicker } from "embedding-sdk-bundle/lib/data-app/date-range-picker";
-import type {
-  DataAppLink,
-  DataAppRouter,
-} from "embedding-sdk-bundle/lib/data-app/router";
 import type {
   ExecuteActionParams,
   ExecuteActionResult,
@@ -60,15 +56,12 @@ export type MetabaseEmbeddingSdkBundleExports = PublicExports &
   ReduxStoreSelectorsExports &
   InternalHooksExports &
   SchemaValidationUtils &
-  InternalComponentExports &
-  DataAppRoutingExports;
+  InternalComponentExports;
 
 type PublicExports = {
   CollectionBrowser: InternalComponent<typeof CollectionBrowser>;
   CreateDashboardModal: InternalComponent<typeof CreateDashboardModal>;
   CreateQuestion: InternalComponent<typeof CreateQuestion>;
-  DataAppLink: typeof DataAppLink;
-  DataAppRouter: typeof DataAppRouter;
   DateRangePicker: typeof DateRangePicker;
   EditableDashboard: InternalComponent<typeof EditableDashboard>;
   InteractiveDashboard: InternalComponent<typeof InteractiveDashboard>;
@@ -78,14 +71,6 @@ type PublicExports = {
   SdkDebugInfo: InternalComponent<typeof SdkDebugInfo>;
   StaticDashboard: InternalComponent<typeof StaticDashboard>;
   StaticQuestion: InternalComponent<typeof StaticQuestion>;
-};
-
-type DataAppRoutingExports = {
-  dataAppRouting: {
-    getBasename: () => string;
-    navigate: (to: string) => void;
-    subscribe: (callback: () => void) => () => void;
-  };
 };
 
 type ReduxStoreExports = {

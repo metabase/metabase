@@ -16,7 +16,7 @@ export { DateRangePicker } from "./components/public/DateRangePicker";
 export type {
   DateRangePickerProps,
   DateRangeValue,
-} from "embedding-sdk-bundle/lib/data-app/date-range-picker";
+} from "embedding-sdk-bundle/components/public/DateRangePicker/DateRangePicker";
 export { copy } from "./lib/public/copy";
 export { useDataAppLocation } from "./hooks/public/use-data-app-location";
 export { defineQuery } from "./hooks/public/use-metabase-query/define-query";
