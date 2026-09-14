@@ -205,6 +205,21 @@ export function getNumericGoalValue(
   return isGoalStaticValue(value) ? value : null;
 }
 
+// Users enter "50" for 50%, while the axis will use 0.5
+export const getGoalAxisValue = (goalValue: number, isNormalized = false) =>
+  isNormalized ? goalValue / 100 : goalValue;
+
+export const getGoalLineValue = (
+  settings: VisualizationSettings,
+  isNormalized = false,
+): number | null => {
+  const goalValue = getNumericGoalValue(settings);
+
+  return settings["graph.show_goal"] && goalValue !== null
+    ? getGoalAxisValue(goalValue, isNormalized)
+    : null;
+};
+
 export function isDynamicGoalSetting(
   display: VisualizationDisplay | undefined,
   key: GoalSettingKey,

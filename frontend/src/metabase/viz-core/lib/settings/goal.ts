@@ -5,24 +5,13 @@ import type { VisualizationSettings } from "metabase-types/api";
 import { getDefaultGoalLabel } from "../../shared/settings/cartesian-chart";
 import type { ChartGoal } from "../../shared/types/settings";
 import type { VisualizationSettingsDefinitions } from "../../types";
-import { getNumericGoalValue, isDynamicGoalSetting } from "../dynamic-goals";
+import {
+  getGoalAxisValue,
+  getNumericGoalValue,
+  isDynamicGoalSetting,
+} from "../dynamic-goals";
 
 import { getStackOffset } from "./stacking";
-
-// Users enter "50" for 50%, while the axis will use 0.5
-export const getGoalAxisValue = (goalValue: number, isNormalized = false) =>
-  isNormalized ? goalValue / 100 : goalValue;
-
-export const getGoalLineValue = (
-  settings: VisualizationSettings,
-  isNormalized = false,
-): number | null => {
-  const goalValue = getNumericGoalValue(settings);
-
-  return settings["graph.show_goal"] && goalValue !== null
-    ? getGoalAxisValue(goalValue, isNormalized)
-    : null;
-};
 
 export const getChartGoal = (
   settings: VisualizationSettings,

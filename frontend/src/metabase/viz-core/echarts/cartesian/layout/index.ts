@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { getGoalLineValue } from "../../../lib/settings/goal";
+import { getGoalLineValue } from "../../../lib/dynamic-goals";
 import type {
   ComputedVisualizationSettings,
   Padding,
