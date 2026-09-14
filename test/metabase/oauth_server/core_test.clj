@@ -27,7 +27,7 @@
             can request it without having registered for it explicitly."
     (is (not (contains? (set (oauth-server/supported-scopes)) "mb:full")))
     (is (not (contains? (set (oauth-server/mcp-resource-scopes (mcp/mcp-canonical-path))) "mb:full")))
-    (is (not (contains? (set (oauth-server/mcp-resource-scopes (mcp/mcp-canonical-path))) "mb:full")))
+    (is (not (contains? (set (oauth-server/mcp-resource-advertised-scopes (mcp/mcp-canonical-path))) "mb:full")))
     (is (not (contains? (set (oauth-server/default-grant-scopes)) "mb:full")))))
 
 (deftest default-grant-covers-everything-advertised-test
@@ -44,18 +44,19 @@
     (let [ceiling (set (oauth-server/default-grant-scopes))]
       (doseq [path (mcp/mcp-endpoint-paths)]
         (testing path
-          (is (empty? (remove ceiling (oauth-server/mcp-resource-scopes path))))))
+          (is (empty? (remove ceiling (oauth-server/mcp-resource-scopes path))))
+          (is (empty? (remove ceiling (oauth-server/mcp-resource-advertised-scopes path))))))
       (testing "and the authorization-server metadata set"
         (is (empty? (remove ceiling (oauth-server/supported-scopes))))))))
 
-(deftest v2-default-ask-covers-the-surface-and-is-requestable-test
-  (testing "the v2 401 challenge asks an uninstructed client for every scope the surface accepts, and
-            nothing else. Asking for less does not degrade gracefully: `list-tools` filters by token
-            scopes, so an unasked-for write scope removes those tools from `tools/list` entirely, with
-            no in-product way for the user to request them afterwards."
-    (is (= (set (oauth-server/mcp-resource-scopes (mcp/mcp-canonical-path)))
-           (set @#'v2.api/default-ask-scopes))
-        "the ask and the accepted set are the same — a scope in one but not the other is a bug in whichever moved")
+(deftest v2-default-ask-is-the-baseline-and-is-requestable-test
+  (testing "GHY-4543: the v2 401 challenge asks an uninstructed client for the least-privilege baseline only. Every
+            tool is listed whatever the token holds, and a call needing more is answered with a 403
+            `insufficient_scope` step-up, so asking for less degrades to a consent prompt rather than a hidden tool."
+    (is (= ["agent:content:read" "agent:resource:read"] @#'v2.api/default-ask-scopes))
+    (testing "the surface still accepts every scope asked for, or narrowing strips the ask at consent"
+      (is (empty? (remove (set (oauth-server/mcp-resource-scopes (mcp/mcp-canonical-path)))
+                          @#'v2.api/default-ask-scopes))))
     (testing "every asked scope is inside the ceiling, or the ask itself would be rejected"
       (let [ceiling (set (oauth-server/default-grant-scopes))]
         (doseq [scope @#'v2.api/default-ask-scopes]
@@ -95,11 +96,10 @@
         (testing scope
           (is (contains? granted scope)))))))
 
-(deftest mcp-resource-advertises-only-the-mcp-surface-test
-  (testing "RFC 9728 metadata answers \"what does *this* resource accept\". Every MCP endpoint path now
-            reaches the same v2 surface, so each advertises the rationalized scopes its tool registry
-            gates on and none of the agent-API per-entity scopes. While v1 was still served the aliases
-            that reached it had to advertise the wider set; with v1 retired that would list per-entity
+(deftest mcp-resource-accepts-only-the-mcp-surface-test
+  (testing "Every MCP endpoint path now reaches the same v2 surface, so each accepts the rationalized scopes
+            its tool registry gates on and none of the agent-API per-entity scopes. While v1 was still served
+            the aliases that reached it had to accept the wider set; with v1 retired that would list per-entity
             scopes on a consent screen for tools that no longer exist."
     (doseq [path (mcp/mcp-endpoint-paths)]
       (testing path
@@ -174,12 +174,15 @@
                                 [mcp-uri]
                                 "agent:content:read agent:question:create agent:sql:execute agent:query:run"))]
           (is (= #{"agent:content:read" "agent:query:run"} narrowed))))
-      (testing "every scope the surface advertises survives narrowing — otherwise the resource doc would
-                advertise a scope its own consent flow strips"
-        (let [advertised (oauth-server/mcp-resource-scopes "/api/metabase-mcp")]
-          (is (= (set advertised)
-                 (scopes (oauth-server/narrow-scope-to-resource
-                          [mcp-uri] (str/join " " advertised)))))))
+      (testing "GHY-4543: every v2 scope survives narrowing on every alias, although the resource metadata
+                advertises only the baseline — otherwise a step-up for a write scope is stripped at consent"
+        (let [v2-scopes ["agent:content:read" "agent:content:write" "agent:query:run"
+                         "agent:sql:run" "agent:delivery:write" "agent:resource:read"]]
+          (doseq [path (mcp/mcp-endpoint-paths)]
+            (testing path
+              (is (= (set v2-scopes)
+                     (scopes (oauth-server/narrow-scope-to-resource
+                              [(str "http://localhost:3000" path)] (str/join " " v2-scopes)))))))))
       (testing "GHY-4226: `mb:full` is dropped like any other scope the surface does not accept. A
                 client naming the MCP resource wants a token for that surface, which accepts none of
                 the REST API that scope unlocks."

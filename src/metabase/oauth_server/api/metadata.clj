@@ -51,17 +51,15 @@
 (defn- protected-resource-metadata
   "OAuth Protected Resource Metadata (RFC 9728) advertising `resource-path` as the protected resource.
 
-   The advertised scopes are derived from `resource-path` rather than passed in, so the resource and the
-   scope set it accepts cannot disagree. A client reads `:scopes_supported` here and requests exactly
-   those; advertising another path's set hands it a token that authorizes nothing on the resource it
-   asked about, with no in-product way to widen the grant afterwards."
+   `:scopes_supported` is the least-privilege baseline for `resource-path`, derived from it rather than passed
+   in so the resource and its advertised scopes cannot disagree."
   [resource-path]
   (let [site-url (system/site-url)]
     {:status  200
      :headers {"Content-Type" "application/json"}
      :body    {:resource                  (str site-url resource-path)
                :authorization_servers     [site-url]
-               :scopes_supported          (vec (oauth-server/mcp-resource-scopes resource-path))
+               :scopes_supported          (oauth-server/mcp-resource-advertised-scopes resource-path)
                :bearer_methods_supported  ["header"]}}))
 
 ;; One endpoint per MCP path, kept in sync with [[metabase.mcp.paths/endpoint-paths]]. Each advertises its own

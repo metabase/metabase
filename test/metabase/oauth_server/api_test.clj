@@ -50,12 +50,12 @@
                      :scopes_supported         sequential?}
                     response))))))))
 
-(deftest protected-resource-metadata-advertises-its-own-scopes-test
-  (testing "every protected-resource endpoint, including the bare one, advertises the scope set belonging
-            to the `:resource` it names. A client reads `scopes_supported` here and requests exactly those;
-            advertising another path's set hands it a token that authorizes nothing on the resource it asked
-            about, with an empty `tools/list` and no in-product way to widen the grant afterwards. Asserted
-            against the `:resource` in the response rather than the URL requested, so the two cannot drift."
+(deftest protected-resource-metadata-advertises-the-baseline-test
+  (testing "GHY-4543: every protected-resource endpoint, including the bare one, advertises only the least-privilege
+            baseline. Claude Code and the Claude connectors take their first-login scope from `scopes_supported`
+            here; every tool is still listed, and a call needing more is answered with a 403 `insufficient_scope`
+            step-up. The baseline must be accepted by the `:resource` the document names, or the first login is
+            narrowed away; asserted against that `:resource` rather than the URL requested, so the two cannot drift."
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (doseq [url [".well-known/oauth-protected-resource"
                    ".well-known/oauth-protected-resource/api/metabase-mcp"
@@ -63,8 +63,23 @@
         (testing url
           (let [response      (mt/user-http-request :crowberto :get 200 url)
                 resource-path (str/replace (:resource response) "http://localhost:3000" "")]
-            (is (= (set (oauth-server/mcp-resource-scopes resource-path))
-                   (set (:scopes_supported response))))))))))
+            (is (= ["agent:content:read" "agent:resource:read"]
+                   (:scopes_supported response)))
+            (is (empty? (remove (set (oauth-server/mcp-resource-scopes resource-path))
+                                (:scopes_supported response))))))))))
+
+(deftest authorization-server-metadata-stays-wide-test
+  (testing "GHY-4543: the RFC 8414 document keeps advertising every v2 scope, alongside the rest of the default grant.
+            Codex requests exactly this list on every login and never steps up, so narrowing it would strand Codex
+            at the baseline."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (let [advertised (set (:scopes_supported (mt/user-http-request :crowberto :get 200
+                                                                     ".well-known/oauth-authorization-server")))]
+        (doseq [scope ["agent:content:read" "agent:content:write" "agent:query:run"
+                       "agent:sql:run" "agent:delivery:write" "agent:resource:read"]]
+          (testing scope
+            (is (contains? advertised scope))))
+        (is (= (set (oauth-server/supported-scopes)) advertised))))))
 
 (deftest protected-resource-metadata-bare-path-test
   (testing "GET /.well-known/oauth-protected-resource (no resource suffix) serves JSON advertising the canonical resource (BOT-1617)"
@@ -75,12 +90,10 @@
                  :authorization_servers    ["http://localhost:3000"]
                  :bearer_methods_supported ["header"]}
                 response))
-        (testing "the bare path is the one clients probe, so its scope set must be the one the resource it
-                  names actually accepts -- the canonical path reaches the v2 surface, so it advertises
-                  the scopes v2's tools gate on and none of the retired per-entity agent-API scopes"
-          (is (= (set (oauth-server/mcp-resource-scopes (mcp/mcp-canonical-path)))
-                 (set (:scopes_supported response))))
-          (is (contains? (set (:scopes_supported response)) "agent:content:read"))
+        (testing "the bare path is the one clients probe, so it advertises the same baseline as the canonical
+                  path it names, and none of the retired per-entity agent-API scopes"
+          (is (= ["agent:content:read" "agent:resource:read"]
+                 (:scopes_supported response)))
           (is (not (contains? (set (:scopes_supported response)) "agent:question:create"))))))))
 
 (deftest discovery-endpoint-rebuilds-on-site-url-change-test
@@ -1252,9 +1265,8 @@
 (deftest authorize-rejects-fully-narrowed-scope-test
   (testing "when every requested scope is one the named resource does not accept, answer RFC 6749
             `invalid_scope` rather than dropping the parameter. Dropping it renders a consent screen
-            listing no permissions and mints a zero-scope token: a handshake that looks successful and
-            yields an empty `tools/list`, with nothing telling the operator the resource rejected what
-            was asked for and no in-product way to widen the grant afterwards."
+            listing no permissions and mints a zero-scope token: a handshake that looks successful but
+            can call no tool, with nothing telling the operator the resource rejected what was asked for."
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [client-id (:client_id (create-test-client!

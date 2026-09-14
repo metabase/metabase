@@ -148,21 +148,16 @@
        "don't ask the user to check or select anything. Don't retry the tool until the user says they have reconnected."))
 
 (def ^:private default-ask-scopes
-  "What an uninstructed client is asked to request for this surface: everything the surface accepts.
+  "The `scope` of the 401 challenge: the least-privilege baseline an uninstructed client requests on first connect.
 
-  A client asks once, at connect time, using this challenge — and `list-tools` filters by the scopes the resulting
-  token carries. Asking for less therefore does not degrade gracefully: it hides the write tools from `tools/list`
-  entirely, so the user sees a read-only Metabase with nothing telling them the rest exists or how to ask for it.
-  There is no in-product path from \"connected\" to \"can write\".
+  Every tool is listed whatever the token holds. A call needing a scope the token lacks is answered with a 403
+  `insufficient_scope` naming held ∪ required, and each tool declares its scope in `securitySchemes`, so a client
+  steps up to the rest of the surface rather than being granted it up front. The surface still accepts all of
+  [[metabase.mcp.paths/v2-surface-scopes]].
 
-  So the consent screen names the full surface and the user decides there, rather than the server deciding for them
-  by omission. This is not a widening of what the surface accepts — that set is unchanged, and `mb:full` and the
-  rest of the agent-API scopes remain refused (GHY-4226).
-
-  Read from [[metabase.mcp.paths/v2-surface-scopes]] rather than listed here, because the OAuth server has to
-  grant exactly this set: when the two drifted, a client that followed the challenge asked for scopes
-  `validate-scope` rejected and the connect failed with \"Invalid scope\"."
-  mcp.paths/v2-surface-scopes)
+  Every scope here must be inside the OAuth server's default grant ceiling, or a client that follows the challenge
+  is answered \"Invalid scope\"."
+  mcp.paths/v2-baseline-scopes)
 
 (def ^{:arglists '([request respond raise])} handler
   "Ring async handler for the MCP endpoint."

@@ -62,9 +62,14 @@ Access tokens are scoped to limit what tools a client can use:
 
 Wildcard patterns (e.g. `agent:*`) match any scope with that prefix.
 
+Clients start with least privilege. The protected-resource metadata's `scopes_supported` and the `scope` of the
+401 challenge both list only the baseline, `agent:content:read agent:resource:read`. The surface still accepts every
+scope in the table, and the authorization server metadata still advertises all of them.
+
 A tool call the token lacks a scope for is refused with HTTP 403 and a
 `WWW-Authenticate: Bearer error="insufficient_scope"` challenge whose `scope` lists the v2 scopes the token already
-holds plus the one required, so a client can step up. Inside a JSON-RPC batch the refusal is an in-band error instead.
+holds plus the one required, so a client can step up. Each tool also declares its scope in `securitySchemes`. Inside
+a JSON-RPC batch the refusal is an in-band error instead.
 
 OAuth protected resource metadata is available at:
 
@@ -72,12 +77,12 @@ OAuth protected resource metadata is available at:
 /.well-known/oauth-protected-resource/api/metabase-mcp
 ```
 
-By default our consent screen grants access to all scopes without the opportunity to customize.
+The consent screen grants every scope the client requested, without the opportunity to customize.
 
 ## Available tools
 
-Generated from the v2 registry (`deftool`); every tool is gated by the single scope named here, and a
-token missing it neither sees the tool in `tools/list` nor may call it.
+Generated from the v2 registry (`deftool`); every tool is gated by the single scope named here. `tools/list`
+shows every tool whatever the token holds, and a token missing the scope may not call it.
 
 | Tool | Scope | Description |
 | ---- | ----- | ----------- |
@@ -130,7 +135,7 @@ resources above exist only so a client that can render an iframe has something t
 | --------------------------- | ---------------------------------------------------------------------------- |
 | `initialize`                | Initialize the MCP connection. Returns server capabilities and a session ID. |
 | `notifications/initialized` | Client notification that initialization is complete.                         |
-| `tools/list`                | List available tools (filtered by the token's scopes).                       |
+| `tools/list`                | List available tools, whatever the token's scopes.                           |
 | `tools/call`                | Call a tool with arguments.                                                  |
 | `resources/list`            | List available resources (filtered by the token's scopes).                   |
 | `resources/read`            | Read a resource by URI. Requires an initialized session.                     |

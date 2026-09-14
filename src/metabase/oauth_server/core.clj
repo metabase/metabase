@@ -38,10 +38,10 @@
   (vec (into (sorted-set) (mcp/all-scopes))))
 
 (defn mcp-resource-scopes
-  "The scopes advertised for the MCP resource at `path`. RFC 9728 metadata answers \"what does *this* resource
-  accept\", and every path in [[metabase.mcp.paths/endpoint-paths]] now reaches the same v2 surface, so they
-  all accept the same set: the scopes the v2 tool registry gates on plus the resource scopes its UI tools
-  render through.
+  "The scopes the MCP resource at `path` accepts, which [[narrow-scope-to-resource]] trims a grant to. Every path in
+  [[metabase.mcp.paths/endpoint-paths]] now reaches the same v2 surface, so they all accept the same set: the scopes
+  the v2 tool registry gates on plus the resource scopes its UI tools render through. What the resource *advertises*
+  is the narrower [[mcp-resource-advertised-scopes]].
 
   This branched while v1 was still served. v1's tools gated on the per-entity agent-API scopes
   (`agent:question:create`, `agent:sql:execute`, …), so the aliases that reached v1 had to advertise those or
@@ -51,6 +51,12 @@
   signature because RFC 9728 metadata is per-resource and a future surface may diverge again."
   [_path]
   (vec (into (sorted-set) (mcp/v2-scopes))))
+
+(defn mcp-resource-advertised-scopes
+  "The RFC 9728 `scopes_supported` for the MCP resource at `path`: the least-privilege baseline a client requests on
+  first connect, a subset of [[mcp-resource-scopes]]. The rest is reached by a 403 `insufficient_scope` step-up."
+  [_path]
+  (vec (mcp/v2-baseline-scopes)))
 
 (defn default-grant-scopes
   "The scope set a dynamically-registered client is registered with when it sends no `scope` of its own (RFC 7591 makes

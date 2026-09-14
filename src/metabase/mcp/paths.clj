@@ -3,7 +3,7 @@
 
    Source of truth for the route aliases — keep in sync with the route map in
    [[metabase.api-routes.routes]] and the resource-metadata endpoints in
-   [[metabase.oauth-server.api.metadata]] — and for the scope set the v2 surface accepts.
+   [[metabase.oauth-server.api.metadata]] — and for the scope sets the v2 surface accepts and advertises.
 
    A leaf namespace, with NO requires, so both the handler and the OAuth server can read it without a
    dependency cycle. That is load-bearing rather than tidy: `metabase.server.middleware.security` requires
@@ -35,16 +35,16 @@
 
 (def v2-surface-scopes
   "Every OAuth scope the v2 MCP surface accepts, as an ordered vector — unlike [[endpoint-paths]] above, which
-   is a set. The order is the order the 401 challenge lists them in, and `contains?` on this would test an
-   index rather than a scope.
+   is a set. The order is the order an `insufficient_scope` challenge lists them in, and `contains?` on this
+   would test an index rather than a scope.
 
    Three things must agree on these, and they are reached from different places, which is why they live in
    this leaf rather than beside any one of them:
 
-   - the 401 `WWW-Authenticate` challenge, which tells an uninstructed client what to ask for
-     ([[metabase.mcp.v2.api/default-ask-scopes]]);
-   - what the OAuth server will actually grant — DCR snapshots [[metabase.mcp.core/all-scopes]] into each
-     newly registered client, and `validate-scope` checks requests against that per-client snapshot;
+   - what the MCP resource accepts when RFC 8707 narrowing trims a requested scope
+     ([[metabase.oauth-server.core/narrow-scope-to-resource]]);
+   - what the OAuth server will actually grant — a dynamic client's ceiling always includes
+     [[metabase.mcp.core/all-scopes]], and `validate-scope` checks requests against that ceiling;
    - what v2 tools and resources may gate on.
 
    When the challenge drifted ahead of the grant, a client that followed it asked for exactly what it was told
@@ -59,4 +59,11 @@
    "agent:query:run"
    "agent:sql:run"
    "agent:delivery:write"
+   "agent:resource:read"])
+
+(def v2-baseline-scopes
+  "The least-privilege subset of [[v2-surface-scopes]], in its order: what an MCP client is told to request when it
+   first connects, through the 401 challenge and the protected-resource metadata. A client reaches the rest of the
+   surface by stepping up on a 403 `insufficient_scope`."
+  ["agent:content:read"
    "agent:resource:read"])

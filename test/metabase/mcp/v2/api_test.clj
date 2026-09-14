@@ -354,16 +354,19 @@
            mcp.paths/v2-surface-scopes))))
 
 (deftest ^:parallel challenge-scopes-are-grantable-test
-  (testing "GHY-4226: the 401 challenge tells an uninstructed client what to ask for, and DCR snapshots the
-            default grant into each newly registered client, which is what the OAuth server validates a
-            requested scope against. A challenge naming scopes that set does not contain is not merely
-            over-broad — a fresh client asks for exactly what it was told, is answered \"Invalid scope\", and the
-            connect fails outright. The surface becomes unreachable over OAuth."
+  (testing "GHY-4226: the 401 challenge tells an uninstructed client what to ask for, and a dynamic client's
+            ceiling always includes the default grant, which is what the OAuth server validates a requested scope
+            against. A challenge naming scopes that set does not contain is not merely over-broad — a fresh client
+            asks for exactly what it was told, is answered \"Invalid scope\", and the connect fails outright. The
+            surface becomes unreachable over OAuth."
     (let [grantable (set ((requiring-resolve 'metabase.oauth-server.core/default-grant-scopes)))]
       (doseq [scope @#'v2.api/default-ask-scopes]
         (testing scope
           (is (contains? grantable scope)
-              "a scope the v2 challenge asks for must be one the OAuth server will actually grant"))))))
+              "a scope the v2 challenge asks for must be one the OAuth server will actually grant")))))
+  (testing "GHY-4543: the challenge asks for the baseline, a subset of what the surface accepts, in surface order"
+    (is (= ["agent:content:read" "agent:resource:read"] @#'v2.api/default-ask-scopes))
+    (is (= @#'v2.api/default-ask-scopes (filterv (set @#'v2.api/default-ask-scopes) mcp.paths/v2-surface-scopes)))))
 
 (def ^:private mcp-app-ui-capabilities
   "The `initialize` capabilities an MCP Apps host advertises. Tools gated on `:mcp-app-ui` are hidden from — and
@@ -504,14 +507,28 @@
         (is (= 401 (:status response)))
         (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "")
                            "/.well-known/oauth-protected-resource/api/metabase-mcp"))))
-    (testing "the challenge names every scope the surface accepts, which a client that reads it prefers
-              over the resource metadata's `scopes_supported`. Asking for less would hide the write
-              tools from `tools/list` with no in-product way for the user to ask for them."
-      (let [response (client/client-full-response :post 401 endpoint
-                                                  {:request-options {:headers {}}}
-                                                  (jsonrpc-request "initialize"))]
-        (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "")
-                           ", scope=\"agent:content:read agent:content:write agent:query:run agent:sql:run agent:delivery:write agent:resource:read\""))))
+    (testing "GHY-4543: the challenge asks for the least-privilege baseline, not everything the surface accepts.
+              ChatGPT takes its login scope from this parameter; every tool is still listed, and a call needing
+              more is answered with a 403 `insufficient_scope` step-up."
+      (doseq [path ["metabase-mcp" "mcp"]]
+        (testing path
+          (let [response (client/client-full-response :post 401 path
+                                                      {:request-options {:headers {}}}
+                                                      (jsonrpc-request "initialize"))]
+            (is (str/ends-with? (get-in response [:headers "WWW-Authenticate"] "")
+                                ", scope=\"agent:content:read agent:resource:read\""))))))
+    (testing "GHY-4543: an invalid bearer token's challenge asks for the same baseline"
+      (doseq [path ["metabase-mcp" "mcp"]]
+        (testing path
+          (let [response (client/client-full-response :post 401 path
+                                                      {:request-options
+                                                       {:headers {"authorization" "Bearer totally-bogus-token"}}}
+                                                      (jsonrpc-request "initialize"))]
+            (is (= (str "Bearer realm=\"mcp\", "
+                        "resource_metadata=\"http://localhost:3000/.well-known/oauth-protected-resource/api/" path "\", "
+                        "scope=\"agent:content:read agent:resource:read\", "
+                        "error=\"invalid_token\"")
+                   (get-in response [:headers "WWW-Authenticate"])))))))
     (testing "auth-params are comma-delimited per RFC 7235, the form every spec and vendor example
               uses and the only one a strict parser accepts"
       (let [response (client/client-full-response :post 401 endpoint
@@ -520,7 +537,7 @@
         (is (= (str "Bearer realm=\"mcp\", "
                     "resource_metadata=\"http://localhost:3000/.well-known/oauth-protected-resource"
                     "/api/metabase-mcp\", "
-                    "scope=\"agent:content:read agent:content:write agent:query:run agent:sql:run agent:delivery:write agent:resource:read\"")
+                    "scope=\"agent:content:read agent:resource:read\"")
                (get-in response [:headers "WWW-Authenticate"])))))))
 
 ;;; ------------------------------------------------ Auth methods --------------------------------------------------
@@ -860,6 +877,21 @@
            (is (re-find #"requires the agent:query:run scope" (get-in response [:body :error :message])))
            (is (zero? (t2/count :model/NotificationCard :card_id card-id))
                "and nothing was created")))))))
+
+(deftest baseline-token-steps-up-from-a-write-tool-test
+  (testing "GHY-4543: a client that connected with only the advertised baseline is challenged, on a write, for the
+            baseline plus the scope that write needs, so its step-up keeps what it already holds"
+    (do-with-bearer-token!
+     #{"agent:content:read" "agent:resource:read"}
+     (fn [headers]
+       (let [post!    (bearer-session-post! headers)
+             response (post! 403 (jsonrpc-request "tools/call"
+                                                  {:name      "collection_write"
+                                                   :arguments {:method "create" :name "Step-up probe"}}))]
+         (is (str/starts-with? (get-in response [:headers "WWW-Authenticate"] "")
+                               (str "Bearer error=\"insufficient_scope\", "
+                                    "scope=\"agent:content:read agent:content:write agent:resource:read\", "
+                                    "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "))))))))
 
 (deftest unscoped-callers-never-get-an-insufficient-scope-challenge-test
   (testing "GHY-4543: a cookie session is stamped unrestricted, so a tool gated on any scope is served over 200"
