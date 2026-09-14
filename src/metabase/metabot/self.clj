@@ -283,7 +283,7 @@
 (defn- report-token-usage-xf
   "Transducer that reports token_usage metrics for :usage parts in the aisdk stream.
 
-  Every field except `:tag` goes to [[metabase.metabot.usage/log-ai-usage!]].
+  Every field goes to [[metabase.metabot.usage/log-ai-usage!]], where `:tag` stands in for a missing `:source`.
 
   Prometheus + Snowplow:
     - `:model`      - the model reference (e.g. `openrouter/anthropic/claude-haiku-4.5`)
@@ -300,7 +300,8 @@
                       Indicates which API endpoint or workflow initiated the LLM call.
 
   Neither:
-    - `:model-name` - the model as the provider names it (e.g. `anthropic/claude-haiku-4.5`)"
+    - `:model-name` - the model as the provider names it (e.g. `anthropic/claude-haiku-4.5`)
+    - `:ai-proxy?`  - whether the call went through the managed AI proxy"
   [{:keys [model model-name provider profile-id request-id session-id source tag ai-proxy?]}]
   (let [start-ms      (u/start-timer)]
     (map (fn [part]
