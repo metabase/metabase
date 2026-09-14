@@ -93,10 +93,18 @@
     (is (rejects? {:where [:= :id {:select [:x] :from :core_user}]}))))
 
 (deftest unresolved-auto-param-is-rejected-test
-  (testing "a marker that reached the DB without being lifted would compile to a PARAM() call, so it throws"
+  (testing "a marker that reached the check unlifted throws"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"unresolved"
                           (value-guard/assert-values-wrapped!
-                           {:where [:= :locale [:auto/param "de"]]} {} false)))))
+                           {:where [:= :locale [:auto/param "de"]]} {} false))))
+  (testing "including one carrying a payload HoneySQL would splice into the SQL"
+    ;; HoneySQL does not know the marker, so it compiles it as a function call over its argument:
+    ;;   (sql/format {:where [:= :id [:auto/param {:raw "(SELECT ...)"}]]})
+    ;;   => ["WHERE id = PARAM ((SELECT ...))"]   -- an injection, not merely wrong SQL
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"unresolved"
+                          (value-guard/assert-values-wrapped!
+                           {:where [:= :id [:auto/param {:raw "(SELECT password FROM core_user)"}]]}
+                           {} false)))))
 
 (deftest str-coercion-test
   (is (= "de" (value-guard/str* "de")))

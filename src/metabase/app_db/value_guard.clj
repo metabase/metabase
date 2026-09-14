@@ -30,6 +30,12 @@
 
 (defn auto-param
   "Rewrite `[:auto/param v]` markers into HoneySQL's `[:param :kN]` plus the params map they refer to.
+
+  The marker only protects a value once this has run. HoneySQL itself does not recognise it and
+  compiles it as a function call over its argument, so a marker handed straight to `sql/format`
+  splices its payload into the SQL rather than binding it. Queries that go through Toucan are
+  rewritten here at the compile step; `assert-values-wrapped!` rejects a marker that arrives
+  anywhere else.
   Returns `[rewritten-form params-map]`.
 
   Called by the compile step, so a caller writes `[:auto/param v]` inline and never handles the
@@ -169,9 +175,10 @@
   [v strict?]
   (cond
     (param-form? v)      true
-    ;; The compile step lifts these, so one still present here reached the database another way --
-    ;; a hand-built query string, say. HoneySQL would compile it to a `PARAM(?)` function call
-    ;; rather than erroring, so catch it.
+    ;; The compile step lifts these, so one still present here reached the database another way.
+    ;; HoneySQL does not know the marker and compiles it as a function call over its argument --
+    ;; `[:auto/param {:raw "(SELECT ...)"}]` becomes `PARAM ((SELECT ...))`, splicing the payload
+    ;; into the SQL. An unlifted marker is therefore an injection, not merely wrong SQL.
     (auto-param-form? v) (throw (ex-info "[:auto/param ...] reached the database unresolved."
                                          {:type ::unresolved-auto-param, :value v}))
     (allow-column-ref? v) true
