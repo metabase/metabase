@@ -47,16 +47,12 @@ function RenderChart(
     rawSeriesWithDashcardSettings,
   );
 
-  const hasDevWatermark = Boolean(options.tokenFeatures.development_mode);
-
   return ReactDOMServer.renderToStaticMarkup(
     <CustomStaticVisualization
       rawSeries={rawSeriesWithRemappings}
       renderingContext={renderingContext}
-      hasDevWatermark={hasDevWatermark}
       width={options.width}
       height={options.height}
-      fitWithinBounds={options.fitWithinBounds}
     />,
   );
 }

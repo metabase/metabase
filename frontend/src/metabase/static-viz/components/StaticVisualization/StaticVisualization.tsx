@@ -82,8 +82,6 @@ export const StaticVisualization = ({
       <CustomStaticVisualization
         rawSeries={rawSeries}
         renderingContext={renderingContext}
-        isStorybook={isStorybook}
-        hasDevWatermark={hasDevWatermark}
         width={width}
         height={height}
       />
