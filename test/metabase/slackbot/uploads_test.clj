@@ -9,10 +9,12 @@
    [metabase.slackbot.test-util :as tu]
    [metabase.slackbot.uploads :as slackbot.uploads]
    [metabase.test :as mt]
+   [metabase.test.data.sql :as sql.tx]
    [metabase.test.fixtures :as fixtures]
    [metabase.upload.db :as upload.db]
    [metabase.upload.impl :as upload.impl]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [toucan2.core :as t2])
   (:import
    (java.io ByteArrayInputStream)))
 
@@ -486,6 +488,42 @@
               test-target
               {:name "data.csv", :filetype "csv", :url_private "https://example.com/x.csv", :size 100}))))))
 
+;; Runs the real upload module, since the regression was in what it throws, not in how the bot words it.
+(deftest upload-file-malformed-csv-test
+  (testing "a row with more columns than the header tells the user what is wrong with their file"
+    (mt/test-driver :h2
+      (mt/with-empty-db
+        (mt/with-discard-model-updates! [:model/Database]
+          (t2/update! :model/Database (mt/id) {:uploads_enabled true})
+          (mt/with-current-user (mt/user->id :crowberto)
+            (mt/with-dynamic-fn-redefs
+              [slackbot.client/download-file-stream (fn [_client _url]
+                                                      (io/input-stream (.getBytes "a,b\n1,2\n3,4,5\n")))]
+              (is (=? {:filename "malformed.csv"
+                       :error    #"I couldn't upload malformed\.csv: Column count in data .*"}
+                      (#'slackbot.uploads/upload-file!
+                       test-client
+                       {:db           (t2/select-one :model/Database (mt/id))
+                        :schema-name  (sql.tx/session-schema :h2)
+                        :table-prefix "slackbot_"}
+                       {:name "malformed.csv", :filetype "csv", :url_private "https://example.com/x.csv", :size 100}))))))))))
+
+(deftest upload-file-4xx-with-cause-test
+  (testing "a 4xx that carries a cause is a relayed driver error, so its message is not repeated back"
+    (mt/with-dynamic-fn-redefs
+      [slackbot.client/download-file-stream (fn [_client _url]
+                                              (io/input-stream (.getBytes "col1,col2\nval1,val2")))
+       upload.impl/create-csv-upload!       (fn [_params]
+                                              (throw (ex-info "connection to db.internal:5432 refused"
+                                                              {:status-code 400}
+                                                              (ex-info "connection to db.internal:5432 refused" {}))))]
+      (is (= {:filename "data.csv"
+              :error    "I couldn't upload data.csv because something went wrong."}
+             (#'slackbot.uploads/upload-file!
+              test-client
+              test-target
+              {:name "data.csv", :filetype "csv", :url_private "https://example.com/x.csv", :size 100}))))))
+
 (deftest build-upload-history-test
   (is (= [{:role    :assistant
            :content "I uploaded these files as Metabase models: data.csv as Data (ID 1), data.tsv as More Data (ID 2). I can help you query them."}
@@ -505,13 +543,13 @@
   (testing "no database is configured for uploads"
     (mt/with-dynamic-fn-redefs [upload.db/current-database (constantly nil)]
       (is (= [{:role    :assistant
-              :content "Uploads aren't configured yet. Ask your Metabase admin to choose an upload database in Admin > Settings > Uploads."}]
+               :content "Uploads aren't configured yet. Ask your Metabase admin to choose an upload database in Admin > Settings > Uploads."}]
              (slackbot.uploads/handle-file-uploads! test-client [tu/slack-csv-file])))))
   (testing "the configured upload target is unavailable"
     (mt/with-dynamic-fn-redefs [upload.db/current-database     (constantly {:id 1})
                                 upload.impl/can-create-upload? (constantly false)]
       (is (= [{:role    :assistant
-              :content "I can't upload files to the configured database. Ask your Metabase admin to check the upload settings and your permissions."}]
+               :content "I can't upload files to the configured database. Ask your Metabase admin to check the upload settings and your permissions."}]
              (slackbot.uploads/handle-file-uploads! test-client [tu/slack-csv-file]))))))
 
 (deftest ^:parallel supported-file?-test
