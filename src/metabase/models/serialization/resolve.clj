@@ -169,12 +169,12 @@
     [#{:measure "measure"} (entity-id :guard content-ref?)]
     [:measure (import-fk resolver entity-id 'Measure)]
 
-    {:source-table (_ :guard vector?)}
+    {:source-table #'vector?}
     (-> &match
         (update :source-table (partial import-table-fk resolver))
         (->> (mbql-fully-qualified-names->ids* resolver)))
 
-    {:source_table (_ :guard vector?)}
+    {:source_table #'vector?}
     (-> &match
         (update :source_table (partial import-table-fk resolver))
         (->> (mbql-fully-qualified-names->ids* resolver)))
@@ -274,13 +274,13 @@
   ([entity] (export-mbql *export-resolver* entity))
   ([resolver entity]
    (match/replace entity
-     (_ :guard mbql-clause-tag)
+     #'mbql-clause-tag
      (mbql-id->fully-qualified-name resolver &match)
 
-     (_ :guard sequential?)
+     #'sequential?
      (mapv (partial export-mbql resolver) &match)
 
-     (_ :guard map?)
+     #'map?
      (reduce-kv
       (fn [entity k _v]
         (let [f (case k

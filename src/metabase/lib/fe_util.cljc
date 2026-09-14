@@ -381,7 +381,7 @@
     (value :guard number?)
     value
 
-    [:value (x :guard (= (:base-type x) :type/BigInteger)) (value :guard string?)]
+    [:value {:base-type :type/BigInteger} (value :guard string?)]
     (u.number/parse-bigint value)
 
     _ nil))
@@ -801,16 +801,16 @@
                 :get-month :month-of-year
                 :get-quarter :quarter-of-year}]
     (match/match-one filter-clause
-      [#{:= :in} _ [:get-day-of-week _ (_ :guard temporal?) :iso] (b :guard int?)]
+      [#{:= :in} _ [:get-day-of-week _ #'temporal? :iso] (b :guard int?)]
       (inflections/plural (u.time/format-unit b :day-of-week-iso))
 
-      [#{:!= :not-in} _ [:get-day-of-week _ (_ :guard temporal?) :iso] (b :guard int?)]
+      [#{:!= :not-in} _ [:get-day-of-week _ #'temporal? :iso] (b :guard int?)]
       (i18n/tru "Excludes {0}" (inflections/plural (u.time/format-unit b :day-of-week-iso)))
 
-      [#{:= :in} _ [(f :guard #{:get-hour :get-month :get-quarter}) _ (_ :guard temporal?)] (b :guard int?)]
+      [#{:= :in} _ [(f :guard #{:get-hour :get-month :get-quarter}) _ #'temporal?] (b :guard int?)]
       (u.time/format-unit b (->unit f))
 
-      [#{:!= :not-in} _ [(f :guard #{:get-hour :get-month :get-quarter}) _ (_ :guard temporal?)] (b :guard int?)]
+      [#{:!= :not-in} _ [(f :guard #{:get-hour :get-month :get-quarter}) _ #'temporal?] (b :guard int?)]
       (i18n/tru "Excludes {0}" (u.time/format-unit b (->unit f)))
 
       [#{:= :in} _ (x :guard (unit= x lib.schema.temporal-bucketing/datetime-truncation-units)) (y :guard string?)]
@@ -831,7 +831,7 @@
       [:> _ (x :guard temporal?) (y :guard string?)]
       (i18n/tru "After {0}" (->temporal-name y))
 
-      [:between _ (_ :guard temporal?) (y :guard string?) (z :guard string?)]
+      [:between _ #'temporal? (y :guard string?) (z :guard string?)]
       (u.time/format-diff y z)
 
       [:is-null & _]
@@ -840,10 +840,10 @@
       [:not-null & _]
       (i18n/tru "Is Not Empty")
 
-      [:time-interval opts (_ :guard temporal?) n unit]
+      [:time-interval opts #'temporal? n unit]
       (lib.temporal-bucket/describe-temporal-interval n unit opts)
 
-      [:relative-time-interval _ (_ :guard temporal?) n unit offset offset-unit]
+      [:relative-time-interval _ #'temporal? n unit offset offset-unit]
       (lib.temporal-bucket/describe-temporal-interval-with-offset n unit offset offset-unit)
 
       _

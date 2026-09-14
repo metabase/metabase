@@ -1086,7 +1086,7 @@
   [x]
   (set
    (match/match-many x
-     [:aggregation (_opts :guard map?) (uuid :guard string?)]
+     [:aggregation #'map? (uuid :guard string?)]
      uuid)))
 
 (declare export-mbql)
@@ -1366,7 +1366,7 @@
     ;; A serialized `:field` clause's only dependency is the Database of its referenced field; the Field/Table
     ;; themselves are synthesized on import, and a field clause never nests metric/segment/card refs, so we don't
     ;; descend.
-    [#{:field "field"} (_opts :guard map?) (ref :guard vector?)]
+    [#{:field "field"} #'map? (ref :guard vector?)]
     (ref->db-dep ref)
 
     [(tag :guard #{:metric "metric" :segment "segment" :measure "measure"})
@@ -1385,7 +1385,7 @@
     ;; --- raw (numeric) refs, walked at export time before serialization ---
     ;; The referenced Field/Table are real appdb ids, existence-checked so a deleted row can't produce a malformed
     ;; portable reference. `allow-int-ids?` gates these so a stray numeric in serialized data isn't mistaken for a ref.
-    [#{:field "field"} (_opts :guard map?) (id :guard (raw-ref-id? allow-int-ids? id))]
+    [#{:field "field"} #'map? (id :guard (raw-ref-id? allow-int-ids? id))]
     #{[{:model "Field" :id id}]}
 
     [(tag :guard #{:metric "metric" :segment "segment" :measure "measure"})
