@@ -11,4 +11,8 @@ import { getRoutes } from "./routes-embed";
 
 setIsStaticEmbedding();
 
-init(publicReducers, getRoutes, () => {});
+init(
+  () => publicReducers,
+  getRoutes,
+  () => {},
+);

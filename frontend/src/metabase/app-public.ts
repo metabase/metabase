@@ -6,4 +6,8 @@ import { getRoutes } from "./routes-public";
 
 setIsPublicEmbedding();
 
-init(publicReducers, getRoutes, () => {});
+init(
+  () => publicReducers,
+  getRoutes,
+  () => {},
+);
