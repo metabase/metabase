@@ -19,7 +19,7 @@ import {
 import { prepareUnitTestSelection } from "./prepare-unit-test-selection";
 
 type Step = { name: string; run?: string; "continue-on-error"?: boolean };
-// js-yaml returns an untyped value; this repository workflow defines the job's steps.
+// js-yaml returns an untyped value, and this repository workflow defines the job's steps.
 const workflow = load(
   readFileSync(resolve(__dirname, "../workflows/frontend.yml"), "utf8"),
 ) as { jobs: { "fe-tests-unit": { steps: Step[] } } };
