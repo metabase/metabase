@@ -32,6 +32,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.queries :as v2.queries]
    [metabase.mcp.v2.query :as v2.query]
    [metabase.mcp.v2.registry :as registry]
@@ -62,9 +63,7 @@
                    cursor       (conj :cursor))]
     (when-not (= 1 (count provided))
       (common/throw-teaching-error
-       (str "Pass exactly one of query | query_handle | cursor: `query` for a fresh "
-            "MBQL query, `query_handle` to re-run a stored query, `cursor` to continue a "
-            "truncated result.")))
+       (message/msg ["Pass exactly one of query | query_handle | cursor: `query` for a fresh MBQL query, `query_handle` to re-run a stored query, `cursor` to continue a truncated result."])))
     (first provided)))
 
 (defn- resolve-input
@@ -121,6 +120,13 @@
    these itself; that is defense in depth, not this boundary's contract."
   [:lib/type :database :stages :parameters])
 
+(defn- query-failed
+  "The teaching message for a QP `result` that didn't complete, carrying its error text quoted."
+  [result]
+  (if-let [error (:error result)]
+    (message/msg ["Query failed: %s"] error)
+    (message/msg ["Query failed: unknown error"])))
+
 (defn- execute!
   "Run a serialized MBQL query through the QP with the standard agent userland preparation,
    capping this call's rows at `row-limit` (within the backend's 2000/10000 userland
@@ -135,7 +141,7 @@
                            :info        {:executed-by api/*current-user-id*
                                          :context     :agent})))]
     (when-not (= (:status result) :completed)
-      (common/throw-teaching-error (str "Query failed: " (or (:error result) "unknown error"))))
+      (common/throw-teaching-error (query-failed result)))
     result))
 
 (defn- execute-page!
@@ -201,10 +207,10 @@
 (defn- steering-line
   [returned next-cursor]
   (if next-cursor
-    (format "returned %d rows, more available — continue with `cursor`, or narrow the query (filter/aggregate)"
-            returned)
-    (format "returned %d rows, more available — narrow the query (filter/aggregate), or raise `row_limit` (max %d)"
-            returned max-row-limit)))
+    (message/msg ["returned %d rows, more available — continue with `cursor`, or narrow the query (filter/aggregate)"]
+                 returned)
+    (message/msg ["returned %d rows, more available — narrow the query (filter/aggregate), or raise `row_limit` (max %d)"]
+                 returned max-row-limit)))
 
 (defn- mint-handle!
   "Store `serialized-query` under a fresh handle for the caller, with the page boundary stripped
@@ -225,8 +231,8 @@
                 :returned     0
                 :truncated    false}]
     (common/success-content
-     (str (json/encode counts)
-          "\nQuery validated, not executed — execute or save it later by passing this query_handle."))))
+     (message/msg ["%s" "Query validated, not executed — execute or save it later by passing this query_handle."]
+                  (message/raw (json/encode counts))))))
 
 (defn- execute-response!
   [session-id serialized-query prompt row-limit]
@@ -250,8 +256,9 @@
                            :cols (response-cols cols)
                            :rows rows)]
     (common/success-content
-     (cond-> (json/encode payload)
-       truncated? (str "\n" (steering-line returned next-cursor))))))
+     (if truncated?
+       (message/msg ["%s" "%s"] (message/raw (json/encode payload)) (steering-line returned next-cursor))
+       payload))))
 
 ;;; -------------------------------------------------- The tool ----------------------------------------------------
 
@@ -304,12 +311,13 @@ Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (brow
    re-checks inside `process-query`) so a refusal short-circuits before any query machinery
    spins up."
   [database-id]
-  (v2.queries/check-execute-sql-enabled! "execute_sql")
+  (v2.queries/check-execute-sql-enabled! (message/msg ["execute_sql"]))
   (when-not (mi/can-read? :model/Database database-id)
     (common/throw-not-found :model/Database database-id))
   (when-not (qp.perms/current-user-has-adhoc-native-query-perms? {:database database-id})
-    (throw (ex-info "You do not have permission to run native queries against this database."
-                    {:status-code 403 :database_id database-id}))))
+    (common/throw-teaching-error
+     (message/msg ["You do not have permission to run native queries against this database."])
+     {:status-code 403 :database_id database-id})))
 
 (defn- value->tag-type
   "The template-tag (and parameter) type for a supplied binding value, from its JSON type. The
@@ -340,16 +348,17 @@ Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (brow
                            (cond
                              (nil? tag)
                              (common/throw-teaching-error
-                              (format "No {{%s}} template tag in the SQL — template_tag_values keys must name a {{tag}} placeholder that appears in sql. Tags found: %s."
-                                      tag-name
-                                      (if-let [names (seq (map :name tags))]
-                                        (str/join ", " names)
-                                        "none")))
+                              (message/msg ["No template tag %s in the SQL — template_tag_values keys must name a {{tag}} placeholder that appears in sql. Tags found: %s."]
+                                           tag-name
+                                           (if-let [names (seq (map :name tags))]
+                                             (common/list-message names)
+                                             (message/msg ["none"]))))
 
                              (contains? #{:card :snippet} tag-type)
+                             ;; `tag-type` is one of the two reference kinds just matched.
                              (common/throw-teaching-error
-                              (format "{{%s}} is a %s-reference tag — it splices server-side SQL text and cannot be populated through template_tag_values, which binds only plain {{tag}} variables."
-                                      tag-name (name tag-type)))
+                              (message/msg ["%s is a %s-reference tag — it splices server-side SQL text and cannot be populated through template_tag_values, which binds only plain {{tag}} variables."]
+                                           tag-name (message/raw (name tag-type))))
 
                              :else
                              {:tag (assoc tag :type (value->tag-type value)) :value value})))
@@ -367,10 +376,8 @@ Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (brow
   ;; where a keyset is unsound — that is why that path refuses to mint a cursor — so suggesting
   ;; one there would hand back the gapped pagination the refusal exists to prevent. Here the
   ;; caller wrote the SQL and knows its key, which is the information the server lacks.
-  (format (str "returned %d rows, more available — narrow the SQL (add filters/aggregation), "
-               "raise `row_limit` (max %d), or page with `ORDER BY <unique key>` + "
-               "`WHERE <key> > <last value returned>`")
-          returned max-row-limit))
+  (message/msg ["returned %d rows, more available — narrow the SQL (add filters/aggregation), raise `row_limit` (max %d), or page with `ORDER BY <unique key>` + `WHERE <key> > <last value returned>`"]
+               returned max-row-limit))
 
 (def ^:private mbql-hint
   "Carried as `hint` by an `execute_sql` response whose SQL [[mbql-expressible-sql?]]. A raw-SQL card
@@ -423,8 +430,8 @@ Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (brow
                         :truncated    false}
                  hint (assoc :hint hint))]
     (common/success-content
-     (str (json/encode counts)
-          "\nSQL accepted, not executed — template tags and permissions were checked; the SQL text itself was not validated. Execute, save, or visualize it later by passing this query_handle."))))
+     (message/msg ["%s" "SQL accepted, not executed — template tags and permissions were checked; the SQL text itself was not validated. Execute, save, or visualize it later by passing this query_handle."]
+                  (message/raw (json/encode counts))))))
 
 (defn- execute-sql-response!
   [session-id serialized-query prompt row-limit hint]
@@ -440,8 +447,9 @@ Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (brow
                           :cols (response-cols cols)
                           :rows rows)]
     (common/success-content
-     (cond-> (json/encode payload)
-       truncated? (str "\n" (sql-steering-line returned))))))
+     (if truncated?
+       (message/msg ["%s" "%s"] (message/raw (json/encode payload)) (sql-steering-line returned))
+       payload))))
 
 (def ^:private execute-sql-args-schema
   [:map {:closed true}
@@ -499,17 +507,17 @@ Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (brow
 (defn- card-parameter-label
   [{:keys [id slug]}]
   (if slug
-    (format "%s (slug %s)" (pr-str id) (pr-str slug))
-    (pr-str id)))
+    (message/msg ["%s (slug %s)"] id slug)
+    (message/msg ["%s"] id)))
 
 (defn- throw-unknown-parameter
   [card-params requested]
   (common/throw-teaching-error
    (if (seq card-params)
-     (format "Unknown parameter %s — pass one of this card's parameter ids or slugs: %s."
-             (pr-str requested)
-             (str/join ", " (map card-parameter-label card-params)))
-     (format "Unknown parameter %s — this card has no parameters." (pr-str requested)))))
+     (message/msg ["Unknown parameter %s — pass one of this card's parameter ids or slugs: %s."]
+                  requested
+                  (common/list-message (map card-parameter-label card-params)))
+     (message/msg ["Unknown parameter %s — this card has no parameters."] requested))))
 
 (defn- check-parameter-value!
   "Reject a value whose JSON type can't satisfy the parameter's stored type, as a teaching
@@ -518,10 +526,10 @@ Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (brow
   [{param-type :type :keys [id slug]} value]
   (let [family   (or (namespace param-type) (name param-type))
         expected (case family
-                   "number"                 "a number"
-                   "boolean"                "a boolean"
-                   ("date" "temporal-unit") "a string"
-                   "a string, number, or boolean")]
+                   "number"                 (message/msg ["a number"])
+                   "boolean"                (message/msg ["a boolean"])
+                   ("date" "temporal-unit") (message/msg ["a string"])
+                   (message/msg ["a string, number, or boolean"]))]
     (doseq [v (if (sequential? value) value [value])]
       (let [ok? (case family
                   "number"                 (or (number? v)
@@ -531,8 +539,8 @@ Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (brow
                   (or (string? v) (number? v) (boolean? v)))]
         (when-not ok?
           (common/throw-teaching-error
-           (format "Invalid value %s for parameter %s of type %s — expected %s."
-                   (pr-str v) (pr-str (or slug id)) (u/qualified-name param-type) expected)))))))
+           (message/msg ["Invalid value %s for parameter %s of type %s — expected %s."]
+                        v (or slug id) (u/qualified-name param-type) expected)))))))
 
 (defn- resolve-card-parameters
   "Resolve each caller-supplied `{id|slug, value}` against the card's own parameter list (its
@@ -554,7 +562,7 @@ Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (brow
             (let [requested (or id slug)
                   _         (when (nil? requested)
                               (common/throw-teaching-error
-                               "Each parameter needs an `id` — the parameter's id or slug — and a `value`."))
+                               (message/msg ["Each parameter needs an `id` — the parameter's id or slug — and a `value`."])))
                   stored    (or (m/find-first #(= (:id %) requested) card-params)
                                 (m/find-first #(= (:slug %) requested) card-params)
                                 (throw-unknown-parameter card-params requested))]
@@ -587,13 +595,13 @@ Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (brow
                                  (fn [query info]
                                    (qp (update query :info merge info) nil)))))]
     (when-not (= (:status result) :completed)
-      (common/throw-teaching-error (str "Query failed: " (or (:error result) "unknown error"))))
+      (common/throw-teaching-error (query-failed result)))
     result))
 
 (defn- saved-question-steering-line
   [returned]
-  (format "returned %d rows, more available — narrow with `parameters`, or raise `row_limit` (max %d)"
-          returned max-row-limit))
+  (message/msg ["returned %d rows, more available — narrow with `parameters`, or raise `row_limit` (max %d)"]
+               returned max-row-limit))
 
 (def ^:private scalar-parameter-value-schema
   "A parameter value is a scalar or a list of scalars, never a nested structure — so a value can
@@ -648,5 +656,6 @@ Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (brow
                            :cols (response-cols cols)
                            :rows rows)]
     (common/success-content
-     (cond-> (json/encode payload)
-       truncated? (str "\n" (saved-question-steering-line returned))))))
+     (if truncated?
+       (message/msg ["%s" "%s"] (message/raw (json/encode payload)) (saved-question-steering-line returned))
+       payload))))

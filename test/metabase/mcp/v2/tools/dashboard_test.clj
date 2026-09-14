@@ -5,6 +5,7 @@
    free. The op grammar itself is covered by `metabase.mcp.v2.dashboard-ops-test`; this suite
    pins the tool's contract, permission inheritance, and dry-run behavior on top of it."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.write :as dashboards.write]
@@ -316,6 +317,29 @@
                    (tool-error (call-tool! :crowberto nil "dashboard_write"
                                            (wire {:method "update" :id (:id dash)
                                                   :ops [{:op "add_card" :id -1 :card_id 9999999}]}))))))))
+
+(deftest unknown-card-error-text-test
+  (testing "GHY-4544: the unknown-card refusal names the op and the card id as sent"
+    (mt/with-temp [:model/Dashboard dash {:name "Sales"}]
+      (is (= "op 0 (add_card): no card with id 9999999 that you can read."
+             (tool-error (call-tool! :crowberto nil "dashboard_write"
+                                     (wire {:method "update" :id (:id dash)
+                                            :ops [{:op "add_card" :id -1 :card_id 9999999}]}))))))))
+
+(deftest archived-on-create-error-text-test
+  (testing "GHY-4544: `archived` on a create is a teaching error"
+    (is (= "`archived` applies to method \"update\" only — remove it from this create call."
+           (tool-error (call-tool! :crowberto nil "dashboard_write"
+                                   (wire {:method "create" :name "Sales" :archived true})))))))
+
+;; not ^:parallel: the `!` in validate-payload! trips the kondo deftest lint
+(deftest invalid-payload-error-text-test
+  (testing "GHY-4544: an invalid compiled payload is explained as humanized, quoted schema detail"
+    (let [text (try (#'tools.dashboard/validate-payload! {:parameters "nope"})
+                    nil
+                    (catch clojure.lang.ExceptionInfo e (ex-message e)))]
+      (is (str/starts-with? text "The requested ops produce an invalid dashboard: \"parameters\": "))
+      (is (not (str/includes? text "\n"))))))
 
 (deftest unreadable-card-is-refused-for-a-non-admin-test
   (testing "a card that EXISTS but the caller cannot read is refused the same way a nonexistent one is, before
