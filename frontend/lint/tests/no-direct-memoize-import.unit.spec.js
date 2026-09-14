@@ -1,10 +1,8 @@
-import { RuleTester } from "oxlint/plugins-dev";
-
 import rule from "../eslint-plugin-metabase/rules/no-direct-memoize-import";
 
-const ruleTester = new RuleTester({
-  languageOptions: { sourceType: "module" },
-});
+import { createRuleTester } from "./rule-tester";
+
+const ruleTester = createRuleTester();
 
 const error = { messageId: "noDirectMemoizeImport" };
 const FILE = "/repo/frontend/src/metabase/thing/new-file.ts";
