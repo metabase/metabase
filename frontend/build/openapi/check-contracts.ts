@@ -1,15 +1,60 @@
 /* eslint-disable no-console -- CLI diagnostics and coverage report */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
+import { parseArgs } from "node:util";
 
 import ts from "typescript";
 
-import { baselineProblems, checkContracts } from "./contracts";
+import {
+  type ContractResult,
+  type ContractStatus,
+  baselineProblems,
+  checkContracts,
+  formatResult,
+  isFailing,
+} from "./contracts";
+import {
+  BASELINE_PATH,
+  CONTRACTS_REPORT_PATH,
+  GENERATED_DECLARATIONS_PATH,
+} from "./paths";
+
+const USAGE =
+  "Usage: bun run api-contract-check-pure [--update-baseline | --explain <endpoint>]";
 
 const root = process.cwd();
-const baselinePath = resolve(root, "frontend/build/openapi/baseline.json");
-const generatedPath = resolve(root, ".tmp/openapi/types/types.gen.d.ts");
-const reportPath = resolve(root, ".tmp/openapi/contracts-report.json");
+const baselinePath = resolve(root, BASELINE_PATH);
+const generatedPath = resolve(root, GENERATED_DECLARATIONS_PATH);
+const reportPath = resolve(root, CONTRACTS_REPORT_PATH);
+
+interface CliOptions {
+  updateBaseline: boolean;
+  explain: string | undefined;
+}
+
+type StatusCounts = Record<ContractStatus, number>;
+
+function parseCliOptions(args: string[]): CliOptions {
+  let values;
+  try {
+    ({ values } = parseArgs({
+      args,
+      options: {
+        "update-baseline": { type: "boolean" },
+        explain: { type: "string" },
+      },
+      strict: true,
+    }));
+  } catch {
+    throw new Error(USAGE);
+  }
+  const updateBaseline = values["update-baseline"] ?? false;
+  const { explain } = values;
+  if (explain === "" || (updateBaseline && explain !== undefined)) {
+    throw new Error(USAGE);
+  }
+  return { updateBaseline, explain };
+}
 
 function readBaseline(): string[] {
   const value: unknown = JSON.parse(readFileSync(baselinePath, "utf8"));
@@ -24,16 +69,7 @@ function readBaseline(): string[] {
   return [...new Set(value)];
 }
 
-function main(): void {
-  const args = process.argv.slice(2);
-  const updateBaseline = args.length === 1 && args[0] === "--update-baseline";
-  const explain =
-    args.length === 2 && args[0] === "--explain" ? args[1] : undefined;
-  if (args.length && !updateBaseline && !explain) {
-    throw new Error(
-      "Usage: bun run api-contract-check-pure [--update-baseline | --explain <endpoint>]",
-    );
-  }
+function readTsConfig(): ts.ParsedCommandLine {
   const configPath = resolve(root, "tsconfig.json");
   const config = ts.readConfigFile(configPath, ts.sys.readFile);
   if (config.error) {
@@ -49,7 +85,12 @@ function main(): void {
         .join("\n"),
     );
   }
-  const endpointFiles = parsed.fileNames.filter(
+  return parsed;
+}
+
+function runChecks(): ContractResult[] {
+  const config = readTsConfig();
+  const endpointFiles = config.fileNames.filter(
     (file) =>
       /\/frontend\/src\//.test(file) &&
       !/\.(?:spec|test)\./.test(file) &&
@@ -59,52 +100,77 @@ function main(): void {
     rootNames: [
       ...endpointFiles,
       generatedPath,
-      ...parsed.fileNames.filter((file) => file.endsWith(".d.ts")),
+      ...config.fileNames.filter((file) => file.endsWith(".d.ts")),
     ],
-    options: { ...parsed.options, incremental: false, noEmit: true },
+    options: { ...config.options, incremental: false, noEmit: true },
   });
-  const results = checkContracts(program, endpointFiles, generatedPath, root);
-  const counts = { pass: 0, mismatch: 0, unverified: 0, ignored: 0 };
-  for (const result of results) {
-    counts[result.status] += 1;
+  return checkContracts(program, endpointFiles, generatedPath, root);
+}
+
+function countByStatus(results: ContractResult[]): StatusCounts {
+  const counts: StatusCounts = {
+    compatible: 0,
+    mismatch: 0,
+    unverified: 0,
+    ignored: 0,
+  };
+  for (const { status } of results) {
+    counts[status] += 1;
   }
-  const responseCounts = { pass: 0, mismatch: 0, unverified: 0, ignored: 0 };
-  for (const result of results.filter((r) => /:response(?:\.|$)/.test(r.id))) {
-    responseCounts[result.status] += 1;
+  return counts;
+}
+
+function formatCounts(counts: StatusCounts): string {
+  return `${counts.compatible} compatible, ${counts.mismatch} mismatched, ${counts.unverified} unverified, ${counts.ignored} intentionally ignored`;
+}
+
+function writeJson(path: string, value: unknown): void {
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+function explain(results: ContractResult[], filter: string): void {
+  const matching = results.filter((result) => result.id.includes(filter));
+  if (!matching.length) {
+    throw new Error(`No contract checks match ${JSON.stringify(filter)}.`);
   }
-  const endpointCount = new Set(results.map((r) => r.endpointId)).size;
+  for (const result of matching) {
+    console.log(formatResult(result));
+  }
+}
+
+function main(): void {
+  const options = parseCliOptions(process.argv.slice(2));
+  const results = runChecks();
   const failingEndpoints = new Set(
-    results
-      .filter((r) => r.status === "mismatch" || r.status === "unverified")
-      .map((r) => r.endpointId),
+    results.filter(isFailing).map((result) => result.endpointId),
   );
-  const exemptEndpoints = updateBaseline
+  const exemptEndpoints = options.updateBaseline
     ? [...failingEndpoints].sort()
     : readBaseline();
   const staleExemptions = exemptEndpoints.filter(
     (id) => !failingEndpoints.has(id),
   );
-  mkdirSync(dirname(reportPath), { recursive: true });
-  writeFileSync(
-    reportPath,
-    `${JSON.stringify({ endpointCount, counts, responseCounts, exemptEndpoints, staleExemptions, results }, null, 2)}\n`,
+  const counts = countByStatus(results);
+  const responseCounts = countByStatus(
+    results.filter((result) => result.kind === "response"),
   );
-  if (explain) {
-    const matching = results.filter((result) => result.id.includes(explain));
-    if (!matching.length) {
-      throw new Error(`No contract checks match ${JSON.stringify(explain)}.`);
-    }
-    for (const result of matching) {
-      console.log(
-        `${result.file}:${result.line} ${result.id}\n  ${result.status}: ${result.message}`,
-      );
-    }
+  const endpointCount = new Set(results.map((result) => result.endpointId))
+    .size;
+  writeJson(reportPath, {
+    endpointCount,
+    counts,
+    responseCounts,
+    exemptEndpoints,
+    staleExemptions,
+    results,
+  });
+
+  if (options.explain !== undefined) {
+    explain(results, options.explain);
   }
-  if (updateBaseline) {
-    writeFileSync(
-      baselinePath,
-      `${JSON.stringify(exemptEndpoints, null, 2)}\n`,
-    );
+  if (options.updateBaseline) {
+    writeJson(baselinePath, exemptEndpoints);
     console.log(
       `Updated ${exemptEndpoints.length} endpoint exemptions. Review the baseline diff before committing.`,
     );
@@ -120,11 +186,9 @@ function main(): void {
       `${staleExemptions.length} endpoint exemptions have no current failures (informational; see staleExemptions in the report).`,
     );
   }
+  console.log(`API contracts: ${formatCounts(counts)}.`);
   console.log(
-    `API contracts: ${counts.pass} compatible, ${counts.mismatch} mismatched, ${counts.unverified} unverified, ${counts.ignored} intentionally ignored.`,
-  );
-  console.log(
-    `Response contracts: ${responseCounts.pass} compatible, ${responseCounts.mismatch} mismatched, ${responseCounts.unverified} unverified, ${responseCounts.ignored} intentionally ignored (${endpointCount} endpoints discovered).`,
+    `Response contracts: ${formatCounts(responseCounts)} (${endpointCount} endpoints discovered).`,
   );
   console.log(`Details: ${reportPath}`);
 }

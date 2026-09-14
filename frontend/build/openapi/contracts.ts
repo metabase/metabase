@@ -1,18 +1,83 @@
 import ts from "typescript";
 
+export type ContractStatus =
+  | "compatible"
+  | "mismatch"
+  | "unverified"
+  | "ignored";
+
+export type ContractKind = "endpoint" | "request" | "response";
+
 export interface ContractResult {
   id: string;
   endpointId: string;
+  kind: ContractKind;
+  part?: string;
   file: string;
   line: number;
-  status: "pass" | "mismatch" | "unverified" | "ignored";
+  status: ContractStatus;
   message: string;
 }
+
+interface ContractProblem {
+  status: "mismatch" | "unverified";
+  message: string;
+}
+
+type Verdict = Pick<ContractResult, "status" | "message">;
+
+type Check = Pick<ContractResult, "kind" | "part" | "status" | "message">;
 
 interface Operation {
   path: string;
   data: ts.Type;
   responses: ts.Type | undefined;
+}
+
+interface CheckContext {
+  checker: ts.TypeChecker;
+  generated: ts.SourceFile;
+  operations: Map<string, Operation[]>;
+}
+
+interface Endpoint {
+  node: ts.CallExpression;
+  name: string | undefined;
+  id: string;
+  file: string;
+  line: number;
+}
+
+interface ParsedUrl {
+  path: string;
+  parameters: ts.Expression[];
+}
+
+interface HttpRequest {
+  method: string;
+  path: string;
+  url: ParsedUrl;
+  object: ts.ObjectLiteralExpression | undefined;
+}
+
+interface ResolvedEndpoint {
+  node: ts.CallExpression;
+  config: ts.ObjectLiteralExpression;
+  responseType: ts.TypeNode;
+  request: HttpRequest;
+  operation: Operation;
+}
+
+const MAX_MISMATCH_MESSAGES = 5;
+const MAX_MISMATCH_DEPTH = 8;
+const MAX_FIELD_COVERAGE_DEPTH = 64;
+
+export function isFailing(result: ContractResult): boolean {
+  return result.status === "mismatch" || result.status === "unverified";
+}
+
+export function formatResult(result: ContractResult): string {
+  return `${result.file}:${result.line} ${result.id}\n  ${result.status}: ${result.message}`;
 }
 
 function propertyName(node: ts.Node): string | undefined {
@@ -21,8 +86,6 @@ function propertyName(node: ts.Node): string | undefined {
     : undefined;
 }
 
-// Declaration names survive file moves and line changes. Keep source locations
-// in diagnostics, and reject ambiguous identities instead of sharing exemptions.
 function endpointIdentity(node: ts.CallExpression, name?: string): string {
   const names = name ? [name] : [];
   for (let parent = node.parent; parent; parent = parent.parent) {
@@ -57,6 +120,12 @@ function expressionMember(object: ts.ObjectLiteralExpression, name: string) {
   return undefined;
 }
 
+function hasComputedName(property: ts.ObjectLiteralElementLike): boolean {
+  return (
+    property.name !== undefined && ts.isComputedPropertyName(property.name)
+  );
+}
+
 function unwrap(node: ts.Expression): ts.Expression {
   while (
     ts.isParenthesizedExpression(node) ||
@@ -78,6 +147,14 @@ function propertyType(
   return symbol && checker.getTypeOfSymbolAtLocation(symbol, at);
 }
 
+function isTypeReference(type: ts.Type): type is ts.TypeReference {
+  return (
+    "objectFlags" in type &&
+    typeof type.objectFlags === "number" &&
+    (type.objectFlags & ts.ObjectFlags.Reference) !== 0
+  );
+}
+
 function routeKey(method: string, path: string): string {
   return `${method.toUpperCase()} ${path.replace(/\{[^}]+\}|:[\w-]+/g, "{}")}`;
 }
@@ -90,11 +167,14 @@ function mismatchDetail(
 ): string {
   const messages: string[] = [];
   const visit = (from: ts.Type, to: ts.Type, path: string, depth: number) => {
-    if (messages.length >= 5 || checker.isTypeAssignableTo(from, to)) {
+    if (
+      messages.length >= MAX_MISMATCH_MESSAGES ||
+      checker.isTypeAssignableTo(from, to)
+    ) {
       return;
     }
     const before = messages.length;
-    if (depth < 8) {
+    if (depth < MAX_MISMATCH_DEPTH) {
       if (from.isUnion()) {
         from.types.forEach((type) => visit(type, to, path, depth + 1));
       } else {
@@ -112,7 +192,7 @@ function mismatchDetail(
           target.flags & ts.TypeFlags.Object
         ) {
           for (const property of target.getProperties()) {
-            if (messages.length >= 5) {
+            if (messages.length >= MAX_MISMATCH_MESSAGES) {
               break;
             }
             const actualProperty = from.getProperty(property.name);
@@ -189,7 +269,7 @@ function operations(
   }
   if (!result.size) {
     throw new Error(
-      "No operations found in generated declarations. Run bun run openapi:types.",
+      "No operations found in generated declarations. Run bun run types:generate.",
     );
   }
   return result;
@@ -200,7 +280,7 @@ function responseFieldProblem(
   backend: ts.Type,
   frontend: ts.Type,
   at: ts.Node,
-): { status: "mismatch" | "unverified"; message: string } | undefined {
+): ContractProblem | undefined {
   const seen = new Map<ts.Type, ts.Type[][]>();
   const variants = (type: ts.Type): ts.Type[] =>
     type.isUnion() ? type.types.flatMap(variants) : [type];
@@ -209,7 +289,7 @@ function responseFieldProblem(
     frontend: ts.Type,
     path: string,
     depth: number,
-  ): ReturnType<typeof responseFieldProblem> => {
+  ): ContractProblem | undefined => {
     for (const type of backendTypes) {
       if (!checker.isTypeAssignableTo(type, frontend)) {
         return {
@@ -236,10 +316,10 @@ function responseFieldProblem(
         continue;
       }
       seen.set(variant, [...previous, candidates]);
-      if (depth >= 64 || !candidates.length) {
+      if (depth >= MAX_FIELD_COVERAGE_DEPTH || !candidates.length) {
         return {
           status: "unverified",
-          message: `${path}: cannot establish frontend field coverage ${depth >= 64 ? "beyond 64 levels" : "for this union variant"}.`,
+          message: `${path}: cannot establish frontend field coverage ${depth >= MAX_FIELD_COVERAGE_DEPTH ? `beyond ${MAX_FIELD_COVERAGE_DEPTH} levels` : "for this union variant"}.`,
         };
       }
       if (checker.isArrayType(variant)) {
@@ -358,10 +438,11 @@ function looseType(
   if (!(type.flags & ts.TypeFlags.Object)) {
     return undefined;
   }
-  if (checker.isArrayType(type) || checker.isTupleType(type)) {
-    // TypeScript's array and tuple checks don't narrow the type to TypeReference.
-    const reference = type as ts.TypeReference;
-    for (const element of checker.getTypeArguments(reference)) {
+  if (
+    isTypeReference(type) &&
+    (checker.isArrayType(type) || checker.isTupleType(type))
+  ) {
+    for (const element of checker.getTypeArguments(type)) {
       const gap = looseType(checker, element, at, `${path}[]`, seen);
       if (gap) {
         return gap;
@@ -424,9 +505,7 @@ function returnExpression(fn: ts.Node): ts.Expression | undefined {
   return value && unwrap(value);
 }
 
-function parseUrl(
-  url: ts.Expression,
-): { path: string; parameters: ts.Expression[] } | undefined {
+function parseUrl(url: ts.Expression): ParsedUrl | undefined {
   if (ts.isStringLiteral(url) || ts.isNoSubstitutionTemplateLiteral(url)) {
     return { path: url.text, parameters: [] };
   }
@@ -453,17 +532,16 @@ function parseUrl(
   };
 }
 
-export function checkContracts(
+function assertCheckable(
   program: ts.Program,
-  endpointFiles: string[],
-  generatedFile: string,
+  files: string[],
   root: string,
-): ContractResult[] {
+): void {
   const options = program.getCompilerOptions();
   if (!(options.strictNullChecks ?? options.strict)) {
     throw new Error("API contract checking requires strictNullChecks.");
   }
-  const syntaxErrors = [generatedFile, ...endpointFiles].flatMap((file) => {
+  const syntaxErrors = files.flatMap((file) => {
     const source = program.getSourceFile(file);
     return source ? program.getSyntacticDiagnostics(source) : [];
   });
@@ -476,263 +554,378 @@ export function checkContracts(
       }),
     );
   }
+}
+
+function isEndpointBuilderCall(
+  checker: ts.TypeChecker,
+  node: ts.Node,
+): node is ts.CallExpression {
+  return (
+    ts.isCallExpression(node) &&
+    ts.isPropertyAccessExpression(node.expression) &&
+    ["query", "mutation"].includes(node.expression.name.text) &&
+    checker.getTypeAtLocation(node.expression.expression).aliasSymbol?.name ===
+      "EndpointBuilder"
+  );
+}
+
+function* discoverEndpoints(
+  program: ts.Program,
+  checker: ts.TypeChecker,
+  endpointFiles: string[],
+  root: string,
+): Generator<Endpoint> {
+  const locations = new Map<string, string>();
+  for (const fileName of endpointFiles) {
+    const source = program.getSourceFile(fileName);
+    if (!source) {
+      throw new Error(`Missing endpoint source: ${fileName}`);
+    }
+    const file = source.fileName.replace(`${root}/`, "");
+    const visit = function* (node: ts.Node): Generator<Endpoint> {
+      if (isEndpointBuilderCall(checker, node)) {
+        const line =
+          source.getLineAndCharacterOfPosition(node.getStart()).line + 1;
+        const name = ts.isPropertyAssignment(node.parent)
+          ? propertyName(node.parent.name)
+          : undefined;
+        const id = endpointIdentity(node, name);
+        const location = `${file}:${line}`;
+        const previousLocation = locations.get(id);
+        if (previousLocation) {
+          throw new Error(
+            `Duplicate endpoint identity ${id} at ${previousLocation} and ${location}; give API or factory declarations distinct names.`,
+          );
+        }
+        locations.set(id, location);
+        yield { node, name, id, file, line };
+      }
+      const children: ts.Node[] = [];
+      ts.forEachChild(node, (child) => {
+        children.push(child);
+      });
+      for (const child of children) {
+        yield* visit(child);
+      }
+    };
+    yield* visit(source);
+  }
+}
+
+function resolveRequest(
+  config: ts.ObjectLiteralExpression,
+): HttpRequest | undefined {
+  const query = member(config, "query");
+  const returned =
+    query &&
+    returnExpression(
+      ts.isPropertyAssignment(query) ? unwrap(query.initializer) : query,
+    );
+  const object =
+    returned && ts.isObjectLiteralExpression(returned) ? returned : undefined;
+  const urlExpression = object ? expressionMember(object, "url") : returned;
+  const url = urlExpression && parseUrl(urlExpression);
+  const method = object && expressionMember(object, "method");
+  if (
+    !url ||
+    object?.properties.some(
+      (property) =>
+        (!ts.isPropertyAssignment(property) &&
+          !ts.isShorthandPropertyAssignment(property)) ||
+        hasComputedName(property),
+    ) ||
+    (method && !ts.isStringLiteral(method))
+  ) {
+    return undefined;
+  }
+  return {
+    method: method ? method.text : "GET",
+    path: url.path.split("?")[0] ?? url.path,
+    url,
+    object,
+  };
+}
+
+function resolveEndpoint(
+  { operations }: CheckContext,
+  { node, name }: Endpoint,
+): ResolvedEndpoint | { unverified: string } {
+  const config = node.arguments[0] && unwrap(node.arguments[0]);
+  const responseType = node.typeArguments?.[0];
+  if (
+    !name ||
+    !config ||
+    !ts.isObjectLiteralExpression(config) ||
+    !responseType
+  ) {
+    return {
+      unverified:
+        "Expected a named endpoint with explicit type arguments and an object definition.",
+    };
+  }
+  if (
+    config.properties.some(
+      (property) =>
+        ts.isSpreadAssignment(property) || hasComputedName(property),
+    )
+  ) {
+    return {
+      unverified:
+        "Endpoint configuration contains a spread or computed property.",
+    };
+  }
+  const request = resolveRequest(config);
+  if (!request) {
+    return {
+      unverified:
+        "Cannot statically identify one HTTP request (queryFn, dynamic URL/method, conditional returns, computed properties, accessors, or spread).",
+    };
+  }
+  const candidates =
+    operations.get(routeKey(request.method, request.path)) ?? [];
+  if (candidates.length > 1) {
+    return {
+      unverified: `Ambiguous backend operations for ${request.method} ${request.path}`,
+    };
+  }
+  const operation = candidates[0];
+  if (!operation) {
+    return {
+      unverified: `No generated operation for ${request.method} ${request.path}`,
+    };
+  }
+  return { node, config, responseType, request, operation };
+}
+
+function compareTypes(
+  checker: ts.TypeChecker,
+  kind: "request" | "response",
+  from: ts.Type,
+  to: ts.Type,
+  at: ts.Node,
+): Verdict {
+  const [fromSide, toSide] =
+    kind === "response" ? ["backend$", "frontend$"] : ["frontend$", "backend$"];
+  const gap =
+    looseType(checker, from, at, fromSide) ??
+    looseType(checker, to, at, toSide);
+  if (gap) {
+    return { status: "unverified", message: gap };
+  }
+  if (!checker.isTypeAssignableTo(from, to)) {
+    return {
+      status: "mismatch",
+      message: mismatchDetail(checker, from, to, at),
+    };
+  }
+  const problem =
+    kind === "response"
+      ? responseFieldProblem(checker, from, to, at)
+      : undefined;
+  return problem ?? { status: "compatible", message: "Compatible" };
+}
+
+function checkResponse(
+  { checker, generated }: CheckContext,
+  { node, config, responseType, operation }: ResolvedEndpoint,
+): Check[] {
+  const frontendResponse = checker.getTypeFromTypeNode(responseType);
+  if (member(config, "transformResponse")) {
+    return [
+      {
+        kind: "response",
+        status: "unverified",
+        message:
+          "transformResponse needs an explicit raw-response contract; the RTK result type is transformed.",
+      },
+    ];
+  }
+  if (frontendResponse.flags & (ts.TypeFlags.Void | ts.TypeFlags.Undefined)) {
+    return [
+      {
+        kind: "response",
+        status: "ignored",
+        message: "Frontend intentionally discards the response.",
+      },
+    ];
+  }
+  const successes =
+    operation.responses
+      ?.getProperties()
+      .filter((p) => /^2(?:\d\d|XX)$/.test(p.name)) ?? [];
+  if (!successes.length) {
+    return [
+      {
+        kind: "response",
+        status: "unverified",
+        message: "Backend does not declare a successful response schema.",
+      },
+    ];
+  }
+  return successes.map((success) => ({
+    kind: "response",
+    part: success.name,
+    ...compareTypes(
+      checker,
+      "response",
+      checker.getTypeOfSymbolAtLocation(success, generated),
+      frontendResponse,
+      node,
+    ),
+  }));
+}
+
+function checkRequest(
+  { checker, generated }: CheckContext,
+  { node, request, operation }: ResolvedEndpoint,
+): Check[] {
+  if (request.url.path.includes("?") || /:[\w-]+/.test(request.path)) {
+    return [
+      {
+        kind: "request",
+        status: "unverified",
+        message:
+          "Inline query strings and Express-style path substitutions need explicit mapping.",
+      },
+    ];
+  }
+  const fieldChecks = (
+    [
+      ["query", "params"],
+      ["body", "body"],
+    ] as const
+  ).map(([part, field]): Check => {
+    const expected =
+      propertyType(checker, operation.data, part, generated) ??
+      checker.getUndefinedType();
+    const expression =
+      request.object && expressionMember(request.object, field);
+    const actual = expression
+      ? checker.getTypeAtLocation(expression)
+      : checker.getUndefinedType();
+    return {
+      kind: "request",
+      part,
+      ...compareTypes(checker, "request", actual, expected, node),
+    };
+  });
+  return [
+    ...fieldChecks,
+    ...checkPathParameters(checker, generated, node, request, operation),
+  ];
+}
+
+function checkPathParameters(
+  checker: ts.TypeChecker,
+  generated: ts.SourceFile,
+  node: ts.CallExpression,
+  request: HttpRequest,
+  operation: Operation,
+): Check[] {
+  const pathType = propertyType(checker, operation.data, "path", generated);
+  const pathNames = [...operation.path.matchAll(/\{([^}]+)\}/g)].map(
+    (match) => match[1],
+  );
+  if (pathNames.length !== request.url.parameters.length) {
+    return [
+      {
+        kind: "request",
+        part: "path",
+        status: "unverified",
+        message:
+          "Path parameters are not represented by URL template expressions.",
+      },
+    ];
+  }
+  return pathNames.map((name, index): Check => {
+    const part = `path.${index}`;
+    const expression = request.url.parameters[index];
+    const expected =
+      pathType && name
+        ? propertyType(
+            checker,
+            checker.getNonNullableType(pathType),
+            name,
+            generated,
+          )
+        : undefined;
+    if (!expression || !expected) {
+      return {
+        kind: "request",
+        part,
+        status: "unverified",
+        message: "Backend path parameter schema is missing.",
+      };
+    }
+    return {
+      kind: "request",
+      part,
+      ...compareTypes(
+        checker,
+        "request",
+        checker.getTypeAtLocation(expression),
+        expected,
+        node,
+      ),
+    };
+  });
+}
+
+function checkEndpoint(context: CheckContext, endpoint: Endpoint): Check[] {
+  const resolved = resolveEndpoint(context, endpoint);
+  if ("unverified" in resolved) {
+    return [
+      { kind: "endpoint", status: "unverified", message: resolved.unverified },
+    ];
+  }
+  return [
+    ...checkResponse(context, resolved),
+    ...checkRequest(context, resolved),
+  ];
+}
+
+function checkId(endpointId: string, { kind, part }: Check): string {
+  return `${endpointId}:${part ? `${kind}.${part}` : kind}`;
+}
+
+export function checkContracts(
+  program: ts.Program,
+  endpointFiles: string[],
+  generatedFile: string,
+  root: string,
+): ContractResult[] {
+  assertCheckable(program, [generatedFile, ...endpointFiles], root);
   const checker = program.getTypeChecker();
   const generated = program.getSourceFile(generatedFile);
   if (!generated) {
     throw new Error(`Missing generated declarations: ${generatedFile}`);
   }
-  const backend = operations(checker, generated);
-  const results: ContractResult[] = [];
-  const endpointLocations = new Map<string, string>();
-  for (const file of endpointFiles) {
-    const source = program.getSourceFile(file);
-    if (!source) {
-      throw new Error(`Missing endpoint source: ${file}`);
-    }
-    const visit = (node: ts.Node) => {
-      if (
-        ts.isCallExpression(node) &&
-        ts.isPropertyAccessExpression(node.expression) &&
-        ["query", "mutation"].includes(node.expression.name.text) &&
-        (checker.getTypeAtLocation(node.expression.expression).aliasSymbol
-          ?.name === "EndpointBuilder" ||
-          (ts.isIdentifier(node.expression.expression) &&
-            node.expression.expression.text === "builder"))
-      ) {
-        checkEndpoint(node, source);
-      }
-      ts.forEachChild(node, visit);
-    };
-    const checkEndpoint = (node: ts.CallExpression, source: ts.SourceFile) => {
-      const file = source.fileName.replace(`${root}/`, "");
-      const line =
-        source.getLineAndCharacterOfPosition(node.getStart()).line + 1;
-      const name = ts.isPropertyAssignment(node.parent)
-        ? propertyName(node.parent.name)
-        : undefined;
-      const endpointId = endpointIdentity(node, name);
-      const previousLocation = endpointLocations.get(endpointId);
-      if (previousLocation) {
-        throw new Error(
-          `Duplicate endpoint identity ${endpointId} at ${previousLocation} and ${file}:${line}; give API or factory declarations distinct names.`,
-        );
-      }
-      endpointLocations.set(endpointId, `${file}:${line}`);
-      const add = (
-        part: string,
-        status: ContractResult["status"],
-        message: string,
-      ) => {
-        results.push({
-          id: `${endpointId}:${part}`,
-          endpointId,
-          file,
-          line,
-          status,
-          message,
-        });
-      };
-      const compare = (part: string, from: ts.Type, to: ts.Type) => {
-        const response = part.startsWith("response");
-        const gap =
-          looseType(checker, from, node, response ? "backend$" : "frontend$") ??
-          looseType(checker, to, node, response ? "frontend$" : "backend$");
-        if (gap) {
-          add(part, "unverified", gap);
-        } else if (checker.isTypeAssignableTo(from, to)) {
-          const problem =
-            response && responseFieldProblem(checker, from, to, node);
-          if (problem) {
-            add(part, problem.status, problem.message);
-          } else {
-            add(part, "pass", "Compatible");
-          }
-        } else {
-          add(part, "mismatch", mismatchDetail(checker, from, to, node));
-        }
-      };
-      const config = node.arguments[0] && unwrap(node.arguments[0]);
-      const res = node.typeArguments?.[0];
-      if (!name || !config || !ts.isObjectLiteralExpression(config) || !res) {
-        add(
-          "endpoint",
-          "unverified",
-          "Expected a named endpoint with explicit type arguments and an object definition.",
-        );
-        return;
-      }
-      if (
-        config.properties.some(
-          (property) =>
-            ts.isSpreadAssignment(property) ||
-            (property.name && ts.isComputedPropertyName(property.name)),
-        )
-      ) {
-        add(
-          "endpoint",
-          "unverified",
-          "Endpoint configuration contains a spread or computed property.",
-        );
-        return;
-      }
-      const query = member(config, "query");
-      const returned =
-        query &&
-        returnExpression(
-          ts.isPropertyAssignment(query) ? unwrap(query.initializer) : query,
-        );
-      const request =
-        returned && ts.isObjectLiteralExpression(returned)
-          ? returned
-          : undefined;
-      const url = request ? expressionMember(request, "url") : returned;
-      const parsed = url && parseUrl(url);
-      const methodNode = request && expressionMember(request, "method");
-      if (
-        !parsed ||
-        (request &&
-          request.properties.some(
-            (property) =>
-              (!ts.isPropertyAssignment(property) &&
-                !ts.isShorthandPropertyAssignment(property)) ||
-              (property.name && ts.isComputedPropertyName(property.name)),
-          )) ||
-        (methodNode && !ts.isStringLiteral(methodNode))
-      ) {
-        add(
-          "endpoint",
-          "unverified",
-          "Cannot statically identify one HTTP request (queryFn, dynamic URL/method, conditional returns, computed properties, accessors, or spread).",
-        );
-        return;
-      }
-      const method =
-        methodNode && ts.isStringLiteral(methodNode) ? methodNode.text : "GET";
-      const path = parsed.path.split("?")[0] ?? parsed.path;
-      const candidates = backend.get(routeKey(method, path)) ?? [];
-      if (candidates.length > 1) {
-        add(
-          "endpoint",
-          "unverified",
-          `Ambiguous backend operations for ${method} ${path}`,
-        );
-        return;
-      }
-      const operation = candidates[0];
-      if (!operation) {
-        add(
-          "endpoint",
-          "unverified",
-          `No generated operation for ${method} ${path}`,
-        );
-        return;
-      }
-      const frontendResponse = checker.getTypeFromTypeNode(res);
-      if (member(config, "transformResponse")) {
-        add(
-          "response",
-          "unverified",
-          "transformResponse needs an explicit raw-response contract; the RTK result type is transformed.",
-        );
-      } else if (
-        frontendResponse.flags &
-        (ts.TypeFlags.Void | ts.TypeFlags.Undefined)
-      ) {
-        add(
-          "response",
-          "ignored",
-          "Frontend intentionally discards the response.",
-        );
-      } else {
-        const successes =
-          operation.responses
-            ?.getProperties()
-            .filter((p) => /^2(?:\d\d|XX)$/.test(p.name)) ?? [];
-        if (!successes.length) {
-          add(
-            "response",
-            "unverified",
-            "Backend does not declare a successful response schema.",
-          );
-        }
-        for (const success of successes) {
-          compare(
-            `response.${success.name}`,
-            checker.getTypeOfSymbolAtLocation(success, generated),
-            frontendResponse,
-          );
-        }
-      }
-      if (parsed.path.includes("?") || /:[\w-]+/.test(path)) {
-        add(
-          "request",
-          "unverified",
-          "Inline query strings and Express-style path substitutions need explicit mapping.",
-        );
-        return;
-      }
-      for (const [part, field] of [
-        ["query", "params"],
-        ["body", "body"],
-      ] as const) {
-        const expected =
-          propertyType(checker, operation.data, part, generated) ??
-          checker.getUndefinedType();
-        const expression = request && expressionMember(request, field);
-        const actual = expression
-          ? checker.getTypeAtLocation(expression)
-          : checker.getUndefinedType();
-        compare(`request.${part}`, actual, expected);
-      }
-      const pathType = propertyType(checker, operation.data, "path", generated);
-      const pathNames = [...operation.path.matchAll(/\{([^}]+)\}/g)].map(
-        (match) => match[1],
-      );
-      if (pathNames.length !== parsed.parameters.length) {
-        add(
-          "request.path",
-          "unverified",
-          "Path parameters are not represented by URL template expressions.",
-        );
-        return;
-      }
-      pathNames.forEach((name, index) => {
-        const expression = parsed.parameters[index];
-        const expected =
-          pathType && name
-            ? propertyType(
-                checker,
-                checker.getNonNullableType(pathType),
-                name,
-                generated,
-              )
-            : undefined;
-        if (!expression || !expected) {
-          add(
-            `request.path.${index}`,
-            "unverified",
-            "Backend path parameter schema is missing.",
-          );
-        } else {
-          compare(
-            `request.path.${index}`,
-            checker.getTypeAtLocation(expression),
-            expected,
-          );
-        }
-      });
-    };
-    visit(source);
-  }
+  const context: CheckContext = {
+    checker,
+    generated,
+    operations: operations(checker, generated),
+  };
+  // Check each endpoint as it is discovered, so types are created in source order.
+  // TypeScript prints union members in type-creation order, which shows up in mismatch messages.
+  const results = Array.from(
+    discoverEndpoints(program, checker, endpointFiles, root),
+    (endpoint) =>
+      checkEndpoint(context, endpoint).map(
+        (check): ContractResult => ({
+          id: checkId(endpoint.id, check),
+          endpointId: endpoint.id,
+          kind: check.kind,
+          part: check.part,
+          file: endpoint.file,
+          line: endpoint.line,
+          status: check.status,
+          message: check.message,
+        }),
+      ),
+  ).flat();
   if (!results.length) {
     throw new Error(
       "No RTK endpoints were discovered; refusing an empty contract check.",
-    );
-  }
-  const ids = results.map((r) => r.id);
-  if (new Set(ids).size !== ids.length) {
-    throw new Error(
-      "Duplicate endpoint/check identities; give endpoint definitions distinct names.",
     );
   }
   return results.sort((a, b) => a.id.localeCompare(b.id));
@@ -744,7 +937,8 @@ export function baselineProblems(
 ): string[] {
   const exemptEndpoints = new Set(baseline);
   return results
-    .filter((r) => r.status === "mismatch" || r.status === "unverified")
-    .filter((r) => !exemptEndpoints.has(r.endpointId))
-    .map((r) => `${r.file}:${r.line} ${r.id}\n  ${r.status}: ${r.message}`);
+    .filter(
+      (result) => isFailing(result) && !exemptEndpoints.has(result.endpointId),
+    )
+    .map(formatResult);
 }
