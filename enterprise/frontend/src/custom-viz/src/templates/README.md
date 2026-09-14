@@ -347,14 +347,13 @@ Static components run inside a **GraalJS (GraalVM) server-side JavaScript engine
 - Network: `fetch`, `XMLHttpRequest`
 - Timers: `setTimeout`, `setInterval`
 - Dynamic imports: `import()`
+- CSS layout in non-SVG output: HTML markup is rasterized with a limited renderer for Slack and PDF
+  (no flexbox or grid, limited fonts).
 
 **Guidelines:**
 
 - Prefer the `width`/`height` props when provided so the chart fills its box (e.g. a dashboard grid
   cell in a PDF export), and fall back to fixed dimensions when they are undefined (email/Slack).
-- Return preferably an `<svg>` root element. Non-SVG output is treated as raw HTML: emails embed
-  it as-is, while Slack and PDF exports rasterize it with a very limited HTML renderer
-  (no flexbox/grid, limited font support).
 - Avoid external dependencies that rely on browser APIs.
 - Inline images as base64 `data:` URLs or inline `<svg>` (see [Using Images](#using-images) above).
 - `StaticVisualization` should be a pure component.
