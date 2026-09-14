@@ -562,6 +562,7 @@ export function ExplorationVisualization({
         className={className}
         onUpdateWarnings={setWarnings}
         mode={mode}
+        hasColumnReordering
         onChangeCardAndRun={noop} // needed to show ConnectedClickActionsPopover
         highlighted={highlighted}
         selectedTimelineEventIds={selectedTimelineEventIds}

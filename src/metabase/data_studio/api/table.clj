@@ -23,7 +23,7 @@
 (set! *warn-on-reflection* true)
 
 (mr/def ::table-selectors
-  [:map
+  [:map {:closed true}
    ;; disjunctive filters (e.g. db_id IN $database_ids OR id IN $table_ids)
    [:database_ids {:optional true} [:sequential ms/PositiveInt]]
    [:schema_ids {:optional true} [:sequential :string]]

@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef } from "react";
 import { t } from "ttag";
 
-import { ToolCallDetailsContent } from "metabase/metabot/components/MetabotChat/MetabotAgentToolCallMessage";
+import { ToolCallDetailsContent } from "metabase/metabot/components/MetabotChat/MetabotAgentToolCallPart";
 import type { MetabotDebugToolCallMessage } from "metabase/metabot/state";
 import { ActionIcon, Badge, Flex, Icon, Stack, Text } from "metabase/ui";
 

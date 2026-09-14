@@ -5,13 +5,13 @@
 // on it. Complementary to router/navigate-contract.unit.spec.tsx, which pins the
 // other side: how `navigate` drives the router.
 
-import { createMockEntitiesState } from "__support__/store";
-import { getMetadata } from "metabase/metadata-store";
 import {
   createMockQueryBuilderState,
   createMockQueryBuilderUIControlsState,
   createMockState,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import { createMockEntitiesState } from "__support__/store";
+import { getMetadata } from "metabase/metadata-store";
 import {
   type NavigateOptions,
   type To,

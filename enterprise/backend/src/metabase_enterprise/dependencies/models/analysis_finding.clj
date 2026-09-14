@@ -14,6 +14,17 @@
 (t2/deftransforms :model/AnalysisFinding
   {:analyzed_entity_type mi/transform-keyword})
 
+(t2/define-before-insert :model/AnalysisFinding
+  [finding]
+  (merge {:analyzed_at (mi/now)} finding))
+
+(t2/define-before-update :model/AnalysisFinding
+  [finding]
+  (let [changes (t2/changes finding)]
+    (cond-> finding
+      (and (contains? changes :result) (not (contains? changes :analyzed_at)))
+      (assoc :analyzed_at (mi/now)))))
+
 (def ^:dynamic *current-analysis-finding-version*
   "Current version of the query validation logic.
   This should be incremented when the analysis logic changes.
@@ -45,8 +56,7 @@
    Also writes individual errors to the analysis_finding_error table with source information."
   [type instance-id result finding-details]
   (t2/with-transaction [_conn]
-    (let [update {:analyzed_at (mi/now)
-                  :analysis_version *current-analysis-finding-version*
+    (let [update {:analysis_version *current-analysis-finding-version*
                   :result result
                   :stale false}
           existing-id (dependencies.db/finding-id type instance-id)]

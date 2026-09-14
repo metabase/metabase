@@ -11,7 +11,7 @@ import {
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import { SelectButton } from "metabase/common/components/SelectButton";
-import { getMetadata } from "metabase/metadata-store";
+import { useQuestionFromCard } from "metabase/metadata-store";
 import { connect, useSelector } from "metabase/redux";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
@@ -718,13 +718,15 @@ function ValuesSourceTypeModalLoader(props: ModalOwnProps) {
     useGetTableQueryMetadataQuery(
       virtualTableId != null ? { id: virtualTableId } : skipToken,
     );
-  const { isLoading: isCardLoading, error: cardError } = useGetCardQuery(
-    card_id != null ? { id: card_id } : skipToken,
-  );
-  const question = useSelector((state) =>
-    card_id != null
-      ? (getMetadata(state).question(card_id) ?? undefined)
-      : undefined,
+  const {
+    data: card,
+    isLoading: isCardLoading,
+    error: cardError,
+  } = useGetCardQuery(card_id != null ? { id: card_id } : skipToken);
+  const buildQuestion = useQuestionFromCard();
+  const question = useMemo(
+    () => (card != null ? buildQuestion(card) : undefined),
+    [card, buildQuestion],
   );
 
   return (

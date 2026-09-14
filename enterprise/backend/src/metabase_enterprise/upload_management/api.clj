@@ -43,9 +43,9 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/tables/:id"
   "Delete the uploaded table from the database, optionally archiving cards for which it is the primary source."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   {:keys [archive-cards]} :- [:map
+   {:keys [archive-cards]} :- [:map {:closed true}
                                [:archive-cards {:optional true} [:maybe {:default false} ms/BooleanValue]]]]
   (try
     ;; To be idempotent, we do not check whether the table has already been deactivated.

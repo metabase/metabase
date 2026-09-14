@@ -121,7 +121,7 @@
                       (action-v2.db/fields-by-name table-id field-names))
         coerce-fn   (->> (for [{field-name :name, :keys [coercion_strategy, semantic_type]} fields
                                :when (not (isa? semantic_type :type/PK))]
-                           [(keyword field-name)
+                           [field-name
                             (or (when (nil? coercion_strategy) identity)
                                 (:in (data-editing.coerce/coercion-fns coercion_strategy))
                                 (throw (ex-info "Coercion strategy has no defined coercion function"
@@ -129,7 +129,7 @@
                                                  :field field-name
                                                  :coercion_strategy coercion_strategy})))])
                          (into {}))
-        coerce      (fn [k v] (some-> v ((coerce-fn (keyword k) identity))))]
+        coerce      (fn [k v] (some-> v ((coerce-fn (name k) identity))))]
     (for [row input-rows]
       (m/map-kv-vals coerce row))))
 

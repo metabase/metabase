@@ -436,16 +436,16 @@
                                              :document {:type "doc"
                                                         :content [{:type "paragraph"
                                                                    :content [{:type "smartLink"
-                                                                              :attrs {:entityId card-id
-                                                                                      :model "card"}}
+                                                                              :attrs {"entityId" card-id
+                                                                                      "model" "card"}}
                                                                              {:type "smartLink"
-                                                                              :attrs {:entityId dashboard-id
-                                                                                      :model "dashboard"}}
+                                                                              :attrs {"entityId" dashboard-id
+                                                                                      "model" "dashboard"}}
                                                                              {:type "smartLink"
-                                                                              :attrs {:entityId products-id
-                                                                                      :model "table"}}]}
+                                                                              :attrs {"entityId" products-id
+                                                                                      "model" "table"}}]}
                                                                   {:type "cardEmbed"
-                                                                   :attrs {:id embedded-card-id}}]}}]
+                                                                   :attrs {"id" embedded-card-id}}]}}]
       (is (= {:card #{card-id embedded-card-id}
               :dashboard #{dashboard-id}
               :table #{products-id}}
@@ -457,14 +457,14 @@
                     :document {:type "doc"
                                :content [{:type "paragraph"
                                           :content [{:type "smartLink"
-                                                     :attrs {:entityId nil :model "card"}}
+                                                     :attrs {"entityId" nil "model" "card"}}
                                                     {:type "smartLink"
-                                                     :attrs {:entityId 0 :model "dashboard"}}
+                                                     :attrs {"entityId" 0 "model" "dashboard"}}
                                                     {:type "smartLink"
-                                                     :attrs {:entityId 17 :model "card"}}]}
-                                         {:type "cardEmbed" :attrs {:id nil}}
-                                         {:type "cardEmbed" :attrs {:id 0}}
-                                         {:type "cardEmbed" :attrs {:id 23}}]}}]
+                                                     :attrs {"entityId" 17 "model" "card"}}]}
+                                         {:type "cardEmbed" :attrs {"id" nil}}
+                                         {:type "cardEmbed" :attrs {"id" 0}}
+                                         {:type "cardEmbed" :attrs {"id" 23}}]}}]
       (is (= {:card #{17 23}}
              (calculation/calculate-deps :document document))))))
 
@@ -662,7 +662,7 @@
                  {:content_type prose-mirror/prose-mirror-content-type
                   :document {:type "doc"
                              :content [{:type "smartLink"
-                                        :attrs {:model "card" :entityId {:raw "x"}}}]}}))))
+                                        :attrs {"model" "card" "entityId" {:raw "x"}}}]}}))))
   (testing "a dashcard click_behavior whose targetId is a map is dropped"
     (let [deps (calculation/calculate-deps*
                 :dashboard

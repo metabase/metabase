@@ -387,7 +387,8 @@
                                                         (:value secret))]
                                       (assoc cleared-details id-kw id))
                                     (do
-                                      (secrets.db/delete-secret! secret-id)
+                                      (when secret-id
+                                        (secrets.db/delete-secret! secret-id))
                                       (dissoc cleared-details id-kw)))
                                   ;; Don't throw out a secret even if the client didn't send it back
                                   (m/assoc-some cleared-details id-kw secret-id)))))]

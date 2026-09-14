@@ -6,7 +6,6 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.eid-translation.core :as eid-translation]
-   [metabase.embedding.validation :as embedding.validation]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema :as lib-be.schema]
@@ -135,7 +134,8 @@
   and a signed JWT."
   []
   (perms/check-has-application-permission :setting)
-  (embedding.validation/check-embedding-enabled)
+  ;; Not gated on `enable-embedding-static`: an admin who turned guest embeds off still needs to see what is already
+  ;; published. Publishing itself stays gated.
   (queries-rest.db/embeddable-cards))
 
 ;;; -------------------------------------------- Fetching a Card or Cards --------------------------------------------
@@ -157,7 +157,7 @@
   `archived`. See corresponding implementation functions above for the specific behavior of each filter
   option. :card_index:"
   [_route-params
-   {:keys [f], model-id :model_id} :- [:map
+   {:keys [f], model-id :model_id} :- [:map {:closed true}
                                        [:f        {:default :all}  (into [:enum] card-filter-options)]
                                        [:model_id {:optional true} [:maybe ms/PositiveInt]]]]
   (when (contains? #{:database :table :using_model :using_segment} f)
@@ -226,10 +226,10 @@
 
   As of v57, returns the MBQL query (`dataset_query`) as MBQL 5; to return the query as MBQL 4 (aka legacy MBQL)
   instead, you can specify `?legacy-mbql=true`."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {legacy-mbql? :legacy-mbql
-    :keys        []} :- [:map [:legacy-mbql {:optional true, :default false} [:maybe :boolean]]]]
+    :keys        []} :- [:map {:closed true} [:legacy-mbql {:optional true, :default false} [:maybe :boolean]]]]
   (let [resolved-id (eid-translation/->id-or-404 :card id)
         card (get-card resolved-id)]
     (cond-> card
@@ -240,19 +240,13 @@
                                (cond-> query
                                  (seq query) lib/->legacy-MBQL))))))
 
-(defn- check-allowed-to-remove-from-existing-dashboards [card]
-  (let [dashboards (or (:in_dashboards card)
-                       (:in_dashboards (t2/hydrate card :in_dashboards)))]
-    (doseq [dashboard dashboards]
-      (api/write-check dashboard))))
-
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/dashboards"
   "Get a list of `{:name ... :id ...}` pairs for all the dashboards this card appears in."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [card (get-card id)
         dashboards (:in_dashboards (t2/hydrate card :in_dashboards))]
@@ -416,10 +410,10 @@
   - `last_cursor` with value is the id of the last card from the previous page to fetch the next page.
   - `query` to search card by name.
   - `exclude_ids` to filter out a list of card ids"
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id int?]]
    {:keys [last_cursor query exclude_ids]}
-   :- [:map
+   :- [:map {:closed true}
        [:last_cursor {:optional true} [:maybe ms/PositiveInt]]
        [:query       {:optional true} [:maybe ms/NonBlankString]]
        [:exclude_ids {:optional true} [:maybe [:fn
@@ -443,47 +437,11 @@
 
 ;;; ------------------------------------------------- Creating Cards -------------------------------------------------
 
-(mu/defn- check-if-card-can-be-saved
-  [dataset-query :- [:maybe ::lib-be.schema/maybe-legacy-query]
-   card-type     :- [:maybe ::queries.schema/card-type]]
-  (when (and (seq dataset-query) (= card-type :metric))
-    (when-not (lib/can-save? dataset-query card-type)
-      (throw (ex-info (tru "Card of type {0} is invalid, cannot be saved." (name card-type))
-                      {:type        card-type
-                       :status-code 400})))))
-
-(defn- actual-collection-id
-  "Given a body from the `POST` endpoint to create a card, returns the `collection_id` that the card will be placed in.
-  Because creating a Dashboard Question does not require specifying a `collection_id` (it's inferred from the
-  `dashboard_id`), this may be different from the `collection_id`. Normally if you don't specify a `collection_id`
-  that means we put it in the root collection (`nil` id), but if you specify a `dashboard_id` we'll need to look it
-  up."
-  [body]
-  (let [[_ collection-id :as specified-collection-id?] (find body :collection_id)
-        ;; unlike collection_id, `dashboard_id=null` isn't different than not specifying it at all.
-        dashboard-id (:dashboard_id body)
-        dashboard-id->collection-id queries-rest.db/dashboard-collection-id]
-    (cond
-      ;; you specified both - they must match
-      (and specified-collection-id? dashboard-id)
-      (let [dashboard-collection-id (dashboard-id->collection-id dashboard-id)]
-        (api/check-400 (= collection-id dashboard-collection-id)
-                       (tru "Mismatch detected between Dashboard''s `collection_id` ({0}) and `collection_id` ({1})"
-                            dashboard-collection-id
-                            collection-id))
-        collection-id)
-
-      specified-collection-id? collection-id
-
-      dashboard-id (dashboard-id->collection-id dashboard-id)
-
-      :else nil)))
-
 (def ^:private CardCreateSchema
   "Schema for creating a new card"
-  [:map
+  [:map {:closed true}
    [:name                   ms/NonBlankString]
-   [:type                   {:optional true} [:maybe ::queries.schema/card-type]]
+   [:type                   {:optional true} [:maybe ::queries.schema/card.type]]
    [:dataset_query          ::lib-be.schema/maybe-legacy-query]
    ;; TODO: Make entity_id a NanoID regex schema?
    [:entity_id              {:optional true} [:maybe ms/NonBlankString]]
@@ -491,14 +449,14 @@
    [:parameter_mappings     {:optional true} [:maybe ::parameters.schema/parameter-mappings]]
    [:description            {:optional true} [:maybe ms/NonBlankString]]
    [:display                ms/NonBlankString]
-   [:visualization_settings ms/Map]
+   [:visualization_settings ms/VisualizationSettings]
    [:collection_id          {:optional true} [:maybe [:or ms/PositiveInt ms/NanoIdString]]]
    [:collection_position    {:optional true} [:maybe ms/PositiveInt]]
    [:result_metadata        {:optional true} [:maybe [:ref ::lib.schema.metadata/card.result-metadata]]]
    [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]
-   [:size                   {:optional true} [:maybe [:map
+   [:size                   {:optional true} [:maybe [:map {:closed true}
                                                       [:size_x ms/PositiveInt]
                                                       [:size_y ms/PositiveInt]]]]])
 
@@ -525,19 +483,13 @@
                (some? collection-id)
                (update :collection_id #(eid-translation/->id-or-404 :collection %)))
         query (:dataset_query card)]
-    (check-if-card-can-be-saved query card-type)
+    ;; Parameter permissions run BEFORE the create stack: the parameter-specific 403 names neither
+    ;; the table nor its ids, while the generic run-permissions error carries the query (and its
+    ;; :source-table) in ex-data. Reversing these leaks that through the parameter path.
     (check-parameter-permissions (:parameters card) query)
-    ;; check that we have permissions to run the query that we're trying to save.
-    ;; Strip :query-permissions/perms first -- it is populated internally by the QP
-    ;; middleware, so any value already on the incoming query is dropped here.
-    (query-perms/check-run-permissions-for-query (dissoc query :query-permissions/perms))
-    ;; check that we have permissions for the collection we're trying to save this card to, if applicable.
-    ;; if a `dashboard-id` is specified, check permissions on the *dashboard's* collection ID.
-    (api/create-check :model/Card {:collection_id (actual-collection-id card)})
-    (try
-      (lib/check-card-overwrite ::no-id query)
-      (catch clojure.lang.ExceptionInfo e
-        (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400)))))
+    ;; The full create stack (can-be-saved, run-permissions, collection create-check, cycle
+    ;; detection) lives in `queries` so MCP's question_write runs the identical checks.
+    (queries/check-allowed-to-create-card! card card-type)
     (let [created-card (queries/create-card! card @api/*current-user*)]
       (when (and (some? (:result_metadata card))
                  (= (name (:type created-card)) "question"))
@@ -554,7 +506,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/copy"
   "Copy a `Card`, with the new name 'Copy of _name_'"
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [orig-card (api/read-check :model/Card id)
         new-name  (trs "Copy of {0}" (:name orig-card))
@@ -566,49 +518,17 @@
 
 ;;; ------------------------------------------------- Updating Cards -------------------------------------------------
 
-(mu/defn- check-allowed-to-modify-query
-  "If the query is being modified, check that we have data permissions to run the query."
-  [card-before-updates :- ::queries.schema/card
-   card-updates        :- ::queries.schema/card]
-  (when (api/column-will-change? :dataset_query card-before-updates card-updates)
-    (query-perms/check-run-permissions-for-query (dissoc (:dataset_query card-updates) :query-permissions/perms))))
-
-(defn- check-allowed-to-change-embedding
-  "You must be a superuser to change the value of `enable_embedding`, `embedding_type` or `embedding_params`. Embedding must be
-  enabled."
-  [card-before-updates card-updates]
-  (when (or (api/column-will-change? :enable_embedding card-before-updates card-updates)
-            (api/column-will-change? :embedding_type card-before-updates card-updates)
-            (api/column-will-change? :embedding_params card-before-updates card-updates))
-    (embedding.validation/check-embedding-enabled)
-    (api/check-superuser)))
-
-(mu/defn- check-allowed-to-move
-  [card-before-update :- ::queries.schema/card
-   card-updates       :- ::queries.schema/card]
-  (when (api/column-will-change? :dashboard_id card-before-update card-updates)
-    (check-allowed-to-remove-from-existing-dashboards card-before-update))
-  (collection/check-allowed-to-change-collection card-before-update card-updates))
-
-(mu/defn- check-update-result-metadata-data-perms
-  [card-before-updates :- ::queries.schema/card
-   card-updates        :- ::queries.schema/card]
-  (when (api/column-will-change? :result_metadata card-before-updates card-updates)
-    (let [database-id (some :database_id [card-before-updates card-updates])
-          result-metadata (:result_metadata card-updates)]
-      (query-perms/check-result-metadata-data-perms database-id result-metadata))))
-
 ;;; TODO -- merge this into `:metabase.queries.schema/card`
 (def ^:private CardUpdateSchema
-  [:map
+  [:map {:closed true}
    [:name                   {:optional true} [:maybe ms/NonBlankString]]
    [:parameters             {:optional true} [:maybe ::parameters.schema/parameters]]
    [:parameter_mappings     {:optional true} [:maybe ::parameters.schema/parameter-mappings]]
    [:dataset_query          {:optional true} [:maybe ::lib-be.schema/maybe-legacy-query]]
-   [:type                   {:optional true} [:maybe ::queries.schema/card-type]]
+   [:type                   {:optional true} [:maybe ::queries.schema/card.type]]
    [:display                {:optional true} [:maybe ms/NonBlankString]]
    [:description            {:optional true} [:maybe :string]]
-   [:visualization_settings {:optional true} [:maybe ms/Map]]
+   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
    [:archived               {:optional true} [:maybe :boolean]]
    [:enable_embedding       {:optional true} [:maybe :boolean]]
    [:embedding_type         {:optional true} [:maybe :string]]
@@ -628,7 +548,7 @@
   [card-before-update card-updates]
   (let [collection-id (when (or (contains? card-updates :collection_id)
                                 (contains? card-updates :dashboard_id))
-                        (actual-collection-id card-updates))]
+                        (queries/actual-collection-id card-updates))]
     (cond-> card-updates
       (or (api/column-will-change? :dashboard_id card-before-update card-updates)
           (api/column-will-change? :collection_id card-before-update card-updates))
@@ -640,27 +560,20 @@
    {metadata :result_metadata, card-type :type, :as card-updates} :- CardUpdateSchema
    delete-old-dashcards? :- :boolean]
   (let [query (:dataset_query card-updates)]
-    (check-if-card-can-be-saved query card-type)
+    (queries/check-card-can-be-saved! query card-type)
     (check-parameter-permissions (:parameters card-updates)
                                  (or query (queries-rest.db/card-query id)))
     (when-some [query (:dataset_query card-updates)]
-      (try
-        (lib/check-card-overwrite id query)
-        (catch clojure.lang.ExceptionInfo e
-          (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400))))))
-    (let [card-before-update     (t2/hydrate (api/write-check :model/Card id) [:moderation_reviews :moderator_details])
+      (queries/check-no-save-cycle! id query))
+    (let [card-before-update     (t2/hydrate (api/write-check :model/Card id)
+                                             [:moderation_reviews :moderator_details])
           card-updates           (maybe-populate-collection-id
                                   card-before-update
                                   (api/updates-with-archived-directly card-before-update card-updates))
           is-model-after-update? (if (nil? card-type)
                                    (queries/model? card-before-update)
                                    (queries/model? card-updates))]
-      ;; Do various permissions checks
-      (doseq [f [check-update-result-metadata-data-perms
-                 check-allowed-to-move
-                 check-allowed-to-modify-query
-                 check-allowed-to-change-embedding]]
-        (f card-before-update card-updates))
+      (queries/check-allowed-to-update-card! card-before-update card-updates)
       (let [{:keys [metadata metadata-future]} (queries/maybe-async-result-metadata
                                                 {:original-query    (:dataset_query card-before-update)
                                                  :query             query
@@ -719,9 +632,9 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a `Card`."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   {delete-old-dashcards? :delete_old_dashcards} :- [:map
+   {delete-old-dashcards? :delete_old_dashcards} :- [:map {:closed true}
                                                      [:delete_old_dashcards {:optional true} [:maybe :boolean]]]
    body :- CardUpdateSchema]
   (update-card! id body (boolean delete-old-dashcards?)))
@@ -735,7 +648,7 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/query_metadata"
   "Get all of the required query metadata for a card."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]]
   (let [resolved-id (eid-translation/->id-or-404 :card id)]
     (queries/batch-fetch-card-metadata [(get-card resolved-id)])))
@@ -748,7 +661,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
   "Hard delete a Card. To soft delete, use `PUT /api/queries/:id`"
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [card (api/write-check :model/Card id)]
     (queries-rest.db/delete-card! id)
@@ -828,7 +741,7 @@
   `collection_id`, or remove them from any Collections by passing a `null` `collection_id`."
   [_route-params
    _query-params
-   {:keys [card_ids collection_id]} :- [:map
+   {:keys [card_ids collection_id]} :- [:map {:closed true}
                                         [:card_ids      [:sequential ms/PositiveInt]]
                                         [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
   (move-cards-to-collection! collection_id card_ids)
@@ -870,11 +783,11 @@
 (api.macros/defendpoint :post "/:card-id/query"
   "Run the query associated with a Card. When `stored_result_id` is supplied, serve the cached snapshot instead of re-running the query
   and optionally re-sorts the rows via the `sort` body param."
-  [{:keys [card-id]} :- [:map
+  [{:keys [card-id]} :- [:map {:closed true}
                          [:card-id [:or ms/PositiveInt ms/NanoIdString]]]
    _query-params
    {:keys [parameters ignore_cache dashboard_id collection_preview stored_result_id sort]}
-   :- [:map
+   :- [:map {:closed true}
        [:ignore_cache       {:default false} :boolean]
        [:collection_preview {:optional true} [:maybe :boolean]]
        [:dashboard_id       {:optional true} [:maybe ms/PositiveInt]]
@@ -917,7 +830,7 @@
   `csv_include_bom`, `parameters`, `pivot-results?` and `format-rows?` should be passed as application/x-www-form-urlencoded form content
   or json in the body. This is because this endpoint is normally used to power 'Download Results' buttons that use
   HTML `form` actions)."
-  [{:keys [card-id export-format]} :- [:map
+  [{:keys [card-id export-format]} :- [:map {:closed true}
                                        [:card-id       ms/PositiveInt]
                                        [:export-format ::qp.schema/export-format]]
    _query-params
@@ -926,7 +839,7 @@
     format-rows?    :format_rows
     csv-include-bom? :csv_include_bom
     :as             _body}
-   :- [:map
+   :- [:map {:closed true}
        ;; JSON-encoded string form supported for backwards compatibility with `<form>` submission... see
        ;; https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
        [:parameters    {:optional true} [:maybe ::parameters.schema/api.parameter-values]]
@@ -959,7 +872,7 @@
   "Generate publicly-accessible links for this Card. Returns UUID to be used in public links. (If this Card has
   already been shared, it will return the existing public link rather than creating a new one.)  Public sharing must
   be enabled."
-  [{:keys [card-id]} :- [:map
+  [{:keys [card-id]} :- [:map {:closed true}
                          [:card-id ms/PositiveInt]]]
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
@@ -984,7 +897,7 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:card-id/public_link"
   "Delete the publicly-accessible link to this Card."
-  [{:keys [card-id]} :- [:map
+  [{:keys [card-id]} :- [:map {:closed true}
                          [:card-id ms/PositiveInt]]]
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
@@ -1003,11 +916,11 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/pivot/:card-id/query"
   "Run the query associated with a Card."
-  [{:keys [card-id]} :- [:map
+  [{:keys [card-id]} :- [:map {:closed true}
                          [:card-id ms/PositiveInt]]
    _query-params
    {:keys [parameters ignore_cache dashboard_id]
-    :or   {ignore_cache false}} :- [:map
+    :or   {ignore_cache false}} :- [:map {:closed true}
                                     [:ignore_cache {:optional true} [:maybe :boolean]]
                                     [:dashboard_id {:optional true} [:maybe ms/PositiveInt]]
                                     [:parameters   {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]]]
@@ -1031,7 +944,7 @@
 
     ;; fetch values for Card 1 parameter 'abc' that are possible
     GET /api/queries/1/params/abc/values"
-  [{:keys [card-id param-key]} :- [:map
+  [{:keys [card-id param-key]} :- [:map {:closed true}
                                    [:card-id   ms/PositiveInt]
                                    [:param-key ::lib.schema.parameter/id]]]
   (binding [qp.perms/*param-values-query* true]
@@ -1048,7 +961,7 @@
      GET /api/queries/1/params/abc/search/Orange
 
   Currently limited to first 1000 results."
-  [{:keys [card-id param-key query]} :- [:map
+  [{:keys [card-id param-key query]} :- [:map {:closed true}
                                          [:card-id   ms/PositiveInt]
                                          [:param-key ::lib.schema.parameter/id]
                                          [:query     ms/NonBlankString]]]
@@ -1064,10 +977,10 @@
 
     ;; fetch the remapped value for Card 1 parameter 'abc' for value 100
     GET /api/queries/1/params/abc/remapping?value=100"
-  [{:keys [id param-key]} :- [:map
+  [{:keys [id param-key]} :- [:map {:closed true}
                               [:id ::lib.schema.id/card]
                               [:param-key ::lib.schema.parameter/id]]
-   {:keys [value]}        :- [:map [:value :string]]]
+   {:keys [value]}        :- [:map {:closed true} [:value :string]]]
   (binding [qp.perms/*param-values-query* true]
     (-> (api/read-check :model/Card id)
         (queries/card-param-remapped-value param-key (codec/url-decode value)))))

@@ -92,7 +92,7 @@
                                        :else                               :goal_below)}
 
      :subscriptions [{:type :notification-subscription/cron
-                      :cron_schedule (u.cron/schedule-map->cron-string (-> pulse-channel
+                      :cron_schedule (u.cron/schedule-map->cron-string (-> (select-keys pulse-channel u.cron/schedule-keys)
                                                                            (update :schedule_type maybe-name)
                                                                            (update :schedule_day maybe-name)
                                                                            (update :schedule_frame maybe-name)))}]

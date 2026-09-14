@@ -3,6 +3,7 @@
   (:require
    [java-time.api :as t]
    [metabase.auth-identity.db :as auth-identity.db]
+   [metabase.auth-identity.hierarchy :as auth-identity.hierarchy]
    [metabase.auth-identity.models.auth-identity :as auth-identity]
    [metabase.auth-identity.provider :as provider]
    [metabase.channel.email.messages :as messages]
@@ -119,8 +120,8 @@
 ;;; -------------------------------------------------- Provider Registration --------------------------------------------------
 
 ;; Register emailed_secret provider in the hierarchy
-(derive :provider/emailed-secret :metabase.auth-identity.provider/provider)
-(derive :provider/emailed-secret-password-reset :provider/emailed-secret)
+(auth-identity.hierarchy/derive! :provider/emailed-secret :metabase.auth-identity.provider/provider)
+(auth-identity.hierarchy/derive! :provider/emailed-secret-password-reset :provider/emailed-secret)
 
 ;;; -------------------------------------------------- Multimethod Implementations --------------------------------------------------
 

@@ -78,11 +78,14 @@ describe("scenarios > admin > settings > SSO > SAML", () => {
     setupSaml();
     cy.visit("/admin/settings/authentication/saml");
 
-    cy.findByTestId("saml-user-provisioning-enabled?-setting")
-      .findByText(/^Disabled/)
-      .click();
+    cy.findByRole("switch", { name: "User provisioning" })
+      .should("be.checked")
+      .click({ force: true });
     cy.wait("@updateSetting");
     H.undoToast().findByText("Changes saved").should("exist");
+    cy.findByRole("switch", { name: "User provisioning" }).should(
+      "not.be.checked",
+    );
   });
 
   describe("Group Mappings Widget", () => {

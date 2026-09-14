@@ -27,7 +27,6 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
-   [metabase.app-db.core :as app-db]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -386,7 +385,8 @@
              ::lib.schema.metadata/column]]
   (try
     (let [field  (cond-> field
-                   (t2/model field) (lib-be/instance->metadata :metadata/column))
+                   ;; a caller may hand us a Field hydrated with its Table, which is not part of column metadata
+                   (t2/model field) (-> (dissoc :table) (lib-be/instance->metadata :metadata/column)))
           result ((requiring-resolve 'metabase.warehouse-schema.metadata-from-qp/table-query)
                   (:table-id field)
                   (fn [query]
@@ -478,10 +478,7 @@
       (nil? existing-fv)
       (do
         (log/debugf "Storing FieldValues for Field %s..." field-name)
-        (app-db/select-or-insert! :model/FieldValues {:field_id (u/the-id field), :type :full}
-                                  (constantly {:has_more_values       has-more-values
-                                               :values                values
-                                               :human_readable_values nil}))
+        (warehouse-schema.db/find-or-insert-full-field-values! (u/the-id field) has-more-values values)
         ::fv-created)
 
       ;; if existing FieldValues won't change, skip it

@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [metabase.app-db.core :as mdb]
    [metabase.search.db :as search.db]
-   [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.ingestion.query :as search.ingestion.query]
    [metabase.search.settings :as search.settings]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -162,4 +162,4 @@
    (weighted-tsvector weight text (tsv-language)))
   ([weight text lang]
    ;; tsvector has a max value size of 1048575 bytes, limit to less than that because the multiple values get concatenated together
-   [:setweight [:to_tsvector ^:allow-raw-sql [:inline lang] [:cast (u.str/limit-bytes text search.ingestion/max-searchable-value-length) :text]] ^:allow-raw-sql [:inline weight]]))
+   [:setweight [:to_tsvector ^:allow-raw-sql [:inline lang] [:cast (u.str/limit-bytes text search.ingestion.query/max-searchable-value-length) :text]] ^:allow-raw-sql [:inline weight]]))

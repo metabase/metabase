@@ -1,7 +1,4 @@
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
+import { createMockSettingsState, createMockState } from "__support__/state";
 
 import { getIsWhiteLabeling, getLoadingMessage, getLogoUrl } from "./selectors";
 

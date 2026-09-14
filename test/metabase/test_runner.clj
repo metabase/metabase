@@ -3,10 +3,12 @@
 (ns metabase.test-runner
   "The only purpose of this namespace is to make sure all of the other stuff below gets loaded."
   (:require
+   [clojure.edn :as edn]
    [clojure.java.classpath :as classpath]
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
+   [hooks.common.modules :as hooks.modules]
    [humane-are.core :as humane-are]
    [mb.hawk.core :as hawk]
    [metabase.analytics.core :as analytics.core]
@@ -104,11 +106,12 @@
 
 (defn module-folders
   [modules]
-  (letfn [(n [m] (str/replace (name m) \- \_))]
-    (for [m modules]
-      (if (= "enterprise" (namespace m))
-        (str "enterprise/backend/test/metabase_enterprise/" (n m))
-        (str "test/metabase/" (n m))))))
+  (let [config (-> (slurp ".clj-kondo/config/modules/config.edn") edn/read-string :metabase/modules)]
+    (for [m modules
+          :let [ns-prefix (hooks.modules/module-ns-prefix config m)]]
+      (str (when (str/starts-with? ns-prefix "metabase-enterprise.") "enterprise/backend/")
+           "test/"
+           (-> ns-prefix (str/replace "." "/") (str/replace "-" "_"))))))
 
 (defn parse-options
   [options]

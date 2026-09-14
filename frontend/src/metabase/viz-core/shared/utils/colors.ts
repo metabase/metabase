@@ -1,6 +1,7 @@
 import { getColorsForValues } from "metabase/ui/colors/charts";
 import type { VisualizationSettings } from "metabase-types/api";
 
+import { getChartColor } from "../../lib/color-name";
 import type { Series } from "../components/RowChart/types";
 
 export const getSeriesColors = <TDatum, TSeriesInfo>(
@@ -12,7 +13,10 @@ export const getSeriesColors = <TDatum, TSeriesInfo>(
   ).reduce(
     (mapping, [seriesName, seriesSettings]) => {
       if (typeof seriesSettings?.color === "string") {
-        mapping[seriesName] = seriesSettings.color;
+        mapping[seriesName] = getChartColor(
+          seriesSettings.color,
+          seriesSettings.color_name,
+        );
       }
 
       return mapping;

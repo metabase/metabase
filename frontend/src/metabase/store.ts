@@ -6,7 +6,7 @@ import {
   configureStore,
 } from "@reduxjs/toolkit";
 
-import { Api } from "metabase/api";
+import { Api, retryDroppedRefetches } from "metabase/api";
 import { metadataHydrationMiddleware } from "metabase/metadata-store";
 import { PLUGIN_REDUX_MIDDLEWARES } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
@@ -28,6 +28,7 @@ export function getStore(
 
   const middlewares: Middleware[] = [
     Api.middleware,
+    retryDroppedRefetches,
     metadataHydrationMiddleware,
     ...PLUGIN_REDUX_MIDDLEWARES,
     ...extraMiddlewares,

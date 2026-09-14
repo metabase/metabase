@@ -199,7 +199,9 @@ describe("scenarios > admin > transforms", { tags: ["@external"] }, () => {
           .find(".cm-panels")
           .should("be.visible");
 
-        getPythonDataPicker().findByText("Select a table…").click();
+        getPythonDataPicker()
+          .findByRole("button", { name: "Select a table…" })
+          .click();
 
         cy.log(
           "the editor search panel must not paint over the modal (metabase#73290)",
@@ -1388,16 +1390,44 @@ LIMIT
     });
 
     it("should not allow to overwrite an existing table when changing the target", () => {
+      cy.log("run a transform so its target table exists");
+      createMbqlTransform({ visitTransform: true });
+      H.DataStudio.Transforms.runTab().click();
+      runTransformAndWaitForSuccess();
+
+      cy.log("change another transform's target to that table");
+      createMbqlTransform({
+        name: "Other transform",
+        targetTable: TARGET_TABLE_2,
+        visitTransform: true,
+      });
+      H.DataStudio.Transforms.settingsTab().click();
+      getTransformsTargetContent().button("Change target").click();
+      H.modal().within(() => {
+        cy.findByLabelText("New table name").clear().type(TARGET_TABLE);
+        cy.button("Change target").click();
+        cy.wait("@updateTransform")
+          .its("response.statusCode")
+          .should("eq", 403);
+        cy.findByText("A table with that name already exists.").should(
+          "be.visible",
+        );
+      });
+    });
+
+    it("should not allow to change the target to one of the source tables", () => {
       createMbqlTransform({ visitTransform: true });
 
-      cy.log("change the target to an existing table");
+      cy.log("change the target to the source table");
       H.DataStudio.Transforms.settingsTab().click();
       getTransformsTargetContent().button("Change target").click();
       H.modal().within(() => {
         cy.findByLabelText("New table name").clear().type(SOURCE_TABLE);
         cy.button("Change target").click();
-        cy.wait("@updateTransform");
-        cy.findByText("A table with that name already exists.").should(
+        cy.wait("@updateTransform")
+          .its("response.statusCode")
+          .should("eq", 400);
+        cy.findByText(/Cyclic transform definitions detected/).should(
           "be.visible",
         );
       });
@@ -2110,7 +2140,7 @@ LIMIT
         );
 
         cy.findByTestId("python-data-picker")
-          .findByText("Select a table…")
+          .findByRole("button", { name: "Select a table…" })
           .click();
 
         H.entityPickerModal().within(() => {
@@ -2221,7 +2251,7 @@ LIMIT
         );
 
         cy.findByTestId("python-data-picker")
-          .findByText("Select a table…")
+          .findByRole("button", { name: "Select a table…" })
           .click();
 
         H.entityPickerModal().within(() => {
@@ -4326,8 +4356,7 @@ describe("scenarios > data studio > transforms > permissions > oss", () => {
       cy.findByRole("columnheader", { name: /Transforms/ }).should("not.exist");
 
       cy.log("Visit data studio page");
-      cy.visit("/data-studio");
-      H.DataStudio.nav().should("be.visible");
+      H.DataStudio.visit();
 
       cy.log("Verify Transforms menu item is visible");
       H.DataStudio.nav()
@@ -4400,8 +4429,7 @@ describe(
         );
 
         cy.log("Visit data studio page");
-        cy.visit("/data-studio");
-        H.DataStudio.nav().should("be.visible");
+        H.DataStudio.visit();
 
         cy.log("Verify Transforms menu item is visible");
         H.DataStudio.nav()

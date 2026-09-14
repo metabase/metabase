@@ -18,6 +18,7 @@
    :semantic_type     field/transform-field-semantic-type
    :visibility_type   mi/transform-keyword
    :has_field_values  mi/transform-keyword
+   :data_sensitivity  mi/transform-keyword
    :settings          mi/transform-json
    :nfc_path          mi/transform-json})
 
@@ -60,7 +61,7 @@
 (defmethod serdes/make-spec "FieldUserSettings" [_model-name _opts]
   {:copy      [:semantic_type :description :display_name :visibility_type
                :has_field_values :effective_type :coercion_strategy :caveats
-               :points_of_interest :nfc_path :json_unfolding :settings]
+               :points_of_interest :nfc_path :json_unfolding :settings :data_sensitivity]
    :transform {:created_at   (serdes/date)
                :fk_target_field_id (serdes/fk :model/Field)
                :field_id     {::serdes/fk true

@@ -2,19 +2,26 @@
   "Application database queries for the support-access-grants module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods, and transactions."
   (:require
+   [malli.util :as mut]
+   [metabase-enterprise.support-access-grants.schema :as support-access-grants.schema]
+   [metabase.auth-identity.schema :as auth-identity.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.users.schema :as users.schema]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn active-grant-exists?
+(mu/defn active-grant-exists?
   "Whether a SupportAccessGrantLog is unrevoked and ends after `now`."
-  [now]
+  [now :- ms/TemporalInstant]
   (t2/exists? :model/SupportAccessGrantLog :revoked_at nil :grant_end_timestamp [:> now]))
 
-(defn grant
+(mu/defn grant
   "The SupportAccessGrantLog with `grant-id`, or nil."
-  [grant-id]
+  [grant-id :- ms/PositiveInt]
   (t2/select-one :model/SupportAccessGrantLog :id grant-id))
 
-(defn current-grant
+(mu/defn current-grant
   "The newest unrevoked SupportAccessGrantLog that has not ended, or nil."
   []
   (t2/select-one :model/SupportAccessGrantLog
@@ -32,10 +39,14 @@
     (when (seq conditions)
       (into [:and] conditions))))
 
-(defn grants-page
+(mu/defn grants-page
   "The newest-first SupportAccessGrantLogs, optionally narrowed to `ticket-number` and `user-id` and excluding revoked
   grants unless `include-revoked?`, paged by `limit` and `offset`."
-  [include-revoked? ticket-number user-id limit offset]
+  [include-revoked? :- [:maybe :boolean]
+   ticket-number    :- [:maybe :string]
+   user-id          :- [:maybe ::lib.schema.id/user]
+   limit            :- ms/PositiveInt
+   offset           :- ms/IntGreaterThanOrEqualToZero]
   (let [where (grants-where include-revoked? ticket-number user-id)]
     (t2/select :model/SupportAccessGrantLog
                (cond-> {:limit    limit
@@ -43,85 +54,104 @@
                         :order-by [[:created_at :desc]]}
                  where (assoc :where where)))))
 
-(defn grant-count
+(mu/defn grant-count
   "The number of SupportAccessGrantLogs [[grants-page]] would page through."
-  [include-revoked? ticket-number user-id]
+  [include-revoked? :- [:maybe :boolean]
+   ticket-number    :- [:maybe :string]
+   user-id          :- [:maybe ::lib.schema.id/user]]
   (let [where (grants-where include-revoked? ticket-number user-id)]
     (t2/count :model/SupportAccessGrantLog
               (cond-> {}
                 where (assoc :where where)))))
 
-(defn insert-grant!
+(mu/defn insert-grant!
   "Insert `grant` and return the new instance."
-  [grant]
+  [grant :- (mut/select-keys ::support-access-grants.schema/support-access-grant-log.update [:user_id :ticket_number :notes :grant_start_timestamp :grant_end_timestamp])]
   (t2/insert-returning-instance! :model/SupportAccessGrantLog grant))
 
-(defn update-grant!
-  "Apply `changes` to the SupportAccessGrantLog with `grant-id`."
-  [grant-id changes]
+(mu/defn update-grant!
+  "Apply `changes` to the SupportAccessGrantLog with `grant-id`, returning the number updated."
+  [grant-id :- ms/PositiveInt
+   changes  :- (mut/select-keys ::support-access-grants.schema/support-access-grant-log.update [:revoked_at :revoked_by_user_id])]
   (t2/update! :model/SupportAccessGrantLog grant-id changes))
 
-(defn user
+(mu/defn user
   "The User with `user-id`, or nil."
-  [user-id]
+  [user-id :- ::lib.schema.id/user]
   (t2/select-one :model/User user-id))
 
-(defn user-by-email
+(mu/defn user-by-email
   "The User with `email`, or nil."
-  [email]
+  [email :- :string]
   (t2/select-one :model/User :email email))
 
-(defn user-superuser-flag-by-email
+(mu/defn user-superuser-flag-by-email
   "The `:id` and `:is_superuser` of the User with `email`, or nil."
-  [email]
+  [email :- :string]
   (t2/select-one [:model/User :id :is_superuser] :email email))
 
-(defn user-names-and-emails
+(mu/defn user-names-and-emails
   "A map of User ID to first name and email for `user-ids`."
-  [user-ids]
+  [user-ids :- [:sequential ::lib.schema.id/user]]
   (t2/select-pk->fn #(select-keys % [:first_name :email]) [:model/User :id :first_name :email] :id [:in user-ids]))
 
-(defn insert-user!
+(mu/defn insert-user!
   "Insert `user` and return the new instance."
-  [user]
+  [user :- (mut/select-keys ::users.schema/user.update [:email :first_name :last_name :is_superuser])]
   (t2/insert-returning-instance! :model/User user))
 
-(defn update-user!
-  "Apply `changes` to the User with `user-id`."
-  [user-id changes]
+(mu/defn update-user!
+  "Apply `changes` to the User with `user-id`, returning the number updated."
+  [user-id :- ::lib.schema.id/user
+   changes :- (mut/select-keys ::users.schema/user.update [:is_active :is_superuser])]
   (t2/update! :model/User user-id changes))
 
-(defn session-exists-for-user?
+(mu/defn session-exists-for-user?
   "Whether the User with `user-id` has a Session."
-  [user-id]
+  [user-id :- ::lib.schema.id/user]
   (t2/exists? :model/Session :user_id user-id))
 
-(defn delete-sessions-of-user!
-  "Delete the Sessions of the User with `user-id`."
-  [user-id]
+(mu/defn delete-sessions-of-user!
+  "Delete the Sessions of the User with `user-id`, returning the number deleted."
+  [user-id :- ::lib.schema.id/user]
   (t2/delete! :model/Session :user_id user-id))
 
-(defn auth-identity-ids-of-user
+(mu/defn auth-identity-ids-of-user
   "The IDs of the AuthIdentities of the User with `user-id`."
-  [user-id]
+  [user-id :- ::lib.schema.id/user]
   (t2/select-pks-vec :model/AuthIdentity :user_id user-id))
 
-(defn support-access-auth-identity-id
+(mu/defn support-access-auth-identity-id
   "The ID of the support-access-grant AuthIdentity of the User with `user-id`, or nil."
-  [user-id]
+  [user-id :- ::lib.schema.id/user]
   (t2/select-one-pk :model/AuthIdentity :user_id user-id :provider "support-access-grant"))
 
-(defn insert-auth-identity!
-  "Insert the AuthIdentity `row`."
-  [row]
+(mu/defn insert-auth-identity!
+  "Insert the AuthIdentity `row`, returning the number inserted."
+  [row :- (mut/select-keys ::auth-identity.schema/auth-identity.update [:user_id :provider :provider_id :expires_at :credentials :metadata])]
   (t2/insert! :model/AuthIdentity row))
 
-(defn update-auth-identity!
-  "Apply `changes` to the AuthIdentity with `auth-identity-id`."
-  [auth-identity-id changes]
+(mu/defn update-auth-identity!
+  "Apply `changes` to the AuthIdentity with `auth-identity-id`, returning the number updated. `changes` may be a
+  whole AuthIdentity instance re-saved after a partial edit (e.g. [[metabase.auth-identity.providers.emailed-secret/mark-token-consumed]]
+  round-trips the full row it was given), so every column is accepted."
+  [auth-identity-id :- ms/PositiveInt
+   changes          :- [:map {:closed true}
+                        [:id            {:optional true} ms/PositiveInt]
+                        [:user_id       {:optional true} ::lib.schema.id/user]
+                        [:provider      {:optional true} [:maybe [:or :keyword :string]]]
+                        [:provider_id   {:optional true} [:maybe :string]]
+                        [:expires_at    {:optional true} [:maybe ms/TemporalInstant]]
+                        [:last_used_at  {:optional true} [:maybe ms/TemporalInstant]]
+                        [:confirmed_at  {:optional true} [:maybe ms/TemporalInstant]]
+                        [:created_at    {:optional true} ms/TemporalInstant]
+                        [:updated_at    {:optional true} ms/TemporalInstant]
+                        [:credentials   {:optional true} [:maybe :map]]
+                        [:metadata      {:optional true} [:maybe :map]]]]
   (t2/update! :model/AuthIdentity auth-identity-id changes))
 
-(defn expire-auth-identities!
-  "Set the expiry of the AuthIdentities with `auth-identity-ids` to `expires-at`."
-  [auth-identity-ids expires-at]
+(mu/defn expire-auth-identities!
+  "Set the expiry of the AuthIdentities with `auth-identity-ids` to `expires-at`, returning the number updated."
+  [auth-identity-ids :- [:sequential ms/PositiveInt]
+   expires-at        :- ms/TemporalInstant]
   (t2/update! :model/AuthIdentity :id [:in auth-identity-ids] {:expires_at expires-at}))

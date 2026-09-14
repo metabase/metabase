@@ -33,7 +33,7 @@
   "Returns actions that can be used for QueryActions. By default lists all viewable actions. Pass optional
   `?model-id=<model-id>` to limit to actions on a particular model."
   [_route-params
-   {:keys [model-id]} :- [:map
+   {:keys [model-id]} :- [:map {:closed true}
                           [:model-id {:optional true} [:maybe ::lib.schema.id/card]]]]
   (letfn [(actions-for [models]
             (if (seq models)
@@ -55,7 +55,7 @@
 
 (api.macros/defendpoint :get "/:action-id" :- ::actions.schema/action
   "Fetch an Action."
-  [{:keys [action-id]} :- [:map
+  [{:keys [action-id]} :- [:map {:closed true}
                            [:action-id ms/PositiveInt]]]
   (-> (actions/select-action :id action-id :archived false)
       (t2/hydrate :creator)
@@ -67,7 +67,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:action-id"
   "Delete an Action."
-  [{:keys [action-id]} :- [:map
+  [{:keys [action-id]} :- [:map {:closed true}
                            [:action-id ms/PositiveInt]]]
   (let [action (api/write-check :model/Action action-id)]
     (analytics/track-event! :snowplow/action
@@ -120,7 +120,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update an Action."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ::actions.schema/id]]
    _query-params
    action :- ::actions.schema/action.for-update]
@@ -159,7 +159,7 @@
   "Generate publicly-accessible links for this Action. Returns UUID to be used in public links. (If this
   Action has already been shared, it will return the existing public link rather than creating a new one.) Public
   sharing must be enabled."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ::actions.schema/id]]]
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
@@ -178,7 +178,7 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id/public_link"
   "Delete the publicly-accessible link to this Dashboard."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ::actions.schema/id]]]
   ;; check the /application/setting permission, not superuser because removing a public link is possible from
   ;; /admin/settings
@@ -193,10 +193,10 @@
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select.
 
   Parameters are sent in the request body rather than the query string so their values stay out of URLs and logs."
-  [{:keys [action-id]} :- [:map
+  [{:keys [action-id]} :- [:map {:closed true}
                            [:action-id ms/PositiveInt]]
    _query-params
-   {:keys [parameters]} :- [:map
+   {:keys [parameters]} :- [:map {:closed true}
                             [:parameters ::actions.schema/prefetch-parameter-values]]]
   (actions/check-actions-enabled! action-id)
   (-> (actions/select-action :id action-id :archived false)
@@ -235,10 +235,10 @@
   "Execute the Action.
 
    `parameters` should be the mapped dashboard parameters with values."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ::actions.schema/id ms/NanoIdString]]]
    _query-params
-   {:keys [parameters], :as _body} :- [:maybe [:map
+   {:keys [parameters], :as _body} :- [:maybe [:map {:closed true}
                                                [:parameters {:optional true} [:maybe ::actions.schema/execute-parameter-values]]]]]
   (let [resolved-id (eid-translation/->id-or-404 :action id)
         {:keys [type] :as action} (api/read-check (actions/select-action :id resolved-id :archived false))]

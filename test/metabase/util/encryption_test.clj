@@ -5,7 +5,6 @@
    [clojure.test :refer :all]
    [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.test :as mt]
-   [metabase.test.initialize :as initialize]
    [metabase.util.encryption :as encryption]
    [metabase.util.string :as string])
   (:import (java.io ByteArrayInputStream)
@@ -23,7 +22,6 @@
   (.set ^java.util.concurrent.atomic.AtomicLong @#'setting.cache/last-update-check 0))
 
 (defn do-with-secret-key! [^String secret-key thunk]
-  (initialize/initialize-if-needed! :db)
   (clear-setting-cache!)
   (try
     (with-redefs [encryption/default-secret-key (when (seq secret-key)

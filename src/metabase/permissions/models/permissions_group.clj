@@ -156,8 +156,7 @@
    groups k
    ;; `user_id` in the result is for legacy reasons, we should remove it
    #(group-by :group_id (permissions.db/group-members (map :id groups)
-                                                      (when (premium-features/enable-advanced-permissions?)
-                                                        [:pgm.is_group_manager :is_group_manager])))
+                                                      (boolean (premium-features/enable-advanced-permissions?))))
    :id
    {:default []}))
 
@@ -199,15 +198,7 @@
   "Return a map of `PermissionsGroup` ID -> number of members in the group. (This doesn't include entries for empty
   groups.)"
   []
-  (let [results (mdb/query
-                 {:select    [[:pgm.group_id :group_id] [[:count :pgm.id] :members]]
-                  :from      [[:permissions_group_membership :pgm]]
-                  :left-join [[:core_user :user] [:= :pgm.user_id :user.id]]
-                  :where     [:= :user.is_active true]
-                  :group-by  [:pgm.group_id]})]
-    (zipmap
-     (map :group_id results)
-     (map :members results))))
+  (permissions.db/group-member-counts))
 
 (methodical/defmethod t2/batched-hydrate [:model/PermissionsGroup :member_count]
   "Efficiently add `:member_count` to PermissionGroups."

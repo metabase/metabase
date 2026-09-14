@@ -3,12 +3,37 @@ export {
   getMetadata,
   getMetadataUnfiltered,
   getMetadataWithHiddenTables,
+  getRemappedFieldValue,
   getShallowDatabases,
   getShallowFields,
   getShallowSegments,
+  getShallowTableFieldIds,
+  getShallowTableForeignKeys,
   getShallowTables,
 } from "./selectors";
-export type { MetadataSelectorOpts } from "./selectors";
+export type { MetadataSelectorOpts, ShallowForeignKey } from "./selectors";
+
+export {
+  selectMetadataProvider,
+  selectMetadataProviderFactory,
+  selectMetadataProviderUnfiltered,
+  selectMetricMetadataProvider,
+  selectQuestionFromCard,
+  selectQuestionFromCardBuilder,
+  selectQuestionFromOpts,
+  selectQuestionFromOptsBuilder,
+  useMetadataProvider,
+  useMetadataProviderFactory,
+  useMetadataProviderUnfiltered,
+  useMetricMetadataProvider,
+  useQuestionFromCard,
+  useQuestionFromOpts,
+} from "./provider";
+export type {
+  CardQuestionBuilder,
+  DraftQuestionBuilder,
+  MetadataProviderFactory,
+} from "./provider";
 
 export { entitiesReducer } from "./reducer";
 

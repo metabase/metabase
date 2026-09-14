@@ -3,11 +3,10 @@
    and combines with version checks to determine match status."
   (:require
    [metabase-enterprise.security-center.db :as security-center.db]
-   [metabase-enterprise.security-center.schema :as schema]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.models.interface :as mi]
+   [metabase.security-center.schema :as schema]
    [metabase.util.connection :as u.connection]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -148,11 +147,10 @@
              reactivated? (and (#{:active :error} match-status)
                                currently-unaffected
                                (some? (:acknowledged_at advisory)))]
-         (security-center.db/update-advisory! (:id advisory)
-                                              (cond-> {:match_status      match-status
-                                                       :last_evaluated_at (mi/now)}
-                                                reactivated? (assoc :acknowledged_at nil
-                                                                    :acknowledged_by nil))))))))
+         (security-center.db/record-advisory-evaluation! (:id advisory)
+                                                         (cond-> {:match_status match-status}
+                                                           reactivated? (assoc :acknowledged_at nil
+                                                                               :acknowledged_by nil))))))))
 
 (defn evaluate-all-advisories!
   "Re-evaluate every advisory, including acknowledged ones — an acked
@@ -166,6 +164,5 @@
                (evaluate-advisory! advisory instance-version)
                (catch Exception e
                  (log/warnf "Error evaluating advisory %s: %s" (:advisory_id advisory) (ex-message e))
-                 (security-center.db/update-advisory! (:id advisory)
-                                                      {:match_status      :error
-                                                       :last_evaluated_at (mi/now)}))))))))
+                 (security-center.db/record-advisory-evaluation! (:id advisory)
+                                                                 {:match_status :error}))))))))

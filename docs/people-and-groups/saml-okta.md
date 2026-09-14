@@ -8,7 +8,7 @@ title: SAML with Okta
 
 1. [Turn on SAML-based SSO in Metabase](#turn-on-saml-based-sso-in-metabase)
 2. [Set up SAML in Okta](#set-up-saml-in-okta).
-3. [Set up SAML up in Metabase](#set-up-saml-in-metabase).
+3. [Set up SAML in Metabase](#set-up-saml-in-metabase).
 
 You can also optionally [configure group mappings](#configure-group-mappings) to automatically assign Okta users to Metabase groups.
 
@@ -131,7 +131,7 @@ You can configure Metabase to automatically assign people to Metabase groups whe
 
 You can use either:
 
-- [A custom user profile attribute](#use-a-user-profile-attribute-to-assign-groups) that contains user's Metabase groups.
+- [A custom user profile attribute](#use-a-user-profile-attribute-to-assign-groups) that contains a user's Metabase groups.
 - [Okta User Groups](#map-okta-user-groups-to-metabase-groups).
 
 ### Use a user profile attribute to assign groups

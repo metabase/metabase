@@ -86,7 +86,7 @@
 ;;; -------------------------------------------------- Provider Registration --------------------------------------------------
 
 ;; Register support-access-grant provider in the hierarchy, deriving from emailed-secret
-(derive :provider/support-access-grant :provider/emailed-secret)
+(auth-identity/derive! :provider/support-access-grant :provider/emailed-secret)
 
 ;;; -------------------------------------------------- Multimethod Implementations --------------------------------------------------
 

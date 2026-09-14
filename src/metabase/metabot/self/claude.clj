@@ -209,20 +209,6 @@
                              :content (into [] (mapcat (comp ->content-blocks :content)) group)}])))
         messages))
 
-(defn- merge-reasoning
-  "Join consecutive same-id `:reasoning` parts (streamed as small parts plus a
-  metadata carrier) into one block, keeping its provider metadata."
-  [parts]
-  (->> parts
-       (partition-by (fn [p] (if (= :reasoning (:type p)) [:reasoning (:id p)] :other)))
-       (mapcat (fn [group]
-                 (if (= :reasoning (:type (first group)))
-                   [{:type              :reasoning
-                     :id                (:id (first group))
-                     :text              (->> group (map :text) (str/join ""))
-                     :provider-metadata (some :provider-metadata group)}]
-                   group)))))
-
 (defn parts->claude-messages
   "Convert a sequence of AISDK parts into Claude API messages.
 
@@ -238,7 +224,8 @@
   reasoning (foreign parts, interrupted blocks) is dropped."
   [parts]
   (->> parts
-       merge-reasoning
+       ;; a signed thinking block must be echoed back as ONE block or Claude 400s
+       core/merge-reasoning-parts
        (into []
              (keep (fn [part]
                      (case (:type part)
@@ -392,9 +379,11 @@
                          {:id id :display_name (or display_name (get-in supported-models [id :display-name]))})))}))
 
 (defn- strip-vendor-prefix
-  "`model` without an optional vendor prefix (e.g. Bedrock's `anthropic.`)."
+  "`model` lowercased and without an optional vendor prefix (e.g. Bedrock's `anthropic.`).
+
+  Lowercasing lets the model-derived predicates hold for Azure's admin-cased deployment names."
   [model]
-  (str/replace-first (str model) #"^anthropic\." ""))
+  (str/replace-first (u/lower-case-en (str model)) #"^anthropic\." ""))
 
 (defn- model-max-tokens
   "The `max_tokens` ceiling for `model`, or nil when it isn't one we know."
@@ -409,7 +398,10 @@
 (defn- claude-model-version
   "`[family major minor]` for a Claude opus/sonnet model id, or nil."
   [model]
-  (when-let [[_ family major minor] (re-find #"^claude-(opus|sonnet)-(\d+)(?:-(\d+))?"
+  ;; the minor version accepts both separators: canonical ids are hyphenated (claude-opus-4-8)
+  ;; but Azure admins name deployments freely, and the dotted display-name spelling
+  ;; (claude-opus-4.8) is the norm for the GPT family next to it
+  (when-let [[_ family major minor] (re-find #"^claude-(opus|sonnet)-(\d+)(?:[-.](\d+))?"
                                              (strip-vendor-prefix model))]
     [family (parse-long major) (or (some-> minor parse-long) 0)]))
 

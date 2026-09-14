@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import type {
   ClickObject,
   VisualizationPassThroughProps,
@@ -38,6 +40,7 @@ export type QueryVisualizationProps = VisualizationPassThroughProps & {
   isDirty?: boolean;
   isShowingSummarySidebar?: boolean;
   hideLegend?: boolean;
+  noResultsAction?: ReactNode;
 
   // query-builder-specific props injected by callers via `useVisualizationResultQBProps`
   isRawTable?: boolean;

@@ -26,7 +26,7 @@
   present."
   [_route-params
    _query-params
-   {:keys [card_ids]} :- [:map
+   {:keys [card_ids]} :- [:map {:closed true}
                           [:card_ids [:sequential ms/PositiveInt]]]]
   (let [id->card (queries-rest.db/cards-by-id card_ids)]
     (as-> card_ids $
@@ -46,7 +46,7 @@
   For now, just either succeed or fail as a batch - we can think more about error handling later down the road."
   [_route-params
    _query-params
-   {:keys [card_ids], :as body} :- [:map
+   {:keys [card_ids], :as body} :- [:map {:closed true}
                                     [:card_ids      [:sequential ms/PositiveInt]]
                                     [:collection_id {:optional true} [:maybe ms/PositiveInt]]
                                     [:dashboard_id  {:optional true} [:maybe ms/PositiveInt]]]]

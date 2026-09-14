@@ -87,6 +87,7 @@
          ks     (into #{} (map first) (mc/entries schema))]
      (mut/update-properties
       schema assoc
+      :closed     false
       :encode/api {:enter (fn [m] (if (map? m) (enter (select-keys m ks)) m))
                    :leave snake-case-keys}
       :decode/api {:enter kebab-case-keys}))))
@@ -95,7 +96,7 @@
   "A dimension source annotated with its wire-encoding rules. Quirks preserved from the previous
    hand-rolled shape: entries keep their kebab-case `:field-id` key on the wire (no key renaming),
    `:field-id` is always present (nil when missing), and other keys (e.g. `:binning`) are dropped."
-  [:map {:encode/api {:enter #(merge {:field-id nil} (select-keys % [:type :field-id]))}}
+  [:map {:closed false, :encode/api {:enter #(merge {:field-id nil} (select-keys % [:type :field-id]))}}
    [:type ::lm.schema/dimension-source.type]
    [:field-id {:optional true} [:maybe :int]]])
 
@@ -120,16 +121,15 @@
    encode-dimension-map))
 
 (mr/def ::dimension-mapping
-  "The internal (kebab-case) dimension-mapping shape annotated with its wire-conversion rules.
-   `:target` is re-typed as `:any` so the transformer never walks into the MBQL ref and renames
-   its option-map keys — it passes through untouched in both directions. `:type` is optional on
+  "The internal (kebab-case) dimension-mapping shape annotated with its wire-conversion rules. `:type` is optional on
    the wire (FE payloads may omit it); `:dimension-id` keeps the strict uuid schema."
-  (wire-map
-   ::lm.schema/dimension-mapping
-   [:map
-    [:type {:optional true} ::lm.schema/dimension-mapping.type]
-    [:target :any]]
-   encode-mapping-map))
+  (mut/update-properties
+   (wire-map
+    ::lm.schema/dimension-mapping
+    [:map
+     [:type {:optional true} ::lm.schema/dimension-mapping.type]]
+    encode-mapping-map)
+   assoc :closed true))
 
 (def ^:private api-transformer
   "The `:api`-named step of the transformers `defendpoint` applies, on its own.

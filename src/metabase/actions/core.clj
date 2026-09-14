@@ -6,6 +6,7 @@
    [metabase.actions.error]
    [metabase.actions.events]
    [metabase.actions.execution]
+   [metabase.actions.hierarchy]
    [metabase.actions.http-action]
    [metabase.actions.models]
    [metabase.actions.scope]
@@ -15,6 +16,7 @@
   metabase.actions.actions/keep-me
   metabase.actions.error/keep-me
   metabase.actions.execution/keep-me
+  metabase.actions.hierarchy/keep-me
   metabase.actions.http-action/keep-me
   metabase.actions.models/keep-me
   metabase.actions.scope/keep-me)
@@ -46,6 +48,8 @@
   violate-not-null-constraint
   violate-permission-constraint
   violate-unique-constraint]
+ [metabase.actions.hierarchy
+  derive!]
  [metabase.actions.execution
   execute-action!
   execute-dashcard!

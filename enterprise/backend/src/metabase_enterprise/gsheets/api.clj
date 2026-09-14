@@ -226,7 +226,7 @@
 
 (api.macros/defendpoint :post "/connection" :- :gsheets/response
   "Hook up a new google drive folder or sheet that will be watched and have its content ETL'd into Metabase."
-  [{} {} {:keys [url]} :- [:map [:url ms/NonBlankString]]]
+  [{} {} {:keys [url]} :- [:map {:closed true} [:url ms/NonBlankString]]]
   (let [attached-dwh (gsheets.db/attached-dwh-database-id)]
     (when-not (some? attached-dwh)
       (analytics.event/track-event! :snowplow/simple_event {:event "sheets_connected" :event_detail "fail - no dwh"})

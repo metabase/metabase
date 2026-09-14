@@ -8,6 +8,7 @@
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
+   [metabase-enterprise.semantic-search.appdb-scoring :as appdb-scoring]
    [metabase-enterprise.semantic-search.db :as semantic-search.db]
    ;; TODO: extract schema code to go under db.migration
    [metabase-enterprise.semantic-search.embedding :as embedding]
@@ -1261,7 +1262,7 @@
                                       (mapv search/collapse-id)))
               filter-time-ms (u/since-ms filter-timer)
 
-              appdb-scorers (scoring/appdb-scorers search-context)
+              appdb-scorers (appdb-scoring/appdb-scorers search-context)
               appdb-scores-timer (u/start-timer)
               final-results (->> filtered-results
                                  (scoring/with-appdb-scores search-context appdb-scorers weights))

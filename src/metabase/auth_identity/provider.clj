@@ -15,21 +15,23 @@
 
   Each provider implementation should:
   1. Use a keyword in the :provider namespace (e.g., :provider/password)
-  2. Declare hierarchy with (derive :provider/name ::provider/provider)
-  3. For SSO providers that auto-create users, also (derive :provider/name ::provider/create-user-if-not-exists)
+  2. Declare hierarchy with (auth-identity/derive! :provider/name ::provider/provider)
+  3. For SSO providers that auto-create users, also
+     (auth-identity/derive! :provider/name ::provider/create-user-if-not-exists)
   4. Implement the authenticate multimethod (required)
   5. Optionally implement validate for credential validation
 
   Example:
     (ns metabase.sso.providers.my-provider
-      (:require [metabase.auth-identity.provider :as provider]
+      (:require [metabase.auth-identity.core :as auth-identity]
+                [metabase.auth-identity.provider :as provider]
                 [methodical.core :as methodical]))
 
     ;; Declare this provider derives from ::provider/provider
-    (derive :provider/my-provider ::provider/provider)
+    (auth-identity/derive! :provider/my-provider ::provider/provider)
 
     ;; For SSO providers that auto-create users:
-    (derive :provider/my-provider ::provider/create-user-if-not-exists)
+    (auth-identity/derive! :provider/my-provider ::provider/create-user-if-not-exists)
 
     ;; Implement authentication
     (methodical/defmethod provider/authenticate :provider/my-provider
@@ -53,6 +55,7 @@
   (:require
    [java-time.api :as t]
    [metabase.auth-identity.db :as auth-identity.db]
+   [metabase.auth-identity.hierarchy :as auth-identity.hierarchy]
    [metabase.auth-identity.session :as auth-session]
    [metabase.events.core :as events]
    [metabase.notification.core :as notification]
@@ -69,8 +72,8 @@
 
 ;;; -------------------------------------------------- Provider Hierarchy --------------------------------------------------
 
-;; Provider hierarchy is defined by individual provider implementations
-;; Each provider namespace should use (derive :provider/name ::provider/provider)
+;; Provider relationships live in [[metabase.auth-identity.hierarchy]] and are declared by individual provider
+;; implementations. Each provider namespace should use (auth-identity/derive! :provider/name ::provider/provider).
 ;; SSO providers that auto-provision users should also derive from ::provider/create-user-if-not-exists
 
 ;;; -------------------------------------------------- Shared Error Messages --------------------------------------------------
@@ -107,7 +110,8 @@
      => throws ExceptionInfo"
   {:arglists '([provider auth-identity-data])}
   (fn [provider _auth-identity-data]
-    provider))
+    provider)
+  :hierarchy #'auth-identity.hierarchy/hierarchy)
 
 (methodical/defmethod validate ::provider
   [_provider _auth-identity-data]
@@ -175,7 +179,8 @@
      => {:success? false :error :invalid-credentials :message \"Password did not match stored password.\"}"
   {:arglists '([provider request])}
   (fn [provider _request]
-    provider))
+    provider)
+  :hierarchy #'auth-identity.hierarchy/hierarchy)
 
 (methodical/defmethod authenticate ::provider
   [provider _request]
@@ -246,7 +251,24 @@
      => {:success? false :error :invalid-credentials :message \"...\"}"
   {:arglists '([provider request])}
   (fn [provider _request]
-    provider))
+    provider)
+  :hierarchy #'auth-identity.hierarchy/hierarchy)
+
+(mu/defn- apply-inactive-check
+  "Checks if the provided `request` is an attempt to log in an active user, or an inactive one.
+
+  If the user does not have `:is_active true`, the response is not successful and an error message is returned. A
+  request that resolved no user at all is left alone: link-only flows legitimately finish without one."
+  [request :- [:map
+               [:user {:optional true} [:maybe [:map
+                                                [:id ms/PositiveInt]
+                                                [:is_active :boolean]]]]]]
+  (cond-> request
+    (and (nil? (:error request))
+         (:user request)
+         (not (get-in request [:user :is_active]))) (assoc :success? false
+                                                           :error disabled-account-snippet
+                                                           :message disabled-account-message)))
 
 (mu/defn- create-session!
   "Create a new session for a user with the given provider.
@@ -293,9 +315,12 @@
   [_provider login-result]
   login-result)
 
+;; TODO: (bshepherdson, 2026-09-04) Only a sharp-eyed code reviewer caught that `:mfa/enroll?` had been introduced
+;; but not added to this blocklist. The consumers of [[authenticate-owned-keys]] should be switched to an allowlist
+;; using `select-keys`, rather than `dissoc`ing all the bad fields.
 (def ^:private authenticate-owned-keys
   [:user-id :user_id :user :user-data :auth-identity :provider-id :success? :session
-   :error :message :mfa/pending? :mfa/methods :mfa/first-factor
+   :error :message :mfa/enroll? :mfa/pending? :mfa/methods :mfa/first-factor
    :jwt-data :claims
    :tenant-slug :tenant-attributes :user-provisioning-enabled?])
 
@@ -321,11 +346,14 @@
     ;; user's tenant assignment was lost) must not leave a half-provisioned account behind (UXW-4898)
     (t2/with-transaction [_]
       (next-method provider $))
+    (apply-inactive-check $)
     (apply-mfa-gate provider $)
     (cond-> $
-      (and (true? (:success? $)) (:user $) (not (:mfa/pending? $))) (create-session! provider))
-    (select-keys $ [:success? :user :redirect-url :error :message :user-data :session :jwt-data :claims :oidc-provider-key
-                    :mfa/pending? :mfa/methods :mfa/first-factor])))
+      (and (true? (:success? $))
+           (:user $)
+           (not (:mfa/pending? $))) (create-session! provider))
+    (select-keys $ [:success? :user :redirect-url :error :message :user-data :session :jwt-data :claims
+                    :oidc-provider-key :mfa/enroll? :mfa/pending? :mfa/methods :mfa/first-factor])))
 
 (defenterprise sso-user-fields
   "Return the list of User model fields that should be populated from SSO user data.

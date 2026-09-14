@@ -23,7 +23,7 @@ Here's a non-exhaustive list of things Metabot can help with:
 - [Edit SQL directly in the native editor](#inline-sql-editing).
 - [Analyze a chart](#analyze-charts-with-metabot).
 - [Fix errors in SQL code](#have-metabot-fix-sql-queries).
-- [Generate transforms](../data-studio/transforms/transforms-overview.md#use-metabot-to-generate-code-for-transforms)
+- [Generate transforms](../data-modeling/transforms/transforms-overview.md#use-metabot-to-generate-code-for-transforms)
 - [Generate charts in documents](../documents/introduction.md)
 - [Answer questions from Slack](./metabot-slack.md).
 
@@ -36,7 +36,7 @@ Like with all generative AI, you'll always need to double-check results.
 There are multiple ways to start a chat with Metabot:
 
 - Type cmd+e on Mac, ctrl+e on Windows, to open up the [chat sidebar](#the-metabot-chat-sidebar).
-- Click the Metabot icon in top right.
+- Click the Metabot icon in the top right.
 
 You can chat with Metabot (though predictably, it's only interested in helping you answer questions about your data).
 

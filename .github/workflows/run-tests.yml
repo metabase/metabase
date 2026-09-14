@@ -54,9 +54,13 @@ jobs:
       e2e_specs: ${{ steps.changes.outputs.e2e_specs }}
       e2e_infra: ${{ steps.changes.outputs.e2e_infra }}
       backend_all: ${{ steps.changes.outputs.backend_all }}
+      build_scripts: ${{ steps.changes.outputs.build_scripts }}
+      embedder_plugin: ${{ steps.changes.outputs.embedder_plugin }}
       frontend_all: ${{ steps.changes.outputs.frontend_all }}
+      frontend_ci: ${{ steps.changes.outputs.frontend_ci }}
       frontend_sources: ${{ steps.changes.outputs.frontend_sources }}
       frontend_unit_infra: ${{ steps.changes.outputs.frontend_unit_infra }}
+      frontend_loki_ci: ${{ steps.changes.outputs.frontend_loki_ci }}
       frontend_loki_infra: ${{ steps.changes.outputs.frontend_loki_infra }}
       shared_sources: ${{ steps.changes.outputs.shared_sources }}
       documentation: ${{ steps.changes.outputs.documentation }}
@@ -307,6 +311,20 @@ jobs:
         ${{ needs.should-run.outputs.verdict != 'force-run' &&
         needs.files-changed.outputs.custom_viz_all != 'true' }}
 
+  loki-tests:
+    needs: [should-run, files-changed]
+    if: |
+      !cancelled() &&
+      (needs.should-run.outputs.verdict == 'force-run' ||
+      needs.files-changed.result == 'success')
+    uses: ./.github/workflows/loki.yml
+    with:
+      skip: >-
+        ${{ needs.should-run.outputs.verdict != 'force-run' &&
+        needs.files-changed.outputs.frontend_ci != 'true' &&
+        needs.files-changed.outputs.frontend_sources != 'true' &&
+        needs.files-changed.outputs.frontend_loki_ci != 'true' }}
+
   e2e-tests:
     needs: [should-run, files-changed, uberjar]
     # Skip e2e tests when the uberjar build failed or was cancelled — the
@@ -379,6 +397,22 @@ jobs:
       skip: >-
         ${{ needs.embedding-sdk-package.result != 'success' ||
         needs.uberjar.result != 'success' }}
+
+  build-scripts-tests:
+    needs: [should-run, files-changed]
+    if: |
+      !cancelled() &&
+      (needs.should-run.outputs.verdict == 'force-run' ||
+      needs.files-changed.result == 'success')
+    uses: ./.github/workflows/build-scripts.yml
+    secrets: inherit
+    with:
+      skip-build-scripts: >-
+        ${{ needs.should-run.outputs.verdict != 'force-run' &&
+        needs.files-changed.outputs.build_scripts != 'true' }}
+      skip-embedder-plugin: >-
+        ${{ needs.should-run.outputs.verdict != 'force-run' &&
+        needs.files-changed.outputs.embedder_plugin != 'true' }}
 
   bundle-size:
     needs: [uberjar, files-changed]

@@ -1,3 +1,5 @@
+import type { ThunkAction, UnknownAction } from "@reduxjs/toolkit";
+
 import type {
   BulkTableRequest,
   BulkTableSelectionInfo,
@@ -28,6 +30,7 @@ import {
   provideTableTags,
   tag,
 } from "./tags";
+import { rollbackOnError } from "./utils/rollback-on-error";
 
 export const tableApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -81,6 +84,24 @@ export const tableApi = Api.injectEndpoints({
           tag("dataset"),
           listTag("erd"),
         ]),
+      onQueryStarted: async (
+        { id, ...body },
+        { dispatch, getState, queryFulfilled },
+      ) => {
+        const patches = selectCachedTableMetadata(getState(), [
+          idTag("table", id),
+        ]).map(({ originalArgs }) =>
+          dispatch(
+            patchCachedTableMetadata(originalArgs, (table) => {
+              if (table.id === id) {
+                Object.assign(table, body);
+              }
+            }),
+          ),
+        );
+
+        await rollbackOnError(queryFulfilled, patches);
+      },
     }),
     updateTableList: builder.mutation<Table[], UpdateTableListRequest>({
       query: (body) => ({
@@ -301,3 +322,30 @@ export const fetchForeignTablesMetadata = (
     );
   };
 };
+
+export type TableMetadataPatch = {
+  undo: () => void;
+};
+
+/**
+ * `updateQueryData` is generic over every endpoint in this file, and TypeScript
+ * can only instantiate that from inside the `injectEndpoints` call above
+ * (TS2589 anywhere else). Pinning the single endpoint we patch keeps the call
+ * sites, including the one in `field.ts`, fully checked.
+ */
+export const patchCachedTableMetadata = tableApi.util.updateQueryData.bind(
+  null,
+  "getTableQueryMetadata",
+) as (
+  args: GetTableQueryMetadataRequest,
+  recipe: (table: Table) => void,
+) => ThunkAction<TableMetadataPatch, unknown, unknown, UnknownAction>;
+
+export function selectCachedTableMetadata(
+  state: Parameters<typeof tableApi.util.selectInvalidatedBy>[0],
+  tags: Parameters<typeof tableApi.util.selectInvalidatedBy>[1],
+) {
+  return tableApi.util
+    .selectInvalidatedBy(state, tags)
+    .filter(({ endpointName }) => endpointName === "getTableQueryMetadata");
+}

@@ -12,7 +12,10 @@ import type {
   VisualizationSettingDefinition,
   VisualizationSettingsDefinitions,
 } from "../../types";
+import { migrateStoredDashcardCustomVizSettings } from "../custom-viz/migrate-legacy-settings";
 import { getVisualization } from "../registry";
+
+import { getSettingDefinitionsForDisplay } from "./visualization";
 
 // Merge two settings objects together.
 // Settings from the second argument take precedence over the first.
@@ -93,11 +96,18 @@ export function extendCardWithDashcardSettings<
     return isSettingHiddenOnDashboards(settings[key] ?? {});
   });
 
+  const cardSettings = card.visualization_settings ?? {};
+
   return {
     ...card,
     visualization_settings: mergeSettings(
-      card?.visualization_settings,
-      _.omit(dashcardSettings, settingsToOmit),
+      cardSettings,
+      migrateStoredDashcardCustomVizSettings(
+        card.display,
+        cardSettings,
+        _.omit(dashcardSettings ?? {}, settingsToOmit),
+        () => getSettingDefinitionsForDisplay(card.display),
+      ),
     ),
   };
 }

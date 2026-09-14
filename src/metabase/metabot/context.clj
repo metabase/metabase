@@ -1,25 +1,32 @@
 (ns metabase.metabot.context
   (:require
    [clojure.java.io :as io]
-   [malli.core :as mc]
    [medley.core :as m]
    [metabase.activity-feed.core :as activity-feed]
    [metabase.api.common :as api]
+   [metabase.collections.schema :as collections.schema]
    [metabase.config.core :as config]
+   [metabase.driver :as driver]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.curation :as curation]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.table-utils :as table-utils]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.schema :as transforms.schema]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema])
   (:import
    (java.time OffsetDateTime)
    (java.time.format DateTimeFormatter)))
@@ -70,49 +77,326 @@
   "Schema for the `:type` key of `:user_is_viewing` item."
   (into [:enum] item-types))
 
+(def ^:private DraftLegacyInnerQuery
+  "The `:query` (inner MBQL 4 query) of a legacy dataset-query whose outer map has no `:database` yet -- a brand-new
+  structured query, e.g. `STRUCTURED_QUERY_TEMPLATE` on the frontend."
+  [:map {:closed true}
+   [:source-table {:optional true} [:maybe [:or :int :string]]]])
+
+(def ^:private DraftNativeQuery
+  "The `:native` map of a legacy dataset-query whose outer map has no `:database` yet -- a brand-new native query,
+  e.g. `NATIVE_QUERY_TEMPLATE` on the frontend."
+  [:map {:closed true}
+   [:query {:optional true} [:maybe :string]]
+   [:template-tags {:optional true} [:maybe [:ref ::lib.schema.template-tag/template-tag-map]]]
+   [:collection {:optional true} [:maybe :string]]])
+
+(def ^:private DraftQuerySchema
+  "A viewing-context/transform-source query with no `:database` yet: a brand-new adhoc question or transform
+  before the user picked a data source. `::lib-be.schema/maybe-legacy-query` requires `:database`, so this covers
+  the gap (`STRUCTURED_QUERY_TEMPLATE`/`NATIVE_QUERY_TEMPLATE` on the frontend, or an in-progress MBQL 5 draft)."
+  [:map {:closed true}
+   [:database {:optional true} nil?]
+   [:type {:optional true} [:maybe [:or :string :keyword]]]
+   [:native {:optional true} [:maybe DraftNativeQuery]]
+   [:query {:optional true} [:maybe DraftLegacyInnerQuery]]
+   [:lib/type {:optional true} [:maybe [:or :string :keyword]]]
+   [:stages {:optional true} [:maybe [:sequential [:schema [:ref ::lib.schema/stage]]]]]
+   [:parameters {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]])
+
 (def ^:private ItemQuerySchema
   "Schema for the `:query` of a viewing context item: whatever query the client currently has open, in any MBQL
-  version.
+  version, or a databaseless draft (see [[DraftQuerySchema]]).
 
-  Open ([[ms/Map]]) rather than `[:or ::lib.schema/query ::mbql.s/Query]`. Request decoding strips keys a map schema
-  doesn't declare, and both of those schemas would have gutted the query on its way in — a legacy query arrived as
-  `{:database 1}`, which then failed validation and 400'd the request. The real shape is checked downstream anyway:
-  every consumer routes the query through `lib-be/normalize-query` / `lib/query`, which normalize and validate it."
-  ms/Map)
+  Decoding converts a legacy query to MBQL 5 and validates it, so every consumer gets the shape `lib/query` expects."
+  [:multi {:dispatch (fn [q] (boolean (and (map? q) (some? (:database q)))))}
+   [true ::lib-be.schema/maybe-legacy-query]
+   [false DraftQuerySchema]])
+
+(def ^:private MetabotColumnTypeSchema
+  "Schema for `MetabotColumnInfo`'s `:type`."
+  (into [:enum] #{"number" "string" "date" "datetime" "time" "boolean" "null"}))
+
+(def ^:private ColumnInfoSchema
+  "A chart column's name and inferred type, as sent for chart analysis."
+  [:map {:closed true}
+   [:name :string]
+   [:type {:optional true} [:maybe MetabotColumnTypeSchema]]])
+
+(def ^:private RowValueSchema
+  "One cell value in a chart series, matching the frontend's `RowValue`. The `object` arm is never read by this
+  code -- it's forwarded to the interestingness stats/repr code as-is -- so it's opaque rather than typed."
+  [:maybe [:or :string number? :boolean ms/OpaqueJSONObject]])
+
+(def ^:private SeriesConfigSchema
+  "One series of a chart, pre-materialized by the frontend for `analyze_chart`."
+  [:map {:closed true}
+   [:x ColumnInfoSchema]
+   [:y {:optional true} [:maybe ColumnInfoSchema]]
+   [:x_values {:optional true} [:maybe [:sequential RowValueSchema]]]
+   [:y_values {:optional true} [:maybe [:sequential RowValueSchema]]]
+   [:display_name :string]
+   [:chart_type [:or :string :keyword]]
+   [:stacked {:optional true} [:maybe :boolean]]])
+
+(def ^:private ChartTimelineEventSchema
+  "One timeline event overlaid on a chart, pre-materialized by the frontend."
+  [:map {:closed true}
+   [:name :string]
+   [:description {:optional true} [:maybe :string]]
+   [:timestamp :string]])
+
+(def ^:private ChartDataSchema
+  "One pre-materialized table of raw chart data (columns + rows)."
+  [:map {:closed true}
+   [:columns [:sequential ColumnInfoSchema]]
+   [:rows [:sequential [:sequential [:or :string number?]]]]])
+
+(def ^:private ChartConfigSchema
+  "A `chart_configs` entry: a chart's title, pre-materialized series data, and the query that produced it."
+  [:map {:closed true}
+   [:title {:optional true} [:maybe :string]]
+   [:description {:optional true} [:maybe :string]]
+   [:data {:optional true} [:maybe [:sequential ChartDataSchema]]]
+   [:series {:optional true} [:maybe (ms/string-keyed-map SeriesConfigSchema)]]
+   [:timeline_events {:optional true} [:maybe [:sequential ChartTimelineEventSchema]]]
+   [:query {:optional true} ItemQuerySchema]
+   [:display_type {:optional true} [:maybe [:or :string :keyword]]]])
+
+(def ^:private CodeEditorBufferSourceSchema
+  "The `:source` of a code-editor buffer: the editor's language and the database it targets."
+  [:map {:closed true}
+   [:language [:= "sql"]]
+   [:database_id [:maybe :int]]])
+
+(def ^:private CodeEditorCursorSchema
+  [:map {:closed true}
+   [:line :int]
+   [:column :int]])
+
+(def ^:private CodeEditorBufferSelectionSchema
+  [:map {:closed true}
+   [:text :string]
+   [:start CodeEditorCursorSchema]
+   [:end CodeEditorCursorSchema]])
+
+(def ^:private CodeEditorBufferSchema
+  "One open buffer in the code editor viewing context."
+  [:map {:closed true}
+   [:id :string]
+   [:source CodeEditorBufferSourceSchema]
+   [:cursor CodeEditorCursorSchema]
+   [:selection {:optional true} [:maybe CodeEditorBufferSelectionSchema]]])
+
+(def ^:private CodeEditorContextSchema
+  "The top-level `:code_editor` key of [[::context]] (as distinct from a `type: code_editor` viewing-context item)."
+  [:map {:closed true}
+   [:type [:= "code_editor"]]
+   [:buffers [:sequential CodeEditorBufferSchema]]])
+
+(def ^:private TransformSourceTableSchema
+  "One entry of a Python transform's `source-tables`."
+  [:map {:closed true}
+   [:alias :string]
+   [:table_id {:optional true} [:maybe :int]]
+   [:schema {:optional true} [:maybe :string]]
+   [:database_id {:optional true} [:maybe :int]]])
+
+(def ^:private TransformSourceSchema
+  "A transform's `:source`. Everything but `:type` is optional so a draft transform -- no database chosen, no
+  source tables picked -- validates just like a saved one."
+  [:multi {:dispatch (comp keyword :type)}
+   [:query
+    [:map {:closed true}
+     [:type [:or [:= :query] [:= "query"]]]
+     [:query {:optional true} [:maybe [:or :string ItemQuerySchema]]]
+     [:source-incremental-strategy {:optional true} [:maybe ::transforms.schema/source-incremental-strategy]]]]
+   [:python
+    [:map {:closed true}
+     [:type [:or [:= :python] [:= "python"]]]
+     [:body {:optional true} [:maybe :string]]
+     [:source-database {:optional true} [:maybe :int]]
+     [:source-tables {:optional true} [:maybe [:sequential TransformSourceTableSchema]]]
+     [:source-incremental-strategy {:optional true} [:maybe ::transforms.schema/source-incremental-strategy]]]]])
+
+(def ^:private TransformTargetSchema
+  "A transform's `:target`. Everything but `:type` is optional so an unsaved/suggested transform -- which may omit
+  `:database` or the incremental strategy -- validates just like a saved one."
+  [:multi {:dispatch (comp keyword :type)}
+   [:table
+    [:map {:closed true}
+     [:type [:or [:= :table] [:= "table"]]]
+     [:name {:optional true} [:maybe :string]]
+     [:schema {:optional true} [:maybe :string]]
+     [:database {:optional true} [:maybe :int]]]]
+   [:table-incremental
+    [:map {:closed true}
+     [:type [:or [:= :table-incremental] [:= "table-incremental"]]]
+     [:name {:optional true} [:maybe :string]]
+     [:schema {:optional true} [:maybe :string]]
+     [:database {:optional true} [:maybe :int]]
+     [:target-incremental-strategy {:optional true} [:maybe ::transforms.schema/target-incremental-strategy]]]]])
+
+(def ^:private TransformCreatorSchema
+  "The `:creator` hydrated onto a transform, mirroring the transforms REST API's own response shape."
+  [:map {:closed true}
+   [:id :int]
+   [:email :string]
+   [:first_name {:optional true} [:maybe :string]]
+   [:last_name {:optional true} [:maybe :string]]
+   [:common_name {:optional true} [:maybe :string]]
+   [:last_login {:optional true} [:maybe :string]]
+   [:is_qbnewb {:optional true} [:maybe :boolean]]
+   [:is_superuser {:optional true} [:maybe :boolean]]
+   [:is_data_analyst {:optional true} [:maybe :boolean]]
+   [:tenant_id {:optional true} [:maybe :int]]
+   [:date_joined {:optional true} [:maybe :string]]])
+
+(def ^:private TransformOwnerSchema
+  "The `:owner` hydrated onto a transform, mirroring the transforms REST API's own response shape."
+  [:map {:closed true}
+   [:id {:optional true} [:maybe :int]]
+   [:email {:optional true} [:maybe :string]]
+   [:first_name {:optional true} [:maybe :string]]
+   [:last_name {:optional true} [:maybe :string]]
+   [:common_name {:optional true} [:maybe :string]]])
+
+(def ^:private TransformLastRunSchema
+  "The `:last_run` hydrated onto a transform, mirroring the transforms REST API's own response shape."
+  [:map {:closed true}
+   [:id {:optional true} [:maybe :int]]
+   [:transform_id {:optional true} [:maybe :int]]
+   [:run_method {:optional true} [:maybe [:or :string :keyword]]]
+   [:status {:optional true} [:maybe [:or :string :keyword]]]
+   [:is_active {:optional true} [:maybe :boolean]]
+   [:start_time {:optional true} [:maybe :string]]
+   [:end_time {:optional true} [:maybe :string]]
+   [:message {:optional true} [:maybe :string]]
+   [:user_id {:optional true} [:maybe :int]]
+   [:transform_name {:optional true} [:maybe :string]]
+   [:transform_entity_id {:optional true} [:maybe :string]]
+   [:job_run_id {:optional true} [:maybe :int]]
+   [:dag_run_id {:optional true} [:maybe :int]]
+   [:checkpoint_filter_field_id {:optional true} [:maybe :int]]
+   [:checkpoint_lo_value {:optional true} [:maybe :string]]
+   [:checkpoint_hi_value {:optional true} [:maybe :string]]
+   [:metered_as {:optional true} [:maybe :string]]])
+
+(def ^:private TransformTableDependencySchema
+  "One entry of a transform's `:table_dependencies`."
+  [:or ::driver/native-query-deps.table-dep ::driver/native-query-deps.transform-dep])
+
+(def ^:private item-entries
+  "The keys of a viewing context item this code reads. The rest of the item is the shape of one of
+  `MetabotEntityInfo`'s variants (card/dashboard/adhoc/document/transform) or `MetabotCodeEditorContext`, so
+  everything the frontend can send is named here rather than forwarded opaquely."
+  [[:id              {:optional true} [:maybe [:or :int :string]]]
+   [:name            {:optional true} [:maybe :string]]
+   [:description     {:optional true} [:maybe :string]]
+   [:database_schema {:optional true} [:maybe :string]]
+   [:sql_engine      {:optional true} [:maybe :string]]
+   [:error           {:optional true} [:maybe :string]]
+   [:source_type     {:optional true} [:maybe [:or :string :keyword]]]
+   [:source          {:optional true} [:maybe TransformSourceSchema]]
+   [:target          {:optional true} [:maybe TransformTargetSchema]]
+   [:used_tables     {:optional true} [:maybe [:sequential [:map {:closed true}
+                                                            [:id              {:optional true} [:maybe :int]]
+                                                            [:type            {:optional true} [:maybe [:or :keyword :string]]]
+                                                            [:name            {:optional true} [:maybe :string]]
+                                                            [:database_schema {:optional true} [:maybe :string]]
+                                                            [:description     {:optional true} [:maybe :string]]]]]]
+   [:buffers         {:optional true} [:maybe [:sequential CodeEditorBufferSchema]]]
+   [:query           {:optional true} ItemQuerySchema]
+   [:chart_configs   {:optional true} [:maybe [:vector ChartConfigSchema]]]
+   ;; Transform fields (`MetabotTransformInfo` = `Transform | SuggestedTransform | DraftTransform`), mirroring the
+   ;; transforms REST API's own response shape. All optional: a draft/suggested/unsaved transform may carry only a
+   ;; handful of these.
+   [:collection_id   {:optional true} [:maybe :int]]
+   [:created_at      {:optional true} [:maybe :string]]
+   [:updated_at      {:optional true} [:maybe :string]]
+   [:source_readable {:optional true} [:maybe :boolean]]
+   [:can_read        {:optional true} [:maybe :boolean]]
+   [:can_write       {:optional true} [:maybe :boolean]]
+   [:can_execute     {:optional true} [:maybe :boolean]]
+   [:source_database_id {:optional true} [:maybe :int]]
+   [:deleted         {:optional true} [:maybe :boolean]]
+   [:creator_id      {:optional true} [:maybe :int]]
+   [:owner_user_id   {:optional true} [:maybe :int]]
+   [:owner_email     {:optional true} [:maybe :string]]
+   [:owner           {:optional true} [:maybe TransformOwnerSchema]]
+   [:last_checkpoint_value {:optional true} [:maybe :string]]
+   [:dependency      {:optional true} [:maybe :boolean]]
+   [:scheduled       {:optional true} [:maybe :boolean]]
+   [:collection      {:optional true} [:maybe ::collections.schema/collection]]
+   [:tag_ids         {:optional true} [:maybe [:sequential :int]]]
+   [:table           {:optional true} [:maybe ::warehouse-schema.schema/table]]
+   [:last_run        {:optional true} [:maybe TransformLastRunSchema]]
+   [:creator         {:optional true} [:maybe TransformCreatorSchema]]
+   ;; Driver index-method metadata, keyed by index-kind. Never read by this code -- forwarded as the frontend
+   ;; sent it -- and the driver's own schema for it isn't closed-schema-clean, so it's opaque rather than typed.
+   [:requestable_indexes {:optional true} [:maybe ms/OpaqueJSONObject]]
+   [:target_db_id    {:optional true} [:maybe :int]]
+   [:target_table_id {:optional true} [:maybe :int]]
+   [:run_trigger     {:optional true} [:maybe [:or :string :keyword]]]
+   [:entity_id       {:optional true} [:maybe :string]]
+   [:table_dependencies {:optional true} [:maybe [:sequential TransformTableDependencySchema]]]])
 
 (def DefaultItemSchema
   "Default schema of viewing context item."
-  [:map
-   ;; `::mc/default` because the rest of the item is forwarded to the model as the client sent it -- the FE grows
-   ;; these fields (`:id`, `:name`, `:source`, `:sql_engine`, ...) faster than this schema could name them, and
-   ;; dropping one degrades Metabot silently rather than erroring.
-   [::mc/default :any]
-   [:type item-type-schema]
-   [:query {:optional true} ItemQuerySchema]])
+  (into [:map {:closed true} [:type item-type-schema]] item-entries))
 
 (def QcItemSchema
   "Schema viewing context item with query and charts."
-  [:map
-   [::mc/default :any]
-   [:type (into [:enum] item-types-qc)]
-   [:query {:optional true} ItemQuerySchema]
-   [:chart_configs
-    {:optional true}
-    [:vector
-     [:map
-      [::mc/default :any]
-      [:query {:optional true} ItemQuerySchema]]]]])
+  (into [:map {:closed true}
+         [:type (into [:enum] item-types-qc)]]
+        item-entries))
 
 (def ViewingItemSchema
   "Schema of user is viewing item."
   [:or QcItemSchema DefaultItemSchema])
 
+(mr/def ::recently-viewed-item
+  "One of the user's recent views, trimmed to what the model gets told about it."
+  [:map {:closed true}
+   [:id          {:optional true} [:maybe [:or :int :string]]]
+   [:name        {:optional true} [:maybe :string]]
+   [:description {:optional true} [:maybe :string]]
+   [:type        {:optional true} [:maybe :string]]])
+
+(mr/def ::research-plan-ref
+  "A named reference to a research-plan metric/dimension/timeline: what the frontend echoes back in
+  `ResearchPlanContext`."
+  [:map {:closed true}
+   [:id [:or :int :string]]
+   [:name :string]])
+
+(mr/def ::research-plan-group
+  [:map {:closed true}
+   [:block_id :string]
+   [:metric ::research-plan-ref]
+   [:dimensions [:sequential ::research-plan-ref]]])
+
+(mr/def ::research-plan
+  "The in-progress Research plan the frontend serializes into `:research_plan` each turn (`ResearchPlanContext`)."
+  [:map {:closed true}
+   [:name :string]
+   [:groups [:sequential ::research-plan-group]]
+   [:timelines [:sequential ::research-plan-ref]]])
+
 (mr/def ::context
-  [:and
-   [:map-of :keyword :any]
-   [:map
-    [::mc/default :any]
-    [:user_is_viewing {:optional true} [:vector ViewingItemSchema]]]])
+  "The context a Metabot request carries. Besides what the client sends, [[create-context]] adds the user's recent
+  views, the current time and the caller's capabilities before the agent reads it."
+  [:map {:closed true}
+   [:user_is_viewing            {:optional true} [:vector ViewingItemSchema]]
+   [:user_recently_viewed       {:optional true} [:maybe [:sequential ::recently-viewed-item]]]
+   [:current_time_with_timezone {:optional true} [:maybe :string]]
+   [:current_user_time          {:optional true} [:maybe :string]]
+   [:first_day_of_week          {:optional true} [:maybe :string]]
+   [:capabilities               {:optional true} [:maybe [:or [:set :string] [:sequential :string]]]]
+   [:slack_channel_id           {:optional true} [:maybe :string]]
+   [:default_database_id        {:optional true} [:maybe :int]]
+   [:code_editor                {:optional true} [:maybe CodeEditorContextSchema]]
+   [:research_plan              {:optional true} [:maybe ::research-plan]]])
 
 (defn- query-for-sql-parsing
   "Given an item in context, return the query if it is a native query or SQL transform that can have table usage parsed

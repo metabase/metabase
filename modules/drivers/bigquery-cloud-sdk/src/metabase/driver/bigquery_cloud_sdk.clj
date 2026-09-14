@@ -130,6 +130,9 @@
       (.setUniverseDomain bq-bldr universe-domain))
     (when-let [host (perf/not-empty (:host details))]
       (.setHost bq-bldr host))
+    (when-let [^String billing-project-id (perf/not-empty (:billing-project-id details))]
+      ;; Jobs are created and billed in this project; queried tables can live elsewhere.
+      (.setProjectId bq-bldr billing-project-id))
     (.. bq-bldr build getService)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -990,7 +993,8 @@
         columns (for [column (some-> schema .getFields fields->metabase-field-info)]
                   (-> column
                       (set/rename-keys {:base-type :base_type})
-                      (dissoc :database-type :database-position)))
+                      ;; `:nested-fields` describes a RECORD's sub-fields for sync, not a result column
+                      (dissoc :database-type :database-position :nested-fields)))
         cols {:cols columns}
         results (eduction (map (fn [^FieldValueList row]
                                  (perf/mapv parse-field-value row parsers)))

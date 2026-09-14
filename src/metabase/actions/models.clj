@@ -53,11 +53,18 @@
                 (m/update-existing viz-settings :fields update-keys u/qualified-name))
               mi/json-out-with-keywordization)})
 
+(def ^:private transform-action-parameters
+  "Like `parameters/transform-parameters`, but normalizes against `::actions.schema/action.parameters`: an implicit
+  action's parameters carry the annotations [[implicit-action-parameters]] computes them with."
+  {:in  (comp mi/json-in actions.schema/normalize-parameters)
+   :out (comp (mi/catch-normalization-exceptions actions.schema/normalize-parameters)
+              mi/json-out-with-keywordization)})
+
 (t2/deftransforms :model/Action
   {:type                   mi/transform-keyword
    :public_uuid            (mi/transform-encrypted-text "action.public_uuid")
    :parameter_mappings     parameters/transform-parameter-mappings
-   :parameters             parameters/transform-parameters
+   :parameters             transform-action-parameters
    :visualization_settings transform-action-visualization-settings})
 
 (t2/deftransforms :model/QueryAction

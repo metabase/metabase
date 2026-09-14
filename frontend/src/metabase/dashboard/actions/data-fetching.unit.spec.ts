@@ -6,15 +6,15 @@ import {
   setupDashboardsEndpoints,
   setupDatabaseEndpoints,
 } from "__support__/server-mocks";
-import { createMockEntitiesState } from "__support__/store";
-import { Api } from "metabase/api";
-import type { DashboardState, State } from "metabase/redux/store";
-import type { StoreSeedState } from "metabase/redux/store/mocks";
+import type { StoreSeedState } from "__support__/state";
 import {
   createMockDashboardState,
   createMockSettingsState,
   createMockStoreDashboard,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import { createMockEntitiesState } from "__support__/store";
+import { Api } from "metabase/api";
+import type { DashboardState, State } from "metabase/redux/store";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
 import type { Dashboard } from "metabase-types/api";
 import {

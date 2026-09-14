@@ -17,7 +17,6 @@ export const ChartSettingToggle = ({
     onChange={(e) => onChange(e.currentTarget.checked)}
     id={id}
     role="switch"
-    size="sm"
     disabled={disabled}
   />
 );

@@ -107,7 +107,7 @@
 
 (def ^:private template-tags-schema
   [:map-of :string
-   [:map
+   [:map {:closed true}
     [:type :string]
     [:card-id {:optional true} pos-int?]]])
 
@@ -125,7 +125,7 @@
     or field value fetching."
   [_route-params
    _query-params
-   body :- [:map
+   body :- [:map {:closed true}
             [:database_id pos-int?]
             [:sql :string]
             [:template_tags {:optional true} template-tags-schema]]]
@@ -168,12 +168,12 @@
    Returns generated SQL and the list of tables used for context."
   [_route-params
    _query-params
-   body :- [:map
+   body :- [:map {:closed true}
             [:prompt :string]
             [:database_id pos-int?]
             [:source_sql {:optional true} :string]
             [:referenced_entities {:optional true}
-             [:sequential [:map
+             [:sequential [:map {:closed true}
                            [:model :string]
                            [:id pos-int?]]]]]
    request]

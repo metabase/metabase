@@ -7,12 +7,8 @@
    [metabase.api.macros :as api.macros]
    [metabase.channel.core :as channel]
    [metabase.channel.db :as channel.db]
-   [metabase.channel.impl.email :as channel.email]
-   [metabase.channel.impl.http :as channel.http]
-   [metabase.channel.impl.slack :as channel.slack]
-   [metabase.config.core :as config]
+   [metabase.channel.schema :as channel.schema]
    [metabase.events.core :as events]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
@@ -36,7 +32,7 @@
   "Get all channels"
   [_route-params
    _query-params
-   {:keys [include_inactive]} :- [:map
+   {:keys [include_inactive]} :- [:map {:closed true}
                                   [:include_inactive {:optional true} [:maybe {:default false} :boolean]]]]
   (->> (if include_inactive
          (channel.db/channels)
@@ -50,47 +46,17 @@
     #(= "channel" (namespace (keyword %)))]
    (deferred-tru "Must be a namespaced channel. E.g: channel/http")))
 
-(def ^:private TestChannelDetails
-  [:map
-   [:return-type  [:enum "return-value" "throw"]]
-   [:return-value {:optional true} :any]])
-
 (defn- channel-body-schema
   [common-entries & {:keys [details-optional?]}]
-  (let [details-entry (fn [schema]
-                        (if details-optional?
-                          [:details {:optional true} [:maybe schema]]
-                          [:details schema]))]
-    [:merge
-     (into [:map] common-entries)
-     (into [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
-                    :dispatch         (fn [m]
-                                        (let [channel-type (some-> (:type m) keyword)]
-                                          (when (and channel-type (= "channel" (namespace channel-type)))
-                                            channel-type)))}]
-           (concat
-            [[:channel/http  [:map (details-entry channel.http/HTTPDetails)]]
-             [:channel/email [:map [:details {:optional true} [:maybe channel.email/EmailDetails]]]]
-             [:channel/slack [:map (details-entry channel.slack/SlackDetails)]]]
-            (when config/is-test?
-              [[:channel/metabase-test [:map (details-entry TestChannelDetails)]]])
-            [[nil [:map [:details {:optional true}
-                         [:maybe (into [:or]
-                                       (concat
-                                        (when config/is-test?
-                                          [TestChannelDetails])
-                                        [channel.slack/SlackDetails
-                                         channel.http/HTTPDetails
-                                         channel.email/EmailDetails]))]]]]]))]))
+  [:merge
+   (into [:map {:closed true}] common-entries)
+   (conj (channel.schema/details-by-type :details-optional? details-optional?)
+         [nil [:map {:closed true}
+               [:details {:optional true} [:maybe ::channel.schema/channel.details]]]])])
 
 (defn- details-schema-for-type
   [channel-type]
-  (condp = channel-type
-    :channel/http          channel.http/HTTPDetails
-    :channel/email         channel.email/EmailDetails
-    :channel/slack         channel.slack/SlackDetails
-    :channel/metabase-test (when config/is-test? TestChannelDetails)
-    nil))
+  (channel.schema/channel-type->details-schema channel-type))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -118,7 +84,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Get a channel"
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (-> (channel.db/channel id) api/read-check remove-details-if-needed))
 
@@ -128,7 +94,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a channel"
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
    body :- (channel-body-schema

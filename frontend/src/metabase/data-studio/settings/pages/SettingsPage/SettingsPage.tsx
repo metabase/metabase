@@ -54,7 +54,6 @@ function Setting({ setting }: { setting: DataStudioSetting }) {
               onChange={(e) => handleChange(e.target.checked)}
               disabled={isUpdating}
               aria-label={setting.name}
-              size="sm"
             />
           )}
         </Flex>

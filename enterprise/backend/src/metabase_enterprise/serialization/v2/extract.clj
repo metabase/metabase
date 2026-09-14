@@ -170,7 +170,8 @@
           pk-col          (fn [model] (if (= model "FieldUserSettings") :field_id :id))
           extract-by-ids  (fn [[model ids]]
                             (serdes/extract-all model (merge opts {:collection-set coll-set
-                                                                   :where          [:in (pk-col model) ids]})))
+                                                                   :filter-column  (pk-col model)
+                                                                   :filter-ids     (vec ids)})))
           extract-all     (fn [model]
                             (serdes/extract-all model (assoc opts :collection-set coll-set)))]
       (eduction cat

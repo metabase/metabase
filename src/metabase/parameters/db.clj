@@ -5,6 +5,9 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [metabase.app-db.core :as mdb]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (defn- format-union
@@ -30,10 +33,11 @@
                (mdb/isa :dest.semantic_type :type/Name)]
    :limit     1})
 
-(defn remapped-field
+(mu/defn remapped-field
   "The id and mapping-type of the Field that `field-id` remaps to via an explicit Field->Field Dimension, or —
   when `allow-implicit-uuid-remapping?` — an implicit FK->PK->Name or PK->Name mapping, or nil."
-  [field-id allow-implicit-uuid-remapping?]
+  [field-id                       :- ::lib.schema.id/field
+   allow-implicit-uuid-remapping? :- :boolean]
   (t2/query-one
    {:select [[:mapping.id :id] [:mapping.mapping_type :mapping_type]]
     :from   [[^:allow-subquery
@@ -61,80 +65,107 @@
               :mapping]]
     :limit  1}))
 
-(defn field
+(mu/defn field
   "The Field with `field-id`, or nil."
-  [field-id]
+  [field-id :- ::lib.schema.id/field]
   (t2/select-one :model/Field :id field-id))
 
-(defn fields
+(mu/defn fields
   "The Fields with `field-ids`."
-  [field-ids]
+  [field-ids :- [:set ::lib.schema.id/field]]
   (t2/select :model/Field :id [:in field-ids]))
 
-(defn fields-fk-info
+(mu/defn fields-fk-info
   "The id, FK target, and semantic type of the Fields with `field-ids`."
-  [field-ids]
+  [field-ids :- [:set ::lib.schema.id/field]]
   (t2/select [:model/Field :id :fk_target_field_id :semantic_type] :id [:in field-ids]))
 
-(defn field-fk-target-field-id
+(mu/defn field-fk-target-field-id
   "The FK target Field id of the Field with `field-id`, or nil."
-  [field-id]
+  [field-id :- ::lib.schema.id/field]
   (t2/select-one-fn :fk_target_field_id :model/Field field-id))
 
-(defn field-base-type
+(mu/defn field-base-type
   "The base type of the Field with `field-id`, or nil."
-  [field-id]
+  [field-id :- ::lib.schema.id/field]
   (t2/select-one-fn :base_type :model/Field :id field-id))
 
-(defn field-name
+(mu/defn field-name
   "The name of the Field with `field-id`, or nil."
-  [field-id]
+  [field-id :- ::lib.schema.id/field]
   (t2/select-one-fn :name :model/Field :id field-id))
 
-(defn full-field-values-exist?
+(mu/defn full-field-values-exist?
   "Whether complete, non-remapped FieldValues of type `full` exist for the Field with `field-id`."
-  [field-id]
+  [field-id :- ::lib.schema.id/field]
   (t2/exists? :model/FieldValues
               :field_id field-id, :values [:not= nil], :human_readable_values nil, :has_more_values false
               :type "full"))
 
-(defn advanced-field-values-exist?
+(mu/defn advanced-field-values-exist?
   "Whether complete, non-remapped FieldValues of type `advanced` with `hash-key` exist for the Field with `field-id`."
-  [field-id hash-key]
+  [field-id :- ::lib.schema.id/field
+   hash-key :- :string]
   (t2/exists? :model/FieldValues
               :field_id field-id, :values [:not= nil], :human_readable_values nil, :has_more_values false
               :type "advanced", :hash_key hash-key))
 
-(defn card
+(mu/defn card
   "The Card with `card-id`, or nil."
-  [card-id]
+  [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
 
-(defn delete-field-values!
-  "Delete the FieldValues with `id`."
-  [id]
+(mu/defn delete-field-values!
+  "Delete the FieldValues with `id`, returning the number deleted."
+  [id :- ms/PositiveInt]
   (t2/delete! :model/FieldValues :id id))
 
-(defn advanced-field-values
+(mu/defn advanced-field-values
   "The advanced FieldValues of the Field with `field-id` and `hash-key`, or nil."
-  [field-id hash-key]
+  [field-id :- ::lib.schema.id/field
+   hash-key :- :string]
   (t2/select-one :model/FieldValues :field_id field-id, :type :advanced, :hash_key hash-key))
 
-(defn find-or-insert-advanced-field-values!
+(mu/defn find-or-insert-advanced-field-values!
   "The advanced FieldValues of the Field with `field-id` and `hash-key`, inserting one built by calling
   `insert-fn` if none exists yet."
-  [field-id hash-key insert-fn]
+  [field-id  :- ::lib.schema.id/field
+   hash-key  :- :string
+   insert-fn :- fn?]
   (mdb/select-or-insert! :model/FieldValues {:field_id field-id, :type :advanced, :hash_key hash-key} insert-fn))
 
-(defn active-name-fields-for-tables
+(mu/defn active-name-fields-for-tables
   "The `columns` of the active `:type/Name` Fields of the Tables with `table-ids`."
-  [columns table-ids]
+  [columns   :- [:sequential :keyword]
+   table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select (into [:model/Field] columns)
              :table_id      [:in table-ids]
              :semantic_type (mdb/isa :type/Name)
              :active        true))
 
-(defn fields-with-columns
+(mu/defn fields-with-columns
   "The `columns` of the Fields with `field-ids`."
-  [columns field-ids]
+  [columns   :- [:sequential :keyword]
+   field-ids :- [:set ::lib.schema.id/field]]
   (t2/select (into [:model/Field] columns) :id [:in field-ids]))
+
+(mu/defn fk-relationships-for-database
+  "Rows describing FK -> PK Field relationships (`:f1`/`:t1` FK Field/Table ids, `:f2`/`:t2` PK Field/Table ids)
+  for active Fields in the Database with `database-id`."
+  [database-id :- ::lib.schema.id/database]
+  (mdb/query {:select    [[:fk-field.id :f1]
+                          [:fk-table.id :t1]
+                          [:pk-field.id :f2]
+                          [:pk-field.table_id :t2]]
+              :from      [[:metabase_field :fk-field]]
+              :left-join [[:metabase_table :fk-table]    [:and [:= :fk-field.table_id :fk-table.id]
+                                                          :fk-table.active]
+                          [:metabase_database :database] [:= :fk-table.db_id :database.id]
+                          [:metabase_field :pk-field]    [:and [:= :fk-field.fk_target_field_id :pk-field.id]
+                                                          :pk-field.active]]
+              :where     [:and
+                          [:= :database.id database-id]
+                          [:not= :fk-field.fk_target_field_id nil]
+                          :fk-field.active]
+              :order-by  [[:fk-field.id :desc]
+                          [:pk-field.id :desc]]}))

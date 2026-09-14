@@ -7,6 +7,7 @@
    [metabase-enterprise.scim.db :as scim.db]
    [metabase-enterprise.scim.settings :as scim.settings]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -33,26 +34,28 @@
   "Malli schema for a SCIM user. This represents both users returned by the service provider (Metabase)
   as well as users sent by the client (i.e. Okta), with fields marked as optional if they may not be present
   in the latter."
-  [:map
+  [:map {:closed true}
    [:schemas [:sequential ms/NonBlankString]]
    [:id {:optional true} ms/NonBlankString]
    [:userName ms/NonBlankString]
-   [:name [:map
+   [:name [:map {:closed true}
            [:givenName string?]
            [:familyName string?]]]
    [:emails [:sequential
-             [:map
+             [:map {:closed true}
               [:value ms/NonBlankString]
               [:type {:optional true} ms/NonBlankString]
               [:primary {:optional true} boolean?]]]]
    [:groups
     {:optional true}
-    [:sequential [:map
+    [:sequential [:map {:closed true}
                   [:value ms/NonBlankString]
                   [:$ref {:optional true} ms/NonBlankString]
                   [:display ms/NonBlankString]]]]
    [:locale {:optional true} [:maybe ms/NonBlankString]]
-   [:active {:optional true} boolean?]])
+   [:active {:optional true} boolean?]
+   [:meta {:optional true} [:map {:closed true}
+                            [:resourceType {:optional true} ms/NonBlankString]]]])
 
 (def SCIMUserList
   "Malli schema for a list of SCIM users"
@@ -67,38 +70,35 @@
   "A single attribute value in a PATCH operation. The strings clients send for booleans are parsed by the handler."
   [:or ms/NonBlankString :boolean])
 
-(def ^:private patch-value?
-  (mr/validator ::patch-value))
-
 (def UserPatch
   "Malli schema for a user patch operation"
-  [:map
+  [:map {:closed true}
    [:schemas [:sequential ms/NonBlankString]]
    [:Operations
-    [:sequential [:map
+    [:sequential [:map {:closed true}
                   [:op ms/NonBlankString]
                   ;; which attribute the operation targets; `nil` means the value is a map of attribute -> value
                   [:path {:optional true} [:maybe ms/NonBlankString]]
                   ;; dispatched on shape rather than written as `[:or [:map-of ...] ...]`: request decoding would
                   ;; run the `:map-of` decoder over a scalar value and throw
                   [:value [:multi {:dispatch #(if (map? %) :map :scalar)}
-                           [:map [:and
-                                  [:map-of [:or :keyword :string] :any]
-                                  [:fn {:error/message "attribute value must be a non-blank string or a boolean"}
-                                   #(every? patch-value? (vals %))]]]
+                           [:map (ms/string-keyed-map ::patch-value)]
                            [:scalar ::patch-value]]]]]]])
 
 (def SCIMGroup
   "Malli schema for a SCIM group."
-  [:map
+  [:map {:closed true}
    [:schemas [:sequential ms/NonBlankString]]
    [:id {:optional true} ms/NonBlankString]
    [:displayName ms/NonBlankString]
    [:members
     {:optional true}
-    [:sequential [:map
+    [:sequential [:map {:closed true}
                   [:value ms/NonBlankString]
-                  [:$ref {:optional true} ms/NonBlankString]]]]])
+                  [:$ref {:optional true} ms/NonBlankString]
+                  [:display {:optional true} ms/NonBlankString]]]]
+   [:meta {:optional true} [:map {:closed true}
+                            [:resourceType {:optional true} ms/NonBlankString]]]])
 
 (def SCIMGroupList
   "Malli schema for a list of SCIM groups"
@@ -144,14 +144,20 @@
 ;;; |                                               User operations                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- hidden-group-ids
+  "IDs of the groups SCIM never exposes or manages: the static Administrators and All Users groups, and the groups
+  data apps own (see [[perms/data-app-group-ids]])."
+  []
+  (into [(:id (perms/all-users-group)) (:id (perms/admin-group))]
+        (perms/data-app-group-ids)))
+
 (mi/define-batched-hydration-method add-scim-user-group-memberships
   :scim_user_group_memberships
   "Add to each `user` a list of :user_group_memberships where each item is a map with 2 keys [:name :entity_id]."
   [users]
   (when (seq users)
     (let [user-id->memberships (group-by :user_id (scim.db/user-group-memberships (map u/the-id users)
-                                                                                  [(:id (perms/all-users-group))
-                                                                                   (:id (perms/admin-group))]))
+                                                                                  (hidden-group-ids)))
           membership->group    (fn [membership] (select-keys membership [:name :entity_id]))]
       (for [user users]
         (assoc user :user_group_memberships (->> (user-id->memberships (u/the-id user))
@@ -215,7 +221,7 @@
 (api.macros/defendpoint :get "/Users"
   "Fetch a list of users."
   [_route-params
-   {start-index :startIndex, c :count, filter-param :filter} :- [:map
+   {start-index :startIndex, c :count, filter-param :filter} :- [:map {:closed true}
                                                                  [:startIndex {:optional true} [:maybe ms/PositiveInt]]
                                                                  [:count      {:optional true} [:maybe ms/PositiveInt]]
                                                                  [:filter     {:optional true} [:maybe ms/NonBlankString]]]]
@@ -242,7 +248,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get ["/Users/:id" :id #"[^/]+"]
   "Fetch a single user."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/NonBlankString]]]
   (with-prometheus-counters
     (-> (get-user-by-entity-id id)
@@ -275,7 +281,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put ["/Users/:id" :id #"[^/]+"]
   "Update a user."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/NonBlankString]]
    _query-params
    scim-user :- SCIMUser]
@@ -331,10 +337,14 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :patch ["/Users/:id" :id #"[^/]+"]
   "Activate or deactivate a user. Supports specific replace operations, but not arbitrary patches."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/NonBlankString]]
    _query-params
-   patch-ops :- UserPatch]
+   patch-ops :- UserPatch
+   request]
+  (doseq [[raw-operation operation] (map vector (get-in request [:body :Operations]) (:Operations patch-ops))
+          :when (map? (:value operation))]
+    (api/check-no-dropped-entries (:value raw-operation) (:value operation)))
   (with-prometheus-counters
     (t2/with-transaction [_conn]
       (let [user    (get-user-by-entity-id id)
@@ -368,9 +378,9 @@
 
 (mu/defn ^:private get-group-by-entity-id
   "Fetches a group by entity ID, or throws a 404. Cannot fetch the Administrators or All Users groups, as these are
-  static and cannot be managed via SCIM."
+  static, nor data-app groups, as Metabase manages their membership itself, so none can be managed via SCIM."
   [entity-id]
-  (or (scim.db/scim-group-by-entity-id entity-id [(:id (perms/all-users-group)) (:id (perms/admin-group))])
+  (or (scim.db/scim-group-by-entity-id entity-id (hidden-group-ids))
       (throw-scim-error 404 "Group not found")))
 
 (mu/defn ^:private mb-group->scim :- SCIMGroup
@@ -404,7 +414,7 @@
   "Fetch a list of groups."
   [_route-params
    {start-index :startIndex, c :count, filter-param :filter}
-   :- [:map
+   :- [:map {:closed true}
        [:startIndex {:optional true} [:maybe ms/PositiveInt]]
        [:count      {:optional true} [:maybe ms/PositiveInt]]
        [:filter     {:optional true} [:maybe ms/NonBlankString]]]]
@@ -413,7 +423,7 @@
           ;; SCIM start-index is 1-indexed, so we need to decrement it here
           offset         (if start-index (dec start-index) default-pagination-offset)
           filter-param   (when filter-param (codec/url-decode filter-param))
-          excluded-ids   [(:id perms/all-users-group) (:id perms/admin-group)]
+          excluded-ids   (hidden-group-ids)
           group-name     (when filter-param (group-filter-name filter-param))
           groups         (scim.db/scim-groups excluded-ids group-name limit offset)
           results-count  (count groups)
@@ -431,7 +441,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get ["/Groups/:id" :id #"[^/]+"]
   "Fetch a single group."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/NonBlankString]]]
   (with-prometheus-counters
     (-> (get-group-by-entity-id id)
@@ -478,7 +488,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put ["/Groups/:id" :id #"[^/]+"]
   "Update a group."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/NonBlankString]]
    _query-params
    scim-group :- SCIMGroup]
@@ -501,7 +511,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete ["/Groups/:id" :id #"[^/]+"]
   "Delete a group."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/NonBlankString]]]
   (with-prometheus-counters
     (let [group (get-group-by-entity-id id)]

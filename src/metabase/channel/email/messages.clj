@@ -8,7 +8,6 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.app-db.core :as app-db]
    [metabase.appearance.core :as appearance]
    [metabase.channel.db :as channel.db]
    [metabase.channel.email :as email]
@@ -249,19 +248,7 @@
   [database-id]
   (let [monitoring (perms/application-perms-path :monitoring)
         user-ids-with-monitoring (when (premium-features/enable-advanced-permissions?)
-                                   (->> {:select   [:pgm.user_id]
-                                         :from     [[:permissions_group_membership :pgm]]
-                                         :join     [[:permissions_group :pg] [:= :pgm.group_id :pg.id]]
-                                         :where    [:and
-                                                    [:exists ^:allow-subquery
-                                                     {:select [1]
-                                                      :from [[:permissions :p]]
-                                                      :where [:and
-                                                              [:= :p.group_id :pg.id]
-                                                              [:= :p.object monitoring]]}]]
-                                         :group-by [:pgm.user_id]}
-                                        app-db/query
-                                        (mapv :user_id)))
+                                   (mapv :user_id (channel.db/user-ids-with-permission monitoring)))
         user-ids (filter
                   #(perms/user-has-permission-for-database? % :perms/manage-database :yes database-id)
                   user-ids-with-monitoring)]

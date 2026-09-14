@@ -202,6 +202,12 @@
         (let [spec (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :additional-options opts))]
           (is (= "false" (:enablePutGet spec)))
           (is (not (re-find #"(?i)enablePutGet" (str (:subname spec))))))))
+    (testing "additional options wins over top-level schema"
+      ;; https://github.com/metabase/metabase/issues/65493
+      (let [details (assoc details :schema "BAD" :additional-options "schema=GOOD")
+            spec (sql-jdbc.conn/connection-details->spec :snowflake details)]
+        (is (nil? (:schema spec)))
+        (is (re-find #"schema=GOOD" (:subname spec)))))
     (testing "Application parameter is set to identify Metabase connections"
       (is (= "Metabase_Metabase"
              (:application (sql-jdbc.conn/connection-details->spec :snowflake details)))))))
@@ -443,7 +449,6 @@
                  [{:field-name "name" :base-type :type/Text}]
                  [["mb_qnkhuat"]]]])
     (let [{{db-name :db, :as details} :details} (mt/db)]
-      (tx/track-dataset :snowflake data.impl/*dbdef-used-to-create-db*)
       ;; TARGET_LAG = DOWNSTREAM instead of a time interval: nothing reads this table, so it never actually
       ;; needs to refresh. With a time-based lag, a test DB that leaks (e.g. a cancelled CI job skips
       ;; [[metabase.test.data.snowflake/after-run]]) keeps refreshing on that schedule forever.

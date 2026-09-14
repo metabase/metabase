@@ -89,6 +89,12 @@
           (can-use? :hour) :hour))
       (if (can-use? :day) :day :hour))))
 
+(def ^:private xray-field-keys
+  "What X-rays pins on a Field row while it works, and what hydration added, none of which belongs on the Lib column
+  the Field becomes."
+  [:db :link :aggregation :max-cardinality :max_cardinality :field-type :field_type :links_to :score :named :dimensions
+   :name_field :target :xrays/database-id])
+
 (mu/defn field->metadata :- ::lib.schema.metadata/column
   "Convert a Field from the app DB to Lib column metadata, and do a bunch of weird additional transformations that
   I (Cam) do not really understand (see below).
@@ -99,7 +105,7 @@
   (let [col (if fk-target-field-id
               (-> (xrays.db/metadata-column fk-target-field-id)
                   (assoc :fk-field-id id, :lib/source :source/implicitly-joinable))
-              (lib-be/instance->metadata field :metadata/column))]
+              (lib-be/instance->metadata (apply dissoc field xray-field-keys) :metadata/column))]
     (cond-> col
       link
       (assoc :fk-field-id link, :lib/source :source/implicitly-joinable)
@@ -303,7 +309,7 @@
   [candidate-binding-values]
   (letfn [(score [a]
             (let [[_ definition] a]
-              [(reduce + (map (comp count ancestors) (:field_type definition)))
+              [(reduce + (map magic.util/ancestor-count (:field_type definition)))
                (count definition)
                (:score definition)]))]
     (map (juxt (comp score first) identity) candidate-binding-values)))

@@ -46,8 +46,8 @@ export const SavedEntityList = ({
       ? {
           id: collectionId,
           models: [CARD_INFO[type].model],
-          sort_column: "name",
-          sort_direction: "asc",
+          "sort-column": "name",
+          "sort-direction": "asc",
         }
       : skipToken,
   );

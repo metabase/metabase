@@ -15,7 +15,6 @@ export const PreemptiveCachingSwitch = ({
       checked={currentRefreshValue}
       onChange={handleSwitchToggle}
       role="switch"
-      size="sm"
       label={t`Refresh cache automatically`}
       description={t`As soon as cached results expire, run and cache the query again to update the results and refresh
         the cache.`}

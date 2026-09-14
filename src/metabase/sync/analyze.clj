@@ -5,6 +5,7 @@
    and infer field semantic types."
   (:require
    [metabase.sync.analyze.classify :as classify]
+   [metabase.sync.analyze.data-sensitivity :as sync.data-sensitivity]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.analyze.interestingness :as sync.interestingness]
    [metabase.sync.db :as sync.db]
@@ -69,6 +70,7 @@
   (classify/classify-fields! table)
   (classify/classify-table! table)
   (sync.interestingness/score-fields! table)
+  (sync.data-sensitivity/scan-table! table)
   (update-fields-last-analyzed! table))
 
 (defn- maybe-log-progress [progress-bar-fn]
@@ -93,6 +95,10 @@
   (format "Interestingness scored %d fields, %d failed"
           fields-scored fields-failed))
 
+(defn- data-sensitivity-summary [{:keys [fields-scanned fields-labeled fields-failed]}]
+  (format "Data sensitivity scanned %d fields, labeled %d, %d failed"
+          fields-scanned fields-labeled fields-failed))
+
 (defn- make-analyze-steps [log-fn]
   [(sync-util/create-sync-step "fingerprint-fields"
                                #(sync.fingerprint/fingerprint-fields-for-db! % log-fn)
@@ -105,7 +111,10 @@
                                classify-tables-summary)
    (sync-util/create-sync-step "score-interestingness"
                                #(sync.interestingness/score-fields-for-db! % log-fn)
-                               interestingness-summary)])
+                               interestingness-summary)
+   (sync-util/create-sync-step "classify-data-sensitivity"
+                               #(sync.data-sensitivity/scan-fields-for-db! % log-fn)
+                               data-sensitivity-summary)])
 
 (mu/defn- analyze-db!*
   "Shared core of [[analyze-db!]] and [[analyze-db-explicit!]]: the analysis work, without the

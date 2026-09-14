@@ -25,6 +25,7 @@
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.transforms.models.transform-run :as transform-run]
+   [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -49,28 +50,29 @@
 (deftest temp-table-name-creates-table-test
   (testing "temp-table-name produces names that can actually create tables"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python)
-      (let [driver driver/*driver*
-            db-id (mt/id)
+      (mt/dataset transforms-dataset/transforms-test
+        (let [driver driver/*driver*
+              db-id (mt/id)
 
-            table-name (driver.u/temp-table-name driver :test_table)
-            schema-name (when (get-method sql.tx/session-schema driver)
-                          (sql.tx/session-schema driver))
-            qualified-table-name (if schema-name
-                                   (keyword schema-name (name table-name))
-                                   table-name)
-            column-definitions {"id" (driver/type->database-type driver :type/Integer)}]
-        (mt/as-admin
-          (try
-            (testing "Can create table with generated temp name"
-              (driver/create-table! driver db-id qualified-table-name column-definitions {})
-              (when-not (= driver :mongo) ;; mongo doesn't actually create tables
-                (is (driver/table-exists? driver (mt/db) {:schema schema-name :name (name table-name)}))))
-            (finally
-              (try
-                (driver/drop-table! driver db-id qualified-table-name)
-                (catch Exception _e
-                  ;; Ignore cleanup errors
-                  nil)))))))))
+              table-name (driver.u/temp-table-name driver :test_table)
+              schema-name (when (get-method sql.tx/session-schema driver)
+                            (sql.tx/session-schema driver))
+              qualified-table-name (if schema-name
+                                     (keyword schema-name (name table-name))
+                                     table-name)
+              column-definitions {"id" (driver/type->database-type driver :type/Integer)}]
+          (mt/as-admin
+            (try
+              (testing "Can create table with generated temp name"
+                (driver/create-table! driver db-id qualified-table-name column-definitions {})
+                (when-not (= driver :mongo) ;; mongo doesn't actually create tables
+                  (is (driver/table-exists? driver (mt/db) {:schema schema-name :name (name table-name)}))))
+              (finally
+                (try
+                  (driver/drop-table! driver db-id qualified-table-name)
+                  (catch Exception _e
+                    ;; Ignore cleanup errors
+                    nil))))))))))
 
 (deftest is-temp-transform-tables-test
   (mt/with-premium-features #{:hosting :transforms-basic}

@@ -25,11 +25,37 @@
   [{:keys [filetype]}]
   (contains? allowed-csv-filetypes filetype))
 
+(defn- remote-file?
+  "Whether a Slack file is stored outside Slack, so its URL and size come from the app that registered it rather
+  than from Slack. Those are never downloaded, whatever filetype they claim."
+  [{:keys [mode]}]
+  (= "external" mode))
+
+(defn- size-limit-message
+  "The user-facing message for a file over [[max-file-size-bytes]]."
+  [filename]
+  (format "File '%s' exceeds %dMB size limit" filename (quot max-file-size-bytes (* 1024 1024))))
+
 (defn- validate-file-size
   "Returns nil if valid, error string if too large."
   [{:keys [name size]}]
   (when (> size max-file-size-bytes)
-    (format "File '%s' exceeds %dMB size limit" name (quot max-file-size-bytes (* 1024 1024)))))
+    (size-limit-message name)))
+
+(defn- copy-to-file!
+  "Copy `in` into `file`, refusing more than [[max-file-size-bytes]]. The size on the event is only what the sender
+  declared, so the limit has to hold as the bytes arrive."
+  [^java.io.InputStream in ^java.io.File file filename]
+  (let [buf (byte-array 8192)]
+    (with-open [^java.io.OutputStream out (io/output-stream file)]
+      (loop [written 0]
+        (let [n (.read in buf)]
+          (when-not (neg? n)
+            (let [total (+ written n)]
+              (when (> total max-file-size-bytes)
+                (throw (ex-info (size-limit-message filename) {:status-code 400})))
+              (.write out buf 0 n)
+              (recur total))))))))
 
 (defn- upload-settings
   "Get upload settings map. Returns nil if uploads are not enabled."
@@ -50,7 +76,7 @@
     (let [temp-file (java.io.File/createTempFile "slack-upload-" (str "-" name))]
       (try
         (with-open [^java.io.InputStream stream (slackbot.client/download-file-stream {:token (channel.settings/unobfuscated-slack-app-token)} url_private)]
-          (io/copy stream temp-file)
+          (copy-to-file! stream temp-file name)
           (let [result (upload/create-csv-upload!
                         {:filename      name
                          :file          temp-file
@@ -73,18 +99,24 @@
 (defn- process-file-uploads
   "Process all files from a Slack event. Returns a map with:
    :results - seq of individual file results
-   :skipped - seq of non-CSV filenames that were skipped"
+   :skipped - seq of non-CSV filenames that were skipped
+   :remote  - seq of filenames refused for being stored outside Slack"
   [settings files]
-  (let [{csv-files true other-files false} (group-by csv-file? files)
-        skipped (mapv :name other-files)]
+  (let [{remote-files true local-files false} (group-by remote-file? files)
+        {csv-files true other-files false}    (group-by csv-file? local-files)
+        skipped (mapv :name other-files)
+        remote  (mapv :name remote-files)]
     (when (seq skipped)
       (log/debugf "[slackbot] Skipping %d non-CSV files" (count skipped)))
+    (when (seq remote)
+      (log/debugf "[slackbot] Refusing %d files stored outside Slack" (count remote)))
     {:results (mapv (partial process-csv-file settings) csv-files)
-     :skipped skipped}))
+     :skipped skipped
+     :remote  remote}))
 
 (defn- build-upload-system-messages
   "Build system messages to inject into AI request about uploads."
-  [{:keys [results skipped]}]
+  [{:keys [results skipped remote]}]
   (let [successes (filter :model-id results)
         failures (filter :error results)]
     (cond-> []
@@ -107,7 +139,12 @@
       (seq skipped)
       (conj {:role :assistant
              :content (format "The following message included 1 or more non-CSV files which are not supported: %s. Let them know only CSV files can be uploaded."
-                              (str/join ", " skipped))}))))
+                              (str/join ", " skipped))})
+
+      (seq remote)
+      (conj {:role :assistant
+             :content (format "The following message included 1 or more files stored outside Slack, which Metabase cannot upload: %s. Let them know the file has to be uploaded to Slack itself."
+                              (str/join ", " remote))}))))
 
 (defn handle-file-uploads
   "Handle file uploads if present. Returns nil if no files, otherwise

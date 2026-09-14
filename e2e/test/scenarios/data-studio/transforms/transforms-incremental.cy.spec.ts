@@ -171,7 +171,9 @@ describe("scenarios > admin > transforms incremental", () => {
           .click();
         H.popover().findByText(DB_NAME).click();
 
-        getPythonDataPicker().findByText("Select a table…").click();
+        getPythonDataPicker()
+          .findByRole("button", { name: "Select a table…" })
+          .click();
         H.entityPickerModal().findByText(SOURCE_TABLE).click();
 
         H.PythonEditor.clear().paste(

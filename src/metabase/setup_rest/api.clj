@@ -69,14 +69,14 @@
    {{first-name :first_name, last-name :last_name, :keys [email password]} :user
     {site-name :site_name
      site-locale :site_locale} :prefs}
-   :- [:map
+   :- [:map {:closed true}
        [:token SetupToken]
-       [:user [:map
+       [:user [:map {:closed true}
                [:email      ms/Email]
                [:password   ms/ValidPassword]
                [:first_name {:optional true} [:maybe ms/NonBlankString]]
                [:last_name  {:optional true} [:maybe ms/NonBlankString]]]]
-       [:prefs [:map
+       [:prefs [:map {:closed true}
                 [:site_name   ms/NonBlankString]
                 [:site_locale {:optional true} [:maybe ms/ValidLocale]]]]]
    request]

@@ -64,6 +64,7 @@
   "Returns deduplicated and merged column metadata (`:cols`) for query results by combining (a) the initial results
   metadata returned by the driver's impl of `execute-reducible-query` and (b) column metadata inferred by logic in
   this namespace."
+  {:deprecated "0.64.0"}
   [legacy-query {initial-cols :cols, :as _initial-metadata} :- [:maybe :map]]
   (let [expected-cols (requiring-resolve 'metabase.query-processor.middleware.annotate/expected-cols)
         mbql5-query   (lib/query

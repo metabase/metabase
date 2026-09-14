@@ -29,7 +29,7 @@
   are [[clojure.core/=]] if you ignore all qualified keyword keys besides `:lib/type`."
   {:arglists '([x y])}
   ;; two things with different dispatch values (for maps, the `:lib/type` key; for MBQL clauses, the tag, and for
-  ;; everything else, the `:dispatch-type/*` key) can't be equal.
+  ;; everything else, a `:dispatch-type/...` keyword) can't be equal.
   (fn [x y]
     (let [x-dispatch-value (lib.dispatch/dispatch-value x)
           y-dispatch-value (lib.dispatch/dispatch-value y)]

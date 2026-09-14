@@ -16,9 +16,9 @@
 (set! *warn-on-reflection* true)
 
 ;; Register JWT provider
-(derive :provider/jwt :metabase.auth-identity.provider/provider)
-(derive :provider/jwt :metabase.auth-identity.provider/create-user-if-not-exists)
-(derive :provider/jwt :metabase-enterprise.tenants.auth-provider/create-tenant-if-not-exists)
+(auth-identity/derive! :provider/jwt :metabase.auth-identity.provider/provider)
+(auth-identity/derive! :provider/jwt :metabase.auth-identity.provider/create-user-if-not-exists)
+(auth-identity/derive! :provider/jwt :metabase-enterprise.tenants.auth-provider/create-tenant-if-not-exists)
 
 ;; JWTs use seconds since Epoch, not milliseconds since Epoch for the `iat` and `max_age` time.
 ;; 3 minutes is the time used by Zendesk for their JWT SSO

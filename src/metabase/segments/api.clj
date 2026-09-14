@@ -35,15 +35,11 @@
                          table-id))))
                  (tru "Segment definition must specify a source table.")))
 
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/"
-  "Create a new `Segment`. The Segment's table is derived from its `definition`."
-  [_route-params
-   _query-params
-   {:keys [name description definition], :as body} :- [:map
-                                                       [:name        ms/NonBlankString]
-                                                       [:definition  ::segments.schema/definition]
-                                                       [:description {:optional true} [:maybe :string]]]]
+(defn create-segment!
+  "Create-check and insert a new Segment whose table is derived from its `definition`; publishes
+  `:event/segment-create` and returns the hydrated Segment. The shared domain create path, so
+  the create-check runs wherever a Segment is authored."
+  [{:keys [name description definition], :as body}]
   ;; TODO - why can't we set other properties like `show_in_getting_started` when we create the Segment?
   (let [table-id (definition-table-id definition)]
     (api/create-check :model/Segment (assoc body :table_id table-id))
@@ -51,6 +47,17 @@
                    (segments.db/insert-segment! table-id api/*current-user-id* name description definition))]
       (events/publish-event! :event/segment-create {:object segment :user-id api/*current-user-id*})
       (t2/hydrate segment :creator))))
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/"
+  "Create a new `Segment`. The Segment's table is derived from its `definition`."
+  [_route-params
+   _query-params
+   body :- [:map {:closed true}
+            [:name        ms/NonBlankString]
+            [:definition  ::segments.schema/definition]
+            [:description {:optional true} [:maybe :string]]]]
+  (create-segment! body))
 
 (mu/defn- hydrated-segment [id :- ms/PositiveInt]
   (-> (api/read-check (segments.db/segment id))
@@ -62,7 +69,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Fetch `Segment` with ID."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (hydrated-segment id))
 
@@ -81,9 +88,10 @@
     (-> (filterv mi/can-read? segments)
         (t2/hydrate :creator :definition_description))))
 
-(defn- write-check-and-update-segment!
+(defn write-check-and-update-segment!
   "Check whether current user has write permissions, then update Segment with values in `body`. Publishes appropriate
-  event and returns updated/hydrated Segment."
+  event and returns updated/hydrated Segment. The shared domain update path, so the write-check runs
+  wherever a Segment is edited."
   [id {:keys [revision_message], :as body}]
   (let [existing   (api/write-check :model/Segment id)
         clean-body (u/select-keys-when body
@@ -111,10 +119,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a `Segment` with ID."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   body :- [:map
+   body :- [:map {:closed true}
             [:name                    {:optional true} [:maybe ms/NonBlankString]]
             [:definition              {:optional true} [:maybe ::segments.schema/definition]]
             [:revision_message        ms/NonBlankString]
@@ -135,9 +143,9 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
   "Archive a Segment. (DEPRECATED -- Just pass updated value of `:archived` to the `PUT` endpoint instead.)"
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   {:keys [revision_message]} :- [:map
+   {:keys [revision_message]} :- [:map {:closed true}
                                   [:revision_message ms/NonBlankString]]]
   (log/warn "DELETE /api/segment/:id is deprecated. Instead, change its `archived` value via PUT /api/segment/:id.")
   (write-check-and-update-segment! id {:archived true, :revision_message revision_message})
@@ -149,6 +157,6 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/related"
   "Return related entities."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (-> (segments.db/segment id) api/read-check xrays/related))

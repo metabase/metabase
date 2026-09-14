@@ -27,30 +27,25 @@
   [handler-schema recipient-schema]
   [:merge
    handler-schema
-   [:map
+   [:map {:closed true}
     [:template   {:optional true} [:multi {:dispatch map?}
                                    [true ::models.channel/ChannelTemplateUserProvided]
                                    [false :nil]]]
     [:channel    {:optional true} [:maybe ::models.channel/Channel]]
     [:recipients {:optional true} [:sequential recipient-schema]]]])
 
-(mr/def ::NotificationApiInput
-  "Notification schema for API input. Like FullyHydratedNotification but restricts templates
-  to user-provided types only (no handlebars-resource)."
-  (models.notification/hydrated-notification-schema
-   (handler-api-input ::models.notification/NotificationHandler
-                      ::models.notification/NotificationRecipient)))
-
 (mr/def ::CreateNotificationParams
-  "Notification schema for a create request."
+  "Notification schema for a create request, or for sending one that was never saved. Like
+  FullyHydratedNotification but restricts templates to user-provided types only (no handlebars-resource),
+  and carries no ids since the body has no row of its own."
   (models.notification/hydrated-notification-schema
    (handler-api-input ::models.notification/CreateNotificationHandlerParams
                       ::models.notification/CreateNotificationRecipientParams)
    {:with-id? false}))
 
 (mr/def ::NotificationApiUpdateInput
-  "::NotificationApiInput restricted to what `notification-update-spec` writes. On PUT the URL,
-  not the body, identifies the target (RFC 9110 §9.3.4), so a client-sent id is stripped."
+  "Notification schema for an update request, restricted to what `notification-update-spec` writes. On PUT
+  the URL, not the body, identifies the target (RFC 9110 §9.3.4), so a client-sent id is stripped."
   (models.notification/hydrated-notification-schema
    (handler-api-input ::models.notification/NotificationHandler
                       ::models.notification/NotificationRecipient)
@@ -133,7 +128,7 @@
   - `card_id`: if provided returns only notification that has card_id as payload"
   [_route-params
    {:keys [creator_id creator_or_recipient_id recipient_id card_id include_inactive payload_type]} :-
-   [:map
+   [:map {:closed true}
     [:creator_id              {:optional true} ms/PositiveInt]
     [:recipient_id            {:optional true} ms/PositiveInt]
     [:creator_or_recipient_id {:optional true} ms/PositiveInt]
@@ -153,7 +148,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Get a notification by id."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (-> (get-notification id)
       api/read-check))
 
@@ -251,19 +246,12 @@
   (cond-> (assoc body :id id)
     (and (:payload body) payload_id) (assoc-in [:payload :id] payload_id)))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :put "/:id"
-  "Update a notification, can also update its subscriptions, handlers.
-  Return the updated notification.
-
-  `creator_id` (owner) can be reassigned here only by superusers (e.g. the admin 'Edit alert'
-  modal's owner picker). `mi/can-update?` rejects a non-superuser reassignment attempt with 403;
-  the model's `before-update` hook is the backstop. Echoing back the unchanged value is fine."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   _query
+(mu/defn update-notification!
+  "Update notification `id` from `body` with the permission and handler-template checks and
+  post-update side effects, and return the updated hydrated notification. `body` is a whole
+  notification, not a patch: the update spec deletes the subscription and handler rows it doesn't
+  find there."
+  [id   :- ms/PositiveInt
    body :- ::NotificationApiUpdateInput]
   (let [existing-notification (get-notification id)]
     (api/update-check existing-notification body)
@@ -277,11 +265,27 @@
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :put "/:id"
+  "Update a notification, can also update its subscriptions, handlers.
+  Return the updated notification.
+
+  `creator_id` (owner) can be reassigned here only by superusers (e.g. the admin 'Edit alert'
+  modal's owner picker). `mi/can-update?` rejects a non-superuser reassignment attempt with 403;
+  the model's `before-update` hook is the backstop. Echoing back the unchanged value is fine."
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+   _query
+   body :- ::NotificationApiUpdateInput]
+  (update-notification! id body))
+
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/send"
   "Send a notification by id."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query
-   {:keys [handler_ids]} :- [:map [:handler_ids {:optional true} [:sequential ms/PositiveInt]]]]
+   {:keys [handler_ids]} :- [:map {:closed true} [:handler_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (let [notification (cond-> (get-notification id)
                        (seq handler_ids)
                        (update :handlers (fn [handlers] (filter (comp (set handler_ids) :id) handlers))))]
@@ -306,7 +310,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/send"
   "Send an unsaved notification."
-  [_route _query body :- ::NotificationApiInput request]
+  [_route _query body :- ::CreateNotificationParams request]
   (check-no-resource-templates! (:handlers body))
   (check-inline-channels! (:handlers body))
   (api/create-check :model/Notification body)
@@ -339,6 +343,6 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/unsubscribe"
   "Unsubscribe current user from a notification."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (unsubscribe-user! id api/*current-user-id*)
   api/generic-204-no-content)

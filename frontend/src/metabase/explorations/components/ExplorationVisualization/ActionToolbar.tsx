@@ -412,7 +412,7 @@ export function ActionToolbar({
               iconProps={{ size: "1.125rem" }}
             />
           </Popover.Target>
-          <Popover.Dropdown className={S.commentDropdown}>
+          <Popover.Dropdown>
             <ExplorationCommentEditor
               commentDrafts={commentDrafts}
               setCommentDrafts={setCommentDrafts}

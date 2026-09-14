@@ -190,14 +190,14 @@
         (is (true? (can-connect? {:url         (str url "/user")
                                   :method      "get"
                                   :auth-method "header"
-                                  :auth-info   {:x-api-key "SECRET"}}))))
+                                  :auth-info   {"x-api-key" "SECRET"}}))))
       (testing "fail to connect with header auth"
         (is (= {:request-status 401
                 :request-body   "Unauthorized"}
                (exception-data (can-connect? {:url         (str url "/user")
                                               :method      "get"
                                               :auth-method "header"
-                                              :auth-info   {:x-api-key "WRONG"}}))))))))
+                                              :auth-info   {"x-api-key" "WRONG"}}))))))))
 
 (deftest can-connect-query-param-auth-test
   (mt/with-temporary-setting-values [http-channel-allowed-networks :allow-all]
@@ -213,16 +213,16 @@
         (is (true? (can-connect? {:url         (str url "/user")
                                   :method      "get"
                                   :auth-method "query-param"
-                                  :auth-info   {:username "qnkhuat"
-                                                :password "secretpassword"}}))))
+                                  :auth-info   {"username" "qnkhuat"
+                                                "password" "secretpassword"}}))))
       (testing "fail to connect with query-param auth"
         (is (= {:request-status 401
                 :request-body   "Unauthorized"}
                (exception-data (can-connect? {:url         (str url "/user")
                                               :method      "get"
                                               :auth-method "query-param"
-                                              :auth-info   {:username "qnkhuat"
-                                                            :password "wrongpassword"}}))))))))
+                                              :auth-info   {"username" "qnkhuat"
+                                                            "password" "wrongpassword"}}))))))))
 
 (deftest can-connect-request-body-auth-test
   (mt/with-temporary-setting-values [http-channel-allowed-networks :allow-all]
@@ -237,14 +237,14 @@
         (is (true? (can-connect? {:url         (str url "/user")
                                   :method      "post"
                                   :auth-method "request-body"
-                                  :auth-info   {:token "SECRET_TOKEN"}}))))
+                                  :auth-info   {"token" "SECRET_TOKEN"}}))))
       (testing "fail to connect with request-body auth"
         (is (= {:request-status 401
                 :request-body   "Unauthorized"}
                (exception-data (can-connect? {:url         (str url "/user")
                                               :method      "post"
                                               :auth-method "request-body"
-                                              :auth-info   {:token "WRONG_TOKEN"}}))))))))
+                                              :auth-info   {"token" "WRONG_TOKEN"}}))))))))
 
 (deftest can-connect?-errors-test
   (testing "throws an appriopriate errors if details are invalid"
@@ -304,28 +304,28 @@
         (channel/send! {:type    :channel/http
                         :details {:url         "https://www.secret_service.xyz"
                                   :auth-method "header"
-                                  :auth-info   {:Authorization "Bearer 123"}
+                                  :auth-info   {"Authorization" "Bearer 123"}
                                   :method      "get"}}
                        {:headers     {:X-Request-Id "123"}})
         (is (= (merge default-request
                       {:method  :get
                        :url          "https://www.secret_service.xyz"
-                       :headers      {:Authorization "Bearer 123"
-                                      :X-Request-Id "123"}})
+                       :headers      {"Authorization" "Bearer 123"
+                                      :X-Request-Id  "123"}})
                (first @requests)))))
     (testing "preserves req query-params when use auth-method=:query-param"
       (with-captured-http-requests [requests]
         (channel/send! {:type    :channel/http
                         :details {:url         "https://www.secret_service.xyz"
                                   :auth-method "query-param"
-                                  :auth-info   {:token "123"}
+                                  :auth-info   {"token" "123"}
                                   :method      "get"}}
                        {:query-params {:page 1}})
         (is (= (merge default-request
                       {:method       :get
                        :url          "https://www.secret_service.xyz"
-                       :query-params {:token "123"
-                                      :page 1}})
+                       :query-params {"token" "123"
+                                      :page   1}})
                (first @requests)))))))
 
 (deftest send!-humanized-invalid-url-test

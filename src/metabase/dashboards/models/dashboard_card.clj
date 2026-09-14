@@ -2,7 +2,6 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
-   [metabase.app-db.core :as mdb]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -112,15 +111,16 @@
 
 (defn virtual-card-settings
   "`visualization_settings` for a virtual dashcard — a dashcard with no backing card, such as a text
-  card or heading. `display` is the virtual display type as a string (\"text\", \"heading\", ...).
-  Mirrors the shape the frontend saves; see `createVirtualCard` in
-  frontend/src/metabase/common/utils/dashboard.ts."
-  [display text]
-  (cond-> {:virtual_card {:name                   nil
-                          :display                display
-                          :visualization_settings {}
-                          :archived               false}
-           :text         text}
+  card, heading, link, or iframe. `display` is the virtual display type as a string (\"text\",
+  \"heading\", \"link\", \"iframe\", ...); `extras` (e.g. `{:text \"...\"}`, `{:link {:url \"...\"}}`)
+  is merged in on top of the `:virtual_card` wrapper. Mirrors the shape the frontend saves; see
+  `createVirtualCard` in frontend/src/metabase/common/utils/dashboard.ts."
+  [display extras]
+  (cond-> (merge {:virtual_card {:name                   nil
+                                 :display                display
+                                 :visualization_settings {}
+                                 :archived               false}}
+                 extras)
     ;; headings render without a card background, matching the frontend default
     (= display "heading") (assoc :dashcard.background false)))
 
@@ -159,15 +159,7 @@
 
   This is also different from having multiple series displayed on Line, Area, or Bar Questions."
   [dashcard]
-  (mdb/query {:select    [:newcard.*]
-              :from      [[:report_dashboardcard :dashcard]]
-              :left-join [[:dashboardcard_series :dashcardseries]
-                          [:= :dashcard.id :dashcardseries.dashboardcard_id]
-                          [:report_card :newcard]
-                          [:= :dashcardseries.card_id :newcard.id]]
-              :where     [:and
-                          [:= :newcard.archived false]
-                          [:= :dashcard.id (:id dashcard)]]}))
+  (dashboards.db/multi-cards-for-dashcard (:id dashcard)))
 
 (defn update-dashboard-cards-series!
   "Batch update the DashboardCardSeries for multiple DashboardCards.

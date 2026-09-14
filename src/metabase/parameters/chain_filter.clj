@@ -201,23 +201,12 @@
   (u/minutes->ms 5))
 
 (defn- database-fk-relationships* [database-id enable-reverse-joins?]
-  (let [rows (mdb/query {:select    [[:fk-field.id :f1]
-                                     [:fk-table.id :t1]
-                                     [:pk-field.id :f2]
-                                     [:pk-field.table_id :t2]]
-                         :from      [[:metabase_field :fk-field]]
-                         :left-join [[:metabase_table :fk-table]    [:and [:= :fk-field.table_id :fk-table.id]
-                                                                     :fk-table.active]
-                                     [:metabase_database :database] [:= :fk-table.db_id :database.id]
-                                     [:metabase_field :pk-field]    [:and [:= :fk-field.fk_target_field_id :pk-field.id]
-                                                                     :pk-field.active]]
-                         :where     [:and
-                                     [:= :database.id database-id]
-                                     [:not= :fk-field.fk_target_field_id nil]
-                                     :fk-field.active]
-                         :order-by [[:fk-field.id :desc]
-                                    [:pk-field.id :desc]]})
-        joins (for [{:keys [t1 f1 t2 f2]} rows]
+  (let [rows (parameters.db/fk-relationships-for-database database-id)
+        ;; The `:fk-table.active` / `:pk-field.active` LEFT JOIN clauses null out the target endpoint
+        ;; when the FK-owning table or FK target field is inactive; drop those rows so no nil-keyed
+        ;; entries leak into the join graph. Regression for #80557.
+        joins (for [{:keys [t1 f1 t2 f2]} rows
+                    :when (and t1 f1 t2 f2)]
                 {:lhs {:table t1, :field f1}
                  :rhs {:table t2, :field f2}})
         reversed (map (fn [{:keys [lhs rhs]}]
@@ -259,7 +248,7 @@
            seen  #{start}]
       (let [path (peek paths)
             node (peek path)]
-        (cond (nil? node)
+        (cond (nil? path)
               nil
               ;; found a path, bfs finds shortest first
               (= node end)
@@ -667,6 +656,61 @@
 
       :else
       (unremapped-chain-filter field-id constraints options))))
+
+(mu/defn- chain-filter-range-mbql-query :- ::lib.schema/query
+  "The query behind [[chain-filter-range]]: the same source table, joins and constraint filters
+  [[chain-filter-mbql-query]] builds, aggregated to a single row instead of broken out into values.
+
+  Two deliberate differences from the values query. There is no limit — that is the whole point, since an
+  aggregation reads the entire column and yields the column's real max rather than the last of a capped
+  page. And there is no remapping: a range describes the filtered column itself, and a display label
+  (`category_id` shown as `category.name`) has no min or max worth reporting."
+  [field-id    :- ::lib.schema.id/field
+   constraints :- [:maybe ::constraints]]
+  (let [database-id      (field/field-id->database-id field-id)
+        mp               (lib-be/application-database-metadata-provider database-id)
+        source-table-id  (:table-id (lib.metadata/field mp field-id))
+        joins            (find-all-joins mp database-id source-table-id (set (map :field-id constraints)))
+        joined-table-ids (set (map #(get-in % [:rhs :table]) joins))
+        field            (lib.metadata/field mp field-id)]
+    (when (seq joins)
+      (log/tracef "Generating joins and filters for source %s with joins info\n%s"
+                  (name-for-logging :model/Table source-table-id) (pr-str joins)))
+    (-> (lib/query mp (lib.metadata/table mp source-table-id))
+        (assoc-in [:middleware :disable-remaps?] true)
+        (add-joins source-table-id joins)
+        (lib/aggregate (lib/min field))
+        (lib/aggregate (lib/max field))
+        (lib/aggregate (lib/distinct field))
+        (add-filters source-table-id joined-table-ids constraints)
+        schema.metadata-queries/add-required-filters-if-needed
+        ;; Runs LAST for the same reason it does in the values query — see the note there.
+        tighten-join-projections)))
+
+(mu/defn chain-filter-range :- [:map
+                                [:min [:maybe :any]]
+                                [:max [:maybe :any]]
+                                [:distinct-count [:maybe :int]]]
+  "The span of Field `field-id` under the same `constraints` [[chain-filter]] applies, as
+  `{:min :max :distinct-count}`, by aggregating rather than listing.
+
+  For a column whose distinct values are a range to filter inside rather than a set to pick from — dates,
+  above all — this is the answer [[chain-filter]] cannot give: it caps at 1000 values, and since values come
+  back ascending, a capped fetch's last value is the 1000th-earliest rather than the column's max.
+
+  A column with no rows (or none the caller can see) answers with nils and a zero count, not an error."
+  [field-id    :- ::lib.schema.id/field
+   constraints :- [:maybe ::constraints]]
+  (let [mbql-query (chain-filter-range-mbql-query field-id constraints)]
+    (try
+      (let [[lo hi n] (first (:rows (:data (qp/process-query mbql-query))))]
+        {:min lo :max hi :distinct-count (or n 0)})
+      (catch Throwable e
+        (throw (ex-info (tru "Error executing chain filter range query")
+                        {:field-id    field-id
+                         :constraints constraints
+                         :mbql-query  mbql-query}
+                        e))))))
 
 ;;; ----------------- Chain filter search (powers GET /api/dashboard/:id/params/:key/search/:query) -----------------
 

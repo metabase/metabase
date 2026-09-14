@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { CollectionPermissionsHelp } from "metabase/admin/permissions/components/CollectionPermissionsHelp";
 import { useListCollectionsTreeQuery } from "metabase/api";
+import { getPermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useNavigate, useParams } from "metabase/router";
 import type { CollectionId } from "metabase-types/api";
@@ -59,7 +60,7 @@ export function CollectionPermissionsPage() {
   }, [dispatch]);
 
   const navigateToItem = ({ id }: { id: CollectionId }) =>
-    navigate(`/admin/permissions/collections/${id}`);
+    navigate(`${getPermissionsBasePath()}/collections/${id}`);
 
   const handlePermissionChange = useCallback(
     (

@@ -35,7 +35,7 @@
 (defn- send-pulse-trigger-key
   ^TriggerKey [pulse-id schedule-map]
   (triggers/key (format "metabase.task.send-pulse.trigger.%d.%s"
-                        pulse-id (-> schedule-map
+                        pulse-id (-> (select-keys schedule-map u.cron/schedule-keys)
                                      u.cron/schedule-map->cron-string
                                      (str/replace " " "_")))))
 
@@ -94,7 +94,7 @@
                               "channel-ids" pc-ids})
     (triggers/with-schedule
      (cron/schedule
-      (cron/cron-schedule (u.cron/schedule-map->cron-string schedule-map))
+      (cron/cron-schedule (u.cron/schedule-map->cron-string (select-keys schedule-map u.cron/schedule-keys)))
       (cron/in-time-zone (TimeZone/getTimeZone ^String timezone))
       ;; If the trigger is misfired, fire it immediately and proceed with the next scheduled time.
       ;; TODO: upon testing, look like re-firing on startup is not working as expected
@@ -204,7 +204,7 @@
   * To remove 2 pulse channels from a trigger
     (update-send-pulse-trigger-if-needed! pulse-id schedule-map :remove-pc-ids #{1 2}))"
   [pulse-id schedule-map & {:keys [add-pc-ids remove-pc-ids]}]
-  (let [schedule-map     (update-vals schedule-map
+  (let [schedule-map     (update-vals (select-keys schedule-map u.cron/schedule-keys)
                                       #(if (keyword? %)
                                          (name %)
                                          %))

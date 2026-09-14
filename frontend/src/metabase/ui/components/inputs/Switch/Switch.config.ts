@@ -1,56 +1,16 @@
-import { Switch, getSize, rem } from "@mantine/core";
+import { Switch, rem } from "@mantine/core";
 
 import SwitchStyles from "./Switch.module.css";
 
-const LABEL_FONT_SIZES: Record<string, string> = {
-  xs: rem(12),
-  sm: rem(14),
-  md: rem(16),
-  lg: rem(18),
-};
-
-const LABEL_LINE_HEIGHT: Record<string, string> = {
-  xs: rem(16),
-  sm: rem(24),
-  md: rem(24),
-};
-
-const SWITCH_PADDING: Record<string, string> = {
-  xs: rem(8),
-  sm: rem(8),
-  md: rem(16),
-};
-
-const TRACK_HEIGHTS: Record<string, string> = {
-  xs: rem(16),
-  sm: rem(20),
-  md: rem(24),
-};
-
-const TRACK_WIDTHS: Record<string, string> = {
-  xs: rem(32),
-  sm: rem(40),
-  md: rem(48),
-  lg: rem(64),
-};
-
-const THUMB_SIZES: Record<string, string> = {
-  xs: rem(12),
-  sm: rem(14),
-  md: rem(18),
-};
-
-const TRACK_PADDING_TOP: Record<string, string> = {
-  xs: rem(0),
-  sm: rem(1),
-  md: rem(1),
-};
+const TRACK_WIDTH = rem(32);
+const TRACK_HEIGHT = rem(16);
+const THUMB_SIZE = rem(12);
 
 export const switchOverrides = {
   Switch: Switch.extend({
     defaultProps: {
-      color: "core-brand",
-      size: "md",
+      size: "xs",
+      withThumbIndicator: false,
     },
     classNames: {
       root: SwitchStyles.root,
@@ -63,21 +23,13 @@ export const switchOverrides = {
       body: SwitchStyles.body,
     },
 
-    vars: (_theme, { size = "md" }) => {
-      return {
-        root: {
-          "--switch-padding": getSize(SWITCH_PADDING[size]),
-          "--switch-label-font-size": getSize(LABEL_FONT_SIZES[size]),
-          "--label-lh": getSize(LABEL_LINE_HEIGHT[size]),
-          "--switch-height": getSize(TRACK_HEIGHTS[size]),
-          "--switch-width": getSize(TRACK_WIDTHS[size]),
-          "--switch-thumb-size": getSize(THUMB_SIZES[size]),
-          "--track-padding-top": getSize(TRACK_PADDING_TOP[size]),
-          "--switch-radius": rem(24),
-          "--label-offset-end": 0,
-          "--label-offset-start": 0,
-        },
-      };
-    },
+    vars: () => ({
+      root: {
+        "--switch-width": TRACK_WIDTH,
+        "--switch-height": TRACK_HEIGHT,
+        "--switch-thumb-size": THUMB_SIZE,
+        "--switch-radius": "var(--mantine-radius-sm)",
+      },
+    }),
   }),
 };

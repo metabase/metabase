@@ -19,6 +19,24 @@
 
 (derive :model/PersistedInfo :metabase/model)
 
+(t2/define-before-insert :model/PersistedInfo
+  [persisted-info]
+  (merge {:refresh_begin (mi/now), :state_change_at (mi/now)} persisted-info))
+
+(t2/define-before-update :model/PersistedInfo
+  [persisted-info]
+  (let [changes (t2/changes persisted-info)
+        state   (some-> (:state changes) name)]
+    (cond-> persisted-info
+      (and state (not (contains? changes :state_change_at)))
+      (assoc :state_change_at (mi/now))
+
+      (and (= state "refreshing") (not (contains? changes :refresh_begin)))
+      (assoc :refresh_begin (mi/now))
+
+      (and (#{"persisted" "error"} state) (not (contains? changes :refresh_end)))
+      (assoc :refresh_end (mi/now)))))
+
 (defn transform-definition-out
   "Parse the value of `:definition` when it comes out of the application Database."
   [definition]
@@ -152,10 +170,8 @@
      :question_slug   slug
      :table_name      (format "model_%s_%s" card-id slug)
      :active          false
-     :refresh_begin   :%now
      :refresh_end     nil
      :state           default-state
-     :state_change_at :%now
      :creator_id      user-id}))
 
 (defn ready-unpersisted-models!

@@ -1173,7 +1173,8 @@
    3. Are in one of the provided collections (or descendants)"
   []
   (eduction (map (fn [[model ids]]
-                   (serdes/extract-all model {:where         [:in (pk-col model) ids]
+                   (serdes/extract-all model {:filter-column (pk-col model)
+                                              :filter-ids    (vec ids)
                                               :skip-archived true})))
             cat
             (exportable-entities)))
@@ -1185,7 +1186,8 @@
   [rows]
   (let [by-model (u/group-by :model_type :model_id conj #{} rows)]
     (eduction (map (fn [[model ids]]
-                     (serdes/extract-all model {:where         [:in (pk-col model) ids]
+                     (serdes/extract-all model {:filter-column (pk-col model)
+                                                :filter-ids    (vec ids)
                                                 :skip-archived true})))
               cat
               by-model)))

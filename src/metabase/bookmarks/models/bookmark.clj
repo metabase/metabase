@@ -39,7 +39,7 @@
    [:name                                ms/NonBlankString]
    [:authority_level    {:optional true} [:maybe :string]]
    [:is_remote_synced   {:optional true} :boolean]
-   [:card_type          {:optional true} [:maybe ::queries.schema/card-type]]
+   [:card_type          {:optional true} [:maybe ::queries.schema/card.type]]
    [:description        {:optional true} [:maybe :string]]
    [:display            {:optional true} [:maybe :string]]])
 

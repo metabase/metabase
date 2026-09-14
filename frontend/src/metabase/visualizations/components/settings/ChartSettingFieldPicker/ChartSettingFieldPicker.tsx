@@ -36,7 +36,11 @@ type ChartSettingFieldPickerProps = {
   dragHandleRef?: Ref<HTMLElement>;
   fieldSettingWidget?: string | null;
   onChange?: (value: string) => void;
-  onChangeSeriesColor?: (seriesKey: string, value: string) => void;
+  onChangeSeriesColor?: (
+    seriesKey: string,
+    hexValue: string,
+    colorName?: string,
+  ) => void;
   onRemove?: (() => void) | null;
   onShowWidget?: (widget: MenuWidgetInfo, target: HTMLElement) => void;
   options?: Array<{ name: string; value: string }>;
@@ -159,8 +163,9 @@ export const ChartSettingFieldPicker = ({
                 <ChartSettingColorPicker
                   pillSize="small"
                   value={colors[seriesKey]}
-                  onChange={(value) => {
-                    onChangeSeriesColor?.(seriesKey, value);
+                  forwardColorName
+                  onChange={(hexValue, colorName) => {
+                    onChangeSeriesColor?.(seriesKey, hexValue, colorName);
                   }}
                   className={CS.pointerEventsAll}
                 />

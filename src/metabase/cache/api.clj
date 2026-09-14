@@ -5,6 +5,7 @@
    [metabase.cache.db :as cache.db]
    [metabase.cache.models.cache-config :as cache-config]
    [metabase.config.core :as config]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
@@ -32,16 +33,15 @@
       (keyword strategy-type))))
 
 (mr/def ::cache-strategy.nocache
-  [:map
-   [:type [:= :nocache]]
-   ;; a free-form label round-tripped through `:config`; tests use it to tell configs apart
-   [:name {:optional true} [:maybe :string]]])
+  ::lib.schema/cache-strategy.nocache)
 
 (mr/def ::cache-strategy.ttl
-  [:map {:closed true}
-   [:type            [:= :ttl]]
-   [:multiplier      ms/PositiveInt]
-   [:min_duration_ms ms/IntGreaterThanOrEqualToZero]])
+  "[[::lib.schema/cache-strategy.ttl]] as it may be configured: whole numbers."
+  [:merge
+   ::lib.schema/cache-strategy.ttl
+   [:map {:closed true}
+    [:multiplier      ms/PositiveInt]
+    [:min_duration_ms ms/IntGreaterThanOrEqualToZero]]])
 
 (mr/def ::cache-strategy.oss
   "Schema for a caching strategy (OSS)"
@@ -55,18 +55,18 @@
    [:ttl     ::cache-strategy.ttl]])
 
 (mr/def ::cache-strategy.ee.duration
-  [:map {:closed true}
-   [:type                  [:= :duration]]
-   [:duration              ms/PositiveInt]
-   ;; TODO (Cam 10/3/25) -- change these to keywords and let API coercion convert them for us automatically.
-   [:unit                  [:enum "hours" "minutes" "seconds" "days"]]
-   [:refresh_automatically {:optional true} [:maybe :boolean]]])
+  "[[::lib.schema/cache-strategy.duration]] as it may be configured: a whole number of units."
+  [:merge
+   ::lib.schema/cache-strategy.duration
+   [:map {:closed true}
+    [:duration ms/PositiveInt]]])
 
 (mr/def ::cache-strategy.ee.schedule
-  [:map {:closed true}
-   [:type                  [:= :schedule]]
-   [:schedule              u.cron/CronScheduleString]
-   [:refresh_automatically {:optional true} [:maybe :boolean]]])
+  "[[::lib.schema/cache-strategy.schedule]] as it may be configured: a valid cron schedule."
+  [:merge
+   ::lib.schema/cache-strategy.schedule
+   [:map {:closed true}
+    [:schedule u.cron/CronScheduleString]]])
 
 ;;; This is basically the same schema as `:metabase-enterprise.cache.strategies/cache-strategy` except it doesn't have
 ;;; the optional `:invalidated-at` keys
@@ -156,7 +156,7 @@
   [_route-params
    {:keys [model collection id] :as params}
    :- [:merge
-       [:map
+       [:map {:closed true}
         [:model      {:default ["root"]} (mu/with (ms/QueryVectorOf cache-config/CachingModel)
                                                   {:description "Type of model"})]
         [:collection {:optional true} (mu/with [:maybe ms/PositiveInt]
@@ -183,7 +183,7 @@
   "Store cache configuration."
   [_route-params
    _query-params
-   {:keys [model model_id] :as config} :- [:map
+   {:keys [model model_id] :as config} :- [:map {:closed true}
                                            [:model    cache-config/CachingModel]
                                            [:model_id ms/IntGreaterThanOrEqualToZero]
                                            [:strategy ::cache-strategy]]]
@@ -195,7 +195,7 @@
   "Delete cache configurations."
   [_route-params
    _query-params
-   {:keys [model model_id]} :- [:map
+   {:keys [model model_id]} :- [:map {:closed true}
                                 [:model    cache-config/CachingModel]
                                 [:model_id (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]
   (assert-valid-models model model_id (premium-features/enable-cache-granular-controls?))
@@ -213,7 +213,7 @@
   touching all nested configurations, or you want your invalidation to trickle down to every card."
   [_route-params
    {:keys [include database dashboard question]}
-   :- [:map
+   :- [:map {:closed true}
        [:include   {:optional true} [:maybe {:description "All cache configuration overrides should invalidate cache too"}
                                      [:= :overrides]]]
        [:database  {:optional true} [:maybe {:description "A list of database ids"}

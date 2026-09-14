@@ -185,6 +185,7 @@
   [[connection-binding database-id] & body]
   `(do-with-jdbc-transaction ~database-id (fn [~(vary-meta connection-binding assoc :tag 'Connection)] ~@body)))
 
+;; Name a concrete action, not a group like `:table.row/common`: `driver/hierarchy` has no action groups.
 (defmulti prepare-query*
   "Multimethod for preparing a honeysql query `hsql-query` for a given action type `action`.
   `action` is a keyword like `:model.row/create` or `:table.row/create`; `hsql-query` is a generic

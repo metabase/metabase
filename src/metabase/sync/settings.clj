@@ -57,3 +57,15 @@
   :export?    true
   :type       :integer
   :default    10000)
+
+(defsetting data-sensitivity-scan-enabled
+  "When true, the analyze phase of sync labels every unlabeled field with a data_sensitivity category inferred from
+  its name, types, and fingerprint, writing PUBLIC when nothing matches. Metadata only: the label does not mask or
+  restrict anything. Labels set by a user are never overwritten."
+  :type       :boolean
+  :default    false
+  :setter     :none
+  :visibility :internal
+  :export?    false
+  :doc        "Scans run with the scheduled analyze pass and with Sync database schema now on a database's admin
+  page. Fields that already carry a label, including PUBLIC, are not rescanned.")
