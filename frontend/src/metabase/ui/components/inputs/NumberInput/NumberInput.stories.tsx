@@ -1,6 +1,13 @@
+import type { StoryFn } from "@storybook/react";
 import { fn } from "@storybook/test";
+import { Fragment } from "react";
 
-import { Icon, Stack } from "metabase/ui";
+import { Box, Group, Icon, Stack, Text } from "metabase/ui";
+import {
+  StoryJsx,
+  StorySection,
+  StoryShowcase,
+} from "metabase/ui/stories/showcase";
 
 import { NumberInput, type NumberInputProps } from "./";
 
@@ -76,6 +83,179 @@ export default {
 };
 
 export const Default = {};
+
+// `xs` and `md` are the only sizes the shared Input styles theme today; `sm`
+// and `lg` fall through to Mantine's defaults. GDGT-2477 asks for sm/md/lg.
+const SIZES = ["xs", "sm", "md", "lg"] as const;
+
+const STATES = [
+  { id: "default", label: "Default", props: {} },
+  { id: "hover", label: "Hover", props: {} },
+  { id: "focus", label: "Focus", props: {} },
+  { id: "filled", label: "Filled", props: { defaultValue: sampleArgs.value } },
+  { id: "error", label: "Error", props: { error: sampleArgs.error } },
+  { id: "disabled", label: "Disabled", props: { disabled: true } },
+  {
+    id: "read-only",
+    label: "Read only",
+    props: { defaultValue: sampleArgs.value, readOnly: true },
+  },
+];
+
+/*
+ * Each example stacks its slots normally, exactly as it will in the app — the
+ * subgrid only shifts whole stacks against each other so every field lands on
+ * one line. Slots keep their own margins; the grid adds no row gaps.
+ *
+ * A column with no description lets its label span both header rows and sit at
+ * the bottom, so the label stays its natural distance above the field instead
+ * of being stranded at the top of the band.
+ */
+const labelSlotRows = (hasDescription: boolean) => ({
+  root: { display: "grid", gridTemplateRows: "subgrid", gridRow: "span 4" },
+  label: hasDescription
+    ? { gridRow: 1, alignSelf: "end" }
+    : { gridRow: "1 / 3", alignSelf: "end" },
+  description: { gridRow: 2, alignSelf: "end" },
+  wrapper: { gridRow: 3 },
+  error: { gridRow: 4 },
+});
+
+const LABEL_EXAMPLES: {
+  id: string;
+  jsx: string;
+  props: NumberInputProps;
+  width?: string;
+}[] = [
+  { id: "label", jsx: '<NumberInput label="…" />', props: {} },
+  {
+    id: "asterisk",
+    jsx: "<NumberInput withAsterisk />",
+    props: { withAsterisk: true },
+  },
+  {
+    id: "description",
+    jsx: '<NumberInput description="…" />',
+    props: { description: sampleArgs.description },
+    width: "14rem",
+  },
+  {
+    id: "error",
+    jsx: '<NumberInput error="…" />',
+    props: { error: sampleArgs.error },
+  },
+];
+
+const INPUT_WIDTH = "7rem";
+const LABEL_WIDTH = "5.5rem";
+
+const gridStyle = (columns: number) => ({
+  display: "grid",
+  gridTemplateColumns: `${LABEL_WIDTH} repeat(${columns}, max-content)`,
+  columnGap: "1.5rem",
+  rowGap: "1rem",
+  alignItems: "center",
+});
+
+const RowLabel = ({ children }: { children: string }) => (
+  <Text size="sm" c="text-secondary">
+    {children}
+  </Text>
+);
+
+const OverviewTemplate: StoryFn<NumberInputProps> = () => (
+  <StoryShowcase title="NumberInput">
+    <StorySection title="Sizes and states" description="Default size is md.">
+      <Box style={gridStyle(SIZES.length)}>
+        <div />
+        {SIZES.map((size) => (
+          <StoryJsx key={size}>{`<NumberInput size="${size}" />`}</StoryJsx>
+        ))}
+        {STATES.map((state) => (
+          <Fragment key={state.id}>
+            <RowLabel>{state.label}</RowLabel>
+            {SIZES.map((size) => (
+              <NumberInput
+                key={size}
+                data-state-row={state.id}
+                size={size}
+                placeholder={sampleArgs.placeholder}
+                w={INPUT_WIDTH}
+                {...state.props}
+              />
+            ))}
+          </Fragment>
+        ))}
+      </Box>
+    </StorySection>
+
+    <StorySection title="Label, description and error">
+      <Box
+        style={{
+          display: "grid",
+          gridTemplateColumns: `repeat(${LABEL_EXAMPLES.length}, max-content)`,
+          gridTemplateRows: "repeat(5, auto)",
+          columnGap: "2rem",
+          rowGap: 0,
+        }}
+      >
+        {LABEL_EXAMPLES.map(({ id, jsx }) => (
+          <Box key={id} mb="md">
+            <StoryJsx>{jsx}</StoryJsx>
+          </Box>
+        ))}
+        {LABEL_EXAMPLES.map(({ id, props, width }) => (
+          <NumberInput
+            key={id}
+            label={sampleArgs.label}
+            placeholder={sampleArgs.placeholder}
+            w={width ?? INPUT_WIDTH}
+            styles={labelSlotRows(props.description != null)}
+            {...props}
+          />
+        ))}
+      </Box>
+    </StorySection>
+
+    <StorySection title="Sections and controls">
+      <Group align="flex-start" gap="xxl" wrap="nowrap">
+        <Stack gap="lg">
+          <StoryJsx>{"<NumberInput leftSection={…} />"}</StoryJsx>
+          <NumberInput
+            leftSection={<Icon name="int" />}
+            placeholder={sampleArgs.placeholder}
+            w={INPUT_WIDTH}
+          />
+        </Stack>
+        <Stack gap="lg">
+          <StoryJsx>{'<NumberInput rightSection="%" />'}</StoryJsx>
+          <NumberInput rightSection="%" defaultValue={50} w={INPUT_WIDTH} />
+        </Stack>
+        <Stack gap="lg">
+          <StoryJsx>{"<NumberInput hideControls={false} />"}</StoryJsx>
+          <NumberInput
+            hideControls={false}
+            defaultValue={sampleArgs.value}
+            w={INPUT_WIDTH}
+          />
+        </Stack>
+      </Group>
+    </StorySection>
+  </StoryShowcase>
+);
+
+export const Overview = {
+  render: OverviewTemplate,
+  parameters: {
+    pseudo: {
+      // Mantine forwards rest props to the input element, so the hook sits on
+      // the same element the :hover / :focus rules do.
+      hover: 'input[data-state-row="hover"]',
+      focus: 'input[data-state-row="focus"]',
+    },
+    controls: { include: ["theme"] },
+  },
+};
 
 export const EmptyMd = {
   render: VariantTemplate,
