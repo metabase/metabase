@@ -28,6 +28,7 @@ import type {
 } from "../../public/SdkQuestion/SdkQuestion";
 import { InteractiveDashboardContent } from "../../public/dashboard/InteractiveDashboard/InteractiveDashboard";
 import type { SdkDashboardInnerProps } from "../../public/dashboard/SdkDashboard";
+import { SdkAdHocQuestion } from "../SdkAdHocQuestion";
 
 import { SdkInternalNavigationBackButton } from "./SdkInternalNavigationBackButton";
 import {
@@ -207,6 +208,21 @@ const SdkInternalNavigationProviderInner = ({
       const questionPropsInferredFromDashboard: Partial<SdkQuestionProps> = {
         withDownloads: dashboardProps?.withDownloads,
       };
+
+      // GUI targets: mapping was already turned into a filter on an ad-hoc question.
+      if (activeEntry.adHocQuestionPath) {
+        return (
+          <SdkAdHocQuestion
+            questionPath={activeEntry.adHocQuestionPath}
+            onNavigateBack={pop}
+            isSaveEnabled
+            {...questionPropsInferredFromDashboard}
+            {...drillThroughQuestionProps}
+          >
+            {RenderDrillThroughQuestion && <RenderDrillThroughQuestion />}
+          </SdkAdHocQuestion>
+        );
+      }
 
       return (
         <SdkQuestion
