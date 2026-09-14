@@ -44,7 +44,7 @@
 
 (mu/defn- maybe-add-source-table-mbql5 :- :map
   [query :- :map
-   table-name :- [:maybe [:or :keyword :string]]]
+   table-name :- [:maybe symbol?]]
   (cond
     ;; `table-name` is not specified: return query as is
     (not table-name)
