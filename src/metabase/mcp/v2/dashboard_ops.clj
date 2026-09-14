@@ -465,7 +465,8 @@
   (when (< 1 (count tabs))
     (when-let [orphans (not-empty (filterv #(nil? (:dashboard_tab_id %)) dashcards))]
       (common/throw-teaching-error
-       (message/msg ["This dashboard has tabs, so every card must belong to a tab: %s have none. Pass `tab` on the add op, or use `move` with `tab` for cards already placed."]
+       (message/msg [(str "This dashboard has tabs, so every card must belong to a tab: %s have none. "
+                          "Pass `tab` on the add op, or use `move` with `tab` for cards already placed.")]
                     (common/list-message (map :id orphans))))))
   state)
 
@@ -554,7 +555,8 @@
                                                      index (count (:parameters state)))))
 
     :else
-    (op-error! idx "move_parameter" (message/msg ["pass `index` to reorder the header, or `dashcard_id` to place it on a card."]))))
+    (op-error! idx "move_parameter" (message/msg [(str "pass `index` to reorder the header, or "
+                                                       "`dashcard_id` to place it on a card.")]))))
 
 (defn- wire-one
   "Add or replace `parameter`'s mapping on `dashcard`. Returns the dashcard unchanged when its card
@@ -567,7 +569,8 @@
       (upsert-mapping dashcard (:id parameter) target)
 
       explicit?
-      (op-error! idx "wire_parameter" (message/msg ["dashcard %s does not expose field %s for parameter %s. Read the dashboard with get_content to see each card's columns."]
+      (op-error! idx "wire_parameter" (message/msg [(str "dashcard %s does not expose field %s for parameter %s. Read "
+                                                         "the dashboard with get_content to see each card's columns.")]
                                                    (:id dashcard) field-id (:id parameter)))
 
       :else dashcard)))
@@ -578,7 +581,9 @@
    wire it."
   [state idx dashcard]
   (or (card-for-dashcard state dashcard)
-      (op-error! idx "wire_parameter" (message/msg ["dashcard %s has no card behind it — only a raw `target` of [\"text-tag\", \"<name>\"] can wire a text, heading, or iframe card's own {{placeholder}}."]
+      (op-error! idx "wire_parameter" (message/msg [(str "dashcard %s has no card behind it — only a raw "
+                                                         "`target` of [\"text-tag\", \"<name>\"] can wire a "
+                                                         "text, heading, or iframe card's own {{placeholder}}.")]
                                                    (:id dashcard)))))
 
 (defn- tag-target!
@@ -597,7 +602,8 @@
                    (message/msg ["card %s has no template tag named %s. Its tags: %s. %s"]
                                 (:card_id dashcard) target-tag (common/list-message (sort (keys tag-types)))
                                 (message/raw skills/wire-target-grammar))
-                   (message/msg ["card %s has no template tag named %s. It has no template tags — `target_tag` wires a native-SQL card's tags; for an MBQL card pass `target_field`. %s"]
+                   (message/msg [(str "card %s has no template tag named %s. It has no template tags — `target_tag` "
+                                      "wires a native-SQL card's tags; for an MBQL card pass `target_field`. %s")]
                                 (:card_id dashcard) target-tag (message/raw skills/wire-target-grammar))))
 
       :else
@@ -607,7 +613,8 @@
                                          (filter (fn [[nm t]] (mapping-targets/target-for-tag nm t)))
                                          (map key)
                                          sort)]
-                       (message/msg ["tag %s has type %s — it splices SQL text and cannot take a parameter value. Wireable tags on this card: %s."]
+                       (message/msg [(str "tag %s has type %s — it splices SQL text and cannot "
+                                          "take a parameter value. Wireable tags on this card: %s.")]
                                     target-tag (name tag-type)
                                     (if (seq wireable) (common/list-message wireable) (message/msg ["none"])))))))))
 
@@ -634,9 +641,13 @@
     (when-not (contains? names tag-name)
       (op-error! idx "wire_parameter"
                  (if (seq names)
-                   (message/msg ["target %s resolves to nothing on dashcard %s — a text-tag target binds a {{tag}} placeholder in a text, heading, or iframe card's own content; this card's placeholders: %s."]
+                   (message/msg [(str "target %s resolves to nothing on dashcard %s — a text-tag "
+                                      "target binds a {{tag}} placeholder in a text, heading, or "
+                                      "iframe card's own content; this card's placeholders: %s.")]
                                 target (:id dashcard) (common/list-message (sort names)))
-                   (message/msg ["target %s resolves to nothing on dashcard %s — a text-tag target binds a {{tag}} placeholder in a text, heading, or iframe card's own content, and this dashcard carries none."]
+                   (message/msg [(str "target %s resolves to nothing on dashcard %s — a text-tag "
+                                      "target binds a {{tag}} placeholder in a text, heading, or "
+                                      "iframe card's own content, and this dashcard carries none.")]
                                 target (:id dashcard)))))))
 
 (defn- checked-raw-target!
@@ -651,7 +662,9 @@
       (let [card (wire-card! state idx dashcard)]
         (when-not (mapping-targets/wireable-target? card parameter target)
           (op-error! idx "wire_parameter"
-                     (message/msg ["target %s resolves to nothing on card %s — the card exposes no matching column or template tag for parameter %s. Read the card with get_content to see its columns and template tags. %s"]
+                     (message/msg [(str "target %s resolves to nothing on card %s — the card exposes "
+                                        "no matching column or template tag for parameter %s. Read the "
+                                        "card with get_content to see its columns and template tags. %s")]
                                   target (:card_id dashcard) (:id parameter)
                                   (message/raw skills/wire-target-grammar))))))
     target))

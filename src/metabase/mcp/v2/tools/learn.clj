@@ -43,7 +43,8 @@
    (cond
      (and reference (nil? topic))
      (common/throw-teaching-error
-      (message/msg ["`reference` names a file within a topic — pass `topic` alongside it, e.g. learn(\"query-dialect\", \"operators\")."]))
+      (message/msg [(str "`reference` names a file within a topic — pass `topic` "
+                         "alongside it, e.g. learn(\"query-dialect\", \"operators\").")]))
 
      (nil? topic)
      (skills/catalog-text)
@@ -56,7 +57,8 @@
               ;; Reference names ship with the server's skill packs.
               (message/msg ["Topic %s has no reference %s. Its references: %s."]
                            topic reference (message/raw (str/join ", " names)))
-              (message/msg ["Topic %s has no reference %s. It has no reference files — call learn(topic) for the skill itself."]
+              (message/msg [(str "Topic %s has no reference %s. It has no reference "
+                                 "files — call learn(topic) for the skill itself.")]
                            topic reference)))
            (unknown-topic! topic)))
 

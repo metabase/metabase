@@ -158,7 +158,9 @@
         ;; `mi/can-read?` below is one permission check per database; load them in one query first.
         _    (perms/prime-database-perms-cache {:db-ids (into #{} (map :id) rows)})
         dbs  (filterv mi/can-read? rows)]
-    (paged-list-content args dbs {:empty-hint (message/msg ["No databases are visible to you. Browsing data needs query-builder or table-metadata permission on at least one database."])}
+    (paged-list-content args dbs {:empty-hint (message/msg [(str "No databases are visible to you. Browsing "
+                                                                 "data needs query-builder or table-metadata "
+                                                                 "permission on at least one database.")])}
                         #(project-rows :database args %))))
 
 (defn- list-schemas
@@ -584,7 +586,9 @@
   (if (= mode "tree")
     (when-let [bad (seq (sort (map name (remove collection-tree-mode-args (keys args)))))]
       (common/throw-teaching-error
-       (message/msg ["%s %s not apply to tree mode — trees have no pagination or item filters; re-root with browse_collection(id: <subcollection>, mode: \"tree\"), raise `depth`, or use mode: \"items\"."]
+       (message/msg [(str "%s %s not apply to tree mode — trees have no pagination or item "
+                          "filters; re-root with browse_collection(id: <subcollection>, "
+                          "mode: \"tree\"), raise `depth`, or use mode: \"items\".")]
                     (common/list-message bad) (message/raw (if (next bad) "do" "does")))))
     (when-let [bad (seq (sort (map name (remove collection-items-mode-args (keys args)))))]
       (common/throw-teaching-error
@@ -606,7 +610,8 @@
           actual (some-> (:namespace target-collection) u/qualified-name)]
       (when (not= wanted actual)
         (common/throw-teaching-error
-         (message/msg ["Collection %s is in the %s namespace — a real collection id already carries its namespace, so drop `namespace` or pass %s."]
+         (message/msg [(str "Collection %s is in the %s namespace — a real collection id "
+                            "already carries its namespace, so drop `namespace` or pass %s.")]
                       id (or actual "content") (or actual "content")))))))
 
 (defn- read-checked-collection
@@ -667,7 +672,8 @@
         ns-str        (some-> (:namespace collection) u/qualified-name)
         _             (when (and (seq type) (some? ns-str))
                         (common/throw-teaching-error
-                         (message/msg ["`type` applies to the content namespace only — the %s namespace returns its own model plus subfolders; drop `type`."]
+                         (message/msg [(str "`type` applies to the content namespace only — the %s "
+                                            "namespace returns its own model plus subfolders; drop `type`.")]
                                       ns-str)))
         created-by-id (when (= created_by "me") api/*current-user-id*)
         models        (if root?

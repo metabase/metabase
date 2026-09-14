@@ -194,7 +194,8 @@
                                 (message/msg [""])))
 
                  created_by
-                 (message/msg ["browse_collection(id: <collection>, mode: \"items\", created_by: \"me\") — browse lists your content within a collection, not instance-wide"])
+                 (message/msg [(str "browse_collection(id: <collection>, mode: \"items\", created_by: \"me\") "
+                                    "— browse lists your content within a collection, not instance-wide")])
 
                  (true? archived)
                  (message/msg ["browse_collection(id: \"trash\", mode: \"items\")"])
@@ -205,7 +206,8 @@
                  :else
                  (message/msg ["browse_collection(id: <collection>, mode: \"items\") for a specific collection"]))]
     (common/throw-teaching-error
-     (message/msg ["This is a listing, not a search — it has filters but no term_queries or semantic_queries. To browse without a query, use %s."]
+     (message/msg [(str "This is a listing, not a search — it has filters but no "
+                        "term_queries or semantic_queries. To browse without a query, use %s.")]
                   target))))
 
 (def ^:private max-queries-per-list
@@ -224,11 +226,13 @@
   [{:keys [recent term_queries semantic_queries] :as args} queries? filters?]
   (when (some str/blank? (concat term_queries semantic_queries))
     (common/throw-teaching-error
-     (message/msg ["A blank query matches everything — every term_queries and semantic_queries entry must be non-empty. Drop the blank entry."])))
+     (message/msg [(str "A blank query matches everything — every term_queries and "
+                        "semantic_queries entry must be non-empty. Drop the blank entry.")])))
   (when (or (> (count term_queries) max-queries-per-list)
             (> (count semantic_queries) max-queries-per-list))
     (common/throw-teaching-error
-     (message/msg ["Too many queries — pass at most %d entries each in term_queries and semantic_queries. Combine related queries or drop some."]
+     (message/msg [(str "Too many queries — pass at most %d entries each in term_queries "
+                        "and semantic_queries. Combine related queries or drop some.")]
                   max-queries-per-list)))
   (when (some #(> (count %) max-query-length) (concat term_queries semantic_queries))
     (common/throw-teaching-error
@@ -236,10 +240,13 @@
                   max-query-length)))
   (when (and (true? recent) queries?)
     (common/throw-teaching-error
-     (message/msg ["recent: true returns your recently viewed items and cannot be combined with term_queries or semantic_queries — drop the queries or drop recent."])))
+     (message/msg [(str "recent: true returns your recently viewed items and cannot be combined "
+                        "with term_queries or semantic_queries — drop the queries or drop recent.")])))
   (when-not (or queries? filters? (true? recent))
     (common/throw-teaching-error
-     (message/msg ["Nothing to search for — pass term_queries and/or semantic_queries (optionally narrowed by type, collection_id, created_by, archived), or recent: true for your recently viewed items. To list without a query, browse with browse_collection or browse_data."])))
+     (message/msg [(str "Nothing to search for — pass term_queries and/or semantic_queries (optionally narrowed "
+                        "by type, collection_id, created_by, archived), or recent: true for your recently "
+                        "viewed items. To list without a query, browse with browse_collection or browse_data.")])))
   (when (and filters? (not queries?) (not (true? recent)))
     (browse-redirect! args))
   args)
@@ -274,11 +281,14 @@
         narrowed        (atom [])]
     (when (and (contains? types "snippet") (next types))
       (common/throw-teaching-error
-       (message/msg ["type: [\"snippet\"] cannot be combined with other types — snippets aren't in the search index and are paged separately. List them in their own call, and search %s in another."]
+       (message/msg [(str "type: [\"snippet\"] cannot be combined with other types — snippets aren't in the search "
+                          "index and are paged separately. List them in their own call, and search %s in another.")]
                     (common/list-message (sort (disj types "snippet"))))))
     (when (and (contains? types "snippet") (seq semantic_queries))
       (common/throw-teaching-error
-       (message/msg ["semantic_queries cannot search snippets — snippets aren't in the search index and are matched by substring against their name, not semantic similarity. Use term_queries instead, or drop semantic_queries."])))
+       (message/msg [(str "semantic_queries cannot search snippets — snippets aren't in the search "
+                          "index and are matched by substring against their name, not semantic "
+                          "similarity. Use term_queries instead, or drop semantic_queries.")])))
     (when created_by
       (when-let [bad (seq (sort (remove created-by-types effective-types)))]
         (if type-omitted?
@@ -287,7 +297,8 @@
                   :label    "created_by"
                   :because  "don't index a creator"})
           (common/throw-teaching-error
-           (message/msg ["created_by only applies to types that index a creator: %s. Remove %s from type or drop created_by."]
+           (message/msg [(str "created_by only applies to types that index a "
+                              "creator: %s. Remove %s from type or drop created_by.")]
                         (message/raw (str/join ", " (sort created-by-types)))
                         (common/list-message bad))))))
     (when (collection-scoping? args)
@@ -298,18 +309,22 @@
                   :label    "collection_id"
                   :because  "don't live in collections"})
           (common/throw-teaching-error
-           (message/msg ["collection_id cannot filter %s — these types don't live in collections. Remove them from type or drop collection_id."]
+           (message/msg [(str "collection_id cannot filter %s — these types don't live in "
+                              "collections. Remove them from type or drop collection_id.")]
                         (common/list-message bad)))))
       (when (contains? types "snippet")
         (common/throw-teaching-error
-         (message/msg ["collection_id cannot filter snippets — list them with type: [\"snippet\"] and no collection_id."])))
+         (message/msg [(str "collection_id cannot filter snippets — list them "
+                            "with type: [\"snippet\"] and no collection_id.")])))
       (when (contains? types "transform")
         (common/throw-teaching-error
-         (message/msg ["collection_id cannot filter transforms — the search index doesn't record their collection. Remove transform from type or drop collection_id."])))
+         (message/msg [(str "collection_id cannot filter transforms — the search index doesn't record "
+                            "their collection. Remove transform from type or drop collection_id.")])))
       (when (and (contains? types "table")
                  (not (premium-features/has-feature? :library)))
         (common/throw-teaching-error
-         (message/msg ["Filtering tables by collection_id requires the Library feature, which this instance doesn't have — remove table from type or drop collection_id."])))
+         (message/msg [(str "Filtering tables by collection_id requires the Library feature, which "
+                            "this instance doesn't have — remove table from type or drop collection_id.")])))
       ;; Two more types a collection-scoped search never covers, each dropped by a different part of
       ;; the engine rather than by the spec's collection attr: transform (no collection recorded in
       ;; the index, so `search-context->applicable-models` drops the model) and, without the Library
@@ -336,7 +351,8 @@
                   :label    "archived: true"
                   :because  "have no archived state"})
           (common/throw-teaching-error
-           (message/msg ["archived: true cannot filter %s — these types have no archived state. Remove them from type or drop archived."]
+           (message/msg [(str "archived: true cannot filter %s — these types have no "
+                              "archived state. Remove them from type or drop archived.")]
                         (common/list-message bad))))))
     (when (true? (:recent args))
       (when-let [bad (seq (sort (remove (set (keys type->rv-model)) types)))]

@@ -76,18 +76,16 @@
 
 (defn- catalog-line
   [{pack-name :name :keys [description references]}]
-  ;; Every part is the server's own catalog text.
-  (if (seq references)
-    (message/msg ["- %s — %s [references: %s]"]
-                 (message/raw pack-name) (message/raw description) (message/raw (str/join ", " references)))
-    (message/msg ["- %s — %s"] (message/raw pack-name) (message/raw description))))
+  (str "- " pack-name " — " description
+       (when (seq references)
+         (str " [references: " (str/join ", " references) "]"))))
 
 (defn catalog-text
   "The `learn()` response message: one line per pack — name, description, reference names."
   []
-  (reduce (fn [text pack] (message/msg ["%s" "%s"] text (catalog-line pack)))
-          (message/msg ["Topics — fetch one with learn(topic); a reference with learn(topic, reference):" ""])
-          packs))
+  ;; Every part is the server's own catalog text.
+  (message/msg ["Topics — fetch one with learn(topic); a reference with learn(topic, reference):" "" "%s"]
+               (message/raw (str/join "\n" (map catalog-line packs)))))
 
 (defn skill-text
   "`topic`'s whole SKILL.md as a message, with a footer naming its references, or nil for an unknown topic."

@@ -72,7 +72,8 @@
   (when-not (some #(= parameter-id (u/qualified-name (:id %))) params)
     ;; `target` is the literal "dashboard" or "question" the caller passes.
     (common/throw-teaching-error
-     (message/msg ["This %s has no parameter %s — pass one of its parameter ids (get_content returns them under `parameters`). Available: %s."]
+     (message/msg [(str "This %s has no parameter %s — pass one of its parameter ids "
+                        "(get_content returns them under `parameters`). Available: %s.")]
                   (message/raw target) parameter-id (parameter-catalog params)))))
 
 (defn- card-parameters
@@ -127,12 +128,14 @@
       (cond
         (nil? param)
         (common/throw-teaching-error
-         (message/msg ["This dashboard has no parameter %s — each constraints key names another of its filters and the value is that filter's current selection. Available: %s."]
+         (message/msg [(str "This dashboard has no parameter %s — each constraints key names another of "
+                            "its filters and the value is that filter's current selection. Available: %s.")]
                       param-key (parameter-catalog (vals resolved-params))))
 
         (empty? (params/dashboard-param->field-ids param))
         (common/throw-teaching-error
-         (message/msg ["Constraint %s can't narrow this filter — it isn't mapped to a queryable field, so chain filtering would silently ignore it. Drop it from constraints."]
+         (message/msg [(str "Constraint %s can't narrow this filter — it isn't mapped to a queryable "
+                            "field, so chain filtering would silently ignore it. Drop it from constraints.")]
                       param-key)))))
   ;; Every constraint now maps to a field. Compute, per target field-id, which constraint fields are
   ;; reachable from it; a constraint is honestly applied only when reachable from EVERY target field-id
@@ -154,9 +157,13 @@
          (if (empty? target-field-ids)
            ;; No target fields at all: chain filtering falls back to `filter-values-from-field-refs`,
            ;; which ignores constraints outright. Blaming the join path would misdiagnose it.
-           (message/msg ["This parameter's values come from a card's own column rather than a queryable field, so constraints can't narrow it — chain filtering would silently ignore %s. Fetch without constraints."]
+           (message/msg [(str "This parameter's values come from a card's own column rather "
+                              "than a queryable field, so constraints can't narrow it — chain "
+                              "filtering would silently ignore %s. Fetch without constraints.")]
                         param-key)
-           (message/msg ["Constraint %s can't narrow this filter — its field has no join path to this parameter's table (or reaches only some of the fields it maps to), so chain filtering would silently ignore it. Drop it from constraints."]
+           (message/msg [(str "Constraint %s can't narrow this filter — its field has no join path to "
+                              "this parameter's table (or reaches only some of the fields it maps to), "
+                              "so chain filtering would silently ignore it. Drop it from constraints.")]
                         param-key))))))
   ;; The last drop path is in the value rather than the field: `add-filter` routes a string value on a
   ;; temporal field through `date-string->filter` and catches a parse failure into a dropped filter.
@@ -166,7 +173,9 @@
           :when             (temporal-field? field-id)]
     (when-not (parses-as-date? value field-id)
       (common/throw-teaching-error
-       (message/msg ["Constraint %s is a date filter, and %s isn't a date it can parse — chain filtering would silently ignore it. Pass a day (\"2024-01-31\"), a range (\"2024-01-01~2024-03-31\"), or a relative window (\"past30days\", \"thismonth\")."]
+       (message/msg [(str "Constraint %s is a date filter, and %s isn't a date it can parse — chain "
+                          "filtering would silently ignore it. Pass a day (\"2024-01-31\"), a range "
+                          "(\"2024-01-01~2024-03-31\"), or a relative window (\"past30days\", \"thismonth\").")]
                     param-key value)))))
 
 (def ^:private no-values
@@ -210,7 +219,9 @@
   [query]
   (when query
     (common/throw-teaching-error
-     (message/msg ["This is a date parameter, so it answers with its column's range rather than a list of values — there is no list for `query` to search. Drop `query` and filter within the `min`/`max` it returns, using the forms in `accepts`."]))))
+     (message/msg [(str "This is a date parameter, so it answers with its column's range rather than "
+                        "a list of values — there is no list for `query` to search. Drop `query` and "
+                        "filter within the `min`/`max` it returns, using the forms in `accepts`.")]))))
 
 (defn- fetch-dashboard-values
   "The value list for a dashboard parameter. `*param-values-query*` is what lets a caller who can read
@@ -236,7 +247,8 @@
     ;; narrowed.
     (when (and (seq constraints) (some? (:values_source_type param)))
       (common/throw-teaching-error
-       (message/msg ["This parameter's values come from a fixed list or a card, not a chain-filterable field, so constraints can't narrow it — fetch without constraints."])))
+       (message/msg [(str "This parameter's values come from a fixed list or a card, not a chain-filterable "
+                          "field, so constraints can't narrow it — fetch without constraints.")])))
     (check-constraints! param resolved-params constraints)
     (cond
       ;; Chain filtering raises on an unmapped parameter; an empty value list is the honest answer,
@@ -305,11 +317,13 @@
                  query)
 
     (zero? total)
-    (message/msg ["No values available for this parameter — its source may be empty, filtered to nothing for you, or a free-text filter with no value list."])
+    (message/msg [(str "No values available for this parameter — its source may be empty, "
+                       "filtered to nothing for you, or a free-text filter with no value list.")])
 
     (zero? returned)
     (if more?
-      (message/msg ["No values at offset %d — the source stopped at %d before returning everything; narrow with `query` rather than paging further."]
+      (message/msg [(str "No values at offset %d — the source stopped at %d before returning "
+                         "everything; narrow with `query` rather than paging further.")]
                    offset total)
       (message/msg ["No values at offset %d — %d available."] offset total))
 
@@ -317,7 +331,8 @@
     (or (common/truncation-line {:param :query :offset offset :limit limit :returned returned
                                  :total total :total-floor? more?})
         (when more?
-          (message/msg ["Returned %d — the source holds more values than it will return; narrow with `query` to reach the rest."]
+          (message/msg [(str "Returned %d — the source holds more values than it "
+                             "will return; narrow with `query` to reach the rest.")]
                        returned)))))
 
 (defn- values-content
@@ -361,7 +376,8 @@
                   ;; union could count. Omitted rather than guessed at.
                   distinct-count (assoc :distinct_dates distinct-count))
         line    (when-not (->day lo)
-                  (message/msg ["No dates available for this parameter — its column may be empty, or filtered to nothing for you."]))]
+                  (message/msg [(str "No dates available for this parameter — its column "
+                                     "may be empty, or filtered to nothing for you.")]))]
     (common/success-content (if line
                               (message/msg ["%s" "%s"] (message/raw (json/encode payload)) line)
                               payload))))
@@ -418,10 +434,12 @@
   [{:keys [target id parameter_id query constraints limit offset]} _context]
   (when (and query (str/blank? query))
     (common/throw-teaching-error
-     (message/msg ["`query` is the text to match, so it can't be blank — pass a search string, or omit `query` to list every value."])))
+     (message/msg [(str "`query` is the text to match, so it can't be blank — pass "
+                        "a search string, or omit `query` to list every value.")])))
   (when (and (seq constraints) (= target "question"))
     (common/throw-teaching-error
-     (message/msg ["`constraints` chain-filters a dashboard's filters against each other, so it needs target: \"dashboard\" — a question's parameters are independent and take none."])))
+     (message/msg [(str "`constraints` chain-filters a dashboard's filters against each other, so it needs "
+                        "target: \"dashboard\" — a question's parameters are independent and take none.")])))
   (let [result (if (= target "dashboard")
                  (dashboard-values id parameter_id query constraints)
                  (question-values id parameter_id query))

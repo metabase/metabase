@@ -67,7 +67,8 @@
       ;; Name a retry that works: the obvious reading of "pass a numeric id" is to send the same
       ;; number again, which fails identically.
       (common/throw-teaching-error
-       (message/msg ["Invalid id %s — pass the positive numeric id, or the 21-character entity_id from a search or list result."]
+       (message/msg [(str "Invalid id %s — pass the positive numeric id, or the "
+                          "21-character entity_id from a search or list result.")]
                     id-or-eid)))))
 
 (defn resolve-and-read-with
@@ -116,7 +117,8 @@
 
      (= "trash" id-or-sentinel)
      (or trash-collection-id
-         (common/throw-teaching-error (message/msg ["\"trash\" is not a valid collection here — pass a collection id, entity_id, or \"root\"."])))
+         (common/throw-teaching-error (message/msg [(str "\"trash\" is not a valid collection here — "
+                                                         "pass a collection id, entity_id, or \"root\".")])))
 
      :else
      (:id (resolve-and-read :model/Collection id-or-sentinel)))))
@@ -137,7 +139,8 @@
     (resolve-collection-id id-or-sentinel)
     (or (:id (collection/user->personal-collection api/*current-user-id*))
         (common/throw-teaching-error
-         (message/msg ["The current user has no personal collection. Pass an explicit collection_id (or \"root\" for the root collection) instead."])))))
+         (message/msg [(str "The current user has no personal collection. Pass an explicit "
+                            "collection_id (or \"root\" for the root collection) instead.")])))))
 
 ;;; --------------------------------------------- Collection paths -------------------------------------------------
 

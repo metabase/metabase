@@ -53,7 +53,8 @@
     ;; `collection-id`", so refuse and name the operation that does work.
     (when (:document_id card)
       (common/throw-teaching-error
-       (message/msg ["Card %s is saved inside a document — duplicate the document instead, which copies the questions saved in it."]
+       (message/msg [(str "Card %s is saved inside a document — duplicate the "
+                          "document instead, which copies the questions saved in it.")]
                     (:id card))))
     card))
 
@@ -86,7 +87,8 @@
   [dashboard collection-id new-name deep-copy?]
   (when (and (not deep-copy?) (dashboards.write/contains-dashboard-questions? (:id dashboard)))
     (common/throw-teaching-error
-     (message/msg ["This dashboard has questions saved inside it, so it can't be copied without them — pass is_deep_copy: true to copy the questions too."])))
+     (message/msg [(str "This dashboard has questions saved inside it, so it can't be copied "
+                        "without them — pass is_deep_copy: true to copy the questions too.")])))
   (dashboards.write/copy-dashboard! (:id dashboard)
                                     {:name          new-name
                                      :collection_id collection-id

@@ -23,7 +23,9 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private visualize-steering
-  (message/msg ["Rendering the visualization in the interactive UI. This is the final answer — do not call an execute tool afterwards, and do not tell the user to switch display types or open a Metabase panel or sidebar."]))
+  (message/msg [(str "Rendering the visualization in the interactive UI. This is the final "
+                     "answer — do not call an execute tool afterwards, and do not tell the "
+                     "user to switch display types or open a Metabase panel or sidebar.")]))
 
 (defn- resolve-visualizable-handle!
   "Assert `handle` exists and belongs to the caller, throwing a teaching error otherwise.
@@ -63,7 +65,8 @@
                    query_handle (conj :query_handle))]
     (when-not (= 1 (count provided))
       (common/throw-teaching-error
-       (message/msg ["Pass exactly one of query | query_handle: `query_handle` for a query you already ran (preferred — no re-resolution), `query` for a fresh query."])))
+       (message/msg [(str "Pass exactly one of query | query_handle: `query_handle` for a query you "
+                          "already ran (preferred — no re-resolution), `query` for a fresh query.")])))
     (if query_handle
       (do (resolve-visualizable-handle! session-id query_handle)
           query_handle)

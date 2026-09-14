@@ -80,7 +80,8 @@
                               (message/raw (name k))))))
     :update (when (contains? args :table_id)
               (common/throw-teaching-error
-               (message/msg ["`table_id` cannot be changed on update — the server derives it from `definition`'s source table."])))))
+               (message/msg [(str "`table_id` cannot be changed on update — the "
+                                  "server derives it from `definition`'s source table.")])))))
 
 (defn- check-name!
   "Reject a present-but-blank `name`. The REST endpoints these tools delegate to take
@@ -97,7 +98,8 @@
   [{:keys [revision_message]} entity]
   (when (str/blank? revision_message)
     (common/throw-teaching-error
-     (message/msg ["`revision_message` is required when method is \"update\" — pass a short sentence describing the change; it is recorded in the %s's revision history."]
+     (message/msg [(str "`revision_message` is required when method is \"update\" — pass a short "
+                        "sentence describing the change; it is recorded in the %s's revision history.")]
                   (message/raw entity)))))
 
 ;;; --------------------------------------------- Definition handling ----------------------------------------------
@@ -121,8 +123,13 @@
   "The sentence every definition-shape teaching error ends with, naming both accepted shapes."
   [kind]
   (case kind
-    :segment (message/msg ["`definition` accepts either the bare clause form — the array of filter clauses get_content's \"definition\" include returns for a segment, reassembled onto `table_id` — or a full single-stage query holding only filters."])
-    :measure (message/msg ["`definition` accepts either the bare clause form — the aggregation clause get_content's \"definition\" include returns for a measure, as the one-element array or the bare clause, reassembled onto `table_id` — or a full single-stage query holding exactly one aggregation."])))
+    :segment (message/msg [(str "`definition` accepts either the bare clause form — the array of filter clauses "
+                                "get_content's \"definition\" include returns for a segment, reassembled onto "
+                                "`table_id` — or a full single-stage query holding only filters.")])
+    :measure (message/msg [(str "`definition` accepts either the bare clause form — the aggregation "
+                                "clause get_content's \"definition\" include returns for a measure, as "
+                                "the one-element array or the bare clause, reassembled onto `table_id` "
+                                "— or a full single-stage query holding exactly one aggregation.")])))
 
 (defn- check-normalizable!
   "Probe `definition` against strict MBQL normalization before handing it to the domain layer.
@@ -145,7 +152,8 @@
   [definition]
   (when-not (= :mbql-version/mbql5 (lib/normalized-mbql-version definition))
     (common/throw-teaching-error
-     (message/msg ["A full-query `definition` must be a map with \"lib/type\": \"mbql/query\", \"database\", and one entry in \"stages\". %s"]
+     (message/msg [(str "A full-query `definition` must be a map with \"lib/type\": "
+                        "\"mbql/query\", \"database\", and one entry in \"stages\". %s")]
                   (accepted-shapes :measure)))))
 
 (defn- clause-form->definition
@@ -194,7 +202,8 @@
   (when-let [defn-table-id (lib/primary-source-table-id (lib-be/normalize-query definition))]
     (when (not= defn-table-id (:id table))
       (common/throw-teaching-error
-       (message/msg ["`table_id` (%d) and `definition`'s source table (%d) must be the same table. Pass table_id %d, or point `definition` at table %d."]
+       (message/msg [(str "`table_id` (%d) and `definition`'s source table (%d) must be the "
+                          "same table. Pass table_id %d, or point `definition` at table %d.")]
                     (:id table) defn-table-id defn-table-id (:id table))))))
 
 ;;; ---------------------------------------------- Error translation -----------------------------------------------

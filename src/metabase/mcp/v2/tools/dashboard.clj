@@ -484,7 +484,8 @@
                                  validate-only? (boolean (:validate_only body))]
                              (when (contains? body :archived)
                                (common/throw-teaching-error
-                                (message/msg ["`archived` applies to method \"update\" only — remove it from this create call."])))
+                                (message/msg [(str "`archived` applies to method \"update\" "
+                                                   "only — remove it from this create call.")])))
                              (cond
                                validate-only? (apply-ops! (blank-dashboard attrs) (or ops []) attrs true)
                                (seq ops)      (do

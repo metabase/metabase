@@ -35,7 +35,15 @@
       (is (= "" (second lines)))
       (is (= (count skills/packs) (count (drop 2 lines))))
       (is (= "- query-dialect — " (subs (nth lines 2) 0 18)))
-      (is (str/ends-with? (nth lines 2) " [references: operators]")))))
+      (is (str/ends-with? (nth lines 2) " [references: operators]"))))
+  (testing "each pack line is its name, description, and reference names, unquoted"
+    (is (= (str "Topics — fetch one with learn(topic); a reference with learn(topic, reference):\n\n"
+                (str/join "\n"
+                          (for [{pack-name :name :keys [description references]} skills/packs]
+                            (str "- " pack-name " — " description
+                                 (when (seq references)
+                                   (str " [references: " (str/join ", " references) "]"))))))
+           (message/render (skills/catalog-text))))))
 
 (deftest ^:parallel skill-text-footer-test
   (testing "GHY-4544: a pack with references ends in a footer naming them"

@@ -268,7 +268,8 @@
       {:error {:code common/error-code-method-not-found :message (message/msg ["Unknown tool: %s"] tool-name)}}
 
       (not (map? (or arguments {})))
-      {:error {:code common/error-code-invalid-params :message (message/msg ["Invalid arguments: expected a JSON object."])}}
+      {:error {:code    common/error-code-invalid-params
+               :message (message/msg ["Invalid arguments: expected a JSON object."])}}
 
       (not (mcp.scope/matches? token-scopes (:scope tool)))
       {:error {:code common/error-code-invalid-request

@@ -97,7 +97,9 @@
                     (require! schedule_frame "schedule_frame" "\"first\", \"mid\", or \"last\"")
                     (when (and (= "mid" schedule_frame) schedule_day)
                       (common/throw-teaching-error
-                       (message/msg ["A monthly schedule with schedule_frame \"mid\" sends on the 15th, so it cannot also take a schedule_day — drop schedule_day, or use frame \"first\" or \"last\" to send on a particular weekday."]))))))
+                       (message/msg [(str "A monthly schedule with schedule_frame \"mid\" sends on the 15th, "
+                                          "so it cannot also take a schedule_day — drop schedule_day, or use "
+                                          "frame \"first\" or \"last\" to send on a particular weekday.")]))))))
   (check-ignored-schedule-fields! schedule))
 
 ;;; ------------------------------------------------- Channels -----------------------------------------------------
@@ -121,15 +123,18 @@
   [slack-channel]
   (when-not (channel.settings/slack-configured?)
     (common/throw-teaching-error
-     (message/msg ["Slack is not connected to this Metabase — ask an admin to set it up in Admin settings, or use channel \"email\"."])))
+     (message/msg [(str "Slack is not connected to this Metabase — ask an admin "
+                        "to set it up in Admin settings, or use channel \"email\".")])))
   (when (str/blank? slack-channel)
     (common/throw-teaching-error
-     (message/msg ["channel \"slack\" needs a slack_channel — the name of the channel to post to, e.g. \"data-team\"."])))
+     (message/msg [(str "channel \"slack\" needs a slack_channel — the name "
+                        "of the channel to post to, e.g. \"data-team\".")])))
   (let [entry        (channel.settings/find-cached-slack-channel-or-username slack-channel)
         display-name (:display-name entry)]
     (when-not display-name
       (common/throw-teaching-error
-       (message/msg ["Metabase can't see a Slack channel or user named %s, so a subscription to it would deliver nowhere — check the name, or invite the Metabase Slack app to the channel."]
+       (message/msg [(str "Metabase can't see a Slack channel or user named %s, so a subscription to it would "
+                          "deliver nowhere — check the name, or invite the Metabase Slack app to the channel.")]
                     slack-channel)))
     ;; Unconditional rather than `cond->`: the details map is merged onto the stored one, and the
     ;; sender prefers `:channel_id` over the name. An entry without an id would otherwise leave the
@@ -153,7 +158,8 @@
                 (u/update-if-exists :schedule_frame name)))]
     (when (str/blank? (:schedule_type s))
       (common/throw-teaching-error
-       (message/msg ["`schedule` is required to add a delivery channel — pass {schedule_type: \"hourly\" | \"daily\" | \"weekly\" | \"monthly\", …}."])))
+       (message/msg [(str "`schedule` is required to add a delivery channel — pass "
+                          "{schedule_type: \"hourly\" | \"daily\" | \"weekly\" | \"monthly\", …}.")])))
     (check-schedule! s)
     (u/select-non-nil-keys s schedule-keys)))
 
@@ -170,13 +176,16 @@
   [existing channel-type enabled? {:keys [schedule recipients slack_channel] :as args}]
   (when (and (= "slack" channel-type) (contains? args :recipients))
     (common/throw-teaching-error
-     (message/msg ["A Slack subscription posts to a channel and has no recipient list — drop recipients, or use channel \"email\" to send to people."])))
+     (message/msg [(str "A Slack subscription posts to a channel and has no recipient list "
+                        "— drop recipients, or use channel \"email\" to send to people.")])))
   (when (and (= "email" channel-type) (contains? args :recipients) (empty? recipients))
     (common/throw-teaching-error
-     (message/msg ["An empty recipients list would deliver this subscription to nobody — pass at least one user id or email address, or omit recipients to leave the current recipients alone."])))
+     (message/msg [(str "An empty recipients list would deliver this subscription to nobody — pass at least one "
+                        "user id or email address, or omit recipients to leave the current recipients alone.")])))
   (when (and (= "email" channel-type) slack_channel)
     (common/throw-teaching-error
-     (message/msg ["`slack_channel` only applies to a Slack subscription — pass channel \"slack\" to post there, or drop slack_channel to keep delivering by email."])))
+     (message/msg [(str "`slack_channel` only applies to a Slack subscription — pass channel "
+                        "\"slack\" to post there, or drop slack_channel to keep delivering by email.")])))
   (merge {:channel_type channel-type
           :enabled      enabled?}
          (select-keys existing [:id])
@@ -204,7 +213,9 @@
            ;; Without this the `case` throws an IllegalArgumentException that surfaces as a bare
            ;; "Internal error", which tells the agent nothing about what to do instead.
            (common/throw-teaching-error
-            (message/msg ["This subscription delivers over %s, which this tool cannot edit — it handles \"email\" and \"slack\". Edit it in Metabase, or create a separate email or Slack subscription for the dashboard."]
+            (message/msg [(str "This subscription delivers over %s, which this tool cannot edit "
+                               "— it handles \"email\" and \"slack\". Edit it in Metabase, or "
+                               "create a separate email or Slack subscription for the dashboard.")]
                          channel-type)))))
 
 (defn- target-channel-type
@@ -216,7 +227,8 @@
       (when (= 1 (count existing-channels))
         (name (:channel_type (first existing-channels))))
       (common/throw-teaching-error
-       (message/msg ["This subscription delivers to %d channels, so pass `channel` (\"email\" or \"slack\") to say which one to change."]
+       (message/msg [(str "This subscription delivers to %d channels, so pass `channel` "
+                          "(\"email\" or \"slack\") to say which one to change.")]
                     (count existing-channels)))))
 
 (defn- channel-affecting?
@@ -240,7 +252,9 @@
   [parameters dashboard-parameters]
   (when (and (seq parameters) (not (premium-features/enable-dashboard-subscription-filters?)))
     (common/throw-teaching-error
-     (message/msg ["Filtered subscriptions need the dashboard-subscription-filters feature, which this instance doesn't have — the filter values would be stored and then ignored at send time. Omit `parameters` to subscribe to the dashboard's own default filter values."])))
+     (message/msg [(str "Filtered subscriptions need the dashboard-subscription-filters feature, which this "
+                        "instance doesn't have — the filter values would be stored and then ignored at send "
+                        "time. Omit `parameters` to subscribe to the dashboard's own default filter values.")])))
   (let [known (into #{} (map (comp u/qualified-name :id)) dashboard-parameters)]
     (doseq [{param-id :id} parameters]
       (when-not (contains? known param-id)
@@ -272,7 +286,8 @@
                     (assoc :dashboard_card_id dashcard-id :dashboard_id (:id dashboard))))]
     (when (empty? cards)
       (common/throw-teaching-error
-       (message/msg ["This dashboard has no cards to send — a subscription needs at least one saved question, model, or metric on the dashboard."])))
+       (message/msg [(str "This dashboard has no cards to send — a subscription needs at "
+                          "least one saved question, model, or metric on the dashboard.")])))
     (vec cards)))
 
 (defn- create!
@@ -353,7 +368,8 @@
                                                           (not archived?) args)))]
     (when (empty? updates)
       (common/throw-teaching-error
-       (message/msg ["Nothing to update — pass at least one of schedule, channel, slack_channel, recipients, parameters, skip_if_empty, or archived."])))
+       (message/msg [(str "Nothing to update — pass at least one of schedule, channel, "
+                          "slack_channel, recipients, parameters, skip_if_empty, or archived.")])))
     (pulse.api/update-pulse-with-perm-checks! (:id subscription) updates)
     (:id subscription)))
 
@@ -431,7 +447,8 @@
   (when-not (mcp.scope/matches? token-scopes metabot.scope/agent-query-run)
     ;; `action` is a literal at every call site.
     (common/throw-teaching-error
-     (message/msg ["%s runs the dashboard's questions and delivers the results, which requires the %s scope — this token can manage subscriptions but not execute queries."]
+     (message/msg [(str "%s runs the dashboard's questions and delivers the results, which requires "
+                        "the %s scope — this token can manage subscriptions but not execute queries.")]
                   (message/raw action) (message/raw metabot.scope/agent-query-run))
      {:status-code 403 ::common/error-code common/error-code-invalid-request})))
 

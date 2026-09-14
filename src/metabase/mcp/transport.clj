@@ -446,7 +446,8 @@
   "The JSON-RPC error every keepalive refusal carries, whether it goes out as a 429 body or as an SSE frame on a
   stream whose headers are already sent."
   (jsonrpc-error nil -32000
-                 (message/msg ["Too many concurrent MCP event streams open for this user (limit %d). Close an existing stream before opening another."]
+                 (message/msg [(str "Too many concurrent MCP event streams open for this user "
+                                    "(limit %d). Close an existing stream before opening another.")]
                               max-concurrent-keepalive-streams)))
 
 (defn- at-keepalive-cap?
@@ -666,7 +667,9 @@
                            (respond (handle-delete user-id request))
 
                            :else
-                           (respond (json-response 405 (jsonrpc-error nil -32600 (message/msg ["Method not allowed"]))))))
+                           (respond (json-response 405 (jsonrpc-error nil
+                                                                      -32600
+                                                                      (message/msg ["Method not allowed"]))))))
                        (catch Throwable e
                          (raise e))))))]
          (cond

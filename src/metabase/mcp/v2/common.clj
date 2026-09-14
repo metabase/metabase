@@ -146,9 +146,11 @@
     (when (contains? schema-failure-types type)
       ;; `fn-name` is the symbol of a server function, not caller input.
       (if (= type :metabase.util.malli.fn/invalid-input)
-        (message/msg ["Server-side schema check failed in `%s`: %s. This is a bug in Metabase, not something to retry — report it."]
+        (message/msg [(str "Server-side schema check failed in `%s`: %s. This is "
+                           "a bug in Metabase, not something to retry — report it.")]
                      (message/raw (str fn-name)) humanized)
-        (message/msg ["Server-side schema check failed in `%s` (on its return value). This is a bug in Metabase, not something to retry — report it."]
+        (message/msg [(str "Server-side schema check failed in `%s` (on its return value). "
+                           "This is a bug in Metabase, not something to retry — report it.")]
                      (message/raw (str fn-name)))))))
 
 (def ^:private internal-error

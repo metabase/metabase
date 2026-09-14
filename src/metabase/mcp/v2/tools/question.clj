@@ -53,7 +53,8 @@
   [existing-tag {tag-type :type :keys [display_name widget_type required default] :as tag}]
   (let [t            (or (tag-type->kw tag-type)
                          (common/throw-teaching-error
-                          (message/msg ["Invalid template tag type %s — use \"text\", \"number\", \"date\", \"boolean\", \"dimension\", or \"temporal-unit\"."
+                          (message/msg [(str "Invalid template tag type %s — use \"text\", \"number\", "
+                                             "\"date\", \"boolean\", \"dimension\", or \"temporal-unit\".")
                                         "%s"]
                                        tag-type (message/raw skills/template-tag-contract))))
         display-name (or display_name (:display-name tag))
@@ -62,7 +63,8 @@
         field-id     (when field-ref? (tag-field-id tag))]
     (when (and (= t :dimension) (str/blank? widget-type))
       (common/throw-teaching-error
-       (message/msg ["A dimension template tag requires a widget_type, e.g. \"string/=\", \"number/=\", or \"date/all-options\"."
+       (message/msg [(str "A dimension template tag requires a widget_type, e.g. "
+                          "\"string/=\", \"number/=\", or \"date/all-options\".")
                      "%s"]
                     (message/raw skills/template-tag-contract))))
     (when (and field-ref? (nil? field-id))
@@ -141,7 +143,8 @@
   [token-scopes]
   (when-not (mcp.scope/matches? token-scopes metabot.scope/agent-sql-run)
     (common/throw-teaching-error
-     (message/msg ["Saving a native (SQL) query requires the %s scope — this token can write content but not author raw SQL."]
+     (message/msg [(str "Saving a native (SQL) query requires the %s scope — "
+                        "this token can write content but not author raw SQL.")]
                   (message/raw metabot.scope/agent-sql-run))
      {:status-code 403 ::common/error-code common/error-code-invalid-request}))
   (v2.queries/check-execute-sql-enabled! (message/msg ["Saving a native (SQL) query"])))
@@ -162,7 +165,8 @@
                   native       (conj :native))]
     (when-not (= 1 (count sources))
       (common/throw-teaching-error
-       (message/msg ["Pass exactly one query source: `query_handle` (a handle from an execute tool), `query` (an inline query), or `native` ({database_id, sql})."])))
+       (message/msg [(str "Pass exactly one query source: `query_handle` (a handle from an execute "
+                          "tool), `query` (an inline query), or `native` ({database_id, sql}).")])))
     (cond
       query_handle
       (let [resolved (lib-be/normalize-query
@@ -178,7 +182,8 @@
                        (lib-be/normalize-query nil (ensure-pmbql-type query) {:strict? true})
                        (catch clojure.lang.ExceptionInfo e
                          (common/throw-teaching-error
-                          (message/msg ["Invalid inline query — see learn(\"query-dialect\"). %s"] (common/exception-message e)))))]
+                          (message/msg ["Invalid inline query — see learn(\"query-dialect\"). %s"]
+                                       (common/exception-message e)))))]
         ;; `native` on the source arg is not the same thing as native in the resolved query: an inline
         ;; `query` can carry a native stage (`ensure-pmbql-type` stamps `:mbql.stage/native` on any stage
         ;; with `:native`), and that stored card is raw SQL a later run_saved_question executes. Gate on
@@ -242,7 +247,8 @@
     ;; either under `semantic_type` and the tool's own examples name them.
     (when-not (or (isa? k :Semantic/*) (isa? k :Relation/*))
       (common/throw-teaching-error
-       (message/msg ["Invalid semantic_type %s — pass a type in the \"type/…\" namespace, e.g. \"type/Currency\" or \"type/PK\"."]
+       (message/msg [(str "Invalid semantic_type %s — pass a type in the \"type/…\" "
+                          "namespace, e.g. \"type/Currency\" or \"type/PK\".")]
                     semantic_type)))
     k))
 
@@ -269,7 +275,8 @@
     (doseq [{col-name :name} column_metadata]
       (when-not (contains? by-name col-name)
         (common/throw-teaching-error
-         (message/msg ["Column %s is not in the query results — column_metadata names must match the query's output columns."]
+         (message/msg [(str "Column %s is not in the query results — column_metadata "
+                            "names must match the query's output columns.")]
                       col-name))))
     (let [overrides (into {} (map (juxt :name identity)) column_metadata)]
       (mapv (fn [col]
@@ -292,9 +299,12 @@
       ;; failed to analyze (a real problem the caller should hear about, not a "native" red herring).
       (if (lib/native-only-query? dataset-query)
         (common/throw-teaching-error
-         (message/msg ["column_metadata isn't supported for models built from a native (SQL) query — Metabase can't determine column types without running the SQL. Omit column_metadata; you can annotate the model's columns after it's created."]))
+         (message/msg [(str "column_metadata isn't supported for models built from a native (SQL) query "
+                            "— Metabase can't determine column types without running the SQL. Omit "
+                            "column_metadata; you can annotate the model's columns after it's created.")]))
         (common/throw-teaching-error
-         (message/msg ["Couldn't determine the query's result columns, so column_metadata can't be applied — check that the query is valid and returns columns."]))))
+         (message/msg [(str "Couldn't determine the query's result columns, so column_metadata "
+                            "can't be applied — check that the query is valid and returns columns.")]))))
     (merge-column-metadata computed-columns column_metadata)))
 
 (defn- check-dashboard-collection-exclusive!
@@ -303,7 +313,8 @@
   [dashboard_id args]
   (when (and dashboard_id (contains? args :collection_id))
     (common/throw-teaching-error
-     (message/msg ["Pass either collection_id or dashboard_id, not both — a dashboard question's collection is the dashboard's collection."]))))
+     (message/msg [(str "Pass either collection_id or dashboard_id, not both — a "
+                        "dashboard question's collection is the dashboard's collection.")]))))
 
 (defn- normalize-model-display
   "Force `display` to table when a patch retypes a card to a model, as `PUT /api/card/:id` does. A
@@ -397,7 +408,8 @@
           (do
             (when (:archived updates)
               (common/throw-teaching-error
-               (message/msg ["Can't move a card into a dashboard while also archiving it — archive and move are separate operations."])))
+               (message/msg [(str "Can't move a card into a dashboard while also archiving "
+                                  "it — archive and move are separate operations.")])))
             (assoc updates :archived false :archived_directly false)))))
 
 (defn- update!

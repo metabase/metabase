@@ -92,7 +92,9 @@
                     (require! schedule_frame "schedule_frame" "\"first\", \"mid\", or \"last\"")
                     (when (and (= "mid" schedule_frame) schedule_day)
                       (common/throw-teaching-error
-                       (message/msg ["A monthly schedule with schedule_frame \"mid\" sends on the 15th, so it cannot also take a schedule_day — drop schedule_day, or use frame \"first\" or \"last\" to send on a particular weekday."]))))))
+                       (message/msg [(str "A monthly schedule with schedule_frame \"mid\" sends on the 15th, "
+                                          "so it cannot also take a schedule_day — drop schedule_day, or use "
+                                          "frame \"first\" or \"last\" to send on a particular weekday.")]))))))
   (check-ignored-schedule-fields! schedule))
 
 (defn- schedule->cron
@@ -138,21 +140,28 @@
         (nil? (:graph.goal_value viz))
         (common/throw-teaching-error
          (if (:graph.show_goal viz)
-           (message/msg ["Question %d shows a goal line but has no goal value saved, so alerts can't compare against it — edit the chart's goal line settings and enter a goal number, or use the \"has_result\" condition."]
+           (message/msg [(str "Question %d shows a goal line but has no goal value saved, so alerts "
+                              "can't compare against it — edit the chart's goal line settings and "
+                              "enter a goal number, or use the \"has_result\" condition.")]
                         (:id card))
-           (message/msg ["Question %d has no goal line, so a \"goal_above\"/\"goal_below\" alert can never fire — set a goal on the chart, or use the \"has_result\" condition."]
+           (message/msg [(str "Question %d has no goal line, so a \"goal_above\"/\"goal_below\" alert can "
+                              "never fire — set a goal on the chart, or use the \"has_result\" condition.")]
                         (:id card))))
 
         (< 1 (count (:graph.metrics viz)))
         (common/throw-teaching-error
-         (message/msg ["Question %d plots more than one series, so a goal alert has no single value to compare against the goal — use the \"has_result\" condition, or edit the chart down to one series."]
+         (message/msg [(str "Question %d plots more than one series, so a goal alert has no "
+                            "single value to compare against the goal — use the "
+                            "\"has_result\" condition, or edit the chart down to one series.")]
                       (:id card))))
 
       :progress
       nil
 
       (common/throw-teaching-error
-       (message/msg ["Question %d is displayed as a %s, which has no goal line — \"goal_above\"/\"goal_below\" alerts need a line, area, bar, or progress chart. Use the \"has_result\" condition instead."]
+       (message/msg [(str "Question %d is displayed as a %s, which has no goal line — "
+                          "\"goal_above\"/\"goal_below\" alerts need a line, area, bar, "
+                          "or progress chart. Use the \"has_result\" condition instead.")]
                     (:id card) (u/qualified-name (:display card)))))))
 
 ;;; --------------------------------------------------- handlers ---------------------------------------------------
@@ -171,7 +180,8 @@
   [slack-channel]
   (when-not (channel.settings/slack-configured?)
     (common/throw-teaching-error
-     (message/msg ["Slack is not configured — ask an admin to set up Slack in Metabase settings, or use channel \"email\"."])))
+     (message/msg [(str "Slack is not configured — ask an admin to set up "
+                        "Slack in Metabase settings, or use channel \"email\".")])))
   (let [channel (or (channel.settings/find-cached-slack-channel-or-username slack-channel)
                     (common/throw-teaching-error
                      (message/msg ["No Slack channel or user named %s — pass a channel name like \"#data-team\"."]
@@ -195,13 +205,16 @@
     ;; `channel` must not be able to talk its way past this guard by naming a type we do manage.
     (when (and existing-type (not (#{"channel/email" "channel/slack"} existing-type)))
       (common/throw-teaching-error
-       (message/msg ["This alert delivers over %s, which alert_write doesn't manage — edit it in Metabase, or leave channel, slack_channel, and recipients out to keep it as it is."]
+       (message/msg [(str "This alert delivers over %s, which alert_write doesn't manage — edit it in "
+                          "Metabase, or leave channel, slack_channel, and recipients out to keep it as it is.")]
                     existing-type)))
     ;; An empty list reads as "clear the recipients", which the cond below would silently answer
     ;; with the caller (at create) or the stored list (at update).
     (when (and recipients (empty? recipients))
       (common/throw-teaching-error
-       (message/msg ["`recipients` can't be empty — an alert with nobody to send to would never reach anyone. Pass at least one user id or email address, or leave recipients out: a new alert then goes to you, and an existing one keeps the recipients it has."])))
+       (message/msg [(str "`recipients` can't be empty — an alert with nobody to send to would never reach "
+                          "anyone. Pass at least one user id or email address, or leave recipients out: a "
+                          "new alert then goes to you, and an existing one keeps the recipients it has.")])))
     (case channel-type
       "slack"
       (do
@@ -220,7 +233,8 @@
       (do
         (when slack_channel
           (common/throw-teaching-error
-           (message/msg ["`slack_channel` only applies to a Slack alert — pass channel \"slack\" to post there, or drop slack_channel to keep delivering by email."])))
+           (message/msg [(str "`slack_channel` only applies to a Slack alert — pass channel \"slack\" "
+                              "to post there, or drop slack_channel to keep delivering by email.")])))
         (assoc base
                :channel_type :channel/email
                :recipients   (cond
@@ -312,7 +326,8 @@
   [id {:keys [condition schedule active] :as args}]
   (when (contains? args :card_id)
     (common/throw-teaching-error
-     (message/msg ["`card_id` can't be changed on an existing alert — create a new alert on the other question instead."])))
+     (message/msg [(str "`card_id` can't be changed on an existing alert — "
+                        "create a new alert on the other question instead.")])))
   (let [condition   (m/remove-vals nil? condition)
         existing    (fetch-alert id)
         delivery?   (boolean (some #(contains? args %) [:channel :slack_channel :recipients]))
@@ -325,11 +340,13 @@
       (check-goal-line! (resolve-card (:card_id payload))))
     (when (and delivery? (< 1 (count (:handlers existing))))
       (common/throw-teaching-error
-       (message/msg ["This alert delivers over more than one channel, and alert_write writes a single one — editing its delivery here would silently drop the others. Edit it in Metabase instead."])))
+       (message/msg [(str "This alert delivers over more than one channel, and alert_write writes a single one — "
+                          "editing its delivery here would silently drop the others. Edit it in Metabase instead.")])))
     ;; `:subscriptions` is a `:multi-row?` nested spec, so writing one back deletes the rest.
     (when (and schedule (< 1 (count (:subscriptions existing))))
       (common/throw-teaching-error
-       (message/msg ["This alert runs on more than one schedule, and alert_write writes a single one — changing its schedule here would silently drop the others. Edit it in Metabase instead."])))
+       (message/msg [(str "This alert runs on more than one schedule, and alert_write writes a single one — "
+                          "changing its schedule here would silently drop the others. Edit it in Metabase instead.")])))
     ;; The permission rejection [[fetch-alert]] has to hide is already spent; any 403 from here on
     ;; is about the edit itself, and says so.
     ;;
@@ -362,7 +379,8 @@
   (when-not (mcp.scope/matches? token-scopes metabot.scope/agent-query-run)
     ;; `action` is a literal at every call site.
     (common/throw-teaching-error
-     (message/msg ["%s runs its question and delivers the results, which requires the %s scope — this token can manage alerts but not execute queries."]
+     (message/msg [(str "%s runs its question and delivers the results, which requires the "
+                        "%s scope — this token can manage alerts but not execute queries.")]
                   (message/raw action) (message/raw metabot.scope/agent-query-run))
      {:status-code 403 ::common/error-code common/error-code-invalid-request})))
 

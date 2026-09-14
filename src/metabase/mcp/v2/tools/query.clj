@@ -63,7 +63,8 @@
                    cursor       (conj :cursor))]
     (when-not (= 1 (count provided))
       (common/throw-teaching-error
-       (message/msg ["Pass exactly one of query | query_handle | cursor: `query` for a fresh MBQL query, `query_handle` to re-run a stored query, `cursor` to continue a truncated result."])))
+       (message/msg [(str "Pass exactly one of query | query_handle | cursor: `query` for a fresh MBQL query, "
+                          "`query_handle` to re-run a stored query, `cursor` to continue a truncated result.")])))
     (first provided)))
 
 (defn- resolve-input
@@ -209,7 +210,8 @@
   (if next-cursor
     (message/msg ["returned %d rows, more available — continue with `cursor`, or narrow the query (filter/aggregate)"]
                  returned)
-    (message/msg ["returned %d rows, more available — narrow the query (filter/aggregate), or raise `row_limit` (max %d)"]
+    (message/msg [(str "returned %d rows, more available — narrow the query "
+                       "(filter/aggregate), or raise `row_limit` (max %d)")]
                  returned max-row-limit)))
 
 (defn- mint-handle!
@@ -348,7 +350,8 @@ Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (brow
                            (cond
                              (nil? tag)
                              (common/throw-teaching-error
-                              (message/msg ["No template tag %s in the SQL — template_tag_values keys must name a {{tag}} placeholder that appears in sql. Tags found: %s."]
+                              (message/msg [(str "No template tag %s in the SQL — template_tag_values keys must "
+                                                 "name a {{tag}} placeholder that appears in sql. Tags found: %s.")]
                                            tag-name
                                            (if-let [names (seq (map :name tags))]
                                              (common/list-message names)
@@ -357,7 +360,9 @@ Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (brow
                              (contains? #{:card :snippet} tag-type)
                              ;; `tag-type` is one of the two reference kinds just matched.
                              (common/throw-teaching-error
-                              (message/msg ["%s is a %s-reference tag — it splices server-side SQL text and cannot be populated through template_tag_values, which binds only plain {{tag}} variables."]
+                              (message/msg [(str "%s is a %s-reference tag — it splices server-side SQL "
+                                                 "text and cannot be populated through template_tag_values, "
+                                                 "which binds only plain {{tag}} variables.")]
                                            tag-name (message/raw (name tag-type))))
 
                              :else
@@ -376,7 +381,8 @@ Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (brow
   ;; where a keyset is unsound — that is why that path refuses to mint a cursor — so suggesting
   ;; one there would hand back the gapped pagination the refusal exists to prevent. Here the
   ;; caller wrote the SQL and knows its key, which is the information the server lacks.
-  (message/msg ["returned %d rows, more available — narrow the SQL (add filters/aggregation), raise `row_limit` (max %d), or page with `ORDER BY <unique key>` + `WHERE <key> > <last value returned>`"]
+  (message/msg [(str "returned %d rows, more available — narrow the SQL (add filters/aggregation), raise `row_limit` "
+                     "(max %d), or page with `ORDER BY <unique key>` + `WHERE <key> > <last value returned>`")]
                returned max-row-limit))
 
 (def ^:private mbql-hint
@@ -430,7 +436,9 @@ Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (brow
                         :truncated    false}
                  hint (assoc :hint hint))]
     (common/success-content
-     (message/msg ["%s" "SQL accepted, not executed — template tags and permissions were checked; the SQL text itself was not validated. Execute, save, or visualize it later by passing this query_handle."]
+     (message/msg ["%s" (str "SQL accepted, not executed — template tags and permissions "
+                             "were checked; the SQL text itself was not validated. Execute, "
+                             "save, or visualize it later by passing this query_handle.")]
                   (message/raw (json/encode counts))))))
 
 (defn- execute-sql-response!
@@ -562,7 +570,8 @@ Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (brow
             (let [requested (or id slug)
                   _         (when (nil? requested)
                               (common/throw-teaching-error
-                               (message/msg ["Each parameter needs an `id` — the parameter's id or slug — and a `value`."])))
+                               (message/msg [(str "Each parameter needs an `id` — the "
+                                                  "parameter's id or slug — and a `value`.")])))
                   stored    (or (m/find-first #(= (:id %) requested) card-params)
                                 (m/find-first #(= (:slug %) requested) card-params)
                                 (throw-unknown-parameter card-params requested))]

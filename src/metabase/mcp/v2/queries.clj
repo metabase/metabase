@@ -33,7 +33,8 @@
   ;; nothing to edit. Only structural validation failures carry the key, so the dialect steering is always apt.
   (if-let [humanized (:humanized (ex-data e))]
     (common/message-ex-info
-     (message/msg ["%s Invalid at %s. Fix the named paths, or call `learn` with \"query-dialect\" for the clause shapes."]
+     (message/msg [(str "%s Invalid at %s. Fix the named paths, or call "
+                        "`learn` with \"query-dialect\" for the clause shapes.")]
                   (common/exception-message e)
                   (common/ellipsize (common/humanize-detail humanized) max-schema-detail-length))
      (ex-data e)
@@ -125,7 +126,8 @@
                   (catch Exception _ ::invalid))]
     (if (map? decoded) ;; catch ::invalid and non-map values
       decoded
-      (common/throw-teaching-error (message/msg ["Query handle contents are invalid — run the query again to get a fresh handle."])))))
+      (common/throw-teaching-error (message/msg [(str "Query handle contents are invalid — run "
+                                                      "the query again to get a fresh handle.")])))))
 
 (defn resolve-query-handle!
   "Resolve `handle` for `user-id` and re-run the fresh-query guards on the stored query, so a
@@ -139,7 +141,8 @@
   [mcp-session-id user-id handle]
   (let [{:keys [encoded_query prompt]}
         (or (mcp.session/resolve-query-handle mcp-session-id user-id handle)
-            (common/throw-teaching-error (message/msg ["Query handle not found — it may have expired; run the query again."])))
+            (common/throw-teaching-error (message/msg [(str "Query handle not found — it may "
+                                                            "have expired; run the query again.")])))
         query (decode-stored-query encoded_query)]
     (query-guards/reject-native-query! query)
     (query-guards/validate-serialized-query! query)
@@ -155,7 +158,8 @@
   [mcp-session-id user-id handle]
   (let [{:keys [encoded_query prompt]}
         (or (mcp.session/resolve-query-handle mcp-session-id user-id handle)
-            (common/throw-teaching-error (message/msg ["Query handle not found — it may have expired; run the query again."])))
+            (common/throw-teaching-error (message/msg [(str "Query handle not found — it may "
+                                                            "have expired; run the query again.")])))
         query (decode-stored-query encoded_query)]
     (query-guards/validate-serialized-query! query)
     (query-guards/check-token-query-permissions! query)
@@ -180,6 +184,7 @@
   [subject]
   (when-not (agent-api.settings/mcp-execute-sql-enabled)
     (common/throw-teaching-error
-     (message/msg ["%s is disabled on this instance — an admin can re-enable it with the mcp-execute-sql-enabled setting."]
+     (message/msg [(str "%s is disabled on this instance — an admin can "
+                        "re-enable it with the mcp-execute-sql-enabled setting.")]
                   subject)
      {:status-code 403})))
