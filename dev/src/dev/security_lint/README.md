@@ -9,6 +9,7 @@ reports findings as text or as SARIF for GitHub code scanning.
 ./bin/mage security-lint --branch            # only findings in files this branch changed vs origin/master
 ./bin/mage security-lint --uncommitted       # only findings in files with uncommitted changes
 ./bin/mage security-lint --sarif out.sarif   # also write SARIF
+./bin/mage security-lint --summary           # counts only: no locations, no code (what CI prints)
 ```
 
 The task runs in a fresh JVM, under forty seconds for the whole tree: `src`, `enterprise/backend/src` and each
@@ -18,7 +19,9 @@ SARIF report always covers the whole tree.
 
 CI runs it from `.github/workflows/metabase-security-lint.yml`: on every push to `master` and the release branches the
 whole tree, and on a pull request that touches backend source or the linter, with `--branch --base HEAD^1` -- the
-merge commit GitHub checks out, against its base parent -- so the job log shows the changed files' findings. Both upload the whole-tree SARIF to GitHub code scanning under
+merge commit GitHub checks out, against its base parent. Both print `--summary`: counts by rule, no locations
+and no code, because the repository and its job logs are public; the findings go to code scanning, which only
+people with write access read, and nothing is kept as an artifact. Both upload the whole-tree SARIF to GitHub code scanning under
 the category `metabase-security-lint`; code scanning compares a pull request's analysis with its base's and
 annotates the pull request with the alerts it introduced. The job never fails on findings (`--warn-only`):
 whether a new alert blocks a merge is code scanning's decision, in the repository's code security settings. The

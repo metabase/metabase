@@ -65,6 +65,7 @@
     :sarif-out - if set, also write a SARIF report there
     :root      - repo root, used to relativize paths (defaults to the working directory)
     :quiet?    - suppress the text report
+    :summary?  - print only the report's header and overview: counts, no locations, no code. For a public CI log.
     :taint-sources - :call-graph (default) or :any-local; which bindings count as attacker-influenced
     :only-files - report only findings in these repo-relative files; the whole tree is still analyzed, because
                   taint and reachability are whole-program and a changed helper can flip an unchanged endpoint.
@@ -73,7 +74,7 @@
                   the pull request introduced.
 
   Returns {:findings ... :summary ... :failing? ...}."
-  [& [{:keys [paths sarif-out root quiet? taint-sources only-files] :as opts}]]
+  [& [{:keys [paths sarif-out root quiet? summary? taint-sources only-files] :as opts}]]
   (rules/all)
   (let [started  (java.time.Instant/now)
         root     (or root (System/getProperty "user.dir"))
@@ -97,7 +98,9 @@
       (println (format "%d of %d rules are disabled and did not run: %s"
                        (count disabled) (count (rule/all)) (str/join ", " (map (comp name :id) disabled)))))
     (when-not quiet?
-      (println (sarif/text findings {:root root})))
+      (println (if summary?
+                 (sarif/summary findings {})
+                 (sarif/text findings {:root root}))))
     (when sarif-out
       (sarif/write! (sarif/report all {:rules rules* :root root :started started :ended (java.time.Instant/now)}) sarif-out)
       (println "Wrote SARIF to" sarif-out))

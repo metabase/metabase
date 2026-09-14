@@ -5,9 +5,9 @@
    [mage.util :as u]))
 
 (deftest scan-opts-test
-  (testing "arguments become paths, --sarif a file, --taint a policy keyword"
-    (is (= {:paths ["src/a" "src/b"] :sarif-out "o.sarif" :taint-sources :any-local}
-           (#'sec/scan-opts {:arguments ["src/a" "src/b"] :options {:sarif "o.sarif" :taint "any-local"}}))))
+  (testing "arguments become paths, --sarif a file, --taint a policy keyword, --summary the summary-only report"
+    (is (= {:paths ["src/a" "src/b"] :sarif-out "o.sarif" :taint-sources :any-local :summary? true}
+           (#'sec/scan-opts {:arguments ["src/a" "src/b"] :options {:sarif "o.sarif" :taint "any-local" :summary true}}))))
   (testing "nothing given means the defaults apply downstream"
     (is (= {} (#'sec/scan-opts {:arguments [] :options {}})))))
 

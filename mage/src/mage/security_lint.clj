@@ -31,6 +31,7 @@
   (cond-> {}
     (seq arguments)        (assoc :paths (vec arguments))
     (:sarif options)       (assoc :sarif-out (:sarif options))
+    (:summary options)     (assoc :summary? true)
     (:taint options)       (assoc :taint-sources (keyword (:taint options)))
     (:branch options)      (assoc :only-files (changed-files :branch (:base options)))
     (:uncommitted options) (assoc :only-files (changed-files :uncommitted nil))))

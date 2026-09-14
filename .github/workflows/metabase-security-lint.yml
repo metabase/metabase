@@ -1,10 +1,10 @@
 name: Metabase Security Lint
 
 on:
-#  push:
-#    branches:
-#      - "master"
-#  pull_request:
+  push:
+    branches:
+      - "master"
+  pull_request:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
@@ -48,24 +48,16 @@ jobs:
 
       - name: Scan a pull request
         if: github.event_name == 'pull_request'
-        run: ./bin/mage security-lint --warn-only --branch --base 'HEAD^1' --sarif metabase-security-lint.sarif
+        run: ./bin/mage security-lint --warn-only --summary --branch --base 'HEAD^1' --sarif metabase-security-lint.sarif
 
       - name: Scan the whole tree
         if: github.event_name != 'pull_request'
-        run: ./bin/mage security-lint --warn-only --sarif metabase-security-lint.sarif
+        run: ./bin/mage security-lint --warn-only --summary --sarif metabase-security-lint.sarif
 
       - name: Upload results to GitHub code scanning
-        # a pull request from a fork runs with a read-only token and cannot upload; its findings are still in the
-        # job log and the artifact
+        # a pull request from a fork runs with a read-only token and cannot upload; the log still has the counts
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: metabase-security-lint.sarif
           category: metabase-security-lint
-
-      - name: Keep the report with the run
-        uses: actions/upload-artifact@v7
-        with:
-          name: metabase-security-lint-sarif
-          path: metabase-security-lint.sarif
-          retention-days: 14
