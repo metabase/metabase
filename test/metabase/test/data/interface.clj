@@ -32,6 +32,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.random :as u.random]
    [metabase.warehouse-schema.models.field :as field]
@@ -62,6 +63,33 @@
 (p.types/defrecord+ TableDefinition [table-name field-definitions rows table-comment])
 
 (p.types/defrecord+ DatabaseDefinition [database-name table-definitions options])
+
+(mr/def ::dataset-value
+  "One cell value in a test dataset row: a FieldValue scalar, a nested sequence, or a string-keyed map."
+  [:or
+   ms/FieldValue
+   [:sequential [:ref ::dataset-value]]
+   [:map-of :string [:ref ::dataset-value]]])
+
+(mr/def ::native-ddl-value
+  [:or
+   :string :keyword number? :boolean nil?
+   [:sequential [:ref ::native-ddl-value]]
+   [:ref ::native-ddl-clause]])
+
+(mr/def ::native-ddl-clause
+  [:map {:closed true}
+   [:create-table {:optional true} [:sequential [:ref ::native-ddl-value]]]
+   [:with-columns {:optional true} [:sequential [:ref ::native-ddl-value]]]
+   [:drop-table   {:optional true} [:sequential [:ref ::native-ddl-value]]]
+   [:create-index {:optional true} [:sequential [:ref ::native-ddl-value]]]
+   [:drop-index   {:optional true} [:sequential [:ref ::native-ddl-value]]]
+   [:alter-table  {:optional true} [:ref ::native-ddl-value]]
+   [:add-column   {:optional true} [:sequential [:ref ::native-ddl-value]]]])
+
+(mr/def ::native-ddl-form
+  "A single native DDL statement: raw SQL, or a Honey SQL clause map."
+  [:or :string [:ref ::native-ddl-clause]])
 
 (def FieldDefinitionSchema
   [:schema
@@ -105,7 +133,7 @@
    [:map {:closed true}
     [:table-name                     ms/NonBlankString]
     [:field-definitions              [:sequential ValidFieldDefinition]]
-    [:rows                           [:sequential [:sequential :any]]]
+    [:rows                           [:sequential [:sequential ::dataset-value]]]
     [:table-comment {:optional true} [:maybe ms/NonBlankString]]]
    (ms/InstanceOfClass TableDefinition)])
 
@@ -115,7 +143,7 @@
     [:database-name ms/NonBlankString] ; this must be unique
     [:table-definitions [:sequential ValidTableDefinition]]
     [:options [:map {:closed true}
-               [:native-ddl {:optional true} [:sequential :any]]
+               [:native-ddl {:optional true} [:sequential ::native-ddl-form]]
                ;; When true, drivers that support it (e.g., MySQL) will disable FK checks during data loading.
                ;; Useful for datasets with self-referencing FKs that need to be inserted in a single batch.
                [:disable-fk-checks {:optional true} :boolean]
@@ -836,7 +864,7 @@
   [:tuple
    ms/NonBlankString
    [:sequential DatasetFieldDefinition]
-   [:sequential [:sequential :any]]])
+   [:sequential [:sequential ::dataset-value]]])
 
 ;; TODO - not sure everything below belongs in this namespace
 ;; Tech debt issue: #39363
@@ -856,7 +884,7 @@
 
   ([table-name :- ms/NonBlankString
     field-definition-maps :- [:sequential DatasetFieldDefinition]
-    rows]
+    rows :- [:sequential [:sequential ::dataset-value]]]
    (map->TableDefinition
     {:table-name        table-name
      :rows              rows
@@ -871,7 +899,7 @@
   ([database-name :- ms/NonBlankString
     table-definitions :- [:sequential DatasetTableDefinition]
     options :- [:map {:closed true}
-                [:native-ddl {:optional true} [:sequential :any]]
+                [:native-ddl {:optional true} [:sequential ::native-ddl-form]]
                 [:disable-fk-checks {:optional true} :boolean]
                 [:static {:optional true} :boolean]]]
    (mu/validate-throw
@@ -960,7 +988,7 @@
   directory. (Filename should be `dataset-name` + `.edn`.)"
   [dataset-name :- ms/NonBlankString
    options      :- [:map {:closed true}
-                    [:native-ddl        {:optional true} [:sequential :any]]
+                    [:native-ddl        {:optional true} [:sequential ::native-ddl-form]]
                     [:disable-fk-checks {:optional true} :boolean]
                     [:static            {:optional true} :boolean]]]
   (let [get-def (delay

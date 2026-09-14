@@ -46,6 +46,13 @@
   "Dynamic var used as the QP store for a given query execution."
   uninitialized-store)
 
+(mr/def ::miscellaneous-value
+  "One of the concrete shapes actually stored via [[store-miscellaneous-value!]]: a boolean mask (one entry per
+  result column), or a card's persisted result metadata."
+  [:or
+   [:sequential :boolean]
+   [:sequential ::lib.schema.metadata/lib-or-legacy-column]])
+
 (def ^:dynamic *DANGER-allow-replacing-metadata-provider*
   "This is (almost) only for tests! When enabled, [[with-metadata-provider]] can completely replace the current metadata
   provider (and cache) with a new one. This is reset to false after the QP store is replaced the first time.
@@ -70,7 +77,7 @@
   DEPRECATED -- use [[metabase.lib.metadata/general-cached-value]] going forward."
   {:deprecated "0.57.0"}
   [ks :- [:sequential [:or :keyword :int :string]]
-   v]
+   v  :- ::miscellaneous-value]
   (swap! *store* assoc-in ks v))
 
 (mu/defn miscellaneous-value
@@ -82,7 +89,7 @@
    (miscellaneous-value ks nil))
 
   ([ks :- [:sequential [:or :keyword :int :string]]
-    not-found]
+    not-found :- :nil]
    (get-in @*store* ks not-found)))
 
 (defn cached-fn

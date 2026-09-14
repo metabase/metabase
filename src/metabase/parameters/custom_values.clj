@@ -65,15 +65,13 @@
 
 (mr/def ::values-from-card-query.options
   [:map {:closed true}
-   ;; despite this being called "query string" it can actually be any value because it just gets used in an `:=`
-   ;; filter clause. :eyeroll:
-   [:query-string {:optional true} :any]
+   [:query-string {:optional true} [:maybe ms/NonBlankString]]
    ;; when present, the matching column is added as a second breakout so that each row becomes a
    ;; [value label] pair used for remapping
    [:label-field {:optional true} [:maybe [:or :mbql.clause/field :mbql.clause/expression]]]
    ;; when present, restrict the values to an exact match on the value column (used to fetch the
    ;; remapped label for a single selected value)
-   [:exact-value {:optional true} :any]])
+   [:exact-value {:optional true} [:maybe [:or ms/FieldValue [:sequential ms/FieldValue]]]]])
 
 (mu/defn- card-query :- [:maybe ::lib.schema/query]
   "Build the lib query for the value-source Card identified by `card-id`. `query` is the Card's own `:dataset_query`,
@@ -162,7 +160,8 @@
   {:values          [[\"Red Medicine\"]]
   :has_more_values false}
   "
-  ([card field-ref]
+  ([card      :- :metabase.queries.schema/card
+    field-ref :- [:or :mbql.clause/field :mbql.clause/expression]]
    (values-from-card card field-ref nil))
 
   ([card      :- :metabase.queries.schema/card
@@ -252,7 +251,8 @@
   "For a card source configured with a `:label_field`, fetch the [value label] pair for a single
   `value` by querying the card filtered to that exact value. Returns nil when there is no label
   field, the card is unreadable/archived, or no matching row is found."
-  [{config :values_source_config :as _param} :- ::parameters.schema/parameter value]
+  [{config :values_source_config :as _param} :- ::parameters.schema/parameter
+   value                                     :- [:or ms/FieldValue [:sequential ms/FieldValue]]]
   (when-let [label-field (:label_field config)]
     (when-let [card (parameters.db/card (:card_id config))]
       (when (and (not (:archived card)) (mi/can-read? card))
@@ -269,7 +269,7 @@
 
   `default-case-thunk` is a 0-arity function that returns values list when :values_source_type = nil."
   [param              :- ::parameters.schema/resolved-parameter
-   value
+   value              :- [:or ms/FieldValue [:sequential ms/FieldValue]]
    default-case-thunk :- [:=> [:cat] :any]]
   (case (:values_source_type param)
     :static-list (m/find-first #(and (vector? %) (= (count %) 2) (= (first %) value))

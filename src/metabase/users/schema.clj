@@ -52,7 +52,7 @@
 
 (mr/def ::user.settings
   "The `:settings` column of a User, decoded."
-  :map)
+  ms/UserSettings)
 
 (mr/def ::user
   "A User as selected from the app DB: every column of `:core_user` that the model selects by default, plus `:common_name` added by the model's after-select hook."

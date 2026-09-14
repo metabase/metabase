@@ -870,7 +870,7 @@
   Handles both int values (`{alias: table_id}`) and ref map values (`{alias: {:database_id ...}}`.
   Accepts both keyword and string keys for alias.
   Enriches entries with full metadata via [[normalize-source-tables]]."
-  [m :- [:map-of [:or :string :keyword]
+  [m :- [:map-of :string
                 [:or :int
                  [:map {:closed true}
                   [:database_id {:optional true} [:maybe :int]]

@@ -226,8 +226,9 @@
 (mu/defn- substitute
   [query        :- ::lib.schema/query
    stage-number :- :int
-   param->value :- [:maybe [:map-of :string :any]]
-   xs]
+   param->value :- [:maybe [:map-of :metabase.lib.schema.common/non-blank-string
+                            :metabase.lib.parameters.parse.types/parsed-value]]
+   xs           :- [:sequential :metabase.lib.parameters.parse/parsed-token]]
   (let [[replaced missing] (substitute* query stage-number param->value xs false)]
     (when (seq missing)
       (throw (ex-info (tru "Cannot run query: missing required parameters: {0}" (set missing))

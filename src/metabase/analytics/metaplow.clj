@@ -164,9 +164,9 @@
 (mu/defn track-event! :- :boolean
   "Send a single analytics event to the Metaplow collector. Returns true when the event was enqueued, false when
   Metaplow tracking is disabled or the queue is full."
-  ([schema :- snowplow/SnowplowSchema data]
+  ([schema :- snowplow/SnowplowSchema data :- snowplow/SnowplowEventData]
    (track-event! schema data nil))
-  ([schema :- snowplow/SnowplowSchema data _user-id :- [:maybe ms/PositiveInt]]
+  ([schema :- snowplow/SnowplowSchema data :- snowplow/SnowplowEventData _user-id :- [:maybe ms/PositiveInt]]
    (boolean
     (when (analytics.settings/metaplow-tracking-enabled)
       (try

@@ -3,6 +3,7 @@
   (:require
    [java-time.api :as t]
    [metabase.config.core :as config]
+   [metabase.request.schema :as request.schema]
    [metabase.request.settings :as request.settings]
    [metabase.request.util :as request.util]
    [metabase.session.settings :as session.settings]
@@ -137,8 +138,8 @@
 
 (mu/defn set-session-cookies
   "Add the appropriate cookies to the `response` for the Session."
-  [request
-   response
+  [request  :- ::request.schema/request
+   response :- ::request.schema/response
    {session-key :key
     session-type :type
     anti-csrf-token :anti_csrf_token

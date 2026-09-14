@@ -57,7 +57,7 @@
                          user-base
                          options)]
       (log/debugf "LDAP search returned %d result(s)" (count search-result))
-      (some-> (first search-result) u/lower-case-map-keys))))
+      (some-> (first search-result) (update-keys (comp str/lower-case name))))))
 
 (mu/defn- process-group-membership-filter :- ms/NonBlankString
   "Replace DN and UID placeholders with values returned by the LDAP server."
@@ -87,16 +87,16 @@
 (mu/defn ldap-search-result->user-info :- [:maybe UserInfo]
   "Convert the result "
   [ldap-connection               :- (ms/InstanceOfClass LDAPConnectionPool)
-   {:keys [dn uid], :as result}  :- :map
+   {:strs [dn uid], :as result}  :- (ms/string-keyed-map [:or :string [:sequential :string]])
    {:keys [first-name-attribute
            last-name-attribute
            email-attribute
            sync-groups?]
     :as   settings}              :- LDAPSettings
    group-membership-filter       :- ms/NonBlankString]
-  (let [{first-name (keyword first-name-attribute)
-         last-name  (keyword last-name-attribute)
-         email      (keyword email-attribute)} result]
+  (let [first-name (get result (str/lower-case first-name-attribute))
+        last-name  (get result (str/lower-case last-name-attribute))
+        email      (get result (str/lower-case email-attribute))]
     {:dn         dn
      :first-name first-name
      :last-name  last-name
@@ -104,7 +104,7 @@
      :groups     (when sync-groups?
                    ;; Active Directory and others (like FreeIPA) will supply a `memberOf` overlay attribute for
                    ;; groups. Otherwise we have to make the inverse query to get them.
-                   (or (u/one-or-many (:memberof result))
+                   (or (u/one-or-many (get result "memberof"))
                        (user-groups ldap-connection dn uid settings group-membership-filter)
                        []))}))
 

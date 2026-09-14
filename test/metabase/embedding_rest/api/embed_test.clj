@@ -1812,13 +1812,13 @@
                                                    :name    "Name"
                                                    :slug    "NAME"
                                                    :default nil}]
-                                                 {:NAME ["Aaron Hand"]})
+                                                 {"NAME" ["Aaron Hand"]})
            (#'api.embed.common/apply-slug->value [{:type    :string/=
                                                    :target  [:dimension [:template-tag "NAME"]]
                                                    :name    "Name"
                                                    :slug    "NAME"
                                                    :default nil}]
-                                                 {:NAME "Aaron Hand"})))))
+                                                 {"NAME" "Aaron Hand"})))))
 
 (deftest handle-single-params-for-operator-filters-test
   (testing "Query endpoints should work with a single URL parameter for an operator filter (#20438)"

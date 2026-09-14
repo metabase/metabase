@@ -61,6 +61,13 @@
 (def ^:private ^{:arglists '([s])} decode-base64-json
   (comp json/decode codecs/bytes->str codec/base64-decode))
 
+(mr/def ::json-value
+  "A JSON value decoded off the wire: a scalar, a sequence of JSON values, or a string-keyed map of them."
+  [:or
+   :string number? :boolean :nil
+   [:sequential [:ref ::json-value]]
+   [:map-of :string [:ref ::json-value]]])
+
 (mr/def ::cell-query
   "A base64-encoded JSON cell query (a filter clause) taken on the query string. The `:decode/api` step
   base64-decodes and JSON-parses it, then it is validated against [[::ads/root.cell-query]] -- so a handler
@@ -147,7 +154,7 @@
                                   [:map
                                    [:dataset_query ::ads/query]]]
   "Wrap query map into a Query object (mostly to facilitate type dispatch)."
-  [query :- :map]
+  [query :- (ms/string-keyed-map ::json-value)]
   (let [query (api.macros/decode-and-validate-params :body ::lib-be.schema/maybe-legacy-query query)]
     (mi/instance :model/Query
                  (merge (queries/query->database-and-table-ids query)
@@ -207,7 +214,9 @@
 
 (mu/defn get-automagic-dashboard
   "Return an automagic dashboard for entity `entity` with id `id`."
-  [entity :- Entity entity-id-or-query show]
+  [entity              :- Entity
+   entity-id-or-query  :- ::entity-id-or-query
+   show                :- [:maybe [:or [:= "all"] nat-int?]]]
   (if (= entity :transform)
     (transforms.dashboard/dashboard (->entity entity entity-id-or-query))
     (-> (->entity entity entity-id-or-query)

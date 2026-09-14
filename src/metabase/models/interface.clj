@@ -886,7 +886,9 @@
    hydration-key                  :- :keyword
    instance-key->hydrated-data-fn :- fn?
    instance-key                   :- :keyword
-   & [{:keys [default] :as _options}]]
+   & [{:keys [default] :as _options}] :- [:* [:map {:closed true}
+                                              [:default {:optional true}
+                                               [:maybe [:or :boolean number? [:map {:closed true}] [:= []]]]]]]]
   (when (seq instances)
     (let [key->hydrated-items (instance-key->hydrated-data-fn)]
       (for [item instances]

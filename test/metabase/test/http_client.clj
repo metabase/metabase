@@ -14,6 +14,7 @@
    [metabase.server.instance :as server.instance]
    [metabase.server.middleware.session :as mw.session]
    [metabase.server.streaming-response :as streaming-response]
+   [metabase.request.schema :as request.schema]
    [metabase.server.test-handler :as server.test-handler]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
    [metabase.test.initialize :as initialize]
@@ -284,15 +285,27 @@
    :patch  http/patch
    :delete http/delete})
 
+(def ^:private RequestOptions
+  "The clj-http request options this test client actually uses."
+  [:map {:closed true}
+   [:headers            {:optional true} [:map-of :string :string]]
+   [:as                 {:optional true} :keyword]
+   [:content-type       {:optional true} [:or :string :keyword]]
+   [:cookie-store       {:optional true} (ms/InstanceOfClass org.apache.http.client.CookieStore)]
+   [:cookies            {:optional true} [:map-of :string ::request.schema/cookie-attrs]]
+   [:redirect-strategy  {:optional true} :keyword]])
+
 (def ^:private ClientParamsMap
   [:map {:closed true}
    [:credentials      {:optional true} [:maybe [:or ms/UUIDString Credentials]]]
    [:method                            (into [:enum] (keys method->request-fn))]
    [:expected-status  {:optional true} [:maybe ms/PositiveInt]]
    [:url                               ms/NonBlankString]
-   [:http-body        {:optional true} [:maybe [:or map? vector?]]]
-   [:query-parameters {:optional true} [:maybe map?]]
-   [:request-options  {:optional true} [:maybe map?]]])
+   ;; string-keyed: the client stringifies keys of both when it assembles them (see `parse-http-client-args` and
+   ;; `build-body-params`), since the real request body/query-string is JSON/form-encoded either way.
+   [:http-body        {:optional true} [:maybe [:or (ms/string-keyed-map ::request.schema/json-value) [:sequential ::request.schema/json-value]]]]
+   [:query-parameters {:optional true} [:maybe (ms/string-keyed-map ::request.schema/json-value)]]
+   [:request-options  {:optional true} [:maybe RequestOptions]]])
 
 (mu/defn- -client
   ;; Since the params for this function can get a little complicated make sure we validate them
@@ -453,15 +466,19 @@
       (:url parsed)              (update :url url-escape)
       ;; un-nest {:request-options {:request-options <my-options>}} => {:request-options <my-options>}
       (:request-options parsed)  (update :request-options :request-options)
-      ;; convert query parameters into a flat map [{:k :a, :v 1} {:k :b, :v 2} {:k :b, :v 3}] => {:a 1, :b [2 3]}
+      ;; a caller writes `:http-body` as a keyword-keyed literal map, like the request body it stands for.
+      (map? (:http-body parsed)) (update :http-body update-keys name)
+      ;; convert query parameters into a flat map [{:k :a, :v 1} {:k :b, :v 2} {:k :b, :v 3}] => {"a" 1, "b" [2 3]}
       (:query-parameters parsed) (update :query-parameters (fn [query-params]
-                                                             (update-vals (->> query-params
-                                                                               (map :values)
-                                                                               (group-by :k))
-                                                                          (fn [values]
-                                                                            (if (> (count values) 1)
-                                                                              (map :v values)
-                                                                              (:v (first values))))))))))
+                                                             (update-keys
+                                                              (update-vals (->> query-params
+                                                                                (map :values)
+                                                                                (group-by :k))
+                                                                           (fn [values]
+                                                                             (if (> (count values) 1)
+                                                                               (map :v values)
+                                                                               (:v (first values)))))
+                                                              name))))))
 
 (def ^:private response-timeout-ms (u/seconds->ms 45))
 

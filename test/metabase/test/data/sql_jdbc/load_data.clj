@@ -96,7 +96,7 @@
   []
   (let [id-counter (atom 0)]
     (map (fn [row]
-           (assoc row :id (swap! id-counter inc))))))
+           (assoc row "id" (swap! id-counter inc))))))
 
 (defn maybe-add-ids-xform
   "Like [[add-ids-xform]], but only adds `:id` to tables that don't have a `:pk` column."
@@ -109,8 +109,7 @@
   "Transform applied by default that converts each row from a vector to a map keyed by `:field-name` from the table
   definition."
   [tabledef]
-  (let [fields-for-insert (mapv (comp keyword :field-name)
-                                (:field-definitions tabledef))]
+  (let [fields-for-insert (mapv :field-name (:field-definitions tabledef))]
     (map (fn [row]
            (zipmap fields-for-insert row)))))
 
@@ -122,7 +121,7 @@
     (sql.qp/->honeysql driver (apply h2x/identifier :table components))))
 
 (mu/defn- reducible-chunked-rows :- (lib.schema.common/instance-of-class clojure.lang.IReduceInit)
-  [rows        :- [:sequential :any]    ; rows is allowed to be empty.
+  [rows        :- [:sequential [:or [:sequential ::tx/dataset-value] [:map-of :string ::tx/dataset-value]]]    ; rows is allowed to be empty.
    chunk-size  :- [:maybe [:int {:min 1}]]
    row-xform   :- ::qp.schema/xform
    chunk-xform :- ::qp.schema/xform]
@@ -179,7 +178,7 @@
   [driver                    :- :keyword
    ^java.sql.Connection conn :- (lib.schema.common/instance-of-class java.sql.Connection)
    table-identifier          :- ::h2x/expr
-   rows
+   rows                      :- [:sequential [:map-of :string ::tx/dataset-value]]
    {:keys [transaction?] :or {transaction? true}} :- [:map {:closed true}
                                                        [:transaction? {:optional true} [:maybe :boolean]]]]
   (let [statements (ddl/insert-rows-dml-statements driver table-identifier rows)]

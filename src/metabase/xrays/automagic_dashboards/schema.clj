@@ -66,7 +66,7 @@
   [:map {:closed true}
    [:source       {:optional true} ::source]
    [:root         {:optional true} [:ref ::root]]
-   [:tables       {:optional true} any?]
+   [:tables       {:optional true} [:sequential ::source]]
    [:query-filter {:optional true} [:maybe [:sequential ::filter-clause]]]])
 
 (mr/def ::query
@@ -267,10 +267,45 @@
    [:title                  {:optional true} string?]
    [:card-score             {:optional true} number?]])
 
+(mr/def ::dashboard-parameter
+  "A filter widget [[metabase.xrays.automagic-dashboards.filters/add-filters]] adds to a dashboard."
+  [:map {:closed true}
+   [:id        :string]
+   [:name      [:maybe :string]]
+   [:slug      :string]
+   [:type      :string]
+   [:sectionId :string]])
+
+(mr/def ::related-entry
+  "One entry in a [[::related]] bucket: a link to another x-ray."
+  [:map {:closed true}
+   [:url         :string]
+   [:title       ::string-or-18n-string]
+   [:description [:maybe ::string-or-18n-string]]])
+
+(mr/def ::related
+  "The `:related` links of a populated dashboard: up to 4 buckets (which ones depend on the entity's model), each a
+  list of links round-robined from candidates like segments, tables, or drilldown fields."
+  [:map {:closed true}
+   [:zoom-in  {:optional true} [:sequential ::related-entry]]
+   [:zoom-out {:optional true} [:sequential ::related-entry]]
+   [:related  {:optional true} [:sequential ::related-entry]]
+   [:compare  {:optional true} [:sequential ::related-entry]]])
+
 (mr/def ::dashboard
   [:map {:closed true}
-   [:dashcards {:optional true} [:sequential ::dashcard]]
-   [:filters   {:optional true} [:sequential ::item]]])
+   [:name               {:optional true} ::string-or-18n-string]
+   [:transient_name     {:optional true} [:maybe ::string-or-18n-string]]
+   [:description        {:optional true} [:maybe ::string-or-18n-string]]
+   [:creator_id         {:optional true} [:maybe ::lib.schema.id/user]]
+   [:parameters         {:optional true} [:sequential ::dashboard-parameter]]
+   [:dashcards          {:optional true} [:sequential ::dashcard]]
+   [:filters            {:optional true} [:sequential ::item]]
+   [:related            {:optional true} ::related]
+   [:more               {:optional true} [:maybe :string]]
+   [:transient_filters  {:optional true} [:maybe [:sequential ::filter-clause]]]
+   [:param_fields       {:optional true} [:map-of :string [:sequential ::item]]]
+   [:auto_apply_filters {:optional true} :boolean]])
 
 (mr/def ::card-template
   "A grounded, combined metric augmented with the extra keys the dashboard-populating code

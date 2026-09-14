@@ -873,23 +873,30 @@
       (t2/hydrate tables :measures)
       tables)))
 
+(def ^:private last-edit-key-mapping
+  {:last_edit_user       :id
+   :last_edit_last_name  :last_name
+   :last_edit_first_name :first_name
+   :last_edit_email      :email
+   :last_edit_timestamp  :timestamp})
+
 ;;; TODO -- consider whether this function belongs here or in [[metabase.revisions.models.revision.last-edit]]
 (mu/defn- coalesce-edit-info :- revisions/MaybeAnnotated
   "Hoist all of the last edit information into a map under the key :last-edit-info. Considers this information present
   if `:last_edit_user` is not nil."
-  [row]
+  [row :- [:map {:closed true}
+           [:last_edit_user       {:optional true} [:maybe :int]]
+           [:last_edit_last_name  {:optional true} [:maybe :string]]
+           [:last_edit_first_name {:optional true} [:maybe :string]]
+           [:last_edit_email      {:optional true} [:maybe :string]]
+           [:last_edit_timestamp  {:optional true} [:maybe :string]]]]
   (letfn [(select-as [original k->k']
             (reduce (fn [m [k k']] (assoc m k' (get original k)))
                     {}
                     k->k'))]
-    (let [mapping {:last_edit_user       :id
-                   :last_edit_last_name  :last_name
-                   :last_edit_first_name :first_name
-                   :last_edit_email      :email
-                   :last_edit_timestamp  :timestamp}]
-      (cond-> (apply dissoc row (keys mapping))
-        ;; don't use contains as they all have the key, we care about a value present
-        (:last_edit_user row) (assoc :last-edit-info (select-as row mapping))))))
+    (cond-> {}
+      ;; don't use contains as they all have the key, we care about a value present
+      (:last_edit_user row) (assoc :last-edit-info (select-as row last-edit-key-mapping)))))
 
 (defn- remove-unwanted-keys [{:keys [model] :as row}]
   (cond-> (dissoc row :model_ranking :archived_directly :total_count :collection_type)
@@ -920,7 +927,9 @@
              (comp (map (fn [[model rows]]
                           (post-process-collection-children (keyword model) options collection rows)))
                    cat
-                   (map coalesce-edit-info)))
+                   (map (fn [row]
+                          (merge (apply dissoc row (keys last-edit-key-mapping))
+                                 (coalesce-edit-info (select-keys row (keys last-edit-key-mapping))))))))
        (map remove-unwanted-keys)
        ;; the collection these are presented "in" is the ID of the collection we're getting `/items` on.
        (map #(assoc % :collection_id (:id collection)))

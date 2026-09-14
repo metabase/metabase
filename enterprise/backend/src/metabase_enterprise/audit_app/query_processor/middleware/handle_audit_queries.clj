@@ -57,7 +57,7 @@
   "Primarily for dev and debugging purposes. We can probably take this out when shipping the finished product."
   [results metadata]
   (let [results-keys  (set (keys (first results)))
-        metadata-keys (set (map (comp keyword first) metadata))]
+        metadata-keys (set (map (comp name first) metadata))]
     (when (and (seq results-keys)
                (not= results-keys metadata-keys))
       (let [[only-in-results only-in-metadata] (data/diff results-keys metadata-keys)]
@@ -74,13 +74,13 @@
     (assoc v :name (name k))))
 
 (mu/defn- format-results [{:keys [results metadata]} :- [:map {:closed true}
-                                                         [:results  [:sequential [:map-of :keyword ms/FieldValue]]]
+                                                         [:results  [:sequential [:map-of :string ms/FieldValue]]]
                                                          [:metadata audit.i/ResultsMetadata]]]
   (check-results-and-metadata-keys-match results metadata)
   {:cols (metadata->cols metadata)
    :rows (for [row results]
            (for [[k] metadata]
-             (get row (keyword k))))})
+             (get row (name k))))})
 
 (def InternalQuery
   "Schema for a valid `internal` type query."

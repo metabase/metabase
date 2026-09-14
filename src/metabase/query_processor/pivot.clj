@@ -183,7 +183,7 @@
   "Reduce the results of a single (sub)`query` using `rf` and initial value `init`."
   [query :- ::lib.schema/query
    rf    :- ::qp.schema/rf
-   init  :- :any
+   init  :- ::qp.schema/accumulator
    info  :- [:maybe ::lib.schema.info/info]]
   (if (qp.pipeline/canceled?)
     (ensure-reduced init)
@@ -202,7 +202,7 @@
 
 (mu/defn- process-queries-append-results
   "Reduce the results of a sequence of `queries` using `rf` and initial value `init`."
-  [init
+  [init    :- ::qp.schema/accumulator
    queries :- [:maybe [:sequential ::lib.schema/query]]
    rf      :- ::qp.schema/rf
    info    :- [:maybe ::lib.schema.info/info]]

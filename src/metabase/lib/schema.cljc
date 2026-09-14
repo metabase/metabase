@@ -647,7 +647,7 @@
   (see `:metabase.driver.mongo.query-processor/compiled-pipeline`), and for a query that was already native the
   compiled form is the native stage itself, carrying every key a `::stage.native` has."
   [:map {:closed true}
-   [:query  :some]
+   [:query  :metabase.query-processor.compile/native-query-document-value]
    [:params {:optional true} [:maybe [:sequential [:ref ::literal/param-value]]]]])
 
 (mr/def ::query

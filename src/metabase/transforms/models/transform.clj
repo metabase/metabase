@@ -497,11 +497,12 @@
                                             (m/update-existing :source-database import-maybe-int-database-fk)
                                             (m/update-existing :source-tables
                                                                (fn [entries]
-                                                                 (->> (cond-> entries (map? entries) transforms-base.u/source-tables-map->vec)
-                                                                      (mapv (fn [entry]
-                                                                              (-> entry
-                                                                                  (m/update-existing :table_id import-maybe-int-table-fk)
-                                                                                  (m/update-existing :database_id import-maybe-int-database-fk)))))))
+                                                                 (let [entries (cond-> entries (map? entries) (update-keys name))]
+                                                                   (->> (cond-> entries (map? entries) transforms-base.u/source-tables-map->vec)
+                                                                        (mapv (fn [entry]
+                                                                                (-> entry
+                                                                                    (m/update-existing :table_id import-maybe-int-table-fk)
+                                                                                    (m/update-existing :database_id import-maybe-int-database-fk))))))))
                                             (update-checkpoint-field import-maybe-int-field-fk))))}
                :target             {:export #(serdes/export-mbql (dissoc % :table_id))
                                     :import serdes/import-mbql}

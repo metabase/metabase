@@ -44,6 +44,15 @@
     [:dimensions DimensionBindings]
     [:entity {:optional true} SourceEntity]]])
 
+(def ^:private MetricOrSegmentEntry
+  "The value half of a domain-entity spec's `:metrics`/`:segments` map entries."
+  [:map {:closed true}
+   [:name        :string]
+   [:aggregation {:optional true} MBQL]
+   [:breakout    {:optional true} [:sequential MBQL]]
+   [:filter      {:optional true} MBQL]
+   [:description {:optional true} :string]])
+
 (mu/defn- get-dimension-binding :- MBQL
   [bindings            :- Bindings
    source              :- SourceName
@@ -61,7 +70,7 @@
   "Instantiate all dimension reference in given (nested) structure"
   [bindings :- Bindings
    source   :- SourceName
-   obj]
+   obj      :- [:or MBQL [:tuple :string MetricOrSegmentEntry]]]
   (match/replace obj
     [:dimension dimension] (->> dimension
                                 (get-dimension-binding bindings source)

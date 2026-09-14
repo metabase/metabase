@@ -322,7 +322,7 @@
     [:metrics           {:optional true} [:maybe [:sequential Metric]]]
     [:filters           {:optional true} [:maybe [:sequential Filter]]]
     [:groups            {:optional true} Groups]
-    [:indepth           {:optional true} [:maybe [:sequential :any]]]
+    [:indepth           {:optional true} [:maybe [:sequential :string]]]
     [:dashboard_filters {:optional true} [:maybe [:sequential {:decode/dashboard-template u/one-or-many} :string]]]]
    [:fn {:error/message "Valid metrics references"}           valid-metrics-references?]
    [:fn {:error/message "Valid filters references"}           valid-filters-references?]

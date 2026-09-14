@@ -24,6 +24,10 @@
 (def ^:private ^{:arglists '([root])} comparison-name
   (comp capitalize-first (some-fn :comparison-name :full-name)))
 
+(def ^:private ComparisonEntityInstance
+  "An instance `->root` can turn into a `left`/`right` side of a comparison."
+  (ms/InstanceOf [:model/Table :model/Segment :model/Card :model/Field :model/Query]))
+
 (mu/defn- dashboard->cards :- [:sequential ::ads/card]
   [dashboard :- ::ads/dashboard]
   (->> dashboard
@@ -236,10 +240,9 @@
        (map (partial magic.util/->field segment))))
 
 (mu/defn- update-related
-  [related
-   left :- [:map {:closed true}
-            [:database ::lib.schema.id/database]]
-   right]
+  [related :- ::ads/related
+   left    :- ::ads/root
+   right   :- ::ads/root]
   (-> related
       (update :related (comp distinct conj) (-> right :entity ->related-entity))
       (assoc :compare (concat
@@ -277,7 +280,14 @@
 (mu/defn comparison-dashboard
   "Create a comparison dashboard based on dashboard `dashboard` comparing subsets of
    the dataset defined by segments `left` and `right`."
-  [dashboard left right opts]
+  [dashboard :- ::ads/dashboard
+   left      :- ComparisonEntityInstance
+   right     :- ComparisonEntityInstance
+   opts      :- [:map {:closed true}
+                 [:left  {:optional true} [:map {:closed true}
+                                            [:cell-query {:optional true} ::ads/root.cell-query]]]
+                 [:right {:optional true} [:map {:closed true}
+                                            [:cell-query {:optional true} ::ads/root.cell-query]]]]]
   ;; disable ref validation because X-Rays does stuff in a wacko manner, it adds a bunch of filters and whatever that
   ;; use columns from joins before adding the joins themselves (same with expressions), which is technically invalid
   ;; at the time it happens but ends up resulting in a valid query at the end of the day. Maybe one day we can rework

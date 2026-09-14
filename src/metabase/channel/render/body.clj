@@ -22,6 +22,7 @@
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.pivot.core :as pivot.core]
    [metabase.pivot.postprocess :as pivot.postprocess]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.tiles.settings :as tiles.settings]
@@ -173,9 +174,7 @@
                                                 [:columns [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]]]]]
    [:results_timezone {:optional true} [:maybe :string]]
    [:format-rows?     {:optional true} [:maybe :boolean]]
-   [:native_form      {:optional true} [:maybe [:map {:closed true}
-                                                [:query  [:or :string [:map-of :keyword :any]]]
-                                                [:params {:optional true} [:maybe [:sequential ms/FieldValue]]]]]]
+   [:native_form      {:optional true} [:maybe ::qp.compile/compiled]]
    [:insights         {:optional true} [:maybe [:sequential Insight]]]
    [:rows_truncated   {:optional true} [:maybe :int]]])
 

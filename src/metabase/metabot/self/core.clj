@@ -9,6 +9,7 @@
    [malli.transform :as mtx]
    [metabase.ai-tracing.core :as ait]
    [metabase.llm.settings :as llm]
+   [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
@@ -77,6 +78,29 @@
    [:capabilities {:optional true} [:maybe [:set :keyword]]]
    [:scope {:optional true} [:maybe :string]]])
 
+(def ^:private RawStructuredOutput
+  "A tool's own `:structured-output`/`:structured_output` map before
+  `metabase.metabot.persistence/tool-result->storable-output` trims it down to
+  `metabase.metabot.schema.v2/structured-output` for persistence."
+  [:map
+   [:query     {:optional true} [:maybe ::metabot.schema/query]]
+   [:transform {:optional true} [:maybe ::metabot.schema/transform]]
+   [::mc/default ::schema.v2/any-value]])
+
+(def ^:private ToolResult
+  "The raw return value of a tool's `:fn`, before it is trimmed for persistence or forwarded to
+  a provider (see [[collect-tool-result]])."
+  [:or
+   ::schema.v2/any-value
+   [:map
+    [:output            {:optional true} [:maybe ::schema.v2/any-value]]
+    [:structured-output {:optional true} [:maybe RawStructuredOutput]]
+    [:structured_output {:optional true} [:maybe RawStructuredOutput]]
+    [:terminal-error?   {:optional true} :boolean]
+    [:data-parts        {:optional true} [:sequential ::schema.v2/any-value]]
+    [:resources         {:optional true} [:sequential ::schema.v2/any-value]]
+    [::mc/default       ::schema.v2/any-value]]])
+
 (def ^:private AISDKPart
   "One element of the `:input` sequence passed to a provider adapter: an AISDK part keyed by
   `:type` (`:text`, `:reasoning`, `:tool-input`, `:tool-output`), or a plain role message keyed
@@ -88,8 +112,8 @@
    [:text              {:optional true} [:maybe :string]]
    [:content           {:optional true} [:maybe :string]]
    [:function          {:optional true} [:maybe :string]]
-   [:arguments         {:optional true} :any]
-   [:result            {:optional true} :any]
+   [:arguments         {:optional true} [:maybe ::schema.v2/any-value]]
+   [:result            {:optional true} [:maybe ToolResult]]
    [:error             {:optional true} [:maybe [:map {:closed true}
                                                  [:message {:optional true} [:maybe :string]]
                                                  [:type    {:optional true} [:maybe :string]]]]]

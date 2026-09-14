@@ -53,6 +53,15 @@
    [:is_sandboxed            {:optional true} :boolean]
    [:download_perms          {:optional true} :string]])
 
+(mr/def ::accumulator
+  "One of the concrete shapes threaded as a reducing function's running accumulator: an empty seed vector, or the
+  standard in-progress result map produced by [[metabase.query-processor.reducible/default-rff]] before `:row_count`
+  and the final rows are added."
+  [:or
+   [:= []]
+   [:map {:closed true}
+    [:data ::metadata]]])
+
 (mr/def ::rf
   "Schema for a reducing function."
   [:function

@@ -561,8 +561,7 @@
          (hash-map :drilldown-fields))))
 
 (mu/defn- comparisons
-  [root :- [:map {:closed true}
-            [:database ::lib.schema.id/database]]]
+  [root :- ::ads/root]
   {:compare (concat
              (for [segment (->> root :entity related/related :segments (map ->root))]
                {:url         (str (:url root) "/compare/segment/" (-> segment :entity u/the-id))

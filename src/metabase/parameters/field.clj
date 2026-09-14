@@ -54,12 +54,15 @@
       ;; -> ((14 \"Marilyne Mohr\")
              (36 \"Margot Farrell\")
              (48 \"Maryam Douglas\"))"
-  ([field search-field]
+  ([field        :- ::warehouse-schema.schema/field
+    search-field :- ::warehouse-schema.schema/field]
    (search-values field search-field nil nil))
-  ([field search-field value]
+  ([field        :- ::warehouse-schema.schema/field
+    search-field :- ::warehouse-schema.schema/field
+    value        :- [:maybe ms/NonBlankString]]
    (search-values field search-field value nil))
-  ([field
-    search-field
+  ([field        :- ::warehouse-schema.schema/field
+    search-field :- ::warehouse-schema.schema/field
     value        :- [:maybe ms/NonBlankString]
     maybe-limit  :- [:maybe ms/PositiveInt]]
    (try

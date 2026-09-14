@@ -51,7 +51,7 @@
            (str/replace #"/" "-"))))
 
 (mu/defn- merge-required :- :metabase.api.open-api/parameter.schema.object
-  [schema]
+  [schema :- :metabase.api.open-api/parameter.schema.object]
   (let [optional? (set (keep (fn [[k v]] (when (or (:optional v) (contains? v :default)) k))
                              (:properties schema)))]
     (-> schema
@@ -70,7 +70,7 @@
 
   NOTE: maybe instead of fixing it up later we should re-work Malli's json-schema transformation into a way we want it
   to be?"
-  [schema :- :map]
+  [schema :- :metabase.api.open-api/parameter.schema]
   (try
     ;; Helper to recursively fix nested schemas and strip :optional (which is only
     ;; meaningful at the top level for parameter detection, not inside oneOf/anyOf/allOf)
@@ -133,16 +133,46 @@
                       {:schema schema}
                       e)))))
 
+(defn- normalize-raw-json-schema
+  "`malli.json-schema/transform`'s raw output has `:type` as a JSON Schema string and `:properties`/`:required`/
+  `:definitions` keyed by the original schema's own (keyword) keys; normalize both up front so the rest of this
+  namespace can treat every JSON Schema node as [[:metabase.api.open-api/parameter.schema]] throughout."
+  [schema]
+  (if-not (map? schema)
+    schema
+    (cond-> schema
+      (:type schema)                 (update :type keyword)
+      (:description schema)          (update :description str)
+      (:properties schema)           (update :properties (fn [props]
+                                                            (into {}
+                                                                  (map (fn [[k v]] [(u/qualified-name k) (normalize-raw-json-schema v)]))
+                                                                  props)))
+      (:definitions schema)          (update :definitions (fn [defs]
+                                                             (into {}
+                                                                   (map (fn [[k v]] [(u/qualified-name k) (normalize-raw-json-schema v)]))
+                                                                   defs)))
+      (:required schema)             (update :required (partial mapv u/qualified-name))
+      (:items schema)                (update :items (fn [items]
+                                                       (if (sequential? items)
+                                                         (mapv normalize-raw-json-schema items)
+                                                         (normalize-raw-json-schema items))))
+      (map? (:additionalProperties schema)) (update :additionalProperties normalize-raw-json-schema)
+      (:oneOf schema)                 (update :oneOf (partial mapv normalize-raw-json-schema))
+      (:anyOf schema)                 (update :anyOf (partial mapv normalize-raw-json-schema))
+      (:allOf schema)                 (update :allOf (partial mapv normalize-raw-json-schema)))))
+
 (defn- mjs-collect-definitions
   "We transform json-schema in a few different places, but we need to collect all definitions in a single one."
   [malli-schema]
-  (let [jss (mjs/transform malli-schema {::mjs/definitions-path "#/components/schemas/"})]
+  (let [jss (normalize-raw-json-schema (mjs/transform malli-schema {::mjs/definitions-path "#/components/schemas/"}))]
     (when *definitions*
       (swap! *definitions* merge (:definitions (fix-json-schema jss))))
     (dissoc jss :definitions)))
 
 (mu/defn- schema->params* :- [:sequential :metabase.api.open-api/parameter]
-  [schema in-fn renames]
+  [schema  :- :metabase.api.macros/schema-form-or-instance
+   in-fn   :- ifn?
+   renames :- [:maybe [:map-of :string :string]]]
   (let [{:keys [properties required]} (mjs-collect-definitions schema)
         required                      (set required)]
     (for [[k param-schema] properties
@@ -172,7 +202,7 @@
   If the schema has `:openapi/response-schema` in its properties (e.g., for streaming responses), that schema
   is used for documentation instead of the actual schema. This allows streaming endpoints to document the
   JSON content they return while validating that the return value is a StreamingResponse instance."
-  [schema]
+  [schema :- :metabase.api.macros/schema-form-or-instance]
   (let [resolved-schema (mr/resolve-schema schema)
         ;; Check for :openapi/response-schema in the schema properties - used by server/streaming-response-schema
         content-schema  (or (-> resolved-schema mc/properties :openapi/response-schema)

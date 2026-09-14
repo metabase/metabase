@@ -189,7 +189,7 @@
    shape returned by the session/api-key resolvers and additionally attaches `:token-scopes`, so the
    merged request carries both the user identity and the access the token was granted. This is the
    only place an OAuth access token authenticates a request to the general (`/api/*`) API."
-  [request]
+  [request :- ::request.schema/request]
   (when (init-status/complete?)
     (when-let [token (oauth-server/extract-bearer-token request)]
       (when-let [{:keys [user-id scopes]} (oauth-server/resolve-access-token token)]

@@ -233,6 +233,11 @@
   schema. Not for any other bag of settings."
   (open-map "database settings"))
 
+(def UserSettings
+  "A User's `:settings`: user-local settings, whose keys are owned by the settings registry rather than by this
+  schema. Not for any other bag of settings."
+  (open-map "user settings"))
+
 (defn string-keyed-map
   "Schema for a JSON object whose keys are not ours to declare, as a `:map-of` string keys to `value-schema`.
   Normalizing stringifies its keys -- a request on its way in, or a keywordized JSON column read back from the

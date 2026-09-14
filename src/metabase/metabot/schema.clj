@@ -6,6 +6,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -31,9 +32,7 @@
 
 (mr/def ::state-map-key
   "A dynamic state-map key, normalized to its canonical string representation."
-  [:or {:decode/normalize lib.schema.common/normalize-string-key}
-   :string
-   :keyword])
+  [:string {:decode/normalize lib.schema.common/normalize-string-key}])
 
 (mr/def ::query
   "Either an MBQL 5 query or a legacy MBQL query, whichever format the tool that produced it stored."
@@ -335,7 +334,7 @@
 
 (mr/def ::metabot-message.data-part
   "One entry of the `:data` column of a MetabotMessage, decoded."
-  :map)
+  ::schema.v2/ui-message-part)
 
 (mr/def ::metabot-message.usage
   "The `:usage` column of a MetabotMessage, decoded."

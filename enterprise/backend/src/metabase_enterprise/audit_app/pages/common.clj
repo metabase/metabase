@@ -115,7 +115,7 @@
                        [:offset     {:optional true} ::h2x/expr]
                        [:union-all  {:optional true} [:sequential ::h2x/expr]]]
    rff            :- ::qp.schema/rff
-   init]
+   init           :- ::qp.schema/accumulator]
   (let [driver         (mdb/db-type)
         [sql & params] (compile-honeysql driver honeysql-query)]
     ;; MySQL driver normalizies timestamps. Setting `*results-timezone-id-override*` is a shortcut
@@ -160,7 +160,7 @@
   `metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries.internal-queries`)"
   [honeysql-query]
   (let [rff (fn rff [{:keys [cols]}]
-              (let [col-names (mapv (comp keyword :name) cols)]
+              (let [col-names (mapv :name cols)]
                 ((map (partial zipmap col-names)) conj)))]
     (reduce-results* honeysql-query rff [])))
 

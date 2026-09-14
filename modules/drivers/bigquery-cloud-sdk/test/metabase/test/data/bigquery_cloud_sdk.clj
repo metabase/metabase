@@ -69,7 +69,7 @@
 
 (def ^:private DatabaseDefinitionOptions
   [:map {:closed true}
-   [:native-ddl        {:optional true} [:sequential [:or :string [:map-of :keyword :any]]]]
+   [:native-ddl        {:optional true} [:sequential ::tx/native-ddl-form]]
    [:disable-fk-checks {:optional true} :boolean]
    [:static            {:optional true} :boolean]])
 

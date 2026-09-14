@@ -2,7 +2,8 @@
   "Find the schemas reachable from a schema that do not declare their shape: open maps, keyword-keyed `:map-of`s and
   `:any`.
 
-  Accepted instead: a map with a `::mc/default` entry (whose schema is walked), `:any` as a conjunct of an `:and`,
+  Accepted instead: a map with a `::mc/default` entry whose schema is a map schema (and is walked), or any
+  `::mc/default` entry inside a conjunct of an `:and`, `:any` as a conjunct of an `:and`,
   and the schemas marked `::mr/deliberately-open`. Registry schemas are walked once per `visited` set, except the ones of a
   library."
   (:require
@@ -73,6 +74,17 @@
 (defn- default-entry? [child]
   (and (vector? child) (= (first child) ::mc/default)))
 
+(defn- declaring-default-entry?
+  "Whether `child` is a `::mc/default` entry whose schema is a map schema for the other keys: a deliberately open map,
+  a `:map-of`, or a closed map."
+  [child]
+  (when (default-entry? child)
+    (when-let [default (try (mc/deref-all (mc/schema (peek child))) (catch Throwable _ nil))]
+      (or (deliberately-open? default)
+          (contains? #{:map-of :multi} (mc/type default))
+          (and (= :map (mc/type default))
+               (true? (:closed (mc/properties default))))))))
+
 (defn- finding [schema trail kind]
   {:trail trail, :kind kind, :form (mc/form schema)})
 
@@ -98,7 +110,7 @@
           (cond
             (or (and (= schema-type :map)
                      (not (true? (:closed (mc/properties schema))))
-                     (not (some default-entry? (mc/children schema))))
+                     (not (some (if conjunct? default-entry? declaring-default-entry?) (mc/children schema))))
                 (contains? open-map-schemas schema-type))
             (swap! findings conj (finding schema trail :open-map))
 
