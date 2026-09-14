@@ -8,15 +8,12 @@
   Three pieces:
     - `auto-param` lets callers write the value inline as `[:param* v]` instead of keeping
       a separate `{:params ...}` map in sync.
-    - `long*`/`longs` are coercions that are provably safe without `[:param]`, so the very
-      common id/FK lookup stays readable.
     - `assert-values-wrapped!` is the check: a value slot holding anything else throws.
       It is not yet installed at the Toucan compile step -- see the rollout note at the
       bottom of this namespace.
 
   This is an allowlist, and deliberately separate from `metabase.app-db.honeysql-guard`,
   which is a blocklist of known-dangerous shapes and is backported to older versions."
-  (:refer-clojure :exclude [longs])
   (:require
    [clojure.walk :as walk]
    [metabase.util.honey-sql-2 :as h2x]
@@ -54,36 +51,39 @@
       form)
      @params]))
 
-;;; ------------------------------------------ coercions (GHY-4475) ----------------------------------------------
-
-(defn long*
-  "Coerce `x` to a long. Throws on anything that is not already a number, so a hostile
-  non-scalar cannot reach a value slot through it. Named `long*` to avoid shadowing `clojure.core/long`."
-  ^long [x]
-  (long x))
-
-(defn longs
-  "Coerce a seq of ids to longs. Throws if any element is not a number."
-  [xs]
-  (into [] (map long*) xs))
-
-(defn str*
-  "Assert `x` is already a string and return it, so a value slot holding it is provably a string
-  literal rather than a HoneySQL form. Throws on anything else -- notably on the maps and keyword
-  vectors that HoneySQL would compile as SQL."
-  ^String [x]
-  (if (string? x)
-    x
-    (throw (ex-info (str "Expected a string value, got " (pr-str (type x)))
-                    {:type ::not-a-string, :value x}))))
-
 ;;; --------------------------------------- reject-unwrapped (GHY-4474) ------------------------------------------
 
 ;; Only these clause keys hold user values. `:select`/`:from`/`:order-by`/`:group-by` are
 ;; structure and are never inspected -- structure safety is the safe-app-db-layer's job
 ;; (Initiative 2), not this guard's.
-(def ^:private value-clauses
-  #{:where :having :set :values :join-by})
+;; Clauses that hold only SQL structure -- table names, column references, orderings. Everything
+;; else in a query may hold a value, so it is checked.
+;;
+;; Listing the structure clauses rather than the value clauses is deliberate: HoneySQL has ~92
+;; clauses and gains more over time, and a clause nobody classified should be inspected rather than
+;; skipped. Getting this backwards means a value slot is silently unchecked.
+(def ^:private structure-only-clauses
+  #{:select :select-distinct :select-distinct-on :select-top :select-distinct-top
+    :from :into :bulk-collect-into :table :columns :exclude :rename
+    :order-by :group-by :partition-by
+    :limit :offset :fetch
+    :distinct :for :lock :with-data
+    :alter-table :add-column :drop-column :alter-column :modify-column :rename-column
+    :add-index :drop-index :rename-table :create-table :create-table-as :with-columns
+    :create-view :create-or-replace-view :create-materialized-view :create-extension
+    :drop-table :drop-view :drop-materialized-view :drop-extension :refresh-materialized-view
+    :create-index :truncate :delete :delete-from :erase-from :update :insert-into
+    :patch-into :replace-into :on-constraint :do-nothing :returning})
+
+;; `:set`, `:values` and `:do-update-set` map a column to a value rather than holding a clause, so
+;; they are checked as rows instead of walked as operator forms.
+(def ^:private value-map-clauses
+  #{:set :do-update-set :on-duplicate-key-update})
+
+(defn- value-bearing-clauses
+  "The keys of `query` that may hold a value."
+  [query]
+  (remove structure-only-clauses (keys query)))
 
 ;; Operator -> which argument indexes are VALUE slots (0-based, after the op itself).
 ;; `nil` means "no direct values, recurse into every arg" (boolean connectives).
@@ -205,7 +205,7 @@
 (defn- bad!
   [v ctx]
   (throw (ex-info (str "Unwrapped value in a SQL value slot: " (pr-str v)
-                       ". Wrap it with [:param ...] or coerce it with (long* ...).")
+                       ". Mark it with [:auto/param ...] so it is bound as a parameter.")
                   (assoc ctx :type ::unwrapped-value, :value v))))
 
 (defn- check-op!
@@ -232,19 +232,40 @@
   (when (and (sequential? form) (keyword? (first form)) (not (param-form? form)))
     (check-op! form ctx strict?)))
 
+(defn- join-clause?
+  "Whether `k` is a join, whose value is `[target on-condition]` -- only the condition holds values."
+  [k]
+  (and (keyword? k) (re-find #"join" (name k))))
+
+(defn- check-one-clause!
+  "Check whatever `clause` holds, according to the shape the clause key implies."
+  [k clause ctx strict?]
+  (cond
+    (contains? value-map-clauses k)
+    (doseq [v (vals clause)]
+      (when-not (value-ok? v strict?) (bad! v ctx)))
+
+    (= :values k)
+    (doseq [row clause, v (if (map? row) (vals row) row)]
+      (when-not (value-ok? v strict?) (bad! v ctx)))
+
+    ;; `{:left-join [[:collection :c] [:= :c.id ...]]}` -- a flat sequence alternating join target
+    ;; and ON condition. A target is `[table alias]`, a condition starts with an operator, so the
+    ;; operator table is what tells them apart; anything else here is a table name.
+    (join-clause? k)
+    (doseq [part clause
+            :when (and (sequential? part) (contains? op-value-slots (first part)))]
+      (check-clause! part ctx strict?))
+
+    :else
+    (check-clause! clause ctx strict?)))
+
 (defn- check-nested!
   "Check the value slots of a nested query, throwing on the first bad leaf. Used for subqueries
   carrying a dev-authored marker -- the marker blesses the SQL, not the values inside it."
   [query strict?]
-  (doseq [k value-clauses
-          :when (contains? query k)]
-    (let [clause (get query k)]
-      (case k
-        :set    (doseq [v (vals clause)]
-                  (when-not (value-ok? v strict?) (bad! v {:clause k})))
-        :values (doseq [row clause, v (if (map? row) (vals row) row)]
-                  (when-not (value-ok? v strict?) (bad! v {:clause k})))
-        (check-clause! clause {:clause k} strict?)))))
+  (doseq [k (value-bearing-clauses query)]
+    (check-one-clause! k (get query k) {:clause k} strict?)))
 
 (defn assert-values-wrapped!
   "Throw if any value slot in the compiled `query` holds something that could become SQL.
@@ -252,17 +273,8 @@
   ([query] (assert-values-wrapped! query {} false))
   ([query ctx strict?]
    (when (map? query)
-     (doseq [k value-clauses
-             :when (contains? query k)]
-       (let [clause (get query k)
-             ctx    (assoc ctx :clause k)]
-         (case k
-           ;; :set is a column->value map; :values is a seq of such maps or rows.
-           :set    (doseq [v (vals clause)]
-                     (when-not (value-ok? v strict?) (bad! v ctx)))
-           :values (doseq [row clause, v (if (map? row) (vals row) row)]
-                     (when-not (value-ok? v strict?) (bad! v ctx)))
-           (check-clause! clause ctx strict?)))))
+     (doseq [k (value-bearing-clauses query)]
+       (check-one-clause! k (get query k) (assoc ctx :clause k) strict?)))
    query))
 
 ;;; ----------------------------------------------- adoption ----------------------------------------------------
