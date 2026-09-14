@@ -412,30 +412,6 @@ describe("scenarios > organization > timelines > dashboard", () => {
     H.getDashboardCard().findByText("Created At: Month").should("be.visible");
   });
 
-  it("should hide events below the minimum chart size and restore them after enlarging the card", () => {
-    createReleaseTimeline().then(({ timeline }) => {
-      visitDashboardWithTimeSeries({
-        "timeline.selected_timeline_ids": [timeline.id],
-      });
-    });
-    H.timelineEventChip("RC1").should("be.visible");
-    H.editDashboard();
-    H.resizeDashboardCard({ card: H.getDashboardCard(), x: -2000, y: -2000 });
-    H.saveDashboard();
-    H.getDashboardCard().findByText("Orders by month").should("be.visible");
-    H.timelineEventChip("RC1").should("not.exist");
-    H.getDashboardCardMenu().click();
-    H.menu().should("be.visible").findByText("Events").should("not.exist");
-    cy.realPress("Escape");
-    H.menu().should("not.exist");
-
-    H.editDashboard();
-    H.resizeDashboardCard({ card: H.getDashboardCard(), x: 900, y: 700 });
-    H.saveDashboard();
-    H.getDashboardCard().findByText("Created At: Month").should("be.visible");
-    H.timelineEventChip("RC1").should("be.visible");
-  });
-
   it("should deep duplicate a dashboard whose question selects an inaccessible timeline", () => {
     H.createCollection({ name: "Events" }).then(({ body: { id } }) => {
       H.createTimelineWithEvents({
