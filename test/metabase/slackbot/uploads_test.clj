@@ -472,15 +472,15 @@
                 {:name "data.csv", :filetype "csv", :url_private "https://example.com/x.csv", :size 100})))
         (is (false? (.exists ^java.io.File @temp-file)))))))
 
-(deftest upload-file-unsupported-contents-test
-  (testing "a file whose contents are not a CSV or TSV says so"
+(deftest upload-file-unsupported-file-type-test
+  (testing "a file that does not look like a CSV or TSV says so"
     (mt/with-dynamic-fn-redefs
       [slackbot.client/download-file-stream (fn [_client _url]
                                               (io/input-stream (.getBytes "col1,col2\nval1,val2")))
        upload.impl/create-csv-upload!       (fn [_params]
                                               (throw (ex-info "Unsupported File Type" {:status-code 415})))]
       (is (= {:filename "data.csv"
-              :error    "I couldn't upload data.csv because its contents don't look like a CSV or TSV file."}
+              :error    "I couldn't upload data.csv because it doesn't look like a CSV or TSV file."}
              (#'slackbot.uploads/upload-file!
               test-client
               test-target

@@ -111,7 +111,7 @@
                      (ex-message e)
 
                      (= 415 (:status-code (ex-data e)))
-                     (format "I couldn't upload %s because its contents don't look like a CSV or TSV file." name)
+                     (format "I couldn't upload %s because it doesn't look like a CSV or TSV file." name)
 
                      (and (let [status (:status-code (ex-data e))]
                             (and (integer? status) (<= 400 status 499)))
