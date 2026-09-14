@@ -145,12 +145,16 @@ jobs:
             echo "::add-mask::$session"
             for _ in 1 2 3 4 5; do curl -sS -o /dev/null "$SITE/"; done
 
+            # `measure.ts` waits on the debugging WebSocket without a bound, so a
+            # Chrome that dies there hangs the whole backfill. One commit takes
+            # about six minutes, so cap it well above that and move on.
             local status=0
-            SESSION_COOKIE="$session" bun frontend/test/bench/matrix.ts "$SITE/" "$RUNS" \
+            timeout 900 env SESSION_COOKIE="$session" bun frontend/test/bench/matrix.ts "$SITE/" "$RUNS" \
               > "artifacts/${sha}.json" || status=1
 
             kill "$java_pid"
             wait "$java_pid" 2>/dev/null || true
+            pkill -f "remote-debugging-port" 2>/dev/null || true
             [ $status -ne 0 ] && return $status
 
             # The upload reports a rejection as a warning and exits 0, so read
