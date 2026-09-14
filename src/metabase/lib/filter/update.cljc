@@ -17,6 +17,7 @@
   If there is no existing filter on the column(s), these add a new filter. Existing filters are replaced."
   (:require
    [metabase.lib.breakout :as lib.breakout]
+   [metabase.lib.date-time :as lib.date-time]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.ref :as lib.ref]
@@ -193,7 +194,8 @@
                                    (not (string? t))
                                    (u.time/format-for-base-type ((some-fn :effective-type :base-type) temporal-column)))))
          start        (maybe-string start)
-         end          (maybe-string end)]
+         end          (maybe-string end)
+         time-config (lib.date-time/config query)]
      (if-not unit
        ;; Temporal column is not bucketed: we don't need to update any temporal units here. Add/update a `:between`
        ;; filter.
@@ -202,11 +204,11 @@
        (let [;; clamp range to unit to ensure we select exactly what's represented by the dots/bars. E.g. if I draw my
              ;; filter from `2024-01-02` to `2024-03-05` and the unit is `:month`, we should only show the months
              ;; between those two values, i.e. only `2024-02` and `2024-03`.
-             start         (let [truncated-start (u.time/truncate start unit)]
+             start         (let [truncated-start (u.time/truncate time-config start unit)]
                              (if (zero? (u.time/unit-diff :millisecond truncated-start start))
                                truncated-start
-                               (u.time/truncate (u.time/add start unit 1) unit)))
-             end           (u.time/truncate end unit)
+                               (u.time/truncate time-config (u.time/add start unit 1) unit)))
+             end           (u.time/truncate time-config end unit)
              ;; update the breakout unit if appropriate.
              breakout-unit (temporal-filter-find-best-breakout-unit unit start end (:effective-type temporal-column))
              query         (if (= unit breakout-unit)

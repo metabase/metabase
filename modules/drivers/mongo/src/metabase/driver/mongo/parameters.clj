@@ -157,7 +157,7 @@
                                     ;; since that desugars to
                                     ;;
                                     ;;    [:or [:= <field> 1] ...].
-                                    lib/desugar-filter-clause
+                                    (#(lib/desugar-filter-clause {:start-of-week (driver-api/start-of-week)} %))
                                     driver-api/wrap-value-literals-in-mbql5
                                     (->> (mongo.qp/compile-filter query stage-number))
                                     json/encode)]

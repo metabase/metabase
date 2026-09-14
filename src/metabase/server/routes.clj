@@ -102,7 +102,7 @@
 
 (mu/defn make-routes :- ::api.macros/handler
   "Create the top-level Ring route handler for Metabase.
-  `auth-routes` is the `/auth` handler (`metabase.sso.auth-wrapper/routes`), injected like `api-routes`
+  `auth-routes` is the `/auth` handler ([[metabase.sso.auth-wrapper/routes]]), injected like `api-routes`
   because `server` sits below `sso` in the module graph."
   [auth-routes :- ::api.macros/handler
    api-routes  :- ::api.macros/handler]

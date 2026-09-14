@@ -1459,7 +1459,8 @@
               [int]
               (mt/run-mbql-query checkins
                 {:aggregation [[:count]]
-                 :filter [:= [:field $timestamp nil] (t/format "yyyy-MM-dd" (u.date/truncate :day))]})))))))
+                 :filter [:= [:field $timestamp nil]
+                          (t/format "yyyy-MM-dd" (u.date/truncate {:start-of-week :sunday} :day))]})))))))
 
 (deftest ^:parallel default-bucketing-test-2
   ;; this is basically the same test as above, but using the office-checkins dataset instead of the dynamically
@@ -1506,7 +1507,8 @@
                 [int]
                 (mt/run-mbql-query checkins
                   {:aggregation [[:count]]
-                   :filter [:= [:field $timestamp nil] (str (t/format "yyyy-MM-dd" (u.date/truncate :day))
+                   :filter [:= [:field $timestamp nil] (str (t/format "yyyy-MM-dd"
+                                                                      (u.date/truncate {:start-of-week :sunday} :day))
                                                             "T14:16:00Z")]}))))))))
 
 (def ^:private addition-unit-filtering-vals

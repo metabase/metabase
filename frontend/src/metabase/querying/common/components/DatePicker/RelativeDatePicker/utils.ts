@@ -120,14 +120,11 @@ export function getUnitOptions(
   }));
 }
 
-export function formatDateRange({
-  value,
-  unit,
-  offsetValue,
-  offsetUnit,
-  options,
-}: RelativeDatePickerValue): string {
-  return Lib.formatRelativeDateRange({
+export function formatDateRange(
+  timeConfig: Lib.TimeConfig,
+  { value, unit, offsetValue, offsetUnit, options }: RelativeDatePickerValue,
+): string {
+  return Lib.formatRelativeDateRange(timeConfig, {
     value,
     unit,
     offsetValue,

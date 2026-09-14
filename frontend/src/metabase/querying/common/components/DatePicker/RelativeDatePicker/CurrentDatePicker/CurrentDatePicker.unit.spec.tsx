@@ -1,5 +1,6 @@
 import _userEvent from "@testing-library/user-event";
 
+import { createMockSettingsState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import { DATE_PICKER_UNITS } from "metabase/querying/common/constants";
 import type {
@@ -36,6 +37,11 @@ function setup({
       availableUnits={availableUnits}
       onChange={onChange}
     />,
+    {
+      storeInitialState: {
+        settings: createMockSettingsState({ "start-of-week": "sunday" }),
+      },
+    },
   );
 
   return { onChange };

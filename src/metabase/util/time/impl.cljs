@@ -51,8 +51,6 @@
    ;; cljfmt reorders these namespaces to be out of order, then kondo complains about it.
    ;; so let's just live with the 1 unordered namespace require for now. :skull:
    ^{:clj-kondo/ignore [:unsorted-required-namespaces]}
-   ["dayjs/plugin/weekday" :as weekday]
-   ["dayjs/plugin/weekOfYear" :as weekOfYear]
    [metabase.util.time.impl-common :as common]))
 
 ;; Initialize dayjs plugins
@@ -64,8 +62,6 @@
 (dayjs/extend objectSupport)
 (dayjs/extend quarterOfYear)
 (dayjs/extend utc)
-(dayjs/extend weekday)
-(dayjs/extend weekOfYear)
 
 (defn- now [] (dayjs))
 
@@ -111,16 +107,39 @@
   (.isSame d1 d2 "year"))
 
 ;;; ---------------------------------------------- information -------------------------------------------------------
-(defn first-day-of-week
-  "The first day of the week varies by locale, but Metabase has a setting that overrides it.
-  In CLJS, Day.js is already configured with that setting."
-  []
-  (nth [:sunday :monday :tuesday :wednesday :thursday :friday :saturday]
-       (.firstDayOfWeek (dayjs/localeData))))
-
 (def default-options
   "The default map of options - empty in CLJS."
   {})
+
+(def ^:private day-of-week->index
+  {:sunday 0
+   :monday 1
+   :tuesday 2
+   :wednesday 3
+   :thursday 4
+   :friday 5
+   :saturday 6})
+
+(defn- start-of-week-index [{:keys [start-of-week] :as time-config}]
+  (or (day-of-week->index start-of-week)
+      (throw (ex-info "Week-based time operations require :start-of-week"
+                      {:time-config time-config}))))
+
+(defn- require-time-config [{:keys [start-of-week] :as time-config}]
+  (when-not start-of-week
+    (throw (ex-info "Date operations require :start-of-week"
+                    {:time-config time-config})))
+  time-config)
+
+(defn- ^dayjs truncate-to-week [time-config ^dayjs value]
+  (let [days-since-start (mod (- (.day value) (start-of-week-index time-config)) 7)
+        ^dayjs shifted   (.subtract value days-since-start "day")]
+    (.startOf shifted "day")))
+
+(defn- week-of-year [time-config ^dayjs value]
+  (let [^dayjs first-week (truncate-to-week time-config (.startOf value "year"))
+        ^dayjs this-week  (truncate-to-week time-config value)]
+    (inc (quot (.diff this-week first-week "day") 7))))
 
 ;;; ------------------------------------------------ to-range --------------------------------------------------------
 (defn- apply-offset
@@ -130,12 +149,16 @@
    offset-n
    (name offset-unit)))
 
-(defmethod common/to-range :default [^dayjs value {:keys [n unit]}]
-  (let [^dayjs adjusted (if (> n 1)
-                          (.add value (dec n) (name unit))
-                          value)]
-    [(.startOf value      (name unit))
-     (.endOf   adjusted   (name unit))]))
+(defmethod common/to-range :default [^dayjs value {:keys [n unit] :or {n 1} :as options}]
+  (if (= unit :week)
+    (let [^dayjs start (truncate-to-week options value)
+          ^dayjs end   (.add start n "week")]
+      [start (.subtract end 1 "millisecond")])
+    (let [^dayjs adjusted (if (> n 1)
+                            (.add value (dec n) (name unit))
+                            value)]
+      [(.startOf value      (name unit))
+       (.endOf   adjusted   (name unit))])))
 
 ;; NB: Only the :default for to-range is needed in CLJS, since Day.js's startOf and endOf methods are doing the work.
 
@@ -211,10 +234,10 @@
 (defmethod common/number->timestamp :hour-of-day [value _]
   (-> (now) (.hour value) (.startOf "hour")))
 
-(defmethod common/number->timestamp :day-of-week [value _]
+(defmethod common/number->timestamp :day-of-week [value options]
   ;; Metabase uses 1 to mean the start of the week, based on the Metabase setting for the first day of the week.
-  ;; Day.js's weekday() uses 0 as the first day of the week in its configured locale.
-  (-> (now) (.weekday (dec value)) (.startOf "day")))
+  (-> (truncate-to-week options (now))
+      (.add (dec value) "day")))
 
 (defmethod common/number->timestamp :day-of-week-iso [value _]
   (-> (now) (.isoWeekday value) (.startOf "day")))
@@ -227,8 +250,11 @@
   ;; We force the initial date to be in a leap year (2016).
   (-> (magic-base-date) (.dayOfYear value) (.startOf "day")))
 
-(defmethod common/number->timestamp :week-of-year [value _]
-  (-> (now) (.week value) (.startOf "week")))
+(defmethod common/number->timestamp :week-of-year [value options]
+  (-> (now)
+      (.startOf "year")
+      (#(truncate-to-week options %))
+      (.add (dec value) "week")))
 
 (defmethod common/number->timestamp :month-of-year [value _]
   ;; Day.js uses 0-based months, so we need to subtract 1
@@ -290,7 +316,7 @@
   "Constructs a platform date value (eg. Day.js, LocalDate) for the given year, month and day.
 
   Day is 1-31. January = 1, or you can specify keywords like `:jan`, `:jun`."
-  ([] (truncate (dayjs) :day))
+  ([] (truncate {:start-of-week :sunday} (dayjs) :day))
   ([year month day]
    (dayjs #js {:year  year
                :date  day
@@ -372,11 +398,11 @@
 (defn ^:private format-extraction-unit
   "Formats a date-time value given the temporal extraction unit.
   If unit is not supported, returns nil."
-  [^dayjs t unit locale]
-  ;; Special case for day-of-year: use the dayOfYear() method instead of format
-  ;; because DDD produces zero-padded output
-  (if (= unit :day-of-year)
-    (str (.dayOfYear t))
+  [{:keys [locale] :as time-config} ^dayjs t unit]
+  (case unit
+    ;; DDD produces zero-padded output, so use the plugin method instead.
+    :day-of-year  (str (.dayOfYear t))
+    :week-of-year (str (week-of-year time-config t))
     (when-some [format (get unit-formats unit)]
       (if locale
         (-> t
@@ -410,50 +436,50 @@
   "Formats a temporal-value (iso date/time string, int for extraction units) given the temporal-bucketing unit.
    If unit is nil, formats the full date/time.
    Time input formatting is only defined with time units."
-  ;; This third argument is needed for the JVM side; it can be ignored here.
-  ([input unit] (format-unit input unit nil))
-  ([input unit locale]
-   (cond
-     (string? input)
-     (let [time? (common/matches-time? input)
-           date? (common/matches-date? input)
-           date-time? (common/matches-date-time? input)
-           t (cond
-               ;; Anchor to an arbitrary date since time inputs are only defined for
-               ;; :hour-of-day and :minute-of-hour.
-               time? (.utc dayjs (str "2023-01-01T" input))
-               (or date? date-time?) (coerce-local-date-time input))]
-       (if (and t (.isValid t))
-         (or
-          (format-extraction-unit t unit locale)
-          ;; no locale for default formats
-          (cond
-            time? (.format t "h:mm A")
-            date? (.format t "MMM D, YYYY")
-            date-time? (.format t "MMM D, YYYY, h:mm A")))
-         input))
-
-     (number? input)
-     (if (= unit :hour-of-day)
-       (str (cond (zero? input) "12" (<= input 12) input :else (- input 12)) " " (if (<= input 11) "AM" "PM"))
-       (or
-        (format-extraction-unit (common/number->timestamp input {:unit unit}) unit locale)
-        (str input)))
-
-     (dayjs/isDayjs input)
-     (or (format-extraction-unit input unit locale)
+  [time-config input unit]
+  (cond
+    (string? input)
+    (let [time? (common/matches-time? input)
+          date? (common/matches-date? input)
+          date-time? (common/matches-date-time? input)
+          t (cond
+              ;; Anchor to an arbitrary date since time inputs are only defined for
+              ;; :hour-of-day and :minute-of-hour.
+              time? (.utc dayjs (str "2023-01-01T" input))
+              (or date? date-time?) (coerce-local-date-time input))]
+      (if (and t (.isValid t))
+        (or
+         (format-extraction-unit time-config t unit)
          ;; no locale for default formats
          (cond
-           ;; no hour, minute, or seconds, must be date
-           (not (has-explicit-time? input))
-           (.format input "MMM D, YYYY")
+           time? (.format t "h:mm A")
+           date? (.format t "MMM D, YYYY")
+           date-time? (.format t "MMM D, YYYY, h:mm A")))
+        input))
 
-           ;; no year, month, or day, must be a time
-           (not (has-explicit-date? input))
-           (.format input "h:mm A")
+    (number? input)
+    (if (= unit :hour-of-day)
+      (str (cond (zero? input) "12" (<= input 12) input :else (- input 12)) " " (if (<= input 11) "AM" "PM"))
+      (or
+       (format-extraction-unit time-config
+                               (common/number->timestamp input (assoc time-config :unit unit))
+                               unit)
+       (str input)))
 
-           :else ;; otherwise both date and time
-           (.format input "MMM D, YYYY, h:mm A"))))))
+    (dayjs/isDayjs input)
+    (or (format-extraction-unit time-config input unit)
+        ;; no locale for default formats
+        (cond
+          ;; no hour, minute, or seconds, must be date
+          (not (has-explicit-time? input))
+          (.format input "MMM D, YYYY")
+
+          ;; no year, month, or day, must be a time
+          (not (has-explicit-date? input))
+          (.format input "h:mm A")
+
+          :else ;; otherwise both date and time
+          (.format input "MMM D, YYYY, h:mm A")))))
 
 (def ^:private month-abbrev->month
   "Map of English month abbreviations (case-insensitive) to month numbers (0-11)."
@@ -509,15 +535,16 @@
   "Formats a time difference between two temporal values.
    Drops redundant information."
   [temporal-value-1 temporal-value-2]
-  (let [default-format #(str (format-unit temporal-value-1 nil)
+  (let [time-config  {:start-of-week :sunday}
+        default-format #(str (format-unit time-config temporal-value-1 nil)
                              " – "
-                             (format-unit temporal-value-2 nil))]
+                             (format-unit time-config temporal-value-2 nil))]
     (cond
       (some (complement string?) [temporal-value-1 temporal-value-2])
       (default-format)
 
       (= temporal-value-1 temporal-value-2)
-      (format-unit temporal-value-1 nil)
+      (format-unit time-config temporal-value-1 nil)
 
       (and (common/matches-time? temporal-value-1)
            (common/matches-time? temporal-value-2))
@@ -565,21 +592,23 @@
   "Given a `n` `unit` time interval and the current date, return a string representing the date-time range.
    Provide an `offset-n` and `offset-unit` time interval to change the date used relative to the current date.
    `options` is a map and supports `:include-current` to include the current given unit of time in the range."
-  ([n unit offset-n offset-unit opts]
-   (format-relative-date-range (now) n unit offset-n offset-unit opts))
-  ([t n unit offset-n offset-unit {:keys [include-current]}]
+  ([time-config n unit offset-n offset-unit options]
+   (format-relative-date-range time-config (now) n unit offset-n offset-unit options))
+  ([time-config t n unit offset-n offset-unit {:keys [include-current] :as options}]
    (let [offset-now (cond-> t
                       (neg? n) (apply-offset n unit)
                       (and (pos? n) (not include-current)) (apply-offset 1 unit)
                       (and offset-n offset-unit) (apply-offset offset-n offset-unit))
-         pos-n (cond-> (abs n)
-                 include-current inc)
+         pos-n (max 1 (cond-> (abs n)
+                        include-current inc))
          date-ranges (map #(.format % (if (#{:hour :minute} unit) "YYYY-MM-DDTHH:mm" "YYYY-MM-DD"))
                           (common/to-range offset-now
-                                           {:unit unit
-                                            :n pos-n
-                                            :offset-n offset-n
-                                            :offset-unit offset-unit}))]
+                                           (merge time-config
+                                                  options
+                                                  {:unit        unit
+                                                   :n           pos-n
+                                                   :offset-n    offset-n
+                                                   :offset-unit offset-unit})))]
      (apply format-diff date-ranges))))
 
 (def ^:private temporal-formats
@@ -684,9 +713,12 @@
 (defn truncate
   "ClojureScript implementation of [[metabase.util.time/truncate]]; supports both Day.js instances and ISO-8601
   strings."
-  [t unit]
-  (with-string-preservation t (fn [^dayjs parsed]
-                                (.startOf parsed (name unit)))))
+  [time-config t unit]
+  (let [time-config (require-time-config time-config)]
+    (with-string-preservation t (fn [^dayjs parsed]
+                                  (if (= unit :week)
+                                    (truncate-to-week time-config parsed)
+                                    (.startOf parsed (name unit)))))))
 
 (defn add
   "ClojureScript implementation of [[metabase.util.time/add]]; supports both Day.js instances and ISO-8601 strings."
@@ -725,19 +757,20 @@
 
 (defn extract
   "Extract a field such as `:minute-of-hour` from a temporal value `t`."
-  [^dayjs t unit]
-  (case unit
-    :second-of-minute (.second t)
-    :minute-of-hour   (.minute t)
-    :hour-of-day      (.hour t)
-    :day-of-week      (inc (.weekday t)) ;; `weekday` is 0-6, where 0 corresponds to the first day of week
-    :day-of-week-iso  (.isoWeekday t)
-    :day-of-month     (.date t)
-    :day-of-year      (.dayOfYear t)
-    :week-of-year     (.week t)
-    :month-of-year    (inc (.month t)) ;; `month` is 0-11
-    :quarter-of-year  (.quarter t)
-    :year             (.year t)))
+  [time-config ^dayjs t unit]
+  (let [time-config (require-time-config time-config)]
+    (case unit
+      :second-of-minute (.second t)
+      :minute-of-hour   (.minute t)
+      :hour-of-day      (.hour t)
+      :day-of-week      (inc (mod (- (.day t) (start-of-week-index time-config)) 7))
+      :day-of-week-iso  (.isoWeekday t)
+      :day-of-month     (.date t)
+      :day-of-year      (.dayOfYear t)
+      :week-of-year     (week-of-year time-config t)
+      :month-of-year    (inc (.month t)) ;; `month` is 0-11
+      :quarter-of-year  (.quarter t)
+      :year             (.year t))))
 
 (defn dayjs-utc->local-date
   "Convert a dayjs UTC value to a JavaScript Date in local time, preserving the time values.

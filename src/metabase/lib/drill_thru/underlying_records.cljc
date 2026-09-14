@@ -33,6 +33,7 @@
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
+   [metabase.lib.date-time :as lib.date-time]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.fe-util :as lib.fe-util]
    [metabase.lib.filter :as lib.filter]
@@ -178,7 +179,7 @@
                             :else
                             [(cond-> (lib.filter/= column value)
                                (and unit (lib.schema.temporal-bucketing/datetime-truncation-units unit))
-                               lib.fe-util/expand-temporal-expression)])))]
+                               (#(lib.fe-util/expand-temporal-expression (lib.date-time/config query) %)))])))]
     (reduce
      (fn [query filter-clause]
        (lib.filter/filter query stage-number filter-clause))

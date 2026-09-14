@@ -312,7 +312,7 @@
       (params.ops/operator? param-type)
       (->> (assoc params :target [:dimension (field->field-ref driver field param-type value)])
            params.ops/to-clause
-           lib/desugar-filter-clause
+           (#(lib/desugar-filter-clause {:start-of-week (driver-api/start-of-week)} %))
            driver-api/wrap-value-literals-in-mbql5
            ->honeysql*
            (honeysql->replacement-snippet-info driver))
@@ -320,7 +320,7 @@
       (params.dates/exclusion-date-type param-type value)
       (let [field-ref (field->field-ref driver field param-type value)]
         (->> (params.dates/date-string->filter value field-ref)
-             lib/desugar-filter-clause
+             (#(lib/desugar-filter-clause {:start-of-week (driver-api/start-of-week)} %))
              driver-api/wrap-value-literals-in-mbql5
              ->honeysql*
              (honeysql->replacement-snippet-info driver)))

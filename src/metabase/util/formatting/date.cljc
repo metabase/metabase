@@ -65,6 +65,16 @@
       (str value))))
 
 ;;; ---------------------------------------------- Format Single Date -----------------------------------------------
+(defn- format-week-of-year
+  [time-config t]
+  (let [week (u.time/extract time-config t :week-of-year)]
+    #?(:clj  (str week)
+       :cljs (let [locale          (:locale time-config)
+                   ^js t           (cond-> t
+                                     locale (.locale locale))
+                   ^js locale-data (.localeData t)]
+               (.format t (.ordinal locale-data week "W"))))))
+
 (defn ^:export format-datetime-with-unit
   "Returns a string with this datetime formatted as a single value, rounded to the given `:unit`."
   [value options]
@@ -81,6 +91,9 @@
       ;; Weeks in tooltips and cells get formatted specially.
       (and (= unit :week) (#{"tooltip" "cell"} type) (not no-range))
       (format-range-with-unit value options)
+
+      (= unit :week-of-year)
+      (format-week-of-year options t)
 
       :else ((formatters/options->formatter options) t))))
 

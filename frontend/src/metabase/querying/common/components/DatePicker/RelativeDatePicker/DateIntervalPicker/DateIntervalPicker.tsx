@@ -5,6 +5,7 @@ import type {
   DatePickerUnit,
   RelativeDatePickerValue,
 } from "metabase/querying/common/types";
+import { useSetting } from "metabase/settings";
 import {
   Button,
   Divider,
@@ -49,9 +50,13 @@ export function DateIntervalPicker({
   onChange,
   onSubmit,
 }: DateIntervalPickerProps) {
+  const startOfWeek = useSetting("start-of-week");
   const interval = getInterval(value);
   const unitOptions = getUnitOptions(value, availableUnits);
-  const dateRangeText = formatDateRange(value);
+  const dateRangeText = formatDateRange(
+    { "start-of-week": startOfWeek },
+    value,
+  );
   const outOfBounds = isOutOfBounds(value, minDate, maxDate);
 
   const handleIntervalChange = (inputValue: number | string) => {

@@ -53,9 +53,9 @@
                                        [:ref ::lib.schema.expression/boolean]
                                        [:ref ::lib.schema.util/unique-uuids]]
   "Logically negate a boolean expression (presumably a filter clause)."
-  [boolean-expression :- ::lib.schema.expression/boolean]
-  (let [expression' (-> boolean-expression
-                        lib.filter.desugar/desugar-filter-clause
+  [time-config       :- [:map [:start-of-week :keyword]]
+   boolean-expression :- ::lib.schema.expression/boolean]
+  (let [expression' (-> (lib.filter.desugar/desugar-filter-clause time-config boolean-expression)
                         negate*
                         lib.filter.simplify-compound/simplify-compound-filter)]
     (if (= expression' boolean-expression)

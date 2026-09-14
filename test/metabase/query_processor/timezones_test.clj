@@ -10,6 +10,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata :as lib.metadata]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
@@ -284,7 +285,7 @@
       (let [extract-units (cond-> (disj u.date/extract-units :day-of-year)
                             (not (driver.u/supports? driver/*driver* ::extract-week-of-year-us (mt/db)))
                             (disj :week-of-year))
-            ;; :week-of-year-instance is the behavior of u.date/extract (based on public-settings start-of-week)
+            ;; :week-of-year-instance is the behavior of u.date/extract with the instance start-of-week setting
             extract-translate {:year :year-of-era :week-of-year :week-of-year-us}
             trunc-units (disj u.date/truncate-units :millisecond :second)
             cols        (concat
@@ -300,11 +301,12 @@
                                       (into {}
                                             cat
                                             [(for [extract-unit extract-units]
-                                               [extract-unit (u.date/extract in-tz extract-unit)])
+                                               [extract-unit (u.date/extract {:start-of-week (lib-be/start-of-week)}
+                                                                             in-tz extract-unit)])
                                              (for [trunc-unit trunc-units]
                                                [trunc-unit
-                                                (-> in-tz
-                                                    (u.date/truncate trunc-unit)
+                                                (-> (u.date/truncate {:start-of-week (lib-be/start-of-week)}
+                                                                     in-tz trunc-unit)
                                                     u.date/format-sql
                                                     (str/replace #" " "T"))])
                                              [[:dt_tz
@@ -341,7 +343,8 @@
   (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
                                      (set-timezone-drivers))
     (testing "Relative to current date"
-      (let [expected-datetime (u.date/truncate (t/zoned-date-time) :second)]
+      (let [expected-datetime (u.date/truncate {:start-of-week (lib-be/start-of-week)}
+                                               (t/zoned-date-time) :second)]
         (mt/with-temp-test-data [["relative_filter"
                                   [{:field-name "created", :base-type :type/DateTimeWithTZ}]
                                   [[expected-datetime]]]]
@@ -366,7 +369,8 @@
   (mt/test-drivers (filter #(driver/database-supports? % :test/dynamic-dataset-loading nil)
                            (set-timezone-drivers))
     (testing "Relative to days since"
-      (let [expected-datetime (u.date/truncate (u.date/add (t/zoned-date-time) :day -1) :second)]
+      (let [expected-datetime (u.date/truncate {:start-of-week (lib-be/start-of-week)}
+                                               (u.date/add (t/zoned-date-time) :day -1) :second)]
         (mt/with-temp-test-data [["relative_filter"
                                   [{:field-name "created", :base-type :type/DateTimeWithTZ}]
                                   [[expected-datetime]]]]
