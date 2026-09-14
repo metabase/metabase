@@ -46,8 +46,8 @@ const embedSetupModalSlice = createSlice({
     closeEmbedSetupModal: () => CLOSED_MODAL_STATE,
   },
   extraReducers: (builder) => {
-    // Any open or close of the shared modal slice also closes these modals.
-    // Otherwise a palette or shortcut modal would open on top of the wizard.
+    // Any open or close of the shared modal slice also closes these modals,
+    // so a shared modal replaces the wizard rather than covering it.
     builder.addMatcher(
       isAnyOf(setOpenModal, setOpenModalWithProps, closeModal),
       () => CLOSED_MODAL_STATE,
@@ -63,7 +63,8 @@ export const {
   closeEmbedSetupModal,
 } = embedSetupModalSlice.actions;
 
-// The reducer is registered by the main app's store root only, so the key is optional on the global state.
+// The reducer is registered by the main app's store root only,
+// so the key is optional on the global state.
 export interface EmbedSetupModalStoreState extends State {
   embedSetupModal?: EmbedSetupModalState;
 }
