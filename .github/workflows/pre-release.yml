@@ -225,9 +225,10 @@ jobs:
     uses: ./.github/workflows/containerize-jar.yml
     secrets: inherit
     with:
-      artifact-name: metabase-release-oss-${{ inputs.commit }}-uberjar
+      edition: oss
+      release: true
       commit: ${{ inputs.commit }}
-      repo: ${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_STAGING_REPO }}
+      repo: ${{ vars.DOCKERHUB_STAGING_REPO }}
       tag: ${{ needs.release-artifact.outputs.oss_version }}-${{ inputs.commit }}
 
   containerize-ee:
@@ -235,9 +236,10 @@ jobs:
     uses: ./.github/workflows/containerize-jar.yml
     secrets: inherit
     with:
-      artifact-name: metabase-release-ee-${{ inputs.commit }}-uberjar
+      edition: ee
+      release: true
       commit: ${{ inputs.commit }}
-      repo: ${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_STAGING_REPO }}
+      repo: ${{ vars.DOCKERHUB_STAGING_REPO }}
       tag: ${{ needs.release-artifact.outputs.ee_version }}-${{ inputs.commit }}
 
   tests-complete-message:
