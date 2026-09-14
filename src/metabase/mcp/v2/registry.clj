@@ -165,13 +165,14 @@
    :openWorldHint   false})
 
 (defn- with-required-permission
-  "`description` followed by a sentence naming the permission `scope` requires. `scope-label` is the scope's
-   consent-screen description, or nil when it has none."
+  "`description` preceded by a sentence naming the permission `scope` requires, so clients that truncate long
+   descriptions keep it. `scope-label` is the scope's consent-screen description, or nil when it has none."
   [description scope scope-label]
-  (str description "\n\nRequires the "
+  (str "Requires the "
        (if scope-label
          (str "\"" scope-label "\" permission (" scope ").")
-         (str scope " permission."))))
+         (str scope " permission."))
+       "\n\n" description))
 
 (defn- security-schemes
   "The MCP tool `securitySchemes` declaring that a tool needs the OAuth `scope`."

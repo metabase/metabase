@@ -447,9 +447,24 @@
   (testing "GHY-4543: clients hide a scope denial's error text from the model, so a scoped tool's description names
             the permission it needs — by its consent-screen label, which is what the user sees, and by scope string"
     (let [description (get (published-descriptions) "test_echo")]
-      (is (str/starts-with? description "Test-only tool. Echoes `message` back")
-          "the tool's own description comes first")
-      (is (str/includes? description test-echo-permission-text)))))
+      (is (str/starts-with? description (str test-echo-permission-text "\n\nTest-only tool. Echoes `message` back"))
+          "the permission sentence comes first, then a blank line, then the tool's own description"))))
+
+(def ^:private leading-permission-sentence
+  "Matches a description that opens with its permission sentence and a blank line; groups are label and scope for a
+  labelled scope, or the bare scope."
+  #"\ARequires the (?:\"([^\"]+)\" permission \(([^)\s]+)\)|(\S+) permission)\.\n\n\S")
+
+(deftest ^:parallel every-description-starts-with-its-required-permission-test
+  (testing "GHY-4543: clients truncate long tool descriptions (Claude Code at 2048 characters), so every published
+            description opens with the sentence naming its own tool's permission, where truncation can't reach it"
+    (let [manifest (@#'registry/manifest)]
+      (is (some #(= "execute_query" (:name %)) manifest))
+      (doseq [{tool-name :name :keys [description scope]} manifest]
+        (testing tool-name
+          (let [[_ label labelled-scope bare-scope] (re-find leading-permission-sentence description)]
+            (is (= scope (or labelled-scope bare-scope)))
+            (is (= (registry/english-scope-label scope) label))))))))
 
 ;; not ^:parallel: flushes the shared manifest cache
 (deftest description-permission-text-ignores-caller-locale-test
@@ -459,8 +474,8 @@
       (try
         (reset! @#'registry/manifest-cache nil)
         (mt/with-user-locale "zz"
-          (is (str/includes? (get (published-descriptions) "test_echo") test-echo-permission-text)))
-        (is (str/includes? (get (published-descriptions) "test_echo") test-echo-permission-text))
+          (is (str/starts-with? (get (published-descriptions) "test_echo") test-echo-permission-text)))
+        (is (str/starts-with? (get (published-descriptions) "test_echo") test-echo-permission-text))
         (finally
           (reset! @#'registry/manifest-cache nil))))))
 
@@ -474,7 +489,7 @@
       :args        [:map]
       :handler     (fn [_ _] nil)}
      (fn []
-       (is (= "Probe.\n\nRequires the agent:unlabelled:probe permission."
+       (is (= "Requires the agent:unlabelled:probe permission.\n\nProbe."
               (get (published-descriptions) "unlabelled_scope_probe")))))))
 
 ;;; ------------------------------------------ Security schemes -----------------------------------------------------

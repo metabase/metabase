@@ -128,7 +128,10 @@
       (testing "the model names the tool and the permission, as the consent screen names it"
         (is (re-find #"(?i)which tool" instructions))
         (is (re-find #"(?i)which permission" instructions))
-        (is (re-find #"(?i)consent screen" instructions)))
+        (is (re-find #"(?i)consent screen" instructions))
+        (testing "and finds that name where the description puts it: first, ahead of any client truncation"
+          (is (re-find #"(?i)sentence that starts the tool's description" instructions))
+          (is (not (re-find #"(?i)ends the tool's description" instructions)))))
       (testing "the user reconnects, with steps for common clients"
         (is (re-find #"(?i)re-?authenticate|reconnect" instructions))
         (is (str/includes? instructions "/mcp"))
@@ -186,9 +189,10 @@
                  [tool-name description] listed]
            (testing (str grant " " tool-name)
              (is (= (get unrestricted tool-name) description))))
-         (testing "the comparison has teeth: callers with different grants see the same permission text"
+         (testing "the comparison has teeth: callers with different grants see the same leading permission text"
            (doseq [grant ["cookie session" "query:run" "all v2 scopes"]]
-             (is (str/includes? (get-in descriptions [grant "execute_query"]) "permission (agent:query:run).")))))))))
+             (is (re-find #"\ARequires the \"[^\"]+\" permission \(agent:query:run\)\.\n\n"
+                          (get-in descriptions [grant "execute_query"]))))))))))
 
 (deftest tools-list-security-schemes-are-token-independent-test
   (testing "GHY-4543: every tool descriptor declares the OAuth scope it needs in `securitySchemes`, which ChatGPT reads
@@ -378,6 +382,25 @@
   []
   (-> (mcp-request (jsonrpc-request "initialize" mcp-app-ui-capabilities))
       (get-in [:headers "Mcp-Session-Id"])))
+
+(deftest tools-list-permission-sentence-survives-client-truncation-test
+  (testing "GHY-4543: Claude Code (2.1.271) truncates each tool description at 2048 characters. After a scope denial
+            the model names the missing permission from the \"Requires the … permission\" sentence, so for every
+            tool `tools/list` sends, that sentence must lie entirely within the first 2048 characters."
+    (let [session-id (initialize-ui-client!)
+          tools      (-> (mcp-request (jsonrpc-request "tools/list") {"mcp-session-id" session-id})
+                         (get-in [:body :result :tools]))
+          names      (set (map :name tools))]
+      (testing "the check covers the descriptions long enough to lose an appended sentence"
+        (is (contains? names "document_write"))
+        (is (contains? names "execute_query")))
+      (doseq [{tool-name :name :keys [description]} tools]
+        (testing tool-name
+          (let [sentence (re-find #"Requires the (?:\"[^\"]+\" permission \([^)\s]+\)|\S+ permission)\." description)
+                end      (some->> sentence (str/index-of description) (+ (count sentence)))]
+            (is (some? sentence))
+            (is (and end (<= end 2048))
+                (str "the permission sentence ends at character " end))))))))
 
 (deftest refresh-ui-credential-test
   (testing "GHY-4157: #81041 moved MCP Apps credential delivery out of the rendered shell and into a server
