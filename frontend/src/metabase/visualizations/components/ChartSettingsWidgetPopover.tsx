@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
@@ -9,7 +9,10 @@ import { PopoverWithRef } from "metabase/ui/components/overlays/Popover/PopoverW
 import type { Widget } from "../types";
 
 import ChartSettingsWidget from "./ChartSettingsWidget";
-import { WidgetPopoverPortalContext } from "./settings/WidgetPopoverPortalContext";
+import {
+  WidgetPopoverPortalContext,
+  useWidgetPopoverPortal,
+} from "./settings/WidgetPopoverPortalContext";
 
 interface ChartSettingsWidgetPopoverProps {
   anchor: HTMLElement;
@@ -23,26 +26,12 @@ export const ChartSettingsWidgetPopover = ({
   widgets,
 }: ChartSettingsWidgetPopoverProps) => {
   const sections = useRef<(string | undefined)[]>([]);
-  const contentRef = useRef<HTMLDivElement | null>(null);
-  const [dropdownTarget, setDropdownTarget] = useState<HTMLDivElement | null>(
-    null,
-  );
-  const [scrollContainer, setScrollContainer] = useState<HTMLDivElement | null>(
-    null,
-  );
-
-  const setContentRef = useCallback((node: HTMLDivElement | null) => {
-    contentRef.current = node;
-    setScrollContainer(node);
-  }, []);
-
-  const portalValue = useMemo(
-    () =>
-      dropdownTarget && scrollContainer
-        ? { dropdownTarget, scrollContainer }
-        : null,
-    [dropdownTarget, scrollContainer],
-  );
+  const {
+    value: portalValue,
+    setDropdownTarget,
+    setScrollContainer,
+    scrollContainer,
+  } = useWidgetPopoverPortal();
 
   useEffect(() => {
     sections.current = _.chain(widgets).pluck("section").unique().value();
@@ -58,7 +47,7 @@ export const ChartSettingsWidgetPopover = ({
 
   const onClose = () => {
     const activeElement = document.activeElement as HTMLElement;
-    if (activeElement && contentRef.current?.contains(activeElement)) {
+    if (activeElement && scrollContainer?.contains(activeElement)) {
       activeElement.blur();
     }
     handleEndShowWidget();
@@ -86,7 +75,7 @@ export const ChartSettingsWidgetPopover = ({
         <WidgetPopoverPortalContext.Provider value={portalValue}>
           <Box
             pt={hasMultipleSections ? 0 : undefined}
-            ref={setContentRef}
+            ref={setScrollContainer}
             data-testid="chart-settings-widget-popover-content"
             mah="40rem"
             miw="336px"

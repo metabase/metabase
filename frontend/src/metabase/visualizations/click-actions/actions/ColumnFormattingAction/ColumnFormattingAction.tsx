@@ -3,6 +3,10 @@ import { t } from "ttag";
 
 import { Box } from "metabase/ui";
 import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
+import {
+  WidgetPopoverPortalContext,
+  useWidgetPopoverPortal,
+} from "metabase/visualizations/components/settings/WidgetPopoverPortalContext";
 import { updateSettings } from "metabase/visualizations/lib/settings";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/widgets";
 import type {
@@ -34,6 +38,12 @@ export const ColumnFormattingAction: LegacyDrill = ({ question, clicked }) => {
     series,
     onUpdateVisualizationSettings,
   }: ClickActionPopoverProps) => {
+    const {
+      value: portalValue,
+      setDropdownTarget,
+      setScrollContainer,
+    } = useWidgetPopoverPortal();
+
     const handleChangeSettings = (settings: VisualizationSettings) => {
       if (!series) {
         return;
@@ -67,14 +77,23 @@ export const ColumnFormattingAction: LegacyDrill = ({ question, clicked }) => {
     }
 
     return (
-      <Box pt="lg" mah={600} style={{ overflowY: "auto" }}>
-        <ChartSettingsWidget
-          {...extraProps}
-          id={id}
-          key={columnSettingsWidget?.id}
-          hidden={false}
-          dataTestId={POPOVER_TEST_ID}
-        />
+      <Box ref={setDropdownTarget}>
+        <WidgetPopoverPortalContext.Provider value={portalValue}>
+          <Box
+            ref={setScrollContainer}
+            pt="lg"
+            mah={600}
+            style={{ overflowY: "auto" }}
+          >
+            <ChartSettingsWidget
+              {...extraProps}
+              id={id}
+              key={columnSettingsWidget?.id}
+              hidden={false}
+              dataTestId={POPOVER_TEST_ID}
+            />
+          </Box>
+        </WidgetPopoverPortalContext.Provider>
       </Box>
     );
   };
@@ -90,6 +109,7 @@ export const ColumnFormattingAction: LegacyDrill = ({ question, clicked }) => {
       popoverProps: {
         position: "right-start",
         offset: 20,
+        styles: { dropdown: { overflow: "visible" } },
       },
       popover: FormatPopover,
     },
