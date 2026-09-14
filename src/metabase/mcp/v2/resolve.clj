@@ -4,11 +4,13 @@
    Landed with its first consumers: the entity-id machinery with `bookmark_content`, collection
    resolution with `collection_write`."
   (:require
+   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.eid-translation.core :as eid-translation]
+   [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
-   [toucan2.core :as t2]))
+   [metabase.models.interface :as mi]))
 
 (set! *warn-on-reflection* true)
 
@@ -21,6 +23,24 @@
   [x]
   (boolean (and (string? x) (re-matches entity-id-re x))))
 
+(def ^:private numeric-id-re
+  "Digits with no leading zero and no sign — the exact rendering of a numeric id."
+  #"^[1-9][0-9]*$")
+
+(defn normalize-id
+  "Coerce an id argument a client sent as a JSON string (`\"16211\"`) to the integer it names;
+   return `x` unchanged for every other value, including entity_ids and the `\"root\"`/`\"trash\"`
+   sentinels.
+
+   GHY-4498: some MCP clients serialize every value of an `anyOf [integer, string]` param as a
+   string, and the model has no way to force the JSON type, so a numeric id would otherwise be
+   unreachable from those clients. Digit runs too large for a `long` stay strings and fail
+   validation like any other non-id."
+  [x]
+  (if (and (string? x) (re-matches numeric-id-re x))
+    (or (parse-long x) x)
+    x))
+
 (defn resolve-id-or-404
   "Resolve a numeric id or 21-char entity_id to the numeric id for `model`. Throws the
    collapsed not-found error when an entity_id doesn't resolve, and a teaching error for any
@@ -29,21 +49,25 @@
    This is translation only — it must always be followed by the object's read check. Prefer
    [[resolve-and-read]], which enforces that pairing."
   [model id-or-eid]
-  (cond
-    (int? id-or-eid)
-    id-or-eid
+  (let [id-or-eid (normalize-id id-or-eid)]
+    (cond
+      (int? id-or-eid)
+      id-or-eid
 
-    (entity-id? id-or-eid)
-    (try
-      (eid-translation/->id-or-404 model id-or-eid)
-      (catch clojure.lang.ExceptionInfo e
-        (if (= 404 (:status-code (ex-data e)))
-          (common/throw-not-found model id-or-eid)
-          (throw e))))
+      (entity-id? id-or-eid)
+      (try
+        (eid-translation/->id-or-404 model id-or-eid)
+        (catch clojure.lang.ExceptionInfo e
+          (if (= 404 (:status-code (ex-data e)))
+            (common/throw-not-found model id-or-eid)
+            (throw e))))
 
-    :else
-    (common/throw-teaching-error (format "Invalid id %s — pass a numeric id or a 21-character entity_id."
-                                         (pr-str id-or-eid)))))
+      :else
+      ;; Name a retry that works: the obvious reading of "pass a numeric id" is to send the same
+      ;; number again, which fails identically.
+      (common/throw-teaching-error
+       (format "Invalid id %s — pass the positive numeric id, or the 21-character entity_id from a search or list result."
+               (pr-str id-or-eid))))))
 
 (defn resolve-and-read-with
   "Resolve `id-or-eid` for `model`, then return the object from `read-check-fn`, which must
@@ -70,7 +94,7 @@
    nearly every read needs, with the same not-found collapse as [[resolve-and-read-with]]."
   [model id-or-eid]
   (resolve-and-read-with model id-or-eid
-                         (fn [id] (api/read-check (t2/select-one model :id id)))))
+                         (fn [id] (api/read-check (mcp.db/select-one-by-id model id)))))
 
 (defn resolve-collection-id
   "Resolve a `collection_id`/`parent_id` argument. `nil` and `\"root\"` mean the root
@@ -78,10 +102,11 @@
    `:trash-collection-id` when the caller allows it (the tool passes the id from the
    collections module) and is a teaching error otherwise.
 
-   A numeric id is checked for existence here. [[resolve-id-or-404]] translates entity_ids but
-   passes numbers straight through, so without this an id for no collection at all travelled on
-   into the write, where it fails a `mu/defn` schema or a permission check and reaches the caller
-   as the sanitized \"Internal error\". Permissions stay the caller's job afterwards, unchanged."
+   Anything else must name a collection the caller can read: \"doesn't exist\" and \"exists but not
+   readable\" collapse into the same not-found error, so the argument never reports the existence of
+   a collection the caller cannot see. That read also keeps an id for no collection at all from
+   travelling into the write, where it fails a `mu/defn` schema or a permission check and reaches
+   the caller as the sanitized \"Internal error\". Write permission stays the caller's job."
   ([id-or-sentinel] (resolve-collection-id id-or-sentinel nil))
   ([id-or-sentinel {:keys [trash-collection-id]}]
    (cond
@@ -93,10 +118,7 @@
          (common/throw-teaching-error "\"trash\" is not a valid collection here — pass a collection id, entity_id, or \"root\"."))
 
      :else
-     (let [id (resolve-id-or-404 :model/Collection id-or-sentinel)]
-       (when-not (t2/exists? :model/Collection :id id)
-         (common/throw-not-found :model/Collection id-or-sentinel))
-       id))))
+     (:id (resolve-and-read :model/Collection id-or-sentinel)))))
 
 (defn resolve-collection-id-or-personal
   "Like [[resolve-collection-id]], but an absent argument means the caller's personal collection
@@ -116,3 +138,37 @@
         (common/throw-teaching-error
          (str "The current user has no personal collection. Pass an explicit collection_id "
               "(or \"root\" for the root collection) instead.")))))
+
+;;; --------------------------------------------- Collection paths -------------------------------------------------
+
+(defn- location->ids
+  [location]
+  (when location
+    (mapv parse-long (re-seq #"\d+" location))))
+
+(defn- readable-id->name
+  "Map of collection id -> name for the given ids, omitting collections the current user cannot
+   read. `:namespace` and `:type` are selected because [[mi/can-read?]] consults them."
+  [ids]
+  (when (seq ids)
+    (into {}
+          (comp (filter mi/can-read?)
+                (map (juxt :id :name)))
+          (mcp.db/collections-for-read-check ids))))
+
+(defn collection-path
+  "The display path of the collection with `collection-id` — ancestor names joined with `/`, ending
+   in the collection's own name — or nil for a root item (`collection-id` nil) or a collection the
+   caller cannot read.
+
+   Ancestors the caller cannot read are omitted rather than failing the path, matching the
+   breadcrumb semantics of [[metabase.collections.models.collection/effective-ancestors]]: for
+   A > B > C where B is unreadable, the path reads \"A/C\".
+
+   Two reads per call, so it suits a single item or a small batch; `search` walks whole result
+   pages and batches the same lookups itself rather than calling this per row."
+  [collection-id]
+  (when collection-id
+    (when-let [[cname location] (get (mcp.db/collection-id->name+location #{collection-id}) collection-id)]
+      (let [ancestors (readable-id->name (set (location->ids location)))]
+        (str/join "/" (concat (keep ancestors (location->ids location)) [cname]))))))

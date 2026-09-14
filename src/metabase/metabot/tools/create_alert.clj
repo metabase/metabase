@@ -5,14 +5,14 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.channel.settings :as channel.settings]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.notification.api :as notification.api]
    [metabase.util.cron :as u.cron]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -27,7 +27,7 @@
   "Private helper for create-alert (call that instead)."
   [{:keys [card-id slack-channel schedule send-condition send-once]
     :or   {send-once false}}]
-  (let [card         (some-> (t2/select-one :model/Card card-id) api/read-check)
+  (let [card         (some-> (metabot.db/card card-id) api/read-check)
         channel-name (some->> slack-channel
                               channel.settings/find-cached-slack-channel-or-username
                               :display-name)]

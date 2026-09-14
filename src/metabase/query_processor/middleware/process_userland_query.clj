@@ -17,6 +17,7 @@
    [metabase.lib.computed :as lib.computed]
    [metabase.lib.core :as lib]
    [metabase.queries.models.query :as query]
+   [metabase.query-processor.db :as query-processor.db]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
@@ -25,10 +26,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [every? empty? get-in not-empty]]
-   ;; records QueryExecution rows in the app db; a write the metadata provider can't do
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2]))
+   [metabase.util.performance :refer [every? empty? get-in not-empty]]))
 
 (set! *warn-on-reflection* true)
 
@@ -65,7 +63,7 @@
         (when (seq no-context)
           (log/warnf "Cannot save %d QueryExecution(s), missing :context" (count no-context)))
         (when (seq with-context)
-          (t2/insert! :model/QueryExecution (map #(dissoc % :json_query) with-context))))
+          (query-processor.db/insert-query-executions! (map #(dissoc % :json_query) with-context))))
       (catch Throwable e
         (log/errorf "Error saving query execution info: %s" (ex-message e))))))
 
@@ -155,7 +153,9 @@
   postprocessing middleware (`is_impersonated`, `is_db_routed`, the routed `database_id`) are NOT computed here —
   they're added later by [[enrich-with-execution-context]] from inside the postprocessing rff, where the bindings
   are still in effect. See PR #71386 — reading those values from the query map at the top of the around middleware
-  was a timing bug because pre-processing hadn't yet run."
+  was a timing bug because pre-processing hadn't yet run.
+
+  Mirrored by `execution-row` in `metabase.actions.audit`; keep the two in step."
   {:arglists '([query])}
   [{{:keys       [executed-by query-hash context action-id card-id dashboard-id transform-id lens-id lens-params pulse-id]
      :pivot/keys [original-query]} :info
@@ -229,6 +229,18 @@
     (when *execution-context-ref*
       (reset! *execution-context-ref* (snapshot-execution-context)))
     (qp query rff)))
+
+(defn do-with-captured-execution-context
+  "Run `f` with [[*execution-context-ref*]] bound, then hand `on-snapshot` whatever
+  [[capture-execution-context-middleware]] recorded (nil if it never ran), whether `f` returned or threw. For QP
+  entry points that write their own execution row, such as the writeback QP."
+  [f on-snapshot]
+  (let [context-ref (atom nil)]
+    (try
+      (binding [*execution-context-ref* context-ref]
+        (f))
+      (finally
+        (on-snapshot @context-ref)))))
 
 (defn- enrich-with-execution-context
   "Merges the snapshotted execution context (from [[*execution-context-ref*]]) into `execution-info`. Always

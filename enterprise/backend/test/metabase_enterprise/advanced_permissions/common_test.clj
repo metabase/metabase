@@ -4,6 +4,7 @@
    [metabase-enterprise.advanced-permissions.common :as advanced-permissions.common]
    [metabase-enterprise.impersonation.util-test :as advanced-perms.api.tu]
    [metabase.driver :as driver]
+   [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -164,6 +165,43 @@
             (is (nil? (perm-value nil)))
             (is (= :unrestricted (perm-value table-id-1)))
             (is (= :blocked (perm-value table-id-3)))))))))
+
+(deftest new-view-data-permission-levels-block-data-app-groups-test
+  (testing "data-app groups block newly-synced tables/databases even with no `:blocked` row (full manifest)"
+    (mt/with-additional-premium-features #{:sandboxes :advanced-permissions}
+      (mt/with-temp [:model/PermissionsGroup {app-group-id :id} {:is_data_app_group true}
+                     :model/PermissionsGroup {ctl-group-id :id} {}                        ; a normal, non-data-app group
+                     :model/DataApp          _                  {:name "perm-test-app" :display_name "Perm Test"
+                                                                 :bundle_path "app/dist/index.js"
+                                                                 :permission_group_id app-group-id}
+                     :model/Database         {db-id :id}      {}
+                     :model/Table            {table-id-1 :id} {:db_id db-id :schema "PUBLIC"}
+                     :model/Table            {table-id-2 :id} {:db_id db-id :schema "PUBLIC"}]
+        ;; effective (coalesced) view-data — the control group inherits the DB-level value with no
+        ;; table row of its own, so a raw-row check would see nil.
+        (let [effective (fn [group-id table-id]
+                          (data-perms/table-permission-for-groups #{group-id} :perms/view-data db-id table-id))]
+          (testing "a late table is blocked for the data-app group but not for a normal group"
+            ;; a "full manifest" for both groups: all existing tables :unrestricted, so no `:blocked` row exists
+            (doseq [group-id [app-group-id ctl-group-id]]
+              (data-perms/set-table-permission! group-id table-id-1 :perms/view-data :unrestricted)
+              (data-perms/set-table-permission! group-id table-id-2 :perms/view-data :unrestricted))
+            (mt/with-temp [:model/Table {table-id-3 :id} {:db_id db-id :schema "PUBLIC"}]
+              (is (= :blocked (effective app-group-id table-id-3))
+                  "the late table is blocked for the data-app group")
+              (is (= :unrestricted (effective ctl-group-id table-id-3))
+                  "the same late table is NOT blocked for a normal group — the rule is scoped to app groups")
+              (is (= :unrestricted (effective app-group-id table-id-1))
+                  "the app's declared tables stay unrestricted")
+              ;; the going-granular apply keeps a clean per-table shape, so the permissions graph the
+              ;; admin panel loads still builds (M1's db-level+table-override mix used to 500 it).
+              (is (map? (data-perms.graph/api-graph))
+                  "the whole permissions graph still builds")))
+          (testing "a newly-added database is blocked only for the data-app group"
+            (let [levels (advanced-permissions.common/new-database-view-data-permission-levels
+                          [app-group-id ctl-group-id])]
+              (is (= :blocked (levels app-group-id)) "blocked for the data-app group")
+              (is (not= :blocked (levels ctl-group-id)) "not blocked for a normal group"))))))))
 
 (deftest new-table-view-data-permission-levels-without-premium-features-test
   (testing "A newly-synced table fails CLOSED to :blocked for a sandboxed group even when premium features are unavailable (UXW-4927)"
@@ -958,106 +996,111 @@
 
 (deftest upload-csv-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads :schemas)
-    (testing "Uploads should be blocked without data access"
-      (let [schema-name (sql.tx/session-schema driver/*driver*)]
-        (upload-test/with-upload-table!
-          [table (upload-test/create-upload-table!)]
-          (let [db-id       (mt/id)
-                upload-csv! (fn []
-                              (upload-test/do-with-uploaded-example-csv!
-                               {:grant-permission? false
-                                :schema-name       (:schema table)
-                                :table-prefix      "uploaded_magic_"}
-                               identity))]
-            (doseq [[schema-perms can-upload? description]
-                    [[:query-builder               true  "Data permissions on schema should succeed"]
-                     [:no                          false "No data permissions on schema should fail"]
-                     [{(:id table) :query-builder} false "Data permissions on table should fail"]]]
-              (testing description
-                (mt/with-all-users-data-perms-graph! {db-id {:view-data      :unrestricted
-                                                             :create-queries {"some_schema" :query-builder
-                                                                              schema-name   schema-perms}}}
-                  (if can-upload?
-                    (is (some? (upload-csv!)))
-                    (is (thrown-with-msg?
-                         clojure.lang.ExceptionInfo
-                         #"You don't have permissions to do that\."
-                         (upload-csv!)))))))
-            (mt/with-all-users-data-perms-graph! {db-id {:view-data      :unrestricted
-                                                         :create-queries :query-builder-and-native}}
-              (is (some? (upload-csv!))))))))))
-
-(deftest update-csv-data-perms-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (doseq [action [:metabase.upload/append :metabase.upload/replace]]
-      (testing (format "CSV %s should be blocked without data access to the schema" action)
+    (mt/dataset (mt/dataset-definition "advanced_permissions" [])
+      (testing "Uploads should be blocked without data access"
         (let [schema-name (sql.tx/session-schema driver/*driver*)]
-          (upload-test/with-upload-table!
-            [table-a (upload-test/create-upload-table! :schema-name schema-name)]
-            (upload-test/with-upload-table!
-              [table-b (upload-test/create-upload-table! :schema-name schema-name)]
-              (let [db-id       (mt/id)
-                    append-csv! #(upload-test/update-csv-with-defaults!
-                                  action
-                                  :table-id (:id table-a)
-                                  :user-id (mt/user->id :rasta))]
-                (doseq [[schema-perms          can-append? test-string]
-                        [[:query-builder                 true  "Data permissions on schema should succeed"]
-                         [:no                            false "No permissions on schema should fail"]
-                         [{(:id table-a) :query-builder} true  "Data permissions on table should succeed"]
-                         [{(:id table-b) :query-builder} false "Data permissions only on another table in the same schema should fail"]]]
-                  (testing test-string
-                    (mt/with-all-users-data-perms-graph! {db-id {:view-data :unrestricted
-                                                                 :create-queries {schema-name schema-perms}}}
-                      (if can-append?
-                        (is (some? (append-csv!)))
+          (upload-test/with-upload-table! [table (upload-test/create-upload-table!)]
+            (let [db-id       (mt/id)
+                  upload-csv! (fn []
+                                (upload-test/do-with-uploaded-example-csv!
+                                 {:grant-permission? false
+                                  :schema-name       (:schema table)
+                                  :table-prefix      "uploaded_magic_"}
+                                 identity))]
+              (mt/with-temp [:model/Table _ {:db_id db-id :schema schema-name}]
+                (doseq [[schema-perms can-upload? description]
+                        [[:query-builder               true  "Data permissions on schema should succeed"]
+                         [:no                          false "No data permissions on schema should fail"]
+                         [{(:id table) :query-builder} false "Data permissions on table should fail"]]]
+                  (testing description
+                    (mt/with-all-users-data-perms-graph! {db-id {:view-data      :unrestricted
+                                                                 :create-queries {"some_schema" :query-builder
+                                                                                  schema-name   schema-perms}}}
+                      (if can-upload?
+                        (is (some? (upload-csv!)))
                         (is (thrown-with-msg?
                              clojure.lang.ExceptionInfo
                              #"You don't have permissions to do that\."
-                             (append-csv!)))))))))))))))
+                             (upload-csv!))))))))
+              (mt/with-all-users-data-perms-graph! {db-id {:view-data      :unrestricted
+                                                           :create-queries :query-builder-and-native}}
+                (is (some? (upload-csv!)))))))))))
+
+(deftest update-csv-data-perms-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (mt/dataset (mt/dataset-definition "advanced_permissions" [])
+      (doseq [action [:metabase.upload/append :metabase.upload/replace]]
+        (testing (format "CSV %s should be blocked without data access to the schema" action)
+          (let [schema-name (sql.tx/session-schema driver/*driver*)]
+            (upload-test/with-upload-table!
+              [table-a (upload-test/create-upload-table! :schema-name schema-name)]
+              (upload-test/with-upload-table!
+                [table-b (upload-test/create-upload-table! :schema-name schema-name)]
+                (let [db-id       (mt/id)
+                      append-csv! #(upload-test/update-csv-with-defaults!
+                                    action
+                                    :table-id (:id table-a)
+                                    :user-id (mt/user->id :rasta))]
+                  (doseq [[schema-perms          can-append? test-string]
+                          [[:query-builder                 true  "Data permissions on schema should succeed"]
+                           [:no                            false "No permissions on schema should fail"]
+                           [{(:id table-a) :query-builder} true  "Data permissions on table should succeed"]
+                           [{(:id table-b) :query-builder} false "Data permissions only on another table in the same schema should fail"]]]
+                    (testing test-string
+                      (mt/with-all-users-data-perms-graph! {db-id {:view-data :unrestricted
+                                                                   :create-queries {schema-name schema-perms}}}
+                        (if can-append?
+                          (is (some? (append-csv!)))
+                          (is (thrown-with-msg?
+                               clojure.lang.ExceptionInfo
+                               #"You don't have permissions to do that\."
+                               (append-csv!))))))))))))))))
 
 (deftest update-csv-block-perms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (doseq [action [:metabase.upload/append :metabase.upload/replace]]
-      (testing (format "We will block %s if the user has blocked data access to the database, even if they have native query editing"
-                       action)
-        (upload-test/with-upload-table!
-          [table-a (upload-test/create-upload-table!)]
-          (let [db-id       (mt/id)
-                append-csv! #(upload-test/update-csv-with-defaults!
-                              action
-                              :table-id (:id table-a)
-                              :user-id (mt/user->id :rasta))]
-            (testing "With blocked perms it should fail"
-              (mt/with-all-users-data-perms-graph! {db-id {:view-data :blocked
-                                                           :create-queries :no}}
-                (is (thrown-with-msg?
-                     clojure.lang.ExceptionInfo
-                     #"You don't have permissions to do that\."
-                     (append-csv!)))))))))))
+    (mt/dataset (mt/dataset-definition "advanced_permissions" [])
+      (doseq [action [:metabase.upload/append :metabase.upload/replace]]
+        (testing (format "We will block %s if the user has blocked data access to the database, even if they have native query editing"
+                         action)
+          (upload-test/with-upload-table!
+            [table-a (upload-test/create-upload-table!)]
+            (let [db-id       (mt/id)
+                  append-csv! #(upload-test/update-csv-with-defaults!
+                                action
+                                :table-id (:id table-a)
+                                :user-id (mt/user->id :rasta))]
+              (testing "With blocked perms it should fail"
+                (mt/with-all-users-data-perms-graph! {db-id {:view-data :blocked
+                                                             :create-queries :no}}
+                  (is (thrown-with-msg?
+                       clojure.lang.ExceptionInfo
+                       #"You don't have permissions to do that\."
+                       (append-csv!))))))))))))
 
 (deftest get-database-can-upload-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads :schemas)
-    (testing "GET /api/database and GET /api/database/:id responses should include can_upload depending on unrestricted data access to the upload schema"
-      (mt/with-model-cleanup [:model/Table]
-        (let [schema-name (sql.tx/session-schema driver/*driver*)
-              db-id       (mt/id)]
-          (upload-test/with-upload-table! [table (upload-test/create-upload-table! :schema-name schema-name)]
-            (mt/with-temp [:model/Table {} {:db_id db-id :schema "some_schema"}]
-              (doseq [[schema-perms can-upload?] {:query-builder               true
-                                                  :no                          false
-                                                  {(:id table) :query-builder} false}]
-                (testing (format "can_upload should be %s if the user has %s access to the upload schema"
-                                 can-upload? schema-perms)
-                  (mt/with-all-users-data-perms-graph! {db-id {:view-data :unrestricted
-                                                               :create-queries {"some_schema" :query-builder
-                                                                                schema-name schema-perms}}}
-                    (testing "GET /api/database"
-                      (let [result (->> (mt/user-http-request :rasta :get 200 "database")
-                                        :data
-                                        (filter #(= (:id %) db-id))
-                                        first)]
-                        (is (= can-upload? (:can_upload result)))))
-                    (testing "GET /api/database/:id"
-                      (let [result (mt/user-http-request :rasta :get 200 (format "database/%d" db-id))]
-                        (is (= can-upload? (:can_upload result)))))))))))))))
+    (mt/dataset (mt/dataset-definition "advanced_permissions" [])
+      (testing "GET /api/database and GET /api/database/:id responses should include can_upload depending on unrestricted data access to the upload schema"
+        (mt/with-model-cleanup [:model/Table]
+          (let [schema-name (sql.tx/session-schema driver/*driver*)
+                db-id       (mt/id)]
+            (upload-test/with-upload-table! [table (upload-test/create-upload-table! :schema-name schema-name)]
+              (mt/with-temp [:model/Table _ {:db_id db-id :schema "some_schema"}
+                             :model/Table _ {:db_id db-id :schema schema-name}]
+                (doseq [[schema-perms can-upload?] {:query-builder               true
+                                                    :no                          false
+                                                    {(:id table) :query-builder} false}]
+                  (testing (format "can_upload should be %s if the user has %s access to the upload schema"
+                                   can-upload? schema-perms)
+                    (mt/with-all-users-data-perms-graph! {db-id {:view-data :unrestricted
+                                                                 :create-queries {"some_schema" :query-builder
+                                                                                  schema-name schema-perms}}}
+                      (testing "GET /api/database"
+                        (let [result (->> (mt/user-http-request :rasta :get 200 "database")
+                                          :data
+                                          (filter #(= (:id %) db-id))
+                                          first)]
+                          (is (= can-upload? (:can_upload result)))))
+                      (testing "GET /api/database/:id"
+                        (let [result (mt/user-http-request :rasta :get 200 (format "database/%d" db-id))]
+                          (is (= can-upload? (:can_upload result))))))))))))))))

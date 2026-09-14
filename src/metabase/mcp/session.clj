@@ -13,14 +13,13 @@
   (:require
    [clojure.string :as str]
    [metabase.api.macros.scope :as scope]
-   [metabase.app-db.core :as app-db]
+   [metabase.mcp.db :as mcp.db]
    [metabase.mcp.models.mcp-query-handle]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.session.core :as session]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2])
+   [metabase.util.malli.registry :as mr])
   (:import
    (java.nio ByteBuffer)
    (java.nio.charset StandardCharsets)
@@ -40,9 +39,19 @@
     (.init mac (SecretKeySpec. (.getBytes secret "UTF-8") "HmacSHA256"))
     (.doFinal mac (.getBytes message "UTF-8"))))
 
-(defn derive-embedding-session-key
+(defn- derive-embedding-session-key
   "Deterministically derive the embedding session key for `mcp-session-id` from the instance-wide signing secret. See ns
   docstring for rationale.
+
+  PRIVATE ON PURPOSE, and the privacy is load-bearing rather than stylistic. The derivation takes only the MCP
+  session id — which is client-supplied and unsigned — so two users presenting the same id derive the SAME key.
+  `core_session` lookups resolve a key by `key_hashed` alone, with no user filter and no ordering
+  ([[metabase.server.middleware.session]]), so whichever colliding row the DB returns first is who that key
+  authenticates as. Any public fn returning this plaintext is therefore an account-takeover primitive: a caller
+  who knows another user's session id gets a working session key for whoever else materialized a row under it.
+
+  Inside this namespace the value is only ever hashed. Keep it that way — a caller that needs the row should use
+  [[get-or-create-embedding-session!]], which returns the row and never the key.
 
   The output is formatted as a UUID string because `metabase.server.middleware.session` rejects non-UUID session keys
   up-front. Specifically we emit a version-8 UUID
@@ -94,6 +103,18 @@
    (hmac-sha256 (mcp.settings/unobfuscated-mcp-embedding-signing-secret)
                 (str "mcp-ui-v1." payload))))
 
+(defn- session-payload-signature
+  "HMAC over the encoded capability `payload` for `uuid`, base64url.
+
+   Bound to the uuid so a signature cannot be lifted from one session id onto another — the payload alone is
+   `{\"v\":1,\"ui\":true}` for every UI-capable session, so an unbound signature would be a reusable token
+   granting the capability to any correlator. Domain-separated from
+   [[ui-credential-signature]] so neither can be replayed as the other."
+  [^String uuid ^String payload]
+  (base64url-encode-bytes
+   (hmac-sha256 (mcp.settings/unobfuscated-mcp-embedding-signing-secret)
+                (str "mcp-session-v1." uuid "." payload))))
+
 (declare valid-id?)
 
 (defn- encode-token-scopes
@@ -115,23 +136,29 @@
   (cond-> (into #{} (filter string?) scp)
     (true? unr) (conj ::scope/unrestricted)))
 
+(defn- sign-ui-credential
+  "Sign the standard credential claims plus `extra-claims` into a `<payload>.<signature>` string."
+  [session-id user-id extra-claims]
+  (let [payload (base64url-encode
+                 (json/encode (merge {:v 1 :uid user-id :sid session-id
+                                      :exp (+ (.getEpochSecond (Instant/now)) ui-credential-lifetime-seconds)}
+                                     extra-claims)))]
+    (str payload "." (ui-credential-signature payload))))
+
 (defn issue-ui-credential
   "Create a short-lived credential for the MCP Apps UI. It authenticates only the narrow server-side UI request surface,
   never as a core Metabase session.
 
-  `token-scopes` is the minting MCP session's scope set. It rides along as a signed claim so gates further down the
-  iframe's request surface can ask what the client was actually granted — the credential itself is stamped
-  unrestricted, since the allowlisted routes declare no `:scope` and would otherwise 403 the iframe at bootstrap."
-  ;; v1-compat 2-arity: the frozen v1 surface mints credentials without a scope claim; absent
-  ;; claims decode as the empty scope set (fail closed). Delete this arity with v1's retirement.
-  ([session-id user-id]
-   (issue-ui-credential session-id user-id nil))
-  ([session-id user-id token-scopes]
-   (let [payload (base64url-encode
-                  (json/encode (merge {:v 1 :uid user-id :sid session-id
-                                       :exp (+ (.getEpochSecond (Instant/now)) ui-credential-lifetime-seconds)}
-                                      (encode-token-scopes token-scopes))))]
-     (str payload "." (ui-credential-signature payload)))))
+  `token-scopes` is the minting MCP session's scope set. It rides along as a signed claim because it is the only
+  record of what the client was actually granted: the credential authenticates as `::scope/mcp-ui`, which
+  satisfies no endpoint's declared `:scope`. Both gates on the iframe's request surface spend this claim — see
+  [[metabase.mcp.ui-surface/request-surface]] and [[metabase.agent-api.query-guards/check-mcp-ui-native-query!]].
+
+  Passing the caller's real scopes is what subjects the credential to the native-SQL gate. (v1's frozen
+  surface used to mint claimless, gate-exempt `:legacy` credentials through a 2-arity of this fn; that shim
+  retired with v1.)"
+  [session-id user-id token-scopes]
+  (sign-ui-credential session-id user-id (encode-token-scopes token-scopes)))
 
 (defn resolve-ui-credential
   "Validate a rendered MCP Apps UI credential and return its claims, or nil. The claims carry `:token-scopes`, the
@@ -198,9 +225,11 @@
   a known payload version must include a supported payload shape so malformed capability hints do not silently fall
   back to legacy behavior. Unknown payload versions remain valid but default to no UI capability, so rolling deploy
   version skew does not invalidate the whole session."
-  [payload]
+  [payload signed?]
   (cond
     (nil? payload)
+    ;; A bare uuid predates capability hints entirely. It claims nothing: reading it as "supports MCP Apps"
+    ;; would make signing pointless, since a caller could omit the payload and be believed anyway.
     {:extended false}
 
     (str/blank? payload)
@@ -222,7 +251,13 @@
                known-version?
                (mr/validate ::session-payload decoded-payload))
           {:extended true
-           :payload  (select-keys decoded-payload [:ui])}
+           ;; The capability is believed only when the signature proves the SERVER minted this claim. An
+           ;; unsigned or tampered payload leaves the session usable — the id is a stateless correlator and
+           ;; any well-formed one works for its presenter — but claims nothing, so the gate it feeds fails
+           ;; closed rather than trusting a self-assertion.
+           :payload  (if signed?
+                       (select-keys decoded-payload [:ui])
+                       {:ui false})}
 
           ;; During rolling deploys, a newer node may mint a capability payload version this node does not understand.
           ;; The payload is only a capability hint, so keep the session valid but fall back to no MCP Apps UI support.
@@ -235,29 +270,40 @@
 (defn- session-parts
   "Parse an MCP session id into a UUID correlator plus optional client-capability hint.
 
-  New session ids have the form `<uuid>.<base64url-json>`, currently with payload `{\"v\":1,\"ui\":true}`.  We keep
+  New session ids have the form `<uuid>.<base64url-json>.<signature>`, currently with payload
+  `{\"v\":1,\"ui\":true}`. An id whose signature is absent or wrong is still a VALID session — it is a
+  stateless correlator and any well-formed one works for its presenter — but its capability claim is not
+  believed, so a client cannot self-assert MCP Apps support by forging a payload. We keep
   the UUID as the first segment because existing MCP session behavior derives the embedding session key from this
   server-created id, while the JSON segment lets us remember initialize-time UI capability statelessly across multiple
   Metabase webservers."
   [session-id]
   (when (and (string? session-id)
              (<= (count session-id) max-session-id-length))
-    (let [[uuid payload :as parts] (str/split session-id #"\." -1)]
-      (when (#{1 2} (count parts))
-        (when-let [uuid (parse-uuid uuid)]
-          (some-> (parse-session-payload payload)
-                  (assoc :uuid uuid)))))))
+    (let [[uuid payload signature :as parts] (str/split session-id #"\." -1)]
+      (when (#{1 2 3} (count parts))
+        (when-let [parsed-uuid (parse-uuid uuid)]
+          (let [signed? (boolean (and payload signature
+                                      (let [^String expected (session-payload-signature uuid payload)]
+                                        (MessageDigest/isEqual (.getBytes expected StandardCharsets/UTF_8)
+                                                               (.getBytes ^String signature
+                                                                          StandardCharsets/UTF_8)))))]
+            (some-> (parse-session-payload payload signed?)
+                    (assoc :uuid parsed-uuid))))))))
 
 (defn- create-session-id
   "Create a stateless MCP session id containing client capability hints.
 
-  The server creates this id during initialize; clients only echo it back. The unsigned payload is intentionally
-  limited to non-security-sensitive capability hints such as whether the client says it can render MCP Apps UI."
+  The server creates this id during initialize; clients only echo it back. The capability payload is SIGNED
+  (`<uuid>.<payload>.<signature>`) because `:required-extensions` gates on it: unsigned, it is a claim the
+  client makes about itself, and any caller could mint one asserting MCP Apps support it never advertised.
+  The id itself remains an opaque stateless correlator — see [[session-parts]] for why an unproven claim
+  downgrades the capability rather than rejecting the session."
   [{:keys [supports-mcp-ui?]}]
-  (let [session-id (str (UUID/randomUUID)
-                        "."
-                        (encode-session-payload {:v  session-payload-version
-                                                 :ui (true? supports-mcp-ui?)}))]
+  (let [uuid       (str (UUID/randomUUID))
+        payload    (encode-session-payload {:v  session-payload-version
+                                            :ui (true? supports-mcp-ui?)})
+        session-id (str uuid "." payload "." (session-payload-signature uuid payload))]
     ;; Enforce the `mcp_query_handle.mcp_session_id` column width (254) at the mint site, not only on the read path
     ;; ([[session-parts]]). A future payload field that pushed an id past the cap would otherwise mint fine and
     ;; initialize a working session, then have every later request 404 "Invalid or expired session" once the
@@ -298,17 +344,23 @@
    (create-session-id metadata)))
 
 (defn supports-mcp-ui?
-  "Return true if the client advertised MCP Apps UI support during initialize."
-  [session-id]
-  (when-let [{:keys [payload extended]} (session-parts session-id)]
-    (if extended
-      (true? (:ui payload))
-      ;; Legacy plain UUID sessions were issued before capability-aware tools/list; keep old behavior for them.
-      true)))
+  "Return true if the client PROVABLY advertised MCP Apps UI support during initialize.
 
-(defn- get-or-create-embedding-session!
+  Only a signed capability payload counts. This gates `:required-extensions`, so a claim the server cannot
+  verify has to read as absent: a plain UUID id — issued before capability hints existed — used to return
+  true here, which meant a caller could bypass the whole gate by simply omitting the payload. Both that and an
+  unsigned payload now fail closed."
+  [session-id]
+  (boolean
+   (when-let [{:keys [payload extended]} (session-parts session-id)]
+     (and extended (true? (:ui payload))))))
+
+(defn get-or-create-embedding-session!
   "Materialize and return the `core_session` row backing this MCP session.
-  Idempotent — repeated calls collapse to the same row in the common case."
+  Idempotent — repeated calls collapse to the same row in the common case.
+
+  Returns the row, never the session key — see [[derive-embedding-session-key]] for why the plaintext must not
+  leave this namespace."
   [session-id user-id]
   (let [session-key (derive-embedding-session-key session-id)
         key-hashed  (session/hash-session-key session-key)]
@@ -323,24 +375,7 @@
     ;; colliding rows arbitrarily. Cross-user UUID collisions are an unaddressed risk
     ;; across the whole session model (cookie sessions included) — it belongs in the
     ;; auth layer, not here, and no constraint shape at this call site can fix it.
-    ;;
-    ;; Raw :core_session (not :model/Session) to bypass the after-insert hook, which
-    ;; would publish spurious :event/user-login events.
-    (app-db/select-or-insert!
-     :core_session
-     {:key_hashed key-hashed
-      :user_id    user-id}
-     (fn []
-       {:id              (session/generate-session-id)
-        :anti_csrf_token nil
-        :created_at      :%now}))))
-
-(defn get-or-create-session-key!
-  "Ensure a `core_session` exists for this MCP session and return its (plaintext) session key, HMAC-derived from the MCP
-  session id."
-  [session-id user-id]
-  (get-or-create-embedding-session! session-id user-id)
-  (derive-embedding-session-key session-id))
+    (mcp.db/get-or-create-core-session! key-hashed user-id)))
 
 (defn owned-by-user?
   "Return true if no `core_session` has been materialized for this session yet (i.e. no ownership to violate), or if
@@ -352,7 +387,7 @@
   ;; harmless: each user sees their own row instead of one arbitrarily shadowing the other. Reading the owner from
   ;; key_hashed alone would pick one row of the set and lock every other user out of a session they already hold.
   (let [key-hashed (session/hash-session-key (derive-embedding-session-key session-id))
-        owners     (t2/select-fn-set :user_id :core_session :key_hashed key-hashed)]
+        owners     (mcp.db/session-user-ids key-hashed)]
     (or (empty? owners) (contains? owners user-id))))
 
 ;;; -------------------------------------------- Query Handle Store -----------------------------------------------
@@ -379,12 +414,12 @@
    ;; filters on for cross-session ownership.
    (let [core-session-id (:id (get-or-create-embedding-session! mcp-session-id user-id))
          handle-id       (str (UUID/randomUUID))]
-     (t2/insert! :model/McpQueryHandle
-                 (cond-> {:id              handle-id
-                          :mcp_session_id  mcp-session-id
-                          :core_session_id core-session-id
-                          :encoded_query   encoded-query}
-                   prompt (assoc :prompt prompt)))
+     (mcp.db/insert-query-handle!
+      handle-id
+      (cond-> {:mcp_session_id  mcp-session-id
+               :core_session_id core-session-id
+               :encoded_query   encoded-query}
+        prompt (assoc :prompt prompt)))
      handle-id)))
 
 (defn- handle-id?
@@ -401,13 +436,7 @@
   (when (and user-id (handle-id? handle-id))
     ;; Single round-trip: join `mcp_query_handle` to `core_session` and filter on
     ;; `core_session.user_id`, so ownership is enforced in the WHERE clause.
-    (let [row (t2/select-one :model/McpQueryHandle
-                             {:select [:mqh.*]
-                              :from   [[:mcp_query_handle :mqh]]
-                              :join   [[:core_session :cs] [:= :cs.id :mqh.core_session_id]]
-                              :where  [:and
-                                       [:= :mqh.id handle-id]
-                                       [:= :cs.user_id user-id]]})]
+    (let [row (mcp.db/query-handle-for-user handle-id user-id)]
       (when (and row (not= mcp-session-id (:mcp_session_id row)))
         (log/debugf "MCP handle %s resolved across sessions for user %s"
                     handle-id user-id))
@@ -417,8 +446,10 @@
   "Return {:encoded_query ... :prompt ...} for `handle-id` owned by `user-id`, or nil.
   Lookup is user-scoped — see [[find-handle-row]] for how `mcp-session-id` is used."
   [mcp-session-id user-id handle-id]
-  (some-> mcp-session-id
-          (find-handle-row user-id handle-id)
+  ;; Threading the ROW, not the session id: the lookup is user-scoped and needs only `user-id`, and
+  ;; `mcp-session-id` is used solely to log a cross-session resolution. Short-circuiting on a nil session id
+  ;; would refuse a handle its owner is entitled to.
+  (some-> (find-handle-row mcp-session-id user-id handle-id)
           (select-keys [:encoded_query :prompt])))
 
 (defn read-handle
@@ -430,17 +461,25 @@
   (:encoded_query (find-handle-row mcp-session-id user-id handle-id)))
 
 (defn delete!
-  "Delete the `core_session` backing this MCP session (if one was ever created) and any associated query handles. Scoped
-  to `user-id` so that one user cannot delete another user's session.
+  "Delete the `core_session` backing this MCP session (if one was ever created) and this user's query handles on it.
+  Every statement is scoped to `user-id`, so tearing down one user's session cannot touch another's.
 
-  Handles tied to a `core_session` are also reaped by the FK cascade when the session row goes; the explicit
-  handle-delete here covers handles whose `core_session_id` was never set — e.g. handles for regular query payloads
-  that aren't backed by an MCP iframe and so never materialize a `core_session`."
+  That scoping is not belt-and-braces: `Mcp-Session-Id` is client-supplied and unsigned, so two users can hold
+  rows under one id and [[owned-by-user?]] admits both by design. Deleting handles by `mcp_session_id` alone
+  would therefore reap the other user's handles — rows the FK cascade would never have touched, since they hang
+  off *their* `core_session`.
+
+  Handles are deleted before the session row so they can still be scoped through it; the `ON DELETE CASCADE` that
+  follows is then a no-op for this user.
+
+  Rows with a NULL `core_session_id` ARE reaped, on session id alone. `store-handle!` always sets the column now,
+  but it is nullable and released code predating that left rows without it; scoping those through `core_session`
+  strands them forever, since `NULL IN (subquery)` never matches and nothing else sweeps the table. Reaping them
+  unscoped is safe precisely because they are unattributed: [[find-handle-row]] inner-joins `core_session`, so
+  such a row can never be read back by anyone. That makes it unreachable data rather than another user's working
+  handle — the opposite of the attributed rows, which stay scoped."
   [session-id user-id]
   (assert-session-id! session-id)
   (let [key-hashed (session/hash-session-key (derive-embedding-session-key session-id))]
-    (t2/query {:delete-from :core_session
-               :where       [:and
-                             [:= :key_hashed key-hashed]
-                             [:= :user_id user-id]]})
-    (t2/delete! :model/McpQueryHandle :mcp_session_id session-id)))
+    (mcp.db/delete-query-handles-for-user-session! session-id key-hashed user-id)
+    (mcp.db/delete-session-for-user! key-hashed user-id)))

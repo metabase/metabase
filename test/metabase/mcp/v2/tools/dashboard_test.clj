@@ -7,9 +7,12 @@
   (:require
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.mcp.v2.registry :as registry]
    ;; Registers the tool the assertions below drive.
    [metabase.mcp.v2.tools.dashboard :as tools.dashboard]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -24,17 +27,20 @@
     (registry/call-tool scopes nil tool args)))
 
 (defn- tool-result
-  [response]
-  (when (:isError response)
-    (throw (ex-info (str "tool call failed: " (-> response :content first :text))
-                    {:response response})))
-  (-> response :content first :text json/decode+kw))
+  [{:keys [result error]}]
+  (when error
+    (throw (ex-info (str "tool call rejected: " (:message error)) {:error error})))
+  (when (:isError result)
+    (throw (ex-info (str "tool call failed: " (-> result :content first :text))
+                    {:result result})))
+  (-> result :content first :text json/decode+kw))
 
 (defn- tool-error
-  [response]
-  (when-not (:isError response)
-    (throw (ex-info "expected a tool error, got success" {:response response})))
-  (-> response :content first :text))
+  [{:keys [result error]}]
+  (cond
+    error             (:message error)
+    (:isError result) (-> result :content first :text)
+    :else             (throw (ex-info "expected a tool error, got success" {:result result}))))
 
 (defn- wire
   [x]
@@ -107,6 +113,25 @@
           (is (re-find #"op 1" err))
           (is (= before (t2/count :model/Dashboard))))))))
 
+(deftest create-rolls-back-when-the-second-save-fails-test
+  (testing "GHY-4501: `create` with ops writes the row, then applies the ops in a second save. A
+            failure in that second save must take the row with it — otherwise the agent sees an
+            error, is told to retry, and leaves a pile of empty dashboards behind. The pre-compile
+            above catches a bad OP; it cannot catch a save that fails for any other reason, which is
+            what happened in the field."
+    (mt/with-model-cleanup [:model/Dashboard]
+      (mt/with-temp [:model/Card card {}]
+        (let [before (t2/count :model/Dashboard)]
+          ;; Fail only the real save: the pre-compile runs validate-only and never gets here.
+          (mt/with-dynamic-fn-redefs [dashboards.write/update-dashboard!
+                                      (fn [& _] (throw (ex-info "boom" {})))]
+            (is (some? (tool-error (call-tool! :crowberto nil "dashboard_write"
+                                               (wire {:method "create" :name "Sales"
+                                                      :ops [{:op "add_card" :id -1 :card_id (:id card)}]}))))
+                "the call reports an error"))
+          (is (= before (t2/count :model/Dashboard))
+              "and leaves no dashboard behind"))))))
+
 (deftest ops-are-atomic-test
   (testing "GHY-4147: a batch with a bad op writes nothing — the error names the op index"
     (mt/with-temp [:model/Dashboard dash {:name "Sales"}
@@ -133,6 +158,43 @@
             (is (= (into #{} (keys real)) (into #{} (keys dry))))
             (is (= (into #{} (keys (first (:dashcards real))))
                    (into #{} (keys (first (:dashcards dry))))))))))))
+
+(deftest validate-only-reports-the-replacement-card-test
+  (testing "a dry run of replace_card must name the NEW card: the projection prefers the hydrated `:card` over
+            `:card_id`, so a stale one would report the replace as a no-op and an agent validating before
+            committing would see the wrong thing"
+    (mt/with-temp [:model/Dashboard     dash  {:name "Sales"}
+                   :model/Card          old   {:name "Old revenue"}
+                   :model/Card          new-c {:name "New revenue"}
+                   :model/DashboardCard dc    {:dashboard_id (:id dash) :card_id (:id old)}]
+      (let [args {:method "update" :id (:id dash)
+                  :ops    [{:op "replace_card" :dashcard_id (:id dc) :card_id (:id new-c)}]}
+            dry  (tool-result (call-tool! :crowberto nil "dashboard_write"
+                                          (wire (assoc args :validate_only true))))
+            real (tool-result (call-tool! :crowberto nil "dashboard_write" (wire args)))]
+        (is (= {:id (:id new-c) :name "New revenue"}
+               (-> dry :dashcards first :card)))
+        (is (= (-> real :dashcards first :card)
+               (-> dry :dashcards first :card))
+            "the dry run and the real save must agree")))))
+
+(deftest patch-dashcard-accepts-json-parameter-mappings-test
+  (testing "`parameter_mappings` is advertised as patchable, and a mapping arrives as raw JSON with string
+            clause heads. Without the same target coercion `wire_parameter` does, every such patch failed
+            validation with \"should be :dimension\" — a documented key that could never be used."
+    (mt/with-temp [:model/Dashboard     dash {:name "Sales"}
+                   :model/Card          card {:name "Revenue"}
+                   :model/DashboardCard dc   {:dashboard_id (:id dash) :card_id (:id card)}]
+      (let [result (call-tool! :crowberto nil "dashboard_write"
+                               (wire {:method "update" :id (:id dash)
+                                      :ops [{:op "patch_dashcard" :dashcard_id (:id dc)
+                                             :patch {:parameter_mappings
+                                                     [{:parameter_id "p1"
+                                                       :card_id (:id card)
+                                                       :target ["dimension" ["field" (mt/id :venues :price) nil]]}]}}]}))]
+        (is (not (:isError result)) (-> result :content first :text))
+        (is (=? [{:parameter_id "p1" :target [:dimension [:field (mt/id :venues :price) nil]]}]
+                (t2/select-one-fn :parameter_mappings :model/DashboardCard :id (:id dc))))))))
 
 (deftest entity-id-is-accepted-test
   (testing "GHY-4147: `id` accepts a 21-character entity_id as well as a numeric id"
@@ -198,6 +260,20 @@
             (testing "and a slug derived from the name, so the parameter is URL-addressable"
               (is (= "category" (:slug stored))))))))))
 
+(deftest add-parameter-requires-a-name-test
+  (testing "GHY-4147: add_parameter without a name is refused up front. A nameless parameter gets no
+            slug, which half-breaks embedding, public links and URL parameter sync, and
+            `dashboard->resolved-params` requires a non-blank name — so the failure would otherwise
+            land on read-back, after the write had already committed."
+    (mt/with-temp [:model/Dashboard dash {:name "Sales"}]
+      (let [err (tool-error (call-tool! :crowberto nil "dashboard_write"
+                                        (wire {:method "update" :id (:id dash)
+                                               :ops [{:op "add_parameter" :parameter_id "p1"
+                                                      :type "string/="}]})))]
+        (is (re-find #"(?i)name" err))
+        (testing "and the dashboard is left alone"
+          (is (empty? (t2/select-one-fn :parameters :model/Dashboard :id (:id dash)))))))))
+
 (deftest update-parameter-clear-test
   (testing "GHY-4191: `update_parameter` can remove a property it once set. Null can't say it —
             `compact-op` strips nulls per op for the same reason the top-level boundary does — so
@@ -239,6 +315,27 @@
                    (tool-error (call-tool! :crowberto nil "dashboard_write"
                                            (wire {:method "update" :id (:id dash)
                                                   :ops [{:op "add_card" :id -1 :card_id 9999999}]}))))))))
+
+(deftest unreadable-card-is-refused-for-a-non-admin-test
+  (testing "a card that EXISTS but the caller cannot read is refused the same way a nonexistent one is, before
+            any write and without confirming it exists — the `can-read?` filter in `fetch-cards` is the only
+            thing enforcing that, and an admin-only test can never exercise it"
+    (mt/with-temp [:model/Collection {secret-id :id} {}
+                   :model/Card       {hidden-id :id} {:name "CONFIDENTIAL" :collection_id secret-id}
+                   :model/Dashboard  dash            {:name "Sales"}]
+      ;; The dashboard stays in the root collection rasta can write; only the CARD is out of reach, so the
+      ;; refusal under test is the card read check rather than the dashboard's own.
+      (perms/revoke-collection-permissions! (perms-group/all-users) secret-id)
+      (doseq [[label ops] [["card_id" [{:op "add_card" :id -1 :card_id hidden-id}]]
+                           ["series"  [{:op "add_card" :id -1 :card_id hidden-id :series [hidden-id]}]]]]
+        (testing label
+          (let [error (tool-error (call-tool! :rasta nil "dashboard_write"
+                                              (wire {:method "update" :id (:id dash) :ops ops})))]
+            (is (re-find #"you can read" error))
+            (is (not (re-find #"CONFIDENTIAL" error))
+                "the refusal must not leak the card's name"))))
+      (is (zero? (t2/count :model/DashboardCard :dashboard_id (:id dash)))
+          "nothing may be written before the refusal"))))
 
 (deftest create-applies-display-attributes-test
   (testing "GHY-4147: width and auto_apply_filters are honored on create, not silently dropped"

@@ -2,11 +2,13 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.tools.content :as tools.content]
+   [metabase.metrics.core :as metrics]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
    [metabase.util.json :as json]
@@ -22,7 +24,14 @@
    caller, which satisfies every scope check."
   ([args] (call-content nil args))
   ([token-scopes args]
-   (registry/call-tool token-scopes "test-session" "get_content" args)))
+   ;; `call-tool` answers `{:result …}` after dispatch, or `{:error …}` when the registry rejects
+   ;; the call before it. Present a rejection in the same `{:isError true}` shape a handler error
+   ;; takes, so the error-reading helpers below see both alike — the assertions here read the
+   ;; refusal text as a value, so a wrapper that threw would turn those into errors.
+   (let [{:keys [result error]} (registry/call-tool token-scopes "test-session" "get_content" args)]
+     (if error
+       {:isError true :content [{:type "text" :text (:message error)}]}
+       result))))
 
 (defn- content-results
   "The `:results` vector from a successful get_content call. Throws when the call was rejected
@@ -149,8 +158,11 @@
           (is (nil? (:error row)))
           (is (= [{:id tab-id :name "Tab 1"}] (:tabs row)))
           (testing "each parameter names the dashcards it is wired to"
-            (is (= [{:id "_CAT_" :name "Category" :type "category" :dashcard_ids [dc-id]}]
-                   (:parameters row))))
+            (let [expected [{:id "_CAT_" :name "Category" :type "category" :dashcard_ids [dc-id]}]]
+              (is (= expected (:parameters row)))
+              (is (= expected
+                     (:parameters (content-one {:items   [{:type "dashboard" :id dash-id}]
+                                                :include ["parameters"]}))))))
           (testing "one summary row per dashcard, with the card reference resolved"
             (is (= [{:id dc-id :kind "card" :card {:id card-id :name "Embedded"}
                      :dashboard_tab_id tab-id :row 0 :col 0}]
@@ -203,6 +215,88 @@
             (testing "and so is an unreadable series entry"
               (is (= [{:id hidden-series}] (:series (get refs open-dc)))))))))))
 
+(defn- link-card-settings
+  "Stored `visualization_settings` for a link dashcard pointing at `model`/`id`, carrying the
+   cached entity name the frontend writes alongside the reference."
+  [model id cached-name]
+  {:virtual_card {:name nil :display "link" :visualization_settings {} :archived false}
+   :link         {:entity {:model model :id id :name cached-name}}})
+
+(defn- layout-links
+  "dashcard id -> the `:link` visualization setting the `layout` include returns for it."
+  [dash-id]
+  (into {}
+        (map (juxt :id (comp :link :visualization_settings)))
+        (:dashcards (:layout (content-one {:items   [{:type "dashboard" :id dash-id}]
+                                           :include ["layout"]})))))
+
+(deftest get-content-dashboard-layout-link-entity-test
+  (testing "GHY-4512: the layout include returns a link card's entity reference behind a read
+            check. Dropping it outright left an entity link reading back as `link: {}` —
+            indistinguishable from an empty card, and impossible to round-trip through
+            patch_dashcard."
+    (mt/with-temp [:model/Collection    {locked-id :id}     {}
+                   :model/Dashboard     {open-target :id}   {:name "Open Target"}
+                   :model/Dashboard     {hidden-target :id} {:name          "Hidden Target"
+                                                             :collection_id locked-id}
+                   :model/Dashboard     {dash-id :id}       {}
+                   :model/DashboardCard {open-dc :id}       {:dashboard_id dash-id :row 0 :col 0
+                                                             :visualization_settings
+                                                             (link-card-settings "dashboard" open-target
+                                                                                 "Stale Open Name")}
+                   :model/DashboardCard {hidden-dc :id}     {:dashboard_id dash-id :row 1 :col 0
+                                                             :visualization_settings
+                                                             (link-card-settings "dashboard" hidden-target
+                                                                                 "SECRET-Hidden-Target")}
+                   :model/DashboardCard {url-dc :id}        {:dashboard_id dash-id :row 2 :col 0
+                                                             :visualization_settings
+                                                             {:virtual_card {:name                   nil
+                                                                             :display                "link"
+                                                                             :visualization_settings {}
+                                                                             :archived               false}
+                                                              :link         {:url "https://example.com"}}}]
+      (mt/with-non-admin-groups-no-collection-perms locked-id
+        (mt/with-test-user :rasta
+          (let [links (layout-links dash-id)]
+            (testing "a readable target reads back as the stored reference, the shape patch_dashcard takes verbatim"
+              (is (= {:entity {:model "dashboard" :id open-target}} (get links open-dc))))
+            (testing "an unreadable target is marked restricted rather than silently dropped"
+              (is (= {:entity {:restricted true}} (get links hidden-dc))))
+            (testing "the cached name stored beside the reference never rides along — no read check stands behind it"
+              (is (not (str/includes? (json/encode links) "Stale Open Name")))
+              (is (not (str/includes? (json/encode links) "SECRET-Hidden-Target"))))
+            (testing "a url link is untouched"
+              (is (= {:url "https://example.com"} (get links url-dc))))))))))
+
+(deftest query-summary-does-not-name-an-unreadable-source-card-test
+  (testing "GHY-4510: a readable wrapper's query_summary must not name a source card the caller cannot read"
+    (mt/with-temp [:model/Collection {locked-id :id} {:name "Project Falcon (confidential)"}
+                   :model/Card {secret-id :id} {:collection_id locked-id
+                                                :name          "SECRET-SourceCard-NORTHWIND"
+                                                :dataset_query (venues-query)}
+                   :model/Card {wrapper-id :id} {:collection_id nil
+                                                 :name          "wrapper"
+                                                 :dataset_query (let [mp (mt/metadata-provider)]
+                                                                  (lib/query mp (lib.metadata/card mp secret-id)))}]
+      (mt/with-non-admin-groups-no-collection-perms locked-id
+        (testing "the source card itself is denied outright"
+          (mt/with-test-user :rasta
+            (is (str/includes? (:error (content-one {:items [{:type "question" :id secret-id}]}))
+                               "not found"))))
+        (testing "an admin, who can read the source, still gets a summary"
+          (mt/with-test-user :crowberto
+            (let [row (content-one {:items [{:type "question" :id wrapper-id}]})]
+              (is (nil? (:error row)))
+              (is (some? (:query_summary row))))))
+        (mt/with-test-user :rasta
+          (let [row (content-one {:items [{:type "question" :id wrapper-id}]})]
+            (is (nil? (:error row))
+                "the wrapper is readable — only its source is not")
+            (testing "the restricted card's name is nowhere in the response"
+              (is (not (str/includes? (json/encode row) "SECRET-SourceCard-NORTHWIND"))))
+            (testing "the summary is withheld rather than rendered from unreadable metadata"
+              (is (nil? (:query_summary row))))))))))
+
 (deftest get-content-alert-test
   (testing "GHY-4140: alert reads carry condition, schedule, and handlers"
     (notification.tu/with-card-notification
@@ -245,6 +339,26 @@
                   "the handler is still projected — only its recipients are withheld")
               (is (not (contains? (-> row :handlers first) :recipients))
                   "the recipient list is gone entirely, not merely filtered to empty"))))))))
+
+(deftest get-content-alert-read-denial-test
+  (testing "GHY-4140: `mi/can-read?` in fetch-notification is the permission boundary for alerts — a caller
+            who is neither superuser, creator, nor recipient must get the not-found collapse, not the alert's
+            card_id, schedule and handlers. Every other alert test here reads as an admin or the creator, so
+            deleting that conjunct would leave the suite green."
+    (mt/with-temp [:model/Collection {locked-id :id} {}]
+      (notification.tu/with-card-notification
+        [notification {:card         {:collection_id locked-id}
+                       :notification {:creator_id (mt/user->id :crowberto)}
+                       :handlers     [{:channel_type :channel/email
+                                       :recipients   [{:type    :notification-recipient/user
+                                                       :user_id (mt/user->id :crowberto)}]}]}]
+        (mt/with-non-admin-groups-no-collection-perms locked-id
+          (mt/with-test-user :lucky
+            (let [row (content-one {:items [{:type "alert" :id (:id notification)}]})]
+              (is (some? (:error row))
+                  "a caller with no relationship to the alert is refused")
+              (is (nil? (:handlers row))
+                  "and gets none of its delivery configuration"))))))))
 
 (deftest get-content-subscription-pulse-test
   (testing "GHY-4140: a live Pulse row reads as a subscription, with its channels and cards"
@@ -318,6 +432,103 @@
               (is (= "t1" (:name row)))
               (is (= "t1_out" (-> row :target :name))))))))))
 
+(deftest get-content-resolves-entity-ids-test
+  (testing "GHY-4140: `id` takes a 21-character entity_id as well as a numeric id, for every type
+            carrying an entity_id column — the portable id a write echo hands back"
+    (mt/with-temp [:model/Collection         {coll-id :id} {:name "C1"}
+                   :model/Card               {card-id :id} {:name "Q1" :dataset_query (venues-query)}
+                   :model/NativeQuerySnippet {snip-id :id} {:name       "snip"
+                                                            :content    "wow"
+                                                            :creator_id (mt/user->id :lucky)}
+                   :model/Document           {doc-id :id}
+                   {:document     {:type    "doc"
+                                   :content [{:type    "paragraph"
+                                              :content [{:type "text" :text "hello"}]}]}
+                    :content_type "application/json+vnd.prose-mirror"}]
+      (mt/with-test-user :crowberto
+        (doseq [[type model id] [["collection" :model/Collection         coll-id]
+                                 ["question"   :model/Card               card-id]
+                                 ["snippet"    :model/NativeQuerySnippet snip-id]
+                                 ["document"   :model/Document           doc-id]]]
+          (testing type
+            (let [eid (t2/select-one-fn :entity_id model :id id)]
+              (is (= 21 (count eid)) "the fixture must actually carry an entity_id")
+              (let [row (content-one {:items [{:type type :id eid}]})]
+                (is (nil? (:error row)))
+                (is (= id (:id row)) "resolves to the row the numeric id returns")))))))))
+
+(deftest get-content-entity-id-teaching-errors-test
+  (testing "GHY-4140: a type with no entity_id column names the fix rather than collapsing to
+            not-found, and a string that is neither shape is rejected outright"
+    (notification.tu/with-card-notification
+      [notification {:card         {:dataset_query (venues-query)}
+                     :notification {:creator_id (mt/user->id :crowberto)}
+                     :handlers     []}]
+      (mt/with-test-user :crowberto
+        (testing "alerts are numeric-only"
+          (is (re-find #"numeric id"
+                       (:error (content-one {:items [{:type "alert"
+                                                      :id   "abcdefghijklmnopqrstu"}]})))))
+        (testing "and the alert still reads by its numeric id"
+          (is (nil? (:error (content-one {:items [{:type "alert" :id (:id notification)}]})))))
+        (testing "a string that is neither a numeric id nor an entity_id"
+          (is (re-find #"21-character entity_id"
+                       (:error (content-one {:items [{:type "question" :id "nope"}]})))))))))
+
+(deftest get-content-transform-target-table-test
+  (testing "GHY-4140: `table` is the transform's target, hydrated with no permission check of its own
+            — `can-read?` on a Transform gates on the SOURCE tables only — so `fetch-transform`
+            re-checks it before returning it.
+
+            That gate's false branch is unreachable through permissions today, so there is no test
+            for it: reading a transform at all requires superuser or data analyst; superusers read
+            every table; and `table-permission-for-user` hands every data analyst
+            `manage-table-metadata :yes` unconditionally, which by itself satisfies `can-read?` on a
+            Table. The check is defence in depth for the day the transform read check widens. What
+            is reachable is covered here."
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temp-env-var-value! [mb-transforms-enabled true]
+        ;; Target an already-synced table rather than the usual nonexistent one, so `:table` actually
+        ;; hydrates and there is something to withhold. Source and target must differ: blocking the
+        ;; source would make the transform itself unreadable and prove nothing.
+        (mt/with-temp [:model/Transform {id :id}
+                       {:name   "t1"
+                        :source {:type  :query
+                                 :query {:database (mt/id)
+                                         :type     "query"
+                                         :query    {:source-table (mt/id :venues)}}}
+                        :target {:type   :table
+                                 :schema (t2/select-one-fn :schema :model/Table :id (mt/id :checkins))
+                                 :name   (t2/select-one-fn :name :model/Table :id (mt/id :checkins))}}]
+          ;; `table` is a detailed-only key, so the gate only ever runs on a detailed read.
+          (testing "an admin, who can read the target, gets it"
+            (mt/with-test-user :crowberto
+              (let [row (content-one {:items           [{:type "transform" :id id}]
+                                      :response_format "detailed"})]
+                (is (nil? (:error row)))
+                (is (= (mt/id :checkins) (-> row :table :id))))))
+          (testing "and it is a detailed-only key, absent from a concise read"
+            (mt/with-test-user :crowberto
+              (is (nil? (:table (content-one {:items [{:type "transform" :id id}]})))))))))
+    (testing "a transform whose target table does not exist yet reads without a `table`"
+      (mt/with-premium-features #{:transforms-basic}
+        (mt/with-temp-env-var-value! [mb-transforms-enabled true]
+          (mt/with-temp [:model/Transform {id :id}
+                         {:name   "t2"
+                          :source {:type  :query
+                                   :query {:database (mt/id)
+                                           :type     "query"
+                                           :query    {:source-table (mt/id :venues)}}}
+                          :target {:type   :table
+                                   :schema (t2/select-one-fn :schema :model/Table :id (mt/id :venues))
+                                   :name   "never_run_out"}}]
+            (mt/with-test-user :crowberto
+              (let [row (content-one {:items           [{:type "transform" :id id}]
+                                      :response_format "detailed"})]
+                (is (nil? (:error row)))
+                (is (= "t2" (:name row)))
+                (is (nil? (:table row)) "nothing to hydrate, so the section is omitted")))))))))
+
 (deftest get-content-not-found-is-not-an-existence-oracle-test
   (testing "GHY-4140: a nonexistent id and an existing-but-unreadable id are indistinguishable,
             so responses never form an existence oracle across the permission boundary"
@@ -354,10 +565,10 @@
             keep their full teaching message"
     (mt/with-temp [:model/Card {card-id :id} {:name "Good" :dataset_query (venues-query)}]
       (mt/with-test-user :crowberto
-        (with-redefs [tools.content/fetch-measure-or-segment
-                      (fn [& _]
-                        (throw (ex-info "ERROR: relation \"report_card\" does not exist"
-                                        {:sql "SELECT * FROM report_card"})))]
+        (mt/with-dynamic-fn-redefs [tools.content/fetch-measure-or-segment
+                                    (fn [& _]
+                                      (throw (ex-info "ERROR: relation \"report_card\" does not exist"
+                                                      {:sql "SELECT * FROM report_card"})))]
           (let [[leaky teaching good]
                 (content-results {:items [{:type "measure" :id 1}
                                           {:type "question" :id 999999999}
@@ -415,7 +626,22 @@
         (mt/with-test-user :crowberto
           (let [row (content-one #{"agent:content:read"} {:items [{:type "document" :id id}]})]
             (is (nil? (:error row)))
-            (is (re-find #"hello" (:content_markdown row)))))))))
+            (is (re-find #"hello" (:content_markdown row)))))))
+    (testing "transform — `agent:transforms:read` is still declared, but this tool does not ask for it"
+      (mt/with-premium-features #{:transforms-basic}
+        (mt/with-temp-env-var-value! [mb-transforms-enabled true]
+          (mt/with-temp [:model/Transform {id :id} {:name   "t1"
+                                                    :source {:type  :query
+                                                             :query {:database (mt/id)
+                                                                     :type     "query"
+                                                                     :query    {:source-table (mt/id :venues)}}}
+                                                    :target {:type   :table
+                                                             :schema (t2/select-one-fn :schema :model/Table :id (mt/id :venues))
+                                                             :name   "t1_out"}}]
+            (mt/with-test-user :crowberto
+              (let [row (content-one #{"agent:content:read"} {:items [{:type "transform" :id id}]})]
+                (is (nil? (:error row)))
+                (is (= "t1" (:name row)))))))))))
 
 (defn- comment-content
   [text]
@@ -427,13 +653,13 @@
    paragraph has its own id (nested blocks carry no span of their own), an empty paragraph
    (zero-width span), and a closing paragraph."
   {:type    "doc"
-   :content [{:type    "paragraph" :attrs {:_id "para-1"}
+   :content [{:type    "paragraph" :attrs {"_id" "para-1"}
               :content [{:type "text" :text "First paragraph."}]}
-             {:type    "blockquote" :attrs {:_id "quote-1"}
-              :content [{:type    "paragraph" :attrs {:_id "quote-para"}
+             {:type    "blockquote" :attrs {"_id" "quote-1"}
+              :content [{:type    "paragraph" :attrs {"_id" "quote-para"}
                          :content [{:type "text" :text "Quoted text."}]}]}
-             {:type "paragraph" :attrs {:_id "empty-1"}}
-             {:type    "paragraph" :attrs {:_id "para-2"}
+             {:type "paragraph" :attrs {"_id" "empty-1"}}
+             {:type    "paragraph" :attrs {"_id" "para-2"}
               :content [{:type "text" :text "Last paragraph."}]}]})
 
 (deftest get-content-document-comments-include-test
@@ -503,18 +729,18 @@
    block nested inside one has to resolve its anchor past them; the paragraph inside the list item
    is the block with no span of its own — the list re-renders it with a `- ` prefix."
   {:type    "doc"
-   :content [{:type    "resizeNode" :attrs {:height 442 :minHeight 280}
-              :content [{:type    "flexContainer" :attrs {:columnWidths [60 40]}
-                         :content [{:type    "supportingText" :attrs {:_id "support-1"}
-                                    :content [{:type    "bulletList" :attrs {:_id "list-1"}
+   :content [{:type    "resizeNode" :attrs {"height" 442 "minHeight" 280}
+              :content [{:type    "flexContainer" :attrs {"columnWidths" [60 40]}
+                         :content [{:type    "supportingText" :attrs {"_id" "support-1"}
+                                    :content [{:type    "bulletList" :attrs {"_id" "list-1"}
                                                :content [{:type    "listItem"
-                                                          :content [{:type    "paragraph" :attrs {:_id "list-para"}
+                                                          :content [{:type    "paragraph" :attrs {"_id" "list-para"}
                                                                      :content [{:type "text"
                                                                                 :text "Nested in a list."}]}]}]}]}
-                                   {:type    "supportingText" :attrs {:_id "support-2"}
-                                    :content [{:type    "paragraph" :attrs {:_id "support-para"}
+                                   {:type    "supportingText" :attrs {"_id" "support-2"}
+                                    :content [{:type    "paragraph" :attrs {"_id" "support-para"}
                                                :content [{:type "text" :text "Beside it."}]}]}]}]}
-             {:type "paragraph" :attrs {:_id "tail"} :content [{:type "text" :text "Tail."}]}]})
+             {:type "paragraph" :attrs {"_id" "tail"} :content [{:type "text" :text "Tail."}]}]})
 
 (deftest get-content-document-comments-inside-a-layout-container-test
   (testing "a live comment inside a layout container is anchored, not reported orphaned — a block
@@ -591,12 +817,43 @@
       (mt/with-test-user :crowberto
         (let [row (content-one {:items [{:type "document" :id doc-id}] :include ["comments"]})]
           (is (nil? (:error row)))
-          (is (= "odd" (:content_markdown row)))
+          (testing "the body is omitted rather than degraded: content_markdown is the key
+                    document_write takes as a whole-body rewrite, so returning flattened prose
+                    under it makes a read-modify-write silently drop the unrenderable block"
+            (is (nil? (:content_markdown row)))
+            (is (string? (:content_markdown_unavailable row))))
           (is (= [{:child_target_id "m-1" :thread-texts ["still here"]}]
                  (mapv #(-> (select-keys % [:child_target_id :anchor])
                             (assoc :thread-texts (mapv :text (:thread %))))
                        (:comments row))))
           (is (nil? (:orphaned_comments row))))))))
+
+(deftest get-content-unrenderable-body-is-not-a-destructive-round-trip-test
+  (testing "a document whose body holds a block with no Markdown form never returns text under
+            content_markdown. document_write applies that key as a whole-body rewrite, and the
+            flattened prose prose-mirror/ast->text produces drops headings, card embeds and layout
+            containers — so echoing it back would replace a multi-block document with a single
+            paragraph and orphan every anchored thread, while reporting success."
+    (mt/with-temp [:model/Document {doc-id :id}
+                   {:document     {:type    "doc"
+                                   :content [{:type    "heading"
+                                              :attrs   {:level 1 :_id "h-1"}
+                                              :content [{:type "text" :text "Q3 revenue"}]}
+                                             {:type  "mysteryBlock"
+                                              :attrs {"_id" "m-1"}}
+                                             {:type  "cardEmbed"
+                                              :attrs {"id" 118 "_id" "c-1"}}]}
+                    :content_type "application/json+vnd.prose-mirror"}]
+      (mt/with-test-user :crowberto
+        (let [row (content-one {:items [{:type "document" :id doc-id}]})]
+          (is (nil? (:error row))
+              "the read still succeeds — an unrenderable body is not an error")
+          (is (nil? (:content_markdown row))
+              "the key document_write rewrites from must be absent, not degraded")
+          (is (string? (:content_markdown_unavailable row))
+              "and the caller is told why, rather than being handed a lossy body")
+          (testing "nothing in the response is the flattened prose under any key"
+            (is (not (contains? (set (vals row)) "Q3 revenue")))))))))
 
 (defn- deeply-nested-ast
   "A prose-mirror body nested `n` levels deep."
@@ -703,6 +960,49 @@
             (is (some? (:definition question)))
             (is (nil? (:layout question)))))))))
 
+(deftest get-content-definition-include-per-type-test
+  (testing "GHY-4140: every type declaring a `definition` section actually produces one. Each
+            builder swallows its own failures and the section is simply omitted when it returns
+            nil, so a broken exporter looks exactly like a type that has nothing to export."
+    (testing "measure — the aggregation clause"
+      (mt/with-temp [:model/Measure {id :id} {:name       "M1"
+                                              :table_id   (mt/id :venues)
+                                              :creator_id (mt/user->id :rasta)
+                                              :definition (measure-definition (lib/count))}]
+        (mt/with-test-user :crowberto
+          (let [row (content-one {:items [{:type "measure" :id id}] :include ["definition"]})]
+            (is (nil? (:error row)))
+            (is (some? (:definition row)) "the definition section is present")
+            (is (= "count" (-> row :definition first first))
+                "and carries the stored aggregation")))))
+    (testing "segment — the filter clauses"
+      (mt/with-temp [:model/Segment {id :id} {:name       "S1"
+                                              :table_id   (mt/id :venues)
+                                              :definition {:filter [:= [:field-id (mt/id :venues :price)] 2]}}]
+        (mt/with-test-user :crowberto
+          (let [row (content-one {:items [{:type "segment" :id id}] :include ["definition"]})]
+            (is (nil? (:error row)))
+            (is (some? (:definition row)) "the definition section is present")
+            (is (= "=" (-> row :definition first first))
+                "and carries the stored filter")))))
+    (testing "transform — the source, with its query serialized"
+      (mt/with-premium-features #{:transforms-basic}
+        (mt/with-temp-env-var-value! [mb-transforms-enabled true]
+          (mt/with-temp [:model/Transform {id :id} {:name   "t1"
+                                                    :source {:type  :query
+                                                             :query {:database (mt/id)
+                                                                     :type     "query"
+                                                                     :query    {:source-table (mt/id :venues)}}}
+                                                    :target {:type   :table
+                                                             :schema (t2/select-one-fn :schema :model/Table :id (mt/id :venues))
+                                                             :name   "t1_out"}}]
+            (mt/with-test-user :crowberto
+              (let [row (content-one {:items [{:type "transform" :id id}] :include ["definition"]})]
+                (is (nil? (:error row)))
+                (is (some? (:definition row)) "the definition section is present")
+                (is (= (mt/id) (-> row :definition :query :database))
+                    "and the query round-trips as the numeric-id MBQL 5 shape")))))))))
+
 (deftest get-content-include-unknown-for-every-item-test
   (testing "GHY-4140: a section no item in the batch supports is a tool-level teaching error,
             so a typo never silently returns nothing"
@@ -711,6 +1011,51 @@
         (let [error (content-error {:items [{:type "question" :id card-id}] :include ["layout"]})]
           (is (re-find #"does not apply to type question" error))
           (is (re-find #"available for: dashboard, document" error)))))))
+
+(deftest get-content-settings-include-test
+  (testing "GHY-4511: a question's stored visualization_settings read back — through the
+            `visualization_settings` include, through `detailed`, and as a `fields` path. Without a read-back
+            an agent cannot check a goal line, a series binding or a hidden column it just wrote."
+    (let [settings {:graph.show_goal true :graph.goal_value 50000}]
+      (mt/with-temp [:model/Card {card-id :id} {:type                   :question
+                                                :display                :line
+                                                :dataset_query          (venues-count-query)
+                                                :visualization_settings settings}]
+        (mt/with-test-user :crowberto
+          (testing "the concise shape alone still leaves the blob out"
+            (is (nil? (:visualization_settings
+                       (content-one {:items [{:type "question" :id card-id}]})))))
+          (testing "the include adds it to the concise shape"
+            (is (= settings (:visualization_settings
+                             (content-one {:items   [{:type "question" :id card-id}]
+                                           :include ["visualization_settings"]})))))
+          (testing "detailed carries it"
+            (is (= settings (:visualization_settings
+                             (content-one {:items           [{:type "question" :id card-id}]
+                                           :response_format "detailed"})))))
+          (testing "and `visualization_settings` is a valid fields path"
+            (is (= {:visualization_settings settings}
+                   (content-one {:items [{:type   "question" :id card-id
+                                          :fields ["visualization_settings"]}]})))))))
+    (testing "a card with nothing stored answers {} — an omitted section would read as
+              \"not available\" rather than \"not set\""
+      (mt/with-temp [:model/Card {card-id :id} {:type :model :dataset_query (venues-query)}]
+        (mt/with-test-user :crowberto
+          (is (= {} (:visualization_settings
+                     (content-one {:items   [{:type "model" :id card-id}]
+                                   :include ["visualization_settings"]})))))))))
+
+(deftest get-content-named-field-with-no-value-answers-null-test
+  (testing "GHY-4511: a `fields` path the card has no value for comes back null. The compact
+            projection drops nils, so an empty object was the only answer either way and a
+            caller could not tell an unset cache_ttl from a field get_content cannot read."
+    (mt/with-temp [:model/Card {unset-id :id} {:dataset_query (venues-query)}
+                   :model/Card {set-id :id}   {:dataset_query (venues-query) :cache_ttl 100}]
+      (mt/with-test-user :crowberto
+        (is (= {:cache_ttl nil}
+               (content-one {:items [{:type "question" :id unset-id :fields ["cache_ttl"]}]})))
+        (is (= {:cache_ttl 100}
+               (content-one {:items [{:type "question" :id set-id :fields ["cache_ttl"]}]})))))))
 
 (deftest get-content-dimensions-include-does-not-write-test
   (testing "GHY-4140: the dimensions include computes on read but never persists, so the tool's
@@ -728,6 +1073,141 @@
           (is (= dims-before (t2/select-one-fn :dimensions :model/Card :id metric-id))
               "the read persisted nothing to the metric's dimensions column"))))))
 
+(deftest get-content-document-read-does-not-log-a-view-test
+  (testing "GHY-4140: `get_content` declares readOnlyHint, so a document read must not record a
+            view. `documents/get-document` publishes `:event/document-read` by default, which bumps
+            `view_count`, stamps `last_viewed_at`, writes a view_log row, and pushes the document
+            onto the caller's recently-viewed list — filling a user's recents with an agent's reads."
+    (mt/with-temp [:model/Document {doc-id :id}
+                   {:document     {:type    "doc"
+                                   :content [{:type    "paragraph"
+                                              :content [{:type "text" :text "hello"}]}]}
+                    :content_type "application/json+vnd.prose-mirror"
+                    :view_count   0}]
+      (mt/with-test-user :crowberto
+        (let [row (content-one {:items [{:type "document" :id doc-id}]})]
+          (is (nil? (:error row)))
+          (is (re-find #"hello" (:content_markdown row))
+              "the read still returns the body")))
+      (is (= 0 (t2/select-one-fn :view_count :model/Document doc-id))
+          "and left view_count alone"))))
+
+(deftest get-content-dimensions-respects-a-curated-metric-test
+  (testing "GHY-4140: a metric whose dimensions were curated keeps them authoritative on read, the way
+            GET /api/metric/:id does. Reconciling a metric the MEASURE way — which is what
+            compute-dimensions did for every entity type — re-adds a dimension its owner deliberately
+            removed, and mints a fresh random id for every computed pair with no persisted mapping, so
+            two reads of an unchanged metric disagree."
+    (mt/with-temp [:model/Card {metric-id :id} {:type          :metric
+                                                :database_id   (mt/id)
+                                                :table_id      (mt/id :venues)
+                                                :dataset_query (venues-count-query)}]
+      ;; Curate through the persisted set, not through `get_content`'s output: the tool returns the
+      ;; encoded wire shape the endpoints return, which the model's `:dimensions` transform will not
+      ;; take back. Reading the fixture out of the tool under test would also make this test agree
+      ;; with whatever shape the tool happens to emit.
+      (metrics/sync-dimensions! :metadata/metric metric-id)
+      (let [seeded (t2/select-one-fn :dimensions :model/Card :id metric-id)]
+        (is (seq seeded) "the metric must seed at least one dimension for this to prove anything")
+        (t2/update! :model/Card metric-id {:dimensions (vec (take 1 seeded))})
+        (mt/with-test-user :crowberto
+          (let [row   (content-one {:items [{:type "metric" :id metric-id}] :include ["dimensions"]})
+                again (content-one {:items [{:type "metric" :id metric-id}] :include ["dimensions"]})]
+            (is (= 1 (count (:dimensions row)))
+                "the curated set is not auto-extended back to every computed pair")
+            (is (= (:dimensions row) (:dimensions again))
+                "and two reads of an unchanged metric agree — no freshly minted ids")))))))
+
+(defn- rest-dimensions
+  "The `dimensions`/`dimension_mappings` pair `GET /api/<route>/:id` returns."
+  [route id]
+  (select-keys (mt/user-http-request :crowberto :get 200 (str route "/" id))
+               [:dimensions :dimension_mappings]))
+
+(defn- mcp-dimensions
+  "The same pair from `get_content`'s `dimensions` include."
+  [type id]
+  (select-keys (mt/with-test-user :crowberto
+                 (content-one {:items [{:type type :id id}] :include ["dimensions"]}))
+               [:dimensions :dimension_mappings]))
+
+(defn- without-generated-ids
+  "`dimensions` with the generated dimension ids stripped. An entity whose dimensions have never
+   been persisted mints a fresh random id per computed pair, so two independent reads of one
+   legitimately disagree on ids (and on the `lib/uuid`s in the mapping targets keyed to them) while
+   every other part of the shape must still match."
+  [pair]
+  (mapv #(dissoc % :id) (:dimensions pair)))
+
+(defn- without-clause-uuids
+  "`pair` with the MBQL `:lib/uuid` clause identifiers stripped. A mapping target rebuilt by
+   `reconcile-dimensions-and-mappings` — the path measures take on every load — carries the same
+   field ref under a freshly minted clause uuid each time, so the uuids differ between two reads
+   that agree on everything that identifies the column."
+  [pair]
+  (walk/postwalk #(cond-> % (map? %) (dissoc :lib/uuid)) pair))
+
+(deftest get-content-dimensions-match-the-rest-endpoint-test
+  (testing "GHY-4140: the `dimensions` include documents itself as returning the same
+            `dimensions`/`dimension_mappings` pair `GET /api/metric/:id` and `GET /api/measure/:id`
+            return, but nothing ever compared the two. Each block reads through MCP BEFORE REST:
+            a REST read seeds and persists dimensions as a side effect, so reading it first would
+            paper over any divergence on the not-yet-seeded path."
+    (testing "a metric nobody has opened yet"
+      (mt/with-temp [:model/Card {metric-id :id} {:name          "Venue count"
+                                                  :type          :metric
+                                                  :database_id   (mt/id)
+                                                  :table_id      (mt/id :venues)
+                                                  :dataset_query (venues-count-query)}]
+        (let [mcp  (mcp-dimensions "metric" metric-id)
+              rest (rest-dimensions "metric" metric-id)]
+          (testing "names its keys the way the endpoint does, not in the internal kebab shape"
+            (is (= (into (sorted-set) (mapcat keys) (:dimensions rest))
+                   (into (sorted-set) (mapcat keys) (:dimensions mcp)))))
+          (testing "reports the seeded set — own-table and explicitly-joined columns — rather than
+                    every FK-reachable column"
+            (is (= (sort (map :name (:dimensions rest)))
+                   (sort (map :name (:dimensions mcp))))))
+          (testing "and every dimension matches but for the ids neither side has persisted yet"
+            (is (= (without-generated-ids rest)
+                   (without-generated-ids mcp)))))))
+    (testing "a metric with a dimension whose column disappeared"
+      (mt/with-temp [:model/Card {metric-id :id} {:name          "Venue count"
+                                                  :type          :metric
+                                                  :database_id   (mt/id)
+                                                  :table_id      (mt/id :venues)
+                                                  :dataset_query (venues-count-query)}]
+        ;; Seed, then retarget one mapping at a column of an unrelated table so the next sync marks
+        ;; its dimension `:status/orphaned` — the setup `metabase.metrics.api-dimension-test` uses.
+        (metrics/sync-dimensions! :metadata/metric metric-id)
+        (let [{:keys [dimensions dimension_mappings]} (t2/select-one :model/Card :id metric-id)
+              orphan-id (:id (first dimensions))]
+          (t2/update! :model/Card metric-id
+                      {:dimension_mappings (mapv #(cond-> %
+                                                    (= orphan-id (:dimension-id %))
+                                                    (assoc-in [:target 2] (mt/id :users :name)))
+                                                 dimension_mappings)})
+          (metrics/sync-dimensions! :metadata/metric metric-id)
+          (let [mcp  (mcp-dimensions "metric" metric-id)
+                rest (rest-dimensions "metric" metric-id)]
+            (testing "drops it, because the endpoint drops it unless asked for it"
+              (is (not (contains? (into #{} (map :id) (:dimensions mcp)) orphan-id))))
+            (testing "and the pair matches outright"
+              (is (= rest mcp)))))))
+    (testing "a measure"
+      (mt/with-temp [:model/Measure {measure-id :id} {:name       "M1"
+                                                      :table_id   (mt/id :venues)
+                                                      :creator_id (mt/user->id :crowberto)
+                                                      :definition (measure-definition (lib/count))}]
+        ;; Seed first so the generated dimension ids are persisted and both reads reconcile against
+        ;; the same set — this block is here for the encoded wire shape, not the unseeded path.
+        (metrics/sync-dimensions! :metadata/measure measure-id)
+        (let [mcp  (mcp-dimensions "measure" measure-id)
+              rest (rest-dimensions "measure" measure-id)]
+          (testing "the pair matches outright"
+            (is (= (without-clause-uuids rest)
+                   (without-clause-uuids mcp)))))))))
+
 (deftest question-projection-is-canonical-test
   (testing "GHY-4140: there is one :question projection, carrying get_content's enrichments, so
             loading this tool cannot silently reshape what browse_collection projects. A future
@@ -738,7 +1218,11 @@
       (is (contains? catalog "source_card_id")))
     (testing "the concise projection compacts nils rather than emitting them"
       (is (= {:id 1 :name "Q"}
-             (projections/project :question :concise {:id 1 :name "Q" :description nil}))))))
+             (projections/project :question :concise {:id 1 :name "Q" :description nil})))))
+  (testing "the same holds for the projections metric_write and document_write share with this tool —
+            each had a competing registration whose winner was decided by load order"
+    (is (contains? (set (projections/catalog :metric)) "query_summary"))
+    (is (contains? (set (projections/catalog :document)) "content_markdown"))))
 
 (deftest get-content-subscription-fields-covers-notification-shape-test
   (testing "GHY-4140: the subscription fields catalog covers the notification-backed shape, not
@@ -780,3 +1264,152 @@
                                            :query_type :native}]
             (is (=? {:min {:name "min" :type "number"}}
                     (:template_tags (content-one {:items [{:type "question" :id (:id card)}]}))))))))))
+
+(defn- native-card-query
+  "A stored native `:dataset_query` over the test database, in the legacy shape."
+  [sql]
+  {:database (mt/id) :type :native :native {:query sql}})
+
+(deftest native-question-summary-shows-the-query-head-test
+  (testing "GHY-4518: a native question's query_summary is the head of its own query text. Lib's
+            native-stage display name is the placeholder \"Native query\", which tells a caller
+            reading the row nothing about what the card does."
+    (mt/with-current-user (mt/user->id :crowberto)
+      (testing "the SQL itself, collapsed onto one line"
+        (mt/with-temp [:model/Card {card-id :id}
+                       {:query_type    :native
+                        :dataset_query (native-card-query "select date_trunc('month', placed_at)\n  from orders\n group by 1")}]
+          (is (= "SQL: select date_trunc('month', placed_at) from orders group by 1"
+                 (:query_summary (content-one {:items [{:type "question" :id card-id}]}))))))
+      (testing "a long query is truncated to a bounded head, marked with an ellipsis"
+        (let [sql (str "select " (str/join ", " (repeat 100 "a_fairly_long_column_name")) " from orders")]
+          (mt/with-temp [:model/Card {card-id :id}
+                         {:query_type :native :dataset_query (native-card-query sql)}]
+            (let [summary (:query_summary (content-one {:items [{:type "question" :id card-id}]}))]
+              (is (str/starts-with? summary "SQL: select a_fairly_long_column_name"))
+              (is (str/ends-with? summary "…"))
+              (is (< (count summary) 320)
+                  "the summary stays a summary — a whole query belongs in include: definition")))))
+      (testing "an MBQL question keeps the Lib description"
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query (venues-count-query)}]
+          (let [summary (:query_summary (content-one {:items [{:type "question" :id card-id}]}))]
+            (is (some? summary))
+            (is (not (str/starts-with? summary "SQL: ")))))))))
+
+(deftest native-question-summary-still-withholds-unreadable-source-cards-test
+  (testing "GHY-4518 must not reopen GHY-4510: a native query names its source card in a template
+            tag, so the SQL head goes behind the same gate the Lib description sits behind."
+    (mt/with-temp [:model/Collection {locked-id :id} {}
+                   :model/Card {secret-id :id} {:collection_id locked-id
+                                                :name          "SECRET-SourceCard-NORTHWIND"
+                                                :dataset_query (venues-query)}]
+      (mt/with-temp [:model/Card {wrapper-id :id}
+                     {:query_type    :native
+                      :dataset_query {:database (mt/id)
+                                      :type     :native
+                                      :native   {:query "select * from {{#card}}"
+                                                 :template-tags
+                                                 {"card" {:id           "3f3c6e10-1bbb-4a2e-9b6e-2a2d3c4e5f60"
+                                                          :name         "card"
+                                                          :display-name "card"
+                                                          :type         :card
+                                                          :card-id      secret-id}}}}}]
+        (mt/with-non-admin-groups-no-collection-perms locked-id
+          (testing "an admin, who can read the source, gets the SQL head"
+            (mt/with-test-user :crowberto
+              (is (str/starts-with? (:query_summary (content-one {:items [{:type "question" :id wrapper-id}]}))
+                                    "SQL: select * from"))))
+          (testing "a caller who cannot read the source gets no summary at all"
+            (mt/with-test-user :rasta
+              (let [row (content-one {:items [{:type "question" :id wrapper-id}]})]
+                (is (nil? (:error row)) "the wrapper itself is readable")
+                (is (nil? (:query_summary row)))))))))))
+
+(deftest question-carries-its-database-name-test
+  (testing "GHY-4518: a question read names its database, so turning `database_id` into a name does
+            not cost a second search call"
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (venues-query)}]
+      (mt/with-test-user :crowberto
+        (let [row (content-one {:items [{:type "question" :id card-id}]})]
+          (is (= (t2/select-one-fn :name :model/Database :id (mt/id)) (:database_name row)))
+          (is (= (mt/id) (:database_id row))
+              "the id stays — the name is additional, not a replacement"))))))
+
+(deftest get-content-not-found-parity-across-types-test
+  (testing "the not-found collapse holds for every type, not just question: a nonexistent id and an
+            existing-but-unreadable one are indistinguishable apart from the id. Each type has its
+            own fetch fn, so parity on one proves nothing about the others.
+
+            Snippet is not in the loop: snippets live in the `snippets` collection namespace rather
+            than under the restricted collection, so this fixture cannot make one unreadable."
+    (mt/with-temp [:model/Collection {coll-id :id}    {}
+                   :model/Card       {card-id :id}    {:collection_id coll-id :dataset_query (venues-query)}
+                   :model/Card       {model-id :id}   {:collection_id coll-id :type :model
+                                                       :dataset_query (venues-query)}
+                   :model/Dashboard  {dash-id :id}    {:collection_id coll-id}
+                   :model/Document   {doc-id :id}     {:collection_id coll-id
+                                                       :document      {:type "doc" :content []}}]
+      (mt/with-non-admin-groups-no-collection-perms coll-id
+        (mt/with-test-user :rasta
+          (doseq [[type existing-id] [["question"   card-id]
+                                      ["model"      model-id]
+                                      ["dashboard"  dash-id]
+                                      ["document"   doc-id]
+                                      ["collection" coll-id]]]
+            (testing type
+              (let [unreadable (:error (content-one {:items [{:type type :id existing-id}]}))
+                    missing    (:error (content-one {:items [{:type type :id 999999999}]}))]
+                (is (some? unreadable) "an unreadable entity is an error, not a silent success")
+                (is (some? missing) "a nonexistent id is an error")
+                (is (= (str/replace unreadable (str existing-id) "ID")
+                       (str/replace missing "999999999" "ID"))
+                    (str "the two messages must differ only by the id, or the error text tells the "
+                         "caller which ids exist. unreadable=" (pr-str unreadable)
+                         " missing=" (pr-str missing)))))))))))
+
+(deftest get-content-reads-archived-content-test
+  (testing "archived (trashed) content is readable rather than hidden — an agent asked to restore
+            something has to be able to read it first — and the read reports the archived state so
+            the agent is not misled into treating it as live."
+    (mt/with-temp [:model/Card       {card-id :id} {:name "Trashed Q" :archived true
+                                                    :dataset_query (venues-query)}
+                   :model/Collection {coll-id :id} {:name "Trashed Coll" :archived true}
+                   :model/Document   {doc-id :id}  {:name "Trashed Doc" :archived true
+                                                    :document {:type "doc" :content []}}]
+      (mt/with-test-user :crowberto
+        (doseq [[type id label] [["question"   card-id "Trashed Q"]
+                                 ["collection" coll-id "Trashed Coll"]
+                                 ["document"   doc-id  "Trashed Doc"]]]
+          (testing type
+            (let [row (content-one {:items [{:type type :id id}]})]
+              (is (nil? (:error row)) "archived content reads rather than 404ing")
+              (is (= label (:name row)) "and comes back identified")
+              (is (true? (:archived row))
+                  "the archived flag is reported — a read that omitted it would present trashed
+                   content as live"))))))
+    (testing "a live entity of the same type reports archived false, so the flag above is not
+              constant-true"
+      (mt/with-temp [:model/Card {card-id :id} {:name "Live Q" :dataset_query (venues-query)}]
+        (mt/with-test-user :crowberto
+          (is (false? (:archived (content-one {:items [{:type "question" :id card-id}]})))))))))
+
+(deftest get-content-numeric-string-id-test
+  (testing "GHY-4498: a numeric id serialized as a JSON string reads the same row as the integer,
+            including for the types that have no entity_id column"
+    (notification.tu/with-card-notification
+      [notification {:card         {:dataset_query (venues-query)}
+                     :notification {:creator_id (mt/user->id :crowberto)}
+                     :handlers     []}]
+      (mt/with-temp [:model/Card {card-id :id} {:name "numeric string id card"}]
+        (mt/with-test-user :crowberto
+          (testing "a question"
+            (let [row (content-one {:items [{:type "question" :id (str card-id)}]})]
+              (is (nil? (:error row)))
+              (is (= card-id (:id row)))))
+          (testing "an alert, which is numeric-only"
+            (let [row (content-one {:items [{:type "alert" :id (str (:id notification))}]})]
+              (is (nil? (:error row)))
+              (is (= (:id notification) (:id row)))))
+          (testing "a string that only looks numeric is still rejected"
+            (is (re-find #"numeric id"
+                         (:error (content-one {:items [{:type "alert" :id "0"}]}))))))))))

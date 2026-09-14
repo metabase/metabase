@@ -10,9 +10,13 @@
    a `target` patched rather than replaced so a rename keeps its schema, and refusing the two shapes
    it cannot author — python sources and incremental targets — instead of silently rewriting them."
   (:require
+   [clojure.string :as str]
+   [metabase.agent-api.query-guards :as query-guards]
    [metabase.api.common :as api]
    [metabase.channel.urls :as channel.urls]
    [metabase.lib-be.core :as lib-be]
+   [metabase.mcp.db :as mcp.db]
+   [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.queries :as v2.queries]
@@ -20,6 +24,7 @@
    [metabase.mcp.v2.resolve :as v2.resolve]
    [metabase.mcp.v2.write :as v2.write]
    [metabase.metabot.scope :as metabot.scope]
+   [metabase.models.interface :as mi]
    [metabase.transforms.core :as transforms]
    [metabase.util :as u]))
 
@@ -29,7 +34,8 @@
   "The sentence every source-shape teaching error ends with, naming what `definition` accepts."
   (str "`definition` is a transform source: {\"type\": \"query\", \"query\": …} — exactly what "
        "get_content's \"definition\" include returns for a transform. The query inside is either "
-       "the same numeric-id dialect execute_query takes. "
+       "the same numeric-id dialect execute_query takes, or the older name-based dialect, still "
+       "resolved on input. "
        "Alternatively pass a query_handle from execute_query or execute_sql instead of "
        "`definition`."))
 
@@ -84,17 +90,38 @@
            (v2.queries/resolve-external-query query accepted-shapes)
            query))))))
 
+(defn- check-native-source-gates!
+  "The gates an inline native `definition` passes: the `agent:sql:run` scope and the
+   `mcp-execute-sql-enabled` kill switch — `execute_sql`'s own two. A stored native transform is raw
+   SQL the transform runner later executes against the warehouse as a CTAS, so accepting one under the
+   content write scope alone would rebuild `execute_sql` (with a write to the warehouse on top) without
+   its scope or its kill switch. Same gate `question_write` puts on its native sources. A
+   `query_handle` needs neither here: minting one already passed them. No-op on the scope half for
+   unscoped callers (cookie sessions bind the unrestricted sentinel, which matches everything)."
+  [token-scopes]
+  (when-not (mcp.scope/matches? token-scopes metabot.scope/agent-sql-run)
+    (throw (ex-info (format (str "Saving a native (SQL) transform requires the %s scope — this token can "
+                                 "write content but not author raw SQL.")
+                            metabot.scope/agent-sql-run)
+                    {:status-code 403 ::common/error-code common/error-code-invalid-request})))
+  (v2.queries/check-execute-sql-enabled! "Saving a native (SQL) transform"))
+
 (defn- resolve-source
   "Resolve the caller's query source to the `source` map the transform stores. Exactly one of
    `definition` and `query_handle` (a handle from an execute tool, re-checked for shape and
    permissions on resolve — native included, so an execute_sql handle saves as a SQL transform) may
-   be present; `nil` when neither is, which on update means \"leave the stored source alone\"."
-  [{:keys [definition query_handle]} session-id]
+   be present; `nil` when neither is, which on update means \"leave the stored source alone\".
+   An inline `definition` that carries native SQL — a legacy `:type :native` or an MBQL 5 native
+   stage, however nested — clears [[check-native-source-gates!]] first."
+  [{:keys [definition query_handle]} session-id token-scopes]
   (when (and definition query_handle)
     (common/throw-teaching-error
      "Pass exactly one query source: `definition` (the transform's source) or `query_handle` (a handle from an execute tool)."))
   (when-let [query (cond
-                     definition   (definition->query definition)
+                     definition   (let [query (definition->query definition)]
+                                    (when (query-guards/native-query? query)
+                                      (check-native-source-gates! token-scopes))
+                                    query)
                      query_handle (-> (v2.queries/resolve-query-handle-for-save!
                                        session-id api/*current-user-id* query_handle)
                                       :query
@@ -142,8 +169,13 @@
                database source-db-id database)))
     (when (and (nil? existing) (nil? target-name))
       (common/throw-teaching-error "`target.name` is required when method is \"create\" — it names the table the transform writes."))
-    (cond-> (assoc (select-keys existing [:schema :database]) :type "table"
-                   :name (or target-name (:name existing)))
+    ;; `:database` is derived from the query being stored, never carried over from `existing`: on a
+    ;; source-database swap the stored target would otherwise keep the OLD database while the query reads
+    ;; the new one, so the echo reports a database the transform does not write, and passing that echo
+    ;; back unchanged is refused by the check above — the tool rejecting the round-trip it promises.
+    (cond-> (assoc (select-keys existing [:schema]) :type "table"
+                   :name     (or target-name (:name existing))
+                   :database (or source-db-id (:database existing)))
       schema (assoc :schema schema))))
 
 (defn- check-target-free!
@@ -166,6 +198,24 @@
     (let [where #(select-keys (:target %) [:schema :name])]
       (when (not= (where transform) (where updates))
         (check-target-free! (merge transform updates))))))
+
+;;; ---------------------------------------------------- Tags ------------------------------------------------------
+
+(defn- check-tags-exist!
+  "Refuse `tag-ids` that name no transform tag. The shared write silently filters unknown ids out,
+   so without this the tool's own \"replaces the current list\" would quietly mean \"replaces it
+   with a shorter one\" — and jobs select the transforms they run by tag, so the dropped one is
+   noticed only when a schedule doesn't fire."
+  [tag-ids]
+  (when (seq tag-ids)
+    (let [known   (mcp.db/existing-transform-tag-ids (distinct tag-ids))
+          unknown (sort (remove known (distinct tag-ids)))]
+      (when (seq unknown)
+        (common/throw-teaching-error
+         (format (str "No transform tag has id %s. Tags are created in Metabase and listed on a "
+                      "transform's read — pass only ids that exist, or omit `tag_ids` to leave "
+                      "the current ones alone.")
+                 (str/join ", " unknown)))))))
 
 ;;; -------------------------------------------------- Responses ---------------------------------------------------
 
@@ -193,8 +243,8 @@
   "Run the shared REST create check stack on the resolved source and target, then save the
    transform. An omitted `collection_id` leaves the transform at the root of the transforms tree,
    as REST create does."
-  [{:keys [name description tag_ids] :as args} session-id]
-  (let [source (or (resolve-source args session-id)
+  [{:keys [name description tag_ids] :as args} session-id token-scopes]
+  (let [source (or (resolve-source args session-id token-scopes)
                    (common/throw-teaching-error
                     "Pass the transform's query: `definition` (inline) or `query_handle` (from an execute tool)."))
         body   (u/remove-nils
@@ -207,6 +257,8 @@
                  :tag_ids       tag_ids})]
     (transforms/check-feature-enabled! body)
     (api/create-check :model/Transform body)
+    ;; Before the target check, which opens a warehouse connection — a bad argument shouldn't pay for that.
+    (check-tags-exist! tag_ids)
     (transforms/check-database-feature body)
     (check-target-free! body)
     (write-result (transforms/create-transform! body))))
@@ -238,7 +290,7 @@
   "Write-check the existing transform, patch only the caller-supplied fields, then hand the patch to
    the shared REST update path, which re-runs feature, database, schema, target-conflict, and cycle
    checks against the merged transform."
-  [id {:keys [name description tag_ids] :as args} session-id]
+  [id {:keys [name description tag_ids] :as args} session-id token-scopes]
   (let [transform  (v2.resolve/resolve-and-read-with
                     :model/Transform id
                     (fn [tid] (api/write-check :model/Transform tid)))
@@ -246,21 +298,41 @@
         ;; Refuse before resolving, so a doomed source doesn't pay for the query pipeline first.
         _          (when (or (:definition args) (:query_handle args))
                      (check-source-replaceable! transform))
-        new-source (resolve-source args session-id)
+        new-source (resolve-source args session-id token-scopes)
         ;; The target follows the query being stored — the new one when the source is changing in
         ;; this same call, otherwise the one already there.
         source-db  (-> (or new-source (:source transform)) :query :database)
+        ;; A source swap onto another database has to carry the target's database with it even when
+        ;; the call names no `target`: the target records the database it writes, that database
+        ;; follows the query, and one left behind names a database the transform does not write —
+        ;; which `resolve-target` then refuses when the agent passes the echo back, dead-ending the
+        ;; read-modify-write. Patched in place rather than rebuilt through `resolve-target`, so a
+        ;; target this tool can't author still gets its database corrected instead of becoming
+        ;; uneditable. Ordered before the caller's own `target` in the `cond->`, which wins.
+        retarget   (when-let [target (and new-source (:target transform))]
+                     (when (not= source-db (:database target))
+                       (assoc target :database source-db)))
         updates    (cond-> {}
                      (contains? args :name)          (assoc :name name)
                      (contains? args :description)   (assoc :description description)
                      (contains? args :collection_id) (assoc :collection_id (v2.resolve/resolve-collection-id (:collection_id args)))
                      (contains? args :tag_ids)       (assoc :tag_ids (vec tag_ids))
+                     retarget                        (assoc :target retarget)
                      (contains? args :target)        (assoc :target (resolve-target (:target transform) (:target args) source-db))
                      new-source                      (assoc :source new-source))]
     (when (empty? updates)
       (common/throw-teaching-error
        (str "Nothing to update — pass at least one of name, description, definition, query_handle, target, "
             "collection_id, or tag_ids.")))
+    (when (contains? args :tag_ids)
+      (check-tags-exist! tag_ids))
+    ;; The new state's gates before the target check, which opens a warehouse connection — the same
+    ;; ordering the create path states. `write-check` above covers the transform as stored; a
+    ;; `definition` naming another database is resolved with no permission check of its own, so
+    ;; until these run the caller has not been authorized against the database about to be probed.
+    (let [merged (merge transform updates)]
+      (api/check-403 (mi/can-write? merged))
+      (transforms/check-database-feature merged))
     (check-target-move! transform updates)
     (write-result (transforms/update-transform! (:id transform) updates))))
 
@@ -355,6 +427,7 @@
   (let [[op a b] (v2.write/dispatch-write transform-write-entry args)
         payload  (v2.write/readback token-scopes [metabot.scope/agent-content-read]
                                     (case op
-                                      :create (create! a session-id)
-                                      :update (update! a b session-id)))]
+                                      :create (create! a session-id token-scopes)
+                                      :update (update! a b session-id token-scopes))
+                                    nil)]
     (common/success-content payload payload)))

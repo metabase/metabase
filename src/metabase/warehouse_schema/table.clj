@@ -8,6 +8,7 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouses.core :as warehouses]
    [toucan2.core :as t2]))
@@ -73,15 +74,11 @@
    (batch-fetch-query-metadatas* ids nil))
   ([ids {:keys [include-sensitive-fields?]}]
    (when (seq ids)
-     (let [tables (t2/select :model/Table :id [:in ids])
+     (let [tables (warehouse-schema.db/tables ids)
            _      (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
                                                   :table-ids (into #{} (map :id) tables)})
            tables (filter can-access-table-for-query-metadata? tables)
-           tables (t2/hydrate tables
-                              [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
-                              :segments
-                              :measures
-                              :metrics)
+           tables (t2/hydrate tables [:fields [:target :has_field_values] :has_field_values :dimensions :name_field] :segments :measures :metrics)
            excluded-visibility-types (cond-> #{:hidden}
                                        (not include-sensitive-fields?) (conj :sensitive))]
        (for [table tables]
@@ -96,7 +93,7 @@
   `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings."
   metabase-enterprise.sandbox.api.table
   [id opts]
-  (fetch-query-metadata* (t2/select-one :model/Table :id id) opts))
+  (fetch-query-metadata* (warehouse-schema.db/table id) opts))
 
 (defenterprise batch-fetch-table-query-metadatas
   "Returns the query metadatas used to power the Query Builder for the tables specified by `ids`.
@@ -171,14 +168,10 @@
                              (map :schema (f (map (fn [s] {:db_id id :schema s}) schemas)))
                              schemas)
                            (filter (partial can-read-schema? id) schemas)))
-        clauses         (cond-> []
-                          ;; a non-nil value means Table is hidden --
-                          ;; see [[metabase.warehouse-schema.models.table/visibility-types]]
-                          (not include-hidden?) (conj [:= :visibility_type nil]))
         ;; For can-query? and can-write-metadata?, we need to filter based on tables in each schema
         filter-schemas-by-tables (fn [schemas]
                                    (if (or can-query? can-write-metadata?)
-                                     (let [tables (t2/select :model/Table :db_id id :active true)
+                                     (let [tables (warehouse-schema.db/active-tables-for-database id)
                                            _ (perms/prime-table-perms-cache {:db-ids #{id}})
                                            filtered-tables (cond->> tables
                                                              can-query?          (filter mi/can-query?)
@@ -187,12 +180,7 @@
                                        (filter #(contains? allowed-schemas %) schemas))
                                      schemas))]
     (warehouses/get-database id {:include-editable-data-model? include-editable-data-model?})
-    (->> (t2/select-fn-set :schema :model/Table
-                           :db_id id :active true
-                           (merge
-                            {:order-by [[:%lower.schema :asc]]}
-                            (when clauses
-                              {:where (into [:and] clauses)})))
+    (->> (warehouse-schema.db/active-table-schemas id include-hidden?)
          filter-schemas
          filter-schemas-by-tables
          ;; for `nil` schemas return the empty string
@@ -211,17 +199,8 @@
      (api/read-check :model/Database db-id)
      (api/check-403 (can-read-schema? db-id schema)))
    (let [candidate-tables (if include-hidden?
-                            (t2/select :model/Table
-                                       :db_id db-id
-                                       :schema schema
-                                       :active true
-                                       {:order-by [[:display_name :asc]]})
-                            (t2/select :model/Table
-                                       :db_id db-id
-                                       :schema schema
-                                       :active true
-                                       :visibility_type nil
-                                       {:order-by [[:display_name :asc]]}))
+                            (warehouse-schema.db/active-tables-in-schema db-id schema)
+                            (warehouse-schema.db/active-visible-tables-in-schema db-id schema))
          _                (perms/prime-table-perms-cache {:db-ids #{db-id}})
          filtered-tables  (cond->> (if include-editable-data-model?
                                      (if-let [f (when config/ee-available?
@@ -246,7 +225,7 @@
   [card-id metadata metadata-fields]
   (let [underlying (m/index-by :id (or metadata-fields
                                        (when-let [ids (seq (keep :id metadata))]
-                                         (-> (t2/select :model/Field :id [:in ids])
+                                         (-> (warehouse-schema.db/fields ids)
                                              (t2/hydrate [:target :has_field_values] :has_field_values :dimensions :name_field)))))
         fields (for [{col-id :id :as col} metadata]
                  (-> col
@@ -285,7 +264,7 @@
                                        (keep :id))
                                  cards)
         metadata-fields    (if (seq metadata-field-ids)
-                             (-> (t2/select :model/Field :id [:in metadata-field-ids])
+                             (-> (warehouse-schema.db/fields metadata-field-ids)
                                  (t2/hydrate [:target :has_field_values] :has_field_values :dimensions :name_field)
                                  (->> (m/index-by :id)))
                              {})]
@@ -318,7 +297,7 @@
       include-database?
       (assoc :db (when-let [database (when (int? database_id)
                                        (or (get databases database_id)
-                                           (t2/select-one :model/Database :id database_id)))]
+                                           (warehouse-schema.db/database database_id)))]
                    (when (mi/can-read? database) database)))
 
       include-fields?
@@ -358,23 +337,9 @@
   "Return metadata for the 'virtual' tables for a Cards. Unreadable cards are silently skipped."
   [ids {:keys [include-database?]}]
   (when (seq ids)
-    (let [cards (t2/select :model/Card
-                           {:select    [:c.id :c.dataset_query :c.result_metadata :c.name
-                                        :c.description :c.collection_id :c.database_id :c.type
-                                        :c.source_card_id :c.created_at :c.entity_id :c.card_schema
-                                        [:r.status :moderated_status]]
-                            :from      [[:report_card :c]]
-                            :left-join [[^:allow-subquery {:select   [:moderated_item_id :status]
-                                                           :from     [:moderation_review]
-                                                           :where    [:and
-                                                                      [:= :moderated_item_type "card"]
-                                                                      [:= :most_recent true]]
-                                                           :order-by [[:id :desc]]
-                                                           :limit    1} :r]
-                                        [:= :r.moderated_item_id :c.id]]
-                            :where      [:in :c.id ids]})
+    (let [cards (warehouse-schema.db/cards-with-moderated-status ids)
           dbs (if (seq cards)
-                (t2/select-pk->fn identity :model/Database :id [:in (into #{} (map :database_id) cards)])
+                (warehouse-schema.db/databases-by-id (into #{} (map :database_id) cards))
                 {})
           card-id->metadata-fields (cards->card-id->metadata-fields cards)
           readable-cards (t2/hydrate (filter mi/can-read? cards) :metrics)]

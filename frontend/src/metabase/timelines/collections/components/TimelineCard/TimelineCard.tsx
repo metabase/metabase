@@ -47,7 +47,7 @@ const TimelineCard = ({
       </CardBody>
       {hasMenuItems && (
         <CardMenu>
-          <Menu position="bottom-end" shadow="md">
+          <Menu position="bottom-end" shadow="sm">
             <Menu.Target>
               <ActionIcon variant="subtle" aria-label={t`Timeline menu`}>
                 <Icon name="ellipsis" />

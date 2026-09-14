@@ -3,6 +3,7 @@
   the dashboard they belong to."
   (:require
    [metabase.channel.email.messages :as messages]
+   [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse :as pulse]
    [toucan2.core :as t2]))
 
@@ -15,9 +16,8 @@
   - The user info for the creator of the pulse
   - The users affected by the pulse"
   [{bad-pulse-id :id pulse-name :name :keys [parameters creator_id]}]
-  (let [creator (t2/select-one [:model/User :first_name :last_name :email] creator_id)
-        bad-pulse-channels (t2/select [:model/PulseChannel :id :channel_type :details]
-                                      :pulse_id [:= bad-pulse-id])]
+  (let [creator (pulse.db/user-name-and-email creator_id)
+        bad-pulse-channels (pulse.db/pulse-channel-kinds-for-pulse bad-pulse-id)]
     {:pulse-id       bad-pulse-id
      :pulse-name     pulse-name
      :bad-parameters parameters
@@ -29,11 +29,9 @@
                                           channel-type      :channel_type
                                           {:keys [channel]} :details}]
                                       (case channel-type
-                                        :email (let [pulse-channel-recipient-ids (map :user_id (t2/select [:model/PulseChannelRecipient :user_id]
-                                                                                                          :pulse_channel_id pulse-channel-id))
+                                        :email (let [pulse-channel-recipient-ids (map :user_id (pulse.db/pulse-channel-recipient-rows pulse-channel-id))
                                                      pulse-channel-recipients (when (seq pulse-channel-recipient-ids)
-                                                                                (t2/select [:model/User :first_name :last_name :email]
-                                                                                           :id [:in pulse-channel-recipient-ids]))]
+                                                                                (pulse.db/users-names-and-emails pulse-channel-recipient-ids))]
                                                  (map (fn [{:keys [common_name] :as recipient}]
                                                         (assoc recipient
                                                                :notification-type channel-type
@@ -48,11 +46,11 @@
   [dashboard-id original-dashboard-params]
   (when (seq original-dashboard-params)
     (let [{:keys [resolved-params]} (t2/hydrate
-                                     (t2/select-one [:model/Dashboard :id :parameters] dashboard-id)
+                                     (pulse.db/dashboard-parameters dashboard-id)
                                      :resolved-params)
           dashboard-params (set (keys resolved-params))]
       ;; ordered so the notifications go out in a stable order rather than whatever order the rows come back in
-      (->> (t2/select :model/Pulse :dashboard_id dashboard-id :archived false {:order-by [[:id :asc]]})
+      (->> (pulse.db/unarchived-pulses-for-dashboard dashboard-id)
            (keep (fn [{:keys [parameters] :as pulse}]
                    (let [bad-params (filterv
                                      (fn [{param-id :id}] (not (contains? dashboard-params param-id)))
@@ -73,7 +71,7 @@
     (let [{dashboard-name        :name
            dashboard-description :description
            dashboard-creator     :creator} (t2/hydrate
-                                            (t2/select-one [:model/Dashboard :name :description :creator_id] dashboard-id)
+                                            (pulse.db/dashboard-name-description-creator dashboard-id)
                                             :creator)]
       (for [broken-pulse broken-pulses]
         (assoc

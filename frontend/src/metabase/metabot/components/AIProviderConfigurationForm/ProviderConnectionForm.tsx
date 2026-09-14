@@ -150,7 +150,9 @@ export function ProviderConnectionForm({
   // A required field the registry gives a default is already satisfied — the form shows that value pre-selected,
   // and the backend fills it in for a connection that never touched it. A type with alternative credential
   // groups (Google: a service account key, or an OAuth token with a project ID) additionally needs one group
-  // filled in full; its fields are individually optional because either group will do.
+  // filled in full; its fields are individually optional because either group will do. A type with paired
+  // credential groups (Bedrock: the AWS key pair) needs each filled in full or left empty in full, and a
+  // dependent field (Bedrock: the session token) only counts filled when the fields it requires are too.
   const hasValue = (key: string) => (config[key] ?? "").trim() !== "";
   const isComplete =
     providerType != null &&
@@ -163,7 +165,10 @@ export function ProviderConnectionForm({
       )
       .every((field) => hasValue(field.key)) &&
     (providerType.required_any.length === 0 ||
-      providerType.required_any.some((group) => group.every(hasValue)));
+      providerType.required_any.some((group) => group.every(hasValue))) &&
+    Object.entries(providerType.requires).every(
+      ([key, deps]) => !hasValue(key) || deps.every(hasValue),
+    );
 
   const handleSave = async () => {
     if (!providerType) {
@@ -207,7 +212,7 @@ export function ProviderConnectionForm({
   const MetabaseAIProviderSetup = PLUGIN_METABOT.MetabaseAIProviderSetup;
 
   return (
-    <Stack gap="lg">
+    <Stack gap="xl">
       {match({ isEditing, providerType })
         .with({ isEditing: false, providerType: P.nullish }, () => (
           <ProviderTypePicker
@@ -218,7 +223,7 @@ export function ProviderConnectionForm({
         .with(
           { providerType: { managed: true } },
           ({ providerType: selected }) => (
-            <Stack gap="lg">
+            <Stack gap="xl">
               {!isEditing && <SelectedProvider providerType={selected} />}
               <MetabaseAIProviderSetup
                 isConnected={isEditing}
@@ -230,7 +235,7 @@ export function ProviderConnectionForm({
         )
         .with({ providerType: P.nonNullable }, ({ providerType: selected }) => (
           <form onSubmit={handleSubmit}>
-            <Stack gap="lg">
+            <Stack gap="xl">
               {!isEditing && <SelectedProvider providerType={selected} />}
               <ProviderConfigFields
                 fields={primaryFields}
@@ -340,7 +345,7 @@ function AdvancedSettings({
   children: ReactNode;
 }) {
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       <Button
         type="button"
         variant="subtle"
@@ -355,7 +360,7 @@ function AdvancedSettings({
         {t`Advanced settings`}
       </Button>
       <Collapse in={isOpened}>
-        <Stack gap="lg">{children}</Stack>
+        <Stack gap="xl">{children}</Stack>
       </Collapse>
     </Stack>
   );

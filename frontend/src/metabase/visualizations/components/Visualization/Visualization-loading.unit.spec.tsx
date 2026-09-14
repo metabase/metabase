@@ -1,9 +1,9 @@
 import type { ComponentProps } from "react";
 
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { delay } from "__support__/utils";
-import { createMockState } from "metabase/redux/store/mocks";
 import VisualizationComponent from "metabase/visualizations/components/Visualization";
 import type { Visualization } from "metabase/visualizations/types";
 import { registerVisualization } from "metabase/viz-core";

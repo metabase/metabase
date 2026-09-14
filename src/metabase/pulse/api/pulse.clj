@@ -20,6 +20,7 @@
    [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
+   [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.pulse.send :as pulse.send]
@@ -63,7 +64,7 @@
    {:keys                [archived]
     dashboard-id         :dashboard_id
     creator-or-recipient :creator_or_recipient}
-   :- [:map
+   :- [:map {:closed true}
        [:archived             {:default false} [:maybe ms/BooleanValue]]
        [:dashboard_id         {:optional true} [:maybe ms/PositiveInt]]
        [:creator_or_recipient {:default false} [:maybe ms/BooleanValue]]]]
@@ -82,7 +83,7 @@
        (update pulse :cards
                (fn [cards]
                  (mapv (fn [card] (assoc card :download_perms (case (perms/download-perms-level
-                                                                     (or (:dataset_query card) (t2/select-one-fn :dataset_query [:model/Card :dataset_query] (:id card)))
+                                                                     (or (:dataset_query card) (pulse.db/card-query (:id card)))
                                                                      api/*current-user-id*)
                                                                 :no :none
                                                                 :ten-thousand-rows :limited
@@ -121,12 +122,12 @@
   [:int {:min 0 :max 23}])
 
 (def ^:private PulseChannelRecipient
-  [:map
+  [:map {:closed true}
    [:id    {:optional true} [:maybe ms/PositiveInt]]
    [:email {:optional true} [:maybe ms/Email]]])
 
 (def ^:private PulseChannelDetails
-  [:map
+  [:map {:closed true}
    [:attachment_only {:optional true} [:maybe :boolean]]
    [:include_pdf     {:optional true} [:maybe :boolean]]
    [:channel         {:optional true} [:maybe :string]]
@@ -136,7 +137,7 @@
 
 (def ^:private PulseChannel
   "The fields [[metabase.pulse.models.pulse-channel/create-pulse-channel!]] reads off a channel."
-  [:map
+  [:map {:closed true}
    [:id             {:optional true}   [:maybe ms/PositiveInt]]
    [:channel_type                      PulseChannelType]
    [:enabled        {:optional true}   [:maybe :boolean]]
@@ -162,7 +163,7 @@
     collection-id       :collection_id
     collection-position :collection_position
     dashboard-id        :dashboard_id}
-   :- [:map
+   :- [:map {:closed true}
        [:name                ms/NonBlankString]
        [:cards               [:+ models.pulse/CoercibleToCardRef]]
        [:channels            [:+ PulseChannel]]
@@ -191,7 +192,7 @@
 (api.macros/defendpoint :get "/:id"
   "Fetch `Pulse` with ID. If the user is a recipient of the Pulse but does not have read permissions for its collection,
   we still return it but with some sensitive metadata removed."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/let-404 [pulse (models.pulse/retrieve-pulse id)]
     (api/check-403 (mi/can-read? pulse))
@@ -201,21 +202,38 @@
         (t2/hydrate :can_write))))
 
 (defn- maybe-add-recipients
-  "Sandboxed users and users using connection impersonation can't read the full recipient list for a pulse, so we need
-  to merge in existing recipients before writing the pulse updates to avoid them being deleted unintentionally. We only
-  merge in recipients that are Metabase users, not raw email addresses, which these users can still view and modify."
+  "Merge back the recipients the current user was not allowed to see before writing `pulse-updates`.
+
+  The `:channels` submitted to an update are authoritative — [[metabase.pulse.models.pulse/update-notification-channels!]]
+  deletes any recipient not present — so every recipient hidden on the read path must be restored on
+  the write path, or a caller who reads a pulse and submits it back silently deletes recipients it
+  never saw. Two read filters hide recipients, and each is compensated here:
+
+  * sandboxed and connection-impersonated users see only themselves
+    (see [[metabase.pulse.models.pulse/maybe-filter-pulses-recipients]]);
+  * tenant-scoped users see only same-tenant users
+    (see [[metabase.pulse.models.pulse/hidden-cross-tenant-recipients]]).
+
+  Only Metabase-user recipients are merged back. Raw email addresses stay visible to these users
+  under both filters, so they remain the caller's to add or remove."
   [pulse-updates pulse-before-update]
-  (if (perms/sandboxed-or-impersonated-user?)
-    (let [recipients-to-add (filter
-                             (fn [{id :id}] (and id (not= id api/*current-user-id*)))
-                             (:recipients (email-channel pulse-before-update)))]
+  (let [existing-recipients (:recipients (email-channel pulse-before-update))
+        recipients-to-add   (concat
+                             (when (perms/sandboxed-or-impersonated-user?)
+                               (filter (fn [{id :id}] (and id (not= id api/*current-user-id*)))
+                                       existing-recipients))
+                             (models.pulse/hidden-cross-tenant-recipients existing-recipients))]
+    (if (and (seq recipients-to-add) (seq (:channels pulse-updates)))
       (assoc pulse-updates :channels
              (for [channel (:channels pulse-updates)]
-               (if (= "email" (:channel_type channel))
+               ;; normalize like [[email-channel]]: :channel_type is a string over REST but a
+               ;; keyword when this is called directly with a hydrated pulse
+               (if (= :email (keyword (:channel_type channel)))
                  (assoc channel :recipients
-                        (concat (:recipients channel) recipients-to-add))
-                 channel))))
-    pulse-updates))
+                        (m/distinct-by (some-fn :id :email)
+                                       (concat (:recipients channel) recipients-to-add)))
+                 channel)))
+      pulse-updates)))
 
 (defn check-card-read-permissions
   "Users can only create a pulse for `cards` they have access to."
@@ -282,10 +300,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a Pulse with `id`."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   pulse-updates :- [:map
+   pulse-updates :- [:map {:closed true}
                      [:name          {:optional true} [:maybe ms/NonBlankString]]
                      [:cards         {:optional true} [:maybe [:+ models.pulse/CoercibleToCardRef]]]
                      [:channels      {:optional true} [:maybe [:+ PulseChannel]]]
@@ -310,9 +328,10 @@
   (let [chan-types (-> pulse-channel/channel-types
                        (assoc-in [:slack :configured] (channel.settings/slack-configured?))
                        (assoc-in [:email :configured] (channel.settings/email-configured?))
-                       (assoc-in [:http :configured] (t2/exists? :model/Channel :type :channel/http :active true)))]
+                       (assoc-in [:http :configured] (pulse.db/active-http-channel-exists?)))]
     {:channels (cond
-                 (perms/sandboxed-or-impersonated-user?)
+                 (or (perms/sandboxed-or-impersonated-user?)
+                     (some? (:tenant_id @api/*current-user*)))
                  (dissoc chan-types :slack)
 
                  ;; no Slack integration, so we are g2g
@@ -342,7 +361,7 @@
   "Test send an unsaved pulse."
   [_route-params
    _query-params
-   {:keys [cards channels] :as body} :- [:map
+   {:keys [cards channels] :as body} :- [:map {:closed true}
                                          ;; the saved subscription this is a test send of, when there is one.
                                          ;; `send-pulse!` builds the non-user unsubscribe link out of it, and the
                                          ;; email template drops the whole "Unsubscribe" footer without a link
@@ -384,12 +403,12 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id/subscription"
   "For users to unsubscribe themselves from a pulse subscription."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (api/let-404 [pulse-id (t2/select-one-pk :model/Pulse :id id)
-                pc-id    (t2/select-one-pk :model/PulseChannel :pulse_id pulse-id :channel_type "email")
-                pcr-id   (t2/select-one-pk :model/PulseChannelRecipient :pulse_channel_id pc-id :user_id api/*current-user-id*)]
-    (t2/delete! :model/PulseChannelRecipient :id pcr-id))
+  (api/let-404 [pulse-id (pulse.db/pulse-id id)
+                pc-id    (pulse.db/email-pulse-channel-id pulse-id)
+                pcr-id   (pulse.db/pulse-channel-recipient-id pc-id api/*current-user-id*)]
+    (pulse.db/delete-pulse-channel-recipient! pcr-id))
   api/generic-204-no-content)
 
 (def ^{:arglists '([request respond raise])} routes

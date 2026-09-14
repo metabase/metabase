@@ -477,7 +477,6 @@
   (doseq [d (keys (model-hooks))]
     (derive d :hook/search-index))
 
-  (search-models-to-update (t2/select-one :model/Card))
   (methods spec)
   (model-hooks)
 

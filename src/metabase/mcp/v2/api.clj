@@ -10,7 +10,6 @@
    [metabase.mcp.paths :as mcp.paths]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.transport :as transport]
-   [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resources :as v2.resources]
    ;; Tool namespaces self-register via `deftool` when loaded. The core surface ships with the `learn`
@@ -32,25 +31,11 @@
    [metabase.mcp.v2.tools.search]
    [metabase.mcp.v2.tools.subscription]
    [metabase.mcp.v2.tools.transform]
+   [metabase.mcp.v2.tools.ui-credential]
    [metabase.mcp.v2.tools.visualize]
-   [metabase.mcp.validation :as mcp.validation]
-   [metabase.metabot.scope :as metabot.scope]))
+   [metabase.mcp.validation :as mcp.validation]))
 
 (set! *warn-on-reflection* true)
-
-;;; ------------------------------------------------ Health check --------------------------------------------------
-
-;; Lets a client or operator confirm the surface is reachable and its token is accepted without touching any content.
-(registry/deftool ping-v2
-  "Health-check tool for the MCP surface. Returns a fixed acknowledgement."
-  {:name        "ping_v2"
-   :scope       metabot.scope/agent-content-read
-   :annotations {:readOnlyHint true :idempotentHint true}
-   :args        [:map
-                 [:message {:optional true} [:maybe :string]]]}
-  [{:keys [message]} _context]
-  (let [payload {:ok true :message (or message "pong")}]
-    (common/success-content payload payload)))
 
 ;;; ------------------------------------------------ Method dispatch -----------------------------------------------
 
@@ -65,14 +50,18 @@
         ;; RC clients carry their identity per-call in `_meta`; the usage recorder falls back to
         ;; the session's stored identity when it's absent.
         client-info      (get-in params [:_meta :io.modelcontextprotocol/clientInfo])
-        supports-mcp-ui? (mcp.session/supports-mcp-ui? session-id)]
-    (transport/jsonrpc-response id (registry/call-tool token-scopes
-                                                       session-id
-                                                       tool-name
-                                                       arguments
-                                                       {:client-info      client-info
-                                                        :supports-mcp-ui? supports-mcp-ui?
-                                                        :request-context  request-context}))))
+        supports-mcp-ui? (mcp.session/supports-mcp-ui? session-id)
+        {:keys [error result]}
+        (registry/call-tool token-scopes
+                            session-id
+                            tool-name
+                            arguments
+                            {:client-info      client-info
+                             :supports-mcp-ui? supports-mcp-ui?
+                             :request-context  request-context})]
+    (if-let [{:keys [code message]} error]
+      (transport/jsonrpc-error id code message)
+      (transport/jsonrpc-response id result))))
 
 (defn- handle-resources-list [id _params token-scopes]
   (transport/jsonrpc-response id (v2.resources/list-resources token-scopes)))
@@ -81,10 +70,16 @@
   (let [uri (:uri params)]
     (if (or (not (string? uri)) (str/blank? uri))
       (transport/jsonrpc-error id -32602 "Missing required parameter: uri")
-      ;; Reading the shell is what mints the scoped credential the iframe authenticates with — it
-      ;; is the only place the browser ever receives one.
+      ;; The scoped credential the iframe authenticates with. Since #81041 the browser receives it
+      ;; through the `refresh_ui_credential` tool; the shell's render-fn still forces this delay for
+      ;; templates that embed it (the test fallback), and the production template discards it.
+      ;; Deliberately a delay: the URI has not been resolved yet, so minting eagerly would hand a live
+      ;; 5-minute authenticator to data resources that ignore it, and burn one on reads that turn out
+      ;; to be unknown or scope-denied. Only [[metabase.mcp.ui-resource/embed-render-fn]] forces it,
+      ;; and only after the scope gate has passed.
       (let [user-id       api/*current-user-id*
-            ui-credential (when user-id (mcp.session/issue-ui-credential session-id user-id token-scopes))
+            ui-credential (when user-id
+                            (delay (mcp.session/issue-ui-credential session-id user-id token-scopes)))
             result        (v2.resources/read-resource uri token-scopes {:ui-credential ui-credential
                                                                         :session-id    session-id})]
         (case (:status result)
@@ -128,7 +123,7 @@
        "visualization settings — read the matching skill unless it is already in context.\n"
        "Teaching errors embed the relevant contract, so a failed call always names its fix."))
 
-(def default-ask-scopes
+(def ^:private default-ask-scopes
   "What an uninstructed client is asked to request for this surface: everything the surface accepts.
 
   A client asks once, at connect time, using this challenge — and `list-tools` filters by the scopes the resulting
@@ -138,13 +133,12 @@
 
   So the consent screen names the full surface and the user decides there, rather than the server deciding for them
   by omission. This is not a widening of what the surface accepts — that set is unchanged, and `mb:full` and the
-  rest of the agent-API scopes remain refused (GHY-4226)."
-  [metabot.scope/agent-content-read
-   metabot.scope/agent-content-write
-   metabot.scope/agent-query-run
-   metabot.scope/agent-sql-run
-   metabot.scope/agent-delivery-write
-   metabot.scope/agent-resource-read])
+  rest of the agent-API scopes remain refused (GHY-4226).
+
+  Read from [[metabase.mcp.paths/v2-surface-scopes]] rather than listed here, because the OAuth server has to
+  grant exactly this set: when the two drifted, a client that followed the challenge asked for scopes
+  `validate-scope` rejected and the connect failed with \"Invalid scope\"."
+  mcp.paths/v2-surface-scopes)
 
 (def ^{:arglists '([request respond raise])} handler
   "Ring async handler for the MCP endpoint."

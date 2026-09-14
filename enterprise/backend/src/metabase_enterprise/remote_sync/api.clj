@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.remote-sync.core :as remote-sync.core]
+   [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
@@ -54,7 +55,7 @@
   [_route
    _query
    {:keys [branch force merge expected_branch]}
-   :- [:map [:branch {:optional true} ms/NonBlankString]
+   :- [:map {:closed true} [:branch {:optional true} ms/NonBlankString]
        [:force {:optional true} :boolean]
        [:merge {:optional true} :boolean]
        ;; the branch the client believes is currently active; rejected if it disagrees with the
@@ -93,7 +94,7 @@
    - local_version: Git SHA of last successful import (nil if never imported)
    - cached: true if result was served from cache"
   [_route-params
-   {:keys [force-refresh]} :- [:map [:force-refresh {:optional true} :boolean]]
+   {:keys [force-refresh]} :- [:map {:closed true} [:force-refresh {:optional true} :boolean]]
    _body]
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
@@ -127,7 +128,7 @@
   Requires superuser permissions."
   [_route
    _query
-   {:keys [message branch force merge]} :- [:map
+   {:keys [message branch force merge]} :- [:map {:closed true}
                                             [:message {:optional true} ms/NonBlankString]
                                             [:branch ms/NonBlankString]
                                             [:force {:optional true} :boolean]
@@ -163,7 +164,7 @@
 
   Requires superuser permissions."
   [_route
-   {:keys [branch]} :- [:map [:branch ms/NonBlankString]]]
+   {:keys [branch]} :- [:map {:closed true} [:branch ms/NonBlankString]]]
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
   (let [branch-name (check-branch-matches-setting! branch)
@@ -209,7 +210,7 @@
   [_route-params
    _query-params
    {:keys [remote-sync-url remote-sync-token] :as body}
-   :- [:map
+   :- [:map {:closed true}
        [:remote-sync-url {:optional true} [:maybe :string]]
        [:remote-sync-token {:optional true} [:maybe :string]]]]
   (api/check-superuser)
@@ -239,7 +240,7 @@
   [_route-params
    _query-params
    {:keys [remote-sync-type collections] :as settings}
-   :- [:map
+   :- [:map {:closed true}
        [:remote-sync-url {:optional true} [:maybe :string]]
        [:remote-sync-token {:optional true} [:maybe :string]]
        [:remote-sync-type {:optional true} [:maybe [:enum :read-only :read-write]]]
@@ -269,8 +270,7 @@
   (let [collections (when (seq collections)
                       (let [current-states (into {}
                                                  (map (juxt :id :is_remote_synced))
-                                                 (t2/select [:model/Collection :id :is_remote_synced]
-                                                            :id [:in (keys collections)]))]
+                                                 (remote-sync.db/collection-sync-states (keys collections)))]
                         (not-empty
                          (into {}
                                (filter (fn [[id desired]]
@@ -328,7 +328,7 @@
   Requires superuser permissions."
   [_route
    _query
-   {:keys [name]} :- [:map [:name ms/NonBlankString]]]
+   {:keys [name]} :- [:map {:closed true} [:name ms/NonBlankString]]]
   (api/check-superuser)
   (let [base-branch (or (remote-sync.task/last-version) (settings/remote-sync-branch))]
     (api/check-400 (source/source-from-settings) "Source not configured")
@@ -350,7 +350,7 @@
   Requires superuser permissions."
   [_route
    _query
-   {new-branch :new_branch message :message} :- [:map
+   {new-branch :new_branch message :message} :- [:map {:closed true}
                                                  [:new_branch ms/NonBlankString]
                                                  [:message ms/NonBlankString]]]
   (api/check-superuser)

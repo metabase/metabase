@@ -17,4 +17,16 @@ describe("useDataAppLocation", () => {
     expect(result.current.pathname).toBe("/orders/42");
     expect(window.location.pathname).toBe("/orders/42");
   });
+
+  it("supports multiple consumers", () => {
+    const { result: firstResult } = renderHook(() => useDataAppLocation());
+    const { result: secondResult } = renderHook(() => useDataAppLocation());
+
+    act(() => {
+      firstResult.current.navigate("/orders/42");
+    });
+
+    expect(firstResult.current.pathname).toBe("/orders/42");
+    expect(secondResult.current.pathname).toBe("/orders/42");
+  });
 });

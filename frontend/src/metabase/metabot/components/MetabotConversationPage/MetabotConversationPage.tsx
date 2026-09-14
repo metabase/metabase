@@ -13,7 +13,6 @@ import {
   getIsConversationInProgress,
   setConversationSnapshot,
 } from "metabase/metabot/state";
-import { normalizeFetchedChatMessages } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Navigate, useParams } from "metabase/router";
 import { getSettingsLoading } from "metabase/settings";
@@ -61,7 +60,8 @@ export const MetabotConversationPage = () => {
           title: conversation.title ?? undefined,
           forkedFromConversationId:
             conversation.forked_from_conversation_id ?? undefined,
-          messages: normalizeFetchedChatMessages(conversation.messages),
+          contextWindowTokens: conversation.context_window_tokens,
+          messages: conversation.messages,
           state: conversation.state,
           activeToolCalls: [],
         }),

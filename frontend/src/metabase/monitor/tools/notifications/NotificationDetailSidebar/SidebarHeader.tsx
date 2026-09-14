@@ -58,7 +58,7 @@ export const SidebarHeader = ({
   };
 
   return (
-    <Stack gap="lg">
+    <Stack gap="xl">
       <Flex justify="space-between" align="center">
         <Group gap="sm">
           <ActionIcon

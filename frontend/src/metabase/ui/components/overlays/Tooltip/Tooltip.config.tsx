@@ -18,7 +18,7 @@ export const tooltipOverrides: MantineThemeOverride["components"] = {
       // `arrowSize` is the side of the square that renders the 9px-wide arrow.
       arrowSize: ARROW_SIZE,
       offset: ARROW_TO_TARGET_GAP + (ARROW_WIDTH - ARROW_SIZE) / 2,
-      radius: "md",
+      radius: "sm",
       withArrow: true,
       withinPortal: true,
       // Mantine puts Tooltip, Popover and Menu on the same "popover" tier, so a

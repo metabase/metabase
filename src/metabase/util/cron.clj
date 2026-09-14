@@ -44,13 +44,17 @@
 (mr/def ::ScheduleMap
   (mu/with-api-error-message
    [:map
-    {:error/message "Expanded schedule map"}
+    {:closed true :error/message "Expanded schedule map"}
     [:schedule_type                    [:enum "hourly" "daily" "weekly" "monthly"]]
     [:schedule_day    {:optional true} [:maybe [:enum "sun" "mon" "tue" "wed" "thu" "fri" "sat"]]]
     [:schedule_frame  {:optional true} [:maybe [:enum "first" "mid" "last"]]]
     [:schedule_hour   {:optional true} [:maybe ::CronHour]]
     [:schedule_minute {:optional true} [:maybe ::CronMinute]]]
    (i18n/deferred-tru "value must be a valid schedule map. See schema in metabase.util.cron for details.")))
+
+(def schedule-keys
+  "The keys of a [[ScheduleMap]]."
+  [:schedule_type :schedule_day :schedule_frame :schedule_hour :schedule_minute])
 
 (def ScheduleMap
   "Schema for a frontend-parsable schedule map. Used for Pulses and DB scheduling."
@@ -101,13 +105,11 @@
   (cron-string (case (keyword schedule-type)
                  :hourly  {:minutes minute}
                  :daily   {:hours (or hour 0)}
-                 ;; An omitted hour means midnight, not "every hour": leaving it out of a weekly/
-                 ;; monthly schedule would otherwise leave the cron hours field as `*` and fire 24x/day.
-                 :weekly  {:hours        (or hour 0)
-                           :day-of-week  (day-of-week->cron day-of-week)
+                 :weekly  {:hours       hour
+                           :day-of-week (day-of-week->cron day-of-week)
                            :day-of-month "?"}
                  :monthly (assoc (frame->cron frame day-of-week)
-                                 :hours (or hour 0)))))
+                                 :hours hour))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          CRON STRING -> SCHEDULE MAP                                           |

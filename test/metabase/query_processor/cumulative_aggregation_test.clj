@@ -116,6 +116,31 @@
                   [->local-date 2.0]
                   (qp/process-query query)))))))))
 
+(deftest ^:parallel cumulative-sum-of-literal-number-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
+    (testing "cumulative sum of a literal number should not be interpreted as a Field ID (#27807)"
+      (let [metadata-provider   (mt/metadata-provider)
+            products            (lib.metadata/table metadata-provider (mt/id :products))
+            created-at-month    (lib/with-temporal-bucket
+                                  (lib.metadata/field metadata-provider (mt/id :products :created_at))
+                                  :month)
+            query               (-> (lib/query metadata-provider products)
+                                    (lib/aggregate (lib/cum-sum 1))
+                                    (lib/breakout created-at-month)
+                                    (lib/order-by created-at-month :asc)
+                                    (lib/limit 6)
+                                    (assoc-in [:middleware :format-rows?] false))]
+        (mt/with-native-query-testing-context query
+          (is (= [[#t "2016-04-01"  2]
+                  [#t "2016-05-01"  9]
+                  [#t "2016-06-01" 14]
+                  [#t "2016-07-01" 21]
+                  [#t "2016-08-01" 27]
+                  [#t "2016-09-01" 36]]
+                 (mt/formatted-rows
+                  [->local-date int]
+                  (qp/process-query query)))))))))
+
 (deftest ^:parallel cumulative-count-test
   (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
     (testing "cumulative count aggregations"

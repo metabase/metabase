@@ -2,8 +2,12 @@ import { useMemo, useRef } from "react";
 import { jt, t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { useDocsUrl, useLearnUrl, useTempStorage } from "metabase/common/hooks";
-import { useHelpLink } from "metabase/nav/components/AppSwitcher/useHelpLink";
+import {
+  useDocsUrl,
+  useHelpLink,
+  useLearnUrl,
+  useTempStorage,
+} from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import type { ChecklistItemValue } from "metabase/redux/store";
 import { getIsPaidPlan } from "metabase/selectors/settings";
@@ -62,7 +66,7 @@ export const Onboarding = () => {
     <Box
       mih="100%"
       className={S.page}
-      px={{ base: "md", md: "lg", lg: rem(48) }}
+      px={{ base: "lg", md: "xl", lg: rem(48) }}
       pt={30}
       pb={212}
     >
@@ -89,7 +93,7 @@ export const Onboarding = () => {
           >
             {itemsGroups.map((group) => (
               <Box key={group.title} mb={60}>
-                <Title order={3} mb="lg">
+                <Title order={3} mb="xl">
                   {group.title}
                 </Title>
                 {group.items.map(({ Component, value }) => (
@@ -106,7 +110,7 @@ export const Onboarding = () => {
         {(showMetabaseLinks || isPaidPlan) && (
           <Box component="footer">
             {showMetabaseLinks && (
-              <Box data-testid="learning-section" mb="xl">
+              <Box data-testid="learning-section" mb="xxl">
                 <Title
                   order={3}
                   mb={12}
@@ -127,8 +131,8 @@ export const Onboarding = () => {
               </Box>
             )}
             {helpLink.visible && (
-              <Box className={S.support} data-testid="help-section" p="lg">
-                <Stack gap="xs">
+              <Box className={S.support} data-testid="help-section" p="xl">
+                <Stack gap="xxs">
                   <Title order={4}>{t`Need to talk with someone?`}</Title>
                   <Text>{t`Reach out to engineers who can help with technical troubleshooting. Not your typical support agents.`}</Text>
                 </Stack>

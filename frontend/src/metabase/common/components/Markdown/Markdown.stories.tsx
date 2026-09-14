@@ -33,7 +33,7 @@ export const Default = {
 const DARK_SURFACE_PROPS = {
   bg: "tooltip-background",
   c: "tooltip-text",
-  p: "lg",
+  p: "xl",
 } as const;
 
 const KitchenSinkTemplate: StoryFn<MarkdownProps> = ({ dark, ...args }) => {

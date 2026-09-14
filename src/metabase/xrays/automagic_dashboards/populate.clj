@@ -16,7 +16,7 @@
    [metabase.xrays.automagic-dashboards.filters :as filters]
    [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
-   [toucan2.core :as t2]))
+   [metabase.xrays.db :as xrays.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -35,14 +35,9 @@
 (defn get-or-create-container-collection
   "Get or create container collection for automagic dashboards in a given location."
   [location]
-  (or (t2/select-one :model/Collection
-                     :name "Automatically Generated Dashboards"
-                     :archived false
-                     :location location)
-      (t2/insert-returning-instance!
-       :model/Collection
-       {:name "Automatically Generated Dashboards"
-        :location location})))
+  (or (xrays.db/automagic-dashboards-collection location)
+      (xrays.db/insert-collection! {:name "Automatically Generated Dashboards"
+                                    :location location})))
 
 (defn colors
   "A vector of colors used for coloring charts. Uses [[appearance/application-colors]] for user choices."

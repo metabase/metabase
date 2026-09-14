@@ -277,7 +277,7 @@ export const CollectionContentView = ({
         />
       )}
 
-      <Box className={S.main} mx="auto" mah="100%" px="5%" py="md">
+      <Box className={S.main} mx="auto" mah="100%" px="5%" py="lg">
         <ErrorBoundary>
           <CollectionHeader
             collection={collection}

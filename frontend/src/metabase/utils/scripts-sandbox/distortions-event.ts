@@ -1,3 +1,5 @@
+import { coerceToString } from "./coerce";
+
 export const ADD_EVENT_LISTENER = EventTarget.prototype.addEventListener;
 
 // Event types that, when listened for on `document` or `window`, give the
@@ -34,14 +36,15 @@ export function addEventListenerDistortion(errorPrefix: string) {
     listener: EventListenerOrEventListenerObject | null,
     options?: boolean | AddEventListenerOptions,
   ): void {
+    const eventType = coerceToString(type);
     if (
       isGlobalEventTarget(this) &&
-      GLOBAL_BLOCKED_EVENT_TYPES.has(String(type).toLowerCase())
+      GLOBAL_BLOCKED_EVENT_TYPES.has(eventType.toLowerCase())
     ) {
       throw new Error(
-        `[${errorPrefix}] blocked addEventListener for global event type: ${type}`,
+        `[${errorPrefix}] blocked addEventListener for global event type: ${eventType}`,
       );
     }
-    return ADD_EVENT_LISTENER.call(this, type, listener, options);
+    return ADD_EVENT_LISTENER.call(this, eventType, listener, options);
   };
 }

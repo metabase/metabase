@@ -76,7 +76,7 @@ function getStartedAtColumn(
   return {
     id: "start-time" satisfies TransformRunSortColumn,
     header: ({ header }) => (
-      <Group gap="xs" wrap="nowrap">
+      <Group gap="xxs" wrap="nowrap">
         <SortableHeaderPill
           name={t`Started at`}
           sort={header.column.getIsSorted() || undefined}
@@ -104,7 +104,7 @@ function getEndedAtColumn(
   return {
     id: "end-time" satisfies TransformRunSortColumn,
     header: ({ header }) => (
-      <Group gap="xs" wrap="nowrap">
+      <Group gap="xxs" wrap="nowrap">
         <SortableHeaderPill
           name={t`Ended at`}
           sort={header.column.getIsSorted() || undefined}

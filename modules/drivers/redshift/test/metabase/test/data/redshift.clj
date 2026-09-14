@@ -64,7 +64,7 @@
   (throw (UnsupportedOperationException. "Redshift does not have a TIME data type.")))
 
 (defn unique-session-schema []
-  (str (sql.tu.unique-prefix/unique-prefix) "schema"))
+  (sql.tu.unique-prefix/unique-prefix "schema"))
 
 ;;; `MB_REDSHIFT_TEST_HOSTS`
 ;;;
@@ -151,10 +151,6 @@
               init
               (reducible-result-set (.. conn getMetaData getSchemas))))))
 
-(def ^Long ^:private hours-before-expired-threshold
-  "Number of hours that elapse before a persisted schema is considered expired."
-  1)
-
 (defn- classify-cache-schemas
   "Classifies the persistence cache schemas. Returns a map with where each value is a (possibly empty) sequence of
   schemas:
@@ -164,8 +160,8 @@
    :expired            `cache_info` table and created [[hours-before-expired-threshold]] ago
    :lacking-created-at should never happen, but if they lack an entry for `created-at`
    :unknown-error      if an error was thrown while classifying the schema}"
-  [^java.sql.Connection conn schemas]
-  (let [threshold (t/minus (t/instant) (t/hours hours-before-expired-threshold))]
+  [^java.sql.Connection conn schemas hours]
+  (let [threshold (t/minus (t/instant) (t/hours hours))]
     (with-open [stmt (.createStatement conn)]
       (let [classify (fn [schema-name]
                        (try (let [sql (format "select value from %s.cache_info where key = 'created-at'"
@@ -213,7 +209,7 @@
   [^java.sql.Connection conn hours-threshold]
   (let [{old-convention   :old
          caches-with-info :cache} (reduce (fn [acc s]
-                                            (cond (sql.tu.unique-prefix/old-dataset-name? s hours-threshold)
+                                            (cond (sql.tu.unique-prefix/old-temp-dataset? hours-threshold s)
                                                   (update acc :old conj s)
                                                   (str/starts-with? s "metabase_cache_")
                                                   (update acc :cache conj s)
@@ -222,7 +218,8 @@
                                           (fetch-schemas conn))
         {expired-cache      :expired
          old-style-cache    :old-style-cache
-         lacking-created-at :lacking-created-at} (classify-cache-schemas conn caches-with-info)]
+         lacking-created-at :lacking-created-at} (classify-cache-schemas
+                                                  conn caches-with-info hours-threshold)]
     {:old                (vec old-convention)
      :expired-cache      (vec expired-cache)
      :old-style-cache    (vec old-style-cache)
@@ -237,11 +234,12 @@
 
   Takes the orphan-map directly so callers can preview-then-drop without
   re-querying. Caller owns the Statement."
-  [^java.sql.Statement stmt orphans]
+  [^java.sql.Statement stmt dry-run? orphans]
   (mapv (fn [[fmt-str schema]]
           (tx/print-progress! :redshift fmt-str schema)
           (try
-            (.execute stmt (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;" schema))
+            (when-not dry-run?
+              (.execute stmt (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;" schema)))
             {:name schema, :status :deleted}
             (catch Exception e
               {:name schema, :status :failed, :error (ex-message e)})))
@@ -260,9 +258,9 @@
   Glue: thin wrapper that calls the enumerator + dropper in order. To preview
   from a REPL, call [[orphan-schemas]] directly."
   [^java.sql.Connection conn]
-  (let [orphans (orphan-schemas conn nil)]
+  (let [orphans (orphan-schemas conn 12)]
     (with-open [stmt (.createStatement conn)]
-      (drop-orphan-schemas! stmt orphans))))
+      (drop-orphan-schemas! stmt false orphans))))
 
 (defn- gc-hosts
   "Every cluster tests run against, not just the one a run would pick. `MB_REDSHIFT_TEST_HOSTS` is the fleet
@@ -314,7 +312,7 @@
       (doall (cp/pmap pool f servers)))))
 
 (defmethod tx/gc-orphans! :redshift
-  [driver {:keys [temp-data-hours]}]
+  [driver {:keys [hours dry-run?]}]
   ;; Redshift schema names carry their own creation time, so we scan for age via the name
   (into []
         cat
@@ -326,7 +324,7 @@
                 (fn [^java.sql.Connection conn]
                   (with-open [stmt (.createStatement conn)]
                     (mapv #(assoc % :server server)
-                          (drop-orphan-schemas! stmt (orphan-schemas conn temp-data-hours)))))
+                          (drop-orphan-schemas! stmt dry-run? (orphan-schemas conn hours)))))
                 (fn [e]
                   [{:server server, :name nil, :status :failed, :error (ex-message e)}])))))))
 

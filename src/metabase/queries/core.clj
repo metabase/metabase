@@ -25,6 +25,7 @@
 
 (p/import-vars
  [metabase.queries.card
+  card-param-constraints
   card-param-values
   card-param-remapped-value]
  [metabase.queries.models.card
@@ -32,6 +33,7 @@
  [metabase.queries.card-write-checks
   actual-collection-id
   check-allowed-to-create-card!
+  check-allowed-to-run-query!
   check-allowed-to-update-card!
   check-card-can-be-saved!
   check-no-save-cycle!]

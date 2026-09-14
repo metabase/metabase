@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { useEnableAdvancedAIControlsPermissionsMutation } from "metabase-enterprise/api";
 
 type Props = {

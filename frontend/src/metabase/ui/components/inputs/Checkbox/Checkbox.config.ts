@@ -9,7 +9,7 @@ export const checkboxOverrides = {
   Checkbox: Checkbox.extend({
     defaultProps: {
       icon: CheckboxIcon,
-      radius: "xs",
+      radius: "xxs",
     },
     classNames: {
       root: CheckboxStyles.root,
@@ -39,7 +39,7 @@ export const checkboxOverrides = {
   CheckboxIndicator: CheckboxIndicator.extend({
     defaultProps: {
       icon: CheckboxIcon,
-      radius: "xs",
+      radius: "xxs",
       size: CHECKBOX_SIZE,
     },
     classNames: {

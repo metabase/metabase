@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase-enterprise.replacement.db :as replacement.db]
    [metabase-enterprise.replacement.field-refs :as replacement.field-refs]
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
    [metabase-enterprise.replacement.source-swap :as replacement.source-swap]
@@ -15,8 +16,7 @@
    [metabase.transforms.core :as transforms]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
-   [toucan2.core :as t2]))
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]))
 
 (set! *warn-on-reflection* true)
 
@@ -47,14 +47,13 @@
               (when (seq ids)
                 (into {}
                       (map (juxt (fn [o] [m (:id o)]) identity))
-                      (t2/select (case m
-                                   :card      :model/Card
-                                   :table     :model/Table
-                                   :dashboard :model/Dashboard
-                                   :transform :model/Transform
-                                   :segment   :model/Segment
-                                   :measure   :model/Measure)
-                                 {:where [:in :id ids]})))))]
+                      (case m
+                        :card      (replacement.db/cards-with-ids ids)
+                        :table     (replacement.db/tables-with-ids ids)
+                        :dashboard (replacement.db/dashboards-with-ids ids)
+                        :transform (replacement.db/transforms-with-ids ids)
+                        :segment   (replacement.db/segments-with-ids ids)
+                        :measure   (replacement.db/measures-with-ids ids))))))]
     (let [cards      (id->instances :card)
           tables     (id->instances :table)
           dashboards (id->instances :dashboard)
@@ -111,8 +110,8 @@
                                        (count all-transitive-dependents))) ;; phase 2: swap
 
   (let [db-id      (case (first old-source)
-                     :card  (t2/select-one-fn :database_id :model/Card :id (second old-source))
-                     :table (t2/select-one-fn :db_id :model/Table :id (second old-source)))
+                     :card  (replacement.db/card-database-id (second old-source))
+                     :table (replacement.db/table-database-id (second old-source)))
         batch-size 500]
     ;; phase 1: Upgrade field refs for ALL transitive dependents
     (doseq [batch (partition-all batch-size all-transitive-dependents)]
@@ -173,15 +172,15 @@
   "Copy user-edited metadata from a model's result_metadata onto the Fields of the
    output table. Writes to both Field and FieldUserSettings so overrides survive sync."
   [card-id table-id]
-  (let [card            (t2/select-one :model/Card :id card-id)
+  (let [card            (replacement.db/card card-id)
         result-metadata (:result_metadata card)
-        fields          (t2/select :model/Field :table_id table-id :active true)
+        fields          (replacement.db/active-fields-of-table table-id)
         field-by-name   (m/index-by :name fields)]
     (doseq [col-meta result-metadata
             :let [field     (field-by-name (source-swap.util/column-match-key col-meta))
                   overrides (u/select-keys-when col-meta :non-nil metadata-override-keys)]
             :when (and field (seq overrides))]
-      (t2/update! :model/Field (:id field) overrides)
+      (replacement.db/update-field! (:id field) overrides)
       (field-user-settings/upsert-user-settings field overrides))))
 
 (defn run-swap-model-with-transform!
@@ -194,7 +193,7 @@
   ([card-id transform-id]
    (run-swap-model-with-transform! card-id transform-id noop-progress))
   ([card-id transform-id progress & {:keys [user-id]}]
-   (let [transform (or (t2/select-one :model/Transform :id transform-id)
+   (let [transform (or (replacement.db/transform transform-id)
                        (throw (ex-info "Transform not found" {:transform-id transform-id})))]
      ;; phase 1: execute the transform
      (transforms/execute! transform (cond-> {:run-method :manual}
@@ -206,7 +205,7 @@
        (copy-model-metadata-overrides! card-id (:id table))
        (run-swap-source! [:card card-id] [:table (:id table)] progress))
      ;; phase 3: unpersist the model if it was persisted
-     (when-let [persisted-info (t2/select-one :model/PersistedInfo :card_id card-id)]
+     (when-let [persisted-info (replacement.db/persisted-info-for-card card-id)]
        (model-persistence/mark-for-pruning! {:id (:id persisted-info)} "off"))
      ;; phase 4: convert the model to a saved question
-     (t2/update! :model/Card card-id {:type :question}))))
+     (replacement.db/update-card! card-id {:type :question}))))

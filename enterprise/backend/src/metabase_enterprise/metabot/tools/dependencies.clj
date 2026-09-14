@@ -1,12 +1,12 @@
 (ns metabase-enterprise.metabot.tools.dependencies
   (:require
    [metabase-enterprise.dependencies.core :as dependencies]
+   [metabase-enterprise.metabot.db :as metabot.db]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.models.interface :as mi]
-   [metabase.premium-features.core :refer [defenterprise]]
-   [toucan2.core :as t2]))
+   [metabase.premium-features.core :refer [defenterprise]]))
 
 (def ^:private ^:dynamic *max-reported-broken-transforms* 10)
 
@@ -22,13 +22,13 @@
                                              (disj broken-transform-ids edited-transform-id)))
                                (take *max-reported-broken-transforms* broken-transform-ids))
         broken-transforms    (when (seq transforms-to-report)
-                               (->> (t2/select :model/Transform :id [:in transforms-to-report])
+                               (->> (metabot.db/transforms transforms-to-report)
                                     (filter mi/can-read?)
                                     (map #(select-keys % [:id :name]))))
         broken-card-ids      (set (keys card-errors))
         cards-to-report      (take *max-reported-broken-transforms* broken-card-ids)
         broken-cards         (when (seq cards-to-report)
-                               (->> (t2/select :model/Card :id [:in cards-to-report])
+                               (->> (metabot.db/cards cards-to-report)
                                     (filter mi/can-read?)
                                     (map #(select-keys % [:id :name]))))]
     {:success             (empty? broken-transform-ids)
@@ -50,7 +50,7 @@
   :feature :none
   [{:keys [id source]}]
   (try
-    (let [transform-to-check (api/check-404 (t2/select-one :model/Transform :id id))
+    (let [transform-to-check (api/check-404 (metabot.db/transform id))
           _                  (api/read-check transform-to-check)
           result             (if (= (keyword (:type source)) :query)
                                (let [database-id      (-> source :query :database)

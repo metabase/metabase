@@ -3,6 +3,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.clickhouse-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.clickhouse :as clickhouse]
@@ -11,10 +12,13 @@
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.test :as qp]
    [metabase.sync.sync :as sync]
@@ -52,6 +56,61 @@
       "`back``tick`"        ["back`tick"]              ; doubled backtick is an escaped backtick
       ""                    []                         ; blank -> [], so :key-columns stays schema-valid
       nil                   [])))
+
+(deftest ^:parallel inline-value-string-test
+  (testing "inlined string literals escape the backslash before the quote"
+    ;; ClickHouse treats `\` as an escape character inside a string literal, so doubling `'` alone (the default
+    ;; `[:sql String]` behaviour) lets a value like `a\'` close the literal early and run the rest as SQL.
+    (are [s expected] (= expected (sql.qp/inline-value :clickhouse s))
+      "Tito's Tacos"     "'Tito\\'s Tacos'"
+      "back\\slash"      "'back\\\\slash'"
+      "' OR 1 = 1 --"    "'\\' OR 1 = 1 --'"
+      "a\\' OR 1 = 1 --" "'a\\\\\\' OR 1 = 1 --'")))
+
+(def ^:private breakout-payload
+  "A value that closes a ClickHouse string literal early unless its backslash is escaped: `a\\' or 1=1 -- `."
+  "a\\' or 1=1 -- ")
+
+(def ^:private escaped-breakout-payload
+  "[[breakout-payload]] correctly escaped: `\\` is doubled, so the quote that follows is a genuinely escaped quote
+  and the payload stays inside the literal."
+  "a\\\\\\' or 1=1 -- ")
+
+;;; `contains` / `starts-with` / `ends-with` are an additional carrier for the escaping defect above, and a
+;;; very common one. On the generic SQL path they compile to `LIKE <pattern>`, and `sql.qp/generate-pattern` runs
+;;; `escape-like-pattern` on the value first -- which doubles `\` and so happens to neutralise this payload shape.
+;;; ClickHouse overrides all three to its native scalar functions instead, so `generate-pattern` never runs and the
+;;; value reaches ordinary function-argument position unescaped. Only [[sql.qp/inline-value]] stands between it and
+;;; the SQL text.
+(deftest string-filter-inline-escaping-test
+  ;; no ClickHouse server needed -- this only compiles the query -- but the QP pipeline reads the app DB
+  (mt/initialize-if-needed! :db)
+  (testing "a string filter value cannot break out of the literal when compiled with inline parameters"
+    (let [mp       (lib.tu/merged-mock-metadata-provider
+                    meta/metadata-provider
+                    {:database {:engine       :clickhouse
+                                :dbms-version {:version "24.4" :semantic-version {:major 24 :minor 4}}}})
+          venues   (lib.metadata/table mp (meta/id :venues))
+          name-col (lib.metadata/field mp (meta/id :venues :name))
+          compile! (fn [filter-clause]
+                     (:query (qp.compile/compile-with-inline-parameters
+                              (-> (lib/query mp venues)
+                                  (lib/filter filter-clause)))))]
+      (doseq [[msg filter-clause expected]
+              [["contains"                     (lib/contains name-col breakout-payload)
+                (format "`positionUTF8`(`PUBLIC`.`VENUES`.`NAME`, '%s')" escaped-breakout-payload)]
+               ["starts-with"                  (lib/starts-with name-col breakout-payload)
+                (format "`startsWithUTF8`(`PUBLIC`.`VENUES`.`NAME`, '%s')" escaped-breakout-payload)]
+               ["ends-with"                    (lib/ends-with name-col breakout-payload)
+                (format "`endsWithUTF8`(`PUBLIC`.`VENUES`.`NAME`, '%s')" escaped-breakout-payload)]
+               ["case-insensitive contains"    (lib/ignore-case (lib/contains name-col breakout-payload))
+                (format "`positionCaseInsensitiveUTF8`(`PUBLIC`.`VENUES`.`NAME`, '%s')" escaped-breakout-payload)]
+               ["case-insensitive starts-with" (lib/ignore-case (lib/starts-with name-col breakout-payload))
+                (format "`lowerUTF8`('%s')" escaped-breakout-payload)]
+               ["case-insensitive ends-with"   (lib/ignore-case (lib/ends-with name-col breakout-payload))
+                (format "`lowerUTF8`('%s')" escaped-breakout-payload)]]]
+        (testing msg
+          (is (str/includes? (compile! filter-clause) expected)))))))
 
 (deftest ^:parallel clickhouse-version
   (mt/test-driver :clickhouse
@@ -622,4 +681,7 @@
     "\"x\"; SELECT sleep(10); --\"" "SET ROLE \"x\"\"; SELECT sleep(10); --\""
     ;; a trailing backslash is escaped so it cannot close the quoted identifier
     "foo\\"                         "SET ROLE \"foo\\\\\""
-    "a\\\"b"                        "SET ROLE \"a\\\\\"\"b\""))
+    "a\\\"b"                        "SET ROLE \"a\\\\\"\"b\""
+    ;; a lone double-quote is a one-character role name, not an already-quoted empty one -- it must still come
+    ;; out as a terminated identifier
+    "\""                            "SET ROLE \"\"\"\""))

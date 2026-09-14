@@ -11,7 +11,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr])
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms])
   (:import
    (java.util.concurrent ScheduledFuture ScheduledThreadPoolExecutor ThreadFactory TimeUnit)
    (java.util.concurrent.atomic AtomicInteger)))
@@ -176,7 +177,7 @@
   (into [:enum {:decode/json keyword}] (keys keyword->TimeUnit)))
 
 (mr/def ::log-levels
-  [:map-of :string (into [:enum] (map name) (reverse logger/levels))])
+  (ms/string-keyed-map (into [:enum] (map name) (reverse logger/levels))))
 
 (defn- ->seconds-str
   [unit value]
@@ -197,22 +198,12 @@
   "Temporarily adjust the log levels."
   [_route-params
    _query-params
-   {:keys [duration duration_unit log_levels]} :- [:map
+   {:keys [duration duration_unit log_levels]} :- [:map {:closed true}
                                                    [:duration :int]
                                                    [:duration_unit ::time-unit]
-                                                   [:log_levels :any]]]
+                                                   [:log_levels (ms/string-keyed-map :string)]]]
   (api/check-superuser)
-  (when-not (map? log_levels)
-    (let [json-type (condp #(%1 %2) log_levels
-                      nil?        "null"
-                      boolean?    "boolean"
-                      number?     "number"
-                      string?     "string"
-                      sequential? "array"
-                      "something strange")]
-      (api/check-400 false {:specific-errors {:log_levels [(str "invalid type, received: " json-type)]}
-                            :errors {:_error (tru "Log levels should be an object, {0} received" json-type)}})))
-  (let [log-levels (update-keys log_levels #(cond-> % (instance? clojure.lang.Named %) name))]
+  (let [log-levels log_levels]
     (when-let [error (mu/explain ::log-levels log-levels)]
       (api/check-400 false {:specific-errors {:log_levels error}
                             :errors {:_error (tru (str "The format of the provided logging configuration is incorrect."

@@ -14,8 +14,8 @@ export function MetabotInlineDashboardLink({
       align="center"
       gap="sm"
       bd="1px solid var(--mb-color-border)"
-      bdrs="md"
-      p="md"
+      bdrs="sm"
+      p="lg"
       data-testid="metabot-inline-dashboard-link"
     >
       <Icon name="dashboard" c="brand" />

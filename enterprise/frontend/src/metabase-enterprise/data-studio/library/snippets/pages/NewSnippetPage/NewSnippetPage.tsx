@@ -152,7 +152,7 @@ export function NewSnippetPage() {
               }}
             />
           </Card>
-          <Stack p="md" flex="0 0 20rem">
+          <Stack p="lg" flex="0 0 20rem">
             <EditableText
               initialValue={description}
               placeholder={t`No description`}

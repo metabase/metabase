@@ -22,7 +22,7 @@ export const LockedTransformsHoverCard = ({ children }: PropsWithChildren) => {
       position="bottom-end"
     >
       <HoverCard.Target>{children}</HoverCard.Target>
-      <HoverCard.Dropdown p="lg" data-testid="locked-transforms-hover-card">
+      <HoverCard.Dropdown p="xl" data-testid="locked-transforms-hover-card">
         <Text fw="bold" lh="inherit">
           {t`You've used all the transform runs included in your trial.`}
         </Text>
@@ -40,7 +40,7 @@ export const LockedTransformsHoverCard = ({ children }: PropsWithChildren) => {
             component={ExternalLink}
             href={storeUrl}
             fullWidth
-            mt="md"
+            mt="lg"
           >{t`Start paid subscription`}</Button>
         )}
       </HoverCard.Dropdown>

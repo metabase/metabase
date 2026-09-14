@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
-   [malli.core :as mc]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -12,6 +11,7 @@
    [metabase.request.core :as request]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
+   [metabase.search.db :as search.db]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as ingestion]
    [metabase.search.settings :as search.settings]
@@ -21,8 +21,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [ring.util.response :as response]
-   [toucan2.core :as t2]))
+   [ring.util.response :as response]))
 
 (set! *warn-on-reflection* true)
 
@@ -173,7 +172,7 @@
 (api.macros/defendpoint :get "/weights"
   "Return the current weights being used to rank the search results"
   [_route-params
-   {:keys [context]} :- [:map [:context {:default :default} :keyword]]]
+   {:keys [context]} :- [:map {:closed true} [:context {:default :default} :keyword]]]
   ;; normalize so the reported weights match what search actually applies for this context
   (search.config/weights {:context (search.config/normalized-context context)}))
 
@@ -188,14 +187,13 @@
 (api.macros/defendpoint :put "/weights"
   "Update the current weights being used to rank the search results"
   [_route-params
-   {:keys [context], :as overrides} :- [:map
-                                        [:context {:default :default} :keyword]
-                                        [:search_engine {:optional true} :any]
-                                        [::mc/default [:map-of :keyword :string]]]]
+   overrides :- (ms/string-keyed-object
+                 ["context"       {:default :default} :keyword]
+                 ["search_engine" {:optional true} [:maybe :string]])]
   ;; remove cookie
   ;; normalize so overrides are stored under the same key search reads them from
-  (let [context   (search.config/normalized-context context)
-        overrides (-> overrides (dissoc :search_engine :context) (update-vals parse-double))]
+  (let [context   (search.config/normalized-context (get overrides "context"))
+        overrides (-> overrides (dissoc "search_engine" "context") (update-keys keyword) (update-vals parse-double))]
     (when (seq overrides)
       (set-weights! context overrides))
     (search.config/weights {:context context})))
@@ -208,7 +206,7 @@
 ;;
 (def ^:private search-request-schema
   "Query-parameter schema shared by `GET /api/search` and `GET /api/search/debug`."
-  [:map
+  [:map {:closed true}
    [:q                                   {:optional true} [:maybe :string]]
    ;; no `:optional true`: default-value-transformer skips defaults for absent optional keys, so it's
    ;; what makes `:default :api` actually apply when the param is omitted
@@ -378,7 +376,7 @@
                                         expected-result-type expected-result-id))]
     (if (and for-user-id (not= for-user-id api/*current-user-id*))
       ;; Build the context and run every permission/visibility check from the target user's perspective.
-      (do (api/check-404 (t2/exists? :model/User :id for-user-id))
+      (do (api/check-404 (search.db/user-exists? for-user-id))
           (request/with-current-user for-user-id (diagnose)))
       (diagnose))))
 

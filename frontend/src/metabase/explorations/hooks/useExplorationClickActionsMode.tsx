@@ -15,12 +15,12 @@ import {
 } from "metabase/explorations/components/ExplorationVisualization/utils";
 import type {
   ClickAction,
+  ClickActionModeContext,
   ClickActionPopoverProps,
   ClickActionsMode,
   ClickObject,
 } from "metabase/visualizations/types";
 import { isBrushClickObject } from "metabase/visualizations/types";
-import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import type {
   DocumentContent,
   ExplorationId,
@@ -65,7 +65,7 @@ export function useExplorationClickActionsMode({
     return {
       actionsForClick: (
         clicked: ClickObject,
-        settings?: ComputedVisualizationSettings,
+        { settings }: ClickActionModeContext = {},
       ) => {
         const actions: ClickAction[] = [];
 

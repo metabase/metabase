@@ -126,7 +126,7 @@ export function UpgradeModal({ opened, onClose }: UpgradeModalProps) {
     (showPlanPricing && isPlanLoading);
 
   return (
-    <Modal opened={opened} onClose={handleClose} size="md" padding="lg">
+    <Modal opened={opened} onClose={handleClose} size="md" padding="xl">
       {step === "initial" && isDataLoading && !hasQueryError && (
         <Center h={200}>
           <Loader />

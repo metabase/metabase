@@ -21,7 +21,7 @@ The original Data access permission setting contained five levels of access: unr
 - **No self-service.** Restricts groups from using the query builder to create or edit questions.
 - **Sandbox and block.** Restricts view _and_ query builder access to the underlying data.
 
-Mixing two axes (querying + viewing) to a single permissions setting could yield unexpected behavior. For example, by changing access from "Sandboxed" to "No self-service", an admin might think that they would be _restricting_ that group's access to data. But in that case, the group could potentially see _more_ data, provided the group also had access to collections with existing models, questions, or dashboards.
+Mixing two axes (querying + viewing) into a single permissions setting could yield unexpected behavior. For example, by changing access from "Sandboxed" to "No self-service", an admin might think that they would be _restricting_ that group's access to data. But in that case, the group could potentially see _more_ data, provided the group also had access to collections with existing models, questions, or dashboards.
 
 ## What our overhaul of data permissions accomplishes
 
@@ -100,7 +100,7 @@ For example, let's say you have two groups in Metabase 49 under the old data acc
 
 This data access setup in 49 would allow people to view questions and dashboards in collections they have access to. People in the Foo group, however, would get a sandboxed view of the items. In this case, the less permissive "Sandboxed" data access in the Foo group overrode the more permissive "No self-service" in the All users group.
 
-Starting with Metabase 50, however, more permissive settings _always_ override less permissive settings. So to keep Foo's sandboxes in tact, we'd need to make the All users group have a View data permission setting that is _less_ permissive than the "Sandboxed" setting. So we'll need to set the View data permission for All users to "Blocked."
+Starting with Metabase 50, however, more permissive settings _always_ override less permissive settings. So to keep Foo's sandboxes intact, we'd need to make the All users group have a View data permission setting that is _less_ permissive than the "Sandboxed" setting. So we'll need to set the View data permission for All users to "Blocked."
 
 But if you still want everyone else who _isn't_ in the Foo group to view items in collections they have access to, you'll need to create an additional group, Bar, that contains everyone _except for_ people in the Foo group, and grant that Bar group "Can view" access to the Sample database. The Bar group's "Can view" access will override the All Users group's "Blocked" setting, and they'll be able to view the questions and dashboards. Meanwhile, Foo group still has its sandboxes. Here's a summary of the settings for 50 that you'd need:
 

@@ -106,9 +106,9 @@ Keyed by series name: the metric column's name (single series) or the breakout v
 
 ## Click behavior — dashcards only
 
-Lives on a **dashcard** (`patch_dashcard`, whole-card or per-column under `column_settings[<key>].click_behavior`) — never on a saved card; the interactive types need the surrounding dashboard. `type`: `"actionMenu"` (default drill menu), `"crossfilter"` (clicked value feeds a dashboard parameter), `"link"`.
+Lives on a **dashcard** via `patch_dashcard` — whole-card at top-level `visualization_settings.click_behavior`, or per column under `column_settings[<key>].click_behavior` — never on a saved card. `type`: `"actionMenu"` (default drill menu), `"crossfilter"` (clicked value feeds a dashboard parameter), `"link"`. Keys are camelCase. A native-SQL card supports only crossfilter and link (no drill-through).
 
-Crossfilter — the driver chart emits the value; map the same parameter onto follower cards normally (the driver stays unwired to it):
+Crossfilter — the driver chart emits the value; wire the same parameter onto follower cards normally (the driver stays unwired to it):
 
 ```
 dashboard_write {"method": "update", "id": 40,
@@ -122,9 +122,25 @@ dashboard_write {"method": "update", "id": 40,
                              "target": {"type": "parameter", "id": "category"}}}}}}}]}
 ```
 
-Link — `linkType` `"url"` (a `linkTemplate` like `"https://app/orders/{{ORDER_ID}}"`; `{{column}}` = clicked row value, `{{filter:param}}` = a dashboard parameter's value), or `"question"`/`"dashboard"` (`targetId`, optional `parameterMapping` passing clicked context). Keys are camelCase. A native-SQL card supports only crossfilter and link — no drill-through.
+Link — `linkType` `"dashboard"` / `"question"` (`targetId` = target's numeric id, optional `parameterMapping`) or `"url"` (`linkTemplate`; `{{column}}` = clicked row value, `{{filter:param}}` = a dashboard parameter's value):
 
-For a complex behavior, build it once in the UI and copy the dashcard's settings via `get_content`.
+```json
+// per column, under column_settings["[\"name\",\"campaign_name\"]"]: open dashboard 13 with its "campaign" filter set
+"click_behavior": {
+  "type": "link", "linkType": "dashboard", "targetId": 13,
+  "parameterMapping": {
+    "campaign": {"id": "campaign",
+                 "source": {"type": "column", "id": "campaign_name", "name": "campaign_name"},
+                 "target": {"type": "parameter", "id": "campaign"}}}}
+
+// whole card: any click opens question 42
+"click_behavior": {"type": "link", "linkType": "question", "targetId": 42}
+
+// url template, whole card or per column
+"click_behavior": {"type": "link", "linkType": "url", "linkTemplate": "https://app/campaigns/{{campaign_id}}"}
+```
+
+`parameterMapping` keys, `id`, and `target.id` are the **target** dashboard's parameter ids (`get_content` on it lists them); `source.id` is an output column of **this** card (a native card's SQL alias); one entry per filter passed. For anything else (a `question` target with mapped filters, full drill setups) build it once in the UI and copy the dashcard's settings via `get_content`.
 
 ## Virtual dashcards
 

@@ -40,18 +40,40 @@
       (common/throw-teaching-error
        (format "Card %s is a %s — duplicate_content supports type \"question\" only."
                (:id card) (name (:type card)))))
+    ;; A Card scoped to a Document is gated by that Document, not by its collection:
+    ;; `mi/can-read? :model/Card` conjoins `parent-document-permits?`, which short-circuits to true
+    ;; on a nil `document_id`. So a copy that dropped the column would be adjudicated by collection
+    ;; perms alone and would disclose, permanently and to everyone reading the destination, material
+    ;; the Document's content gate exists to withhold. Carrying the column instead is no better: the
+    ;; copy would claim membership in a document whose body never references it, and
+    ;; `copy-document!` re-parents such cards precisely because their `collection_id` tracks the
+    ;; document rather than standing on its own. Neither outcome is a "standalone question in
+    ;; `collection-id`", so refuse and name the operation that does work.
+    (when (:document_id card)
+      (common/throw-teaching-error
+       (format (str "Card %s is saved inside a document — duplicate the document instead, which "
+                    "copies the questions saved in it.")
+               (:id card))))
     card))
 
 (defn- copy-question!
   "Create the card copy directly rather than copying then moving: `POST /api/card/:id/copy` takes no
    arguments, so a two-step copy would leave a wrongly-named card behind on any failure. Clears
-   `dashboard_id`/`document_id` — the copy is a standalone question in `collection-id`, not a second
-   card saved inside the source's dashboard or document."
+   `dashboard_id` — the copy is a standalone question in `collection-id`, not a second card saved
+   inside the source's dashboard. A document-scoped source never reaches here; [[fetch-question]]
+   refuses it, because `document_id` carries the card's read gate rather than its placement.
+
+   Copy semantics, not create semantics: the query comes from a row the caller already passed a
+   read check on, so they are not authoring it. `check-allowed-to-create-card!` would additionally
+   demand run-permission on that query, which refuses a user who can read and run a native card but
+   lacks native authoring perms — the case `documents.models.document/clone-card!` calls out
+   (UXW-5037), and one `POST /api/card/:id/copy` allows. Destination create-permission is still
+   enforced."
   [card collection-id new-name]
   (let [new-card (-> card
                      (assoc :name new-name :collection_id collection-id)
-                     (dissoc :dashboard_id :document_id :collection_position))]
-    (queries/check-allowed-to-create-card! new-card (:type card))
+                     (dissoc :dashboard_id :collection_position))]
+    (api/create-check :model/Card {:collection_id collection-id})
     (queries/create-card! new-card @api/*current-user*)))
 
 (defn- fetch-dashboard
@@ -118,14 +140,17 @@
     [:maybe [:boolean {:description "Dashboards only: also copy the dashboard's questions into the destination collection, instead of pointing the copy at the originals."}]]]])
 
 (registry/deftool duplicate-content
-  "Copy a question, dashboard, or document into a collection — cheaper and safer than reading the original and re-creating it, and it preserves everything the read projections leave out. Pass type, id (numeric or 21-char entity_id), and optionally collection_id (omit to copy into your personal collection; \"root\" for the root collection) and new_name (defaults to \"Copy of <source name>\"). is_deep_copy is dashboards-only: false (the default) makes the copy point at the original's questions, true duplicates those questions into the destination collection as well — a dashboard that holds questions saved inside it can only be copied with is_deep_copy: true. A deep copy reports any cards it had to leave behind as `uncopied` — cards you can't read (reported as an id alone) or that are in the trash; the copy simply omits them. Duplicating is creating: besides this tool's own scope, each type requires its own create scope, and you need curate permission on the destination collection. The copy's name and collection come back only when your token also holds agent:content:read; without it the response is a minimal acknowledgement."
+  "Copy a question, dashboard, or document into a collection — cheaper and safer than reading the original and re-creating it, and it preserves everything the read projections leave out. Pass type, id (numeric or 21-char entity_id), and optionally collection_id (omit to copy into your personal collection; \"root\" for the root collection) and new_name (defaults to \"Copy of <source name>\"). is_deep_copy is dashboards-only: false (the default) makes the copy point at the original's questions, true duplicates those questions into the destination collection as well — a dashboard that holds questions saved inside it can only be copied with is_deep_copy: true. Any copy of a dashboard, shallow or deep, reports cards it had to leave behind as `uncopied` — cards you can't read (reported as an id alone) or that are in the trash; the copy simply omits them, so check this field on every dashboard copy. A question saved inside a document can't be duplicated on its own — duplicate the document instead. Duplicating is creating: you need curate permission on the destination collection. The copy's name and collection come back only when your token also holds agent:content:read; without it the response is a minimal acknowledgement carrying the id, the type, and a count of any uncopied cards."
   {:name            "duplicate_content"
    :scope           metabot.scope/agent-content-write
    :annotations     {:readOnlyHint false :destructiveHint false}
    :args            duplicate-content-args-schema}
   [{:keys [type id new_name is_deep_copy] :as args} {:keys [token-scopes]}]
   (let [{:keys [fetch copy!]} (type->spec type)]
-    (when (and (some? is_deep_copy) (not= type "dashboard"))
+    ;; `true?`, not `some?`: `false` is the documented default and means exactly what a question or
+    ;; document copy already does, so rejecting it refuses a request the tool can serve — and the
+    ;; published strict inputSchema marks every property required, so a strict client must send it.
+    (when (and (true? is_deep_copy) (not= type "dashboard"))
       (common/throw-teaching-error
        (format "`is_deep_copy` applies to dashboards only — omit it when duplicating a %s." type)))
     (let [source        (fetch id)
@@ -135,10 +160,18 @@
       (common/success-content
        ;; `new_name` defaults to "Copy of <source name>", so echoing the copy's name hands back the
        ;; source's — the same read the read tools would refuse this token.
+       ;;
+       ;; `:uncopied` itself must not survive the degradation: `cards-to-copy`'s `redact` reduces a
+       ;; card to its id only when it is *unreadable*, so an archived-but-readable card rides out
+       ;; with its real name — handing a write-only token names it cannot read back through any read
+       ;; tool. `:uncopied_count` carries the completeness signal without the names, and `:type` is
+       ;; the caller's own argument, so both are safe as ack-keys.
        (v2.write/readback token-scopes [metabot.scope/agent-content-read]
                           (cond-> {:type          type
                                    :id            (:id copy)
                                    :name          (:name copy)
                                    :collection_id (:collection_id copy)}
                             (seq (:uncopied copy))
-                            (assoc :uncopied (mapv #(select-keys % [:id :name]) (:uncopied copy)))))))))
+                            (assoc :uncopied (mapv #(select-keys % [:id :name]) (:uncopied copy))
+                                   :uncopied_count (count (:uncopied copy))))
+                          [:type :uncopied_count])))))

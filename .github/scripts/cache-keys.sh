@@ -50,7 +50,11 @@ digest() {
 }
 
 shopt -s nullglob
-DEPS_FILES=(deps.edn modules/drivers/deps.edn modules/drivers/*/deps.edn)
+DEPS_FILES=(deps.edn
+            bin/lint-migrations-file/deps.edn
+            bin/load-namespaces/deps.edn
+            modules/drivers/deps.edn
+            modules/drivers/*/deps.edn)
 shopt -u nullglob
 
 DEPS_HASH="$(digest "${DEPS_FILES[@]}")"

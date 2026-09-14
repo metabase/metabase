@@ -47,7 +47,7 @@ export function GlossaryContainer() {
           m={0}
           className={cx(CS.wrapper, CS.wrapperTrim)}
         >
-          <Card px="lg" pb="sm" withBorder shadow="none" className={S.card}>
+          <Card px="xl" pb="sm" withBorder shadow="none" className={S.card}>
             <GlossaryTable
               className={S.table}
               glossary={glossary}

@@ -5,7 +5,7 @@
   width: 100%;
   padding: 0.75rem 1rem;
   border: 1px solid var(--mb-color-border);
-  border-radius: var(--mantine-radius-md);
+  border-radius: var(--mantine-radius-sm);
   cursor: pointer;
   transition: border-color 0.1s ease-in-out;
 

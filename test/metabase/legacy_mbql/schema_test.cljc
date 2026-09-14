@@ -50,7 +50,9 @@
   (testing "Make sure our schema validates `:field` clauses correctly"
     (doseq [[clause expected] {[:field 1 nil]                                                          true
                                [:field 1 {}]                                                           false
-                               [:field 1 {:x true}]                                                    true
+                               ;; a real option -- the map is closed, so a non-empty map only validates when what is
+                               ;; in it is declared
+                               [:field 1 {:join-alias "Wow"}]                                          true
                                [:field 1 2]                                                            false
                                [:field "wow" nil]                                                      false
                                [:field "wow" {}]                                                       false

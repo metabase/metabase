@@ -3,10 +3,11 @@
    in-chat chart, `render_drill_through` renders the follow-up when the user clicks into one.
 
    Both are UI tools — they return a `query_handle` and point the host at a `ui://` iframe shell
-   ([[metabase.mcp.v2.resources]]) that resolves the handle over an authenticated endpoint. The
-   result data never enters the model context: the agent gets a handle and a steering line, the
-   iframe gets the rows. That's the v2 change from v1, which inlined the base64 query in
-   `structuredContent`."
+   ([[metabase.mcp.v2.resources]]). The iframe exchanges the handle for the query at
+   `GET /api/embed-mcp/queries/:handle` ([[metabase.mcp.callback-api]]), authenticated with the
+   scoped UI credential it was rendered with. The result data never enters the model context: the
+   agent gets a handle and a steering line, the iframe gets the rows. That's the v2 change from v1,
+   which inlined the base64 query in `structuredContent`."
   (:require
    [metabase.agent-api.query-guards :as query-guards]
    [metabase.api.common :as api]
@@ -26,16 +27,19 @@
 (defn- resolve-visualizable-handle!
   "Assert `handle` exists and belongs to the caller, throwing a teaching error otherwise.
 
-   Deliberately the raw store read rather than [[metabase.mcp.v2.common/resolve-query-handle!]]
+   Deliberately the raw store read rather than [[metabase.mcp.v2.queries/resolve-query-handle!]]
    and friends: those re-validate the stored query against the shape v2's execute tools mint
    (`:stages`, positive `:limit`, MBQL-only). A visualizable handle need not have that shape —
    the drill-through handles the iframe mints through `POST /api/embed-mcp/drills` hold the
    SDK's legacy `dataset_query`, and `execute_sql` handles hold native SQL. Both are visualizable
    by design, so the guards would reject exactly the handles these tools exist to render.
 
-   Access control still holds: the store read is keyed on `(mcp session, user)`, and the iframe
-   executes the query through the ordinary QP path under the user's own session, where data
-   permissions are enforced."
+   Access control still holds. The store read is user-scoped — [[metabase.mcp.session/find-handle-row]]
+   joins `core_session` and filters on its `user_id`, so a handle resolves only for the user who
+   minted it; the `mcp_session_id` on the row is telemetry, and handles deliberately survive a
+   client rotating its MCP session. Native SQL is re-enforced downstream rather than here:
+   `check-mcp-ui-native-query!`, mounted on `/api/dataset` via `+refuse-unscoped-native-sql`, is the
+   boundary that decides whether the iframe may execute a native query."
   [session-id handle]
   (or (mcp.session/resolve-query-handle session-id api/*current-user-id* handle)
       (common/throw-teaching-error
@@ -75,8 +79,9 @@
          prompt)))))
 
 (defn- visualization-content
-  "The two response channels for both UI tools. `structuredContent` is what the iframe reads;
-   the text mirrors it so the model is never told less than the iframe was."
+  "The two response channels for both UI tools. `structuredContent` is what the iframe reads —
+   it resolves the handle at `GET /api/embed-mcp/queries/:handle`; the text mirrors it so the model
+   is never told less than the iframe was."
   [payload]
   (common/success-content (str (json/encode payload) "\n" visualize-steering) payload))
 
@@ -88,34 +93,28 @@
     [:maybe [:map {:description "A fresh query in the same dialect execute_query takes: numeric table/field ids from browse_data, never base64. Exactly one of query | query_handle."}]]]
    [:query_handle {:optional true}
     [:maybe [:string {:min 1 :description "A query_handle from a previous execute_query / execute_sql call — visualizes the exact stored query, MBQL or native SQL. Preferred over query. Exactly one of query | query_handle."}]]]
-   [:display {:optional true}
-    [:maybe (into [:enum {:description "Chart type to render. Omit to let the visualization infer one from the result shape — prefer omitting it unless the user asked for a specific chart type."}]
-                  common/card-display-values)]]
    [:prompt {:optional true}
-    [:maybe [:string {:min 1 :max 10000 :description "The user's original request. Only used when minting a fresh handle from `query`; a supplied query_handle already carries the prompt it was stored with."}]]]])
+    [:maybe [:string {:min 1 :max 10000 :description "The user's original request, recorded with a freshly minted handle for the iframe's feedback flow. Ignored alongside `query_handle`: the stored prompt is fixed at mint time and there is no update path, so pass `prompt` on the call that mints the handle."}]]]])
 
 (def ^:private visualize-query-output-schema
   [:map
-   [:query_handle {:description "Handle the visualization iframe resolves to fetch the query and its results."}
-    :string]
-   [:display {:optional true :description "Chart type the visualization renders as, when one was requested."}
-    [:maybe :string]]])
+   [:query_handle {:description "Handle the visualization iframe exchanges for the query at GET /api/embed-mcp/queries/:handle."}
+    :string]])
 
 (registry/deftool visualize-query
-  "Visualize a query as an interactive chart or table, rendered inline in the conversation. Pass exactly one of: query_handle (preferred — a handle from execute_query or execute_sql, MBQL or native SQL) or query (a fresh query, in the same dialect execute_query takes). Optionally pass display to pick the chart type; omit it and the chart type is inferred from the result shape.
+  "Visualize a query as an interactive chart or table, rendered inline in the conversation. Pass exactly one of: query_handle (preferred — a handle from execute_query or execute_sql, MBQL or native SQL) or query (a fresh query, in the same dialect execute_query takes). The chart type is inferred from the result shape.
 
 Use this for any request to show, display, visualize, plot, chart, or present results — for example `Show me customers`, `Show me orders by month`, `Display revenue by region`, `Visualize active users over time`. Rendering the visualization IS the final answer: do not call execute_query or execute_sql afterwards to restate the numbers, and do not tell the user to change display types or open the Metabase query builder, a panel, or a sidebar — this is a lightweight inline visualization, not the full Metabase UI."
   {:name                "visualize_query"
    :scope               (v2.resources/resource-scope v2.resources/visualize-query-uri)
-   :annotations         {:readOnlyHint true :idempotentHint true}
+   ;; Not idempotent: the fresh-`query` path mints a new handle row on every call.
+   :annotations         {:readOnlyHint true}
    :required-extensions #{:mcp-app-ui}
    :_meta               {:ui {:resourceUri v2.resources/visualize-query-uri}}
    :output-schema       visualize-query-output-schema
    :args                visualize-query-args-schema}
-  [{:keys [display] :as args} {:keys [session-id]}]
-  (let [handle (handle-for-visualization! args session-id)]
-    (visualization-content (cond-> {:query_handle handle}
-                             display (assoc :display display)))))
+  [args {:keys [session-id]}]
+  (visualization-content {:query_handle (handle-for-visualization! args session-id)}))
 
 ;;; -------------------------------------------- render_drill_through ----------------------------------------------
 
@@ -126,7 +125,7 @@ Use this for any request to show, display, visualize, plot, chart, or present re
 
 (def ^:private render-drill-through-output-schema
   [:map
-   [:query_handle {:description "Handle the visualization iframe resolves to fetch the drill-through query and its results."}
+   [:query_handle {:description "Handle the visualization iframe exchanges for the drill-through query at GET /api/embed-mcp/queries/:handle."}
     :string]])
 
 (registry/deftool render-drill-through

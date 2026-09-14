@@ -606,16 +606,17 @@ class Question {
     return question;
   }
 
-  private _getParameters = _.memoize(() => {
-    return getCardUiParameters(
-      this.card(),
-      this.metadata(),
-      this._parameterValues,
-    );
-  });
+  private _parameters?: ParameterObject[];
 
   parameters(): ParameterObject[] {
-    return this._getParameters();
+    if (this._parameters == null) {
+      this._parameters = getCardUiParameters(
+        this.card(),
+        this.metadata(),
+        this._parameterValues,
+      );
+    }
+    return this._parameters;
   }
 
   // predicate function that determines if the question is "dirty" compared to the given question

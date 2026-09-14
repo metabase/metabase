@@ -10,21 +10,15 @@ on:
         required: false
         default: 'snowflake,bigquery-cloud-sdk,redshift'
         type: string
-      temp-data-hours:
-        description: 'TTL in hours for per-run garbage (minimum 2)'
+      hours:
+        description: 'TTL in hours for per-run garbage (minimum 4)'
         required: false
-        default: '2'
-        type: string
-      fixture-hours:
-        description: 'TTL in hours for datasets runs share (minimum 24)'
-        required: false
-        default: '96'
+        default: '12'
         type: string
 
 # `inputs.*` is empty on the scheduled run, so each falls back to the nightly value.
 env:
-  GC_TEMP_HOURS: ${{ inputs.temp-data-hours || 2 }} # for temp data
-  GC_FIXTURE_HOURS: ${{ inputs.fixture-hours || 96 }} # for reusable data
+  GC_HOURS: ${{ inputs.hours || 12 }} # for temp data
   GC_DRIVERS: ${{ inputs.drivers || 'snowflake,bigquery-cloud-sdk,redshift' }}
 
 concurrency:
@@ -66,8 +60,7 @@ jobs:
         run: |
           clojure -X:dev:drivers:drivers-dev:test metabase.test.data.gc/gc-orphans! \
             :drivers "\"${{ env.GC_DRIVERS }}\"" \
-            :temp-data-hours "${{ env.GC_TEMP_HOURS }}" \
-            :fixture-hours "${{ env.GC_FIXTURE_HOURS }}" \
+            :hours "${{ env.GC_HOURS }}" \
             :report-dir '"target/gc-report"'
 
       # The report is most wanted on the runs that fail, so upload it regardless of the sweep's outcome.

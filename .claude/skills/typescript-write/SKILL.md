@@ -20,20 +20,27 @@ description: Write TypeScript and JavaScript code following Metabase coding stan
 - **Avoid type casts and loose `unknown`** — fix the signature instead.
 - **If a function only needs one field of a wide object, accept that field** — not the wide object. The cast often disappears once the signature is right.
 - **Reach for `Partial<T>`, `Pick<T, K>`, `Record<K, V>`, and generics** before reaching for a cast.
+- **Match dictionary keys to the data.** Use a finite key union when the keys are known. Open dictionaries can use an index signature, `Record<string, T>`, or `Map`; index signatures still constrain values, and changing their spelling to `Record<string, T>` does not make missing-key access safe.
 - **Prefer making props/components generic** (`<T>`) when a value flows through unchanged and the caller knows the type.
 - **Prefer `unknown` over loose typing** and narrow before use — an `unknown` value forces a guard at the point of use.
 - **`satisfies` for object literals** that must conform without widening (config objects, lookup maps, discriminated literals) — better than `: T` (widens) or `as T` (unsafe).
 - **Avoid non-null assertions (`!`)**. Prefer a guard, early return, or `?.`. Use `!` only when non-nullness is provably true and localized, with a comment.
+- **Guard indexed lookups that may miss.** Arrays and dictionaries can return `undefined` even when the inferred type omits it. Use an iteration form that preserves the key/value relationship, and only assert `keyof` when the runtime keys are known to belong to the declared type.
 - **No redundant runtime coercion** — don't wrap already-typed values in `Number()` / `String()` / `Boolean()`.
 - **Type guards belong in `frontend/src/metabase-types/guards/`**. Do not redefine them locally.
 - **A cast you can't avoid needs a real justification comment.** The `metabase/no-unjustified-type-casts` rule accepts any preceding comment — state the actual reason the cast is safe. NEVER write the legacy `// Unjustified type cast. FIXME` placeholder; it exists only on casts that predated the rule, and copying it sneaks an unjustified cast past the linter. If you can't articulate why the cast is correct, the cast is wrong — fix the types.
+- **Keep unavoidable assertions local.** Isolate a repeated or complex assertion behind a helper when that makes its invariant easier to enforce. Test nontrivial runtime assumptions that justify it; a trivial assertion does not automatically need a new helper or test. Do not weaken a public signature just to silence implementation errors.
 
 ## Type modeling
 
 - **Reuse existing types; don't re-declare them.** Use canonical IDs and domain entity types from `metabase-types/api` (`FieldId`, `TableId`, `ConcreteTableId`, `SchemaName`, …) and key data structures by them (`new Map<ConcreteTableId, …>()`). Don't duplicate generated/API types — compose or derive (`Pick`, `Omit`, indexed access `SomeType["field"]`, `ReturnType`).
-- **Use generics to allow TypeScript to infer correct types** when creating functions and components that need to be reusable and type-safe. Don't hesitate to introduce complex generics if they allow to derive types automatically instead of manual narrowing.
+- **Generics must make promises the implementation can keep.** A caller-selected `get<T>(): T` must not disguise an unchecked assertion about external data. Return `unknown` and validate, or accept a validator that establishes `T`. A factory such as `function empty<T>(): T[] { return []; }` is valid; judge the implementation, not how often `T` appears in the signature.
+- **Prefer an honest type over false precision.** Use generics when they express a real relationship. If a complex type cannot model the behaviour accurately, choose a simpler type or `unknown` with narrowing instead of asserting an unsupported guarantee.
 - **Model the actual data contract; keep types narrow.** Optional `field?: T` for a key that may be absent, `field: T | undefined` only when the key is always present but the value may be undefined, `| null` for explicit API nulls. Prefer domain unions over broad `string` / `number` / loose `Record`.
 - **Refer to API implementation** when defining or refining types to ensure they match the actual data structure. When considering a type cast, first consider if the type should be refined to match the actual data structure.
+- **Optionality must reflect absence.** Keep required fields required and optional fields optional. Normalise input when the application has a meaningful default, not merely to remove a type error. Preserve the actual wire shape in API types.
+- **Represent related absence together when modelling internal state.** If several fields exist or disappear together, consider a nullable containing object or a discriminated union. Do not reshape a raw API declaration unless the data actually has that shape.
+- **Prefer explicit special states when designing a format.** Use nullability or named union variants when sentinel values such as `-1` hide meaning. Preserve established protocol sentinel values unless the behaviour is deliberately changed, or normalise them at an explicit boundary.
 - **Discriminated unions for variant state, with exhaustive checks.** Model "one of N shapes" as a union with a literal discriminant rather than a bag of optional fields, and exhaust it with ts-pattern's `.exhaustive()` so adding a variant becomes a compile error:
   ```ts
   import { match } from "ts-pattern";
@@ -45,20 +52,30 @@ description: Write TypeScript and JavaScript code following Metabase coding stan
     .exhaustive(); // Compile-time guarantee all cases handled
   ```
 - **Derive union types from constants** (`as const` + `typeof`/`keyof`) so the type and the values can't drift.
-- **`readonly` / immutability where mutation isn't intended** — component props, shared constants, exported config. Prefer `readonly T[]` / `ReadonlyArray<T>` for inputs you don't mutate.
+- **`readonly` / immutability where mutation isn't intended** — component props, shared constants, exported config, and unmutated parameters. Prefer `readonly T[]` / `ReadonlyArray<T>` for inputs you don't mutate. Functions that mutate caller-owned data should make that behaviour explicit.
+- **Construct complete, well-typed objects where practical.** Prefer an object expression when it avoids partially initialised state or assertions. Incremental construction is fine when it is clearer and maintains the type's invariants.
+- **Treat `metabase-lib` opaque types as black boxes.** Use `metabase-lib` functions to work with types such as `Lib.Query`, rather than casting into their internal representation.
 - **Type async and error states explicitly** (a discriminated union or the data-layer's typed result) — never leave loading/error/empty implicit.
+
+## Function signatures
+
+- **Make public contracts explicit where it improves stability and clarity.** Annotate parameters and return types at shared boundaries when useful; let local values infer. Use `satisfies` or an annotation when a declaration needs an explicit shape check.
+- **Accept the inputs the operation supports and return the most precise honest result.** Narrow avoidable uncertainty inside the function, but preserve meaningful nullability and union variants in its return type.
+- **Use named options when positional arguments are easy to confuse.** Consecutive arguments with the same type are a useful warning sign, not an automatic requirement to rewrite a clear API.
+- **Use `async`/`await` when it clarifies control flow or error handling.** Returning an existing promise directly is also valid; a Promise return type alone does not require adding `async`.
 
 ## Null and undefined
 
 - **Narrow at the source**. If a value is optional only in a corner case, don't thread `undefined` through every layer — guard at the producer.
 - **Sensible defaults for optional values**. Use `?.` and `??` at the consumer.
-- **Lists should be filtered** before being used in a map or other iteration.
+- **Narrow nullable list elements when the operation requires present values.** Filter with a type guard when missing entries should be discarded; preserve them when their absence or position carries meaning.
 - **Avoid non-strict null comparisons** (`X != null`) when `X` can never be `null` — use a strict check or narrow the type. Use `checkNotNull` where necessary.
 - **Check actual nullability against API implementation**. Find the API endpoint implementation and check if the field can actually be null.
 
 ## Naming
 
 - **Names describe the entity, not the mechanism**. A name must reflect what the value holds.
+- **Use domain vocabulary and include units where useful** (`timeoutMs`, `widthPx`, `temperatureC`). Prefer a more specific name when `Info`, `Data`, or `Entity` obscures the meaning, while keeping established terminology when it is clear.
 - **Align sibling concepts**: keep verb conventions consistent across a related API.
 - **No names that encode implementation history** rather than current meaning. Suffixes like `Base`, `New`, `Old`, `Initial` need a real semantic distinction, otherwise drop them.
 - **Avoid cryptic identifiers** (`v`, `n`, `$n`) for domain values; short names are fine only in tiny conventional contexts (loop index `i`, coordinates `x`/`y`, generic params `T`/`K`/`V`).

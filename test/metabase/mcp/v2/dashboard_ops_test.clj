@@ -155,6 +155,19 @@
       (is (= "button" (get-in dc [:visualization_settings :actionDisplayType])))
       (is (= "Run" (get-in dc [:visualization_settings "button.label"]))))))
 
+(deftest add-action-virtual-card-test
+  (testing "GHY-4147: add_action writes a :virtual_card so the dashcard reads as an action"
+    ;; `isActionDashCard` (frontend/src/metabase/actions/utils.ts) keys off
+    ;; visualization_settings.virtual_card.display; without it the dashcard renders empty, not as a button.
+    (let [{:keys [dashcards]} (dashboard-ops/compile-ops
+                               empty-dash
+                               [{:op "add_action" :id -1 :action_id 3 :label "Run"}])
+          vs (:visualization_settings (first dashcards))]
+      (is (= {:name nil :display "action" :visualization_settings {} :archived false}
+             (:virtual_card vs)))
+      (is (= "button" (:actionDisplayType vs)))
+      (is (= "Run" (get vs "button.label"))))))
+
 (deftest duplicate-card-test
   (testing "GHY-4147: duplicate_card clones content but takes the new negative id and its own slot"
     (let [existing {:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4 :dashboard_tab_id nil
@@ -269,6 +282,17 @@
                                 {:op "resize" :dashcard_id 7 :size {:size_x 8 :size_y 2}}])
           dc (first dashcards)]
       (is (= [0 0 8 2] [(:row dc) (:col dc) (:size_x dc) (:size_y dc)])))))
+
+(deftest move-without-a-position-keeps-its-own-slot-test
+  (testing "GHY-4147: move without a position autoplaces against the *other* cards on the tab. The
+            moved card is not its own sibling — counting it means the search can never return the
+            slot it already occupies, so a card alone on a tab is displaced by its own footprint"
+    (let [wide {:id 7 :card_id 9 :row 0 :col 0 :size_x 24 :size_y 4 :dashboard_tab_id nil}
+          {:keys [dashcards]} (dashboard-ops/compile-ops
+                               (dash-with [wide])
+                               [{:op "move" :dashcard_id 7}])
+          dc (first dashcards)]
+      (is (= [0 0] [(:row dc) (:col dc)])))))
 
 (deftest remove-test
   (testing "GHY-4147: remove drops the dashcard from the payload, which deletes it on save"
@@ -541,6 +565,18 @@
                                 [{:op "move_parameter" :parameter_id "c" :index 0}]
                                 {})]
       (is (= ["c" "a" "b"] (mapv :id parameters))))))
+
+(deftest move-parameter-requires-exactly-one-target-test
+  (testing "GHY-4147: move_parameter with both index and dashcard_id is a teaching error rather than
+            a silent win for dashcard_id — the op documents \"exactly one\", and add_link refuses the
+            same both/neither case"
+    (let [current {:id 1 :tabs [] :parameters [{:id "p1"} {:id "p2"}]
+                   :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4}]}]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"op 0.*exactly one"
+                            (dashboard-ops/compile-ops
+                             current
+                             [{:op "move_parameter" :parameter_id "p1" :index 0 :dashcard_id 7}]
+                             {}))))))
 
 (deftest move-parameter-onto-a-card-test
   (testing "GHY-4147: move_parameter with a dashcard_id makes it an inline filter on that card"

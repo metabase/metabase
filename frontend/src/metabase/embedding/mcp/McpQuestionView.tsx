@@ -12,7 +12,7 @@ import { useMcpQueryControls } from "./hooks/useMcpQueryControls";
 export const MCP_CONTENT_HEIGHT = "500px";
 
 const QUERY_BAR_RESERVED_HEIGHT = "calc(2rem + var(--mantine-spacing-sm))";
-const RECLAIMED_CONTENT_BOTTOM_PADDING = "var(--mantine-spacing-lg)";
+const RECLAIMED_CONTENT_BOTTOM_PADDING = "var(--mantine-spacing-xl)";
 
 export interface McpQuestionViewProps {
   queryKey: string | null;
@@ -56,8 +56,8 @@ export function McpQuestionView({
   const contentStyle: CSSProperties = {
     boxSizing: "border-box",
     paddingTop: shouldReduceTopPadding
-      ? "calc(var(--mantine-spacing-lg) + 0px)"
-      : `calc(var(--mantine-spacing-lg) + ${safeAreaPaddingTop}px)`,
+      ? "calc(var(--mantine-spacing-xl) + 0px)"
+      : `calc(var(--mantine-spacing-xl) + ${safeAreaPaddingTop}px)`,
   };
 
   return (
@@ -66,11 +66,11 @@ export function McpQuestionView({
       justify="space-between"
       h={MCP_CONTENT_HEIGHT}
       gap="sm"
-      pb={shouldUseFullHeightTable ? undefined : "lg"}
+      pb={shouldUseFullHeightTable ? undefined : "xl"}
       style={contentStyle}
     >
       <Flex
-        px="lg"
+        px="xl"
         align="center"
         justify="space-between"
         gap="sm"
@@ -91,19 +91,19 @@ export function McpQuestionView({
         </Flex>
       </Flex>
 
-      <Flex px="xs" flex={1} style={{ overflow: "hidden" }}>
+      <Flex px="xxs" flex={1} style={{ overflow: "hidden" }}>
         <SdkQuestion.QuestionVisualization
           height={resolvedVisualizationHeight}
         />
       </Flex>
 
       {hasTimeControls && (
-        <Flex px="lg" justify="center">
+        <Flex px="xl" justify="center">
           <Flex
             h={32}
             align="stretch"
             bd="1px solid var(--mb-color-border-neutral)"
-            bdrs="md"
+            bdrs="sm"
             style={{ overflow: "hidden" }}
             data-testid="query-explorer-bar"
           >

@@ -63,16 +63,18 @@
     ;; TODO - we should set `site-path` as well. Don't want to enable this yet so we don't end
     ;; up breaking things issue: https://github.com/metabase/metabase/issues/39346
     :path      "/" #_(site-path)}
-   ;; If the authentication request request was made over HTTPS (hopefully always except for
-   ;; local dev instances) add `Secure` attribute so the cookie is only sent over HTTPS.
-   (when (request.util/https? request)
+   ;; If the authentication request was made over HTTPS (hopefully always except for local dev instances) add the
+   ;; `Secure` attribute so the cookie is only sent over HTTPS. `:unknown` counts: adding `Secure` to a cookie that
+   ;; turns out to be travelling in the clear costs nothing, while omitting it on a TLS request that we could not
+   ;; positively identify would leave the session exposed.
+   (when (#{:https :unknown} (request.util/https-state request))
      {:secure true})))
 
 (defmethod default-session-cookie-attributes :full-app-embed
   [_ request]
   (merge
    {:path "/"}
-   (when (request.util/https? request)
+   (when (#{:https :unknown} (request.util/https-state request))
      ;; SameSite=None is required for cross-domain full-app embedding. This is safe because
      ;; security is provided via anti-CSRF token. Note that most browsers will only accept
      ;; SameSite=None with secure cookies, thus we are setting it only over HTTPS to prevent
@@ -172,7 +174,8 @@
                           ;; max-session age-is in minutes; Max-Age= directive should be in seconds
                           (use-permanent-cookies? request)
                           {:max-age default-max-age-seconds}))]
-    (when (and (= (request.settings/session-cookie-samesite) :none) (not (request.util/https? request)))
+    (when (and (= (request.settings/session-cookie-samesite) :none)
+               (= :http (request.util/https-state request)))
       (log/warn
        (str "Session cookie's SameSite is configured to \"None\", but site is served over an insecure connection."
             " Some browsers will reject cookies under these conditions."

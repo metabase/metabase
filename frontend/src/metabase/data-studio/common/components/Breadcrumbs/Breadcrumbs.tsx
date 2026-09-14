@@ -16,7 +16,7 @@ type BreadcrumbsProps = {
 
 export function Breadcrumbs({ items }: BreadcrumbsProps) {
   return (
-    <Group c="text-secondary" gap="sm" wrap="nowrap" px="lg" pt="md">
+    <Group c="text-secondary" gap="sm" wrap="nowrap" px="xl" pt="lg">
       {items.map((item, index) => (
         <Fragment key={index}>
           {index > 0 && <Separator />}
@@ -44,7 +44,7 @@ function BreadcrumbLink({
 }) {
   return (
     <Link to={to} className={S.link}>
-      <Flex align="center" gap="xs" wrap="nowrap">
+      <Flex align="center" gap="xxs" wrap="nowrap">
         {children}
       </Flex>
     </Link>
@@ -53,7 +53,7 @@ function BreadcrumbLink({
 
 function BreadcrumbText({ children }: { children: React.ReactNode }) {
   return (
-    <Flex align="center" gap="xs" wrap="nowrap">
+    <Flex align="center" gap="xxs" wrap="nowrap">
       {children}
     </Flex>
   );

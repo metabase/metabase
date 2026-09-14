@@ -60,7 +60,7 @@ To open the chart options, click on the gear icon at the bottom left of the scre
 
 ### Data settings
 
-You can rename, reorder, or remove slices from the inner ring of a sunburst or pie chart. To reorder the pie slices, drag the cards with the slice names. To rename the slices, click on three dots next to the series name and enter a new name.
+You can rename, reorder, or remove slices from the inner ring of a sunburst or pie chart. To reorder the pie slices, drag the cards with the slice names. To rename the slices, click on the three dots next to the series name and enter a new name.
 
 To change the color of the pie slices, click on the color circle next to the slice's name. In sunburst charts, you can only change the color of the slices in the _inner_ ring (the slices in the outer rings inherit the colors of their parent slices).
 
@@ -96,7 +96,7 @@ Currently, you can't change the color or label of the **Other** slice.
 
 ## Limitations and alternatives
 
-Consider using a bar or row chart (or a [stacked bar chart](line-bar-and-area-charts.md#stacked-bar-chart)) or a [pivot table](pivot-table.md) instead of a pie or sunburst chart in the following cases:
+Consider using a bar or row chart (or a [stacked bar chart](line-bar-and-area-charts.md#stacking)) or a [pivot table](pivot-table.md) instead of a pie or sunburst chart in the following cases:
 
 - Your data has more than three breakouts
 - Your metrics don't add up to 100% (for example, average rating - prefer a gauge chart in that case)

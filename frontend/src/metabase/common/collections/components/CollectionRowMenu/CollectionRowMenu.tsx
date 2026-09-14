@@ -9,9 +9,8 @@ import {
 } from "metabase/api";
 import { listTag } from "metabase/api/tags";
 import { isRootCollection } from "metabase/common/collections/utils";
-import { useConfirmation } from "metabase/common/hooks";
+import { useConfirmation, useMetadataToasts } from "metabase/common/hooks";
 import { getUserIsAdmin } from "metabase/current-user";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   PLUGIN_LIBRARY,
   PLUGIN_REMOTE_SYNC,

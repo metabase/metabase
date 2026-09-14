@@ -1,6 +1,7 @@
-import type { SearchFilterComponent } from "metabase/common/search/types";
 import type { State } from "metabase/redux/store";
 import type { CollectionEssentials } from "metabase-types/api";
+
+import { definePluginSlot } from "../slot";
 
 export type ModelFilterControlsProps = any;
 export type ModelFilterSettings = {
@@ -14,8 +15,6 @@ export type MetricFilterSettings = {
 
 const getDefaultPluginContentVerification = () => ({
   contentVerificationEnabled: false,
-  // Unjustified type cast. FIXME
-  VerifiedFilter: {} as SearchFilterComponent<"verified">,
   sortCollectionsByVerification: (
     _a: CollectionEssentials,
     _b: CollectionEssentials,
@@ -32,15 +31,6 @@ const getDefaultPluginContentVerification = () => ({
   MetricFilterControls: (_props: MetricFilterControlsProps) => null,
 });
 
-export const PLUGIN_CONTENT_VERIFICATION =
-  getDefaultPluginContentVerification();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(
-    PLUGIN_CONTENT_VERIFICATION,
-    getDefaultPluginContentVerification(),
-  );
-}
+export const PLUGIN_CONTENT_VERIFICATION = definePluginSlot(
+  getDefaultPluginContentVerification,
+);

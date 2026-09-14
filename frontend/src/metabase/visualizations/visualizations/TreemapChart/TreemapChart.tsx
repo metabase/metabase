@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLatest } from "react-use";
 
 import { Box, Stack } from "metabase/ui";
+import { assignLazily } from "metabase/utils/merge-lazily";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types";
@@ -257,10 +258,10 @@ const TreemapChartComponent = ({
       h="100%"
       display="flex"
       style={{ flexDirection: "column" }}
-      gap={isCompact ? "md" : 28}
+      gap={isCompact ? "lg" : 28}
     >
       {breadcrumb && formatters && (
-        <Box px={isDashboard ? "md" : "xl"} pt={isDashboard ? 12 : 24}>
+        <Box px={isDashboard ? "lg" : "xxl"} pt={isDashboard ? 12 : 24}>
           <TreemapBreadcrumb
             groupLabel={breadcrumb.groupLabel}
             value={formatters.value(breadcrumb.value)}
@@ -288,7 +289,7 @@ const TreemapChartComponent = ({
   );
 };
 
-export const TreemapChart = Object.assign(
+export const TreemapChart = assignLazily(
   TreemapChartComponent,
   TREEMAP_CHART_DEFINITION,
 );

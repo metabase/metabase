@@ -7,7 +7,14 @@
      a client that can't render an iframe, rather than failing at call time);
    - `tools/call` ([[call-tool]]) re-checks all three, validates arguments against the tool's
      Malli schema with teaching errors, dispatches to the handler under the already-bound
-     current user, and logs every outcome through the shared usage path."
+     current user, and logs every outcome through the shared usage path.
+
+  The three filters are not three boundaries. Scopes come from the verified token and the
+  disabled-tools CSV from instance settings, but the extension set is reconstructed from the
+  unsigned capability payload the client echoes back in its session id — a client can claim any
+  extension it likes, and never has to `initialize` to do so. Treat `:required-extensions` as a
+  client-declared hint that keeps a tool out of a list where it could not render, and put nothing
+  behind it that the tool's `:scope` does not already protect."
   (:require
    [clojure.string :as str]
    [malli.error :as me]
@@ -51,8 +58,36 @@
   (when-not (ifn? handler)
     (throw (ex-info (format "v2 MCP tool %s registered without a :handler fn" tool-name)
                     {:tool-name tool-name})))
+  ;; Dispatch gates on :required-extensions, so a misspelled key (:require-extensions,
+  ;; :requires-extension) would silently disable the gate — reject unknown keys loudly instead.
+  (when-let [unknown (seq (remove #{:name :scope :description :args :handler :annotations
+                                    :output-schema :required-extensions :title :_meta}
+                                  (keys tool)))]
+    (throw (ex-info (format "v2 MCP tool %s registered with unknown option(s) %s" tool-name (vec unknown))
+                    {:tool-name tool-name :unknown-keys (vec unknown)})))
+  ;; Only the extensions a client can actually advertise are gateable: an unknown keyword is never in
+  ;; `ui-resource/supported-extensions`'s output, so the tool would be hidden from and refused to every
+  ;; client forever, with no error to say why.
+  (when (contains? tool :required-extensions)
+    (let [exts (:required-extensions tool)]
+      (when-not (and (set? exts) (every? keyword? exts))
+        (throw (ex-info (format "v2 MCP tool %s :required-extensions must be a set of keywords" tool-name)
+                        {:tool-name tool-name :required-extensions exts})))
+      (when-let [unknown (seq (remove mcp.ui-resource/known-extensions exts))]
+        (throw (ex-info (format "v2 MCP tool %s requires unknown client extension(s) %s — no client can satisfy them"
+                                tool-name (vec unknown))
+                        {:tool-name tool-name :unknown-extensions (vec unknown)})))))
   ;; Fail at load time (not first list) on a schema strict clients can't consume.
   (tools-manifest/assert-optional-fields-nullable! args tool-name)
+  ;; The registry is keyed by public name, so a second definition claiming an existing name would
+  ;; silently shadow the first, with load order deciding which one `tools/call` reaches. Compared by the
+  ;; handler var's fully-qualified symbol, not by identity: reloading a tool namespace (REPL,
+  ;; tools.namespace refresh) mints a fresh var for the same name, which an identity check would reject.
+  (let [handler-sym (fn [h] (when (var? h) (symbol h)))]
+    (when-let [existing (get @tools* tool-name)]
+      (when-not (= (handler-sym (:handler existing)) (handler-sym handler))
+        (throw (ex-info (format "v2 MCP tool %s is already registered by a different handler" tool-name)
+                        {:tool-name tool-name})))))
   (swap! tools* assoc tool-name tool)
   ;; flush cache to allow for repl/test redefinition.
   (reset! manifest-cache nil)
@@ -61,9 +96,9 @@
 (defmacro deftool
   "Define and register a v2 MCP tool.
 
-    (deftool ping-v2
-      \"Health-check tool for the v2 MCP surface.\"
-      {:name        \"ping_v2\"
+    (deftool echo
+      \"Echo the message back.\"
+      {:name        \"echo\"
        :scope       metabot.scope/agent-content-read
        :annotations {:readOnlyHint true}
        :args        [:map …]}
@@ -86,7 +121,16 @@
    - `:annotations` - _optional_ - overrides for the default annotations
    - `:args` - malli schema for the arguments, published as `inputSchema`
    - `:output-schema` - _optional_ - malli schema for the structured output, published as `outputSchema`
-   - `:extra-scopes` - _optional_ - scopes not required for normal usage but that unlock extra behavior
+   - `:required-extensions` - _optional_ - set of client extensions (e.g. `:mcp-app-ui`) the tool
+     needs to render. Clients that don't advertise one don't see the tool listed and get a
+     teaching error if they call it anyway — but the advertisement is unauthenticated, so this is
+     a hint that spares incapable clients an unrenderable tool, not an authorization boundary.
+     `:scope` is the boundary; a tool gated only by an extension is a tool with no gate.
+   - `:title` - _optional_ - human-readable display name, published alongside `:name` for clients
+     that show one; without it clients fall back to the raw tool name
+   - `:_meta` - _optional_ - map published verbatim on the tool entry, carrying client-specific
+     hints outside the MCP tool schema (e.g. `{:ui {:visibility [\"app\"]}}` to mark a tool as one
+     the app calls for itself rather than one the model should choose)
 
    Handlers return MCP content (see [[metabase.mcp.v2.common/success-content]]) or throw a teaching error."
   [handler-sym description opts argv & body]
@@ -105,16 +149,6 @@
   []
   (into #{}
         (map :scope)
-        (vals @tools*)))
-
-(defn registered-opt-in-scopes
-  "Every registered tool's `:extra-scopes`.
-
-  A handler gates optional behavior using these, so they are advertised in `scopes_supported` for a token to
-  request. But they should be kept out of the default DCR grant."
-  []
-  (into #{}
-        (mapcat :extra-scopes)
         (vals @tools*)))
 
 ;;; ------------------------------------------------ Manifest ------------------------------------------------------
@@ -199,6 +233,24 @@
   (when-let [explanation ((mr/explainer schema) arguments)]
     (str "Invalid arguments: " (common/humanize-detail (me/humanize explanation)))))
 
+(defn- insufficient-scope-message
+  "The scope-denial error text. Names the scope the tool requires and the ones the token holds — both are
+   in hand here, and a message that names only the tool leaves the caller with nothing to act on, against
+   the server's own `initialize` instructions promising that a failed call always names its fix.
+
+   `required` is a scope string or a set of alternatives ([[metabase.mcp.scope/matches?]] accepts either);
+   `token-scopes` may carry the `::api.scope/unrestricted` keyword alongside its strings, which is not a
+   scope a caller can request, so only strings are listed back."
+  [tool-name required token-scopes]
+  (let [held  (sort (filter string? token-scopes))
+        needs (if (set? required)
+                (str "one of " (str/join ", " (sort required)))
+                (str required))]
+    (str "Insufficient scope to call tool: " tool-name ". Requires " needs "; "
+         (if (seq held)
+           (str "your token holds " (str/join ", " held) ".")
+           "your token holds no scopes."))))
+
 (defn- dispatch-tool-call
   [token-scopes session-id tool-name arguments options]
   (let [tool    (get @tools* tool-name)
@@ -209,20 +261,19 @@
       ;; calling a tool that never existed.
       (or (nil? tool)
           (contains? (disabled-tool-names) tool-name))
-      (common/error-content (str "Unknown tool: " tool-name) common/error-code-method-not-found)
+      {:error {:code common/error-code-method-not-found :message (str "Unknown tool: " tool-name)}}
 
       (not (map? (or arguments {})))
-      (common/error-content "Invalid arguments: expected a JSON object." common/error-code-invalid-params)
+      {:error {:code common/error-code-invalid-params :message "Invalid arguments: expected a JSON object."}}
 
       (not (mcp.scope/matches? token-scopes (:scope tool)))
-      (common/error-content (str "Insufficient scope to call tool: " tool-name)
-                            common/error-code-invalid-request)
+      {:error {:code common/error-code-invalid-request
+               :message (insufficient-scope-message tool-name (:scope tool) token-scopes)}}
 
       ;; A UI tool the client can't render is a caller error, not a hidden tool: unlike the
       ;; scope/disabled cases it stays listed for capable clients, so name what's missing.
       (seq missing)
-      (common/error-content (mcp.ui-resource/missing-extensions-error tool-name missing)
-                            common/error-code-invalid-params)
+      {:error {:code common/error-code-invalid-params :message (mcp.ui-resource/missing-extensions-error tool-name missing)}}
 
       :else
       ;; Strict MCP clients (ChatGPT) send every declared property with `null` for the ones they
@@ -230,24 +281,23 @@
       ;; null identically. Nested values are left alone.
       (let [arguments (u/remove-nils (or arguments {}))]
         (if-let [message (validation-error-message (:args tool) arguments)]
-          (common/error-content message common/error-code-invalid-params)
+          {:error {:code common/error-code-invalid-params :message message}}
           (try
-            ((:handler tool) arguments {:session-id      session-id
-                                        :token-scopes    token-scopes
-                                        :client-info     (:client-info options)
-                                        :request-context (:request-context options)})
+            {:result ((:handler tool)
+                      arguments
+                      {:session-id      session-id
+                       :token-scopes    token-scopes
+                       :client-info     (:client-info options)
+                       :request-context (:request-context options)})}
             ;; Every failure is sanitized in one place: only deliberately caller-facing errors
             ;; surface their message; internal ones are logged and returned generically.
             (catch Exception e
-              (common/->mcp-error-content e))))))))
+              {:result (common/->mcp-error-content e)})))))))
 
 (defn call-tool
-  "Dispatch a v2 MCP `tools/call`. Returns MCP content on success, or error content on failure.
+  "Dispatch a v2 MCP `tools/call`. Returns `{:error {:code ... :message ...}}` when the registry rejects the request before dispatch, or `{:result mcp-content}` after handler execution. Only an executed handler can produce an MCP result carrying `:isError`.
 
-   Every call — including scope-denied, unknown-tool, and error outcomes — is recorded to
-   `mcp_tool_call_log` (EE-only, best-effort) with its timing, success/error status, and on
-   error the JSON-RPC `error_code` + `error_message` (the latter gated/truncated by the
-   writer)."
+   Every call is recorded to `mcp_tool_call_log` (EE-only, best-effort) with its timing, success/error status, and on error the JSON-RPC `error_code` + `error_message` (the latter gated/truncated by the writer)."
   ([token-scopes session-id tool-name arguments]
    (call-tool token-scopes session-id tool-name arguments {}))
   ([token-scopes session-id tool-name arguments options]
@@ -267,16 +317,25 @@
                        :user-agent    (get-in options [:request-context :user-agent])
                        :ip-address    (get-in options [:request-context :ip-address])}))]
        (try
-         (let [result (dispatch-tool-call token-scopes session-id tool-name arguments options)]
-           (if (:isError result)
-             (record! "error"
-                      (or (::common/error-code result) common/error-code-internal)
-                      (some-> result :content first :text))
-             (record! "success" nil nil))
+         (let [{:keys [error result] :as outcome}
+               (dispatch-tool-call token-scopes session-id tool-name arguments options)
+               result-error-code
+               (::common/error-code result)]
+           (if error
+             (record! "error" (:code error) (:message error))
+             (if (:isError result)
+               (record! "error"
+                        (or result-error-code common/error-code-internal)
+                        (some-> result :content first :text))
+               (record! "success" nil nil)))
            ;; `::common/error-code` is an internal classification marker — never expose it to the client.
-           (let [result (dissoc result ::common/error-code)]
-             (ait/record! {:ai/tool-output result})
-             result))
+           (if (contains? outcome :result)
+             (let [result (dissoc result ::common/error-code)]
+               ;; Trace the result WITHOUT the private MCP Apps block: it can carry a live UI credential, and a
+               ;; trace outlives the credential's five-minute window. The client still gets the full result.
+               (ait/record! {:ai/tool-output (common/redact-mcp-apps-meta result)})
+               (assoc outcome :result result))
+             outcome))
          (catch Throwable e
            ;; A handler that throws something the dispatch try doesn't convert would otherwise skip instrumentation
            ;; and under-report errors. Record the failure, then rethrow so the transport layer still surfaces it to

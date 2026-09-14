@@ -68,8 +68,8 @@ export function Header({
 
   return (
     <Flex
-      p="md"
-      gap="md"
+      p="lg"
+      gap="lg"
       align="center"
       className={className}
       data-testid="visualizer-header"

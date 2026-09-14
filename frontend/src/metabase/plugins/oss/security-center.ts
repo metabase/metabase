@@ -6,6 +6,8 @@ import {
 } from "metabase/plugins/components/PluginPlaceholder";
 import type { PluginRoute } from "metabase/plugins/types";
 
+import { definePluginSlot } from "../slot";
+
 type SecurityCenterNavItemProps = {
   currentPath: string;
 };
@@ -28,11 +30,4 @@ const getDefaultPlugin = (): SecurityCenterPlugin => ({
   SecurityCenterMobileNavItem: PluginPlaceholder,
 });
 
-export const PLUGIN_SECURITY_CENTER = getDefaultPlugin();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(PLUGIN_SECURITY_CENTER, getDefaultPlugin());
-}
+export const PLUGIN_SECURITY_CENTER = definePluginSlot(getDefaultPlugin);

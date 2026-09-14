@@ -3,14 +3,14 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.mcp.core :as mcp]
+   [metabase.oauth-server.db :as oauth-server.db]
    [metabase.oauth-server.scopes :as scopes]
    [metabase.oauth-server.settings :as oauth-settings]
    [metabase.oauth-server.store :as store]
    [metabase.system.core :as system]
    [metabase.util :as u]
    [oidc-provider.core :as oidc]
-   [oidc-provider.store :as oidc.store]
-   [toucan2.core :as t2]))
+   [oidc-provider.store :as oidc.store]))
 
 (set! *warn-on-reflection* true)
 
@@ -30,33 +30,26 @@
   "All OAuth scopes intended to be advertised in the server's discovery metadata (`scopes-supported`).
 
   `mb:full` is deliberately absent. Advertising it here puts a full-access grant in front of every client that reads
-  discovery metadata. A first-party client that needs it still registers with it explicitly; registration should not
-  consult this list."
+  discovery metadata, so keeping it out means no client is led toward it. Note this is not a gate: dynamic
+  registration is unauthenticated and passes a client-supplied `scope` through unchecked, so a client that names
+  `mb:full` itself still registers with it. Keeping it off this list narrows who finds it, not who may ask."
   []
-  (-> (sorted-set)
-      (into (mcp/all-scopes))
-      (into (mcp/opt-in-scopes))
-      vec))
-
-(defn protected-resource-scopes
-  "The scopes advertised in the MCP resource's RFC 9728 protected-resource metadata so a client discovering scopes via
-  the resource doc can still learn about and request them. `mb:full` is intentionally omitted — it is a first-party
-  full-access scope, not specific to the MCP resource."
-  []
-  (-> (sorted-set)
-      (into (mcp/all-scopes))
-      (into (mcp/opt-in-scopes))
-      vec))
+  (vec (into (sorted-set) (mcp/all-scopes))))
 
 (defn mcp-resource-scopes
-  "The scopes advertised for the MCP resource specifically. RFC 9728 metadata answers \"what does *this* resource
-  accept\", and the MCP surface accepts exactly the scopes its tool registry gates on — the rationalized five — plus
-  the resource scopes its UI tools render through."
-  []
-  (-> (sorted-set)
-      (into (mcp/v2-scopes))
-      (into (mcp/opt-in-scopes))
-      vec))
+  "The scopes advertised for the MCP resource at `path`. RFC 9728 metadata answers \"what does *this* resource
+  accept\", and every path in [[metabase.mcp.paths/endpoint-paths]] now reaches the same v2 surface, so they
+  all accept the same set: the scopes the v2 tool registry gates on plus the resource scopes its UI tools
+  render through.
+
+  This branched while v1 was still served. v1's tools gated on the per-entity agent-API scopes
+  (`agent:question:create`, `agent:sql:execute`, …), so the aliases that reached v1 had to advertise those or
+  a client following the metadata would land with an empty `tools/list`. With v1 retired (#81708) the branch
+  inverted: the canonical `/api/metabase-mcp` served v2 tools while advertising fourteen scopes no tool gates
+  on any more, putting them on a consent screen for capabilities that no longer exist. `path` is kept in the
+  signature because RFC 9728 metadata is per-resource and a future surface may diverge again."
+  [_path]
+  (vec (into (sorted-set) (mcp/v2-scopes))))
 
 (defn default-grant-scopes
   "The scope set a dynamically-registered client is registered with when it sends no `scope` of its own (RFC 7591 makes
@@ -72,10 +65,7 @@
   token are what each resource advertises, [[narrow-scope-to-resource]], and the consent screen."
   []
   ;; sorted so the `scope` echoed back in the registration response is stable across restarts
-  (-> (sorted-set)
-      (into (supported-scopes))
-      (into (protected-resource-scopes))
-      (into (mcp-resource-scopes))))
+  (into (sorted-set) (supported-scopes)))
 
 (def ^:private scheme-default-port
   {"http" 80, "https" 443})
@@ -94,12 +84,19 @@
     (try
       (let [^java.net.URI uri (java.net.URI. (str s))
             scheme            (some-> (.getScheme uri) u/lower-case-en)
-            host              (some-> (.getHost uri) u/lower-case-en)
-            port              (.getPort uri)
+            ;; `.getHost` is nil for a host java.net.URI considers non-conformant -- notably one with an
+            ;; underscore, which is routine for Docker Compose / k8s service names and which Metabase's own
+            ;; `u/url?` accepts. Reading the authority instead keeps those canonicalizing; a nil host here
+            ;; would return nil, match nothing, and disable narrowing instance-wide and silently.
+            authority         (some-> (.getAuthority uri) u/lower-case-en)
+            [host port]       (when authority
+                                (if-let [[_ h p] (re-matches #"(?:[^@]*@)?(.*?)(?::(\d+))?" authority)]
+                                  [h (some-> p parse-long)]
+                                  [authority nil]))
             path              (or (.getPath uri) "")]
-        (when (and scheme host)
+        (when (and scheme (not-empty host))
           (str scheme "://" host
-               (when-not (or (neg? port) (= port (scheme-default-port scheme)))
+               (when-not (or (nil? port) (= port (scheme-default-port scheme)))
                  (str ":" port))
                (cond-> path
                  (and (> (count path) 1) (str/ends-with? path "/"))
@@ -111,10 +108,13 @@
 
   `resources` are RFC 8707 resource indicators from the authorization request. When one names the MCP resource —
   compared as [[canonical-resource-uri]], since clients disagree on trailing slashes, case, and default ports — scopes
-  that surface does not accept are dropped, so the consent screen asks for what the token can actually be used for
-  rather than everything the client registered. Returns the scope unchanged when no indicator names a resource we
-  narrow for, and nil when nothing survives (callers should drop the parameter entirely rather than send an empty
-  one).
+  no named surface accepts are dropped, so the consent screen asks for what the token can actually be used for
+  rather than everything the client registered. Several indicators may be sent, and the token has to work against
+  each, so what survives is the union of what they accept. Returns the scope unchanged when no indicator names a
+  resource we narrow for, and nil when nothing survives.
+
+  Note nil is the answer for both \"nothing was requested\" and \"nothing survived\"; the caller has the requested
+  scope and must tell them apart, since only the first may drop the parameter (see the authorize handler).
 
   Every alias in [[metabase.mcp.core/mcp-endpoint-paths]] counts, not just the canonical one: a client that connected
   through an alias was handed that path as its resource identifier, and narrowing has to recognize what it was told to
@@ -124,18 +124,28 @@
   authorization into a rejected one.
 
   `mb:full` does not survive. The MCP resource metadata never advertised it, and a client naming the MCP resource is
-  asking for a token to use against that surface — which accepts none of the REST API that scope unlocks. A
-  first-party client that genuinely wants full access should not be naming the MCP resource. Note this only reaches
-  clients that send a resource indicator: one that omits it is not narrowed at all, so a register-time rule is still
-  the only way to keep `mb:full` off a dynamically-registered client entirely."
+  asking for a token to use against that surface — which accepts none of the REST API that scope unlocks.
+
+  This shapes the consent screen and the stored grant; it is not audience enforcement. `resolve-access-token` does
+  not read `:resource` from the token row, so a token narrowed against one MCP path is still accepted at another,
+  and a client that omits the indicator is not narrowed at all. Both gaps are inherited rather than introduced
+  here; closing them is BOT-2124."
   [resources scope]
-  (let [scope (some-> scope str str/trim not-empty)]
-    (if-not (and scope
-                 (some (into #{} (keep canonical-resource-uri) resources)
-                       (keep #(canonical-resource-uri (str (system/site-url) %))
-                             (mcp/mcp-endpoint-paths))))
+  (let [scope    (some-> scope str str/trim not-empty)
+        ;; A lone indicator may arrive as a bare string (the endpoint schema allows one). `keep` over a String
+        ;; iterates characters, none of which canonicalize, which would silently skip narrowing entirely --
+        ;; so normalize before the scan rather than relying on the caller having vectorized.
+        named    (into #{} (keep canonical-resource-uri)
+                       (cond-> resources (string? resources) vector))
+        ;; Every MCP path the request actually named. A client may send several RFC 8707 indicators, and the
+        ;; token has to work against each -- so the accepted set is the UNION of what they accept, not the set
+        ;; of whichever one is checked first. Taking a single winner would drop the v1-only scopes when a v1
+        ;; alias is named alongside v2, silently shrinking a grant the client asked for and the user approved.
+        matched  (filter #(contains? named (canonical-resource-uri (str (system/site-url) %)))
+                         (mcp/mcp-endpoint-paths))]
+    (if (or (not scope) (empty? matched))
       scope
-      (let [accepted (set (mcp-resource-scopes))]
+      (let [accepted (into #{} (mapcat mcp-resource-scopes) matched)]
         (not-empty (str/join " " (filter accepted (str/split scope #"\s+"))))))))
 
 (defn- build-provider-config
@@ -191,12 +201,13 @@
    expired, or revoked token, a token with no associated user, or a token whose user has since
    been deactivated).
 
-   The deactivated-user check is enforced here rather than only at each caller: the token store
-   knows only the token's existence, expiry, and user-id, so a token minted for a user who is later
-   deactivated stays otherwise valid. The core session middleware's bearer bridge happens to re-filter
-   on `is_active` via its user-info query, but the v1 MCP transport dispatches straight on the returned
-   `:user-id`, so a deactivated user's still-live token would authenticate there. Gating in this shared
-   resolver closes that for every caller at once.
+   The `is_active` gate here is defense in depth, not the primary control: deactivating a user through
+   the model fires `:event/user-credentials-revoked`, and `metabase.oauth-server.events.revoke-on-deactivation`
+   stamps `revoked_at` on every token, which the store lookup above already filters on. This gate covers
+   the paths that don't go through the model hook — a direct SQL or migration update of `core_user`, a
+   restored backup — and keeps the invariant local to the one resolver every bearer caller shares (the
+   v1 MCP transport dispatches straight on the returned `:user-id` with no re-check of its own). It costs
+   one indexed primary-key lookup per bearer request.
 
    This is the single token-resolution lookup shared by the MCP transport and the core
    session middleware's bearer-token bridge — keep it the only place an access token is
@@ -206,9 +217,11 @@
     (when-let [provider (get-provider)]
       (when-let [token-data (oidc.store/get-access-token (:token-store provider) token-string)]
         (let [expiry (:expiry token-data)]
-          (when (or (nil? expiry)
-                    (t/after? (t/instant expiry) (t/instant)))
+          (when (and (or (nil? expiry)
+                         (t/after? (t/instant expiry) (t/instant)))
+                     ;; Fail closed if the issuing client is gone (SEC-863).
+                     (oauth-server.db/oauth-client-exists? (:client-id token-data)))
             (when-let [user-id (some-> (:user-id token-data) parse-long)]
-              (when (t2/exists? :model/User :id user-id :is_active true)
+              (when (oauth-server.db/active-user-exists? user-id)
                 {:user-id user-id
                  :scopes  (or (some->> (:scope token-data) (into #{})) #{})}))))))))

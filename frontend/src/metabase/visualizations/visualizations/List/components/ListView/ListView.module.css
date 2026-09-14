@@ -30,7 +30,7 @@
   height: 4rem;
   border-bottom: 1px solid var(--mb-color-border-neutral-subtle);
   background: var(--mb-color-background_page-primary);
-  padding-inline: var(--item-padding, var(--mantine-spacing-md));
+  padding-inline: var(--item-padding, var(--mantine-spacing-lg));
 
   &:hover {
     background-color: var(--mb-color-background_surface-hover);
@@ -55,7 +55,7 @@
 .listItem {
   display: grid;
   grid-template-columns: minmax(0, 1fr) repeat(var(--grid-columns), 14%);
-  gap: var(--mantine-spacing-md);
+  gap: var(--mantine-spacing-lg);
   align-items: center;
 
   &.withIcon {
@@ -82,9 +82,9 @@
   gap: var(--mantine-spacing-sm);
   align-items: start;
   border: 1px solid var(--mb-color-border-neutral);
-  border-radius: var(--mantine-radius-md);
+  border-radius: var(--mantine-radius-sm);
   background: var(--mb-color-background_page-primary);
-  padding: var(--mantine-spacing-md);
+  padding: var(--mantine-spacing-lg);
 }
 
 .listEntityIcon {

@@ -116,7 +116,7 @@ export const MetabotInlineSQLPrompt = ({
         </Box>
       )}
 
-      <Flex justify="space-between" align="center" gap="sm" mt="xs">
+      <Flex justify="space-between" align="center" gap="sm" mt="xxs">
         <Box
           data-testid="metabot-inline-sql-error"
           w="100%"
@@ -129,7 +129,7 @@ export const MetabotInlineSQLPrompt = ({
             error?.message
           )}
         </Box>
-        <Flex gap="xs" flex="1 0 auto">
+        <Flex gap="xxs" flex="1 0 auto">
           {canUseSqlGeneration && (
             <Tooltip disabled={isLoading} label={t`Send to ${metabotName}`}>
               <Button

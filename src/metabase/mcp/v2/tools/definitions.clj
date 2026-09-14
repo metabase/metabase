@@ -12,14 +12,14 @@
    [medley.core :as m]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.queries :as v2.queries]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resolve :as v2.resolve]
    [metabase.mcp.v2.write :as v2.write]
-   [metabase.metabot.scope :as metabot.scope]
-   [toucan2.core :as t2]))
+   [metabase.metabot.scope :as metabot.scope]))
 
 (set! *warn-on-reflection* true)
 
@@ -30,6 +30,7 @@
 ;; ratchet). Resolving the modules' public `:api` write fns at call time keeps `mcp` a consumer of
 ;; the *models*, not the *modules*. The target is built with `symbol` (not a quoted literal) so the
 ;; namespace stays opaque to the static dependency analysis that derives module `:uses`.
+#_{:clj-kondo/ignore [:metabase/modules]}
 (defn- api-fn [ns-name fn-name] (requiring-resolve (symbol ns-name fn-name)))
 
 (defn- create-segment! [body] ((api-fn "metabase.segments.api" "create-segment!") body))
@@ -77,6 +78,15 @@
     :update (when (contains? args :table_id)
               (common/throw-teaching-error
                "`table_id` cannot be changed on update — the server derives it from `definition`'s source table."))))
+
+(defn- check-name!
+  "Reject a present-but-blank `name`. The REST endpoints these tools delegate to take
+   `ms/NonBlankString`; the tools' own JSON schema can only say `:min 1`, which \" \" satisfies, so
+   without this the tools would be laxer than the endpoints whose checks they inherit."
+  [{entity-name :name} entity]
+  (when (and (some? entity-name) (str/blank? entity-name))
+    (common/throw-teaching-error
+     (format "`name` cannot be blank — pass a short descriptive name for the %s." entity))))
 
 (defn- check-revision-message!
   [{:keys [revision_message]} entity]
@@ -325,6 +335,7 @@
       :create
       (let [[_ body]   dispatched
             _          (check-method-args! :create body)
+            _          (check-name! body "segment")
             table      (resolve-table (:table_id body))
             definition (prepare-definition :segment (:definition body) table)
             _          (check-table-match! table definition)]
@@ -332,22 +343,23 @@
                                                  :description (:description body)
                                                  :definition  definition}))
             (write-result :segment)
-            (->> (v2.write/readback token-scopes [metabot.scope/agent-content-read]))
+            (as-> row (v2.write/readback token-scopes [metabot.scope/agent-content-read] row nil))
             common/success-content))
 
       :update
       (let [[_ id body] dispatched
             _           (check-method-args! :update body)
+            _           (check-name! body "segment")
             _           (check-revision-message! body "segment")
             segment     (resolve-existing :model/Segment id)
             body        (m/update-existing body :definition
                                            (fn [definition]
                                              (prepare-definition
                                               :segment definition
-                                              (t2/select-one :model/Table :id (:table_id segment)))))]
+                                              (mcp.db/table-by-id (:table_id segment)))))]
         (-> (run-domain-write #(update-segment! (:id segment) body))
             (write-result :segment)
-            (->> (v2.write/readback token-scopes [metabot.scope/agent-content-read]))
+            (as-> row (v2.write/readback token-scopes [metabot.scope/agent-content-read] row nil))
             common/success-content)))))
 
 ;;; ------------------------------------------------ measure_write -------------------------------------------------
@@ -391,6 +403,7 @@
       :create
       (let [[_ body]   dispatched
             _          (check-method-args! :create body)
+            _          (check-name! body "measure")
             table      (resolve-table (:table_id body))
             definition (prepare-definition :measure (:definition body) table)
             _          (check-table-match! table definition)]
@@ -398,20 +411,21 @@
                                                  :description (:description body)
                                                  :definition  definition}))
             (write-result :measure)
-            (->> (v2.write/readback token-scopes [metabot.scope/agent-content-read]))
+            (as-> row (v2.write/readback token-scopes [metabot.scope/agent-content-read] row nil))
             common/success-content))
 
       :update
       (let [[_ id body] dispatched
             _           (check-method-args! :update body)
+            _           (check-name! body "measure")
             _           (check-revision-message! body "measure")
             measure     (resolve-existing :model/Measure id)
             body        (m/update-existing body :definition
                                            (fn [definition]
                                              (prepare-definition
                                               :measure definition
-                                              (t2/select-one :model/Table :id (:table_id measure)))))]
+                                              (mcp.db/table-by-id (:table_id measure)))))]
         (-> (run-domain-write #(update-measure! (:id measure) body))
             (write-result :measure)
-            (->> (v2.write/readback token-scopes [metabot.scope/agent-content-read]))
+            (as-> row (v2.write/readback token-scopes [metabot.scope/agent-content-read] row nil))
             common/success-content)))))

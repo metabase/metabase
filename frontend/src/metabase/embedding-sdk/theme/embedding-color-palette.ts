@@ -35,7 +35,11 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   "text-primary": ["text-primary"],
   "text-secondary": ["text-secondary"],
   "text-tertiary": ["text-tertiary", "text-disabled"],
-  background: ["background-primary", "background_page-primary"],
+  background: [
+    "background-primary",
+    "background_page-primary",
+    "background_surface-primary",
+  ],
   "background-secondary": [
     "background-secondary",
     "background-tertiary",
@@ -46,8 +50,8 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   "background-disabled": ["background-disabled", "background_surface-disabled"],
   "background-light": ["background-secondary", "background_page-secondary"],
   shadow: ["shadow", "shadow-default"],
-  positive: ["success", "feedback-positive"],
-  negative: ["danger", "feedback-negative"],
+  positive: ["success", "feedback-positive", "feedback-positive-strong"],
+  negative: ["danger", "feedback-negative", "feedback-negative-strong"],
   "text-white": ["text-primary-inverse", "white", "core-white"],
   error: ["error", "feedback-negative"],
   "background-error": ["background-error", "background_surface-error"],

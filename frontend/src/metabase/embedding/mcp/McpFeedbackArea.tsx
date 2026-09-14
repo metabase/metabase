@@ -35,7 +35,7 @@ export function McpFeedbackArea({
     <Flex h="100%" w="100%" direction="column" data-testid="mcp-feedback-area">
       <Flex
         h={65}
-        px="lg"
+        px="xl"
         align="center"
         justify="space-between"
         flex="0 0 auto"
@@ -54,7 +54,7 @@ export function McpFeedbackArea({
         </UnstyledButton>
       </Flex>
 
-      <Flex flex={1} w="100%" align="center" justify="center" px="xl" py="lg">
+      <Flex flex={1} w="100%" align="center" justify="center" px="xxl" py="xl">
         <FormProvider
           initialValues={{
             issue_type: isPositive ? undefined : "",
@@ -63,9 +63,9 @@ export function McpFeedbackArea({
           onSubmit={onSubmit}
         >
           <Form w="100%">
-            <Stack w="100%" maw={350} mx="auto" gap="md">
+            <Stack w="100%" maw={350} mx="auto" gap="lg">
               {!isPositive && (
-                <Stack gap="xs">
+                <Stack gap="xxs">
                   <Text c="text-secondary" fw={700} fz="md">
                     {t`What went wrong?`}
                   </Text>

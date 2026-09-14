@@ -17,11 +17,11 @@ export function SegmentItem({ segment, href }: SegmentItemProps) {
       to={href}
       aria-label={segment.name}
       role="listitem"
-      px="md"
+      px="lg"
       py="0.75rem"
       withBorder
     >
-      <Stack gap="xs">
+      <Stack gap="xxs">
         <Flex align="center" gap="sm">
           <Icon name="segment" c="core-brand" />
           <Ellipsified lines={1} tooltip={segment.name}>

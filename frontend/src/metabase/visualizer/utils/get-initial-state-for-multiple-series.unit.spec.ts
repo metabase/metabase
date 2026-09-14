@@ -3,8 +3,8 @@ import { registerVisualization } from "metabase/viz-core";
 import {
   createMockCard,
   createMockColumn,
+  createMockDashCardDataSeries,
   createMockDatasetData,
-  createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
 import { getInitialStateForMultipleSeries } from "./get-initial-state-for-multiple-series";
@@ -36,7 +36,7 @@ describe("getInitialVisualizerStateForMultipleSeries", () => {
     });
 
     const rawSeries = [
-      createMockSingleSeries(firstCard, {
+      createMockDashCardDataSeries(firstCard, {
         data: createMockDatasetData({
           cols: [
             createMockColumn({ name: "Date" }),
@@ -44,7 +44,7 @@ describe("getInitialVisualizerStateForMultipleSeries", () => {
           ],
         }),
       }),
-      createMockSingleSeries(secondCard, {
+      createMockDashCardDataSeries(secondCard, {
         data: createMockDatasetData({
           cols: [
             createMockColumn({ name: "Date" }),

@@ -3,7 +3,10 @@
   (:require
    [malli.error :as me]
    [metabase.actions.args :as actions.args]
+   [metabase.actions.audit :as actions.audit]
+   [metabase.actions.db :as actions.db]
    [metabase.actions.events :as actions.events]
+   [metabase.actions.hierarchy :as actions.hierarchy]
    [metabase.actions.scope :as actions.scope]
    [metabase.actions.settings :as actions.settings]
    [metabase.api.common :as api]
@@ -22,8 +25,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2])
+   [methodical.core :as methodical])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -31,7 +33,8 @@
   "Allow actions to dynamically generating a :mapping, in none has been configured."
   {:arglists '([action-kw scope]), :added "0.57.0"}
   (fn [action-kw _scope]
-    action-kw))
+    action-kw)
+  :hierarchy #'actions.hierarchy/hierarchy)
 
 (defmethod default-mapping :default [_ _])
 
@@ -145,11 +148,7 @@
   nil)
 
 (defn- database-for-action [action-or-id]
-  (t2/select-one :model/Database {:select [:db.*]
-                                  :from   :action
-                                  :join   [[:report_card :card] [:= :card.id :action.model_id]
-                                           [:metabase_database :db] [:= :db.id :card.database_id]]
-                                  :where  [:= :action.id (u/the-id action-or-id)]}))
+  (actions.db/database-for-action (u/the-id action-or-id)))
 
 (defn check-actions-enabled!
   "Throws an appropriate error if actions are unsupported or disabled for the database of the action's model,
@@ -237,7 +236,7 @@
   "Uses cache to prevent redundant look-ups with an action call chain."
   [table-id]
   (assert table-id "Id cannot be nil")
-  (cached-database (:db_id (cached-value [:table-by-db-ids table-id] #(t2/select-one [:model/Table :db_id] table-id)))))
+  (cached-database (cached-value [:table-by-db-ids table-id] #(actions.db/table-database-id table-id))))
 
 (mu/defn- check-permissions
   [policy   :- :keyword
@@ -261,7 +260,10 @@
   [action
    scope
    arg-map-or-maps
-   & {:keys [policy existing-context user-id]}]
+   ;; `action-id`, `dashboard-id` and `audit-context` are attribution for the audit row; the scope maps are closed
+   ;; schemas, so they ride along as kwargs instead.
+   & {:keys [policy existing-context user-id action-id dashboard-id]
+      audit-context :context}]
   (when (and existing-context user-id)
     (assert (= user-id (:user-id existing-context)) "Existing context has a consistent user-id"))
   (log/with-context {:action action}
@@ -310,21 +312,37 @@
             (check-data-editing-enabled-for-database! db))))
       (log/with-context {:db-id (:id db)}
         (binding [*misc-value-cache* (atom {:databases (zipmap (map :id dbs) dbs)})]
-          (check-permissions policy arg-maps)
-          (let [result (let [context (-> existing-context
-                                         ;; TODO fix tons of tests which execute without user scope
-                                         (u/assoc-default :user-id (identity #_api/check-500
-                                                                    (or user-id api/*current-user-id*)))
-                                         (u/assoc-default :scope scope))]
-                         (if-not driver
-                           (perform-action-internal! action-kw context arg-maps)
-                           (driver/with-driver driver
-                             (let [context (assoc context
-                                                  ;; Legacy drivers dispatch on this, for now.
-                                                  ;; TODO As far as I'm aware we only have :sql-jdbc defined actions, so can stop dispatching
-                                                  ;;      on this and just fail if the dynamically determined driver is incompatible.
-                                                  :driver driver)]
-                               (perform-action-internal! action-kw context arg-maps)))))]
+          (let [context  (-> existing-context
+                             ;; TODO fix tons of tests which execute without user scope
+                             (u/assoc-default :user-id (identity #_api/check-500
+                                                        (or user-id api/*current-user-id*)))
+                             (u/assoc-default :scope scope))
+                ;; the permission check is inside the audited span so that a denial is traced the same way a
+                ;; driver error is
+                result   (actions.audit/with-audited-execution
+                           {:action       action-kw
+                            :action-id    action-id
+                            :dashboard-id dashboard-id
+                            :database-id  (:id db)
+                            :user-id      (:user-id context)
+                            :context      (or audit-context :action-execute)
+                            :native?      false
+                            :template     {:type     :internal
+                                           :action   (u/qualified-name action-kw)
+                                           :database (:id db)
+                                           :scope    (actions.scope/normalize-scope scope)}
+                            :inputs       arg-maps}
+                           (fn [{:keys [outputs]}] {:result_rows (count outputs)})
+                           (check-permissions policy arg-maps)
+                           (if-not driver
+                             (perform-action-internal! action-kw context arg-maps)
+                             (driver/with-driver driver
+                               (let [context (assoc context
+                                                    ;; Legacy drivers dispatch on this, for now.
+                                                    ;; TODO As far as I'm aware we only have :sql-jdbc defined actions, so can stop dispatching
+                                                    ;;      on this and just fail if the dynamically determined driver is incompatible.
+                                                    :driver driver)]
+                                 (perform-action-internal! action-kw context arg-maps)))))]
             {:effects (:effects (:context result))
              :outputs (:outputs result)}))))))
 

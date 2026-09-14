@@ -10,6 +10,7 @@
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.ingestion.query :as search.ingestion.query]
    [metabase.search.spec :as search.spec]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
@@ -157,11 +158,11 @@
 (deftest search-term-columns-test
   (testing "search-term-columns with vector format"
     (is (= #{:name :description}
-           (set (#'search.ingestion/search-term-columns [:name :description])))))
+           (set (#'search.ingestion.query/search-term-columns [:name :description])))))
   (testing "search-term-columns with map format"
     (is (= #{:name :description}
-           (set (#'search.ingestion/search-term-columns {:name identity
-                                                         :description nil}))))))
+           (set (#'search.ingestion.query/search-term-columns {:name identity
+                                                               :description nil}))))))
 
 (deftest search-items-count-test
   (testing "search-items-count returns correct count with various searchable items"

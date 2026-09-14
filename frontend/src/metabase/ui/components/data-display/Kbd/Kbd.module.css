@@ -2,7 +2,7 @@
   min-width: 1rem;
   padding: 0 0.125rem;
   border: none;
-  border-radius: var(--mantine-radius-xs);
+  border-radius: var(--mantine-radius-xxs);
   background-color: var(--mb-color-background_surface-secondary);
   box-shadow: none;
   color: var(--mb-color-text-primary);

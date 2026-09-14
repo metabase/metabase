@@ -48,7 +48,7 @@ export const LinkEditor = ({
   };
 
   return (
-    <Flex align="center" gap="xs">
+    <Flex align="center" gap="xxs">
       <Box style={{ flexGrow: 1 }}>
         <TextInput
           ref={inputRef}

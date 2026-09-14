@@ -1859,15 +1859,16 @@
       (is (some? (-> resp :resources first :error))))))
 
 (deftest decode-and-validate-query-strips-extra-keys-test
-  (testing "base64 query payloads are decoded, validated, and stripped of undeclared properties"
-    (let [encoded (u/encode-base64 (json/encode {:database (mt/id)
-                                                 :type     "query"
-                                                 :query    {:source-table (mt/id :orders)
-                                                            :a            1
-                                                            :a/b          2}}))
+  (testing "base64 query payloads are decoded, validated, and stripped of the query processor's internal keys"
+    ;; `:qp/source-card-id` and `:qp/stage-had-source-card` are keys the QP adds to a query while it runs and that
+    ;; permissions later read, so a client must never be able to send them in.
+    (let [encoded (u/encode-base64 (json/encode {:database          (mt/id)
+                                                 :type              "query"
+                                                 :qp/source-card-id 1
+                                                 :query             {:source-table              (mt/id :orders)
+                                                                     :qp/stage-had-source-card 1}}))
           q       (#'agent-api.api/decode-and-validate-query encoded)]
       (is (= :mbql/query (:lib/type q)))
-      (is (not (contains? q :a)))
-      (is (not (contains? q :a/b)))
-      (is (every? (fn [stage] (not (some #(contains? stage %) [:a :a/b]))) (:stages q))
-          "undeclared properties are stripped from every stage"))))
+      (is (not (contains? q :qp/source-card-id)))
+      (is (every? (fn [stage] (not (contains? stage :qp/stage-had-source-card))) (:stages q))
+          "internal keys are stripped from every stage"))))

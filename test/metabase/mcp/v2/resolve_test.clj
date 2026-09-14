@@ -65,6 +65,29 @@
   (is (= 99 (v2.resolve/resolve-collection-id "trash" {:trash-collection-id 99})))
   (is (thrown? Exception (v2.resolve/resolve-collection-id "trash"))))
 
+(deftest resolve-collection-id-collapses-unreadable-test
+  (testing "GHY-4148: a collection_id naming a collection the caller cannot read must give the
+            exact same not-found error as one naming no collection at all. Without the
+            `resolve-and-read` call in the main branch the id would travel straight into the write
+            unchecked, and a distinguishable error would turn the argument into a collection-id
+            enumeration oracle."
+    (mt/with-temp [:model/Collection {readable-id :id}   {:name "Readable"}
+                   :model/Collection {unreadable-id :id} {:name     "Crowberto's personal subfolder"
+                                                          :location (str "/" (:id (collection/user->personal-collection
+                                                                                   (mt/user->id :crowberto)))
+                                                                         "/")}]
+      (mt/with-test-user :rasta
+        (testing "a readable collection resolves to its own id"
+          (is (= readable-id (v2.resolve/resolve-collection-id readable-id))))
+        (let [missing    (try (v2.resolve/resolve-collection-id 13371337)
+                              (catch Exception e (ex-message e)))
+              unreadable (try (v2.resolve/resolve-collection-id unreadable-id)
+                              (catch Exception e (ex-message e)))]
+          (is (str/includes? missing "not found"))
+          ;; Compare the messages, not merely that both threw: differing wording is the leak.
+          (is (= (str/replace missing "13371337" (str unreadable-id))
+                 unreadable)))))))
+
 (deftest resolve-collection-id-or-personal-test
   (testing "GHY-4218: an absent collection argument defaults to the caller's personal collection"
     (mt/with-test-user :rasta
@@ -83,3 +106,36 @@
       (binding [api/*current-user-id* user-id]
         (is (thrown-with-msg? Exception #"no personal collection"
                               (v2.resolve/resolve-collection-id-or-personal nil)))))))
+
+(deftest ^:parallel normalize-id-test
+  (testing "GHY-4498: a client that serializes an int-or-string id param as a JSON string still
+            names the numeric id"
+    (is (= 16211 (v2.resolve/normalize-id "16211")))
+    (is (= 1 (v2.resolve/normalize-id "1"))))
+  (testing "GHY-4498: anything that isn't the exact shape of a numeric id is left alone"
+    (doseq [x ["0" "-1" "016211" "1.0" "12x" "" "root" "trash" 7 nil]]
+      (is (= x (v2.resolve/normalize-id x)))))
+  (testing "GHY-4498: a run of digits too large for a long stays a string rather than becoming nil"
+    (is (= "99999999999999999999" (v2.resolve/normalize-id "99999999999999999999"))))
+  (testing "GHY-4498: an entity_id is never mistaken for a numeric id"
+    (let [eid (u/generate-nano-id)]
+      (is (= eid (v2.resolve/normalize-id eid))))))
+
+(deftest ^:parallel resolve-id-or-404-accepts-numeric-string-test
+  (testing "GHY-4498: a numeric id sent as a JSON string resolves like the integer it names"
+    (is (= 7 (v2.resolve/resolve-id-or-404 :model/Card "7"))))
+  (testing "GHY-4498: strings that only look numeric keep failing validation"
+    (doseq [bad ["0" "-1" "016211" "1.0"]]
+      (is (thrown-with-msg? Exception #"entity_id"
+                            (v2.resolve/resolve-id-or-404 :model/Card bad))))))
+
+(deftest ^:parallel resolve-collection-id-accepts-numeric-string-test
+  (testing "GHY-4498: the sentinels still win over numeric-string coercion"
+    (is (nil? (v2.resolve/resolve-collection-id "root")))
+    (is (= 99 (v2.resolve/resolve-collection-id "trash" {:trash-collection-id 99})))))
+
+(deftest resolve-collection-id-numeric-string-test
+  (testing "GHY-4498: a collection_id sent as a JSON string resolves to that collection"
+    (mt/with-temp [:model/Collection {coll-id :id} {}]
+      (mt/with-test-user :crowberto
+        (is (= coll-id (v2.resolve/resolve-collection-id (str coll-id))))))))

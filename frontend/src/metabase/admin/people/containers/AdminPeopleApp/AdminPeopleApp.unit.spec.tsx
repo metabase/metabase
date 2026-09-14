@@ -1,12 +1,12 @@
-import { renderWithProviders, screen, within } from "__support__/ui";
-import { UpsellTenants } from "metabase/admin/upsells/UpsellTenants";
-import { createTenantsRouteGuard } from "metabase/admin/utils";
 import {
   createMockAdminAppState,
   createMockAdminState,
   createMockSettingsState,
   createMockState,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import { renderWithProviders, screen, within } from "__support__/ui";
+import { UpsellTenants } from "metabase/admin/upsells/UpsellTenants";
+import { createTenantsRouteGuard } from "metabase/admin/utils";
 import { Route } from "metabase/router";
 import type { EmbeddingHomepageStatus } from "metabase-types/api";
 import {
@@ -71,7 +71,9 @@ const setupTenantRoute = async (initialRoute: string) => {
   const state = createMockState({
     admin: createMockAdminState({
       app: createMockAdminAppState({
-        paths: [{ key: "people", name: "People", path: "/admin/people" }],
+        paths: [
+          { key: "people", getName: () => "People", path: "/admin/people" },
+        ],
       }),
     }),
     currentUser: createMockUser({
@@ -152,7 +154,7 @@ describe("AdminPeopleApp", () => {
       await setupTenantRoute("/admin/people/tenants");
 
       expect(
-        await screen.findByText("Manage customer-facing analytics at scale"),
+        await screen.findByText("Use a multi-tenant user strategy"),
       ).toBeInTheDocument();
     });
   });

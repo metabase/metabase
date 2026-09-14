@@ -10,9 +10,9 @@ type EntitySectionProps = {
 
 export function EntitySection({ icon, error, children }: EntitySectionProps) {
   return (
-    <Card px="md" py="lg" withBorder shadow="none">
+    <Card px="lg" py="xl" withBorder shadow="none">
       <Group align="start" wrap="nowrap">
-        <Box p="sm" bg="background_surface-brand-subtle" bdrs="md">
+        <Box p="sm" bg="background_surface-brand-subtle" bdrs="sm">
           <FixedSizeIcon c="core-brand" name={icon} />
         </Box>
         <Stack gap="sm" miw={0}>

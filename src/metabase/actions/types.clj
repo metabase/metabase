@@ -1,6 +1,5 @@
 (ns metabase.actions.types
   (:require
-   [malli.util :as mut]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -21,10 +20,20 @@
    [:map [:webhook-id ms/PositiveInt]]
    [:map [:unknown [:enum :model-action]]]])
 
+(def ^:private raw-scope-keys
+  (mapv (comp first second) raw-scope-types))
+
 ;; Relaxed, as we support it being
 (mr/def ::scope.raw
-  (into [:or] (for [s raw-scope-types]
-                (mut/merge s [:map [:type {:optional true} :keyword]]))))
+  [:and
+   (into [:map {:closed true}
+          [:type          {:optional true} :keyword]
+          [:collection-id {:optional true} ::fk-or-missing-id]
+          [:database-id   {:optional true} ::fk-or-missing-id]]
+         (for [[_ [k schema]] raw-scope-types]
+           [k {:optional true} schema]))
+   [:fn {:error/message "scope must name at least one of its ids"}
+    (fn [scope] (some #(contains? scope %) raw-scope-keys))]])
 
 ;; All derivable or unknown data removed, so that this is safe to use as a key.
 (mr/def ::scope.normalized

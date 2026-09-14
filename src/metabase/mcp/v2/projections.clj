@@ -95,14 +95,21 @@
       :detailed (project-fn detailed-keys)
       :sample   (or sample (zipmap detailed-keys (repeat "x")))})))
 
+(def ^:private projection-formats
+  #{:concise :detailed})
+
 (defn project
-  "Apply `type`'s `fmt` (`:concise` | `:detailed`) projection to `row`. Throws when no
-   projection is registered for `type`."
+  "Apply `type`'s `fmt` (`:concise` | `:detailed`) projection to `row`. Throws when no projection is
+   registered for `type`, or when `fmt` is not a projection format."
   [type fmt row]
   (let [entry (get @registry type)]
     (when-not entry
       (throw (ex-info (str "No projection registered for type: " (name type))
                       {:status-code 500 :type type})))
+    (when-not (contains? projection-formats fmt)
+      (throw (ex-info (str "Unknown projection format: " (pr-str fmt)
+                           ". Valid formats: " (str/join ", " (sort (map str projection-formats))))
+                      {:status-code 500 :type type :fmt fmt})))
     ((get entry fmt) row)))
 
 (defn catalog
@@ -146,27 +153,61 @@
 ;; rather than one tool silently overwriting another's at load time. `query_summary`/`template_tags`
 ;; are enrichments get_content computes; browse rows lack them and `compact` drops them.
 (def ^:private question-concise-keys
-  [:id :name :type :description :display :collection_id :database_id :table_id :source_card_id
-   :archived :query_summary :template_tags :parameters])
+  [:id :name :type :description :display :collection_id :collection_path :database_id :database_name
+   :table_id :source_card_id :archived :query_summary :template_tags :parameters])
 
 (def question-detailed-keys
   "Keys of the `:question` detailed projection. All are Card columns except
    [[question-enrichment-keys]], which `get_content` computes at read time."
   (into question-concise-keys
         [:entity_id :dashboard_id :query_type :collection_position :creator_id :cache_ttl
-         :created_at :updated_at]))
+         :visualization_settings :created_at :updated_at]))
 
 (def question-enrichment-keys
   "Projection keys `get_content` computes at read time — not Card columns. Column-select paths
    (`list_models`, browse rows) can't fetch them, so they drop these before selecting."
-  #{:query_summary :template_tags})
+  #{:query_summary :template_tags :collection_path :database_name})
 
+;; `visualization_settings` stays a scalar in the sample on purpose: its own keys are literal
+;; strings containing dots (`graph.dimensions`), so a dot-path into it could never address
+;; anything. The catalog offers the one whole-blob path.
 (register-key-projection!
  :question question-concise-keys
  :detailed-keys question-detailed-keys
  :sample (-> (zipmap question-detailed-keys (repeat "x"))
              (assoc :template_tags {}
                     :parameters [{:id "x" :name "x" :type "x" :target ["x"] :slug "x"}])))
+
+;; Shared by `document_write`'s echo and `get_content`'s document reads — registered here, the
+;; namespace both load, for the same reason as `:question` above: neither tool requires the other,
+;; so a registration owned by either would leave the other depending on `api.clj`'s require order.
+;; `:content_markdown_unavailable` stands in for `:content_markdown` when the stored body holds a
+;; block with no Markdown form. Exactly one of the pair is ever present, and the projection is
+;; compact, so the absent one drops out.
+(def ^:private document-concise-keys
+  [:id :name :collection_id :archived :content_markdown :content_markdown_unavailable])
+
+(def ^:private document-detailed-keys
+  (into document-concise-keys
+        [:entity_id :creator_id :created_at :updated_at]))
+
+(register-key-projection! :document document-concise-keys
+                          :detailed-keys document-detailed-keys)
+
+;; Shared by `metric_write`'s echo and `get_content`'s metric reads, and registered here for the
+;; same reason. Owning it from either tool leaves the other reading a projection registered by a
+;; namespace it does not require, so both tools once carried their own copy of this and the winner
+;; was decided by `api.clj`'s require order.
+(def ^:private metric-concise-keys
+  [:id :name :type :description :collection_id :database_id :table_id :source_card_id
+   :archived :query_summary])
+
+(def ^:private metric-detailed-keys
+  (into metric-concise-keys
+        [:entity_id :display :creator_id :created_at :updated_at]))
+
+(register-key-projection! :metric metric-concise-keys
+                          :detailed-keys metric-detailed-keys)
 
 ;;; ----------------------------------------------- dashboard ------------------------------------------------------
 

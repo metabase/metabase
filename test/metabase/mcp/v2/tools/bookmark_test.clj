@@ -23,17 +23,20 @@
      (registry/call-tool scopes nil "bookmark_content" args))))
 
 (defn- tool-result
-  [response]
-  (when (:isError response)
-    (throw (ex-info (str "tool call failed: " (-> response :content first :text))
-                    {:response response})))
-  (-> response :content first :text json/decode+kw))
+  [{:keys [result error]}]
+  (when error
+    (throw (ex-info (str "tool call rejected: " (:message error)) {:error error})))
+  (when (:isError result)
+    (throw (ex-info (str "tool call failed: " (-> result :content first :text))
+                    {:result result})))
+  (-> result :content first :text json/decode+kw))
 
 (defn- tool-error
-  [response]
-  (when-not (:isError response)
-    (throw (ex-info "expected a tool error, got success" {:response response})))
-  (-> response :content first :text))
+  [{:keys [result error]}]
+  (cond
+    error                (:message error)
+    (:isError result)    (-> result :content first :text)
+    :else                (throw (ex-info "expected a tool error, got success" {:result result}))))
 
 (deftest bookmark-and-unbookmark-test
   (testing "GHY-4152: bookmarked true/false creates and removes the calling user's bookmark row"
@@ -91,7 +94,7 @@
               (tool-result (call-tool! :rasta {:type "collection" :id coll-eid :bookmarked true}))))
       (is (t2/exists? :model/CollectionBookmark :collection_id coll-id :user_id (mt/user->id :rasta)))))
   (testing "GHY-4152: a malformed id is a teaching error naming both accepted shapes"
-    (is (= "Invalid id \"nope\" — pass a numeric id or a 21-character entity_id."
+    (is (= "Invalid id \"nope\" — pass the positive numeric id, or the 21-character entity_id from a search or list result."
            (tool-error (call-tool! :rasta {:type "collection" :id "nope" :bookmarked true})))))
   (testing "GHY-4152: zero and negative numeric ids are rejected by schema, matching REST's ms/PositiveInt"
     (doseq [bad-id [0 -1]]
@@ -141,9 +144,9 @@
 (deftest scope-test
   (testing "GHY-4152: the tool requires agent:content:write"
     (mt/with-temp [:model/Card {card-id :id} {:type :question}]
-      (is (= "Insufficient scope to call tool: bookmark_content"
-             (tool-error (call-tool! :rasta #{metabot.scope/agent-content-read}
-                                     {:type "question" :id card-id :bookmarked true}))))
+      (is (re-find #"^Insufficient scope to call tool: bookmark_content\."
+                   (tool-error (call-tool! :rasta #{metabot.scope/agent-content-read}
+                                           {:type "question" :id card-id :bookmarked true}))))
       ;; Reachability is the point here — without agent:content:read the echo degrades to the
       ;; GHY-4227 ack, so the bookmark itself is what proves the call landed.
       (is (=? {:id card-id}

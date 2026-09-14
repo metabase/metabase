@@ -12,18 +12,18 @@ import {
 } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
 import { getIssueTypeLabel } from "metabase/metabot/components/MetabotChat/feedback-issue-types";
 import { useBranchableMessages } from "metabase/metabot/hooks";
+import { isTextPart } from "metabase/metabot/state";
 import type {
-  MetabotAgentTextChatMessage,
-  MetabotChatMessage,
   MetabotDebugToolCallMessage,
+  MetabotMessage,
 } from "metabase/metabot/state/types";
-import { normalizeFetchedChatMessages } from "metabase/metabot/utils/normalize-fetched-chat-messages";
+import { convertSlackMessage } from "metabase/metabot/utils/slack-mrkdwn";
+import { useQuestionFromCard } from "metabase/metadata-store";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { useSelector } from "metabase/redux";
 import { useParams } from "metabase/router";
-import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/settings";
 import {
   Badge,
@@ -45,15 +45,28 @@ import { checkNotNull } from "metabase/utils/types";
 import { getUserName } from "metabase/utils/user";
 import { useGetMetabotAnalyticsConversationQuery } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/api";
 import type {
+  ConversationDetail,
   ConversationFeedback,
   GeneratedQuery,
 } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/types";
-import Question from "metabase-lib/v1/Question";
 import type { DatasetQuery, VisualizationDisplay } from "metabase-types/api";
 
 import { ConversationHeader } from "./ConversationHeader";
 import { ForkBoundary } from "./ForkBoundary";
 import { ToolCallDetailsSidebar } from "./ToolCallDetailsSidebar";
+
+const SLACK_PROFILE_IDS = ["slackbot", "slack"];
+
+function normalizeMessages(conversation: ConversationDetail | undefined) {
+  const messages = conversation?.messages ?? [];
+  if (!SLACK_PROFILE_IDS.includes(conversation?.profile_id ?? "")) {
+    return messages;
+  }
+  return messages.map((message) => ({
+    ...convertSlackMessage(message),
+    parent_message_id: message.parent_message_id,
+  }));
+}
 
 export function ConversationDetailPage() {
   const params = useParams();
@@ -91,24 +104,13 @@ export function ConversationDetailPage() {
     refetchOnMountOrArgChange: true,
   });
 
-  const isSlack =
-    conversation?.profile_id === "slackbot" ||
-    conversation?.profile_id === "slack";
-
   const conversationMessages = useMemo(
-    () => conversation?.messages ?? [],
-    [conversation?.messages],
+    () => normalizeMessages(conversation),
+    [conversation],
   );
 
-  const { messages, getExtraActions } = useBranchableMessages(
-    conversationMessages,
-    { isSlack },
-  );
-
-  const feedbackChatMessages = normalizeFetchedChatMessages(
-    conversationMessages,
-    { isSlack },
-  );
+  const { messages, getExtraActions } =
+    useBranchableMessages(conversationMessages);
 
   if (isLoading || error) {
     return (
@@ -139,9 +141,7 @@ export function ConversationDetailPage() {
 
   const forkBoundaryMessage = fork_boundary_message_id
     ? messages.findLast(
-        (message) =>
-          "externalId" in message &&
-          message.externalId === fork_boundary_message_id,
+        (message) => message.externalId === fork_boundary_message_id,
       )
     : undefined;
 
@@ -149,7 +149,7 @@ export function ConversationDetailPage() {
     <Flex ref={containerRef} wrap="nowrap">
       <MonitorMain>
         <Box w="100%" maw={800} mx="auto">
-          <Stack gap="xl">
+          <Stack gap="xxl">
             <ConversationHeader conversation={conversation} />
 
             <SimpleGrid cols={4}>
@@ -172,14 +172,14 @@ export function ConversationDetailPage() {
             </SimpleGrid>
 
             {feedback.length > 0 && (
-              <Stack gap="md">
+              <Stack gap="lg">
                 <Title order={3}>{t`Feedback`}</Title>
                 <Stack gap="sm">
                   {feedback.map((item) => (
                     <FeedbackCard
                       key={item.id}
                       feedback={item}
-                      chatMessages={feedbackChatMessages}
+                      messages={conversationMessages}
                       conversationId={convoId}
                     />
                   ))}
@@ -187,7 +187,7 @@ export function ConversationDetailPage() {
               </Stack>
             )}
 
-            <Stack gap="md">
+            <Stack gap="lg">
               <Flex align="baseline" justify="space-between">
                 <Title order={3}>{t`Conversation`}</Title>
                 {conversation.slack_permalink && (
@@ -196,7 +196,7 @@ export function ConversationDetailPage() {
                   </ExternalLink>
                 )}
               </Flex>
-              <Card withBorder shadow="none" p="xl">
+              <Card withBorder shadow="none" p="xxl">
                 <Messages
                   messages={messages}
                   getExtraActions={getExtraActions}
@@ -215,7 +215,7 @@ export function ConversationDetailPage() {
             </Stack>
 
             {queries.length > 0 && (
-              <Stack gap="md">
+              <Stack gap="lg">
                 <Title order={3}>{t`Queries generated`}</Title>
                 {queries.map((query) => (
                   <GeneratedQueryCard
@@ -244,11 +244,11 @@ export function ConversationDetailPage() {
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <Card withBorder shadow="none" p="md">
+    <Card withBorder shadow="none" p="lg">
       <Text size="sm" c="text-secondary">
         {label}
       </Text>
-      <Title order={2} mt="xs">
+      <Title order={2} mt="xxs">
         {value}
       </Title>
     </Card>
@@ -257,30 +257,30 @@ function StatCard({ label, value }: { label: string; value: string }) {
 
 function FeedbackCard({
   feedback,
-  chatMessages,
+  messages,
   conversationId,
 }: {
   feedback: ConversationFeedback;
-  chatMessages: MetabotChatMessage[];
+  messages: MetabotMessage[];
   conversationId: string;
 }) {
-  const agentResponse = feedback.external_id
-    ? chatMessages.find(
-        (message): message is MetabotAgentTextChatMessage =>
-          message.role === "agent" &&
-          message.type === "text" &&
-          message.externalId === feedback.external_id,
-      )
-    : undefined;
+  const agentResponse = useMemo(() => {
+    const message = feedback.external_id
+      ? messages.find(({ externalId }) => externalId === feedback.external_id)
+      : undefined;
+    return message
+      ? { ...message, parts: message.parts.filter(isTextPart) }
+      : undefined;
+  }, [feedback.external_id, messages]);
 
   const submitterName = feedback.user
     ? getUserName(feedback.user) || null
     : null;
 
   return (
-    <Card withBorder shadow="none" p="md">
+    <Card withBorder shadow="none" p="lg">
       <Stack gap="sm">
-        <Flex gap="xs" align="center">
+        <Flex gap="xxs" align="center">
           <Icon
             name={feedback.positive ? "thumbs_up" : "thumbs_down"}
             size={20}
@@ -288,7 +288,7 @@ function FeedbackCard({
           />
           <Text fw={700}>{feedback.positive ? t`Positive` : t`Negative`}</Text>
           {!feedback.positive && feedback.issue_type && (
-            <Badge color="negative" ml="xs" size="sm">
+            <Badge color="negative" ml="xxs" size="sm">
               {getIssueTypeLabel(feedback.issue_type)}
             </Badge>
           )}
@@ -301,14 +301,13 @@ function FeedbackCard({
         {agentResponse && (
           <AgentMessage
             message={agentResponse}
-            debug
+            debug={false}
             readonly
-            conversationId={conversationId}
             hideActions
-            getCopyText={noopGetCopyText}
+            conversationId={conversationId}
             submittedFeedback={undefined}
             bg="background_page-secondary"
-            p="md"
+            p="lg"
             pb="0"
             bd="1px solid var(--mb-color-border-neutral)"
             bdrs="1rem"
@@ -332,7 +331,7 @@ export function GeneratedQueryCard({ query }: { query: GeneratedQuery }) {
 }
 
 function SqlGeneratedQueryCard({ query }: { query: GeneratedQuery }) {
-  const metadata = useSelector(getMetadata);
+  const buildQuestion = useQuestionFromCard();
 
   const runUrl = useMemo(() => {
     if (query.database_id == null || !query.sql) {
@@ -343,20 +342,16 @@ function SqlGeneratedQueryCard({ query }: { query: GeneratedQuery }) {
       database: query.database_id,
       native: { query: query.sql, "template-tags": {} },
     };
-    const question = new Question(
-      {
-        name: null,
-        display: "table",
-        visualization_settings: {},
-        dataset_query: datasetQuery,
-      },
-      metadata,
-    ).setType("question");
+    const question = buildQuestion({
+      display: "table",
+      visualization_settings: {},
+      dataset_query: datasetQuery,
+    }).setType("question");
     return ML_getUrl(question);
-  }, [metadata, query.database_id, query.sql]);
+  }, [buildQuestion, query.database_id, query.sql]);
 
   return (
-    <Card withBorder shadow="none" p="md">
+    <Card withBorder shadow="none" p="lg">
       <Stack gap="sm">
         <Flex justify="space-between" align="center" gap="sm">
           <Text
@@ -406,27 +401,23 @@ function NotebookGeneratedQueryCard({
   const { isLoading, isError } = useGetAdhocQueryMetadataQuery(
     mbql.database != null ? mbql : skipToken,
   );
-  const metadata = useSelector(getMetadata);
+  const buildQuestion = useQuestionFromCard();
   const reportTimezone = useSelector((state) =>
     getSetting(state, "report-timezone-long"),
   );
 
   const question = useMemo(() => {
-    const q = new Question(
-      {
-        name: null,
-        display: display ?? "table",
-        visualization_settings: {},
-        dataset_query: mbql,
-      },
-      metadata,
-    ).setType("question");
+    const q = buildQuestion({
+      display: display ?? "table",
+      visualization_settings: {},
+      dataset_query: mbql,
+    }).setType("question");
     return display ? q.lockDisplay() : q;
-  }, [mbql, metadata, display]);
+  }, [buildQuestion, mbql, display]);
 
   if (isLoading) {
     return (
-      <Card withBorder shadow="none" p="md">
+      <Card withBorder shadow="none" p="lg">
         <Flex justify="center" align="center" mih={120}>
           <Loader />
         </Flex>
@@ -436,7 +427,7 @@ function NotebookGeneratedQueryCard({
 
   if (isError || mbql.database == null) {
     return (
-      <Card withBorder shadow="none" p="md">
+      <Card withBorder shadow="none" p="lg">
         <CodeEditor
           value={JSON.stringify(mbql, null, 2)}
           language="json"
@@ -453,11 +444,11 @@ function NotebookGeneratedQueryCard({
     <Card
       withBorder
       shadow="none"
-      p={{ base: "md", sm: "xl" }}
+      p={{ base: "lg", sm: "xxl" }}
       pb="sm"
       style={{ overflowX: "auto" }}
     >
-      <Stack gap="md">
+      <Stack gap="lg">
         <Flex justify="space-between" align="center" gap="sm">
           <Text
             size="lg"
@@ -478,7 +469,7 @@ function NotebookGeneratedQueryCard({
             {t`Run`}
           </Button>
         </Flex>
-        <Box mx={{ base: "-md", sm: "-xl" }} my={{ base: "-md", sm: "-xl" }}>
+        <Box mx={{ base: "-lg", sm: "-xxl" }} my={{ base: "-lg", sm: "-xxl" }}>
           <Notebook
             question={question}
             isDirty={false}
@@ -497,8 +488,4 @@ function NotebookGeneratedQueryCard({
 
 function noopUpdateQuestion(): Promise<void> {
   return Promise.resolve();
-}
-
-function noopGetCopyText() {
-  return "";
 }

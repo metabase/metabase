@@ -861,7 +861,7 @@
           type-schema            (resolve-schema (get body-properties "type"))
           result-metadata-schema (resolve-schema (get body-properties "result_metadata"))]
       (testing 'type
-        (is (=? {:oneOf [{:$ref "#/components/schemas/metabase.queries.schema.card-type"} {:type :null}]}
+        (is (=? {:oneOf [{:$ref "#/components/schemas/metabase.queries.schema..card.type"} {:type :null}]}
                 type-schema)))
       (testing 'result_metadata
         (is (=? {:oneOf [{:$ref "#/components/schemas/metabase.lib.schema.metadata..card.result-metadata"} {:type :null}]}
@@ -925,24 +925,25 @@
 
 (deftest create-a-card-with-result-metadata-updates-recents-test
   (testing "POST /api/card adds user-created questions to recents (UXW-3171)"
-    (mt/with-full-data-perms-for-all-users!
-      (mt/with-model-cleanup [:model/Card]
-        (t2/delete! :model/RecentViews :user_id (mt/user->id :rasta))
-        (let [card    (assoc (card-with-name-and-query) :result_metadata [])
-              card-id (:id (mt/user-http-request :rasta :post 200 "card" card))]
-          (is (= {:user_id  (mt/user->id :rasta)
-                  :model    "card"
-                  :model_id card-id}
-                 (t2/select-one [:model/RecentViews :user_id :model :model_id]
-                                :user_id  (mt/user->id :rasta)
-                                :model_id card-id
-                                :model    "card"))))
-        (testing "Cards saved without result metadata are not treated as viewed"
-          (let [card-id (:id (mt/user-http-request :rasta :post 200 "card" (card-with-name-and-query)))]
-            (is (nil? (t2/select-one :model/RecentViews
-                                     :user_id  (mt/user->id :rasta)
-                                     :model_id card-id
-                                     :model    "card")))))))))
+    (mt/with-temporary-setting-values [synchronous-batch-updates true]
+      (mt/with-full-data-perms-for-all-users!
+        (mt/with-model-cleanup [:model/Card]
+          (t2/delete! :model/RecentViews :user_id (mt/user->id :rasta))
+          (let [card    (assoc (card-with-name-and-query) :result_metadata [])
+                card-id (:id (mt/user-http-request :rasta :post 200 "card" card))]
+            (is (= {:user_id  (mt/user->id :rasta)
+                    :model    "card"
+                    :model_id card-id}
+                   (t2/select-one [:model/RecentViews :user_id :model :model_id]
+                                  :user_id  (mt/user->id :rasta)
+                                  :model_id card-id
+                                  :model    "card"))))
+          (testing "Cards saved without result metadata are not treated as viewed"
+            (let [card-id (:id (mt/user-http-request :rasta :post 200 "card" (card-with-name-and-query)))]
+              (is (nil? (t2/select-one :model/RecentViews
+                                       :user_id  (mt/user->id :rasta)
+                                       :model_id card-id
+                                       :model    "card"))))))))))
 
 (deftest ^:parallel create-card-validation-test
   (testing "POST /api/card"
@@ -1090,7 +1091,7 @@
     (testing "Ignore values of `enable_embedding` while creating a Card (this must be done via `PUT /api/card/:id` instead)"
       ;; should be ignored regardless of the value of the `enable-embedding` Setting.
       (doseq [enable-embedding? [true false]]
-        (mt/with-temporary-setting-values [enable-embedding-static enable-embedding?]
+        (mt/with-temporary-setting-values [enable-embedding-modular enable-embedding?]
           (mt/with-model-cleanup [:model/Card]
             (is (=? {:enable_embedding false}
                     (mt/user-http-request :crowberto :post 200 "card" {:name                   "My Card"
@@ -1104,7 +1105,7 @@
     (testing "Ignore values of `embedding_type` while creating a Card (this must be done via `PUT /api/card/:id` instead)"
       ;; should be ignored regardless of the value of the `embedding-type` Setting.
       (doseq [embedding-type [true false]]
-        (mt/with-temporary-setting-values [enable-embedding-static embedding-type]
+        (mt/with-temporary-setting-values [enable-embedding-modular embedding-type]
           (mt/with-model-cleanup [:model/Card]
             (is (=? {:embedding_type nil}
                     (mt/user-http-request :crowberto :post 200 "card" {:name                   "My Card"
@@ -1570,6 +1571,21 @@
                            [:trace          [:sequential :any]]]
                           (create-card! :rasta 403))))))))))
 
+(deftest create-card-parameter-permissions-generic-error-test
+  (testing "POST /api/card"
+    (testing "the 403 for a parameter field the user cannot query names neither the table nor its ids"
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          ;; the entire response body is the generic message
+          (is (= "You must have data permissions to add a parameter referencing this Field."
+                 (mt/user-http-request :rasta :post 403 "card"
+                                       (assoc (card-with-name-and-query)
+                                              :parameters [{:id     "abc123"
+                                                            :type   "category"
+                                                            :name   "x"
+                                                            :slug   "x"
+                                                            :target [:dimension [:field (mt/id :venues :name) nil]]}])))))))))
+
 (deftest ^:parallel create-card-with-type-and-dataset-test
   ;; Use `:rollback-only` like the sibling tests below. Otherwise, the two Cards created through the API
   ;; commit and leak into later tests that scan the Card table.
@@ -1928,11 +1944,11 @@
   (testing "PUT /api/card/:id"
     (mt/with-temp [:model/Card card]
       (testing "If embedding is disabled, even an admin should not be allowed to update embedding params"
-        (mt/with-temporary-setting-values [enable-embedding-static false]
+        (mt/with-temporary-setting-values [enable-embedding-modular false]
           (is (= "Embedding is not enabled."
                  (mt/user-http-request :crowberto :put 400 (str "card/" (u/the-id card))
                                        {:embedding_params {:abc "enabled"}})))))
-      (mt/with-temporary-setting-values [enable-embedding-static true]
+      (mt/with-temporary-setting-values [enable-embedding-modular true]
         (testing "Non-admin should not be allowed to update Card's embedding parms"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :put 403 (str "card/" (u/the-id card))
@@ -1940,13 +1956,13 @@
         (testing "Admin should be able to update Card's embedding params"
           (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
                                 {:embedding_params {:abc "enabled"}})
-          (is (= {:abc "enabled"}
+          (is (= {"abc" "enabled"}
                  (t2/select-one-fn :embedding_params :model/Card :id (u/the-id card)))))))))
 
 (deftest update-embedding-type-to-nil-test
   (testing "PUT /api/card/:id"
     (testing "Admin should be able to set embedding_type to nil to clear it"
-      (mt/with-temporary-setting-values [enable-embedding-static true]
+      (mt/with-temporary-setting-values [enable-embedding-modular true]
         (mt/with-temp [:model/Card card {:enable_embedding true
                                          :embedding_type "static-legacy"}]
           (testing "Verify initial state has embedding_type set"
@@ -3336,11 +3352,17 @@
 
 (deftest test-that-we-can-fetch-a-list-of-embeddable-cards
   (testing "GET /api/card/embeddable"
-    (mt/with-temporary-setting-values [enable-embedding-static true]
+    (mt/with-temporary-setting-values [enable-embedding-modular true]
       (mt/with-temp [:model/Card _ {:enable_embedding true}]
         (is (= [{:name true, :id true}]
                (for [card (mt/user-http-request :crowberto :get 200 "card/embeddable")]
-                 (m/map-vals boolean (select-keys card [:name :id])))))))))
+                 (m/map-vals boolean (select-keys card [:name :id])))))))
+    (testing "and that we can still see them once guest embeds are turned off"
+      (mt/with-temporary-setting-values [enable-embedding-modular false]
+        (mt/with-temp [:model/Card _ {:enable_embedding true}]
+          (is (= [{:name true, :id true}]
+                 (for [card (mt/user-http-request :crowberto :get 200 "card/embeddable")]
+                   (m/map-vals boolean (select-keys card [:name :id]))))))))))
 
 (deftest ^:parallel pivot-card-test
   (mt/test-drivers (api.pivots/applicable-drivers)

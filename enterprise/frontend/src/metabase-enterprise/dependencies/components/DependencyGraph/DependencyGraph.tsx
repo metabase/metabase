@@ -21,7 +21,7 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { Group, useColorScheme } from "metabase/ui";
 import type { DependencyEntry, DependencyGraph } from "metabase-types/api";
 

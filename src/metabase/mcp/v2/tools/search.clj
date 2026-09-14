@@ -11,6 +11,7 @@
    [medley.core :as m]
    [metabase.activity-feed.core :as activity-feed]
    [metabase.api.common :as api]
+   [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
@@ -19,8 +20,7 @@
    [metabase.metabot.tools.search :as metabot.search]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -118,7 +118,7 @@
     (into {}
           (comp (filter mi/can-read?)
                 (map (juxt :id :name)))
-          (t2/select [:model/Collection :id :name :namespace :type] :id [:in ids]))))
+          (mcp.db/collections-for-read-check ids))))
 
 (defn- add-collection-paths
   "Attach `:collection_path` — ancestor collection names joined with `/`, ending in the
@@ -132,9 +132,7 @@
   [rows]
   (let [parent-ids     (into #{} (keep #(get-in % [:collection :id])) rows)
         parents        (when (seq parent-ids)
-                         (t2/select-fn->fn :id (juxt :name :location)
-                                           [:model/Collection :id :name :location]
-                                           :id [:in parent-ids]))
+                         (mcp.db/collection-id->name+location parent-ids))
         ancestor-ids   (into #{}
                              (comp (mapcat location->ids)
                                    (remove parent-ids))
@@ -271,7 +269,10 @@
         ;; incompatibility check below, so it must not be widened into this one.
         type-omitted?   (and (empty? types) (not (true? recent)))
         effective-types (if type-omitted? engine-searchable-types types)
-        narrowed        (atom [])] ; [{:excluded #{...} :disclosure "..."}], one entry per narrowing filter
+        ;; [{:excluded #{...} :label "..." :because "..."}], one entry per narrowing filter. The
+        ;; message is built after the fold, from the final narrowed set — a message built here would
+        ;; name this filter's own subtraction and so advertise types a sibling filter also removed.
+        narrowed        (atom [])]
     (when (and (contains? types "snippet") (next types))
       (common/throw-teaching-error
        (format (str "type: [\"snippet\"] cannot be combined with other types — snippets aren't in the "
@@ -286,10 +287,9 @@
       (when-let [bad (seq (sort (remove created-by-types effective-types)))]
         (if type-omitted?
           (swap! narrowed conj
-                 {:excluded   (set bad)
-                  :disclosure (format "created_by narrowed the search to %s — %s don't index a creator."
-                                      (str/join ", " (sort (set/difference effective-types (set bad))))
-                                      (str/join ", " bad))})
+                 {:excluded (set bad)
+                  :label    "created_by"
+                  :because  "don't index a creator"})
           (common/throw-teaching-error
            (format (str "created_by only applies to types that index a creator: %s. "
                         "Remove %s from type or drop created_by.")
@@ -299,10 +299,9 @@
       (when-let [bad (seq (sort (filter collectionless-types effective-types)))]
         (if type-omitted?
           (swap! narrowed conj
-                 {:excluded   (set bad)
-                  :disclosure (format "collection_id narrowed the search to %s — %s don't live in collections."
-                                      (str/join ", " (sort (set/difference effective-types (set bad))))
-                                      (str/join ", " bad))})
+                 {:excluded (set bad)
+                  :label    "collection_id"
+                  :because  "don't live in collections"})
           (common/throw-teaching-error
            (format (str "collection_id cannot filter %s — these types don't live in collections. "
                         "Remove them from type or drop collection_id.")
@@ -316,15 +315,32 @@
       (when (and (contains? types "table")
                  (not (premium-features/has-feature? :library)))
         (common/throw-teaching-error
-         "Filtering tables by collection_id requires the Library feature, which this instance doesn't have — remove table from type or drop collection_id.")))
+         "Filtering tables by collection_id requires the Library feature, which this instance doesn't have — remove table from type or drop collection_id."))
+      ;; Two more types a collection-scoped search never covers, each dropped by a different part of
+      ;; the engine rather than by the spec's collection attr: transform (no collection recorded in
+      ;; the index, so `search-context->applicable-models` drops the model) and, without the Library
+      ;; feature, table (excluded by the ::collection-hierarchy where-clause). Named explicitly each
+      ;; is a teaching error above; with `type` omitted they must be narrowed and disclosed, not
+      ;; dropped in silence.
+      (when type-omitted?
+        (when (contains? effective-types "transform")
+          (swap! narrowed conj
+                 {:excluded #{"transform"}
+                  :label    "collection_id"
+                  :because  "isn't recorded with a collection in the search index"}))
+        (when (and (contains? effective-types "table")
+                   (not (premium-features/has-feature? :library)))
+          (swap! narrowed conj
+                 {:excluded #{"table"}
+                  :label    "collection_id"
+                  :because  "isn't filtered by collection without the Library feature"}))))
     (when (true? archived)
       (when-let [bad (seq (sort (filter non-archivable-types effective-types)))]
         (if type-omitted?
           (swap! narrowed conj
-                 {:excluded   (set bad)
-                  :disclosure (format "archived: true narrowed the search to %s — %s have no archived state."
-                                      (str/join ", " (sort (set/difference effective-types (set bad))))
-                                      (str/join ", " bad))})
+                 {:excluded (set bad)
+                  :label    "archived: true"
+                  :because  "have no archived state"})
           (common/throw-teaching-error
            (format (str "archived: true cannot filter %s — these types have no archived state. "
                         "Remove them from type or drop archived.")
@@ -339,8 +355,13 @@
         (common/throw-teaching-error
          "recent: true supports only the type filter — drop collection_id, created_by, and archived.")))
     (if (seq @narrowed)
-      {:types       (vec (sort (reduce set/difference effective-types (map :excluded @narrowed))))
-       :disclosures (mapv :disclosure @narrowed)}
+      (let [final-types (vec (sort (reduce set/difference effective-types (map :excluded @narrowed))))
+            type-list   (str/join ", " final-types)]
+        {:types       final-types
+         :disclosures (mapv (fn [{:keys [excluded label because]}]
+                              (format "%s narrowed the search to %s — %s %s."
+                                      label type-list (str/join ", " (sort excluded)) because))
+                            @narrowed)})
       {:types nil :disclosures []})))
 
 (defn- resolve-collection-filter
@@ -399,12 +420,7 @@
    sandboxed-user exclusion apply — optionally narrowed to names containing any query as a
    case-insensitive substring."
   [queries archived]
-  (let [readable (filter mi/can-read?
-                         ;; Select only what we return (id/name/description) plus :collection_id,
-                         ;; which can-read? consults — never :content, which holds the SQL body.
-                         (t2/select [:model/NativeQuerySnippet :id :name :description :collection_id]
-                                    :archived (boolean archived)
-                                    {:order-by [[:%lower.name :asc]]}))
+  (let [readable (filter mi/can-read? (mcp.db/snippets-by-archived-state archived))
         matches  (if (seq queries)
                    (let [needles (mapv u/lower-case-en queries)]
                      (filter (fn [{:keys [name]}]
@@ -453,7 +469,7 @@
    [:semantic_queries {:optional true}
     [:maybe [:sequential [:string {:min 1 :description "A natural-language query matched by semantic similarity when a semantic engine is active (keyword-ranked otherwise). Each query runs separately; results are merged by rank."}]]]]
    [:recent {:optional true}
-    [:maybe [:boolean {:description "true returns your recently viewed items instead of searching. Combines with type (only question, model, metric, dashboard, document, collection, table are tracked) but not with queries or other filters."}]]]
+    [:maybe [:boolean {:description "true returns your recently viewed items instead of searching. Combines with type (only question, model, metric, dashboard, document, collection, table are tracked) but not with queries or other filters. Reflects Metabase UI views only — content you read through these tools is not recorded as a view, so a fresh token's recents can be empty even after get_content calls in the same session."}]]]
    [:type {:optional true}
     [:maybe [:sequential (into [:enum {:description type-desc}] all-types)]]]
    [:collection_id {:optional true}
@@ -500,10 +516,12 @@
   type: [\"snippet\"] searches SQL snippets you can read by name and must be requested on its own, not alongside
   other types. Transforms are searchable by admins only — other users browse them with browse_collection(namespace:
   \"transforms\"). Returns {data, returned, total}; total is the number of matches, capped at the search ranking
-  limit — so a large total is a floor (the response says \"at least N\")."  {:name "search"
-                                                                             :scope        metabot.scope/agent-content-read
-                                                                             :annotations  {:readOnlyHint true :idempotentHint true}
-                                                                             :args         search-args-schema}
+  limit — so a large total is a floor (the response says \"at least N\"). An empty {data: [], total: 0} means no
+  match against the search index, which on a freshly started instance can still be building — if content you can
+  reach with browse_collection or browse_data does not turn up here, prefer those over concluding it is absent."  {:name "search"
+                                                                                                                   :scope        metabot.scope/agent-content-read
+                                                                                                                   :annotations  {:readOnlyHint true :idempotentHint true}
+                                                                                                                   :args         search-args-schema}
   [{:keys [term_queries semantic_queries recent type collection_id archived] :as args} _]
   (let [queries?  (boolean (or (seq term_queries) (seq semantic_queries)))
         filters?  (boolean (or (seq type)

@@ -67,9 +67,9 @@ export const PolicySidePanel = ({
         <Icon name="close" />
       </ActionIcon>
     </Group>
-    <Stack gap={0} px="2rem" pt="xl" pb="xl">
+    <Stack gap={0} px="2rem" pt="xxl" pb="xxl">
       {subtitle && (
-        <Text size="md" lh="1rem" fw="bold" c="text-secondary" mb="xs">
+        <Text size="md" lh="1rem" fw="bold" c="text-secondary" mb="xxs">
           {subtitle}
         </Text>
       )}
@@ -77,7 +77,7 @@ export const PolicySidePanel = ({
         {title}
       </Title>
     </Stack>
-    <Flex direction="column" mih={0} px="2rem" pb="lg" flex="1">
+    <Flex direction="column" mih={0} px="2rem" pb="xl" flex="1">
       {children}
     </Flex>
   </Flex>

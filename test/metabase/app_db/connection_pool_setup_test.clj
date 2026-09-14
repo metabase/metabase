@@ -13,7 +13,7 @@
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
-   (com.mchange.v2.c3p0 C3P0Registry ConnectionCustomizer PoolBackedDataSource)
+   (com.mchange.v2.c3p0 C3P0Registry ConnectionCustomizer DataSources PoolBackedDataSource WrapperConnectionPoolDataSource)
    (metabase.app_db.connection_pool_setup MetabaseConnectionCustomizer)))
 
 (set! *warn-on-reflection* true)
@@ -179,6 +179,29 @@
       (is (= 99 (get (#'mdb.connection-pool-setup/application-db-connection-pool-props)
                      "unreturnedConnectionTimeout"))))))
 
+(defn- mock-data-source
+  "A `javax.sql.DataSource` whose `.getConnection` calls `f` and expects it to return a `java.sql.Connection`
+  (typically a no-op `reify` in these tests)."
+  ^javax.sql.DataSource [f]
+  (reify javax.sql.DataSource
+    (getConnection [_] (f))))
+
+(deftest prime-pool!-test
+  (testing "returns true when the data source hands out a connection within the timeout"
+    (let [ds (mock-data-source #(reify java.sql.Connection (close [_])))]
+      (is (true? (#'mdb.connection-pool-setup/prime-pool! ds 5000)))))
+  (testing "returns false when getConnection blocks past the timeout, and does not wait for it"
+    ;; Regression guard for #81440: without a wall-clock bound on the priming acquire, a wedged pool would hang
+    ;; startup for the full checkoutTimeout (30s by default).
+    (let [ds     (mock-data-source (fn []
+                                     (Thread/sleep 60000)
+                                     (throw (RuntimeException. "should have been interrupted"))))
+          timer  (u/start-timer)
+          result (#'mdb.connection-pool-setup/prime-pool! ds 100)]
+      (is (false? result))
+      (is (< (u/since-ms timer) 1000)
+          "prime-pool! must return within a small multiple of the timeout, not wait for getConnection"))))
+
 (deftest reset-read-only-test
   (testing "For Postgres app DBs, we should be executing `DISCARD ALL` when checking in a connection to reset state including read-only"
     (when (= (app-db/db-type) :postgres)
@@ -195,3 +218,30 @@
           (testing "on-check-in should be called; Connection read-only should be reset after checking in"
             (let [^java.sql.Connection conn (u/deref-with-timeout connection* (u/seconds->ms 5))]
               (is (not (.isReadOnly conn))))))))))
+
+(deftest quartz-connection-pool-data-source-test
+  (testing "the Quartz pool defaults to maxPoolSize 5"
+    (let [data-source (mdb.data-source/raw-connection-string->DataSource "jdbc:h2:mem:quartz-pool-default-size-test")
+          pool        (mdb.connection-pool-setup/quartz-connection-pool-data-source :h2 data-source)]
+      (try
+        (is (= 5 (.getMaxPoolSize ^WrapperConnectionPoolDataSource (.getConnectionPoolDataSource pool))))
+        (finally
+          (DataSources/destroy pool)))))
+  (testing "MB_QUARTZ_MAX_CONNECTION_POOL_SIZE overrides the Quartz pool's max size"
+    (mt/with-temp-env-var-value! [mb-quartz-max-connection-pool-size 7]
+      (let [data-source (mdb.data-source/raw-connection-string->DataSource "jdbc:h2:mem:quartz-pool-env-size-test")
+            pool        (mdb.connection-pool-setup/quartz-connection-pool-data-source :h2 data-source)]
+        (try
+          (is (= 7 (.getMaxPoolSize ^WrapperConnectionPoolDataSource (.getConnectionPoolDataSource pool))))
+          (finally
+            (DataSources/destroy pool)))))))
+
+(deftest quartz-connection-pool-rejects-pre-pooled-test
+  (testing "an already-pooled data-source is rejected -- the Quartz pool must be distinct from the main pool"
+    (let [data-source (mdb.data-source/raw-connection-string->DataSource "jdbc:h2:mem:quartz-pool-reject-pooled-test")
+          pre-pooled  (DataSources/pooledDataSource ^javax.sql.DataSource data-source)]
+      (try
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"already-pooled"
+                              (mdb.connection-pool-setup/quartz-connection-pool-data-source :h2 pre-pooled)))
+        (finally
+          (DataSources/destroy pre-pooled))))))

@@ -4,14 +4,15 @@
    [clojure.data :as data]
    [clojure.set :as set]
    [metabase.permissions.core :as perms]
+   [metabase.sso.db :as sso.db]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (defn- excluded-group-ids
   []
-  #{(u/the-id (perms/all-users-group))
-    (u/the-id (perms/all-external-users-group))})
+  (into #{(u/the-id (perms/all-users-group))
+          (u/the-id (perms/all-external-users-group))}
+        (perms/data-app-group-ids)))
 
 (defn- sync-group-memberships*!
   [user-or-id to-remove to-add]
@@ -45,27 +46,20 @@
 
 (defn sync-group-memberships!
   "Update the PermissionsGroups a User belongs to, adding or deleting membership entries as needed so that Users is
-  only in `new-groups-or-ids`. Ignores special groups like `all-users`, and only optionally only touches groups with mappings set."
+   only in `new-groups-or-ids`. Ignores special groups like `all-users`, and only optionally only touches groups with mappings set."
   ([user-or-id new-groups-or-ids]
-   (let [current-group-ids  (t2/select-fn-set :group_id :model/PermissionsGroupMembership
-                                              {:where
-                                               [:and
-                                                [:= :user_id  (u/the-id user-or-id)]
-                                                [:not-in :group_id (excluded-group-ids)]]})
+   (let [excluded           (excluded-group-ids)
+         current-group-ids  (sso.db/user-group-ids-excluding (u/the-id user-or-id) excluded)
          [to-remove to-add] (data/diff current-group-ids (set/difference (set (map u/the-id new-groups-or-ids))
-                                                                         (excluded-group-ids)))]
+                                                                         excluded))]
      (sync-group-memberships*! user-or-id to-remove to-add)))
   ([user-or-id new-groups-or-ids mapped-groups-or-ids]
-   (let [mapped-group-ids   (set (map u/the-id mapped-groups-or-ids))
+   (let [excluded           (excluded-group-ids)
+         mapped-group-ids   (set (map u/the-id mapped-groups-or-ids))
          current-group-ids  (when (seq mapped-group-ids)
-                              (t2/select-fn-set :group_id :model/PermissionsGroupMembership
-                                                {:where
-                                                 [:and
-                                                  [:= :user_id (u/the-id user-or-id)]
-                                                  [:in :group_id mapped-group-ids]
-                                                  [:not-in :group_id (excluded-group-ids)]]}))
+                              (sso.db/user-group-ids-among (u/the-id user-or-id) mapped-group-ids excluded))
          new-group-ids      (-> (set (map u/the-id new-groups-or-ids))
                                 (set/intersection mapped-group-ids)
-                                (set/difference (excluded-group-ids)))
+                                (set/difference excluded))
          [to-remove to-add] (data/diff current-group-ids new-group-ids)]
      (sync-group-memberships*! user-or-id to-remove to-add))))

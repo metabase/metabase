@@ -6,6 +6,7 @@
    [better-cond.core :as b]
    [medley.core :as m]
    [metabase-enterprise.sandbox.api.util :as sandbox.api.util]
+   [metabase-enterprise.sandbox.db :as sandbox.db]
    [metabase-enterprise.sandbox.models.sandbox :as sandbox]
    [metabase.api.common :as api :refer [*current-user* *current-user-id*]]
    ;; allowed (for now) since sandboxing needs to manipulate legacy metadata
@@ -32,10 +33,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.match :as match]
-   ;; caches inferred result_metadata onto the sandbox Card row; a write the metadata provider can't do
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2]))
+   [metabase.util.match :as match]))
 
 (set! *warn-on-reflection* true)
 
@@ -122,12 +120,22 @@
     (when (not attr-value)
       (throw (ex-info (tru "Query requires user attribute `{0}`" (name attr-name))
                       {:type qp.error-type/missing-required-parameter})))
-    {:type   (if (and field-base-type (isa? field-base-type :type/Number))
-               :number/=
-               :string/=)
-     :target target
-     ;; :number/= and :string/= are variadic operators that require a sequential value
-     :value  [(attr-value->param-value field-base-type attr-value)]}))
+    (let [param-value (attr-value->param-value field-base-type attr-value)]
+      (when (nil? param-value)
+        ;; Without this a nil `param-value` propagates as `[nil]`, which
+        ;; `parameters.mbql/expand` treats as "no value" and filter is dropped. (#81821)
+        (throw (ex-info (tru "User attribute `{0}` value `{1}` cannot be coerced to column type {2}"
+                             (name attr-name) attr-value field-base-type)
+                        {:type            qp.error-type/invalid-parameter
+                         :attribute-name  attr-name
+                         :attribute-value attr-value
+                         :field-base-type field-base-type})))
+      {:type   (if (and field-base-type (isa? field-base-type :type/Number))
+                 :number/=
+                 :string/=)
+       :target target
+       ;; :number/= and :string/= are variadic operators that require a sequential value
+       :value  [param-value]})))
 
 (mu/defn- sandbox->parameters :- [:maybe [:sequential ::lib.schema.parameter/parameter]]
   [metadata-providerable                        :- ::lib.schema.metadata/metadata-providerable
@@ -217,7 +225,7 @@
                 (log/infof "Saving results metadata for Sandbox Card %d" card-id)
                 ;; TODO (Cam 9/9/25) -- we should switch to saving Lib-style metadata in the app DB instead of legacy
                 ;; style in the near future
-                (t2/update! :model/Card card-id {:result_metadata cols}))
+                (sandbox.db/set-card-result-metadata! card-id cols))
               (lib/update-query-stage query 0 assoc :lib/stage-metadata (lib/->normalized-stage-metadata cols))))))
       query))
 

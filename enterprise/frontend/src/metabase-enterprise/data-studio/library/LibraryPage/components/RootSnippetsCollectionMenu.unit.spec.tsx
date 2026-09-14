@@ -7,8 +7,8 @@ import {
   setupGroupsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state/state";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks/state";
 import { Route } from "metabase/router";
 import { dataStudioArchivedSnippets } from "metabase/urls";
 import type { EnterpriseSettings } from "metabase-types/api";

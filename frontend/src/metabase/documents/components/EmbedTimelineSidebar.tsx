@@ -147,7 +147,7 @@ export function EmbedTimelineSidebar({
 
   if (isLoading) {
     return (
-      <Stack gap="lg" p="lg" className={S.loadingContainer}>
+      <Stack gap="xl" p="xl" className={S.loadingContainer}>
         <Box className={S.loadingContent}>
           <Loader size="lg" />
           <Text>{t`Loading timeline events...`}</Text>
@@ -158,7 +158,7 @@ export function EmbedTimelineSidebar({
 
   if (isError) {
     return (
-      <Stack gap="lg" p="lg" className={S.errorContainer}>
+      <Stack gap="xl" p="xl" className={S.errorContainer}>
         <Box className={S.errorContent}>
           <Text c="error">{t`Failed to load timeline events`}</Text>
         </Box>

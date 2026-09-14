@@ -3,6 +3,7 @@
    [malli.core :as mc]
    [malli.error :as me]
    [metabase.batch-processing.core :as grouper]
+   [metabase.eid-translation.db :as eid-translation.db]
    [metabase.eid-translation.impl :as eid-translation]
    [metabase.eid-translation.settings :as eid-translation.settings]
    [metabase.util :as u]
@@ -106,7 +107,26 @@
   "Given a model and a sequence of entity ids on that model, return a pairs of entity-id, id."
   [api-name eids]
   (let [model (->model api-name) ;; This lookup is safe because we've already validated the api-names
-        eid->id (into {} (t2/select-fn->fn :entity_id :id [model :id :entity_id] :entity_id [:in eids]))]
+        eid->id (into {} (case model
+                           :model/Action             (eid-translation.db/action-ids-by-entity-ids eids)
+                           :model/Card                (eid-translation.db/card-ids-by-entity-ids eids)
+                           :model/Collection           (eid-translation.db/collection-ids-by-entity-ids eids)
+                           :model/Dashboard            (eid-translation.db/dashboard-ids-by-entity-ids eids)
+                           :model/DashboardCard        (eid-translation.db/dashboard-card-ids-by-entity-ids eids)
+                           :model/DashboardTab         (eid-translation.db/dashboard-tab-ids-by-entity-ids eids)
+                           :model/Dimension            (eid-translation.db/dimension-ids-by-entity-ids eids)
+                           :model/Document             (eid-translation.db/document-ids-by-entity-ids eids)
+                           :model/Exploration          (eid-translation.db/exploration-ids-by-entity-ids eids)
+                           :model/Measure              (eid-translation.db/measure-ids-by-entity-ids eids)
+                           :model/PermissionsGroup     (eid-translation.db/permissions-group-ids-by-entity-ids eids)
+                           :model/Pulse                (eid-translation.db/pulse-ids-by-entity-ids eids)
+                           :model/PulseCard            (eid-translation.db/pulse-card-ids-by-entity-ids eids)
+                           :model/PulseChannel         (eid-translation.db/pulse-channel-ids-by-entity-ids eids)
+                           :model/Segment              (eid-translation.db/segment-ids-by-entity-ids eids)
+                           :model/NativeQuerySnippet   (eid-translation.db/native-query-snippet-ids-by-entity-ids eids)
+                           :model/Timeline             (eid-translation.db/timeline-ids-by-entity-ids eids)
+                           :model/Transform            (eid-translation.db/transform-ids-by-entity-ids eids)
+                           :model/User                 (eid-translation.db/user-ids-by-entity-ids eids)))]
     (mapv (fn entity-id-info [entity-id]
             [entity-id (if-let [id (get eid->id entity-id)]
                          {:id id :type api-name :status :ok}

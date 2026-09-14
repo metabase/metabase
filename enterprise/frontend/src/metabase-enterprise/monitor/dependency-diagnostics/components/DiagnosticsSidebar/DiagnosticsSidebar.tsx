@@ -27,12 +27,12 @@ export const DiagnosticsSidebar = memo(function DiagnosticsSidebar({
   return (
     <Stack
       className={S.sidebar}
-      p="lg"
-      gap="xl"
+      p="xl"
+      gap="xxl"
       bg="background_page-primary"
       data-testid="dependency-list-sidebar"
     >
-      <Stack gap="lg">
+      <Stack gap="xl">
         <SidebarHeader node={node} onClose={onClose} mode={mode} />
         <LocationSection node={node} />
         <InfoSection node={node} />

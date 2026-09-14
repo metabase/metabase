@@ -1,9 +1,11 @@
 (ns metabase.mcp.v2.common-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.channel.urls :as channel.urls]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.projections :as projections]
+   [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
 (set! *warn-on-reflection* true)
@@ -57,6 +59,40 @@
              (text (common/->mcp-error-content
                     (ex-info "leaky internal detail" {::common/error-code common/error-code-internal}))))))))
 
+(deftest ^:parallel schema-failure-names-the-function-test
+  (let [text #(-> % :content first :text)
+        ;; The shape `metabase.util.malli.fn` throws in dev and test.
+        invalid-input  (ex-info "Invalid input: [{:dashcard-id [\"disallowed key, got: 177\"]}]"
+                                {:type      :metabase.util.malli.fn/invalid-input
+                                 :fn-name   'check-parameter-mapping-permissions
+                                 :humanized [{:dashcard-id ["disallowed key, got: 177"]}]
+                                 :schema    :ignored
+                                 :value     [{:dashcard-id 177 :secret "hunter2"}]})
+        invalid-output (ex-info "Invalid output: {:email [\"missing required key\"]}"
+                                {:type      :metabase.util.malli.fn/invalid-output
+                                 :fn-name   'get-notification
+                                 :humanized {:email ["missing required key"]}
+                                 :schema    :ignored
+                                 :value     {:email "someone@example.com"}})]
+    (testing "GHY-4502: a server-side schema failure names the function instead of collapsing to
+              \"Internal error\" — it is a bug, but a bug with a name is a one-call diagnosis rather
+              than the nine blind retries that prompted this"
+      (let [content (common/->mcp-error-content invalid-input)]
+        (is (:isError content))
+        (is (re-find #"check-parameter-mapping-permissions" (text content))
+            "the function name is what makes this actionable")
+        (is (re-find #"dashcard-id" (text content))
+            "an invalid-INPUT humanization describes the caller's own argument, so it is safe to echo")))
+    (testing "the offending value is never echoed — `:value` carries the whole argument, which may
+              hold anything the caller sent"
+      (is (not (re-find #"hunter2" (text (common/->mcp-error-content invalid-input))))))
+    (testing "an invalid-OUTPUT names the function but never its humanization: that describes
+              SERVER-produced data, which the caller may have no right to see"
+      (let [content (common/->mcp-error-content invalid-output)]
+        (is (re-find #"get-notification" (text content)))
+        (is (not (re-find #"someone@example.com" (text content))))
+        (is (not (re-find #"missing required key" (text content))))))))
+
 (deftest ^:parallel success-content-test
   (testing "read responses default to text-only"
     (is (= {:content [{:type "text" :text "hi"}]} (common/success-content "hi"))))
@@ -73,16 +109,30 @@
       (is (contains? (set (projections/catalog :collection)) "name"))
       (is (contains? (set (projections/catalog :question)) "parameters.name")))))
 
+(deftest ^:parallel projection-bad-argument-test
+  (testing "an unregistered type throws an ex-info naming the type"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"No projection registered for type: nope"
+                          (projections/project :nope :concise {:id 1}))))
+  (testing "a format outside :concise/:detailed throws the same shape of ex-info rather than a nil-call NPE"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Unknown projection format: :summary"
+                          (projections/project :collection :summary {:id 1})))
+    (is (= {:status-code 500 :type :collection :fmt :summary}
+           (try
+             (projections/project :collection :summary {:id 1})
+             (catch clojure.lang.ExceptionInfo e (ex-data e)))))))
+
 (deftest frontend-url-test
   (testing "a configured site URL is prefixed onto the relative path"
-    (with-redefs [channel.urls/site-url (constantly "http://metabase.example.com")]
+    (mt/with-dynamic-fn-redefs [channel.urls/site-url (constantly "http://metabase.example.com")]
       (is (= "http://metabase.example.com/collection/42"
              (common/frontend-url (channel.urls/collection-path 42))))))
   (testing "an unset site URL yields a relative path, never the literal \"null\" host that
             interpolating site-url directly would produce — site-url is nil both when it has
             never been configured and when the stored value fails validation"
     (doseq [unset [nil ""]]
-      (with-redefs [channel.urls/site-url (constantly unset)]
+      (mt/with-dynamic-fn-redefs [channel.urls/site-url (constantly unset)]
         (is (= "/collection/42" (common/frontend-url (channel.urls/collection-path 42))))
         (is (= "/question/42" (common/frontend-url (channel.urls/card-path 42))))))))
 
@@ -100,7 +150,8 @@
 ;; check would confuse. `parameters` is nested so subtree selection and order-absorption can be
 ;; exercised.
 (def ^:private test-catalog
-  ["name" "collection" "collection_path" "parameters.name" "parameters.type"])
+  ["name" "collection" "collection_path" "description" "last_run.status"
+   "parameters.name" "parameters.type"])
 
 (defn- register-fields-test-type! []
   (projections/register-projection!
@@ -134,8 +185,23 @@
              (common/select-fields :fields-test row ["parameters" "parameters.name"])))
       (is (= {:parameters [{:name "cat" :type "category" :extra "drop-me"}]}
              (common/select-fields :fields-test row ["parameters.name" "parameters"]))))
-    (testing "an unknown path is a teaching error naming the nearest valid paths"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown field path.*Nearest"
+    (testing "several paths in one call merge into one selection tree"
+      ;; the ordinary `fields: ["name","parameters.type"]` shape: distinct top-level keys must
+      ;; both survive the merge, not just two paths down one branch
+      (is (= {:name "Q1" :parameters [{:type "category"}]}
+             (common/select-fields :fields-test row ["name" "parameters.type"]))))
+    (testing "GHY-4511: a named leaf the row has no value for answers null — the compact
+              projections drop nils, and an empty object reads as \"not a readable field\""
+      (is (= {:description nil} (common/select-fields :fields-test row ["description"])))
+      (is (= {:name "Q1" :description nil}
+             (common/select-fields :fields-test row ["name" "description"]))))
+    (testing "a path through a missing parent stays dropped — answering `last_run.status` with
+              a null-valued shell would claim a run that never happened"
+      (is (= {} (common/select-fields :fields-test row ["last_run.status"]))))
+    (testing "an unknown path is a teaching error naming the nearest valid paths, ranked by edit
+              distance — the suggestion is only useful if the closest catalog entry leads"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Unknown field path \"nmae\".*Nearest valid paths: name, collection"
                             (common/select-fields :fields-test row ["nmae"]))))
     (testing "empty fields is a teaching error"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"at least one path"
@@ -148,6 +214,99 @@
     (testing "fields on a type with no catalog is a teaching error"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not supported for type"
                             (common/select-fields :no-such-type row ["name"]))))))
+
+(deftest ^:parallel truncation-line-test
+  (testing "a narrowing param is named alongside the next offset — a list the caller can filter
+            should steer to the filter first, since paging a broad list is the expensive path"
+    (is (= "Returned 2 of 5 — narrow with `query`, or continue with `offset: 2`."
+           (common/truncation-line {:param :query :offset 0 :limit 2 :total 5 :returned 2}))))
+  (testing "a floored total reads as a lower bound — a search total capped at the ranking limit is
+            not an exact count, and reporting it as one would have the caller stop paging early"
+    (is (= "Returned 2 of at least 9 — continue with `offset: 2`."
+           (common/truncation-line {:offset 0 :limit 2 :total 9 :total-floor? true :returned 2}))))
+  (testing "an untruncated page, or one whose total is unknown, has no line"
+    (is (nil? (common/truncation-line {:offset 0 :limit 10 :total 5 :returned 5})))
+    (is (nil? (common/truncation-line {:offset 0 :limit 10 :total nil :returned 5})))))
+
+(deftest list-content-empty-page-test
+  (testing "GHY-4137/P6: a page that returns nothing must say why. `truncation-line` only fires when
+            (offset + limit) < total, so an offset at or past the end produced a bare
+            {\"data\":[],\"returned\":0,\"total\":37} with no steering at all — which reads as
+            \"nothing matches\" when the truth is \"you paged past the end\"."
+    (testing "an offset past the end names the offset and the total"
+      (let [text (-> (common/list-content [] 37 {:offset 100 :limit 20}) :content first :text)]
+        (is (re-find #"No results at offset 100" text))
+        (is (re-find #"37 available" text))
+        (is (re-find #"`offset`" text) "it steers back rather than leaving the caller stuck")))
+    (testing "a floored total stays a floor in the empty-page line"
+      (let [text (-> (common/list-content [] 37 {:offset 100 :limit 20 :total-floor? true})
+                     :content first :text)]
+        (is (re-find #"at least 37 available" text))))
+    (testing "an empty FIRST page — every match dropped after counting — says so instead of steering
+              to an offset that would not help"
+      (let [text (-> (common/list-content [] 3 {:offset 0 :limit 20}) :content first :text)]
+        (is (re-find #"Returned 0 of 3" text))
+        (is (not (re-find #"No results at offset" text)))))
+    (testing "a genuinely empty result set gets no line — total 0 already says it"
+      (let [text (-> (common/list-content [] 0 {:offset 0 :limit 20}) :content first :text)]
+        (is (not (re-find #"No results" text)))
+        (is (not (re-find #"Returned" text)))))
+    (testing "an unknown total gets no line — there is nothing to report against"
+      (let [text (-> (common/list-content [] nil {:offset 100 :limit 20}) :content first :text)]
+        (is (not (re-find #"No results" text)))))
+    (testing "a non-empty page is unaffected by the new branch"
+      (let [text (-> (common/list-content [{:id 1} {:id 2}] 5 {:offset 0 :limit 2}) :content first :text)]
+        (is (re-find #"Returned 2 of 5" text))
+        (is (not (re-find #"No results" text)))))))
+
+(def ^:private browse-empty-hint
+  "The `:empty-hint` `list_databases` passes — quoted verbatim so this test moves in lockstep with
+   the real call site."
+  "No databases are visible to you. Browsing data needs query-builder or table-metadata permission on at least one database.")
+
+(deftest list-content-empty-hint-test
+  (testing "`:empty-hint` supplies the domain reason a result set is genuinely empty — the envelope
+            says zero, the hint says why. Dropping the option is silent: `list-content` ignores
+            unknown keys, so the sentence would just vanish from `list_databases`."
+    (testing "guards the restack of the `:empty-hint` call site in tools/browse.clj `list_databases`:
+              if a merge resolves `list-content` back to a version without `:empty-hint`, this fails"
+      (let [text (-> (common/list-content [] 0 {:offset 0 :limit 20 :empty-hint browse-empty-hint})
+                     :content first :text)]
+        (is (re-find #"\"total\":0" text))
+        (is (str/includes? text browse-empty-hint))))
+    (testing "guards the restack of the `:empty-hint` call site in tools/browse.clj: the hint must
+              stay gated on a zero total, never collapse into a bare `or`. At a positive total the
+              caller paged past the end, and printing a static \"nothing is visible to you\" would
+              state something false about data they do have"
+      (let [text (-> (common/list-content [] 37 {:offset 100 :limit 20 :empty-hint browse-empty-hint})
+                     :content first :text)]
+        (is (re-find #"No results at offset 100" text))
+        (is (not (str/includes? text browse-empty-hint)))))
+    (testing "an empty first page with a positive total keeps the dropped-rows line too — that total
+              is also not a genuinely empty result set"
+      (let [text (-> (common/list-content [] 3 {:offset 0 :limit 20 :empty-hint browse-empty-hint})
+                     :content first :text)]
+        (is (re-find #"Returned 0 of 3" text))
+        (is (not (str/includes? text browse-empty-hint)))))
+    (testing "an unknown total is not a known-zero one, so the hint stays out"
+      (let [text (-> (common/list-content [] nil {:offset 0 :limit 20 :empty-hint browse-empty-hint})
+                     :content first :text)]
+        (is (not (str/includes? text browse-empty-hint)))))
+    (testing "a zero total reached at a nonzero offset keeps the hint out — the gate is the offset
+              as well as the total. `empty-page-line` declines at total 0 for every offset, so a
+              total-only gate would answer \"why is this empty\" for a caller who instead paged past
+              the end of an empty list"
+      (let [text (-> (common/list-content [] 0 {:offset 50 :limit 20 :empty-hint browse-empty-hint})
+                     :content first :text)]
+        (is (not (str/includes? text browse-empty-hint)))
+        (is (re-find #"\"total\":0" text) "the envelope still reports the zero total")))
+    (testing "a non-empty page ignores the hint entirely — a truncated page still gets its
+              truncation line"
+      (let [text (-> (common/list-content [{:id 1} {:id 2}] 5 {:offset 0 :limit 2 :empty-hint browse-empty-hint})
+                     :content first :text)]
+        (is (re-find #"Returned 2 of 5" text))
+        (is (re-find #"offset: 2" text))
+        (is (not (str/includes? text browse-empty-hint)))))))
 
 (deftest list-content-test
   (testing "a full page (returned == total) appends no steering line"

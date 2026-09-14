@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.events.core :as events]
+   [metabase.glossary.db :as glossary.db]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -14,14 +15,8 @@
 (api.macros/defendpoint :get "/"
   "Fetch all glossary entries, optionally filtered by search term."
   [_route-params
-   {:keys [search]} :- [:maybe [:map [:search {:optional true} [:maybe ms/NonBlankString]]]]]
-  (let [where (when search
-                [:or
-                 [:like [:lower :term] [:lower (str "%" search "%")]]
-                 [:like [:lower :definition] [:lower (str "%" search "%")]]])]
-    {:data (t2/hydrate (t2/select :model/Glossary (cond-> {:order-by [[:term :asc]]}
-                                                    where (assoc :where where)))
-                       :creator)}))
+   {:keys [search]} :- [:maybe [:map {:closed true} [:search {:optional true} [:maybe ms/NonBlankString]]]]]
+  {:data (t2/hydrate (glossary.db/glossary-entries search) :creator)})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -31,14 +26,14 @@
   "Create a new glossary entry."
   [_route-params
    _query-params
-   {:keys [term definition]} :- [:map
+   {:keys [term definition]} :- [:map {:closed true}
                                  [:term ms/NonBlankString]
                                  [:definition ms/NonBlankString]]]
   (api/check-data-analyst)
-  (let [glossary (t2/insert-returning-instance! :model/Glossary
-                                                {:term       term
-                                                 :definition definition
-                                                 :creator_id api/*current-user-id*})]
+  (let [glossary (glossary.db/insert-glossary-entry!
+                  {:term       term
+                   :definition definition
+                   :creator_id api/*current-user-id*})]
     (events/publish-event! :event/glossary-create
                            {:object glossary
                             :user-id api/*current-user-id*})
@@ -50,15 +45,15 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update an existing glossary entry."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
-   {:keys [term definition]} :- [:map
+   {:keys [term definition]} :- [:map {:closed true}
                                  [:term ms/NonBlankString]
                                  [:definition ms/NonBlankString]]]
   (api/check-data-analyst)
-  (let [previous-glossary (api/check-404 (t2/select-one :model/Glossary :id id))]
-    (t2/update! :model/Glossary id {:term term :definition definition})
-    (let [glossary (t2/select-one :model/Glossary :id id)]
+  (let [previous-glossary (api/check-404 (glossary.db/glossary-entry id))]
+    (glossary.db/update-glossary-entry! id term definition)
+    (let [glossary (glossary.db/glossary-entry id)]
       (events/publish-event! :event/glossary-update
                              {:object glossary
                               :previous-object previous-glossary
@@ -71,10 +66,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
   "Delete a glossary entry."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/check-data-analyst)
-  (let [glossary (api/check-404 (t2/select-one :model/Glossary :id id))]
-    (t2/delete! :model/Glossary :id id)
+  (let [glossary (api/check-404 (glossary.db/glossary-entry id))]
+    (glossary.db/delete-glossary-entry! id)
     (events/publish-event! :event/glossary-delete
                            {:object glossary
                             :user-id api/*current-user-id*}))

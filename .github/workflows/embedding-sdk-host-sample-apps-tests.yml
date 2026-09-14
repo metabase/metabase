@@ -203,9 +203,7 @@ jobs:
       fail-fast: false
       matrix:
         environment: ["production", "development"]
-    # TEMPORARILY DISABLED: re-enable by removing the `false &&` below.
     if: |
-      false &&
       !cancelled() && needs.get-sample-apps-data.result == 'success' &&
       (github.ref == 'refs/heads/master' || github.base_ref == 'master')
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -235,11 +233,6 @@ jobs:
           sample-app-branch-name: ${{ needs.get-sample-apps-data.outputs.branch_name }}
           sample-app-environment: ${{ matrix.environment }}
           staging-mb-all-features-token: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
-          shoppy-iam-role: ${{ secrets.SHOPPY_IAM_ROLE }}
-          shoppy-metabase-app-db-s3-bucket: ${{ secrets.SHOPPY_METABASE_APP_DB_S3_BUCKET }}
-          shoppy-metabase-app-db-s3-key: ${{ secrets.SHOPPY_METABASE_APP_DB_S3_KEY }}
-          shoppy-metabase-app-db-user: ${{ secrets.SHOPPY_METABASE_APP_DB_USER }}
-          shoppy-metabase-app-db-database: ${{ secrets.SHOPPY_METABASE_APP_DB_DATABASE }}
           metastore-dev-server-url: ${{ secrets.METASTORE_DEV_SERVER_URL }}
           shoppy-datadog-application-id: ${{ secrets.SHOPPY_METABASE_APP_DATADOG_APPLICATION_ID }}
           shoppy-datadog-client-token: ${{ secrets.SHOPPY_METABASE_APP_DATADOG_CLIENT_TOKEN }}
@@ -272,9 +265,7 @@ jobs:
   # They use the shoppy production environment and include performance measurement tests.
   e2e-shoppy-synthetic-tests:
     needs: [get-sample-apps-data]
-    # TEMPORARILY DISABLED: re-enable by removing the `false &&` below.
     if: |
-      false &&
       !cancelled() && needs.get-sample-apps-data.result == 'success' &&
       github.event_name == 'push' &&
       github.ref == 'refs/heads/master'
@@ -305,11 +296,6 @@ jobs:
           sample-app-branch-name: ${{ needs.get-sample-apps-data.outputs.branch_name }}
           sample-app-environment: production
           staging-mb-all-features-token: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
-          shoppy-iam-role: ${{ secrets.SHOPPY_IAM_ROLE }}
-          shoppy-metabase-app-db-s3-bucket: ${{ secrets.SHOPPY_METABASE_APP_DB_S3_BUCKET }}
-          shoppy-metabase-app-db-s3-key: ${{ secrets.SHOPPY_METABASE_APP_DB_S3_KEY }}
-          shoppy-metabase-app-db-user: ${{ secrets.SHOPPY_METABASE_APP_DB_USER }}
-          shoppy-metabase-app-db-database: ${{ secrets.SHOPPY_METABASE_APP_DB_DATABASE }}
           metastore-dev-server-url: ${{ secrets.METASTORE_DEV_SERVER_URL }}
           shoppy-datadog-application-id: ${{ secrets.SHOPPY_METABASE_APP_DATADOG_APPLICATION_ID }}
           shoppy-datadog-client-token: ${{ secrets.SHOPPY_METABASE_APP_DATADOG_CLIENT_TOKEN }}
@@ -438,15 +424,38 @@ jobs:
         if: steps.prebuilt-cljs.outcome != 'success'
         run: bun run build-pure:cljs
 
+      # The data-app suite synchronizes real actions, and Metabase only permits
+      # those against a writable warehouse, which comes from the `qa-db`
+      # snapshot below. That snapshot creator builds every QA database in one
+      # pass — Mongo and MySQL included — so all three have to be up even though
+      # only `postgres-writable` is restored. The other host apps read the sample
+      # database, so they skip the pull entirely.
+      - name: Prepare Docker containers
+        if: ${{ matrix.test_suite == 'vite-6-data-app-host-app-e2e' }}
+        uses: ./.github/actions/e2e-prepare-containers
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          postgres: true
+          mysql: true
+          mongo: true
+
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
 
       - uses: ./.github/actions/resolve-job-id
 
+      # Without `--spec` the snapshot config picks up `qa-db.cy.snap.js` too,
+      # which is what creates the `postgres-writable` snapshot the data-app
+      # action tests restore.
       - name: Generate database snapshots
         run: |
-          node e2e/runner/run_cypress_ci.js snapshot \
-            --spec "e2e/snapshot-creators/default.cy.snap.js"
+          if [ "${{ matrix.test_suite }}" = "vite-6-data-app-host-app-e2e" ]; then
+            node e2e/runner/run_cypress_ci.js snapshot
+          else
+            node e2e/runner/run_cypress_ci.js snapshot \
+              --spec "e2e/snapshot-creators/default.cy.snap.js"
+          fi
 
       - name: Prepare and launch Host App
         run: npx tsx ./e2e/runner/embedding-sdk/host-apps/start-ci.ts ${{ matrix.test_suite }}

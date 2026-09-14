@@ -6,6 +6,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.parameters.chain-filter :as chain-filter]
+   [metabase.parameters.db :as parameters.db]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.parameters.field.search-values-query :as search-values-query]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -13,8 +14,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.metadata-from-qp :as warehouse-schema.metadata-from-qp]
-   [toucan2.core :as t2])
+   [metabase.warehouse-schema.metadata-from-qp :as warehouse-schema.metadata-from-qp])
   (:import
    (java.text NumberFormat)))
 
@@ -32,7 +32,7 @@
   [{semantic-type :semantic_type, fk-target-field-id :fk_target_field_id, :as field}]
   (if (and (isa? semantic-type :type/FK)
            fk-target-field-id)
-    (t2/select-one :model/Field :id fk-target-field-id)
+    (parameters.db/field fk-target-field-id)
     field))
 
 (def ^:private default-max-field-search-limit 1000)
@@ -78,7 +78,7 @@
   (if-let [remapped-field-id (when (= has-field-values-type :list)
                                (chain-filter/remapped-field-id field-id))]
     {:values          (search-values (api/check-404 field)
-                                     (api/check-404 (t2/select-one :model/Field :id remapped-field-id)))
+                                     (api/check-404 (parameters.db/field remapped-field-id)))
      :field_id        field-id
      :has_more_values (boolean has_more_values)}
     (params.field-values/get-or-create-field-values-for-current-user! (api/check-404 field))))
@@ -90,10 +90,10 @@
   Field->Field remapping."
   [field-id]
   (let [field        (if qp.perms/*param-values-query*
-                       (api/check-404 (t2/select-one :model/Field :id field-id))
-                       (api/read-check (t2/select-one :model/Field :id field-id)))
+                       (api/check-404 (parameters.db/field field-id))
+                       (api/read-check (parameters.db/field field-id)))
         search-field (or (some->> (chain-filter/remapped-field-id field-id)
-                                  (t2/select-one :model/Field :id))
+                                  parameters.db/field)
                          field)]
     [field search-field]))
 
@@ -117,9 +117,12 @@
   "Like [[search-values-from-field-id]], but honest about the two things that fn papers over, for callers (the MCP
   `get_parameter_values` tool) that must not mislead an agent:
 
-    1. `:has_more_values` is a floor. It is `true` when the underlying query fills the `default-max-field-search-limit`
-       cap, so a column with more distinct values than the cap reads as truncated rather than complete. (A
-       `query-string` search still reports `true`, as before.)
+    1. `:has_more_values` is a floor: `true` exactly when the underlying query filled the
+       `default-max-field-search-limit` cap, so a column with more distinct values than the cap reads as truncated
+       rather than complete. Unlike [[search-values-from-field-id]] it does NOT report `true` merely because a
+       `query-string` narrowed the search — this fn runs the query itself and can count the rows, and claiming
+       more exist when the search returned everything tells an agent to keep narrowing a list it already has
+       in full.
 
     2. A fetch error propagates. Unlike [[search-values]], which logs and returns `[]` -- turning a warehouse timeout
        or sandbox error into an empty list that reads as \"no values\" -- this runs the search query directly, so the
@@ -134,8 +137,7 @@
         rows                 (search-values-query/search-values-query
                               (follow-fks field) (follow-fks search-field) (not-empty query-string) limit)]
     {:values          rows
-     :has_more_values (or (not (str/blank? query-string))
-                          (>= (count rows) limit))
+     :has_more_values (>= (count rows) limit)
      :field_id        field-id}))
 
 (defn parse-query-param-value-for-field

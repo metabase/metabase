@@ -19,6 +19,7 @@
   add-card-to-document!
   copy-document!]
  [metabase.documents.markdown
+  contains-table?
   escape-text
   parse
   serialize
