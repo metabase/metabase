@@ -233,27 +233,25 @@
   [{:keys [request response start-time route-template-carrier] :as info}]
   (when (api-key-request? request)
     (try
-      (let [api-key-id (:api-key-id request)]
-        (api-keys.usage/record-api-key-last-used! api-key-id)
-        (api-keys.usage/record-api-key-request!
-         {:api-key-id     api-key-id
-          :user-id        (:metabase-user-id request)
-          ;; the API-key auth query already joined `core_user`, so the tenant rode along on the request. Reading it
-          ;; here rather than from `api/*current-user*` keeps this off dynamic bindings, and rather than from a fresh
-          ;; `SELECT` keeps a per-request DB call out of a path whose writes are batched precisely to avoid them.
-          :tenant-id      (:tenant-id request)
-          :route-template (some-> route-template-carrier deref)
-          :http-method    (some-> (:request-method request) name u/upper-case-en)
-          :status         (:status response)
-          :duration-ms    (long (u/since-ms start-time))
-          :user-agent     (get-in request [:headers "user-agent"])
-          :ip-address     (request/ip-address request)
-          ;; supplementary to client_name (the primary classification axis) — a plain header read, no
-          ;; carrier needed like route-template, since it's already on the pre-routing request we closed
-          ;; over. Almost always nil for API-key traffic: the SDK/embed.js clients that set it
-          ;; authenticate via JWT/SSO, not API keys.
-          :embedding-client   (get-in request [:headers "x-metabase-client"])
-          :embedding-hostname (analytics.sdk/extract-hostname (get-in request [:headers "x-metabase-embed-referrer"]))}))
+      (api-keys.usage/record-api-key-usage!
+       {:api-key-id     (:api-key-id request)
+        :user-id        (:metabase-user-id request)
+        ;; the API-key auth query already joined `core_user`, so the tenant rode along on the request. Reading it
+        ;; here rather than from `api/*current-user*` keeps this off dynamic bindings, and rather than from a fresh
+        ;; `SELECT` keeps a per-request DB call out of a path whose writes are batched precisely to avoid them.
+        :tenant-id      (:tenant-id request)
+        :route-template (some-> route-template-carrier deref)
+        :http-method    (some-> (:request-method request) name u/upper-case-en)
+        :status         (:status response)
+        :duration-ms    (long (u/since-ms start-time))
+        :user-agent     (get-in request [:headers "user-agent"])
+        :ip-address     (request/ip-address request)
+        ;; supplementary to client_name (the primary classification axis) — a plain header read, no
+        ;; carrier needed like route-template, since it's already on the pre-routing request we closed
+        ;; over. Almost always nil for API-key traffic: the SDK/embed.js clients that set it
+        ;; authenticate via JWT/SSO, not API keys.
+        :embedding-client   (get-in request [:headers "x-metabase-client"])
+        :embedding-hostname (analytics.sdk/extract-hostname (get-in request [:headers "x-metabase-embed-referrer"]))})
       (catch Throwable e
         (log/warn e "Error recording API key usage"))))
   info)

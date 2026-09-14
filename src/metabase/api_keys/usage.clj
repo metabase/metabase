@@ -1,14 +1,16 @@
 (ns metabase.api-keys.usage
   "API-key usage logging.
 
-  Two write points feed the API-key analytics tables: one lean `api_key_usage_log` row per
-  API-key-authenticated `/api/*` request, and a throttled `api_key.last_used_at` stamp that answers
-  \"is this key still in use?\" cheaply. Both are `defenterprise` no-ops in OSS — an OSS instance
-  records nothing — with the real writes in `metabase-enterprise.api-keys.usage`. Like
-  `ai_usage_log`, collection runs on every EE instance (`:feature :none`); the `:audit-app` feature
-  gates the surfaces that read these rows, not the writing.
+  One entry point, [[record-api-key-usage!]], feeds two things per API-key-authenticated `/api/*`
+  request: a lean `api_key_usage_log` row, and an `api_key.last_used_at` stamp that answers \"is this
+  key still in use?\" cheaply. Callers don't need to know there are two internal write strategies —
+  see `metabase-enterprise.api-keys.usage` for why they're split and how each is batched. This is a
+  `defenterprise` no-op in OSS — an OSS instance records nothing — with the real writes in
+  `metabase-enterprise.api-keys.usage`. Like `ai_usage_log`, collection runs on every EE instance
+  (`:feature :none`); the `:audit-app` feature gates the surfaces that read these rows, not the
+  writing.
 
-  Both functions take already-resolved values, never a Ring request: the caller (the `log-api-call`
+  The function takes already-resolved values, never a Ring request: the caller (the `log-api-call`
   hook) extracts everything on the request thread and hands it over as a plain map, so the write
   path never reaches back into request state.
 
@@ -71,15 +73,9 @@
           (some (fn [[needle k]] (when (str/includes? ua needle) k)) client-name-matchers))
         "other")))
 
-(defenterprise record-api-key-request!
-  "Write one `api_key_usage_log` row for a completed API-key-authenticated request. OSS no-op."
+(defenterprise record-api-key-usage!
+  "Record one completed API-key-authenticated request: write an `api_key_usage_log` row and stamp
+  `api_key.last_used_at`. OSS no-op."
   metabase-enterprise.api-keys.usage
   [_request-info]
-  nil)
-
-(defenterprise record-api-key-last-used!
-  "Stamp `api_key.last_used_at` for the key with `api-key-id`, throttled to at most one write per key
-  per throttle window. OSS no-op."
-  metabase-enterprise.api-keys.usage
-  [_api-key-id]
   nil)

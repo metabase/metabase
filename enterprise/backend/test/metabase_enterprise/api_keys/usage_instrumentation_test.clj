@@ -9,7 +9,6 @@
   pre-routing request."
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
-   [metabase-enterprise.api-keys.usage :as ee.usage]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -31,15 +30,15 @@
 
 (defn- do-with-api-key!
   "Create a real API key over the API, run `f` with its unmasked key and id, then clean up the key and its usage rows.
-  Rows are inserted from a Grouper queue, so `synchronous-batch-updates` is forced on for the duration — otherwise
-  the row would only appear a batch interval later, on another thread."
+  Both the usage-log row and the last_used_at stamp go through Grouper queues, so
+  `synchronous-batch-updates` is forced on for the duration — otherwise they'd only land a batch
+  interval later, on another thread."
   [f]
   (mt/with-temporary-setting-values [synchronous-batch-updates true]
     (let [{unmasked-key :unmasked_key, api-key-id :id}
           (mt/user-http-request :crowberto :post 200 "api-key"
                                 {:group_id (:id (perms/all-users-group))
                                  :name     (str (random-uuid))})]
-      (ee.usage/reset-last-used-throttle!)
       (try
         (f unmasked-key api-key-id)
         (finally
