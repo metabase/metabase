@@ -64,6 +64,8 @@ Not to use:
 
 ### Compact
 
+Compact sizes (`compact-sm`, `compact-md`) always pair with `variant="transparent"`, and `transparent` always pairs with a compact size. Pass both explicitly; if only one of them is given, `Button` fills in the other (`compact-*` forces `transparent`, `transparent` without a compact size falls back to `compact-md`).
+
 <Canvas of={ButtonStories.Compact} />
 
 ### Sections

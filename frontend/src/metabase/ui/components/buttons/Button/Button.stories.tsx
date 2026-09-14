@@ -26,11 +26,15 @@ const argTypes = {
     control: { type: "inline-radio" },
   },
   color: {
-    options: {
-      default: undefined,
-      "feedback-positive": "feedback-positive",
-      "feedback-negative": "feedback-negative",
-    },
+    options: [
+      undefined,
+      "brand",
+      "filter",
+      "negative",
+      "positive",
+      "warning",
+      "neutral",
+    ],
     control: { type: "inline-radio" },
   },
   size: {
@@ -82,15 +86,21 @@ const MATRIX_STATES = [
 ] as const;
 
 const MATRIX_COLORS = {
-  brand: "core-brand",
-  negative: "feedback-negative",
-  neutral: "text-primary",
+  brand: "brand",
+  filter: "filter",
+  negative: "negative",
+  neutral: "neutral",
+  positive: "positive",
+  warning: "warning",
 } as const;
 
 const COLOR_TITLES: Record<MatrixColor, string> = {
   brand: "Brand",
+  filter: "Filter",
   negative: "Negative",
   neutral: "Neutral",
+  positive: "Positive",
+  warning: "Warning",
 };
 
 const STATE_LABELS: Record<MatrixState, string> = {
@@ -104,6 +114,9 @@ const STATE_LABELS: Record<MatrixState, string> = {
 type MatrixSize = (typeof MATRIX_SIZES | typeof COMPACT_SIZES)[number];
 type MatrixState = (typeof MATRIX_STATES)[number];
 type MatrixColor = keyof typeof MATRIX_COLORS;
+
+const matrixColorProp = (color: MatrixColor) =>
+  color === "brand" ? undefined : MATRIX_COLORS[color];
 
 const matrixStateProps = (
   state: MatrixState,
@@ -169,7 +182,7 @@ const MatrixSection = ({
             <Button
               key={size}
               variant={variant}
-              color={MATRIX_COLORS[color]}
+              color={matrixColorProp(color)}
               size={size}
               data-spec-cell={`${matrixCell(variant, color, size)}/${state}`}
               {...matrixStateProps(state)}
@@ -235,7 +248,7 @@ const GroupSection = ({
             <Button.Group key={size}>
               <Button
                 variant={variant}
-                color={MATRIX_COLORS[color]}
+                color={matrixColorProp(color)}
                 size={size}
                 data-spec-cell={groupItemCell(
                   variant,
@@ -250,7 +263,7 @@ const GroupSection = ({
               </Button>
               <Button
                 variant={variant}
-                color={MATRIX_COLORS[color]}
+                color={matrixColorProp(color)}
                 size={size}
                 leftSection={<Icon name="chevrondown" />}
                 data-spec-cell={groupItemCell(
@@ -315,7 +328,7 @@ export const VariantFilled = {
     <VariantMatrix
       title="Button · filled"
       variant="filled"
-      colors={["brand", "negative"]}
+      colors={["brand", "filter", "negative", "positive", "warning"]}
       groups={["brand"]}
     />
   ),
@@ -341,7 +354,7 @@ export const VariantLight = {
     <VariantMatrix
       title="Button · light"
       variant="light"
-      colors={["brand", "negative", "neutral"]}
+      colors={["brand", "filter", "negative", "neutral", "positive"]}
       groups={["neutral"]}
     />
   ),
@@ -354,7 +367,7 @@ export const VariantSubtle = {
     <VariantMatrix
       title="Button · subtle"
       variant="subtle"
-      colors={["brand", "negative", "neutral"]}
+      colors={["brand", "negative", "neutral", "positive"]}
       groups={["brand", "neutral"]}
     />
   ),
@@ -455,8 +468,8 @@ const SECTION_KINDS = [
   {
     key: "right-badge",
     title: "Right · badge",
-    jsx: "rightSection={<Badge>1</Badge>}",
-    props: () => ({ rightSection: <Badge>1</Badge> }),
+    jsx: 'rightSection={<Badge variant="light">1</Badge>}',
+    props: () => ({ rightSection: <Badge variant="light">1</Badge> }),
   },
 ] as const;
 
@@ -496,7 +509,7 @@ const SectionKindSection = ({ kind }: { kind: SectionKind }) => (
                   key={column.key}
                   variant={column.variant}
                   size={column.size}
-                  color={MATRIX_COLORS[color]}
+                  color={matrixColorProp(color)}
                   data-spec-cell={sectionCell(column, color, kind, state)}
                   {...matrixStateProps(state)}
                   {...kind.props()}

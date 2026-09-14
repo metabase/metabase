@@ -1,96 +1,98 @@
 import { Button, type ButtonProps } from "@mantine/core";
 
+import { color } from "metabase/ui/utils/colors";
+
 import ButtonStyles from "./Button.module.css";
 
-type ButtonRootVars = Record<string, string>;
+const BUTTON_COLORS = [
+  "brand",
+  "filter",
+  "negative",
+  "positive",
+  "warning",
+  "neutral",
+] as const;
 
-const COLOR_FAMILIES: Record<string, string> = {
-  "core-brand": "brand",
-  "feedback-negative": "negative",
-  "text-primary": "neutral",
+type ButtonColor = (typeof BUTTON_COLORS)[number];
+
+const DEFAULT_COLORS: Record<string, ButtonColor> = {
+  default: "neutral",
+  filled: "brand",
+  light: "brand",
+  subtle: "brand",
+  transparent: "brand",
 };
 
-const TOKENIZED_FAMILIES: Record<string, string[]> = {
-  filled: ["brand", "negative"],
-  light: ["brand", "negative", "neutral"],
-  subtle: ["brand", "negative", "neutral"],
-  transparent: ["brand", "negative", "neutral"],
-};
+const CELLS = [
+  "default-neutral",
+  "filled-brand",
+  "filled-filter",
+  "filled-negative",
+  "filled-positive",
+  "filled-warning",
+  "light-brand",
+  "light-filter",
+  "light-negative",
+  "light-neutral",
+  "light-positive",
+  "subtle-brand",
+  "subtle-negative",
+  "subtle-neutral",
+  "subtle-positive",
+] as const;
 
-const getFamilyVars = (variant: string, family: string): ButtonRootVars => {
-  const tokenVariant = variant === "transparent" ? "subtle" : variant;
-  const labelHover =
-    family === "neutral" || variant === "filled" ? "default" : "hover";
-  return {
-    "--button-color": `var(--mb-color-button_label-${tokenVariant}-${family}-default)`,
-    "--button-hover-color": `var(--mb-color-button_label-${tokenVariant}-${family}-${labelHover})`,
-    "--button-bg": `var(--mb-color-button-${tokenVariant}-${family}-default)`,
-    "--button-hover": `var(--mb-color-button-${tokenVariant}-${family}-hover)`,
-    "--button-pressed": `var(--mb-color-button-${tokenVariant}-${family}-pressed)`,
-  };
-};
+const DEFAULT_LABEL_HOVER_CELLS = [
+  "default-neutral",
+  "filled-brand",
+  "filled-filter",
+  "filled-negative",
+  "filled-positive",
+  "filled-warning",
+  "light-neutral",
+  "subtle-neutral",
+] as const;
 
-const DEFAULT_VARS: ButtonRootVars = {
-  ...getFamilyVars("default", "neutral"),
-  "--button-bd": "0.5px solid var(--mb-color-border-neutral-strong)",
-};
+type Cell = (typeof CELLS)[number];
+type DefaultLabelHoverCell = (typeof DEFAULT_LABEL_HOVER_CELLS)[number];
 
-const TRANSPARENT_VARS: ButtonRootVars = {
-  "--button-hover": "transparent",
-  "--button-pressed": "transparent",
-};
+const isButtonColor = (value: unknown): value is ButtonColor =>
+  BUTTON_COLORS.some((item) => item === value);
 
-const getOnDarkVars = (kind: string, borderColor: string): ButtonRootVars => ({
-  "--button-color": `var(--mb-color-button-label-on_dark-${kind})`,
-  "--button-hover-color": `var(--mb-color-button-label-on_dark-${kind})`,
-  "--button-bg": `var(--mb-color-button-on_dark-${kind}-default)`,
-  "--button-hover": `var(--mb-color-button-on_dark-${kind}-hover)`,
-  "--button-pressed": `var(--mb-color-button-on_dark-${kind}-pressed)`,
-  "--button-bd": `0.5px solid ${borderColor}`,
-});
+const isCell = (value: string): value is Cell =>
+  CELLS.some((item) => item === value);
 
-const ON_DARK_VARS: Record<string, ButtonRootVars> = {
-  "on-dark-primary": getOnDarkVars("primary", "transparent"),
-  "on-dark-secondary": getOnDarkVars(
-    "secondary",
-    "var(--mb-color-border-on_dark)",
-  ),
-};
+const isDefaultLabelHoverCell = (value: Cell): value is DefaultLabelHoverCell =>
+  DEFAULT_LABEL_HOVER_CELLS.some((item) => item === value);
 
-const NON_BRAND_VARS: Record<string, ButtonRootVars> = {
-  filled: {
-    "--button-hover": "color-mix(in srgb, var(--button-bg) 88%, transparent)",
-  },
-  subtle: {
-    "--button-hover": "transparent",
-    "--button-hover-color":
-      "color-mix(in srgb, var(--button-color) 88%, transparent)",
-  },
-};
-
-const getRootVars = ({ variant, color, size }: ButtonProps): ButtonRootVars => {
-  if (variant === "default") {
-    return DEFAULT_VARS;
-  }
+const getRootVars = ({
+  variant,
+  color: buttonColor,
+}: ButtonProps): Record<string, string> => {
   if (!variant) {
     return {};
   }
-  if (ON_DARK_VARS[variant]) {
-    return ON_DARK_VARS[variant];
+  const tokenColor = isButtonColor(buttonColor)
+    ? buttonColor
+    : DEFAULT_COLORS[variant];
+  variant = variant === "transparent" ? "subtle" : variant;
+  const cell = `${variant}-${tokenColor}`;
+  if (!isCell(cell)) {
+    return {};
   }
-  const family = COLOR_FAMILIES[color ?? "core-brand"];
-  if (family && TOKENIZED_FAMILIES[variant]?.includes(family)) {
-    const vars = getFamilyVars(variant, family);
-    const isCompact = typeof size === "string" && size.startsWith("compact");
-    return isCompact ? { ...vars, ...TRANSPARENT_VARS } : vars;
-  }
-  return NON_BRAND_VARS[variant] ?? {};
+  return {
+    "--button-color": color(`button_label-${cell}-default`),
+    "--button-hover-color": isDefaultLabelHoverCell(cell)
+      ? color(`button_label-${cell}-default`)
+      : color(`button_label-${cell}-hover`),
+    "--button-bg": color(`button-${cell}-default`),
+    "--button-hover": color(`button-${cell}-hover`),
+    "--button-pressed": color(`button-${cell}-pressed`),
+  };
 };
 
 export const buttonOverrides = {
   Button: Button.extend({
     defaultProps: {
-      color: "core-brand",
       variant: "default",
       size: "md",
       loaderProps: {

@@ -47,13 +47,13 @@
   &[data-size^="compact"] {
     --mb-button-padding-y: 0px;
     --mb-button-padding-x: 0px;
-    --mb-button-section-gap: 4px;
     --mb-button-loader-size: 13.75px;
 
     overflow: visible;
   }
 
   &[data-size="compact-sm"] {
+    --mb-button-section-gap: 4px;
     --mb-button-loader-size: 11.5px;
     --mb-button-radius: 4px;
 
@@ -88,6 +88,10 @@
   }
 }
 
+.root[data-variant="default"] {
+  border-color: var(--mb-color-border-neutral-strong);
+}
+
 .root[data-variant="default"],
 .root[data-variant="filled"],
 .root[data-variant="light"],
@@ -117,12 +121,40 @@
   }
 }
 
-.root[data-variant="subtle"],
-.root[data-variant="transparent"] {
+.root[data-variant="subtle"] {
   &:disabled:not([data-loading]),
   &[data-disabled]:not([data-loading]) {
     background-color: transparent;
   }
+}
+
+.root[data-variant="transparent"] {
+  &,
+  &:hover:not([data-loading]),
+  &:active:not([data-loading]),
+  &[aria-pressed="true"]:not([data-loading]),
+  &:disabled:not([data-loading]),
+  &[data-disabled]:not([data-loading]) {
+    background-color: transparent;
+  }
+}
+
+.root[data-variant="on-dark-primary"] {
+  --button-color: var(--mb-color-button-label-on_dark-primary);
+  --button-hover-color: var(--mb-color-button-label-on_dark-primary);
+  --button-bg: var(--mb-color-button-on_dark-primary-default);
+  --button-hover: var(--mb-color-button-on_dark-primary-hover);
+  --button-pressed: var(--mb-color-button-on_dark-primary-pressed);
+  --button-bd: 0.5px solid transparent;
+}
+
+.root[data-variant="on-dark-secondary"] {
+  --button-color: var(--mb-color-button-label-on_dark-secondary);
+  --button-hover-color: var(--mb-color-button-label-on_dark-secondary);
+  --button-bg: var(--mb-color-button-on_dark-secondary-default);
+  --button-hover: var(--mb-color-button-on_dark-secondary-hover);
+  --button-pressed: var(--mb-color-button-on_dark-secondary-pressed);
+  --button-bd: 0.5px solid var(--mb-color-border-on_dark);
 }
 
 .root[data-variant^="on-dark-"] {
