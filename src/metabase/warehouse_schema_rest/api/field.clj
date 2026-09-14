@@ -189,7 +189,6 @@
                (not removed-fk?)
                (not= (:display_name field) display-name))
       (warehouse-schema-rest.db/rename-dimension-for-field! id display-name))
-    ;; everything checks out, now record the user's values -- metabase_field itself is sync-owned and unchanged
     (t2/with-transaction [_conn]
       (when removed-fk?
         (clear-dimension-on-fk-change! field))

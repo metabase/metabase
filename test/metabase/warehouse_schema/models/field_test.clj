@@ -367,6 +367,12 @@
       (is (=? {:display_name nil :semantic_type nil :fk_target_field_id nil
                :description_set true :semantic_type_set false :fk_target_field_id_set false}
               (t2/select-one :model/FieldUserSettings :field_id field-id))))
+    (testing "dropping the last value deletes the row"
+      (field-user-settings/unset-user-settings! field [:description])
+      (is (nil? (t2/select-one :model/FieldUserSettings :field_id field-id))))
+    (testing "an upsert that leaves no value behind creates no row"
+      (field-user-settings/upsert-user-settings field {:display_name nil})
+      (is (nil? (t2/select-one :model/FieldUserSettings :field_id field-id))))
     (testing "keys outside the user-settable set are ignored"
       (field-user-settings/upsert-user-settings field {:name "nope" :position 3})
       (is (nil? (:name (t2/select-one :model/FieldUserSettings :field_id field-id)))))))
@@ -399,6 +405,5 @@
                    :model/Field {source-id :id :as source} {:semantic_type :type/Category}]
       (field-user-settings/upsert-user-settings source {:semantic_type :type/FK :fk_target_field_id target-id})
       (t2/update! :model/Field target-id {:active false})
-      (is (=? {:semantic_type nil :semantic_type_set false :fk_target_field_id nil :fk_target_field_id_set false}
-              (t2/select-one :model/FieldUserSettings :field_id source-id)))
+      (is (nil? (t2/select-one :model/FieldUserSettings :field_id source-id)))
       (is (= :type/Category (:semantic_type (warehouse-schema.db/field source-id)))))))

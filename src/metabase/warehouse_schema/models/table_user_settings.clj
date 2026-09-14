@@ -17,8 +17,6 @@
 (methodical/defmethod t2/table-name :model/TableUserSettings [_model] :metabase_table_user_settings)
 
 (t2/deftransforms :model/TableUserSettings
-  ;; the enum-validating transforms are the Table's own: a user value ends up on a Table when read, so a value the
-  ;; Table would have rejected must be rejected here too -- stored, it would make every later read of that Table throw
   {:entity_type     mi/transform-keyword
    :visibility_type mi/transform-keyword
    :field_order     mi/transform-keyword
@@ -35,21 +33,15 @@
 (doto :model/TableUserSettings
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  ;; the Table search entry is built from the values users see, so it has to be rebuilt when those change
   (derive :hook/search-index))
 
 (methodical/defmethod t2/primary-keys :model/TableUserSettings [_model] [:table_id])
 
 (defn- complete-pairs
-  "Fill in the other half of a Table setting that is really one choice over two columns, so the user's intent is
-  recorded whole: `visibility_type`/`data_layer` are the same decision spelled two ways (the Table model keeps them in
-  step through its own update path, which user values no longer take), and publishing means `is_published` and
-  `collection_id` together."
+  "Fill in the other half of the two-column choices in `settings`: `visibility_type`/`data_layer`, and
+  `is_published`/`collection_id`."
   [settings table]
   (let [changing? (fn [k] (and (contains? settings k)
-                               ;; only a real change derives the other half. A caller resending the value it already
-                               ;; has must not silently rewrite its partner: `visibility_type` reads nil for several
-                               ;; data layers, so echoing that nil back would demote the table to :internal.
                                (not= (some-> (get settings k) keyword)
                                      (some-> (get table k) keyword))))]
     (cond-> settings
@@ -63,9 +55,7 @@
       (assoc :is_published (boolean (:is_published table))))))
 
 (defn- with-set-flags
-  "Record a `_set` flag for every user-settable column in `effective`, unless the writer set that flag itself in
-  `explicit` -- which is how [[unset-user-settings!]] takes a value back. The flag is what makes a user's NULL beat
-  the synced value."
+  "Set the `_set` flag of every flagged column in `effective`, unless `explicit` sets the flag itself."
   [settings effective explicit]
   (reduce-kv (fn [m column flag]
                (cond-> m
@@ -75,9 +65,7 @@
              warehouse-schema-overlay/table-user-settings-flags))
 
 (defn- enforce-invariants
-  "Apply to `settings` what has to hold of a TableUserSettings row however it was written -- the API, a bulk edit, or
-  a serdes import: the change is one a user is allowed to make, both halves of a two-column choice move together, and
-  a written column carries its `_set` flag."
+  "Validate `explicit`, complete its two-column pairs and set its flags, merged into `settings`."
   [settings explicit]
   (let [table     (warehouse-schema.db/table (:table_id settings))
         completed (complete-pairs explicit table)]
@@ -85,42 +73,52 @@
     (-> (merge settings completed)
         (with-set-flags completed explicit))))
 
+(defn- delete-when-empty!
+  "Delete `settings` when it holds no user value and no true flag, returning it either way."
+  [settings]
+  (when (and (every? #(nil? (get settings %)) warehouse-schema-overlay/user-settable-table-columns)
+             (not-any? #(get settings %) (vals warehouse-schema-overlay/table-user-settings-flags)))
+    (warehouse-schema.db/delete-table-user-settings! (:table_id settings)))
+  settings)
+
 (t2/define-before-insert :model/TableUserSettings
   [settings]
   (enforce-invariants settings settings))
+
+(t2/define-after-insert :model/TableUserSettings
+  [settings]
+  (delete-when-empty! settings))
 
 (t2/define-before-update :model/TableUserSettings
   [settings]
   (enforce-invariants settings (t2/changes settings)))
 
-(mu/defn upsert-user-settings
-  "Record the user-settable Table columns present in `settings` as the user values of `table`, flagging the
-  [[warehouse-schema-overlay/table-user-settings-flags]] among them as set.
+(t2/define-after-update :model/TableUserSettings
+  [settings]
+  (delete-when-empty! settings))
 
-  Publishing is one choice over `is_published` and `collection_id`, so recording either records the pair: a Table
-  published into the root collection has a NULL `collection_id` that must still beat the sync value."
+(mu/defn upsert-user-settings
+  "Record the user-settable Table columns present in `settings` as the user values of `table`."
   [{:keys [id]} :- [:map [:id ::lib.schema.id/table]]
    settings     :- ::warehouse-schema.schema/table.update]
   (let [settings (u/select-keys-when settings :present warehouse-schema-overlay/user-settable-table-columns)]
     (when (seq settings)
-      (when-not (warehouse-schema.db/table-user-settings-exist? id)
-        (warehouse-schema.db/insert-table-user-settings! {:table_id id}))
-      ;; the flags are stated here rather than left to the model hook: setting a column to the NULL it already holds
-      ;; is not a change the hook can see, and recording that the user chose it is the whole point of the flag
-      (warehouse-schema.db/update-table-user-settings! id (with-set-flags settings settings settings)))))
+      (if (warehouse-schema.db/table-user-settings-exist? id)
+        (warehouse-schema.db/update-table-user-settings! id (with-set-flags settings settings settings))
+        (warehouse-schema.db/insert-table-user-settings! (assoc settings :table_id id))))))
 
 (mu/defn upsert-user-settings-for-tables!
-  "Record `settings` as the user values of every Table in `table-ids`, in one statement rather than per Table.
-  Bulk edits in Data Studio and publishing go through here; see [[upsert-user-settings]] for the semantics."
+  "[[upsert-user-settings]] for every Table in `table-ids`, in one statement per kind."
   [table-ids :- [:set ::lib.schema.id/table]
    settings  :- ::warehouse-schema.schema/table.update]
   (let [settings (u/select-keys-when settings :present warehouse-schema-overlay/user-settable-table-columns)]
     (when (and (seq settings) (seq table-ids))
       (let [existing (warehouse-schema.db/table-ids-with-user-settings table-ids)]
         (when-let [missing (not-empty (remove existing table-ids))]
-          (warehouse-schema.db/insert-table-user-settings! (mapv (fn [id] {:table_id id}) missing)))
-        (warehouse-schema.db/update-table-user-settings-for-tables!
-         table-ids (with-set-flags settings settings settings))))))
+          (warehouse-schema.db/insert-table-user-settings! (mapv #(assoc settings :table_id %) missing)))
+        (when (seq existing)
+          (warehouse-schema.db/update-table-user-settings-for-tables!
+           existing (with-set-flags settings settings settings)))))))
 
 (defn- valid-field-order?
   "Field ordering is valid if all the fields from a given table are present and only from that table."
@@ -133,8 +131,6 @@
   [table field-order]
   {:pre [(valid-field-order? table field-order)]}
   (t2/with-transaction [_]
-    ;; a custom order is the user's choice, so it belongs with their other Table values rather than in
-    ;; `metabase_table`, which sync owns
     (upsert-user-settings table {:field_order :custom})
     (dorun
      (map-indexed (fn [position field-id]
@@ -143,7 +139,7 @@
                   field-order))))
 
 (mu/defn unset-user-settings!
-  "Drop the user values of the Table columns `ks` for `table`, so its sync values show again."
+  "Drop the user values of the Table columns `ks` for `table`."
   [{:keys [id]} :- [:map [:id ::lib.schema.id/table]]
    ks           :- [:sequential (into [:enum] warehouse-schema-overlay/user-settable-table-columns)]]
   (when (warehouse-schema.db/table-user-settings-exist? id)
@@ -157,9 +153,9 @@
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 
-(defmethod serdes/extract-query "TableUserSettings" [_model-name {:keys [filter-column filter-ids]}]
-  ;; see [[metabase.warehouse-schema.models.field-user-settings]]: only rows that record something
-  (warehouse-schema.db/table-user-settings-recording-something filter-column filter-ids))
+(defmethod serdes/extract-query "TableUserSettings" [_model-name {:keys [filter-ids] :as opts}]
+  (serdes/extract-reducible-nested "TableUserSettings" (dissoc opts :filter-column :filter-ids)
+                                   (warehouse-schema.db/table-user-settings-with-field-settings filter-ids)))
 
 (defmethod serdes/entity-id "TableUserSettings" [_ _] nil)
 
@@ -168,14 +164,11 @@
         {:model "TableUserSettings" :id "1"}))
 
 (defmethod serdes/deserialization-dependencies "TableUserSettings" [tus]
-  ;; The parent Table is synthesized on import if missing, so only the Database -- and the target Collection, when one
-  ;; is recorded -- has to exist first.
   (let [db-path (first (serdes/path tus))]
     (cond-> [[db-path]]
       (:collection_id tus) (conj [{:model "Collection" :id (:collection_id tus)}]))))
 
 (defmethod serdes/load-find-local "TableUserSettings" [path]
-  ;; Delegate to finding the parent Table, then look up its corresponding TableUserSettings.
   (let [found-table (serdes/load-find-local (pop path))]
     (warehouse-schema.db/table-user-settings (:id found-table))))
 
@@ -204,13 +197,16 @@
                :table_id      {::serdes/fk true
                                :export     (constantly ::serdes/skip)
                                :import-with-context (fn [current _ _]
-                                                      (serdes/*import-table-fk* (table-path->table-ref (serdes/path current))))}}})
+                                                      (serdes/*import-table-fk* (table-path->table-ref (serdes/path current))))}
+               :fields        (serdes/nested :model/FieldUserSettings :table_id
+                                             {:delete-children! warehouse-schema.db/delete-field-user-settings-for-table!})}})
 
 (def ^:private table-user-settings-slug "___tableusersettings")
 
-(defmethod serdes/storage-path "TableUserSettings" [tus _]
-  ;; [path to table dir "table-name___tableusersettings"] next to the Table's own YAML, since there is zero or one
-  ;; TableUserSettings per Table.
+(defmethod serdes/storage-path "TableUserSettings" [tus {:keys [inline-user-settings]}]
   (let [table-path (pop (serdes/path tus))]
-    (conj (serdes/storage-path-prefixes table-path)
-          {:label (str (:id (peek table-path)) table-user-settings-slug)})))
+    (if inline-user-settings
+      (conj (serdes/storage-path-prefixes table-path)
+            {:label (:id (peek table-path)) :key (:id (peek table-path))})
+      (conj (serdes/storage-path-prefixes table-path)
+            {:label (str (:id (peek table-path)) table-user-settings-slug)}))))

@@ -140,8 +140,6 @@
   (let [api-perm-check-fn (if include_editable_data_model
                             api/write-check
                             api/read-check)]
-    ;; read the Table as users see it, then permission-check that instance: `api/read-check` on a model and id would
-    ;; fetch `metabase_table` itself, which holds sync's values
     (-> (api/check-404 (warehouse-schema-rest.db/table id))
         api-perm-check-fn
         (t2/hydrate :db :pk_field :collection)
@@ -184,7 +182,6 @@
   if field positions have changed."
   [{:keys [id] :as existing-table} :- [:map [:id ::lib.schema.id/table]]
    body]
-  ;; record the user's values -- metabase_table itself is sync-owned and left alone
   (when-let [changes (-> body
                          (u/select-keys-when
                           :non-nil [:display_name :show_in_getting_started :entity_type :field_order :collection_id]

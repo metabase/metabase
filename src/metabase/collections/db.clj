@@ -492,12 +492,8 @@
   (t2/select-pks-set :model/Table :collection_id [:in collection-ids] :is_published true {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn unpublish-tables-in-collections!
-  "Unpublish the Tables in the Collections with `collection-ids` and detach them from their ::collections.schema/collection, returning
-  the number updated.
-
-  Both rows are cleared. The user settings row is what anything reads, and its `collection_id` FK is
-  `ON DELETE SET NULL`, so leaving it would republish the Tables into the root collection once the Collection is
-  deleted. `metabase_table` still has to be cleared too: its own `collection_id` FK blocks the delete."
+  "Unpublish the Tables in the Collections with `collection-ids`, in `metabase_table` and in their user settings,
+  returning the number updated."
   [collection-ids :- [:or [:set ::lib.schema.id/collection] [:sequential ::lib.schema.id/collection]]]
   (let [table-ids (published-table-ids-in-collections collection-ids)]
     (when (seq table-ids)

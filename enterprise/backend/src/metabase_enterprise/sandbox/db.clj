@@ -61,7 +61,6 @@
   (t2/select :model/Sandbox
              {:select [:s.group_id :s.table_id :t.db_id :t.schema]
               :from   [[:sandboxes :s]]
-              ;; only db_id/schema are read, neither user-settable; see permissions sql.clj's `table-source`
               :join   [(warehouse-schema-overlay/table-query {:alias :t, :user-settings? false})
                        [:= :s.table_id :t.id]]
               :where  [:and
@@ -82,7 +81,6 @@
                 [:table.db_id :db_id]
                 [:table.schema :schema]]
     :from      [[:sandboxes]]
-    ;; only db_id/schema are read, neither user-settable; see permissions sql.clj's `table-source`
     :left-join [(warehouse-schema-overlay/table-query {:alias :table, :user-settings? false})
                 [:= :sandboxes.table_id :table.id]]
     :where     [:and

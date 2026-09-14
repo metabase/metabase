@@ -167,9 +167,7 @@
   (dissoc table :is_defective_duplicate :unique_table_helper))
 
 (defn validate-user-changes!
-  "Throw a 400 for a Table change a user is not allowed to make, given the Table as it stands. Both the model's own
-  update path and the user-settings write path run this: a user's values no longer pass through `t2/update!` on the
-  Table, so the model hook alone would stop seeing them."
+  "Throw a 400 for a change in `changes` a user is not allowed to make to `original-table`."
   [changes original-table]
   ;; Don't allow tables to be moved into collections which are not part of the Library's "Data" collection.
   ;; Tables can be moved out of any collection, however.
@@ -195,7 +193,6 @@
                  (= new-data-source :metabase-transform))
         (throw (ex-info "Cannot set data_source to metabase-transform"
                         {:status-code 400})))))
-  ;; visibility_type and data_layer are one choice spelled two ways, so a caller may send only one of them
   (when (and (contains? changes :visibility_type)
              (contains? changes :data_layer)
              (not= (keyword (:visibility_type changes)) (keyword (:visibility_type original-table)))
@@ -576,13 +573,9 @@
 (defmethod serdes/descendants "Table" [_model-name id {:keys [skip-archived]}]
   (let [fields   (into {} (for [field-id (warehouse-schema.db/field-ids-for-table id)]
                             [["Field" field-id] {"Table" id}]))
-        ;; a Table's user settings, and its Fields', are models like any other, written beside it whenever they
-        ;; exist. They hang off the Table rather than off each Field so that Field stays a leaf in the descendants
-        ;; graph -- giving Field descendants of its own would make every full export walk every Field.
-        settings (cond-> (into {} (for [field-id (warehouse-schema.db/user-edited-field-ids-for-table id)]
-                                    [["FieldUserSettings" field-id] {"Table" id}]))
-                   (warehouse-schema.db/table-user-settings-recorded? id)
-                   (assoc ["TableUserSettings" id] {"Table" id}))
+        settings (when (or (warehouse-schema.db/table-user-settings-exist? id)
+                           (warehouse-schema.db/field-user-settings-exist-for-table? id))
+                   {["TableUserSettings" id] {"Table" id}})
         segments (into {} (for [segment-id (warehouse-schema.db/segment-ids-for-table id skip-archived)]
                             [["Segment" segment-id] {"Table" id}]))
         measures (into {} (for [measure-id (warehouse-schema.db/measure-ids-for-table id skip-archived)]
@@ -634,7 +627,6 @@
 
 (search.spec/define-spec "table"
   {:model        :model/Table
-   ;; read the values users see, not the ones sync wrote: both live in `metabase_table_user_settings`
    :source       #(warehouse-schema-overlay/table-query {:alias :this})
    :attrs        {;; legacy search uses :active for this, but then has a rule to only ever show active tables
                   ;; so we moved that to the where clause
@@ -645,7 +637,6 @@
                   :database-id     :db_id
                   :view-count      true
                   :created-at      true
-                  ;; a user edit touches only their settings row, so that is where the Table last changed
                   :updated-at      [:case [:> :settings.updated_at :this.updated_at] :settings.updated_at
                                     :else :this.updated_at]
                   :is-published        :is_published
@@ -670,13 +661,11 @@
                                                 [:and :this.is_published
                                                  [:= :this.collection_id nil]] "Our analytics"
                                                 :else nil]]}
-   ;; qualified: the settings join carries columns of the same names
    :where        [:and
                   :this.active
                   [:= :this.visibility_type nil]
                   [:= :db.router_database_id nil]
                   [:not= :this.db_id [:inline audit/audit-db-id]]]
    :joins        {:db         [:model/Database   [:= :db.id :this.db_id]]
-                  ;; joined for its `updated_at` above, which also makes a settings change reindex the Table
                   :settings   [:model/TableUserSettings [:= :settings.table_id :this.id]]
                   :collection [:model/Collection [:and [:= :this.is_published true] [:= :collection.id :this.collection_id]]]}})

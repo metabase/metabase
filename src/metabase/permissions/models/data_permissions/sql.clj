@@ -123,15 +123,8 @@
    [:or ::permissions.schema/data-permission-value [:tuple ::permissions.schema/data-permission-value [:enum :most :least]]]])
 
 (defn- table-source
-  "What a permission query reads Tables from, aliased `mt`.
-
-  Deliberately *not* the user-settings overlay: these queries select and filter only `id`, `db_id` and `active`, none
-  of which a user can set, so the merged view would buy nothing and cost a derived table over every Table on the
-  hottest path in the product. MariaDB also gives such a materialized derived table a unique key and then fails to
-  write the duplicate rows a permissions join produces (\"duplicate key in table '/tmp/#sql…'\").
-
-  The one permission query that does need the merged values -- publishing a Table is what grants access to it -- is
-  `published-table-perm-grant-rows`, which reads through the overlay."
+  "The plain `metabase_table`, aliased `mt`: permission queries read only sync-owned columns, and the overlay's
+  derived table is costly here and breaks on MariaDB."
   []
   (warehouse-schema-overlay/table-query {:alias :mt, :user-settings? false}))
 

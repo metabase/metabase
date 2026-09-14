@@ -145,7 +145,6 @@
   (set
    (t2/select-fn-set (comp u/lower-case-en :name)
                      :model/Field
-                     ;; both sides on purpose: this asks whether the user set a display name at all
                      {:select    [:f.name]
                       :from      [(warehouse-schema-overlay/field-query {:alias :f, :user-settings? false})]
                       :left-join [[(t2/table-name :model/FieldUserSettings) :u] [:= :u.field_id :f.id]]
@@ -159,7 +158,6 @@
   name from FieldUserSettings (if any) as `:user_display_name`."
   []
   (t2/reducible-query
-   ;; sync's display name and the user's side by side, so humanization can tell them apart
    {:select    [:f.id :f.name :f.display_name [:u.display_name :user_display_name]]
     :from      [(warehouse-schema-overlay/field-query {:alias :f, :user-settings? false})]
     :left-join [[(t2/table-name :model/FieldUserSettings) :u] [:= :u.field_id :f.id]]}))
@@ -183,34 +181,27 @@
   [field-id :- ::lib.schema.id/field]
   (t2/exists? :model/FieldUserSettings field-id))
 
-(mu/defn field-user-settings-recording-something
-  "A reducible of the FieldUserSettings rows that record something (see
-  [[warehouse-schema-overlay/field-user-settings-recorded-clause]]), restricted to `filter-ids` on `filter-column`
-  when both are given. Serialization reads through this so a row recording nothing never becomes a file."
-  [filter-column :- [:maybe :keyword]
-   filter-ids    :- [:maybe [:sequential [:maybe [:or :int :string]]]]]
-  (let [recorded (warehouse-schema-overlay/field-user-settings-recorded-clause :u)]
-    (t2/reducible-select :model/FieldUserSettings
-                         {:from  [[(t2/table-name :model/FieldUserSettings) :u]]
-                          :where (if filter-column
-                                   [:and recorded [:in (u/qualified-key :u filter-column) filter-ids]]
-                                   recorded)})))
-
-(mu/defn user-edited-field-ids-for-table
-  "The IDs of the Fields of the ::warehouse-schema.schema/table with `table-id` whose FieldUserSettings records
-  something; see [[warehouse-schema-overlay/field-user-settings-recorded-clause]]."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-fn-set :field_id :model/FieldUserSettings
-                    {:select [[:u.field_id :field_id]]
-                     :from   [[(t2/table-name :model/FieldUserSettings) :u]]
-                     :join   [(warehouse-schema-overlay/field-query {:alias :f, :user-settings? false}) [:= :f.id :u.field_id]]
-                     :where  [:and
-                              [:= :f.table_id table-id]
-                              (warehouse-schema-overlay/field-user-settings-recorded-clause :u)]}))
-
 (def ^:private field-user-settings-update-keys
   "The columns an insert or update of a FieldUserSettings accepts."
   [:field_id :created_at :updated_at :semantic_type :description :display_name :visibility_type :fk_target_field_id :has_field_values :effective_type :coercion_strategy :caveats :points_of_interest :nfc_path :json_unfolding :settings :data_sensitivity :description_set :semantic_type_set :fk_target_field_id_set])
+
+(mu/defn field-user-settings-exist-for-table?
+  "Whether any Field of the ::warehouse-schema.schema/table with `table-id` has a FieldUserSettings row."
+  [table-id :- ::lib.schema.id/table]
+  (t2/exists? :model/FieldUserSettings
+              {:from  [[(t2/table-name :model/FieldUserSettings) :u]]
+               :join  [(warehouse-schema-overlay/field-query {:alias :f, :user-settings? false}) [:= :f.id :u.field_id]]
+               :where [:= :f.table_id table-id]}))
+
+(mu/defn field-user-settings-for-tables
+  "The FieldUserSettings of the Fields of `table-ids`, each with its Field's `:table_id`, in Field name order."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/select :model/FieldUserSettings
+             {:select   [:u.* [:f.table_id :table_id]]
+              :from     [[(t2/table-name :model/FieldUserSettings) :u]]
+              :join     [(warehouse-schema-overlay/field-query {:alias :f, :user-settings? false}) [:= :f.id :u.field_id]]
+              :where    [:in :f.table_id table-ids]
+              :order-by [[:f.name :asc]]}))
 
 (mu/defn insert-field-user-settings!
   "Insert one FieldUserSettings map or a sequence of them, returning the number inserted."
@@ -222,6 +213,11 @@
   [field-id :- ::lib.schema.id/field
    changes  :- (mut/select-keys ::warehouse-schema.schema/field-user-settings.update field-user-settings-update-keys)]
   (t2/update! :model/FieldUserSettings field-id changes))
+
+(mu/defn delete-field-user-settings!
+  "Delete the FieldUserSettings of the ::warehouse-schema.schema/field with `field-id`, returning the number deleted."
+  [field-id :- ::lib.schema.id/field]
+  (t2/delete! :model/FieldUserSettings :field_id field-id))
 
 (mu/defn clear-user-settings-fk-targets-to-field!
   "Unset the user-set FK semantic type and target of every ::warehouse-schema.schema/field targeting the
@@ -250,28 +246,6 @@
   [table-id :- ::lib.schema.id/table]
   (t2/exists? :model/TableUserSettings table-id))
 
-(mu/defn table-user-settings-recorded?
-  "Whether the TableUserSettings of the ::warehouse-schema.schema/table with `table-id` records something; see
-  [[warehouse-schema-overlay/table-user-settings-recorded-clause]]."
-  [table-id :- ::lib.schema.id/table]
-  (t2/exists? :model/TableUserSettings
-              {:from  [[(t2/table-name :model/TableUserSettings) :u]]
-               :where [:and
-                       [:= :u.table_id table-id]
-                       (warehouse-schema-overlay/table-user-settings-recorded-clause :u)]}))
-
-(mu/defn table-user-settings-recording-something
-  "A reducible of the TableUserSettings rows that record something; the Table counterpart of
-  [[field-user-settings-recording-something]]."
-  [filter-column :- [:maybe :keyword]
-   filter-ids    :- [:maybe [:sequential [:maybe [:or :int :string]]]]]
-  (let [recorded (warehouse-schema-overlay/table-user-settings-recorded-clause :u)]
-    (t2/reducible-select :model/TableUserSettings
-                         {:from  [[(t2/table-name :model/TableUserSettings) :u]]
-                          :where (if filter-column
-                                   [:and recorded [:in (u/qualified-key :u filter-column) filter-ids]]
-                                   recorded)})))
-
 (mu/defn table-ids-with-user-settings :- [:set ::lib.schema.id/table]
   "The ids, among `table-ids`, of the Tables that already have a TableUserSettings row."
   [table-ids :- [:set ::lib.schema.id/table]]
@@ -294,6 +268,44 @@
   [table-id :- ::lib.schema.id/table
    changes  :- (mut/select-keys ::warehouse-schema.schema/table-user-settings.update table-user-settings-update-keys)]
   (t2/update! :model/TableUserSettings table-id changes))
+
+(mu/defn delete-table-user-settings!
+  "Delete the TableUserSettings of the ::warehouse-schema.schema/table with `table-id`, returning the number deleted."
+  [table-id :- ::lib.schema.id/table]
+  (t2/delete! :model/TableUserSettings :table_id table-id))
+
+(mu/defn table-user-settings-with-field-settings
+  "One TableUserSettings per Table among `table-ids` (all when nil) that has a settings row or a Field with one,
+  synthesized as `{:table_id id}` when the Table has no row of its own."
+  [table-ids :- [:maybe [:sequential ::lib.schema.id/table]]]
+  (let [flag-columns  (set (vals warehouse-schema-overlay/table-user-settings-flags))
+        value-columns (remove (some-fn #{:table_id} flag-columns) table-user-settings-update-keys)]
+    (t2/select
+     :model/TableUserSettings
+     {:select    (into [[:t.id :table_id]]
+                       (concat (map #(u/qualified-key :u %) value-columns)
+                               (map (fn [flag] [[:coalesce (u/qualified-key :u flag) false] flag]) flag-columns)))
+      :from      [(warehouse-schema-overlay/table-query {:alias :t, :user-settings? false})]
+      :left-join [[(t2/table-name :model/TableUserSettings) :u] [:= :u.table_id :t.id]]
+      :where     [:and
+                  (if table-ids [:in :t.id table-ids] true)
+                  [:or
+                   [:not= :u.table_id nil]
+                   [:exists ^:allow-subquery
+                    {:select [1]
+                     :from   [[(t2/table-name :model/FieldUserSettings) :fu]]
+                     :join   [(warehouse-schema-overlay/field-query {:alias :f, :user-settings? false}) [:= :f.id :fu.field_id]]
+                     :where  [:= :f.table_id :t.id]}]]]})))
+
+(mu/defn delete-field-user-settings-for-table!
+  "Delete the FieldUserSettings of the Fields of the ::warehouse-schema.schema/table with `table-id`, returning the
+  number deleted."
+  [table-id :- ::lib.schema.id/table]
+  (t2/delete! :model/FieldUserSettings
+              {:where [:exists ^:allow-subquery
+                       {:select 1
+                        :from   [[(t2/table-name :model/Field) :f]]
+                        :where  [:and [:= :f.id :field_id] [:= :f.table_id table-id]]}]}))
 
 ;;; ---------------------------------------------- FieldValues ----------------------------------------------
 
@@ -457,9 +469,6 @@
   display name (`:user_display_name`), if any."
   []
   (t2/reducible-query
-   ;; sync's display name and the user's side by side, so humanization can tell them apart. As with a Field's
-   ;; display_name, a non-NULL `:user_display_name` is what says the user chose it -- the user can't clear it, so
-   ;; there is no separate `_set` flag to check.
    {:select    [:t.id :t.name :t.display_name
                 [:u.display_name :user_display_name]]
     :from      [(warehouse-schema-overlay/table-query {:alias :t, :user-settings? false})]

@@ -1032,7 +1032,6 @@
   (testing "GET /api/database/:id/autocomplete_suggestions honors the user's semantic_type/visibility_type"
     (let [field-id  (mt/id :venues :price)
           base-type (t2/select-one-fn :base_type :model/Field field-id)
-          ;; both venues.price and products.price match the "price" prefix, so only assert on venues'
           venues-row (fn [] (first (filter (fn [[_ desc]] (str/starts-with? desc "VENUES "))
                                            (mt/user-http-request :rasta :get 200
                                                                  (format "database/%d/autocomplete_suggestions" (mt/id))

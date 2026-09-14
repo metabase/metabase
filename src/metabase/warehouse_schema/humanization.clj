@@ -26,9 +26,8 @@
    (u.humanization/name->human-readable-name strategy s)))
 
 (defn- re-humanize-names!
-  "Update the display name of every `entities-reducible` row (Table or Field ones) that the current strategy
-  humanizes differently, using `model` for logging and `set-display-name!` to apply the change. A row counts as
-  custom, and is left alone, when `custom?` returns true for it."
+  "Update the display name of every row of `entities-reducible` that the current strategy humanizes differently,
+  unless `custom?` of it."
   [model entities-reducible set-display-name! custom?]
   (run! (fn [{id :id, internal-name :name, display-name :display_name :as row}]
           (let [new-strategy-display-name (name->human-readable-name internal-name)]
@@ -40,10 +39,8 @@
         (entities-reducible)))
 
 (mu/defn re-humanize-table-and-field-names!
-  "Update the non-custom display names of all Tables & Fields in the database using new values from
-  `name->human-readable-name`. A display name is custom when a user set one of their own -- recorded as a non-NULL
-  `display_name` in the user-settings row, for both a Field and a Table -- or when it differs from the old
-  strategy's humanization."
+  "Re-humanize every Table and Field display name that is neither user-set nor different from `old-strategy`'s
+  humanization."
   [old-strategy :- :keyword]
   (letfn [(custom? [{internal-name :name, display-name :display_name
                      user-display-name :user_display_name}]

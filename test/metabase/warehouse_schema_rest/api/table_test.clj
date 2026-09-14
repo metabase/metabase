@@ -1145,8 +1145,6 @@
       (finally
         (mt/user-http-request :crowberto :put 200 (format "table/%s" (mt/id :venues))
                               {:field_order original-field-order})
-        ;; venues is a shared fixture, so leave no user settings behind: the row this test creates would otherwise
-        ;; outlive it and change what later tests read
         (t2/delete! :model/TableUserSettings :table_id (mt/id :venues))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

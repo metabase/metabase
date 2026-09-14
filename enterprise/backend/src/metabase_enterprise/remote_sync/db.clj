@@ -135,10 +135,7 @@
   (t2/select-one model :id id))
 
 (mu/defn instance-with-columns
-  "The `columns` of the instance of `model` with `id`, or nil.
-
-  A Table is read through the user-settings overlay: remote sync tracks a Table's `collection_id`, which is a user
-  value, and the model here is a runtime argument the `table-or-field-query` linter cannot see."
+  "The `columns` of the instance of `model` with `id`, or nil; a Table is read through the overlay."
   [model   :- :keyword
    columns :- [:sequential :keyword]
    id      :- ms/PositiveInt]
@@ -277,20 +274,15 @@
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select [:model/Card :id :type :card_schema] :id [:in card-ids]))
 
-(mu/defn table-user-settings-recorded?
-  "Whether the Table with `table-id` has TableUserSettings recording something -- the same thing git sync exports; a
-  row whose values are all NULL and whose flags are all false is not a user edit."
+(mu/defn user-settings-exist-for-table?
+  "Whether the Table with `table-id`, or any of its Fields, has a user-settings row."
   [table-id :- ::lib.schema.id/table]
-  (t2/exists? :model/TableUserSettings
-              {:from  [[(t2/table-name :model/TableUserSettings) :u]]
-               :where [:and
-                       [:= :u.table_id table-id]
-                       (warehouse-schema-overlay/table-user-settings-recorded-clause :u)]}))
-
-(mu/defn field-user-settings-exist?
-  "Whether the Field with `field-id` has FieldUserSettings."
-  [field-id :- ::lib.schema.id/field]
-  (t2/exists? :model/FieldUserSettings :field_id field-id))
+  (or (t2/exists? :model/TableUserSettings :table_id table-id)
+      (t2/exists? :model/FieldUserSettings
+                  {:from  [[(t2/table-name :model/FieldUserSettings) :u]]
+                   :join  [(warehouse-schema-overlay/field-query {:alias :f :user-settings? false})
+                           [:= :f.id :u.field_id]]
+                   :where [:= :f.table_id table-id]})))
 
 (mu/defn snippets
   "The `:id`, `:name`, and `:collection_id` of every NativeQuerySnippet."

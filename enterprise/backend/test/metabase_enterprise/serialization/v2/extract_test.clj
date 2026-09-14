@@ -1153,20 +1153,19 @@
                    :data_sensitivity :PII}
                   ser))
           (is (not (contains? ser :field_id))
-              ":field_id is dropped; its implied by the path")
-          (testing "depend only on the Database; the parent Field is synthesized on import if missing"
-            (is (= #{[{:model "Database"   :id "My Database"}]}
-                   (set (serdes/deserialization-dependencies ser)))))))
+              ":field_id is dropped; its implied by the path")))
       (testing "data_sensitivity on the Field itself"
         (is (= :PII (:data_sensitivity (ts/extract-one "Field" field-id)))
             "a labeled field exports the keyword as-is")
         (is (not (contains? (ts/extract-one "Field" plain-id) :data_sensitivity))
             "an unlabeled field exports no key, so nil never reaches the YAML"))
       (testing "extract-metabase behavior"
-        (let [models (->> {} (extract/extract) (map (comp :model last :serdes/meta)))]
-          (is (= 1
-                 (t2/count :model/FieldUserSettings)
-                 (count (filter #{"FieldUserSettings"} models)))))))))
+        (let [entities (into [] (extract/extract {}))
+              models   (map (comp :model last :serdes/meta) entities)]
+          (is (empty? (filter #{"FieldUserSettings"} models))
+              "written inside its Table's settings, never on its own")
+          (is (= 1 (count (filter #{"TableUserSettings"} models))))
+          (is (= 1 (count (:fields (first (filter #(= "TableUserSettings" (-> % :serdes/meta last :model)) entities)))))))))))
 
 (deftest table-descendants-user-settings-test
   (mt/with-empty-h2-app-db!
@@ -1178,28 +1177,53 @@
       (testing "every Field is a descendant, and none has user settings to speak of yet"
         (is (= #{["Field" f1-id] ["Field" f2-id] ["Field" f3-id]}
                (set (keys (serdes/descendants "Table" table-id {}))))))
-      (testing "a Field whose user settings record something also appears as FieldUserSettings"
+      (testing "a Field with user settings makes the Table's settings a descendant, since they carry the Field's"
         (t2/insert! :model/FieldUserSettings {:field_id f2-id :description "edited"})
-        (is (= #{["Field" f1-id] ["Field" f2-id] ["Field" f3-id] ["FieldUserSettings" f2-id]}
+        (is (= #{["Field" f1-id] ["Field" f2-id] ["Field" f3-id] ["TableUserSettings" table-id]}
                (set (keys (serdes/descendants "Table" table-id {})))))
         (t2/delete! :model/FieldUserSettings :field_id f2-id))
-      (testing "a row recording nothing is not a user edit and is left out"
-        (t2/insert! :model/FieldUserSettings {:field_id f1-id})
-        (t2/insert! :model/TableUserSettings {:table_id table-id})
-        (is (= #{["Field" f1-id] ["Field" f2-id] ["Field" f3-id]}
-               (set (keys (serdes/descendants "Table" table-id {})))))
-        (testing "and is left out of the extract too, rather than writing an empty file"
-          (is (empty? (into [] (serdes/extract-all "FieldUserSettings" {}))))
-          (is (empty? (into [] (serdes/extract-all "TableUserSettings" {}))))))
-      (testing "a Table whose own user settings record something appears as TableUserSettings"
-        (t2/update! :model/TableUserSettings table-id {:display_name "Renamed"})
+      (testing "a Table with user settings appears as TableUserSettings"
+        (t2/insert! :model/TableUserSettings {:table_id table-id :display_name "Renamed"})
         (is (contains? (set (keys (serdes/descendants "Table" table-id {})))
                        ["TableUserSettings" table-id])))
-      (testing "Field and FieldUserSettings are leaf nodes in the descendants graph"
-        ;; Table's descendants method is the only source of field-level entries; if Field ever
-        ;; grows its own descendants, traversal would visit every field and full exports would change shape.
-        (is (empty? (serdes/descendants "Field" f1-id {})))
-        (is (empty? (serdes/descendants "FieldUserSettings" f1-id {})))))))
+      (testing "Field is a leaf node in the descendants graph"
+        (is (empty? (serdes/descendants "Field" f1-id {})))))))
+
+(deftest inline-user-settings-extract-test
+  (mt/with-empty-h2-app-db!
+    (ts/with-temp-dpc [:model/Database {db-id       :id} {:name "DB"}
+                       :model/Table    {table-id    :id} {:name "T" :db_id db-id}
+                       :model/Table    {other-id    :id} {:name "Unedited T" :db_id db-id}
+                       :model/Field    {f1-id       :id} {:name "F1" :table_id table-id}
+                       :model/Field    {_f2-id      :id} {:name "F2" :table_id table-id}
+                       :model/FieldUserSettings _        {:field_id f1-id :description "edited"}]
+      (testing "a Table with only a Field edit synthesizes a TableUserSettings entity with that Field inlined"
+        (let [entities (into [] (serdes/extract-all "TableUserSettings"
+                                                    {:inline-user-settings true
+                                                     :filter-column        :table_id
+                                                     :filter-ids           [table-id]}))]
+          (is (= 1 (count entities)))
+          (let [entity (first entities)]
+            (is (=? [{:model "Database" :id "DB"}
+                     {:model "Table"    :id "T"}
+                     {:model "TableUserSettings" :id "1"}]
+                    (:serdes/meta entity))
+                "synthesized for a Table with no settings row of its own")
+            (is (nil? (:display_name entity)))
+            (is (= 1 (count (:fields entity))))
+            (is (=? {:description "edited"
+                     :serdes/meta [{:model "Database" :id "DB"}
+                                   {:model "Table"    :id "T"}
+                                   {:model "Field"    :id "F1"}
+                                   {:model "FieldUserSettings" :id "1"}]}
+                    (first (:fields entity)))
+                "the edited Field is inlined, with its own serdes/meta")
+            (is (not (contains? (first (:fields entity)) :field_id))))))
+      (testing "a Table with no edits at all yields nothing"
+        (is (empty? (into [] (serdes/extract-all "TableUserSettings"
+                                                 {:inline-user-settings true
+                                                  :filter-column        :table_id
+                                                  :filter-ids           [other-id]}))))))))
 
 (deftest collection-export-includes-user-settings-test
   (mt/with-empty-h2-app-db!
@@ -1219,10 +1243,10 @@
           (is (some #(= "T" (:name %)) (by-model "Table")))
           (is (= #{"F1" "F2"}
                  (set (map :name (by-model "Field")))))
+          (is (= 1 (count (by-model "TableUserSettings"))))
           (is (= #{"F2"}
-                 (set (map #(-> % :serdes/meta (nth 2) :id) (by-model "FieldUserSettings"))))
-              "only the field the user edited has settings to export")
-          (is (= 1 (count (by-model "TableUserSettings")))))))))
+                 (set (map #(-> % :serdes/meta (nth 2) :id) (:fields (first (by-model "TableUserSettings"))))))
+              "only the field the user edited has settings to export, inside the Table's"))))))
 
 (deftest cards-test
   (mt/with-empty-h2-app-db!

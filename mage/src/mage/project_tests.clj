@@ -12,8 +12,6 @@
     metabase.core.modules-test])
 
 (def ^:private honey-sql-check-namespaces
-  ;; A filesystem scan for raw `:metabase_table`/`:metabase_field` Honey SQL, the gap the
-  ;; `:metabase/table-or-field-query` clj-kondo linter can't reach.
   '[metabase.core.table-or-field-raw-usage-test])
 
 (def ^:private ratchet-test-namespaces

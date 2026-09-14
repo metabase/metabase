@@ -34,9 +34,10 @@
       (is (= :database (:field_order (user-table table-id))))
       (table-user-settings/upsert-user-settings table {:field_order :alphabetical})
       (is (= :alphabetical (:field_order (user-table table-id))))
-      (testing "clearing it falls back to the Table's own value"
+      (testing "clearing it falls back to the Table's own value, and drops the row it emptied"
         (table-user-settings/unset-user-settings! table [:field_order])
-        (is (= :database (:field_order (user-table table-id))))))))
+        (is (= :database (:field_order (user-table table-id))))
+        (is (nil? (t2/select-one :model/TableUserSettings :table_id table-id)))))))
 
 (deftest visibility-pair-is-recorded-whole-test
   (testing "visibility_type and data_layer are one choice, so setting either records both"
@@ -77,7 +78,7 @@
         (t2/update! :model/FieldUserSettings field-id {:semantic_type :type/Category})
         (is (true? (t2/select-one-fn :semantic_type_set :model/FieldUserSettings :field_id field-id))))
       (testing "a flag the writer set itself is left alone, which is how a value is taken back"
-        (t2/insert! :model/TableUserSettings {:table_id table-id :description "d"})
+        (t2/insert! :model/TableUserSettings {:table_id table-id :display_name "n" :description "d"})
         (t2/update! :model/TableUserSettings table-id {:description nil :description_set false})
         (is (false? (t2/select-one-fn :description_set :model/TableUserSettings :table_id table-id))))
       (testing "both halves of the visibility choice move together"

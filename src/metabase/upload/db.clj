@@ -53,18 +53,14 @@
   (warehouse-schema/user-renamed-field-names table-id names))
 
 (mu/defn set-field-display-names!
-  "Set the display name of each Field of the Table with `table-id` whose lower-cased name is a key of
-  `name->display-name` to the corresponding value, unless the Field has a user-set display name recorded in
-  FieldUserSettings or its display name is not the automatic humanization of its name (in which case it is left
-  alone)."
+  "Set the display names of the Fields of the Table with `table-id` named in `name->display-name`, skipping Fields
+  with a user-set or non-automatic display name."
   [table-id           :- ::lib.schema.id/table
    name->display-name :- [:map-of :string :string]]
   (let [user-edited        (user-edited-field-names table-id (set (keys name->display-name)))
         name->display-name (apply dissoc name->display-name user-edited)]
     (when (seq name->display-name)
       ;; A raw update rather than `t2/update!`, which produces an invalid query for certain versions of
-      ;; PostgreSQL: SELECT * FROM "metabase_field" WHERE "id" AND ("table_id" = ?) AND ... (argument of AND
-      ;; must be type boolean).
       (t2/query {:update (t2/table-name :model/Field)
                  :set    {:display_name (into [:case]
                                               (mapcat identity)

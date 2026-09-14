@@ -327,9 +327,7 @@
   (t2/select-one-fn :fingerprint :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn active-fields-metadata-for-table
-  "The sync metadata columns of the active Fields of the Table with `table-id`, in field order, as sync wrote them.
-  `update-field-metadata-if-needed!` diffs these against the warehouse to decide what changed, so they must be sync's
-  own values: a user's `semantic_type` or `description` would read as a difference on every sync."
+  "The sync metadata columns of the active Fields of the Table with `table-id`, as sync wrote them, in field order."
   [table-id :- ::lib.schema.id/table]
   (t2/select [:model/Field :name :database_type :base_type :effective_type :coercion_strategy :semantic_type
               :parent_id :id :description :database_position :nfc_path
@@ -596,9 +594,8 @@
     [:= :data_sensitivity nil]))
 
 (mu/defn fields-to-scan-for-data-sensitivity
-  "The active, non-retired Fields of the Table with `table-id` that the data-sensitivity classifier still has to scan
-  (see [[data-sensitivity-to-scan-clause]]), ordered by ID. Reads sync's own values: the classifier decides what is
-  left to scan from the label it wrote, not from the one a user chose."
+  "The active, non-retired Fields of the Table with `table-id` the data-sensitivity classifier still has to scan, by
+  sync's own labels, ordered by ID."
   [table-id       :- ::lib.schema.id/table
    rescan-public? :- [:maybe :boolean]]
   (t2/select :model/Field
@@ -615,7 +612,6 @@
   data-sensitivity classifier still has to scan (see [[data-sensitivity-to-scan-clause]])."
   [database-id    :- ::lib.schema.id/database
    rescan-public? :- [:maybe :boolean]]
-  ;; sync's own labels: the classifier decides what is left to scan from what it wrote, not from what a user chose
   (t2/select-fn-set :table_id :model/Field
                     {:select   [[:metabase_field.table_id :table_id]]
                      :from     [(warehouse-schema-overlay/field-query {:user-settings? false})]

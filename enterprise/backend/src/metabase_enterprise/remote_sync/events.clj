@@ -11,8 +11,8 @@
 
    Tracked model types:
    - Card, Dashboard, Document, NativeQuerySnippet, Timeline, Collection
-   - Table (when published in a remote-synced collection)
-   - Field, Segment (when belonging to a published table in a remote-synced collection)
+   - Table and TableUserSettings, which also carries a Field's own edits (when published in a remote-synced collection)
+   - Segment, Measure (when belonging to a published table in a remote-synced collection)
    - Transform, TransformTag, transforms-namespace Collections (when remote-sync-transforms setting is enabled)
    - NativeQuerySnippet, snippets-namespace Collections (when Library is remote-synced)"
   (:require
@@ -300,58 +300,44 @@
         (log/infof "Collection %s no longer needs syncing, marking as removed" (:id object))
         (create-or-update-remote-sync-object-entry! "Collection" (:id object) "removed" hydrate-collection-details)))))
 
-;;; ----------------------------------------- FieldUserSettings Tracking -----------------------------------------------
-;; When a field is updated in a published table, also track any FieldUserSettings row for that field.
-;; FieldUserSettings has no separate event; it piggybacks on :event/field-update.
+;;; ----------------------------------------- TableUserSettings Tracking -----------------------------------------------
 
+(def ^:private table-spec (get spec/remote-sync-specs :model/Table))
 (def ^:private field-spec (get spec/remote-sync-specs :model/Field))
+
+(defn- hydrate-table-user-settings-details
+  "The RemoteSyncObject details of the Table with `table-id`, as its own `:table_id`/`:table_name`."
+  [table-id]
+  (let [details (spec/hydrate-model-details table-spec table-id)]
+    (assoc details :table_id (:id details) :table_name (:name details))))
+
+(defn- sync-table-user-settings!
+  "Track the Table's TableUserSettings when eligible and any of its user settings exist, else mark it removed."
+  [table-id eligible?]
+  (cond
+    (and eligible? (remote-sync.db/user-settings-exist-for-table? table-id))
+    (create-or-update-remote-sync-object-entry!
+     "TableUserSettings" table-id "update" hydrate-table-user-settings-details)
+
+    (and (not eligible?)
+         (remote-sync.db/rso-exists? "TableUserSettings" table-id))
+    (create-or-update-remote-sync-object-entry!
+     "TableUserSettings" table-id "removed" hydrate-table-user-settings-details)))
 
 (events/derive! :event/field-update ::field-update-event)
 (events/derive! ::field-update-event :metabase/event)
 
 (methodical/defmethod events/publish-event! ::field-update-event
   [_topic {:keys [object]}]
-  (let [field-id  (:id object)
-        eligible? (spec/check-eligibility field-spec object)]
-    (cond
-      (and eligible? (remote-sync.db/field-user-settings-exist? field-id))
-      (create-or-update-remote-sync-object-entry!
-       "FieldUserSettings" field-id "update"
-       (fn [id] (spec/hydrate-model-details field-spec id)))
-
-      (and (not eligible?)
-           (remote-sync.db/rso-exists? "FieldUserSettings" field-id))
-      (create-or-update-remote-sync-object-entry!
-       "FieldUserSettings" field-id "removed"
-       (fn [id] (spec/hydrate-model-details field-spec id))))))
-
-;;; ----------------------------------------- TableUserSettings Tracking -----------------------------------------------
-;; A Table's user settings are what git sync stores for it, and they have no event of their own; they piggyback on the
-;; Table's, the way FieldUserSettings piggybacks on :event/field-update.
-;;
-;; One combined handler rather than a second primary method on the same events: a second one would silently displace
-;; the generic registration, and that is what cascades a publish or unpublish down to the Table's Segments and
-;; Measures. So :model/Table is left out of the generic registration above, and registered here with the same event
-;; hierarchy it would otherwise have had.
-
-(def ^:private table-spec (get spec/remote-sync-specs :model/Table))
+  (when-let [table-id (:table_id object)]
+    (sync-table-user-settings! table-id (spec/check-eligibility field-spec object))))
 
 (defn- handle-table-event!
+  "The generic Table handler plus the Table's TableUserSettings; one handler, since a second primary method on the
+  same events would displace the generic one."
   [topic {:keys [object] :as event}]
   (handle-model-event-from-spec table-spec topic event)
-  (let [table-id  (:id object)
-        eligible? (spec/check-eligibility table-spec object)]
-    (cond
-      (and eligible? (remote-sync.db/table-user-settings-recorded? table-id))
-      (create-or-update-remote-sync-object-entry!
-       "TableUserSettings" table-id "update"
-       (fn [id] (spec/hydrate-model-details table-spec id)))
-
-      (and (not eligible?)
-           (remote-sync.db/rso-exists? "TableUserSettings" table-id))
-      (create-or-update-remote-sync-object-entry!
-       "TableUserSettings" table-id "removed"
-       (fn [id] (spec/hydrate-model-details table-spec id))))))
+  (sync-table-user-settings! (:id object) (spec/check-eligibility table-spec object)))
 
 (let [event-kws (spec/event-keywords table-spec)
       parent-kw (:parent event-kws)]

@@ -109,11 +109,8 @@
     n))
 
 (mu/defn scan-data-sensitivity! :- Stats
-  "REPL entry point: scan a Database or a single Table regardless of the `data-sensitivity-scan-enabled` setting.
-  With `:force? true` fields already labeled `:PUBLIC` are rescanned too; fields carrying a category are not. With
-  `:reset? true` every classifier-written label is cleared first via [[reset-data-sensitivity!]] so the whole scope
-  is recomputed under the current rules, and `:fields-reset` is added to the stats. User-set labels survive in
-  every mode because they live in `FieldUserSettings`, not in the Field."
+  "Scan `database-or-table` for data sensitivity regardless of the setting; `:force?` rescans `:PUBLIC` Fields and
+  `:reset?` clears the classifier's labels first."
   [database-or-table :- [:or i/DatabaseInstance i/TableInstance]
    & {:keys [force? reset?]} :- [:maybe [:map
                                          [:force? {:optional true} [:maybe :boolean]]

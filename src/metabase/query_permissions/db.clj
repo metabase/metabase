@@ -26,7 +26,5 @@
 (mu/defn table-id->database-id
   "A map of Table id to Database id for the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  ;; only db_id is read, which no user can set; see permissions sql.clj's `table-source`. This runs per query
-  ;; execution, so the merge would be paid on the hottest path for nothing.
   (t2/select-pk->fn :db_id :model/Table :id [:in table-ids]
                     {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))

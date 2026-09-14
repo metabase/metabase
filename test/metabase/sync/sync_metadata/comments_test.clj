@@ -59,7 +59,6 @@
           (let [field-id (mt/id "update_desc" "updated_desc")]
             (t2/update! :model/Field field-id {:description nil})
             (field-user-settings/upsert-user-settings {:id field-id} {:description "updated description"})
-            ;; resyncing writes the source comment onto the raw Field without touching the user's override
             (sync/sync-table! (t2/select-one :model/Table :id (mt/id "update_desc")))
             (is (= #{{:name (mt/format-name "id"), :description nil}
                      {:name (mt/format-name "updated_desc"), :description "original comment"}}

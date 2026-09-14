@@ -1,14 +1,6 @@
 (ns hooks.metabase.warehouse-schema-overlay.table-or-field-query
-  "Lint that a query reading `:model/Field` or `:model/Table` names its source with
-  `metabase.warehouse-schema-overlay.core/field-query` or `/table-query`.
-
-  A user's values for a Field live in `metabase_field_user_settings`, so selecting `metabase_field` on its own shows
-  what sync wrote rather than what the user set. `field-query` is the subquery that merges the two; `table-query` is
-  the same shape for Tables, a no-op until Tables carry user-set values of their own. Reads that deliberately want
-  sync's values say so with `{:user-settings? false}`, which satisfies this linter too.
-
-  Reached from `hooks.metabase.toucan.db-ns/lint-query-call`, which is the hook already registered on the Toucan 2
-  query functions in `.clj-kondo/config.edn`."
+  "Lint that a query over `:model/Field` or `:model/Table` names its source with `field-query`/`table-query` from
+  `metabase.warehouse-schema-overlay.core`, or reads sync's values with `{:user-settings? false}`."
   (:require
    [clj-kondo.hooks-api :as hooks]))
 

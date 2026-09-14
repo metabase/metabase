@@ -40,8 +40,6 @@
       (mt/with-temp [:model/User       {user-id :id}       {}
                      :model/Collection {collection-id :id} {:type "library-data"}]
         (try
-          ;; publish the way the API does -- into the user settings, not onto the Table itself, so these cases
-          ;; exercise the merged read every permission check has to do
           (schema.table-user-settings/upsert-user-settings (t2/select-one :model/Table (mt/id :venues))
                                                            {:is_published  true
                                                             :collection_id collection-id})

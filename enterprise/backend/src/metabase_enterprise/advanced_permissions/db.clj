@@ -43,7 +43,6 @@
    database-ids :- [:sequential ::lib.schema.id/database]]
   (t2/query {:select [[:t.db_id :db_id]]
              :from   [[(t2/table-name :model/Sandbox) :s]]
-             ;; only db_id is read, which no user can set; see permissions sql.clj's `table-source`
              :join   [(warehouse-schema-overlay/table-query {:alias :t, :user-settings? false})
                       [:= :s.table_id :t.id]]
              :where  [:and
@@ -86,7 +85,6 @@
    group-ids   :- [:sequential ms/PositiveInt]]
   (t2/query {:select [[:s.group_id :group_id]]
              :from   [[(t2/table-name :model/Sandbox) :s]]
-             ;; only db_id is read, which no user can set; see permissions sql.clj's `table-source`
              :join   [(warehouse-schema-overlay/table-query {:alias :t, :user-settings? false})
                       [:= :t.id :s.table_id]]
              :where  [:and

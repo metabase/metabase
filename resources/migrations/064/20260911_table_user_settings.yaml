@@ -283,3 +283,19 @@ databaseChangeLog:
               SET owner_email = NULL, owner_user_id = NULL
               WHERE EXISTS (SELECT 1 FROM metabase_table_user_settings s WHERE s.table_id = metabase_table.id)
       rollback: # not necessary; the values are preserved in metabase_table_user_settings
+
+  - changeSet:
+      id: v64.2026-09-11T00:00:07
+      author: ranquild
+      comment: Delete metabase_field_user_settings rows that hold no user value
+      changes:
+        - sql:
+            sql: >-
+              DELETE FROM metabase_field_user_settings
+              WHERE semantic_type IS NULL AND description IS NULL AND display_name IS NULL AND visibility_type IS NULL
+                AND fk_target_field_id IS NULL AND has_field_values IS NULL AND effective_type IS NULL
+                AND coercion_strategy IS NULL AND caveats IS NULL AND points_of_interest IS NULL AND nfc_path IS NULL
+                AND json_unfolding IS NULL AND settings IS NULL AND data_sensitivity IS NULL
+                AND description_set = FALSE AND semantic_type_set = FALSE AND fk_target_field_id_set = FALSE
+      rollback: # not necessary; the rows held nothing
+

@@ -84,12 +84,10 @@
         new-base-type?
         (not= old-base-type new-base-type)
 
-        ;; only set the Field's semantic_type when it has none; a user override lives in FieldUserSettings
         new-semantic-type?
         (and (nil? old-semantic-type)
              (not= old-semantic-type new-semantic-type))
 
-        ;; only set the Field's description when it has none; a user override lives in FieldUserSettings
         new-comment?
         (and (str/blank? old-field-comment)
              (not (str/blank? new-field-comment)))
@@ -139,7 +137,6 @@
             :fingerprint         nil
             ;; semantic type needs to be set to nil so that the fingerprinter can re-infer it during analysis
             :semantic_type       nil})
-         ;; GHY-3388: a Field with no coercion_strategy must have effective_type=base_type
          (when (and (not new-base-type?)
                     (nil? old-coercion-strategy)
                     (some? old-effective-type)

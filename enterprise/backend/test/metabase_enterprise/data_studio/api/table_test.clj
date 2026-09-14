@@ -168,8 +168,6 @@
       (without-library
        (mt/with-temp [:model/Collection {collection-id :id} {:type collection/library-data-collection-type}]
          ;; a bumped updated_at proves the write went through the Toucan pipeline (:hook/timestamped?),
-         ;; the same pipeline that fires :hook/search-index; a raw UPDATE would leave it unchanged.
-         ;; Publishing is a user value, so it is the user settings row that moves, not `metabase_table`.
          (let [baseline   (t/offset-date-time 2020)
                ;; raw update, precisely to keep the timestamped hook from overwriting the backdate
                backdate!  #(do (t2/query {:update (t2/table-name :model/TableUserSettings)
