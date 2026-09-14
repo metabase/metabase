@@ -39,6 +39,7 @@ const elements = [
     pattern: "frontend/src/metabase/env.ts",
     mode: "full",
   }),
+  createElement({ type: "lib", name: "redux-context", enforcePublicApi: true }),
   createElement({
     type: "lib",
     name: "types",
