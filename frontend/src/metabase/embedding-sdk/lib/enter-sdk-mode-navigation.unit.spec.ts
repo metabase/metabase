@@ -2,7 +2,7 @@ import { setupSdkPlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { reinitialize } from "metabase/plugins";
-import { openUrl } from "metabase/urls";
+import { PLUGIN_HOST_NAVIGATION, openUrl } from "metabase/urls";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import { enterSdkMode } from "./enter-sdk-mode";
@@ -23,6 +23,34 @@ describe("enterSdkMode", () => {
     reinitialize();
     jest.restoreAllMocks();
     ensureMetabaseProviderPropsStore().cleanup();
+  });
+
+  it("should install a host that opens same-origin links in a new window", () => {
+    expect(PLUGIN_HOST_NAVIGATION.host?.sameOriginTarget).toBe("_blank");
+  });
+
+  it("should report the handled flag from the plugin as the host link handler result", async () => {
+    const handleLink = jest.fn().mockReturnValue({ handled: true });
+    ensureMetabaseProviderPropsStore().setProps({
+      pluginsConfig: { handleLink },
+    });
+
+    await expect(PLUGIN_HOST_NAVIGATION.host?.handleLink?.(url)).resolves.toBe(
+      true,
+    );
+    expect(handleLink).toHaveBeenCalledWith(url);
+  });
+
+  it("should report an unhandled url as false from the host link handler", async () => {
+    ensureMetabaseProviderPropsStore().setProps({
+      pluginsConfig: {
+        handleLink: jest.fn().mockReturnValue({ handled: false }),
+      },
+    });
+
+    await expect(PLUGIN_HOST_NAVIGATION.host?.handleLink?.(url)).resolves.toBe(
+      false,
+    );
   });
 
   it("should not open the url when handleLink returns { handled: true }", async () => {
