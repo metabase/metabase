@@ -391,7 +391,7 @@
                                             :input  [{:role :user :content "hi"}]
                                             :schema {:type "object"}})
                          [:generationConfig :maxOutputTokens]))))
-  (testing "the floor still never introduces a cap: an off-catalog model has no documented maximum"
+  (testing "the floor still never introduces a cap: an off-catalog model has no row in the table"
     (is (nil? (get-in (sgc/request-body {:model  "google/gemini-2.5-flash"
                                          :input  [{:role :user :content "hi"}]
                                          :schema {:type "object"}})
@@ -430,7 +430,7 @@
         "google/gemini-3.5-flash"
         "google/gemini-3.6-flash"
         "google/gemini-3.7-flash"))
-    (testing "an off-catalog model has no documented maximum and is sent uncapped"
+    (testing "an off-catalog model has no row in the table and is sent uncapped"
       (is (nil? (get-in (sgc/request-body {:model "google/gemini-2.5-flash" :input input})
                         [:generationConfig :maxOutputTokens]))))
     (testing "a request naming no model at all is sent uncapped rather than throwing"
