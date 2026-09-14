@@ -21,6 +21,7 @@ import type {
   MetabotAgentId,
   MetabotContextUsage,
   MetabotMessage,
+  MetabotState,
 } from "./types";
 import { hasInProgressMessage, isGeneratedCardPart, isTextPart } from "./utils";
 
@@ -28,8 +29,9 @@ import { hasInProgressMessage, isGeneratedCardPart, isTextPart } from "./utils";
  * Top Level Selectors
  */
 
-export const getMetabotState = (state: State) => {
-  return state.metabot;
+export const getMetabotState = (state: { metabot: unknown }) => {
+  // Every store root registers `metabotReducer` under this key, so the value is always a `MetabotState`.
+  return state.metabot as MetabotState;
 };
 
 export const getActiveMetabotAgentIds = createSelector(
