@@ -25,17 +25,23 @@ on:
         required: false
         default: ""
 
+# A later attempt must not cancel the first one: the concurrency group applies
+# before any job `if`, so a run that goes on to skip every job still cancels.
 concurrency:
   group: bundle-load-stats-${{ inputs.commit || github.event.workflow_run.head_sha }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   # "Run tests" concludes `failure` on master more often than `success`, from
   # jobs that have nothing to do with the jar, so its conclusion is not a usable
   # gate. The artifact is one: the uberjar job publishes it, and a docs-only
   # merge that skipped that job publishes none.
+  #
+  # Only the first attempt counts. `rerun-workflows.yml` re-runs a failed "Run
+  # tests", and every attempt that completes fires this again for the same
+  # commit, which would measure it again and write its rows twice.
   uberjar-built:
-    if: ${{ github.repository == 'metabase/metabase' }}
+    if: ${{ github.repository == 'metabase/metabase' && (inputs.commit != '' || github.event.workflow_run.run_attempt == 1) }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
@@ -120,6 +126,7 @@ jobs:
           # Passed via env (not interpolated into the shell) so the commit
           # message can't inject commands; the script keeps only the subject.
           COMMIT_MESSAGE: ${{ github.event.workflow_run.head_commit.message }}
+          COMMIT_TIMESTAMP: ${{ github.event.workflow_run.head_commit.timestamp }}
           ENG_STATS_URL: ${{ secrets.ENG_STATS_URL }}
           API_KEY: ${{ secrets.ENG_STATS_API_KEY }}
         run: bun .github/scripts/upload-bundle-load-stats.ts

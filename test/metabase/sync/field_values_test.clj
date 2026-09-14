@@ -6,6 +6,7 @@
    [java-time.api :as t]
    [metabase.analyze.core :as analyze]
    [metabase.sync.core :as sync]
+   [metabase.sync.db :as sync.db]
    [metabase.sync.field-values :as sync.field-values]
    [metabase.sync.util-test :as sync.util-test]
    [metabase.test :as mt]
@@ -320,6 +321,17 @@
         (is (= 3 (count (#'sync.field-values/table->fields-to-scan table 100))))))))
 
 ;;; ---------------------------------- can-batch-distinct? ----------------------------------
+
+(deftest fields-for-field-values-honors-user-settings-test
+  (testing "fields-for-field-values reflects the user's has_field_values/visibility_type overrides"
+    (mt/with-temp [:model/Table {table-id :id} {}
+                   :model/Field {field-id :id} {:table_id table-id, :has_field_values nil, :visibility_type "normal"}]
+      (testing "sanity check: the sync values show by default"
+        (is (=? {:has_field_values nil, :visibility_type :normal}
+                (first (sync.db/fields-for-field-values [field-id])))))
+      (mt/with-temp [:model/FieldUserSettings _ {:field_id field-id, :has_field_values :none, :visibility_type :sensitive}]
+        (is (=? {:has_field_values :none, :visibility_type :sensitive}
+                (first (sync.db/fields-for-field-values [field-id]))))))))
 
 (deftest can-batch-distinct?-test
   (testing "SQL driver with :nested-queries and no required filter → batch path"

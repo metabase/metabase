@@ -386,6 +386,11 @@
     (assert (contains? m k2)
             (format "Transform must define one of %s or %s" k1 k2))))
 
+(defn primary-key
+  "The primary key column of `model-name`'s model; serialization keys every model by one column."
+  [model-name]
+  (first (t2/primary-keys (keyword "model" model-name))))
+
 (defn extract-one
   "Extracts a single entity retrieved from the database into a portable map with `:serdes/meta` attached.
   `(extract-one \"ModelName\" opts entity)`
@@ -451,24 +456,28 @@
 
 (defn- transform->nested [transform opts batch]
   (let [backward-fk (:backward-fk transform)
+        pk          (primary-key (name (t2/model (first batch))))
         entities    (-> (extract-query (name (:model transform))
                                        (assoc opts
                                               :filter-column backward-fk
-                                              :filter-ids    (mapv :id batch)
+                                              :filter-ids    (mapv pk batch)
                                               ::nested-fetch true))
                         t2.realize/realize)]
     (group-by backward-fk entities)))
 
 (defn- extract-batch-nested [model-name opts batch]
-  (let [spec (*make-spec* model-name opts)]
+  (let [spec (*make-spec* model-name opts)
+        pk   (primary-key model-name)]
     (reduce-kv (fn [batch k transform]
                  (if-not (::nested transform)
                    batch
-                   (mi/instances-with-hydrated-data batch k #(transform->nested transform opts batch) :id)))
+                   (mi/instances-with-hydrated-data batch k #(transform->nested transform opts batch) pk)))
                batch
                (:transform spec))))
 
-(defn- extract-reducible-nested [model-name opts reducible]
+(defn extract-reducible-nested
+  "Hydrate the nested transforms of `model-name`'s spec onto the entities of `reducible`."
+  [model-name opts reducible]
   (eduction (comp (map t2.realize/realize)
                   (partition-all (or (:batch-limit opts)
                                      extract-nested-batch-limit))
@@ -1876,10 +1885,13 @@
                                        :export #(*export-fk* % model)
                                        :import #(*import-fk* % model)))))
 
-(defn nested "Nested entities" [model backward-fk opts]
-  (let [model-name (name model)
-        sorter     (:sort-by opts :created_at)
-        key-field  (:key-field opts :entity_id)]
+(defn nested
+  "Nested entities; `opts` may give `:sort-by`, `:key-field` and `:delete-children!`, a fn of the parent id."
+  [model backward-fk opts]
+  (let [model-name       (name model)
+        sorter           (:sort-by opts :created_at)
+        key-field        (:key-field opts :entity_id)
+        delete-children! (:delete-children! opts #(models.db/delete-children! model backward-fk %))]
     {::nested             true
      :model               model
      :backward-fk         backward-fk
@@ -1895,10 +1907,10 @@
                               (catch Exception e
                                 (throw (ex-info (format "Error extracting nested %s" model)
                                                 {:model     model
-                                                 :parent-id (:id current)}
+                                                 :parent-id (some->> (t2/model current) name primary-key (get current))}
                                                 e)))))
      :import-with-context (fn [current _ lst]
-                            (let [parent-id (:id current)
+                            (let [parent-id (get current (primary-key (name (t2/model current))))
                                   first-eid (some->> (first lst)
                                                      (entity-id model-name))
                                   enrich    (fn [ingested]
@@ -1907,7 +1919,7 @@
                                                   (update :serdes/meta #(or % [{:model model-name :id (get ingested key-field)}]))))]
                               (cond
                                 (nil? first-eid)            ; no entity id, just drop existing stuff
-                                (do (models.db/delete-children! model backward-fk parent-id)
+                                (do (delete-children! parent-id)
                                     (doseq [ingested lst]
                                       (load-one! (enrich ingested) nil)))
 

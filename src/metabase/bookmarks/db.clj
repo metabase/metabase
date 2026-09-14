@@ -206,17 +206,9 @@
                                                  :created_at]
                                         :from   [:document_bookmark]
                                         :where  [:= :user_id user-id]}]]
-    {:union-all (conj base-queries
-                      ^:allow-subquery {:select [[as-null :card_id]
-                                                 [as-null :dashboard_id]
-                                                 [as-null :collection_id]
-                                                 [as-null :document_id]
-                                                 :exploration_id
-                                                 [:exploration_id :item_id]
-                                                 [(h2x/literal "exploration") :type]
-                                                 :created_at]
-                                        :from   [:exploration_bookmark]
-                                        :where  [:= :user_id user-id]})}))
+    ;; While explorations are disabled, `exploration_bookmark` is left out of the union so residue rows never reach
+    ;; the listing. The `exploration_id` column stays so the joins in [[bookmark-rows-for-user]] resolve.
+    {:union-all base-queries}))
 
 (mu/defn bookmark-rows-for-user
   "The bookmarks of the User with `user-id`, joined against the Card, Dashboard, Collection, Document, and Exploration
