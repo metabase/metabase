@@ -21,6 +21,10 @@ import type {
   ExecuteActionResult,
 } from "embedding-sdk-bundle/lib/execute-action";
 import type {
+  formatDate,
+  formatDateRange,
+} from "embedding-sdk-bundle/lib/format-date-range";
+import type {
   QueryDatasetParams,
   QueryDatasetResult,
 } from "embedding-sdk-bundle/lib/query-dataset";
@@ -57,7 +61,8 @@ export type MetabaseEmbeddingSdkBundleExports = PublicExports &
   ReduxStoreSelectorsExports &
   InternalHooksExports &
   SchemaValidationUtils &
-  InternalComponentExports;
+  InternalComponentExports &
+  DateFormattingExports;
 
 type PublicExports = {
   CollectionBrowser: InternalComponent<typeof CollectionBrowser>;
@@ -113,6 +118,11 @@ type SchemaValidationUtils = {
   validateFunctionSchema: (
     schema: any,
   ) => FunctionSchemaValidationResult<unknown[], unknown>;
+};
+
+type DateFormattingExports = {
+  formatDate: typeof formatDate;
+  formatDateRange: typeof formatDateRange;
 };
 
 type InternalComponentExports = {

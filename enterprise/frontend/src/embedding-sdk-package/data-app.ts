@@ -29,10 +29,13 @@ export type {
   DateRangePopoverProps,
 } from "embedding-sdk-bundle/components/public/DateRangePopover/DateRangePopover";
 export {
-  formatDate,
-  formatDateRange,
-  type FormatDateRangeOptions,
-} from "./lib/public/format-date-range";
+  useDateFormatter,
+  type DateFormatter,
+} from "./hooks/public/use-date-formatter";
+export type {
+  FormatDateOptions,
+  FormatDateRangeOptions,
+} from "embedding-sdk-bundle/lib/format-date-range";
 export { copy } from "./lib/public/copy";
 export {
   useDataAppLocation,

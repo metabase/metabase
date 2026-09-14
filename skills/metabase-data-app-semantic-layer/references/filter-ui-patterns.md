@@ -136,9 +136,10 @@ Include a Custom range option in date preset bars by default. Omit it only when 
 ```tsx
 import {
   DateRangePopover,
-  formatDateRange,
+  useDateFormatter,
 } from "@metabase/embedding-sdk-react/data-app";
 
+const { formatDateRange } = useDateFormatter();
 const [range, setRange] = useState<[string | null, string | null]>([
   null,
   null,
@@ -160,7 +161,7 @@ const dateFilters =
 Both ends are `YYYY-MM-DD` strings — the same shape `filter(...)` takes, so there is no `Date` conversion and no time zone to get wrong.
 
 - The trigger must be a single DOM element or a `forwardRef` component; the popover attaches a ref and a click handler to it. Give it the same class as the other filter controls so it matches them.
-- Label the trigger with `formatDateRange(range)`. Never with `new Date("YYYY-MM-DD")` — a date-only string parses as UTC and shows the previous day west of Greenwich. `formatDateRange` builds the date in local time and returns `""`, `"Sep 1, 2026 – "`, or `"Sep 1, 2026 – Sep 10, 2026"` for the three states; `formatDate` does one end. Both take `{ locale, format, separator }`.
+- Label the trigger with `formatDateRange(range)` from `useDateFormatter()`. It is the same formatter Mantine's date input draws its own label with, in the instance's locale, so the trigger reads exactly as the built-in input would; it returns `""` until the SDK bundle has loaded and re-renders the trigger when it has. Never use `new Date("YYYY-MM-DD")` — a date-only string parses as UTC and shows the previous day west of Greenwich. The three states are `""`, `"September 1, 2026 – "`, and `"September 1, 2026 – September 10, 2026"`; `formatDate` does one end. Options: `format` (a dayjs format) and `separator`.
 - `onChange` fires on every calendar click, so it reports half-picked ranges as `[start, null]`. Build the filter only when both ends are set; a half-picked range means no date filter, not a sentinel date.
 - The popover closes itself once both ends are picked (`closeOnSelect`, default true). Pass `opened` / `onOpenedChange` to drive it yourself.
 - Other props: `defaultValue`, `minDate`, `maxDate` (`YYYY-MM-DD`), `numberOfColumns` (months side by side, default 2), `position` (default `bottom-start`).

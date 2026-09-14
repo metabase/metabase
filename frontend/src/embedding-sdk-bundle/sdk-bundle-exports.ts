@@ -33,6 +33,10 @@ import { queryDataset } from "embedding-sdk-bundle/lib/query-dataset";
 import { queryQuestion } from "embedding-sdk-bundle/lib/query-question";
 import { validateFunctionSchema } from "embedding-sdk-bundle/lib/validate-function-schema";
 import { DateRangeCalendar } from "embedding-sdk-bundle/components/public/DateRangeCalendar/DateRangeCalendar";
+import {
+  formatDate,
+  formatDateRange,
+} from "embedding-sdk-bundle/lib/format-date-range";
 import { DateRangePopover } from "embedding-sdk-bundle/components/public/DateRangePopover/DateRangePopover";
 
 /**
@@ -69,4 +73,6 @@ export const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
   queryDataset,
   queryQuestion,
   executeAction,
+  formatDate,
+  formatDateRange,
 };
