@@ -5,8 +5,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util.macros.impl :as lib.tu.macros.impl]
    [metabase.test.data.mbql-query-impl :as mbql-query-impl]
-   [metabase.util :as u]
-   [metabase.util.malli :as mu]))
+   [metabase.util :as u]))
 
 (defn- do-with-bindings [thunk]
   (binding [mbql-query-impl/*id-fn-symb*              'metabase.lib.test-metadata/id
@@ -42,9 +41,8 @@
        (mbql-query-impl/maybe-add-source-table <> table-name)
        (mbql-query-impl/wrap-inner-query <>)))))
 
-(mu/defn- maybe-add-source-table-mbql5 :- :map
-  [query :- :map
-   table-name :- [:maybe symbol?]]
+(defn- maybe-add-source-table-mbql5
+  [query table-name]
   (cond
     ;; `table-name` is not specified: return query as is
     (not table-name)

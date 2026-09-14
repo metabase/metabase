@@ -228,6 +228,18 @@
   are not knowable here."
   (open-map "database connection details"))
 
+(def RawJSON
+  "A JSON value decoded off the wire, before the schema of the endpoint that received it decodes and validates it."
+  [:schema
+   {:registry {::raw-json [:or
+                           :string
+                           number?
+                           :boolean
+                           :nil
+                           [:sequential [:ref ::raw-json]]
+                           (open-map "raw JSON object")]}}
+   [:ref ::raw-json]])
+
 (def DatabaseSettings
   "A Database's `:settings`: database-local settings, whose keys are owned by the settings registry rather than by this
   schema. Not for any other bag of settings."
