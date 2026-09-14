@@ -12,16 +12,6 @@ import { type ChartLayoutInput, getChartLayout } from ".";
 
 const WIDEST_MEASURED_TICK_WIDTH = 64;
 
-const formatCurrency = (value: unknown) => {
-  const numberValue = Number(value);
-
-  if (Math.abs(numberValue) >= 1000) {
-    return `$${(numberValue / 1000).toFixed(2)}k`;
-  }
-
-  return `$${numberValue.toFixed(2)}`;
-};
-
 const xAxisModel: XAxisModel = {
   axisType: "category",
   isHistogram: false,
@@ -61,17 +51,6 @@ const currencySettings = createMockVisualizationSettings({
   ...settings,
   column: () => ({ number_style: "currency" }),
 });
-
-const getChartContext = () =>
-  createMockChartContext({
-    measureText: jest.fn((text: string) => {
-      if (text === "$720.00") {
-        return WIDEST_MEASURED_TICK_WIDTH;
-      }
-
-      return 20;
-    }),
-  });
 
 describe("getChartLayout", () => {
   it("measures actual y-axis tick labels for a zero-pinned axis (#74568)", () => {
@@ -129,3 +108,25 @@ describe("getChartLayout", () => {
     ).toBe(getLeftTicksWidth({ "graph.show_goal": false }));
   });
 });
+
+function getChartContext() {
+  return createMockChartContext({
+    measureText: jest.fn((text: string) => {
+      if (text === "$720.00") {
+        return WIDEST_MEASURED_TICK_WIDTH;
+      }
+
+      return 20;
+    }),
+  });
+}
+
+function formatCurrency(value: unknown) {
+  const numberValue = Number(value);
+
+  if (Math.abs(numberValue) >= 1000) {
+    return `$${(numberValue / 1000).toFixed(2)}k`;
+  }
+
+  return `$${numberValue.toFixed(2)}`;
+}
