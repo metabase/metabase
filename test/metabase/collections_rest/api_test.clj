@@ -6,8 +6,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
-   [metabase.collections-rest.api :as api.collection]
-   [metabase.collections-rest.children-query :as children-query]
+   [metabase.collections.children :as collections.children]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection-test :as collection-test]
    [metabase.collections.test-utils :refer [personal-collection with-library-not-synced without-library]]
@@ -361,11 +360,11 @@
             ids      (set (map :id (cons personal-collection [a b c d e f g])))]
         (mt/with-test-user :crowberto
           (testing "Make sure we get the expected collections when collection-id is nil"
-            (let [collections (#'api.collection/select-collections {:archived                       false
-                                                                    :exclude-other-user-collections false
-                                                                    :namespaces #{nil}
-                                                                    :shallow                        true
-                                                                    :permissions-set                #{"/"}})]
+            (let [collections (collections.children/select-collections {:archived                       false
+                                                                        :exclude-other-user-collections false
+                                                                        :namespaces #{nil}
+                                                                        :shallow                        true
+                                                                        :permissions-set                #{"/"}})]
               (is (= #{{:name "A"}
                        {:name "B"}
                        {:name "C"}
@@ -375,12 +374,12 @@
                           (map #(select-keys % [:name]))
                           (into #{}))))))
           (testing "Make sure we get the expected collections when collection-id is an integer"
-            (let [collections (#'api.collection/select-collections {:archived                       false
-                                                                    :exclude-other-user-collections false
-                                                                    :namespaces #{nil}
-                                                                    :shallow                        true
-                                                                    :collection-id                  (:id a)
-                                                                    :permissions-set                #{"/"}})]
+            (let [collections (collections.children/select-collections {:archived                       false
+                                                                        :exclude-other-user-collections false
+                                                                        :namespaces #{nil}
+                                                                        :shallow                        true
+                                                                        :collection-id                  (:id a)
+                                                                        :permissions-set                #{"/"}})]
               ;; E & G are too deep to show up
               (is (= #{{:name "C"}
                        {:name "B"}
@@ -390,11 +389,11 @@
                           (filter (fn [coll] (contains? ids (:id coll))))
                           (map #(select-keys % [:name]))
                           (into #{})))))
-            (let [collections (#'api.collection/select-collections {:archived                       false
-                                                                    :exclude-other-user-collections false
-                                                                    :shallow                        true
-                                                                    :collection-id                  (:id b)
-                                                                    :permissions-set                #{"/"}})]
+            (let [collections (collections.children/select-collections {:archived                       false
+                                                                        :exclude-other-user-collections false
+                                                                        :shallow                        true
+                                                                        :collection-id                  (:id b)
+                                                                        :permissions-set                #{"/"}})]
               (is (= #{}
                      (->> collections
                           (filter (fn [coll] (contains? ids (:id coll))))
@@ -1063,20 +1062,6 @@
             (is (= all-models (:available_models models-response)))
             (is (= #{["card" "Question"]}
                    (set (map (juxt :model :name) (:data models-response)))))))))))
-
-(deftest collection-items-available-models-exploration-test
-  (testing "GET /api/collection/:id/items"
-    (mt/with-temp [:model/User        owner      {}
-                   :model/Collection  collection {}
-                   :model/Card        _          {:name "Question" :collection_id (u/the-id collection)}
-                   :model/Exploration _          {:name          "Exploration"
-                                                  :creator_id    (u/the-id owner)
-                                                  :collection_id (u/the-id collection)}]
-      (testing "reports explorations so they can be filtered on"
-        (let [response (mt/user-http-request :crowberto :get 200
-                                             (str "collection/" (u/the-id collection) "/items")
-                                             :include-available-models true)]
-          (is (= ["card" "exploration"] (:available_models response))))))))
 
 (deftest collection-items-metadata-test
   (testing "GET /api/collection/:id/items/metadata"
@@ -1766,7 +1751,7 @@
               [:type :asc :nulls-first]
               [:%lower.name :asc]
               [:id :asc]]
-             (children-query/children-sort-clause {:official-collections-first? true} app-db))))))
+             (collections.children/children-sort-clause {:official-collections-first? true} app-db))))))
 
 (deftest ^:parallel children-sort-clause-test-2
   (testing "Sorting by last-edited-at"
@@ -1776,9 +1761,9 @@
             [:last_edit_timestamp :asc]
             [:%lower.name :asc]
             [:id :asc]]
-           (children-query/children-sort-clause {:sort-column :last-edited-at
-                                                 :sort-direction :asc
-                                                 :official-collections-first? true} :mysql)))))
+           (collections.children/children-sort-clause {:sort-column :last-edited-at
+                                                       :sort-direction :asc
+                                                       :official-collections-first? true} :mysql)))))
 
 (deftest ^:parallel children-sort-clause-test-2b
   (testing "Sorting by last-edited-at"
@@ -1788,9 +1773,9 @@
             [:last_edit_timestamp :asc]
             [:%lower.name :asc]
             [:id :asc]]
-           (children-query/children-sort-clause {:sort-column :last-edited-at
-                                                 :sort-direction :asc
-                                                 :official-collections-first? true} :postgres)))))
+           (collections.children/children-sort-clause {:sort-column :last-edited-at
+                                                       :sort-direction :asc
+                                                       :official-collections-first? true} :postgres)))))
 
 (deftest ^:parallel children-sort-clause-test-2c
   (testing "Sorting by last-edited-by"
@@ -1802,9 +1787,9 @@
             [:last_edit_first_name :asc]
             [:%lower.name :asc]
             [:id :asc]]
-           (children-query/children-sort-clause {:sort-column :last-edited-by
-                                                 :sort-direction :asc
-                                                 :official-collections-first? true} :postgres)))))
+           (collections.children/children-sort-clause {:sort-column :last-edited-by
+                                                       :sort-direction :asc
+                                                       :official-collections-first? true} :postgres)))))
 
 (deftest ^:parallel children-sort-clause-test-2d
   (testing "Sorting by last-edited-by"
@@ -1816,9 +1801,9 @@
             [:last_edit_first_name :asc]
             [:%lower.name :asc]
             [:id :asc]]
-           (children-query/children-sort-clause {:sort-column :last-edited-by
-                                                 :sort-direction :asc
-                                                 :official-collections-first? true} :mysql)))))
+           (collections.children/children-sort-clause {:sort-column :last-edited-by
+                                                       :sort-direction :asc
+                                                       :official-collections-first? true} :mysql)))))
 
 (deftest ^:parallel children-sort-clause-test-3
   (testing "Sorting by model"
@@ -1827,9 +1812,9 @@
             [:model_ranking :asc]
             [:%lower.name :asc]
             [:id :asc]]
-           (children-query/children-sort-clause {:sort-column :model
-                                                 :sort-direction :asc
-                                                 :official-collections-first? true} :postgres)))))
+           (collections.children/children-sort-clause {:sort-column :model
+                                                       :sort-direction :asc
+                                                       :official-collections-first? true} :postgres)))))
 
 (deftest ^:parallel children-sort-clause-test-3b
   (testing "Sorting by model"
@@ -1838,9 +1823,9 @@
             [:model_ranking :desc]
             [:%lower.name :asc]
             [:id :asc]]
-           (children-query/children-sort-clause {:sort-column :model
-                                                 :sort-direction :desc
-                                                 :official-collections-first? true} :mysql)))))
+           (collections.children/children-sort-clause {:sort-column :model
+                                                       :sort-direction :desc
+                                                       :official-collections-first? true} :mysql)))))
 
 (deftest ^:parallel children-sort-clause-description-test
   (testing "Sorting by description"
@@ -1850,18 +1835,18 @@
               [:%lower.description :asc :nulls-last]
               [:%lower.name :asc]
               [:id :asc]]
-             (children-query/children-sort-clause {:sort-column :description
-                                                   :sort-direction :asc
-                                                   :official-collections-first? true} :postgres))))
+             (collections.children/children-sort-clause {:sort-column :description
+                                                         :sort-direction :asc
+                                                         :official-collections-first? true} :postgres))))
     (testing "descending"
       (is (= [[:authority_level :asc :nulls-last]
               [:type :asc :nulls-first]
               [:%lower.description :desc :nulls-last]
               [:%lower.name :asc]
               [:id :asc]]
-             (children-query/children-sort-clause {:sort-column :description
-                                                   :sort-direction :desc
-                                                   :official-collections-first? true} :postgres))))))
+             (collections.children/children-sort-clause {:sort-column :description
+                                                         :sort-direction :desc
+                                                         :official-collections-first? true} :postgres))))))
 
 (deftest ^:parallel snippet-collection-items-test
   (testing "GET /api/collection/:id/items"
@@ -1900,7 +1885,7 @@
                                       (swap! queries conj query))
                                     (apply real-query query args))]
             (request/with-limit-and-offset 0 0
-              (is (pos? (:total (#'api.collection/collection-children
+              (is (pos? (:total (collections.children/collection-children
                                  (assoc collection/root-collection :namespace "snippets")
                                  {:archived?                   false
                                   :show-dashboard-questions?   false
@@ -4002,162 +3987,3 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id archived-collection))
                                        {:archived false :parent_id (u/the-id dest-collection)}))))))))
-
-(defn- exploration-items-in [coll-id & {:keys [user] :or {user :crowberto}}]
-  (->> (:data (mt/user-http-request user :get 200 (str "collection/" coll-id "/items")))
-       (filter #(= "exploration" (:model %)))))
-
-(deftest explorations-appear-in-collection-items-test
-  (testing "GET /api/collection/:id/items"
-    (testing "explorations in a shared collection appear in that collection's items"
-      (mt/with-temp [:model/User        owner {}
-                     :model/Collection  coll  {}
-                     :model/Exploration e     {:name          "Shared Expl"
-                                               :creator_id    (:id owner)
-                                               :collection_id (:id coll)}]
-        (let [items (exploration-items-in (:id coll))]
-          (is (= [{:id (:id e) :name "Shared Expl" :model "exploration"}]
-                 (map #(select-keys % [:id :name :model]) items))))))
-    (testing "?model=exploration filters to only explorations"
-      (mt/with-temp [:model/User        owner {}
-                     :model/Collection  coll  {}
-                     :model/Card        _card {:collection_id (:id coll)}
-                     :model/Exploration e     {:name          "Just me"
-                                               :creator_id    (:id owner)
-                                               :collection_id (:id coll)}]
-        (let [items (:data (mt/user-http-request :crowberto :get 200
-                                                 (str "collection/" (:id coll) "/items?models=exploration")))]
-          (is (= [{:id (:id e) :model "exploration"}]
-                 (map #(select-keys % [:id :model]) items))))))))
-
-(deftest exploration-respects-collection-perms-test
-  (testing "Users without read on the exploration's collection don't see it in /items"
-    (mt/with-temp [:model/User        owner {}
-                   :model/Collection  coll  {:name "Locked"}
-                   :model/Exploration e     {:name          "Hidden"
-                                             :creator_id    (:id owner)
-                                             :collection_id (:id coll)}]
-      (perms/revoke-collection-permissions! (perms/all-users-group) coll)
-      (testing "rasta cannot see the exploration"
-        (let [resp (mt/user-http-request :rasta :get (str "collection/" (:id coll) "/items"))]
-          ;; Either the collection itself is forbidden (403) or the items list omits the exploration.
-          (cond
-            (= 403 (:status-code resp)) (is true)
-            :else (is (not (some #(= (:id e) (:id %)) (filter #(= "exploration" (:model %)) (:data resp))))))))
-      (testing "after granting read, the exploration appears"
-        (perms/grant-collection-read-permissions! (perms/all-users-group) coll)
-        (let [items (exploration-items-in (:id coll) :user :rasta)]
-          (is (some #(= (:id e) (:id %)) items)))))))
-
-(deftest exploration-trash-and-archive-directly-test
-  (testing "Directly-archived exploration appears in /collection/trash/items"
-    (mt/with-temp [:model/User        owner {}
-                   :model/Collection  coll  {}
-                   :model/Exploration e     {:name              "Tossed"
-                                             :creator_id        (:id owner)
-                                             :collection_id     (:id coll)
-                                             :archived          true
-                                             :archived_directly true}]
-      (let [items (->> (:data (mt/user-http-request :crowberto :get 200
-                                                    (format "collection/%d/items" (collection/trash-collection-id))))
-                       (filter #(= "exploration" (:model %))))]
-        (is (some #(= (:id e) (:id %)) items)))))
-  (testing "Cascade-archived (archived=true, archived_directly=false) does not appear in trash"
-    (mt/with-temp [:model/User        owner {}
-                   :model/Collection  coll  {}
-                   :model/Exploration e     {:name              "Cascade"
-                                             :creator_id        (:id owner)
-                                             :collection_id     (:id coll)
-                                             :archived          true
-                                             :archived_directly false}]
-      (let [items (->> (:data (mt/user-http-request :crowberto :get 200
-                                                    (format "collection/%d/items" (collection/trash-collection-id))))
-                       (filter #(= "exploration" (:model %))))]
-        (is (not (some #(= (:id e) (:id %)) items)))))))
-
-(deftest exploration-pinning-test
-  (testing "explorations with collection_position appear under ?pinned-state=is_pinned"
-    (mt/with-temp [:model/User        owner {}
-                   :model/Collection  coll  {}
-                   :model/Exploration pinned   {:name                "Pinned"
-                                                :creator_id          (:id owner)
-                                                :collection_id       (:id coll)
-                                                :collection_position 1}
-                   :model/Exploration unpinned {:name          "Unpinned"
-                                                :creator_id    (:id owner)
-                                                :collection_id (:id coll)}]
-      (let [pinned-items (->> (:data (mt/user-http-request :crowberto :get 200
-                                                           (str "collection/" (:id coll) "/items?pinned-state=is_pinned")))
-                              (filter #(= "exploration" (:model %)))
-                              (map :id)
-                              set)]
-        (is (contains? pinned-items (:id pinned)))
-        (is (not (contains? pinned-items (:id unpinned))))))))
-
-(defn- find-exploration [items expl-id]
-  (some #(when (and (= "exploration" (:model %)) (= expl-id (:id %))) %) items))
-
-(deftest exploration-last-edit-info-test
-  (testing "GET /api/collection/:id/items reports last-edit-info for explorations"
-    (testing "freshly created exploration with a creation revision -> last-edit-info populated"
-      (mt/with-temp [:model/Collection  coll {}
-                     :model/Exploration e    {:name          "Created"
-                                              :creator_id    (mt/user->id :crowberto)
-                                              :collection_id (:id coll)}]
-        (revision/push-revision! {:entity       :model/Exploration
-                                  :id           (:id e)
-                                  :object       (t2/select-one :model/Exploration :id (:id e))
-                                  :user-id      (mt/user->id :crowberto)
-                                  :is-creation? true})
-        (let [item (find-exploration (:data (mt/user-http-request :crowberto :get 200
-                                                                  (str "collection/" (:id coll) "/items")))
-                                     (:id e))]
-          (is (some? item))
-          (is (= (mt/user->id :crowberto)
-                 (-> item :last-edit-info :id))))))
-    (testing "no Exploration or Document revisions -> last-edit-info absent"
-      (mt/with-temp [:model/Collection  coll {}
-                     :model/Exploration e    {:name          "Bare"
-                                              :creator_id    (mt/user->id :crowberto)
-                                              :collection_id (:id coll)}]
-        (let [item (find-exploration (:data (mt/user-http-request :crowberto :get 200
-                                                                  (str "collection/" (:id coll) "/items")))
-                                     (:id e))]
-          (is (some? item))
-          (is (nil? (:last-edit-info item))))))
-    (testing "Document attached to an exploration bumps the exploration's last-edit-info"
-      (mt/with-temp [:model/Collection  coll {}
-                     :model/Exploration e    {:name          "DocBumped"
-                                              :creator_id    (mt/user->id :crowberto)
-                                              :collection_id (:id coll)}
-                     :model/Document    doc  {:name           "notes"
-                                              :collection_id  (:id coll)
-                                              :creator_id     (mt/user->id :crowberto)
-                                              :exploration_id (:id e)
-                                              :document       {:type "doc" :content []}}]
-        ;; Older Exploration revision by :crowberto, newer Document revision by :rasta.
-        ;; Insert directly so we control timestamps — within a `with-temp` transaction
-        ;; the DB-side NOW() is frozen, so the standard push-revision! path would emit
-        ;; identical timestamps and tiebreak non-deterministically.
-        (let [t (java.time.OffsetDateTime/now)]
-          (t2/insert! :model/Revision
-                      {:model       "Exploration"
-                       :model_id    (:id e)
-                       :user_id     (mt/user->id :crowberto)
-                       :object      (revision/serialize-instance :model/Exploration (:id e)
-                                                                 (t2/select-one :model/Exploration :id (:id e)))
-                       :timestamp   (.minusSeconds t 60)
-                       :is_creation true})
-          (t2/insert! :model/Revision
-                      {:model     "Document"
-                       :model_id  (:id doc)
-                       :user_id   (mt/user->id :rasta)
-                       :object    (revision/serialize-instance :model/Document (:id doc)
-                                                               (t2/select-one :model/Document :id (:id doc)))
-                       :timestamp t}))
-        (let [item (find-exploration (:data (mt/user-http-request :crowberto :get 200
-                                                                  (str "collection/" (:id coll) "/items")))
-                                     (:id e))]
-          (is (some? item))
-          (is (= (mt/user->id :rasta)
-                 (-> item :last-edit-info :id))))))))

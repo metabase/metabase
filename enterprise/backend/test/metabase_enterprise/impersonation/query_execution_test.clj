@@ -6,6 +6,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.impersonation.util-test :as impersonation.util-test]
+   [metabase.actions.execution :as actions.execution]
+   [metabase.actions.models :as action]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -54,3 +56,48 @@
                 "QueryExecution row for a FAILED impersonated query should still record is_impersonated=true")
             (is (some? (:error (latest-query-execution)))
                 "Sanity check: the QueryExecution row should have an error message")))))))
+
+(deftest action-row-records-impersonation-test
+  (testing "a native action run under an impersonation policy records is_impersonated, on success and on failure"
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-actions-test-data-and-actions-enabled
+        (mt/with-actions [{ok-action-id :action-id}  {:type :query}
+                          {bad-action-id :action-id} {:type          :query
+                                                      :parameters    []
+                                                      :dataset_query (mt/native-query
+                                                                      {:query "UPDATE categories SET name = 1/0 WHERE id = 1"})}]
+          (impersonation.util-test/with-impersonations!
+            {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+             :attributes     {"impersonation_attr" "impersonation_role"}}
+            (testing "success"
+              (let [since (mt/latest-query-execution-id)]
+                (actions.execution/execute-action! (action/select-action :id ok-action-id) {"id" 1 "name" "Bird"})
+                (is (=? {:is_impersonated true, :error nil}
+                        (first (mt/action-executions since))))))
+            (testing "failure"
+              (let [since (mt/latest-query-execution-id)]
+                (is (thrown? clojure.lang.ExceptionInfo
+                             (actions.execution/execute-action! (action/select-action :id bad-action-id) {})))
+                (is (=? {:is_impersonated true, :error some?}
+                        (first (mt/action-executions since))))))))))))
+
+(deftest implicit-action-row-records-impersonation-test
+  (testing "an implicit action records is_impersonated from the user's policy on the database, as reads do"
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-actions-test-data-and-actions-enabled
+        (mt/with-actions [{:keys [action-id]} {:type :implicit :kind "row/update"}]
+          (impersonation.util-test/with-impersonations!
+            {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+             :attributes     {"impersonation_attr" "impersonation_role"}}
+            ;; H2 can't switch roles, so a true here comes from the policy, as it does for reads on H2
+            (testing "impersonated user"
+              (let [since (mt/latest-query-execution-id)]
+                (actions.execution/execute-action! (action/select-action :id action-id) {"id" 1 "name" "Bird"})
+                (is (=? {:is_impersonated true, :native false, :error nil}
+                        (first (mt/action-executions since))))))
+            (testing "admins are never impersonated"
+              (mt/with-test-user :crowberto
+                (let [since (mt/latest-query-execution-id)]
+                  (actions.execution/execute-action! (action/select-action :id action-id) {"id" 1 "name" "Bird"})
+                  (is (=? {:is_impersonated false, :error nil}
+                          (first (mt/action-executions since)))))))))))))

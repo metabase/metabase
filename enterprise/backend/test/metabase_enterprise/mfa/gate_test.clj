@@ -2,10 +2,11 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase-enterprise.mfa.settings :as mfa.settings]
+   [metabase-enterprise.mfa.settings :as mfa.settings.ee]
    [metabase-enterprise.mfa.totp :as totp]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.auth-identity.provider :as auth-identity.provider]
+   [metabase.mfa.settings :as mfa.settings.oss]
    [metabase.test :as mt]))
 
 (defn- with-enrolled-user! [f]
@@ -139,7 +140,7 @@
                    (:success? (auth-identity.provider/apply-mfa-gate :provider/password result)))
                 "sanity: challenged before the override")
             (mt/with-temp-env-var-value! [mb-mfa-enforcement "off"]
-              (is (false? (mfa.settings/mfa-enabled?))
+              (is (false? (mfa.settings.ee/mfa-enabled?))
                   "the env var beats the DB value")
               (is (= result (auth-identity.provider/apply-mfa-gate :provider/password result))
                   "the gate no-ops, so the locked-out admin can log in"))))))))
@@ -149,17 +150,17 @@
     (testing "enabling (:optional) requires the :multi-factor-auth feature (setup is gated; enforcement is not)"
       (mt/with-premium-features #{}
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"[Mm]ulti-factor"
-                              (mfa.settings/mfa-enforcement! :optional)))
-        (is (= :off (mfa.settings/mfa-enforcement)))))
+                              (mfa.settings.oss/mfa-enforcement! :optional)))
+        (is (= :off (mfa.settings.oss/mfa-enforcement)))))
     (testing "enabling works with the feature"
       (mt/with-premium-features #{:multi-factor-auth}
-        (mfa.settings/mfa-enforcement! :optional)
-        (is (= :optional (mfa.settings/mfa-enforcement)))))
+        (mfa.settings.oss/mfa-enforcement! :optional)
+        (is (= :optional (mfa.settings.oss/mfa-enforcement)))))
     (testing "setting :off never requires the feature — the lapsed-license escape hatch"
       (mt/with-premium-features #{}
-        (mfa.settings/mfa-enforcement! :off)
-        (is (= :off (mfa.settings/mfa-enforcement)))))
-    (testing "setting :required is rejected even with the feature — reserved for a future release"
+        (mfa.settings.oss/mfa-enforcement! :off)
+        (is (= :off (mfa.settings.oss/mfa-enforcement)))))
+    (testing "setting :required counts as enforcement"
       (mt/with-premium-features #{:multi-factor-auth}
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"reserved"
-                              (mfa.settings/mfa-enforcement! :required)))))))
+        (mfa.settings.oss/mfa-enforcement! :required)
+        (is (= :required (mfa.settings.oss/mfa-enforcement)))))))

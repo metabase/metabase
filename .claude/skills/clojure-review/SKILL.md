@@ -111,12 +111,7 @@ liability it usually is.
 ### Miscellaneous
 
 - [ ] Example data is bird-themed when possible
-- [ ] Kondo suppressions use a reader-discard map, not `#_:clj-kondo/ignore`, with
-      `:clj-kondo/ignore` as the first key
-- [ ] Each new suppression is approved and has a `;;` comment explaining why the warning cannot be fixed
-- [ ] Any ratchet budget increase is explained in the PR
-- [ ] PRs that remove ignores leave ratchet budgets unchanged; the shrink workflow records reductions on
-      `master`
+- [ ] Kondo linter suppressions use proper format (not `#_:clj-kondo/ignore` keyword form)
 
 ## Pattern matching table
 

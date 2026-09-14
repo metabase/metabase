@@ -54,9 +54,13 @@ jobs:
       e2e_specs: ${{ steps.changes.outputs.e2e_specs }}
       e2e_infra: ${{ steps.changes.outputs.e2e_infra }}
       backend_all: ${{ steps.changes.outputs.backend_all }}
+      build_scripts: ${{ steps.changes.outputs.build_scripts }}
+      embedder_plugin: ${{ steps.changes.outputs.embedder_plugin }}
       frontend_all: ${{ steps.changes.outputs.frontend_all }}
+      frontend_ci: ${{ steps.changes.outputs.frontend_ci }}
       frontend_sources: ${{ steps.changes.outputs.frontend_sources }}
       frontend_unit_infra: ${{ steps.changes.outputs.frontend_unit_infra }}
+      frontend_loki_ci: ${{ steps.changes.outputs.frontend_loki_ci }}
       frontend_loki_infra: ${{ steps.changes.outputs.frontend_loki_infra }}
       shared_sources: ${{ steps.changes.outputs.shared_sources }}
       documentation: ${{ steps.changes.outputs.documentation }}
@@ -65,6 +69,7 @@ jobs:
       embedding_sdk_host_sample_apps: ${{ steps.changes.outputs.embedding_sdk_host_sample_apps }}
       embedding_sdk_ci: ${{ steps.changes.outputs.embedding_sdk_ci }}
       custom_viz_all: ${{ steps.changes.outputs.custom_viz_all }}
+      ci_scripts: ${{ steps.changes.outputs.ci_scripts }}
       project_backend_checks: ${{ steps.changes.outputs.project_backend_checks }}
       project_migration_checks: ${{ steps.changes.outputs.project_migration_checks }}
       project_ratchet_checks: ${{ steps.changes.outputs.project_ratchet_checks }}
@@ -93,16 +98,14 @@ jobs:
           filters: .github/file-paths.yaml
 
   create-test-plan:
-    needs: files-changed
+    needs: [should-run, files-changed]
     name: Create test plan
-    if: ${{ github.event_name == 'pull_request' }}
+    if: ${{ github.event_name == 'pull_request' && needs.should-run.outputs.verdict == 'defer' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     outputs:
       stats: ${{ steps.compute.outputs.stats }}
-      fe_unit_specs_to_run: ${{ steps.compute.outputs.fe_unit_specs_to_run }}
-      loki_stories_to_run: ${{ steps.compute.outputs.loki_stories_to_run }}
-      e2e_specs_to_run: ${{ steps.compute.outputs.e2e_specs_to_run }}
+      artifact-id: ${{ steps.compute.outputs.artifact-id }}
     steps:
       - uses: actions/checkout@v6
       - name: Create test plan
@@ -148,9 +151,29 @@ jobs:
       (needs.should-run.outputs.verdict == 'force-run' ||
       needs.files-changed.outputs.no_source_code_changes != 'true')
     uses: ./.github/workflows/uberjar.yml
-    with:
-      containerize: ${{ (github.event_name == 'push' && github.ref_name == 'master') || contains(github.event.pull_request.labels.*.name, 'build-docker-uberjar') }}
     secrets: inherit
+
+  containerize:
+    needs: [uberjar]
+    if: >-
+      !cancelled() &&
+      needs.uberjar.result == 'success' &&
+      (
+        (github.event_name == 'push' && github.ref_name == 'master') ||
+        (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'build-docker-uberjar'))
+      )
+    name: containerize (${{ matrix.edition }})
+    strategy:
+      matrix:
+        edition: ['ee', 'oss']
+    uses: ./.github/workflows/containerize-jar.yml
+    secrets: inherit
+    with:
+      build-args: |
+        GIT_COMMIT_SHA=${{ github.event.pull_request.head.sha || github.sha }}
+      commit: ${{ github.event.pull_request.head.sha || github.sha }}
+      edition: ${{ matrix.edition }}
+      release: false
 
   # Compile CLJS in parallel with the uberjar and pass it to each e2e group.
   # The compile is doesn't depend on MB_EDITION
@@ -268,7 +291,7 @@ jobs:
       force-run: ${{ needs.should-run.outputs.verdict == 'force-run' }}
 
   frontend-tests:
-    needs: [should-run, files-changed]
+    needs: [should-run, files-changed, create-test-plan]
     if: |
       !cancelled() &&
       (needs.should-run.outputs.verdict == 'force-run' ||
@@ -279,6 +302,8 @@ jobs:
       skip: >-
         ${{ needs.should-run.outputs.verdict != 'force-run' &&
         needs.files-changed.outputs.frontend_all != 'true' }}
+      # A skipped/failed planner supplies no artifact, so the suite runs in full.
+      test-plan-artifact-id: ${{ needs.create-test-plan.result == 'success' && needs.create-test-plan.outputs.artifact-id || '' }}
       skip-lint: >-
         ${{ needs.should-run.outputs.verdict != 'force-run' &&
         needs.files-changed.outputs.frontend_all != 'true' &&
@@ -286,6 +311,23 @@ jobs:
       skip-custom-viz: >-
         ${{ needs.should-run.outputs.verdict != 'force-run' &&
         needs.files-changed.outputs.custom_viz_all != 'true' }}
+      skip-ci-scripts: >-
+        ${{ needs.should-run.outputs.verdict != 'force-run' &&
+        needs.files-changed.outputs.ci_scripts != 'true' }}
+
+  loki-tests:
+    needs: [should-run, files-changed]
+    if: |
+      !cancelled() &&
+      (needs.should-run.outputs.verdict == 'force-run' ||
+      needs.files-changed.result == 'success')
+    uses: ./.github/workflows/loki.yml
+    with:
+      skip: >-
+        ${{ needs.should-run.outputs.verdict != 'force-run' &&
+        needs.files-changed.outputs.frontend_ci != 'true' &&
+        needs.files-changed.outputs.frontend_sources != 'true' &&
+        needs.files-changed.outputs.frontend_loki_ci != 'true' }}
 
   e2e-tests:
     needs: [should-run, files-changed, uberjar]
@@ -360,6 +402,22 @@ jobs:
         ${{ needs.embedding-sdk-package.result != 'success' ||
         needs.uberjar.result != 'success' }}
 
+  build-scripts-tests:
+    needs: [should-run, files-changed]
+    if: |
+      !cancelled() &&
+      (needs.should-run.outputs.verdict == 'force-run' ||
+      needs.files-changed.result == 'success')
+    uses: ./.github/workflows/build-scripts.yml
+    secrets: inherit
+    with:
+      skip-build-scripts: >-
+        ${{ needs.should-run.outputs.verdict != 'force-run' &&
+        needs.files-changed.outputs.build_scripts != 'true' }}
+      skip-embedder-plugin: >-
+        ${{ needs.should-run.outputs.verdict != 'force-run' &&
+        needs.files-changed.outputs.embedder_plugin != 'true' }}
+
   bundle-size:
     needs: [uberjar, files-changed]
     if: |
@@ -369,50 +427,3 @@ jobs:
       needs.files-changed.outputs.frontend_sources == 'true'
     uses: ./.github/workflows/bundle-size.yml
     secrets: inherit
-
-  pr-env:
-    needs: [uberjar]
-    if: |
-      !cancelled() &&
-      contains(github.event.pull_request.labels.*.name, 'PR-Env') &&
-      !contains(github.event.pull_request.labels.*.name, 'PR-Env-self-hosting') &&
-      !contains(github.event.pull_request.labels.*.name, 'PR-Env-analytics-dev')
-    uses: ./.github/workflows/pr-env.yml
-    secrets: inherit
-    with:
-      self_hosting: false
-      analytics_dev_mode: false
-
-  pr-env-self-hosting:
-    needs: [uberjar]
-    if: |
-      !cancelled() &&
-      contains(github.event.pull_request.labels.*.name, 'PR-Env-self-hosting')
-    uses: ./.github/workflows/pr-env.yml
-    secrets: inherit
-    with:
-      self_hosting: true
-      analytics_dev_mode: false
-
-  pr-env-analytics-dev:
-    needs: [uberjar]
-    if: |
-      !cancelled() &&
-      contains(github.event.pull_request.labels.*.name, 'PR-Env-analytics-dev')
-    uses: ./.github/workflows/pr-env.yml
-    secrets: inherit
-    with:
-      self_hosting: false
-      analytics_dev_mode: true
-
-  pr-env-stats-dump:
-    needs: [uberjar]
-    if: |
-      !cancelled() &&
-      contains(github.event.pull_request.labels.*.name, 'PR-Env-Stats-Dump')
-    uses: ./.github/workflows/pr-env.yml
-    secrets: inherit
-    with:
-      self_hosting: false
-      analytics_dev_mode: false
-      stats_dump: true

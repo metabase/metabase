@@ -11,12 +11,17 @@ type Filter = string | Filter[] | { [changeType: string]: Filter };
 // A filter is a list of patterns, and an entry may name the change types it applies to as
 // { "added|modified": pattern }. Either way the patterns are what matters here.
 const patterns = (value: Filter): string[] => {
-  if (typeof value === "string") return [value];
-  if (Array.isArray(value)) return value.flatMap(patterns);
+  if (typeof value === "string") {
+    return [value];
+  }
+  if (Array.isArray(value)) {
+    return value.flatMap(patterns);
+  }
   return Object.values(value).flatMap(patterns);
 };
 
 describe("file-paths.yaml", () => {
+  // js-yaml returns an untyped value, and this repository file defines named path filters.
   const filters = load(readFileSync(FILTERS, "utf8")) as Record<string, Filter>;
 
   // dorny/paths-filter matches with picomatch, which micromatch wraps, so this asks the same
@@ -29,7 +34,7 @@ describe("file-paths.yaml", () => {
   // dorny/paths-filter ORs the patterns in a filter, so a "!..." entry does not subtract from the
   // other entries - it matches every path they don't, turning the filter permanently on. Excluding
   // a path means writing the exclusion inside one pattern, the way backend_sources keeps
-  // ratchets.edn out with ".clj-kondo/{!(ratchets.edn),*/**}".
+  // ratchet files out with ".clj-kondo/**/!(ratchets.edn)".
   it("never excludes a path with a standalone negation", () => {
     const negated = Object.entries(filters).flatMap(([name, filter]) =>
       patterns(filter)
@@ -44,8 +49,41 @@ describe("file-paths.yaml", () => {
     "%s skips a ratchets-only change and still follows the rest of .clj-kondo",
     (name) => {
       expect(matches(name, ".clj-kondo/ratchets.edn")).toBe(false);
+      expect(
+        matches(name, ".clj-kondo/config/modules/ratchets.edn"),
+      ).toBe(false);
       expect(matches(name, ".clj-kondo/config.edn")).toBe(true);
       expect(matches(name, ".clj-kondo/config/modules/config.edn")).toBe(true);
+    },
+  );
+
+  it("runs CI script tests when the Node version changes", () => {
+    expect(matches("ci_scripts", ".nvmrc")).toBe(true);
+  });
+
+  it.each([
+    "jest.config.js",
+    "jest.base.conf.js",
+    "jest.esm-packages.js",
+    "jest.tz.unit.conf.js",
+  ])("runs every frontend unit test when %s changes", (path) => {
+    expect(matches("frontend_specs", path)).toBe(true);
+    expect(matches("frontend_unit_infra", path)).toBe(true);
+  });
+
+  it("runs every frontend unit test when an SDK jest setup file changes", () => {
+    expect(
+      matches(
+        "frontend_unit_infra",
+        "frontend/src/embedding-sdk-shared/jest/setup-env.ts",
+      ),
+    ).toBe(true);
+  });
+
+  it.each(["jest.config.js", "jest.base.conf.js", "jest.esm-packages.js"])(
+    "runs CI script tests when %s changes",
+    (path) => {
+      expect(matches("ci_scripts", path)).toBe(true);
     },
   );
 
@@ -53,5 +91,11 @@ describe("file-paths.yaml", () => {
     expect(matches("project_ratchet_checks", ".clj-kondo/ratchets.edn")).toBe(
       true,
     );
+    expect(
+      matches(
+        "project_ratchet_checks",
+        ".clj-kondo/config/modules/ratchets.edn",
+      ),
+    ).toBe(true);
   });
 });

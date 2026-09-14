@@ -142,6 +142,47 @@
               (is (= "Basic Collection" (:name (first colls))))
               (is (= eid1               (:entity_id (first colls)))))))))))
 
+(deftest inline-user-settings-round-trip-test
+  (testing "git sync's inline-user-settings mode replaces a Table's FieldUserSettings wholesale on import"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (testing "extracting inline from the source"
+          (ts/with-db source-db
+            (let [db    (ts/create! :model/Database :name "my-db")
+                  table (ts/create! :model/Table :name "customers" :db_id (:id db))
+                  f1    (ts/create! :model/Field :name "age" :table_id (:id table))
+                  f2    (ts/create! :model/Field :name "email" :table_id (:id table))]
+              (t2/insert! :model/TableUserSettings {:table_id (:id table) :display_name "Renamed"})
+              (t2/insert! :model/FieldUserSettings {:field_id (:id f1) :description "edited"})
+              (reset! serialized
+                      (into [(ts/extract-one "Database" (:id db))
+                             (ts/extract-one "Table" (:id table))
+                             (ts/extract-one "Field" (:id f1))
+                             (ts/extract-one "Field" (:id f2))]
+                            (serdes/extract-all "TableUserSettings"
+                                                {:inline-user-settings true
+                                                 :filter-column        :table_id
+                                                 :filter-ids           [(:id table)]}))))))
+        (testing "the extracted TableUserSettings inlines F1's edit and no others"
+          (let [tus (first (by-model @serialized "TableUserSettings"))]
+            (is (= "Renamed" (:display_name tus)))
+            (is (= 1 (count (:fields tus))))
+            (is (= "edited" (:description (first (:fields tus)))))))
+        (testing "loading into a destination where the same Database/Table/Fields exist, and F2 has a stale row"
+          (ts/with-db dest-db
+            (let [db    (ts/create! :model/Database :name "my-db")
+                  table (ts/create! :model/Table :name "customers" :db_id (:id db))
+                  f1    (ts/create! :model/Field :name "age" :table_id (:id table))
+                  f2    (ts/create! :model/Field :name "email" :table_id (:id table))]
+              (t2/insert! :model/FieldUserSettings {:field_id (:id f2) :description "stale"})
+              (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+              (testing "the Table's settings arrive"
+                (is (= "Renamed" (t2/select-one-fn :display_name :model/TableUserSettings :table_id (:id table)))))
+              (testing "F1's settings arrive"
+                (is (= "edited" (t2/select-one-fn :description :model/FieldUserSettings :field_id (:id f1)))))
+              (testing "F2's stale row is deleted -- replace semantics"
+                (is (nil? (t2/select-one :model/FieldUserSettings :field_id (:id f2))))))))))))
+
 (deftest escape-continue-on-error-roundtrip-test
   (testing "archive exported past escape analysis imports under continue-on-error without crashing (#74622)"
     (let [serialized  (atom nil)
@@ -2132,9 +2173,9 @@
             (reset! serialized (into [] (serdes.extract/extract {})))
             (testing "the labeled Field and its FieldUserSettings both export the label"
               (is (= :PII (:data_sensitivity (field-ser @serialized "CONTACT_EMAIL"))))
-              (is (= :PII (:data_sensitivity (u/seek #(and (in-db? %)
-                                                           (-> % :serdes/meta last :model (= "FieldUserSettings")))
-                                                     @serialized)))))
+              (is (= :PII (-> (u/seek #(and (in-db? %) (-> % :serdes/meta last :model (= "TableUserSettings")))
+                                      @serialized)
+                              :fields first :data_sensitivity))))
             (testing "the unlabeled Field exports no data_sensitivity key"
               (is (not (contains? (field-ser @serialized "CONTACT_ROW") :data_sensitivity))))))
         (ts/with-db dest-db

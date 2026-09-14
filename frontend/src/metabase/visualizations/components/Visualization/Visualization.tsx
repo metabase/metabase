@@ -28,7 +28,7 @@ import type { Dispatch, State } from "metabase/redux/store";
 import type { Path } from "metabase/router";
 import { getTokenFeature } from "metabase/settings";
 import { getFont } from "metabase/styled-components/selectors";
-import { Box, Flex, type IconProps } from "metabase/ui";
+import type { IconProps } from "metabase/ui";
 import { isQuestionCard } from "metabase/utils/dashboard";
 import { formatNumber } from "metabase/utils/formatting";
 import { memoize } from "metabase/utils/memoize";
@@ -83,7 +83,11 @@ import { ErrorView } from "./ErrorView";
 import LoadingView, { type LoadingViewProps } from "./LoadingView";
 import { DashCardLoadingView } from "./LoadingView/DashCardLoadingView";
 import NoResultsView from "./NoResultsView";
-import S from "./Visualization.module.css";
+import {
+  VisualizationActionButtonsContainer,
+  VisualizationHeader,
+  VisualizationRoot,
+} from "./Visualization.styled";
 import { VisualizationRenderedWrapper } from "./VisualizationRenderedWrapper";
 import { VisualizationRunningState } from "./VisualizationRunningState";
 import { Watermark } from "./Watermark";
@@ -785,9 +789,9 @@ class Visualization extends PureComponent<
     }
 
     const extra = (
-      <Flex component="span" align="center">
+      <VisualizationActionButtonsContainer>
         {actionButtons}
-      </Flex>
+      </VisualizationActionButtonsContainer>
     );
 
     let { gridSize, gridUnit } = this.props;
@@ -835,8 +839,8 @@ class Visualization extends PureComponent<
         onError={this.onErrorBoundaryError}
         ref={this.props.forwardedRef}
       >
-        <Box
-          className={cx(S.root, className)}
+        <VisualizationRoot
+          className={className}
           style={style}
           data-testid="visualization-root"
           // `getUiName` should be defined (and is a required field on the TS type), but because we have javascript
@@ -845,7 +849,7 @@ class Visualization extends PureComponent<
           ref={this.props.forwardedRef}
         >
           {!!hasHeader && (
-            <Box className={S.header} flex="0 0 auto">
+            <VisualizationHeader>
               <ChartCaption
                 series={series}
                 visualizerRawSeries={visualizerRawSeries}
@@ -860,7 +864,7 @@ class Visualization extends PureComponent<
                   canSelectTitle ? this.handleOnChangeCardAndRun : null
                 }
               />
-            </Box>
+            </VisualizationHeader>
           )}
           {replacementContent ? (
             replacementContent
@@ -1019,7 +1023,7 @@ class Visualization extends PureComponent<
               onUpdateVisualizationSettings={onUpdateVisualizationSettings}
             />
           )}
-        </Box>
+        </VisualizationRoot>
       </ErrorBoundary>
     );
   }
