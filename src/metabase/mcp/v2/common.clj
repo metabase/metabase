@@ -34,9 +34,9 @@
   "JSON-RPC -32603: unexpected server-side failure." -32603)
 
 (defn error-content
-  "Wrap `message` as MCP error content, its text [[message/render]]ed: a message as prose, anything else cleaned
-   whole. The JSON-RPC `code` (default: internal error) is carried under the namespaced `::error-code` key for usage
-   logging and stripped from the response before it reaches the client (see the registry's call-tool)."
+  "MCP error content whose text is `message`, [[message/render]]ed. The JSON-RPC `code` (default: internal error) is
+   carried under the namespaced `::error-code` key for usage logging and stripped from the response before it reaches
+   the client (see the registry's call-tool)."
   ([message] (error-content message error-code-internal))
   ([message code] {:content [{:type "text" :text (message/render message)}] :isError true ::error-code code}))
 
@@ -49,8 +49,7 @@
    `text` self-sufficient: everything the model needs to reason or make its next call. Pass
    `structured` only when a concrete programmatic consumer reads it (e.g. an MCP Apps iframe),
    and make it a faithful mirror of the text — never a subset, never the sole home of anything
-   the model needs. A message or string `text` is [[message/render]]ed, a string cleaned whole, and
-   anything else is JSON-encoded."
+   the model needs. A message or string `text` is [[message/render]]ed; anything else is JSON-encoded."
   ([text] (success-content text nil))
   ([text structured]
    (cond-> {:content [{:type "text" :text (if (or (message/message? text) (string? text))
@@ -87,10 +86,9 @@
    (ex-info (message/render msg) (assoc data ::message msg) cause)))
 
 (defn throw-teaching-error
-  "Throw an `ex-info` whose message is `msg`, a message or a string: a complete caller-facing sentence
-   naming the fix. A message is rendered into the exception message and carried in `ex-data` under
-   `::message`. Surfaced to the MCP client as `isError` content by [[->mcp-error-content]], where a
-   string is cleaned whole."
+  "Throw a caller-facing `ex-info` for `msg`, a message or a string: a complete sentence naming the fix. `data` is
+   merged over `{:status-code 400}`. A message is thrown as a [[message-ex-info]]; a string is the exception message.
+   Surfaced to the MCP client as `isError` content by [[->mcp-error-content]]."
   ([msg] (throw-teaching-error msg nil))
   ([msg data]
    (if (message/message? msg)
@@ -157,9 +155,8 @@
   (message/msg ["Internal error"]))
 
 (defn exception-message
-  "The message of exception `e`: the message under `::message` in its `ex-data` unless its exception message differs from
-   that message's rendering (rewrapped with new text), else its exception message as a string to clean whole, else
-   nil."
+  "The message of exception `e`: the message under `::message` in its `ex-data` unless its exception message differs
+   from that message's rendering (rewrapped with new text), else its exception message string, else nil."
   [e]
   (let [stored (::message (ex-data e))
         text   (ex-message e)]
@@ -174,8 +171,8 @@
 
 (defn caller-safe-error-message
   "The message of `e` when it is deliberately caller-facing, judged the same way as
-   [[->mcp-error-content]]: a message, or an exception-message string that renders cleaned whole. Any
-   other exception is logged server-side and reported as the \"Internal error\" message. This is the
+   [[->mcp-error-content]], as an [[exception-message]]. Any other exception is logged server-side and
+   reported as the \"Internal error\" message. This is the
    sanitizer for response paths that answer with a JSON-RPC error rather than tool content — resource
    reads, list handlers, and the transport's own catch-all."
   [e]
@@ -411,11 +408,12 @@
 (defn truncation-line
   "The steering message appended to a truncated list response: names the narrowing `param` (a
    server-declared argument keyword) when one narrows this list, and always the next offset.
-   Returns nil when the page isn't truncated (or `total` is unknown). `:returned` is the actual page size — the caller's ground truth, e.g.
-   `(count data)` — not derived arithmetically, since a post-fetch drop (a stale index hit, an
-   unreadable row) can leave a page shorter than `limit`/`total`/`offset` alone would predict.
-   `:total-floor?` marks `total` as a lower bound rather than an exact count — e.g. a search total
-   capped at the ranking limit — so the sentence reads \"at least N\"."
+   Returns nil when the page isn't truncated (or `total` is unknown). `:returned` is the actual
+   page size — the caller's ground truth, e.g. `(count data)` — not derived arithmetically, since
+   a post-fetch drop (a stale index hit, an unreadable row) can leave a page shorter than
+   `limit`/`total`/`offset` alone would predict. `:total-floor?` marks `total` as a lower bound
+   rather than an exact count — e.g. a search total capped at the ranking limit — so the sentence
+   reads \"at least N\"."
   ;; A list with nothing to narrow by still has to say more exists — without a line the caller
   ;; reads a truncated page as the whole set.
   [{:keys [param offset limit total total-floor? returned]}]

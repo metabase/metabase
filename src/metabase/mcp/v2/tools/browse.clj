@@ -718,12 +718,11 @@
   "Total nodes one tree response may contain, bounding the shallow-fetch composition."
   250)
 
-;; Markers are string values in the JSON tree, so they're rendered here.
-
 (defn- tree-marker
   "Marker for a node re-rooting recovers: re-rooting resets the depth and node budget, so a
    fresh `mode: \"tree\"` call at this node reveals what depth or budget cut off here."
   [more-count parent-name parent-id]
+  ;; Markers are string values in the JSON tree, so they're rendered here.
   (message/render
    (message/msg ["… %s under %s — browse_collection(id: %s, mode: \"tree\")"]
                 (if more-count (message/msg ["%d more"] more-count) (message/msg ["more"]))
@@ -735,6 +734,7 @@
    cap and returns the identical page, so this steers to items-mode pagination — the only way to
    reach the children past the cap."
   [more parent-name parent-id offset]
+  ;; Markers are string values in the JSON tree, so they're rendered here.
   (message/render
    (message/msg ["… %d more under %s — browse_collection(id: %s, mode: \"items\", type: [\"collection\"], offset: %d)"]
                 more parent-name parent-id offset)))

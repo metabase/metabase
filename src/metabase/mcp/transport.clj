@@ -48,8 +48,7 @@
   {:jsonrpc "2.0" :id id :result result})
 
 (defn jsonrpc-error
-  "Build a JSON-RPC 2.0 error response for request `id`, its `message` [[message/render]]ed: a message as prose,
-   anything else cleaned whole."
+  "Build a JSON-RPC 2.0 error response for request `id` with error `code` and `message`, [[message/render]]ed."
   [id code message]
   {:jsonrpc "2.0" :id id :error {:code code :message (message/render message)}})
 

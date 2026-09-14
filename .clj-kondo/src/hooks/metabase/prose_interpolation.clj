@@ -1,15 +1,7 @@
 (ns hooks.metabase.prose-interpolation
-  "Lint agent-facing prose built with `metabase.mcp.v2.message/msg` and the exits that carry it to the agent.
-
-  `:metabase/agent-message-lines` checks `msg` calls: the lines must be a literal vector whose lines are each a string
-  literal or a `str` of string literals, with no line breaks, `%n`, or control characters; `%s` takes no width,
-  precision, or flags and `%S` isn't allowed; and the arguments must match the lines' format specifiers.
-
-  `:metabase/agent-message-exit` checks the exits: the message argument of `throw-teaching-error`, `error-content`,
-  `jsonrpc-error`, and `success-content` must not be syntactically text, and an `ex-info` whose data literal carries a
-  4xx `:status-code` or an `error-code` key is flagged.
-
-  Each check runs only when its linter's level is configured and not `:off`. Every hook returns its input unchanged."
+  "Hooks linting agent-facing prose built with `metabase.mcp.v2.message/msg` (`:metabase/agent-message-lines`) and the
+  exits that carry it to the agent (`:metabase/agent-message-exit`). Each hook checks only when its linter's level is
+  configured and not `:off`, and returns its input unchanged."
   (:require
    [clj-kondo.hooks-api :as hooks]
    [clojure.string :as str]))

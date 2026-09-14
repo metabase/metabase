@@ -300,9 +300,12 @@
               {:result (common/->mcp-error-content e)})))))))
 
 (defn call-tool
-  "Dispatch a v2 MCP `tools/call`. Returns `{:error {:code ... :message ...}}`, with a message built by `msg`, when the registry rejects the request before dispatch, or `{:result mcp-content}` after handler execution. Only an executed handler can produce an MCP result carrying `:isError`.
+  "Dispatch a v2 MCP `tools/call`. Returns `{:error {:code ... :message ...}}`, with a [[message/msg]] message, when
+   the registry rejects the request before dispatch, or `{:result mcp-content}` after handler execution. Only an
+   executed handler can produce an MCP result carrying `:isError`.
 
-   Every call is recorded to `mcp_tool_call_log` (EE-only, best-effort) with its timing, success/error status, and on error the JSON-RPC `error_code` + `error_message` (the latter gated/truncated by the writer)."
+   Every call is recorded to `mcp_tool_call_log` (EE-only, best-effort) with its timing, success/error status, and on
+   error the JSON-RPC `error_code` + `error_message` (the latter gated/truncated by the writer)."
   ([token-scopes session-id tool-name arguments]
    (call-tool token-scopes session-id tool-name arguments {}))
   ([token-scopes session-id tool-name arguments options]

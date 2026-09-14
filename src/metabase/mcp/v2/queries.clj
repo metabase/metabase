@@ -26,12 +26,11 @@
   500)
 
 (defn- with-schema-detail
-  "`e` with its humanized schema explanation folded into its message, or unchanged when it carries
-   none. The rewrapped exception keeps `e`'s data and cause, and carries the new message under
-   `::common/message`. The representations pipeline computes the explanation and files it under `:humanized` but
-   states only the bare verdict, which leaves an agent nothing to edit; only structural validation
-   failures carry the key, so the dialect steering is always apt where it lands."
+  "`e` rewrapped by [[common/message-ex-info]] with its humanized schema explanation folded into its message, keeping
+   its data and cause, or unchanged when it carries none."
   [^clojure.lang.ExceptionInfo e]
+  ;; The pipeline files the explanation under `:humanized` but states only the bare verdict, which leaves an agent
+  ;; nothing to edit. Only structural validation failures carry the key, so the dialect steering is always apt.
   (if-let [humanized (:humanized (ex-data e))]
     (common/message-ex-info
      (message/msg ["%s Invalid at %s. Fix the named paths, or call `learn` with \"query-dialect\" for the clause shapes."]
@@ -42,8 +41,8 @@
     e))
 
 (defn- with-recovery-hint
-  "`e` with v2's recovery message for its `ex-data` on a line after its message, or unchanged when there is none. The
-   rewrapped exception keeps `e`'s data and cause, and carries the new message under `::common/message`."
+  "`e` rewrapped by [[common/message-ex-info]] with v2's recovery message for its `ex-data` on a line after its
+   message, keeping its data and cause, or unchanged when there is none."
   [^clojure.lang.ExceptionInfo e]
   (if-let [hint (v2.recovery-hints/recovery-hint (ex-data e))]
     (common/message-ex-info (message/msg ["%s" "%s"] (common/exception-message e) hint)
@@ -54,9 +53,8 @@
 (defn execute-representations-query
   "Run the shared representations pipeline (validate → repair → resolve) as the MCP v2 surface —
    the one entry point for v2 tools that accept an agent-authored MBQL query. Binds the numeric-id
-   dialect on. A structural failure gains the offending paths ([[with-schema-detail]]), which the
-   pipeline computes but does not state, and an agent error gains v2's recovery message
-   ([[with-recovery-hint]]), naming `browse_data` / `search` rather than v1's `read_resource` / `metabase://` URIs."
+   dialect on. A structural failure gains the offending paths ([[with-schema-detail]]), and an
+   agent error gains v2's recovery message ([[with-recovery-hint]])."
   [external-query]
   (binding [serdes.resolve/*numeric-ids-allowed?* true]
     (try

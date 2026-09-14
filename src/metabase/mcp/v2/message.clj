@@ -1,11 +1,6 @@
 (ns metabase.mcp.v2.message
-  "Messages for agent-facing prose: text an LLM reads as the MCP server speaking.
-
-   Build every message with [[msg]]: a vector of line format strings plus arguments. [[render]] joins the lines with
-   newlines and interpolates the arguments, [[clean]]ing each one unless it is [[raw]] or itself a message, so
-   untrusted text (warehouse names, driver errors, content names) arrives quoted and escaped and can't pose as
-   server-authored lines. [[render]] cleans anything that isn't a message whole, so text that bypasses [[msg]] reaches
-   the client over-quoted, never unescaped."
+  "Messages for agent-facing prose: text an LLM reads as the MCP server speaking, built with [[msg]] and turned into
+   text with [[render]]."
   (:require
    [clojure.string :as str]
    [metabase.util.log :as log])
@@ -40,8 +35,9 @@
                         Character/UNASSIGNED]))
 
 (def ^:private double-quote-look-alikes
-  "Code points escaped by [[clean]] because they could read as the `\"` closing a quoted value. Single quotes are kept:
-   they can't close a double-quoted value, and names carrying them must survive being copied back."
+  "Code points escaped by [[clean]] because they could read as the `\"` closing a quoted value."
+  ;; Single quotes are kept: they can't close a double-quoted value, and names carrying them must survive being copied
+  ;; back.
   #{0x201C 0x201D 0x201E 0x201F 0x00AB 0x00BB 0x2033 0x2036 0x301D 0x301E 0x301F 0xFF02})
 
 (defn- escaped-code-point?
