@@ -24,7 +24,8 @@
    [metabase.metabot.tools.recovery-hints :as v1-hints]
    [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve :as serdes.resolve]
-   [metabase.models.serialization.resolve.mp :as resolve.mp]))
+   [metabase.models.serialization.resolve.mp :as resolve.mp]
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -1246,8 +1247,8 @@
   `source-card` branch resolves the database id straight off the card row, before any
   metadata provider or resolver exists."
   [read-check f]
-  (with-redefs [metabot.db/card (fn [id] (when (= id 500) {:id 500 :database_id 1}))
-                api/read-check  read-check]
+  (mt/with-dynamic-fn-redefs [metabot.db/card (fn [id] (when (= id 500) {:id 500 :database_id 1}))
+                              api/read-check  read-check]
     (f)))
 
 (deftest numeric-source-card-resolves-database-id-test
@@ -1323,7 +1324,7 @@
                 "distinct from the portable form's `:unknown-table` — the two want different\n"
                 "recovery vocabulary, so the keys must not be collapsed.")
     (with-v2-surface
-      (with-redefs [metabot.db/readable-active-table-database-id (fn [_] nil)]
+      (mt/with-dynamic-fn-redefs [metabot.db/readable-active-table-database-id (fn [_] nil)]
         (try
           (construct/resolve-database-id-from-first-stage
            {"lib/type" "mbql/query"
@@ -1677,10 +1678,11 @@
   (testing "repair's source-card lookups are best-effort and the query is resolved for real afterwards,
             so a refusal in there must not be audited as an access attempt"
     (let [seen   (atom ::never-called)
-          repair repr.repair/repair]
-      (with-redefs [repr.repair/repair (fn [& args]
-                                         (reset! seen resolve.mp/*audit-refusals?*)
-                                         (apply repair args))]
+          repair (mt/original-fn #'repr.repair/repair)]
+      (mt/with-dynamic-fn-redefs
+        [repr.repair/repair (fn [& args]
+                              (reset! seen resolve.mp/*audit-refusals?*)
+                              (apply repair args))]
         (with-mp-and-stubs!
           (fn []
             (construct/execute-representations-query

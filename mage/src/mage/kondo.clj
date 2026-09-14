@@ -48,10 +48,22 @@
   (shell/sh "rm" "-rf" ".clj-kondo/metosin/malli-types-clj/")
   (shell/sh "rm" "-rf" ".clj-kondo/.cache"))
 
+(defn warm-cache!
+  "Lint everything once, discarding the findings, to fill the cache Kondo keeps under `.clj-kondo/.cache`.
+
+  Hooks that ask about another namespace's vars (`hooks/ns-analysis`) read that cache and nothing else,
+  and Kondo writes it only after every file in a run has been analysed. A single pass over a cold cache
+  therefore tells those hooks nothing, and they silently skip their checks -- which is how
+  `:metabase/prefer-with-dynamic-fn-redefs` came to pass in CI while flagging the same code locally."
+  []
+  (println "Warming the Kondo cache so cache-reading hooks can see every namespace...")
+  (shell/sh* {:quiet? true} "clojure" "-M:kondo:kondo/all"))
+
 (defn- kondo*
   [args]
   (copy-configs-if-needed!)
   (clear-cache!)
+  (warm-cache!)
   (let [command           (if (empty? args)
                             (do
                               (println "Hunker down, we're running kondo against everything we usually lint...")
