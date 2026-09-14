@@ -118,19 +118,19 @@
     #"^(past|next)([0-9]+)([a-z]+)s-from-([0-9]+)([a-z]+)s$" :>> (fn [matches] (apply format-relative-date-with-offset matches))))
 
 (defn- format-day [value locale]
-  (-> value
-      (time/parse-unit  :day-of-week-abbrev "en") ;; always read in en locale
-      (time/format-unit :day-of-week        locale)))
+  (time/format-unit {:locale locale, :start-of-week :sunday}
+                    (time/parse-unit value :day-of-week-abbrev "en") ; always read in en locale
+                    :day-of-week))
 
 (defn- format-hour [value locale]
-  (-> value
-      (time/parse-unit  :hour-of-day-24     "en") ;; always read in en locale
-      (time/format-unit :hour-of-day        locale)))
+  (time/format-unit {:locale locale, :start-of-week :sunday}
+                    (time/parse-unit value :hour-of-day-24 "en") ; always read in en locale
+                    :hour-of-day))
 
 (defn- format-month [value locale]
-  (-> value
-      (time/parse-unit  :month-of-year      "en") ;; always read in en locale
-      (time/format-unit :month-of-year-full locale)))
+  (time/format-unit {:locale locale, :start-of-week :sunday}
+                    (time/parse-unit value :month-of-year "en") ; always read in en locale
+                    :month-of-year-full))
 
 (defn- format-exclude-unit [value unit locale]
   (case unit

@@ -5,6 +5,7 @@ import type {
   DatePickerUnit,
   RelativeDatePickerValue,
 } from "metabase/querying/common/types";
+import { useSetting } from "metabase/settings";
 import { Button, Group, Stack, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -23,10 +24,14 @@ export function CurrentDatePicker({
   availableUnits,
   onChange,
 }: CurrentDatePickerProps) {
+  const startOfWeek = useSetting("start-of-week");
   const unitGroups = getUnitGroups(availableUnits);
 
   const getTooltipLabel = (unit: DatePickerTruncationUnit) => {
-    return formatDateRange(getCurrentValue(unit));
+    return formatDateRange(
+      { "start-of-week": startOfWeek },
+      getCurrentValue(unit),
+    );
   };
 
   const handleClick = (unit: DatePickerTruncationUnit) => {

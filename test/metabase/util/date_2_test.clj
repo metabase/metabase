@@ -12,6 +12,8 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private time-config {:start-of-week :sunday})
+
 (deftest parse-test
   ;; system timezone should not affect the way strings are parsed
   (doseq [system-timezone-id ["UTC" "US/Pacific"]]
@@ -231,17 +233,17 @@
   (let [now (t/zoned-date-time "2019-12-10T17:17:00-08:00[US/Pacific]")]
     (testing "adjust temporal value to first day of week (Sunday)"
       (is (= (t/zoned-date-time "2019-12-08T17:17-08:00[US/Pacific]")
-             (t/adjust now (u.date/adjuster :first-day-of-week)))))
+             (t/adjust now (u.date/adjuster :first-day-of-week :sunday)))))
     (testing "adjust temporal value to first day of first week of year (previous or same Sunday as first day of year)"
       (is (= (t/zoned-date-time "2018-12-30T17:17-08:00[US/Pacific]")
-             (t/adjust now (u.date/adjuster :first-week-of-year))
-             (t/adjust now (u.date/adjuster :week-of-year 1)))))
+             (t/adjust now (u.date/adjuster :first-week-of-year :sunday))
+             (t/adjust now (u.date/adjuster :week-of-year 1 :sunday)))))
     (testing "adjust temporal value to the 50th week of the year"
       (is (= (t/zoned-date-time "2019-12-08T17:17-08:00[US/Pacific]")
-             (t/adjust now (u.date/adjuster :week-of-year 50)))))))
+             (t/adjust now (u.date/adjuster :week-of-year 50 :sunday)))))))
 
 (deftest ^:parallel extract-test
-  (testing "u.date/extract with 2 args"
+  (testing "u.date/extract with an explicit temporal value"
     ;; everything is at `Sunday October 27th 2019 2:03:40.555 PM` or subset thereof
     (let [temporal-category->sample-values {:dates     [(t/local-date 2019 10 27)]
                                             :times     [(t/local-time  14 3 40 (* 555 1000000))
@@ -261,30 +263,29 @@
               t                           (get temporal-category->sample-values category)
               [unit expected]             unit->expected]
         (is (= expected
-               (u.date/extract t unit))
+               (u.date/extract time-config t unit))
             (format "Extract %s from %s %s should be %s" unit (class t) t expected)))))
-  (testing "u.date/extract with 1 arg (extract from now)"
+  (testing "u.date/extract from the current time"
     (mt/with-clock (t/mock-clock (t/instant "2019-11-18T22:31:00Z"))
       (is (= 2
-             (u.date/extract :day-of-week))))))
+             (u.date/extract time-config :day-of-week))))))
 
-(deftest extract-start-of-week-test
-  (testing "`extract` `:day-of-week` and `:week-of-year` should respect the `start-of-week` Setting (#14294)"
-    (doseq [[first-day-of-week unit->expected] {"sunday"    {:week-of-year 9, :day-of-week 3}
-                                                "monday"    {:week-of-year 9, :day-of-week 2}
-                                                "tuesday"   {:week-of-year 9, :day-of-week 1}
-                                                "wednesday" {:week-of-year 8, :day-of-week 7}
-                                                "thursday"  {:week-of-year 8, :day-of-week 6}
-                                                "friday"    {:week-of-year 8, :day-of-week 5}
-                                                "saturday"  {:week-of-year 9, :day-of-week 4}}
+(deftest ^:parallel extract-start-of-week-test
+  (testing "`extract` `:day-of-week` and `:week-of-year` should respect the supplied `:start-of-week` (#14294)"
+    (doseq [[first-day-of-week unit->expected] {:sunday    {:week-of-year 9, :day-of-week 3}
+                                                :monday    {:week-of-year 9, :day-of-week 2}
+                                                :tuesday   {:week-of-year 9, :day-of-week 1}
+                                                :wednesday {:week-of-year 8, :day-of-week 7}
+                                                :thursday  {:week-of-year 8, :day-of-week 6}
+                                                :friday    {:week-of-year 8, :day-of-week 5}
+                                                :saturday  {:week-of-year 9, :day-of-week 4}}
             unit [:week-of-year :day-of-week]]
-      (mt/with-temporary-setting-values [start-of-week first-day-of-week]
-        (testing (pr-str (list 'u.date/extract (symbol "#_Tuesday") #t "2021-02-23" unit))
-          (is (= (get unit->expected unit)
-                 (u.date/extract #t "2021-02-23" unit))))))))
+      (testing (pr-str (list 'u.date/extract (symbol "#_Tuesday") #t "2021-02-23" unit first-day-of-week))
+        (is (= (get unit->expected unit)
+               (u.date/extract {:start-of-week first-day-of-week} #t "2021-02-23" unit)))))))
 
 (deftest ^:parallel truncate-test
-  (testing "u.date/truncate with 2 args"
+  (testing "u.date/truncate with an explicit temporal value"
     (let [t->unit->expected
           {(t/local-date 2019 10 27)
            {:second   (t/local-date 2019 10 27)
@@ -328,29 +329,28 @@
       (doseq [[t unit->expected] t->unit->expected
               [unit expected]    unit->expected]
         (is (= expected
-               (u.date/truncate t unit))
+               (u.date/truncate time-config t unit))
             (format "Truncate %s %s to %s should be %s" (class t) t unit expected)))))
-  (testing "u.date/truncate with 1 arg (truncate now)"
+  (testing "u.date/truncate from the current time"
     (mt/with-clock (t/mock-clock (t/instant "2019-11-18T22:31:00Z"))
       (is (= (t/zoned-date-time "2019-11-18T00:00Z[UTC]")
-             (u.date/truncate :day))))))
+             (u.date/truncate time-config :day))))))
 
-(deftest truncate-start-of-week-test
-  (testing "`truncate` to `:week` should respect the `start-of-week` Setting (#14294)"
-    (doseq [[first-day-of-week expected] {"sunday"    #t "2021-02-21"
-                                          "monday"    #t "2021-02-22"
-                                          "tuesday"   #t "2021-02-23"
-                                          "wednesday" #t "2021-02-17"
-                                          "thursday"  #t "2021-02-18"
-                                          "friday"    #t "2021-02-19"
-                                          "saturday"  #t "2021-02-20"}]
-      (mt/with-temporary-setting-values [start-of-week first-day-of-week]
-        (is (= expected
-               (u.date/truncate #_Tuesday #t "2021-02-23" :week)))))))
+(deftest ^:parallel truncate-start-of-week-test
+  (testing "`truncate` to `:week` should respect the supplied `:start-of-week` (#14294)"
+    (doseq [[first-day-of-week expected] {:sunday    #t "2021-02-21"
+                                          :monday    #t "2021-02-22"
+                                          :tuesday   #t "2021-02-23"
+                                          :wednesday #t "2021-02-17"
+                                          :thursday  #t "2021-02-18"
+                                          :friday    #t "2021-02-19"
+                                          :saturday  #t "2021-02-20"}]
+      (is (= expected
+             (u.date/truncate {:start-of-week first-day-of-week} #_Tuesday #t "2021-02-23" :week))))))
 
 (deftest ^:parallel bucket-test
   (are [unit expected] (= expected
-                          (u.date/bucket #t "2024-01-03" unit))
+                          (u.date/bucket time-config #t "2024-01-03" unit))
     :month         #t "2024-01-01"
     :month-of-year 1))
 
@@ -378,26 +378,34 @@
     (is (= {:start (t/zoned-date-time "2019-11-17T00:00Z[UTC]")
             :end   (t/zoned-date-time "2019-11-24T00:00Z[UTC]")}
            (mt/with-clock (t/mock-clock (t/instant "2019-11-18T22:31:00Z"))
-             (u.date/range :week)))))
+             (u.date/range time-config (t/zoned-date-time) :week)))))
   (testing "with 2 args"
     (is (= {:start (t/zoned-date-time "2019-10-27T00:00Z[UTC]")
             :end   (t/zoned-date-time "2019-11-03T00:00Z[UTC]")}
-           (u.date/range (t/zoned-date-time "2019-11-01T15:29:00Z[UTC]") :week))))
+           (u.date/range time-config (t/zoned-date-time "2019-11-01T15:29:00Z[UTC]") :week))))
   (testing "with 3 args (start/end inclusitivity options)"
     (testing "exclusive start"
       (is (= {:start (t/local-date-time "2019-10-31T23:59:59.999"), :end (t/local-date-time "2019-12-01T00:00")}
-             (u.date/range (t/local-date-time "2019-11-18T00:00") :month {:start :exclusive}))))
+             (u.date/range time-config
+                           (t/local-date-time "2019-11-18T00:00") :month
+                           {:start :exclusive}))))
     (testing "inclusive end"
       (is (= {:start (t/local-date-time "2019-11-01T00:00"), :end (t/local-date-time "2019-11-30T23:59:59.999")}
-             (u.date/range (t/local-date-time "2019-11-18T00:00") :month {:end :inclusive}))))
+             (u.date/range time-config
+                           (t/local-date-time "2019-11-18T00:00") :month
+                           {:end :inclusive}))))
     (testing ":day resolution + inclusive end"
       (is (= {:start (t/local-date "2019-11-01"), :end (t/local-date "2019-11-30")}
-             (u.date/range (t/local-date "2019-11-18") :month {:end :inclusive, :resolution :day}))))))
+             (u.date/range time-config
+                           (t/local-date "2019-11-18") :month
+                           {:end :inclusive, :resolution :day}))))))
 
 (deftest ^:parallel comparison-range-test
   (testing "Comparing MONTH"
     (letfn [(comparison-range [comparison-type options]
-              (u.date/comparison-range (t/local-date "2019-11-18") :month comparison-type (merge {:resolution :day} options)))]
+              (u.date/comparison-range time-config
+                                       (t/local-date "2019-11-18") :month comparison-type
+                                       (merge {:resolution :day} options)))]
       (testing "Month = November"
         (is (= {:start (t/local-date "2019-11-01"), :end (t/local-date "2019-12-01")}
                (comparison-range := nil)))
@@ -435,7 +443,9 @@
 (deftest ^:parallel comparison-range-test-2
   (testing "Comparing DAY"
     (letfn [(comparison-range [comparison-type options]
-              (u.date/comparison-range (t/local-date-time "2019-11-18T12:00") :day comparison-type (merge {:resolution :minute} options)))]
+              (u.date/comparison-range time-config
+                                       (t/local-date-time "2019-11-18T12:00") :day comparison-type
+                                       (merge {:resolution :minute} options)))]
       (testing "Day = November 18th"
         (is (= {:start (t/local-date-time "2019-11-18T00:00"), :end (t/local-date-time "2019-11-19T00:00")}
                (comparison-range := nil)))
@@ -470,21 +480,22 @@
           (is (= {:start (t/local-date-time "2019-11-17T23:59")}
                  (comparison-range :>= {:start :exclusive}))))))))
 
-(deftest comparison-range-start-of-week-test
-  (testing "`comparison-range` for week should respect the `start-of-week` Setting (#14294)"
-    (doseq [[first-day-of-week expected] {"sunday"    {:start #t "2021-02-21", :end #t "2021-02-27"}
-                                          "monday"    {:start #t "2021-02-22", :end #t "2021-02-28"}
-                                          "tuesday"   {:start #t "2021-02-23", :end #t "2021-03-01"}
-                                          "wednesday" {:start #t "2021-02-17", :end #t "2021-02-23"}
-                                          "thursday"  {:start #t "2021-02-18", :end #t "2021-02-24"}
-                                          "friday"    {:start #t "2021-02-19", :end #t "2021-02-25"}
-                                          "saturday"  {:start #t "2021-02-20", :end #t "2021-02-26"}}]
-      (mt/with-temporary-setting-values [start-of-week first-day-of-week]
-        (let [t #t "2021-02-23"]
-          (is (= expected
-                 (merge
-                  (u.date/comparison-range t :week :>= {:resolution :day})
-                  (u.date/comparison-range t :week :<= {:resolution :day, :end :inclusive})))))))))
+(deftest ^:parallel comparison-range-start-of-week-test
+  (testing "`comparison-range` for week should respect the supplied `:start-of-week` (#14294)"
+    (doseq [[first-day-of-week expected] {:sunday    {:start #t "2021-02-21", :end #t "2021-02-27"}
+                                          :monday    {:start #t "2021-02-22", :end #t "2021-02-28"}
+                                          :tuesday   {:start #t "2021-02-23", :end #t "2021-03-01"}
+                                          :wednesday {:start #t "2021-02-17", :end #t "2021-02-23"}
+                                          :thursday  {:start #t "2021-02-18", :end #t "2021-02-24"}
+                                          :friday    {:start #t "2021-02-19", :end #t "2021-02-25"}
+                                          :saturday  {:start #t "2021-02-20", :end #t "2021-02-26"}}
+            :let                         [t           #t "2021-02-23"
+                                          time-config {:start-of-week first-day-of-week}
+                                          options     {:resolution :day}]]
+      (is (= expected
+             (merge
+              (u.date/comparison-range time-config t :week :>= options)
+              (u.date/comparison-range time-config t :week :<= (assoc options :end :inclusive))))))))
 
 (deftest ^:parallel period-duration-test
   (testing "Creating a period duration from a string"
