@@ -34,8 +34,13 @@ but nothing it recognises as an entry point reaches it.
 - **A surprise diff here** after a change elsewhere is the signal this fixture exists to give. Understand it before
   updating the expected set.
 
-## Why it lives under `dev/resources`
+## Why the files are `.clj.txt`
 
-The fixtures require each other and reference vars that are deliberately not on the classpath, so they cannot be
-loaded. clj-kondo and Eastwood walk the test roots in CI and would report them; as resources they are only ever
-read by the linter.
+The fixtures require each other, reference vars that are deliberately not on the classpath, and declare
+namespaces that duplicate real ones -- `metabase.cmd.core`, `metabase.api-routes.routes` -- so that the rules keyed
+on a namespace's name see it. None of it can load, and `dev/resources` is on the `:dev` classpath, where
+everything that walks a directory for sources would find a `.clj` file: clj-kondo and Eastwood in CI, the
+namespace-uniqueness test, the model census in `copy-test` (which once tried to require `metabase.driver.thing`).
+Every one of them selects files by extension, so the fixtures have one nothing selects. The corpus test copies
+them to a temporary `.clj` tree before scanning, so the linter sees them under the names the rules expect --
+`db.clj` is the data-access layer, an exemption pattern ends in `\.clj$`.

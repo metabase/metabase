@@ -155,7 +155,7 @@
       (is (re-find #"(?i)not reachable from any known entry point" (second msgs))))))
 
 (deftest text-report-test
-  (let [out (sarif/text findings {:root "/repo"})]
+  (let [^String out (sarif/text findings {:root "/repo"})]
     (testing "findings are grouped under a header per rule, naming it with its counts, then what it means"
       (is (re-find #"(?m)^## command-injection: Command injection \(2 errors\)\n\nFull desc CI\n\nRemediation: Use a vector of args$" out))
       (is (re-find #"(?m)^## weak-hash: Weak hash \(1 note\)$" out)))
@@ -188,7 +188,7 @@
 (def ^:private fixed-now (java.time.ZonedDateTime/of 2026 9 10 21 40 0 0 (java.time.ZoneId/of "UTC")))
 
 (deftest text-report-header-test
-  (let [out (sarif/text findings {:root "/repo" :now fixed-now})]
+  (let [^String out (sarif/text findings {:root "/repo" :now fixed-now})]
     (testing "the report opens with when it ran and the totals"
       (is (str/starts-with? out "# Security lint report\n\nRan 2026-09-10 21:40 UTC\n3 findings in 3 files across 2 rules: 2 errors, 1 note\n")))
     (testing "and an overview line per rule with its counts, errors first"

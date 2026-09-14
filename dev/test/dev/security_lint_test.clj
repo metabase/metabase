@@ -1,7 +1,8 @@
 (ns dev.security-lint-test
   (:require
    [clojure.test :refer :all]
-   [dev.security-lint :as sec]))
+   [dev.security-lint :as sec]
+   [dev.security-lint.rule :as rule]))
 
 (set! *warn-on-reflection* true)
 
@@ -42,10 +43,10 @@
 
 (deftest reload-drops-stale-rules-test
   (testing "a rule that no longer exists on disk -- renamed, deleted, or registered under an old id -- is gone after a reload"
-    (swap! dev.security-lint.rule/*registry* assoc :stale/gone {:id :stale/gone})
+    (swap! rule/*registry* assoc :stale/gone {:id :stale/gone})
     (sec/reload!)
-    (is (nil? (dev.security-lint.rule/by-id :stale/gone)))
-    (is (pos? (count (dev.security-lint.rule/all))))))
+    (is (nil? (rule/by-id :stale/gone)))
+    (is (pos? (count (rule/all))))))
 
 (deftest default-paths-test
   (testing "driver modules are production source too -- druid-jdbc calls clj-http directly and was never scanned"

@@ -4,8 +4,7 @@
   A rule is plain data plus a `detect` function. It declares which call sites it wants to see and decides whether a
   given one is a finding; it knows nothing about how those sites are found or how findings are reported. That
   separation is the point -- adding a rule means adding one file under `dev.security-lint.rules`, never touching the
-  engine."
-  (:refer-clojure :exclude [all]))
+  engine.")
 
 (set! *warn-on-reflection* true)
 
