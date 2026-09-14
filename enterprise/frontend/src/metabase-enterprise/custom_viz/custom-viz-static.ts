@@ -27,14 +27,6 @@ import { applyDefaultVisualizationProps } from "./custom-viz-common";
 import { brandSettingDefinition } from "./custom-viz-settings";
 import { toPluginSeries, toPluginSettings } from "./plugin-view";
 
-type StaticVizApiWindow = Omit<Window, "__METABASE_VIZ_API__"> & {
-  __METABASE_VIZ_API__?: Omit<
-    NonNullable<Window["__METABASE_VIZ_API__"]>,
-    // unsupported in static viz
-    "measureText" | "measureTextHeight" | "measureTextWidth"
-  >;
-};
-
 type GenericVizDefinition = CustomVisualization<Record<string, unknown>>;
 
 type StaticComponent = NonNullable<
@@ -115,10 +107,7 @@ export function registerCustomVizPlugin(
   identifier: string,
   pluginId: CustomVizPluginId,
 ) {
-  // Text measurement is unavailable in the GraalJS context, so the API object
-  // assigned here omits the measure-text functions the global Window
-  // declaration includes. The cast narrows Window so the assignment type-checks.
-  (window as StaticVizApiWindow).__METABASE_VIZ_API__ = {
+  window.__METABASE_VIZ_API__ = {
     columnTypes: customVizColumnTypes,
     formatValue,
   };
