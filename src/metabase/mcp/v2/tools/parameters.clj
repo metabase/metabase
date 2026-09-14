@@ -57,21 +57,23 @@
 ;;; ------------------------------------------------ Parameter lookup ----------------------------------------------
 
 (defn- parameter-catalog
-  "The `id (name)` list a teaching error names when a parameter id doesn't match."
+  "A message listing `params` as `id (name)`, the list a teaching error names when a parameter id doesn't match."
   [params]
-  (or (not-empty
-       (str/join ", " (map (fn [{param-id :id param-name :name}]
-                             (cond-> (u/qualified-name param-id)
-                               (not (str/blank? param-name)) (str " (" param-name ")")))
-                           params)))
-      "none"))
+  (if (seq params)
+    (common/list-message (map (fn [{param-id :id param-name :name}]
+                                (if (str/blank? param-name)
+                                  (message/msg ["%s"] (u/qualified-name param-id))
+                                  (message/msg ["%s (%s)"] (u/qualified-name param-id) param-name)))
+                              params))
+    (message/msg ["none"])))
 
 (defn- check-parameter-id!
   [target parameter-id params]
   (when-not (some #(= parameter-id (u/qualified-name (:id %))) params)
+    ;; `target` is the literal "dashboard" or "question" the caller passes.
     (common/throw-teaching-error
-     (format "This %s has no parameter %s — pass one of its parameter ids (get_content returns them under `parameters`). Available: %s."
-             target (pr-str parameter-id) (parameter-catalog params)))))
+     (message/msg ["This %s has no parameter %s — pass one of its parameter ids (get_content returns them under `parameters`). Available: %s."]
+                  (message/raw target) parameter-id (parameter-catalog params)))))
 
 (defn- card-parameters
   "A card's parameters, falling back to its native query's template tags viewed as parameters."
@@ -125,13 +127,13 @@
       (cond
         (nil? param)
         (common/throw-teaching-error
-         (format "This dashboard has no parameter %s — each constraints key names another of its filters and the value is that filter's current selection. Available: %s."
-                 (pr-str param-key) (parameter-catalog (vals resolved-params))))
+         (message/msg ["This dashboard has no parameter %s — each constraints key names another of its filters and the value is that filter's current selection. Available: %s."]
+                      param-key (parameter-catalog (vals resolved-params))))
 
         (empty? (params/dashboard-param->field-ids param))
         (common/throw-teaching-error
-         (format "Constraint %s can't narrow this filter — it isn't mapped to a queryable field, so chain filtering would silently ignore it. Drop it from constraints."
-                 (pr-str param-key))))))
+         (message/msg ["Constraint %s can't narrow this filter — it isn't mapped to a queryable field, so chain filtering would silently ignore it. Drop it from constraints."]
+                      param-key)))))
   ;; Every constraint now maps to a field. Compute, per target field-id, which constraint fields are
   ;; reachable from it; a constraint is honestly applied only when reachable from EVERY target field-id
   ;; (see the docstring — the fetch unions per-field runs and drops the filter on any run that can't
@@ -152,10 +154,10 @@
          (if (empty? target-field-ids)
            ;; No target fields at all: chain filtering falls back to `filter-values-from-field-refs`,
            ;; which ignores constraints outright. Blaming the join path would misdiagnose it.
-           (format "This parameter's values come from a card's own column rather than a queryable field, so constraints can't narrow it — chain filtering would silently ignore %s. Fetch without constraints."
-                   (pr-str param-key))
-           (format "Constraint %s can't narrow this filter — its field has no join path to this parameter's table (or reaches only some of the fields it maps to), so chain filtering would silently ignore it. Drop it from constraints."
-                   (pr-str param-key)))))))
+           (message/msg ["This parameter's values come from a card's own column rather than a queryable field, so constraints can't narrow it — chain filtering would silently ignore %s. Fetch without constraints."]
+                        param-key)
+           (message/msg ["Constraint %s can't narrow this filter — its field has no join path to this parameter's table (or reaches only some of the fields it maps to), so chain filtering would silently ignore it. Drop it from constraints."]
+                        param-key))))))
   ;; The last drop path is in the value rather than the field: `add-filter` routes a string value on a
   ;; temporal field through `date-string->filter` and catches a parse failure into a dropped filter.
   (doseq [[param-key value] constraints
@@ -164,8 +166,8 @@
           :when             (temporal-field? field-id)]
     (when-not (parses-as-date? value field-id)
       (common/throw-teaching-error
-       (format "Constraint %s is a date filter, and %s isn't a date it can parse — chain filtering would silently ignore it. Pass a day (\"2024-01-31\"), a range (\"2024-01-01~2024-03-31\"), or a relative window (\"past30days\", \"thismonth\")."
-               (pr-str param-key) (pr-str value))))))
+       (message/msg ["Constraint %s is a date filter, and %s isn't a date it can parse — chain filtering would silently ignore it. Pass a day (\"2024-01-31\"), a range (\"2024-01-01~2024-03-31\"), or a relative window (\"past30days\", \"thismonth\")."]
+                    param-key value)))))
 
 (def ^:private no-values
   {:values [] :has_more_values false})
@@ -208,7 +210,7 @@
   [query]
   (when query
     (common/throw-teaching-error
-     "This is a date parameter, so it answers with its column's range rather than a list of values — there is no list for `query` to search. Drop `query` and filter within the `min`/`max` it returns, using the forms in `accepts`.")))
+     (message/msg ["This is a date parameter, so it answers with its column's range rather than a list of values — there is no list for `query` to search. Drop `query` and filter within the `min`/`max` it returns, using the forms in `accepts`."]))))
 
 (defn- fetch-dashboard-values
   "The value list for a dashboard parameter. `*param-values-query*` is what lets a caller who can read
@@ -234,7 +236,7 @@
     ;; narrowed.
     (when (and (seq constraints) (some? (:values_source_type param)))
       (common/throw-teaching-error
-       "This parameter's values come from a fixed list or a card, not a chain-filterable field, so constraints can't narrow it — fetch without constraints."))
+       (message/msg ["This parameter's values come from a fixed list or a card, not a chain-filterable field, so constraints can't narrow it — fetch without constraints."])))
     (check-constraints! param resolved-params constraints)
     (cond
       ;; Chain filtering raises on an unmapped parameter; an empty value list is the honest answer,
@@ -292,32 +294,31 @@
 ;;; --------------------------------------------------- Response ---------------------------------------------------
 
 (defn- steering-line
-  "The sentence appended when the page isn't the whole story. `total` is what the backend
+  "The message appended when the page isn't the whole story, or nil. `total` is what the backend
    returned; `more?` marks it as a floor — the source held more than the backend's 1000-row cap.
    `query` is the caller's search, when there was one: an empty result means something different
    with a search in hand, and the recovery it points at is different too."
   [{:keys [returned total more? offset limit query]}]
   (cond
     (and (zero? total) query)
-    (format "No values match %s — try a shorter or less specific search, or omit `query` to list every value."
-            (pr-str query))
+    (message/msg ["No values match %s — try a shorter or less specific search, or omit `query` to list every value."]
+                 query)
 
     (zero? total)
-    "No values available for this parameter — its source may be empty, filtered to nothing for you, or a free-text filter with no value list."
+    (message/msg ["No values available for this parameter — its source may be empty, filtered to nothing for you, or a free-text filter with no value list."])
 
     (zero? returned)
     (if more?
-      (format "No values at offset %d — the source stopped at %d before returning everything; narrow with `query` rather than paging further."
-              offset total)
-      (format "No values at offset %d — %d available." offset total))
+      (message/msg ["No values at offset %d — the source stopped at %d before returning everything; narrow with `query` rather than paging further."]
+                   offset total)
+      (message/msg ["No values at offset %d — %d available."] offset total))
 
     :else
-    (or (some-> (common/truncation-line {:param :query :offset offset :limit limit :returned returned
-                                         :total total :total-floor? more?})
-                message/render)
+    (or (common/truncation-line {:param :query :offset offset :limit limit :returned returned
+                                 :total total :total-floor? more?})
         (when more?
-          (format "Returned %d — the source holds more values than it will return; narrow with `query` to reach the rest."
-                  returned)))))
+          (message/msg ["Returned %d — the source holds more values than it will return; narrow with `query` to reach the rest."]
+                       returned)))))
 
 (defn- values-content
   "Slice `limit`/`offset` out of the backend's value list and render the response. `has_more_values`
@@ -334,8 +335,9 @@
                   :has_more_values (boolean (or has_more_values (< (+ offset (count page)) total)))}
         line     (steering-line {:returned (count page) :total total :more? (boolean has_more_values)
                                  :offset offset :limit limit :query query})]
-    (common/success-content (cond-> (json/encode payload)
-                              line (str "\n" line)))))
+    (common/success-content (if line
+                              (message/msg ["%s" "%s"] (message/raw (json/encode payload)) line)
+                              payload))))
 
 (defn- ->day
   "The `YYYY-MM-DD` day of one fetched value, or nil when it isn't date-shaped. A timestamp column
@@ -359,9 +361,10 @@
                   ;; union could count. Omitted rather than guessed at.
                   distinct-count (assoc :distinct_dates distinct-count))
         line    (when-not (->day lo)
-                  "No dates available for this parameter — its column may be empty, or filtered to nothing for you.")]
-    (common/success-content (cond-> (json/encode payload)
-                              line (str "\n" line)))))
+                  (message/msg ["No dates available for this parameter — its column may be empty, or filtered to nothing for you."]))]
+    (common/success-content (if line
+                              (message/msg ["%s" "%s"] (message/raw (json/encode payload)) line)
+                              payload))))
 
 ;;; --------------------------------------------------- The tool ---------------------------------------------------
 
@@ -415,10 +418,10 @@
   [{:keys [target id parameter_id query constraints limit offset]} _context]
   (when (and query (str/blank? query))
     (common/throw-teaching-error
-     "`query` is the text to match, so it can't be blank — pass a search string, or omit `query` to list every value."))
+     (message/msg ["`query` is the text to match, so it can't be blank — pass a search string, or omit `query` to list every value."])))
   (when (and (seq constraints) (= target "question"))
     (common/throw-teaching-error
-     "`constraints` chain-filters a dashboard's filters against each other, so it needs target: \"dashboard\" — a question's parameters are independent and take none."))
+     (message/msg ["`constraints` chain-filters a dashboard's filters against each other, so it needs target: \"dashboard\" — a question's parameters are independent and take none."])))
   (let [result (if (= target "dashboard")
                  (dashboard-values id parameter_id query constraints)
                  (question-values id parameter_id query))

@@ -14,11 +14,11 @@
    Op methods validate, then compose the row primitives in the State algebra section; those
    primitives are the only code that touches the `:dashcards`/`:tabs`/`:parameters` vectors."
   (:require
-   [clojure.string :as str]
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.lib.core :as lib]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.skills :as skills]
    [metabase.parameters.mapping-targets :as mapping-targets]
    [metabase.util :as u]))
@@ -26,9 +26,10 @@
 (set! *warn-on-reflection* true)
 
 (defn op-error!
-  "Throw a teaching error attributing `message` to the op at `idx` (0-based, as sent)."
-  [idx message]
-  (common/throw-teaching-error (format "op %d (%s" idx message)))
+  "Throw a teaching error attributing message `detail` to the op at `idx` (0-based, as sent). `detail` continues
+   the opening `op <idx> (`, so it starts with the op name and a closing parenthesis."
+  [idx detail]
+  (common/throw-teaching-error (message/msg ["op %d (%s"] idx detail)))
 
 ;; No local size table: `autoplace`'s `[cards display-type]` arity already merges
 ;; `dashboards.constants/default-card-size` with the per-display entry in `card-size-defaults`,
@@ -95,29 +96,28 @@
   (update state coll (partial mapv f)))
 
 (defn- check-new-id!
-  "A new dashcard or tab id must be negative and unused in this batch."
+  "A new dashcard or tab id must be negative and unused in this batch. `kind` is the op's own name."
   [state idx id kind]
   (when-not (and (integer? id) (neg? id))
-    (op-error! idx (format "%s): `id` must be a negative integer — negative ids mark rows to create."
-                           kind)))
+    (op-error! idx (message/msg ["%s): `id` must be a negative integer — negative ids mark rows to create."]
+                                (message/raw kind))))
   (when (some #(= id (:id %)) (concat (:dashcards state) (:tabs state)))
-    (op-error! idx (format "%s): id %d is already used in this batch — give each new row its own negative id."
-                           kind id))))
+    (op-error! idx (message/msg ["%s): id %d is already used in this batch — give each new row its own negative id."]
+                                (message/raw kind) id))))
 
 (defn- resolve-dashcard!
   "The existing dashcard `id` names, or a teaching error."
   [state idx id]
   (or (find-row state :dashcards id)
-      (op-error! idx (format "%s): no dashcard with id %s on this dashboard."
-                             "dashcard_id" id))))
+      (op-error! idx (message/msg ["dashcard_id): no dashcard with id %s on this dashboard."] id))))
 
 (defn- check-tab-id!
   "A dashcard's target tab must be one of this dashboard's tabs — including a tab added earlier in
-   this batch under its negative id. nil means no tab, which stays legal. `op-name` names the op in
-   the teaching error."
+   this batch under its negative id. nil means no tab, which stays legal. `op-name`, the op's own name, names the
+   op in the teaching error."
   [state idx op-name tab-id]
   (when (and (some? tab-id) (not (find-row state :tabs tab-id)))
-    (op-error! idx (format "%s): no tab with id %s on this dashboard." op-name tab-id))))
+    (op-error! idx (message/msg ["%s): no tab with id %s on this dashboard."] (message/raw op-name) tab-id))))
 
 ;;; ---------------------------------------------- Placement -------------------------------------------------------
 
@@ -141,7 +141,7 @@
                     siblings size_x size_y autoplace/default-grid-width)]
         (when-not placed
           (common/throw-teaching-error
-           "No free space on this tab for another card — remove or resize something first."))
+           (message/msg ["No free space on this tab for another card — remove or resize something first."])))
         {:row (:row placed) :col (:col placed) :size_x size_x :size_y size_y}))))
 
 ;;; ---------------------------------------------- Domain helpers --------------------------------------------------
@@ -381,12 +381,13 @@
   (resolve-dashcard! state idx dashcard_id)
   (doseq [k (keys patch)]
     (cond
+      ;; Past this check `k` and its op are `patch-rejected-keys`' own names.
       (contains? patch-rejected-keys k)
-      (op-error! idx (format "patch_dashcard): `%s` is not patchable — use the `%s` op."
-                             (name k) (get patch-rejected-keys k)))
+      (op-error! idx (message/msg ["patch_dashcard): `%s` is not patchable — use the `%s` op."]
+                                  (message/raw (name k)) (message/raw (get patch-rejected-keys k))))
 
       (not (contains? patchable-keys k))
-      (op-error! idx (format "patch_dashcard): `%s` is not a patchable property." (name k)))))
+      (op-error! idx (message/msg ["patch_dashcard): %s is not a patchable property."] (name k)))))
   (update-row state :dashcards dashcard_id
               (fn [dc]
                 (cond-> (merge dc (dissoc patch :visualization_settings))
@@ -406,7 +407,7 @@
 (defn- resolve-tab!
   [state idx id]
   (or (find-row state :tabs id)
-      (op-error! idx (format "tab_id): no tab with id %s on this dashboard." id))))
+      (op-error! idx (message/msg ["tab_id): no tab with id %s on this dashboard."] id))))
 
 (defn- next-temp-id
   "A negative id not yet used by any dashcard or tab in the working state. Ops that clone a whole
@@ -428,8 +429,8 @@
   [state idx {:keys [tab_id index]}]
   (resolve-tab! state idx tab_id)
   (or (move-row state :tabs tab_id index)
-      (op-error! idx (format "move_tab): index %d is out of range — this dashboard has %d tabs."
-                             index (count (:tabs state))))))
+      (op-error! idx (message/msg ["move_tab): index %d is out of range — this dashboard has %d tabs."]
+                                  index (count (:tabs state))))))
 
 (defmethod apply-op "duplicate_tab"
   [state idx {:keys [id tab_id]}]
@@ -463,9 +464,8 @@
   (when (< 1 (count tabs))
     (when-let [orphans (not-empty (filterv #(nil? (:dashboard_tab_id %)) dashcards))]
       (common/throw-teaching-error
-       (format (str "This dashboard has tabs, so every card must belong to a tab: %s have none. "
-                    "Pass `tab` on the add op, or use `move` with `tab` for cards already placed.")
-               (pr-str (mapv :id orphans))))))
+       (message/msg ["This dashboard has tabs, so every card must belong to a tab: %s have none. Pass `tab` on the add op, or use `move` with `tab` for cards already placed."]
+                    (common/list-message (map :id orphans))))))
   state)
 
 ;;; --------------------------------------------- Parameter ops -----------------------------------------------------
@@ -473,7 +473,7 @@
 (defn- resolve-parameter!
   [state idx id]
   (or (find-row state :parameters id)
-      (op-error! idx (format "parameter_id): no parameter with id %s on this dashboard." (pr-str id)))))
+      (op-error! idx (message/msg ["parameter_id): no parameter with id %s on this dashboard."] id))))
 
 (defn- card-for-dashcard
   [state dashcard]
@@ -490,8 +490,8 @@
 (defmethod apply-op "add_parameter"
   [state idx {:keys [parameter_id] :as op}]
   (when (find-row state :parameters parameter_id)
-    (op-error! idx (format "add_parameter): parameter %s already exists — use `update_parameter`."
-                           (pr-str parameter_id))))
+    (op-error! idx (message/msg ["add_parameter): parameter %s already exists — use `update_parameter`."]
+                                parameter_id)))
   (insert-row state :parameters
               (-> (dissoc op :op :parameter_id)
                   (assoc :id parameter_id)
@@ -503,8 +503,8 @@
   (let [cleared (map keyword clear)]
     (doseq [field cleared
             :when (contains? op field)]
-      (op-error! idx (format "update_parameter): `%s` is both set and cleared — pass one or the other."
-                             (name field))))
+      (op-error! idx (message/msg ["update_parameter): %s is both set and cleared — pass one or the other."]
+                                  (name field))))
     (update-row state :parameters parameter_id
                 (fn [param]
                   ;; A parameter is a map, so clearing removes the key rather than setting it to
@@ -537,7 +537,7 @@
   [state idx {:keys [parameter_id index dashcard_id] :as op}]
   (resolve-parameter! state idx parameter_id)
   (when (and (contains? op :index) (contains? op :dashcard_id))
-    (op-error! idx "move_parameter): pass exactly one of `index` or `dashcard_id`."))
+    (op-error! idx (message/msg ["move_parameter): pass exactly one of `index` or `dashcard_id`."])))
   (cond
     (contains? op :dashcard_id)
     (do (resolve-dashcard! state idx dashcard_id)
@@ -549,11 +549,11 @@
 
     (contains? op :index)
     (or (move-row state :parameters parameter_id index)
-        (op-error! idx (format "move_parameter): index %d is out of range — this dashboard has %d parameters."
-                               index (count (:parameters state)))))
+        (op-error! idx (message/msg ["move_parameter): index %d is out of range — this dashboard has %d parameters."]
+                                    index (count (:parameters state)))))
 
     :else
-    (op-error! idx "move_parameter): pass `index` to reorder the header, or `dashcard_id` to place it on a card.")))
+    (op-error! idx (message/msg ["move_parameter): pass `index` to reorder the header, or `dashcard_id` to place it on a card."]))))
 
 (defn- wire-one
   "Add or replace `parameter`'s mapping on `dashcard`. Returns the dashcard unchanged when its card
@@ -566,9 +566,8 @@
       (upsert-mapping dashcard (:id parameter) target)
 
       explicit?
-      (op-error! idx (format (str "wire_parameter): dashcard %s does not expose field %s for parameter %s. "
-                                  "Read the dashboard with get_content to see each card's columns.")
-                             (:id dashcard) field-id (pr-str (:id parameter))))
+      (op-error! idx (message/msg ["wire_parameter): dashcard %s does not expose field %s for parameter %s. Read the dashboard with get_content to see each card's columns."]
+                                  (:id dashcard) field-id (:id parameter)))
 
       :else dashcard)))
 
@@ -578,10 +577,8 @@
    wire it."
   [state idx dashcard]
   (or (card-for-dashcard state dashcard)
-      (op-error! idx (format (str "wire_parameter): dashcard %s has no card behind it — only a raw "
-                                  "`target` of [\"text-tag\", \"<name>\"] can wire a text, heading, "
-                                  "or iframe card's own {{placeholder}}.")
-                             (:id dashcard)))))
+      (op-error! idx (message/msg ["wire_parameter): dashcard %s has no card behind it — only a raw `target` of [\"text-tag\", \"<name>\"] can wire a text, heading, or iframe card's own {{placeholder}}."]
+                                  (:id dashcard)))))
 
 (defn- tag-target!
   "The mapping target for `target_tag` on `dashcard`'s card — `[:dimension [:template-tag …]]` for a
@@ -594,27 +591,22 @@
         tag-type  (get tag-types target-tag)]
     (cond
       (nil? tag-type)
-      (op-error! idx (format "wire_parameter): card %s has no template tag named %s.%s %s"
-                             (:card_id dashcard) (pr-str target-tag)
-                             (if (seq tag-types)
-                               (str " Its tags: " (str/join ", " (sort (keys tag-types))) ".")
-                               (str " It has no template tags — `target_tag` wires a native-SQL "
-                                    "card's tags; for an MBQL card pass `target_field`."))
-                             skills/wire-target-grammar))
+      (op-error! idx (if (seq tag-types)
+                       (message/msg ["wire_parameter): card %s has no template tag named %s. Its tags: %s. %s"]
+                                    (:card_id dashcard) target-tag (common/list-message (sort (keys tag-types)))
+                                    (message/raw skills/wire-target-grammar))
+                       (message/msg ["wire_parameter): card %s has no template tag named %s. It has no template tags — `target_tag` wires a native-SQL card's tags; for an MBQL card pass `target_field`. %s"]
+                                    (:card_id dashcard) target-tag (message/raw skills/wire-target-grammar))))
 
       :else
       (or (mapping-targets/target-for-tag target-tag tag-type)
-          (op-error! idx (format (str "wire_parameter): {{%s}} is a %s-reference tag — it splices SQL "
-                                      "text and cannot take a parameter value. Wireable tags on this "
-                                      "card: %s.")
-                                 target-tag (name tag-type)
-                                 (or (->> tag-types
-                                          (filter (fn [[nm t]] (mapping-targets/target-for-tag nm t)))
-                                          (map key)
-                                          sort
-                                          (str/join ", ")
-                                          not-empty)
-                                     "none")))))))
+          (op-error! idx (let [wireable (->> tag-types
+                                             (filter (fn [[nm t]] (mapping-targets/target-for-tag nm t)))
+                                             (map key)
+                                             sort)]
+                           (message/msg ["wire_parameter): tag %s has type %s — it splices SQL text and cannot take a parameter value. Wireable tags on this card: %s."]
+                                        target-tag (name tag-type)
+                                        (if (seq wireable) (common/list-message wireable) (message/msg ["none"])))))))))
 
 (defn- text-tag-names
   "The `{{tag}}` placeholder names a dashcard's own content carries — a text or heading card's
@@ -637,13 +629,11 @@
   [idx dashcard [_ tag-name :as target]]
   (let [names (text-tag-names dashcard)]
     (when-not (contains? names tag-name)
-      (op-error! idx (format (str "wire_parameter): target %s resolves to nothing on dashcard %s — a "
-                                  "text-tag target binds a {{tag}} placeholder in a text, heading, or "
-                                  "iframe card's own content%s")
-                             (pr-str target) (:id dashcard)
-                             (if (seq names)
-                               (str "; this card's placeholders: " (str/join ", " (sort names)) ".")
-                               ", and this dashcard carries none."))))))
+      (op-error! idx (if (seq names)
+                       (message/msg ["wire_parameter): target %s resolves to nothing on dashcard %s — a text-tag target binds a {{tag}} placeholder in a text, heading, or iframe card's own content; this card's placeholders: %s."]
+                                    target (:id dashcard) (common/list-message (sort names)))
+                       (message/msg ["wire_parameter): target %s resolves to nothing on dashcard %s — a text-tag target binds a {{tag}} placeholder in a text, heading, or iframe card's own content, and this dashcard carries none."]
+                                    target (:id dashcard)))))))
 
 (defn- checked-raw-target!
   "Coerce a raw `target` clause and verify it resolves to something the dashcard actually exposes
@@ -656,12 +646,9 @@
       (check-text-tag-target! idx dashcard target)
       (let [card (wire-card! state idx dashcard)]
         (when-not (mapping-targets/wireable-target? card parameter target)
-          (op-error! idx (format (str "wire_parameter): target %s resolves to nothing on card %s — the "
-                                      "card exposes no matching column or template tag for parameter "
-                                      "%s. Read the card with get_content to see its columns and "
-                                      "template tags. %s")
-                                 (pr-str target) (:card_id dashcard) (pr-str (:id parameter))
-                                 skills/wire-target-grammar)))))
+          (op-error! idx (message/msg ["wire_parameter): target %s resolves to nothing on card %s — the card exposes no matching column or template tag for parameter %s. Read the card with get_content to see its columns and template tags. %s"]
+                                      target (:card_id dashcard) (:id parameter)
+                                      (message/raw skills/wire-target-grammar))))))
     target))
 
 (defn- wire-target
@@ -693,8 +680,8 @@
           state))
 
       :else
-      (op-error! idx (str "wire_parameter): pass one of `target_field`, `target_tag`, or `target`. "
-                          skills/wire-target-grammar)))))
+      (op-error! idx (message/msg ["wire_parameter): pass one of `target_field`, `target_tag`, or `target`. %s"]
+                                  (message/raw skills/wire-target-grammar))))))
 
 (defmethod apply-op "unwire_parameter"
   [state idx {:keys [parameter_id dashcard_id] :as op}]
