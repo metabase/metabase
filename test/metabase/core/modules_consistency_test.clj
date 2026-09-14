@@ -24,6 +24,12 @@
                      nil)))
                ["./bin/bb" "bb"])))
 
+(def ^:private bb-env
+  "The environment Babashka runs under: a writable classpath cache, wherever the runner's home directory is."
+  (delay (assoc (into {} (System/getenv))
+                "CLJ_CACHE" (str (java.nio.file.Files/createTempDirectory
+                                  "bb-cpcache" (into-array java.nio.file.attribute.FileAttribute []))))))
+
 (defn- bb-eval
   "Evaluate `form` with `mage.modules` loaded in Babashka."
   [form]
@@ -32,7 +38,7 @@
                  (throw (ex-info "No working babashka at ./bin/bb or on PATH. Run any ./bin/mage task once to install it."
                                  {})))
         expr (pr-str `(do (require 'mage.modules) (~'prn ~form)))
-        {:keys [exit out err]} (shell/sh bb "-e" expr)]
+        {:keys [exit out err]} (shell/sh bb "-e" expr :env @bb-env)]
     (when-not (zero? exit)
       (throw (ex-info "babashka evaluation failed" {:exit exit, :stderr err, :expr expr})))
     (edn/read-string out)))
