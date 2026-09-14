@@ -431,7 +431,7 @@
                                                        :sql           "SELECT 1"
                                                        :validate_only true})))]
         (testing "execute_query refuses an execute_sql handle and steers back to execute_sql"
-          (is (= "Native queries are not supported here; use execute_sql instead."
+          (is (= "\"Native queries are not supported here; use execute_sql instead.\""
                  (error-text (call! sid "execute_query" {:query_handle handle}
                                     #{"agent:query:run"})))))))))
 

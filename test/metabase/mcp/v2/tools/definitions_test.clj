@@ -656,15 +656,15 @@
             (is (=? {:id pos-int?} (tool-result (call-tool! analyst-id nil "segment_write" segment-args))))
             (is (=? {:id pos-int?} (tool-result (call-tool! analyst-id nil "measure_write" measure-args)))))
           (testing "GHY-4137: the same table grants without the data-analyst role are a permission denial, not a not-found"
-            (is (= "You don't have permissions to do that."
+            (is (= "\"You don't have permissions to do that.\""
                    (tool-error (call-tool! plain-id nil "segment_write"
                                            (assoc segment-args :name "definitions-test denied segment")))))
-            (is (= "You don't have permissions to do that."
+            (is (= "\"You don't have permissions to do that.\""
                    (tool-error (call-tool! plain-id nil "measure_write"
                                            (assoc measure-args :name "definitions-test denied measure"))))))
           (testing "GHY-4137: a data analyst without unrestricted view-data is denied — data analysts always read
                     table metadata, so the table resolves and the domain permission check refuses the write"
-            (is (= "You don't have permissions to do that."
+            (is (= "\"You don't have permissions to do that.\""
                    (tool-error (call-tool! blind-analyst-id nil "segment_write"
                                            (assoc segment-args :name "definitions-test blind segment")))))))))))
 
@@ -699,7 +699,7 @@
                                                   :name       "definitions-test move measure"
                                                   :definition (count-definition (mt/id :venues))}))]
             (testing "segment"
-              (is (= "You don't have permissions to do that."
+              (is (= "\"You don't have permissions to do that.\""
                      (tool-error (call-tool! analyst-id nil "segment_write"
                                              {:method           "update" :id (:id segment)
                                               :definition       (filter-definition :checkins :venue_id)
@@ -708,7 +708,7 @@
                 (is (= (mt/id :venues)
                        (t2/select-one-fn :table_id :model/Segment :id (:id segment))))))
             (testing "measure"
-              (is (= "You don't have permissions to do that."
+              (is (= "\"You don't have permissions to do that.\""
                      (tool-error (call-tool! analyst-id nil "measure_write"
                                              {:method           "update" :id (:id measure)
                                               :definition       (count-definition (mt/id :checkins))

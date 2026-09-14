@@ -33,17 +33,12 @@
 (def error-code-internal
   "JSON-RPC -32603: unexpected server-side failure." -32603)
 
-(defn- message-text
-  "The text of `x`: a message rendered, anything else unchanged."
-  [x]
-  (if (message/message? x) (message/render x) x))
-
 (defn error-content
-  "Wrap an error message, a message or a string, as MCP error content. The JSON-RPC `code` (default:
-   internal error) is carried under the namespaced `::error-code` key for usage logging and stripped
-   from the response before it reaches the client (see the registry's call-tool)."
+  "Wrap `message` as MCP error content, its text [[message/render]]ed: a message as prose, anything else cleaned
+   whole. The JSON-RPC `code` (default: internal error) is carried under the namespaced `::error-code` key for usage
+   logging and stripped from the response before it reaches the client (see the registry's call-tool)."
   ([message] (error-content message error-code-internal))
-  ([message code] {:content [{:type "text" :text (message-text message)}] :isError true ::error-code code}))
+  ([message code] {:content [{:type "text" :text (message/render message)}] :isError true ::error-code code}))
 
 (defn success-content
   "Assemble the two MCP response channels deliberately. When `structuredContent` is present,
@@ -54,14 +49,13 @@
    `text` self-sufficient: everything the model needs to reason or make its next call. Pass
    `structured` only when a concrete programmatic consumer reads it (e.g. an MCP Apps iframe),
    and make it a faithful mirror of the text — never a subset, never the sole home of anything
-   the model needs. A message `text` is rendered, a string is used as is, and anything else is
-   JSON-encoded."
+   the model needs. A message or string `text` is [[message/render]]ed, a string cleaned whole, and
+   anything else is JSON-encoded."
   ([text] (success-content text nil))
   ([text structured]
-   (cond-> {:content [{:type "text" :text (cond
-                                            (message/message? text) (message/render text)
-                                            (string? text)          text
-                                            :else                   (json/encode text))}]}
+   (cond-> {:content [{:type "text" :text (if (or (message/message? text) (string? text))
+                                            (message/render text)
+                                            (json/encode text))}]}
      (some? structured) (assoc :structuredContent structured))))
 
 (def mcp-apps-meta-key
@@ -95,7 +89,8 @@
 (defn throw-teaching-error
   "Throw an `ex-info` whose message is `msg`, a message or a string: a complete caller-facing sentence
    naming the fix. A message is rendered into the exception message and carried in `ex-data` under
-   `::message`. Surfaced to the MCP client as `isError` content by [[->mcp-error-content]]."
+   `::message`. Surfaced to the MCP client as `isError` content by [[->mcp-error-content]], where a
+   string is cleaned whole."
   ([msg] (throw-teaching-error msg nil))
   ([msg data]
    (if (message/message? msg)
@@ -158,18 +153,21 @@
         (message/msg ["Server-side schema check failed in `%s` (on its return value). This is a bug in Metabase, not something to retry — report it."]
                      (message/raw (str fn-name)))))))
 
+(def ^:private internal-error
+  (message/msg ["Internal error"]))
+
 (defn- caller-facing-message
   "The message of caller-facing exception `e`: the message it carries under `::message`, else its
-   exception message, else \"Internal error\"."
+   exception message as a string for the exits to clean whole, else the internal-error message."
   [e]
-  (or (::message (ex-data e)) (ex-message e) "Internal error"))
+  (or (::message (ex-data e)) (ex-message e) internal-error))
 
 (defn caller-safe-error-message
-  "The message of `e`, a message or a string, when it is deliberately caller-facing, judged the same
-   way as [[->mcp-error-content]]; any other exception is logged server-side and reported to the
-   client as the string \"Internal error\". This is the sanitizer for response paths that answer
-   with a JSON-RPC error rather than tool content — resource reads, list handlers, and the
-   transport's own catch-all."
+  "The message of `e` when it is deliberately caller-facing, judged the same way as
+   [[->mcp-error-content]]: a message, or an exception-message string that renders cleaned whole. Any
+   other exception is logged server-side and reported as the \"Internal error\" message. This is the
+   sanitizer for response paths that answer with a JSON-RPC error rather than tool content — resource
+   reads, list handlers, and the transport's own catch-all."
   [e]
   (cond
     (caller-facing-error-code e) (caller-facing-message e)
@@ -178,7 +176,7 @@
                                    (schema-failure-message e))
     :else                        (do
                                    (log/error e "Unhandled error dispatching MCP v2 request")
-                                   "Internal error")))
+                                   internal-error)))
 
 (defn ->mcp-error-content
   "Convert a caught exception into MCP error content, and the single point where an exception
@@ -197,7 +195,7 @@
         (error-content message error-code-internal))
       (do
         (log/error e "Unhandled error dispatching MCP v2 tool call")
-        (error-content (message/msg ["Internal error"]) error-code-internal)))))
+        (error-content internal-error error-code-internal)))))
 
 ;;; ------------------------------------------------ Message helpers ----------------------------------------------
 

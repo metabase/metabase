@@ -48,12 +48,10 @@
   {:jsonrpc "2.0" :id id :result result})
 
 (defn jsonrpc-error
-  "Build a JSON-RPC 2.0 error response for request `id`. A message `message` is rendered; a string is
-   used as is."
+  "Build a JSON-RPC 2.0 error response for request `id`, its `message` [[message/render]]ed: a message as prose,
+   anything else cleaned whole."
   [id code message]
-  {:jsonrpc "2.0" :id id :error {:code code :message (if (message/message? message)
-                                                       (message/render message)
-                                                       message)}})
+  {:jsonrpc "2.0" :id id :error {:code code :message (message/render message)}})
 
 (defn- handle-initialize
   "Handle the MCP `initialize` method: log the connecting client and return the handshake result.

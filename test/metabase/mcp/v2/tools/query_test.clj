@@ -544,7 +544,7 @@
   (mt/with-current-user (mt/user->id :rasta)
     (let [sid (str (random-uuid))]
       (testing "GHY-4142: a native stage is rejected up front with the execute_sql steer"
-        (is (= "Native queries are not supported here; use execute_sql instead."
+        (is (= "\"Native queries are not supported here; use execute_sql instead.\""
                (error-text (registry/call-tool execute-scope sid "execute_query"
                                                {:query {:lib/type "mbql/query"
                                                         :stages   [{:lib/type "mbql.stage/native"
