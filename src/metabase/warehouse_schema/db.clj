@@ -145,7 +145,6 @@
   (set
    (t2/select-fn-set (comp u/lower-case-en :name)
                      :model/Field
-                     ;; both sides on purpose: this asks whether the user set a display name at all
                      {:select    [:f.name]
                       :from      [(warehouse-schema-overlay/field-query {:alias :f, :user-settings? false})]
                       :left-join [[(t2/table-name :model/FieldUserSettings) :u] [:= :u.field_id :f.id]]
@@ -159,7 +158,6 @@
   name from FieldUserSettings (if any) as `:user_display_name`."
   []
   (t2/reducible-query
-   ;; sync's display name and the user's side by side, so humanization can tell them apart
    {:select    [:f.id :f.name :f.display_name [:u.display_name :user_display_name]]
     :from      [(warehouse-schema-overlay/field-query {:alias :f, :user-settings? false})]
     :left-join [[(t2/table-name :model/FieldUserSettings) :u] [:= :u.field_id :f.id]]}))

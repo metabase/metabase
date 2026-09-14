@@ -62,9 +62,8 @@
   (let [user-edited        (user-edited-field-names table-id (set (keys name->display-name)))
         name->display-name (apply dissoc name->display-name user-edited)]
     (when (seq name->display-name)
-      ;; A raw update rather than `t2/update!`, which produces an invalid query for certain versions of
-      ;; PostgreSQL: SELECT * FROM "metabase_field" WHERE "id" AND ("table_id" = ?) AND ... (argument of AND
-      ;; must be type boolean).
+      ;; A raw update rather than `t2/update!`, which produces an invalid query for certain versions of PostgreSQL:
+      ;; SELECT * FROM "metabase_field" WHERE "id" AND ("table_id" = ?) AND ... (argument of AND must be type boolean).
       (t2/query {:update (t2/table-name :model/Field)
                  :set    {:display_name (into [:case]
                                               (mapcat identity)

@@ -615,7 +615,6 @@
   data-sensitivity classifier still has to scan (see [[data-sensitivity-to-scan-clause]])."
   [database-id    :- ::lib.schema.id/database
    rescan-public? :- [:maybe :boolean]]
-  ;; sync's own labels: the classifier decides what is left to scan from what it wrote, not from what a user chose
   (t2/select-fn-set :table_id :model/Field
                     {:select   [[:metabase_field.table_id :table_id]]
                      :from     [(warehouse-schema-overlay/field-query {:user-settings? false})]

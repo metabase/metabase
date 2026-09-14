@@ -179,7 +179,6 @@
   [field]
   (when (false? (:active (t2/changes field)))
     (warehouse-schema.db/clear-fk-targets-to-field! (:id field))
-    ;; a user-set FK pointing at a retired Field is invalid too: unset it so the sync values show again
     (warehouse-schema.db/clear-user-settings-fk-targets-to-field! (:id field)))
   (enforce-effective-type-invariant field))
 

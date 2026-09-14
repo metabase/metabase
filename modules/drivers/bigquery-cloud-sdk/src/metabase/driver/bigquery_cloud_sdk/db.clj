@@ -38,6 +38,5 @@
   "Whether the Table with `table-id` has an active database-partitioned Field named `field-name`."
   [table-id   :- ::lib.schema.id/table
    field-name :- :string]
-  ;; every column here is one sync owns, so the user settings have nothing to say about it
   (t2/exists? :model/Field :table_id table-id :name field-name :database_partitioned true :active true
               {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))

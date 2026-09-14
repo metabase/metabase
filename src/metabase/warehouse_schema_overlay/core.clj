@@ -66,7 +66,6 @@
       (= column :coercion_strategy)
       [:case [:not= (u/qualified-key settings-alias :effective_type) nil] settings-column :else field-column]
 
-      ;; a CASE on the boolean gives every app DB a value its JDBC driver reads back as a boolean or a number
       (= column :json_unfolding)
       [:case [:= [:coalesce settings-column field-column] true] true :else false]
 
@@ -106,8 +105,6 @@
                         (sort user-settable-field-columns))
        :from      [[(t2/table-name :model/Field) :f]]
        :left-join (field-user-settings-join :f :u)}
-      ;; nothing to merge, so no subquery: this is `metabase_field` itself, which keeps the shape usable anywhere a
-      ;; plain table reference was, including the subqueries sync feeds to an UPDATE
       (t2/table-name :model/Field))
     alias]))
 
