@@ -183,6 +183,7 @@ jobs:
     steps:
       - name: Dispatch eval-run
         id: dispatch
+        timeout-minutes: 2
         if: >-
           !cancelled()
           && needs.prepare.result == 'success'
@@ -211,6 +212,7 @@ jobs:
             -f "inputs[comment_id]=$COMMENT_ID"
       - name: Comment (build/dispatch failed)
         uses: actions/github-script@v9
+        timeout-minutes: 2
         if: always() && needs.prepare.outputs.comment_id != '' && steps.dispatch.outcome != 'success'
         env:
           COMMENT_ID: ${{ needs.prepare.outputs.comment_id }}
