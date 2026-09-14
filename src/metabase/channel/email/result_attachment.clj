@@ -2,6 +2,7 @@
   (:require
    [clojure.java.io :as io]
    [metabase.channel.render.util :as render.util]
+   [metabase.channel.shared :as channel.shared]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -101,8 +102,7 @@
   (when (and (or (:include_csv card) (:include_xls card))
              (pos-int? (:row_count result))
              (not= (perms/download-perms-level (:dataset_query card) creator-id) :no))
-    (let [maybe-realize-data-rows (requiring-resolve 'metabase.channel.shared/maybe-realize-data-rows)
-          result            (:result (maybe-realize-data-rows part))
+    (let [result           (:result (channel.shared/maybe-realize-data-rows part))
           ;; the dashboard-level title override (incl. the visualizer's) names the attachment, matching the card's
           ;; displayed title; falls back to the card's own name (see [[render.util/dashcard-title]]).
           filename-prefix  (render.util/dashcard-title card dashcard)]

@@ -16,11 +16,12 @@
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-   ;; Trying to use metabase.search would cause a circular reference ;_;
+   [metabase.search.core :as search]
    [metabase.search.spec :as search.spec]
    [metabase.secrets.core :as secret]
    [metabase.settings.core :as setting]
    [metabase.sync.schedules :as sync.schedules]
+   [metabase.sync.task.sync-databases-trigger :as sync-databases-trigger]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru]]
@@ -238,9 +239,8 @@
   "(Re)schedule sync operation tasks for `database`. (Existing scheduled tasks will be deleted first.)"
   [database]
   (try
-    ;; this is done this way to avoid circular dependencies
     (when (should-auto-sync? database)
-      ((requiring-resolve 'metabase.sync.task.sync-databases/check-and-schedule-tasks-for-db!) database))
+      (sync-databases-trigger/check-and-schedule-tasks-for-db! database))
     (catch Throwable e
       (log/errorf "Error scheduling tasks for DB: %s" (ex-message e)))))
 
@@ -362,7 +362,7 @@
   "Unschedule any currently pending sync operation tasks for `database`."
   [database]
   (try
-    ((requiring-resolve 'metabase.sync.task.sync-databases/unschedule-tasks-for-db!) database)
+    (sync-databases-trigger/unschedule-tasks-for-db! database)
     (catch Throwable e
       (log/errorf "Error unscheduling tasks for DB: %s" (ex-message e)))))
 
@@ -447,8 +447,7 @@
           (warehouses.db/delete-cards-for-database-returning-ids-reducible id)
           (warehouses.db/card-ids-for-database-reducible id)))
        (run! (fn [batch]
-               ;; damn circular deps
-               ((requiring-resolve 'metabase.search.core/delete!) :model/Card (map (comp str :id) batch)))))
+               (search/delete! :model/Card (map (comp str :id) batch)))))
   (when (not= :postgres (mdb/db-type))
     (warehouses.db/delete-cards-for-database! id))
   (try

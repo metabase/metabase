@@ -34,7 +34,6 @@ const NATIVE_EDITOR_SIDEBAR_FEATURES = {
   snippets: true,
   formatQuery: true,
   variables: true,
-  promptInput: false,
 };
 
 type QueryEditorBodyProps = {
