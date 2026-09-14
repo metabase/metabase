@@ -10,8 +10,14 @@ EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
 defineBuildInfo("METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO");
 defineGlobalDependencies();
 
-export { DataAppRouter } from "./components/public/DataAppRouter";
-export { DataAppLink } from "./components/public/DataAppLink";
+export {
+  DataAppRouter,
+  type DataAppRouterProps,
+} from "./components/public/DataAppRouter";
+export {
+  DataAppLink,
+  type DataAppLinkProps,
+} from "./components/public/DataAppLink";
 export { DateRangeCalendar } from "./components/public/DateRangeCalendar";
 export { DateRangePopover } from "./components/public/DateRangePopover";
 export type {
@@ -25,7 +31,10 @@ export {
   type FormatDateRangeOptions,
 } from "./lib/public/format-date-range";
 export { copy } from "./lib/public/copy";
-export { useDataAppLocation } from "./hooks/public/use-data-app-location";
+export {
+  useDataAppLocation,
+  type UseDataAppLocationResult,
+} from "./hooks/public/use-data-app-location";
 export { defineQuery } from "./hooks/public/use-metabase-query/define-query";
 export { defineAction } from "./hooks/public/use-action/define-action";
 export {
