@@ -2,6 +2,7 @@
   "Application database queries for the API keys module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [java-time.api :as t]
    [malli.util :as mut]
    [metabase.api-keys.schema :as api-keys.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -99,12 +100,18 @@
    changes :- (mut/select-keys ::api-keys.schema/api-key.update [:key :key_prefix :updated_by_id])]
   (t2/update! :model/ApiKey :id id changes))
 
-(defn update-api-key-last-used-at!
-  "Stamp `last_used_at` of the ApiKey with `id` to now, without touching `updated_at`. A plain UPDATE
-  rather than [[update-api-key!]] on purpose: the model's `before-update` hook hydrates the key and
-  publishes an `:event/api-key-update` audit event, which a usage stamp must not do."
-  [id]
+(defn update-api-keys-last-used-at!
+  "Move `last_used_at` of each ApiKey in `id->timestamp` forward to its timestamp, without touching
+  `updated_at`. A plain UPDATE rather than [[update-api-key!]] on purpose: the model's `before-update`
+  hook hydrates the key and publishes an `:event/api-key-update` audit event, which a usage stamp must
+  not do. Mirrors [[metabase.query-processor.db/update-cards-last-used-at!]]'s bulk `CASE`/`GREATEST`
+  pattern for the same reason: many keys land in one Grouper batch, and this is one UPDATE for all of
+  them rather than one per key."
+  [id->timestamp]
   (t2/query {:update [(t2/table-name :model/ApiKey)]
-             :where  [:= :id id]
-             :set    {:last_used_at :%now
-                      :updated_at   :updated_at}}))
+             :where  [:in :id (keys id->timestamp)]
+             :set    {:last_used_at (into [:case]
+                                          (mapcat (fn [[id timestamp]]
+                                                    [[:= :id id] [:greatest [:coalesce :last_used_at (t/offset-date-time 0)] timestamp]])
+                                                  id->timestamp))
+                      :updated_at :updated_at}}))
