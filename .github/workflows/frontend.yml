@@ -12,7 +12,7 @@ on:
       skip-custom-viz:
         type: boolean
         default: false
-      # ID of this run's test-plan.json artifact; '' runs the full suite.
+      # ID of this run's test-plan.json artifact, or '' to run the full suite.
       test-plan-artifact-id:
         type: string
         default: ""
@@ -140,7 +140,7 @@ jobs:
         run: |
           rm -f "$UNIT_TEST_RESULTS_FILE" "$JEST_JUNIT_OUTPUT_DIR/$JEST_JUNIT_OUTPUT_NAME"
           bun run test-unit --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }} --json --outputFile="$UNIT_TEST_RESULTS_FILE" ${{ steps.unit-selection.outputs.paths-file && '--passWithNoTests' || '' }}
-        # Ordinary assertion failures can be quarantined; runner failures cannot.
+        # Ordinary assertion failures can be quarantined, but runner failures cannot.
         continue-on-error: true
       - name: Check unit test results
         if: ${{ !cancelled() && (steps.fe-tests.outcome == 'failure' || steps.unit-selection.outputs.paths-file) }}

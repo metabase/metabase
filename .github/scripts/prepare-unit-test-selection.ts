@@ -1,7 +1,7 @@
 import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-// null means a full run; [] is an explicit selection of no tests.
+// null means a full run, and [] is an explicit selection of no tests.
 function readSelection(planFile: string): string[] | null {
   const { fe_unit_specs_to_run: files, stats } = JSON.parse(
     readFileSync(planFile, "utf8"),

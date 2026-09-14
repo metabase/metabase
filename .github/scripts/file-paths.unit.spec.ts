@@ -21,7 +21,7 @@ const patterns = (value: Filter): string[] => {
 };
 
 describe("file-paths.yaml", () => {
-  // js-yaml returns an untyped value; this repository file defines named path filters.
+  // js-yaml returns an untyped value, and this repository file defines named path filters.
   const filters = load(readFileSync(FILTERS, "utf8")) as Record<string, Filter>;
 
   // dorny/paths-filter matches with picomatch, which micromatch wraps, so this asks the same
