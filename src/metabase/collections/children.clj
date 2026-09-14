@@ -37,6 +37,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -763,7 +764,7 @@
               [:t.db_id :database_id]
               [[:!= :t.archived_at nil] :archived]
               [(h2x/literal "table") :model]]
-     :from   [[:metabase_table :t]]
+     :from   [(warehouse-schema-overlay/table-query {:alias :t})]
      :where  [:and
               [:= :t.is_published true]
               (poison-when-pinned-clause pinned-state)

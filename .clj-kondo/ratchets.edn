@@ -62,6 +62,7 @@
                   :metabase/defsetting-namespace           1
                   :metabase/prefer-with-dynamic-fn-redefs  3
                   :metabase/t2-query-namespace             2
+                  :metabase/table-or-field-query           1
                   :missing-docstring                       1
                   :private-call                            1
                   :redundant-ignore                        1
