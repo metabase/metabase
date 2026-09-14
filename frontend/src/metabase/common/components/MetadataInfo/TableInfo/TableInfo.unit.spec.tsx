@@ -1,8 +1,7 @@
-import fetchMock from "fetch-mock";
-
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
+import { getMetadata } from "metabase/metadata-store";
 import type { Table, TableId } from "metabase-types/api";
 import {
   createMockField,
@@ -10,12 +9,11 @@ import {
   createMockTable,
 } from "metabase-types/api/mocks";
 
-import { TableInfo } from "./TableInfo";
+import { TableInfoInner } from "./TableInfo";
 
 const TABLE_ID = 1;
 
 const TABLE_FK = createMockForeignKey({
-  origin_id: 1,
   origin: createMockField({
     id: 1,
     table_id: 2,
@@ -27,7 +25,6 @@ const TABLE_FK = createMockForeignKey({
 });
 
 const TABLE_FIELD = createMockField({
-  id: 10,
   table_id: TABLE_ID,
 });
 
@@ -60,99 +57,98 @@ interface SetupOpts {
   table?: Table;
 }
 
-const QUERY_METADATA_URL = `path:/api/table/${TABLE_ID}/query_metadata`;
-const FOREIGN_KEYS_URL = `path:/api/table/${TABLE_ID}/fks`;
-
-async function setup({ id, table }: SetupOpts) {
+function setup({ id, table }: SetupOpts) {
   const state = createMockState({
     entities: createMockEntitiesState({
       tables: table ? [table] : [],
     }),
   });
-  fetchMock.get(QUERY_METADATA_URL, TABLE);
-  fetchMock.get(FOREIGN_KEYS_URL, [TABLE_FK]);
+  const metadata = getMetadata(state);
 
-  renderWithProviders(<TableInfo tableId={id} />, {
-    storeInitialState: state,
-  });
+  const fetchMetadata = jest.fn();
+  const fetchForeignKeys = jest.fn();
 
-  // The loader fades out once every missing piece has loaded.
-  await waitFor(() => expect(screen.getByText("1 column")).toBeVisible());
+  renderWithProviders(
+    <TableInfoInner
+      tableId={id}
+      table={metadata.table(table?.id) ?? undefined}
+      fetchMetadata={fetchMetadata}
+      fetchForeignKeys={fetchForeignKeys}
+    />,
+    { storeInitialState: state },
+  );
 
-  return {
-    hasFetchedMetadata: () => fetchMock.callHistory.called(QUERY_METADATA_URL),
-    hasFetchedForeignKeys: () => fetchMock.callHistory.called(FOREIGN_KEYS_URL),
-  };
+  return { fetchMetadata, fetchForeignKeys };
 }
 
 describe("TableInfo", () => {
-  it("should fetch table metadata if fields are missing", async () => {
-    const { hasFetchedMetadata, hasFetchedForeignKeys } = await setup({
+  it("should fetch table metadata if fields are missing", () => {
+    const { fetchMetadata, fetchForeignKeys } = setup({
       id: TABLE_ID,
       table: TABLE_WITH_FKS,
     });
-
-    expect(hasFetchedMetadata()).toBe(true);
-    expect(hasFetchedForeignKeys()).toBe(false);
+    expect(fetchMetadata).toHaveBeenCalledWith({
+      id: TABLE_ID,
+    });
+    expect(fetchForeignKeys).not.toHaveBeenCalled();
   });
 
-  it("should fetch table metadata if the table is undefined", async () => {
-    const { hasFetchedMetadata, hasFetchedForeignKeys } = await setup({
+  it("should fetch table metadata if the table is undefined", () => {
+    const { fetchMetadata, fetchForeignKeys } = setup({
       id: TABLE_ID,
       table: undefined,
     });
 
-    expect(hasFetchedMetadata()).toBe(true);
-    expect(hasFetchedForeignKeys()).toBe(true);
+    expect(fetchMetadata).toHaveBeenCalledWith({
+      id: TABLE_ID,
+    });
+    expect(fetchForeignKeys).toHaveBeenCalledWith({
+      id: TABLE_ID,
+    });
   });
 
-  it("should fetch fks if fks are undefined on table", async () => {
-    const { hasFetchedMetadata, hasFetchedForeignKeys } = await setup({
+  it("should fetch fks if fks are undefined on table", () => {
+    const { fetchMetadata, fetchForeignKeys } = setup({
       id: TABLE_ID,
       table: TABLE_WITH_FIELDS,
     });
 
-    expect(hasFetchedMetadata()).toBe(false);
-    expect(hasFetchedForeignKeys()).toBe(true);
+    expect(fetchMetadata).not.toHaveBeenCalled();
+    expect(fetchForeignKeys).toHaveBeenCalledWith({ id: TABLE_ID });
   });
 
-  it("should not send requests fetching table metadata when metadata is already present", async () => {
-    const { hasFetchedMetadata, hasFetchedForeignKeys } = await setup({
+  it("should not send requests fetching table metadata when metadata is already present", () => {
+    const { fetchMetadata, fetchForeignKeys } = setup({
       id: TABLE_ID,
       table: TABLE,
     });
 
-    expect(hasFetchedMetadata()).toBe(false);
-    expect(hasFetchedForeignKeys()).toBe(false);
+    expect(fetchMetadata).not.toHaveBeenCalled();
+    expect(fetchForeignKeys).not.toHaveBeenCalled();
   });
 
   it("should display a placeholder if table has no description", async () => {
-    fetchMock.get(QUERY_METADATA_URL, TABLE_WITHOUT_DESCRIPTION);
-    fetchMock.get(FOREIGN_KEYS_URL, []);
-    renderWithProviders(<TableInfo tableId={TABLE_ID} />, {
-      storeInitialState: createMockState({
-        entities: createMockEntitiesState({
-          tables: [TABLE_WITHOUT_DESCRIPTION],
-        }),
-      }),
+    setup({
+      id: TABLE_ID,
+      table: TABLE_WITHOUT_DESCRIPTION,
     });
 
     expect(await screen.findByText("No description")).toBeInTheDocument();
   });
 
   describe("after metadata has been fetched", () => {
-    it("should display the given table's description", async () => {
-      await setup({ id: TABLE_ID, table: TABLE });
+    it("should display the given table's description", () => {
+      setup({ id: TABLE_ID, table: TABLE });
       expect(screen.getByText(TABLE.description ?? "")).toBeInTheDocument();
     });
 
-    it("should show a count of columns on the table", async () => {
-      await setup({ id: TABLE_ID, table: TABLE });
+    it("should show a count of columns on the table", () => {
+      setup({ id: TABLE_ID, table: TABLE });
       expect(screen.getByText("1 column")).toBeInTheDocument();
     });
 
-    it("should list connected tables", async () => {
-      await setup({ id: TABLE_ID, table: TABLE });
+    it("should list connected tables", () => {
+      setup({ id: TABLE_ID, table: TABLE });
       expect(screen.getByText("Connected Table")).toBeInTheDocument();
     });
   });

@@ -156,6 +156,7 @@ import {
   getShouldShowUnsavedChangesWarning,
   getSnippetCollectionId,
   getTableForeignKeyReferences,
+  getTableForeignKeys,
   getTimeseriesXDomain,
   getUiControls,
   getVisibleTimelineEventIds,
@@ -182,6 +183,7 @@ const mapStateToProps = (state: State) => {
 
     parameterValues: getParameterValues(state),
 
+    tableForeignKeys: getTableForeignKeys(state),
     tableForeignKeyReferences: getTableForeignKeyReferences(state),
 
     card: getCard(state),

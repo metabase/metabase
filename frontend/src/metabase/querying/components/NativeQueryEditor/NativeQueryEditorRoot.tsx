@@ -17,6 +17,7 @@ import { t } from "ttag";
 import { useListCollectionsQuery, useListSnippetsQuery } from "metabase/api";
 import { getMetabotVisible } from "metabase/metabot/state";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import type { DataSelectorDatabase } from "metabase/querying/common/components/DataSelector";
 import {
   CodeMirrorEditor,
   type CodeMirrorEditorProps,
@@ -30,7 +31,6 @@ import { useSelector } from "metabase/redux";
 import { Button, Flex, Icon, Stack, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   CardId,
@@ -74,8 +74,10 @@ export type NativeQueryEditorCoreProps = Omit<
   cancelQuery?: () => void;
   className?: string;
   closeSnippetModal?: () => void;
-  databaseIsDisabled?: (database: Database) => boolean;
-  databaseDisabledTooltip?: (database: Database) => string | undefined;
+  databaseIsDisabled?: (database: DataSelectorDatabase) => boolean;
+  databaseDisabledTooltip?: (
+    database: DataSelectorDatabase,
+  ) => string | undefined;
   editorContext?: "question" | "action";
   handleResize?: () => void;
   highlightedLineNumbers?: number[];

@@ -4354,7 +4354,8 @@ describe("scenarios > data studio > transforms > permissions > oss", () => {
       cy.findByRole("columnheader", { name: /Transforms/ }).should("not.exist");
 
       cy.log("Visit data studio page");
-      H.DataStudio.visit();
+      cy.visit("/data-studio");
+      H.DataStudio.nav().should("be.visible");
 
       cy.log("Verify Transforms menu item is visible");
       H.DataStudio.nav()
@@ -4427,7 +4428,8 @@ describe(
         );
 
         cy.log("Visit data studio page");
-        H.DataStudio.visit();
+        cy.visit("/data-studio");
+        H.DataStudio.nav().should("be.visible");
 
         cy.log("Verify Transforms menu item is visible");
         H.DataStudio.nav()
