@@ -167,7 +167,7 @@
   "Handle a Slack message with file attachments."
   [client :- slackbot.client/SlackClient
    event  :- slackbot.events/SlackMessageFileShareEvent]
-  (let [extra-history (:extra-history (slackbot.uploads/handle-file-uploads! client (:files event)))]
+  (let [extra-history (slackbot.uploads/handle-file-uploads! client (:files event))]
     ;; When a message contains only attachments, reply directly instead of sending an empty prompt to the AI.
     ;; A message carrying neither text nor a file leaves nothing to reply with, so say nothing at all.
     (if (str/blank? (:text event))

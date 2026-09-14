@@ -504,14 +504,14 @@
     (is (nil? (slackbot.uploads/handle-file-uploads! test-client []))))
   (testing "no database is configured for uploads"
     (mt/with-dynamic-fn-redefs [upload.db/current-database (constantly nil)]
-      (is (= {:extra-history [{:role    :assistant
-                               :content "Uploads aren't configured yet. Ask your Metabase admin to choose an upload database in Admin > Settings > Uploads."}]}
+      (is (= [{:role    :assistant
+              :content "Uploads aren't configured yet. Ask your Metabase admin to choose an upload database in Admin > Settings > Uploads."}]
              (slackbot.uploads/handle-file-uploads! test-client [tu/slack-csv-file])))))
   (testing "the configured upload target is unavailable"
     (mt/with-dynamic-fn-redefs [upload.db/current-database     (constantly {:id 1})
                                 upload.impl/can-create-upload? (constantly false)]
-      (is (= {:extra-history [{:role    :assistant
-                               :content "I can't upload files to the configured database. Ask your Metabase admin to check the upload settings and your permissions."}]}
+      (is (= [{:role    :assistant
+              :content "I can't upload files to the configured database. Ask your Metabase admin to check the upload settings and your permissions."}]
              (slackbot.uploads/handle-file-uploads! test-client [tu/slack-csv-file]))))))
 
 (deftest ^:parallel supported-file?-test

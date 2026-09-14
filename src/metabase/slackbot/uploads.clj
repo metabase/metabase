@@ -13,7 +13,7 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private max-slack-upload-size-bytes
-  "Maximum Slack upload size, independent of the 50 MB HTTP multipart upload limit."
+  "Maximum file size that the bot will download from Slack."
   (* 200 1024 1024))
 
 (def ^:private supported-filetypes
@@ -199,14 +199,11 @@
 
 (defn handle-file-uploads!
   "Handle attached CSV and TSV files with `client`.
-  Returns nil when no files are attached.
-  Otherwise returns Metabot `:extra-history` and includes `:upload-result` when file processing was attempted."
+  Returns nil when no files are attached, otherwise Metabot messages describing what became of them."
   [client files]
   (when (seq files)
     (if-let [{:keys [db schema-name] :as target} (upload-target)]
       (if-not (upload/can-create-upload? db schema-name)
-        {:extra-history [(assistant-history-message upload-unavailable-message)]}
-        (let [result (upload-files! client target files)]
-          {:upload-result result
-           :extra-history (build-upload-history result)}))
-      {:extra-history [(assistant-history-message uploads-not-configured-message)]})))
+        [(assistant-history-message upload-unavailable-message)]
+        (build-upload-history (upload-files! client target files)))
+      [(assistant-history-message uploads-not-configured-message)])))
