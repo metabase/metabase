@@ -67,6 +67,7 @@
   enable-metabase-ai-managed?
   enable-metabot-v3?
   enable-dependencies?
+  enable-data-sensitivity?
   enable-schema-viewer?
   enable-email-allow-list?
   enable-email-restrict-recipients?
