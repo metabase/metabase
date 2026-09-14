@@ -91,6 +91,7 @@
   junegunn/grouper                          {:mvn/version "0.1.1"}              ; Batch processing helper
   kixi/stats                                {:mvn/version "0.5.9"               ; Various statistic measures implemented as transducers
                                              :exclusions  [org.clojure/data.avl]}
+  at.yawk.lz4/lz4-java                    {:mvn/version "1.11.1"}              ; pinned to resolve CVE-2026-59949
   medley/medley                             {:mvn/version "1.4.0"}              ; lightweight lib of useful functions
   metabase/connection-pool                  {:mvn/version "1.2.0"}              ; simple wrapper around C3P0. JDBC connection pools
   metabase/saml20-clj                       {:mvn/version "4.2.1"
@@ -136,7 +137,7 @@
   org.apache.sshd/sshd-core                 {:mvn/version "2.19.0"              ; ssh tunneling and test server
                                              :exclusions  [org.slf4j/slf4j-api
                                                            org.slf4j/jcl-over-slf4j]}
-  org.apache.tika/tika-core                 {:mvn/version "3.2.3"}
+  org.apache.tika/tika-core                 {:mvn/version "3.3.2"}              ; pinned to resolve CVE-2026-66755
   org.apache.xmlgraphics/batik-all          {:mvn/version "1.19"}               ; SVG -> image
   org.bouncycastle/bcpkix-jdk18on           {:mvn/version "1.85"}               ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
   org.bouncycastle/bcprov-jdk18on           {:mvn/version "1.85.2"}
