@@ -6,6 +6,7 @@ const DB_NAME = "Writable Postgres12";
 const SOURCE_TABLE = "Animals";
 const TARGET_TABLE = "transform_table";
 const TARGET_SCHEMA = "Schema A";
+const PYTHON_TRANSFORM_TIMEOUT = 40_000;
 
 describe("scenarios > admin > transforms incremental", () => {
   beforeEach(() => {
@@ -198,9 +199,17 @@ def transform(animals):
           });
         });
 
+        cy.location("pathname").should(
+          "match",
+          /^\/data-studio\/transforms\/\d+$/,
+        );
+        cy.findByTestId("transforms-header", {
+          timeout: PYTHON_TRANSFORM_TIMEOUT,
+        }).should("be.visible");
+
         cy.log("run the transform and make sure its table can be queried");
         H.DataStudio.Transforms.runTab().click();
-        runTransformAndWaitForSuccess();
+        runTransformAndWaitForSuccess({ timeout: PYTHON_TRANSFORM_TIMEOUT });
         H.expectUnstructuredSnowplowEvent({
           event: "transform_trigger_manual_run",
         });
@@ -226,7 +235,7 @@ def transform(animals):
 
         cy.go("back");
         H.DataStudio.Transforms.runTab().click();
-        runTransformAndWaitForSuccess();
+        runTransformAndWaitForSuccess({ timeout: PYTHON_TRANSFORM_TIMEOUT });
 
         cy.log(
           "verify the new element was picked up in the incremental transfer",
@@ -259,7 +268,7 @@ def transform(animals):
           "go to Runs tab, run transform again and check new run has checkpoint to 31",
         );
         H.DataStudio.Transforms.runTab().click();
-        runTransformAndWaitForSuccess();
+        runTransformAndWaitForSuccess({ timeout: PYTHON_TRANSFORM_TIMEOUT });
         cy.findByRole("link", { name: "See all runs" }).click();
         cy.findByRole("treegrid", { name: "Transform runs" }).within(() => {
           cy.findAllByRole("row", { name: /Python transform/i })
@@ -392,9 +401,9 @@ function visitTransformListPage() {
   return cy.visit("/data-studio/transforms");
 }
 
-function runTransformAndWaitForSuccess() {
+function runTransformAndWaitForSuccess(options: { timeout?: number } = {}) {
   getRunButton().click();
-  getRunButton().should("have.text", "Ran successfully");
+  getRunButton(options).should("have.text", "Ran successfully");
 }
 
 function getRunButton(options: { timeout?: number } = {}) {
