@@ -5,13 +5,23 @@ import type { State } from "metabase/redux/store";
 import type Question from "metabase-lib/v1/Question";
 import type {
   Card,
+  Collection,
+  Dashboard,
+  Database,
   Dataset,
   Document,
+  MentionableUser,
   RawSeries,
+  Segment,
   StoredResultSort,
+  Table,
   TimelineEvent,
+  Transform,
   VisualizationSettings,
+  WritebackAction,
 } from "metabase-types/api";
+
+import type { SuggestionModel } from "./extensions/shared/types";
 
 /**
  * Result returned by the card-data hooks the host provides to the CardEmbed
@@ -173,6 +183,32 @@ export interface EditorViewportHost {
   useReportPrefetchLoading: (id: string, isLoading: boolean) => void;
 }
 
+export type SmartLinkEntity =
+  | Card
+  | Dashboard
+  | Collection
+  | Table
+  | Transform
+  | Database
+  | Document
+  | WritebackAction
+  | Segment
+  | (MentionableUser & { name: string });
+
+export interface EntityDataResult {
+  entity?: SmartLinkEntity | null;
+  isLoading: boolean;
+  error?: unknown;
+}
+
+/** Entity data behind smart links, looked up per model. */
+export interface EditorEntityHost {
+  useEntityData: (
+    entityId: number | null,
+    model: SuggestionModel | null,
+  ) => EntityDataResult;
+}
+
 /** Mention / smart-link suggestions. */
 export interface EditorMentionsHost {
   actions: {
@@ -205,6 +241,7 @@ export type EditorHost = EditorDocumentHost &
   EditorCommentsHost &
   EditorViewportHost &
   EditorMentionsHost &
+  EditorEntityHost &
   EditorAnalyticsHost & {
     capabilities: EditorCapabilities;
   };
@@ -212,11 +249,11 @@ export type EditorHost = EditorDocumentHost &
 const noop = () => undefined;
 
 /**
- * Inert host used when no provider is configured (e.g. the comments and metabot
- * editors). State selectors resolve to empty, operations are no-ops, and the
- * card-data hooks return idle results — the extensions that rely on a real host
- * (CardEmbed, SupportingText, Metabot embed) are only rendered by hosts that
- * provide one.
+ * Inert host used when no provider is configured. State selectors resolve to
+ * empty, operations are no-ops, and the card-data hooks return idle results —
+ * the extensions that rely on a real host (CardEmbed, SupportingText, Metabot
+ * embed) are only rendered by hosts that provide one.
+ * A smart link resolves no entity here, so it renders the label stored on the node.
  */
 export const DEFAULT_EDITOR_HOST: EditorHost = {
   capabilities: DEFAULT_EDITOR_CAPABILITIES,
@@ -248,6 +285,7 @@ export const DEFAULT_EDITOR_HOST: EditorHost = {
   },
   navigateToCard: () => ({ type: "@@editor-host/noop" }),
   useCardData: () => ({ isLoading: false, series: null }),
+  useEntityData: () => ({ entity: null, isLoading: false, error: null }),
   useExternalCardDataLoader: () => ({ isLoading: false, series: null }),
   useCommentUrl: () => "",
   useUnresolvedCommentsCount: () => 0,

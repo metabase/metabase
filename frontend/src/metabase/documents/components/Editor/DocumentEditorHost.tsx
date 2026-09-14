@@ -33,6 +33,7 @@ import {
 import { useCardData } from "../../hooks/use-card-data";
 import { useDocumentCommentUrl } from "../../hooks/use-document-comment-url";
 import { useDraftCardOperations } from "../../hooks/use-draft-card-operations";
+import { useEntityData } from "../../hooks/use-entity-data";
 import { useExternalCardDataLoader } from "../../hooks/use-external-card-data";
 import {
   useNodeInViewport,
@@ -102,6 +103,7 @@ export const documentEditorHost: DocumentEditorHost = {
   },
   navigateToCard: navigateToCardFromDocument,
   useCardData,
+  useEntityData,
   useExternalCardDataLoader,
   useCommentUrl: useDocumentCommentUrl,
   useUnresolvedCommentsCount: useUnresolvedDocumentCommentsCount,
