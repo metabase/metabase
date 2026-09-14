@@ -264,7 +264,7 @@ describe("scenarios > visualizations > legend", () => {
 
     H.getDashboardCard(1).within(() => {
       H.echartsContainer().findByText("500").should("exist"); // max y-axis value
-      cy.findByText("And 39 more").click();
+      cy.findByText(/\+ \d+ more/).click();
     });
     H.popover().within(() => hideSeries(29)); // TX (Texas);
     H.getDashboardCard(1).click(); // click outside of popover to close it
