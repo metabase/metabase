@@ -3,7 +3,8 @@
    text with [[render]]."
   (:require
    [clojure.string :as str]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu])
   (:import
    (java.util Locale)
    (java.util.regex Matcher)))
@@ -14,14 +15,19 @@
 
 (defrecord Raw [value])
 
-(defn msg
+(mu/defn message? :- :boolean
+  "Whether `x` is a message built by [[msg]]."
+  [x :- :any]
+  (instance? Message x))
+
+(mu/defn msg :- [:fn message?]
   "A message of `lines`, format strings joined with newlines, with `args` interpolated by [[render]]."
-  [lines & args]
+  [lines :- :any & args]
   (->Message lines (vec args)))
 
-(defn raw
+(mu/defn raw :- [:fn #(instance? Raw %)]
   "Mark `x` as server-controlled text that [[render]] interpolates into a message without cleaning."
-  [x]
+  [x :- :any]
   (->Raw x))
 
 (def ^:private escaped-categories
@@ -65,21 +71,16 @@
   [x]
   (or (nil? x) (number? x) (boolean? x)))
 
-(defn clean
+(mu/defn clean :- [:maybe [:or :string number? :boolean]]
   "`x` made safe to interpolate into prose. Numbers, booleans, and nil are returned unchanged. A string is quoted and
    escaped: `pr-str`'s escapes, then `\\uXXXX` for invisible, line-breaking, and double-quote-like characters. Anything
    else is printed with `pr-str` and then cleaned as that string."
-  [x]
+  [x :- :any]
   (if (unquoted? x)
     x
     (escape-code-points (pr-str (if (string? x) x (pr-str x))))))
 
 (declare render)
-
-(defn message?
-  "Whether `x` is a message built by [[msg]]."
-  [x]
-  (instance? Message x))
 
 (def ^:private format-specifier
   "A `java.util.Formatter` specifier; groups 1 to 4 are its flags, width, precision, and conversion."
@@ -135,12 +136,12 @@
   "The text of something that can't be rendered at all."
   "Internal error while rendering a message.")
 
-(defn render
+(mu/defn render :- :string
   "The text of `x`. A well-formed message renders as its lines joined with newlines, with each argument interpolated:
    raw arguments and nested messages as they are, everything else [[clean]]ed. Anything else, or a message that fails
    to format, renders with every part cleaned. Something that can't be printed at all renders as a fixed server
    sentence, logged. Never throws an `Exception`."
-  [x]
+  [x :- :any]
   (try
     (cond
       (and (message? x) (well-formed? x))
@@ -278,10 +279,11 @@
             (recur more (- budget (count text)))))
         [(str sb) false]))))
 
-(defn truncate
+(mu/defn truncate :- [:fn message?]
   "A message rendering as the start of `x`'s [[render]]ing, at most `limit` characters followed by `…` where it's cut.
    A quoted value cut short keeps its closing quote after the `…`, so the rendering is at most `limit` + 2 characters."
-  [x limit]
+  [x     :- :any
+   limit :- :int]
   (let [[text] (try
                  (truncate-pieces (pieces x) limit)
                  (catch Exception e
