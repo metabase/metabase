@@ -78,8 +78,6 @@ jobs:
       (needs.should-run.outputs.verdict == 'force-run' ||
       needs.files-changed.outputs.no_source_code_changes != 'true')
     uses: ./.github/workflows/uberjar.yml
-    with:
-      containerize: ${{ (github.event_name == 'push' && github.ref_name == 'master') || contains(github.event.pull_request.labels.*.name, 'build-docker-uberjar') }}
     secrets: inherit
 
   backend-tests:
@@ -233,37 +231,24 @@ jobs:
         ${{ needs.embedding-sdk-package.result != 'success' ||
         needs.uberjar.result != 'success' }}
 
-  pr-env:
+  containerize:
     needs: [uberjar]
-    if: |
+    if: >-
       !cancelled() &&
-      contains(github.event.pull_request.labels.*.name, 'PR-Env') &&
-      !contains(github.event.pull_request.labels.*.name, 'PR-Env-self-hosting') &&
-      !contains(github.event.pull_request.labels.*.name, 'PR-Env-analytics-dev')
-    uses: ./.github/workflows/pr-env.yml
+      needs.uberjar.result == 'success' &&
+      (
+        (github.event_name == 'push' && github.ref_name == 'master') ||
+        (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'build-docker-uberjar'))
+      )
+    name: containerize (${{ matrix.edition }})
+    strategy:
+      matrix:
+        edition: ['ee', 'oss']
+    uses: ./.github/workflows/containerize-jar.yml
     secrets: inherit
     with:
-      self_hosting: false
-      analytics_dev_mode: false
-
-  pr-env-self-hosting:
-    needs: [uberjar]
-    if: |
-      !cancelled() &&
-      contains(github.event.pull_request.labels.*.name, 'PR-Env-self-hosting')
-    uses: ./.github/workflows/pr-env.yml
-    secrets: inherit
-    with:
-      self_hosting: true
-      analytics_dev_mode: false
-
-  pr-env-analytics-dev:
-    needs: [uberjar]
-    if: |
-      !cancelled() &&
-      contains(github.event.pull_request.labels.*.name, 'PR-Env-analytics-dev')
-    uses: ./.github/workflows/pr-env.yml
-    secrets: inherit
-    with:
-      self_hosting: false
-      analytics_dev_mode: true
+      build-args: |
+        GIT_COMMIT_SHA=${{ github.event.pull_request.head.sha || github.sha }}
+      commit: ${{ github.event.pull_request.head.sha || github.sha }}
+      edition: ${{ matrix.edition }}
+      release: false
