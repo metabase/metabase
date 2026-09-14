@@ -13,7 +13,8 @@
    this namespace — so a miss recovers within one round trip even when no pack was read."
   (:require
    [clojure.java.io :as io]
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [metabase.mcp.v2.message :as message]))
 
 (set! *warn-on-reflection* true)
 
@@ -26,7 +27,7 @@
   (let [full (str skills-root "/" path)
         url  (io/resource full)]
     (when-not url
-      (throw (ex-info (str "Missing MCP skill pack file on classpath: resources/" full)
+      (throw (ex-info (format "Missing MCP skill pack file on classpath: %s" (pr-str (str "resources/" full)))
                       {:path full})))
     (delay (slurp url :encoding "UTF-8"))))
 
@@ -73,29 +74,35 @@
   []
   (mapv :name packs))
 
+(defn- catalog-line
+  [{pack-name :name :keys [description references]}]
+  ;; Every part is the server's own catalog text.
+  (if (seq references)
+    (message/msg ["- %s — %s [references: %s]"]
+                 (message/raw pack-name) (message/raw description) (message/raw (str/join ", " references)))
+    (message/msg ["- %s — %s"] (message/raw pack-name) (message/raw description))))
+
 (defn catalog-text
-  "The `learn()` response: one line per pack — name, description, reference names."
+  "The `learn()` response message: one line per pack — name, description, reference names."
   []
-  (str "Topics — fetch one with learn(topic); a reference with learn(topic, reference):\n\n"
-       (str/join "\n"
-                 (for [{pack-name :name :keys [description references]} packs]
-                   (str "- " pack-name " — " description
-                        (when (seq references)
-                          (str " [references: " (str/join ", " references) "]")))))))
+  (reduce (fn [text pack] (message/msg ["%s" "%s"] text (catalog-line pack)))
+          (message/msg ["Topics — fetch one with learn(topic); a reference with learn(topic, reference):" ""])
+          packs))
 
 (defn skill-text
-  "`topic`'s whole SKILL.md, with a footer naming its references, or nil for an unknown topic."
+  "`topic`'s whole SKILL.md as a message, with a footer naming its references, or nil for an unknown topic."
   [topic]
   (when-let [{:keys [skill references]} (get content topic)]
-    (cond-> @skill
-      (seq references)
-      (str "\n\n---\nReferences for this topic — fetch with learn(\"" topic "\", \"<name>\"): "
-           (str/join ", " (keys references)) "."))))
+    ;; The pack file and its reference names ship with the server, and `topic` names a pack that exists.
+    (if (seq references)
+      (message/msg ["%s" "" "---" "References for this topic — fetch with learn(\"%s\", \"<name>\"): %s."]
+                   (message/raw @skill) (message/raw topic) (message/raw (str/join ", " (keys references))))
+      (message/msg ["%s"] (message/raw @skill)))))
 
 (defn reference-text
-  "The reference file `reference` of pack `topic`, or nil when either is unknown."
+  "The reference file `reference` of pack `topic` as a message, or nil when either is unknown."
   [topic reference]
-  (some-> (get-in content [topic :references reference]) deref))
+  (some->> (get-in content [topic :references reference]) deref message/raw (message/msg ["%s"])))
 
 (defn reference-names
   "The reference names of `topic`, or nil for an unknown topic."

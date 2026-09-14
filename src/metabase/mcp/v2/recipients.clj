@@ -7,6 +7,7 @@
   (:require
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -21,8 +22,8 @@
     (do
       (when-not (mcp.db/active-user-exists? recipient)
         (common/throw-teaching-error
-         (format "No active user with id %d — pass a user id from the people list, or an email address."
-                 recipient)))
+         (message/msg ["No active user with id %d — pass a user id from the people list, or an email address."]
+                      recipient)))
       [:user recipient])
 
     (u/email? recipient)
@@ -30,4 +31,4 @@
 
     :else
     (common/throw-teaching-error
-     (format "Recipient %s is neither a user id nor an email address." (pr-str recipient)))))
+     (message/msg ["Recipient %s is neither a user id nor an email address."] recipient))))

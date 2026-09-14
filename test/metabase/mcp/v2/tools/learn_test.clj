@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    ;; every tool namespace, so the pointer sweep below sees every registered description
    [metabase.mcp.v2.api]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.skills :as skills]
    [metabase.mcp.v2.tools.learn :as learn]))
@@ -27,6 +28,23 @@
       (doseq [topic (skills/topics)]
         (is (str/includes? (text-of result) topic))))))
 
+(deftest ^:parallel catalog-text-test
+  (testing "GHY-4544: the catalog is a message rendering the header, a blank line, then one line per pack"
+    (let [lines (str/split-lines (message/render (skills/catalog-text)))]
+      (is (= "Topics — fetch one with learn(topic); a reference with learn(topic, reference):" (first lines)))
+      (is (= "" (second lines)))
+      (is (= (count skills/packs) (count (drop 2 lines))))
+      (is (= "- query-dialect — " (subs (nth lines 2) 0 18)))
+      (is (str/ends-with? (nth lines 2) " [references: operators]")))))
+
+(deftest ^:parallel skill-text-footer-test
+  (testing "GHY-4544: a pack with references ends in a footer naming them"
+    (is (str/ends-with? (message/render (skills/skill-text "query-dialect"))
+                        "\n\n---\nReferences for this topic — fetch with learn(\"query-dialect\", \"<name>\"): operators.")))
+  (testing "an unknown topic or reference is nil"
+    (is (nil? (skills/skill-text "nope")))
+    (is (nil? (skills/reference-text "query-dialect" "nope")))))
+
 (deftest ^:parallel every-pack-loads-test
   (testing "learn(topic) returns each pack's whole SKILL.md, frontmatter included"
     (doseq [topic (skills/topics)]
@@ -49,7 +67,7 @@
 (deftest ^:parallel pack-size-budget-test
   (testing "no SKILL.md exceeds the pack size budget (roughly 6k tokens)"
     (doseq [topic (skills/topics)]
-      (is (< (count (skills/skill-text topic)) 24000)
+      (is (< (count (message/render (skills/skill-text topic))) 24000)
           (str topic " exceeds the SKILL.md size budget")))))
 
 (deftest ^:parallel unknown-topic-and-reference-test
@@ -69,8 +87,8 @@
 (deftest ^:parallel examples-speak-the-v2-dialect-test
   (testing "packs never teach the CLI/REST dialects the v2 tools don't accept"
     (doseq [topic (skills/topics)
-            :let [text (str (skills/skill-text topic)
-                            (str/join (map #(skills/reference-text topic %)
+            :let [text (str (message/render (skills/skill-text topic))
+                            (str/join (map #(message/render (skills/reference-text topic %))
                                            (skills/reference-names topic))))]
             leaked ["mb card" "mb dashboard" "mb query" "mb skills" "mb uuid" "--profile" "--dry-run"]]
       (testing (str topic " must not mention " (pr-str leaked))
@@ -112,10 +130,10 @@
   (testing "every learn(...) pointer in a tool description or pack body names a topic and
             reference that exist — renaming a pack otherwise leaves pointers aimed at nothing,
             and the model only finds out by calling learn() and getting a teaching error"
-    (let [pack-texts (concat (map skills/skill-text (skills/topics))
+    (let [pack-texts (concat (map (comp message/render skills/skill-text) (skills/topics))
                              (for [topic (skills/topics)
                                    ref   (skills/reference-names topic)]
-                               (skills/reference-text topic ref)))
+                               (message/render (skills/reference-text topic ref))))
           pointers   (for [text  (concat (tool-descriptions) pack-texts)
                            match (re-seq learn-pointer-re (str text))]
                        match)

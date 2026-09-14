@@ -10,6 +10,7 @@
    [metabase.eid-translation.core :as eid-translation]
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.models.interface :as mi]))
 
 (set! *warn-on-reflection* true)
@@ -66,8 +67,8 @@
       ;; Name a retry that works: the obvious reading of "pass a numeric id" is to send the same
       ;; number again, which fails identically.
       (common/throw-teaching-error
-       (format "Invalid id %s — pass the positive numeric id, or the 21-character entity_id from a search or list result."
-               (pr-str id-or-eid))))))
+       (message/msg ["Invalid id %s — pass the positive numeric id, or the 21-character entity_id from a search or list result."]
+                    id-or-eid)))))
 
 (defn resolve-and-read-with
   "Resolve `id-or-eid` for `model`, then return the object from `read-check-fn`, which must
@@ -115,7 +116,7 @@
 
      (= "trash" id-or-sentinel)
      (or trash-collection-id
-         (common/throw-teaching-error "\"trash\" is not a valid collection here — pass a collection id, entity_id, or \"root\"."))
+         (common/throw-teaching-error (message/msg ["\"trash\" is not a valid collection here — pass a collection id, entity_id, or \"root\"."])))
 
      :else
      (:id (resolve-and-read :model/Collection id-or-sentinel)))))
@@ -136,8 +137,7 @@
     (resolve-collection-id id-or-sentinel)
     (or (:id (collection/user->personal-collection api/*current-user-id*))
         (common/throw-teaching-error
-         (str "The current user has no personal collection. Pass an explicit collection_id "
-              "(or \"root\" for the root collection) instead.")))))
+         (message/msg ["The current user has no personal collection. Pass an explicit collection_id (or \"root\" for the root collection) instead."])))))
 
 ;;; --------------------------------------------- Collection paths -------------------------------------------------
 
