@@ -57,6 +57,16 @@
   [xs]
   (into [] (map long*) xs))
 
+(defn str*
+  "Assert `x` is already a string and return it, so a value slot holding it is provably a string
+  literal rather than a HoneySQL form. Throws on anything else -- notably on the maps and keyword
+  vectors that HoneySQL would compile as SQL."
+  ^String [x]
+  (if (string? x)
+    x
+    (throw (ex-info (str "Expected a string value, got " (pr-str (type x)))
+                    {:type ::not-a-string, :value x}))))
+
 ;;; --------------------------------------- reject-unwrapped (GHY-4474) ------------------------------------------
 
 ;; Only these clause keys hold user values. `:select`/`:from`/`:order-by`/`:group-by` are
@@ -235,18 +245,43 @@
            (check-clause! clause ctx strict?)))))
    query))
 
-;;; ----------------------------------------------- rollout ------------------------------------------------------
+;;; ----------------------------------------------- adoption ----------------------------------------------------
+
+;; Adoption is per-namespace and explicit: a `db.clj` that has wrapped its own value slots calls
+;; `checked` on the query it is about to run. There is no compile hook and no ambient state -- the
+;; check is an ordinary function call, visible at the site it protects.
 ;;
-;; This namespace is deliberately not wired into `t2.pipeline/compile` yet. Installing it globally
-;; rejects legitimate dev-authored SQL that lives in value-bearing clauses -- measured against the
-;; `collections` module, 91 of 148 tests error, none of them an actual unparameterized user value:
+;; Global enforcement is deliberately not the first step. Run against the `collections` module it
+;; errors 91 of 148 tests, and none of those is an unparameterized user value: they are correlated
+;; subqueries, a UNION used as an operand, and SQL function calls in `:set` -- all real SQL that
+;; happens to live in a value-bearing clause. Widening the allowlist to admit them would restore the
+;; original hole, since a `{:raw ...}` and a legitimate subquery are both just maps by then.
+
+(defn checked
+  "Assert that no value slot in `query` holds something that could become SQL, then return `query`.
+
+    (t2/select :model/ContentTranslation
+               (checked {:where [:= :locale (str* locale)]}))
+
+  Pair it with a coercion (`long*`, `longs`, `str*`) at the point the value enters. The coercion is
+  what rejects a hostile non-scalar; `checked` is what fails the query if a later edit drops the
+  coercion and lets a map, a `{:raw ...}`, or a bare keyword into a value slot.
+
+  Note this does not assert that every value is a *bound* parameter. A coercion returns a plain
+  scalar, which is indistinguishable at runtime from an unwrapped one, so that stronger property
+  cannot be checked here -- see the note on `[:param]` below."
+  [query]
+  (assert-values-wrapped! query {} false)
+  query)
+
+;; A note on `[:param ...]`, which is the form the coercions above are a fallback for.
 ;;
-;;   58  a marked subquery containing a column-to-column comparison ([:= :audit_db.id :dp.db_id])
-;;   22  a :union-all subquery used as a comparison operand
-;;    8  a SQL function call in a :set slot ([:replace :location old new])
-;;    3  [:call ...] / ::h2x/identifier
+;; HoneySQL binds a `[:param :k]` against a separate `{:params {:k v}}` map, and that map cannot
+;; currently reach HoneySQL through Toucan: `honeysql-guard` walks the query map and rejects any
+;; unmarked nested map, so a `:params` key is refused before the query compiles. Verified against a
+;; real query -- `(t2/select :model/X {:where [:= :k [:param :p]] :params {:p "v"}})` throws
+;; "A forbidden HoneySQL clause reached the app-DB compile step".
 ;;
-;; Those are all real SQL, so the fix is per-namespace opt-in rather than a global switch: a
-;; `db.clj` namespace adopts the check once its own value slots are wrapped. Note that the opt-in
-;; has to key off the *calling namespace*, not the model -- every Toucan model keyword is
-;; `:model/Something`, so its namespace is always "model" and carries no module information.
+;; So `[:param]` is not usable through Toucan today, and an adopting namespace coerces instead.
+;; Making `[:param]` work needs `honeysql-guard` taught to allow a `:params` map, which is a change
+;; to a namespace that is backported to older versions and is therefore left alone here.

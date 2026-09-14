@@ -92,6 +92,26 @@
   (testing "an unmarked subquery in a value slot is still rejected"
     (is (rejects? {:where [:= :id {:select [:x] :from :core_user}]}))))
 
+(deftest str-coercion-test
+  (is (= "de" (value-guard/str* "de")))
+  (testing "a value that HoneySQL would compile as SQL cannot pass the coercion"
+    (are [x] (thrown? clojure.lang.ExceptionInfo (value-guard/str* x))
+      {:raw "(SELECT 1)"}
+      {:select [:x]}
+      :evil
+      5
+      nil)))
+
+(deftest checked-test
+  (testing "passes a query whose values are scalars"
+    (is (= {:where [:= :locale "de"]}
+           (value-guard/checked {:where [:= :locale "de"]}))))
+  (testing "throws when a value slot holds something that could become SQL"
+    (are [q] (thrown? clojure.lang.ExceptionInfo (value-guard/checked q))
+      {:where [:= :locale {:raw "(SELECT 1)"}]}
+      {:where [:= :locale :evil]}
+      {:where [:= :locale {:select [:x]}]})))
+
 (deftest strict-mode-requires-bound-params-test
   (testing "strict mode rejects a bare scalar and accepts a bound param"
     (is (rejects? {:where [:= :id 1]} true))
