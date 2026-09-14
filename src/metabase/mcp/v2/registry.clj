@@ -192,7 +192,7 @@
     ;; for arguments the model produces, and outputs aren't constrained by them.
     output-schema (assoc :outputSchema (tools-manifest/malli->json-schema output-schema))))
 
-(defn- english-scope-label
+(defn english-scope-label
   "The consent-screen description registered for `scope`, in English, or nil."
   [scope]
   ;; Model-facing, and the manifest is cached for every caller — never the locale of whoever listed tools first.

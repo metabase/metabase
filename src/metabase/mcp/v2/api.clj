@@ -79,6 +79,21 @@
 (defn- handle-resources-list [id _params]
   (transport/jsonrpc-response id (v2.resources/list-resources)))
 
+(defn- resource-scope-denial
+  "The JSON-RPC error refusing request `id` a read of `uri` because `token-scopes` lack `required-scope`, marked with
+   [[transport/insufficient-scope]]."
+  [id uri token-scopes required-scope]
+  (let [held (sort (filter string? token-scopes))]
+    (transport/insufficient-scope
+     (transport/jsonrpc-error id -32600 (str "Insufficient scope to read resource: " uri ". Requires " required-scope "; "
+                                             (if (seq held)
+                                               (str "your token holds " (str/join ", " held) ".")
+                                               "your token holds no scopes.")))
+     (step-up-scopes mcp.paths/v2-surface-scopes token-scopes [required-scope])
+     (str uri " requires " required-scope
+          (when-let [label (registry/english-scope-label required-scope)]
+            (str " (" label ")"))))))
+
 (defn- handle-resources-read [id params session-id token-scopes]
   (let [uri (:uri params)]
     (if (or (not (string? uri)) (str/blank? uri))
@@ -96,9 +111,9 @@
             result        (v2.resources/read-resource uri token-scopes {:ui-credential ui-credential
                                                                         :session-id    session-id})]
         (case (:status result)
-          ;; Collapsed so a scope-denied read can't be used to probe which resources exist.
-          (:not-found :scope-denied) (transport/jsonrpc-error id -32602 "Resource not found")
-          :ok                        (transport/jsonrpc-response id {:contents (:contents result)})
+          :not-found    (transport/jsonrpc-error id -32602 "Resource not found")
+          :scope-denied (resource-scope-denial id uri token-scopes (:required-scope result))
+          :ok           (transport/jsonrpc-response id {:contents (:contents result)})
           (transport/jsonrpc-error id -32603 (str "Unexpected resource status: " (:status result))))))))
 
 (defn- handle-ping [id _params]

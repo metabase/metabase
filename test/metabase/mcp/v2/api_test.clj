@@ -685,27 +685,29 @@
                                                            {:request-options {:headers headers}}
                                                            (jsonrpc-request "initialize" {:capabilities {}}))
                               (get-in [:headers "Mcp-Session-Id"]))
-               session!   (fn [body]
+               session!   (fn [expected-status body]
                             (client/client-full-response
-                             :post 200 endpoint
+                             :post expected-status endpoint
                              {:request-options {:headers (assoc headers "mcp-session-id" session-id)}}
                              body))
-               read!      #(session! (jsonrpc-request "resources/read" {:uri %}))]
+               read!      (fn [expected-status uri]
+                            (session! expected-status (jsonrpc-request "resources/read" {:uri uri})))]
            (testing "the UI shell is refused — it gates on agent:query:run, which this token does not carry"
-             (let [response (read! v2.resources/visualize-query-uri)]
-               (is (= -32602 (get-in response [:body :error :code])))
-               (testing "with the same message an unknown URI gets, so a scope denial is not an existence oracle"
-                 (is (= "Resource not found" (get-in response [:body :error :message])))
-                 (is (= (get-in (read! "ui://metabase/does-not-exist.html") [:body :error :message])
-                        (get-in response [:body :error :message]))))
+             (let [response (read! 403 v2.resources/visualize-query-uri)]
+               (is (= 403 (:status response)))
+               (testing "GHY-4543: with a step-up challenge rather than \"not found\" — every resource is listed, so
+                         a denial reveals nothing a client could not already see"
+                 (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "")
+                                    "scope=\"agent:content:read agent:query:run\"")))
                (testing "and no credential is minted into the response"
                  (is (not (str/includes? (str (:body response)) "uiCredential"))))))
            (testing "the fields catalog is refused too — agent:resource:read, also absent from this token"
-             (is (= -32602 (get-in (read! v2.resources/fields-catalog-uri) [:body :error :code]))))
+             (is (str/includes? (get-in (read! 403 v2.resources/fields-catalog-uri) [:headers "WWW-Authenticate"] "")
+                                "scope=\"agent:content:read agent:resource:read\"")))
            (testing "GHY-4543: yet every resource is still listed, so the client can see what it could step up for"
              (is (= #{v2.resources/visualize-query-uri v2.resources/render-drill-through-uri
                       v2.resources/fields-catalog-uri}
-                    (set (map :uri (-> (session! (jsonrpc-request "resources/list"))
+                    (set (map :uri (-> (session! 200 (jsonrpc-request "resources/list"))
                                        (get-in [:body :result :resources])))))))))))))
 
 (deftest baseline-token-lists-every-resource-but-reads-only-its-own-test
@@ -736,12 +738,16 @@
                (is (nil? (get-in response [:body :error])))
                (is (= v2.resources/fields-catalog-uri
                       (-> response (get-in [:body :result :contents]) first :uri)))))
-           (testing "a listed UI shell outside this token's scopes still reads as not found"
+           (testing "a listed UI shell outside this token's scopes is refused with a step-up challenge"
              (doseq [uri [v2.resources/visualize-query-uri v2.resources/render-drill-through-uri]]
                (testing uri
-                 (let [response (read! uri)]
-                   (is (= -32602 (get-in response [:body :error :code])))
-                   (is (= "Resource not found" (get-in response [:body :error :message])))))))))))))
+                 (let [response (client/client-full-response
+                                 :post 403 endpoint
+                                 {:request-options {:headers (assoc headers "mcp-session-id" session-id)}}
+                                 (jsonrpc-request "resources/read" {:uri uri}))]
+                   (is (= 403 (:status response)))
+                   (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "")
+                                      "scope=\"agent:content:read agent:query:run agent:resource:read\""))))))))))))
 
 (deftest bearer-token-dispatches-with-its-own-scopes-test
   (testing "GHY-4287: the session middleware resolves an OAuth bearer token itself, so a bearer request reaches the
@@ -929,6 +935,58 @@
                                (str "Bearer error=\"insufficient_scope\", "
                                     "scope=\"agent:content:read agent:content:write agent:resource:read\", "
                                     "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "))))))))
+
+(deftest resource-scope-denial-is-a-403-insufficient-scope-challenge-test
+  (testing "GHY-4543: `resources/list` shows every resource, so a denied `resources/read` has no existence to hide and
+            answers with the same 403 challenge as `tools/call`. A client that pre-fetches an MCP Apps shell with a
+            baseline token needs that challenge to learn it must step up to agent:query:run."
+    (mcp.ui-resource/with-fallback-template
+      (do-with-bearer-token!
+       #{"agent:content:read" "agent:resource:read"}
+       (fn [headers]
+         (let [post!   (bearer-session-post! headers)
+               read-of (fn [uri] (jsonrpc-request "resources/read" {:uri uri}))
+               denied  (read-of v2.resources/visualize-query-uri)]
+           (testing "a shell outside the token's scopes"
+             (let [response (post! 403 denied)]
+               (is (= 403 (:status response)))
+               (is (= (str "Bearer error=\"insufficient_scope\", "
+                           "scope=\"agent:content:read agent:query:run agent:resource:read\", "
+                           "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
+                           "error_description=\"ui://metabase/visualize-query.html requires agent:query:run "
+                           "(Run queries against your connected databases and see the results)\"")
+                      (get-in response [:headers "WWW-Authenticate"])))
+               (testing "the body is the JSON-RPC error, with no transport-internal marker and no credential"
+                 (is (= #{:jsonrpc :id :error} (set (keys (:body response)))))
+                 (is (= -32600 (get-in response [:body :error :code])))
+                 (is (= (str "Insufficient scope to read resource: ui://metabase/visualize-query.html. "
+                             "Requires agent:query:run; your token holds agent:content:read, agent:resource:read.")
+                        (get-in response [:body :error :message])))
+                 (is (not (str/includes? (str (:body response)) "uiCredential"))))))
+           (testing "resource_metadata names the alias the client connected through"
+             (is (str/includes? (get-in (post! 403 denied :path "mcp") [:headers "WWW-Authenticate"] "")
+                                (str "resource_metadata=\"" metadata-url "/api/mcp\""))))
+           (testing "a resource the token's scopes cover reads over 200"
+             (let [response (post! 200 (read-of v2.resources/fields-catalog-uri))]
+               (is (= 200 (:status response)))
+               (is (nil? (get-in response [:headers "WWW-Authenticate"])))
+               (is (= v2.resources/fields-catalog-uri
+                      (-> response (get-in [:body :result :contents]) first :uri)))))
+           (testing "an unknown URI is still not found over 200, with no challenge"
+             (let [response (post! 200 (read-of "ui://metabase/does-not-exist.html"))]
+               (is (= 200 (:status response)))
+               (is (nil? (get-in response [:headers "WWW-Authenticate"])))
+               (is (= {:code -32602 :message "Resource not found"} (get-in response [:body :error])))))
+           (testing "a batch keeps HTTP 200 with the denial in band"
+             (doseq [[label batch] {"denied read and a ping"     [denied (assoc (jsonrpc-request "ping") :id 2)]
+                                    "a batch of one denied read" [denied]}]
+               (testing label
+                 (let [response (post! 200 batch)]
+                   (is (= 200 (:status response)))
+                   (is (nil? (get-in response [:headers "WWW-Authenticate"])))
+                   (is (= -32600 (:code (:error (first (filter #(= 1 (:id %)) (:body response)))))))
+                   (is (every? #(= #{:jsonrpc :id} (disj (set (keys %)) :error :result)) (:body response))
+                       "no transport-internal marker leaks into a batch element")))))))))))
 
 (deftest unscoped-callers-never-get-an-insufficient-scope-challenge-test
   (testing "GHY-4543: a cookie session is stamped unrestricted, so a tool gated on any scope is served over 200"

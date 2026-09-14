@@ -335,8 +335,9 @@
       (is (= :scope-denied (:status (v2.resources/read-resource uri #{grant} {})))
           (str grant " -> " uri))))
   (testing "GHY-4157: reading a shell without its scope is denied, not served"
-    (is (= :scope-denied (:status (v2.resources/read-resource v2.resources/visualize-query-uri
-                                                              #{"agent:content:read"} {}))))
+    (testing "GHY-4543: and the denial names the scope, so the transport can challenge for it"
+      (is (= {:status :scope-denied :required-scope "agent:query:run"}
+             (v2.resources/read-resource v2.resources/visualize-query-uri #{"agent:content:read"} {}))))
     (is (= :not-found (:status (v2.resources/read-resource "ui://metabase/nope.html"
                                                            viz-scopes {}))))))
 

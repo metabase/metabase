@@ -74,7 +74,7 @@
 
 (defn read-resource
   "Read a registered resource by URI, gated by `token-scopes`. Returns one of
-   `{:status :ok :contents [...]}`, `{:status :scope-denied}`, or `{:status :not-found}`. The
+   `{:status :ok :contents [...]}`, `{:status :scope-denied :required-scope scope}`, or `{:status :not-found}`. The
    single registry lookup keeps the gate atomic with the render, so callers cannot bypass the
    scope check.
 
@@ -86,7 +86,7 @@
        :contents [(cond-> (-> (select-keys resource [:uri :mimeType])
                               (assoc :text (render-fn opts)))
                     (:ui? resource) (assoc :_meta (mcp.ui-resource/ui-meta resource)))]}
-      {:status :scope-denied})
+      {:status :scope-denied :required-scope scope})
     {:status :not-found}))
 
 ;;; ------------------------------------------------ Registrations -------------------------------------------------

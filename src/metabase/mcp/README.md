@@ -66,10 +66,11 @@ Clients start with least privilege. The protected-resource metadata's `scopes_su
 401 challenge both list only the baseline, `agent:content:read agent:resource:read`. The surface still accepts every
 scope in the table, and the authorization server metadata still advertises all of them.
 
-A tool call the token lacks a scope for is refused with HTTP 403 and a
+A tool call or resource read the token lacks a scope for is refused with HTTP 403 and a
 `WWW-Authenticate: Bearer error="insufficient_scope"` challenge whose `scope` lists the v2 scopes the token already
 holds plus the one required, so a client can step up. Each tool also declares its scope in `securitySchemes`. Inside
-a JSON-RPC batch the refusal is an in-band error instead.
+a JSON-RPC batch the refusal is an in-band `-32600` error instead. A read of an unknown resource URI is a `-32602`
+"Resource not found" error, never a challenge.
 
 OAuth protected resource metadata is available at:
 
@@ -119,10 +120,11 @@ Query results are limited to 200 rows per request. When more rows are available,
 The server exposes MCP [resources](https://modelcontextprotocol.io/specification/2025-03-26/server/resources) so
 clients can fetch supplementary content by URI without inflating tool descriptions.
 
-| Resource URI | Description |
-| ------------ | ----------- |
-| `ui://metabase/visualize-query.html` | The MCP Apps iframe shell `visualize_query` points a capable client at. |
-| `ui://metabase/render-drill-through.html` | The shell `render_drill_through` points at. |
+| Resource URI | Scope | Description |
+| ------------ | ----- | ----------- |
+| `ui://metabase/visualize-query.html` | `agent:query:run` | The MCP Apps iframe shell `visualize_query` points a capable client at. |
+| `ui://metabase/render-drill-through.html` | `agent:query:run` | The shell `render_drill_through` points at. |
+| `catalog://metabase/fields` | `agent:resource:read` | The dot-paths each content type accepts in `fields` arguments. |
 
 Skill packs are delivered through the `learn` tool rather than as resources.
 
@@ -138,7 +140,7 @@ resources above exist only so a client that can render an iframe has something t
 | `tools/list`                | List available tools, whatever the token's scopes.                           |
 | `tools/call`                | Call a tool with arguments.                                                  |
 | `resources/list`            | List available resources, whatever the token's scopes.                       |
-| `resources/read`            | Read a resource by URI. Requires an initialized session.                     |
+| `resources/read`            | Read a resource by URI, if the token holds its scope. Requires a session.    |
 | `ping`                      | Keepalive ping.                                                              |
 
 Requests can be sent individually or as a JSON-RPC batch. The server responds with JSON or SSE depending on the
