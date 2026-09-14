@@ -342,72 +342,74 @@
                                           :value {"name.familyName" "NonexistentUser"}}]}
                 response   (scim-client :patch 404 (format "ee/scim/v2/Users/%s" (random-uuid)) patch-body)]
             (is (= ["urn:ietf:params:scim:api:messages:2.0:Error"] (get response :schemas)))
-            (is (= "User not found" (get response :detail)))))
-        (deftest list-groups-test
-          (with-scim-setup!
-            (mt/with-temp [:model/PermissionsGroup _group1 {:name "Group 1"}]
-              (testing "Fetch groups with default pagination"
-                (let [response (scim-client :get 200 "ee/scim/v2/Groups")]
-                  (is (malli= scim-api/SCIMGroupList response))))
-              (testing "Fetch groups with custom pagination"
-                (let [response (scim-client :get 200 (format "ee/scim/v2/Groups?startIndex=%d&count=%d" 1 2))]
-                  (is (= ["urn:ietf:params:scim:api:messages:2.0:ListResponse"] (get response :schemas)))
-                  (is (integer? (get response :totalResults)))
-                  (is (= 1 (get response :startIndex)))
-                  (is (= 2 (get response :itemsPerPage)))
-                  (is (= 2 (count (get response :Resources))))))
-              (testing "Fetch group by name"
-                (let [response (scim-client :get 200 (format "ee/scim/v2/Groups?filter=%s"
-                                                             (codec/url-encode "displayName eq \"Group 1\"")))]
-                  (is (malli= scim-api/SCIMGroupList response))
-                  (is (= 1 (get response :totalResults)))
-                  (is (= 1 (count (get response :Resources))))))
-              (testing "Fetch non-existent group by name"
-                (let [response (scim-client :get 200 (format "ee/scim/v2/Groups?filter=%s"
-                                                             (codec/url-encode "displayName eq \"Fake Group\"")))]
-                  (is (malli= scim-api/SCIMUserList response))
-                  (is (= 0 (get response :totalResults)))
-                  (is (= 0 (count (get response :Resources))))))
-              (testing "Error if unsupported filter operation is provided"
-                (scim-client :get 400 (format "ee/scim/v2/Users?filter=%s"
-                                              (codec/url-encode "displayName ne \"Group 1\""))))
-              (testing "Data-app groups are not listed"
-                (mt/with-temp [:model/PermissionsGroup app-group {:name "App Group" :is_data_app_group true}]
-                  (let [app-entity-id (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id app-group))
-                        response      (scim-client :get 200 "ee/scim/v2/Groups")]
-                    (is (not (contains? (into #{} (map :id) (:Resources response)) app-entity-id)))
-                    (is (= (count (:Resources response)) (:totalResults response))))
-                  (let [response (scim-client :get 200 (format "ee/scim/v2/Groups?filter=%s"
-                                                               (codec/url-encode "displayName eq \"App Group\"")))]
-                    (is (= 0 (get response :totalResults)))
-                    (is (= 0 (count (get response :Resources))))))))))))
-    (deftest fetch-group-test
-      (with-scim-setup!
-        (testing "A single group can be fetched in the SCIM format by entity ID with its members"
-          (mt/with-temp [:model/PermissionsGroup           group {:name "Test Group"}
-                         :model/PermissionsGroupMembership _     {:user_id (mt/user->id :rasta) :group_id (:id group)}]
-            (let [entity-id (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id group))
-                  response  (scim-client :get 200 (format "ee/scim/v2/Groups/%s" entity-id))]
-              (is (malli= scim-api/SCIMGroup response))
-              (is (=?
-                   {:schemas     ["urn:ietf:params:scim:schemas:core:2.0:Group"]
-                    :id          entity-id
-                    :displayName "Test Group"
-                    :members     [{:value (t2/select-one-fn :entity_id :model/User (mt/user->id :rasta))
-                                   :display "rasta@metabase.com"}]
-                    :meta        {:resourceType "Group"}}
-                   response)))))
-        (testing "404 is returned when fetching a non-existent group"
-          (scim-client :get 404 (format "ee/scim/v2/Groups/%s" (random-uuid))))
-        (testing "404 is returned when fetching the Admin or All Users group"
-          (let [entity-ids (t2/select-fn-set :entity_id :model/PermissionsGroup
-                                             {:where [:in :id #{(:id (perms-group/admin)) (:id (perms-group/all-users))}]})]
-            (doseq [entity-id entity-ids]
-              (scim-client :get 404 (format "ee/scim/v2/Groups/%s" entity-id)))))
-        (testing "404 is returned when fetching a data-app group"
-          (mt/with-temp [:model/PermissionsGroup app-group {:name "App Group" :is_data_app_group true}]
-            (let [entity-id (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id app-group))]
-              (scim-client :get 404 (format "ee/scim/v2/Groups/%s" entity-id)))))))))
+            (is (= "User not found" (get response :detail)))))))))
+
+(deftest list-groups-test
+  (with-scim-setup!
+    (mt/with-temp [:model/PermissionsGroup _group1 {:name "Group 1"}]
+      (testing "Fetch groups with default pagination"
+        (let [response (scim-client :get 200 "ee/scim/v2/Groups")]
+          (is (malli= scim-api/SCIMGroupList response))))
+      (testing "Fetch groups with custom pagination"
+        (let [response (scim-client :get 200 (format "ee/scim/v2/Groups?startIndex=%d&count=%d" 1 2))]
+          (is (= ["urn:ietf:params:scim:api:messages:2.0:ListResponse"] (get response :schemas)))
+          (is (integer? (get response :totalResults)))
+          (is (= 1 (get response :startIndex)))
+          (is (= 2 (get response :itemsPerPage)))
+          (is (= 2 (count (get response :Resources))))))
+      (testing "Fetch group by name"
+        (let [response (scim-client :get 200 (format "ee/scim/v2/Groups?filter=%s"
+                                                     (codec/url-encode "displayName eq \"Group 1\"")))]
+          (is (malli= scim-api/SCIMGroupList response))
+          (is (= 1 (get response :totalResults)))
+          (is (= 1 (count (get response :Resources))))))
+      (testing "Fetch non-existent group by name"
+        (let [response (scim-client :get 200 (format "ee/scim/v2/Groups?filter=%s"
+                                                     (codec/url-encode "displayName eq \"Fake Group\"")))]
+          (is (malli= scim-api/SCIMUserList response))
+          (is (= 0 (get response :totalResults)))
+          (is (= 0 (count (get response :Resources))))))
+      (testing "Error if unsupported filter operation is provided"
+        (scim-client :get 400 (format "ee/scim/v2/Users?filter=%s"
+                                      (codec/url-encode "displayName ne \"Group 1\""))))
+      (testing "Data-app groups are not listed"
+        (mt/with-temp [:model/PermissionsGroup app-group {:name "App Group" :is_data_app_group true}]
+          (let [app-entity-id (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id app-group))
+                response      (scim-client :get 200 "ee/scim/v2/Groups")]
+            (is (not (contains? (into #{} (map :id) (:Resources response)) app-entity-id)))
+            (is (= (count (:Resources response)) (:totalResults response))))
+          (let [response (scim-client :get 200 (format "ee/scim/v2/Groups?filter=%s"
+                                                       (codec/url-encode "displayName eq \"App Group\"")))]
+            (is (= 0 (get response :totalResults)))
+            (is (= 0 (count (get response :Resources))))))))))
+
+(deftest fetch-group-test
+  (with-scim-setup!
+    (testing "A single group can be fetched in the SCIM format by entity ID with its members"
+      (mt/with-temp [:model/PermissionsGroup           group {:name "Test Group"}
+                     :model/PermissionsGroupMembership _     {:user_id (mt/user->id :rasta) :group_id (:id group)}]
+        (let [entity-id (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id group))
+              response  (scim-client :get 200 (format "ee/scim/v2/Groups/%s" entity-id))]
+          (is (malli= scim-api/SCIMGroup response))
+          (is (=?
+               {:schemas     ["urn:ietf:params:scim:schemas:core:2.0:Group"]
+                :id          entity-id
+                :displayName "Test Group"
+                :members     [{:value (t2/select-one-fn :entity_id :model/User (mt/user->id :rasta))
+                               :display "rasta@metabase.com"}]
+                :meta        {:resourceType "Group"}}
+               response)))))
+    (testing "404 is returned when fetching a non-existent group"
+      (scim-client :get 404 (format "ee/scim/v2/Groups/%s" (random-uuid))))
+    (testing "404 is returned when fetching the Admin or All Users group"
+      (let [entity-ids (t2/select-fn-set :entity_id :model/PermissionsGroup
+                                         {:where [:in :id #{(:id (perms-group/admin)) (:id (perms-group/all-users))}]})]
+        (doseq [entity-id entity-ids]
+          (scim-client :get 404 (format "ee/scim/v2/Groups/%s" entity-id)))))
+    (testing "404 is returned when fetching a data-app group"
+      (mt/with-temp [:model/PermissionsGroup app-group {:name "App Group" :is_data_app_group true}]
+        (let [entity-id (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id app-group))]
+          (scim-client :get 404 (format "ee/scim/v2/Groups/%s" entity-id)))))))
 
 (deftest create-group-test
   (with-scim-setup!
