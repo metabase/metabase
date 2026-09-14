@@ -20,13 +20,31 @@
    id    :- ms/PositiveInt]
   (t2/select-one (t2/table-name model) :id id))
 
+(def revisioned-model-row-schema
+  "The literal registry keyword of the row/update schema of each model revisions are tracked for (a literal
+  keyword, not a `require`, to avoid a dependency cycle with the module that owns each model)."
+  {:model/Card        :metabase.queries.schema/card.update
+   :model/Dashboard   :metabase.dashboards.schema/dashboard.update
+   :model/Document    :metabase.documents.schema/document.update
+   :model/Exploration :metabase.explorations.schema/exploration.update
+   :model/Measure     :metabase.measures.schema/measure.update
+   :model/Segment     :metabase.segments.schema/segment.update
+   :model/Transform   :metabase.transforms.schema/transform.update})
+
+(def ^:private RevisionedRow
+  "A `{:model ..., :row ...}` pair naming one of the models revisions are tracked for, the row typed by that
+  model's own row schema plus `:id` (a revisioned row is always a real, previously-selected row)."
+  (into [:multi {:dispatch :model}]
+        (for [[model schema] revisioned-model-row-schema]
+          [model [:map {:closed true}
+                  [:model [:= model]]
+                  [:row [:merge schema [:map {:closed true} [:id {:optional true} ms/PositiveInt]]]]]])))
+
 (mu/defn update-entity!
-  "Apply `changes` to the `model` row with `id`, returning the number updated. `changes` is a column map whose shape
-  can't be pinned to one model because `model` varies (see [[entity]])."
-  [model   :- :keyword
-   id      :- ms/PositiveInt
-   changes :- [:map-of :keyword [:maybe :some]]]
-  (t2/update! model id changes))
+  "Apply `entity`'s `:row` (a column diff) to `entity`'s `:model` row with `id`, returning the number updated."
+  [id     :- ms/PositiveInt
+   entity :- RevisionedRow]
+  (t2/update! (:model entity) id (:row entity)))
 
 (mu/defn parameter-card-ids
   "The Card ids of the ParameterCards of the `parameterized-object-type` with `parameterized-object-id`."
@@ -157,14 +175,19 @@
   (t2/select-one-fn :object :model/Revision :model model-name :model_id model-id :id revision-id))
 
 (def ^:private RevisionRow
-  [:map {:closed true}
-   [:model        [:or :keyword :string]]
-   [:model_id     ms/PositiveInt]
-   [:user_id      ::lib.schema.id/user]
-   [:object       :map]
-   [:is_creation  :boolean]
-   [:is_reversion :boolean]
-   [:message      {:optional true} [:maybe :string]]])
+  "A Revision row, `:object` typed by the row schema of the model named `:model` (a string, e.g. \"Card\"), plus
+  `:id` (a revisioned object is always a real, previously-selected row)."
+  (into [:multi {:dispatch :model}]
+        (for [[model schema] revisioned-model-row-schema]
+          [(name model)
+           [:map {:closed true}
+            [:model        [:= (name model)]]
+            [:model_id     ms/PositiveInt]
+            [:user_id      ::lib.schema.id/user]
+            [:object       [:merge schema [:map {:closed true} [:id {:optional true} ms/PositiveInt]]]]
+            [:is_creation  :boolean]
+            [:is_reversion :boolean]
+            [:message      {:optional true} [:maybe :string]]]])))
 
 (mu/defn insert-revision!
   "Insert the Revision `row`, returning the number inserted."

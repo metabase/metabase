@@ -190,7 +190,9 @@
   "Implementation for [[query]]."
   {:arglists '([metadata-providerable x])}
   (fn [_metadata-providerable x]
-    ((some-fn lib.util/normalized-query-type lib.dispatch/dispatch-value) x))
+    (or (when (map? x)
+          (u/ignore-exceptions (lib.util/normalized-query-type x)))
+        (lib.dispatch/dispatch-value x)))
   :hierarchy lib.hierarchy/hierarchy)
 
 (defmethod query-method :query ; legacy MBQL query

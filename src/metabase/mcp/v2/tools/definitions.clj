@@ -107,7 +107,8 @@
    definition on store, and would convert an unwrapped fragment identically. A fragment's own
    `:source-table` wins over `table`, matching that same model merge."
   [definition {table-id :id, db-id :db_id}]
-  (case (lib/normalized-mbql-version definition)
+  (case (when (map? definition)
+          (try (lib/normalized-mbql-version definition) (catch Exception _ nil)))
     (:mbql-version/mbql5 :mbql-version/legacy) definition
     {:database db-id
      :type     :query
@@ -144,7 +145,8 @@
 ;; teaches the model the one dialect it should speak.
 (defn- require-mbql5-definition!
   [definition]
-  (when-not (= :mbql-version/mbql5 (lib/normalized-mbql-version definition))
+  (when-not (= :mbql-version/mbql5 (when (map? definition)
+                                     (try (lib/normalized-mbql-version definition) (catch Exception _ nil))))
     (common/throw-teaching-error
      (str "A full-query `definition` must be a map with "
           "\"lib/type\": \"mbql/query\", \"database\", and one entry in \"stages\". "

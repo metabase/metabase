@@ -445,21 +445,28 @@
   (check (not (and limit (not offset))) [400 (tru "When including a limit, an offset must also be included.")])
   (check (not (and offset (not limit))) [400 (tru "When including an offset, a limit must also be included.")]))
 
+(def ^:private ColumnValue
+  "One value of a column compared by `column-will-change?`."
+  [:maybe [:or :string :int :boolean :keyword
+           :metabase.queries.schema/card.dataset-query
+           :metabase.queries.schema/card.result-metadata
+           ms/EmbeddingParams]])
+
 (mu/defn column-will-change? :- :boolean
-  "Helper for PATCH-style operations to see if a column is set to change when `object-updates` (i.e., the input to the
-  endpoint) is applied.
+  "Helper for PATCH-style operations to see if a column is set to change when `after` (the column's value in the
+  input to the endpoint, or `::not-provided` when the column is absent from that input) is applied.
 
     ;; assuming we have a Collection 10, that is not currently archived...
-    (api/column-will-change? :archived (t2/select-one Collection :id 10) {:archived true}) ; -> true, because value will change
+    (api/column-will-change? false true) ; -> true, because value will change
 
-    (api/column-will-change? :archived (t2/select-one Collection :id 10) {:archived false}) ; -> false, because value did not change
+    (api/column-will-change? false false) ; -> false, because value did not change
 
-    (api/column-will-change? :archived (t2/select-one Collection :id 10) {}) ; -> false; value not specified in updates (request body)"
-  [k :- :keyword object-before-updates :- :map object-updates :- :map]
+    (api/column-will-change? false ::not-provided) ; -> false; value not specified in updates (request body)"
+  [before :- ColumnValue
+   after  :- [:or ColumnValue [:= ::not-provided]]]
   (boolean
-   (and (contains? object-updates k)
-        (not= (get object-before-updates k)
-              (get object-updates k)))))
+   (and (not= after ::not-provided)
+        (not= before after))))
 
 ;;; ------------------------------------------ COLLECTION POSITION HELPER FNS ----------------------------------------
 
@@ -578,7 +585,7 @@
   "Sets `archived_directly` to `true` iff `:archived` is being set to `true`."
   [current-obj obj-updates]
   (cond-> obj-updates
-    (column-will-change? :archived current-obj obj-updates)
+    (column-will-change? (:archived current-obj) (get obj-updates :archived ::not-provided))
     (assoc :archived_directly (boolean (:archived obj-updates)))
 
     ;; This is a hack around a frontend issue. Apparently, the undo functionality depends on calculating a diff
@@ -587,7 +594,7 @@
     ;;
     ;; Let's just say that if you're marking something as archived, we throw away any `collection_id` you passed in
     ;; along with it.
-    (and (column-will-change? :archived current-obj obj-updates)
+    (and (column-will-change? (:archived current-obj) (get obj-updates :archived ::not-provided))
          (:archived obj-updates))
     (dissoc :collection_id)))
 

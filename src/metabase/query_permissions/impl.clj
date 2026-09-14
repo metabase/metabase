@@ -81,6 +81,41 @@
     :else (throw (ex-info "Don't know how to merge values!"
                           {:val1 val1 :val2 val2}))))
 
+(defn- source-ids*
+  "Recursive walk backing [[query->source-ids]], over legacy or MBQL 5 queries and the nested-query maps it dissocs its way into."
+  [query parent-source-card-id in-sandbox?]
+  (if (:lib/type query)
+    ;; convert MBQL 5 to legacy
+    ;;
+    ;; legacy usage -- don't do things like this going forward
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (recur (lib/->legacy-MBQL query) parent-source-card-id in-sandbox?)
+    ;; already legacy MBQL
+    (apply merge-with merge-source-ids
+           (match/match-many query
+             (:and m {:qp/stage-is-from-source-card (id :guard identity)})
+             (merge-with merge-source-ids
+                         {:card-ids #{id}}
+                         (source-ids* (dissoc m :qp/stage-is-from-source-card) id in-sandbox?))
+
+             (:and m {:query-permissions/sandboxed-table (id :guard identity)})
+             (merge-with merge-source-ids
+                         {:table-ids #{id}}
+                         (when-not (or parent-source-card-id in-sandbox?)
+                           {:table-query-ids #{id}})
+                         (source-ids* (dissoc m :query-permissions/sandboxed-table :native) parent-source-card-id true))
+
+             {:native &truthy}
+             (when-not parent-source-card-id
+               {:native? true})
+
+             (:and m {:source-table (id :guard pos-int?)})
+             (merge-with merge-source-ids
+                         {:table-ids #{id}}
+                         (when-not (or parent-source-card-id in-sandbox?)
+                           {:table-query-ids #{id}})
+                         (source-ids* (dissoc m :source-table) parent-source-card-id in-sandbox?))))))
+
 (mu/defn query->source-ids :- [:maybe
                                [:map
                                 [:table-ids {:optional true} [:set ::lib.schema.id/table]]
@@ -116,43 +151,8 @@
 
      Add the table to the table-ids set. If there's no parent-source-card-id, also add it
      to the table-query-ids set, then continue the match."
-  ([query]
-   (query->source-ids query nil false))
-
-  ([query                 :- :map ; this works on either legacy or MBQL 5 but also on inner queries or other nested maps (it calls itself recursively)
-    parent-source-card-id :- [:maybe ::lib.schema.id/card]
-    in-sandbox?           :- :boolean]
-   (if (:lib/type query)
-     ;; convert MBQL 5 to legacy
-     ;;
-     ;; legacy usage -- don't do things like this going forward
-     #_{:clj-kondo/ignore [:discouraged-var]}
-     (recur (lib/->legacy-MBQL query) parent-source-card-id in-sandbox?)
-     ;; already legacy MBQL
-     (apply merge-with merge-source-ids
-            (match/match-many query
-              (:and m {:qp/stage-is-from-source-card (id :guard identity)})
-              (merge-with merge-source-ids
-                          {:card-ids #{id}}
-                          (query->source-ids (dissoc m :qp/stage-is-from-source-card) id in-sandbox?))
-
-              (:and m {:query-permissions/sandboxed-table (id :guard identity)})
-              (merge-with merge-source-ids
-                          {:table-ids #{id}}
-                          (when-not (or parent-source-card-id in-sandbox?)
-                            {:table-query-ids #{id}})
-                          (query->source-ids (dissoc m :query-permissions/sandboxed-table :native) parent-source-card-id true))
-
-              {:native &truthy}
-              (when-not parent-source-card-id
-                {:native? true})
-
-              (:and m {:source-table (id :guard pos-int?)})
-              (merge-with merge-source-ids
-                          {:table-ids #{id}}
-                          (when-not (or parent-source-card-id in-sandbox?)
-                            {:table-query-ids #{id}})
-                          (query->source-ids (dissoc m :source-table) parent-source-card-id in-sandbox?)))))))
+  [query :- ::qp.schema/any-query]
+  (source-ids* query nil false))
 
 (mu/defn query->source-table-ids
   "Returns a sequence of all :source-table IDs referenced by a query. Convenience wrapper around `query->source-ids` if

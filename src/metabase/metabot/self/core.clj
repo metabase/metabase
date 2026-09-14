@@ -12,6 +12,7 @@
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.premium-features.core :as premium-features]
+   [metabase.request.schema :as request.schema]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -82,24 +83,37 @@
   "A tool's own `:structured-output`/`:structured_output` map before
   `metabase.metabot.persistence/tool-result->storable-output` trims it down to
   `metabase.metabot.schema.v2/structured-output` for persistence."
-  [:map
-   [:query     {:optional true} [:maybe ::metabot.schema/query]]
-   [:transform {:optional true} [:maybe ::metabot.schema/transform]]
-   [::mc/default ::schema.v2/any-value]])
+  [:or ::metabot.schema/transform ::schema.v2/tool-payload [:sequential ::schema.v2/tool-payload]])
+
+(def ^:private DataPart
+  "One entry of a tool's `:data-parts`: `metabase.metabot.agent.streaming`'s `{:type :data, ...}`
+  constructors."
+  [:map {:closed true}
+   [:type      [:= :data]]
+   [:data-type :string]
+   [:data      {:optional true} [:maybe ::schema.v2/tool-payload]]])
 
 (def ^:private ToolResult
   "The raw return value of a tool's `:fn`, before it is trimmed for persistence or forwarded to
   a provider (see [[collect-tool-result]])."
   [:or
-   ::schema.v2/any-value
-   [:map
-    [:output            {:optional true} [:maybe ::schema.v2/any-value]]
+   :string
+   :keyword
+   number?
+   :boolean
+   :nil
+   [:map {:closed true}
+    [:output            {:optional true} [:maybe :string]]
     [:structured-output {:optional true} [:maybe RawStructuredOutput]]
     [:structured_output {:optional true} [:maybe RawStructuredOutput]]
     [:terminal-error?   {:optional true} :boolean]
-    [:data-parts        {:optional true} [:sequential ::schema.v2/any-value]]
-    [:resources         {:optional true} [:sequential ::schema.v2/any-value]]
-    [::mc/default       ::schema.v2/any-value]]])
+    [:data-parts        {:optional true} [:sequential DataPart]]
+    [:resources         {:optional true} [:sequential ::schema.v2/tool-payload]]
+    [:instructions      {:optional true} [:maybe :string]]
+    [:status-code       {:optional true} [:maybe :int]]
+    [:error             {:optional true} [:maybe [:map {:closed true}
+                                                  [:message {:optional true} [:maybe :string]]
+                                                  [:type    {:optional true} [:maybe :string]]]]]]])
 
 (def ^:private AISDKPart
   "One element of the `:input` sequence passed to a provider adapter: an AISDK part keyed by
@@ -112,7 +126,7 @@
    [:text              {:optional true} [:maybe :string]]
    [:content           {:optional true} [:maybe :string]]
    [:function          {:optional true} [:maybe :string]]
-   [:arguments         {:optional true} [:maybe ::schema.v2/any-value]]
+   [:arguments         {:optional true} [:maybe (ms/string-keyed-map ::request.schema/json-value)]]
    [:result            {:optional true} [:maybe ToolResult]]
    [:error             {:optional true} [:maybe [:map {:closed true}
                                                  [:message {:optional true} [:maybe :string]]
@@ -293,7 +307,7 @@
   (let [raw (->> (map :inputTextDelta chunks)
                  (str/join ""))]
     (try
-      (json/decode+kw raw)
+      (json/decode raw)
       (catch Exception e
         (log/warn "Failed to parse tool arguments as JSON, passing raw string"
                   {:tool    (:toolName (first chunks))
@@ -301,7 +315,7 @@
                    :raw-len (count raw)})
         ;; Return a map with a sentinel key so the tool sees an error via schema validation
         ;; rather than a cryptic JSON parse stacktrace.
-        {:_raw_arguments raw}))))
+        {"_raw_arguments" raw}))))
 
 (defn- try-decode-json-string
   "If `v` is a string that looks like a JSON object or array, decode it.
@@ -312,7 +326,7 @@
              (or (str/starts-with? trimmed "{")
                  (str/starts-with? trimmed "["))))
     (try
-      (json/decode+kw v)
+      (json/decode v)
       (catch Exception _ v))
     v))
 
@@ -459,7 +473,7 @@
                                            (get tools (:function part)))]
            (if title-fn
              (let [title (try
-                           (title-fn (cond-> (coerce-stringified-json (:arguments part))
+                           (title-fn (cond-> (walk/keywordize-keys (coerce-stringified-json (:arguments part)))
                                        decode decode))
                            (catch Throwable e
                              (log/debug e "tool title-fn failed" {:tool (:function part)})
@@ -906,7 +920,7 @@
                            (= (:type chunk) :tool-output-available) (assoc ::duration-ms duration-ms))))
             results  (try
                        (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)
-                             arguments (or (coerce-stringified-json arguments) {})
+                             arguments (walk/keywordize-keys (or (coerce-stringified-json arguments) {}))
                              arguments (coerce-stringified-scalars tool arguments)
                              decode    (tool-decode-fn tool)
                              arguments (cond-> arguments decode decode)

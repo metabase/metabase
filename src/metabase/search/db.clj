@@ -13,9 +13,22 @@
    [metabase.search.in-place.legacy :as legacy]
    [metabase.search.ingestion.query :as ingestion.query]
    [metabase.search.schema :as search.schema]
+   [metabase.search.spec :as search.spec]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(def ^:private SearchIndexRow
+  "A row of the search index table: `search.spec/attr-columns` (with `:id`/`:created_at`/`:updated_at` renamed the
+  way `metabase.search.appdb.index/document->entry` renames them), the base columns, and the extra columns the
+  active engine specialization adds, each value a Honey SQL 2 expression."
+  (into [:map {:closed true}]
+        (for [column (into #{:model :display_data :legacy_input :model_id :model_created_at :model_updated_at
+                             :updated_at :search_vector :with_native_query_vector :search_terms
+                             :native_search_terms}
+                           (remove #{:id :created_at :updated_at} search.spec/attr-columns))]
+          [column {:optional true} ::h2x/expr])))
 
 (mu/defn spec-index-reducible-rows
   "A reducible of the indexable rows of `search-model` (see `metabase.search.ingestion.query/spec-index-query`)
@@ -132,7 +145,7 @@
   "Upsert `entries` into the search index `table`, on conflict of `(model, model_id)` overwriting every other column
   with the new value."
   [table   :- [:or :keyword :string]
-   entries :- [:sequential :map]]
+   entries :- [:sequential SearchIndexRow]]
   (when (seq entries)
     (let [update-keys (vec (disj (set (mapcat keys entries)) :id :model :model_id))
           excluded-kw (fn [column] (keyword (str "excluded." (name column))))]
@@ -185,7 +198,7 @@
 (mu/defn insert-rows!
   "Insert `entries` into the search index `table`."
   [table   :- [:or :keyword :string]
-   entries :- [:sequential :map]]
+   entries :- [:sequential SearchIndexRow]]
   (t2/insert! table entries))
 
 (mu/defn index-entry-count

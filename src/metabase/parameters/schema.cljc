@@ -110,7 +110,7 @@
 
 (mu/defn normalize-parameter :- ::parameter
   "Normalize `parameter` when coming out of the application database or in via an API request."
-  [parameter]
+  [parameter :- [:or :metabase.request.schema/json-value ::parameter-with-optional-type]]
   (lib/normalize ::parameter parameter))
 
 (mr/def ::parameters
@@ -118,7 +118,7 @@
 
 (mu/defn normalize-parameters :- ::parameters
   "Normalize `parameters` when coming out of the application database or in via an API request."
-  [parameters]
+  [parameters :- [:or :metabase.request.schema/json-value ::parameters-with-optional-types]]
   (lib/normalize ::parameters parameters))
 
 (mr/def ::parameter-with-optional-type
@@ -134,7 +134,7 @@
   "The same as [[normalize-parameters]], but does not add a default `:type` if it is missing. Needed in some cases
   where we infer the type based on the `:widget-type` in the saved parameter declarations inside a Card or Dashboard,
   e.g. when running an embedded Card with the Card QP."
-  [parameters]
+  [parameters :- [:or :metabase.request.schema/json-value ::parameters-with-optional-types]]
   (lib/normalize ::parameters-with-optional-types parameters))
 
 #?(:clj
@@ -205,7 +205,7 @@
 
 (mu/defn normalize-parameter-mapping :- ::parameter-mapping
   "Normalize `parameter-mappings` when coming out of the application database or in via an API request."
-  [parameter-mapping]
+  [parameter-mapping :- [:or :metabase.request.schema/json-value ::parameter-mapping]]
   (lib/normalize ::parameter-mapping parameter-mapping))
 
 (mr/def ::parameter-mappings
@@ -213,7 +213,7 @@
 
 (mu/defn normalize-parameter-mappings :- [:maybe ::parameter-mappings]
   "Normalize `parameter-mappings` when coming out of the application database or in via an API request."
-  [parameter-mappings :- [:maybe [:sequential :map]]]
+  [parameter-mappings :- [:maybe [:or :metabase.request.schema/json-value ::parameter-mappings]]]
   (when parameter-mappings
     (lib/normalize ::parameter-mappings parameter-mappings)))
 

@@ -115,7 +115,10 @@
            users
            util
            warehouses}
-   :model-exports #{:model/Action}
+   :model-exports #{:model/Action
+                    :model/HTTPAction
+                    :model/ImplicitAction
+                    :model/QueryAction}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -260,6 +263,7 @@
            events
            lib.schema
            models
+           request
            settings
            util
            util.config}
@@ -434,8 +438,14 @@
    :api  #{metabase.batch-processing.core
            metabase.batch-processing.init}
    :uses #{app-db
+           query-processor.cache-backend
            settings
-           util}}
+           util}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Document
+                    :model/Table}}
 
   bookmarks
   {:team "UX West"
@@ -502,6 +512,7 @@
            metabase.channel.init
            metabase.channel.models.channel
            metabase.channel.render.core
+           metabase.channel.schema
            metabase.channel.settings
            metabase.channel.slack
            metabase.channel.template.core
@@ -539,7 +550,8 @@
            util
            util.config}
    :model-exports #{:model/Channel :model/ChannelTemplate}
-   :model-imports #{:model/Dashboard
+   :model-imports #{:model/Card
+                    :model/Dashboard
                     :model/DashboardCard
                     :model/DashboardTab
                     :model/Database
@@ -736,6 +748,7 @@
            embedding
            events
            lib
+           lib.be
            lib.schema
            models
            parameters
@@ -1116,8 +1129,8 @@
 
   interestingness
   {:team "UX West"
-   :api  #{metabase.interestingness.core}
-   :uses #{util}}
+   :api  #{metabase.interestingness.chart.types metabase.interestingness.core}
+   :uses #{lib.be util}}
 
   lib
   {:team "Querying Platform"
@@ -1138,6 +1151,7 @@
            metabase.lib.normalize
            metabase.lib.options
            metabase.lib.pivot
+           metabase.lib.ref
            metabase.lib.types.isa
            metabase.lib.util
            metabase.lib.walk}
@@ -1381,6 +1395,7 @@
            events
            lib
            lib.be
+           lib.metric
            lib.schema
            metrics
            models
@@ -1429,6 +1444,7 @@
               lib
               lib.agent-lib
               lib.be
+              lib.legacy-mbql
               lib.metadata
               lib.schema
               metabot.llm
@@ -1464,7 +1480,8 @@
                     :model/Metabot
                     :model/MetabotConversation
                     :model/MetabotFeedback
-                    :model/MetabotMessage}
+                    :model/MetabotMessage
+                    :model/MetabotPrompt}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -1659,17 +1676,49 @@
            settings
            util
            util.classloader}
-   :model-imports #{:model/Card
+   :model-imports #{:model/Action
+                    :model/Card
+                    :model/Channel
+                    :model/ChannelTemplate
                     :model/Collection
+                    :model/CustomVizPlugin
                     :model/Dashboard
+                    :model/DashboardCard
+                    :model/DashboardCardSeries
                     :model/DashboardTab
                     :model/Database
+                    :model/Dimension
                     :model/Document
+                    :model/EmbeddingTheme
+                    :model/Exploration
                     :model/Field
+                    :model/FieldUserSettings
+                    :model/FieldValues
+                    :model/Glossary
+                    :model/HTTPAction
+                    :model/ImplicitAction
                     :model/Measure
+                    :model/Metabot
+                    :model/MetabotPrompt
                     :model/NativeQuerySnippet
+                    :model/Notification
+                    :model/NotificationCard
+                    :model/NotificationHandler
+                    :model/NotificationRecipient
+                    :model/NotificationSubscription
+                    :model/OsiAiContext
+                    :model/PythonLibrary
+                    :model/QueryAction
                     :model/Segment
                     :model/Table
+                    :model/TableIndex
+                    :model/Timeline
+                    :model/TimelineEvent
+                    :model/Transform
+                    :model/TransformJob
+                    :model/TransformJobTransformTag
+                    :model/TransformTag
+                    :model/TransformTransformTag
                     :model/User}}
 
   mq
@@ -1738,8 +1787,10 @@
            util
            util.config}
    :model-exports #{:model/Notification
+                    :model/NotificationCard
                     :model/NotificationHandler
-                    :model/NotificationRecipient}
+                    :model/NotificationRecipient
+                    :model/NotificationSubscription}
    :model-imports #{:model/Card
                     :model/Channel
                     :model/ChannelTemplate
@@ -2167,6 +2218,7 @@
            util
            util.config}
    :model-imports #{:model/Card
+                    :model/DashboardCard
                     :model/DashboardCardSeries
                     :model/Database
                     :model/QueryCache
@@ -2246,7 +2298,7 @@
            users
            util
            util.config}
-   :model-imports #{:model/User}}
+   :model-imports #{:model/Session :model/User}}
 
   revisions
   {:team "UX West"
@@ -2278,7 +2330,8 @@
                     :model/Measure
                     :model/ParameterCard
                     :model/Segment
-                    :model/Transform}}
+                    :model/Transform
+                    :model/User}}
 
   run-tracking
   {:team "Gadget"
@@ -2578,7 +2631,8 @@
 
   staleness
   {:team "UX West"
-   :api  #{metabase.staleness.core}}
+   :api  #{metabase.staleness.core}
+   :uses #{util}}
 
   startup
   {:team "DevEx"
@@ -2738,7 +2792,7 @@
            lib.schema
            models
            util}
-   :model-exports #{:model/Timeline}
+   :model-exports #{:model/Timeline :model/TimelineEvent}
    :model-imports #{:model/Collection :model/User}}
 
   tracing
@@ -2796,7 +2850,8 @@
                     :model/TransformJobRun
                     :model/TransformJobTransformTag
                     :model/TransformRun
-                    :model/TransformTag}
+                    :model/TransformTag
+                    :model/TransformTransformTag}
    :model-imports #{:model/Collection
                     :model/Database
                     :model/Field
@@ -2837,12 +2892,13 @@
   transforms.indexes
   {:team "Gadget"
    :ns-prefix "metabase.indexes"
-   :api #{metabase.indexes.models.table-index metabase.indexes.reconcile}
+   :api #{metabase.indexes.models.table-index metabase.indexes.reconcile metabase.indexes.schema}
    :uses #{driver
            lib.schema
            models
            util}
-   :model-exports #{:model/TableIndex}}
+   :model-exports #{:model/TableIndex}
+   :model-imports #{:model/Database}}
 
   transforms.indexes.rest
   {:team "Gadget"
@@ -3593,6 +3649,7 @@
            lib
            lib.be
            lib.metadata
+           lib.metric
            lib.schema
            models
            permissions
@@ -3611,6 +3668,7 @@
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
+                    :model/Database
                     :model/Document
                     :model/Field
                     :model/Measure
@@ -3637,6 +3695,7 @@
            measures
            model-persistence
            models
+           parameters
            queries
            segments
            task
@@ -3925,6 +3984,7 @@
    :model-imports #{:model/Card
                     :model/ConnectionImpersonation
                     :model/Database
+                    :model/Dimension
                     :model/Field
                     :model/PermissionsGroupMembership
                     :model/Table

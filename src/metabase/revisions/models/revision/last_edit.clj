@@ -38,7 +38,7 @@
   "Add the last edited information to a card. Will add a key `:last-edit-info`. Model should be one of `:dashboard` or
   `:card`. Gets the last edited information from the revisions table. If you need this information from a put route,
   use `@api/*current-user*` and a current timestamp since revisions are events and asynchronous."
-  [items
+  [items :- [:sequential (ms/InstanceOf [:model/Card :model/Dashboard])]
    model :- [:enum :dashboard :card]]
   (let [ids (into #{} (map :id) items)]
     (span/with-span!

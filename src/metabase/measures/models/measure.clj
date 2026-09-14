@@ -33,7 +33,8 @@
   Throws an exception with 'Invalid measure definition' if the definition is not valid MBQL5."
   [definition]
   (when (seq definition)
-    (when-not (= :mbql-version/mbql5 (lib/normalized-mbql-version definition))
+    (when-not (= :mbql-version/mbql5 (when (map? definition)
+                                       (u/ignore-exceptions (lib/normalized-mbql-version definition))))
       (throw (ex-info (tru "Invalid measure definition: expected MBQL5 format")
                       {:definition definition})))
     (mu/validate-throw ::lib.schema.measure/definition definition)))

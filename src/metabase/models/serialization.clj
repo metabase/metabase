@@ -689,7 +689,7 @@
         pk       (first (t2/primary-keys model))
         id       (get local pk)]
     (log/tracef "Upserting %s %d" model-name id)
-    (models.db/update-entity! model id ingested)
+    (models.db/update-entity! id {:model model :row ingested})
     (models.db/entity-by-pk model pk id)))
 
 (defmulti load-insert!
@@ -711,7 +711,7 @@
 
 (defmethod load-insert! :default [model-name ingested]
   (log/tracef "Inserting %s" model-name)
-  (models.db/insert-entity! (t2.model/resolve-model (symbol model-name)) ingested))
+  (models.db/insert-entity! {:model (t2.model/resolve-model (symbol model-name)) :row ingested}))
 
 (defmulti load-one!
   "Black box for integrating a deserialized entity into this appdb.
@@ -1050,9 +1050,26 @@
 
 ;;; ## MBQL Fields
 
+(mr/def ::mbql-node
+  "One node reachable while exporting or importing an MBQL query: the whole query, a single legacy or lib clause, a
+  parameter, template tags, a sequence of any of those, or a scalar reached while walking one."
+  [:or
+   :metabase.legacy-mbql.schema/Query
+   :metabase.legacy-mbql.schema/TemplateTagMap
+   :metabase.lib.schema/query
+   :metabase.lib.schema.mbql-clause/clause
+   :metabase.lib.schema.ref/ref
+   :metabase.parameters.schema/parameter
+   :metabase.parameters.schema/parameter-mapping
+   :string :number :boolean :keyword :nil
+   [:sequential [:ref ::mbql-node]]])
+
+(def ^:private MBQLNode
+  [:ref ::mbql-node])
+
 (mu/defn- mbql-ref? :- [:maybe [:enum :field :field-id :dimension :metric :segment :measure]]
   "Is given form an MBQL entity reference?"
-  [form]
+  [form :- MBQLNode]
   (when (and (vector? form)
              (#{:field :field-id :dimension :metric :segment :measure} (keyword (first form))))
     (keyword (first form))))
@@ -1084,7 +1101,7 @@
 (def ^:private ^:dynamic *required-lib-uuids-for-export* nil)
 
 (mu/defn- collect-required-lib-uuids :- [:set ::lib.schema.common/uuid]
-  [x]
+  [x :- MBQLNode]
   (set
    (match/match-many x
      [:aggregation (_opts :guard map?) (uuid :guard string?)]
@@ -1172,10 +1189,10 @@
     ;; if required UUIDs are already calculated don't recalculate when we recurse.
     (binding [*required-lib-uuids-for-export* (or *required-lib-uuids-for-export* (collect-required-lib-uuids x))]
       (cond
-        (mbql-ref? x)   (export-mbql-ref x)
-        (sequential? x) (mapv export-mbql x)
-        (map? x)        (export-mbql-map x)
-        :else           x))))
+        (and (vector? x) (mbql-ref? x)) (export-mbql-ref x)
+        (sequential? x)                 (mapv export-mbql x)
+        (map? x)                        (export-mbql-map x)
+        :else                           x))))
 
 (defn- portable-id?
   "True if the provided string is an Entity ID."
@@ -1488,7 +1505,7 @@
   it to a portable form with the CardIds/FieldIds replaced with `[db schema table field]` references.
   Parameters are sorted by `:id` for stable serialization output. A `:position` field is added
   to preserve display order through the sort."
-  [parameters :- [:maybe [:sequential :map]]]
+  [parameters :- [:maybe [:sequential :metabase.parameters.schema/parameter]]]
   (->> parameters
        (map-indexed (fn [i p] (assoc p :position i)))
        (sort-by :id)

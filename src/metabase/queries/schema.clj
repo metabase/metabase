@@ -55,7 +55,13 @@
 
 (mu/defn normalize-card :- [:maybe ::card]
   "Normalize a `card` so it satisfies the `::card` schema."
-  [card :- [:maybe :map]]
+  [card :- [:maybe
+            [:or
+             (ms/InstanceOf :model/Card)
+             [:merge
+              ::card.update
+              [:map {:closed true}
+               [:result_metadata {:optional true} [:maybe :metabase.request.schema/json-value]]]]]]]
   (lib/normalize ::card card))
 
 (mr/def ::card.dataset-query

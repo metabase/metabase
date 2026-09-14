@@ -30,7 +30,7 @@
               :keyword
               number?
               [:sequential [:ref ::value]]
-              [:map-of [:or :string :keyword] [:ref ::value]]]}}
+              [:map-of :string [:ref ::value]]]}}
    ::value])
 
 (mr/def ::compiled

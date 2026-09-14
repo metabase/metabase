@@ -40,7 +40,7 @@
   which will not cause the archive notification code to fire. This will delete the relevant alerts and notify the
   users just as if they had be archived individually via the card API."
   [& {:keys [collection-before-update collection-updates actor]}]
-  (when (api/column-will-change? :archived collection-before-update collection-updates)
+  (when (api/column-will-change? (:archived collection-before-update) (get collection-updates :archived ::api/not-provided))
     (doseq [card (collections.db/cards-in-collection (u/the-id collection-before-update))]
       (notification.card/delete-card-notifications-and-notify! :event/card-update.notification-deleted.card-archived actor card))))
 
@@ -76,7 +76,7 @@
   then move it to the trash."
   [collection-before-update collection-updates]
   ;; sanity check
-  (when (api/column-will-change? :archived collection-before-update collection-updates)
+  (when (api/column-will-change? (:archived collection-before-update) (get collection-updates :archived ::api/not-provided))
     (collection/archive-or-unarchive-collection!
      collection-before-update
      (select-keys collection-updates [:parent_id :archived]))
@@ -88,10 +88,14 @@
   "If `collection-updates` specifies that we should either move or archive the collection (archiving means 'moving to
   the trash' so it makes sense to deal with them together), do the appropriate permissions checks and changes."
   [collection-before-update collection-updates]
-  (condp #(api/column-will-change? %1 collection-before-update %2) collection-updates
-    :archived (archive-collection! collection-before-update collection-updates)
-    :parent_id (move-collection! collection-before-update collection-updates)
-    :no-op))
+  (cond
+    (api/column-will-change? (:archived collection-before-update) (get collection-updates :archived ::api/not-provided))
+    (archive-collection! collection-before-update collection-updates)
+
+    (api/column-will-change? (:parent_id collection-before-update) (get collection-updates :parent_id ::api/not-provided))
+    (move-collection! collection-before-update collection-updates)
+
+    :else :no-op))
 
 (mu/defn update-collection!
   "Modify the collection with `id`, including archiving or unarchiving it, or moving it. Write-checks the collection,

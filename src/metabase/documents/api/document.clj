@@ -129,7 +129,7 @@
     (when-not (contains? body :archived)
       (api/check-not-archived existing-document))
     (api/write-check existing-document)
-    (when (api/column-will-change? :collection_id existing-document body)
+    (when (api/column-will-change? (:collection_id existing-document) (get body :collection_id ::api/not-provided))
       (m.document/validate-collection-move-permissions (:collection_id existing-document) collection_id))
     (m.document/update-document! existing-document body)))
 

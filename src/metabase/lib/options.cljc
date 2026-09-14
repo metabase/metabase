@@ -5,11 +5,38 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [not-empty]]))
 
 (defn- mbql-clause? [x]
   (and (vector? x)
        (keyword? (first x))))
+
+(mr/def ::options
+  [:merge
+   :metabase.lib.schema.ref/field.options
+   [:map {:closed true}
+    [:lib/uuid {:optional true} ::lib.schema.common/uuid]]])
+
+(mr/def ::clause-arg
+  "One arg of a (possibly not-yet-normalized, not-yet-uuid'd) MBQL clause."
+  [:or
+   :metabase.lib.schema.literal/literal
+   ::options
+   [:map-of :string [:ref ::clause-arg]]
+   :metabase.lib.schema.expression/expression
+   [:ref ::clause]])
+
+(mr/def ::clause
+  "A (possibly not-yet-normalized, not-yet-uuid'd) MBQL clause `[tag & args]`, or a literal."
+  [:or
+   :metabase.lib.schema.literal/literal
+   [:cat [:or :keyword :string] [:* ::clause-arg]]])
+
+(mr/def ::clause-or-column
+  [:multi {:dispatch (fn [x] (if (map? x) :column :clause))}
+   [:column :metabase.lib.schema.metadata/column]
+   [:clause ::clause]])
 
 (mu/defn options :- [:maybe map?]
   "Return the Metabase lib options map associated with an `x`. Lib options is currently used mostly for
@@ -28,7 +55,7 @@
   Maybe options should be included directly in the map, but then we'd have to decide which keys are and are not
   options. Is a join `:alias` an option? Probably. What about a `:condition`? It's not optional. So for purposes of
   writing Metabase lib and tracking `:lib/uuid`, this approach seems ok in the short term."
-  [x]
+  [x :- ::clause-or-column]
   (cond
     (map? x)
     (:lib/options x)
@@ -49,7 +76,8 @@
   You should probably prefer [[update-options]] to using this directly, so you don't stomp over existing stuff
   unintentionally. Implement this if you need to teach Metabase lib how to support something that doesn't follow the
   usual patterns described in [[options]]."
-  [x new-options :- [:maybe map?]]
+  [x :- ::clause-or-column
+   new-options :- [:maybe ::options]]
   (cond
     (map? x)
     (u/assoc-dissoc x :lib/options (not-empty new-options))
@@ -83,5 +111,5 @@
 
 (mu/defn uuid :- [:maybe ::lib.schema.common/non-blank-string]
   "Get the `:lib/uuid` associated with something, e.g. an MBQL clause or join."
-  [x]
+  [x :- ::clause-or-column]
   (:lib/uuid (options x)))

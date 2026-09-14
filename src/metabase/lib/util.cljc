@@ -471,7 +471,7 @@
   [query :- ::lib.schema/query
    stage-number :- :int
    location :- [:enum :breakout :aggregation]
-   a-summary-clause]
+   a-summary-clause :- ::lib.common/op-arg]
   (let [query (pipeline query)
         stage-number (or stage-number -1)
         stage (query-stage query stage-number)
@@ -533,17 +533,16 @@
 
 (mu/defn normalized-query-type :- [:maybe [:enum #_MBQL5 :mbql/query #_legacy :query :native #_audit :internal]]
   "Get the `:lib/type` or `:type` from `query`, even if it is not-yet normalized."
-  [query :- [:maybe :map]]
-  (when (map? query)
-    (when-let [query-type (some-> (some #(get query %)
-                                        [:lib/type :type "lib/type" "type"])
-                                  keyword)]
-      (when (#{:mbql/query :query :native :internal} query-type)
-        query-type))))
+  [query :- :metabase.query-processor.schema/any-query]
+  (when-let [query-type (some-> (some #(get query %)
+                                      [:lib/type :type "lib/type" "type"])
+                                keyword)]
+    (when (#{:mbql/query :query :native :internal} query-type)
+      query-type)))
 
 (mu/defn normalized-mbql-version :- [:maybe [:enum :mbql-version/mbql5 :mbql-version/legacy]]
   "Version of MBQL a `query` map is using, either `:mbql-version/mbql-5` or `:mbql-version/legacy`."
-  [query :- [:maybe :map]]
+  [query :- :metabase.query-processor.schema/any-query]
   (case (normalized-query-type query)
     :mbql/query      :mbql-version/mbql5
     (:query :native) :mbql-version/legacy

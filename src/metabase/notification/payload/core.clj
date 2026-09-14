@@ -47,11 +47,7 @@
     ;; system event is a bit special in that part of the payload comes from the event itself
     [:notification/system-event
      [:map
-      [:payload
-       [:map {:closed true}
-        ;; TODO: event-info schema for each event type
-        [:event_topic [:fn #(= "event" (-> % keyword namespace))]]
-        [:event_info  [:maybe :map]]]]]]
+      [:payload ::models.notification/SystemEventPayload]]]
     [:notification/card
      [:map
       [:payload    {:optional true} ::models.notification/NotificationCard]

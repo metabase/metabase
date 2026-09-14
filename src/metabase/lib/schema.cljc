@@ -576,11 +576,75 @@
   afterwards.
 
   In production these are legacy, `snake_cased` column metadata maps (i.e.
-  `:metabase.legacy-mbql.schema/legacy-column-metadata`), but this key is a verbatim snapshot that must survive
-  normalization untouched -- pointing at that schema here would rewrite its keys and drop deprecated ones, which
-  breaks round-tripping (see `metabase.lib.convert-test/round-trip-preserve-metadata-test`). So the elements are
-  declared as plain maps, which carry no decoders."
-  [:sequential :map])
+  `:metabase.legacy-mbql.schema/legacy-column-metadata`), but some callers stash kebab-case, lib-flavored columns
+  here instead (see `metabase.lib.convert-test/round-trip-preserve-metadata-test`); this key is a verbatim snapshot
+  that must survive normalization untouched, so the elements mirror both key spellings without pointing at either
+  source schema, which would rewrite keys and drop deprecated ones on decode."
+  [:sequential
+   [:map {:closed true}
+    [:base_type            {:optional true} [:maybe [:or :string :keyword]]]
+    [:base-type            {:optional true} [:maybe [:or :string :keyword]]]
+    [:display_name         {:optional true} [:maybe :string]]
+    [:display-name         {:optional true} [:maybe :string]]
+    [:name                 {:optional true} [:maybe :string]]
+    [:active               {:optional true} [:maybe :boolean]]
+    [:description          {:optional true} [:maybe :string]]
+    [:binning_info         {:optional true} [:maybe
+                                             [:map {:closed true}
+                                              [:strategy         {:optional true} [:maybe [:or :string :keyword]]]
+                                              [:binning_strategy {:optional true} [:maybe [:or :string :keyword]]]
+                                              [:bin_width        {:optional true} [:maybe number?]]
+                                              [:num_bins         {:optional true} [:maybe :int]]
+                                              [:min_value        {:optional true} [:maybe number?]]
+                                              [:max_value        {:optional true} [:maybe number?]]]]]
+    [:coercion_strategy    {:optional true} [:maybe [:or :string :keyword]]]
+    [:database_type        {:optional true} [:maybe :string]]
+    [:effective_type       {:optional true} [:maybe [:or :string :keyword]]]
+    [:effective-type       {:optional true} [:maybe [:or :string :keyword]]]
+    [:converted_timezone   {:optional true} [:maybe :string]]
+    [:field_ref            {:optional true} [:maybe :metabase.legacy-mbql.schema/Reference]]
+    [:field-ref            {:optional true} [:maybe :metabase.legacy-mbql.schema/Reference]]
+    [:fk_field_id          {:optional true} [:maybe ::id/field]]
+    [:fk-field-id          {:optional true} [:maybe ::id/field]]
+    [:fk_field_name        {:optional true} [:maybe :string]]
+    [:fk_join_alias        {:optional true} [:maybe :string]]
+    [:fk_target_field_id   {:optional true} [:maybe ::id/field]]
+    [:fingerprint          {:optional true} [:maybe :metabase.lib.schema.metadata.fingerprint/fingerprint]]
+    [:has_field_values     {:optional true} [:maybe [:or :string :keyword]]]
+    [:id                   {:optional true} [:maybe ::id/field]]
+    [:inherited_temporal_unit {:optional true} [:maybe [:or :string :keyword]]]
+    [:nfc_path             {:optional true} [:maybe [:sequential :string]]]
+    [:position             {:optional true} [:maybe :int]]
+    [:custom_position      {:optional true} [:maybe :int]]
+    [:database_position    {:optional true} [:maybe :int]]
+    [:data_sensitivity     {:optional true} [:maybe [:or :string :keyword]]]
+    [:fingerprint_version  {:optional true} [:maybe :int]]
+    [:parent_id            {:optional true} [:maybe ::id/field]]
+    [:points_of_interest   {:optional true} [:maybe :string]]
+    [:preview_display      {:optional true} [:maybe :boolean]]
+    [:caveats              {:optional true} [:maybe :string]]
+    [:target               {:optional true} [:maybe [:or ::id/field :metabase.legacy-mbql.schema/Reference]]]
+    [:options              {:optional true} [:maybe :metabase.lib.schema.metadata/column.options]]
+    [:remapped_from        {:optional true} [:maybe :string]]
+    [:remapped_to          {:optional true} [:maybe :string]]
+    [:remapped_from_index  {:optional true} [:maybe :int]]
+    [:source_alias         {:optional true} [:maybe :string]]
+    [:aggregation_index    {:optional true} [:maybe :int]]
+    [:expression_name      {:optional true} [:maybe :string]]
+    [:special_type         {:optional true} [:maybe [:or :string :keyword]]]
+    [:remapping            {:optional true} [:maybe [:map-of [:ref :metabase.lib.schema.literal/literal]
+                                                     [:ref :metabase.lib.schema.literal/literal]]]]
+    [:selected?            {:optional true} [:maybe :boolean]]
+    [:semantic_type        {:optional true} [:maybe [:or :string :keyword]]]
+    [:semantic-type        {:optional true} [:maybe [:or :string :keyword]]]
+    [:settings             {:optional true} [:maybe :metabase.lib.schema.common/visualization-settings]]
+    [:source               {:optional true} [:maybe [:or :string :keyword]]]
+    [:table_id             {:optional true} [:maybe ::id/table]]
+    [:table-id             {:optional true} [:maybe ::id/table]]
+    [:unit                 {:optional true} [:maybe [:or :string :keyword]]]
+    [:visibility_type      {:optional true} [:maybe [:or :string :keyword]]]
+    [:visibility-type      {:optional true} [:maybe [:or :string :keyword]]]
+    [:lib/join-alias       {:optional true} [:maybe :string]]]])
 
 (mr/def ::query.snapshot
   "A whole copy of a query stashed on the query itself under one of the internal keys below.

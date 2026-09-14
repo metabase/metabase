@@ -32,7 +32,7 @@
 (mu/defn normalize-or-throw :- ::mbql.s/Query
   "Like [[normalize]], but checks the result against the Malli schema for a legacy query, which will cause it to throw
   if it fails (at least in dev)."
-  [query :- :map]
+  [query :- ::mbql.s/Query]
   (normalize query))
 
 (defn normalize-field-ref

@@ -5,9 +5,140 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
+;; Shapes of `:task_details` for the tasks that actually record one (see `with-task-history` call sites). A
+;; task-name-less sync step or operation (see below) never sets `:task_details` on insert, so its shape here is
+;; nominal (`{:closed true}`, no keys).
+(mr/def ::task-details.channel-send
+  [:map {:closed true}
+   [:retry_config      [:map {:closed true}
+                        [:max-retries             :int]
+                        [:initial-interval-millis :int]
+                        [:multiplier              number?]
+                        [:jitter-factor           number?]
+                        [:max-interval-millis     :int]]]
+   [:channel_id        [:maybe ms/PositiveInt]]
+   [:channel_type      :keyword]
+   [:template_id       [:maybe ms/PositiveInt]]
+   [:notification_id   ms/PositiveInt]
+   [:notification_type :keyword]
+   [:recipient_ids     [:sequential ms/PositiveInt]]
+   [:attempted_retries {:optional true} :int]
+   [:retry_errors      {:optional true} [:sequential :string]]])
+
+(mr/def ::task-details.notification-send
+  [:map {:closed true}
+   [:notification_id       ms/PositiveInt]
+   [:notification_handlers [:sequential [:map {:closed true}
+                                         [:id           {:optional true} [:maybe ms/PositiveInt]]
+                                         [:channel_type {:optional true} [:maybe :keyword]]
+                                         [:channel_id   {:optional true} [:maybe ms/PositiveInt]]
+                                         [:template_id  {:optional true} [:maybe ms/PositiveInt]]]]]])
+
+(mr/def ::task-details.notification-trigger
+  [:map {:closed true}
+   [:trigger_type                 [:enum :notification-subscription/cron :notification-subscription/system-event]]
+   [:notification_ids             [:sequential ms/PositiveInt]]
+   [:notification_subscription_id {:optional true} ms/PositiveInt]
+   [:cron_schedule                {:optional true} [:maybe :string]]
+   [:event_name                   {:optional true} :keyword]])
+
+(mr/def ::task-details.send-pulse
+  [:map {:closed true}
+   [:pulse-id    ms/PositiveInt]
+   [:channel-ids [:maybe [:sequential ms/PositiveInt]]]])
+
+(mr/def ::task-details.run-transforms
+  [:map {:closed true}
+   [:job-id          :string]
+   [:run-method      [:= :cron]]
+   [:skipped-reason  {:optional true} :string]])
+
+(mr/def ::task-details.remote-sync-auto-import
+  [:map {:closed true}
+   [:task-id ms/PositiveInt]])
+
+(mr/def ::task-details.persist-refresh
+  [:map {:closed true}
+   [:success       :int]
+   [:error         :int]
+   [:trigger       :string]
+   [:error-details {:optional true} [:sequential [:map {:closed true}
+                                                   [:persisted-info-id ms/PositiveInt]
+                                                   [:error {:optional true} [:maybe :string]]]]]])
+
+(mr/def ::task-details.sync-step
+  "The `:task_details` of a sync/analyze step: the union of the count/diagnostic keys any step
+  (`metabase.sync.util/run-step-with-metadata`) can report."
+  [:map {:closed true}
+   [:version                {:optional true} [:maybe :string]]
+   [:timezone-id            {:optional true} [:maybe :string]]
+   [:total-tables           {:optional true} :int]
+   [:updated-tables         {:optional true} :int]
+   [:tables-classified      {:optional true} :int]
+   [:total-fields           {:optional true} :int]
+   [:updated-fields         {:optional true} :int]
+   [:fields-classified      {:optional true} :int]
+   [:fields-scored          {:optional true} :int]
+   [:fields-scanned         {:optional true} :int]
+   [:fields-labeled         {:optional true} :int]
+   [:fields-failed          {:optional true} :int]
+   [:total-fks              {:optional true} :int]
+   [:updated-fks            {:optional true} :int]
+   [:total-failed           {:optional true} :int]
+   [:total-indexes          {:optional true} :int]
+   [:added-indexes          {:optional true} :int]
+   [:removed-indexes        {:optional true} :int]
+   [:fingerprints-attempted {:optional true} :int]
+   [:updated-fingerprints   {:optional true} :int]
+   [:no-data-fingerprints   {:optional true} :int]
+   [:failed-fingerprints    {:optional true} :int]
+   [:created                {:optional true} :int]
+   [:updated                {:optional true} :int]
+   [:deleted                {:optional true} :int]
+   [:errors                 {:optional true} :int]
+   [:probed                 {:optional true} :int]
+   [:queries                {:optional true} :int]])
+
+(mr/def ::task-details.empty
+  [:map {:closed true}])
+
+(mr/def ::task-details.failure
+  "The `:task_details` `do-with-task-history` records when the task throws: the caller's own `:task_details` (any
+  shape above) nested under `:original-info`, plus the exception."
+  [:map {:closed true}
+   [:status        [:enum :failed "failed"]]
+   [:exception     {:optional true} [:or :string (ms/InstanceOfClass Class)]]
+   [:message       {:optional true} [:maybe :string]]
+   [:stacktrace    {:optional true} [:maybe [:sequential :string]]]
+   [:ex-data       {:optional true} [:maybe ms/OpaqueJSONObject]]
+   [:original-info {:optional true} [:maybe [:ref ::task-history.task-details]]]
+   ;; extra keys an `:on-fail-info` callback merges in, e.g. `metabase.notification.send`'s retry report.
+   [:reason              {:optional true} :string]
+   [:attempted_retries   {:optional true} :int]
+   [:retry_errors        {:optional true} [:sequential :string]]])
+
+(mr/def ::task-details.test-or-unknown
+  "The `:task_details` of a task not otherwise listed here: the ad-hoc shapes the `with-task-history` unit tests
+  give a random task name."
+  [:map {:closed true}
+   [:id     {:optional true} :int]
+   [:result {:optional true} :int]])
+
 (mr/def ::task-history.task-details
-  "The `:task_details` column of a TaskHistory, decoded."
-  :map)
+  "The `:task_details` column of a TaskHistory, decoded: the union of the shapes recorded for each task name (see
+  the `with-task-history` call sites)."
+  [:or
+   ::task-details.channel-send
+   ::task-details.notification-send
+   ::task-details.notification-trigger
+   ::task-details.send-pulse
+   ::task-details.run-transforms
+   ::task-details.remote-sync-auto-import
+   ::task-details.persist-refresh
+   ::task-details.sync-step
+   ::task-details.failure
+   ::task-details.test-or-unknown
+   ::task-details.empty])
 
 (mr/def ::task-history.log.trunc
   "The `:trunc` entry of a [[task-history.log]]: bookkeeping for messages dropped once the in-memory log queue fills

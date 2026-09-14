@@ -10,6 +10,7 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]))
 
 (set! *warn-on-reflection* true)
@@ -210,9 +211,22 @@
   ([resolver exported]
    (mbql-fully-qualified-names->ids* resolver exported)))
 
+(mr/def ::mbql-node
+  "One node reachable while importing an MBQL expression: the whole query, a single legacy or lib clause, a
+  parameter, a sequence of any of those, or a scalar reached while walking one."
+  [:or
+   :metabase.legacy-mbql.schema/Query
+   :metabase.lib.schema/query
+   :metabase.lib.schema.mbql-clause/clause
+   :metabase.lib.schema.ref/ref
+   :metabase.parameters.schema/parameter
+   :metabase.parameters.schema/parameter-mapping
+   :string :number :boolean :keyword :nil
+   [:sequential [:ref ::mbql-node]]])
+
 (mu/defn- mbql-clause-tag :- [:maybe [:enum :field :dimension :metric :segment :measure]]
   "Is given form an MBQL entity reference?"
-  [form]
+  [form :- [:ref ::mbql-node]]
   (when (and (vector? form)
              (#{:field :dimension :metric :segment :measure} (keyword (first form))))
     (keyword (first form))))

@@ -98,8 +98,15 @@
     (stored-or-live-deps transform)
     (catch Throwable _ #{})))
 
+(def ^:private TransformForOrdering
+  "A Transform row as ordering sees it: either the `transforms-for-ordering` projection, or the richer (full row
+  plus in-flight edits, minus `:table_dependencies`) shape of the transform under test in `get-transform-cycle`."
+  [:merge
+   :metabase.transforms.schema/transform.update
+   [:map {:closed true} [:id :metabase.lib.schema.id/transform]]])
+
 (mu/defn- output-table-map
-  [transforms]
+  [transforms :- [:sequential TransformForOrdering]]
   (into {}
         (keep (fn [{:keys [target_table_id id]}]
                 (when target_table_id

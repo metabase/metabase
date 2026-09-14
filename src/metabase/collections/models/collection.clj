@@ -1461,10 +1461,10 @@
     (let [{collection-after-update :collection_id :as model-after-update} <>]
       (when (remote-synced-collection? collection-after-update)
         (check-non-remote-synced-dependencies model-after-update)
-        (when (and (api/column-will-change? :archived model-before-update model-after-update)
+        (when (and (api/column-will-change? (:archived model-before-update) (get model-after-update :archived ::api/not-provided))
                    (:archived model-after-update))
           (check-remote-synced-dependents model-after-update)))
-      (when (and (api/column-will-change? :collection_id model-before-update model-after-update)
+      (when (and (api/column-will-change? (:collection_id model-before-update) (get model-after-update :collection_id ::api/not-provided))
                  (moving-from-remote-synced? collection-before-update collection-after-update))
         (check-remote-synced-dependents model-after-update)))))
 
@@ -1837,7 +1837,8 @@
                       :archived          (tru "You cannot archive a {0}." ctype)}]
     (when-let [[k msg] (->> unchangeable
                             (filter (fn [[k _msg]]
-                                      (api/column-will-change? k collection-before-updates collection-updates)))
+                                      (api/column-will-change? (get collection-before-updates k)
+                                                               (get collection-updates k ::api/not-provided))))
                             first)]
       (throw
        (ex-info msg {:status-code 400 :errors {k msg}})))))
@@ -1963,7 +1964,7 @@
     (check-library-update collection)
     ;; (4) If we're moving a Collection from a location on a Personal Collection hierarchy to a location not on one,
     ;; or vice versa, we need to grant/revoke permissions as appropriate (see above for more details)
-    (when (api/column-will-change? :location collection-before-updates collection-updates)
+    (when (api/column-will-change? (:location collection-before-updates) (get collection-updates :location ::api/not-provided))
       (update-perms-when-moving-across-personal-boundry! collection-before-updates collection-updates)
       ;; (4.5) If we're moving a Collection across the tenant-specific namespace boundary, we need to adjust
       ;; permissions accordingly (delete when moving in, grant when moving out)
@@ -2157,7 +2158,7 @@
     (check-allowed-to-change-collection (t2/select-one Card :id 100) http-request-body)"
   [object-before-update object-updates]
   ;; if collection_id is set to change...
-  (when (api/column-will-change? :collection_id object-before-update object-updates)
+  (when (api/column-will-change? (:collection_id object-before-update) (get object-updates :collection_id ::api/not-provided))
     ;; check that we're allowed to modify the old Collection
     (if-let [coll-id (:collection_id object-before-update)]
       (api/write-check :model/Collection coll-id)

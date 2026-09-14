@@ -129,7 +129,7 @@
                                                ::task-history.schema/task-history.update]]]
    [:on-fail-info    {:optional true} [:maybe [:=> [:cat TaskHistoryCallBackInfo (ms/InstanceOfClass Throwable)]
                                                ::task-history.schema/task-history.update]]]
-   [:task_details    {:optional true} [:maybe :map]]])   ; additional map of details to include in the recorded row
+   [:task_details    {:optional true} [:maybe ::task-history.schema/task-history.task-details]]]) ; additional map of details to include in the recorded row
 
 (defn- ns->ms [nanoseconds]
   (long (/ nanoseconds 1e6)))

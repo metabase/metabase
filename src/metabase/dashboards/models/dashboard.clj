@@ -198,11 +198,11 @@
    don't drift. Call inside the same transaction as the dashboard update itself."
   [current-dash updates]
   (let [id (:id current-dash)]
-    (when (api/column-will-change? :archived current-dash updates)
+    (when (api/column-will-change? (:archived current-dash) (get updates :archived ::api/not-provided))
       (if (:archived updates)
         (dashboards.db/archive-dashboard-questions! id)
         (dashboards.db/unarchive-dashboard-questions! id)))
-    (when (api/column-will-change? :collection_id current-dash updates)
+    (when (api/column-will-change? (:collection_id current-dash) (get updates :collection_id ::api/not-provided))
       (dashboards.db/move-dashboard-questions! id (:collection_id updates)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

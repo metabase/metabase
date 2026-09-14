@@ -550,8 +550,8 @@
                                 (contains? card-updates :dashboard_id))
                         (queries/actual-collection-id card-updates))]
     (cond-> card-updates
-      (or (api/column-will-change? :dashboard_id card-before-update card-updates)
-          (api/column-will-change? :collection_id card-before-update card-updates))
+      (or (api/column-will-change? (:dashboard_id card-before-update) (get card-updates :dashboard_id ::api/not-provided))
+          (api/column-will-change? (:collection_id card-before-update) (get card-updates :collection_id ::api/not-provided)))
       (assoc :collection_id collection-id))))
 
 (mu/defn update-card!
@@ -589,9 +589,8 @@
                                                                  (not (= :list (keyword (get card-updates :display)))))
                                                         {:display :table})
                                                       (when (and
-                                                             (api/column-will-change? :dashboard_id
-                                                                                      card-before-update
-                                                                                      card-updates)
+                                                             (api/column-will-change? (:dashboard_id card-before-update)
+                                                                                      (get card-updates :dashboard_id ::api/not-provided))
                                                              (:dashboard_id card-updates))
                                                         (api/check-400
                                                          (not (:archived card-updates)))
