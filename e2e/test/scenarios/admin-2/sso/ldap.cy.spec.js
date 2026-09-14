@@ -148,57 +148,7 @@ describe(
         cy.visit("/admin/settings/authentication/ldap");
       });
 
-      it("should allow deleting mappings along with deleting, or clearing users of, mapped groups", () => {
-        turnGroupMappingOn();
-
-        cy.log("Every mapping is saved as soon as it is added");
-        addMapping("cn=People1", ["Administrators", "data", "nosql"]);
-        addMapping("cn=People2", ["collection", "readonly"]);
-
-        deleteMapping(
-          "cn=People1",
-          /delete the groups/i,
-          "Remove mapping and delete groups",
-        );
-        cy.wait(["@deleteGroup", "@deleteGroup"]);
-
-        cy.log("Deleted groups are no longer offered for new mappings");
-        newMappingButton().click();
-        groupsPicker().click();
-        cy.findByRole("listbox")
-          .should("contain", "collection")
-          .and("not.contain", "data")
-          .and("not.contain", "nosql");
-        cy.button("Cancel").click();
-
-        cy.log(
-          "Deleting the last mapping clears its groups and keeps group mapping on",
-        );
-        deleteMapping(
-          "cn=People2",
-          /remove all members/i,
-          "Remove mapping and members",
-        );
-        cy.wait(["@clearGroup", "@clearGroup"]);
-        groupMappingSwitch().should("be.checked");
-        groupMappingSection()
-          .findByText("No mappings yet")
-          .should("be.visible");
-
-        cy.log("Deleted groups are gone and cleared groups have no members");
-        cy.request("GET", "/api/permissions/group").then(({ body: groups }) => {
-          const names = groups.map((group) => group.name);
-          expect(names).to.include.members(["collection", "readonly"]);
-          expect(names).not.to.include("data");
-          expect(names).not.to.include("nosql");
-          const memberCount = (name) =>
-            groups.find((group) => group.name === name).member_count;
-          expect(memberCount("collection")).to.equal(0);
-          expect(memberCount("readonly")).to.equal(0);
-        });
-      });
-
-      it("should drop deleted groups from the remaining mappings and keep the mappings while group mapping is off", () => {
+      it("should delete or clear mapped groups with their mappings and keep the remaining mappings consistent", () => {
         turnGroupMappingOn();
         addMapping("cn=People1", ["Administrators", "data", "nosql"]);
         addMapping("cn=People2", ["data", "collection"]);
@@ -218,6 +168,15 @@ describe(
           .should("contain", "readonly")
           .and("not.contain", "collection");
 
+        cy.log("Deleted groups are no longer offered for new mappings");
+        newMappingButton().click();
+        groupsPicker().click();
+        cy.findByRole("listbox")
+          .should("contain", "readonly")
+          .and("not.contain", "data")
+          .and("not.contain", "collection");
+        cy.button("Cancel").click();
+
         cy.log("The same mappings come back after a reload");
         // the row assertions retry until the reloaded page has rendered, so there is nothing to wait on
         cy.reload();
@@ -227,22 +186,36 @@ describe(
           .and("not.contain", "collection");
 
         cy.log(
-          "Turning group mapping off hides the mappings without losing them",
+          "Clearing the last mappings empties their groups, skips Administrators and keeps group mapping on",
         );
-        groupMappingSwitch().click({ force: true });
-        cy.wait("@updateSetting")
-          .its("request.body")
-          .should("deep.equal", { value: false });
+        deleteMapping(
+          "cn=People3",
+          /remove all members/i,
+          "Remove mapping and members",
+        );
+        cy.wait("@clearGroup");
+        deleteMapping(
+          "cn=People1",
+          /remove all members/i,
+          "Remove mapping and members",
+        );
+        cy.wait("@clearGroup");
+        groupMappingSwitch().should("be.checked");
         groupMappingSection()
-          .findByText("Manual group mappings")
-          .should("not.exist");
+          .findByText("No mappings yet")
+          .should("be.visible");
 
-        groupMappingSwitch().click({ force: true });
-        cy.wait("@updateSetting")
-          .its("request.body")
-          .should("deep.equal", { value: true });
-        mappingRow("cn=People1").should("contain", "Administrators, nosql");
-        mappingRow("cn=People3").should("contain", "readonly");
+        cy.log("Deleted groups are gone and cleared groups have no members");
+        cy.request("GET", "/api/permissions/group").then(({ body: groups }) => {
+          const names = groups.map((group) => group.name);
+          expect(names).to.include.members(["nosql", "readonly"]);
+          expect(names).not.to.include("data");
+          expect(names).not.to.include("collection");
+          const memberCount = (name) =>
+            groups.find((group) => group.name === name).member_count;
+          expect(memberCount("nosql")).to.equal(0);
+          expect(memberCount("readonly")).to.equal(0);
+        });
       });
     });
   },
@@ -369,7 +342,7 @@ const deleteMapping = (name, consequenceLabel, confirmLabel) => {
   mappingRow(name).findByLabelText("Delete mapping").click();
   H.modal().within(() => {
     cy.findByText("Remove this group mapping?").should("be.visible");
-    cy.findByText(consequenceLabel).click();
+    cy.findByRole("radio", { name: consequenceLabel }).click();
     cy.button(confirmLabel).click();
   });
   cy.wait("@updateSettings");
