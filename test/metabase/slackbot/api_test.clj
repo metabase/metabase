@@ -329,12 +329,12 @@
         (testing desc
           (tu/with-slackbot-mocks
             {:ai-text "response"}
-            (fn [{:keys [ai-request-calls stop-stream-calls update-calls]}]
+            (fn [{:keys [ai-request-calls stop-stream-calls set-status-calls]}]
               (mt/client :post 200 "metabot/slack/events"
                          (tu/slack-request-options event-body)
                          event-body)
               (u/poll {:thunk      #(or (>= (count @stop-stream-calls) 1)
-                                        (>= (count @update-calls) 1))
+                                        (>= (count @set-status-calls) 1))
                        :done?      true?
                        :timeout-ms 5000})
               (is (= 1 (count @ai-request-calls)))
@@ -1331,11 +1331,12 @@
       (tu/with-slackbot-setup
         (tu/with-slackbot-mocks
           {:ai-text "Hello!"}
-          (fn [{:keys [update-calls remove-reaction-calls]}]
+          (fn [_]
             (let [response (mt/client :post 200 "metabot/slack/events"
                                       (tu/slack-request-options tu/base-mention-event) tu/base-mention-event)]
               (is (= "ok" response))
-              (u/poll {:thunk #(and (>= (count @update-calls) 1) (>= (count @remove-reaction-calls) 1))
+              (u/poll {:thunk #(> (mt/metric-value system :metabase-slackbot/responses-generated
+                                                   {:source "channel" :result "success"}) 0)
                        :done? true? :timeout-ms 5000})
               (testing "responses-generated counter is incremented for channel/success"
                 (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-slackbot/responses-generated
