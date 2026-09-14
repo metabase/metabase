@@ -17,9 +17,9 @@
 
 (deftest check-args-test
   (binding [mu.closed-schemas/*enabled* true]
-    (is (nil? (mu.closed-schemas/check-args! `f [[:cat :int [:map {:closed true} [:a :any]]]])))
+    (is (nil? (mu.closed-schemas/check-args! `f [[:cat :int [:map {:closed true} [:a :int]]]])))
     (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                          #"The arguments of metabase.util.malli.closed-schemas-test/f reach maps that are not closed"
+                          #"The arguments of metabase.util.malli.closed-schemas-test/f reach schemas that do not declare their shape"
                           (mu.closed-schemas/check-args! `f [[:cat :int] [:cat [:map [:a :int]]]])))))
 
 (defn- eval-error-message [form]
@@ -32,12 +32,18 @@
 (deftest mu-defn-checks-its-args-test
   (binding [mu.closed-schemas/*enabled* true]
     (testing "an open map argument fails when the function is defined"
-      (is (re-find #"reach maps that are not closed"
+      (is (re-find #"reach schemas that do not declare their shape"
                    (str (eval-error-message `(mu/defn ~'open-arg [~'m :- [:map [:a :int]]] ~'m))))))
     (testing "and so does a destructured map without a schema"
-      (is (re-find #"reach maps that are not closed"
+      (is (re-find #"reach schemas that do not declare their shape"
                    (str (eval-error-message `(mu/defn ~'destructured [{:keys [~'a]}] ~'a))))))
+    (testing "and so does an argument without a schema"
+      (is (re-find #"reach schemas that do not declare their shape"
+                   (str (eval-error-message `(mu/defn ~'unannotated [~'x] ~'x))))))
+    (testing "and an :any"
+      (is (re-find #"reach schemas that do not declare their shape"
+                   (str (eval-error-message `(mu/defn ~'any-arg [~'x :- :any] ~'x))))))
     (testing "a return schema is not checked"
-      (is (nil? (eval-error-message `(mu/defn ~'open-return :- [:map [:a :int]]
+      (is (nil? (eval-error-message `(mu/defn ~'open-return :- :any
                                        [~'m :- [:map {:closed true} [:a :int]]]
                                        ~'m)))))))

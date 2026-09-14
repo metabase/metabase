@@ -163,14 +163,16 @@
   (atom #{}))
 
 (defn check-args!
-  "Throw when an argument schema of `fn-name` can reach an open map or a keyword-keyed `:map-of`."
+  "Throw when an argument schema of `fn-name`, or an argument without one, can reach a schema that does not declare
+  its shape."
   [fn-name arg-schemas]
   (when *enabled*
     (when-let [found (not-empty (into []
-                                      (mapcat #(findings % {:visited visited-arg-registry-keys, :any? false}))
+                                      (mapcat #(findings % {:visited visited-arg-registry-keys}))
                                       arg-schemas))]
-      (throw (ex-info (format (str "The arguments of %s reach maps that are not closed. Close every map with"
-                                   " {:closed true} and key a map-of by :string:\n%s")
+      (throw (ex-info (format (str "The arguments of %s reach schemas that do not declare their shape. Give every"
+                                   " argument a schema, close every map with {:closed true}, key a map-of by"
+                                   " :string, and give :any a type:\n%s")
                               fn-name
                               (describe-findings found))
                       {:fn-name fn-name, :findings found})))))
