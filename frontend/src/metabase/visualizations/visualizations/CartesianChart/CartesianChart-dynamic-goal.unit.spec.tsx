@@ -53,31 +53,6 @@ const FAILED: ReferencedEntitiesResults = {
   card: { 9: { status: "failed", error: "boom" } },
 };
 
-function createSeries(
-  display: VisualizationDisplay,
-  referenced_entities?: DatasetData["referenced_entities"],
-): RawSeries {
-  return [
-    {
-      card: createMockCard({
-        display,
-        visualization_settings: {
-          "graph.dimensions": ["month"],
-          "graph.metrics": ["count"],
-          "graph.show_goal": true,
-          "graph.goal_label": GOAL_LABEL,
-          "graph.goal_value": { type: "card", id: 9, column: "goal" },
-        },
-      }),
-      data: createMockDatasetData({
-        cols: COLS,
-        rows: ROWS,
-        referenced_entities,
-      }),
-    },
-  ];
-}
-
 async function setup(rawSeries: RawSeries) {
   renderWithProviders(<Visualization rawSeries={rawSeries} />);
   // ExplicitSize sets the chart dimensions after mounting
@@ -108,7 +83,7 @@ describe.each(DYNAMIC_GOAL_GRAPH_DISPLAYS)(
           data: createMockDatasetData({ referenced_entities: ANSWERED }),
         }),
         {
-          delay: 100, // keep the reference unanswered long enough to see the loader
+          delay: 100, // long enough to see the loader
         },
       );
 
@@ -145,3 +120,28 @@ describe.each(DYNAMIC_GOAL_GRAPH_DISPLAYS)(
     });
   },
 );
+
+function createSeries(
+  display: VisualizationDisplay,
+  referenced_entities?: DatasetData["referenced_entities"],
+): RawSeries {
+  return [
+    {
+      card: createMockCard({
+        display,
+        visualization_settings: {
+          "graph.dimensions": ["month"],
+          "graph.metrics": ["count"],
+          "graph.show_goal": true,
+          "graph.goal_label": GOAL_LABEL,
+          "graph.goal_value": { type: "card", id: 9, column: "goal" },
+        },
+      }),
+      data: createMockDatasetData({
+        cols: COLS,
+        rows: ROWS,
+        referenced_entities,
+      }),
+    },
+  ];
+}
