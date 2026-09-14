@@ -81,10 +81,15 @@
   "Whether the compiled `query` map contains only allowed HoneySQL forms."
   [query]
   (if (map? query)
+    ;; `:values`, `:set` and `:params` hold values rather than nested queries, so they are checked
+    ;; as rows instead of being walked as syntax. Anything in `:params` compiles to a bound `?`
+    ;; whatever its shape, so checking it is about catching a value that JDBC will later refuse
+    ;; than about syntax safety.
     (and (not (or (raw-honeysql-map? query) (inline-honeysql-map? query)))
-         (every? safe-value? (vals (dissoc query :values :set)))
+         (every? safe-value? (vals (dissoc query :values :set :params)))
          (every? safe-row? (:values query))
-         (safe-row? (:set query)))
+         (safe-row? (:set query))
+         (safe-row? (:params query)))
     (safe-value? query)))
 
 (methodical/defmethod t2.pipeline/build :around [:toucan.query-type/select.exists :default clojure.lang.IPersistentMap]
