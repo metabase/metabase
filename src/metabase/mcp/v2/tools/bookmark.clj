@@ -23,6 +23,7 @@
    [metabase.api.common :as api]
    [metabase.bookmarks.db :as bookmarks.db]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resolve :as v2.resolve]
    [metabase.mcp.v2.write :as v2.write]
@@ -59,9 +60,11 @@
           ;; `actual` is nil for a card type this tool doesn't surface (only question/model/metric
           ;; are bookmarkable-by-flavor); name the id without a "null" type in that case.
           (common/throw-teaching-error
+           ;; `actual` is a value of the server's own `card-type->tool-type` table.
            (if actual
-             (format "Card %s is a %s — bookmark it with type: \"%s\"." (:id row) actual actual)
-             (format "Card %s can't be bookmarked as type: \"%s\"." (:id row) type))))))
+             (message/msg ["Card %d is a %s — bookmark it with type: \"%s\"."]
+                          (:id row) (message/raw actual) (message/raw actual))
+             (message/msg ["Card %d can't be bookmarked as type: %s."] (:id row) type))))))
     row))
 
 (def ^:private bookmark-content-args-schema
