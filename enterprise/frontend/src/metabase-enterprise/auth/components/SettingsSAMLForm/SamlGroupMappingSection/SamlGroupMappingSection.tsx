@@ -1,0 +1,202 @@
+import { useDebouncedCallback } from "@mantine/hooks";
+import cx from "classnames";
+import { useEffect, useId, useRef, useState } from "react";
+import { t } from "ttag";
+
+import {
+  GroupMappingList,
+  useGroupLookup,
+  useGroupMappings,
+  useMappingDeletion,
+  useMappingEditor,
+} from "metabase/admin/settings/auth/components/GroupMappings";
+import { useSelector } from "metabase/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
+import { useAdminSetting } from "metabase/settings";
+import {
+  SETTINGS_CARD_DESCRIPTION_PROPS,
+  SETTINGS_CARD_STACK_PROPS,
+  SETTINGS_CARD_TITLE_PROPS,
+  SettingsSection,
+} from "metabase/settings-components";
+import {
+  Box,
+  type BoxProps,
+  Button,
+  Flex,
+  Icon,
+  Stack,
+  Switch,
+  Text,
+  Title,
+} from "metabase/ui";
+
+import S from "./SamlGroupMappingSection.module.css";
+
+// a burst of clicks ends in a single write for the last value
+export const GROUP_SYNC_WRITE_DEBOUNCE_MS = 300;
+
+// sentAt is set once the debounced write goes out, so only refetches after that can settle it
+type PendingWrite = { id: number; value: boolean; sentAt: number | null };
+
+type SamlGroupMappingSectionProps = {
+  // the group fields of the page form, shown only while group mapping is on
+  children: React.ReactNode;
+} & BoxProps;
+
+/** The group mapping card, with a switch that saves on its own and the mappings under it */
+export function SamlGroupMappingSection({
+  children,
+  ...boxProps
+}: SamlGroupMappingSectionProps) {
+  const inputId = useId();
+  const descriptionId = useId();
+  const applicationName = useSelector(getApplicationName);
+  const {
+    value,
+    settingDetails,
+    updateSetting,
+    isLoading,
+    isFetching,
+    startedTimeStamp,
+  } = useAdminSetting("saml-group-sync");
+  // the last chosen value, shown until a refetch that started after its write lands
+  const [pendingWrite, setPendingWrite] = useState<PendingWrite | null>(null);
+  const lastWriteId = useRef(0);
+  const envName = settingDetails?.is_env_setting
+    ? settingDetails.env_name
+    : undefined;
+  // the lock is only known once the settings list has loaded
+  const isDisabled = envName != null || isLoading;
+  const isChecked = pendingWrite?.value ?? value ?? false;
+
+  useEffect(() => {
+    // a refetch that started before the write can still answer with the previous value
+    if (
+      pendingWrite?.sentAt != null &&
+      !isFetching &&
+      startedTimeStamp != null &&
+      startedTimeStamp >= pendingWrite.sentAt
+    ) {
+      setPendingWrite(null);
+    }
+  }, [pendingWrite, isFetching, startedTimeStamp]);
+
+  // leaving the page flushes a write that is still waiting on the debounce
+  const saveGroupSync = useDebouncedCallback(
+    async (pending: PendingWrite) => {
+      const sentAt = Date.now();
+      setPendingWrite((current) =>
+        current?.id === pending.id ? { ...current, sentAt } : current,
+      );
+      const { error } = await updateSetting({
+        key: "saml-group-sync",
+        value: pending.value,
+      });
+      if (error) {
+        setPendingWrite((current) =>
+          current?.id === pending.id ? null : current,
+        );
+      }
+    },
+    { delay: GROUP_SYNC_WRITE_DEBOUNCE_MS, flushOnUnmount: true },
+  );
+
+  const handleChange = (enabled: boolean) => {
+    lastWriteId.current += 1;
+    const pending = { id: lastWriteId.current, value: enabled, sentAt: null };
+    setPendingWrite(pending);
+    saveGroupSync(pending);
+  };
+
+  // the card sits inside the page form, so Enter must not reach its submit button
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+    }
+  };
+
+  return (
+    <SettingsSection stackProps={SETTINGS_CARD_STACK_PROPS} {...boxProps}>
+      <Flex justify="space-between" align="flex-start" gap="lg">
+        <Box>
+          <Title {...SETTINGS_CARD_TITLE_PROPS}>
+            {/* the title doubles as the switch's label, so clicking it toggles too */}
+            <Text
+              component="label"
+              htmlFor={inputId}
+              className={cx(S.titleLabel, isDisabled && S.disabled)}
+              inherit
+            >
+              {t`Group mapping`}
+            </Text>
+          </Title>
+          {/* the env line sits inside the description, so assistive tech hears why the switch is locked */}
+          <Box id={descriptionId}>
+            <Text c="text-secondary" {...SETTINGS_CARD_DESCRIPTION_PROPS}>
+              {t`Automatically assign people to ${applicationName} groups based on groups from your SAML identity provider`}
+            </Text>
+            {envName != null && (
+              <Text c="text-secondary" mt="sm">{t`Using ${envName}`}</Text>
+            )}
+          </Box>
+        </Box>
+        <Switch
+          id={inputId}
+          aria-describedby={descriptionId}
+          checked={isChecked}
+          disabled={isDisabled}
+          onChange={(event) => handleChange(event.currentTarget.checked)}
+          onKeyDown={handleKeyDown}
+        />
+      </Flex>
+      {isChecked && (
+        <Stack gap="lg">
+          <SamlGroupMappings />
+          {children}
+        </Stack>
+      )}
+    </SettingsSection>
+  );
+}
+
+function SamlGroupMappings() {
+  const { settingDetails } = useAdminSetting("saml-group-mappings");
+  const groupLookup = useGroupLookup();
+  const groupMapping = useGroupMappings({ settingKey: "saml-group-mappings" });
+  const deletion = useMappingDeletion({ groupMapping, groupLookup });
+  const editor = useMappingEditor({ groupMapping, groupLookup });
+  const isBusy = groupMapping.isSaving || deletion.isDeleting;
+  const envName = settingDetails?.is_env_setting
+    ? settingDetails.env_name
+    : undefined;
+  const isLocked = envName != null;
+
+  return (
+    <Stack gap="sm">
+      <Flex justify="space-between" align="center" gap="lg">
+        <Text fw="bold">{t`Manual group mappings`}</Text>
+        {!isLocked && editor.draft == null && (
+          <Button
+            variant="subtle"
+            leftSection={<Icon name="add" aria-hidden />}
+            disabled={isBusy}
+            onClick={editor.startNew}
+          >{t`New`}</Button>
+        )}
+      </Flex>
+      {envName != null && <Text c="text-secondary">{t`Using ${envName}`}</Text>}
+      <GroupMappingList
+        groupMapping={groupMapping}
+        groupLookup={groupLookup}
+        editor={editor}
+        deletion={deletion}
+        readOnly={isLocked}
+        disabled={isBusy}
+        nameLabel={t`SAML group name`}
+        namePlaceholder={t`Enter SAML group...`}
+        emptyMessage={t`No mappings yet`}
+      />
+    </Stack>
+  );
+}
