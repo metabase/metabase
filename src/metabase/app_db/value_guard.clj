@@ -32,8 +32,9 @@
   "Rewrite `[:auto/param v]` markers into HoneySQL's `[:param :kN]` plus the params map they refer to.
   Returns `[rewritten-form params-map]`.
 
-  Callers normally want [[bound]], which also hands the params to HoneySQL. Only acts on values
-  that were explicitly marked; the guarantee that nothing was *missed* is `assert-values-wrapped!`."
+  Called by the compile step, so a caller writes `[:auto/param v]` inline and never handles the
+  params map. Only acts on values that were explicitly marked; the guarantee that nothing was
+  *missed* is `assert-values-wrapped!`."
   [form]
   (let [params  (atom {})
         counter (atom 0)]
@@ -168,9 +169,10 @@
   [v strict?]
   (cond
     (param-form? v)      true
-    ;; An `[:auto/param v]` that reached compilation was never lifted by `bound`, and HoneySQL would
-    ;; happily compile it to a `PARAM(?)` function call rather than erroring. Catch it here.
-    (auto-param-form? v) (throw (ex-info "[:auto/param ...] reached the database unresolved -- wrap the query in `bound`."
+    ;; The compile step lifts these, so one still present here reached the database another way --
+    ;; a hand-built query string, say. HoneySQL would compile it to a `PARAM(?)` function call
+    ;; rather than erroring, so catch it.
+    (auto-param-form? v) (throw (ex-info "[:auto/param ...] reached the database unresolved."
                                          {:type ::unresolved-auto-param, :value v}))
     (allow-column-ref? v) true
     ;; A marker asserts the *structure* is dev-authored. It says nothing about the values inside,
@@ -290,33 +292,17 @@
             true
             (recur (inc i))))))))
 
-(methodical/defmethod t2.pipeline/compile :before :default
-  [_query-type model built-query]
-  (when (enforcing-caller?)
-    (assert-values-wrapped! built-query {:model model} false))
-  built-query)
-
-(defn bound*
-  "Implementation of [[bound]]."
-  [query thunk]
-  (let [[form params] (auto-param query)]
-    (binding [t2.honeysql/*options* (assoc (t2.honeysql/options) :params params)]
-      (thunk form))))
-
-(defmacro bound
-  "Run `body` with every `[:auto/param v]` in `query` bound as a SQL parameter, passing the
-  rewritten query to `body` as `query-sym`.
-
-  Write the value where it belongs and it is bound as a `?` rather than compiled:
-
-    (bound [q {:select [:*] :from [:t] :where [:= :locale [:auto/param locale]]}]
-      (t2/query q))
-
-  HoneySQL wants the values in a map separate from the query; this keeps them inline and does the
-  lifting, so a caller never has to hold the two in sync."
-  {:style/indent [[:block 1]]}
-  [[query-sym query] & body]
-  `(bound* ~query (fn [~query-sym] ~@body)))
+(methodical/defmethod t2.pipeline/compile :around :default
+  [query-type model built-query]
+  (let [[query params] (auto-param built-query)]
+    (when (enforcing-caller?)
+      (assert-values-wrapped! query {:model model} false))
+    (if (seq params)
+      ;; HoneySQL takes params as a format option rather than a query clause, so hand them over
+      ;; the same channel Toucan uses for the rest of its formatting options.
+      (binding [t2.honeysql/*options* (assoc (t2.honeysql/options) :params params)]
+        (next-method query-type model query))
+      (next-method query-type model built-query))))
 
 (defn keep-me
   "No-op so a requiring namespace can reference this one without the linter pruning the require."

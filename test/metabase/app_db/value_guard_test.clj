@@ -93,7 +93,7 @@
     (is (rejects? {:where [:= :id {:select [:x] :from :core_user}]}))))
 
 (deftest unresolved-auto-param-is-rejected-test
-  (testing "a marker that was never lifted by `bound` would compile to a PARAM() call, so it throws"
+  (testing "a marker that reached the DB without being lifted would compile to a PARAM() call, so it throws"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"unresolved"
                           (value-guard/assert-values-wrapped!
                            {:where [:= :locale [:auto/param "de"]]} {} false)))))
