@@ -21,6 +21,7 @@
    [metabase.initialization-status.core :as init-status]
    [metabase.llm.startup :as llm.startup]
    [metabase.logger.core :as logger]
+   [metabase.mcp.core :as mcp]
    [metabase.metrics.core :as metrics]
    [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
@@ -279,7 +280,9 @@
   (try
     ;; launch embedded webserver
     (let [server-routes (server/make-routes auth-wrapper/routes #'api-routes/routes)
-          handler       (server/make-handler server-routes)]
+          cors           {:origins-fn         #'mcp/cors-origins
+                          :sandbox-origin?-fn #'mcp/sandbox-origin?}
+          handler        (server/make-handler server-routes {:cors cors})]
       (server/start-web-server! handler))
     ;; run our initialization process
     (init!)

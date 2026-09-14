@@ -73,12 +73,13 @@
       (log/warnf "Failed to load dev remote API proxy middleware: %s" (ex-message e))
       nil)))
 
-(def ^:private middleware
+(defn- middleware
   "Ring async middleware has the form
 
     (defn middleware-fn [handler]
       (fn handler' [request respond raise]
         (handler request respond raise)))"
+  [{:keys [cors]}]
   ;; ▼▼▼ The returned `handlers` will see the requests in order from BOTTOM-TO-TOP, but the middleware is CONSTRUCTED/WRAPPED from TOP-TO-BOTTOM. ▼▼▼
   (->> [        ;; Inside of the middleware onion
         #'mw.exceptions/catch-uncaught-exceptions    ; catch any Exceptions that weren't passed to `raise`
@@ -86,7 +87,8 @@
         #'mw.log/log-api-call                        ; log info about the request, db call counts etc.
         #'agent-api.usage/wrap-record-cli-usage      ; record CLI usage analytics for metabase-cli REST API calls
         #'mw.browser-cookie/ensure-browser-id-cookie ; add cookie to identify browser; add `:browser-id` to the request
-        #'mw.security/add-security-headers           ; Add HTTP headers to API responses to prevent them from being cached
+        (fn [handler]
+          (#'mw.security/add-security-headers handler cors)) ; Add security, cache, and CORS headers
         #'mw.json/wrap-json-body                     ; extracts json POST/PUT body and makes it available on request
         #'mw.offset-paging/handle-paging             ; binds per-request parameters to handle paging
         #'mw.json/wrap-streamed-json-response        ; middleware to automatically serialize suitable objects as JSON in responses
@@ -119,29 +121,36 @@
        (remove nil?)))
 
 (mu/defn- apply-middleware :- ::api.macros/handler
-  [handler :- ::api.macros/handler]
+  [handler :- ::api.macros/handler
+   options]
   (reduce
    (fn [handler middleware-fn]
      (middleware-fn handler))
    handler
-   middleware))
+   (middleware options)))
 
 ;;; for interactive dev we'll create a handler that rebuilds itself (reapplies the middleware) whenever any of it
 ;;; changes.
 (mu/defn- dev-handler :- ::api.macros/handler
-  [server-routes :- ::api.macros/handler]
-  (let [handler (atom (apply-middleware server-routes))]
-    (doseq [varr  (cons #'middleware middleware)
+  [server-routes :- ::api.macros/handler
+   options]
+  (let [middleware (middleware options)
+        handler    (atom (apply-middleware server-routes options))]
+    (doseq [varr  (concat [#'middleware #'mw.security/add-security-headers] middleware)
             :when (instance? clojure.lang.IRef varr)]
       (add-watch varr ::reload (fn [_key _ref _old-state _new-state]
                                  (log/infof "%s changed, rebuilding handler" varr)
-                                 (reset! handler (apply-middleware server-routes)))))
+                                 (reset! handler (apply-middleware server-routes options)))))
     (fn dev-handler* [request respond raise]
       (@handler request respond raise))))
 
 (mu/defn make-handler :- ::api.macros/handler
-  "Create the primary entry point to the Ring HTTP server."
-  [server-routes :- ::api.macros/handler]
-  (if config/is-dev?
-    (dev-handler server-routes)
-    (apply-middleware server-routes)))
+  "Create the primary entry point to the Ring HTTP server. `options` may contain explicit configuration for middleware,
+  such as `:cors` callbacks supplied by the application."
+  ([server-routes :- ::api.macros/handler]
+   (make-handler server-routes nil))
+  ([server-routes :- ::api.macros/handler
+    options]
+   (if config/is-dev?
+     (dev-handler server-routes options)
+     (apply-middleware server-routes options))))

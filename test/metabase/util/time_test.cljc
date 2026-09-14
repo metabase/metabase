@@ -60,10 +60,19 @@
   "For consistency of testing we use an arbitrary time as \"now\"."
   "2022-12-14T13:18:43")
 
+(def ^:private time-config {:start-of-week :sunday})
+
+(defn- format-unit
+  ([value unit]
+   (shared.ut/format-unit time-config value unit))
+  ([value unit locale]
+   (shared.ut/format-unit (assoc time-config :locale locale) value unit)))
+
 (deftest string->timestamp-test
   (testing "numbers are parsed into datetimes based on the unit"
     (with-redefs [internal/now (fn [] (from test-epoch))]
-      (are [exp-str input unit] (same? (from exp-str) (shared.ut/coerce-to-timestamp input {:unit unit}))
+      (are [exp-str input unit] (same? (from exp-str)
+                                       (shared.ut/coerce-to-timestamp input (assoc time-config :unit unit)))
         "2022-12-14T13:00:00"  0 "minute-of-hour"
         "2022-12-14T13:12:00" 12 "minute-of-hour"
         "2022-12-14T13:59:00" 59 "minute-of-hour"
@@ -128,7 +137,9 @@
   (testing "strings"
     (testing "with unit=day-of-week get parsed as eg. Mon"
       (with-redefs [internal/now (fn [] (from test-epoch))]
-        (are [exp-str input] (same? (from exp-str) (shared.ut/coerce-to-timestamp input {:unit "day-of-week"}))
+        (are [exp-str input] (same? (from exp-str)
+                                    (shared.ut/coerce-to-timestamp input
+                                                                   (assoc time-config :unit "day-of-week")))
           ;; 2022-12-14 (the test epoch) is a Wednesday.
           "2022-12-12T00:00:00" "Mon"
           "2022-12-13T00:00:00" "Tue"
@@ -200,8 +211,9 @@
            ["2019-12-29T00:00:00Z" "2020-01-04T23:59:59.999Z" "2019-12-30T00:00:00" "week"]
            ["2019-12-29T00:00:00Z" "2020-01-04T23:59:59.999Z" "2020-01-02T00:00:00" "week"]]
           :let [[from to] (shared.ut/to-range (shared.ut/coerce-to-timestamp date nil)
-                                              {:unit   unit
-                                               :locale #?(:cljs nil :clj (Locale/getDefault))})]]
+                                              (assoc time-config
+                                                     :unit unit
+                                                     :locale #?(:cljs nil :clj (Locale/getDefault))))]]
     (is (same? (from-zulu exp-from) from) "start dates should be the same")
     (is (same? (from-zulu exp-to)   to)   "end dates should be the same")))
 
@@ -235,7 +247,7 @@
                           (shared.ut/coerce-to-time 12)))))
 
 (deftest format-string-test
-  (are [exp u] (= exp (shared.ut/format-unit "2023-02-08" u))
+  (are [exp u] (= exp (format-unit "2023-02-08" u))
     "Wednesday" :day-of-week
     "Feb" :month-of-year
     "8" :day-of-month
@@ -243,7 +255,7 @@
     "6" :week-of-year
     "Q1" :quarter-of-year
     "Feb 8, 2023" nil)
-  (are [exp u] (= exp (shared.ut/format-unit "2023-02-08" u "fr"))
+  (are [exp u] (= exp (format-unit "2023-02-08" u "fr"))
     "mercredi" :day-of-week
     "févr." :month-of-year
     "8" :day-of-month
@@ -252,7 +264,7 @@
     "Q1" :quarter-of-year
     "Feb 8, 2023" nil) ;; no locale for default formats
 
-  (are [exp u] (= exp (shared.ut/format-unit (from-local-date "2023-02-08") u))
+  (are [exp u] (= exp (format-unit (from-local-date "2023-02-08") u))
     "Wednesday" :day-of-week
     "Feb" :month-of-year
     "8" :day-of-month
@@ -260,7 +272,7 @@
     "6" :week-of-year
     "Q1" :quarter-of-year
     "Feb 8, 2023" nil)
-  (are [exp u] (= exp (shared.ut/format-unit (from-local-date "2023-02-08") u "fr"))
+  (are [exp u] (= exp (format-unit (from-local-date "2023-02-08") u "fr"))
     "mercredi" :day-of-week
     "févr." :month-of-year
     "8" :day-of-month
@@ -268,20 +280,20 @@
     "6" :week-of-year
     "Q1" :quarter-of-year
     "Feb 8, 2023" nil)
-  (is (= "12:00 PM" (shared.ut/format-unit "12:00:00.000" nil)))
-  (is (= "12:00 PM" (shared.ut/format-unit (from-local-time "12:00:00.000") nil)))
-  (is (= "Oct 3, 2023, 1:30 PM" (shared.ut/format-unit "2023-10-03T13:30:00" nil)))
-  (is (= "Oct 3, 2023, 1:30 PM" (shared.ut/format-unit (from-local "2023-10-03T13:30:00") nil)))
-  (is (= "30" (shared.ut/format-unit "2023-10-03T13:30:00" :minute-of-hour)))
-  (is (= "1 PM" (shared.ut/format-unit "2023-10-03T13:30:00" :hour-of-day)))
-  (is (= "30" (shared.ut/format-unit 30 :minute-of-hour)))
-  (is (= "1 PM" (shared.ut/format-unit 13 :hour-of-day)))
-  (is (= "12 AM" (shared.ut/format-unit 0 :hour-of-day))))
+  (is (= "12:00 PM" (format-unit "12:00:00.000" nil)))
+  (is (= "12:00 PM" (format-unit (from-local-time "12:00:00.000") nil)))
+  (is (= "Oct 3, 2023, 1:30 PM" (format-unit "2023-10-03T13:30:00" nil)))
+  (is (= "Oct 3, 2023, 1:30 PM" (format-unit (from-local "2023-10-03T13:30:00") nil)))
+  (is (= "30" (format-unit "2023-10-03T13:30:00" :minute-of-hour)))
+  (is (= "1 PM" (format-unit "2023-10-03T13:30:00" :hour-of-day)))
+  (is (= "30" (format-unit 30 :minute-of-hour)))
+  (is (= "1 PM" (format-unit 13 :hour-of-day)))
+  (is (= "12 AM" (format-unit 0 :hour-of-day))))
 
 (deftest parse-unit-test
   (are [exp input unit-in unit-out locale-in locale-out]
        (= exp (-> (shared.ut/parse-unit input unit-in  locale-in)
-                  (shared.ut/format-unit      unit-out locale-out)))
+                  (format-unit      unit-out locale-out)))
     "Wednesday" "Wed" :day-of-week-abbrev :day-of-week   "en" "en"
     "lundi"     "Mon" :day-of-week-abbrev :day-of-week   "en" "fr"
 
@@ -307,7 +319,10 @@
 
 (deftest format-relative-date-range
   (with-redefs [internal/now (fn [] (from test-epoch))]
-    (are [exp n unit include-current] (= exp (shared.ut/format-relative-date-range n unit nil nil {:include-current include-current}))
+    (are [exp n unit include-current] (= exp (shared.ut/format-relative-date-range
+                                              {:start-of-week :sunday}
+                                              n unit nil nil
+                                              {:include-current include-current}))
       "Jan 1 – Dec 31, 2022" 0 :year true
 
       "Jan 1, 2022 – Dec 31, 2023" 1 :year true
@@ -372,7 +387,7 @@
 
 (deftest ^:parallel truncate-datetime-test
   (are [unit expected] (= expected
-                          (shared.ut/truncate "2024-02-02T12:02:12.345" unit))
+                          (shared.ut/truncate time-config "2024-02-02T12:02:12.345" unit))
     :millisecond "2024-02-02T12:02:12.345"
     :second      "2024-02-02T12:02:12"
     :minute      "2024-02-02T12:02"
@@ -385,7 +400,7 @@
 
 (deftest ^:parallel truncate-date-test
   (are [unit expected] (= expected
-                          (shared.ut/truncate "2024-02-02" unit))
+                          (shared.ut/truncate time-config "2024-02-02" unit))
     :day         "2024-02-02"
     :week        "2024-01-28"
     :month       "2024-02-01"
@@ -394,7 +409,7 @@
 
 (deftest ^:parallel truncate-time-test
   (are [unit expected] (= expected
-                          (shared.ut/truncate "12:02:12.345" unit))
+                          (shared.ut/truncate time-config "12:02:12.345" unit))
     :millisecond "12:02:12.345"
     :second      "12:02:12"
     :minute      "12:02"
@@ -495,7 +510,7 @@
 
 (deftest ^:parallel extract-test
   (let [t (shared.ut/local-date-time 2024 12 06 10 20 30 500)]
-    (are [unit expected] (= expected (shared.ut/extract t unit))
+    (are [unit expected] (= expected (shared.ut/extract time-config t unit))
       :second-of-minute 30
       :minute-of-hour   20
       :day-of-week      6

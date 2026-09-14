@@ -499,41 +499,26 @@
                    (approved-port? (:port origin) (:port approved-origin))))
                 approved-list)))))))
 
-(defonce ^:private cors-origins-providers
-  (atom {}))
-
-(defn register-cors-origins-provider!
-  "Register a provider of extra approved CORS origins under keyword `k` (idempotent on reload).
-  `provider` is a map of `:origins-fn` (nullary, returns a space-separated origins string or nil) and
-  optional `:sandbox-origin?-fn` (origin string -> boolean, for non-standard origins like
-  `vscode-webview://`). Called at load time by modules that sit above `server` (e.g. mcp)."
-  [k provider]
-  (swap! cors-origins-providers assoc k provider))
-
-(defn- provided-origins []
-  (str/join " " (keep (fn [{:keys [origins-fn]}] (origins-fn)) (vals @cors-origins-providers))))
-
-(defn- provided-sandbox-origin? [origin]
-  (boolean (some (fn [{:keys [sandbox-origin?-fn]}]
-                   (when sandbox-origin?-fn (sandbox-origin?-fn origin)))
-                 (vals @cors-origins-providers))))
-
 (defn access-control-headers
-  "Returns headers for CORS requests. Merges embedding SDK origins and registered provider origins."
-  [origin approved-origins]
-  (let [all-origins       (str/trim (str approved-origins " " (provided-origins)))
-        localhost-allowed? (and (localhost-origin? origin) (not (server.settings/disable-cors-on-localhost)))
-        mcp-sandbox?       (provided-sandbox-origin? origin)]
-    (when (or (seq all-origins) localhost-allowed? mcp-sandbox?)
-      (merge
-       (when (or (approved-origin? origin all-origins) mcp-sandbox?)
-         {"Access-Control-Allow-Origin" origin
-          "Vary"                        "Origin"})
-       {"Access-Control-Allow-Headers"  "*"
-        "Access-Control-Allow-Methods"  "*"
-        "Access-Control-Expose-Headers" "Content-Disposition, X-Metabase-Anti-CSRF-Token, X-Metabase-Version, Mcp-Session-Id"
-        ;; Needed for Embedding SDK. Should cache preflight requests for the specified number of seconds.
-        "Access-Control-Max-Age"  "60"}))))
+  "Returns headers for CORS requests. `cors` can supply an `:origins-fn` and a
+  `:sandbox-origin?-fn` for origins owned by a higher-level module."
+  ([origin approved-origins]
+   (access-control-headers origin approved-origins nil))
+  ([origin approved-origins {:keys [origins-fn sandbox-origin?-fn]}]
+   (let [extra-origins      (when origins-fn (origins-fn))
+         all-origins        (str/trim (str approved-origins " " extra-origins))
+         localhost-allowed? (and (localhost-origin? origin) (not (server.settings/disable-cors-on-localhost)))
+         sandbox-origin?    (boolean (and sandbox-origin?-fn (sandbox-origin?-fn origin)))]
+     (when (or (seq all-origins) localhost-allowed? sandbox-origin?)
+       (merge
+        (when (or (approved-origin? origin all-origins) sandbox-origin?)
+          {"Access-Control-Allow-Origin" origin
+           "Vary"                        "Origin"})
+        {"Access-Control-Allow-Headers"  "*"
+         "Access-Control-Allow-Methods"  "*"
+         "Access-Control-Expose-Headers" "Content-Disposition, X-Metabase-Anti-CSRF-Token, X-Metabase-Version, Mcp-Session-Id"
+         ;; Needed for Embedding SDK. Should cache preflight requests for the specified number of seconds.
+         "Access-Control-Max-Age"  "60"})))))
 
 (defn security-headers
   "Fetch a map of security headers that should be added to a response based on the passed options.
@@ -542,7 +527,7 @@
    embedding is configured). `:script-nonce?` adds the nonce to `script-src`, see
    [[script-nonce-response-key]]."
   [& {:keys [origin nonce script-nonce? frame-ancestors allow-cache? data-app-iframe? data-app-connect-hosts
-             allow-blob-img?]
+             allow-blob-img? cors]
       :or   {frame-ancestors :none, allow-cache? false, script-nonce? false, data-app-iframe? false,
              allow-blob-img? false}}]
   (merge
@@ -550,7 +535,7 @@
    strict-transport-security-header
    (content-security-policy-header-with-frame-ancestors frame-ancestors nonce script-nonce? data-app-iframe?
                                                         data-app-connect-hosts allow-blob-img?)
-   (access-control-headers origin (embedding.settings/embedding-app-origins-sdk))
+   (access-control-headers origin (embedding.settings/embedding-app-origins-sdk) cors)
    ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
    (x-frame-options-header frame-ancestors)
    {;; Prevent Flash / PDF files from including content from site.
@@ -652,10 +637,11 @@
     (remove #(covers-instance-origin? self %) hosts)
     hosts))
 
-(defn- add-security-headers* [request response]
+(defn- add-security-headers* [cors request response]
   ;; merge is other way around so that handler can override headers
   (let [headers (security-headers
                  :origin                      (get (:headers request) "origin")
+                 :cors                        cors
                  :nonce                       (:nonce request)
                  :script-nonce?               (boolean (get response script-nonce-response-key))
                  ;; The internal data-app iframe is only ever framed by the
@@ -690,11 +676,14 @@
     (update response :headers #(merge %2 %1 cors-headers) headers)))
 
 (defn add-security-headers
-  "Middleware that adds HTTP security and cache-busting headers."
-  [handler]
-  (fn [request respond raise]
-    (let [request (assoc request :nonce (generate-nonce))]
-      (handler
-       request
-       (comp respond (partial add-security-headers* request))
-       raise))))
+  "Middleware that adds HTTP security and cache-busting headers. `cors` contains optional callbacks supplied by the
+  application when it constructs the handler."
+  ([handler]
+   (add-security-headers handler nil))
+  ([handler cors]
+   (fn [request respond raise]
+     (let [request (assoc request :nonce (generate-nonce))]
+       (handler
+        request
+        (comp respond (partial add-security-headers* cors request))
+        raise)))))
