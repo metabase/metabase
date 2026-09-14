@@ -8,7 +8,10 @@
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.test-util :as v2.tu]
-   [metabase.test :as mt]))
+   [metabase.mcp.v2.tools.query]
+   [metabase.mcp.v2.tools.search]
+   [metabase.test :as mt]
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -473,3 +476,32 @@
      (fn []
        (is (= "Probe.\n\nRequires the agent:unlabelled:probe permission."
               (get (published-descriptions) "unlabelled_scope_probe")))))))
+
+;;; ------------------------------------------ Security schemes -----------------------------------------------------
+
+(defn- published-security-schemes
+  "`{tool-name securitySchemes}` as `tools/list` sends them over the wire (JSON, string keys)."
+  []
+  (into {}
+        (map (juxt #(get % "name") #(get % "securitySchemes")))
+        (json/decode (json/encode (registry/list-tools)))))
+
+(deftest ^:parallel every-listed-tool-declares-its-scope-as-a-security-scheme-test
+  (testing "GHY-4543: ChatGPT steps up only for the OAuth scopes a tool declares in `securitySchemes`; without them it
+            re-authorizes for its login scope in a loop. Every listed tool declares exactly its own `:scope`."
+    (let [published (published-security-schemes)]
+      (is (seq published))
+      (doseq [[tool-name schemes] published]
+        (testing tool-name
+          (is (= [{"type" "oauth2" "scopes" [(:scope (get @@#'registry/tools* tool-name))]}]
+                 schemes)))))))
+
+(deftest ^:parallel security-schemes-name-concrete-scopes-test
+  (testing "GHY-4543: tools with different scopes declare different schemes, so the comparison above has teeth"
+    (let [published (published-security-schemes)]
+      (is (= [{"type" "oauth2" "scopes" ["agent:content:read"]}]
+             (get published "test_echo")))
+      (is (= [{"type" "oauth2" "scopes" ["agent:content:read"]}]
+             (get published "search")))
+      (is (= [{"type" "oauth2" "scopes" ["agent:sql:run"]}]
+             (get published "execute_sql"))))))

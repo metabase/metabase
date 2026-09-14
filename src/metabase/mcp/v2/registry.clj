@@ -120,7 +120,7 @@
 
    `opts` is a map of:
    - `:name` - the mcp public-facing name of the tool
-   - `:scope` - the required scope for the tool
+   - `:scope` - the required scope for the tool, published as `securitySchemes`
    - `:annotations` - _optional_ - overrides for the default annotations
    - `:args` - malli schema for the arguments, published as `inputSchema`
    - `:output-schema` - _optional_ - malli schema for the structured output, published as `outputSchema`
@@ -173,11 +173,17 @@
          (str "\"" scope-label "\" permission (" scope ").")
          (str scope " permission."))))
 
+(defn- security-schemes
+  "The MCP tool `securitySchemes` declaring that a tool needs the OAuth `scope`."
+  [scope]
+  [{:type "oauth2" :scopes [scope]}])
+
 (defn- tool->manifest-entry
   "The published manifest entry for `tool`; `scope-label` is as for [[with-required-permission]]."
   [{:keys [args annotations output-schema description scope] :as tool} scope-label]
   (cond-> (assoc tool
                  :description (with-required-permission description scope scope-label)
+                 :securitySchemes (security-schemes scope)
                  :inputSchema (-> args
                                   tools-manifest/malli->json-schema
                                   tools-manifest/strict-tool-input-schema)
@@ -228,7 +234,7 @@
             (filter #(not (contains? disabled (:name %))))
             ;; has all required extensions
             (filter #(empty? (mcp.ui-resource/missing-required-extensions % supported)))
-            (map #(select-keys % [:name :title :description :inputSchema :outputSchema :annotations :_meta])))
+            (map #(select-keys % [:name :title :description :inputSchema :outputSchema :annotations :securitySchemes :_meta])))
            (manifest)))))
 
 (defn tools-hash

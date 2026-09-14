@@ -19,6 +19,7 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
+   [metabase.util.json :as json]
    [oidc-provider.util :as oidc.util]
    [toucan2.core :as t2]))
 
@@ -139,46 +140,73 @@
       (testing "the skills guidance is kept"
         (is (re-find #"learn\(\)" instructions))))))
 
+(defn- do-with-tools-listed-by-grant!
+  "Call `f` with `{grant tools}`: the `tools/list` result for a cookie session (`\"cookie session\"`) and for Bearer
+   tokens holding various scope grants."
+  [f]
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    (oauth-server.tu/with-oauth-client [client-id]
+      (mt/with-model-cleanup [:model/OAuthAccessToken]
+        (let [bearer-tools (fn [scopes]
+                             (let [token   (str (random-uuid))
+                                   headers {"authorization" (str "Bearer " token)}]
+                               (t2/insert! :model/OAuthAccessToken
+                                           {:token     (oidc.util/hash-token token)
+                                            :user_id   (mt/user->id :crowberto)
+                                            :client_id client-id
+                                            :scope     scopes
+                                            :expiry    (+ (System/currentTimeMillis) 3600000)})
+                               (let [session-id (-> (client/client-full-response
+                                                     :post 200 endpoint
+                                                     {:request-options {:headers headers}}
+                                                     (jsonrpc-request "initialize" {:capabilities {}}))
+                                                    (get-in [:headers "Mcp-Session-Id"]))]
+                                 (-> (client/client-full-response
+                                      :post 200 endpoint
+                                      {:request-options {:headers (assoc headers "mcp-session-id" session-id)}}
+                                      (jsonrpc-request "tools/list"))
+                                     (get-in [:body :result :tools])))))
+              cookie-tools (let [[session-id _] (initialize!)]
+                             (-> (mcp-request (jsonrpc-request "tools/list") {"mcp-session-id" session-id})
+                                 (get-in [:body :result :tools])))]
+          (f {"cookie session" cookie-tools
+              "content:read"   (bearer-tools ["agent:content:read"])
+              "query:run"      (bearer-tools ["agent:query:run"])
+              "all v2 scopes"  (bearer-tools (vec mcp.paths/v2-surface-scopes))}))))))
+
 (deftest tools-list-descriptions-are-token-independent-test
   (testing "GHY-4543: a tool's description is byte-identical whatever the caller's token holds. Claude Code keeps the
             first description it loads for the whole session, so text that varied with the grant (\"not available on
             this connection\") would outlive a successful re-auth and the model would refuse a tool that now works."
-    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-      (oauth-server.tu/with-oauth-client [client-id]
-        (mt/with-model-cleanup [:model/OAuthAccessToken]
-          (let [descriptions        (fn [response]
-                                      (into {} (map (juxt :name :description)) (get-in response [:body :result :tools])))
-                bearer-descriptions (fn [scopes]
-                                      (let [token   (str (random-uuid))
-                                            headers {"authorization" (str "Bearer " token)}]
-                                        (t2/insert! :model/OAuthAccessToken
-                                                    {:token     (oidc.util/hash-token token)
-                                                     :user_id   (mt/user->id :crowberto)
-                                                     :client_id client-id
-                                                     :scope     scopes
-                                                     :expiry    (+ (System/currentTimeMillis) 3600000)})
-                                        (let [session-id (-> (client/client-full-response
-                                                              :post 200 endpoint
-                                                              {:request-options {:headers headers}}
-                                                              (jsonrpc-request "initialize" {:capabilities {}}))
-                                                             (get-in [:headers "Mcp-Session-Id"]))]
-                                          (descriptions (client/client-full-response
-                                                         :post 200 endpoint
-                                                         {:request-options {:headers (assoc headers "mcp-session-id" session-id)}}
-                                                         (jsonrpc-request "tools/list"))))))
-                unrestricted        (let [[session-id _] (initialize!)]
-                                      (descriptions (mcp-request (jsonrpc-request "tools/list")
-                                                                 {"mcp-session-id" session-id})))
-                by-grant            {"content:read"  (bearer-descriptions ["agent:content:read"])
-                                     "query:run"     (bearer-descriptions ["agent:query:run"])
-                                     "all v2 scopes" (bearer-descriptions (vec mcp.paths/v2-surface-scopes))}]
-            (doseq [[grant listed]            by-grant
-                    [tool-name description] listed]
-              (testing (str grant " " tool-name)
-                (is (= (get unrestricted tool-name) description))))
-            (testing "the comparison has teeth: callers with different grants see the same permission text"
-              (doseq [listed [unrestricted (by-grant "query:run") (by-grant "all v2 scopes")]]
-                (is (str/includes? (get listed "execute_query") "permission (agent:query:run)."))))))))))
+    (do-with-tools-listed-by-grant!
+     (fn [by-grant]
+       (let [descriptions (update-vals by-grant #(into {} (map (juxt :name :description)) %))
+             unrestricted (descriptions "cookie session")]
+         (doseq [[grant listed]            (dissoc descriptions "cookie session")
+                 [tool-name description] listed]
+           (testing (str grant " " tool-name)
+             (is (= (get unrestricted tool-name) description))))
+         (testing "the comparison has teeth: callers with different grants see the same permission text"
+           (doseq [grant ["cookie session" "query:run" "all v2 scopes"]]
+             (is (str/includes? (get-in descriptions [grant "execute_query"]) "permission (agent:query:run).")))))))))
+
+(deftest tools-list-security-schemes-are-token-independent-test
+  (testing "GHY-4543: every tool descriptor declares the OAuth scope it needs in `securitySchemes`, which ChatGPT reads
+            to decide what to step up for. Clients cache descriptors for the session, so the JSON is byte-identical
+            whatever the caller's token holds."
+    (do-with-tools-listed-by-grant!
+     (fn [by-grant]
+       (let [schemes-json (update-vals by-grant #(into {} (map (juxt :name (comp json/encode :securitySchemes))) %))
+             unrestricted (schemes-json "cookie session")]
+         (testing "each tool declares its own scope"
+           (is (= "[{\"type\":\"oauth2\",\"scopes\":[\"agent:content:read\"]}]" (get unrestricted "test_echo")))
+           (is (= "[{\"type\":\"oauth2\",\"scopes\":[\"agent:sql:run\"]}]" (get unrestricted "execute_sql")))
+           (is (= "[{\"type\":\"oauth2\",\"scopes\":[\"agent:query:run\"]}]" (get unrestricted "execute_query"))))
+         (doseq [[grant listed]        schemes-json
+                 [tool-name schemes] listed]
+           (testing (str grant " " tool-name)
+             (is (not= "null" schemes))
+             (is (= (get unrestricted tool-name) schemes)))))))))
 
 (deftest tools-list-test
   (let [[session-id _] (initialize!)
