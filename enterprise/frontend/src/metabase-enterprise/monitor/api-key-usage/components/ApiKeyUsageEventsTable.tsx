@@ -38,7 +38,7 @@ import type { RowValue, RowValues, SortingOptions } from "metabase-types/api";
 export const EVENTS_PAGE_SIZE = 25;
 
 const DEFAULT_SORTING: SortingOptions<ApiKeyUsageEventSortColumn> = {
-  sort_column: "created_at",
+  sort_column: "occurred_at",
   sort_direction: "desc",
 };
 
@@ -56,9 +56,9 @@ const EVENT_COLUMN_META: Record<
   () => Omit<EventColumn, "key">
 > = {
   log_id: () => ({ title: t`ID`, sort: "log_id" }),
-  created_at: () => ({
-    title: t`Created at`,
-    sort: "created_at",
+  occurred_at: () => ({
+    title: t`Occurred at`,
+    sort: "occurred_at",
     render: (value) =>
       value == null ? (
         EMPTY_CELL_PLACEHOLDER
@@ -271,7 +271,7 @@ function ApiKeyUsageEventsTableInner({
           ? { minWidth: 120 }
           : { width: "auto" as const, minWidth: 120, maxAutoWidth: 320 }),
         enableSorting: !!column.sort,
-        sortDescFirst: column.sort === "created_at",
+        sortDescFirst: column.sort === "occurred_at",
         accessorFn: (row) => row[column.key],
         cell: ({ row }) => {
           const node = renderCell(column, row.original[column.key]);

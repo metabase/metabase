@@ -25,7 +25,7 @@ type ApiKeyUsageEventsUrlState = {
 
 export type ApiKeyUsageUrlState = FilterUrlState & ApiKeyUsageEventsUrlState;
 
-const DEFAULT_SORT_COLUMN: ApiKeyUsageEventSortColumn = "created_at";
+const DEFAULT_SORT_COLUMN: ApiKeyUsageEventSortColumn = "occurred_at";
 const DEFAULT_SORT_DIRECTION: SortDirection = "desc";
 
 const apiKeyUsageEventsUrlStateConfig: UrlStateConfig<ApiKeyUsageEventsUrlState> =
