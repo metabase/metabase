@@ -324,6 +324,57 @@
       (is (= "[(:checked) (:request)]" (get by-row 8)))
       (is (= "[(:checked) (:request)]" (get by-row 10))))))
 
+(deftest shape-test
+  (let [rule {:id :test/shape :name "n" :description "d" :severity :error :precision :high :cwe "C"
+              :triggers '#{t/sink}
+              :detect (fn [{:keys [node] :as ctx}]
+                        {:message (pr-str [(sort (taint/shape ctx (ast/arg node 0)))
+                                           (sort (taint/origins ctx (ast/arg node 0)))])})}
+        by-row (into {} (map (juxt :row :message))
+                     (engine/analyze {:paths [(temp! "(ns t (:require [toucan2.core :as t2] [metabase.api.macros :as api.macros]))
+(defn sink [x] x)
+(defn- keyed! [m] (sink m))
+(defn- opaque! [m] (sink m))
+(defn- mixed! [m] (sink m))
+(defn- computed-key! [m] (sink m))
+(defn- selected! [m] (sink m))
+(defn- threaded! [m] (sink m))
+(defn- merged! [m] (sink m))
+(defn- inner! [m] (sink m))
+(defn- outer! [m] (inner! m))
+(defn- composed! [{:keys [name]}] (inner! {:name name}))
+(api.macros/defendpoint :put \"/:id\" \"doc\" [{:keys [id]} _q body]
+  (keyed! {:name (:name body) :id id})
+  (opaque! body)
+  (mixed! {:name (:name body)})
+  (mixed! body)
+  (computed-key! (let [k (:key body)] {k 1}))
+  (selected! (select-keys body [:name]))
+  (->> {:name (:name body)} (assoc :id id) fill-in threaded!)
+  (-> {:name (:name body)} (merge body) merged!)
+  (outer! {:name (:name body)})
+  (composed! body)
+  (sink body))")] :rules [rule]}))]
+    (testing "every caller passed a map literal with keyword keys: the code chose the keys, whatever the values"
+      (is (= "[(:shape/keyed) (:request)]" (get by-row 3))))
+    (testing "every caller passed something else"
+      (is (= "[(:shape/opaque) (:request)]" (get by-row 4))))
+    (testing "callers disagree: both, and a rule about keys must treat it as opaque"
+      (is (= "[(:shape/keyed :shape/opaque) (:request)]" (get by-row 5))))
+    (testing "a map whose key is a value is opaque"
+      (is (= "[(:shape/opaque) (:request)]" (get by-row 6))))
+    (testing "`select-keys` with literal keys is keyed"
+      (is (= "[(:shape/keyed) (:request)]" (get by-row 7))))
+    (testing "a threaded map literal keeps its shape through steps that keep its keys"
+      (is (= "[(:shape/keyed) (:request)]" (get by-row 8))))
+    (testing "and loses it at a step that merges another map in"
+      (is (= "[(:shape/opaque) (:request)]" (get by-row 9))))
+    (testing "a bare parameter handed on carries the shape its own callers gave it; a map built from a parameter's
+              fields is keyed however the parameter was shaped, so inner! sees keyed from both"
+      (is (= "[(:shape/keyed) (:request)]" (get by-row 10))))
+    (testing "a request parameter itself was handed in by no call: no shape, and the shape labels are not origins"
+      (is (= "[() (:request)]" (get by-row 24))))))
+
 (deftest let-404-binding-test
   (let [rule {:id :test/checks :name "n" :description "d" :severity :error :precision :high :cwe "C"
               :triggers '#{t/sink}

@@ -358,6 +358,34 @@
     (testing "nothing reaches a position outside every function"
       (is (= {} (cg/flows-to reach {:filename "f.clj" :row 99 :col 1}))))))
 
+(def ^:private unreached-src
+  "(ns t)
+(defn- sink [x] x)
+(defn- step! [acc x] (sink x) acc)
+(defn- run! [xs] (reduce step! nil xs))
+(defn- lonely [] (sink 1))
+(defn- also-lonely [] (sink 2))
+")
+
+(deftest callers-of-test
+  (let [tables (-> {"f.clj" (cg/extract "f.clj" 't (root unreached-src))}
+                   ;; what clj-kondo reports for the bare `step!` handed to `reduce`: a reference, no arity
+                   (cg/add-value-reference-sites [{:filename "f.clj" :row 4 :col 26 :to 't :name 'step!}]))
+        reach  (cg/reachable-regions {:tables tables :resolve {}})
+        at     (fn [row] (cg/callers-of reach {:filename "f.clj" :row row :col 3}))]
+    (testing "when no entry point reaches a position, the chain from the outermost caller -- one nothing calls --
+              down to the function holding it; a function handed to `reduce` is called for this purpose"
+      (is (= ["t/run!" "t/step!"] (mapv :name (:path (at 3)))))
+      (is (= 1 (:count (at 3))) "one uncalled root")
+      (is (every? #(and (:filename %) (pos-int? (:row %))) (:path (at 3)))))
+    (testing "a function nothing calls is its own outermost caller"
+      (is (= ["t/lonely"] (mapv :name (:path (at 5))))))
+    (testing "the deepest root wins, and how many there are is counted"
+      (is (= ["t/run!" "t/step!" "t/sink"] (mapv :name (:path (at 2)))))
+      (is (= 3 (:count (at 2))) "run!, lonely, also-lonely"))
+    (testing "nothing outside every function"
+      (is (nil? (at 99))))))
+
 (deftest ring-handler-is-a-flow-entry-test
   (testing "a function taking a request starts an http path, named by its symbol"
     (let [tables {"f.clj" (cg/extract "f.clj" 't (root src))}

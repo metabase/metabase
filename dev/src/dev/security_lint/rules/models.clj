@@ -82,8 +82,16 @@
             ;; is a row of exactly one other model, `(:object revision)`, not a `changes` parameter whose
             ;; values trace back to five.
             dal?       (dal-file? filename)
-            wholesale? (and (= 1 (count (distinct other))) (= (count other) (count os)))]
+            wholesale? (and (= 1 (count (distinct other))) (= (count other) (count os)))
+            ;; what every caller handed this parameter: a map literal or a `select-keys` -- keys the code chose
+            ;; -- or something opaque. `{k value}` counts as opaque: its one key is a value.
+            shape      (taint/shape ctx changes)]
         (cond
+          ;; the labels say a value in the map came off a Collection row; the callers say the map's keys were
+          ;; all chosen in code -- `{:name n :collection_id (get-collection t)}` -- which is not mass assignment
+          (and (contains? shape :shape/keyed) (not (contains? shape :shape/opaque)))
+          nil
+
           (and dal? (not (contains? vocab/privileged-models target)) (not wholesale?))
           nil
 

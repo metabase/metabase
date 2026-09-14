@@ -323,6 +323,17 @@
   [label]
   (str/starts-with? (name (label-kind label)) "checked"))
 
+(defn shape-label?
+  "Whether a label records the shape of what a parameter received rather than a boundary: `:shape/keyed` from a
+  caller that passed a map literal or a `select-keys`, `:shape/opaque` from one that passed anything else."
+  [label]
+  (= :shape (label-kind label)))
+
+(defn meta-label?
+  "A label that says something *about* a value -- checked, shaped -- rather than where it came from."
+  [label]
+  (or (check-label? label) (shape-label? label)))
+
 (defn key-scoped
   "The check label `l`, scoped to key `k` of a map: `(key-scoped :checked/Card :card_id)` is
   `:checked.card_id/Card`. A key-scoped label already carrying a key is returned as it is."
@@ -340,10 +351,10 @@
       (keyword (subs kind (inc i))))))
 
 (defn boundary-labels
-  "`locals` without the check labels, and without the positions that carried nothing else."
+  "`locals` without the check and shape labels, and without the positions that carried nothing else."
   [locals]
   (into {} (keep (fn [[pos ls]]
-                   (let [kept (into #{} (remove check-label?) ls)]
+                   (let [kept (into #{} (remove meta-label?) ls)]
                      (when (seq kept) [pos kept]))))
         locals))
 
@@ -461,7 +472,7 @@
                              (let [pos ((juxt :row :col) (meta leaf))]
                                (or (get (:origin-calls ctx) pos)
                                    (get (:locals ctx) pos #{:local})))))
-                   (remove check-label?)
+                   (remove meta-label?)
                    ;; the shape refinements are for selecting positions, not for saying where a value came from
                    (map #(if (#{:request/untyped :request/structured} %) :request %)))
          (tainted-leaves ctx node opts))))
@@ -478,6 +489,18 @@
                                 (concat (get (:origin-calls ctx) pos) (get labels pos)))))
                     (filter check-label?))
           (ast/find-nodes (fn [nd] (or (ast/symbol-node? nd) (ast/call? nd))) node))))
+
+(defn shape
+  "How the keys of the map in `node` were chosen, as far as its callers go: `#{:shape/keyed}` when every caller
+  of the function that received it passed a map literal or a `select-keys`, `#{:shape/opaque}` when every one
+  passed something else, both when they differ, and empty for a value no call handed in -- a map built right here,
+  or a request parameter. Read from `:labels`. A rule about a map's keys can stand down on `#{:shape/keyed}`:
+  whatever the values in it, the code chose what it sets."
+  [ctx node]
+  (let [labels (:labels ctx)]
+    (into #{} (comp (mapcat (fn [nd] (get labels ((juxt :row :col) (meta nd)))))
+                    (filter shape-label?))
+          (ast/find-nodes ast/symbol-node? node))))
 
 (def pass-through-heads
   "Calls that hand a value on as it is: `(name unit)`, `(:schema target)`, `(str x)`. A value arriving through one

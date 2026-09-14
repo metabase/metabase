@@ -84,9 +84,16 @@
 (defn- reachability-sentence
   "GitHub shows a result's message and nothing of its properties, so the one fact a reviewer wants first -- can a
   request even get here -- has to be in the text."
-  [reachable-from]
-  (if (seq reachable-from)
+  [reachable-from callers]
+  (cond
+    (seq reachable-from)
     (str "Reachable from " (str/join ", " (sort (map name reachable-from))) ".")
+
+    (seq (:path callers))
+    (str "Not reachable from any known entry point; the outermost caller is " (:name (first (:path callers)))
+         ", which nothing calls.")
+
+    :else
     "Not reachable from any known entry point."))
 
 (defn- origin-phrases
@@ -114,17 +121,24 @@
 (defn- code-flows
   "One SARIF code flow per entry kind: the entry, each function on the shortest path, and the finding itself,
   every step a location GitHub links into the file. This is what 'Show paths' renders on an alert."
-  [root {:keys [file row col message flows]}]
+  [root {:keys [file row col message flows callers]}]
   (let [location (fn [{:keys [filename] :as step} text]
                    {:location {:physicalLocation {:artifactLocation (artifact-location root filename)
                                                   :region           {:startLine (:row step) :startColumn (:col step)}}
-                               :message          {:text text}}})]
-    (vec (for [[kind {:keys [path]}] (flow-kinds flows)
-               :let [steps (filter :row path)]
-               :when (seq steps)]
-           {:message     {:text (str "From " (name kind) " entry " (:name (first steps)))}
-            :threadFlows [{:locations (conj (mapv #(location % (:name %)) steps)
-                                            (location {:filename file :row row :col col} message))}]}))))
+                               :message          {:text text}}})
+        flow     (fn [text steps]
+                   {:message     {:text text}
+                    :threadFlows [{:locations (conj (mapv #(location % (:name %)) steps)
+                                                    (location {:filename file :row row :col col} message))}]})]
+    (vec (concat (for [[kind {:keys [path]}] (flow-kinds flows)
+                       :let [steps (filter :row path)]
+                       :when (seq steps)]
+                   (flow (str "From " (name kind) " entry " (:name (first steps))) steps))
+                 ;; nothing reaches it: the chain from the outermost caller, so 'Show paths' still says how the
+                 ;; code is used and where the chain ends
+                 (when-let [steps (seq (filter :row (:path callers)))]
+                   [(flow (str "No entry point reaches this; called from " (:name (first steps)) ", which nothing calls")
+                          steps)])))))
 
 (defn- fingerprint
   "What GitHub matches an alert by across analyses: the same value in two uploads is the same alert, carrying its
@@ -149,12 +163,12 @@
   (sha256 (str/join "|" [(str (symbol rule-id)) uri (or form snippet "") occurrence])))
 
 (defn- finding->result [rule-index root occurrence {:keys [rule-id file row col end-row end-col severity message
-                                                           form snippet endpoint-reachable? reachable-from origins]
+                                                           form snippet endpoint-reachable? reachable-from origins callers]
                                                     :as finding}]
   (let [uri      (relativize root file)
         cflows   (code-flows root finding)
         sentence (str message (when-not (re-find #"[.!?]$" message) "."))
-        text     (str/join " " (remove nil? [sentence (reachability-sentence reachable-from) (origins-sentence origins)]))]
+        text     (str/join " " (remove nil? [sentence (reachability-sentence reachable-from callers) (origins-sentence origins)]))]
     (cond-> {:ruleId              (str (symbol rule-id))
              :ruleIndex           (get rule-index rule-id)
              :level               (level severity "warning")
@@ -265,7 +279,7 @@
 
 (defn- reachability-lines
   "What reaches the finding: each entry kind with how many entries of it, then one call path per kind."
-  [{:keys [reachable-from flows]}]
+  [{:keys [reachable-from flows callers]}]
   (cond
     (seq flows)
     (into [(str "    reachable from "
@@ -279,7 +293,11 @@
     [(str "    reachable from " (str/join ", " (sort (map name reachable-from))))]
 
     :else
-    ["    not reachable from any known entry point"]))
+    (into ["    not reachable from any known entry point"]
+          (when-let [path (seq (:path callers))]
+            (wrap "      " "        " 110
+                  (str "called from " (str/join " -> " (map :name path)) "; nothing calls " (:name (first path))
+                       (when (> (:count callers) 1) (str " (one of " (:count callers) " uncalled roots)"))))))))
 
 (defn- finding-lines [root show-message? {:keys [file row col message snippet] :as finding}]
   (concat

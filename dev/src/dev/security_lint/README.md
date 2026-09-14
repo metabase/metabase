@@ -160,6 +160,16 @@ questions that need them: is a request id, destructured or read out of a map, ev
 write's row checked as the model written (or one that owns it, `vocabulary/model-parents`) rather than some
 other; does an endpoint return rows of a model nothing checked.
 
+The shape of a map is a fact about the argument as written, not about its values, and it is kept apart from the
+taint: `taint/shape` says whether the keys of what a parameter received were chosen by the code -- a map literal
+with keyword keys, a `(select-keys m [:a :b])`, a threaded literal until a step merges another map in
+(`vocabulary/merging-heads`) -- or by the data: a local, a call, `{k v}`. `:shape/keyed` and `:shape/opaque` are
+computed per parameter over every call that feeds it, a bare parameter handed on passing its own shape along, and
+they do not move with the values: a map built from a parameter's fields is keyed however the parameter was shaped.
+`mass-assignment` stands down on a map every caller keyed, whatever crossed a boundary inside it -- `{:name n
+:collection_id (:id coll)}` handed to a `db.clj` insert is a Collection's column in a map the code wrote, not a
+Collection row written wholesale. One caller handing the map through is enough to keep the finding.
+
 Rules that need to know *which* boundary, or that two values from different boundaries met at one sink, live in
 `rules/origins.clj`: a credential sent to a host a setting chose, a stored query run under another identity, a
 setting written from a synced document, a model chosen by a document. `mass-assignment` grades by origin too --
@@ -231,7 +241,10 @@ rule with neither triggers nor `:endpoint-rule` throws when the namespace loads.
 ## Reporting
 
 Text output goes to the terminal: findings grouped by rule, then by severity, each with its file:row:col, what
-reaches it, and one shortest call path per kind of entry point that does.
+reaches it, and one shortest call path per kind of entry point that does. A finding nothing reaches shows the
+chain from its outermost caller instead -- `called from apply-transform! -> transform-step! -> insert-card!;
+nothing calls apply-transform!` -- so a reader can tell the linter saw the callers and where the chain ends from
+a chain it never followed (`cg/callers-of`).
 
 SARIF output is what GitHub code scanning ingests, written compact (`jq` reads it). Every rule is described
 whether or not it fired, so a clean run closes resolved alerts; each links to its source on master as the alert's
@@ -243,5 +256,6 @@ reformat, and two identical forms in one file stay two alerts; an edit to the fl
 dismissed or not -- what was reviewed is no longer what is there. `sarif/fingerprint` says exactly what is hashed
 and why. Each result also carries one code flow per entry
 kind, the entry, each function on the shortest path, and the finding, which GitHub renders as "Show paths" on the
-alert. The message ends with what reaches the finding. Suppressing a finding is done by dismissing the alert in
+alert; an unreachable finding carries the outermost-caller chain as its one flow. The message ends with what
+reaches the finding, or with which uncalled function the chain ends at. Suppressing a finding is done by dismissing the alert in
 GitHub, not with an annotation in the source.
