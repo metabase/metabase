@@ -1078,6 +1078,12 @@
              {"filters" [["during" {} (created-at-bucketed "day") "2025-01-01" "month"]]}
              "`during` with a sub-day unit on a date-only literal"
              {"filters" [["during" {} created-at "2025-01-01" "hour"]]}
+             ;; `millisecond` is a legal datetime bucket, but not one the QP turns into a range, so Pass
+             ;; 2.95 declines it even on a datetime literal
+             "`millisecond` on a datetime literal"
+             {"filters" [["=" {} created-at (abs-dt "2025-01-01T10:00:00.123" "millisecond")]]}
+             "`during` with `millisecond` on a datetime literal"
+             {"filters" [["during" {} created-at "2025-01-01T10:00:00.123" "millisecond"]]}
              ;; a `value` clause keeps its raw string keys and still passes validation (BOT-2095)
              "a `value` clause carrying a unit"
              {"filters" [["=" {} created-at ["value" {"base-type" "type/DateTime" "unit" "day"} "2025-01-01"]]]}
