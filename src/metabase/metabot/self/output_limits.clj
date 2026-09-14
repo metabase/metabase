@@ -30,6 +30,21 @@
    ;; documented model max, from the Bedrock model card:
    ;; https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-anthropic-claude-opus-4-1.html
    "claude-opus-4-1"    32000
+   ;; Every GPT row below documents a 128,000 max output, one page per key:
+   ;; https://developers.openai.com/api/docs/models/<id>. Metabase sends none of them: OpenAI bills a sent cap
+   ;; against the rate limit ("Your rate limit is calculated as the maximum of `max_tokens` and the estimated
+   ;; number of tokens", https://developers.openai.com/api/docs/guides/rate-limits) and Azure's quota estimate
+   ;; includes it (https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/quota). 128,000 is the ceiling
+   ;; the server already enforces, so sending it would only reserve quota.
+   "gpt-5.6-sol"   nil
+   "gpt-5.6-terra" nil
+   "gpt-5.6-luna"  nil
+   "gpt-5.5"       nil
+   "gpt-5.5-pro"   nil
+   "gpt-5.4"       nil
+   "gpt-5.4-pro"   nil
+   "gpt-5.4-mini"  nil
+   "gpt-5.4-nano"  nil
    ;; documented model max: https://api-docs.deepseek.com/api/create-chat-completion
    "deepseek-v4-pro"   393216
    ;; documented model max: https://api-docs.deepseek.com/api/create-chat-completion
