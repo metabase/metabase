@@ -98,7 +98,7 @@ To get Jetty logs, add the following lines to the Log4J2 XML file in the <Logger
 
 ## Debug LDAP authentication
 
-If people can't log in with LDAP, you can turn up logging for the code that talks to your LDAP server. Metabase connects to LDAP servers using the [UnboundID LDAP SDK](https://ldap.com/unboundid-ldap-sdk/), so that's where the interesting details show up: connection attempts, bind results (including error codes such as result code 49, invalid credentials), and the search filters and attributes Metabase uses to find users.
+If people can't log in with LDAP, you can turn up logging for the code that talks to your LDAP server.
 
 To temporarily debug LDAP without restarting Metabase, use **Monitor** > **Application logs** > **Customize log levels** with this JSON:
 
