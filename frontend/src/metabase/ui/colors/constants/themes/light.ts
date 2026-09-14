@@ -155,9 +155,6 @@ const actualColors = {
   "button-filled-warning-default": baseColors.dubloon[20],
   "button-filled-warning-hover": baseColors.dubloon[30],
   "button-filled-warning-pressed": baseColors.dubloon[40],
-  "button-label-on_dark-disabled": baseColors.orionAlphaInverse[40],
-  "button-label-on_dark-primary": baseColors.orionAlpha[80],
-  "button-label-on_dark-secondary": baseColors.white,
   "button-light-brand-default":
     "color-mix(in srgb, var(--mb-color-core-brand) 7%, transparent)",
   "button-light-brand-hover":
@@ -220,6 +217,9 @@ const actualColors = {
   "button_label-light-neutral-default": "var(--mb-color-text-primary)",
   "button_label-light-positive-default": baseColors.palm[70],
   "button_label-light-positive-hover": baseColors.palm[80],
+  "button_label-on_dark-disabled": baseColors.orionAlphaInverse[40],
+  "button_label-on_dark-primary": baseColors.orionAlpha[80],
+  "button_label-on_dark-secondary": baseColors.white,
   "button_label-subtle-brand-default": baseColors.brand[60],
   "button_label-subtle-brand-hover": baseColors.brand[70],
   "button_label-subtle-negative-default": baseColors.lobster[70],
