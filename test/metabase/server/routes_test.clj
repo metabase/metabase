@@ -58,7 +58,11 @@
          (let [response (serve-data-app {:uri "/embed/apps/sales/sub/route" :query-string "tab=1"})]
            (is (= 302 (:status response)))
            (is (str/ends-with? (get-in response [:headers "Location"])
-                               "/auth/login?redirect=%2Fapps%2Fsales%2Fsub%2Froute%3Ftab%3D1"))))))
+                               "/auth/login?redirect=%2Fapps%2Fsales%2Fsub%2Froute%3Ftab%3D1")))
+         (testing "with site-url not yet set, the redirect is relative rather than prefixed with nil"
+           (mt/with-temporary-setting-values [site-url nil]
+             (is (= "/auth/login?redirect=%2Fapps%2Fsales"
+                    (get-in (serve-data-app {:uri "/embed/apps/sales"}) [:headers "Location"]))))))))
     (testing "without the feature it still falls through, so the instance reveals nothing about data apps"
       (mt/with-premium-features #{}
         (is (nil? (serve-data-app {:uri "/embed/apps/sales"})))))))

@@ -392,9 +392,15 @@ describe("scenarios > data apps > user access (EMB-2328)", () => {
         failOnStatusCode: false,
         followRedirect: false,
       }).then((res) => {
-        expect(
-          String(res.headers["content-security-policy"] ?? ""),
-        ).not.to.contain(ALLOWED_HOST);
+        // The SPA shell is still served; the React app sends the visitor to
+        // login. Anchor on it so a 404 or an empty response can't pass the
+        // negative check below.
+        expect(res.status).to.eq(200);
+        expect(String(res.headers["content-type"])).to.contain("text/html");
+        expect(res.headers["content-security-policy"]).to.be.a("string");
+        expect(res.headers["content-security-policy"]).not.to.contain(
+          ALLOWED_HOST,
+        );
       });
     });
 

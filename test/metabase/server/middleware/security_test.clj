@@ -245,6 +245,15 @@
                    (get "Content-Security-Policy")
                    (header->directive "form-action"))))
         (is (zero? @lookups)))))
+  (testing "a signed-out request keeps the data-app policy with an empty allowlist rather than the instance-wide one"
+    (mt/with-temporary-setting-values [allowed-iframe-hosts "https://widgets.example"]
+      (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://example.com"])]
+        (doseq [uri ["/embed/apps/sales" "/apps/sales"]]
+          (is (= "frame-src 'self'"
+                 (-> (headers-for-request {:uri uri})
+                     (get "Content-Security-Policy")
+                     (header->directive "frame-src")))
+              uri)))))
   (testing "a signed-in request gets them"
     (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://example.com"])]
       (doseq [uri ["/embed/apps/sales" "/apps/sales"]]

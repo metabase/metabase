@@ -136,7 +136,9 @@
 (defn- login-redirect
   "302 to the login page, returning the user to the top-level `/apps/...` page for the
    `/embed/apps/...` iframe document they asked for (the bare iframe shell is not a page
-   a person would want to land on)."
+   a person would want to land on). `site-url` is nil until a superuser's first request
+   sets it, and this is reached by signed-out visitors: `str` drops the nil, so the
+   redirect is then relative."
   [{:keys [uri query-string]}]
   (let [target (cond-> (str/replace-first uri #"^/embed/" "/")
                  (seq query-string) (str "?" query-string))]
