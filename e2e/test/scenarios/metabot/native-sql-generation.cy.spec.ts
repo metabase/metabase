@@ -14,7 +14,7 @@ const cancelButton = () => cy.findByTestId("metabot-inline-sql-cancel");
 const errorMessage = () => cy.findByTestId("metabot-inline-sql-error");
 const acceptButton = () => cy.findByTestId("accept-proposed-changes-button");
 const rejectButton = () => cy.findByTestId("reject-proposed-changes-button");
-const generatingLoader = () => cy.findByTestId("metabot-inline-sql-generating");
+const generatingLoader = () => cy.findByLabelText("Stop generating");
 
 describe("Native SQL generation", () => {
   it("should show setup guidance when metabot is not configured", () => {
