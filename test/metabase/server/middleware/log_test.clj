@@ -84,8 +84,9 @@
               recorded))
       (testing "duration is measured, and nothing from the URI or query string is recorded"
         (is (int? (:duration-ms recorded)))
+        (is (instance? java.time.OffsetDateTime (:occurred-at recorded)))
         (is (= #{:api-key-id :user-id :tenant-id :route-template :http-method :status :duration-ms
-                 :user-agent :ip-address :embedding-client :embedding-hostname}
+                 :occurred-at :user-agent :ip-address :embedding-client :embedding-hostname}
                (set (keys recorded))))))))
 
 (deftest log-api-call-embedding-client-absent-test

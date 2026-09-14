@@ -35,7 +35,7 @@
           :status         200
           :duration_ms    12
           :client_name    "other"
-          :created_at     (t/offset-date-time)}
+          :occurred_at    (t/offset-date-time)}
          m))
 
 (deftest joins-and-derived-columns-test

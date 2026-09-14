@@ -7,6 +7,7 @@
   queues, so every test that expects to observe one forces `synchronous-batch-updates`."
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [java-time.api :as t]
    [metabase.api-keys.core :as-alias api-keys]
    [metabase.api-keys.usage :as usage]
    [metabase.test :as mt]
@@ -63,12 +64,25 @@
               (is (= "POST" (:http_method row)))
               (is (= 201 (:status row)))
               (is (= 12 (:duration_ms row)))
-              (is (some? (:created_at row)))
+              (is (some? (:occurred_at row)))
               (is (= "curl" (:client_name row))))
             (testing "PII columns populated when retention is on"
               (is (= "curl/8.4.0" (:user_agent row)))
               (is (= "203.0.113.7" (:ip_address row)))))
           (finally (t2/delete! :model/ApiKeyUsageLog :route_template route)))))))
+
+(deftest record-api-key-usage!-occurred-at-is-caller-supplied-test
+  (testing "occurred_at reflects the caller's timestamp, not whenever the batch happens to flush"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temporary-setting-values [synchronous-batch-updates true]
+        (let [route       (unique-route)
+              ;; truncated to microseconds to match real DB storage precision; H2 alone preserves nanoseconds.
+              occurred-at (-> (t/instant) (t/minus (t/hours 3)) (t/truncate-to :micros)
+                              (t/offset-date-time (t/zone-offset 0)))]
+          (try
+            (usage/record-api-key-usage! (request-info route :occurred-at occurred-at))
+            (is (= occurred-at (:occurred_at (row-for route))))
+            (finally (t2/delete! :model/ApiKeyUsageLog :route_template route))))))))
 
 (deftest record-api-key-usage!-pii-gate-test
   (testing "ip_address / user_agent are stored only when retention is on"

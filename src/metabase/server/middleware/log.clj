@@ -3,6 +3,7 @@
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
+   [java-time.api :as t]
    [metabase.analytics.sdk :as analytics.sdk]
    [metabase.api-keys.usage :as api-keys.usage]
    [metabase.api.common :as api]
@@ -229,7 +230,11 @@
 
   `embedding-hostname` is parsed from the embed referrer header via the same
   `metabase.analytics.sdk/extract-hostname` helper `view_log`/`query_execution` use, so it is only
-  ever set alongside `embedding-client`."
+  ever set alongside `embedding-client`.
+
+  `occurred-at` is captured here, on the request thread, rather than left for the DB to fill in at
+  INSERT time — the row lands via a Grouper batch, up to the batch interval later, so a DB-computed
+  default would record when the batch flushed, not when the request happened."
   [{:keys [request response start-time route-template-carrier] :as info}]
   (when (api-key-request? request)
     (try
@@ -244,6 +249,7 @@
         :http-method    (some-> (:request-method request) name u/upper-case-en)
         :status         (:status response)
         :duration-ms    (long (u/since-ms start-time))
+        :occurred-at    (t/offset-date-time)
         :user-agent     (get-in request [:headers "user-agent"])
         :ip-address     (request/ip-address request)
         ;; supplementary to client_name (the primary classification axis) — a plain header read, no

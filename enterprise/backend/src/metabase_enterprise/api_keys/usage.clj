@@ -125,40 +125,44 @@
   always recorded — non-PII, mirrors `agent_api_call_log`'s `client_name`. `embedding_client` is the
   raw `X-Metabase-Client` header, passed through unclassified and non-PII, supplementary to
   `client_name`. `embedding_hostname` is the hostname parsed from the embed referrer header, non-PII,
-  always recorded — only meaningful alongside `embedding_client`. `route_template`, `http_method`,
-  `embedding_client`, and `embedding_hostname` are truncated to their column widths; a row missing a
-  NOT NULL value is dropped rather than queued, so it can't sink the batch it would land in — the
-  `last_used_at` event is queued regardless, since `api-key-id` is always present on an
-  API-key-authenticated request."
+  always recorded — only meaningful alongside `embedding_client`. `occurred_at` is the caller-supplied
+  request timestamp, not a DB-computed default — the row lands via a Grouper batch, so a DB default
+  would record flush time instead of when the request happened; both writes share this one timestamp.
+  `route_template`, `http_method`, `embedding_client`, and `embedding_hostname` are truncated to their
+  column widths; a row missing a NOT NULL value is dropped rather than queued, so it can't sink the
+  batch it would land in — the `last_used_at` event is queued regardless, since `api-key-id` is
+  always present on an API-key-authenticated request."
   :feature :none
-  [{:keys [api-key-id user-id tenant-id route-template http-method status duration-ms
+  [{:keys [api-key-id user-id tenant-id route-template http-method status duration-ms occurred-at
            user-agent ip-address embedding-client embedding-hostname]}]
-  (when api-key-id
+  (let [occurred-at (or occurred-at (t/offset-date-time))]
+    (when api-key-id
+      (try
+        (grouper/submit! @last-used-queue {:id api-key-id, :timestamp occurred-at})
+        (catch Throwable e
+          (log/warn e "Failed to record API key last_used_at"))))
     (try
-      (grouper/submit! @last-used-queue {:id api-key-id, :timestamp (t/offset-date-time)})
+      (let [;; `pii-fields-from` returns the gated PII columns only when retention is on (nil
+            ;; otherwise). Allowlist the two columns this row has, so a new field on the shared helper
+            ;; can't silently start persisting here without a deliberate change.
+            pii (some-> (analytics/pii-fields-from {:user-agent user-agent
+                                                    :ip-address ip-address})
+                        (select-keys [:user_agent :ip_address])
+                        (update :ip_address #(some-> % (u/truncate ip-address-max-length))))
+            row (merge {:api_key_id          api-key-id
+                        :user_id             user-id
+                        :tenant_id           tenant-id
+                        :route_template      (some-> route-template (u/truncate route-template-max-length))
+                        :http_method         (some-> http-method (u/truncate http-method-max-length))
+                        :status              status
+                        :duration_ms         duration-ms
+                        :occurred_at         occurred-at
+                        :client_name         (api-keys.usage/detect-client user-agent)
+                        :embedding_client    (some-> embedding-client (u/truncate embedding-client-max-length))
+                        :embedding_hostname  (some-> embedding-hostname (u/truncate embedding-hostname-max-length))}
+                       pii)]
+        (if-let [missing (not-empty (remove #(some? (get row %)) not-null-columns))]
+          (log/warnf "Not recording API key usage log row, missing %s" (pr-str missing))
+          (grouper/submit! @usage-log-queue row)))
       (catch Throwable e
-        (log/warn e "Failed to record API key last_used_at"))))
-  (try
-    (let [;; `pii-fields-from` returns the gated PII columns only when retention is on (nil
-          ;; otherwise). Allowlist the two columns this row has, so a new field on the shared helper
-          ;; can't silently start persisting here without a deliberate change.
-          pii (some-> (analytics/pii-fields-from {:user-agent user-agent
-                                                  :ip-address ip-address})
-                      (select-keys [:user_agent :ip_address])
-                      (update :ip_address #(some-> % (u/truncate ip-address-max-length))))
-          row (merge {:api_key_id          api-key-id
-                      :user_id             user-id
-                      :tenant_id           tenant-id
-                      :route_template      (some-> route-template (u/truncate route-template-max-length))
-                      :http_method         (some-> http-method (u/truncate http-method-max-length))
-                      :status              status
-                      :duration_ms         duration-ms
-                      :client_name         (api-keys.usage/detect-client user-agent)
-                      :embedding_client    (some-> embedding-client (u/truncate embedding-client-max-length))
-                      :embedding_hostname  (some-> embedding-hostname (u/truncate embedding-hostname-max-length))}
-                     pii)]
-      (if-let [missing (not-empty (remove #(some? (get row %)) not-null-columns))]
-        (log/warnf "Not recording API key usage log row, missing %s" (pr-str missing))
-        (grouper/submit! @usage-log-queue row)))
-    (catch Throwable e
-      (log/warn e "Failed to record API key usage"))))
+        (log/warn e "Failed to record API key usage")))))

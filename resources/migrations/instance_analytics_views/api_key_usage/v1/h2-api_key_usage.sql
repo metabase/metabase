@@ -3,7 +3,7 @@ DROP VIEW IF EXISTS v_api_key_usage;
 CREATE OR REPLACE VIEW v_api_key_usage AS
 SELECT
     t.id                                                   AS log_id,
-    t.created_at,
+    t.occurred_at,
     t.route_template,
     t.http_method,
     t.status,
