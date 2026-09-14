@@ -128,7 +128,7 @@ export const EmptyStateTitle = ({ children }: PropsWithChildren) => (
 );
 
 export const EmptyStateSubtitle = ({ children }: PropsWithChildren) => (
-  <Text c="text-secondary" ta="center" mb="1.5rem" maw="25rem">
+  <Text c="text-secondary" ta="center" lh="1.25rem" mb="1.5rem" maw="25rem">
     {children}
   </Text>
 );

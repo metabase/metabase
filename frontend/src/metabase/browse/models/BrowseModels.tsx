@@ -133,7 +133,10 @@ export const BrowseModels = () => {
                     order={2}
                     ta="center"
                   >{t`Create models to clean up and combine tables to make your data easier to explore`}</Title>
-                  <Text ta="center">{t`Models are somewhat like virtual tables: do all your joins and custom columns once, save it as a model, then query it like a table.`}</Text>
+                  <Text
+                    ta="center"
+                    lh="1.25rem"
+                  >{t`Models are somewhat like virtual tables: do all your joins and custom columns once, save it as a model, then query it like a table.`}</Text>
                 </Stack>
                 {showMetabaseLinks && (
                   <Button variant="subtle" p={0}>

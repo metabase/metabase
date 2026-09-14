@@ -45,7 +45,7 @@ export const ModelExplanationBanner = () => {
             lh="sm"
             fw={700}
           >{t`Create models to clean up and combine tables to make your data easier to explore`}</Text>
-          <Text size="md" lh="1.5">
+          <Text size="md" lh="1.25rem">
             {t`Models are somewhat like virtual tables: do all your joins and custom columns once, save it as a model, then query it like a table.`}
           </Text>
           <Group gap="lg">

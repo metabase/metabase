@@ -91,7 +91,7 @@ export const EmptyState = ({
         </Title>
       )}
       {message && (
-        <Text role="status" c="text-secondary" mt="xxs">
+        <Text role="status" c="text-secondary" lh="1.25rem" mt="xxs">
           {message}
         </Text>
       )}
