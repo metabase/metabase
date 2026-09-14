@@ -93,7 +93,7 @@
   or `:alphabetical`)."
   [table-id    :- ::lib.schema.id/table
    field-order :- [:enum :custom :smart :database :alphabetical]]
-  (t2/select [:model/Field :id] :table_id table-id {:from     [(warehouse-schema-overlay/field-query {:user-settings? false})]
+  (t2/select [:model/Field :id] :table_id table-id {:from     [(warehouse-schema-overlay/field-query)]
                                                     :order-by (field-order-order-by field-order)}))
 
 (mu/defn active-fields-for-tables
@@ -118,7 +118,7 @@
 (mu/defn update-field!
   "Apply `changes` to the ::warehouse-schema.schema/field with `field-id`, returning the number updated."
   [field-id :- ::lib.schema.id/field
-   changes  :- (mut/select-keys ::warehouse-schema.schema/field.update [:position :custom_position])]
+   changes  :- (mut/select-keys ::warehouse-schema.schema/field.update [:position])]
   (t2/update! :model/Field field-id changes))
 
 (mu/defn clear-fk-targets-to-field!
@@ -183,7 +183,7 @@
 
 (def ^:private field-user-settings-update-keys
   "The columns an insert or update of a FieldUserSettings accepts."
-  [:field_id :created_at :updated_at :semantic_type :description :display_name :visibility_type :fk_target_field_id :has_field_values :effective_type :coercion_strategy :caveats :points_of_interest :nfc_path :json_unfolding :settings :data_sensitivity :description_set :semantic_type_set :fk_target_field_id_set])
+  [:field_id :created_at :updated_at :semantic_type :description :display_name :visibility_type :fk_target_field_id :has_field_values :effective_type :coercion_strategy :caveats :points_of_interest :nfc_path :json_unfolding :settings :data_sensitivity :custom_position :description_set :semantic_type_set :fk_target_field_id_set])
 
 (mu/defn field-user-settings-exist-for-table?
   "Whether any Field of the ::warehouse-schema.schema/table with `table-id` has a FieldUserSettings row."
@@ -213,6 +213,18 @@
   [field-id :- ::lib.schema.id/field
    changes  :- (mut/select-keys ::warehouse-schema.schema/field-user-settings.update field-user-settings-update-keys)]
   (t2/update! :model/FieldUserSettings field-id changes))
+
+(mu/defn field-ids-with-user-settings :- [:set ::lib.schema.id/field]
+  "The ids, among `field-ids`, of the Fields that have a FieldUserSettings row."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (set (t2/select-fn-set :field_id :model/FieldUserSettings :field_id [:in field-ids])))
+
+(mu/defn update-field-user-settings-custom-positions!
+  "Set the `custom_position` of the FieldUserSettings of each Field in `field-id->position`, returning the number
+  updated."
+  [field-id->position :- [:map-of ::lib.schema.id/field :int]]
+  (t2/update! :model/FieldUserSettings :field_id [:in (keys field-id->position)]
+              {:custom_position (into [:case] (mapcat (fn [[id position]] [[:= :field_id id] position])) field-id->position)}))
 
 (mu/defn delete-field-user-settings!
   "Delete the FieldUserSettings of the ::warehouse-schema.schema/field with `field-id`, returning the number deleted."

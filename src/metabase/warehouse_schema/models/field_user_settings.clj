@@ -76,6 +76,17 @@
         (warehouse-schema.db/update-field-user-settings! id (with-set-flags settings settings))
         (warehouse-schema.db/insert-field-user-settings! (assoc settings :field_id id))))))
 
+(mu/defn set-custom-positions!
+  "Record `field-id->position` as the Fields' user `custom_position`s."
+  [field-id->position :- [:map-of ::lib.schema.id/field :int]]
+  (let [existing (warehouse-schema.db/field-ids-with-user-settings (keys field-id->position))
+        missing  (remove existing (keys field-id->position))]
+    (when (seq missing)
+      (warehouse-schema.db/insert-field-user-settings!
+       (mapv (fn [id] {:field_id id :custom_position (field-id->position id)}) missing)))
+    (when (seq existing)
+      (warehouse-schema.db/update-field-user-settings-custom-positions! (select-keys field-id->position existing)))))
+
 (mu/defn unset-user-settings!
   "Drop the user values of the Field columns `ks` for `field`."
   [{:keys [id]} :- [:map [:id ::lib.schema.id/field]]
@@ -109,7 +120,7 @@
 (defmethod serdes/make-spec "FieldUserSettings" [_model-name _opts]
   {:copy      [:semantic_type :description :display_name :visibility_type
                :has_field_values :effective_type :coercion_strategy :caveats
-               :points_of_interest :nfc_path :json_unfolding :settings :data_sensitivity
+               :points_of_interest :nfc_path :json_unfolding :settings :data_sensitivity :custom_position
                :description_set :semantic_type_set :fk_target_field_id_set]
    :defaults  {:description_set        false
                :semantic_type_set      false

@@ -91,3 +91,14 @@
         (is (thrown-with-msg? Exception #"Cannot set data_authority back to unconfigured"
                               (t2/update! :model/TableUserSettings table-id
                                           {:data_authority :unconfigured})))))))
+
+(deftest custom-order-fields-test
+  (testing "a custom order is recorded as the Fields' user custom_position and applied to their position"
+    (mt/with-temp [:model/Table {table-id :id :as table} {}
+                   :model/Field {f1 :id}                {:table_id table-id :name "A"}
+                   :model/Field {f2 :id}                {:table_id table-id :name "B"}]
+      (table-user-settings/custom-order-fields! table [f2 f1])
+      (is (= :custom (:field_order (user-table table-id))))
+      (is (= {f2 0 f1 1} (t2/select-fn->fn :field_id :custom_position :model/FieldUserSettings :field_id [:in [f1 f2]])))
+      (is (= [f2 f1] (t2/select-pks-vec :model/Field :table_id table-id {:order-by [[:position :asc]]})))
+      (is (= #{0} (t2/select-fn-set :custom_position :model/Field :table_id table-id))))))

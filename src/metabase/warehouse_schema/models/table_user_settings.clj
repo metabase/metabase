@@ -7,6 +7,7 @@
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [methodical.core :as methodical]
@@ -132,11 +133,8 @@
   {:pre [(valid-field-order? table field-order)]}
   (t2/with-transaction [_]
     (upsert-user-settings table {:field_order :custom})
-    (dorun
-     (map-indexed (fn [position field-id]
-                    (warehouse-schema.db/update-field! field-id {:position        position
-                                                                 :custom_position position}))
-                  field-order))))
+    (field-user-settings/set-custom-positions! (zipmap field-order (range)))
+    (table/update-field-positions! (warehouse-schema.db/table (u/the-id table)))))
 
 (mu/defn unset-user-settings!
   "Drop the user values of the Table columns `ks` for `table`."
@@ -167,6 +165,12 @@
   (let [db-path (first (serdes/path tus))]
     (cond-> [[db-path]]
       (:collection_id tus) (conj [{:model "Collection" :id (:collection_id tus)}]))))
+
+(defmethod serdes/load-one! "TableUserSettings" [ingested maybe-local]
+  (let [settings (serdes/default-load-one! ingested maybe-local)]
+    (when (:field_order ingested)
+      (table/update-field-positions! (warehouse-schema.db/table (:table_id settings))))
+    settings))
 
 (defmethod serdes/load-find-local "TableUserSettings" [path]
   (let [found-table (serdes/load-find-local (pop path))]

@@ -144,6 +144,7 @@
    [:json_unfolding     [:maybe :boolean]]
    [:settings           [:maybe ::field-user-settings.settings]]
    [:data_sensitivity   [:maybe [:or :keyword :string]]]
+   [:custom_position    [:maybe :int]]
    [:description_set        :boolean]
    [:semantic_type_set      :boolean]
    [:fk_target_field_id_set :boolean]])
@@ -168,6 +169,7 @@
    [:json_unfolding     {:optional true} [:maybe :boolean]]
    [:settings           {:optional true} [:maybe ::field-user-settings.settings]]
    [:data_sensitivity   {:optional true} [:maybe [:or :keyword :string]]]
+   [:custom_position    {:optional true} [:maybe :int]]
    [:description_set        {:optional true} :boolean]
    [:semantic_type_set      {:optional true} :boolean]
    [:fk_target_field_id_set {:optional true} :boolean]])

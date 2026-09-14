@@ -299,3 +299,36 @@ databaseChangeLog:
                 AND description_set = FALSE AND semantic_type_set = FALSE AND fk_target_field_id_set = FALSE
       rollback: # not necessary; the rows held nothing
 
+  - changeSet:
+      id: v64.2026-09-11T00:00:08
+      author: ranquild
+      comment: Add custom_position to metabase_field_user_settings
+      changes:
+        - addColumn:
+            tableName: metabase_field_user_settings
+            columns:
+              - column:
+                  remarks: User-set custom_position for the Field
+                  name: custom_position
+                  type: int
+
+  - changeSet:
+      id: v64.2026-09-11T00:00:09
+      author: ranquild
+      comment: Move custom field positions into metabase_field_user_settings
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO metabase_field_user_settings (field_id, custom_position)
+              SELECT f.id, f.custom_position
+              FROM metabase_field f
+              WHERE f.custom_position <> 0
+                AND NOT EXISTS (SELECT 1 FROM metabase_field_user_settings s WHERE s.field_id = f.id)
+        - sql:
+            sql: >-
+              UPDATE metabase_field_user_settings
+              SET custom_position = (SELECT f.custom_position FROM metabase_field f WHERE f.id = metabase_field_user_settings.field_id)
+              WHERE EXISTS (SELECT 1 FROM metabase_field f WHERE f.id = metabase_field_user_settings.field_id AND f.custom_position <> 0)
+        - sql:
+            sql: UPDATE metabase_field SET custom_position = 0 WHERE custom_position <> 0
+      rollback: # not necessary; the positions are preserved in metabase_field_user_settings

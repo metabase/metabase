@@ -437,7 +437,9 @@
             [:sequential ms/PositiveInt]
             [:map {:closed true} [:field_order [:sequential ms/PositiveInt]]]]]
   (let [field-order (if (map? body) (:field_order body) body)]
-    (-> (warehouse-schema-rest.db/table id) api/write-check (schema.table-user-settings/custom-order-fields! field-order)))
+    (-> (warehouse-schema-rest.db/table id) api/write-check (schema.table-user-settings/custom-order-fields! field-order))
+    (events/publish-event! :event/table-update {:object  (warehouse-schema-rest.db/table id)
+                                                :user-id api/*current-user-id*}))
   {:success true})
 
 (mu/defn- update-csv!

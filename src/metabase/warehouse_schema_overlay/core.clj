@@ -9,7 +9,8 @@
 (def user-settable-field-columns
   "The Field columns users can set. Their user values live in `metabase_field_user_settings`, never in `metabase_field`."
   #{:semantic_type :description :display_name :visibility_type :has_field_values :effective_type :coercion_strategy
-    :fk_target_field_id :caveats :points_of_interest :nfc_path :json_unfolding :settings :data_sensitivity})
+    :fk_target_field_id :caveats :points_of_interest :nfc_path :json_unfolding :settings :data_sensitivity
+    :custom_position})
 
 (def field-user-settings-flags
   "The user-settable Field columns sync also writes, mapped to the flag that says the user set the column, NULL
