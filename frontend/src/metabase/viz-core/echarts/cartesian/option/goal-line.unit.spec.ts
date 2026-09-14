@@ -14,6 +14,27 @@ import { getGoalLineParams, getGoalLineSeriesOption } from "./goal-line";
 
 const renderingContext = createMockChartContext();
 
+describe("getGoalLineSeriesOption", () => {
+  it("draws the goal line at a static value", () => {
+    expect(getGoalLineData(250)).toEqual([["foo", 250]]);
+  });
+
+  it("reads a normalized stack goal as a percentage", () => {
+    expect(getGoalLineData(50, { isNormalized: true })).toEqual([["foo", 0.5]]);
+  });
+
+  it("draws nothing for an unresolved reference", () => {
+    expect(
+      getGoalLineData({ type: "card", id: 9, column: "goal" }),
+    ).toBeUndefined();
+    expect(getGoalLineData("count")).toBeUndefined();
+  });
+
+  it("draws nothing for an empty goal", () => {
+    expect(getGoalLineData(null)).toBeUndefined();
+  });
+});
+
 function getGoalLineData(
   goalValue: GoalValue | null,
   { isNormalized = false }: { isNormalized?: boolean } = {},
@@ -43,24 +64,3 @@ function getGoalLineData(
     renderingContext,
   )?.data;
 }
-
-describe("getGoalLineSeriesOption", () => {
-  it("draws the goal line at a static value", () => {
-    expect(getGoalLineData(250)).toEqual([["foo", 250]]);
-  });
-
-  it("reads a normalized stack goal as a percentage", () => {
-    expect(getGoalLineData(50, { isNormalized: true })).toEqual([["foo", 0.5]]);
-  });
-
-  it("draws nothing for an unresolved reference", () => {
-    expect(
-      getGoalLineData({ type: "card", id: 9, column: "goal" }),
-    ).toBeUndefined();
-    expect(getGoalLineData("count")).toBeUndefined();
-  });
-
-  it("draws nothing for an empty goal", () => {
-    expect(getGoalLineData(null)).toBeUndefined();
-  });
-});
