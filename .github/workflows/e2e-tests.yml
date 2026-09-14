@@ -6,8 +6,8 @@ on:
       skip:
         type: boolean
         default: false
-      spec-files:
-        description: "JSON array of spec files to run, '' to run the full suite."
+      test-plan-artifact-id:
+        description: "ID of this run's test-plan.json artifact, '' to run the full suite."
         type: string
         required: false
         default: ""
@@ -22,7 +22,7 @@ jobs:
     uses: ./.github/workflows/e2e-matrix-builder.yml
     with:
       chunks: 50
-      spec-files: ${{ inputs.spec-files }}
+      test-plan-artifact-id: ${{ inputs.test-plan-artifact-id }}
 
   reset-e2e-test-comment:
     if: ${{ github.event_name == 'pull_request' }}
@@ -72,7 +72,7 @@ jobs:
       name: ${{ matrix.name }}
       edition: ${{ matrix.edition }}
       specs: ${{ matrix.specs }}
-      spec-files: ${{ inputs.spec-files }}
+      test-plan-artifact-id: ${{ needs.e2e-matrix-builder.outputs.test-plan-artifact-id }}
       total_chunks: ${{ fromJson(needs.e2e-matrix-builder.outputs.regularChunks) }}
       split_index: ${{ strategy.job-index }}
       tags: ${{ matrix.tags }}

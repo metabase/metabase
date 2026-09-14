@@ -1,6 +1,5 @@
 const { spawnSync } = require("node:child_process");
 const fs = require("node:fs");
-const os = require("node:os");
 const path = require("node:path");
 
 const { load } = require("js-yaml");
@@ -41,35 +40,15 @@ describe("E2E workflow result", () => {
 });
 
 describe("E2E plan handoff", () => {
-  it.each([
-    ["e2e-matrix-builder.yml", "build-matrix"],
-    ["e2e-test.yml", "e2e-tests"],
-  ])("should write a large JSON plan in %s", (file, job) => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "e2e-plan-handoff-"));
-    try {
-      const files = Array.from(
-        { length: 4000 },
-        (_, i) => `e2e/test/scenarios/folder with spaces/${i},$name.cy.spec.ts`,
-      );
-      const step = workflow(file).jobs[job].steps.find(
-        (step) => step.name === "Write spec plan",
-      );
-      const script = step.run.replace(
-        "${{ inputs.spec-files }}",
-        JSON.stringify(files),
-      );
-      const result = spawnSync("bash", ["-e"], {
-        input: script,
-        cwd: dir,
-        encoding: "utf8",
-      });
+  it("should give shards the plan the matrix was built from", () => {
+    const { with: inputs } = workflow("e2e-tests.yml").jobs["e2e-tests"];
+    const download = workflow("e2e-test.yml").jobs["e2e-tests"].steps.find(
+      (step) => step.name === "Download test plan",
+    );
 
-      expect(result.status).toBe(0);
-      expect(
-        JSON.parse(fs.readFileSync(path.join(dir, "e2e-spec-files.json"))),
-      ).toEqual(files);
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
+    expect(inputs["test-plan-artifact-id"]).toBe(
+      "${{ needs.e2e-matrix-builder.outputs.test-plan-artifact-id }}",
+    );
+    expect(download["continue-on-error"]).toBeUndefined();
   });
 });

@@ -355,11 +355,11 @@ jobs:
         needs.files-changed.outputs.e2e_all != 'true' }}
       # Only narrow specs on pull requests that haven't been forced to run everything.
       # Push and merge-queue runs always use the full suite.
-      spec-files: >-
+      test-plan-artifact-id: >-
         ${{ needs.should-run.outputs.verdict != 'force-run' &&
         github.event_name == 'pull_request' &&
         needs.create-test-plan.result == 'success' &&
-        needs.create-test-plan.outputs.e2e_specs_to_run || '' }}
+        needs.create-test-plan.outputs.artifact-id || '' }}
 
   embedding-sdk-package:
     needs: [should-run, files-changed]

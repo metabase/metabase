@@ -7,8 +7,8 @@ on:
         required: false
         type: number
         default: 30
-      spec-files:
-        description: "JSON array of spec files to run, '' to run the full suite."
+      test-plan-artifact-id:
+        description: "ID of this run's test-plan.json artifact, '' to run the full suite."
         required: false
         type: string
         default: ""
@@ -19,6 +19,9 @@ on:
         value: ${{ jobs.build-matrix.outputs.regularChunks }}
       hasTests:
         value: ${{ jobs.build-matrix.outputs.hasTests }}
+      test-plan-artifact-id:
+        description: "The test plan artifact ID when the matrix was built from a narrowed selection, otherwise ''."
+        value: ${{ jobs.build-matrix.outputs.test-plan-artifact-id }}
 
 jobs:
   build-matrix:
@@ -28,27 +31,42 @@ jobs:
       matrix: ${{ steps.matrix.outputs.config }}
       regularChunks: ${{ steps.matrix.outputs.regularChunks }}
       hasTests: ${{ steps.matrix.outputs.hasTests }}
+      test-plan-artifact-id: ${{ steps.selection.outputs.paths-file && inputs.test-plan-artifact-id || '' }}
     steps:
       - uses: actions/checkout@v6
         with:
           sparse-checkout: |
             .github
+            /package.json
             e2e/runner/read-spec-plan.js
           sparse-checkout-cone-mode: false
       - uses: actions/setup-node@v6.4.0
         with:
           node-version: lts/Jod # 22.x.x
-      - name: Write spec plan
-        run: |
-          cat > e2e-spec-files.json <<'EOF'
-          ${{ inputs.spec-files }}
-          EOF
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        if: ${{ inputs.test-plan-artifact-id != '' }}
+        with:
+          bun-version-file: "package.json"
+      - name: Download test plan
+        id: test-plan
+        if: ${{ inputs.test-plan-artifact-id != '' }}
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          artifact-ids: ${{ inputs.test-plan-artifact-id }}
+          path: ${{ runner.temp }}/test-plan
+      - name: Prepare E2E spec selection
+        id: selection
+        if: ${{ inputs.test-plan-artifact-id != '' }}
+        env:
+          PLAN_DOWNLOADED: ${{ steps.test-plan.outcome }}
+        run: bun .github/scripts/prepare-test-selection.ts e2e
       - name: Build e2e matrix
         uses: actions/github-script@v9
         id: matrix
         env:
           chunks: ${{ inputs.chunks }}
-          E2E_SPEC_PATHS_FILE: ${{ inputs.spec-files && format('{0}/e2e-spec-files.json', github.workspace) || '' }}
+          E2E_SPEC_PATHS_FILE: ${{ steps.selection.outputs.paths-file }}
         with:
           script: | # js
             const { buildMatrix } = require('${{ github.workspace }}/.github/scripts/build-e2e-matrix.js');

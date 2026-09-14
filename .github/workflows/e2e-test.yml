@@ -15,8 +15,8 @@ on:
         required: false
         default: ./e2e/test/scenarios/**/*.cy.spec.*
         type: string
-      spec-files:
-        description: "JSON array of spec files to run, '' to use the default spec pattern."
+      test-plan-artifact-id:
+        description: "ID of this run's test-plan.json artifact, '' to use the default spec pattern."
         type: string
         default: ""
       tags:
@@ -179,12 +179,21 @@ jobs:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: node e2e/runner/run_cypress_ci.js snapshot
 
-      - name: Write spec plan
-        if: ${{ inputs.spec-files }}
-        run: |
-          cat > e2e-spec-files.json <<'EOF'
-          ${{ inputs.spec-files }}
-          EOF
+      # The matrix builder sized these jobs for the planned specs, so this download has to succeed.
+      - name: Download test plan
+        id: test-plan
+        if: ${{ inputs.test-plan-artifact-id != '' }}
+        uses: actions/download-artifact@v8
+        with:
+          artifact-ids: ${{ inputs.test-plan-artifact-id }}
+          path: ${{ runner.temp }}/test-plan
+
+      - name: Prepare E2E spec selection
+        id: selection
+        if: ${{ inputs.test-plan-artifact-id != '' }}
+        env:
+          PLAN_DOWNLOADED: ${{ steps.test-plan.outcome }}
+        run: bun .github/scripts/prepare-test-selection.ts e2e
 
       - name: Run auto-split Cypress tests on ${{ inputs.name }}
         id: split-e2e
@@ -198,7 +207,7 @@ jobs:
           # do not write cypress-split summary to github
           SPLIT_SUMMARY: false
           SPEC_PATH: ${{ env.specs || inputs.specs }}
-          E2E_SPEC_PATHS_FILE: ${{ inputs.spec-files && format('{0}/e2e-spec-files.json', github.workspace) || '' }}
+          E2E_SPEC_PATHS_FILE: ${{ steps.selection.outputs.paths-file }}
           # Re-run attempts run only the previously-failed specs (env.specs), so record them.
           CYPRESS_VIDEO: ${{ env.specs && 'true' || 'false' }}
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
@@ -217,7 +226,7 @@ jobs:
         shell: bash
         env:
           SPEC_PATH: ${{ env.specs || inputs.specs }}
-          E2E_SPEC_PATHS_FILE: ${{ inputs.spec-files && format('{0}/e2e-spec-files.json', github.workspace) || '' }}
+          E2E_SPEC_PATHS_FILE: ${{ steps.selection.outputs.paths-file }}
           # Re-run attempts run only the previously-failed specs (env.specs), so record them.
           CYPRESS_VIDEO: ${{ env.specs && 'true' || 'false' }}
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
