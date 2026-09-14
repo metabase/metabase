@@ -184,6 +184,12 @@
                       {:type qp.error-type/qp, :query query}
                       e)))))
 
+(defn- maybe-userland
+  "Wrap `query` as a userland query when it carries a non-empty `:info` map."
+  [query]
+  (cond-> query
+    (seq (:info query)) qp/userland-query))
+
 (mu/defn- process-query-append-results
   "Reduce the results of a single (sub)`query` using `rf` and initial value `init`."
   [query :- ::lib.schema/query
@@ -307,13 +313,10 @@
    pivot-limit                                      :- [:maybe nat-int?]]
   (if (empty? more-queries)
     ;; Single query - use normal QP pipeline to preserve userland metadata
-    (qp/process-query (cond-> first-query
-                        (seq info) qp/userland-query)
-                      rff)
+    (qp/process-query (maybe-userland first-query) rff)
     ;; Multiple queries - use custom pivot pipeline
     (let [{:keys [rff execute reduce]} (append-queries-rff-and-fns info rff more-queries pivot-limit)
-          first-query                  (cond-> first-query
-                                         (seq info) qp/userland-query)]
+          first-query                  (maybe-userland first-query)]
       (binding [qp.pipeline/*execute* (or execute qp.pipeline/*execute*)
                 qp.pipeline/*reduce*  (or reduce qp.pipeline/*reduce*)]
         (qp/process-query first-query rff)))))
@@ -722,7 +725,7 @@
         (apply-pivot-viz-settings viz-settings)
         ensure-pivot-clause
         (assoc-in [:middleware :pivot-options] pivot-opts)
-        (cond-> (seq (:info query)) qp/userland-query)
+        maybe-userland
         (qp/process-query rff))))
 
 (defn- running-in-clojure-test?
@@ -925,7 +928,7 @@
        ;; there's nothing to group over or aggregate so we fall through to a plain non-pivot run.
        (if (or (empty? (lib/breakouts query))
                (empty? (lib/aggregations query)))
-         (qp/process-query query rff)
+         (qp/process-query (maybe-userland query) rff)
          (let [db                (query-database query)
                sql-driver?       (isa? driver/hierarchy (:engine db) :sql)
                use-single-query? (and sql-driver? (qp.settings/use-native-pivot-tables))
