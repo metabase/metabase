@@ -164,6 +164,34 @@ runs:
         profiled: ${{ steps.run-test.outputs.profiled }}
         artifact-name: ${{ format('profile-{0}{1}', inputs.junit-name, inputs.artifact-suffix && format('-{0}', inputs.artifact-suffix) || '') }}
 
+    # Per-test wall times on every run, not just profiled ones: a suite that passes slowly, or that hits
+    # the job timeout, is exactly when you want them. `always()` so a timed-out job still reports every
+    # namespace that finished. A profiled run already gets this summary from collect-profile, so only
+    # the TSV is written then.
+    - name: Summarize test wall times
+      if: ${{ always() }}
+      continue-on-error: true
+      shell: bash
+      env:
+        PROFILED: ${{ steps.run-test.outputs.profiled }}
+      run: |
+        mkdir -p target
+        ./.github/scripts/summarize-test-timings.sh target/junit target/test-timings.tsv > target/test-timings.md
+        cat target/test-timings.md
+        if [ "$PROFILED" != "true" ]; then
+          cat target/test-timings.md >> "$GITHUB_STEP_SUMMARY"
+        fi
+
+    - name: Upload test wall times
+      if: ${{ always() }}
+      continue-on-error: true
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ format('test-timings-{0}{1}', inputs.junit-name, inputs.artifact-suffix && format('-{0}', inputs.artifact-suffix) || '') }}
+        path: target/test-timings.tsv
+        retention-days: 14
+        if-no-files-found: ignore
+
     - name: Report failed tests to ci-conductor
       if: ${{ !cancelled() && ( steps.run-test.outcome == 'failure' || github.run_attempt != '1' ) }}
       # This step should NEVER fail the job!
