@@ -702,9 +702,46 @@
                  (is (not (str/includes? (str (:body response)) "uiCredential"))))))
            (testing "the fields catalog is refused too — agent:resource:read, also absent from this token"
              (is (= -32602 (get-in (read! v2.resources/fields-catalog-uri) [:body :error :code]))))
-           (testing "and nothing is advertised to this token in the first place"
-             (is (empty? (-> (session! (jsonrpc-request "resources/list"))
-                             (get-in [:body :result :resources])))))))))))
+           (testing "GHY-4543: yet every resource is still listed, so the client can see what it could step up for"
+             (is (= #{v2.resources/visualize-query-uri v2.resources/render-drill-through-uri
+                      v2.resources/fields-catalog-uri}
+                    (set (map :uri (-> (session! (jsonrpc-request "resources/list"))
+                                       (get-in [:body :result :resources])))))))))))))
+
+(deftest baseline-token-lists-every-resource-but-reads-only-its-own-test
+  (testing "GHY-4543: `resources/list` is token-independent, like `tools/list`. A client that pre-fetches the MCP Apps
+            shells at connect time must see them listed even before it has stepped up to agent:query:run; the read
+            stays gated."
+    (mcp.ui-resource/with-fallback-template
+      (do-with-bearer-token!
+       #{"agent:content:read" "agent:resource:read"}
+       (fn [headers]
+         (let [session-id (-> (client/client-full-response :post 200 endpoint
+                                                           {:request-options {:headers headers}}
+                                                           (jsonrpc-request "initialize" {:capabilities {}}))
+                              (get-in [:headers "Mcp-Session-Id"]))
+               session!   (fn [body]
+                            (client/client-full-response
+                             :post 200 endpoint
+                             {:request-options {:headers (assoc headers "mcp-session-id" session-id)}}
+                             body))
+               read!      #(session! (jsonrpc-request "resources/read" {:uri %}))]
+           (testing "every resource is listed"
+             (is (= #{v2.resources/visualize-query-uri v2.resources/render-drill-through-uri
+                      v2.resources/fields-catalog-uri}
+                    (set (map :uri (-> (session! (jsonrpc-request "resources/list"))
+                                       (get-in [:body :result :resources])))))))
+           (testing "the fields catalog, which this token's scopes cover, reads"
+             (let [response (read! v2.resources/fields-catalog-uri)]
+               (is (nil? (get-in response [:body :error])))
+               (is (= v2.resources/fields-catalog-uri
+                      (-> response (get-in [:body :result :contents]) first :uri)))))
+           (testing "a listed UI shell outside this token's scopes still reads as not found"
+             (doseq [uri [v2.resources/visualize-query-uri v2.resources/render-drill-through-uri]]
+               (testing uri
+                 (let [response (read! uri)]
+                   (is (= -32602 (get-in response [:body :error :code])))
+                   (is (= "Resource not found" (get-in response [:body :error :message])))))))))))))
 
 (deftest bearer-token-dispatches-with-its-own-scopes-test
   (testing "GHY-4287: the session middleware resolves an OAuth bearer token itself, so a bearer request reaches the

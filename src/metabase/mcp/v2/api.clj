@@ -76,8 +76,8 @@
                             (:description insufficient-scope)))
       (transport/jsonrpc-response id result))))
 
-(defn- handle-resources-list [id _params token-scopes]
-  (transport/jsonrpc-response id (v2.resources/list-resources token-scopes)))
+(defn- handle-resources-list [id _params]
+  (transport/jsonrpc-response id (v2.resources/list-resources)))
 
 (defn- handle-resources-read [id params session-id token-scopes]
   (let [uri (:uri params)]
@@ -115,7 +115,7 @@
     "notifications/initialized" nil
     "tools/list"                (handle-tools-list id params session-id)
     "tools/call"                (handle-tools-call id params session-id token-scopes request-context)
-    "resources/list"            (handle-resources-list id params token-scopes)
+    "resources/list"            (handle-resources-list id params)
     "resources/read"            (handle-resources-read id params session-id token-scopes)
     "ping"                      (handle-ping id params)
     (if id

@@ -324,14 +324,16 @@
         (is (contains? advertised scope) scope)))))
 
 (deftest resources-scope-gating-test
-  (testing "GHY-4157: resources/list only shows shells the token can read"
-    (is (= #{v2.resources/visualize-query-uri v2.resources/render-drill-through-uri}
-           (set (map :uri (:resources (v2.resources/list-resources viz-scopes))))))
-    (testing "GHY-4250: the v0.62 per-shell leaves went out with the v1 resources they gated, so a
-              still-live token carrying one unlocks nothing — a bare grant matches only itself"
-      (is (empty? (:resources (v2.resources/list-resources #{"agent:viz:mcp-ui:query"}))))
-      (is (empty? (:resources (v2.resources/list-resources #{"agent:viz:mcp-ui:drill-through"})))))
-    (is (empty? (:resources (v2.resources/list-resources #{"agent:content:read"})))))
+  (testing "GHY-4543: resources/list lists every shell regardless of scope; only the read is gated"
+    (is (= #{v2.resources/visualize-query-uri v2.resources/render-drill-through-uri
+             v2.resources/fields-catalog-uri}
+           (set (map :uri (:resources (v2.resources/list-resources)))))))
+  (testing "GHY-4250: the v0.62 per-shell leaves went out with the v1 resources they gated, so a
+            still-live token carrying one unlocks nothing — a bare grant matches only itself"
+    (doseq [grant ["agent:viz:mcp-ui:query" "agent:viz:mcp-ui:drill-through"]
+            uri   [v2.resources/visualize-query-uri v2.resources/render-drill-through-uri]]
+      (is (= :scope-denied (:status (v2.resources/read-resource uri #{grant} {})))
+          (str grant " -> " uri))))
   (testing "GHY-4157: reading a shell without its scope is denied, not served"
     (is (= :scope-denied (:status (v2.resources/read-resource v2.resources/visualize-query-uri
                                                               #{"agent:content:read"} {}))))

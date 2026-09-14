@@ -137,7 +137,7 @@ resources above exist only so a client that can render an iframe has something t
 | `notifications/initialized` | Client notification that initialization is complete.                         |
 | `tools/list`                | List available tools, whatever the token's scopes.                           |
 | `tools/call`                | Call a tool with arguments.                                                  |
-| `resources/list`            | List available resources (filtered by the token's scopes).                   |
+| `resources/list`            | List available resources, whatever the token's scopes.                       |
 | `resources/read`            | Read a resource by URI. Requires an initialized session.                     |
 | `ping`                      | Keepalive ping.                                                              |
 

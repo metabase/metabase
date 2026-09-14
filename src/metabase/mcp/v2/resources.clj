@@ -64,13 +64,12 @@
   (into (sorted-set) (keep :scope) (vals @resources*)))
 
 (defn list-resources
-  "The MCP `resources/list` payload, filtered by `token-scopes`."
-  [token-scopes]
+  "The MCP `resources/list` payload: every registered resource, independent of the caller's scopes."
+  []
   {:resources (into []
-                    (comp (filter #(mcp.scope/matches? token-scopes (:scope %)))
-                          (map (fn [resource]
-                                 (cond-> (select-keys resource [:uri :name :description :mimeType])
-                                   (:ui? resource) (assoc :_meta (mcp.ui-resource/ui-meta resource))))))
+                    (map (fn [resource]
+                           (cond-> (select-keys resource [:uri :name :description :mimeType])
+                             (:ui? resource) (assoc :_meta (mcp.ui-resource/ui-meta resource)))))
                     (vals @resources*))})
 
 (defn read-resource
