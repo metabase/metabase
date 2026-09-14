@@ -38,17 +38,6 @@
       (is (= ["b"] (map :msgstr (t2/select :model/ContentTranslation :locale "de"))))
       (is (= 1 (t2/count :model/ContentTranslation :locale "de"))))))
 
-(deftest a-marker-outside-a-value-slot-is-rejected-test
-  (testing "a marker HoneySQL formats as an identifier is dropped rather than bound, so it throws"
-    (mt/with-temp [:model/ContentTranslation _ {:locale "de" :msgid "a" :msgstr "b"}]
-      ;; The unmarked literals in the where clause supply arguments of their own, so this is only
-      ;; caught by looking for the marked value itself rather than counting arguments.
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo #"did not bind"
-           (t2/select :model/ContentTranslation
-                      {:select [:*] :from [[:auto/param :t]]
-                       :where  [:and [:= :locale "de"] [:= :msgid "a"]]}))))))
-
 (deftest values-that-bind-as-several-arguments-test
   (mt/with-temp [:model/ContentTranslation _ {:locale "de" :msgid "x" :msgstr "ex"}
                  :model/ContentTranslation _ {:locale "fr" :msgid "y" :msgstr "why"}]

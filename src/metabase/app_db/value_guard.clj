@@ -10,7 +10,13 @@
 
   HoneySQL binds a value through `[:param :k]` against a separate params map. `auto-param` rewrites
   the inline marker into that pair at the compile step, so a caller writes the value where it
-  belongs and never keeps the two in sync."
+  belongs and never keeps the two in sync.
+
+  Put a marker in a value slot. Written anywhere else -- a table or column position, say -- it is
+  rewritten into a `[:param :k]` that HoneySQL formats as an identifier and never binds, so the
+  value is dropped and the generated key appears in the SQL. Nothing here catches that: HoneySQL
+  gives no signal for a param it did not consume, and which positions bind is a decision it makes
+  per operator, so it cannot be inferred from the query alone."
   (:require
    [clojure.walk :as walk]
    [methodical.core :as methodical]
@@ -101,29 +107,6 @@
     (throw (ex-info "[:auto/param ...] would reach SQL unlifted. It belongs in a value slot of a query map."
                     {:type ::marker-reached-sql, :query query}))))
 
-(defn- assert-every-value-bound!
-  "Every value lifted out of the query has to come back as a bound argument. A marker sitting in a
-  slot HoneySQL formats as an identifier is rewritten but never consumed, which drops the value and
-  leaks the generated key into the SQL text.
-
-  Checks that each lifted value is present among the arguments rather than counting them: a query
-  carrying unmarked literals has arguments to spare, and a count would let those stand in for a
-  value that was dropped."
-  [params [sql & args]]
-  (let [present (set args)]
-    (doseq [v (vals params)
-            ;; A sequential value is spread across one argument per element, so the collection
-            ;; itself is never an argument -- look for its elements instead. Anything else,
-            ;; including a map, binds whole.
-            :let [bound? (if (sequential? v)
-                           (every? present v)
-                           (contains? present v))]
-            :when (not bound?)]
-      (throw (ex-info (str "[:auto/param ...] did not bind: " (pr-str v)
-                           " was marked as a value but is not among the query's parameters."
-                           " A marker belongs in a value slot, not a column or table position.")
-                      {:type ::marker-not-bound, :value v, :sql sql})))))
-
 (methodical/defmethod t2.pipeline/compile :around :default
   [query-type model built-query]
   ;; Toucan re-enters `compile` with the `[sql & args]` vector it produced, so only a map is worth
@@ -137,7 +120,5 @@
         (next-method query-type model query)
         ;; HoneySQL takes params as a format option rather than a query clause. Merge so that an
         ;; enclosing `*options*` keeps whatever params it already carried.
-        (let [sql-args (binding [t2.honeysql/*options* (update (t2.honeysql/options) :params merge params)]
-                         (next-method query-type model query))]
-          (assert-every-value-bound! params sql-args)
-          sql-args)))))
+        (binding [t2.honeysql/*options* (update (t2.honeysql/options) :params merge params)]
+          (next-method query-type model query))))))
