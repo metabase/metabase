@@ -61,7 +61,7 @@ const hasMarkInsidePlotArea = (view: SeriesView, plotArea: PlotArea) => {
 
   view.group.traverse((element) => {
     if (found) {
-      return;
+      return true;
     }
 
     const path = element instanceof Path ? element : null;
