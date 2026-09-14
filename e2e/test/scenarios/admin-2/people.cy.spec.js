@@ -27,7 +27,8 @@ const normalUserName = H.getFullName(normal);
 
 describe("scenarios > admin > people", () => {
   beforeEach(() => {
-    cy.intercept("GET", "/api/permissions/group").as("getGroups");
+    // `*` matches the `?tenancy=…` variants (People tab, user modals), not just the param-less Groups-tab request.
+    cy.intercept("GET", "/api/permissions/group*").as("getGroups");
     cy.intercept("GET", "/api/api-key").as("listApiKeys");
     H.restore();
     cy.signInAsAdmin();

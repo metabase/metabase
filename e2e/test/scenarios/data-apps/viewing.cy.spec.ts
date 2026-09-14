@@ -3,6 +3,7 @@ import {
   DATA_APP_NAME as APP_NAME,
   visitDataAppRoute as visitAppRoute,
 } from "e2e/support/helpers";
+import type { DataApp } from "metabase-types/api";
 
 import { DATA_APP_TEST_ENV as TEST_ENV } from "./helpers";
 
@@ -59,6 +60,45 @@ describe("scenarios > data apps > viewing & routing", () => {
       });
     });
 
+    it("shows unpublished app error when opening an app without a resource collection", () => {
+      cy.request<DataApp>("POST", `/api/apps/${APP_NAME}/draft`)
+        .its("body.resource_collection_id")
+        .as("resourceCollectionId");
+
+      cy.log("archive and delete the data app collection");
+      cy.get<number>("@resourceCollectionId").then((collectionId) => {
+        cy.request("PUT", `/api/collection/${collectionId}`, {
+          archived: true,
+        });
+
+        cy.request("DELETE", `/api/collection/${collectionId}`);
+      });
+
+      cy.log("fetching bundle should return 409 error");
+      cy.request({
+        url: `/api/apps/${APP_NAME}/bundle`,
+        failOnStatusCode: false,
+      })
+        .its("status")
+        .should("eq", 409);
+
+      cy.intercept("GET", `/api/apps/${APP_NAME}`).as("getUnpublishedApp");
+      H.openDataApp(APP_NAME);
+
+      cy.log("fetching data app metadata should return 409 error");
+      cy.wait("@getUnpublishedApp")
+        .its("response.statusCode")
+        .should("eq", 409);
+
+      H.main().within(() => {
+        cy.findByText("This data app isn’t published yet").should("be.visible");
+
+        cy.findByText(
+          "An administrator needs to publish this data app before it can be opened.",
+        ).should("be.visible");
+      });
+    });
+
     it("shows a not-found state for a disabled or missing app", () => {
       // No app with this slug exists, so the metadata endpoint really 404s and the
       // host renders a not-found state rather than a broken iframe — no mock needed.
@@ -72,7 +112,7 @@ describe("scenarios > data apps > viewing & routing", () => {
       H.mockDataApp(APP_NAME, {
         displayName: APP_DISPLAY_NAME,
         testEnv: TEST_ENV,
-        bundleDelay: 2000,
+        bundleDelayMs: 2000,
       });
 
       H.openDataApp(APP_NAME);

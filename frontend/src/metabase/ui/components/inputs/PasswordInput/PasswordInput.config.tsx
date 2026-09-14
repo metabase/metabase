@@ -31,8 +31,9 @@ export const passwordInputOverrides = {
       },
       visibilityToggleIcon: VisibilityToggleIcon,
       visibilityToggleButtonProps: {
-        // eslint-disable-next-line ttag/no-module-declaration
-        "aria-label": t`Toggle password visibility`,
+        get "aria-label"() {
+          return t`Toggle password visibility`;
+        },
         variant: "transparent",
       },
     },
