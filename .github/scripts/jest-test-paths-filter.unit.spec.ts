@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports, import/no-commonjs -- Match Jest's direct CommonJS loading contract.
+// eslint-disable-next-line @typescript-eslint/no-require-imports -- Match Jest's direct CommonJS loading contract.
 const filter = require("../../frontend/test/jest-test-paths-filter");
 
 describe("jest-test-paths-filter", () => {
