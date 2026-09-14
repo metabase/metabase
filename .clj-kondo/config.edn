@@ -58,6 +58,7 @@
   ;;
   ;; globally-enabled custom linters
   ;;
+  :metabase/agent-message-lines                              {:level :warning}
   :metabase/check-defmulti-arglists                          {:level :warning}
   :metabase/check-def-check-not-uppercase-name               {:level :warning}
   :metabase/check-def-no-underscores                         {:level :warning}
@@ -685,6 +686,7 @@
    metabase.lib.test-util.macros/mbql-query                                                                                  hooks.metabase.test.data/mbql-query
    metabase.lib.test-util.macros/mbql-5-query                                                                                hooks.metabase.test.data/mbql-query
    metabase.lib.test-util.macros/with-testing-against-standard-queries                                                       hooks.metabase.lib.test-util.macros/with-testing-against-standard-queries
+   metabase.mcp.v2.message/msg                                                                                               hooks.metabase.prose-interpolation/lint-msg
    metabase.mcp.v2.tools.parameters-test/with-fixtures                                                                       hooks.common/with-one-binding
    metabase.metrics.api-dimension-test/with-seeded-metric                                                                    hooks.common/with-one-binding
    metabase.model-persistence.api-test/with-persistence-setup!                                                               hooks.common/with-one-top-level-binding
@@ -914,6 +916,7 @@
     :metabase/defsetting-must-specify-export             {:level :off}
     :metabase/defsetting-namespace                       {:level :off}
     :metabase/t2-query-namespace                         {:level :off}
+    :metabase/agent-message-lines                        {:level :off} ; tests build malformed messages on purpose
     :metabase/test-helpers-use-non-thread-safe-functions {:level :warning} ; more config in `.clj-kondo/config/test-helpers/config.edn`
 
     :discouraged-var

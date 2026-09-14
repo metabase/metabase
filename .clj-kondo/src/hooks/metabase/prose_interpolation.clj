@@ -9,7 +9,13 @@
   Checks `format` `%s` arguments, `tru`-family `{n}` arguments, and the non-literal arguments of a `str` call that
   contains a prose literal. An argument counts as quoted when it is a literal, a `(pr-str ...)` call, or a
   `str/join` over `(map pr-str ...)`. Reports `:metabase/unquoted-prose-interpolation`, which is `:off` except in the
-  namespaces `config.edn` enables it for. Every hook returns its input unchanged."
+  namespaces `config.edn` enables it for.
+
+  Also checks `metabase.mcp.v2.message/msg` calls, reporting `:metabase/agent-message-lines`: the lines must be a
+  literal vector of string literals, one line of the message each, with no line breaks, `%n`, or control characters,
+  and the arguments must match the lines' format specifiers.
+
+  Every hook returns its input unchanged."
   (:require
    [clj-kondo.hooks-api :as hooks]
    [clojure.string :as str]))
@@ -102,8 +108,8 @@
   "A `java.util.Formatter` specifier: optional explicit index, flags, width, precision, and conversion."
   #"%(?:(\d+)\$)?([-#+ 0,(<]*)(?:\d+)?(?:\.\d+)?([tT]?[a-zA-Z%])")
 
-(defn- string-arg-indexes
-  "Zero-based indexes of the arguments that `%s`/`%S` specifiers in `fmt` consume."
+(defn- consumed-args
+  "`[index conversion]` for each argument-consuming specifier in `fmt`, with zero-based argument indexes."
   [fmt]
   (loop [[[_ explicit flags conversion] & more] (re-seq format-specifier fmt)
          next-index                             0
@@ -122,7 +128,13 @@
                (cond-> next-index implicit? inc)
                (or index last-index)
                (cond-> acc
-                 (and index (contains? #{"s" "S"} conversion)) (conj index)))))))
+                 index (conj [index conversion])))))))
+
+(defn- string-arg-indexes
+  "Zero-based indexes of the arguments that `%s`/`%S` specifiers in `fmt` consume."
+  [fmt]
+  (keep (fn [[index conversion]] (when (contains? #{"s" "S"} conversion) index))
+        (consumed-args fmt)))
 
 (defn lint-format
   "Flag `format` `%s` arguments that aren't quoted, and format strings that aren't literals."
@@ -169,4 +181,46 @@
                 :let  [arg (nth args index nil)]
                 :when (and arg (not (quoted? arg)))]
           (reg-unquoted! arg)))))
+  input)
+
+(def ^:private msg-linter :metabase/agent-message-lines)
+
+(defn- reg-msg-finding!
+  [node message]
+  (hooks/reg-finding! (assoc (meta node) :message message :type msg-linter)))
+
+(defn- line-break?
+  "Whether format string `line` contains a line-breaking or control character, or a `%n` specifier."
+  [line]
+  (boolean (or (re-find #"[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]" line)
+               (some #(= "n" (nth % 3)) (re-seq format-specifier line)))))
+
+(defn- plural
+  [n word]
+  (str n " " word (when-not (= 1 n) "s")))
+
+(defn lint-msg
+  "Flag `msg` calls whose lines aren't a literal vector of single-line string literals, or whose arguments don't match
+  the lines' format specifiers."
+  [{:keys [node config] :as input}]
+  (when (not= :off (get-in config [:linters msg-linter :level] :off))
+    (let [[fn-node lines-node & args] (:children node)]
+      (if-not (and lines-node (hooks/vector-node? lines-node))
+        (reg-msg-finding! (or lines-node fn-node)
+                          "`msg` takes a literal vector of line strings, one string per line of the message.")
+        (let [line-nodes (:children lines-node)]
+          (doseq [line line-nodes]
+            (cond
+              (not (hooks/string-node? line))
+              (reg-msg-finding! line "Each line of a `msg` must be a string literal; pass values as arguments after the vector.")
+
+              (line-break? (hooks/sexpr line))
+              (reg-msg-finding! line "A `msg` line can't contain a line break, `%n`, or control character; put each line in its own string.")))
+          (when (every? hooks/string-node? line-nodes)
+            (let [indexes  (map first (consumed-args (str/join "\n" (map hooks/sexpr line-nodes))))
+                  expected (if (seq indexes) (inc (apply max indexes)) 0)
+                  given    (count args)]
+              (when (not= expected given)
+                (reg-msg-finding! node (format "The `msg` lines take %s but %d %s given."
+                                               (plural expected "argument") given (if (= 1 given) "is" "are"))))))))))
   input)

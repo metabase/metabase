@@ -10,7 +10,8 @@
   ([hook-fn form]
    (findings hook-fn form :warning))
   ([hook-fn form level]
-   (let [config {:linters {:metabase/unquoted-prose-interpolation {:level level}}}]
+   (let [config {:linters {:metabase/unquoted-prose-interpolation {:level level}
+                           :metabase/agent-message-lines          {:level level}}}]
      (binding [clj-kondo.impl.utils/*ctx* {:config     config
                                            :ignores    (atom nil)
                                            :findings   (atom [])
@@ -76,3 +77,37 @@
     (is (empty? (findings prose-interpolation/lint-format '(format "%s" x) :off)))
     (is (empty? (findings prose-interpolation/lint-str '(str "Query failed: " x) :off)))
     (is (empty? (findings prose-interpolation/lint-i18n '(tru "Value {0}" x) :off)))))
+
+(deftest ^:parallel msg-test
+  (testing "GHY-4544: a vector of single-line string literals with matching arguments is accepted"
+    (is (empty? (findings prose-interpolation/lint-msg
+                          '(msg ["Table %s: %d of %d fields." "Continue with `offset: %d`."] t n total next)))))
+  (testing "specifiers that consume no argument aren't counted, and an explicit index can repeat an argument"
+    (is (empty? (findings prose-interpolation/lint-msg '(msg ["100%% done."]))))
+    (is (empty? (findings prose-interpolation/lint-msg '(msg ["%1$s, then %1$s again"] x)))))
+  (testing "the lines must be a literal vector"
+    (is (=? [#".*vector.*"]
+            (findings prose-interpolation/lint-msg '(msg lines x))))
+    (is (=? [#".*vector.*"]
+            (findings prose-interpolation/lint-msg '(msg "one line" x)))))
+  (testing "each line must be a string literal"
+    (is (=? [#".*string literal.*"]
+            (findings prose-interpolation/lint-msg '(msg ["ok" line]))))
+    (is (=? [#".*string literal.*"]
+            (findings prose-interpolation/lint-msg '(msg [(str "split " "literal")])))))
+  (testing "a line can't contain a line break or other control character; each line is its own string"
+    (is (=? [#".*own string.*"]
+            (findings prose-interpolation/lint-msg '(msg ["first\nsecond"]))))
+    (is (=? [#".*own string.*"]
+            (findings prose-interpolation/lint-msg (list 'msg [(str "first" (char 0x2028) "second")]))))
+    (is (=? [#".*own string.*"]
+            (findings prose-interpolation/lint-msg '(msg ["tab\tseparated"]))))
+    (is (=? [#".*own string.*"]
+            (findings prose-interpolation/lint-msg '(msg ["done.%n"])))))
+  (testing "the argument count must match the specifiers across all lines"
+    (is (=? [#".*2 arguments.*1.*"]
+            (findings prose-interpolation/lint-msg '(msg ["%s and" "%s"] a))))
+    (is (=? [#".*1 argument.*2.*"]
+            (findings prose-interpolation/lint-msg '(msg ["only %s"] a b)))))
+  (testing "nothing is reported when the linter is off"
+    (is (empty? (findings prose-interpolation/lint-msg '(msg lines x) :off)))))
