@@ -14,6 +14,7 @@
    [metabase.lib.core :as lib]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.queries :as v2.queries]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resources :as v2.resources]
@@ -22,7 +23,7 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private visualize-steering
-  "Rendering the visualization in the interactive UI. This is the final answer — do not call an execute tool afterwards, and do not tell the user to switch display types or open a Metabase panel or sidebar.")
+  (message/msg ["Rendering the visualization in the interactive UI. This is the final answer — do not call an execute tool afterwards, and do not tell the user to switch display types or open a Metabase panel or sidebar."]))
 
 (defn- resolve-visualizable-handle!
   "Assert `handle` exists and belongs to the caller, throwing a teaching error otherwise.
@@ -43,7 +44,7 @@
   [session-id handle]
   (or (mcp.session/resolve-query-handle session-id api/*current-user-id* handle)
       (common/throw-teaching-error
-       "Query handle not found — it may have expired; run the query again.")))
+       (message/msg ["Query handle not found — it may have expired; run the query again."]))))
 
 (defn- handle-for-visualization!
   "Resolve `visualize_query`'s mutually exclusive inputs to the handle the iframe will render.
@@ -62,8 +63,7 @@
                    query_handle (conj :query_handle))]
     (when-not (= 1 (count provided))
       (common/throw-teaching-error
-       (str "Pass exactly one of query | query_handle: `query_handle` for a query you already ran "
-            "(preferred — no re-resolution), `query` for a fresh query.")))
+       (message/msg ["Pass exactly one of query | query_handle: `query_handle` for a query you already ran (preferred — no re-resolution), `query` for a fresh query."])))
     (if query_handle
       (do (resolve-visualizable-handle! session-id query_handle)
           query_handle)
@@ -83,7 +83,7 @@
    it resolves the handle at `GET /api/embed-mcp/queries/:handle`; the text mirrors it so the model
    is never told less than the iframe was."
   [payload]
-  (common/success-content (str (json/encode payload) "\n" visualize-steering) payload))
+  (common/success-content (message/msg ["%s" "%s"] (message/raw (json/encode payload)) visualize-steering) payload))
 
 ;;; ---------------------------------------------- visualize_query -------------------------------------------------
 

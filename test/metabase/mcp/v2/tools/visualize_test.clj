@@ -207,11 +207,16 @@
 (deftest render-drill-through-test
   (mt/with-current-user (mt/user->id :rasta)
     (mt/with-model-cleanup [:model/McpQueryHandle]
-      (let [sid    (str (random-uuid))
-            handle (mint-mbql-handle! sid (mt/user->id :rasta))
-            body   (payload (call! "render_drill_through" sid {:query_handle handle}))]
+      (let [sid     (str (random-uuid))
+            handle  (mint-mbql-handle! sid (mt/user->id :rasta))
+            outcome (call! "render_drill_through" sid {:query_handle handle})
+            body    (payload outcome)]
         (testing "GHY-4157: the drill handle the iframe minted is echoed for the iframe to resolve"
-          (is (= {:query_handle handle} body)))))))
+          (is (= {:query_handle handle} body)))
+        (testing "GHY-4544: the text mirrors the payload as JSON, then the steering line"
+          (is (= (str (json/encode {:query_handle handle})
+                      "\nRendering the visualization in the interactive UI. This is the final answer — do not call an execute tool afterwards, and do not tell the user to switch display types or open a Metabase panel or sidebar.")
+                 (response-text outcome))))))))
 
 ;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
 (deftest render-drill-through-accepts-iframe-minted-handle-test
