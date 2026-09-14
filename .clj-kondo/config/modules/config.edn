@@ -578,11 +578,13 @@
            metabase.cmd.dump-to-h2}
    :uses #{api
            api-routes
+           api-scope
            app-db
            auth-identity
            classloader
            config
            llm
+           mcp
            metabot
            models
            query-processor
@@ -1325,7 +1327,8 @@
            metabase.mcp.core
            metabase.mcp.init
            metabase.mcp.usage
-           metabase.mcp.v2.api}
+           metabase.mcp.v2.api
+           metabase.mcp.v2.registry}
    :model-exports #{:model/McpSessionLog
                     :model/McpToolCallLog}
    :uses #{activity-feed

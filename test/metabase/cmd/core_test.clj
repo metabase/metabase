@@ -8,9 +8,14 @@
     (thunk)))
 
 (deftest ^:parallel error-message-test
-  (is (=? ["Unrecognized command: 'a-command-that-does-not-exist'"
-           #"\QValid commands: version, help, import,\E.*"]
-          (#'cmd/validate "a-command-that-does-not-exist" [])))
+  ;; the command list comes from `ns-interns`, so its order is the map's, not the source's — assert that
+  ;; commands are listed, not where they happen to fall
+  (let [[message commands] (#'cmd/validate "a-command-that-does-not-exist" [])]
+    (is (= "Unrecognized command: 'a-command-that-does-not-exist'" message))
+    (is (re-find #"^Valid commands: " commands))
+    (doseq [command ["version" "help" "import" "mcp-tools-documentation"]]
+      (is (re-find (re-pattern (str "\\b" command "\\b")) commands)
+          (str "no " command " in the command list"))))
   (is (= ["The 'rotate-encryption-key' command requires the following arguments: [new-key], but received: []."]
          (#'cmd/validate "rotate-encryption-key" [])))
   (is (nil? (#'cmd/validate "rotate-encryption-key" [:some-arg]))))
