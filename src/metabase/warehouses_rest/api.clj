@@ -251,7 +251,10 @@
                      (classloader/require 'metabase-enterprise.advanced-permissions.common)
                      (resolve 'metabase-enterprise.advanced-permissions.common/filter-databases-by-data-model-perms))]
           (f dbs)
-          dbs)]
+          ;; OSS: editing the data model is admin-only, so fail closed for everyone else. Returning `dbs`
+          ;; unfiltered would make `include_editable_data_model=true` switch off the only check the request
+          ;; gets, since callers skip `api/read-check` when the flag is set.
+          (if (mi/superuser?) dbs (empty dbs)))]
     (map
      (fn [db] (if (mi/can-read? db)
                 db
@@ -336,8 +339,9 @@
   * `saved` means we should include the saved questions virtual database. Default: `false`.
 
   * `include_editable_data_model` will only include DBs for which the current user has data model editing
-    permissions. (If `include=tables`, this also applies to the list of tables in each DB). Should only be used if
-    Enterprise Edition code is available the advanced-permissions feature is enabled.
+    permissions. (If `include=tables`, this also applies to the list of tables in each DB). Granting those
+    permissions to non-admins requires Enterprise Edition code and the advanced-permissions feature; without both,
+    this is admin-only.
 
   * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no
     effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled.
@@ -472,9 +476,9 @@
    returned details (see [[metabase.secrets.models.secret/expand-db-details-inferred-secret-values]] for full details).
 
    Passing include_editable_data_model will only return tables for which the current user has data model editing
-   permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present.
-   In addition, if the user has no data access for the DB (aka block permissions), it will return only the DB name, ID
-   and tables, with no additional metadata.
+   permissions. Granting data model permissions to non-admins requires Enterprise Edition code and a token with the
+   advanced-permissions feature; without both, this is admin-only. In addition, if the user has no data access for the
+   DB (aka block permissions), it will return only the DB name, ID and tables, with no additional metadata.
 
    Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in
    [[metabase.warehouses.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for `:model/Database`
@@ -582,9 +586,9 @@
   By default only non-hidden tables and fields are returned. Passing include_hidden=true includes them.
 
   Passing include_editable_data_model will only return tables for which the current user has data model editing
-  permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present.
-  In addition, if the user has no data access for the DB (aka block permissions), it will return only the DB name, ID
-  and tables, with no additional metadata."
+  permissions. Granting data model permissions to non-admins requires Enterprise Edition code and a token with the
+  advanced-permissions feature; without both, this is admin-only. In addition, if the user has no data access for the
+  DB (aka block permissions), it will return only the DB name, ID and tables, with no additional metadata."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    {:keys [include_hidden include_editable_data_model remove_inactive skip_fields]}

@@ -1006,6 +1006,45 @@
                          first)]
           (is (not (contains? table :fields))))))))
 
+(deftest oss-include-editable-data-model-fails-closed-test
+  (testing "in an OSS build (no EE code on the classpath) include_editable_data_model must not bypass the read check"
+    ;; `include_editable_data_model=true` tells the API to skip the query-access check and run the
+    ;; data-model-perms check instead. That check only exists in EE, so the OSS fallback has to fail
+    ;; closed -- admins only -- the same way EE does without an advanced-permissions token.
+    (with-redefs [config/ee-available? false]
+      (mt/with-no-data-perms-for-all-users!
+        (testing "non-admin"
+          (testing "GET /api/database"
+            (is (empty? (filter #(= (mt/id) (:id %))
+                                (:data (mt/user-http-request :rasta :get 200
+                                                             "database?include_editable_data_model=true"))))))
+          (testing "GET /api/database/:id"
+            (mt/user-http-request :rasta :get 403
+                                  (format "database/%d?include_editable_data_model=true" (mt/id))))
+          (testing "GET /api/database/:id/metadata"
+            (mt/user-http-request :rasta :get 403
+                                  (format "database/%d/metadata?include_editable_data_model=true&include_hidden=true"
+                                          (mt/id))))
+          (testing "GET /api/database/:id/schemas"
+            (is (= [] (mt/user-http-request :rasta :get 200
+                                            (format "database/%d/schemas?include_editable_data_model=true" (mt/id))))))
+          (testing "GET /api/database/:id/schema/:schema"
+            (mt/user-http-request :rasta :get 404
+                                  (format "database/%d/schema/PUBLIC?include_editable_data_model=true" (mt/id)))))
+        (testing "admins are unaffected"
+          (is (some #(= (mt/id) (:id %))
+                    (:data (mt/user-http-request :crowberto :get 200
+                                                 "database?include_editable_data_model=true"))))
+          (is (seq (:tables (mt/user-http-request :crowberto :get 200
+                                                  (format "database/%d/metadata?include_editable_data_model=true"
+                                                          (mt/id))))))
+          (is (= ["PUBLIC"] (mt/user-http-request :crowberto :get 200
+                                                  (format "database/%d/schemas?include_editable_data_model=true"
+                                                          (mt/id)))))
+          (is (seq (mt/user-http-request :crowberto :get 200
+                                         (format "database/%d/schema/PUBLIC?include_editable_data_model=true"
+                                                 (mt/id))))))))))
+
 (deftest ^:parallel autocomplete-suggestions-test
   (let [prefix-fn (fn [db-id prefix]
                     (mt/user-http-request :rasta :get 200

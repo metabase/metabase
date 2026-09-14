@@ -124,6 +124,16 @@
   [_db-id _schema-name]
   (mi/superuser?))
 
+(defn- oss-data-model-perms-fallback
+  "Fallback for the EE data-model-perms filters when Enterprise code is not on the classpath.
+
+  `include_editable_data_model=true` means \"skip my query-access check, run my data-model check instead\", and
+  callers do skip `api/read-check` when it is set. The replacement check lives in EE, so the OSS fallback has to
+  fail closed the way EE does without an advanced-permissions token: editing the data model is admin-only in OSS
+  (see [[current-user-can-manage-schema-metadata?]]), so a non-admin keeps nothing."
+  [xs]
+  (if (mi/superuser?) xs (empty xs)))
+
 (defn can-read-schema?
   "Does the current user have permissions to know the schema with `schema-name` exists? (Do they have permissions to see
   at least some of its tables?)"
@@ -162,11 +172,12 @@
   [id {:keys [include-editable-data-model? include-hidden? can-query? can-write-metadata?]}]
   (let [filter-schemas (fn [schemas]
                          (if include-editable-data-model?
-                           (if-let [f (u/ignore-exceptions
-                                        (classloader/require 'metabase-enterprise.advanced-permissions.common)
-                                        (resolve 'metabase-enterprise.advanced-permissions.common/filter-schema-by-data-model-perms))]
+                           (if-let [f (when config/ee-available?
+                                        (u/ignore-exceptions
+                                          (classloader/require 'metabase-enterprise.advanced-permissions.common)
+                                          (resolve 'metabase-enterprise.advanced-permissions.common/filter-schema-by-data-model-perms)))]
                              (map :schema (f (map (fn [s] {:db_id id :schema s}) schemas)))
-                             schemas)
+                             (oss-data-model-perms-fallback schemas))
                            (filter (partial can-read-schema? id) schemas)))
         ;; For can-query? and can-write-metadata?, we need to filter based on tables in each schema
         filter-schemas-by-tables (fn [schemas]
@@ -207,7 +218,7 @@
                                                   (classloader/require 'metabase-enterprise.advanced-permissions.common)
                                                   (resolve 'metabase-enterprise.advanced-permissions.common/filter-tables-by-data-model-perms))]
                                        (f candidate-tables)
-                                       candidate-tables)
+                                       (oss-data-model-perms-fallback candidate-tables))
                                      (filter mi/can-read? candidate-tables))
                             can-query?          (filter mi/can-query?)
                             can-write-metadata? (filter mi/can-write?))
