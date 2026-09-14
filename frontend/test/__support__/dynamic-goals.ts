@@ -2,7 +2,6 @@ import type { GoalSettingKey } from "metabase/viz-core/lib/dynamic-goal-settings
 import * as dynamicGoalSettings from "metabase/viz-core/lib/dynamic-goal-settings";
 import type { VisualizationDisplay } from "metabase-types/api";
 
-/** The graph displays that resolve `graph.goal_value`; extend it as charts gain dynamic goals. */
 export const DYNAMIC_GOAL_GRAPH_DISPLAYS = [
   "line",
   "bar",
