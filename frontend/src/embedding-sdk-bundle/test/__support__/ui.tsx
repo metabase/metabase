@@ -11,7 +11,7 @@ import { createMockSdkState } from "embedding-sdk-bundle/test/mocks/state";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { Api } from "metabase/api";
-import { MetabaseReduxProvider } from "metabase/redux";
+import { MetabaseReduxProvider } from "metabase/redux-context";
 import type { MantineThemeOverride } from "metabase/ui";
 import { ThemeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
 

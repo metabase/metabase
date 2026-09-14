@@ -9,8 +9,8 @@ import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThe
 import { PrintContext } from "metabase/documents/contexts/PrintContext";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { mainReducers } from "metabase/reducers-main";
-import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
+import { MetabaseReduxProvider } from "metabase/redux-context";
 import { StaticVisualization } from "metabase/static-viz/components/StaticVisualization";
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
 import type { MantineThemeOverride } from "metabase/ui";

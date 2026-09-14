@@ -14,7 +14,7 @@ import {
   type PublicOrEmbeddedQuestionViewProps,
 } from "metabase/public/containers/PublicOrEmbeddedQuestion/PublicOrEmbeddedQuestionView";
 import { publicReducers } from "metabase/reducers-public";
-import { MetabaseReduxProvider } from "metabase/redux";
+import { MetabaseReduxProvider } from "metabase/redux-context";
 import {
   createMockCard,
   createMockDataset,

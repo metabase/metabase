@@ -15,7 +15,7 @@ import {
   NumberColumn,
   StringColumn,
 } from "__support__/visualizations";
-import { MetabaseReduxProvider } from "metabase/redux";
+import { MetabaseReduxProvider } from "metabase/redux-context";
 import { Box } from "metabase/ui";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import { PivotTable } from "metabase/visualizations/visualizations/PivotTable";

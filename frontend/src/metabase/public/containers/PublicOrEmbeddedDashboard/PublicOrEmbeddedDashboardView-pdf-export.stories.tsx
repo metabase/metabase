@@ -18,7 +18,7 @@ import {
   type MockDashboardContextProps,
 } from "metabase/dashboard/context/mock-context";
 import { PublicOrEmbeddedDashboardView } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboardView";
-import { MetabaseReduxProvider } from "metabase/redux";
+import { MetabaseReduxProvider } from "metabase/redux-context";
 import MetabaseSettings from "metabase/utils/settings";
 import { Map } from "metabase/visualizations/visualizations/Map";
 import { registerVisualization } from "metabase/viz-core";

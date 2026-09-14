@@ -9,7 +9,7 @@ import type {
   ColumnOptions,
   RowIdColumnOptions,
 } from "metabase/data-grid/types";
-import { MetabaseReduxProvider } from "metabase/redux";
+import { MetabaseReduxProvider } from "metabase/redux-context";
 import { Checkbox, Flex } from "metabase/ui";
 
 import { DataGrid } from "./DataGrid";

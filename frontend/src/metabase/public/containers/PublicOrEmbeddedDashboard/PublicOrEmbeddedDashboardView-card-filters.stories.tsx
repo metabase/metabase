@@ -16,7 +16,7 @@ import {
   type MockDashboardContextProps,
 } from "metabase/dashboard/context/mock-context";
 import { Heading } from "metabase/dashboard/visualizations/Heading";
-import { MetabaseReduxProvider } from "metabase/redux";
+import { MetabaseReduxProvider } from "metabase/redux-context";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import { registerVisualization } from "metabase/viz-core";
 import type { Dashboard } from "metabase-types/api";

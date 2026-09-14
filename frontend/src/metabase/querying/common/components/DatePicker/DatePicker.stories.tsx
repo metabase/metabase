@@ -8,8 +8,8 @@ import { getPublicStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
-import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
+import { MetabaseReduxProvider } from "metabase/redux-context";
 import { Box, Popover } from "metabase/ui";
 
 import { DatePicker } from "./DatePicker";

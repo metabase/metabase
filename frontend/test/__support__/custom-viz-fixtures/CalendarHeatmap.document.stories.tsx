@@ -17,8 +17,8 @@ import { AppColorSchemeProvider } from "metabase/AppColorSchemeProvider";
 import { Api } from "metabase/api";
 import { Editor } from "metabase/documents/components/Editor/Editor";
 import { commonReducers } from "metabase/reducers-common";
-import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
+import { MetabaseReduxProvider } from "metabase/redux-context";
 import {
   createMockCard,
   createMockCardQueryMetadata,

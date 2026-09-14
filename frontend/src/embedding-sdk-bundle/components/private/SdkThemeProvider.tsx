@@ -10,7 +10,8 @@ import {
   type MetabaseEmbeddingTheme,
   isEmbeddingThemeV1,
 } from "metabase/embedding-sdk/theme";
-import { MetabaseReduxProvider, useSelector } from "metabase/redux";
+import { useSelector } from "metabase/redux";
+import { MetabaseReduxProvider } from "metabase/redux-context";
 import { useSetting } from "metabase/settings";
 import { getFont } from "metabase/styled-components/selectors";
 import { getMetabaseSdkCssVariables } from "metabase/styled-components/theme/css-variables";

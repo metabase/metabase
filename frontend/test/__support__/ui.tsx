@@ -36,8 +36,9 @@ import { UndoListing } from "metabase/common/components/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
 import { makeMainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
-import { MetabaseReduxProvider, useDispatch } from "metabase/redux";
+import { useDispatch } from "metabase/redux";
 import type { State } from "metabase/redux/store";
+import { MetabaseReduxProvider } from "metabase/redux-context";
 import {
   type Location,
   type MemoryTestRouterHolder,

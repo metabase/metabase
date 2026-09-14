@@ -8,8 +8,9 @@ import { useContext } from "react";
 import * as pulse from "metabase/notifications/pulse/reducers";
 import { queryBuilderReducer } from "metabase/query_builder";
 import { commonReducers } from "metabase/reducers-common";
-import { metabaseReduxContext, useDispatch, useStore } from "metabase/redux";
+import { useDispatch, useStore } from "metabase/redux";
 import { DEFAULT_EMBEDDING_ENTITY_TYPES } from "metabase/redux/embedding-data-picker";
+import { metabaseReduxContext } from "metabase/redux-context";
 import { getStore } from "metabase/store";
 import { reducer as visualizer } from "metabase/visualizer/visualizer.slice";
 

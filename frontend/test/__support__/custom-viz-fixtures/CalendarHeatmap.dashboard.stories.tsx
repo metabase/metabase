@@ -17,7 +17,7 @@ import { Api } from "metabase/api";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { PublicOrEmbeddedDashboardView } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboardView";
 import { publicReducers } from "metabase/reducers-public";
-import { MetabaseReduxProvider } from "metabase/redux";
+import { MetabaseReduxProvider } from "metabase/redux-context";
 import type { Dashboard } from "metabase-types/api";
 import {
   createMockCard,

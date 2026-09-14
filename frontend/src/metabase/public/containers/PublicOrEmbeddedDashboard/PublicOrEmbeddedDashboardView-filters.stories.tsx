@@ -18,7 +18,7 @@ import {
   MockDashboardContext,
   type MockDashboardContextProps,
 } from "metabase/dashboard/context/mock-context";
-import { MetabaseReduxProvider } from "metabase/redux";
+import { MetabaseReduxProvider } from "metabase/redux-context";
 import { stableStringify } from "metabase/utils/objects";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import { Table } from "metabase/visualizations/visualizations/Table/Table";

@@ -36,7 +36,7 @@ import { registerDashboardVisualizations } from "metabase/dashboard/visualizatio
 import { initializeInteractiveEmbedding } from "metabase/embedding/interactive-embedding";
 import { MetabotProvider } from "metabase/metabot/context";
 import { PLUGIN_APP_INIT_FUNCTIONS } from "metabase/plugins";
-import { MetabaseReduxProvider } from "metabase/redux";
+import { MetabaseReduxProvider } from "metabase/redux-context";
 import {
   LOCATION_CHANGE,
   type Location,

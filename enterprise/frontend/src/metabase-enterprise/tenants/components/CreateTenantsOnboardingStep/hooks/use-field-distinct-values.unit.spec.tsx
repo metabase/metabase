@@ -7,7 +7,7 @@ import {
 } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import { waitFor } from "__support__/ui";
-import { MetabaseReduxProvider } from "metabase/redux";
+import { MetabaseReduxProvider } from "metabase/redux-context";
 import { getStore } from "metabase/store";
 import type { FieldId, RowValue } from "metabase-types/api";
 import { createMockField, createMockTable } from "metabase-types/api/mocks";

@@ -6,7 +6,7 @@ import { SCOPED_CSS_RESET } from "embedding-sdk-bundle/components/private/Public
 import { PortalContainer } from "embedding-sdk-bundle/components/private/SdkPortalContainer";
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
 import { setDataApp } from "metabase/embedding/config";
-import { MetabaseReduxProvider } from "metabase/redux";
+import { MetabaseReduxProvider } from "metabase/redux-context";
 import { getCspNonce } from "metabase/utils/csp";
 import type { DataAppMetabaseProviderProps } from "metabase-enterprise/data_apps/sandbox/types";
 

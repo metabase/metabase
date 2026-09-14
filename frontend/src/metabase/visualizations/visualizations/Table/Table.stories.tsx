@@ -11,8 +11,8 @@ import {
   createWaitForResizeToStopDecorator,
 } from "__support__/storybook";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
-import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
+import { MetabaseReduxProvider } from "metabase/redux-context";
 import { Box } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import Visualization from "metabase/visualizations/components/Visualization";
