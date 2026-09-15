@@ -352,30 +352,51 @@
               (is (= {:type "table" :schema (venues-schema) :name "mcp_from_handle" :database (mt/id)}
                      (:target result))))))))))
 
-;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(def ^:private sql-write-scopes
+  "[[write-scopes]] plus the scope storing native SQL additionally demands."
+  (conj write-scopes "agent:sql:run"))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table, and mt/with-temporary-setting-values on
+;; the shared kill-switch setting
 (deftest transform-write-native-query-handle-test
-  (testing "GHY-4240: a native handle — the shape execute_sql mints — saves as a native transform, and
-            deliberately does NOT re-demand the agent:sql:run scope: minting the handle already passed
-            that gate and the kill switch, so re-checking here would make execute_sql's own handles
-            unsaveable. Contrast transform-write-native-definition-gates-test, where an inline native
-            `definition` has passed no gate yet and so must pass both."
+  (testing "GHY-4543: a native handle passes the same two gates as an inline native `definition`. Holding a handle is
+            not proof the gates were spent: `/api/embed-mcp/drills` stores a native query under agent:query:run
+            alone, and a handle resolves by user, so any credential of that user can spend it."
     (with-transforms
       (with-target-db-support
         (mt/with-model-cleanup [:model/Transform :model/McpQueryHandle]
-          (let [session-id (str (random-uuid))
-                handle     (mint-handle! session-id (native-handle-query))
-                result     (tool-result (call-tool! :crowberto write-scopes "transform_write"
-                                                    {:method       "create"
-                                                     :name         "From a SQL handle"
-                                                     :query_handle handle
-                                                     :target       {:name "mcp_from_sql_handle" :schema (venues-schema)}}
-                                                    session-id))]
-            (is (= "native" (:source_type result)))
-            (is (= :native (t2/select-one-fn :source_type :model/Transform :id (:id result))))
-            (testing "and the SQL that ran is the SQL that got stored"
-              (is (= "SELECT 1 AS n"
-                     (-> (t2/select-one-fn :source :model/Transform :id (:id result))
-                         :query :stages first :native))))))))))
+          (let [args    (fn [session-id]
+                          {:method       "create"
+                           :name         "From a SQL handle"
+                           :query_handle (mint-handle! session-id (native-handle-query))
+                           :target       {:name "mcp_from_sql_handle" :schema (venues-schema)}})
+                stored? #(pos? (t2/count :model/Transform :name "From a SQL handle"))]
+            (testing "the content write scope alone is refused as a scope denial naming agent:sql:run"
+              (let [session-id (str (random-uuid))
+                    {:keys [error result]} (mt/with-current-user (mt/user->id :crowberto)
+                                             (registry/call-tool write-scopes session-id "transform_write"
+                                                                 (args session-id)))]
+                (is (nil? result))
+                (is (= "agent:sql:run" (get-in error [:insufficient-scope :required-scope])))
+                (is (re-find #"agent:sql:run" (:message error)))
+                (is (not (stored?)))))
+            (testing "with the SQL scope, the kill switch still refuses"
+              (mt/with-temporary-setting-values [mcp-execute-sql-enabled false]
+                (let [session-id (str (random-uuid))
+                      response   (call-tool! :crowberto sql-write-scopes "transform_write" (args session-id)
+                                             session-id)]
+                  (is (re-find #"mcp-execute-sql-enabled" (tool-error response)))
+                  (is (not (stored?))))))
+            (testing "with the SQL scope and the switch on, the handle saves as a native transform"
+              (let [session-id (str (random-uuid))
+                    result     (tool-result (call-tool! :crowberto sql-write-scopes "transform_write"
+                                                        (args session-id) session-id))]
+                (is (= "native" (:source_type result)))
+                (is (= :native (t2/select-one-fn :source_type :model/Transform :id (:id result))))
+                (testing "and the SQL that ran is the SQL that got stored"
+                  (is (= "SELECT 1 AS n"
+                         (-> (t2/select-one-fn :source :model/Transform :id (:id result))
+                             :query :stages first :native))))))))))))
 
 ;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
 (deftest transform-write-update-from-query-handle-test
@@ -387,7 +408,7 @@
           (mt/with-temp [:model/Transform {id :id} (temp-transform-defaults "mcp_handle_swap")]
             (let [session-id (str (random-uuid))
                   handle     (mint-handle! session-id (native-handle-query))
-                  result     (tool-result (call-tool! :crowberto write-scopes "transform_write"
+                  result     (tool-result (call-tool! :crowberto sql-write-scopes "transform_write"
                                                       {:method "update" :id id :query_handle handle}
                                                       session-id))]
               (is (= "native" (:source_type result)))

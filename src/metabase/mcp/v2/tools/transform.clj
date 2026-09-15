@@ -91,14 +91,16 @@
            query))))))
 
 (defn- check-native-source-gates!
-  "The gates an inline native `definition` passes: the `agent:sql:run` scope and the
-   `mcp-execute-sql-enabled` kill switch — `execute_sql`'s own two. A stored native transform is raw
-   SQL the transform runner later executes against the warehouse as a CTAS, so accepting one under the
-   content write scope alone would rebuild `execute_sql` (with a write to the warehouse on top) without
-   its scope or its kill switch. Same gate `question_write` puts on its native sources. A
-   `query_handle` needs neither here: minting one already passed them. No-op on the scope half for
-   unscoped callers (cookie sessions bind the unrestricted sentinel, which matches everything)."
+  "Throw unless `token-scopes` may store a native transform: they must match `agent:sql:run`, and the
+   `mcp-execute-sql-enabled` kill switch must be on."
   [token-scopes]
+  ;; `execute_sql`'s own two gates. A stored native transform is raw SQL the transform runner later executes
+  ;; against the warehouse as a CTAS, so accepting one under the content write scope alone would rebuild
+  ;; `execute_sql`, with a warehouse write on top, without its scope or its kill switch. Every source that can
+  ;; resolve to native passes these, `query_handle` included: holding a handle is not proof the gates were spent
+  ;; (`/api/embed-mcp/drills` stores a native query under `agent:query:run` alone, and a handle resolves by user,
+  ;; so any credential of that user can spend one minted by another). Unscoped callers bind the unrestricted
+  ;; sentinel, which matches every scope.
   (when-not (mcp.scope/matches? token-scopes metabot.scope/agent-sql-run)
     (throw (ex-info (format (str "Saving a native (SQL) transform requires the %s scope — this token can "
                                  "write content but not author raw SQL.")
@@ -113,21 +115,20 @@
    `definition` and `query_handle` (a handle from an execute tool, re-checked for shape and
    permissions on resolve — native included, so an execute_sql handle saves as a SQL transform) may
    be present; `nil` when neither is, which on update means \"leave the stored source alone\".
-   An inline `definition` that carries native SQL — a legacy `:type :native` or an MBQL 5 native
-   stage, however nested — clears [[check-native-source-gates!]] first."
+   A source that resolves to native SQL (a legacy `:type :native` or an MBQL 5 native stage, however
+   nested, from either `definition` or `query_handle`) clears [[check-native-source-gates!]] first."
   [{:keys [definition query_handle]} session-id token-scopes]
   (when (and definition query_handle)
     (common/throw-teaching-error
      "Pass exactly one query source: `definition` (the transform's source) or `query_handle` (a handle from an execute tool)."))
   (when-let [query (cond
-                     definition   (let [query (definition->query definition)]
-                                    (when (query-guards/native-query? query)
-                                      (check-native-source-gates! token-scopes))
-                                    query)
+                     definition   (definition->query definition)
                      query_handle (-> (v2.queries/resolve-query-handle-for-save!
                                        session-id api/*current-user-id* query_handle)
                                       :query
                                       normalize-transform-query))]
+    (when (query-guards/native-query? query)
+      (check-native-source-gates! token-scopes))
     {:type "query" :query query}))
 
 ;;; ----------------------------------------------- Target handling ------------------------------------------------
