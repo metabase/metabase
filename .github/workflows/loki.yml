@@ -101,7 +101,7 @@ jobs:
 
       - name: Run Loki Visual Tests
         # All selected stories can have parameters.loki.skip set.
-        run: bun run test-visual:loki --reactUri file:./storybook-static --verboseRenderer ${{ steps.selection.outputs.paths-file && '--passWithNoStories' || '' }}
+        run: bun run test-visual:loki --reactUri file:./storybook-static --verboseRenderer ${{ steps.selection.outputs.paths-file && '--passWithNoStories --requireReference' || '' }}
 
       - name: Generate Visual Report on Failure
         if: failure()

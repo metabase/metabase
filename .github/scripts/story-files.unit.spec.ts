@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -85,17 +85,18 @@ describe("getStories", () => {
 });
 
 describe("MAIN_APP_STORY_GLOBS", () => {
+  const tracked = execFileSync(
+    "git",
+    ["ls-files", "-z", "--", "frontend", "enterprise/frontend"],
+    { cwd: ROOT, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 },
+  )
+    .split("\0")
+    .filter(Boolean);
+  const planned = micromatch(tracked, MAIN_APP_STORY_GLOBS, {
+    dot: true,
+  }).sort();
+
   it("matches the same tracked files as Storybook's own story matcher", () => {
-    const tracked = execFileSync(
-      "git",
-      ["ls-files", "-z", "--", "frontend", "enterprise/frontend"],
-      { cwd: ROOT, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 },
-    )
-      .split("\0")
-      .filter(Boolean);
-    const planned = micromatch(tracked, MAIN_APP_STORY_GLOBS, {
-      dot: true,
-    }).sort();
     const specifiers = normalizeStories(getStories(), {
       configDir: join(ROOT, ".storybook"),
       workingDir: ROOT,
@@ -112,5 +113,15 @@ describe("MAIN_APP_STORY_GLOBS", () => {
 
     expect(planned.length).toBeGreaterThan(0);
     expect(planned).toEqual(built);
+  });
+
+  // Storybook autotitles a story from its path relative to the entry's directory,
+  // so an untitled story gets a different title in a narrowed build and Loki writes a fresh reference for it.
+  it("matches only stories with an explicit title", () => {
+    const untitled = planned.filter(
+      (file) => !/^\s*title:/m.test(readFileSync(join(ROOT, file), "utf8")),
+    );
+
+    expect(untitled).toEqual([]);
   });
 });
