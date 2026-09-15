@@ -178,9 +178,9 @@ describe("DataStep", () => {
 
       expect(screen.getByLabelText("Select all")).toBeChecked();
       expect(screen.getByLabelText("ID")).toBeChecked();
-      expect(screen.getByLabelText("ID")).toBeEnabled();
+      expect(screen.getByLabelText("ID")).not.toHaveAttribute("aria-disabled");
       expect(screen.getByLabelText("Tax")).toBeChecked();
-      expect(screen.getByLabelText("Tax")).toBeEnabled();
+      expect(screen.getByLabelText("Tax")).not.toHaveAttribute("aria-disabled");
     });
 
     it("should render with a single column selected", async () => {
@@ -190,9 +190,12 @@ describe("DataStep", () => {
 
       expect(screen.getByLabelText("Select all")).not.toBeChecked();
       expect(screen.getByLabelText("ID")).toBeChecked();
-      expect(screen.getByLabelText("ID")).toBeDisabled();
+      expect(screen.getByLabelText("ID")).toHaveAttribute(
+        "aria-disabled",
+        "true",
+      );
       expect(screen.getByLabelText("Tax")).not.toBeChecked();
-      expect(screen.getByLabelText("Tax")).toBeEnabled();
+      expect(screen.getByLabelText("Tax")).not.toHaveAttribute("aria-disabled");
     });
 
     it("should render with multiple columns selected", async () => {
@@ -202,11 +205,13 @@ describe("DataStep", () => {
 
       expect(screen.getByLabelText("Select all")).not.toBeChecked();
       expect(screen.getByLabelText("ID")).toBeChecked();
-      expect(screen.getByLabelText("ID")).toBeEnabled();
+      expect(screen.getByLabelText("ID")).not.toHaveAttribute("aria-disabled");
       expect(screen.getByLabelText("Tax")).not.toBeChecked();
-      expect(screen.getByLabelText("Tax")).toBeEnabled();
+      expect(screen.getByLabelText("Tax")).not.toHaveAttribute("aria-disabled");
       expect(screen.getByLabelText("Total")).toBeChecked();
-      expect(screen.getByLabelText("Total")).toBeEnabled();
+      expect(screen.getByLabelText("Total")).not.toHaveAttribute(
+        "aria-disabled",
+      );
     });
 
     it("should allow selecting a column", async () => {
