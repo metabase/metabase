@@ -160,22 +160,31 @@ describe("modelClientRequest", () => {
 
   it("should send query values as the text String gives, keeping values it cannot know", () => {
     const { request, checker } = model(`
-      class Stamp { toString() { return "stamp"; } }
-      type Args = { archived: boolean; limit: 10 | 20; options: { a: number }; ids: (number | null)[]; name: string; stamp: Stamp; date: Date };
+      type Args = { archived: boolean; limit: 10 | 20; ids: (number | null)[]; name: string; id: NanoID };
+      type NanoID = string & { __brand: "NanoID" };
       const endpoint = { query: (params: Args) => ({ url: "/api/x", params }) };
     `);
     expect(objects(checker, request.query.variants)).toEqual([
-      'fields Args sent as { archived: "false" | "true"; limit: "10" | "20"; options: "[object Object]"; ids?: (number | "null")[]; name: string; stamp: Stamp; date: Date; }',
+      'fields Args sent as { archived: "false" | "true"; limit: "10" | "20"; ids?: (number | "null")[]; name: string; id: NanoID; }',
     ]);
     expect(request.query.notes).toEqual([
       'archived (boolean) is sent as "false" | "true" (utils.ts:50-56)',
       'limit (10 | 20) is sent as "10" | "20" (utils.ts:50-56)',
-      'options ({ a: number; }) is sent as "[object Object]" (utils.ts:50-56)',
       "ids ((number | null)[]) is not sent when its array is empty (utils.ts:50-53)",
       'ids ((number | null)[]) is sent as (number | "null")[] (utils.ts:50-56)',
-      "stamp (Stamp) is sent as the text from its own toString, Symbol.toPrimitive or Symbol.toStringTag, which the checker does not model (utils.ts:50-56)",
-      "date (Date) is sent as the text from its own toString, Symbol.toPrimitive or Symbol.toStringTag, which the checker does not model (utils.ts:50-56)",
     ]);
+    expect(request.query.unverified).toBeUndefined();
+  });
+
+  it("should leave the query unverified when a value's text is known only at runtime", () => {
+    const { request } = model(`
+      class Stamp { toString() { return "stamp"; } }
+      type Args = { options: { a: number }; stamp: Stamp; date: Date };
+      const endpoint = { query: (params: Args) => ({ url: "/api/x", params }) };
+    `);
+    expect(request.query.unverified).toBe(
+      "options ({ a: number; }) is sent as text, and its text is known only at runtime (utils.ts:50-56)",
+    );
   });
 
   it("should fill URL tags with the text String gives", () => {
@@ -189,7 +198,7 @@ describe("modelClientRequest", () => {
       ),
     ).toEqual([
       ['"false"', '"true"'],
-      ['"[object Object]"'],
+      ["{ a: number; }"],
       ["number"],
       ["number[]"],
     ]);
@@ -198,22 +207,24 @@ describe("modelClientRequest", () => {
         ":flag is filled from params.flag (utils.ts:165-168)",
         ':flag (boolean) is sent as "false" | "true" (utils.ts:180)',
       ],
-      [
-        ":options is filled from params.options (utils.ts:165-168)",
-        ':options ({ a: number; }) is sent as "[object Object]" (utils.ts:180)',
-      ],
+      [":options is filled from params.options (utils.ts:165-168)"],
       [":id is filled from params.id (utils.ts:165-168)"],
-      [
-        ":ids is filled from params.ids (utils.ts:165-168)",
-        ":ids (number[]) is sent as its comma-joined items, which the checker does not model (utils.ts:180)",
-      ],
+      [":ids is filled from params.ids (utils.ts:165-168)"],
+    ]);
+    expect(
+      request.pathParameters.map((parameter) => parameter.unverified),
+    ).toEqual([
+      undefined,
+      ":options ({ a: number; }) is sent as text, and its text is known only at runtime (utils.ts:180)",
+      undefined,
+      ":ids (number[]) is sent as text, and its text is known only at runtime (utils.ts:180)",
     ]);
   });
 
   it("should send template spans as the text String gives", () => {
     const { request, checker } = model(`
-      type Args = { flag: boolean; options: { a: number }; pair: [1, null]; ids: number[]; missing: number | undefined };
-      const endpoint = { query: ({ flag, options, pair, ids, missing }: Args) => ({ url: \`/api/x/\${flag}/\${options}/\${pair}/\${ids}/\${encodeURIComponent(missing ?? 0)}/\${missing}\` }) };
+      type Args = { flag: boolean; options: { a: number }; pair: [1, null]; missing: number | undefined };
+      const endpoint = { query: ({ flag, options, pair, missing }: Args) => ({ url: \`/api/x/\${flag}/\${options}/\${pair}/\${encodeURIComponent(missing ?? 0)}/\${missing}\` }) };
     `);
     expect(
       request.pathParameters.map((parameter) =>
@@ -221,9 +232,8 @@ describe("modelClientRequest", () => {
       ),
     ).toEqual([
       ['"false"', '"true"'],
-      ['"[object Object]"'],
-      ['"1,"'],
-      ["number[]"],
+      ["{ a: number; }"],
+      ["[1, null]"],
       ["number"],
       ["number", '"undefined"'],
     ]);
@@ -231,19 +241,21 @@ describe("modelClientRequest", () => {
       [
         '${flag} (boolean) is sent as "false" | "true" (the template literal applies String)',
       ],
-      [
-        '${options} ({ a: number; }) is sent as "[object Object]" (the template literal applies String)',
-      ],
-      [
-        '${pair} ([1, null]) is sent as "1," (the template literal applies String)',
-      ],
-      [
-        "${ids} (number[]) is sent as its comma-joined items, which the checker does not model (the template literal applies String)",
-      ],
+      [],
+      [],
       [],
       [
         '${missing} (number | undefined) is sent as number | "undefined" (the template literal applies String)',
       ],
+    ]);
+    expect(
+      request.pathParameters.map((parameter) => parameter.unverified),
+    ).toEqual([
+      undefined,
+      "${options} ({ a: number; }) is sent as text, and its text is known only at runtime (the template literal applies String)",
+      "${pair} ([1, null]) is sent as text, and its text is known only at runtime (the template literal applies String)",
+      undefined,
+      undefined,
     ]);
   });
 
@@ -285,7 +297,7 @@ describe("modelClientRequest", () => {
   it("should only treat the global encodeURIComponent as encoding a span", () => {
     const { request, checker } = model(`
       export {};
-      const encodeURIComponent = (value: number): "fixed" => "fixed";
+      function encodeURIComponent(value: number): "fixed" { return "fixed"; }
       const endpoint = { query: (id: number) => ({ url: \`/api/x/\${encodeURIComponent(id)}\` }) };
     `);
     expect(values(checker, request.pathParameters[0]?.values ?? [])).toEqual([
@@ -302,13 +314,16 @@ describe("modelClientRequest", () => {
     );
   });
 
-  it("should report that a template span of a symbol throws", () => {
+  it("should leave a template span of a symbol unverified", () => {
     const { request } = model(`
-      const endpoint = { query: (value: symbol) => ({ url: \`/api/x/\${String(value).length}/\${value as unknown as string & symbol}\` }) };
+      const endpoint = { query: (value: symbol) => ({ url: \`/api/x/\${String(value).length}/\${value as unknown as symbol}\` }) };
     `);
-    expect(request.failure).toBe(
-      "the template literal throws a TypeError for a symbol (the template literal applies String)",
-    );
+    expect(
+      request.pathParameters.map((parameter) => parameter.unverified),
+    ).toEqual([
+      undefined,
+      "${value} (symbol) is sent as text, and its text is known only at runtime (the template literal applies String)",
+    ]);
   });
 
   it("should model the spread copy the client makes of params and body", () => {
@@ -453,11 +468,23 @@ describe("modelClientRequest", () => {
     ).toEqual(["nothing"]);
   });
 
-  it("should keep a DELETE body built from an empty object rest", () => {
-    const { request, checker } = model(`
+  it("should leave a body built from an empty object rest unverified", () => {
+    const { request } = model(`
       const endpoint = { query: ({ id, ...body }: { id: number }) => ({ method: "DELETE", url: \`/api/thing/\${id}\`, body }) };
     `);
-    expect(objects(checker, request.body.variants)).toEqual(["type {}"]);
+    expect(request.body.unverified).toBe(
+      "the body comes from the object rest body, which has no declared properties and carries whatever keys the caller passed beyond the destructured ones (client.ts:250)",
+    );
+  });
+
+  it("should keep a nested field that drops undefined as optional in the JSON body", () => {
+    const { request, checker } = model(`
+      type Args = { inner: { a: string | undefined; b: number } };
+      const endpoint = { query: (body: Args) => ({ method: "POST", url: "/api/thing", body }) };
+    `);
+    expect(objects(checker, request.body.variants)).toEqual([
+      "fields Args sent as { inner: { a?: string; b: number; }; }",
+    ]);
   });
 
   it("should leave undefined JSON body fields out", () => {

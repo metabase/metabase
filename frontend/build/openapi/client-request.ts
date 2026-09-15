@@ -115,8 +115,6 @@ interface PayloadPair {
 interface ModelContext {
   checker: ts.TypeChecker;
   at: ts.Node;
-  /** Why the client throws before sending, from a conversion that throws. */
-  failures: string[];
 }
 
 type UrlSlot =
@@ -138,7 +136,7 @@ export function modelClientRequest(
   rtk: RtkRequest,
   at: ts.Node,
 ): ClientRequest {
-  const context: ModelContext = { checker, at, failures: [] };
+  const context: ModelContext = { checker, at };
   // `baseQuery` sends GET unless the request names a method (api.ts:86-87).
   const method = rtk.method ?? "GET";
   const foldsBody = method === "GET" && rtk.body !== undefined;
@@ -156,28 +154,30 @@ export function modelClientRequest(
       body: withoutCacheKey(bodyPayload, "body", bodyNotes),
     })),
   );
-  queryNotes.push(...emptyRestNote(checker, "params", rtk.params, pairs));
-  if (foldsBody) {
-    queryNotes.push(...emptyRestNote(checker, "body", rtk.body, pairs));
-  }
-
   const slots = urlSlots(rtk);
   const { path, query } = splitAtQuery(slots);
   const tags = slots.filter((slot): slot is TagSlot => slot.kind === "tag");
   const tagParameters = substituteTags(context, tags, pairs);
-  const tagValues = new Map(
-    tags.map((slot, index) => [slot.name, tagParameters[index]?.values ?? []]),
+  const tagsByName = new Map(
+    tags.flatMap((slot, index) => {
+      const parameter = tagParameters[index];
+      return parameter ? [[slot.name, parameter] as const] : [];
+    }),
   );
   const route = pathParameters(context, path, tagParameters);
 
-  const inline = inlineQuery(context, query, tagValues);
+  const inline = inlineQuery(context, query, tagsByName);
   queryNotes.push(...inline.notes);
   if (inline.fields.length) {
     queryNotes.push(
       "the URL template's inline query string is kept by new URL (client.ts:38)",
     );
   }
-  let queryUnverified = inline.unverified ?? params.unverified;
+  // A GET body is sent as query parameters, so what stops the body being compared stops the query instead.
+  let queryUnverified =
+    inline.unverified ??
+    params.unverified ??
+    (foldsBody ? body.unverified : undefined);
   const onUnverified = (reason: string) => {
     queryUnverified ??= reason;
   };
@@ -192,12 +192,12 @@ export function modelClientRequest(
   const queryVariants: SentPayload[] = [];
   const bodyVariants: SentPayload[] = [];
   for (const pair of pairs) {
-    let sentQuery = sendAsQuery(context, pair.params, queryNotes);
+    let sentQuery = sendAsQuery(context, pair.params, queryNotes, onUnverified);
     if (foldsBody) {
       sentQuery = mergeQueryPayloads(
         checker,
         sentQuery,
-        sendAsQuery(context, pair.body, queryNotes),
+        sendAsQuery(context, pair.body, queryNotes, onUnverified),
         onUnverified,
       );
       bodyVariants.push({ kind: "nothing" });
@@ -242,9 +242,9 @@ export function modelClientRequest(
     body: {
       variants: unique(bodyVariants, (payload) => payloadKey(checker, payload)),
       notes: [...new Set(bodyNotes)],
-      unverified: body.unverified,
+      unverified: foldsBody ? undefined : body.unverified,
     },
-    failure: failure ?? body.failure ?? context.failures[0],
+    failure: failure ?? body.failure,
     unverified: extraOptionsUnverified(rtk),
   };
 }
@@ -349,13 +349,6 @@ function isObjectRest(checker: ts.TypeChecker, expression: ts.Expression) {
   );
 }
 
-function isExactObject(checker: ts.TypeChecker, expression: ts.Expression) {
-  return (
-    ts.isObjectLiteralExpression(expression) ||
-    isObjectRest(checker, expression)
-  );
-}
-
 interface CopiedPayload {
   payload: Payload;
   notes: string[];
@@ -364,14 +357,17 @@ interface CopiedPayload {
 
 /**
  * The fields the client's spread copy of `type` has (client.ts:74-75).
- * `exact` means the value has no other keys, so a type with no fields still yields a payload.
+ * An object literal has no keys beyond its fields, so a literal with no fields still yields a payload.
+ * An object rest carries whatever keys the caller passed beyond the destructured ones,
+ * so a rest with no declared properties cannot be compared.
  */
 function typePayload(
   { checker, at }: ModelContext,
   type: ts.Type,
-  exact: boolean,
+  expression: ts.Expression,
   channel: "params" | "body",
 ): CopiedPayload {
+  const exact = ts.isObjectLiteralExpression(expression);
   const enumerable =
     isObjectLike(type) &&
     !checker.isArrayType(type) &&
@@ -430,7 +426,9 @@ function typePayload(
     return {
       payload: { kind: "type", type },
       notes: [],
-      unverified: undefined,
+      unverified: isObjectRest(checker, expression)
+        ? `${channel === "params" ? "the query parameters come" : "the body comes"} from the object rest ${expression.getText()}, which has no declared properties and carries whatever keys the caller passed beyond the destructured ones (${channel === "params" ? "utils.ts:43-57" : "client.ts:250"})`
+        : undefined,
     };
   }
   return {
@@ -476,14 +474,13 @@ function paramsPayloads(
     return { payloads: [NOTHING], notes: [], unverified: undefined };
   }
   const type = checker.getTypeAtLocation(expression);
-  const exact = isExactObject(checker, expression);
   const members = unionMembers(checker, type);
   const dropped = members.filter(
     (member) => member.flags & (ts.TypeFlags.Void | ts.TypeFlags.Null),
   );
   const copied = members
     .filter((member) => !(member.flags & NULLISH))
-    .map((member) => typePayload(context, member, exact, "params"));
+    .map((member) => typePayload(context, member, expression, "params"));
   const notes = [
     ...dropped.map(
       (member) =>
@@ -530,7 +527,6 @@ function bodyPayloads(
     return { payloads: [NOTHING], notes, unverified, failure };
   }
   const type = checker.getTypeAtLocation(expression);
-  const exact = isExactObject(checker, expression);
   const rawBodyTypes = ["FormData", "URLSearchParams"].flatMap((name) => {
     const rawType = globalInterface(context, name);
     return rawType ? [{ name, type: rawType }] : [];
@@ -569,7 +565,7 @@ function bodyPayloads(
       failure =
         "the client throws before sending an array body (client.ts:200-202)";
     } else {
-      const copied = typePayload(context, member, exact, "body");
+      const copied = typePayload(context, member, expression, "body");
       payloads.push(copied.payload);
       notes.push(...copied.notes);
       unverified ??= copied.unverified;
@@ -597,23 +593,6 @@ function withoutCacheKey(
     fields: payload.fields.filter((field) => field.name !== RTK_CACHE_KEY),
     changed: true,
   };
-}
-
-function emptyRestNote(
-  checker: ts.TypeChecker,
-  channel: "params" | "body",
-  expression: ts.Expression | undefined,
-  pairs: PayloadPair[],
-): string[] {
-  const empty = pairs.some((pair) => {
-    const payload = pair[channel];
-    return payload.kind === "fields" && isEmpty(payload);
-  });
-  return expression && empty && isObjectRest(checker, expression)
-    ? [
-        `frontend ${channel} ${typeText(checker, checker.getTypeAtLocation(expression))} is an object rest with no declared properties and sends no query parameters (utils.ts:43)`,
-      ]
-    : [];
 }
 
 function withoutTypeFlags(
@@ -661,10 +640,14 @@ function mayBeEmptyArray(checker: ts.TypeChecker, type: ts.Type): boolean {
 interface Stringified {
   values: SentValue[];
   notes: string[];
-  failure: string | undefined;
+  /** Why the text sent cannot be compared: a value whose text is known only at runtime. */
+  unverified: string | undefined;
 }
 
-function elementTypes(checker: ts.TypeChecker, array: ts.Type): ts.Type[] {
+function elementTypes(
+  checker: ts.TypeChecker,
+  array: ts.Type,
+): readonly ts.Type[] {
   if (checker.isTupleType(array)) {
     return isTypeReference(array) ? checker.getTypeArguments(array) : [];
   }
@@ -673,34 +656,27 @@ function elementTypes(checker: ts.TypeChecker, array: ts.Type): ts.Type[] {
 }
 
 /**
- * `conversion` applied to each value named by `source`, with a note keeping the value from before it.
+ * The string conversion named by `reason` applied to each value named by `source`,
+ * with a note keeping the value from before it.
  * With `items`, an array is sent one item at a time, each item through `String`.
  */
 function stringifiedValues(
   checker: ts.TypeChecker,
   source: string,
   found: SentValue[],
-  conversion: StringConversion,
   reason: string,
   items: boolean,
 ): Stringified {
-  const unmodelled: string[] = [];
-  let failure: string | undefined;
+  let unverified: string | undefined;
   const partValue = (
     part: StringPart,
     itemOf: ts.Type | undefined,
   ): SentValue => {
-    if (part.kind === "throws") {
-      failure ??= `${part.reason} (${reason})`;
-      return { kind: "type", type: part.from, ...(itemOf ? { itemOf } : {}) };
-    }
     if (part.kind === "text") {
       return { kind: "text", text: part.text, ...(itemOf ? { itemOf } : {}) };
     }
     if (part.unmodelled) {
-      unmodelled.push(
-        `${source} (${typeText(checker, part.type)}) is sent as ${part.unmodelled}, which the checker does not model (${reason})`,
-      );
+      unverified ??= `${source} (${typeText(checker, part.type)}) is sent as text, and ${part.unmodelled} (${reason})`;
     }
     return { kind: "type", type: part.type, ...(itemOf ? { itemOf } : {}) };
   };
@@ -712,13 +688,13 @@ function stringifiedValues(
     const results = parts.map((part): SentValue[] => {
       if (items && (checker.isArrayType(part) || checker.isTupleType(part))) {
         const itemParts = elementTypes(checker, part).flatMap((element) =>
-          stringParts(checker, element, "String"),
+          stringParts(checker, element),
         );
         return keepsType(itemParts)
           ? [typeValue(part)]
           : itemParts.map((itemPart) => partValue(itemPart, part));
       }
-      const [only, ...more] = stringParts(checker, part, conversion);
+      const [only, ...more] = stringParts(checker, part);
       return only && !more.length ? [partValue(only, undefined)] : [];
     });
     const unchanged = results.every(
@@ -735,15 +711,13 @@ function stringifiedValues(
     candidates.filter((value) => value.kind !== "empty");
   return {
     values,
-    notes: [
-      ...(valueKeys(checker, values) !== valueKeys(checker, found)
+    notes:
+      valueKeys(checker, values) !== valueKeys(checker, found)
         ? [
             `${source} (${describeValues(checker, defined(found))}) is sent as ${describeValues(checker, defined(values))} (${reason})`,
           ]
-        : []),
-      ...new Set(unmodelled),
-    ],
-    failure,
+        : [],
+    unverified,
   };
 }
 
@@ -771,9 +745,10 @@ function mapFields(
 // `appendQueryParameters` skips a null or undefined value and appends an array item by item,
 // so neither kind of value is guaranteed to put its key in the query string (utils.ts:43-57).
 function sendAsQuery(
-  { checker, failures }: ModelContext,
+  { checker }: ModelContext,
   payload: Payload,
   notes: string[],
+  onUnverified: (reason: string) => void,
 ): Payload {
   return mapFields(
     payload,
@@ -809,13 +784,12 @@ function sendAsQuery(
         checker,
         field.name,
         present,
-        "String",
         "utils.ts:50-56",
         true,
       );
       notes.push(...sent.notes);
-      if (sent.failure) {
-        failures.push(sent.failure);
+      if (sent.unverified) {
+        onUnverified(sent.unverified);
       }
       const stringified =
         valueKeys(checker, sent.values) !== valueKeys(checker, present);
@@ -836,13 +810,12 @@ function sendAsQuery(
         checker,
         "[key]",
         present,
-        "String",
         "utils.ts:50-56",
         true,
       );
       notes.push(...sent.notes);
-      if (sent.failure) {
-        failures.push(sent.failure);
+      if (sent.unverified) {
+        onUnverified(sent.unverified);
       }
       return sent.values;
     },
@@ -1135,24 +1108,23 @@ function pathTextUnverified(
 
 /** A template span's value after the template literal, or after `encodeURIComponent` when the span calls it. */
 function spanValues(
-  context: ModelContext,
+  { checker }: ModelContext,
   expression: ts.Expression,
-): { values: SentValue[]; notes: string[]; encoded: boolean } {
-  const { checker, failures } = context;
+): Stringified & { encoded: boolean } {
   const argument = encodedArgument(checker, expression);
-  const conversion = argument ? "encodeURIComponent" : "the template literal";
-  const sent = stringifiedValues(
-    checker,
-    `\${${unwrap(expression).getText()}}`,
-    [typeValue(checker.getTypeAtLocation(argument ?? unwrap(expression)))],
-    conversion,
-    `${conversion} applies String`,
-    false,
-  );
-  if (sent.failure) {
-    failures.push(sent.failure);
-  }
-  return { values: sent.values, notes: sent.notes, encoded: !!argument };
+  const conversion: StringConversion = argument
+    ? "encodeURIComponent"
+    : "the template literal";
+  return {
+    ...stringifiedValues(
+      checker,
+      `\${${unwrap(expression).getText()}}`,
+      [typeValue(checker.getTypeAtLocation(argument ?? unwrap(expression)))],
+      `${conversion} applies String`,
+      false,
+    ),
+    encoded: argument !== undefined,
+  };
 }
 
 function tagLookup(
@@ -1307,7 +1279,7 @@ function substituteTag(
 
 // Tags are substituted in URL order, and each one can consume a key a later tag would read.
 function substituteTags(
-  { checker, failures }: ModelContext,
+  { checker }: ModelContext,
   tags: TagSlot[],
   pairs: PayloadPair[],
 ): SentPathParameter[] {
@@ -1327,19 +1299,16 @@ function substituteTags(
       checker,
       `:${slot.name}`,
       unique(values, (value) => valueKey(checker, value)),
-      "String",
       "utils.ts:180",
       false,
     );
-    if (sent.failure) {
-      failures.push(sent.failure);
-    }
     return {
       source: `:${slot.name}`,
       values: sent.values,
       notes: [...new Set([...notes, ...sent.notes])],
       unverified:
         unverified ??
+        sent.unverified ??
         pathTextUnverified(checker, `:${slot.name}`, sent.values, true),
     };
   });
@@ -1350,17 +1319,22 @@ function spanParameter(
   context: ModelContext,
   expression: ts.Expression,
 ): SentPathParameter {
-  const { values, notes, encoded } = spanValues(context, expression);
+  const { values, notes, unverified, encoded } = spanValues(
+    context,
+    expression,
+  );
   return {
     source: "template expression",
     values,
     notes,
-    unverified: pathTextUnverified(
-      context.checker,
-      `\${${unwrap(expression).getText()}}`,
-      values,
-      encoded,
-    ),
+    unverified:
+      unverified ??
+      pathTextUnverified(
+        context.checker,
+        `\${${unwrap(expression).getText()}}`,
+        values,
+        encoded,
+      ),
   };
 }
 
@@ -1396,8 +1370,9 @@ type QueryPiece =
 function queryPiece(
   context: ModelContext,
   slot: UrlSlot,
-  tagValues: Map<string, SentValue[]>,
+  tags: Map<string, SentPathParameter>,
   notes: string[],
+  unverified: string[],
 ): QueryPiece {
   if (slot.kind === "text") {
     return { kind: "text", text: slot.text, encoded: false };
@@ -1405,8 +1380,9 @@ function queryPiece(
   const found =
     slot.kind === "tag"
       ? {
-          values: tagValues.get(slot.name) ?? [],
+          values: tags.get(slot.name)?.values ?? [],
           notes: [],
+          unverified: tags.get(slot.name)?.unverified,
           encoded: true,
           source: `:${slot.name}`,
         }
@@ -1415,6 +1391,9 @@ function queryPiece(
           source: `\${${unwrap(slot.expression).getText()}}`,
         };
   notes.push(...found.notes);
+  if (found.unverified) {
+    unverified.push(found.unverified);
+  }
   const [only, ...more] = knownTexts(context.checker, found.values) ?? [];
   return only !== undefined && !more.length
     ? { kind: "text", text: only, encoded: found.encoded }
@@ -1435,12 +1414,13 @@ function decodeQueryComponent(text: string): string {
 function inlineQuery(
   context: ModelContext,
   query: UrlSlot[],
-  tagValues: Map<string, SentValue[]>,
+  tags: Map<string, SentPathParameter>,
 ): { fields: SentField[]; notes: string[]; unverified: string | undefined } {
   const { checker } = context;
   const notes: string[] = [];
+  const unverified: string[] = [];
   const pieces = query.map((slot) =>
-    queryPiece(context, slot, tagValues, notes),
+    queryPiece(context, slot, tags, notes, unverified),
   );
   if (pieces.every((piece) => piece.kind === "text")) {
     const text = pieces
@@ -1546,7 +1526,7 @@ function inlineQuery(
       declaration: undefined,
     });
   }
-  return { fields, notes, unverified: undefined };
+  return { fields, notes, unverified: unverified[0] };
 }
 
 function inlineValues(

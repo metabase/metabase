@@ -127,9 +127,8 @@ export type StringConversion =
 /** What one part of a value's type becomes after a string conversion. */
 export type StringPart =
   | { kind: "text"; text: string; from: ts.Type }
-  /** The text is not known from the type. `unmodelled` explains why when the comparison can't stand in for it. */
-  | { kind: "type"; type: ts.Type; unmodelled?: string }
-  | { kind: "throws"; from: ts.Type; reason: string };
+  /** The text is not known from the type. `unmodelled` says why the type cannot stand in for it. */
+  | { kind: "type"; type: ts.Type; unmodelled?: string };
 
 const LIB_DIRECTORY = ts.getDefaultLibFilePath({}).replace(/[^/\\]+$/, "");
 
@@ -141,67 +140,8 @@ export function isLibDeclaration(
   );
 }
 
-function isFromLibObject(declaration: ts.Declaration | undefined): boolean {
-  const owner = declaration?.parent;
-  return (
-    owner !== undefined &&
-    ts.isInterfaceDeclaration(owner) &&
-    owner.name.text === "Object" &&
-    isLibDeclaration(owner)
-  );
-}
-
 function isSymbolType(type: ts.Type): boolean {
   return (type.flags & ts.TypeFlags.ESSymbolLike) !== 0;
-}
-
-function isNullish(type: ts.Type): boolean {
-  return (
-    (type.flags &
-      (ts.TypeFlags.Null | ts.TypeFlags.Undefined | ts.TypeFlags.Void)) !==
-    0
-  );
-}
-
-// `String` of an object uses its `Symbol.toPrimitive`, `Symbol.toStringTag` or `toString`,
-// so only an object that inherits all three from `Object` is known to become "[object Object]".
-function sendsObjectText(checker: ts.TypeChecker, type: ts.Type): boolean {
-  if (
-    !(type.flags & ts.TypeFlags.Object) ||
-    checker.isArrayType(type) ||
-    checker.isTupleType(type) ||
-    type.getCallSignatures().length > 0 ||
-    type.getConstructSignatures().length > 0
-  ) {
-    return false;
-  }
-  const toString = checker.getPropertyOfType(type, "toString");
-  return (
-    isFromLibObject(toString?.declarations?.[0]) &&
-    !checker
-      .getPropertiesOfType(type)
-      .some(
-        (property) =>
-          property.name.startsWith("__@toPrimitive") ||
-          property.name.startsWith("__@toStringTag"),
-      )
-  );
-}
-
-function isFixedTuple(checker: ts.TypeChecker, type: ts.Type): boolean {
-  if (
-    !checker.isTupleType(type) ||
-    !("target" in type) ||
-    typeof type.target !== "object" ||
-    type.target === null ||
-    !("elementFlags" in type.target) ||
-    !Array.isArray(type.target.elementFlags)
-  ) {
-    return false;
-  }
-  return type.target.elementFlags.every(
-    (flag) => flag === ts.ElementFlags.Required,
-  );
 }
 
 /** The one text a single, non-union type always converts to, if there is one. */
@@ -227,68 +167,39 @@ function singleText(
   if (type.flags & (ts.TypeFlags.Undefined | ts.TypeFlags.Void)) {
     return "undefined";
   }
-  if (sendsObjectText(checker, type)) {
-    return "[object Object]";
-  }
-  return tupleText(checker, type);
-}
-
-// `Array.prototype.toString` joins `String(item)` with commas, writing null and undefined items as "".
-// Only a fixed-length tuple whose items each have one known text gives one known text.
-function tupleText(checker: ts.TypeChecker, type: ts.Type): string | undefined {
-  if (!isTypeReference(type) || !isFixedTuple(checker, type)) {
-    return undefined;
-  }
-  const items = checker
-    .getTypeArguments(type)
-    .map((item) =>
-      item.isUnion()
-        ? undefined
-        : isNullish(item)
-          ? ""
-          : isSymbolType(item)
-            ? undefined
-            : singleText(checker, item),
-    );
-  return items.every((item) => item !== undefined)
-    ? items.join(",")
-    : undefined;
-}
-
-function unmodelledReason(
-  checker: ts.TypeChecker,
-  type: ts.Type,
-): string | undefined {
-  if (checker.isArrayType(type) || checker.isTupleType(type)) {
-    return "its comma-joined items";
-  }
-  if (isSymbolType(type)) {
-    return "Symbol(description), and the type does not give the description";
-  }
-  if (type.flags & ts.TypeFlags.Object) {
-    return "the text from its own toString, Symbol.toPrimitive or Symbol.toStringTag";
-  }
   return undefined;
 }
 
+// A primitive's text reads back as the same value, so its type stands in for its text.
+const TEXT_TYPE_FLAGS =
+  ts.TypeFlags.StringLike |
+  ts.TypeFlags.NumberLike |
+  ts.TypeFlags.BigIntLike |
+  ts.TypeFlags.BooleanLike |
+  ts.TypeFlags.Null |
+  ts.TypeFlags.Undefined |
+  ts.TypeFlags.Void |
+  ts.TypeFlags.Never |
+  ts.TypeFlags.Any |
+  ts.TypeFlags.Unknown |
+  ts.TypeFlags.TypeParameter;
+
+// A branded string such as `string & { __brand: "NanoID" }` is still a string at runtime.
+function isTextLike(type: ts.Type): boolean {
+  return type.isIntersection()
+    ? type.types.some(isTextLike)
+    : (type.flags & TEXT_TYPE_FLAGS) !== 0;
+}
+
 /**
- * What each part of `type` becomes after `conversion`.
+ * What each part of `type` becomes after a string conversion.
  * String literals, `string`, `number` and `bigint` keep their type, because the backend reads back the same text.
  */
 export function stringParts(
   checker: ts.TypeChecker,
   type: ts.Type,
-  conversion: StringConversion,
 ): StringPart[] {
   return unionMembers(checker, type).map((part): StringPart => {
-    // A template literal and `encodeURIComponent` use ToString, which throws for a symbol.
-    if (isSymbolType(part) && conversion !== "String") {
-      return {
-        kind: "throws",
-        from: part,
-        reason: `${conversion} throws a TypeError for a symbol`,
-      };
-    }
     if (part.isStringLiteral()) {
       return { kind: "type", type: part };
     }
@@ -296,10 +207,13 @@ export function stringParts(
     if (text !== undefined) {
       return { kind: "text", text, from: part };
     }
-    const unmodelled = unmodelledReason(checker, part);
-    return unmodelled
-      ? { kind: "type", type: part, unmodelled }
-      : { kind: "type", type: part };
+    return isTextLike(part)
+      ? { kind: "type", type: part }
+      : {
+          kind: "type",
+          type: part,
+          unmodelled: "its text is known only at runtime",
+        };
   });
 }
 
@@ -316,7 +230,6 @@ export type JsonView =
   | { kind: "object"; from: ts.Type; fields: JsonField[] }
   | { kind: "array"; from: ts.Type; element: JsonView }
   | { kind: "union"; from: ts.Type; members: JsonView[] }
-  | { kind: "unmodelled"; from: ts.Type; reason: string }
   | { kind: "throws"; from: ts.Type; reason: string };
 
 export interface JsonField {
@@ -354,48 +267,41 @@ function toJsonReturn(
 }
 
 const jsonViews = new WeakMap<ts.Type, JsonView>();
+const building = new Set<ts.Type>();
+let recursions = 0;
 
-/** How one value's type is serialised, following `JSON.stringify`'s rules. */
-export function jsonView(
-  checker: ts.TypeChecker,
-  type: ts.Type,
-  seen: ReadonlySet<ts.Type> = new Set(),
-): JsonView {
+/**
+ * How one value's type is serialised, following `JSON.stringify`'s rules.
+ * Where a type recurs inside itself, the declared type stands in from that point.
+ */
+export function jsonView(checker: ts.TypeChecker, type: ts.Type): JsonView {
   const cached = jsonViews.get(type);
   if (cached) {
     return cached;
   }
-  const view = buildJsonView(checker, type, seen);
-  // A view cut short by recursion depends on where the walk started, so only a complete one is kept.
-  if (!hasUnmodelled(view)) {
+  if (building.has(type)) {
+    recursions += 1;
+    return { kind: "type", type };
+  }
+  building.add(type);
+  const before = recursions;
+  let view: JsonView;
+  try {
+    view = buildJsonView(checker, type);
+  } finally {
+    building.delete(type);
+  }
+  // A view that met a type still being built depends on where the walk started, so only a complete one is kept.
+  if (recursions === before) {
     jsonViews.set(type, view);
   }
   return view;
 }
 
-function hasUnmodelled(view: JsonView): boolean {
-  switch (view.kind) {
-    case "unmodelled":
-      return true;
-    case "array":
-      return hasUnmodelled(view.element);
-    case "union":
-      return view.members.some(hasUnmodelled);
-    case "object":
-      return view.fields.some((field) => hasUnmodelled(field.view));
-    default:
-      return false;
-  }
-}
-
-function buildJsonView(
-  checker: ts.TypeChecker,
-  type: ts.Type,
-  seen: ReadonlySet<ts.Type>,
-): JsonView {
+function buildJsonView(checker: ts.TypeChecker, type: ts.Type): JsonView {
   const members = unionMembers(checker, type);
   if (members.length > 1) {
-    const views = members.map((member) => jsonView(checker, member, seen));
+    const views = members.map((member) => jsonView(checker, member));
     return views.every((view) => view.kind === "type")
       ? { kind: "type", type }
       : { kind: "union", from: type, members: views };
@@ -410,17 +316,9 @@ function buildJsonView(
   if (!(type.flags & ts.TypeFlags.Object) && !type.isIntersection()) {
     return { kind: "type", type };
   }
-  if (seen.has(type)) {
-    return {
-      kind: "unmodelled",
-      from: type,
-      reason: "it is a recursive type with a value JSON.stringify converts",
-    };
-  }
-  const inner = new Set([...seen, type]);
   const returned = toJsonReturn(checker, type);
   if (returned) {
-    return jsonView(checker, returned, inner);
+    return jsonView(checker, returned);
   }
   if (type.getCallSignatures().length > 0 || isSymbolType(type)) {
     return { kind: "type", type };
@@ -438,7 +336,7 @@ function buildJsonView(
       const dropped = dropReason(checker, part);
       return dropped
         ? { kind: "null", from: part, reason: `${dropped} in an array` }
-        : jsonView(checker, part, inner);
+        : jsonView(checker, part);
     });
     const [only, ...more] = views;
     const element: JsonView = only
@@ -457,52 +355,61 @@ function buildJsonView(
       reason: `a ${typeText(checker, type)} has no own properties to serialise`,
     };
   }
-  const fields = properties(type).flatMap((property): JsonField[] => {
-    if (isPrototypeMember(checker, property)) {
-      return [];
-    }
-    const parts = unionMembers(checker, checker.getTypeOfSymbol(property));
-    const kept = parts.filter((part) => !dropReason(checker, part));
-    if (!kept.length) {
-      return [];
-    }
-    const views = kept.map((part) => jsonView(checker, part, inner));
-    const [only, ...more] = views;
-    return [
-      {
-        name: property.name,
-        view:
-          only && !more.length
-            ? only
-            : {
-                kind: "union",
-                from: checker.getTypeOfSymbol(property),
-                members: views,
-              },
-        optional:
-          (property.flags & ts.SymbolFlags.Optional) !== 0 ||
-          kept.length < parts.length,
-        declaration: property.declarations?.[0],
-      },
-    ];
-  });
+  const declared = properties(type);
+  const fields = declared.flatMap(
+    (property): { field: JsonField; unchanged: boolean }[] => {
+      if (isPrototypeMember(checker, property)) {
+        return [];
+      }
+      const parts = unionMembers(checker, checker.getTypeOfSymbol(property));
+      const kept = parts.filter((part) => !dropReason(checker, part));
+      if (!kept.length) {
+        return [];
+      }
+      const views = kept.map((part) => jsonView(checker, part));
+      const [only, ...more] = views;
+      const declaredOptional = (property.flags & ts.SymbolFlags.Optional) !== 0;
+      return [
+        {
+          field: {
+            name: property.name,
+            view:
+              only && !more.length
+                ? only
+                : {
+                    kind: "union",
+                    from: checker.getTypeOfSymbol(property),
+                    members: views,
+                  },
+            optional: declaredOptional || kept.length < parts.length,
+            declaration: property.declarations?.[0],
+          },
+          // A value that dropped undefined stays as declared only when the property was optional already.
+          unchanged:
+            only !== undefined &&
+            !more.length &&
+            only.kind === "type" &&
+            only.type === kept[0] &&
+            (kept.length === parts.length || declaredOptional),
+        },
+      ];
+    },
+  );
   const unchanged =
-    fields.length === properties(type).length &&
-    fields.every(
-      (field, index) =>
-        field.view.kind === "type" &&
-        (field.optional ===
-          ((properties(type)[index]?.flags ?? 0) & ts.SymbolFlags.Optional)) !==
-          0,
-    );
+    fields.length === declared.length &&
+    fields.every((entry) => entry.unchanged);
   return unchanged
     ? { kind: "type", type }
-    : { kind: "object", from: type, fields };
+    : {
+        kind: "object",
+        from: type,
+        fields: fields.map((entry) => entry.field),
+      };
 }
 
 /** One position where `JSON.stringify` changes the value. */
 export interface JsonConversion {
-  kind: "left out" | "null" | "empty object" | "not modelled" | "toJSON";
+  kind: "left out" | "null" | "empty object" | "toJSON";
   path: string;
   detail: string;
 }
@@ -567,14 +474,6 @@ export function jsonConversions(
           jsonConversions(checker, field.view, `${path}.${field.name}`),
         ),
       ];
-    case "unmodelled":
-      return [
-        {
-          kind: "not modelled",
-          path,
-          detail: `${typeText(checker, view.from)} is sent as ${view.reason}`,
-        },
-      ];
   }
 }
 
@@ -626,7 +525,7 @@ function jsonViewText(checker: ts.TypeChecker, view: JsonView): string {
         .join(" | ");
     case "object":
       return `{ ${view.fields.map((field) => `${field.name}${field.optional ? "?" : ""}: ${describeJsonView(checker, field.view)};`).join(" ")} }`;
-    default:
+    case "throws":
       return typeText(checker, view.from);
   }
 }

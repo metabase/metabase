@@ -1162,40 +1162,62 @@ describe("request values sent by the API client", () => {
     const results = check({
       frontend,
       backend: operation({
-        query:
-          "query: { options: string; ids: number[]; archived: boolean; limit: number }",
+        query: "query: { ids: number[]; archived: boolean; limit: number }",
       }),
       endpoint: request(
-        "{ options: { a: number }; ids: (number | null)[]; archived: boolean; limit: number }",
+        "{ ids: (number | null)[]; archived: boolean; limit: number }",
         '(params) => ({ url: "/api/user", params })',
       ),
     });
-    expect(resultFor(results, "request.query")?.status).toBe("mismatch");
-    expect(resultFor(results, "request.query")?.message.split("\n  ")).toEqual([
-      '$: frontend type { archived: boolean; ids: (number | null)[]; limit: number; options: { a: number; }; } sent as { options: "[object Object]"; ids?: (number | "null")[]; archived: "false" | "true"; limit: number; } is not assignable to backend type { archived: boolean; ids: number[]; limit: number; options: string; }',
-      "$.ids (endpoint.ts:11): property is optional in the frontend type but required by the backend type",
-      '$.ids[] (endpoint.ts:11): frontend value "null" is not assignable to backend type number[]',
-      'note: options ({ a: number; }) is sent as "[object Object]" (utils.ts:50-56)',
-      "note: ids ((number | null)[]) is not sent when its array is empty (utils.ts:50-53)",
-      'note: ids ((number | null)[]) is sent as (number | "null")[] (utils.ts:50-56)',
-      'note: archived (boolean) is sent as "false" | "true" (utils.ts:50-56)',
-    ]);
+    const result = resultFor(results, "request.query");
+    expect(result?.status).toBe("mismatch");
+    expect(result?.message.split("\n  ")).toEqual(
+      expect.arrayContaining([
+        "$.ids (endpoint.ts:11): property is optional in the frontend type but required by the backend type",
+        '$.ids[] (endpoint.ts:11): frontend value "null" is not assignable to backend type number[]',
+      ]),
+    );
   });
 
-  it("should reject an object query value the backend cannot read as text", () => {
+  it("should leave an object query value unverified instead of reading it as a string", () => {
     const results = check({
       frontend,
-      backend: operation({ query: "query: { options: number }" }),
+      backend: operation({ query: "query: { options: string }" }),
       endpoint: request(
         "{ options: { a: number } }",
         '(params) => ({ url: "/api/user", params })',
       ),
     });
+    expect(resultFor(results, "request.query")).toMatchObject({
+      status: "unverified",
+      message: expect.stringContaining(
+        "options ({ a: number; }) is sent as text, and its text is known only at runtime",
+      ),
+    });
+  });
+
+  it("should compare a recursive JSON body from the declared type at the point it recurs", () => {
+    const recursive = (backend: string) =>
+      check({
+        frontend: `${frontend} interface TreeNode { id: number; children: TreeNode[] }`,
+        backend: `export type BackendNode = ${backend}; ${operation({ method: "Post", body: "body: BackendNode" })}`,
+        endpoint: request(
+          "TreeNode",
+          '(body) => ({ method: "POST", url: "/api/user", body })',
+        ),
+      });
     expect(
-      resultFor(results, "request.query")?.message.split("\n  "),
-    ).toContain(
-      '$.options (endpoint.ts:11): frontend value "[object Object]" is not assignable to backend type number',
-    );
+      resultFor(
+        recursive("{ id: number; children: BackendNode[] }"),
+        "request.body",
+      )?.status,
+    ).toBe("compatible");
+    expect(
+      resultFor(
+        recursive("{ id: string; children: BackendNode[] }"),
+        "request.body",
+      )?.status,
+    ).toBe("mismatch");
   });
 
   it("should reject a query key the backend type does not declare", () => {
@@ -1372,7 +1394,7 @@ describe("request values sent by the API client", () => {
     expect(resultFor(results, "request.query")?.status).toBe("compatible");
   });
 
-  it("should send no query parameters for an object rest with no declared properties", () => {
+  it("should leave the query unverified for an object rest with no declared properties", () => {
     const results = check({
       frontend,
       backend: operation(),
@@ -1382,9 +1404,10 @@ describe("request values sent by the API client", () => {
       ),
     });
     expect(resultFor(results, "request.query")).toMatchObject({
-      status: "compatible",
-      message:
-        "Compatible\n  note: frontend params {} is an object rest with no declared properties and sends no query parameters (utils.ts:43)",
+      status: "unverified",
+      message: expect.stringContaining(
+        "the query parameters come from the object rest params, which has no declared properties and carries whatever keys the caller passed beyond the destructured ones",
+      ),
     });
   });
 
@@ -1459,22 +1482,6 @@ describe("request values sent by the API client", () => {
     });
     expect(resultFor(results, "request.body")?.status).toBe("mismatch");
     expect(resultFor(results, "request.query")?.status).toBe("compatible");
-  });
-
-  it("should keep an empty object rest DELETE body a mismatch because the client sends it", () => {
-    const results = check({
-      frontend,
-      backend: operation({ method: "Delete" }),
-      endpoint: request(
-        "{ id: number }",
-        '({ id, ...body }) => ({ method: "DELETE", url: "/api/user", body })',
-      ),
-    });
-    expect(resultFor(results, "request.body")).toMatchObject({
-      status: "mismatch",
-      message:
-        "$: frontend type {} is not assignable to backend type undefined",
-    });
   });
 
   it("should not send a null query value", () => {

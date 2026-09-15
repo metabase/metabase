@@ -202,37 +202,81 @@ function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-/** The text a value is known to have: its own text, or a string literal type's value. */
-function knownText(value: SentValue): string | undefined {
-  if (value.kind === "text") {
-    return value.text;
+/** Whether the text the client sent is one the modelled type can produce. */
+function typeAcceptsText(
+  checker: ts.TypeChecker,
+  type: ts.Type,
+  text: string,
+): boolean {
+  if (type.isUnion()) {
+    return type.types.some((member) => typeAcceptsText(checker, member, text));
   }
-  return value.kind === "type" && value.type.isStringLiteral()
-    ? value.type.value
-    : undefined;
+  if (type.isStringLiteral()) {
+    return type.value === text;
+  }
+  if (type.isNumberLiteral()) {
+    return String(type.value) === text;
+  }
+  if (type.flags & ts.TypeFlags.BooleanLiteral) {
+    return checker.typeToString(type) === text;
+  }
+  if (type.flags & ts.TypeFlags.StringLike) {
+    return true;
+  }
+  if (type.flags & ts.TypeFlags.NumberLike) {
+    return text !== "" && Number.isFinite(Number(text));
+  }
+  if (type.flags & ts.TypeFlags.BooleanLike) {
+    return text === "true" || text === "false";
+  }
+  if (type.flags & ts.TypeFlags.Null) {
+    return text === "null";
+  }
+  if (type.flags & (ts.TypeFlags.Undefined | ts.TypeFlags.Void)) {
+    return text === "undefined";
+  }
+  const element =
+    checker.isArrayType(type) &&
+    checker.getIndexTypeOfType(type, ts.IndexKind.Number);
+  if (element) {
+    return typeAcceptsText(checker, element, text);
+  }
+  // The model makes no claim about the text of any other type.
+  return true;
+}
+
+function valueAcceptsText(
+  checker: ts.TypeChecker,
+  value: SentValue,
+  text: string,
+): boolean {
+  switch (value.kind) {
+    case "empty":
+      return text === "";
+    case "text":
+      return value.text === text;
+    case "type":
+      return typeAcceptsText(checker, value.type, text);
+    case "json":
+      return true;
+  }
 }
 
 function valueViolation(
+  checker: ts.TypeChecker,
   values: SentValue[],
   text: string,
   label: string,
 ): string | undefined {
-  if (text === "") {
-    return values.some((value) => value.kind === "empty")
-      ? undefined
-      : `${label}: an empty value is not modelled`;
-  }
-  const texts = values.map(knownText);
-  if (
-    texts.every((candidate) => candidate !== undefined) &&
-    !texts.includes(text)
-  ) {
-    return `${label}: ${JSON.stringify(text)} is not one of ${JSON.stringify(texts)}`;
-  }
-  return undefined;
+  return values.some((value) => valueAcceptsText(checker, value, text))
+    ? undefined
+    : `${label}: ${JSON.stringify(text)} is not a text the model allows`;
 }
 
-function pathViolations({ request }: Modelled, sent: SentRequest): string[] {
+function pathViolations(
+  { request, checker }: Modelled,
+  sent: SentRequest,
+): string[] {
   const pattern = new RegExp(
     `^${escapeRegExp(request.path).replaceAll(escapeRegExp("{param}"), "([^/]*)")}$`,
   );
@@ -246,6 +290,7 @@ function pathViolations({ request }: Modelled, sent: SentRequest): string[] {
     }
     const segment = decodeURIComponent(match[index + 1] ?? "");
     const violation = valueViolation(
+      checker,
       parameter.values,
       segment,
       `path parameter ${index}`,
@@ -255,7 +300,7 @@ function pathViolations({ request }: Modelled, sent: SentRequest): string[] {
 }
 
 function isArrayValue(checker: ts.TypeChecker, value: SentValue): boolean {
-  if (value.kind === "empty") {
+  if (value.kind === "empty" || value.kind === "json") {
     return false;
   }
   return (
@@ -334,7 +379,12 @@ function queryVariantViolations(
       violations.push(`query key ${name} is sent ${sentValues.length} times`);
     }
     for (const [, text] of sentValues) {
-      const violation = valueViolation(field.values, text, `query key ${name}`);
+      const violation = valueViolation(
+        checker,
+        field.values,
+        text,
+        `query key ${name}`,
+      );
       if (violation) {
         violations.push(violation);
       }
@@ -644,15 +694,17 @@ describe("modelClientRequest against the real API client", () => {
     );
   });
 
-  it("should send an object query value as [object Object]", async () => {
-    await expectConformance(
+  it("should leave an object query value unverified, because its text is known only at runtime", async () => {
+    const { request } = await expectConformance(
       {
         endpoint:
           '{ query: (params: { options: { a: number } }) => ({ url: "/api/x", params }) }',
         argument: "{ options: { a: 1 } }",
       },
       sentRequest({ query: [["options", "[object Object]"]] }),
-      sentRequest({ query: [["options", '{"a":1}']] }),
+    );
+    expect(request.query.unverified).toBe(
+      "options ({ a: number; }) is sent as text, and its text is known only at runtime (utils.ts:50-56)",
     );
   });
 
@@ -738,15 +790,17 @@ describe("modelClientRequest against the real API client", () => {
     );
   });
 
-  it("should fill a URL tag with the text String gives for an object", async () => {
-    await expectConformance(
+  it("should leave a URL tag filled from an object unverified, because its text is known only at runtime", async () => {
+    const { request } = await expectConformance(
       {
         endpoint:
           '{ query: (params: { options: { a: number } }) => ({ url: "/api/x/:options", params }) }',
         argument: "{ options: { a: 1 } }",
       },
       sentRequest({ path: "/api/x/%5Bobject%20Object%5D" }),
-      sentRequest({ path: "/api/x/%7B%22a%22%3A1%7D" }),
+    );
+    expect(request.pathParameters[0]?.unverified).toBe(
+      ":options ({ a: number; }) is sent as text, and its text is known only at runtime (utils.ts:180)",
     );
   });
 
@@ -761,26 +815,30 @@ describe("modelClientRequest against the real API client", () => {
     );
   });
 
-  it("should send an object template span as [object Object]", async () => {
-    await expectConformance(
+  it("should leave an object template span unverified, because its text is known only at runtime", async () => {
+    const { request } = await expectConformance(
       {
         endpoint:
           "{ query: (options: { a: number }) => ({ url: `/api/x/${options}` }) }",
         argument: "{ a: 1 }",
       },
       sentRequest({ path: "/api/x/[object%20Object]" }),
-      sentRequest({ path: "/api/x/%7B%22a%22%3A1%7D" }),
+    );
+    expect(request.pathParameters[0]?.unverified).toBe(
+      "${options} ({ a: number; }) is sent as text, and its text is known only at runtime (the template literal applies String)",
     );
   });
 
-  it("should send a tuple template span as its comma-joined items", async () => {
-    await expectConformance(
+  it("should leave a tuple template span unverified, because its text is known only at runtime", async () => {
+    const { request } = await expectConformance(
       {
         endpoint: "{ query: (pair: [1, null]) => ({ url: `/api/x/${pair}` }) }",
         argument: "[1, null]",
       },
       sentRequest({ path: "/api/x/1," }),
-      sentRequest({ path: "/api/x/1,null" }),
+    );
+    expect(request.pathParameters[0]?.unverified).toMatch(
+      /known only at runtime/,
     );
   });
 
@@ -946,7 +1004,7 @@ describe("modelClientRequest against the real API client", () => {
     await expectConformance(
       {
         endpoint:
-          '{ query: (id: number) => { const encodeURIComponent = (value: number): "fixed" => "fixed"; return { url: `/api/x/${encodeURIComponent(id)}` }; } }',
+          '{ query: (id: number) => { function encodeURIComponent(value: number): "fixed" { return "fixed"; } return { url: `/api/x/${encodeURIComponent(id)}` }; } }',
         argument: "7",
       },
       sentRequest({ path: "/api/x/fixed" }),
@@ -1196,20 +1254,13 @@ describe("modelClientRequest against the real API client", () => {
     );
   });
 
-  it.each([
-    [
-      "an empty object",
-      '{ query: (id: number) => ({ method: "DELETE", url: `/api/x/${id}`, body: {} }) }',
-      "1",
-    ],
-    [
-      "an empty object rest",
-      '{ query: ({ id, ...body }: { id: number }) => ({ method: "DELETE", url: `/api/x/${id}`, body }) }',
-      "{ id: 1 }",
-    ],
-  ])("should send a DELETE body of %s", async (_name, endpoint, argument) => {
+  it("should send a DELETE body of an empty object literal", async () => {
     await expectConformance(
-      { endpoint, argument },
+      {
+        endpoint:
+          '{ query: (id: number) => ({ method: "DELETE", url: `/api/x/${id}`, body: {} }) }',
+        argument: "1",
+      },
       sentRequest({
         method: "DELETE",
         path: "/api/x/1",
@@ -1219,16 +1270,33 @@ describe("modelClientRequest against the real API client", () => {
     );
   });
 
-  it("should send no query parameters for an empty object rest in a GET body", async () => {
-    await expectConformance(
+  it("should leave a DELETE body built from an empty object rest unverified", async () => {
+    const { request } = await expectConformance(
+      {
+        endpoint:
+          '{ query: ({ id, ...body }: { id: number }) => ({ method: "DELETE", url: `/api/x/${id}`, body }) }',
+        argument: "{ id: 1 }",
+      },
+      sentRequest({
+        method: "DELETE",
+        path: "/api/x/1",
+        body: { kind: "json", value: {} },
+      }),
+    );
+    expect(request.body.unverified).toMatch(/object rest body/);
+  });
+
+  it("should leave the query unverified for an empty object rest in a GET body", async () => {
+    const { request } = await expectConformance(
       {
         endpoint:
           "{ query: ({ id, ...body }: { id: number }) => ({ url: `/api/x/${id}`, body }) }",
         argument: "{ id: 1 }",
       },
       sentRequest({ path: "/api/x/1" }),
-      sentRequest({ path: "/api/x/1", query: [["id", "1"]] }),
     );
+    expect(request.query.unverified).toMatch(/object rest body/);
+    expect(request.body.unverified).toBeUndefined();
   });
 
   it("should leave a URL tag unverified when params keys are known only at runtime", async () => {
@@ -1243,10 +1311,10 @@ describe("modelClientRequest against the real API client", () => {
     expect(request.pathParameters[0]?.unverified).toMatch(/index signature/);
   });
 
-  it("should mark GET query parameters unverified when an opaque value is merged with other fields", async () => {
+  it("should mark GET query parameters unverified when a value with no declared keys is merged with other fields", async () => {
     const { request } = await expectConformance(
       {
-        declarations: "type Args = { params: object; body: { name: string } };",
+        declarations: "type Args = { params: {}; body: { name: string } };",
         endpoint:
           '{ query: (arg: Args) => ({ url: "/api/x", params: arg.params, body: arg.body }) }',
         argument: '{ params: { q: "text" }, body: { name: "n" } }',
@@ -1258,19 +1326,19 @@ describe("modelClientRequest against the real API client", () => {
         ],
       }),
     );
-    expect(request.query.unverified).toMatch(/known only at runtime/);
+    expect(request.query.unverified).toMatch(/more than one source/);
   });
 
-  it("should send no query parameters for an empty object rest in params", async () => {
-    await expectConformance(
+  it("should leave the query unverified for an empty object rest in params", async () => {
+    const { request } = await expectConformance(
       {
         endpoint:
           "{ query: ({ id, ...params }: { id: number }) => ({ url: `/api/x/${id}`, params }) }",
         argument: "{ id: 1 }",
       },
       sentRequest({ path: "/api/x/1" }),
-      sentRequest({ path: "/api/x/1", query: [["id", "1"]] }),
     );
+    expect(request.query.unverified).toMatch(/object rest params/);
   });
 
   it("should leave an undefined property out of a JSON body", async () => {

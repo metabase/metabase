@@ -847,11 +847,6 @@ function compareJsonView(
       );
     case "throws":
       return mismatch(`${view.reason}, so the request is never sent`);
-    case "unmodelled":
-      return {
-        status: "unverified",
-        message: `${fieldLabel(label, declaration, root)}: ${view.reason}`,
-      };
     case "null":
       return checker.isTypeAssignableTo(checker.getNullType(), expected)
         ? COMPATIBLE

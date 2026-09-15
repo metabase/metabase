@@ -612,11 +612,14 @@ function unconstrainedPositions(
       });
       return;
     }
-    if (reached.isUnion() || reached.isIntersection()) {
-      const parts = reached.isUnion()
-        ? unionMembers(checker, reached)
-        : reached.types;
-      parts.forEach((part) =>
+    if (reached.isUnion()) {
+      unionMembers(checker, reached).forEach((part) =>
+        reach(level, part, { path, declaration }, through),
+      );
+      return;
+    }
+    if (reached.isIntersection()) {
+      reached.types.forEach((part) =>
         reach(level, part, { path, declaration }, through),
       );
       return;
