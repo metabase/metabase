@@ -1060,7 +1060,7 @@
 
 (mu/defn- ^:dynamic *process-native*
   [respond     :- fn?
-   database    :- driver-api/schema.metadata.database
+   database    :- :metabase.warehouses.schema/database-or-metadata
    sql         :- :string
    parameters  :- [:maybe [:sequential :metabase.lib.schema.common/field-value]]
    cancel-chan :- [:maybe (driver-api/instance-of-class ManyToManyChannel)]]
