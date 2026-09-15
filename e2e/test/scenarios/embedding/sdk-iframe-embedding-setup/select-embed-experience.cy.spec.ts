@@ -171,7 +171,7 @@ describe(suiteTitle, () => {
   });
 
   it("should show a fake loading indicator in embed preview", () => {
-    cy.visit(`/question/${ORDERS_QUESTION_ID}`);
+    H.visitQuestion(ORDERS_QUESTION_ID);
 
     H.openEmbedJsModal();
 
