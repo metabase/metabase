@@ -63,13 +63,29 @@
 
     :else nil))
 
+(defn- kv-arg-values
+  "The value nodes of the `:column value` pairs a query call takes after its model.
+
+  `(t2/select :model/X :locale locale :archived false)` -- the pairs run to the end of the call, or
+  to a trailing query map."
+  [args]
+  (->> args
+       (partition 2 2 nil)
+       (keep (fn [[k v]]
+               (when (and v (hooks/keyword-node? k))
+                 v)))))
+
 (defn- lint-unmarked-values!
   "Register a finding for each argument of the enclosing function that reaches a value slot unmarked.
 
   Only a symbol is reported. A literal cannot carry a request value, and a value built inside the
   function is out of reach of a check that does not follow it across a call."
   [node]
-  (doseq [value (mapcat value-nodes (rest (:children node)))
+  (doseq [value (let [args (rest (:children node))]
+                  (concat (mapcat value-nodes args)
+                          ;; `:column value` pairs after the model, which Toucan builds into the
+                          ;; where clause.
+                          (kv-arg-values (rest args))))
           :when (and (hooks/token-node? value)
                      (symbol? (hooks/sexpr value))
                      (not (marked? value)))]

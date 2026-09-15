@@ -96,3 +96,18 @@
   (testing "a test source tree is exempt"
     (is (empty? (lint-query-call '(t2/select :model/X {:where [:= :locale locale]})
                                  'metabase.foo.db "test/metabase/foo/db_test.clj")))))
+
+(deftest ^:parallel unmarked-kv-arg-value-test
+  (testing "a symbol passed as a kv-arg value is flagged"
+    (is (=? [{:type    :metabase/unmarked-sql-value
+              :message #"`locale` reaches a SQL value slot unmarked.*"}]
+            (lint-query-call '(t2/select :model/X :locale locale) 'metabase.foo.db))))
+  (testing "a marked kv-arg is not flagged"
+    (is (empty? (lint-query-call '(t2/select :model/X :locale [:auto/param locale]) 'metabase.foo.db))))
+  (testing "a coerced kv-arg is not flagged"
+    (is (empty? (lint-query-call '(t2/select-one :model/X :id (long id)) 'metabase.foo.db))))
+  (testing "a literal kv-arg is not flagged"
+    (is (empty? (lint-query-call '(t2/select :model/X :archived false) 'metabase.foo.db))))
+  (testing "each unmarked pair is reported"
+    (is (= 2 (count (lint-query-call '(t2/select :model/X :locale locale :msgid msgid)
+                                     'metabase.foo.db))))))
