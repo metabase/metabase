@@ -159,10 +159,10 @@ The banner appears on static embeds created with Metabase's open-source version.
 
 ## Regenerating the static embedding secret key
 
-Your embedding secret key is used to sign JWTs for all of your [embedding URLs](#adding-the-embedding-url-to-your-website).
+Your embedding secret key is used to sign JWTs for all of your [embedding URLs](#adding-the-embedding-url-to-your-website). Metabase generates a key for you when you turn on embedding.
 
 1. Go to **Embedding hub > Security**.
-2. Under **Secret key for guest embeds**, click **Regenerate key**.
+2. Under **Secret key for guest embeds**, click **Regenerate key**. (If you don't have a key yet, the button says **Generate key**.)
 
 This key is shared across all static embeds. Whoever has access to this key could get access to all embedded artifacts, so keep this key secure. If you regenerate this key, you'll need to update your server code with the new key.
 

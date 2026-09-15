@@ -107,7 +107,8 @@ And here's the endpoint that signs the token. The embed posts the dashboard's ID
 ```javascript
 const jwt = require("jsonwebtoken");
 
-// Your embedding secret key. Keep it on your server; it never reaches the browser.
+// Your embedding secret key, from Embedding hub > Security -> Secret key for guest embeds.
+// Keep it on your server; it never reaches the browser.
 const METABASE_SECRET_KEY = process.env.METABASE_SECRET_KEY;
 
 app.post("/api/metabase-guest-token", (req, res) => {

@@ -48,13 +48,13 @@ Metabase ships with light and dark themes that pick up any appearance settings y
 
 In the **Themes** section, you can:
 
-- **Create a theme.** Click **+ New theme**, then set a name, colors, and font.
+- **Create a theme.** Click **New theme**, then set a name, colors, and font.
 - **Edit a theme.** Click a theme card to open the editor. Changes show up in the live preview.
 - **Choose what the preview renders.** Pick the dashboard or question used to preview the theme.
 - **Duplicate a theme.** Handy if you want to vary an existing theme.
 - **Delete a theme.** This deletion is eternal.
 
-The **Branding elements** section on the same page sets the loading message and the empty-state text for embeds. The logo, colors, and fonts for your Metabase itself live in [Admin > Settings > Appearance](../configuring-metabase/appearance.md).
+The **Branding elements** section on the same page sets the [loading message](../configuring-metabase/appearance.md#loading-message) and the [illustrations](../configuring-metabase/appearance.md#metabase-illustrations) Metabase shows when a question returns no results or a search finds nothing. These are the same settings you'll find in **Admin > Settings > Appearance**; the hub just puts them next to your themes. The logo, colors, and fonts for your Metabase itself live in [Admin > Settings > Appearance](../configuring-metabase/appearance.md).
 
 ![Theme editor](./images/theme-editor.png)
 

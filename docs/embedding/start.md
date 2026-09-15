@@ -12,6 +12,10 @@ You can use Metabase as a BI tool for your own team, or embed Metabase in your a
 
 What is embedding, and how does it work?
 
+### [Embedding hub](./introduction.md#embedding-hub)
+
+Where all the embedding settings live: turning on embedding methods, CORS, the secret key, JWT, tenants, themes, and translations. Admins open it from the **grid** icon in the upper right.
+
 ## [Modular embedding](./modular-embedding.md)
 
 Embed individual dashboards, questions, or the query builder in your app with an interactive wizard and simple drop-in script, with minimal or no coding required. Control component UI and theming. Integrate your app's auth with Metabase SSO.

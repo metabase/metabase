@@ -219,6 +219,7 @@ Metabase's reference documentation.
 
 - [Embedding overview](./embedding/start.md)
 - [Embedding introduction](./embedding/introduction.md)
+- [Embedding hub](./embedding/introduction.md#embedding-hub)
 - Modular embedding
   - [SSO](./embedding/modular-embedding.md)
   - [Guest](./embedding/guest-embedding.md)

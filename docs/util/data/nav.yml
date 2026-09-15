@@ -251,6 +251,8 @@ categories:
     pages:
       - name: "Overview"
         url: "embedding/introduction"
+      - name: "Embedding hub"
+        url: "embedding/introduction#embedding-hub"
       - name: "Modular embedding"
         pages:
           - name: "Overview"

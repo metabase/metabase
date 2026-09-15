@@ -475,10 +475,10 @@ Metabase adds the banner to guest embeds (both charts and dashboards) on the OSS
 
 ## Regenerating the embedding secret key
 
-Your embedding secret key is used to sign JWTs for all of your embeds.
+Your embedding secret key is used to sign JWTs for all of your embeds. Metabase generates a key for you when you turn on embedding.
 
 1. Go to **Embedding hub > Security**.
-2. Under **Secret key for guest embeds**, click **Regenerate key**.
+2. Under **Secret key for guest embeds**, click **Regenerate key**. (If you don't have a key yet, the button says **Generate key**.)
 
 This key is shared across all guest embeds. Whoever has access to this key could get access to all embedded artifacts, so keep this key secure. If you regenerate this key, you'll need to update your server code with the new key.
 

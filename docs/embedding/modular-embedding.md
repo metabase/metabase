@@ -19,7 +19,7 @@ If you're using React, check out the [Modular embedding SDK](./sdk/introduction.
 
 1. In Metabase, click the **grid** icon in the upper right and select **Embedding hub**.
 2. Go to **Security**.
-3. Toggle on **Modular embedding and SDK for React**. On OSS and Starter plans, the toggle is called **Enable embedding**.
+3. Toggle on **Modular embedding and SDK for React**. On OSS and Starter plans, the toggle is called **Enable embedding**. On Pro and Enterprise plans, the first time you turn this on, Metabase asks you to agree to the usage terms (each person viewing an SSO embed needs their own Metabase account).
 
 **For guest embeds**: You're done! Skip to [Create a new embed](#create-a-new-embed) or see the [Guest embedding guide](./guest-embedding.md) for detailed setup instructions.
 

@@ -106,15 +106,19 @@ If you'd like to share your data with the good people of the internet, admins ca
 
 Embedding settings live in the Embedding hub. To open it, click the **grid** icon in the upper right and select **Embedding hub**. Only admins can see it. The hub has:
 
-- **Get started**: a checklist that walks you through your first embed.
-- **Security**: toggles for each embedding method, CORS origins, the SameSite cookie setting, and the secret key for guest embeds.
-- **Authentication**: JWT settings for [SSO](./authentication.md).
+- **Get started**: a checklist that walks you through your first embed. The first section covers connecting a database, creating a dashboard, and getting an embed snippet. The second section covers permissions and tenants, SSO, custom themes, and AI, each with its own short wizard.
+- **Security**: one toggle that turns on modular embedding, the SDK for React, and guest embeds, plus a separate **Full-app embedding** toggle on Pro and Enterprise plans. This page also has CORS origins, the SameSite cookie setting, the secret key for guest embeds, and a list of published guest embeds.
+- **Authentication**: JWT settings for [SSO](./authentication.md). For SAML and other options, head to **Admin > Settings > Authentication**.
 - **Permissions**: the same permissions editor as **Admin > Permissions**. It's just another way to get to the same permissions.
 - **Tenancy**: [tenants](./tenants.md), tenant groups, and tenant users.
 - **Appearance**: [themes](./appearance.md) for your embeds.
 - **Localization**: [translation dictionaries](./translations.md) for embedded content.
 
 The **New embed** button at the bottom of the sidebar opens the embed wizard.
+
+Every plan sees every page in the hub. On OSS and Starter plans, the Authentication, Tenancy, Appearance, and Localization pages show what's available on [Pro and Enterprise](https://www.metabase.com/pricing) plans instead of the settings themselves.
+
+If you have links or bookmarks to the old **Admin > Embedding** pages, they'll redirect to the matching hub page.
 
 ## Resources for AI agents
 

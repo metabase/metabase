@@ -57,7 +57,9 @@ To add a translation dictionary:
 
 1. Click the **grid** icon in the upper right and select **Embedding hub**.
 2. Go to **Localization**.
-3. Under **Translate embedded dashboards and questions**, click **Upload translation dictionary**.
+3. Under **Translate embedded dashboards and questions**, click **Upload edited translation dictionary**.
+
+If you want a starting point, click **Get translation dictionary template** first. Metabase downloads a CSV with the right columns and the strings from your content already filled in.
 
 Uploading a new dictionary will replace the existing dictionary.
 
