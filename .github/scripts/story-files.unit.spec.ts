@@ -81,6 +81,21 @@ describe("getStories", () => {
     expect(() => getStories({ pathsFile })).toThrow(story);
   });
 
+  it("rejects an untitled Alert story even though its args have a title", () => {
+    const source = readFileSync(
+      join(
+        ROOT,
+        "frontend/src/metabase/ui/components/feedback/Alert/Alert.stories.tsx",
+      ),
+      "utf8",
+    ).replace('  title: "Components/Feedback/Alert",\n', "");
+    const story = join(tempDir, "Alert.stories.tsx");
+    writeFileSync(story, source);
+    writeFileSync(pathsFile, JSON.stringify([story]));
+
+    expect(() => getStories({ pathsFile })).toThrow(story);
+  });
+
   it("rejects an empty plan even when the CSV filter is set", () => {
     writeFileSync(pathsFile, "[]");
 
@@ -118,13 +133,18 @@ describe("hasExplicitTitle", () => {
       source: "export default {\n  title: 'Components/Button',\n};\n",
     },
     {
-      form: "a template literal",
-      source: "export default {\n  title: `Components/Button`,\n};\n",
+      form: "a title constant",
+      source: 'const title = "Components/Button"; export default { title };',
     },
     {
       form: "a meta constant",
       source:
         'const meta: Meta<typeof Button> = {\n  title: "Components/Button",\n};\n\nexport default meta;\n',
+    },
+    {
+      form: "a satisfies expression",
+      source:
+        'const meta = { title: "Components/Button" } satisfies Meta<typeof Button>; export default meta;',
     },
   ])("accepts a title in $form", ({ source }) => {
     expect(hasExplicitTitle(source)).toBe(true);
@@ -144,6 +164,28 @@ describe("hasExplicitTitle", () => {
       form: "only a title variable",
       source:
         "export default {\n  component: Button,\n  args: {\n    title: defaultTitle,\n  },\n};\n",
+    },
+    {
+      form: "only a string-valued args title",
+      source: 'export default { args: { title: "Button label" } };',
+    },
+    {
+      form: "only another object's title",
+      source:
+        'const other = { title: "Other" }; export default { component: Button };',
+    },
+    {
+      form: "only a commented title",
+      source:
+        'export default {\n // title: "Components/Button",\n component: Button };',
+    },
+    {
+      form: "an empty title",
+      source: 'export default { title: "" };',
+    },
+    {
+      form: "a template literal unsupported by Storybook",
+      source: "export default { title: `Components/Button` };",
     },
   ])("rejects $form", ({ source }) => {
     expect(hasExplicitTitle(source)).toBe(false);

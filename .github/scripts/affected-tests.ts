@@ -191,7 +191,10 @@ export function createTestPlan({
   const lokiPreviewTouched = changedFiles.some((file) =>
     previewDependencies.has(file),
   );
-  const lokiForceAll = lokiInfraForceAll || lokiPreviewTouched;
+  // Without the cruise, the rules graph cannot account for the preview's
+  // global dependencies, so it cannot safely narrow Loki.
+  const lokiForceAll =
+    lokiInfraForceAll || lokiPreviewTouched || edges === null;
 
   const select = (forceAll: boolean, affected: Set<string>, files: string[]) =>
     forceAll ? files : filterAffectedTests(nodes, affected, files);

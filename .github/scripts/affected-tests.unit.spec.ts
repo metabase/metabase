@@ -54,8 +54,8 @@ describe("createTestPlan", () => {
       "src/foo/foo.unit.spec.ts",
     ]);
     expect(plan.stats.unit_specs_to_run_rules).toBe(2);
-    expect(plan.stats.loki_stories_to_run_rules).toBe(1);
-    // With no file deps, usage falls back to rules.
+    expect(plan.loki_stories_to_run).toEqual(LOKI_FILES);
+    // With no file deps, unit usage falls back to rules, but Loki runs in full.
     expect(plan.stats.unit_specs_to_run_usage).toBe(2);
   });
 
@@ -95,6 +95,7 @@ describe("createTestPlan", () => {
       ...baseInput,
       changedFiles: ["docs/readme.md"],
       unitInfraTouched: true,
+      loadFileDependencies: () => [],
     });
 
     expect(plan.stats.unit_specs_to_run_rules).toBe(UNIT_FILES.length);
@@ -135,16 +136,21 @@ describe("createTestPlan", () => {
     expect(plan.loki_stories_to_run).toEqual(["src/foo/Foo.stories.tsx"]);
   });
 
-  it("does not check the Storybook preview's imports without the usage graph", () => {
+  it("runs all Loki stories when the cruise fails even if rules select fewer", () => {
     const plan = createTestPlan({
       ...baseInput,
-      changedFiles: ["src/utils/colors.ts"],
+      changedFiles: ["src/foo/x.ts"],
       loadFileDependencies: () => null,
+      e2eSpecFiles: { "e2e/test/scenarios/a.cy.spec.ts": ["src/bar/b.ts"] },
     });
 
     expect(plan.stats.loki_preview_touched).toBe(false);
-    // The rules graph lets every feature import lib/utils, so it runs both stories anyway.
     expect(plan.loki_stories_to_run).toEqual(LOKI_FILES);
+    expect(plan.stats.loki_stories_to_run_rules).toBe(LOKI_FILES.length);
+    expect(plan.stats.loki_stories_to_run_usage).toBe(LOKI_FILES.length);
+    // Unit and E2E keep their rules-graph fallback.
+    expect(plan.fe_unit_specs_to_run).toEqual(UNIT_FILES.slice(0, 2));
+    expect(plan.e2e_specs_to_run).toEqual([]);
   });
 
   it("runs the full e2e suite when no coverage manifest is available", () => {

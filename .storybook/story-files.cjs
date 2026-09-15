@@ -11,7 +11,15 @@ const MAIN_APP_STORY_GLOBS = [
 // Storybook autotitles a story from its path relative to the entry's directory,
 // so an untitled story gets a different title in a narrowed build and Loki writes a fresh reference for it.
 function hasExplicitTitle(source) {
-  return /(^|\{)\s*title:\s*["'`]/m.test(source);
+  // Only load the parser when validating a build; the planner also imports this
+  // module for its story globs.
+  const { loadCsf } = require("storybook/internal/csf-tools");
+  try {
+    const { meta } = loadCsf(source, { makeTitle: (title) => title }).parse();
+    return typeof meta?.title === "string" && meta.title.length > 0;
+  } catch {
+    return false;
+  }
 }
 
 function getStories({ pathsFile, filter } = {}) {
