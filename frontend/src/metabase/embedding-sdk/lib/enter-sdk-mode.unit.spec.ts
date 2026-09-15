@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 import type { OnBeforeRequestHandlerConfig } from "metabase/api/client";
 import { ApiClient, PLUGIN_API } from "metabase/api/client";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
-import { resetPluginSlots } from "metabase/plugin-slots";
+import { reinitialize } from "metabase/plugins";
 
 import { enterSdkMode } from "./enter-sdk-mode";
 
@@ -19,7 +19,7 @@ describe("enterSdkMode", () => {
   afterEach(() => {
     Object.assign(EMBEDDING_SDK_CONFIG, originalConfig);
     delete window.overrideIsWithinIframe;
-    resetPluginSlots();
+    reinitialize();
   });
 
   it("enables SDK mode", () => {
@@ -47,7 +47,7 @@ describe("enterSdkMode", () => {
   it("reinstalls the opt-out after a reset, even if SDK mode is already true", async () => {
     window.overrideIsWithinIframe = true;
     enterSdkMode();
-    resetPluginSlots();
+    reinitialize();
 
     expect(
       await PLUGIN_API.onBeforeRequestHandlers.setEmbeddedHeader(REQUEST),

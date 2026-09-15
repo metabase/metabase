@@ -1,7 +1,6 @@
 import type { ComponentType, ReactNode } from "react";
 
 import type { LinkProps } from "metabase/common/components/Link";
-import { definePluginSlot } from "metabase/plugin-slots";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type Question from "metabase-lib/v1/Question";
 import type {
@@ -10,6 +9,8 @@ import type {
   Database as DatabaseType,
   IconName,
 } from "metabase-types/api";
+
+import { definePluginSlot } from "../slot";
 
 export type InsightsLinkProps = (
   | {

@@ -1,4 +1,6 @@
-import { definePluginSlot, resetPluginSlots } from "./slot";
+import { reinitialize } from "metabase/plugins";
+
+import { definePluginSlot } from "./slot";
 
 describe("definePluginSlot", () => {
   it("should return the defaults", () => {
@@ -7,13 +9,13 @@ describe("definePluginSlot", () => {
     expect(slot).toEqual({ enabled: false, label: "default" });
   });
 
-  it("should restore the defaults and remove added keys on reset", () => {
+  it("should restore the defaults and remove added keys on reinitialize", () => {
     const slot = definePluginSlot(() => ({ enabled: false, label: "default" }));
 
     slot.enabled = true;
     slot.label = "changed";
     Object.assign(slot, { extra: "added" });
-    resetPluginSlots();
+    reinitialize();
 
     expect(slot).toEqual({ enabled: false, label: "default" });
     expect(Object.keys(slot)).toEqual(["enabled", "label"]);
@@ -25,7 +27,7 @@ describe("definePluginSlot", () => {
 
     first.value = 10;
     second.value = 20;
-    resetPluginSlots();
+    reinitialize();
 
     expect(first.value).toBe(1);
     expect(second.value).toBe(2);
@@ -35,7 +37,7 @@ describe("definePluginSlot", () => {
     const slot = definePluginSlot((): string[] => []);
 
     slot.push("a", "b");
-    resetPluginSlots();
+    reinitialize();
 
     expect(slot).toEqual([]);
   });
@@ -44,7 +46,7 @@ describe("definePluginSlot", () => {
     const slot = definePluginSlot((): { items: string[] } => ({ items: [] }));
 
     slot.items.push("mutated");
-    resetPluginSlots();
+    reinitialize();
 
     expect(slot.items).toEqual([]);
   });

@@ -1,7 +1,8 @@
 import type { ComponentType } from "react";
 
-import { definePluginSlot } from "metabase/plugin-slots";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
+
+import { definePluginSlot } from "../slot";
 
 const getDefaultPluginAdminSettings = () => ({
   // The origins list is its own card on the hub's Security tab, below the

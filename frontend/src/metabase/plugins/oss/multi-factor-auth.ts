@@ -1,9 +1,10 @@
-import { definePluginSlot } from "metabase/plugin-slots";
 import {
   PluginPlaceholder,
   pluginPlaceholderRoute,
 } from "metabase/plugins/components/PluginPlaceholder";
 import type { MfaMethod } from "metabase-types/api";
+
+import { definePluginSlot } from "../slot";
 
 export type AuthChallengeFormProps = {
   challengeToken: string;

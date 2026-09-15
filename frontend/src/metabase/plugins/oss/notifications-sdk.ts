@@ -1,7 +1,8 @@
 import type { ButtonHTMLAttributes } from "react";
 
-import { definePluginSlot } from "metabase/plugin-slots";
 import type { ActionIconProps } from "metabase/ui";
+
+import { definePluginSlot } from "../slot";
 
 export type DashboardSubscriptionsButtonProps = ActionIconProps &
   ButtonHTMLAttributes<HTMLButtonElement>;

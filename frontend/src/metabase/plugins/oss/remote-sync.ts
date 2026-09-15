@@ -9,7 +9,6 @@ import type { TagType } from "metabase/api/tags";
 import type { UseQuery } from "metabase/api/types/rtk";
 import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
-import { definePluginSlot } from "metabase/plugin-slots";
 import type {
   GitSyncSetupMenuItemProps,
   SyncedCollectionsSidebarSectionProps,
@@ -20,6 +19,8 @@ import type {
   RemoteSyncChangesResponse,
   RemoteSyncEntity,
 } from "metabase-types/api";
+
+import { definePluginSlot } from "../slot";
 
 export type CollectionsNavTreeProps = {
   collections: CollectionTreeItem[];
