@@ -1,5 +1,6 @@
 (ns mage.kondo
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [mage.shell :as shell]
    [mage.util :as u]))
@@ -48,10 +49,43 @@
   (shell/sh "rm" "-rf" ".clj-kondo/metosin/malli-types-clj/")
   (shell/sh "rm" "-rf" ".clj-kondo/.cache"))
 
+(def ^:private ^java.io.File warm-cache-marker
+  "Written when a warm pass over every root finishes. Lives inside the cache, so [[clear-cache!]] removes it too."
+  (io/file u/project-root-directory ".clj-kondo" ".cache" "warmed"))
+
+(defn warm-cache!
+  "Lint `roots` once, discarding the findings, to fill the cache Kondo keeps under `.clj-kondo/.cache`.
+  With no `roots`, lints everything [[kondo]] does plus `dev/src`, which defines vars that `dev/test` redefines.
+
+  Hooks that ask about another namespace's vars (`hooks/ns-analysis`) read that cache and nothing else,
+  and Kondo writes it only after every file in a run has been analysed. A single pass over a cold cache
+  therefore tells those hooks nothing, and they silently skip their checks."
+  ([]
+   (warm-cache! nil))
+  ([roots]
+   (println "Warming the Kondo cache so cache-reading hooks can see every namespace...")
+   ;; Only a pass over every root may mark the cache warm. Drop the marker first, so an interrupted pass can't leave
+   ;; an old one next to a partial cache.
+   (when-not (seq roots)
+     (io/delete-file warm-cache-marker true))
+   (let [command            (if (seq roots)
+                              (list* "-M:kondo" "--lint" roots)
+                              ["-M:kondo:kondo/all" "dev/src"])
+         {:keys [exit err]} (apply shell/sh* {:quiet? true} "clojure" command)]
+     ;; Kondo exits 2 for warnings and 3 for errors. Any other nonzero exit means the pass did not finish, and a
+     ;; partial cache would silence the same hooks this exists to feed.
+     (when-not (#{0 2 3} exit)
+       (throw (ex-info (str "Warming the Kondo cache failed:\n" (str/join "\n" err))
+                       {:exit-code 1})))
+     (when-not (seq roots)
+       (io/make-parents warm-cache-marker)
+       (spit warm-cache-marker "")))))
+
 (defn- kondo*
   [args]
   (copy-configs-if-needed!)
   (clear-cache!)
+  (warm-cache!)
   (let [command           (if (empty? args)
                             (do
                               (println "Hunker down, we're running kondo against everything we usually lint...")
@@ -81,6 +115,14 @@
     (println "Files:")
     (doseq [filename updated-files]
       (println "  " filename))
+    ;; Reuse a finished warm pass so this stays fast. A cache without the marker may be partial, from an editor or
+    ;; an interrupted run, and would leave cache-reading hooks silent.
+    ;;
+    ;; The marker says a pass finished, not that the cache still matches the sources. Analysis from an earlier
+    ;; revision is accepted here in exchange for speed: [[kondo]] clears the cache and warms it again on every run,
+    ;; and that is the entry point CI uses.
+    (when-not (.exists warm-cache-marker)
+      (warm-cache!))
     (let [{:keys [exit], :or {exit -1}} (apply shell/sh* "clojure" "-M:kondo" "--lint" updated-files)]
       (System/exit exit))))
 

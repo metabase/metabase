@@ -1,3 +1,4 @@
+import { act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
@@ -5,7 +6,6 @@ import { setupNotificationChannelsEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { securityCenterApi, subscriptionApi } from "metabase/api";
 import { Route } from "metabase/router";
 import type { Advisory } from "metabase-types/api";
 import {
@@ -56,7 +56,7 @@ function setup({
     }),
   });
 
-  return renderWithProviders(
+  renderWithProviders(
     <Route path="*" element={<SecurityCenterPromoCard />} />,
     {
       initialRoute: "/",
@@ -64,38 +64,25 @@ function setup({
       withRouter: true,
     },
   );
+
+  return { user: userEvent.setup({ advanceTimers: jest.advanceTimersByTime }) };
 }
 
-type SetupResult = ReturnType<typeof setup>;
-
-async function waitForAdminQueriesToFinish({ store }: SetupResult) {
-  await waitFor(() => {
-    expect(
-      subscriptionApi.endpoints.getChannelInfo.select()(store.getState())
-        .isSuccess,
-    ).toBe(true);
-    expect(
-      securityCenterApi.endpoints.listSecurityAdvisories.select()(
-        store.getState(),
-      ).isSuccess,
-    ).toBe(true);
+async function waitForRequests() {
+  await act(async () => {
+    await fetchMock.callHistory.flush(true);
+    // RTK Query batches subscriber updates on a timer.
+    await jest.runOnlyPendingTimersAsync();
   });
 }
 
-function expectAdminQueriesToBeSkipped({ store }: SetupResult) {
-  expect(
-    subscriptionApi.endpoints.getChannelInfo.select()(store.getState())
-      .isUninitialized,
-  ).toBe(true);
-  expect(
-    securityCenterApi.endpoints.listSecurityAdvisories.select()(
-      store.getState(),
-    ).isUninitialized,
-  ).toBe(true);
-}
-
 describe("SecurityCenterPromoCard", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
   afterEach(() => {
+    jest.useRealTimers();
     localStorage.removeItem(DISMISSED_KEY);
   });
 
@@ -111,63 +98,65 @@ describe("SecurityCenterPromoCard", () => {
   });
 
   it("does not render when email is configured", async () => {
-    const view = setup({ emailConfigured: true });
+    setup({ emailConfigured: true });
 
-    await waitForAdminQueriesToFinish(view);
+    await waitForRequests();
     expect(
       screen.queryByText(/Stay safe with security alerts/),
     ).not.toBeInTheDocument();
   });
 
   it("does not render when slack is configured", async () => {
-    const view = setup({ slackConfigured: true });
+    setup({ slackConfigured: true });
 
-    await waitForAdminQueriesToFinish(view);
+    await waitForRequests();
     expect(
       screen.queryByText(/Stay safe with security alerts/),
     ).not.toBeInTheDocument();
   });
 
-  it("does not render or fire admin-only requests for non-admin users", () => {
-    const view = setup({ isAdmin: false });
+  it("does not render or fire admin-only requests for non-admin users", async () => {
+    setup({ isAdmin: false });
 
-    expectAdminQueriesToBeSkipped(view);
+    await waitForRequests();
     expect(
       screen.queryByText(/Stay safe with security alerts/),
     ).not.toBeInTheDocument();
 
-    // Non-admins must not trigger admin-only endpoints.
-    expect(fetchMock.callHistory.called("path:/api/ee/security-center")).toBe(
-      false,
-    );
+    expect(
+      fetchMock.callHistory.calls("path:/api/ee/security-center"),
+    ).toHaveLength(0);
+    expect(
+      fetchMock.callHistory.calls("path:/api/pulse/form_input"),
+    ).toHaveLength(0);
   });
 
   it("does not render for non-pro-self-hosted plans", async () => {
-    const view = setup({ isProSelfHosted: false });
+    setup({ isProSelfHosted: false });
 
-    await waitForAdminQueriesToFinish(view);
+    await waitForRequests();
     expect(
       screen.queryByText(/Stay safe with security alerts/),
     ).not.toBeInTheDocument();
   });
 
   it("does not render when there is an active advisory (red banner takes over)", async () => {
-    const view = setup({
+    setup({
       advisories: [createAdvisory({ match_status: "active" })],
     });
 
-    await waitForAdminQueriesToFinish(view);
+    await waitForRequests();
     expect(
       screen.queryByText(/Stay safe with security alerts/),
     ).not.toBeInTheDocument();
   });
 
   it("is dismissible", async () => {
-    setup();
+    const { user } = setup();
 
     await screen.findByText(/Stay safe with security alerts/);
     const close = screen.getByRole("button", { name: /close/i });
-    await userEvent.click(close);
+    await user.click(close);
 
     await waitFor(() => {
       expect(
@@ -180,9 +169,9 @@ describe("SecurityCenterPromoCard", () => {
   it("stays hidden after dismissal", async () => {
     localStorage.setItem(DISMISSED_KEY, "true");
 
-    const view = setup();
+    setup();
 
-    await waitForAdminQueriesToFinish(view);
+    await waitForRequests();
     expect(
       screen.queryByText(/Stay safe with security alerts/),
     ).not.toBeInTheDocument();

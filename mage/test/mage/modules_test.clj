@@ -2,7 +2,10 @@
   "Tests for driver decision logic.
    Run `mage -driver-decisions -h` to see the priority order."
   (:require
+   [clojure.java.shell :as shell]
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
+   [dev.module-explorer :as module-explorer]
    [hooks.common.modules :as modules]
    [mage.color]
    [mage.modules]))
@@ -361,11 +364,76 @@
 
 (deftest module-tree-enterprise-default-prefix-not-starred-test
   (testing "default enterprise prefixes are not marked as custom"
-    (is (nil? (#'mage.modules/explicit-ns-prefix '{enterprise/billing {}} 'enterprise/billing)))
-    (is (nil? (#'mage.modules/explicit-ns-prefix '{enterprise/billing {:ns-prefix "metabase-enterprise.billing"}}
-                                                 'enterprise/billing)))
+    (is (nil? (module-explorer/explicit-ns-prefix '{enterprise/billing {}} 'enterprise/billing)))
+    (is (nil? (module-explorer/explicit-ns-prefix '{enterprise/billing {:ns-prefix "metabase-enterprise.billing"}}
+                                                  'enterprise/billing)))
     (is (= "metabase.lib-be"
-           (#'mage.modules/explicit-ns-prefix '{lib.be {:ns-prefix "metabase.lib-be"}} 'lib.be)))))
+           (module-explorer/explicit-ns-prefix '{lib.be {:ns-prefix "metabase.lib-be"}} 'lib.be)))))
+
+(deftest explorer-data-test
+  (let [config '{core                 {:uses :any, :team "Core"}
+                 widget               {:uses #{gadget}, :api #{metabase.widget.core}}
+                 gadget               {:uses #{}, :team "Gadgets", :ns-prefix "metabase.gizmo"}
+                 gadget.part          {:uses #{gadget}}
+                 enterprise/gadget    {:uses #{gadget}}
+                 enterprise/cloud     {:uses #{}}}
+        modules (into {} (map (juxt :id identity)) (:modules (module-explorer/explorer-data config {})))]
+    (testing ":uses :any remains unresolved without source data"
+      (is (empty? (get-in modules ["core" :uses])))
+      (is (= ["enterprise/gadget" "gadget.part" "widget"]
+             (get-in modules ["gadget" :used-by]))))
+    (testing "teams are inherited from the nearest ancestor"
+      (is (= "Gadgets" (get-in modules ["gadget.part" :team])))
+      (is (= "Gadgets" (get-in modules ["enterprise/gadget" :team]))))
+    (testing "tree paths nest children and keep enterprise companions under their OSS module"
+      (is (= ["gadget" "part"] (get-in modules ["gadget.part" :path])))
+      (is (= ["gadget" "enterprise"] (get-in modules ["enterprise/gadget" :path])))
+      (is (= ["enterprise/cloud"] (get-in modules ["enterprise/cloud" :path]))))
+    (testing "only custom prefixes are reported"
+      (is (= "metabase.gizmo" (get-in modules ["gadget" :ns-prefix])))
+      (is (nil? (get-in modules ["widget" :ns-prefix]))))
+    (testing "an omitted :api uses the same defaults as the module linter"
+      (is (= ["metabase.gizmo.api" "metabase.gizmo.core" "metabase.gizmo.init"]
+             (get-in modules ["gadget" :api]))))))
+
+(deftest explorer-data-with-namespace-edges-test
+  (let [config '{core   {:uses :any}
+                 widget {:uses #{gadget}}
+                 gadget {:uses #{}}}
+        edges  [["core" "gadget" "metabase.gadget.core"]
+                ["widget" "gadget" "metabase.gadget.core"]]
+        modules (into {}
+                      (map (juxt :id identity))
+                      (:modules (module-explorer/explorer-data config {:ns-edges edges})))]
+    (testing "observed namespace edges resolve unrestricted and reverse dependencies"
+      (is (= ["gadget"] (get-in modules ["core" :uses])))
+      (is (= ["core" "widget"] (get-in modules ["gadget" :used-by]))))))
+
+(deftest explorer-file->module-test
+  (let [file->module   #'module-explorer/file->module
+        prefix->module (modules/build-prefix->module '{lib {} lib.schema {} driver {}})]
+    (testing "files resolve through the declared prefixes, tests included"
+      (is (= 'lib.schema (file->module prefix->module "src/metabase/lib/schema/join.cljc")))
+      (is (= 'lib.schema (file->module prefix->module "test/metabase/lib/schema_test.cljc")))
+      (is (= 'lib (file->module prefix->module "src/metabase/lib/core.cljc"))))
+    (testing "driver-plugin files belong to the driver module regardless of namespace"
+      (is (= 'driver (file->module prefix->module "modules/drivers/mysql/src/metabase/driver/mysql.clj")))
+      (is (= 'driver (file->module prefix->module "modules/drivers/mysql/test/metabase/test/data/mysql.clj"))))))
+
+(deftest explorer-page-test
+  (let [html (module-explorer/page {:modules [{:id "</script>"}]})]
+    (testing "the data and state codec replace their placeholders"
+      (is (not (str/includes? html "/*DATA*/null")))
+      (is (not (str/includes? html "/*STATE-CODEC*/")))
+      (is (str/includes? html "<\\/script>")))))
+
+(deftest explorer-git-failure-test
+  (is (thrown-with-msg? Exception #"Git failed:"
+                        (#'module-explorer/git-output! "not-a-real-git-subcommand"))))
+
+(deftest explorer-state-codec-test
+  (let [{:keys [exit out err]} (shell/sh "node" "mage/test/mage/module_explorer_state_test.js")]
+    (is (zero? exit) (str out err))))
 
 (deftest dotted-module-files-mark-correct-module-changes
   (testing "dotted module files resolve to the dotted module when its prefix exists"

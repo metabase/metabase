@@ -81,7 +81,7 @@ const elements = [
   // shared
   createElement({ type: "feature", name: "account" }),
   createElement({ type: "shared", name: "actions" }),
-  createElement({ type: "shared", name: "api", enforceSharedTiers: false }),
+  createElement({ type: "shared", name: "api" }),
   createElement({ type: "shared", name: "archive" }),
   createElement({ type: "feature", name: "auth" }),
   createElement({ type: "feature", name: "browse" }),
@@ -246,11 +246,7 @@ const elements = [
   createElement({ type: "shared", name: "parameters" }),
   createElement({ type: "shared", name: "plugins" }),
   createElement({ type: "shared", name: "pulse" }),
-  createElement({
-    type: "shared",
-    name: "querying",
-    enforceSharedTiers: false,
-  }),
+  createElement({ type: "shared", name: "querying" }),
   createElement({ type: "shared", name: "questions" }),
   createElement({ type: "shared", name: "redux", enforceSharedTiers: false }),
   createElement({ type: "shared", name: "rich_text_editing" }),

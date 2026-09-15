@@ -28,9 +28,9 @@
    [metabase.app-db.custom-migrations.pulse-to-notification :as pulse-to-notification]
    [metabase.app-db.custom-migrations.reserve-at-symbol-user-attributes :as reserve-at-symbol-user-attributes]
    [metabase.app-db.custom-migrations.util :as custom-migrations.util]
+   [metabase.app-db.quartz]
    [metabase.app-db.setting :as mdb.setting]
    [metabase.config.core :as config]
-   [metabase.task.bootstrap]
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2 :as h2x]
@@ -1760,7 +1760,7 @@
 ;; on migrate up:
 ;; - migrate alerts from pulse table to notification table
 ;; - And then on startup new send notification triggers are created by running
-;; [[metabase.notification.task.send/init-send-notification-triggers!]]
+;; [[metabase.notification.task.send-trigger/init-send-notification-triggers!]]
 (define-migration MigrateAlertToNotification
   (pulse-to-notification/migrate-alerts!))
 

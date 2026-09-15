@@ -40,11 +40,11 @@
                         :model model
                         :usage {:promptTokens prompt-tokens :completionTokens completion-tokens}
                         :id    message-id}]))]
-    (with-redefs [openrouter/openrouter mock-fn
-                  claude/claude         mock-fn
-                  openai/openai         mock-fn
-                  ;; skip title generation to avoid second llm call + ai_usage_log row
-                  conversation-title/ensure-title! (constantly {:status :missing})]
+    (mt/with-dynamic-fn-redefs [openrouter/openrouter mock-fn
+                                claude/claude         mock-fn
+                                openai/openai         mock-fn
+                                ;; skip title generation to avoid second llm call + ai_usage_log row
+                                conversation-title/ensure-title! (constantly {:status :missing})]
       (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
                             {:message         message
                              :context         {}
@@ -343,9 +343,9 @@
                      :model model
                      :usage {:promptTokens prompt-tokens :completionTokens completion-tokens}
                      :id    "msg-eqg"}]))]
-    (with-redefs [openrouter/openrouter mock-fn
-                  claude/claude         mock-fn
-                  openai/openai         mock-fn]
+    (mt/with-dynamic-fn-redefs [openrouter/openrouter mock-fn
+                                claude/claude         mock-fn
+                                openai/openai         mock-fn]
       (eqg/generate-example-questions {:tables tables :metrics []}))))
 
 (defn- max-usage-log-id

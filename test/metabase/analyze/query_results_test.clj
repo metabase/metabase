@@ -131,8 +131,8 @@
 
 (deftest error-resilience-test
   (testing "Data should come back even if there is an error during fingerprinting"
-    (is (= 36 (with-redefs [fingerprinters/earliest test.sync/crash-fn]
+    (is (= 36 (mt/with-dynamic-fn-redefs [fingerprinters/earliest test.sync/crash-fn]
                 (-> (timeseries-dataset) :rows count)))))
   (testing "Data should come back even if there is an error when calculating insights"
-    (is (= 36 (with-redefs [insights/change test.sync/crash-fn]
+    (is (= 36 (mt/with-dynamic-fn-redefs [insights/change test.sync/crash-fn]
                 (-> (timeseries-dataset) :rows count))))))

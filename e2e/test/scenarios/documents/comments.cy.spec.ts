@@ -260,6 +260,7 @@ describe("document comments", () => {
       Comments.getCommentInputs().should("have.length", 7).last().click();
       cy.realType("Reply B");
       cy.findAllByLabelText("Send").should("have.length", 3).eq(1).click();
+      Comments.getCommentInputs().should("have.length", 8);
 
       cy.log("allows to delete a comment");
       Comments.getCommentByText("Reply A").realHover();
