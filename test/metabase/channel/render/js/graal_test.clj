@@ -64,44 +64,50 @@
   (let [^com.sun.management.ThreadMXBean mx (java.lang.management.ManagementFactory/getThreadMXBean)]
     (.getThreadAllocatedBytes mx (.getId (Thread/currentThread)))))
 
-(deftest guest-call-bounds-transfers-test
+(defn- guard-failure
+  "The `:reason` of the guard failure `thunk` raises, or its return value if it doesn't."
+  [thunk]
+  (try (thunk)
+       (catch clojure.lang.ExceptionInfo e
+         (if (= ::graal/guest-call-failed (:type (ex-data e)))
+           (:reason (ex-data e))
+           (throw e)))))
+
+(defn- bounded
+  "Run `thunk` asserting it allocates less than 4 MB on the host heap (so no unchecked string crossed), and return
+  what it returned or the guard failure reason."
+  [label thunk]
+  (let [before (thread-allocated-bytes)
+        result (guard-failure thunk)]
+    (is (< (- (thread-allocated-bytes) before) (* 4 1024 1024)) label)
+    result))
+
+(deftest guard-bounds-transfers-test
   (do-with-untrusted-context!
    (fn [^Context context]
      (graal/load-js-string context
                            (str "globalThis.MetabaseStaticViz = {"
                                 "  big(n) { return 'x'.repeat(n) },"
+                                "  rope(k) { let s = 'x'; for (let i = 0; i < k; i++) s = s + s; return s },"
                                 "  obj() { return {length: 1} },"
                                 "  huge: 'x'.repeat(17 * 1024 * 1024),"
-                                "  boom() { throw new Error('e'.repeat(17 * 1024 * 1024)) },"
-                                "  boomObject() { throw {toString() { throw 'x'.repeat(17 * 1024 * 1024) }} }"
+                                "  boom() { throw new Error('e'.repeat(17 * 1024 * 1024)) }"
                                 "}")
                            "fns.js")
      (testing "a string result within the cap passes through"
        (is (= (* 1024 1024) (count (#'graal/call-string context "big" (* 1024 1024))))))
      (testing "an oversized result is refused in the guest, before it is copied to the host"
-       (let [before (thread-allocated-bytes)]
-         (is (thrown-with-msg? PolyglotException #"more than the .* allowed"
-                               (#'graal/call-string context "big" (* 17 1024 1024))))
-         (is (< (- (thread-allocated-bytes) before) (* 4 1024 1024))
-             "refusing a 17M-char string must not allocate it (~34 MB, more with marshalling) on the host heap")))
+       (is (= :result-too-large (bounded "repeat" #(#'graal/call-string context "big" (* 17 1024 1024))))))
+     (testing "a lazily concatenated result is refused by its length, never flattened or copied"
+       (is (= :result-too-large (bounded "rope" #(#'graal/call-string context "rope" 26)))))
      (testing "a non-string result is refused"
-       (is (thrown-with-msg? PolyglotException #"did not return a string"
-                             (#'graal/call-string context "obj"))))
+       (is (= :not-a-string (guard-failure #(#'graal/call-string context "obj")))))
      (testing "a property a plugin replaced with a string is refused without the lookup copying it to the host"
-       (let [before (thread-allocated-bytes)]
-         (is (thrown-with-msg? PolyglotException #"is not a function"
-                               (#'graal/call-string context "huge")))
-         (is (< (- (thread-allocated-bytes) before) (* 4 1024 1024)))))
+       (is (= :not-a-function (bounded "lookup" #(#'graal/call-string context "huge")))))
      (testing "a void call never transfers the result"
-       (let [before (thread-allocated-bytes)]
-         (is (nil? (#'graal/call-void context "big" (* 17 1024 1024))))
-         (is (< (- (thread-allocated-bytes) before) (* 4 1024 1024)))))
-     (testing "a guest error's message is truncated before it crosses to the host"
-       (doseq [fn-name ["boom" "boomObject"]]
-         (let [before (thread-allocated-bytes)
-               e      (is (thrown? PolyglotException (#'graal/call-string context fn-name)))]
-           (is (<= (count (ex-message e)) 2100) fn-name)
-           (is (< (- (thread-allocated-bytes) before) (* 4 1024 1024)) fn-name)))))))
+       (is (nil? (bounded "void" #(#'graal/call-void context "big" (* 17 1024 1024))))))
+     (testing "a plugin failure is reported as a code; its message never crosses"
+       (is (= :guest-threw (bounded "throw" #(#'graal/call-string context "boom"))))))))
 
 (deftest eval-untrusted!-bounds-transfers-test
   (do-with-untrusted-context!
@@ -110,23 +116,15 @@
        (is (nil? (#'graal/eval-untrusted! context "var fromPlugin = 41; globalThis.plus1 = (x) => x + 1" "plugin.js")))
        (is (= 42 (.asLong (graal/execute-fn-name context "plus1" (.asLong (.eval context "js" "fromPlugin")))))))
      (testing "the completion value never crosses to the host"
-       (let [before (thread-allocated-bytes)]
-         (is (nil? (#'graal/eval-untrusted! context "'x'.repeat(17 * 1024 * 1024)" "big.js")))
-         (is (< (- (thread-allocated-bytes) before) (* 4 1024 1024)))))
-     (testing "a thrown value's message is truncated before it crosses to the host"
-       (let [before (thread-allocated-bytes)
-             e      (is (thrown? PolyglotException
-                                 (#'graal/eval-untrusted! context "throw new Error('e'.repeat(17 * 1024 * 1024))" "boom.js")))]
-         (is (<= (count (ex-message e)) 2100))
-         (is (< (- (thread-allocated-bytes) before) (* 4 1024 1024)))))
-     (testing "the source name reaches guest stack traces"
-       (let [e (is (thrown? PolyglotException
-                            (#'graal/eval-untrusted! context "(function inner() { throw new Error(new Error('x').stack) })()" "custom-viz-demo.js")))]
-         (is (re-find #"custom-viz-demo\.js" (ex-message e))))))))
+       (is (nil? (bounded "completion" #(#'graal/eval-untrusted! context "'x'.repeat(17 * 1024 * 1024)" "big.js")))))
+     (testing "a top-level throw is reported as a code; its message never crosses"
+       (is (= :guest-threw (bounded "throw" #(#'graal/eval-untrusted! context "throw new Error('e'.repeat(17 * 1024 * 1024))" "boom.js")))))
+     (testing "a syntax error is a failure too"
+       (is (= :guest-threw (guard-failure #(#'graal/eval-untrusted! context "function (" "bad.js"))))))))
 
 (deftest guard-survives-plugin-tampering-test
-  (testing "a plugin that replaces the built-ins the guard relies on, or throws from a getter, still can't get an
-            unbounded string past it"
+  (testing "a plugin that replaces built-ins, throws from a getter, or attacks the guard global still can't get an
+            unbounded string past the guard"
     (do-with-untrusted-context!
      (fn [^Context context]
        (graal/load-js-string context
@@ -137,19 +135,17 @@
                                   "Error.prototype.name = huge;"
                                   "Object.defineProperty(Error.prototype, 'message', {get() { return huge }});"
                                   "globalThis.eval = () => huge;"
-                                  "globalThis.MetabaseStaticViz = { get render() { throw huge } };"
+                                  "Array.prototype[Symbol.iterator] = function* () { throw huge };"
+                                  "globalThis.MetabaseStaticViz = { get render() { throw huge }, ok() { return 'fine' } };"
                                   "try { delete globalThis." @#'graal/guard-global "; } catch (_) {}"
                                   "try { globalThis." @#'graal/guard-global " = {call: () => huge, evalScript: () => huge}; } catch (_) {}")
                              "tamper.js")
-       (doseq [[label thunk] [["getter throwing"  #(#'graal/call-string context "render")]
-                              ["void call"        #(#'graal/call-void context "render")]
-                              ["script throwing"  #(#'graal/eval-untrusted! context "throw huge" "boom.js")]
-                              ["script completion" #(#'graal/eval-untrusted! context "huge" "big.js")]]]
-         (let [before (thread-allocated-bytes)
-               result (try (thunk) (catch PolyglotException e e))]
-           (when (instance? PolyglotException result)
-             (is (<= (count (ex-message result)) 2100) label))
-           (is (< (- (thread-allocated-bytes) before) (* 4 1024 1024)) label)))))))
+       (is (= :guest-threw (bounded "getter"   #(#'graal/call-string context "render"))))
+       (is (= :guest-threw (bounded "void"     #(#'graal/call-void context "render"))))
+       (is (= :guest-threw (bounded "script"   #(#'graal/eval-untrusted! context "throw huge" "boom.js"))))
+       (is (nil?           (bounded "complete" #(#'graal/eval-untrusted! context "huge" "big.js"))))
+       (testing "and a well-behaved call still works through the tampered context"
+         (is (= "fine" (guard-failure #(#'graal/call-string context "ok")))))))))
 
 (deftest untrusted-context-enforces-heap-limit-test
   (testing "sandbox.MaxHeapMemory terminates a plugin that exhausts the isolate heap"
