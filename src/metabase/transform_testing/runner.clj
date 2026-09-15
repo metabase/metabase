@@ -48,9 +48,12 @@
         driver    (keyword (:engine database))
         _         (api/check-400 (driver.u/supports? driver :transforms/testing database)
                                  (tru "The database of this transform does not support transform testing."))
-        ;; --- validate (pure): every read table is faked ---
-        _         (transform-testing.validator/check-inputs-complete!
+        ;; --- validate (pure): every read table is faked; runner turns a gap into a 400 ---
+        missing   (transform-testing.validator/missing-inputs
                    driver inputs (referenced-tables driver transform))
+        _         (api/check-400 (empty? missing)
+                                 (tru "The transform reads table(s) with no declared test input: {0}"
+                                      (pr-str missing)))
         ;; --- compile (pure): temp names + queries over them ---
         input-tables (mapv (fn [_] (driver/temp-table-name driver)) inputs)
         output-table (driver/temp-table-name driver)
