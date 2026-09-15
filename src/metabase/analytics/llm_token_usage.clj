@@ -56,6 +56,7 @@
 (def ^:private PrometheusArgs
   [:map
    [:model-id                              :string]
+   [:provider              {:optional true} [:maybe :string]]
    [:tag                                   :string]
    [:prompt-tokens                         ms/IntGreaterThanOrEqualToZero]
    [:completion-tokens                     ms/IntGreaterThanOrEqualToZero]
@@ -64,10 +65,10 @@
 
 (mu/defn track-prometheus!
   "Track Prometheus LLM token usage metrics."
-  [{:keys [model-id tag prompt-tokens completion-tokens
+  [{:keys [model-id provider tag prompt-tokens completion-tokens
            cache-creation-tokens cache-read-tokens]}
    :- PrometheusArgs]
-  (let [labels {:model model-id :source tag}]
+  (let [labels {:model model-id :source tag :provider (or provider "unknown")}]
     (analytics/inc! :metabase-metabot/llm-input-tokens labels prompt-tokens)
     (analytics/inc! :metabase-metabot/llm-output-tokens labels completion-tokens)
     (when (and cache-creation-tokens (pos? cache-creation-tokens))
