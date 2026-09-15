@@ -295,7 +295,7 @@
    [:is_published            :boolean]
    [:transform_id            [:maybe ::lib.schema.id/transform]]
    [:transform_target        :boolean]
-   [:db                      {:optional true} [:maybe :metabase.warehouses.schema/database]]
+   [:db                      {:optional true} [:maybe [:ref :metabase.warehouses.schema/database]]]
    [:fields                  {:optional true} [:maybe [:sequential ::field]]]
    [:transform               {:optional true} [:maybe [:ref :metabase.transforms.schema/transform]]]
    [:owner                   {:optional true} [:maybe [:map {:closed true}

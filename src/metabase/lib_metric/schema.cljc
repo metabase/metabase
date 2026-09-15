@@ -381,7 +381,8 @@
    [:source-type      ::dimension-source-type]
    [:source-id        pos-int?]
    ;; Optional mapping for field resolution
-   [:dimension-mapping {:optional true} [:maybe ::dimension-mapping]]])
+   [:dimension-mapping {:optional true} [:maybe ::dimension-mapping]]
+   [:projection-positions {:optional true} [:maybe [:sequential :int]]]])
 
 (mr/def ::dimension-spec
   "Spec for fetching dimensions from metadata provider.

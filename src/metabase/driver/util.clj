@@ -294,7 +294,7 @@
 
   (This is cached for a second, so as to avoid repeated application DB calls if this function is called several times
   over the duration of a single API request or sync operation.)"
-  [database-or-id :- [:or ::lib.schema.id/database :metabase.warehouses.schema/database-or-metadata]]
+  [database-or-id :- [:maybe [:or ::lib.schema.id/database :metabase.warehouses.schema/database-or-metadata]]]
   (if-let [driver (:engine database-or-id)]
     ;; ensure we get the driver as a keyword (sometimes it's a String)
     (keyword driver)
@@ -348,7 +348,7 @@
    If passed a Toucan2 instance, converts it. If already Lib metadata, returns as-is."
   [database :- :metabase.warehouses.schema/database-or-metadata]
   (if-not (:lib/type database)
-    (lib-be/instance->metadata database :metadata/database)
+    (lib-be/instance->metadata (dissoc database :tables :schedules) :metadata/database)
     database))
 
 (mu/defn supports?

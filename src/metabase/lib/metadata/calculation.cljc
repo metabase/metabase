@@ -14,10 +14,14 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.extraction :as lib.schema.extraction]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.order-by :as lib.schema.order-by]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
@@ -56,33 +60,69 @@
     (lib.dispatch/dispatch-value x))
   :hierarchy lib.hierarchy/hierarchy)
 
+(mr/def ::card-metadata
+  "Card metadata, plus the `:display-name` [[metadata]] adds to it."
+  [:merge
+   ::lib.schema.metadata/card
+   [:map
+    [:display-name {:optional true} [:maybe :string]]]])
+
+(mr/def ::metric-metadata
+  "Metric metadata, plus the `:display-name` [[metadata]] adds and the `:aggregation-position`
+  [[metabase.lib.metric/available-metrics]] adds."
+  [:merge
+   ::lib.schema.metadata/metric
+   [:map
+    [:display-name         {:optional true} [:maybe :string]]
+    [:aggregation-position {:optional true} [:maybe :int]]]])
+
 (mr/def ::column-nameable
   "Something [[column-name]] can calculate a database-friendly name for: an MBQL expression clause or literal, or
   column, metric, or measure metadata."
   [:or
    ::lib.schema.expression/expression
    ::lib.schema.metadata/column
-   ::lib.schema.metadata/metric
-   ::lib.schema.metadata/measure])
+   ::metric-metadata
+   ::lib.schema.metadata/measure
+   ::lib.schema.metadata/segment])
 
 (mr/def ::displayable
-  "Something [[display-name]] can calculate a human-friendly display name for: an MBQL clause or literal, a query, a
-  stage, a join, a join strategy option, a temporal bucketing option, or column, table, card, metric, measure, or
-  segment metadata."
-  [:or
-   ::lib.schema.expression/expression
-   ::lib.schema.metadata/column
-   ::lib.schema.metadata/table
-   ::lib.schema.metadata/card
-   ::lib.schema.metadata/metric
-   ::lib.schema.metadata/measure
-   ::lib.schema.metadata/segment
-   ::lib.schema/query
-   ::lib.schema/stage
-   [:ref :metabase.lib.join.util/join-with-optional-alias]
-   ::lib.schema.join/strategy.option
-   :metabase.lib.column-group/column-group
-   ::lib.schema.temporal-bucketing/option])
+  "Something [[display-name]] can calculate a human-friendly display name for: an MBQL clause or literal, an order-by
+  clause, a query, a stage, a join, a join strategy, temporal bucketing, or binning option, resolved binning, an
+  aggregation operator, a drill, an extraction, a column group, or column, table, card, metric, measure, or segment
+  metadata."
+  [:multi {:dispatch (fn [x]
+                       (cond
+                         (map? x)                                     (:lib/type x)
+                         (and (vector? x) (#{:asc :desc} (first x))) ::order-by
+                         :else                                        ::expression))}
+   [:metadata/column                    ::lib.schema.metadata/column]
+   [:metadata/table                     ::lib.schema.metadata/table]
+   [:metadata/card                      ::card-metadata]
+   [:metadata/metric                    ::metric-metadata]
+   [:metadata/measure                   ::lib.schema.metadata/measure]
+   [:metadata/segment                   ::lib.schema.metadata/segment]
+   [:metadata/column-group              :metabase.lib.column-group/column-group]
+   [:mbql/query                         ::lib.schema/query]
+   [:mbql.stage/mbql                    ::lib.schema/stage]
+   [:mbql.stage/native                  ::lib.schema/stage]
+   [:mbql/join                          [:ref :metabase.lib.join.util/join-with-optional-alias]]
+   [:option/join.strategy               ::lib.schema.join/strategy.option]
+   [:option/temporal-bucketing          ::lib.schema.temporal-bucketing/option]
+   [:option/binning                     ::lib.schema.binning/binning-option]
+   [:metabase.lib.binning/binning       ::lib.schema.binning/binning.resolved]
+   [:operator/aggregation               :metabase.lib.aggregation/selected-operator-with-columns]
+   [:metabase.lib.drill-thru/drill-thru ::lib.schema.drill-thru/drill-thru]
+   [:metabase.lib.extraction/extraction ::lib.schema.extraction/extraction]
+   [::order-by                          ::lib.schema.order-by/order-by]
+   [::expression                        ::lib.schema.expression/expression]])
+
+(defn- clause-options
+  "The Lib options of `x` when it is an MBQL clause or a column, the only displayables that carry options."
+  [x]
+  (when (or (vector? x)
+            (= (:lib/type x) :metadata/column))
+    (lib.options/options x)))
 
 (mu/defn ^:export display-name :- :string
   "Calculate a nice human-friendly display name for something. See [[::display-name-style]] for a the difference between
@@ -105,7 +145,7 @@
     style        :- ::display-name-style]
    (or
     ;; if this is an MBQL clause with `:display-name` in the options map, then use that rather than calculating a name.
-    ((some-fn :display-name :lib/expression-name) (lib.options/options x))
+    ((some-fn :display-name :lib/expression-name) (clause-options x))
     (lib.util/recover
      (fn [] (display-name-method query stage-number x style))
      (fn [e]
@@ -124,7 +164,7 @@
     x            :- ::column-nameable]
    (or
     ;; if this is an MBQL clause with `:name` in the options map, then use that rather than calculating a name.
-    (:name (lib.options/options x))
+    (:name (clause-options x))
     (lib.util/recover
      (fn [] (column-name-method query stage-number x))
      (fn [e]
@@ -238,7 +278,7 @@
     x            :- ::type-of-arg]
    ;; this logic happens here so we don't need to code up every single individual method to handle these special
    ;; cases.
-   (let [{:keys [temporal-unit], :as options} (lib.options/options x)]
+   (let [{:keys [temporal-unit], :as options} (clause-options x)]
      (or
       ;; If the options map includes `:effective-type` we can assume you know what you are doing and that it is
       ;; correct and just return it directly.

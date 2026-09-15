@@ -9,7 +9,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.walk :as lib.walk]
@@ -72,7 +71,7 @@
 (mu/defn- filter-clause?
   [query      :- ::lib.schema/query
    stage-path :- ::lib.walk/stage-path
-   x          :- ::lib.schema.expression/expression]
+   x          :- ::lib.schema.common/clause-tag-candidate]
   (and (lib/clause? x)
        (when-let [expr-type (try
                               (lib.walk/apply-f-for-stage-at-path lib/type-of query stage-path x)
@@ -84,7 +83,7 @@
 (mu/defn- simple-filter-clause?
   [query      :- ::lib.schema/query
    stage-path :- ::lib.walk/stage-path
-   x          :- ::lib.schema.expression/expression]
+   x          :- ::lib.schema.common/clause-tag-candidate]
   (and (filter-clause? query stage-path x)
        (not (lib/clause-of-type? x #{:and :or :not}))))
 
@@ -100,7 +99,7 @@
   "Is `x` a clause (or a clause that contains a clause) that we should definitely not autobucket?"
   [query      :- ::lib.schema/query
    stage-path :- ::lib.walk/stage-path
-   x          :- ::lib.schema.expression/expression]
+   x          :- ::lib.schema.common/clause-tag-candidate]
   (cond
     ;; do not autobucket clauses in a non-compound filter clause that either:
     (simple-filter-clause? query stage-path x)

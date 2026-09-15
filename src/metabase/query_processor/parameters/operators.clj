@@ -18,6 +18,7 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
    [metabase.util.performance :refer [get-in]]))
 
@@ -75,10 +76,18 @@
         (nil? l) (assoc :type :number/<=, :value [u])))
     param))
 
+(mr/def ::field-filter-operator-param
+  "An operator parameter built during field filter substitution, whose `:target` already wraps an MBQL 5 ref."
+  [:map {:closed true}
+   [:type    ::lib.schema.parameter/type]
+   [:value   {:optional true} ::lib.schema.parameter/parameter.value]
+   [:options {:optional true} [:maybe ::lib.schema.parameter/parameter.options]]
+   [:target  [:tuple [:= :dimension] [:or :mbql.clause/field :mbql.clause/expression]]]])
+
 (mu/defn to-clause :- ::lib.schema.expression/boolean
   "Convert an operator style parameter into an mbql clause. Will also do arity checks and throws an ex-info with
   `:type qp.error-type/invalid-parameter` if arity is incorrect."
-  [param :- ::lib.schema.parameter/parameter]
+  [param :- [:or ::lib.schema.parameter/parameter ::field-filter-operator-param]]
   (let [{param-type :type, [a b :as param-value] :value, target :target, options :options} (normalize-param param)
         field-ref (or (match/match-one target
                         [#{:field :expression} & _]

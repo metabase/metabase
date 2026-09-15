@@ -2,7 +2,7 @@
   "Middleware for expanding LEGACY `:segment` 'macros' in *unexpanded* MBQL queries.
 
   (`:segment` forms are expanded into filter clauses.)"
-  (:refer-clojure :exclude [mapv not-empty get-in])
+  (:refer-clojure :exclude [mapv not-empty])
   (:require
    [metabase.lib.core :as lib]
    [metabase.lib.filter :as lib.filter]
@@ -18,7 +18,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
-   [metabase.util.performance :refer [mapv not-empty get-in]]))
+   [metabase.util.performance :refer [mapv not-empty]]))
 
 ;;; "legacy macro" as used below means legacy Segment.
 (mr/def ::legacy-macro
@@ -46,11 +46,10 @@
 
 ;;; a legacy Segment has one or more filter clauses.
 
-(mu/defn- segment-definition->stage :- ::lib.schema/stage.mbql
+(mu/defn- segment-definition->stage :- [:maybe ::lib.schema/stage.mbql]
   "Extract the MBQL 5 stage from a segment definition. Segment definitions are always MBQL 5 queries at this point
   (converted by the segment model's after-select hook), so we just extract the first stage."
-  [_metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   {:keys [definition], :as _legacy-macro} :- ::legacy-macro]
+  [{:keys [definition], :as _legacy-macro} :- ::legacy-macro]
   (log/trace "Extracting MBQL 5 stage from segment definition")
   (first (:stages definition)))
 
@@ -58,7 +57,7 @@
   "Get the filter(s) associated with a Segment."
   [legacy-macro :- ::legacy-macro]
   (mapv lib/fresh-uuids
-        (get-in legacy-macro [:definition :filters])))
+        (:filters (segment-definition->stage legacy-macro))))
 
 (mr/def ::id->legacy-macro
   [:map-of pos-int? ::legacy-macro])
@@ -70,8 +69,7 @@
   (let [metadata-type     (case macro-type ;; left in case we see a :metric here
                             :segment :metadata/segment)]
     (u/prog1 (into {}
-                   (map (juxt :id (fn [legacy-macro]
-                                    (assoc legacy-macro :definition (segment-definition->stage metadata-providerable legacy-macro)))))
+                   (map (juxt :id identity))
                    (lib.metadata/bulk-metadata-or-throw metadata-providerable metadata-type legacy-macro-ids))
       ;; make sure all the IDs exist.
       (doseq [id legacy-macro-ids]

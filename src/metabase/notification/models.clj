@@ -5,6 +5,7 @@
   - more than one handlers where each handler has a channel, optionally a template, and more than one recpients."
   (:require
    [malli.core :as mc]
+   [malli.util :as mut]
    [medley.core :as m]
    [metabase.channel.models.channel :as models.channel]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -673,7 +674,8 @@
               [:map {:closed true}
                [:is_from_setup {:optional true} [:maybe :boolean]]
                [:invite_method {:optional true} [:maybe :string]]
-               [:invite_target {:optional true} [:maybe users.schema/InviteTarget]]]]]
+               [:invite_target {:optional true} [:maybe users.schema/InviteTarget]]
+               [:sso_source    {:optional true} [:maybe [:or :keyword :string]]]]]]
    [:details {:optional true}
     [:map {:closed true}
      [:invitor [:map {:closed true}
@@ -835,11 +837,20 @@
      [:channel    {:optional true} [:maybe ::models.channel/Channel]]
      [:recipients {:optional true} [:sequential ::NotificationRecipient]]]]))
 
+(def ^:private NotificationWithInlinePayload
+  "A raw notification row that already carries an inline `:payload`, the shape `metabase.notification.events.notification`
+  hands `send-notification!` for a `:notification/system-event` notification before any `:payload_id`-based hydration."
+  (mut/merge ::notification.schema/notification
+             [:map {:closed true}
+              [:payload {:optional true}
+               [:schema {::mr/deliberately-open true
+                         :description "an inline payload assembled before persistence, e.g. a system event's :event_info/:event_topic"}
+                :any]]]))
+
 (mu/defn hydrate-notification :- [:or ::FullyHydratedNotification [:sequential ::FullyHydratedNotification]]
   "Fully hydrate notifictitons."
-  [notification-or-notifications :- [:or ::notification.schema/notification
-                                     ::FullyHydratedNotification
-                                     [:sequential [:or ::notification.schema/notification ::FullyHydratedNotification]]]]
+  [notification-or-notifications :- [:or NotificationWithInlinePayload
+                                     [:sequential ::notification.schema/notification]]]
   (t2/hydrate notification-or-notifications :creator :payload :subscriptions [:handlers :channel :template [:recipients :recipients-detail]]))
 
 (mu/defn notifications-for-card :- [:sequential ::FullyHydratedNotification]

@@ -248,7 +248,7 @@
 (mu/defn- optimize-comparison-clause :- [:maybe ::lib.schema.mbql-clause/clause]
   [query                       :- ::lib.schema/query
    path                        :- ::lib.walk/stage-path
-   optimize-temporal-value-fn  :- fn?
+   optimize-temporal-value-fn  :- ifn?
    [tag opts field temporal-value] :- [:or :mbql.clause/< :mbql.clause/<= :mbql.clause/> :mbql.clause/>=]
    new-clause-type             :- [:enum :< :>=]]
   (b/cond

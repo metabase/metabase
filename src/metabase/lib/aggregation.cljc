@@ -433,28 +433,28 @@
                   (map #(assoc % :lib/type :operator/aggregation)))
             lib.schema.aggregation/aggregation-operators)))))
 
-(mu/defn aggregation-clause :- ::lib.schema.aggregation/aggregation
-  "Returns a standalone aggregation clause for an `aggregation-operator` and
-  a `column`.
-  For aggregations requiring an argument `column` is mandatory, otherwise
-  it is optional."
-  ([aggregation-operator :- ::lib.schema.aggregation/operator]
-   (if-not (:requires-column? aggregation-operator)
-     (lib.options/ensure-uuid [(:short aggregation-operator) {}])
-     (throw (ex-info (lib.util/format "aggregation operator %s requires an argument"
-                                      (:short aggregation-operator))
-                     {:aggregation-operator aggregation-operator}))))
-
-  ([aggregation-operator :- ::lib.schema.aggregation/operator
-    column                :- :metabase.lib.common/op-arg]
-   (lib.options/ensure-uuid [(:short aggregation-operator) {} (lib.common/->op-arg column)])))
-
 (mr/def ::selected-operator-with-columns
   [:merge
    ::lib.schema.aggregation/operator
    [:map
     [:columns {:optional true} [:sequential ::lib.schema.metadata/column]]
     [:selected? {:optional true} :boolean]]])
+
+(mu/defn aggregation-clause :- ::lib.schema.aggregation/aggregation
+  "Returns a standalone aggregation clause for an `aggregation-operator` and
+  a `column`.
+  For aggregations requiring an argument `column` is mandatory, otherwise
+  it is optional."
+  ([aggregation-operator :- ::selected-operator-with-columns]
+   (if-not (:requires-column? aggregation-operator)
+     (lib.options/ensure-uuid [(:short aggregation-operator) {}])
+     (throw (ex-info (lib.util/format "aggregation operator %s requires an argument"
+                                      (:short aggregation-operator))
+                     {:aggregation-operator aggregation-operator}))))
+
+  ([aggregation-operator :- ::selected-operator-with-columns
+    column                :- :metabase.lib.common/op-arg]
+   (lib.options/ensure-uuid [(:short aggregation-operator) {} (lib.common/->op-arg column)])))
 
 (mu/defn selected-aggregation-operators :- [:maybe [:sequential ::selected-operator-with-columns]]
   "Mark the operator and the column (if any) in `agg-operators` selected by `agg-clause`."

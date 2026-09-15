@@ -67,7 +67,8 @@
                        [:pivot-cols         {:optional true} [:maybe ::pivot-cols]]
                        [:pivot-measures     {:optional true} [:maybe ::pivot-measures]]
                        [:show-row-totals    {:optional true} [:maybe :boolean]]
-                       [:show-column-totals {:optional true} [:maybe :boolean]]]])
+                       [:show-column-totals {:optional true} [:maybe :boolean]]
+                       [:column-sort-order  {:optional true} [:maybe [:map-of [:maybe ::pivot.common/index] [:maybe :keyword]]]]]])
 
 (mr/def ::pivot.common/breakout-combinations
   [:and

@@ -23,7 +23,7 @@
 (mu/defn legacy-inner-query->mbql5-query :- ::lib.schema/query
   "Convert a legacy `inner-query` to an MBQL 5 query. Requires bound QP store."
   {:deprecated "0.57.0"}
-  [inner-query :- ::mbql.s/MBQLInnerQuery]
+  [inner-query :- :metabase.lib.util/query-like]
   ;; existing usage -- don't use going forward
   #_{:clj-kondo/ignore [:deprecated-var]}
   (qp.store/cached [:mbql5-query (hash inner-query)]
@@ -56,7 +56,7 @@
 
   DEPRECATED: use [[mbql-5-aggregation-name]] going forward."
   {:deprecated "0.64.0"}
-  [legacy-inner-query :- ::mbql.s/MBQLInnerQuery
+  [legacy-inner-query :- :metabase.lib.util/query-like
    legacy-ag-clause   :- ::mbql.s/Aggregation]
   (let [ag-clause (lib/->mbql5 legacy-ag-clause)]
     (or (::add/desired-alias (lib/options ag-clause))

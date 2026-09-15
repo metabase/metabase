@@ -47,12 +47,12 @@
   uninitialized-store)
 
 (mr/def ::miscellaneous-value
-  "One of the concrete shapes actually stored via [[store-miscellaneous-value!]]: a boolean mask (one entry per
-  result column), or a card's persisted result metadata."
-  [:or
-   [:sequential :boolean]
-   [:sequential ::lib.schema.metadata/lib-or-legacy-column]
-   ::lib.schema.metadata/metadata-provider])
+  "Any value cached for the duration of a QP run via [[store-miscellaneous-value!]] or [[cached]]."
+  [:schema {::mr/deliberately-open true, :description "a per-query-execution cached value of any kind"} :any])
+
+(mr/def ::miscellaneous-value.ks
+  "Key sequence for a value in the store's miscellaneous cache; [[cached]] prefixes it with a unique symbol."
+  [:sequential [:or :keyword :symbol :int :string]])
 
 (def ^:dynamic *DANGER-allow-replacing-metadata-provider*
   "This is (almost) only for tests! When enabled, [[with-metadata-provider]] can completely replace the current metadata
@@ -77,7 +77,7 @@
 
   DEPRECATED -- use [[metabase.lib.metadata/general-cached-value]] going forward."
   {:deprecated "0.57.0"}
-  [ks :- [:sequential [:or :keyword :int :string]]
+  [ks :- ::miscellaneous-value.ks
    v  :- ::miscellaneous-value]
   (swap! *store* assoc-in ks v))
 
@@ -86,11 +86,11 @@
 
   DEPRECATED -- use [[metabase.lib.metadata/general-cached-value]] going forward."
   {:deprecated "0.57.0"}
-  ([ks :- [:sequential [:or :keyword :int :string]]]
+  ([ks :- ::miscellaneous-value.ks]
    (miscellaneous-value ks nil))
 
-  ([ks :- [:sequential [:or :keyword :int :string]]
-    not-found :- :nil]
+  ([ks        :- ::miscellaneous-value.ks
+    not-found :- [:maybe [:= ::not-found]]]
    (get-in @*store* ks not-found)))
 
 (defn cached-fn

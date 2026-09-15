@@ -24,7 +24,8 @@
                                     (map (fn [field]
                                            [(:id field)
                                             (lib/infer-has-field-values
-                                             (lib-be/instance->metadata field :metadata/column))]))
+                                             (perf/select-keys (lib-be/instance->metadata field :metadata/column)
+                                                               [:base-type :effective-type :has-field-values]))]))
                                     (lib-metric.db/fields col-ids)))]
       (perf/mapv (fn [col]
                    (if-let [hfv (get field-values-map (:id col))]
@@ -57,7 +58,7 @@
    (column->computed-pair column nil))
   ([column group]
    (let [target (field-id-ref column)
-         has-field-values (lib/infer-has-field-values column)]
+         has-field-values (lib/infer-has-field-values (perf/select-keys column [:base-type :effective-type :has-field-values]))]
      {:dimension (cond-> {:id             nil
                           :name           (:name column)
                           :effective-type (or (:effective-type column)

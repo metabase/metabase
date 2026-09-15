@@ -1381,7 +1381,9 @@
    ;; name to use for this aggregation in the native query instead of the default name (e.g. `count`)
    [:name         {:optional true} ::lib.schema.common/non-blank-string]
    ;; user-facing display name for this aggregation instead of the default one
-   [:display-name {:optional true} ::lib.schema.common/non-blank-string]])
+   [:display-name {:optional true} ::lib.schema.common/non-blank-string]
+   [:metabase.query-processor.util.add-alias-info/source-alias  {:optional true} [:maybe :string]]
+   [:metabase.query-processor.util.add-alias-info/desired-alias {:optional true} [:maybe :string]]])
 
 (defclause* aggregation-options
   [:and
@@ -1571,7 +1573,9 @@
     [:type                  [:= {:decode/normalize helpers/normalize-keyword} :table]]
     [:table-id              ::lib.schema.id/table]
     [:emit-alias            {:optional true} :boolean]
-    [:source-filters        {:optional true} [:sequential [:ref ::TemplateTag.SourceFilter]]]]])
+    [:source-filters        {:optional true} [:sequential [:ref ::TemplateTag.SourceFilter]]]
+    [:default               {:optional true} [:ref ::lib.schema.parameter/parameter.value]]
+    [:required              {:optional true} :boolean]]])
 
 (mr/def ::TemplateTag.Value.Common
   "Stuff shared between the Field filter and raw value template tag schemas."
@@ -1728,16 +1732,39 @@
       (remove-empty-keys m {:non-empty-keys #{:template-tags}
                             :non-nil-keys   #{:collection}}))))
 
+(def ^:private inner-query-internal-keys
+  "Map entries for the keys the query processor adds to an MBQL 5 stage, which conversion to legacy MBQL copies onto the inner query."
+  [[:parameters                    {:optional true} [:maybe [:ref ::lib.schema.parameter/parameters]]]
+   [:qp/stage-is-from-source-card  {:optional true} [:ref ::lib.schema.id/card]]
+   [:qp/stage-had-source-card      {:optional true} [:ref ::lib.schema.id/card]]
+   [:qp/skip-persisted-cache       {:optional true} :boolean]
+   [:persisted-info/native         {:optional true} ::lib.schema.common/non-blank-string]
+   [:source-query/model?           {:optional true} :boolean]
+   [:source-query/native-model?    {:optional true} [:maybe :boolean]]
+   [:metabase.query-processor.middleware.add-remaps/remaps {:optional true} [:ref :metabase.lib.schema/external-remappings]]
+   [:metabase.query-processor.middleware.cumulative-aggregations/replaced-indexes {:optional true} [:set [:int {:min 0}]]]])
+
+(mr/def ::native-query-form
+  "The native query itself: a SQL string, or for drivers like MongoDB a query in the driver's own shape."
+  [:or
+   :string
+   [:schema {::mr/deliberately-open true
+             :description "a driver's native query when it is not a string, e.g. a MongoDB pipeline; its shape is the driver's"}
+    :some]])
+
 (mr/def ::NativeQuery.Common
   [:and
-   [:map
-    [:template-tags {:optional true} [:ref ::TemplateTagMap]]
-    ;; collection (table) this query should run against. Needed for MongoDB
-    [:collection    {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
-    [:params        {:optional true} [:maybe [:sequential [:ref ::lib.schema.literal/param-value]]]]
-    [:projections   {:optional true} [:maybe [:sequential :string]]]
-    [:mbql?         {:optional true} [:maybe :boolean]]
-    [:qp/table-name {:optional true} [:maybe :string]]]
+   (into
+    [:map
+     [:template-tags {:optional true} [:ref ::TemplateTagMap]]
+     ;; collection (table) this query should run against. Needed for MongoDB
+     [:collection    {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+     [:params        {:optional true} [:maybe [:sequential [:ref ::lib.schema.literal/param-value]]]]
+     [:projections   {:optional true} [:maybe [:sequential :string]]]
+     [:mbql?         {:optional true} [:maybe :boolean]]
+     [:qp/table-name {:optional true} [:maybe :string]]
+     [:query-permissions/referenced-card-ids {:optional true} [:maybe [:set ::lib.schema.id/card]]]]
+    inner-query-internal-keys)
    (lib.schema.common/disallowed-keys
     {:lib/type     "Legacy MBQL inner queries must not have :lib/type"
      :type         "An inner query must not include :type, this will cause us to mix it up with an outer query"
@@ -1751,7 +1778,7 @@
     {:decode/normalize #'remove-empty-keys-from-native-inner-query}
     ::NativeQuery.Common
     [:map {:closed true}
-     [:query :string]]]
+     [:query ::native-query-form]]]
    (lib.schema.common/disallowed-keys
     {:native "A top-level native inner query should have the :query key, not :native"})])
 
@@ -1761,7 +1788,7 @@
     {:decode/normalize #'remove-empty-keys-from-native-inner-query}
     ::NativeQuery.Common
     [:map {:closed true}
-     [:native :string]]]
+     [:native ::native-query-form]]]
    (lib.schema.common/disallowed-keys
     {:query "A top-level native inner query should have the :native key, not :query"})])
 
@@ -2051,7 +2078,12 @@
     [:qp/is-implicit-join
      {:optional true
       :description "Set by the `add-implicit-joins` middleware to mark a join it generated."}
-     :boolean]]
+     :boolean]
+    [:fk-field-name              {:optional true} [:maybe :string]]
+    [:fk-join-alias              {:optional true} [:maybe ::lib.schema.join/alias]]
+    [:qp/keep-default-join-alias {:optional true} :boolean]
+    [:qp/stage-is-from-source-card {:optional true} [:ref ::lib.schema.id/card]]
+    [:parameters                 {:optional true} [:maybe [:ref ::lib.schema.parameter/parameters]]]]
    ;; additional constraints
    [:fn
     {:error/message "Joins must have either a `source-table` or `source-query`, but not both."}
@@ -2134,28 +2166,31 @@
 
 (mr/def ::MBQLInnerQuery
   [:and
-   [:map
-    {:closed true, :decode/normalize lib.schema.common/normalize-map}
-    [:source-query {:optional true} [:ref ::SourceQuery]]
-    [:source-table {:optional true} [:ref ::SourceTable]]
-    [:aggregation  {:optional true} [:ref ::Aggregations]]
-    [:breakout     {:optional true} [:ref ::Breakouts]]
-    [:expressions  {:optional true} [:ref ::Expressions]]
-    [:fields       {:optional true} [:ref ::Fields]]
-    [:filter       {:optional true} [:ref ::Filter]]
-    [:limit        {:optional true} nat-int?]
-    [:order-by     {:optional true} [:ref ::OrderBys]]
-    [:page         {:optional true} [:ref :metabase.lib.schema/page]]
-    [:joins        {:optional true} [:ref ::Joins]]
-    [:source-metadata
-     {:optional    true
-      :description "Info about the columns of the source query. Added in automatically by middleware. This metadata is
+   (into
+    [:map
+     {:closed true, :decode/normalize lib.schema.common/normalize-map}
+     [:source-query {:optional true} [:ref ::SourceQuery]]
+     [:source-table {:optional true} [:ref ::SourceTable]]
+     [:aggregation  {:optional true} [:ref ::Aggregations]]
+     [:breakout     {:optional true} [:ref ::Breakouts]]
+     [:expressions  {:optional true} [:ref ::Expressions]]
+     [:fields       {:optional true} [:ref ::Fields]]
+     [:filter       {:optional true} [:ref ::Filter]]
+     [:limit        {:optional true} nat-int?]
+     [:order-by     {:optional true} [:ref ::OrderBys]]
+     [:page         {:optional true} [:ref :metabase.lib.schema/page]]
+     [:joins        {:optional true} [:ref ::Joins]]
+     [:source-metadata
+      {:optional    true
+       :description "Info about the columns of the source query. Added in automatically by middleware. This metadata is
   primarily used to let power things like binning when used with Field Literals instead of normal Fields."}
-     [:maybe [:sequential [:ref ::legacy-column-metadata]]]]
-    [:qp/added-implicit-fields? {:optional true} :boolean]
-    [:query-permissions/sandboxed-table {:optional true} [:ref ::lib.schema.id/table]]
-    [:metabase-enterprise.sandbox.query-processor.middleware.sandboxing/sandbox? {:optional true} :boolean]
-    [:metabase.query-processor.middleware.add-implicit-joins/reused-join-aliases {:optional true} [:set :string]]]
+      [:maybe [:sequential [:ref ::legacy-column-metadata]]]]
+     [:qp/added-implicit-fields? {:optional true} :boolean]
+     [:query-permissions/sandboxed-table {:optional true} [:ref ::lib.schema.id/table]]
+     [:metabase-enterprise.sandbox.query-processor.middleware.sandboxing/sandbox? {:optional true} :boolean]
+     [:metabase.query-processor.middleware.add-implicit-joins/reused-join-aliases {:optional true} [:set :string]]
+     [:pivot {:optional true} [:ref :metabase.lib.schema/pivot]]]
+    inner-query-internal-keys)
    ;; remove empty query keys; this is done AFTER the map schema above because normalizing things like
    ;; `::Aggregations` will remove things like the `ROWS` aggregation which was removed in MBQL 4.
    ;; e.g. the schema above will normalize
@@ -2311,6 +2346,25 @@
     [:impersonation/allow-write? {:optional true} :boolean]
     [:qp/compiled        {:optional true} :metabase.lib.schema/compiled-native-query]
     [:qp/compiled-inline {:optional true} :metabase.lib.schema/compiled-native-query]
+    [:async?                               {:optional true} :boolean]
+    [:was-pivot                            {:optional true} [:maybe :boolean]]
+    [:pivot-rows                           {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
+    [:pivot-cols                           {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
+    [:pivot-measures                       {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
+    [:show-row-totals                      {:optional true} [:maybe :boolean]]
+    [:show-column-totals                   {:optional true} [:maybe :boolean]]
+    [:viz-settings                         {:optional true} [:maybe [:ref ::lib.schema.common/visualization-settings]]]
+    [:user-parameters                      {:optional true} [:maybe [:ref ::lib.schema.parameter/parameters]]]
+    [:qp/source-card-id                    {:optional true} [:ref ::lib.schema.id/card]]
+    [:qp/skip-result-metadata-persistence  {:optional true} :boolean]
+    [:qp.pivot/unremapped-breakout-combination {:optional true} [:sequential [:int {:min 0}]]]
+    [:qp.pivot/remapped-breakout-combination   {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
+    [:qp.pivot/num-remapped-cols               {:optional true} [:int {:min 0}]]
+    [:qp.pivot/num-unremapped-breakouts        {:optional true} [:int {:min 0}]]
+    [:qp.pivot/num-remapped-breakouts          {:optional true} [:int {:min 0}]]
+    [:qp.pivot/remapped-indexes                {:optional true} [:map-of [:int {:min 0}] [:int {:min 0}]]]
+    [:query-permissions/referenced-card-ids {:optional true} [:maybe [:set ::lib.schema.id/card]]]
+    [:destination-database/id               {:optional true} ::DatabaseID]
     [:metabase.query-processor.middleware.add-remaps/external-remaps {:optional true} :metabase.lib.schema/external-remappings]
     [:metabase-enterprise.sandbox.query-processor.middleware.sandboxing/original-metadata
      {:optional true}

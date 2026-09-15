@@ -37,6 +37,7 @@
   [[:payload_type                   (into [:enum] models.notification/notification-types)]
    ;; allow unsaved notification to be sent
    [:id                      {:optional true} [:maybe ms/PositiveInt]]
+   [:creator_id              {:optional true} [:maybe ms/PositiveInt]]
    [:active                  {:optional true} :boolean]
    [:created_at              {:optional true} RowTimestamp]
    [:updated_at              {:optional true} RowTimestamp]

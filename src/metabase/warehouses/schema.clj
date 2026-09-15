@@ -66,7 +66,16 @@
    [:write_data_details          [:maybe ::database.write-data-details]]
    [:admin_details               [:maybe ::database.admin-details]]
    [:is_stub                     :boolean]
-   [:features                    {:optional true} [:maybe [:set :keyword]]]])
+   [:features                    {:optional true} [:maybe [:set :keyword]]]
+   [:can-manage                  {:optional true} [:maybe :boolean]]
+   [:can_upload                  {:optional true} [:maybe :boolean]]
+   [:tables                      {:optional true} [:maybe [:sequential [:ref :metabase.warehouse-schema.schema/table]]]]
+   [:native_permissions          {:optional true} [:maybe [:enum :write :none]]]
+   [:router_user_attribute       {:optional true} [:maybe :string]]
+   [:schedules                   {:optional true} [:maybe [:map {:closed true}
+                                                           [:metadata_sync      :metabase.util.cron/ScheduleMap]
+                                                           [:cache_field_values [:maybe :metabase.util.cron/ScheduleMap]]]]]
+   [:transforms_permissions      {:optional true} [:maybe [:enum :write :none]]]])
 
 (mr/def ::database.update
   "What an update (or insert) of a Database accepts: every column of `:metabase_database` except `id`, all optional."
@@ -104,8 +113,7 @@
    [:is_stub                     {:optional true} [:maybe :boolean]]])
 
 (mr/def ::database-or-metadata
-  "A Database as an app DB row, as Lib metadata, or as any other database-shaped map (a partial column projection, a
-  hydrated/decorated API row, a hand-built test fixture, ...). Deliberately open: this is only used by driver-dispatch
-  helpers (see `metabase.driver.util`) that defensively tolerate whatever database representation callers have on
-  hand."
-  [:map {:closed false, ::mr/deliberately-open true}])
+  "A Database as an app DB row or as Lib metadata."
+  [:multi {:dispatch (fn [x] (if (:lib/type x) :lib-metadata :row))}
+   [:lib-metadata :metabase.lib.schema.metadata/database]
+   [:row          ::database]])

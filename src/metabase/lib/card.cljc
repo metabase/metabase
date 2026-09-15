@@ -105,15 +105,13 @@
               ;; accordingly.
               (not= (:semantic-type source-metadata-col) :type/FK)
               (assoc :fk-target-field-id nil))]
-    (-> col
+    (-> (lib.normalize/normalize ::lib.schema.metadata/column col)
         lib.field.util/update-keys-for-col-from-previous-stage
         (merge (when card-id
                  {:lib/source :source/card, :lib/card-id card-id}))
         ;; :effective-type is required, but not always set, see e.g.,
         ;; [[metabase.warehouse-schema-rest.api.table/card-result-metadata->virtual-fields]]
-        (u/assoc-default :effective-type (:base-type col))
-        ;; add original display name IF not already present AND we have a value
-        (->> (lib.normalize/normalize ::lib.schema.metadata/column)))))
+        (as-> $col (u/assoc-default $col :effective-type (:base-type $col))))))
 
 (mu/defn ->card-metadata-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Massage possibly-legacy Card results metadata into Lib ColumnMetadata."

@@ -63,7 +63,13 @@
      [:include-current {:optional true} :boolean]
      [:default         {:optional true} [:ref :metabase.lib.schema.expression/expression]]
      [:join-alias      {:optional true} [:ref ::lib.schema.join/alias]]
-     [:source-field    {:optional true} ::lib.schema.id/field]]
+     [:source-field    {:optional true} ::lib.schema.id/field]
+     [:source-field-name       {:optional true} ::lib.schema.common/non-blank-string]
+     [:source-field-join-alias {:optional true} ::lib.schema.common/non-blank-string]
+     [:temporal-unit           {:optional true} [:ref :metabase.lib.schema.temporal-bucketing/unit]]
+     [:inherited-temporal-unit {:optional true} [:ref :metabase.lib.schema.temporal-bucketing/unit]]
+     [:original-temporal-unit  {:optional true} [:ref :metabase.lib.schema.temporal-bucketing/unit]]
+     [:binning                 {:optional true} [:ref :metabase.lib.schema.binning/binning]]]
     [:fn
      {:error/message "options map without namespaced keys and base-type/effective-type"}
      (complement (some-fn :base-type :effective-type :lib/uuid))]]
@@ -123,7 +129,8 @@
                               [:map {:closed true}
                                [::new-field-dimension-id ::lib.schema.id/dimension]
                                [:lib/uuid      {:optional true} ::lib.schema.common/uuid]
-                               [:source-field  {:optional true} ::lib.schema.id/field]]
+                               [:source-field  {:optional true} ::lib.schema.id/field]
+                               [:join-alias    {:optional true} [:ref ::lib.schema.join/alias]]]
                               ::lib.schema.id/field]]]
     [:dimension             ::external-remapping]]
    [:fn

@@ -843,5 +843,5 @@
        :search-field-id (when (int? search-field-id) search-field-id)
        :search-field (when (int? search-field-id) search-column)
        :has-field-values (if (int? column-field-id)
-                           (infer-has-field-values column)
+                           (infer-has-field-values (select-keys column [:base-type :effective-type :has-field-values]))
                            :none)})))

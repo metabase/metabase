@@ -579,13 +579,13 @@ are known to be the same."
   "Like [[find-matching-column]], but takes a legacy MBQL reference. The name here is for consistency with other
   FE names for similar functions."
   ([query        :- ::lib.schema/query
-    legacy-ref   :- :metabase.legacy-mbql.schema/Reference
+    legacy-ref   :- :metabase.lib.convert/unnormalized-legacy-ref
     metadatas    :- [:maybe [:sequential ::lib.schema.metadata/column]]]
    (find-column-for-legacy-ref query -1 legacy-ref metadatas))
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    legacy-ref   :- :metabase.legacy-mbql.schema/Reference
+    legacy-ref   :- :metabase.lib.convert/unnormalized-legacy-ref
     metadatas    :- [:maybe [:sequential ::lib.schema.metadata/column]]]
    (find-matching-column query stage-number (lib.convert/legacy-ref->mbql5 query stage-number legacy-ref) metadatas)))
 

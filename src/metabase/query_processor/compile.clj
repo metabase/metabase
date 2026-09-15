@@ -17,7 +17,12 @@
    [metabase.util.performance :refer [empty? select-keys]]))
 
 (mr/def ::native-query-document-value
-  :metabase.lib.schema/native-query-document-value)
+  "A driver's compiled native query: a native query document, or the driver's own shape, as `:metabase.lib.schema/compiled-native-query` accepts it."
+  [:or
+   :metabase.lib.schema/native-query-document-value
+   [:schema {::mr/deliberately-open true
+             :description "a driver's native query in the driver's own shape, e.g. a keyword-keyed map from a JSON request"}
+    :some]])
 
 (mr/def ::compiled
   "Compiled query and parameters (SQL or whatever native query language)."

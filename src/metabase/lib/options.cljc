@@ -12,36 +12,23 @@
   (and (vector? x)
        (keyword? (first x))))
 
-(mr/def ::options
-  [:merge
-   :metabase.lib.schema.ref/field.options
-   [:map {:closed true}
-    [:lib/uuid {:optional true} ::lib.schema.common/uuid]]])
-
-(mr/def ::clause-arg
-  "One arg of a (possibly not-yet-normalized, not-yet-uuid'd) MBQL clause."
-  [:or
-   :metabase.lib.schema.literal/literal
-   ::options
-   [:map-of :string [:ref ::clause-arg]]
-   :metabase.lib.schema.expression/expression
-   [:ref ::clause]])
-
-(mr/def ::clause
-  "A (possibly not-yet-normalized, not-yet-uuid'd) MBQL clause `[tag & args]`, or a literal."
-  [:or
-   :metabase.lib.schema.literal/literal
-   [:cat [:or :keyword :string] [:* ::clause-arg]]])
-
 (mr/def ::clause-or-column
-  [:multi {:dispatch (fn [x] (if (map? x) (:lib/type x ::legacy-query) ::clause))}
+  [:multi {:dispatch (fn [x]
+                       (cond
+                         (map? x)        (:lib/type x ::legacy-query)
+                         (sequential? x) ::clause
+                         :else           ::clause-arg))}
    [:metadata/column    :metabase.lib.schema.metadata/column]
+   [:metadata/table     :metabase.lib.schema.metadata/table]
+   [:metadata/card      :metabase.lib.schema.metadata/card]
+   [:metadata/metric    :metabase.lib.schema.metadata/metric]
    [:mbql/query         :metabase.lib.schema/query]
    [:mbql.stage/mbql    :metabase.lib.schema/stage.mbql]
    [:mbql.stage/native  :metabase.lib.schema/stage.native]
    [:mbql/join          [:ref :metabase.lib.join.util/join-with-optional-alias]]
    [::legacy-query      :metabase.legacy-mbql.schema/Query]
-   [::clause            ::clause]])
+   [::clause            ::lib.schema.common/any-clause]
+   [::clause-arg        ::lib.schema.common/clause-arg]])
 
 (mu/defn options :- [:maybe map?]
   "Return the Metabase lib options map associated with an `x`. Lib options is currently used mostly for
@@ -82,7 +69,7 @@
   unintentionally. Implement this if you need to teach Metabase lib how to support something that doesn't follow the
   usual patterns described in [[options]]."
   [x :- ::clause-or-column
-   new-options :- [:maybe ::options]]
+   new-options :- [:maybe ::lib.schema.common/clause-options]]
   (cond
     (map? x)
     (u/assoc-dissoc x :lib/options (not-empty new-options))

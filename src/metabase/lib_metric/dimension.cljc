@@ -437,7 +437,7 @@
 (mu/defn get-dimension-or-throw :- :map
   "Find a dimension by its UUID from a list of dimensions.
    Throws 400 if not found."
-  [dimensions   :- [:maybe [:sequential ::lib-metric.schema/metadata-dimension]]
+  [dimensions   :- [:maybe [:sequential ::lib-metric.schema/dimension]]
    dimension-id :- :string]
   (or (m/find-first #(= (:id %) dimension-id) dimensions)
       (throw (ex-info (i18n/tru "Dimension not found: {0}" dimension-id)
@@ -471,7 +471,7 @@
    Validates that the dimension is active (not orphaned) and has a valid mapping.
 
    Returns the field ID or throws an exception with appropriate error message."
-  [dimensions         :- [:maybe [:sequential ::lib-metric.schema/metadata-dimension]]
+  [dimensions         :- [:maybe [:sequential ::lib-metric.schema/dimension]]
    dimension-mappings :- [:maybe [:sequential ::lib-metric.schema/dimension-mapping]]
    dimension-id       :- :string]
   (let [dimension (get-dimension-or-throw dimensions dimension-id)]

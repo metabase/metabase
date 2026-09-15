@@ -552,7 +552,7 @@
    ;; https://metaboat.slack.com/archives/C0645JP1W81/p1754949404592539 for code archeology
    [:nfc-path {:optional true} [:maybe [:sequential :string]]]
    ;; the rest of the `metabase_field` row a metadata provider hands back
-   [:table-id                   {:optional true} [:maybe ::lib.schema.id/table]]
+   [:table-id                   {:optional true} [:maybe [:or ::lib.schema.id/table [:re #"^card__\d+$"]]]]
    [:parent-id                  {:optional true} [:maybe ::lib.schema.id/field]]
    [:description                {:optional true} [:maybe :string]]
    [:caveats                    {:optional true} [:maybe :string]]
@@ -586,6 +586,7 @@
    [:dimension/human-readable-field-id {:optional true} [:maybe ::lib.schema.id/field]]
    [:values/values                     {:optional true} [:maybe [:sequential [:ref ::lib.schema.literal/literal]]]]
    [:values/human-readable-values      {:optional true} [:maybe [:sequential [:ref ::lib.schema.literal/literal]]]]
+   [:field-values                      {:optional true} [:maybe [:sequential ::lib.schema.common/field-value]]]
    ;; what Lib annotates a column with when it returns it from a query
    [:breakout-positions  {:optional true} [:maybe [:sequential :int]]]
    [:filter-positions    {:optional true} [:maybe [:sequential :int]]]
@@ -870,6 +871,8 @@
    [:dashboard-id           {:optional true} [:maybe pos-int?]]
    [:dimensions             {:optional true} [:maybe [:sequential [:ref ::persisted-dimension]]]]
    [:dimension-mappings     {:optional true} [:maybe [:sequential [:ref ::dimension-mapping]]]]
+   [:display-name           {:optional true} [:maybe :string]]
+   [:fields                 {:optional true} [:maybe [:ref ::card.result-metadata]]]
    ;;
    ;; PERSISTED INFO: This comes from the [[metabase.model-persistence.models.persisted-info]] model.
    ;;
@@ -897,7 +900,8 @@
                          [:ref :metabase.legacy-mbql.schema/MBQLInnerQuery]]]]
    [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:entity-id   {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
-   [:archived    {:optional true} [:maybe :boolean]]])
+   [:archived    {:optional true} [:maybe :boolean]]
+   [:filter-positions {:optional true} [:maybe [:sequential :int]]]])
 
 (defn- normalize-measure-definition [definition]
   (when definition
@@ -977,6 +981,7 @@
    [:status-message   {:optional true} [:maybe :string]]
    [:sources          {:optional true} [:maybe [:sequential ::dimension-source]]]
    [:group            {:optional true} [:maybe ::dimension-group]]
+   [:lib/source       {:optional true} [:maybe [:or [:ref ::column.source] :string]]]
    [:default-temporal-unit {:optional true} ::lib.schema.temporal-bucketing/unit]
    ;; At most one dimension per entity may be the default.
    [:default          {:optional true} [:maybe :boolean]]])
@@ -996,7 +1001,8 @@
    [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:archived    {:optional true} [:maybe :boolean]]
    [:dimensions         {:optional true} [:maybe [:sequential [:ref ::persisted-dimension]]]]
-   [:dimension-mappings {:optional true} [:maybe [:sequential [:ref ::dimension-mapping]]]]])
+   [:dimension-mappings {:optional true} [:maybe [:sequential [:ref ::dimension-mapping]]]]
+   [:aggregation-positions {:optional true} [:maybe [:sequential :int]]]])
 
 (mr/def ::metric
   "A V2 Metric! This a special subtype of a Card. Not convinced we really need this as opposed to just using `::card` --
@@ -1006,7 +1012,8 @@
    [:map
     [:lib/type [:= :metadata/metric]]
     [:type     [:= :metric]]
-    [:lib/join-alias {:optional true} ::lib.schema.common/non-blank-string]]])
+    [:lib/join-alias {:optional true} ::lib.schema.common/non-blank-string]
+    [:aggregation-position {:optional true} [:maybe [:int {:min 0}]]]]])
 
 (mr/def ::native-query-snippet
   [:map {:closed true}
@@ -1107,6 +1114,10 @@
    [:uploads-enabled             {:optional true} [:maybe :boolean]]
    [:uploads-schema-name         {:optional true} [:maybe :string]]
    [:uploads-table-prefix        {:optional true} [:maybe :string]]
+   [:can-manage                  {:optional true} [:maybe :boolean]]
+   [:can-upload                  {:optional true} [:maybe :boolean]]
+   [:router-user-attribute       {:optional true} [:maybe :string]]
+   [:transforms-permissions      {:optional true} [:maybe [:or :keyword :string]]]
    [:created-at                  {:optional true} [:maybe [:or :string #?(:clj (lib.schema.common/instance-of-class java.time.temporal.Temporal))]]]
    [:updated-at                  {:optional true} [:maybe [:or :string #?(:clj (lib.schema.common/instance-of-class java.time.temporal.Temporal))]]]])
 

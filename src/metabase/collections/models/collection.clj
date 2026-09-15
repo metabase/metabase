@@ -27,7 +27,6 @@
    [metabase.util.i18n :refer [trs tru deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [potemkin :as p]
@@ -715,7 +714,7 @@
 
 (def ^:private UserOrId
   "A User ID, or anything with one (e.g. a full User instance) — [[u/the-id]] accepts either."
-  [:or ms/PositiveInt [:map {:closed false, ::mr/deliberately-open true} [:id ms/PositiveInt]]])
+  [:or ms/PositiveInt :metabase.users.schema/user])
 
 (mu/defn user->existing-personal-collection :- [:maybe (ms/InstanceOf :model/Collection)]
   "For a `user-or-id`, return their personal Collection, if it already exists.

@@ -273,7 +273,7 @@
     - `[::miss nil]`     -- no entry; or it's expired, or nearly so, and *this* process won the lease; or it's too
                             stale to serve to anyone. The caller must recompute.
     - `[::canceled nil]` -- the request was canceled."
-  [ignore-cache? :- :boolean
+  [ignore-cache? :- [:maybe :boolean]
    query-hash    :- bytes?
    strategy   :- ::lib.schema/cache-strategy
    rff        :- ::qp.schema/rff]

@@ -256,8 +256,8 @@
    replacement       :- [:maybe [:or
                                  ::lib.schema.mbql-clause/clause
                                  ;; a metadata or `:lib/external-op` or something
-                                 [:map {:closed true}
-                                  [:lib/type qualified-keyword?]]]]]
+                                 ::lib.metadata.calculation/displayable
+                                 :metabase.lib.schema.common/external-op]]]
   {:pre [(vector? target-clause)]}
   (mu/disable-enforcement
     (let [target-clause (lib.common/->op-arg target-clause)
@@ -711,13 +711,13 @@
   Top level clauses containing references to the removed join are removed too."
   ([query     :- ::lib.schema/query
     join-spec :- [:or ::lib.schema.join/join :string :int]
-    new-join  :- [:maybe ::lib.schema.join/join]]
+    new-join  :- [:maybe [:ref ::lib.join.util/join-with-optional-alias]]]
    (replace-join query -1 join-spec new-join))
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
     join-spec    :- [:or ::lib.schema.join/join :string :int]
-    new-join     :- [:maybe ::lib.schema.join/join]]
+    new-join     :- [:maybe [:ref ::lib.join.util/join-with-optional-alias]]]
    (if (nil? new-join)
      (remove-join query stage-number join-spec)
      (update-joins query stage-number join-spec

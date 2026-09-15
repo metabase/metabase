@@ -1,6 +1,7 @@
 (ns metabase.lib.drill-thru
   (:refer-clojure :exclude [select-keys not-empty #?(:clj for)])
   (:require
+   [metabase.lib.common :as lib.common]
    [metabase.lib.drill-thru.automatic-insights :as lib.drill-thru.automatic-insights]
    [metabase.lib.drill-thru.column-extract :as lib.drill-thru.column-extract]
    [metabase.lib.drill-thru.column-filter :as lib.drill-thru.column-filter]
@@ -29,7 +30,6 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [select-keys not-empty #?(:clj for)]]))
@@ -163,7 +163,7 @@
     stage-number :- :int
     card-id      :- [:maybe ::lib.schema.id/card]
     drill        :- ::lib.schema.drill-thru/drill-thru
-    & args :- [:* [:or :keyword ::lib.schema.literal/literal]]]
+    & args :- [:* ::lib.common/op-arg]]
    (log/debugf "Applying drill thru: %s" (:type drill))
    (let [{:keys [query stage-number]} (lib.query/wrap-native-query-with-mbql query stage-number card-id)]
      (apply lib.drill-thru.common/drill-thru-method query stage-number drill args))))

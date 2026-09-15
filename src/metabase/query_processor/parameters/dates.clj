@@ -274,10 +274,14 @@
 (defn- ->iso-8601-date-time [t]
   (t/format :iso-local-date-time t))
 
+(mr/def ::temporal-unit
+  (into [:enum] u.date/add-units))
+
 (mu/defn- range->filter :- :mbql.clause/between
   [{:keys [start end]} :- [:map {:closed true}
                            [:start (lib.schema.common/instance-of-class Temporal)]
-                           [:end   (lib.schema.common/instance-of-class Temporal)]]
+                           [:end   (lib.schema.common/instance-of-class Temporal)]
+                           [:unit  {:optional true} ::temporal-unit]]
    field-clause        :- :mbql.clause/field]
   (lib/between (with-temporal-unit-if-field field-clause :day) (->iso-8601-date start) (->iso-8601-date end)))
 
@@ -412,9 +416,6 @@
           (when-let [parser-result (and parser-result-decoder (parser date-string))]
             (parser-result-decoder parser-result decoder-param)))
         decoders))
-
-(mr/def ::temporal-unit
-  (into [:enum] u.date/add-units))
 
 (mr/def ::temporal-range
   [:map {:closed true}

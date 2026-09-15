@@ -381,12 +381,7 @@
   This is mostly around for historic reasons; consider using [[metabase.lib.core/query]] instead, which is closer to
   real-life usage."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   {mbql-query :dataset-query, metadata :result-metadata} :- [:map {:closed true}
-                                                              [:dataset-query [:or
-                                                                               ::lib.schema/query
-                                                                               :metabase.legacy-mbql.schema/Query]]
-                                                              [:result-metadata [:sequential {:min 1}
-                                                                                 ::lib.schema.metadata/lib-or-legacy-column]]]]
+   {mbql-query :dataset-query, metadata :result-metadata} :- ::lib.schema.metadata/card]
   (let [mbql-query (cond-> (assoc (lib.convert/->mbql5 mbql-query)
                                   :lib/metadata (lib.metadata/->metadata-provider metadata-providerable))
                      metadata

@@ -6,6 +6,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema.common :as schema.common]
+   [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
@@ -96,6 +97,7 @@
    number?
    nil?
    [:fn regex?]
+   ::lib.schema.literal/literal
    ::lib.schema.metadata/column
    ::lib.schema.metadata/metric
    ::lib.schema.metadata/segment

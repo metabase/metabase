@@ -82,8 +82,8 @@
     [:dimension/id                      [:maybe pos-int?]]
     [:dimension/name                    [:maybe :string]]
     [:dimension/type                    [:maybe :string]]
-    [:values/human_readable_values      [:maybe [:sequential [:maybe :string]]]]
-    [:values/values                     [:maybe [:sequential :metabase.lib.schema.literal/param-value]]]]])
+    [:values/human_readable_values      [:maybe :string]]
+    [:values/values                     [:maybe :string]]]])
 
 (mr/def ::metadata-native-query-snippet-row
   "A NativeQuerySnippet row as the `:metadata/native-query-snippet` select returns it."
@@ -95,8 +95,12 @@
 
 (mr/def ::instance
   "A Toucan 2 instance [[instance->metadata]] converts, by its model, or a legacy result metadata column."
-  [:multi {:dispatch (fn [instance] (or (t2/model instance) ::legacy-column)), :lazy-refs true}
+  [:multi {:dispatch (fn [instance] (or (t2/model instance)
+                                        (when (= (:lib/type instance) :metadata/column) ::lib-column)
+                                        ::legacy-column))
+           :lazy-refs true}
    [::legacy-column                :metabase.legacy-mbql.schema/legacy-column-metadata]
+   [::lib-column                   ::lib.schema.metadata/column]
    [:metadata/database             ::metadata-database-row]
    [:metadata/table                ::metadata-table-row]
    [:metadata/native-query-snippet ::metadata-native-query-snippet-row]

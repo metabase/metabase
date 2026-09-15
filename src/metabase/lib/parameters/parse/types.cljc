@@ -21,10 +21,8 @@
   [:= ::no-value])
 
 (mr/def ::field-filter.value.map
-  [:map {:closed true}
-   [:type    ::lib.schema.parameter/type]
-   [:value   ::lib.schema.parameter/parameter.value]
-   [:options {:optional true} [:maybe ::lib.schema.parameter/parameter.options]]])
+  "The query parameter a field filter's value comes from."
+  [:ref ::lib.schema.parameter/parameter])
 
 (mr/def ::field-filter.value
   [:or

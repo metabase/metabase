@@ -191,10 +191,10 @@
 
 (defn- ids-of-dbs-that-support-source-queries []
   ;; the nested-queries check only reads the engine — don't realize full rows (decrypted :details etc.) for it
-  (set (keep (fn [db]
+  (set (keep (fn [{:keys [id engine]}]
                (try
-                 (when (driver.u/supports? (driver.u/database->driver db) :nested-queries db)
-                   (:id db))
+                 (when (driver.u/supports? (keyword engine) :nested-queries nil)
+                   id)
                  (catch Throwable e
                    (log/errorf "Error determining whether Database supports nested queries: %s" (ex-message e)))))
              (warehouses-rest.db/database-engines))))

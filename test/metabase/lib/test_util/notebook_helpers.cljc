@@ -9,7 +9,8 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 (defn match-display-info [query spec item]
   (let [spec (if (string? spec)
@@ -22,16 +23,16 @@
     (or (m/find-first #(match-display-info query table-spec %) tables)
         (throw (ex-info "Failed to find table" {:table-spec table-spec, :found (map #(lib/display-info query %) tables)})))))
 
+(mr/def ::display-info-pattern
+  "A partial [[metabase.lib.metadata.calculation/display-info]] `=?` pattern, whose values may be predicates or regexes."
+  [:map {:closed false, ::mr/deliberately-open true, :description "a partial display info =? pattern"}])
+
 (def ^:private DisplayInfoSpec
   "A `group-spec` or `column-spec` for [[match-display-info]]: either the expected `:display-name`, or a partial
   [[metabase.lib.metadata.calculation/display-info]] to match against."
   [:or
    :string
-   [:map {:closed true}
-    [:display-name      {:optional true} :string]
-    [:long-display-name {:optional true} :string]
-    [:name              {:optional true} :string]
-    [:is-main-group     {:optional true} :boolean]]])
+   ::display-info-pattern])
 
 (mu/defn find-col-with-spec :- ::lib.schema.metadata/column
   [query   :- ::lib.schema/query

@@ -256,7 +256,7 @@
 
 (mu/defn assert-enum
   "Assert that a value is one of the values in `enum`."
-  [enum  :- [:set [:or :keyword :string]]
+  [enum  :- [:set [:maybe [:or :keyword :string]]]
    value :- [:maybe [:or :keyword :string]]]
   (when-not (contains? enum value)
     (throw (ex-info (format "Invalid value %s. Must be one of %s" value (str/join ", " enum)) {:status-code 400

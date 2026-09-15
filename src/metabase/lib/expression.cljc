@@ -722,6 +722,10 @@
       (i18n/tru "Types are incompatible: {0} expects {1} as the {2} parameter." op-name type-desc param-pos)
       (i18n/tru "Types are incompatible."))))
 
+(mr/def ::diagnosable-expression
+  "An expression, aggregation, or filter that may be invalid; [[diagnose-expression]] reports what is wrong with it."
+  [:schema {::mr/deliberately-open true, :description "a possibly invalid MBQL expression"} :any])
+
 (mu/defn diagnose-expression :- [:maybe [:map [:message :string]]]
   "Checks `expr` for type errors and, if `expression-mode` is :expression and
   `expression-position` is provided, for cyclic references with other expressions.
@@ -741,10 +745,7 @@
   [query               :- ::lib.schema/query
    stage-number        :- :int
    expression-mode     :- [:enum :expression :aggregation :filter]
-   expr                :- [:or
-                           ::lib.schema.expression/expression
-                           ::lib.schema.aggregation/aggregation-with-no-unaggregated-refs
-                           ::lib.schema.expression/boolean]
+   expr                :- ::diagnosable-expression
    expression-position :- [:maybe :int]]
   (binding [lib.schema.expression/*suppress-expression-type-check?* false]
     (let [explainer (clojure.core/case expression-mode

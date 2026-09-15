@@ -161,14 +161,12 @@
 
 (mu/defn pivot-types :- [:sequential ::lib.schema.drill-thru/pivot-types]
   "A helper for the FE. Returns the set of pivot types (category, location, time) that apply to this drill-thru."
-  [drill-thru :- [:and ::lib.schema.drill-thru/drill-thru
-                  [:map {:closed true} [:type [:= :drill-thru/pivot]]]]]
+  [drill-thru :- ::lib.schema.drill-thru/drill-thru.pivot]
   (-> drill-thru :pivots keys sort))
 
 (mu/defn pivot-columns-for-type :- [:sequential ::lib.schema.metadata/column]
   "A helper for the FE. Returns all the columns of the given type which can be used to pivot the query."
-  [drill-thru :- [:and ::lib.schema.drill-thru/drill-thru
-                  [:map {:closed true} [:type [:= :drill-thru/pivot]]]]
+  [drill-thru :- ::lib.schema.drill-thru/drill-thru.pivot
    pivot-type :- ::lib.schema.drill-thru/pivot-types]
   (get-in drill-thru [:pivots pivot-type]))
 

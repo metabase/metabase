@@ -495,7 +495,7 @@
 (mu/defn- options->legacy-MBQL :- [:maybe [:map {:min 1}]]
   "Convert an options map in an MBQL clause to the equivalent shape for legacy MBQL. Remove `:lib/*` keys and
   `:effective-type`, which is not used in options maps in legacy MBQL."
-  [m :- [:maybe ::lib.schema.common/options]]
+  [m :- [:maybe ::lib.schema.common/clause-options]]
   (->> (cond-> m
          ;; Following construct ensures that transformation MBQL 4 -> MBQL 5 -> MBQL 4, does not add base-type where
          ;; those were not present originally. Base types are added in [[metabase.lib.query/add-types-to-fields]].
@@ -605,48 +605,11 @@
   (mapv lib.convert.metadata-to-legacy/lib-metadata-column->legacy-metadata-column
         (:columns stage-metadata)))
 
-(mr/def ::chain-stages-input
-  "A disqualified MBQL 5 query or join (i.e. one that has had `:lib/type` stripped by [[disqualify]]), still
-  carrying whichever query- or join-level QP annotation keys it had, that [[chain-stages]] is called with."
-  [:map {:closed true}
-   [:stages [:sequential ::lib.schema/stage]]
-   [:conditions {:optional true} :metabase.lib.schema.join/conditions]
-   [:alias {:optional true} :metabase.lib.schema.join/alias]
-   [:fields {:optional true} :metabase.lib.schema.join/fields]
-   [:strategy {:optional true} :metabase.lib.schema.join/strategy]
-   [:fk-field-id {:optional true} [:maybe :metabase.lib.schema.id/field]]
-   [:fk-field-name {:optional true} [:maybe :string]]
-   [:fk-join-alias {:optional true} [:maybe :metabase.lib.schema.join/alias]]
-   [:qp/is-implicit-join {:optional true} :boolean]
-   [:qp/keep-default-join-alias {:optional true} :boolean]
-   [:metabase.query-processor.middleware.add-implicit-joins/original-position {:optional true} [:int {:min 0}]]
-   [:metabase.query-processor.util.add-alias-info/alias {:optional true} :metabase.lib.schema.join/alias]
-   [:metabase.query-processor.util.add-alias-info/original-alias {:optional true} :metabase.lib.schema.join/alias]
-   [:metabase.lib.join/replace-alias {:optional true} :boolean]
-   [:lib/metadata {:optional true} :metabase.lib.schema.metadata/metadata-provider]
-   [:database {:optional true} [:maybe :int]]
-   [:parameters {:optional true} :metabase.lib.schema.parameter/parameters]
-   [:settings {:optional true} :metabase.lib.schema.settings/settings]
-   [:constraints {:optional true} :metabase.lib.schema.constraints/constraints]
-   [:middleware {:optional true} :metabase.lib.schema.middleware-options/middleware-options]
-   [:info {:optional true} :metabase.lib.schema.info/info]
-   [:cache-strategy {:optional true} [:maybe ::lib.schema/cache-strategy]]
-   [:lib.convert/converted? {:optional true} :boolean]
-   [:qp/compiled {:optional true} [:maybe ::lib.schema/compiled-native-query]]
-   [:qp/compiled-inline {:optional true} [:maybe ::lib.schema/compiled-native-query]]
-   [:qp/source-card-id {:optional true} [:maybe :metabase.lib.schema.id/card]]
-   [:query-permissions/referenced-card-ids {:optional true} [:maybe [:set :metabase.lib.schema.id/card]]]
-   [:impersonation/role {:optional true} :string]
-   [:impersonation/admin? {:optional true} :boolean]
-   [:metabase.query-processor.middleware.add-remaps/external-remaps {:optional true} [:maybe ::lib.schema/external-remappings]]
-   [:metabase-enterprise.sandbox.query-processor.middleware.sandboxing/original-metadata
-    {:optional true} [:maybe ::lib.schema/sandboxing.original-metadata]]])
-
 (mu/defn- chain-stages
-  ([m :- ::chain-stages-input]
+  ([m :- [:map {:closed true} [:stages [:sequential ::lib.util/query-like]]]]
    (chain-stages m nil))
 
-  ([{:keys [stages]}                                       :- ::chain-stages-input
+  ([{:keys [stages]}                                       :- [:map {:closed true} [:stages [:sequential ::lib.util/query-like]]]
     {:keys [top-level?], :or {top-level? true}, :as _opts} :- [:maybe
                                                                [:map {:closed true}
                                                                 [:top-level? [:maybe :boolean]]]]]
@@ -739,7 +702,7 @@
            (when (seq (:columns metadata))
              {:source-metadata (stage-metadata->legacy-metadata metadata)})
            (let [inner-query (chain-stages
-                              (dissoc base :fields :conditions)
+                              (select-keys base [:stages])
                               {:top-level? false})]
              ;; if [[chain-stages]] returns any additional keys like `:filter` at the top-level then we need to wrap
              ;; it all in `:source-query` (QUE-1566, QUE-1603)
@@ -799,7 +762,7 @@
     (let [base        (merge (disqualify (dissoc query :info))
                              (select-keys query [:info]))
           parameters  (:parameters base)
-          inner-query (chain-stages base)
+          inner-query (chain-stages (select-keys base [:stages]))
           query-type  (if (-> query :stages last :lib/type (= :mbql.stage/native))
                         :native
                         :query)]
@@ -815,16 +778,21 @@
 
 ;; TODO: Look into whether this function can be refactored away - it's called from several places but I (Braden) think
 ;; legacy refs shouldn't make it out of `lib.js`.
+(mr/def ::unnormalized-legacy-ref
+  "A legacy MBQL reference that may not be normalized yet, e.g. with string tags from JSON, or a JS array in CLJS."
+  #?(:clj  ::lib.schema.common/any-clause
+     :cljs [:or ::lib.schema.common/any-clause [:fn {:error/message "JS array"} array?]]))
+
 (mu/defn legacy-ref->mbql5 :- ::lib.schema.ref/ref
   "Convert a legacy MBQL `:field`/`:aggregation`/`:expression` reference to MBQL 5. Normalizes the reference if needed,
   and handles JS -> Clj conversion as needed."
   ([query      :- ::lib.schema/query
-    legacy-ref :- ::mbql.s/Reference]
+    legacy-ref :- ::unnormalized-legacy-ref]
    (legacy-ref->mbql5 query -1 legacy-ref))
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    legacy-ref   :- ::mbql.s/Reference]
+    legacy-ref   :- ::unnormalized-legacy-ref]
    (let [legacy-ref                  (->> #?(:clj legacy-ref :cljs (js->clj legacy-ref :keywordize-keys true))
                                           ;; input is a legacy ref; normalize as legacy MBQL before conversion
                                           #_{:clj-kondo/ignore [:deprecated-var]}

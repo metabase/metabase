@@ -243,10 +243,11 @@
         (recur query' (if (empty? more) [:stages 0] more))))))
 
 (mr/def ::walked-clause
-  "An MBQL clause, or a literal argument of one, as [[walk-clause]] visits it."
+  "An MBQL clause, or a literal or keyword (e.g. a temporal unit) argument of one, as [[walk-clause]] visits it."
   [:or
    [:ref ::lib.schema.mbql-clause/clause]
-   ::lib.schema.expression/expression])
+   ::lib.schema.expression/expression
+   :keyword])
 
 (mu/defn apply-f-for-stage-at-path
   "Use a function that takes top-level `query` and `stage-number` with a `query` and `path`,

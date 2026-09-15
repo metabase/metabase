@@ -115,7 +115,7 @@
     (t/is (thrown-with-msg?
            #?(:clj clojure.lang.ExceptionInfo :cljs :default)
            #"No expression named"
-           (mbql.u/expression-with-name {} "wow")))))
+           (mbql.u/expression-with-name {:source-table 1} "wow")))))
 
 (t/deftest ^:parallel update-field-options-test
   ;; the options exercised here (`:display-name`, `:name`, `:binning`) are real declared ref options. Ref options are

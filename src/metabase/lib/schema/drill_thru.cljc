@@ -128,12 +128,13 @@
    ::drill-thru.common
    [:map
     [:type   [:= :drill-thru/pivot]]
+    [:dimensions {:optional true} [:maybe [:ref ::context.row]]]
     [:pivots [:map-of ::pivot-types [:sequential [:ref ::lib.schema.metadata/column]]]]
     [:stage-number number?]]])
 
 (mr/def ::drill-thru.sort
   [:merge
-   ::drill-thru.common
+   ::drill-thru.common.with-column
    [:map
     [:type            [:= :drill-thru/sort]]
     [:sort-directions [:sequential ::lib.schema.order-by/direction]]]])
@@ -169,6 +170,7 @@
    ::drill-thru.common.with-column
    [:map
     [:type         [:= :drill-thru/column-extract]]
+    [:display-name :string]
     [:query        [:ref ::lib.schema/query]]
     [:stage-number number?]
     [:extractions  [:sequential [:ref ::lib.schema.extraction/extraction]]]]])
@@ -177,17 +179,19 @@
   [:merge
    ::drill-thru.common.with-column
    [:map
-    [:type         [:= :drill-thru/combine-columns]]]])
+    [:type         [:= :drill-thru/combine-columns]]
+    [:query        [:ref ::lib.schema/query]]
+    [:stage-number number?]]])
 
-;;; TODO FIXME -- it seems like underlying records drills also include `:dimensions` and `:column-ref`...
-;;; see [[metabase.lib.drill-thru.underlying-records/underlying-records-drill]]... this should be part of the schema
 (mr/def ::drill-thru.underlying-records
   [:merge
    ::drill-thru.common
    [:map
     [:type       [:= :drill-thru/underlying-records]]
     [:row-count  number?]
-    [:table-name [:maybe string?]]]])
+    [:table-name [:maybe string?]]
+    [:dimensions {:optional true} [:maybe [:ref ::context.row]]]
+    [:column-ref {:optional true} [:maybe [:ref ::lib.schema.ref/ref]]]]])
 
 (mr/def ::drill-thru.automatic-insights
   [:merge
@@ -206,6 +210,7 @@
    ::drill-thru.common
    [:map
     [:type      [:= :drill-thru/zoom-in.timeseries]]
+    [:display-name :string]
     [:dimension [:ref ::context.row.value]]
     [:next-unit [:ref ::drill-thru.zoom-in.timeseries.next-unit]]]])
 
@@ -241,6 +246,7 @@
    [:map
     [:type      [:= :drill-thru/zoom-in.geographic]]
     [:subtype   [:= :drill-thru.zoom-in.geographic/country-state-city->binned-lat-lon]]
+    [:display-name :string]
     [:column    ::drill-thru.zoom-in.geographic.column.county-state-city]
     [:value     ::lib.schema.literal/param-value]
     [:latitude  [:map {:closed true}
@@ -256,6 +262,7 @@
    [:map
     [:type      [:= :drill-thru/zoom-in.geographic]]
     [:subtype   [:= :drill-thru.zoom-in.geographic/binned-lat-lon->binned-lat-lon]]
+    [:display-name :string]
     [:latitude  [:map {:closed true}
                  [:column    [:ref ::drill-thru.zoom-in.geographic.column.latitude]]
                  [:bin-width [:ref ::lib.schema.binning/bin-width]]
@@ -268,19 +275,13 @@
                  [:max       number?]]]]])
 
 (mr/def ::drill-thru.zoom-in.geographic
-  [:and
-   [:merge
-    ::drill-thru.common
-    [:map
-     [:type    [:= :drill-thru/zoom-in.geographic]]
-     [:subtype keyword?]]]
-   [:multi {:dispatch :subtype
-            :error/fn (fn [{:keys [value]} _]
-                        (str "Invalid zoom-in.geographic drill thru subtype" (pr-str value)))}
-    [:drill-thru.zoom-in.geographic/country-state-city->binned-lat-lon
-     ::drill-thru.zoom-in.geographic.country-state-city->binned-lat-lon]
-    [:drill-thru.zoom-in.geographic/binned-lat-lon->binned-lat-lon
-     ::drill-thru.zoom-in.geographic.binned-lat-lon->binned-lat-lon]]])
+  [:multi {:dispatch :subtype
+           :error/fn (fn [{:keys [value]} _]
+                       (str "Invalid zoom-in.geographic drill thru subtype" (pr-str value)))}
+   [:drill-thru.zoom-in.geographic/country-state-city->binned-lat-lon
+    ::drill-thru.zoom-in.geographic.country-state-city->binned-lat-lon]
+   [:drill-thru.zoom-in.geographic/binned-lat-lon->binned-lat-lon
+    ::drill-thru.zoom-in.geographic.binned-lat-lon->binned-lat-lon]])
 
 (mr/def ::drill-thru.zoom-in.binning
   [:merge
@@ -292,29 +293,27 @@
     [:new-binning ::lib.schema.binning/binning]]])
 
 (mr/def ::drill-thru
-  [:and
-   ::drill-thru.common
-   [:multi {:dispatch :type
-            :error/fn (fn [{:keys [value]} _]
-                        (str "Invalid drill thru (unknown :type): " (pr-str value)))}
-    [:drill-thru/pk                       ::drill-thru.pk]
-    [:drill-thru/fk-details               ::drill-thru.fk-details]
-    [:drill-thru/zoom                     ::drill-thru.zoom]
-    [:drill-thru/quick-filter             ::drill-thru.quick-filter]
-    [:drill-thru/fk-filter                ::drill-thru.fk-filter]
-    [:drill-thru/distribution             ::drill-thru.distribution]
-    [:drill-thru/pivot                    ::drill-thru.pivot]
-    [:drill-thru/sort                     ::drill-thru.sort]
-    [:drill-thru/summarize-column         ::drill-thru.summarize-column]
-    [:drill-thru/summarize-column-by-time ::drill-thru.summarize-column-by-time]
-    [:drill-thru/column-filter            ::drill-thru.column-filter]
-    [:drill-thru/column-extract           ::drill-thru.column-extract]
-    [:drill-thru/combine-columns          ::drill-thru.combine-columns]
-    [:drill-thru/underlying-records       ::drill-thru.underlying-records]
-    [:drill-thru/automatic-insights       ::drill-thru.automatic-insights]
-    [:drill-thru/zoom-in.timeseries       ::drill-thru.zoom-in.timeseries]
-    [:drill-thru/zoom-in.geographic       ::drill-thru.zoom-in.geographic]
-    [:drill-thru/zoom-in.binning          ::drill-thru.zoom-in.binning]]])
+  [:multi {:dispatch :type
+           :error/fn (fn [{:keys [value]} _]
+                       (str "Invalid drill thru (unknown :type): " (pr-str value)))}
+   [:drill-thru/pk                       ::drill-thru.pk]
+   [:drill-thru/fk-details               ::drill-thru.fk-details]
+   [:drill-thru/zoom                     ::drill-thru.zoom]
+   [:drill-thru/quick-filter             ::drill-thru.quick-filter]
+   [:drill-thru/fk-filter                ::drill-thru.fk-filter]
+   [:drill-thru/distribution             ::drill-thru.distribution]
+   [:drill-thru/pivot                    ::drill-thru.pivot]
+   [:drill-thru/sort                     ::drill-thru.sort]
+   [:drill-thru/summarize-column         ::drill-thru.summarize-column]
+   [:drill-thru/summarize-column-by-time ::drill-thru.summarize-column-by-time]
+   [:drill-thru/column-filter            ::drill-thru.column-filter]
+   [:drill-thru/column-extract           ::drill-thru.column-extract]
+   [:drill-thru/combine-columns          ::drill-thru.combine-columns]
+   [:drill-thru/underlying-records       ::drill-thru.underlying-records]
+   [:drill-thru/automatic-insights       ::drill-thru.automatic-insights]
+   [:drill-thru/zoom-in.timeseries       ::drill-thru.zoom-in.timeseries]
+   [:drill-thru/zoom-in.geographic       ::drill-thru.zoom-in.geographic]
+   [:drill-thru/zoom-in.binning          ::drill-thru.zoom-in.binning]])
 
 ;;;
 ;;; ## Context
@@ -363,7 +362,10 @@
   [:map {:closed true}
    [:column     [:maybe [:ref ::lib.schema.metadata/column]]]
    [:column-ref [:maybe [:ref ::lib.schema.ref/ref]]]
-   [:value      [:maybe [:or [:= :null] ::lib.schema.literal/param-value]]]
+   [:value      [:maybe [:or
+                         [:= :null]
+                         ::lib.schema.literal/param-value
+                         [:sequential ::lib.schema.literal/param-value]]]]
    [:row        {:optional true} [:ref ::context.row]]
    [:dimensions {:optional true} [:maybe [:ref ::context.row]]]
    [:card-id    {:optional true} [:maybe ::lib.schema.id/card]]])

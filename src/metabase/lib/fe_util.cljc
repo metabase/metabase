@@ -855,7 +855,7 @@
       (i18n/tru "Is Not Empty")
 
       [:time-interval opts (_ :guard temporal?) n unit]
-      (lib.temporal-bucket/describe-temporal-interval n unit opts)
+      (lib.temporal-bucket/describe-temporal-interval n unit (select-keys opts [:include-current]))
 
       [:relative-time-interval _ (_ :guard temporal?) n unit offset offset-unit]
       (lib.temporal-bucket/describe-temporal-interval-with-offset n unit offset offset-unit)

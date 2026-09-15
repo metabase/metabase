@@ -3,7 +3,7 @@
   MBQL queries; for native queries we use the driver implementation of
   [[metabase.driver/query-result-metadata]], which hopefully can calculate metadata without running the query. If
   that's not possible, our fallback `:default` implementation adds the equivalent of `LIMIT 1` to query and runs it."
-  (:refer-clojure :exclude [mapv not-empty])
+  (:refer-clojure :exclude [mapv not-empty select-keys])
   (:require
    [metabase.analyze.core :as analyze]
    [metabase.driver :as driver]
@@ -19,7 +19,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf :refer [mapv not-empty]]))
+   [metabase.util.performance :as perf :refer [mapv not-empty select-keys]]))
 
 (mu/defn- metadata-from-preprocessing :- [:maybe [:sequential :map]]
   "For MBQL queries or native queries with result metadata attached to them already we can infer the columns just by
@@ -95,7 +95,7 @@
               (let [legacy-col    (cond-> col
                                     (= legacy-or-lib ::lib)
                                     (perf/update-keys u/->snake_case_en))
-                    semantic-type (analyze/infer-semantic-type-by-name legacy-col)]
+                    semantic-type (analyze/infer-semantic-type-by-name (select-keys legacy-col [:name :base_type :semantic_type]))]
                 (merge col
                        (when semantic-type
                          {semantic-type-key semantic-type}))))]
@@ -133,7 +133,7 @@
 
 (mu/defn- ensure-legacy :- ::qp.schema/result-metadata.column
   {:deprecated "0.57.0"}
-  [col :- ::lib.schema.metadata/column]
+  [col :- ::lib.schema.metadata/lib-or-legacy-column]
   (letfn [(ensure-field-ref [col]
             ;; HACK for backward compatibility with FE stuff -- ideally we would be able to remove this entirely but
             ;; if we do some e2e tests fail that I don't really have the energy to spend all day debugging -- Cam

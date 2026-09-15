@@ -346,10 +346,10 @@
         (clojure.core/= unit :day)))
     ((binary-filter-display-fns :is)
      (lib.metadata.calculation/display-name query stage-number expr style)
-     (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval n unit opts)))
+     (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval n unit (perf/select-keys opts [:include-current]))))
     ((binary-filter-display-fns :is-in-the)
      (lib.metadata.calculation/display-name query stage-number expr style)
-     (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval n unit opts)))))
+     (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval n unit (perf/select-keys opts [:include-current]))))))
 
 (defmethod lib.metadata.calculation/display-name-method :relative-time-interval
   [query stage-number [_tag _opts column value bucket offset-value offset-bucket] style]

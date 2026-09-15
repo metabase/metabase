@@ -5,7 +5,6 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema :as lib.schema]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.schema :as qp.schema]
    ;; the legacy QP pipeline still conveys the metadata provider via the ambient store; no MBQL 5 path yet
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util.malli :as mu]))
@@ -21,7 +20,7 @@
 (mu/defn normalize-preprocessing-middleware :- ::lib.schema/query
   "Preprocessing middleware. Normalize a query, meaning do things like convert keys and MBQL clause tags to kebab-case
   keywords. Convert query to MBQL 5 if needed."
-  [query :- ::qp.schema/any-query]
+  [query :- :metabase.lib.util/query-like]
   (try
     (normalize* query)
     (catch Throwable e

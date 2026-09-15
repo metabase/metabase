@@ -652,7 +652,15 @@
     [:lib/original-name         {:optional true} [:maybe :string]]
     [:lib/deduplicated-name     {:optional true} [:maybe :string]]
     [:lib/original-display-name {:optional true} [:maybe :string]]
-    [:lib/transformation-added-base-type {:optional true} [:maybe :boolean]]]])
+    [:lib/transformation-added-base-type {:optional true} [:maybe :boolean]]
+    [:database_partitioned      {:optional true} [:maybe :boolean]]
+    [:lib/expression-name       {:optional true} [:maybe :string]]
+    [:lib/external-remap        {:optional true} [:maybe [:ref ::lib.schema.metadata/column.remapping.external]]]
+    [:lib/original-fk-field-id  {:optional true} [:maybe ::id/field]]
+    [:lib/original-join-alias   {:optional true} [:maybe :string]]
+    [:lib/card-id               {:optional true} [:maybe ::id/card]]
+    [:lib/from-model?           {:optional true} [:maybe :boolean]]
+    [:lib/temporal-unit         {:optional true} [:maybe [:or :string :keyword]]]]])
 
 (mr/def ::query.snapshot
   "A whole copy of a query stashed on the query itself under one of the internal keys below: the same shape as
@@ -730,7 +738,11 @@
   (see `:metabase.driver.mongo.query-processor/compiled-pipeline`), and for a query that was already native the
   compiled form is the native stage itself, carrying every key a `::stage.native` has."
   [:map {:closed true}
-   [:query  ::native-query-document-value]
+   [:query  [:or
+             ::native-query-document-value
+             [:schema {::mr/deliberately-open true
+                       :description "a driver's native query in the driver's own shape, e.g. a keyword-keyed map from a JSON request"}
+              :some]]]
    [:params {:optional true} [:maybe [:sequential [:ref ::literal/param-value]]]]])
 
 (def ^:private query-map

@@ -11,6 +11,14 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.regex :as u.regex]))
 
+(mr/def ::unnormalized-query
+  "A legacy, MBQL 5, or internal query that has not been normalized yet, so its `:type` or `:lib/type` is still a string, e.g. as decoded from JSON."
+  [:and
+   [:map {:closed false, ::mr/deliberately-open true, :description "a query whose type key is still a string"}
+    [:type     {:optional true} [:enum "query" "native" "internal"]]
+    [:lib/type {:optional true} [:= "mbql/query"]]]
+   [:fn {:error/message "Query with a :type or :lib/type key"} (some-fn :type :lib/type)]])
+
 (mr/def ::any-query
   "Schema for a map that is in the general shape of either a legacy MBQL or MBQL 5 query. Query may not be normalized
   yet!
@@ -20,7 +28,8 @@
   [:or
    :metabase.lib.util/legacy-query
    :metabase.lib.util/mbql5-query
-   ::lib-be.schema/internal-query])
+   ::lib-be.schema/internal-query
+   ::unnormalized-query])
 
 (mr/def ::metadata
   "The map threaded through the post-processing `rff`/`rf` chain: an accumulator of query result metadata that grows
@@ -50,16 +59,11 @@
                                                                                               [false [:fn {:error/message "map"} map?]]]]]]]
    [:pivot?                  {:optional true} :boolean]
    [:is_sandboxed            {:optional true} :boolean]
-   [:download_perms          {:optional true} :string]])
+   [:download_perms          {:optional true} [:or :keyword :string]]])
 
 (mr/def ::accumulator
-  "One of the concrete shapes threaded as a reducing function's running accumulator: an empty seed vector, or the
-  standard in-progress result map produced by [[metabase.query-processor.reducible/default-rff]] before `:row_count`
-  and the final rows are added."
-  [:or
-   [:= []]
-   [:map {:closed true}
-    [:data ::metadata]]])
+  "The running accumulator of a QP reducing function, whose shape is whatever that (possibly caller-supplied) reducing function accumulates."
+  [:schema {::mr/deliberately-open true, :description "a reducing function's running accumulator"} :any])
 
 (mr/def ::rf
   "Schema for a reducing function."

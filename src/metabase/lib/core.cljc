@@ -680,11 +680,11 @@
 
   **Code Health:** Healthy. This is a core API."
   ([a-query            :- ::lib.schema/query
-    boolean-expression :- [:or ::lib.schema.expression/boolean ::lib.schema.metadata/segment]]
+    boolean-expression :- [:or ::lib.schema.expression/boolean ::lib.schema.metadata/segment ::lib.schema.common/external-op]]
    (filter a-query -1 boolean-expression))
   ([a-query            :- ::lib.schema/query
     stage-number       :- :int
-    boolean-expression :- [:or ::lib.schema.expression/boolean ::lib.schema.metadata/segment]]
+    boolean-expression :- [:or ::lib.schema.expression/boolean ::lib.schema.metadata/segment ::lib.schema.common/external-op]]
    (lib.filter/filter a-query stage-number boolean-expression)))
 
 (mu/defn filters :- [:maybe [:ref ::lib.schema/filters]]
@@ -826,10 +826,10 @@
   ([a-joinable :- ::lib.join/join-clause-source]
    (lib.join/join-clause a-joinable))
   ([a-joinable  :- ::lib.join/join-clause-source
-    conditions :- [:maybe ::lib.schema.join/conditions]]
+    conditions :- [:maybe ::lib.join/conditions-input]]
    (lib.join/join-clause a-joinable conditions))
   ([a-joinable  :- ::lib.join/join-clause-source
-    conditions :- [:maybe ::lib.schema.join/conditions]
+    conditions :- [:maybe ::lib.join/conditions-input]
     strategy   :- [:or ::lib.schema.join/strategy ::lib.schema.join/strategy.option]]
    (lib.join/join-clause a-joinable conditions strategy)))
 
@@ -920,7 +920,7 @@
 
   **Code Health:** Healthy. This is a core API."
   [a-join :- ::lib.join.util/partial-join
-   conditions :- [:maybe [:sequential [:or ::lib.schema.expression/boolean ::lib.schema.common/external-op]]]]
+   conditions :- [:maybe ::lib.join/conditions-input]]
   (lib.join/with-join-conditions a-join conditions))
 
 (mu/defn suggested-join-conditions :- [:maybe [:sequential {:min 1} ::lib.schema.expression/boolean]]
@@ -1174,10 +1174,7 @@
   Users of lib should be getting columns from [[filterable-columns]] et al, not manually setting join aliases on column
   metadata or refs."
   {:style/indent [:form]}
-  [field-or-join :- [:or
-                     ::lib.schema.metadata/column
-                     ::lib.join.util/partial-join
-                     [:ref :mbql.clause/field]]
+  [field-or-join :- ::lib.join/with-join-alias-target
    join-alias    :- [:maybe ::lib.schema.common/non-blank-string]]
   (lib.join/with-join-alias field-or-join join-alias))
 
@@ -1364,7 +1361,7 @@
   ([a-query :- ::lib.schema/query]
    (lib.metadata.calculation/visible-columns a-query))
   ([a-query      :- ::lib.schema/query
-    stage-number :- :int]
+    stage-number :- [:maybe :int]]
    (lib.metadata.calculation/visible-columns a-query stage-number))
   ([a-query      :- ::lib.schema/query
     stage-number :- :int

@@ -136,11 +136,15 @@
    [:attributes              {:optional true} [:maybe LoginAttributes]]])
 
 (mr/def ::login-user
-  "Whatever a caller has on hand identifying a user for login/session bookkeeping (a full row, a partial projection,
-  a hand-built test fixture, ...); only `:id` and `:last_login` are actually read."
-  [:map {:closed false, ::mr/deliberately-open true}
-   [:id ::lib.schema.id/user]
-   [:last_login [:maybe ms/TemporalInstant]]])
+  "A User as login and session bookkeeping receives it: a full row, or the login-status columns
+  `metabase.auth-identity.db` selects."
+  [:or
+   [:ref ::user]
+   [:map {:closed true}
+    [:id         ::lib.schema.id/user]
+    [:is_active  {:optional true} :boolean]
+    [:last_login [:maybe ms/TemporalInstant]]
+    [:tenant_id  {:optional true} [:maybe ms/PositiveInt]]]])
 
 (mr/def ::user-filters
   "Options accepted by `metabase.users.db/filter-clauses` (and, by extension, any db.clj function that filters

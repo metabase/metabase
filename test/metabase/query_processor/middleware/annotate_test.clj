@@ -56,14 +56,14 @@
   (testing "native column info"
     (testing "should still infer types even if the initial value(s) are `nil` (#4256, #6924)"
       (is (= [:type/Integer]
-             (transduce identity (#'annotate/base-type-inferer {:cols [{}]})
+             (transduce identity (#'annotate/base-type-inferer {:cols [{:name "a"}]})
                         (concat (repeat 1000 [nil]) [[1] [2]])))))))
 
 (deftest ^:parallel native-column-info-test-2
   (testing "native column info"
     (testing "should use default `base_type` of `type/*` if there are no non-nil values in the sample"
       (is (= [:type/*]
-             (transduce identity (#'annotate/base-type-inferer {:cols [{}]})
+             (transduce identity (#'annotate/base-type-inferer {:cols [{:name "a"}]})
                         [[nil]]))))))
 
 (deftest ^:parallel native-column-info-test-3
@@ -71,7 +71,7 @@
     (testing "should attempt to infer better base type if driver returns :type/* (#12150)"
       ;; `merged-column-info` handles merging info returned by driver & inferred by annotate
       (is (= [:type/Integer]
-             (transduce identity (#'annotate/base-type-inferer {:cols [{:base_type :type/*}]})
+             (transduce identity (#'annotate/base-type-inferer {:cols [{:name "a", :base_type :type/*}]})
                         [[1] [2] [nil] [3]]))))))
 
 (defn- column-info [query {:keys [rows], :as metadata}]
@@ -202,7 +202,7 @@
                                        {:name "count"}]]
                        :limit        1})))]
         (is (= ["Sum of Sum of Price" "Count"]
-               (->> (add-column-info query {:cols [{} {}]})
+               (->> (add-column-info query {:cols [{:name "sum"} {:name "count"}]})
                     :cols
                     (map :display_name))))))))
 
@@ -360,7 +360,7 @@
   (testing "In case of a lib vs. driver column count mismatch, don't loop infinitely (#66955)"
     (let [query       (lib/query meta/metadata-provider
                                  (meta/table-metadata :orders))
-          all-cols    (mapv #(select-keys % [:name :base-type]) (lib/returned-columns query))
+          all-cols    (mapv (fn [col] {:name (:name col), :base_type (:base-type col)}) (lib/returned-columns query))
           missing-one (butlast all-cols)]
       (is (= 9 (count (annotate/expected-cols query all-cols))))
       (testing "in dev and test modes, we throw an error when the counts differ"

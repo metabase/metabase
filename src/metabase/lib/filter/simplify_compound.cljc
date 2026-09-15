@@ -20,7 +20,7 @@
    [:cat
     keyword?
     ::lib.schema.common/options
-    [:+ ::lib.schema.expression/expression]]])
+    [:* [:maybe [:or ::lib.schema.expression/expression [:ref ::mbql-clause]]]]]])
 
 (mu/defn- combine-compound-filters-of-type :- [:sequential [:maybe ::mbql-clause]]
   [tag     :- [:enum :and :or]
@@ -65,11 +65,15 @@
             ;; there is a change, we might be able to simplify even further
             (recur tag opts simplified)))))))
 
+(mr/def ::simplifiable
+  "A filter clause, possibly malformed (e.g. with `nil` args), or any form [[simplify-compound-filter]] walks to find them."
+  [:schema {::mr/deliberately-open true, :description "a form containing possibly malformed compound filters"} :any])
+
 (mu/defn simplify-compound-filter :- ::lib.schema.util/unique-uuids
   "Simplify compound `:and`, `:or`, and `:not` compound filters, combining or eliminating them where possible. This
   also fixes theoretically disallowed compound filters like `:and` with only a single subclause, and eliminates `nils`
   and duplicate subclauses from the clauses."
-  [x :- [:or ::lib.schema.expression/boolean ::mbql-clause]]
+  [x :- ::simplifiable]
   (match/replace x
     ;; double negation, eliminate both
     [:not opts [:not arg-opts arg-arg]]

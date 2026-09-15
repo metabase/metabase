@@ -82,7 +82,7 @@
 (mu/defn mbql-clause-distinct-key
   "For deduplicating MBQL clauses: keep just the keys in options that are essential to distinguish one clause from
   another. Removes namespaced keywords and type information keys like `:base-type`."
-  [clause :- :metabase.lib.schema.mbql-clause/clause]
+  [clause :- :metabase.lib.schema.common/any-clause]
   (let [tag (first clause)
         opts (second clause)
         f #(cond-> %

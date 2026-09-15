@@ -156,11 +156,18 @@
         (with-join-alias-update-join-fields new-alias)
         (with-join-alias-update-join-conditions old-alias new-alias))))
 
+(mr/def ::with-join-alias-target
+  "A `:field` ref, a partial join, or a column that may be part-way through getting its join alias added or removed."
+  [:multi {:dispatch lib.dispatch/dispatch-value}
+   [:field           [:ref :mbql.clause/field]]
+   [:metadata/column [:ref ::lib.schema.metadata/column.map]]
+   [:mbql/join       [:ref ::lib.join.util/partial-join]]])
+
 (mu/defn with-join-alias :- ::lib.join.util/column-or-field-ref-or-partial-join
   "Add OR REMOVE a specific `join-alias` to `field-or-join`, which is either a `:field`/Field metadata, or a join map.
   Does not recursively update other references (yet; we can add this in the future)."
   {:style/indent [:form]}
-  [field-or-join :- ::lib.join.util/column-or-field-ref-or-partial-join
+  [field-or-join :- ::with-join-alias-target
    join-alias    :- [:maybe ::lib.schema.common/non-blank-string]]
   (case (lib.dispatch/dispatch-value field-or-join)
     :field
@@ -260,7 +267,10 @@
        :lib/join-alias               join-alias
        :lib/original-name         ((some-fn :lib/original-name :name) col)
        :lib/original-display-name (or (:lib/original-display-name col)
-                                      (lib.metadata.calculation/display-name query stage-number (dissoc col :lib/join-alias :lib/original-join-alias))))
+                                      (lib.metadata.calculation/display-name
+                                       query stage-number
+                                       (cond-> (dissoc col :lib/join-alias :lib/original-join-alias)
+                                         (= (:lib/source col) :source/joins) (dissoc :lib/source)))))
       (set/rename-keys {:lib/expression-name :lib/original-expression-name})
       (as-> $col (assoc $col :display-name (lib.metadata.calculation/display-name query stage-number $col)))))
 
@@ -480,11 +490,15 @@
                                                               (with-join-alias field join-alias)))))
           conditions)))
 
+(mr/def ::conditions-input
+  "Join conditions as given to [[with-join-conditions]]: boolean MBQL expressions or `:lib/external-op` maps."
+  [:sequential [:or ::lib.schema.expression/boolean ::lib.schema.common/external-op]])
+
 (mu/defn with-join-conditions :- ::lib.join.util/partial-join
   "Update the `:conditions` (filters) for a Join clause."
   {:style/indent [:form]}
   [a-join     :- ::lib.join.util/partial-join
-   conditions :- [:maybe [:sequential [:or ::lib.schema.expression/boolean ::lib.schema.common/external-op]]]]
+   conditions :- [:maybe ::conditions-input]]
   (let [conditions (-> (mapv lib.common/->op-arg conditions)
                        (with-join-conditions-add-alias-to-rhses (lib.join.util/current-join-alias a-join)))]
     (u/assoc-dissoc a-join :conditions (not-empty conditions))))
@@ -771,11 +785,11 @@
        (u/assoc-default :fields :all)))
 
   ([joinable   :- ::join-clause-source
-    conditions :- [:maybe ::lib.schema.join/conditions]]
+    conditions :- [:maybe ::conditions-input]]
    (join-clause joinable conditions lib.schema.join/default-strategy))
 
   ([joinable   :- ::join-clause-source
-    conditions :- [:maybe ::lib.schema.join/conditions]
+    conditions :- [:maybe ::conditions-input]
     strategy   :- [:or ::lib.schema.join/strategy ::lib.schema.join/strategy.option]]
    (-> (join-clause joinable)
        (with-join-conditions conditions)

@@ -78,4 +78,5 @@
    [:lib/type [:= :option/binning]]
    [:display-name :string]
    [:mbql [:maybe ::binning]]
-   [:default {:optional true} :boolean]])
+   [:default {:optional true} :boolean]
+   [:selected {:optional true} :boolean]])

@@ -66,6 +66,7 @@
     [:can_restore           {:optional true} :boolean]
     [:can_write             {:optional true} :boolean]
     [:dashboard_count       {:optional true} :int]
+    [:query_description     {:optional true} [:maybe :string]]
     [:parameter_usage_count {:optional true} :int]
     [:average_query_time    {:optional true} [:maybe number?]]
     [:last_query_start      {:optional true} [:maybe ms/TemporalInstant]]

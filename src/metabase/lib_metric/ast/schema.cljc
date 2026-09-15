@@ -27,6 +27,7 @@
    [:id [:or pos-int? string?]]
    [:name {:optional true} [:maybe string?]]
    [:table-id {:optional true} [:maybe pos-int?]]
+   [:source-field {:optional true} [:maybe pos-int?]]
    [:base-type {:optional true} [:maybe keyword?]]])
 
 ;;; -------------------- Dimension Nodes --------------------
@@ -61,7 +62,7 @@
    [:node/type [:= :ast/dimension-expression]]
    [:expression-op keyword?]
    [:dimension ::dimension-ref-node]
-   [:args {:optional true} [:maybe [:sequential ::lib.schema.literal/literal]]]])
+   [:args {:optional true} [:maybe [:sequential [:or :keyword ::lib.schema.literal/literal]]]]])
 
 (mr/def ::dimension-or-expression
   "A dimension reference or an expression wrapping one."

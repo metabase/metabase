@@ -31,7 +31,9 @@
   namespaced keywords remain in kebab case)
 
   * Remove `:lib/type`"
-  [col :- [:or ::lib.schema.metadata/column :metabase.legacy-mbql.schema/legacy-column-metadata]]
+  [col :- [:multi {:dispatch #(if (:lib/type %) :lib :legacy)}
+           [:lib    ::lib.schema.metadata/column.map]
+           [:legacy :metabase.legacy-mbql.schema/legacy-column-metadata]]]
   ;; Intentionally using vanilla update-keys here because m.u.perf's implementation would try to assoc snake keys onto
   ;; SnakeHatingMap which results in an exception.
   #_{:clj-kondo/ignore [:discouraged-var]}

@@ -399,7 +399,7 @@
                                 ::lib.schema.mbql-clause/clause
                                 ::lib.schema.metadata/stage
                                 ::lib.schema/pivot
-                                [:sequential [:or :keyword :int ::lib.schema.mbql-clause/clause ::lib.schema.join/join]]]]]]
+                                [:sequential [:or :keyword :int ::lib.schema.mbql-clause/clause ::lib.schema.join/join ::lib.schema.metadata/column]]]]]]
   (let [{:keys [stages], :as query} (pipeline query)
         stage-number'               (canonical-stage-index query stage-number)
         stages'                     (apply update (vec stages) stage-number' f args)]

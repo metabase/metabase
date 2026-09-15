@@ -97,21 +97,26 @@
     (keyword? x) u/qualified-name))
 
 (mr/def ::clause-arg
-  "One arg of a (possibly not-yet-normalized) MBQL clause: a literal, an already-normalized options map or
-   expression, a not-yet-normalized (string-keyed) options map, or a nested not-yet-normalized clause."
+  "One arg of an MBQL clause in any normalization state: a literal, a keyword such as a temporal unit, an options map
+   (possibly string-keyed), or a nested clause or sequence of clauses."
   [:or
+   :nil
+   :keyword
    :metabase.lib.schema.literal/literal
-   ::options
-   [:map-of :string [:ref ::clause-arg]]
-   :metabase.lib.schema.expression/expression
-   [:ref ::possibly-unnormalized-clause]])
+   [:ref ::clause-options]
+   [:sequential [:ref ::clause-arg]]])
+
+(mr/def ::any-clause
+  "An MBQL clause `[tag & args]` in any normalization state -- `tag` a keyword, or a string before normalization
+   keywordizes it -- e.g. not yet uuid'd, or still carrying legacy args."
+  [:cat [:or :keyword :string] [:* ::clause-arg]])
 
 (mr/def ::possibly-unnormalized-clause
   "A (possibly not-yet-normalized) MBQL clause `[tag & args]` -- `tag` a keyword, or a string before normalization
    keywordizes it -- or a literal value."
   [:or
    :metabase.lib.schema.literal/literal
-   [:cat [:or :keyword :string] [:* ::clause-arg]]])
+   ::any-clause])
 
 (mr/def ::clause-tag-candidate
   "Any value a `:multi` schema dispatches on with [[mbql-clause-tag]], which may or may not be an MBQL clause."
@@ -154,6 +159,10 @@
   of [[metabase.util.malli.schema/VisualizationSettings]], which we cannot use here because that namespace is `.clj`
   only."
   [:map {:closed false, ::mr/deliberately-open true, :description "visualization settings", :decode/normalize normalize-map-no-kebab-case}])
+
+(mr/def ::clause-options
+  "The options map of any MBQL clause, MBQL 5 or legacy, possibly not yet normalized; its keys depend on the clause."
+  [:map {:closed false, ::mr/deliberately-open true, :description "options map of any MBQL clause"}])
 
 (mr/def ::database-details
   "Connection details for a Database; the `.cljc` equivalent of [[metabase.util.malli.schema/DatabaseDetails]]."

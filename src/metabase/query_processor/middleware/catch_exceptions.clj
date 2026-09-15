@@ -116,8 +116,16 @@
       :native       (when (qp.perms/current-user-has-adhoc-native-query-perms? query)
                       native)})))
 
+(mr/def ::query-execution-info
+  "The in-flight QueryExecution info that userland query processing attaches to exceptions: the columns about to be saved, plus the query and start time."
+  [:merge
+   ::queries.schema/query-execution.update
+   [:map {:closed true}
+    [:json_query        {:optional true} ::qp.schema/any-query]
+    [:start_time_millis {:optional true} :int]]])
+
 (mu/defn- query-execution-info :- :map
-  [query-execution :- ::queries.schema/query-execution]
+  [query-execution :- ::query-execution-info]
   (dissoc query-execution :result_rows :hash :executor_id :dashboard_id :pulse_id :native :start_time_millis))
 
 (def ^:private ExtraInfo
