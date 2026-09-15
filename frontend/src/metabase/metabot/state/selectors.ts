@@ -3,6 +3,7 @@ import { match } from "ts-pattern";
 
 import { isEmbedding } from "metabase/embedding/config";
 import type { State } from "metabase/redux/store";
+import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import type { TransformId } from "metabase-types/api";
 
@@ -20,9 +21,17 @@ import {
 import type {
   MetabotAgentId,
   MetabotContextUsage,
+  MetabotIncompleteTurn,
   MetabotMessage,
 } from "./types";
-import { hasInProgressMessage, isGeneratedCardPart, isTextPart } from "./utils";
+import {
+  getIncompleteTurnMessage,
+  getIncompleteTurnReason,
+  getIncompleteTurnResumePrompt,
+  hasInProgressMessage,
+  isGeneratedCardPart,
+  isTextPart,
+} from "./utils";
 
 /*
  * Top Level Selectors
@@ -284,6 +293,28 @@ export const getLongChatNotice = createSelector(
     return percentUsage >= CONTEXT_WINDOW_WARNING_PERCENT
       ? "warning"
       : undefined;
+  },
+);
+
+const getMetabotName = (state: State) => getSetting(state, "metabot-name");
+
+// Only the latest turn can be continued; earlier incomplete turns are history.
+export const getIncompleteTurn = createSelector(
+  [getMessages, getMetabotName],
+  (messages, metabotName): MetabotIncompleteTurn | null => {
+    const lastMessage = messages.at(-1);
+    if (
+      lastMessage?.role !== "agent" ||
+      lastMessage.status.type !== "incomplete"
+    ) {
+      return null;
+    }
+    const reason = getIncompleteTurnReason(lastMessage.status);
+    return {
+      reason,
+      message: getIncompleteTurnMessage(reason, metabotName),
+      resumePrompt: getIncompleteTurnResumePrompt(reason),
+    };
   },
 );
 

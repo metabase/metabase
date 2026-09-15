@@ -208,6 +208,7 @@ describe("metabot > finish reason", () => {
         ["agent", "I can't help with that."],
         ["agent", /stopped by a content filter/],
       ]);
+      expect(queryContinueResponseButton()).not.toBeInTheDocument();
     });
 
     it("should not show a notice for a normal stop", async () => {

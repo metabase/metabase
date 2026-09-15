@@ -10,6 +10,7 @@ import { useMetabaseProviderPropsStore } from "embedding-sdk-bundle/lib/provider
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types";
 import type {
   MetabotChartProps,
+  MetabotIncompleteResponse,
   MetabotMessage,
   MetabotErrorMessage as SdkMetabotErrorMessage,
   UseMetabotResult,
@@ -81,6 +82,24 @@ export const useMetabot = (): UseMetabotResult => {
     [agentRetryMessage],
   );
 
+  const agentContinueResponse = agent.continueResponse;
+  const incompleteTurn = agent.incompleteTurn;
+  const incompleteResponse = useMemo<MetabotIncompleteResponse | null>(() => {
+    if (!incompleteTurn) {
+      return null;
+    }
+    return {
+      reason: incompleteTurn.reason,
+      message: incompleteTurn.message,
+      ...(agentContinueResponse && {
+        continueResponse: () =>
+          agentContinueResponse({ preventOpenSidebar: true }).then(
+            () => undefined,
+          ),
+      }),
+    };
+  }, [incompleteTurn, agentContinueResponse]);
+
   const agentCreateNewConversation = agent.createNewConversation;
   const resetConversation = useCallback(() => {
     chartComponentsCache.current.clear();
@@ -127,6 +146,7 @@ export const useMetabot = (): UseMetabotResult => {
 
     messages,
     errorMessages,
+    incompleteResponse,
     isProcessing: agent.isDoingScience,
     contextWindowPercentUsage: agent.contextWindowPercentUsage,
     isContextWindowFull: agent.isContextWindowFull,
