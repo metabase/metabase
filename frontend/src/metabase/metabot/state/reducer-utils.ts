@@ -19,6 +19,7 @@ import {
   type MetabotMessagePart,
   type MetabotSearchResults,
   type MetabotState,
+  type MetabotWebResults,
   fixedMetabotAgentIds,
 } from "./types";
 import { createMessageId } from "./utils";
@@ -234,6 +235,17 @@ export const setChainToolSearchResults = (
   const found = findChainToolStep(convo, toolCallId);
   if (found) {
     found.step.searchResults = searchResults;
+  }
+};
+
+export const setChainToolWebResults = (
+  convo: WritableDraft<MetabotConversationState>,
+  toolCallId: string,
+  webResults: MetabotWebResults,
+) => {
+  const found = findChainToolStep(convo, toolCallId);
+  if (found) {
+    found.step.webResults = webResults;
   }
 };
 

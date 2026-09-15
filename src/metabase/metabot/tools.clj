@@ -32,6 +32,7 @@
    [metabase.metabot.tools.timelines :as tools.timelines]
    [metabase.metabot.tools.todo :as tools.todo]
    [metabase.metabot.tools.transforms :as tools.transforms]
+   [metabase.metabot.tools.web :as tools.web]
    [metabase.util.log :as log]
    [potemkin :as p]))
 
@@ -101,7 +102,10 @@
  [tools.create-dashboard-subscription
   slackbot-create-dashboard-subscription-tool]
  [tools.skills
-  load-skill-tool])
+  load-skill-tool]
+ [tools.web
+  web-search-tool
+  read-web-page-tool])
 
 (def query-generation-tool-names
   "Tool names that produce a runnable query (SQL or notebook). Both the in-app

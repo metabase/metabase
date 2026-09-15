@@ -7,11 +7,14 @@ import { Collapse, Icon, Text, UnstyledButton } from "metabase/ui";
 
 import S from "./MetabotChainOfThought.module.css";
 import { SearchResultsList } from "./SearchResults";
+import { StackedFavicons } from "./StackedFavicons";
+import { WebResultsList } from "./WebResults";
 import { SEARCH_TOOL_NAME } from "./constants";
 import {
   type ToolChainStep,
   activeToolLabel,
   doneToolLabel,
+  isWebTool,
   renderTitle,
   searchResultCount,
   titledToolLabel,
@@ -28,6 +31,24 @@ const toolLabelContent = (step: ToolChainStep, done: boolean) => {
           <span className={S.resultCount}>
             {searchResultCount(step.searchResults)}
           </span>
+        )}
+      </>
+    );
+  }
+  if (isWebTool(step.name)) {
+    const label =
+      titledToolLabel(step, done) ??
+      (done ? doneToolLabel(step.name) : activeToolLabel(step.name));
+    return (
+      <>
+        {renderTitle(label)}
+        {step.webResults && (
+          <>
+            <StackedFavicons results={step.webResults.results} />
+            <span className={S.resultCount}>
+              {searchResultCount(step.webResults)}
+            </span>
+          </>
         )}
       </>
     );
@@ -81,7 +102,8 @@ export const ToolStep = ({
   animate: boolean;
 }) => {
   const [open, setOpen] = useState(false);
-  const hasResults = !!step.searchResults?.results.length;
+  const hasResults =
+    !!step.searchResults?.results.length || !!step.webResults?.results.length;
 
   return (
     <div className={S.toolStep}>
@@ -103,6 +125,7 @@ export const ToolStep = ({
       {hasResults && (
         <Collapse in={open}>
           <SearchResultsList step={step} animate={animate} />
+          <WebResultsList step={step} animate={animate} />
         </Collapse>
       )}
     </div>

@@ -25,6 +25,7 @@ import { AIProviderSettingsSection } from "./AIProviderSettingsSection";
 import { EmbeddedMetabotUpsell } from "./EmbeddedMetabotUpsell";
 import { McpAppsSettings } from "./McpAppsSettings";
 import { MetabotSettingsPanel } from "./MetabotSettingsPanel";
+import { WebSearchSettingsSection } from "./WebSearchSettingsSection";
 
 type MetabotTabId =
   | typeof FIXED_METABOT_IDS.DEFAULT
@@ -32,6 +33,7 @@ type MetabotTabId =
 
 const SETUP_SECTION_ID = "setup";
 const MODELS_SECTION_ID = "models";
+const WEB_SEARCH_SECTION_ID = "web-search";
 const METABOT_SECTION_ID = "metabot";
 const MCP_SECTION_ID = "mcp";
 const AGENT_API_SECTION_ID = "agent-api";
@@ -74,6 +76,7 @@ export function AISettingsPage() {
           <AIProviderSettingsSection id={SETUP_SECTION_ID} />
           <DisabledSection disabled={!isConfigured}>
             <AIModelSettingsSection id={MODELS_SECTION_ID} />
+            <WebSearchSettingsSection id={WEB_SEARCH_SECTION_ID} />
             <MetabotSettingsSection
               hasEmbedding={hasEmbedding}
               id={METABOT_SECTION_ID}

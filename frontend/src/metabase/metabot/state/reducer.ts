@@ -6,7 +6,10 @@ import {
 import { type WritableDraft, castDraft } from "immer";
 import _ from "underscore";
 
-import type { SearchResultItem } from "metabase/api/ai-streaming/schemas";
+import type {
+  SearchResultItem,
+  WebSearchResultItem,
+} from "metabase/api/ai-streaming/schemas";
 import { logout } from "metabase/redux/auth";
 import { LOCATION_CHANGE, type Location, matchPath } from "metabase/router";
 import * as Urls from "metabase/urls";
@@ -40,6 +43,7 @@ import {
   resetReactionStateForConversation,
   setChainToolSearchResults,
   setChainToolTitle,
+  setChainToolWebResults,
   startAgentMessage,
   startChainReasoning,
   startUserMessage,
@@ -304,6 +308,19 @@ export const metabot = createSlice({
       ) => {
         const { toolCallId, totalCount, results } = action.payload;
         setChainToolSearchResults(convo, toolCallId, { totalCount, results });
+      },
+    ),
+    toolCallWebResults: convoReducer(
+      (
+        convo,
+        action: ConvoPayloadAction<{
+          toolCallId: string;
+          totalCount: number;
+          results: WebSearchResultItem[];
+        }>,
+      ) => {
+        const { toolCallId, totalCount, results } = action.payload;
+        setChainToolWebResults(convo, toolCallId, { totalCount, results });
       },
     ),
     toolCallTitled: convoReducer(

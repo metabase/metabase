@@ -21,15 +21,16 @@
 (def adhoc-viz-type "AI-SDK data type for ad-hoc visualizations." "adhoc_viz")
 (def static-viz-type "AI-SDK data type for static visualizations." "static_viz")
 (def search-results-type "AI-SDK data type for a search tool's result list." "search_results")
+(def web-results-type "AI-SDK data type for a web tool's list of sites found or pages read." "web_search_results")
 (def tool-title-type "AI-SDK data type for a tool call's settled display title." "tool_title")
 (def research-plan-update-type "AI-SDK data type for a Research plan edit's picker hydration." "research_plan_update")
 
 (def ^:private ephemeral-data-types
   "Data types not written to MetabotMessage.data."
   ;; state is diffed separately into the row's state column
-  ;; search_results and tool_title render under the client-only chain of
-  ;; thought, never rehydrated
-  #{state-type search-results-type tool-title-type})
+  ;; search_results, web_search_results and tool_title render under the
+  ;; client-only chain of thought, never rehydrated
+  #{state-type search-results-type web-results-type tool-title-type})
 
 (defn persistable-data-part?
   "True if `part` should be written to MetabotMessage.data. `state` parts are
@@ -145,6 +146,15 @@
   [value]
   {:type :data
    :data-type search-results-type
+   :data value})
+
+(defn web-results-part
+  "Data part carrying a web tool's hit list (`:total_count` + `:results` of
+  `{:title :url :domain :snippet?}`), rendered with favicons under the step in
+  the chain of thought."
+  [value]
+  {:type :data
+   :data-type web-results-type
    :data value})
 
 (defn research-plan-update-part

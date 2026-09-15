@@ -229,6 +229,9 @@
       [origin]
       [])))
 
+;; Metabot's web-search steps render site favicons from Google's s2 favicon service.
+(def ^:private favicon-service-origin "https://www.google.com")
+
 (def ^:private frontend-dev-port (or (env/env :mb-frontend-dev-port) "8080"))
 (def ^:private frontend-address (str "http://localhost:" frontend-dev-port))
 (def ^:private cljs-dev-port (or (env/env :mb-cljs-dev-port) "9630"))
@@ -315,8 +318,9 @@
                   :font-src     (into (cond-> always-allowed-resource-hosts
                                         config/is-dev? (conj frontend-address))
                                       (application-font-files->hosts))
-                  :img-src      (let [restricted (cond-> (into (parse-allowed-resource-hosts (server.settings/csp-img-allowed-hosts))
-                                                               (map-tile-server->hosts))
+                  :img-src      (let [restricted (cond-> (-> (parse-allowed-resource-hosts (server.settings/csp-img-allowed-hosts))
+                                                             (into (map-tile-server->hosts))
+                                                             (conj favicon-service-origin))
                                                    config/is-dev? (conj frontend-address))]
                                   (cond-> (cond
                                             ;; A sandboxed data-app document NEVER gets `*`: an ungated

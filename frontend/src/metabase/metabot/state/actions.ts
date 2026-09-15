@@ -83,6 +83,7 @@ export const {
   toolCallEnd,
   toolCallTitled,
   toolCallSearchResults,
+  toolCallWebResults,
   setMetabotReqIdOverride,
   setDebugMode,
   createAgent,
@@ -601,6 +602,16 @@ export const sendAgentRequest = createAsyncThunk<
               .with({ type: "data-search_results" }, (part) => {
                 dispatch(
                   toolCallSearchResults({
+                    conversationId,
+                    toolCallId: part.data.tool_call_id,
+                    totalCount: part.data.total_count,
+                    results: part.data.results,
+                  }),
+                );
+              })
+              .with({ type: "data-web_search_results" }, (part) => {
+                dispatch(
+                  toolCallWebResults({
                     conversationId,
                     toolCallId: part.data.tool_call_id,
                     totalCount: part.data.total_count,
