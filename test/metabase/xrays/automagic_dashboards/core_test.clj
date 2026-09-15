@@ -1128,6 +1128,25 @@
                       (-> (#'magic/load-tables-with-enhanced-table-stats db-id nil)
                           first)))))))
 
+(deftest enhance-table-stats-honors-user-set-semantic-type-test
+  (testing "load-tables-with-enhanced-table-stats honors a user-set semantic_type that differs from the sync value"
+    (mt/with-temp [:model/Database {db-id :id}    {}
+                   :model/Table    {table-id :id} {:db_id db-id}
+                   :model/Field    {pk-id :id}    {:table_id table-id}
+                   :model/Field    _              {:table_id table-id}]
+      (mt/with-test-user :rasta
+        (automagic-dashboards.test/with-rollback-only-transaction
+          (testing "sanity check: neither Field is a PK by sync, so the Table isn't list-like"
+            (is (partial= {:list-like? false, :num-fields 2}
+                          (-> (#'magic/load-tables-with-enhanced-table-stats db-id nil)
+                              first))))
+          (mt/with-temp [:model/FieldUserSettings _ {:field_id          pk-id
+                                                     :semantic_type     :type/PK
+                                                     :semantic_type_set true}]
+            (is (partial= {:list-like? true, :num-fields 2}
+                          (-> (#'magic/load-tables-with-enhanced-table-stats db-id nil)
+                              first)))))))))
+
 (deftest enhance-table-stats-fk-test
   (mt/with-temp [:model/Database {db-id :id}    {}
                  :model/Table    {table-id :id} {:db_id db-id}

@@ -80,14 +80,14 @@
 
 (deftest search-skips-embedding-for-an-incompatible-index-test
   (mt/with-premium-features #{:library-retrieval}
-    (with-redefs [entity-retrieval.core/available?                        (constantly true)
-                  semantic.db.datasource/ensure-initialized-data-source! (constantly ::datasource)
-                  semantic.embedding/get-configured-model                (constantly semantic.tu/mock-embedding-model)
-                  index-table/index-status                               (constantly :incompatible)
-                  semantic.embedding/get-embedding                       (fn [& _]
-                                                                           (throw (ex-info "must not embed" {})))
-                  reconcile/with-index-read-lock                         (fn [_ds f]
-                                                                           (f ::locked-connection))]
+    (mt/with-dynamic-fn-redefs [entity-retrieval.core/available?                        (constantly true)
+                                semantic.db.datasource/ensure-initialized-data-source! (constantly ::datasource)
+                                semantic.embedding/get-configured-model                (constantly semantic.tu/mock-embedding-model)
+                                index-table/index-status                               (constantly :incompatible)
+                                semantic.embedding/get-embedding                       (fn [& _]
+                                                                                         (throw (ex-info "must not embed" {})))
+                                reconcile/with-index-read-lock                         (fn [_ds f]
+                                                                                         (f ::locked-connection))]
       #_{:clj-kondo/ignore [:discouraged-var]}
       (is (= [] (entity-retrieval.core/search-unfiltered "the query" 10))))))
 

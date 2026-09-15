@@ -91,7 +91,7 @@
     (mt/with-temp [:model/Collection library {:name "Test Library" :type collection/library-collection-type}
                    :model/Collection models {:name "Test Semantic Model Layer" :type collection/library-data-collection-type}
                    :model/Collection metrics {:name "Test Semantic Metrics Layer" :type collection/library-metrics-collection-type}]
-      (with-redefs [collection/library-root-collection? (constantly true)]
+      (mt/with-dynamic-fn-redefs [collection/library-root-collection? (constantly true)]
         (doseq [col [library models metrics]]
           (testing (str "Checking type " (:type col))
             (is (thrown-with-msg? clojure.lang.ExceptionInfo
@@ -196,9 +196,9 @@
                                                      :location (str "/" (:id library-root) "/" (:id metrics-root) "/")}
                    :model/Collection vanilla        {:name "Vanilla Collection" :type nil}]
       (let [vanilla-location (str "/" (:id vanilla) "/")]
-        (with-redefs [collection/library-root-collection? (fn [coll]
-                                                            (contains? #{(:id library-root) (:id data-root) (:id metrics-root)}
-                                                                       (:id coll)))]
+        (mt/with-dynamic-fn-redefs [collection/library-root-collection? (fn [coll]
+                                                                          (contains? #{(:id library-root) (:id data-root) (:id metrics-root)}
+                                                                                     (:id coll)))]
           (testing "Cannot move the Library collection itself into a vanilla collection"
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot update properties on a Library collection"
                                   (t2/update! :model/Collection (:id library-root) {:location vanilla-location}))))

@@ -456,7 +456,7 @@
   (testing "GHY-4137: engine-results reports the engine's total for every search, including a
             superuser transform search — transforms are no longer dropped by a post-filter, so
             the total is accurate and is not suppressed"
-    (with-redefs [metabot.search/search (fn [_ctx] (with-meta [{:id 1 :type "question"}] {:total 30}))]
+    (mt/with-dynamic-fn-redefs [metabot.search/search (fn [_ctx] (with-meta [{:id 1 :type "question"}] {:total 30}))]
       (mt/with-test-user :crowberto
         (is (= 30 (:total (engine-results {} ["question" "transform"] nil 20 0))))
         (is (= 30 (:total (engine-results {} ["question" "dashboard"] nil 20 0))))))))
@@ -590,10 +590,10 @@
     (testing "created_by: \"me\" with no type reaches the engine with the narrowed types, returns
               results, and discloses the narrowing"
       (let [captured-entity-types (atom nil)]
-        (with-redefs [metabot.search/search (fn [{:keys [entity-types]}]
-                                              (reset! captured-entity-types entity-types)
-                                              (with-meta [{:id 1 :type "question" :name "My I5 Card"}]
-                                                         {:total 1}))]
+        (mt/with-dynamic-fn-redefs [metabot.search/search (fn [{:keys [entity-types]}]
+                                                            (reset! captured-entity-types entity-types)
+                                                            (with-meta [{:id 1 :type "question" :name "My I5 Card"}]
+                                                                       {:total 1}))]
           (mt/with-current-user (mt/user->id :rasta)
             (let [content (tools.search/search-tool {:term_queries ["I5"] :created_by "me"}
                                                     {:token-scopes #{"agent:content:read"}})
@@ -607,9 +607,9 @@
                   "the narrowing is disclosed in the response text"))))))
     (testing "collection_id with no type reaches the engine with the narrowed types and discloses it"
       (let [captured-entity-types (atom nil)]
-        (with-redefs [metabot.search/search (fn [{:keys [entity-types]}]
-                                              (reset! captured-entity-types entity-types)
-                                              (with-meta [] {:total 0}))]
+        (mt/with-dynamic-fn-redefs [metabot.search/search (fn [{:keys [entity-types]}]
+                                                            (reset! captured-entity-types entity-types)
+                                                            (with-meta [] {:total 0}))]
           (mt/with-temp [:model/Collection {coll-id :id} {}]
             (mt/with-current-user (mt/user->id :crowberto)
               (let [content (tools.search/search-tool {:term_queries ["I5"] :collection_id coll-id}
@@ -622,9 +622,9 @@
                 (is (re-find #"collection_id narrowed the search to" text))))))))
     (testing "archived: true with no type reaches the engine with the narrowed types, does not 400"
       (let [captured-entity-types (atom nil)]
-        (with-redefs [metabot.search/search (fn [{:keys [entity-types]}]
-                                              (reset! captured-entity-types entity-types)
-                                              (with-meta [] {:total 0}))]
+        (mt/with-dynamic-fn-redefs [metabot.search/search (fn [{:keys [entity-types]}]
+                                                            (reset! captured-entity-types entity-types)
+                                                            (with-meta [] {:total 0}))]
           (mt/with-current-user (mt/user->id :crowberto)
             (let [content (tools.search/search-tool {:term_queries ["x"] :archived true}
                                                     {:token-scopes #{"agent:content:read"}})

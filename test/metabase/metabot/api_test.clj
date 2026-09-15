@@ -139,18 +139,19 @@
   (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)}]
     (let [generate-title! #(#'conversation-title/generate! conversation-id "default" "Show orders by month")
           stored-title    #(t2/select-one-fn :title :model/MetabotConversation :id conversation-id)]
-      (with-redefs [metabot.self/call-llm-structured (constantly {:title "\"Orders by Month!\""})]
+      (mt/with-dynamic-fn-redefs [metabot.self/call-llm-structured (constantly {:title "\"Orders by Month!\""})]
         (is (= "Orders by Month" (generate-title!)))
         (is (= "Orders by Month" (stored-title))))
-      (with-redefs [metabot.self/call-llm-structured (constantly {:title "Different title"})]
+      (mt/with-dynamic-fn-redefs [metabot.self/call-llm-structured (constantly {:title "Different title"})]
         (is (nil? (generate-title!)))
         (is (= "Orders by Month" (stored-title)))))))
 
 (deftest conversation-title-generation-skips-existing-title-test
   (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)
                                                                    :title   "Existing Title"}]
-    (with-redefs [metabot.self/call-llm-structured (fn [& _]
-                                                     (throw (ex-info "should not generate" {})))]
+    (mt/with-dynamic-fn-redefs
+      [metabot.self/call-llm-structured (fn [& _]
+                                          (throw (ex-info "should not generate" {})))]
       (is (= {:status :ready :title "Existing Title"}
              (conversation-title/ensure-title! conversation-id "default" "Show orders by month")))
       (is (= {:status "ready" :title "Existing Title"}
@@ -160,10 +161,11 @@
   (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)}]
     (let [gate       (promise)
           call-count (atom 0)]
-      (with-redefs [metabot.self/call-llm-structured (fn [& _]
-                                                       (swap! call-count inc)
-                                                       @gate
-                                                       {:title "Recovered Title"})]
+      (mt/with-dynamic-fn-redefs
+        [metabot.self/call-llm-structured (fn [& _]
+                                            (swap! call-count inc)
+                                            @gate
+                                            {:title "Recovered Title"})]
         (let [future-1 (conversation-title/submit! conversation-id "default" "Show orders by month")
               future-2 (conversation-title/submit! conversation-id "default" "Use a different prompt")]
           (is (some? future-1))
@@ -314,18 +316,19 @@
       (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
         (let [stored-parts  (atom nil)
               stored-kwargs (atom nil)]
-          (with-redefs [;; Pre-reducible throw: this is the exact escape path the new
-                        ;; catch covers. The agent loop's own (catch Exception) is
-                        ;; inside the reify, so a throw from `run-agent-loop` itself
-                        ;; bypasses it entirely.
-                        agent/run-agent-loop
-                        (fn [_opts]
-                          (throw (ex-info "agent setup exploded"
-                                          {:status 503 :provider :test})))
-                        metabot.persistence/finalize-assistant-turn!
-                        (fn [_pk parts & kwargs]
-                          (reset! stored-parts parts)
-                          (reset! stored-kwargs (apply hash-map kwargs)))]
+          (mt/with-dynamic-fn-redefs
+            [;; Pre-reducible throw: this is the exact escape path the new
+             ;; catch covers. The agent loop's own (catch Exception) is
+             ;; inside the reify, so a throw from `run-agent-loop` itself
+             ;; bypasses it entirely.
+             agent/run-agent-loop
+             (fn [_opts]
+               (throw (ex-info "agent setup exploded"
+                               {:status 503 :provider :test})))
+             metabot.persistence/finalize-assistant-turn!
+             (fn [_pk parts & kwargs]
+               (reset! stored-parts parts)
+               (reset! stored-kwargs (apply hash-map kwargs)))]
             (mt/with-model-cleanup [:model/MetabotMessage
                                     [:model/MetabotConversation :created_at]]
               (let [response (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
@@ -783,9 +786,10 @@
     (let [title-requests (atom [])]
       (with-mock-streaming-provider!
         (fn []
-          (with-redefs [conversation-title/ensure-title! (fn [& args]
-                                                           (swap! title-requests conj args)
-                                                           {:status :missing})]
+          (mt/with-dynamic-fn-redefs
+            [conversation-title/ensure-title! (fn [& args]
+                                                (swap! title-requests conj args)
+                                                {:status :missing})]
             (let [conversation-id (str (random-uuid))
                   first-response  (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
                                                         (agent-request conversation-id "first prompt"))
@@ -831,18 +835,19 @@
               turn-states   (atom [{:queries {"q_1" {:database 1}} :todos [{:id "a" :status "pending"}]}
                                    {:queries {"q_1" {:database 1} "q_2" {:database 2}} :todos [{:id "b" :status "done"}]}
                                    nil])]
-          (with-redefs [agent/run-agent-loop
-                        (fn [{:keys [state memory-atom]}]
-                          (swap! seeded-states conj state)
-                          (let [[turn-state] @turn-states]
-                            (swap! turn-states subvec 1)
-                            ;; mirror the real loop: populate the caller's atom so
-                            ;; finalize can persist this turn's state
-                            (some-> memory-atom
-                                    (reset! {:turn-state (or turn-state {})}))
-                            (cond-> [{:type :start :id "msg-1"}
-                                     {:type :text :text "ok"}]
-                              turn-state (conj {:type :data :data-type "state" :data turn-state}))))]
+          (mt/with-dynamic-fn-redefs
+            [agent/run-agent-loop
+             (fn [{:keys [state memory-atom]}]
+               (swap! seeded-states conj state)
+               (let [[turn-state] @turn-states]
+                 (swap! turn-states subvec 1)
+                 ;; mirror the real loop: populate the caller's atom so
+                 ;; finalize can persist this turn's state
+                 (some-> memory-atom
+                         (reset! {:turn-state (or turn-state {})}))
+                 (cond-> [{:type :start :id "msg-1"}
+                          {:type :text :text "ok"}]
+                   turn-state (conj {:type :data :data-type "state" :data turn-state}))))]
             (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
               (let [conversation-id (str (random-uuid))
                     turn-1-state    {:queries {:q_1 {:database 1}} :todos [{:id "a" :status "pending"}]}

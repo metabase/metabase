@@ -69,9 +69,9 @@
                                        remote-sync-token  "valid-token"
                                        remote-sync-branch "main"
                                        remote-sync-type   :read-only]
-      (with-redefs [settings/check-git-settings! (constantly nil)
-                    source.git/git-source        (fn [_ _ _ _] {:fake-source true})
-                    source.git/branches          (fn [_] ["main"])]
+      (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)
+                                  source.git/git-source        (fn [_ _ _ _] {:fake-source true})
+                                  source.git/branches          (fn [_] ["main"])]
         (is (= {:status "success"}
                (mt/user-http-request :crowberto :post 200 "ee/remote-sync/test-connection" {})))))))
 
@@ -85,9 +85,9 @@
                                          remote-sync-token  "valid-token"
                                          remote-sync-branch ""
                                          remote-sync-type   :read-write]
-        (with-redefs [settings/check-git-settings! (constantly nil)
-                      source.git/git-source        (fn [_ _ _ _] {:fake-source true})
-                      source.git/branches          (fn [_] (swap! branches-calls inc) [])]
+        (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)
+                                    source.git/git-source        (fn [_ _ _ _] {:fake-source true})
+                                    source.git/branches          (fn [_] (swap! branches-calls inc) [])]
           (mt/user-http-request :crowberto :post 200 "ee/remote-sync/test-connection" {})
           (is (= 1 @branches-calls)
               "Test Connection must call git/branches even when check-git-settings! skips the remote check"))))))
@@ -98,9 +98,9 @@
                                        remote-sync-token  "rotated-token"
                                        remote-sync-branch ""
                                        remote-sync-type   :read-write]
-      (with-redefs [settings/check-git-settings! (constantly nil)
-                    source.git/git-source        (fn [_ _ _ _] {:fake-source true})
-                    source.git/branches          (fn [_] (throw (ex-info "Authentication failed" {})))]
+      (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)
+                                  source.git/git-source        (fn [_ _ _ _] {:fake-source true})
+                                  source.git/branches          (fn [_] (throw (ex-info "Authentication failed" {})))]
         (is (= "Authentication failed: Please check your git credentials"
                (mt/user-http-request :crowberto :post 400 "ee/remote-sync/test-connection" {})))))))
 
@@ -111,11 +111,11 @@
                                          remote-sync-token  "saved-token"
                                          remote-sync-branch "main"
                                          remote-sync-type   :read-only]
-        (with-redefs [settings/check-git-settings! (constantly nil)
-                      source.git/git-source        (fn [url _ token _]
-                                                     (reset! captured {:url url :token token})
-                                                     {:fake-source true})
-                      source.git/branches          (fn [_] [])]
+        (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)
+                                    source.git/git-source        (fn [url _ token _]
+                                                                   (reset! captured {:url url :token token})
+                                                                   {:fake-source true})
+                                    source.git/branches          (fn [_] [])]
           (mt/user-http-request :crowberto :post 200 "ee/remote-sync/test-connection"
                                 {:remote-sync-url   "https://github.com/other/repo.git"
                                  :remote-sync-token "new-token"})
@@ -129,11 +129,11 @@
                                          remote-sync-token  full-token
                                          remote-sync-branch "main"
                                          remote-sync-type   :read-only]
-        (with-redefs [settings/check-git-settings! (constantly nil)
-                      source.git/git-source        (fn [_ _ token _]
-                                                     (reset! captured token)
-                                                     {:fake-source true})
-                      source.git/branches          (fn [_] [])]
+        (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)
+                                    source.git/git-source        (fn [_ _ token _]
+                                                                   (reset! captured token)
+                                                                   {:fake-source true})
+                                    source.git/branches          (fn [_] [])]
           (mt/user-http-request :crowberto :post 200 "ee/remote-sync/test-connection"
                                 {:remote-sync-token (setting/obfuscate-value full-token)})
           (is (= full-token @captured)
@@ -158,11 +158,11 @@
                                        remote-sync-branch "main"
                                        remote-sync-type   :read-only]
       (testing "Authentication failure maps to credentials error"
-        (with-redefs [settings/check-git-settings! (fn [_] (throw (ex-info "Authentication failed" {})))]
+        (mt/with-dynamic-fn-redefs [settings/check-git-settings! (fn [_] (throw (ex-info "Authentication failed" {})))]
           (is (= "Authentication failed: Please check your git credentials"
                  (mt/user-http-request :crowberto :post 400 "ee/remote-sync/test-connection" {})))))
       (testing "Repository-not-found maps to URL error"
-        (with-redefs [settings/check-git-settings! (fn [_] (throw (ex-info "Repository not found" {})))]
+        (mt/with-dynamic-fn-redefs [settings/check-git-settings! (fn [_] (throw (ex-info "Repository not found" {})))]
           (is (= "Repository not found: Please check the repository URL"
                  (mt/user-http-request :crowberto :post 400 "ee/remote-sync/test-connection" {}))))))))
 
@@ -1070,7 +1070,7 @@
                                             :started_at     (t/offset-date-time)
                                             :progress       0.0}]
       (let [check-git-call-count (atom 0)]
-        (with-redefs [settings/check-git-settings! (fn [_] (swap! check-git-call-count inc) true)]
+        (mt/with-dynamic-fn-redefs [settings/check-git-settings! (fn [_] (swap! check-git-call-count inc) true)]
           (mt/with-temporary-setting-values [remote-sync-url    "file://my/repo.git"
                                              remote-sync-token  nil
                                              remote-sync-type   :read-only
@@ -1746,9 +1746,9 @@
   (testing "PUT /api/ee/remote-sync/settings does not mark collections as synced when settings validation fails"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :location "/" :is_remote_synced false}]
-        (with-redefs [settings/check-and-update-remote-settings!
-                      (fn [_] (throw (ex-info "Authentication is required" {:status-code 400})))
-                      impl/finish-remote-config! (constantly nil)]
+        (mt/with-dynamic-fn-redefs [settings/check-and-update-remote-settings!
+                                    (fn [_] (throw (ex-info "Authentication is required" {:status-code 400})))
+                                    impl/finish-remote-config! (constantly nil)]
           (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
                                 {:remote-sync-url   "https://github.com/test/private-repo.git"
                                  :remote-sync-type  :read-write

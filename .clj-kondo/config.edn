@@ -73,6 +73,7 @@
   :metabase/no-jsqlparser-imports                            {:level :warning}
   :metabase/prefer-with-dynamic-fn-redefs                    {:level :warning}
   :metabase/t2-query-namespace                               {:level :warning}
+  :metabase/table-or-field-query                             {:level :warning}
   :metabase/toucan-model-ns                                  {:level :warning}
   :metabase/require-shape-checker                            {:level :warning}
   :metabase/tests-must-live-in-known-modules                 {:level :warning}
@@ -183,6 +184,9 @@
      clojure.core.async/to-chan!!
      ;; writes the ratchet files from a :once fixture that finishes before the parallel tests
      dev.kondo-ratchet/fix!
+     ;; builds Babashka's classpath cache from a :once fixture, before the parallel tests start, so that
+     ;; they don't each race to create it; the side effect is process-external and idempotent
+     metabase.core.modules-consistency-test/warm-babashka-classpath!
      metabase.ai-tracing.core/record!
      metabase.api.macros.defendpoint.tools-manifest/assert-optional-fields-nullable!
      ;; MCP v2 tool tests: call-tool! dispatches a tool with no shared mutable state across tests
@@ -909,7 +913,12 @@
    :name    agent-prose-namespaces}]
 
  :config-in-ns
- {test-namespaces
+ {metabase.app-db.custom-migrations
+  {:linters
+   ;; a migration reads the rows as they were when it ran; applying today's user settings would make it drift
+   {:metabase/table-or-field-query {:level :off}}}
+
+  test-namespaces
   {:linters
    {:inline-def                                          {:level :off}
     :missing-docstring                                   {:level :off}
@@ -936,6 +945,8 @@
   metabase.lib.aggregation-test
   {:linters {:metabase/prefer-with-dynamic-fn-redefs {:level :off}}}
   metabase.util.time-test
+  {:linters {:metabase/prefer-with-dynamic-fn-redefs {:level :off}}}
+  metabase.lib.metadata.calculation-test
   {:linters {:metabase/prefer-with-dynamic-fn-redefs {:level :off}}}
 
   ;; classloader sits below `util` in the module graph, so it can't use `metabase.util.log` without creating

@@ -124,7 +124,10 @@ export function getAiAuditingRoutes() {
     <>
       <Route index element={redirect("usage")} />
       <Route element={<MetabotAnalyticsAvailabilityLayout />}>
-        <Route path="usage" lazy={conversationStatsPage} />
+        <Route path="usage">
+          <Route index element={redirect("conversations")} />
+          <Route path=":metric" lazy={conversationStatsPage} />
+        </Route>
         <Route path="conversations" lazy={conversationsPage} />
         <Route path="conversations/:convoId" lazy={conversationDetailPage} />
       </Route>
@@ -138,7 +141,7 @@ export function getAiAuditingUpsellRoutes() {
   return (
     <>
       <Route index element={redirect("usage")} />
-      <Route path="usage" lazy={metabotAnalyticsUpsellPage} />
+      <Route path="usage/*" lazy={metabotAnalyticsUpsellPage} />
       {getMcpAnalyticsRoutes()}
       {getCliAnalyticsRoutes()}
     </>
