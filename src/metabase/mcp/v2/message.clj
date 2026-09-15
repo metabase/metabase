@@ -226,53 +226,63 @@
     :else
     [[:clean x]]))
 
-(defn- cut-string
+(defn- string-prefix
   "The first `n` characters of `s`, or one fewer when the `n`th begins a surrogate pair."
   [^String s n]
   (subs s 0 (cond-> n
               (and (< 0 n (.length s)) (Character/isHighSurrogate (.charAt s (int (dec n))))) dec)))
 
-(defn- cut-quoted
-  "`v` [[clean]]ed with as much of its text kept as fits in `budget` characters before the closing quote, marked with
-   `…` inside the quotes; just `…` when not even an empty value fits."
+(defn- quoted-excerpt
+  "`s` [[clean]]ed with only its first `n` characters kept, marked with `…` inside the quotes when that cuts it."
+  [^String s n]
+  (clean (if (< n (count s)) (str (string-prefix s n) "…") s)))
+
+(defn- quoted-excerpt-width
+  "How many characters of [[quoted-excerpt]] `s` `n` count against a budget: all of them for the whole value, all but
+   the `…` and closing quote for a cut one."
+  [s n]
+  (cond-> (count (quoted-excerpt s n))
+    (< n (count s)) (- 2)))
+
+(defn- truncated-quoted
+  "`[text cut?]`: `v` [[clean]]ed whole when it fits in `budget` characters, else the [[quoted-excerpt]] keeping the
+   most of its text that fits, or just `…` when not even an empty excerpt fits."
   [v budget]
   (let [s     (if (string? v) v (pr-str v))
-        fits? (fn [n] (<= (dec (count (clean (cut-string s n)))) budget))]
-    (if (fits? 0)
-      ;; A cleaned string never shrinks as characters are kept, so binary search for the most that fit.
-      (loop [lo 0, hi (count s)]
-        (if (< lo hi)
-          (let [mid (quot (+ lo hi 1) 2)]
-            (if (fits? mid)
-              (recur mid hi)
-              (recur lo (dec mid))))
-          (clean (str (cut-string s lo) "…"))))
-      "…")))
+        fits? #(<= (quoted-excerpt-width s %) budget)]
+    (cond
+      (fits? (count s)) [(quoted-excerpt s (count s)) false]
+      ;; A cut excerpt never shrinks as characters are kept, so binary search for the most that fit.
+      (fits? 0)         (loop [lo 0, hi (dec (count s))]
+                          (if (< lo hi)
+                            (let [mid (quot (+ lo hi 1) 2)]
+                              (if (fits? mid)
+                                (recur mid hi)
+                                (recur lo (dec mid))))
+                            [(quoted-excerpt s lo) true]))
+      :else             ["…" true])))
 
-(declare truncate-pieces)
+(declare truncated-pieces)
 
-(defn- truncate-piece
+(defn- truncated-piece
   "`[text cut?]`: `piece` rendered whole when it fits in `budget` characters, else cut short with an ellipsis."
   [[kind v] budget]
   (case kind
-    :message (truncate-pieces (pieces v) budget)
+    :message (truncated-pieces (pieces v) budget)
     :clean   (if (unquoted? v)
-               (truncate-piece [:text (str v)] budget)
-               (let [text (clean v)]
-                 (if (<= (count text) budget)
-                   [text false]
-                   [(cut-quoted v budget) true])))
+               (truncated-piece [:text (str v)] budget)
+               (truncated-quoted v budget))
     :text    (if (<= (count v) budget)
                [v false]
-               [(str (cut-string v budget) "…") true])))
+               [(str (string-prefix v budget) "…") true])))
 
-(defn- truncate-pieces
+(defn- truncated-pieces
   "`[text cut?]`: `pieces` rendered in order until one is cut to fit what remains of `budget`."
   [pieces budget]
   (let [sb (StringBuilder.)]
     (loop [pieces pieces, budget budget]
       (if-let [[piece & more] (seq pieces)]
-        (let [[^String text cut?] (truncate-piece piece budget)]
+        (let [[^String text cut?] (truncated-piece piece budget)]
           (.append sb text)
           (if cut?
             [(str sb) true]
@@ -285,8 +295,8 @@
   [x     :- :any
    limit :- :int]
   (let [[text] (try
-                 (truncate-pieces (pieces x) limit)
+                 (truncated-pieces (pieces x) limit)
                  (catch Exception e
                    (log/error e "Agent message failed to render for truncation")
-                   (truncate-piece [:text render-failure] limit)))]
+                   (truncated-piece [:text render-failure] limit)))]
     (msg ["%s"] (raw text))))

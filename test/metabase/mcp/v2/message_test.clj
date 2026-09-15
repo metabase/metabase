@@ -173,3 +173,26 @@
     (is (= "Found …" (message/render (message/truncate (message/msg ["Found %s."] "abc") 6)))))
   (testing "a non-message is cut as its cleaned rendering"
     (is (= "\"a\\nb…\"" (message/render (message/truncate "a\nb\nc" 6))))))
+
+(deftest ^:parallel truncate-quoted-value-one-over-budget-test
+  (testing "GHY-4544: a quoted value one character over its budget is cut, never kept whole with an ellipsis added"
+    (is (= "\"abc…\"" (message/render (message/truncate (message/msg ["%s"] "abcd") 5))))
+    (is (= "Found \"abc…\"" (message/render (message/truncate (message/msg ["Found %s."] "abcd") 11))))))
+
+(deftest ^:parallel truncate-boundary-sweep-test
+  (testing "GHY-4544: at every limit a truncation is no longer than the rendering, at most `limit` + 2 characters,
+            and the whole rendering when that fits"
+    (doseq [x     [(message/msg ["%s"] "abcd")
+                   (message/msg ["Found %s."] "abcd")
+                   (message/msg ["%s and %s, %d."] "a\nb" (message/raw "raw") 42)
+                   (message/msg ["Wrapped: %s"] (message/msg ["No table %s."] "orders"))
+                   (message/msg ["Count: %d"] "x\ny")
+                   "a\"b\nc"]
+            :let  [rendered (message/render x)]
+            limit (range (+ (count rendered) 3))]
+      (let [truncated (message/render (message/truncate x limit))]
+        (testing (pr-str [rendered limit truncated])
+          (is (<= (count truncated) (count rendered)))
+          (is (<= (count truncated) (+ limit 2)))
+          (when (<= (count rendered) limit)
+            (is (= rendered truncated))))))))
