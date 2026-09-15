@@ -597,7 +597,7 @@
     (let [applicable (get include->types inc-name)]
       (when-not (some applicable batch-types)
         (common/throw-teaching-error
-         (message/msg ["`include` section %s does not apply to type%s %s — it is available for: %s."]
+         (message/msg ["\"include\" section %s does not apply to type%s %s — it is available for: %s."]
                       inc-name
                       (message/raw (if (= 1 (count batch-types)) "" "s"))
                       (common/list-message (sort batch-types))
@@ -673,7 +673,7 @@
   [{:keys [items include] :as args} _]
   (when (> (count items) max-items)
     (common/throw-teaching-error
-     (message/msg ["`items` accepts at most %d entries per call — you passed %d; split the batch."]
+     (message/msg ["\"items\" accepts at most %d entries per call — you passed %d; split the batch."]
                   max-items (count items))))
   ;; Surface an invalid response_format once, before any item work.
   (common/response-format args)

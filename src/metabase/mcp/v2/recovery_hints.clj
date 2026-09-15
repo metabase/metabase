@@ -21,7 +21,7 @@
     (case entity-type
       "metric"
       (message/msg [(str "Metrics are aggregations, not sources. To use metric %s, put its base table's "
-                         "numeric id into `source-table:` (find it via `search` or `browse_data`) and "
+                         "numeric id into `source-table:` (find it via \"search\" or \"browse_data\") and "
                          "reference the metric by its numeric id: `aggregation: [[metric, {}, %s]]`.")]
                    id id)
 
@@ -47,38 +47,38 @@
     ;; On the numeric-id surface both keys resolve the same way: list the tables and pick a
     ;; numeric id. (v1 keeps them separate because a portable-FK miss and a numeric-id miss want
     ;; different vocabulary; here both want the numeric id.)
-    (message/msg [(str "Call `browse_data` with action \"list_tables\" to list available "
-                       "tables with their numeric ids, then use one as `source-table`.")])
+    (message/msg [(str "Call \"browse_data\" with action \"list_tables\" to list available "
+                       "tables with their numeric ids, then use one as \"source-table\".")])
 
     :ambiguous-table
-    (message/msg [(str "Call `browse_data` with action \"list_tables\" for the database, "
+    (message/msg [(str "Call \"browse_data\" with action \"list_tables\" for the database, "
                        "then retry with the numeric table id — it is never ambiguous.")])
 
     (:unknown-field :unknown-field-id)
-    (message/msg [(str "Call `browse_data` with action \"get_fields\" for "
+    (message/msg [(str "Call \"browse_data\" with action \"get_fields\" for "
                        "the table to list its columns with their numeric ids.")])
 
     :ambiguous-fk
-    (message/msg [(str "Call `browse_data` with action \"get_fields\" for the "
+    (message/msg [(str "Call \"browse_data\" with action \"get_fields\" for the "
                        "source table to list the available foreign-key columns.")])
 
     :no-fk-path
-    (message/msg [(str "If a metric relates to that table, call `browse_data` with action \"get_fields\" for the "
+    (message/msg [(str "If a metric relates to that table, call \"browse_data\" with action \"get_fields\" for the "
                        "table that owns the metric to read its dimensions, which give the exact `joins:` clause.")])
 
     (:unknown-card :unknown-card-id)
-    (message/msg ["Find the question or model with `search` and put its bare numeric id into `source-card:`."])
+    (message/msg ["Find the question or model with \"search\" and put its bare numeric id into `source-card:`."])
 
     (:unknown-measure :unknown-measure-id)
-    (message/msg [(str "Call `browse_data` with action \"get_fields\" for the table that "
+    (message/msg [(str "Call \"browse_data\" with action \"get_fields\" for the table that "
                        "owns the measure and use the numeric id from its measures list.")])
 
     (:unknown-segment :unknown-segment-id)
-    (message/msg [(str "Call `browse_data` with action \"get_fields\" for the table that "
+    (message/msg [(str "Call \"browse_data\" with action \"get_fields\" for the table that "
                        "owns the segment and use the numeric id from its segments list.")])
 
     :unknown-database
-    (message/msg [(str "Use a numeric table id in `source-table:` (from `browse_data` "
+    (message/msg [(str "Use a numeric table id in `source-table:` (from \"browse_data\" "
                        "action \"list_tables\"), which needs no database name at all.")])
 
     :missing-source-in-first-stage

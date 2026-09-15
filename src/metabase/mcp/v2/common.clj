@@ -209,7 +209,7 @@
    existence oracle across the permission boundary."
   [model id]
   (throw-teaching-error (message/msg ["%s %s not found — it may not exist, or you may not have access to it."]
-                                     (message/raw (name model)) id)
+                                     (name model) id)
                         {:status-code 404}))
 
 (defn- status-code->error-code
@@ -253,12 +253,12 @@
   (let [{:keys [type fn-name humanized]} (ex-data e)]
     (when (contains? schema-failure-types type)
       (if (= type :metabase.util.malli.fn/invalid-input)
-        (message/msg [(str "Server-side schema check failed in `%s`: %s. This is "
+        (message/msg [(str "Server-side schema check failed in %s: %s. This is "
                            "a bug in Metabase, not something to retry — report it.")]
-                     (message/raw (str fn-name)) (humanize-detail humanized))
-        (message/msg [(str "Server-side schema check failed in `%s` (on its return value). "
+                     (str fn-name) (humanize-detail humanized))
+        (message/msg [(str "Server-side schema check failed in %s (on its return value). "
                            "This is a bug in Metabase, not something to retry — report it.")]
-                     (message/raw (str fn-name)))))))
+                     (str fn-name))))))
 
 (def ^:private internal-error
   (message/msg ["Internal error"]))
@@ -375,18 +375,18 @@
    (select-fields type response-map fields nil))
   ([type response-map fields {:keys [response-format include]}]
    (when (or response-format include)
-     (throw-teaching-error (message/msg ["Use `fields` OR `response_format`/`include`, not both."])))
+     (throw-teaching-error (message/msg ["Use \"fields\" OR \"response_format\"/\"include\", not both."])))
    (when (empty? fields)
-     (throw-teaching-error (message/msg ["`fields` must name at least one path."])))
+     (throw-teaching-error (message/msg ["\"fields\" must name at least one path."])))
    (let [catalog (or (projections/catalog type)
-                     (throw-teaching-error (message/msg ["`fields` is not supported for type %s."]
-                                                        (message/raw (name type)))))]
+                     (throw-teaching-error (message/msg ["\"fields\" is not supported for type %s."]
+                                                        (name type))))]
      (doseq [path fields]
        (when-not (valid-path? path catalog)
          (throw-teaching-error (message/msg ["Unknown field path %s for type %s. Nearest valid paths: %s."]
                                             path
-                                            (message/raw (name type))
-                                            (message/raw (str/join ", " (nearest-paths path catalog)))))))
+                                            (name type)
+                                            (list-message (nearest-paths path catalog))))))
      (select-tree response-map (paths->tree fields)))))
 
 (defn response-format
@@ -425,8 +425,8 @@
       (let [total-phrase (total-message total total-floor?)
             next         (+ offset limit)]
         (if param
-          (message/msg ["Returned %d of %s — narrow with `%s`, or continue with `offset: %d`."]
-                       returned total-phrase (message/raw (name param)) next)
+          (message/msg ["Returned %d of %s — narrow with %s, or continue with `offset: %d`."]
+                       returned total-phrase (name param) next)
           (message/msg ["Returned %d of %s — continue with `offset: %d`."]
                        returned total-phrase next))))))
 
@@ -440,7 +440,7 @@
   (when (and total (pos? total))
     (let [total-phrase (total-message total total-floor?)]
       (if (pos? (or offset 0))
-        (message/msg ["No results at offset %d — %s available; page back with a smaller `offset`."]
+        (message/msg ["No results at offset %d — %s available; page back with a smaller \"offset\"."]
                      offset total-phrase)
         ;; offset 0 with a positive total: the matches were counted, then dropped downstream
         ;; (a stale index hit, a row gone unreadable). Paging cannot help, so don't suggest it.

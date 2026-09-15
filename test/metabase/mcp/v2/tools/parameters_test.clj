@@ -241,7 +241,7 @@
         (let [args {:target "dashboard" :id (:id dashboard) :parameter_id "_CATEGORY_NAME_" :limit 2}]
           (testing "the first page names both ways out: narrowing and the next offset"
             (is (= [["African"] ["American"]] (:values (params-result args))))
-            (is (re-find #"narrow with `query`, or continue with `offset: 2`" (steering-line args))))
+            (is (re-find #"narrow with \"query\", or continue with `offset: 2`" (steering-line args))))
           (testing "offset continues where the page left off"
             (is (= [["Artisan"] ["Asian"]]
                    (:values (params-result (assoc args :offset 2)))))))))))
@@ -289,7 +289,7 @@
         (binding [custom-values/*max-rows* 3]
           (let [args {:target "dashboard" :id (:id dashboard) :parameter_id "_CARD_"}]
             (is (true? (:has_more_values (params-result args))))
-            (is (re-find #"holds more values than it will return; narrow with `query`" (steering-line args))))
+            (is (re-find #"holds more values than it will return; narrow with \"query\"" (steering-line args))))
           (testing "and a page shorter than the capped list still reads as a floor"
             (is (re-find #"Returned 2 of at least 3"
                          (steering-line {:target "dashboard" :id (:id dashboard)
@@ -304,7 +304,7 @@
         (binding [custom-values/*max-rows* 3]
           (let [args {:target "dashboard" :id (:id dashboard) :parameter_id "_CARD_" :offset 10}]
             (is (true? (:has_more_values (params-result args))))
-            (is (re-find #"narrow with `query`" (steering-line args)))
+            (is (re-find #"narrow with \"query\"" (steering-line args)))
             (is (not (re-find #"3 available" (steering-line args))))))))))
 
 (deftest query-search-test
@@ -330,10 +330,10 @@
             reject it as a non-blank string, and uninstrumented it would match nothing at all"
     (with-fixtures [{:keys [dashboard native-card]}]
       (mt/with-test-user :rasta
-        (is (re-find #"`query` .* blank"
+        (is (re-find #"\"query\" .* blank"
                      (params-error {:target "dashboard" :id (:id dashboard)
                                     :parameter_id "_CATEGORY_NAME_" :query "   "})))
-        (is (re-find #"`query` .* blank"
+        (is (re-find #"\"query\" .* blank"
                      (params-error {:target "question" :id (:id native-card)
                                     :parameter_id "_CARD_NAME_" :query "   "})))))))
 
@@ -595,8 +595,8 @@
         (mt/with-test-user :rasta
           (let [msg (params-error {:target "dashboard" :id dash-id :parameter_id "_DATE_"
                                    :query "2013"})]
-            (is (re-find #"no list for `query` to search" msg))
-            (is (re-find #"`accepts`" msg))))))))
+            (is (re-find #"no list for \"query\" to search" msg))
+            (is (re-find #"\"accepts\"" msg))))))))
 
 (deftest every-advertised-date-form-parses-test
   (testing "GHY-4519: every form in `accepts` actually parses as a date filter. This is the one claim
@@ -629,9 +629,9 @@
                                                     :dataset_query (table-query (mt/id :venues))}]
       (mt/with-non-admin-groups-no-collection-perms collection
         (mt/with-test-user :rasta
-          (is (re-find #"Dashboard .* not found"
+          (is (re-find #"\"Dashboard\" .* not found"
                        (params-error {:target "dashboard" :id dash-id :parameter_id "_S_"})))
-          (is (re-find #"Card .* not found"
+          (is (re-find #"\"Card\" .* not found"
                        (params-error {:target "question" :id card-id :parameter_id "_S_"}))))))))
 
 (deftest constraint-not-join-reachable-test
@@ -787,7 +787,7 @@
              {:keys [returned has_more_values]} (params-result args)]
          (is (= 1000 returned) "the fetch fills the 1000-row cap")
          (is (true? has_more_values) "and the cap is reported as a floor, not a complete set")
-         (is (re-find #"narrow with `query`" (steering-line args))
+         (is (re-find #"narrow with \"query\"" (steering-line args))
              "with a steering line telling the agent to narrow rather than trust the list as exhaustive"))))))
 
 (deftest question-fetch-error-is-not-empty-values-test

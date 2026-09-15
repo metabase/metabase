@@ -111,7 +111,7 @@
            (text-of (call {:topic "nope"}))))
     (is (= "Topic \"query-dialect\" has no reference \"nope\". Its references: \"operators\"."
            (text-of (call {:topic "query-dialect" :reference "nope"}))))
-    (is (= (str "`reference` names a file within a topic — pass `topic` alongside it, "
+    (is (= (str "\"reference\" names a file within a topic — pass \"topic\" alongside it, "
                 "e.g. learn(\"query-dialect\", \"operators\").")
            (text-of (call {:reference "operators"})))))
   (testing "GHY-4544: a topic or reference carrying line breaks can't forge server lines"

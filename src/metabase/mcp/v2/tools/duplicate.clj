@@ -154,7 +154,7 @@
     ;; published strict inputSchema marks every property required, so a strict client must send it.
     (when (and (true? is_deep_copy) (not= type "dashboard"))
       (common/throw-teaching-error
-       (message/msg ["`is_deep_copy` applies to dashboards only — omit it when duplicating type %s."] type)))
+       (message/msg ["\"is_deep_copy\" applies to dashboards only — omit it when duplicating type %s."] type)))
     (let [source        (fetch id)
           collection-id (destination-collection-id args)
           copy          (copy! source collection-id (or new_name (tru "Copy of {0}" (:name source)))

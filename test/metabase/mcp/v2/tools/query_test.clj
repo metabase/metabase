@@ -198,7 +198,7 @@
           (is (= 5 (:returned body)))
           (is (true? (:truncated body)))
           (is (string? (:next_cursor body)))
-          (is (str/includes? (steering-line result) "continue with `cursor`")))
+          (is (str/includes? (steering-line result) "continue with \"cursor\"")))
         (testing "GHY-4142: obeying the steering hint makes progress — the cursor serves the next page, same size, no overlap"
           ;; row_limit sizes a cursor page like any other: the cursor carries the boundary, not
           ;; the page size, so a chain that wants a fixed size passes it on every call.
@@ -274,7 +274,7 @@
             (is (= page-size (:returned body)))
             (is (true? (:truncated body)))
             (is (string? (:next_cursor body)))
-            (is (str/includes? (steering-line page) "continue with `cursor`"))
+            (is (str/includes? (steering-line page) "continue with \"cursor\""))
             (is (str/includes? (steering-line page) "`limit: N`"))))
         (testing "the page that exhausts the limit fills exactly and is complete: no cursor, no steering"
           (let [body (payload page3)]
@@ -342,7 +342,7 @@
           (is (nil? (:next_cursor body)))
           (is (str/includes? (steering-line result) "narrow the query"))
           (testing "the dead end names an affordance that exists"
-            (is (str/includes? (steering-line result) "raise `row_limit`"))
+            (is (str/includes? (steering-line result) "raise \"row_limit\""))
             (is (not (str/includes? (steering-line result) "export"))
                 "no export tool exists in v2 — steering at one sends the agent after an affordance it does not have"))
           (testing "and does not suggest paging by hand — a keyset over a fan-out join is exactly
@@ -393,7 +393,7 @@
           (is (= 5 (:returned body)))
           (is (true? (:truncated body)))
           (is (nil? (:next_cursor body)))
-          (is (not (str/includes? (steering-line result) "continue with `cursor`"))
+          (is (not (str/includes? (steering-line result) "continue with \"cursor\""))
               "offering a cursor affordance with no cursor would strand the agent")
           (is (str/includes? (steering-line result) "narrow the query")))
         (testing "GHY-4363: projecting the PK alongside restores the cursor — the refusal is about uniqueness, not about `fields`"
@@ -720,8 +720,8 @@
                                                                    :source-table 999999999}]}}))]
       (testing "GHY-4544: an unknown numeric table id quotes the pipeline's sentence and steers to browse_data as prose"
         (is (= (str "\"No table found with id 999999999.\"\n"
-                    "Call `browse_data` with action \"list_tables\" to list available tables with their numeric ids, "
-                    "then use one as `source-table`.")
+                    "Call \"browse_data\" with action \"list_tables\" to list available tables with their numeric ids, "
+                    "then use one as \"source-table\".")
                msg))))))
 
 (deftest ^:parallel error-hints-name-v2-tools-test

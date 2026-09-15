@@ -148,10 +148,10 @@
 
 (def wire-target-grammar
   "The wire_parameter target grammar, embedded in wiring teaching errors."
-  (message/msg [(str "wire_parameter takes exactly one of: `target_field` (numeric field id — MBQL cards and "
+  (message/msg [(str "wire_parameter takes exactly one of: \"target_field\" (numeric field id — MBQL cards and "
                      "native field-filter tags; the server derives the mapping), "
-                     "`target_tag` (a tag name on a native card; the server derives dimension vs variable "
+                     "\"target_tag\" (a tag name on a native card; the server derives dimension vs variable "
                      "from the tag's type), "
-                     "or raw `target` (advanced, e.g. [\"dimension\", [\"template-tag\", \"category\"]]; "
+                     "or raw \"target\" (advanced, e.g. [\"dimension\", [\"template-tag\", \"category\"]]; "
                      "[\"text-tag\", \"name\"] binds a {{name}} placeholder in a text/heading/iframe card's "
                      "own content). Full doc: learn(\"dashboard-filters\").")]))

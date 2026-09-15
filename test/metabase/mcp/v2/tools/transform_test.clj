@@ -216,7 +216,7 @@
       (is (re-find #"\"target\" is required when method is \"create\""
                    (tool-error (write! {:method "create" :name "x" :definition (query-definition)}))))
       (testing "and a target without a name is caught before anything is written"
-        (is (re-find #"`target.name` is required"
+        (is (re-find #"\"target.name\" is required"
                      (tool-error (write! {:method "create" :name "x" :definition (query-definition)
                                           :target {:schema (venues-schema)}}))))))))
 
@@ -264,7 +264,7 @@
                                           :definition (venues-query)
                                           :target     {:name "y" :schema (venues-schema)}})))))
       (testing "and a definition with no recognizable type at all"
-        (is (re-find #"`definition.type` is null"
+        (is (re-find #"\"definition.type\" is null"
                      (tool-error (write! {:method     "create"
                                           :name       "x"
                                           :definition {:query (venues-query)}
@@ -687,7 +687,7 @@
         (mt/with-temp [:model/Transform {id :id} (temp-transform-defaults "mcp_bad_type")]
           (let [error (tool-error (write! {:method "update" :id id
                                            :target {:name "mcp_bad_type" :type "table-incremental"}}))]
-            (is (re-find #"`target.type`" error))
+            (is (re-find #"\"target.type\"" error))
             (is (re-find #"table-incremental" error)))
           (testing "as is an incremental strategy on the target"
             (let [error (tool-error (write! {:method "update" :id id
@@ -703,7 +703,7 @@
         (mt/with-temp [:model/Transform {id :id} (temp-transform-defaults "mcp_foreign_db")]
           (let [error (tool-error (write! {:method "update" :id id
                                            :target {:name "mcp_foreign_db" :database (inc (mt/id))}}))]
-            (is (re-find #"`target.database`" error))
+            (is (re-find #"\"target.database\"" error))
             (is (re-find #"follows the query" error))))))))
 
 (deftest transform-write-update-target-conflict-test
@@ -717,7 +717,7 @@
             (let [error (tool-error (write! {:method "update" :id id :target {:name table-name}}))]
               (is (re-find #"already exists" error))
               (is (re-find (re-pattern table-name) error))
-              (is (re-find #"Pick a different `target.name`" error))))
+              (is (re-find #"Pick a different \"target.name\"" error))))
           (testing "but a target that isn't moving is left alone, so a transform that has already built
                     its own output table stays editable"
             ;; The source reads a different table than the target writes: a transform reading and
@@ -765,7 +765,7 @@
                                      :target-incremental-strategy {:type "append"}})]
         (let [error (tool-error (write! {:method "update" :id id :target {:name "mcp_renamed"}}))]
           (is (re-find #"\"table-incremental\" target" error))
-          (is (re-find #"omit `target`" error)))
+          (is (re-find #"omit \"target\"" error)))
         (testing "including when the agent passes the stored target back verbatim, which is how it
                   would actually arrive — the refusal has to survive the round-trip shape"
           (let [error (tool-error (write! {:method "update" :id id
@@ -786,7 +786,7 @@
                                    [:source :source-incremental-strategy] strategy)]
             (let [error (tool-error (write! {:method "update" :id id :definition (query-definition)}))]
               (is (re-find #"loads incrementally \(\"checkpoint\"\)" error))
-              (is (re-find #"omit `definition`" error)))
+              (is (re-find #"omit \"definition\"" error)))
             (testing "and the stored strategy is untouched"
               (is (= strategy (:source-incremental-strategy
                                (t2/select-one-fn :source :model/Transform :id id)))))

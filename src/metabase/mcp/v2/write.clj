@@ -79,7 +79,7 @@
     (do
       (when (seq clear)
         (common/throw-teaching-error
-         (message/msg ["`clear` applies to method \"update\" only — a new object has nothing set to clear."])))
+         (message/msg ["\"clear\" applies to method \"update\" only — a new object has nothing set to clear."])))
       (doseq [k create-required]
         (when (nil? (get args k))
           (common/throw-teaching-error (message/msg ["%s is required when method is \"create\"."]
@@ -89,7 +89,7 @@
     "update"
     (do
       (when (nil? id)
-        (common/throw-teaching-error (message/msg ["`id` is required when method is \"update\"."])))
+        (common/throw-teaching-error (message/msg ["\"id\" is required when method is \"update\"."])))
       ;; Every `_write` tool's `id` takes an int or a string, so a client that serializes such a
       ;; param as a string reaches the tool's own id handling already coerced (GHY-4498).
       [:update (v2.resolve/normalize-id id) (-> (dissoc args :method :id)
@@ -97,5 +97,5 @@
 
     (common/throw-teaching-error
      (if (nil? method)
-       (message/msg ["`method` is required — use \"create\" or \"update\"."])
+       (message/msg ["\"method\" is required — use \"create\" or \"update\"."])
        (message/msg ["Invalid method %s — use \"create\" or \"update\"."] method)))))

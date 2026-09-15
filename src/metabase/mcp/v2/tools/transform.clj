@@ -67,7 +67,7 @@
       ;; and fails much later on the inner query. Name the wrap instead.
       (or (contains? definition :database) (contains? definition :stages))
       (common/throw-teaching-error
-       (message/msg [(str "`definition` is a query, not a transform source — wrap "
+       (message/msg [(str "\"definition\" is a query, not a transform source — wrap "
                           "it: {\"type\": \"query\", \"query\": <your query>}.")]))
 
       (= "python" source-type)
@@ -75,17 +75,18 @@
 
       (not= "query" source-type)
       (common/throw-teaching-error
-       (message/msg ["`definition.type` is %s. %s"] source-type accepted-shapes))
+       (message/msg ["\"definition.type\" is %s. %s"] source-type accepted-shapes))
 
       (contains? definition :source-incremental-strategy)
       (common/throw-teaching-error
-       (message/msg [(str "`definition.source-incremental-strategy` sets up incremental "
+       (message/msg [(str "\"definition.source-incremental-strategy\" sets up incremental "
                           "(checkpoint) loading, which transform_write can't author — "
                           "configure it in Metabase, and edit the query here without it.")]))
 
       :else
       (let [query (or (:query definition)
-                      (common/throw-teaching-error (message/msg ["`definition` has no `query`. %s"] accepted-shapes)))]
+                      (common/throw-teaching-error (message/msg ["\"definition\" has no \"query\". %s"]
+                                                                accepted-shapes)))]
         (normalize-transform-query
          (if (v2.queries/portable-query? query)
            (v2.queries/resolve-external-query query accepted-shapes)
@@ -118,8 +119,8 @@
   [{:keys [definition query_handle]} session-id token-scopes]
   (when (and definition query_handle)
     (common/throw-teaching-error
-     (message/msg [(str "Pass exactly one query source: `definition` (the transform's "
-                        "source) or `query_handle` (a handle from an execute tool).")])))
+     (message/msg [(str "Pass exactly one query source: \"definition\" (the transform's "
+                        "source) or \"query_handle\" (a handle from an execute tool).")])))
   (when-let [query (cond
                      definition   (let [query (definition->query definition)]
                                     (when (query-guards/native-query? query)
@@ -153,26 +154,26 @@
     (when (and existing (not= "table" existing-type))
       (common/throw-teaching-error
        (message/msg [(str "This transform writes to a %s target, which transform_write can't "
-                          "edit — change it in Metabase, or omit `target` to leave it alone.")]
+                          "edit — change it in Metabase, or omit \"target\" to leave it alone.")]
                     existing-type)))
     (when (and target-type (not= "table" target-type))
       (common/throw-teaching-error
-       (message/msg [(str "`target.type` is %s — transform_write authors plain \"table\" targets, rebuilt in "
-                          "full on every run. Incremental targets are configured in Metabase; omit `target.type`.")]
+       (message/msg [(str "\"target.type\" is %s — transform_write authors plain \"table\" targets, rebuilt in "
+                          "full on every run. Incremental targets are configured in Metabase; omit \"target.type\".")]
                     target-type)))
     (when (:target-incremental-strategy target)
       (common/throw-teaching-error
-       (message/msg [(str "`target.target-incremental-strategy` sets up incremental "
+       (message/msg [(str "\"target.target-incremental-strategy\" sets up incremental "
                           "(append/merge) loading, which transform_write can't author — "
                           "configure it in Metabase, and edit the transform here without it.")])))
     (when (and database source-db-id (not= database source-db-id))
       (common/throw-teaching-error
-       (message/msg [(str "`target.database` is %d but the query reads from database %d — a transform writes to "
+       (message/msg [(str "\"target.database\" is %d but the query reads from database %d — a transform writes to "
                           "the database its query reads, so the target database follows the query rather than "
-                          "being set separately. Omit `target.database`, or point the query at database %d.")]
+                          "being set separately. Omit \"target.database\", or point the query at database %d.")]
                     database source-db-id database)))
     (when (and (nil? existing) (nil? target-name))
-      (common/throw-teaching-error (message/msg [(str "`target.name` is required when method is \"create\" "
+      (common/throw-teaching-error (message/msg [(str "\"target.name\" is required when method is \"create\" "
                                                       "— it names the table the transform writes.")])))
     ;; `:database` is derived from the query being stored, never carried over from `existing`: on a
     ;; source-database swap the stored target would otherwise keep the OLD database while the query reads
@@ -190,7 +191,7 @@
   [{:keys [target] :as body}]
   (when (transforms/target-table-exists? body)
     (common/throw-teaching-error
-     (message/msg [(str "A table named %s already exists in the target database. Pick a different `target.name` "
+     (message/msg [(str "A table named %s already exists in the target database. Pick a different \"target.name\" "
                         "(or schema) — a transform creates its output table, it doesn't adopt one.")]
                   (str (when-let [s (:schema target)] (str s ".")) (:name target))))))
 
@@ -218,7 +219,7 @@
       (when (seq unknown)
         (common/throw-teaching-error
          (message/msg [(str "No transform tag has id %s. Tags are created in Metabase and listed on a transform's "
-                            "read — pass only ids that exist, or omit `tag_ids` to leave the current ones alone.")]
+                            "read — pass only ids that exist, or omit \"tag_ids\" to leave the current ones alone.")]
                       (common/list-message unknown)))))))
 
 ;;; -------------------------------------------------- Responses ---------------------------------------------------
@@ -250,8 +251,8 @@
   [{:keys [name description tag_ids] :as args} session-id token-scopes]
   (let [source (or (resolve-source args session-id token-scopes)
                    (common/throw-teaching-error
-                    (message/msg [(str "Pass the transform's query: `definition` (inline) "
-                                       "or `query_handle` (from an execute tool).")])))
+                    (message/msg [(str "Pass the transform's query: \"definition\" (inline) "
+                                       "or \"query_handle\" (from an execute tool).")])))
         body   (u/remove-nils
                 {:name          name
                  :description   description
@@ -288,7 +289,7 @@
     (common/throw-teaching-error
      (message/msg [(str "This transform's source loads incrementally (%s), which transform_write "
                         "can't author — replacing its query here would drop that. Edit the query in "
-                        "Metabase, or omit `definition`/`query_handle` to leave the source alone.")]
+                        "Metabase, or omit \"definition\"/\"query_handle\" to leave the source alone.")]
                   (name (:type strategy))))))
 
 (defn- update!

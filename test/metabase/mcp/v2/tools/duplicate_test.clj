@@ -408,7 +408,7 @@
                                                        :collection_id coll-id
                                                        :is_deep_copy  false})))))
         (testing "an explicit true is still a teaching error on a non-dashboard"
-          (is (= "`is_deep_copy` applies to dashboards only — omit it when duplicating type \"question\"."
+          (is (= "\"is_deep_copy\" applies to dashboards only — omit it when duplicating type \"question\"."
                  (tool-error (call-tool! :crowberto {:type "question" :id card-id :is_deep_copy true})))))))))
 
 (deftest duplicate-dashboard-shallow-with-dashboard-questions-test
@@ -428,7 +428,7 @@
 (deftest duplicate-deep-copy-wrong-type-test
   (testing "GHY-4151: is_deep_copy is dashboards-only and says so"
     (mt/with-temp [:model/Card {card-id :id} {:type :question :dataset_query (venues-query)}]
-      (is (= "`is_deep_copy` applies to dashboards only — omit it when duplicating type \"question\"."
+      (is (= "\"is_deep_copy\" applies to dashboards only — omit it when duplicating type \"question\"."
              (tool-error (call-tool! :crowberto {:type "question" :id card-id :is_deep_copy true})))))))
 
 ;;; -------------------------------------------------- document ----------------------------------------------------
@@ -493,9 +493,9 @@
                                                 :collection_id coll-id
                                                 :dataset_query (venues-query)}
                      :model/Dashboard {dash-id :id} {:collection_id coll-id}]
-        (is (= (format "Card %d not found — it may not exist, or you may not have access to it." card-id)
+        (is (= (format "\"Card\" %d not found — it may not exist, or you may not have access to it." card-id)
                (tool-error (call-tool! :rasta {:type "question" :id card-id}))))
-        (is (= (format "Dashboard %d not found — it may not exist, or you may not have access to it." dash-id)
+        (is (= (format "\"Dashboard\" %d not found — it may not exist, or you may not have access to it." dash-id)
                (tool-error (call-tool! :rasta {:type "dashboard" :id dash-id}))))))))
 
 (deftest destination-write-permission-test

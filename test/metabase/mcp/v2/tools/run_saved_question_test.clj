@@ -86,7 +86,7 @@
           (is (= 5 (:returned payload)))
           (is (= 5 (count (:rows payload))))
           (is (true? (:truncated payload)))
-          (is (= "returned 5 rows, more available — narrow with `parameters`, or raise `row_limit` (max 2000)"
+          (is (= "returned 5 rows, more available — narrow with \"parameters\", or raise \"row_limit\" (max 2000)"
                  (::steering payload)))
           (is (= ["ID" "CATEGORY"] (map :name (:cols payload))))
           (is (every? (every-pred :name :base_type :display_name) (:cols payload)))
@@ -193,7 +193,7 @@
   (testing "a parameter entry with neither id nor slug is a teaching error naming the required keys"
     (mt/with-temp [:model/Card {card-id :id} (variable-card "rsq missing id")]
       (mt/with-current-user (mt/user->id :rasta)
-        (is (= "Each parameter needs an `id` — the parameter's id or slug — and a `value`."
+        (is (= "Each parameter needs an \"id\" — the parameter's id or slug — and a \"value\"."
                (tool-error (call-run-saved-question
                             {:id card-id :parameters [{:value "Widget"}]}))))))))
 

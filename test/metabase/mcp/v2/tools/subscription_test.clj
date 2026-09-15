@@ -142,7 +142,7 @@
 
 (deftest update-requires-id-test
   (testing "GHY-4156: update without an id is a teaching error"
-    (is (re-find #"`id` is required"
+    (is (re-find #"\"id\" is required"
                  (tool-error (call-tool! :crowberto nil (wire {:method "update"})))))))
 
 (deftest create-with-explicit-recipients-test
@@ -557,7 +557,7 @@
                    :model/PulseChannel _ {:pulse_id pulse-id :channel_type :slack
                                           :details {:channel "#x"}
                                           :schedule_type :daily :schedule_hour 15}]
-      (is (re-find #"`channel`"
+      (is (re-find #"\"channel\""
                    (tool-error (call-tool! :crowberto nil
                                            (wire {:method   "update"
                                                   :id       pulse-id

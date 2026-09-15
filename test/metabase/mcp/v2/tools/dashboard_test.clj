@@ -86,7 +86,7 @@
 
 (deftest update-requires-id-test
   (testing "GHY-4147: update without an id is a teaching error"
-    (is (re-find #"`id` is required"
+    (is (re-find #"\"id\" is required"
                  (tool-error (call-tool! :crowberto nil "dashboard_write" (wire {:method "update"})))))))
 
 (deftest create-with-ops-in-one-call-test
@@ -329,7 +329,7 @@
 
 (deftest archived-on-create-error-text-test
   (testing "GHY-4544: `archived` on a create is a teaching error"
-    (is (= "`archived` applies to method \"update\" only — remove it from this create call."
+    (is (= "\"archived\" applies to method \"update\" only — remove it from this create call."
            (tool-error (call-tool! :crowberto nil "dashboard_write"
                                    (wire {:method "create" :name "Sales" :archived true})))))))
 

@@ -118,7 +118,7 @@
                    (tool-error (call-tool! :crowberto nil
                                            (wire {:method "create" :card_id card-id}))))))
     (testing "GHY-4155: update without an id is a teaching error"
-      (is (re-find #"`id` is required"
+      (is (re-find #"\"id\" is required"
                    (tool-error (call-tool! :crowberto nil (wire {:method "update"}))))))))
 
 (deftest ^:parallel schedule-compilation-failure-text-test
@@ -293,12 +293,12 @@
                                                     :recipients ["data-team"]}))))))
       (testing "GHY-4155: an empty recipients list reads as \"clear\", which this tool can't express —
                 say so rather than silently answering with the caller or the stored list"
-        (is (re-find #"`recipients` can't be empty"
+        (is (re-find #"\"recipients\" can't be empty"
                      (tool-error (call-tool! :crowberto nil
                                              (wire {:method "create" :card_id card-id
                                                     :schedule (daily-schedule 9) :recipients []})))))
         (let [alert-id (:id (create-alert! card-id))]
-          (is (re-find #"`recipients` can't be empty"
+          (is (re-find #"\"recipients\" can't be empty"
                        (tool-error (call-tool! :crowberto nil
                                                (wire {:method "update" :id alert-id :recipients []})))))))
       (testing "GHY-4155: an unknown user id names the id rather than failing at the FK"

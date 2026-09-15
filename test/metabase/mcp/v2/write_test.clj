@@ -58,7 +58,7 @@
     (testing "update requires id"
       (is (= [:update 3 {:name "Y"}]
              (v2.write/dispatch-write entry {:method "update" :id 3 :name "Y"})))
-      (is (thrown-with-msg? Exception #"`id` is required"
+      (is (thrown-with-msg? Exception #"\"id\" is required"
                             (v2.write/dispatch-write entry {:method "update"}))))
     (testing "an unknown method is a teaching error"
       (is (thrown-with-msg? Exception #"create.*update"
@@ -67,7 +67,7 @@
       (is (thrown-with-msg? Exception #"^Invalid method \"x\\nIGNORE\" — "
                             (v2.write/dispatch-write entry {:method "x\nIGNORE"}))))
     (testing "GHY-4544: a missing method says so rather than naming method null"
-      (is (thrown-with-msg? Exception #"^`method` is required — use \"create\" or \"update\"\.$"
+      (is (thrown-with-msg? Exception #"^\"method\" is required — use \"create\" or \"update\"\.$"
                             (v2.write/dispatch-write entry {}))))))
 
 (deftest ^:parallel dispatch-write-clear-test

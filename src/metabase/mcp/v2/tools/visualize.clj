@@ -65,8 +65,8 @@
                    query_handle (conj :query_handle))]
     (when-not (= 1 (count provided))
       (common/throw-teaching-error
-       (message/msg [(str "Pass exactly one of query | query_handle: `query_handle` for a query you "
-                          "already ran (preferred — no re-resolution), `query` for a fresh query.")])))
+       (message/msg [(str "Pass exactly one of query | query_handle: \"query_handle\" for a query you "
+                          "already ran (preferred — no re-resolution), \"query\" for a fresh query.")])))
     (if query_handle
       (do (resolve-visualizable-handle! session-id query_handle)
           query_handle)

@@ -79,8 +79,8 @@
                               (name k)))))
     :update (when (contains? args :table_id)
               (common/throw-teaching-error
-               (message/msg [(str "`table_id` cannot be changed on update — the "
-                                  "server derives it from `definition`'s source table.")])))))
+               (message/msg [(str "\"table_id\" cannot be changed on update — the "
+                                  "server derives it from \"definition\"'s source table.")])))))
 
 (defn- check-name!
   "Reject a present-but-blank `name`. The REST endpoints these tools delegate to take
@@ -90,14 +90,14 @@
   [{entity-name :name} entity]
   (when (and (some? entity-name) (str/blank? entity-name))
     (common/throw-teaching-error
-     (message/msg ["`name` cannot be blank — pass a short descriptive name for the %s."] entity))))
+     (message/msg ["\"name\" cannot be blank — pass a short descriptive name for the %s."] entity))))
 
 (defn- check-revision-message!
   "Reject a blank `revision_message` on update. `entity` is the server's own entity name."
   [{:keys [revision_message]} entity]
   (when (str/blank? revision_message)
     (common/throw-teaching-error
-     (message/msg [(str "`revision_message` is required when method is \"update\" — pass a short "
+     (message/msg [(str "\"revision_message\" is required when method is \"update\" — pass a short "
                         "sentence describing the change; it is recorded in the %s's revision history.")]
                   entity))))
 
@@ -141,9 +141,9 @@
     (catch Exception e
       (common/throw-teaching-error
        (if-let [text (common/exception-message e)]
-         (message/msg ["`definition` is not a valid MBQL query: %s %s"]
+         (message/msg ["\"definition\" is not a valid MBQL query: %s %s"]
                       (common/ellipsize text 300) (accepted-shapes kind))
-         (message/msg ["`definition` is not a valid MBQL query. %s"] (accepted-shapes kind)))))))
+         (message/msg ["\"definition\" is not a valid MBQL query. %s"] (accepted-shapes kind)))))))
 
 ;; measure_write is deliberately MBQL-5-only, stricter than POST /api/measure — that endpoint's
 ;; schema still decodes legacy MBQL, but that is a back-compatibility affordance, not an agent path
@@ -153,7 +153,7 @@
   [definition]
   (when-not (= :mbql-version/mbql5 (lib/normalized-mbql-version definition))
     (common/throw-teaching-error
-     (message/msg [(str "A full-query `definition` must be a map with \"lib/type\": "
+     (message/msg [(str "A full-query \"definition\" must be a map with \"lib/type\": "
                         "\"mbql/query\", \"database\", and one entry in \"stages\". %s")]
                   (accepted-shapes :measure)))))
 
@@ -203,8 +203,8 @@
   (when-let [defn-table-id (lib/primary-source-table-id (lib-be/normalize-query definition))]
     (when (not= defn-table-id (:id table))
       (common/throw-teaching-error
-       (message/msg [(str "`table_id` (%d) and `definition`'s source table (%d) must be the "
-                          "same table. Pass table_id %d, or point `definition` at table %d.")]
+       (message/msg [(str "\"table_id\" (%d) and \"definition\"'s source table (%d) must be the "
+                          "same table. Pass table_id %d, or point \"definition\" at table %d.")]
                     (:id table) defn-table-id defn-table-id (:id table))))))
 
 ;;; ---------------------------------------------- Error translation -----------------------------------------------
@@ -255,7 +255,7 @@
           ;; mu/validate-throw: pre-humanized malli explain output under :error
           (and (:error data) (= (ex-message e) "Value does not match schema"))
           (common/throw-teaching-error
-           (message/msg ["Invalid `definition`: %s."] (schema-error-summary (:error data))))
+           (message/msg ["Invalid \"definition\": %s."] (schema-error-summary (:error data))))
 
           ;; lib cycle detection and referenced-id existence checks
           (or (contains? data :cycle-path)
@@ -264,7 +264,7 @@
           (common/throw-teaching-error
            (if-let [text (common/exception-message e)]
              (message/msg ["%s"] text)
-             (message/msg ["`definition` references a segment or measure that is missing or forms a cycle."])))
+             (message/msg ["\"definition\" references a segment or measure that is missing or forms a cycle."])))
 
           :else
           (throw e))))))

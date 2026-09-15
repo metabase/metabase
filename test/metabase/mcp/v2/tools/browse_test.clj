@@ -233,7 +233,7 @@
       (testing "asking for content on a snippets collection"
         (let [{:keys [error]} (browse {:id (:id snippets) :namespace "content"})]
           (is (= (str "Collection " (:id snippets) " is in the \"snippets\" namespace — a real collection id already "
-                      "carries its namespace, so drop `namespace` or pass \"snippets\".")
+                      "carries its namespace, so drop \"namespace\" or pass \"snippets\".")
                  error))))
       (testing "asking for snippets on a content collection"
         (let [{:keys [error]} (browse {:id (:id content) :namespace "snippets"})]
@@ -253,7 +253,7 @@
     (testing "one offending arg reads in the singular and names itself"
       (let [{:keys [error]} (browse {:id (:id c) :mode "tree" :limit 10})]
         (is (= (str "\"limit\" does not apply to tree mode — trees have no pagination or item filters; re-root with "
-                    "browse_collection(id: <subcollection>, mode: \"tree\"), raise `depth`, or use mode: \"items\".")
+                    "browse_collection(id: <subcollection>, mode: \"tree\"), raise \"depth\", or use mode: \"items\".")
                error))))
     (testing "several read in the plural"
       (let [{:keys [error]} (browse {:id (:id c) :mode "tree" :limit 10 :offset 5})]
@@ -264,15 +264,15 @@
   (testing "depth shapes a tree; in items mode it teaches the mode switch"
     (mt/with-temp [:model/Collection c {:name "browse-args-items"}]
       (let [{:keys [error]} (browse {:id (:id c) :depth 3})]
-        (is (= "\"depth\" does not apply to items mode — `depth` shapes the tree; pass mode: \"tree\" to get one."
+        (is (= "\"depth\" does not apply to items mode — \"depth\" shapes the tree; pass mode: \"tree\" to get one."
                error))))))
 
 (deftest ^:parallel type-is-content-namespace-only-test
   (testing "type filters content items; other namespaces return their own model plus subfolders"
     (mt/with-temp [:model/Collection c {:name "browse-type-snippets" :namespace "snippets"}]
       (let [{:keys [error]} (browse {:id (:id c) :type ["question"]})]
-        (is (= (str "`type` applies to the content namespace only — the \"snippets\" namespace returns its own "
-                    "model plus subfolders; drop `type`.")
+        (is (= (str "\"type\" applies to the content namespace only — the \"snippets\" namespace returns its own "
+                    "model plus subfolders; drop \"type\".")
                error))))))
 
 ;;; ------------------------------------------------ items mode ----------------------------------------------------
@@ -322,7 +322,7 @@
     (testing "a truncated content-namespace page steers with `type`"
       (let [{:keys [line]} (browse {:id (:id p) :limit 1})]
         (is (some? line))
-        (is (str/includes? line "`type`"))
+        (is (str/includes? line "\"type\""))
         (is (str/includes? line "offset: 1"))
         (testing "and says how many rows it actually returned — a missing `:returned` renders the count
                   as the literal \"null\", since java.util.Formatter prints that for a nil %d"
@@ -477,17 +477,17 @@
   (testing "GHY-4138: get_fields rejects an empty id list rather than returning an empty response"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"`table_ids` must name at least one table\."
+         #"\"table_ids\" must name at least one table\."
          (#'tools.browse/get-fields {:action "get_fields" :table_ids []}))))
   (testing "GHY-4138: the 20-id cap is a teaching error naming the count passed and the fix"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"`table_ids` accepts at most 20 ids per call — you passed 21; split the request\."
+         #"\"table_ids\" accepts at most 20 ids per call — you passed 21; split the request\."
          (#'tools.browse/get-fields {:action "get_fields" :table_ids (vec (range 1 22))}))))
   (testing "GHY-4138: `offset` pages one table's fields, so it is meaningless across several"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"`offset` with get_fields pages the fields of one large table"
+         #"\"offset\" with get_fields pages the fields of one large table"
          (#'tools.browse/get-fields {:action "get_fields" :table_ids [1 2] :offset 5})))))
 
 (deftest get-fields-dedups-table-ids-test
@@ -710,7 +710,7 @@
           (testing "adversarial — a directly-supplied destination id is refused across every action"
             (are [action extra] (thrown-with-msg?
                                  clojure.lang.ExceptionInfo
-                                 #"Database \d+ not found — it may not exist, or you may not have access to it\."
+                                 #"\"Database\" \d+ not found — it may not exist, or you may not have access to it\."
                                  (tools.browse/browse-data (merge {:action action} extra) {}))
               "list_schemas" {:database_id tenant-b}
               "list_tables"  {:database_id tenant-b :schema "public"}
@@ -736,7 +736,7 @@
         (mt/with-test-user :rasta
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"Database \d+ not found — it may not exist, or you may not have access to it\."
+               #"\"Database\" \d+ not found — it may not exist, or you may not have access to it\."
                (tools.browse/browse-data {:action "list_tables" :database_id stub :schema "public"} {})))
           (let [[envelope] (call! {:action "get_fields" :table_ids [stub-t]})]
             (is (empty? (:tables envelope)))
@@ -869,7 +869,7 @@
             (is (= 2 (:returned envelope)))
             (is (= 3 (:total envelope)))
             (is (= ["t1" "t2"] (map :name (:data envelope))))
-            (is (= "Returned 2 of 3 — narrow with `search`, or continue with `offset: 2`." line)))
+            (is (= "Returned 2 of 3 — narrow with \"search\", or continue with `offset: 2`." line)))
           (testing "the final page carries no steering line"
             (let [[envelope line] (call! {:action "list_tables" :database_id db-id :schema "public"
                                           :limit  2            :offset      2})]
@@ -888,7 +888,7 @@
             (is (= 2 (:returned envelope)))
             (is (= 3 (:total envelope)))
             (is (re-find #"continue with `offset: 2`\." line))
-            (is (not (str/includes? line "narrow with `search`")))))))))
+            (is (not (str/includes? line "narrow with \"search\"")))))))))
 
 (deftest list-models-test
   (testing "GHY-4138: list_models returns the database's models and nothing else"
@@ -975,7 +975,7 @@
         (mt/with-test-user :rasta
           (are [id] (thrown-with-msg?
                      clojure.lang.ExceptionInfo
-                     #"Database \d+ not found — it may not exist, or you may not have access to it\."
+                     #"\"Database\" \d+ not found — it may not exist, or you may not have access to it\."
                      (tools.browse/browse-data {:action "list_schemas" :database_id id} {}))
             db-id
             Integer/MAX_VALUE))))))

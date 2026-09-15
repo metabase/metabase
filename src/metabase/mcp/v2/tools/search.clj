@@ -413,7 +413,7 @@
    narrowing with `type` rather than an offset, unlike the ordinary truncation line."
   [{:keys [returned total offset limit]}]
   (when (and (pos? total) (pos? returned) (>= (+ offset limit) total))
-    (message/msg ["Returned %d of at least %d — this is a capped view; narrow with `type` to reach specific items."]
+    (message/msg ["Returned %d of at least %d — this is a capped view; narrow with \"type\" to reach specific items."]
                  returned total)))
 
 ;;; ---------------------------------------------- Snippet union ---------------------------------------------------
@@ -543,7 +543,7 @@
       (if (true? recent)
         (let [fmt (if (:fields args)
                     (common/throw-teaching-error
-                     (message/msg ["`fields` is not supported with recent: true — use response_format instead."]))
+                     (message/msg ["\"fields\" is not supported with recent: true — use response_format instead."]))
                     (common/response-format args))
               {:keys [rows total]} (recents-page args fmt limit offset)
               ;; RecentViews retains at most 20 rows per user per model per context and drops

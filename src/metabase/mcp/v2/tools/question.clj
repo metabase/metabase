@@ -164,8 +164,8 @@
                   native       (conj :native))]
     (when-not (= 1 (count sources))
       (common/throw-teaching-error
-       (message/msg [(str "Pass exactly one query source: `query_handle` (a handle from an execute "
-                          "tool), `query` (an inline query), or `native` ({database_id, sql}).")])))
+       (message/msg [(str "Pass exactly one query source: \"query_handle\" (a handle from an execute "
+                          "tool), \"query\" (an inline query), or \"native\" ({database_id, sql}).")])))
     (cond
       query_handle
       (let [resolved (lib-be/normalize-query

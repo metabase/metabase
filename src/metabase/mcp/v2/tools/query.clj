@@ -63,8 +63,8 @@
                    cursor       (conj :cursor))]
     (when-not (= 1 (count provided))
       (common/throw-teaching-error
-       (message/msg [(str "Pass exactly one of query | query_handle | cursor: `query` for a fresh MBQL query, "
-                          "`query_handle` to re-run a stored query, `cursor` to continue a truncated result.")])))
+       (message/msg [(str "Pass exactly one of query | query_handle | cursor: \"query\" for a fresh MBQL query, "
+                          "\"query_handle\" to re-run a stored query, \"cursor\" to continue a truncated result.")])))
     (first provided)))
 
 (defn- resolve-input
@@ -211,12 +211,12 @@
     ;; Names both ways a chain ends. An agent asked for "the first N rows" that only ever sees
     ;; "continue with `cursor`" counts pages by hand and stops with a live cursor in an unbounded
     ;; query; a stage `limit` makes the last page arrive complete instead.
-    (message/msg [(str "returned %d rows, more available — continue with `cursor` until `truncated` is false, "
-                       "re-run with a stage `limit: N` (with `order-by`) if only the first N rows are needed, "
+    (message/msg [(str "returned %d rows, more available — continue with \"cursor\" until \"truncated\" is false, "
+                       "re-run with a stage `limit: N` (with \"order-by\") if only the first N rows are needed, "
                        "or narrow the query (filter/aggregate)")]
                  returned)
     (message/msg [(str "returned %d rows, more available — narrow the query "
-                       "(filter/aggregate), or raise `row_limit` (max %d)")]
+                       "(filter/aggregate), or raise \"row_limit\" (max %d)")]
                  returned max-row-limit)))
 
 (defn- mint-handle!
@@ -385,7 +385,7 @@ Dialect (JSON): tables and columns go by NUMERIC ID — never invent or guess id
   ;; where a keyset is unsound — that is why that path refuses to mint a cursor — so suggesting
   ;; one there would hand back the gapped pagination the refusal exists to prevent. Here the
   ;; caller wrote the SQL and knows its key, which is the information the server lacks.
-  (message/msg [(str "returned %d rows, more available — narrow the SQL (add filters/aggregation), raise `row_limit` "
+  (message/msg [(str "returned %d rows, more available — narrow the SQL (add filters/aggregation), raise \"row_limit\" "
                      "(max %d), or page with `ORDER BY <unique key>` + `WHERE <key> > <last value returned>`")]
                returned max-row-limit))
 
@@ -577,8 +577,8 @@ Dialect (JSON): tables and columns go by NUMERIC ID — never invent or guess id
             (let [requested (or id slug)
                   _         (when (nil? requested)
                               (common/throw-teaching-error
-                               (message/msg [(str "Each parameter needs an `id` — the "
-                                                  "parameter's id or slug — and a `value`.")])))
+                               (message/msg [(str "Each parameter needs an \"id\" — the "
+                                                  "parameter's id or slug — and a \"value\".")])))
                   stored    (or (m/find-first #(= (:id %) requested) card-params)
                                 (m/find-first #(= (:slug %) requested) card-params)
                                 (throw-unknown-parameter card-params requested))]
@@ -616,7 +616,7 @@ Dialect (JSON): tables and columns go by NUMERIC ID — never invent or guess id
 
 (defn- saved-question-steering-line
   [returned]
-  (message/msg ["returned %d rows, more available — narrow with `parameters`, or raise `row_limit` (max %d)"]
+  (message/msg ["returned %d rows, more available — narrow with \"parameters\", or raise \"row_limit\" (max %d)"]
                returned max-row-limit))
 
 (def ^:private scalar-parameter-value-schema

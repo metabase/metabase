@@ -466,14 +466,14 @@
   ;; count toward the cap.
   (let [table-ids (into [] (distinct) table_ids)]
     (when (empty? table-ids)
-      (common/throw-teaching-error (message/msg ["`table_ids` must name at least one table."])))
+      (common/throw-teaching-error (message/msg ["\"table_ids\" must name at least one table."])))
     (when (> (count table-ids) max-table-ids)
       (common/throw-teaching-error
-       (message/msg ["`table_ids` accepts at most %d ids per call — you passed %d; split the request."]
+       (message/msg ["\"table_ids\" accepts at most %d ids per call — you passed %d; split the request."]
                     max-table-ids (count table-ids))))
     (when (and offset (> (count table-ids) 1))
       (common/throw-teaching-error
-       (message/msg ["`offset` with get_fields pages the fields of one large table — request that table alone."])))
+       (message/msg ["\"offset\" with get_fields pages the fields of one large table — request that table alone."])))
     (let [{fetched :rows missing :missing} (fetch-table-metadata-rows table-ids (true? include_hidden))
           ;; A table whose database isn't browsable (a stub or router-destination database) is
           ;; collapsed into `missing` exactly like an unreadable one — enforced here against the same
@@ -588,11 +588,11 @@
       (common/throw-teaching-error
        (message/msg [(str "%s %s not apply to tree mode — trees have no pagination or item "
                           "filters; re-root with browse_collection(id: <subcollection>, "
-                          "mode: \"tree\"), raise `depth`, or use mode: \"items\".")]
+                          "mode: \"tree\"), raise \"depth\", or use mode: \"items\".")]
                     (common/list-message bad) (message/raw (if (next bad) "do" "does")))))
     (when-let [bad (seq (sort (map name (remove collection-items-mode-args (keys args)))))]
       (common/throw-teaching-error
-       (message/msg ["%s %s not apply to items mode — `depth` shapes the tree; pass mode: \"tree\" to get one."]
+       (message/msg ["%s %s not apply to items mode — \"depth\" shapes the tree; pass mode: \"tree\" to get one."]
                     (common/list-message bad) (message/raw (if (next bad) "do" "does")))))))
 
 (defn- namespace-arg
@@ -611,7 +611,7 @@
       (when (not= wanted actual)
         (common/throw-teaching-error
          (message/msg [(str "Collection %s is in the %s namespace — a real collection id "
-                            "already carries its namespace, so drop `namespace` or pass %s.")]
+                            "already carries its namespace, so drop \"namespace\" or pass %s.")]
                       id (or actual "content") (or actual "content")))))))
 
 (defn- read-checked-collection
@@ -672,8 +672,8 @@
         ns-str        (some-> (:namespace collection) u/qualified-name)
         _             (when (and (seq type) (some? ns-str))
                         (common/throw-teaching-error
-                         (message/msg [(str "`type` applies to the content namespace only — the %s "
-                                            "namespace returns its own model plus subfolders; drop `type`.")]
+                         (message/msg [(str "\"type\" applies to the content namespace only — the %s "
+                                            "namespace returns its own model plus subfolders; drop \"type\".")]
                                       ns-str)))
         created-by-id (when (= created_by "me") api/*current-user-id*)
         models        (if root?

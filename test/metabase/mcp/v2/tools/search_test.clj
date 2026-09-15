@@ -579,7 +579,7 @@
                   "sanity: the page is arithmetically full at the default limit")
               (is (re-find (re-pattern (str "Returned " cap " of at least " cap)) text)
                   "the floor line must still render even though the page looks exhaustive")
-              (is (re-find #"narrow with `type`" text)
+              (is (re-find #"narrow with \"type\"" text)
                   "recents can't be paged past the cap, so it steers to narrowing, not an offset")
               (is (not (re-find #"offset:" text))
                   "no offset is offered — there is nothing stored beyond the cap to page to"))))))))

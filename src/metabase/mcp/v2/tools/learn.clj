@@ -41,7 +41,7 @@
    (cond
      (and reference (nil? topic))
      (common/throw-teaching-error
-      (message/msg [(str "`reference` names a file within a topic — pass `topic` "
+      (message/msg [(str "\"reference\" names a file within a topic — pass \"topic\" "
                          "alongside it, e.g. learn(\"query-dialect\", \"operators\").")]))
 
      (nil? topic)

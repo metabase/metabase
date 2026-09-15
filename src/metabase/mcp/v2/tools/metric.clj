@@ -66,14 +66,14 @@
                      (catch Exception e
                        (common/throw-teaching-error
                         (if-let [text (common/exception-message e)]
-                          (message/msg ["`definition` is not a valid MBQL query: %s %s"]
+                          (message/msg ["\"definition\" is not a valid MBQL query: %s %s"]
                                        (common/ellipsize text 300) accepted-shapes)
-                          (message/msg ["`definition` is not a valid MBQL query. %s"] accepted-shapes)))))]
+                          (message/msg ["\"definition\" is not a valid MBQL query. %s"] accepted-shapes)))))]
     ;; normalize-query short-circuits an empty query to `{}` before its strict validation runs, so
     ;; an empty `definition` arrives here unvalidated instead of throwing above.
     (when (empty? normalized)
       (common/throw-teaching-error
-       (message/msg [(str "`definition` is empty. Pass the metric's query in it, or leave `definition` "
+       (message/msg [(str "\"definition\" is empty. Pass the metric's query in it, or leave \"definition\" "
                           "out of the call entirely — on update that keeps the stored query as it is. %s")]
                     accepted-shapes)))
     normalized))
@@ -86,8 +86,8 @@
   [{:keys [definition query_handle]} session-id]
   (when (and definition query_handle)
     (common/throw-teaching-error
-     (message/msg [(str "Pass exactly one query source: `definition` (the metric's "
-                        "query) or `query_handle` (a handle from an execute tool).")])))
+     (message/msg [(str "Pass exactly one query source: \"definition\" (the metric's "
+                        "query) or \"query_handle\" (a handle from an execute tool).")])))
   (some-> (cond
             definition   (if (v2.queries/portable-query? definition)
                            (v2.queries/resolve-external-query definition accepted-shapes)
@@ -142,8 +142,8 @@
   [{:keys [name description display collection_position] :as args} session-id]
   (let [dataset-query (or (resolve-definition args session-id)
                           (common/throw-teaching-error
-                           (message/msg [(str "Pass the metric's query: `definition` (inline) "
-                                              "or `query_handle` (from an execute tool).")])))
+                           (message/msg [(str "Pass the metric's query: \"definition\" (inline) "
+                                              "or \"query_handle\" (from an execute tool).")])))
         collection-id (v2.resolve/resolve-collection-id-or-personal (:collection_id args))]
     (check-metric-shape! dataset-query)
     (queries/check-allowed-to-create-card! {:dataset_query dataset-query :collection_id collection-id} :metric)

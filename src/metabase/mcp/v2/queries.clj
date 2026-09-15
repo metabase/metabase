@@ -33,7 +33,7 @@
   ;; nothing to edit. Only structural validation failures carry the key, so the dialect steering is always apt.
   (if-let [humanized (:humanized (ex-data e))]
     (let [detail (message/msg [(str "Invalid at %s. Fix the named paths, or call "
-                                    "`learn` with \"query-dialect\" for the clause shapes.")]
+                                    "\"learn\" with \"query-dialect\" for the clause shapes.")]
                               (common/ellipsize (common/humanize-detail humanized) max-schema-detail-length))]
       (common/message-ex-info (if-let [text (common/exception-message e)]
                                 (message/msg ["%s %s"] text detail)
@@ -97,8 +97,8 @@
       (if (:agent-error? (ex-data e))
         (common/throw-teaching-error
          (if-let [text (common/exception-message e)]
-           (message/msg ["`definition` could not be resolved: %s %s"] (common/ellipsize text 300) hint)
-           (message/msg ["`definition` could not be resolved. %s"] hint)))
+           (message/msg ["\"definition\" could not be resolved: %s %s"] (common/ellipsize text 300) hint)
+           (message/msg ["\"definition\" could not be resolved. %s"] hint)))
         (throw e)))))
 
 ;;; ------------------------------------------------ Query handles -------------------------------------------------

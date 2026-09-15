@@ -474,7 +474,7 @@
     (when-let [orphans (not-empty (filterv #(nil? (:dashboard_tab_id %)) dashcards))]
       (common/throw-teaching-error
        (message/msg [(str "This dashboard has tabs, so every card must belong to a tab: %s have none. "
-                          "Pass `tab` on the add op, or use `move` with `tab` for cards already placed.")]
+                          "Pass \"tab\" on the add op, or use \"move\" with \"tab\" for cards already placed.")]
                     (common/list-message (map :id orphans))))))
   state)
 
@@ -504,7 +504,7 @@
   [state idx {:keys [parameter_id] :as op}]
   (when (find-row state :parameters parameter_id)
     (op-error! idx (message/raw "add_parameter")
-               (message/msg ["parameter %s already exists — use `update_parameter`."] parameter_id)))
+               (message/msg ["parameter %s already exists — use \"update_parameter\"."] parameter_id)))
   (insert-row state :parameters
               (-> (dissoc op :op :parameter_id)
                   (assoc :id parameter_id)
@@ -597,7 +597,7 @@
   (or (card-for-dashcard state dashcard)
       (op-error! idx "wire_parameter"
                  (message/msg [(str "dashcard %s has no card behind it — only a raw "
-                                    "`target` of [\"text-tag\", \"<name>\"] can wire a "
+                                    "\"target\" of [\"text-tag\", \"<name>\"] can wire a "
                                     "text, heading, or iframe card's own {{placeholder}}.")]
                               (:id dashcard)))))
 
@@ -617,8 +617,8 @@
                    (message/msg ["card %s has no template tag named %s. Its tags: %s. %s"]
                                 (:card_id dashcard) target-tag (common/list-message (sort (keys tag-types)))
                                 skills/wire-target-grammar)
-                   (message/msg [(str "card %s has no template tag named %s. It has no template tags — `target_tag` "
-                                      "wires a native-SQL card's tags; for an MBQL card pass `target_field`. %s")]
+                   (message/msg [(str "card %s has no template tag named %s. It has no template tags — \"target_tag\" "
+                                      "wires a native-SQL card's tags; for an MBQL card pass \"target_field\". %s")]
                                 (:card_id dashcard) target-tag skills/wire-target-grammar)))
 
       :else
@@ -714,7 +714,7 @@
 
       :else
       (op-error! idx "wire_parameter"
-                 (message/msg ["pass one of `target_field`, `target_tag`, or `target`. %s"]
+                 (message/msg ["pass one of \"target_field\", \"target_tag\", or \"target\". %s"]
                               skills/wire-target-grammar)))))
 
 (defmethod apply-op "unwire_parameter"

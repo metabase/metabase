@@ -106,7 +106,7 @@
         (testing "a truncated page steers to narrowing the SQL — SQL results never mint a cursor"
           (is (not (contains? body :next_cursor)))
           (is (= (str "returned 3 rows, more available — narrow the SQL (add filters/aggregation), "
-                      "raise `row_limit` (max 2000), or page with `ORDER BY <unique key>` + "
+                      "raise \"row_limit\" (max 2000), or page with `ORDER BY <unique key>` + "
                       "`WHERE <key> > <last value returned>`")
                  (steering-line result)))
           (is (not (str/includes? (steering-line result) "export"))

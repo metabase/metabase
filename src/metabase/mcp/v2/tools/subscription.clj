@@ -159,7 +159,7 @@
                 (u/update-if-exists :schedule_frame name)))]
     (when (str/blank? (:schedule_type s))
       (common/throw-teaching-error
-       (message/msg [(str "`schedule` is required to add a delivery channel — pass "
+       (message/msg [(str "\"schedule\" is required to add a delivery channel — pass "
                           "{schedule_type: \"hourly\" | \"daily\" | \"weekly\" | \"monthly\", …}.")])))
     (check-schedule! s)
     (u/select-non-nil-keys s schedule-keys)))
@@ -185,7 +185,7 @@
                         "user id or email address, or omit recipients to leave the current recipients alone.")])))
   (when (and (= "email" channel-type) slack_channel)
     (common/throw-teaching-error
-     (message/msg [(str "`slack_channel` only applies to a Slack subscription — pass channel "
+     (message/msg [(str "\"slack_channel\" only applies to a Slack subscription — pass channel "
                         "\"slack\" to post there, or drop slack_channel to keep delivering by email.")])))
   (merge {:channel_type channel-type
           :enabled      enabled?}
@@ -228,7 +228,7 @@
       (when (= 1 (count existing-channels))
         (name (:channel_type (first existing-channels))))
       (common/throw-teaching-error
-       (message/msg [(str "This subscription delivers to %d channels, so pass `channel` "
+       (message/msg [(str "This subscription delivers to %d channels, so pass \"channel\" "
                           "(\"email\" or \"slack\") to say which one to change.")]
                     (count existing-channels)))))
 
@@ -255,7 +255,7 @@
     (common/throw-teaching-error
      (message/msg [(str "Filtered subscriptions need the dashboard-subscription-filters feature, which this "
                         "instance doesn't have — the filter values would be stored and then ignored at send "
-                        "time. Omit `parameters` to subscribe to the dashboard's own default filter values.")])))
+                        "time. Omit \"parameters\" to subscribe to the dashboard's own default filter values.")])))
   (let [known (into #{} (map (comp u/qualified-name :id)) dashboard-parameters)]
     (doseq [{param-id :id} parameters]
       (when-not (contains? known param-id)

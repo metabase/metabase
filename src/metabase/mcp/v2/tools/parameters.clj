@@ -72,7 +72,7 @@
   (when-not (some #(= parameter-id (u/qualified-name (:id %))) params)
     (common/throw-teaching-error
      (message/msg [(str "This %s has no parameter %s — pass one of its parameter ids "
-                        "(get_content returns them under `parameters`). Available: %s.")]
+                        "(get_content returns them under \"parameters\"). Available: %s.")]
                   target parameter-id (parameter-catalog params)))))
 
 (defn- card-parameters
@@ -219,8 +219,8 @@
   (when query
     (common/throw-teaching-error
      (message/msg [(str "This is a date parameter, so it answers with its column's range rather than "
-                        "a list of values — there is no list for `query` to search. Drop `query` and "
-                        "filter within the `min`/`max` it returns, using the forms in `accepts`.")]))))
+                        "a list of values — there is no list for \"query\" to search. Drop \"query\" and "
+                        "filter within the \"min\"/\"max\" it returns, using the forms in \"accepts\".")]))))
 
 (defn- fetch-dashboard-values
   "The value list for a dashboard parameter. `*param-values-query*` is what lets a caller who can read
@@ -312,7 +312,7 @@
   [{:keys [returned total more? offset limit query]}]
   (cond
     (and (zero? total) query)
-    (message/msg ["No values match %s — try a shorter or less specific search, or omit `query` to list every value."]
+    (message/msg ["No values match %s — try a shorter or less specific search, or omit \"query\" to list every value."]
                  query)
 
     (zero? total)
@@ -322,7 +322,7 @@
     (zero? returned)
     (if more?
       (message/msg [(str "No values at offset %d — the source stopped at %d before returning "
-                         "everything; narrow with `query` rather than paging further.")]
+                         "everything; narrow with \"query\" rather than paging further.")]
                    offset total)
       (message/msg ["No values at offset %d — %d available."] offset total))
 
@@ -331,7 +331,7 @@
                                  :total total :total-floor? more?})
         (when more?
           (message/msg [(str "Returned %d — the source holds more values than it "
-                             "will return; narrow with `query` to reach the rest.")]
+                             "will return; narrow with \"query\" to reach the rest.")]
                        returned)))))
 
 (defn- values-content
@@ -433,11 +433,11 @@
   [{:keys [target id parameter_id query constraints limit offset]} _context]
   (when (and query (str/blank? query))
     (common/throw-teaching-error
-     (message/msg [(str "`query` is the text to match, so it can't be blank — pass "
-                        "a search string, or omit `query` to list every value.")])))
+     (message/msg [(str "\"query\" is the text to match, so it can't be blank — pass "
+                        "a search string, or omit \"query\" to list every value.")])))
   (when (and (seq constraints) (= target "question"))
     (common/throw-teaching-error
-     (message/msg [(str "`constraints` chain-filters a dashboard's filters against each other, so it needs "
+     (message/msg [(str "\"constraints\" chain-filters a dashboard's filters against each other, so it needs "
                         "target: \"dashboard\" — a question's parameters are independent and take none.")])))
   (let [result (if (= target "dashboard")
                  (dashboard-values id parameter_id query constraints)

@@ -234,7 +234,7 @@
             so parent_id would otherwise be silently dropped on the way to the trash"
     (mt/with-temp [:model/Collection parent {:name "Archive/2026"}
                    :model/Collection coll   {:name "Q3 Planning"}]
-      (is (re-find #"`archived: true` and `parent_id` can't be combined"
+      (is (re-find #"`archived: true` and \"parent_id\" can't be combined"
                    (tool-error (call-tool! :crowberto {:method "update" :id (:id coll)
                                                        :archived true :parent_id (:id parent)}))))
       (testing "and nothing happened — not archived, not moved"
@@ -265,7 +265,7 @@
                    :model/Collection coll   {:name "Trashed mover"}]
       (tool-result (call-tool! :crowberto {:method "update" :id (:id coll) :archived true}))
       (let [location (t2/select-one-fn :location :model/Collection :id (:id coll))]
-        (is (re-find #"Pass `archived: false` alongside `parent_id`"
+        (is (re-find #"Pass `archived: false` alongside \"parent_id\""
                      (tool-error (call-tool! :crowberto {:method "update" :id (:id coll)
                                                          :parent_id (:id parent)}))))
         (testing "and the collection did not move"
@@ -291,7 +291,7 @@
       (is (true? (t2/select-one-fn :archived :model/Collection :id (:id coll)))))))
 
 (deftest update-requires-id-test
-  (is (re-find #"`id` is required when method is \"update\""
+  (is (re-find #"\"id\" is required when method is \"update\""
                (tool-error (call-tool! :crowberto {:method "update" :name "nope"})))))
 
 (deftest update-transforms-namespace-collection-test
@@ -324,7 +324,7 @@
 
 (deftest update-rejects-namespace-test
   (mt/with-temp [:model/Collection coll {:name "Fixed namespace"}]
-    (is (re-find #"`namespace` applies to method \"create\" only"
+    (is (re-find #"\"namespace\" applies to method \"create\" only"
                  (tool-error (call-tool! :crowberto {:method "update" :id (:id coll) :namespace "snippets"}))))))
 
 (deftest update-by-entity-id-test

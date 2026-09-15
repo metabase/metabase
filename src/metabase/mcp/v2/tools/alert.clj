@@ -68,7 +68,8 @@
                      first)]
     (when ignored
       (common/throw-teaching-error
-       (message/msg ["A %s schedule doesn't use %s, so it would be ignored — %s."]
+       (message/msg ["%s %s schedule doesn't use %s, so it would be ignored — %s."]
+                    (message/raw (if (= "hourly" schedule_type) "An" "A"))
                     schedule_type (name ignored) (schedule-field-advice ignored))))))
 
 (defn- check-schedule!
@@ -217,7 +218,7 @@
     ;; with the caller (at create) or the stored list (at update).
     (when (and recipients (empty? recipients))
       (common/throw-teaching-error
-       (message/msg [(str "`recipients` can't be empty — an alert with nobody to send to would never reach "
+       (message/msg [(str "\"recipients\" can't be empty — an alert with nobody to send to would never reach "
                           "anyone. Pass at least one user id or email address, or leave recipients out: a "
                           "new alert then goes to you, and an existing one keeps the recipients it has.")])))
     (case channel-type
@@ -232,13 +233,13 @@
                                slack_channel            [(slack-recipient slack_channel)]
                                (seq (:recipients base)) (:recipients base)
                                :else (common/throw-teaching-error
-                                      (message/msg ["`slack_channel` is required when channel is \"slack\"."])))))
+                                      (message/msg ["\"slack_channel\" is required when channel is \"slack\"."])))))
 
       "email"
       (do
         (when slack_channel
           (common/throw-teaching-error
-           (message/msg [(str "`slack_channel` only applies to a Slack alert — pass channel \"slack\" "
+           (message/msg [(str "\"slack_channel\" only applies to a Slack alert — pass channel \"slack\" "
                               "to post there, or drop slack_channel to keep delivering by email.")])))
         (assoc base
                :channel_type :channel/email
@@ -331,7 +332,7 @@
   [id {:keys [condition schedule active] :as args}]
   (when (contains? args :card_id)
     (common/throw-teaching-error
-     (message/msg [(str "`card_id` can't be changed on an existing alert — "
+     (message/msg [(str "\"card_id\" can't be changed on an existing alert — "
                         "create a new alert on the other question instead.")])))
   (let [condition   (m/remove-vals nil? condition)
         existing    (fetch-alert id)
