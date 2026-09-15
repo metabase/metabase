@@ -138,12 +138,11 @@
         (is (str/includes? instructions "codex mcp login")))
       (testing "no retry until the user has reconnected"
         (is (re-find #"(?i)(don't|do not) retry" instructions)))
-      (testing "GHY-4555: the consent screen shows a newly requested permission unticked, so the model warns the user
-                to tick it before they reconnect, and asks rather than sending them through consent unprompted"
+      (testing "GHY-4555: the consent screen shows a newly requested permission unticked, so the model tells the user
+                to tick it, and asks rather than sending them through consent unprompted"
         (is (not (re-find #"(?i)no per-permission" instructions)))
         (is (re-find #"(?i)unticked" instructions))
-        (is (re-find #"(?i)must tick it" instructions))
-        (is (re-find #"(?i)before they reconnect" instructions))
+        (is (re-find #"(?i)tell them to tick it" instructions))
         (is (re-find #"(?i)ask whether they want to grant it" instructions)))
       (testing "the skills guidance is kept"
         (is (re-find #"learn\(\)" instructions))))))
@@ -1159,6 +1158,29 @@
        "\"Set up scheduled delivery of your data to email addresses and Slack channels it chooses\" "
        "(agent:delivery:write)."))
 
+(def ^:private scope-failure-paragraph
+  (str "Your client may hide that error: a failure mentioning re-authorization, an expired token, "
+       "\"insufficient scope\", \"Unauthorized\", or \"tool execution failed\" usually means a missing permission on "
+       "this connection, not an expired login. Tell the user which tool failed and which permission it needs (from the "
+       "\"Requires the … permission\" sentence that starts the tool's description, which is how the consent screen "
+       "names it), and ask whether they want to grant it. To grant it they reconnect: in Claude Code, /mcp, select "
+       "this server, Re-authenticate; in Codex, `codex mcp login <server>`, then a new session. That permission is "
+       "unticked on the consent screen, so tell them to tick it. Don't retry until they say they have reconnected."))
+
+(deftest initialize-instructions-say-each-thing-once-test
+  (testing "GHY-4555: every connection pays for the instructions in tokens, so the scope-failure guidance is stated once
+            and the per-connection paragraph carries only the facts the general one lacks"
+    (let [baseline (bearer-instructions! (set mcp.paths/v2-baseline-scopes))]
+      (is (str/ends-with? baseline
+                          (str "\n" scope-failure-paragraph "\n" baseline-connection-sentence
+                               " A missing permission was either not requested yet or left unticked by the user; "
+                               "don't assume which. This list reflects the connection when it started; if a call "
+                               "succeeds, trust that over this list."))
+          baseline)
+      (doseq [[phrase most] [["ask whether they want to grant it" 1] ["retry" 1] ["the usual cause is" 0] ["e.g." 0]]]
+        (testing phrase
+          (is (>= most (count (re-seq (re-pattern (java.util.regex.Pattern/quote phrase)) baseline)))))))))
+
 (deftest initialize-instructions-list-the-connection-permissions-test
   (testing "GHY-4555: the consent screen lets the user leave a requested permission unticked, and Claude Code and Codex
             drop the 403's error_description, so the instructions tell the model which of the surface's permissions
@@ -1167,7 +1189,7 @@
       (testing "a baseline token lists what it has and what it lacks, in surface order"
         (is (str/includes? baseline baseline-connection-sentence) baseline))
       (testing "a missing permission is not assumed to be declined, and a successful call outranks the list"
-        (is (re-find #"(?i)not requested by your client yet, or left unticked by the user" baseline))
+        (is (re-find #"(?i)not requested yet or left unticked by the user" baseline))
         (is (re-find #"(?i)don't assume which" baseline))
         (is (re-find #"(?i)if a call succeeds, trust that over this list" baseline)))
       (testing "the general guidance is kept"

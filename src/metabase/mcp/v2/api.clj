@@ -170,15 +170,13 @@
        "Teaching errors embed the relevant contract, so a failed call always names its fix.\n"
        ;; Must match what the consent screen shows: a permission the connection lacks starts unticked. Told nothing, a
        ;; user clicks Authorize without ticking it and the step-up grants nothing.
-       "Your client may hide that error. If a Metabase tool call fails with a message about re-authorization, an "
-       "expired token, \"insufficient scope\", \"Unauthorized\", or just \"tool execution failed\", the usual cause is a "
-       "missing permission on this connection, not an expired login. Tell the user which tool failed and which "
-       "permission it needs, using the name in the \"Requires the … permission\" sentence that starts the tool's "
-       "description, which is how Metabase's consent screen names it, and ask whether they want to grant it. To grant "
-       "it, the user reconnects Metabase in their client, e.g. in Claude Code: /mcp, select this server, "
-       "Re-authenticate; in Codex: `codex mcp login <server>`, then start a new session. On the consent screen a "
-       "permission the connection lacks is unticked, and the user must tick it before clicking Authorize; tell them "
-       "so before they reconnect. Don't retry the tool until the user agrees and says they have reconnected."))
+       "Your client may hide that error: a failure mentioning re-authorization, an expired token, "
+       "\"insufficient scope\", \"Unauthorized\", or \"tool execution failed\" usually means a missing permission on "
+       "this connection, not an expired login. Tell the user which tool failed and which permission it needs (from the "
+       "\"Requires the … permission\" sentence that starts the tool's description, which is how the consent screen "
+       "names it), and ask whether they want to grant it. To grant it they reconnect: in Claude Code, /mcp, select "
+       "this server, Re-authenticate; in Codex, `codex mcp login <server>`, then a new session. That permission is "
+       "unticked on the consent screen, so tell them to tick it. Don't retry until they say they have reconnected."))
 
 (defn- permission-list
   "`scopes` as the model should name them: each scope's consent-screen label, quoted, then the scope in parentheses,
@@ -197,11 +195,9 @@
     (let [{granted true missing false} (group-by #(mcp.scope/matches? token-scopes %) surface-scopes)]
       (str "This connection has: " (if (seq granted) (permission-list granted) "none") "."
            (when (seq missing)
-             (str " It does not have: " (permission-list missing) ". A missing permission was either not requested by "
-                  "your client yet, or left unticked by the user on the consent screen; don't assume which. If a tool "
-                  "needs one, tell the user which permission and why, ask whether they want to grant it, and only "
-                  "retry after they agree and reconnect. This list reflects the connection when it started; if a call "
-                  "succeeds, trust that over this list."))))))
+             (str " It does not have: " (permission-list missing) ". A missing permission was either not requested yet "
+                  "or left unticked by the user; don't assume which. This list reflects the connection when it started; "
+                  "if a call succeeds, trust that over this list."))))))
 
 (defn- server-instructions
   "The `initialize` result's `instructions` for a caller holding `token-scopes` — the only channel that reaches the
