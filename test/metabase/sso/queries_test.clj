@@ -3,9 +3,11 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.app-db.hugsql :as app-db.hugsql]
    [metabase.permissions.core :as perms]
    [metabase.sso.queries :as sso.queries]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (deftest auth-identity-exists?-test
   (mt/with-temp [:model/User {user-id :id} {}
@@ -58,3 +60,14 @@
                           {:user-id 1 :provider "x' OR '1'='1"})]
       (is (not (str/includes? sql "OR")))
       (is (= [1 "x' OR '1'='1"] params)))))
+
+(deftest non-empty-ids-sentinel-test
+  (testing "the 0 sentinel is correct under both IN and NOT IN, which is why there is one helper"
+    (is (= [0] (app-db.hugsql/non-empty-ids #{})))
+    (is (= [0] (app-db.hugsql/non-empty-ids nil)))
+    (is (= [7] (app-db.hugsql/non-empty-ids #{7}))))
+  (testing "IN (0) matches nothing and NOT IN (0) excludes nothing, on a positive-id column"
+    (is (empty? (t2/query ["SELECT 1 AS r WHERE 5 IN (?)" 0])))
+    (is (seq (t2/query ["SELECT 1 AS r WHERE 5 NOT IN (?)" 0]))))
+  (testing "NULL would be wrong for NOT IN -- the bug this helper's shape prevents"
+    (is (empty? (t2/query ["SELECT 1 AS r WHERE 5 NOT IN (?)" nil])))))

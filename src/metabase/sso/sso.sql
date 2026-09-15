@@ -8,8 +8,8 @@
 -- :name- user-group-ids-excluding :? :*
 -- The PermissionsGroup ids the user belongs to, minus the excluded ones. The excluded set expands
 -- into one ? per element, so the caller must pass a non-empty collection; metabase.sso.queries
--- guarantees that with app-db.hugsql/non-empty-not-in (NOT non-empty-in -- NOT IN (NULL) is NULL,
--- which would filter out every row).
+-- guarantees that with app-db.hugsql/non-empty-ids, whose 0 sentinel is correct under both IN and
+-- NOT IN.
 SELECT group_id
 FROM permissions_group_membership
 WHERE user_id = :value:user-id

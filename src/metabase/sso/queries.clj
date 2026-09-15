@@ -50,14 +50,14 @@
         (map :group_id)
         (app-db.hugsql/rows membership-model user-group-ids-excluding-sqlvec
                             {:user-id            user-id
-                             :excluded-group-ids (app-db.hugsql/non-empty-not-in excluded-group-ids)})))
+                             :excluded-group-ids (app-db.hugsql/non-empty-ids excluded-group-ids)})))
 
 (mu/defn user-group-ids-among :- [:set ms/PositiveInt]
   "The ids among `group-ids` of the PermissionsGroups the User with `user-id` belongs to, other than
   `excluded-group-ids`.
 
   Returns `#{}` for an empty `group-ids` without querying -- there are no candidates to match. The
-  excluded set instead goes through `non-empty-not-in`, because an empty exclusion list still has to
+  excluded set instead goes through `non-empty-ids`, because an empty exclusion list still has to
   run and exclude nothing."
   [user-id            :- ::lib.schema.id/user
    group-ids          :- [:set ms/PositiveInt]
@@ -69,7 +69,7 @@
           (app-db.hugsql/rows membership-model user-group-ids-among-sqlvec
                               {:user-id            user-id
                                :group-ids          group-ids
-                               :excluded-group-ids (app-db.hugsql/non-empty-not-in excluded-group-ids)}))))
+                               :excluded-group-ids (app-db.hugsql/non-empty-ids excluded-group-ids)}))))
 
 (mu/defn auth-identity-exists? :- :boolean
   "Whether the User with `user-id` has an AuthIdentity for `provider`."

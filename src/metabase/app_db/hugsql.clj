@@ -77,31 +77,24 @@
     (t2.transformed/transforms model)
     {}))
 
-(defn non-empty-in
-  "Coerce an id collection for use in a positive `IN (:value*:x)` param: `[]`/`nil` -> `[nil]`, which
-  binds a single NULL and matches no row (an empty `IN ()` is a SQL syntax error). Pure value
-  coercion -- takes a seq, returns a seq; builds no SQL.
+(defn non-empty-ids
+  "Coerce an id collection for use in an `IN (:value*:x)` or `NOT IN (:value*:x)` param: `[]`/`nil`
+  -> `[0]`. Pure value coercion -- takes a seq, returns a seq; builds no SQL.
 
-  Use this only when the query must still run on an empty list (e.g. one arm of a larger query that
-  should contribute zero rows). When an empty list means \"nothing to do\", prefer an early
-  `(when (seq ids) ...)` at the call site -- it skips a pointless query.
+  The empty case has to bind something, because both `IN ()` and `NOT IN ()` are syntax errors, and
+  that something has to be correct under *either* operator. `0` is, on a positive-id column:
+  `x IN (0)` matches no row, and `x NOT IN (0)` excludes no row. Both are what an empty list means.
 
-  **Not for `NOT IN`.** `x NOT IN (NULL)` is NULL under SQL's three-valued logic, not true, so it
-  filters out every row rather than excluding nothing -- a silently wrong answer, not an error. Use
-  [[non-empty-not-in]] for a negated membership test."
-  [ids]
-  (or (seq ids) [nil]))
+  NULL is not, which is why there is one helper here and not two. `x IN (NULL)` is fine, but
+  `x NOT IN (NULL)` is NULL under SQL's three-valued logic rather than true, so it filters out every
+  row -- a silently wrong answer. A caller cannot pick the wrong sentinel because there is only one,
+  and the operator lives in the `.sql` file where it cannot drift from this call.
 
-(defn non-empty-not-in
-  "Coerce an id collection for use in a negated `NOT IN (:value*:x)` param: `[]`/`nil` -> `[0]`.
+  Only valid for positive-id columns. For a column that can legitimately hold 0, guard the empty
+  case at the call site instead of binding a sentinel.
 
-  The empty case has to bind something (an empty `NOT IN ()` is a syntax error) and that something
-  must compare cleanly against every real row. NULL does not: `x NOT IN (NULL)` is NULL, so it
-  excludes everything. `0` does, because these columns hold positive ids, so `x NOT IN (0)` is true
-  for every real row -- which is what \"exclude nothing\" means.
-
-  Only valid for positive-id columns. For a column that can legitimately hold 0 or a negative
-  value, guard the empty case at the call site instead of binding a sentinel."
+  Use this only when the query must still run on an empty list. When an empty list means \"nothing to
+  do\", prefer an early `(when (seq ids) ...)` at the call site -- it skips a pointless query."
   [ids]
   (or (seq ids) [0]))
 
