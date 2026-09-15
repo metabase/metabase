@@ -1,0 +1,96 @@
+(ns metabase.transform-testing.errors
+  "The `:error-type` vocabulary for transform tests, and [[ex]], the constructor every typed throw
+  goes through.
+
+  A refusal and a failure are different outcomes, and a caller that confuses them either gives up
+  on a real bug or chases one that does not exist. Everything here is a refusal: the run did not
+  happen, or could not be completed. A failing expectation is not an error — it is a result, and
+  it rides back on the expectation that produced it.")
+
+(set! *warn-on-reflection* true)
+
+(def ^:private error-types
+  "Every `:error-type` a transform test run can throw, and the HTTP status it carries.
+
+  One definition rather than two: [[all]] is derived from it, so a type cannot be declared without
+  choosing its status, and the two can never drift apart. The grouping IS the status, because a
+  second taxonomy alongside it only invites the two to disagree.
+
+  400 — the test is wrong, and its author can fix it.
+  422 — the test is fine; the transform or its database prevents a run here.
+  501 — the test asks for something not built yet.
+
+  Nothing maps to 500, deliberately. A declared refusal is always attributable to the test or its
+  environment; a genuine bug arrives untyped and [[status-code]] gives it 500 on the way past. The
+  distinction is load-bearing rather than tidy: `api-exception-response` returns a structured body
+  only for a non-500 status carrying `:error-code`, so anything declared 500 here would lose its
+  type on the wire and come back as a stacktrace, or as nothing at all where an administrator has
+  turned stacktraces off."
+  {;; 400 — authoring
+   ::duplicate-expectation-name 400  ; Two expectations in one test share a name.
+   ::unknown-expectation-type   400  ; The `:type` names no known expectation.
+   ::invalid-expectation        400  ; The expectation does not match its schema.
+   ::unsafe-identifier          400  ; A name or type cannot be rendered as SQL.
+   ::unknown-column             400  ; An expectation names a column the output does not have.
+   ::ambiguous-column           400  ; An expectation names a column that matches several, case aside.
+   ::missing-inputs             400  ; The transform reads a table with no declared input.
+   ::unused-inputs              400  ; An input is declared for a table the transform never reads.
+   ::unparseable-source         400  ; The transform's SQL could not be parsed to find what it reads.
+
+   ;; 422 — the transform or its environment
+   ::unsupported-transform      422  ; Not a query transform (Python, say).
+   ::unsupported-driver         422  ; The database does not support transform testing.
+   ::transform-failed           422  ; The transform under test would not run.
+   ::setup-failed               422  ; A test input could not be materialized.
+   ::expectation-failed         422  ; An expectation's own query failed to execute.
+
+   ;; 501 — not built yet
+   ::unsupported-format         501}); The expectation asks for a form that is not implemented.
+
+(def all
+  "Every declared `:error-type`."
+  (set (keys error-types)))
+
+(defn checked
+  "Return `error-type` iff it is a member of [[all]]; otherwise throw."
+  [error-type]
+  (when-not (contains? all error-type)
+    (throw (ex-info (str error-type " is not a declared transform-test error type; see"
+                         " metabase.transform-testing.errors/all.")
+                    {:invalid-error-type error-type})))
+  error-type)
+
+(defmacro ex
+  "Construct (not throw) a typed transform-test ExceptionInfo. `error-type` is assoc'd into `data`
+  under `:error-type` and must be a member of [[all]] — a literal keyword is checked at
+  macro-expansion time, so a typo fails the build; a computed one is checked at runtime."
+  ([error-type msg data]
+   `(ex ~error-type ~msg ~data nil))
+  ([error-type msg data cause]
+   (if (keyword? error-type)
+     (do (checked error-type)
+         `(ex-info ~msg (assoc ~data :error-type ~error-type) ~cause))
+     `(ex-info ~msg (assoc ~data :error-type (checked ~error-type)) ~cause))))
+
+(defn status-code
+  "The HTTP status for `error-type`, or 500 for an untyped or unknown one."
+  [error-type]
+  (get error-types error-type 500))
+
+(defn remap-message
+  "`message` with every temp-table name in `temp->logical` replaced by the name the author wrote.
+
+  Every identifier in a driver's error message is one this module minted — `mb_test_` followed by
+  32 hex characters — and the author has never seen it. The names are generated, unique and
+  high-entropy, so this is a substitution over a known token set rather than an attempt to read
+  SQL. Matching ignores case because Snowflake and H2 upper-case them.
+
+  A nil message stays nil: coercing it to \"\" would be indistinguishable from a driver that
+  really said nothing, and the caller is better placed to decide what to show instead."
+  [message temp->logical]
+  (when message
+    (reduce (fn [^String msg [temp logical]]
+              (.replaceAll msg (str "(?i)\\b" (java.util.regex.Pattern/quote temp) "\\b")
+                           (java.util.regex.Matcher/quoteReplacement logical)))
+            (str message)
+            temp->logical)))
