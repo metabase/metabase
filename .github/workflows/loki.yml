@@ -102,3 +102,37 @@ jobs:
           include-hidden-files: true
           path: .loki/
           if-no-files-found: ignore
+
+  loki-tests-result:
+    needs: [story-selection, visual-test]
+    if: always() && !cancelled()
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - name: Check Loki job status
+        uses: actions/github-script@v9
+        env:
+          needs: ${{ toJson(needs) }}
+        with:
+          script: | # js
+            const needs = JSON.parse(process.env.needs);
+            const jobs = Object.entries(needs).map(
+              ([jobName, jobValues]) => ({
+                name: jobName,
+                result: jobValues.result
+              }));
+
+            // are all jobs skipped or successful?
+            if (jobs.every(job => (job.result === 'skipped' || job.result === 'success'))) {
+              console.log('All jobs are skipped or successful');
+              process.exit(0);
+            }
+
+            // otherwise, something failed
+            console.log('Some Loki jobs failed');
+            jobs.forEach((job) => {
+              if (job.result !== 'success') {
+                console.log(`${job.name} - ${job.result}`);
+              }
+            });
+            process.exit(1);
