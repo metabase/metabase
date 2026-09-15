@@ -46,6 +46,7 @@ export const knownDataPartTypes = [
   "data-adhoc_viz",
   "data-static_viz",
   "data-search_results",
+  "data-web_search_results",
   "data-tool_title",
   "data-conversation-title",
   "data-research_plan_update",
@@ -68,6 +69,19 @@ export type SearchResultsData = {
   tool_call_id: string;
   total_count: number;
   results: SearchResultItem[];
+};
+
+export type WebSearchResultItem = {
+  title: string;
+  url: string;
+  domain?: string;
+  snippet?: string;
+};
+
+export type WebSearchResultsData = {
+  tool_call_id: string;
+  total_count: number;
+  results: WebSearchResultItem[];
 };
 
 export type AdhocVizValue = {
@@ -140,6 +154,7 @@ export type KnownDataPart =
   | { type: "data-adhoc_viz"; data: AdhocVizValue }
   | { type: "data-static_viz"; data: StaticVizValue }
   | { type: "data-search_results"; data: SearchResultsData }
+  | { type: "data-web_search_results"; data: WebSearchResultsData }
   | { type: "data-tool_title"; data: ToolTitleData }
   | { type: "data-conversation-title"; data: string }
   | { type: "data-research_plan_update"; data: ResearchPlanUpdateData };

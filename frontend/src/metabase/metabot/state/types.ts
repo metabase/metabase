@@ -1,6 +1,7 @@
 import type {
   KnownDataPart,
   SearchResultItem,
+  WebSearchResultItem,
 } from "metabase/api/ai-streaming/schemas";
 import type { FinishReason } from "metabase/api/ai-streaming/sse-types";
 import type { MetabotProfileId } from "metabase/metabot/constants";
@@ -15,12 +16,18 @@ export type MetabotDataPart = Exclude<
   | { type: "data-state" }
   | { type: "data-conversation-title" }
   | { type: "data-search_results" }
+  | { type: "data-web_search_results" }
   | { type: "data-tool_title" }
 >;
 
 export type MetabotSearchResults = {
   totalCount: number;
   results: SearchResultItem[];
+};
+
+export type MetabotWebResults = {
+  totalCount: number;
+  results: WebSearchResultItem[];
 };
 
 export type MetabotDataPartMetadata = {
@@ -145,6 +152,7 @@ export type MetabotChainStep =
       name: string;
       title?: string;
       searchResults?: MetabotSearchResults;
+      webResults?: MetabotWebResults;
       status: "started" | "ended";
       startedAtMs?: number;
     };

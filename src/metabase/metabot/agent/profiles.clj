@@ -182,7 +182,9 @@
                           #'tools/delete-note-tool
                           #'tools/todo-write-tool
                           #'tools/todo-read-tool
-                          #'tools/ask-user-tool]})
+                          #'tools/ask-user-tool
+                          #'tools/web-search-tool
+                          #'tools/read-web-page-tool]})
 
 ;; SQL responses are rendered from tool results in the native port, so this
 ;; profile must always end with a tool call rather than free-form assistant text.
@@ -346,6 +348,16 @@
                   (api-scope/scope-matches? scope/*current-user-scope* required-scope))))
           tool-vars))
 
+(defn- filter-by-availability
+  "Drop tool vars whose `:available?` predicate (metadata, optional) returns false — tools that
+  depend on instance configuration, such as an API key, so the model never sees a tool it can't use."
+  [tool-vars]
+  (filter (fn [tool-var]
+            (if-let [available? (:available? (meta tool-var))]
+              (boolean (available?))
+              true))
+          tool-vars))
+
 (defn- tool-map
   "Create a map of tool-name -> tool-var from a sequence of tool vars."
   [tool-vars]
@@ -401,6 +413,7 @@
                        :tools
                        (filter-by-capabilities capabilities)
                        filter-by-scope
+                       filter-by-availability
                        tool-map)
           manifest (skills/build-skill-manifest profile (keys base) capabilities)]
       (cond-> base

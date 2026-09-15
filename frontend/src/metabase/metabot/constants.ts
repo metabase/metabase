@@ -199,6 +199,10 @@ export const TOOL_MESSAGES = {
     active: () => t`Deleting a note`,
     done: () => t`Deleted a note`,
   },
+  read_web_page: {
+    active: () => t`Reading web page`,
+    done: () => t`Read web page`,
+  },
   read_resource: {
     active: (count) =>
       count == null
@@ -246,6 +250,10 @@ export const TOOL_MESSAGES = {
   },
   todo_read: { active: () => t`Planning`, done: () => t`Planned` },
   todo_write: { active: () => t`Planning`, done: () => t`Planned` },
+  web_search: {
+    active: () => t`Searching the web`,
+    done: () => t`Searched the web`,
+  },
   write_transform_python: {
     active: () => t`Writing Python`,
     done: () => t`Wrote Python`,

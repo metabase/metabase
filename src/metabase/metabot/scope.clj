@@ -152,6 +152,10 @@
 (api-scope/defscope agent-search "agent:search"
   (deferred-tru "Search for content"))
 
+;; Web
+(api-scope/defscope agent-web-read "agent:web:read"
+  (deferred-tru "Search the public web and read web pages"))
+
 ;; Metadata
 (api-scope/defscope agent-metadata-read "agent:metadata:read"
   (deferred-tru "View database metadata"))
@@ -250,7 +254,8 @@
                                         "agent:delivery:*"
                                         "agent:timelines:*"
                                         "agent:collection:*"
-                                        "agent:content:*"}})
+                                        "agent:content:*"
+                                        "agent:web:*"}})
 
 (def always-granted-scopes
   "Scopes granted to every user regardless of permissions."
