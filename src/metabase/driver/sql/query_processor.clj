@@ -26,6 +26,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
    [metabase.util.performance :as perf :refer [empty? every? get-in mapv not-empty select-keys some]]
    [potemkin :as p]
@@ -915,7 +916,11 @@
   `AS`).
 
     (field-source-table-aliases [:field 1 nil]) ; -> [\"public\" \"venues\"]"
-  [[_ opts id-or-name] :- :mbql.clause/field]
+  [[_ opts id-or-name] :- [:tuple
+                           [:= :field]
+                           [:maybe [:map {:closed false, ::mr/deliberately-open true,
+                                          :description "a :field clause's options map -- keys added by QP middleware as compilation proceeds"}]]
+                           [:or :int :string]]]
   (let [source-table (or (get opts driver-api/qp.add.source-table)
                          (when (integer? id-or-name)
                            (:table-id (driver-api/field (driver-api/metadata-provider) id-or-name))))]
@@ -1767,8 +1772,8 @@
 (mu/defn- maybe-cast-uuid-for-equality
   "For := and :!=. Comparing UUID fields against non-uuid values requires casting."
   [driver :- :keyword
-   field  :- :metabase.lib.schema.expression/expression
-   arg    :- :metabase.lib.schema.expression/expression]
+   field  :- [:or :metabase.lib.schema.expression/expression uuid?]
+   arg    :- [:or :metabase.lib.schema.expression/expression uuid?]]
   (if (and (uuid-field? field)
            ;; If the arg is a uuid we are happy especially for joins (#46558)
            (not (uuid-field? arg))
@@ -1784,7 +1789,7 @@
   "For :contains, :starts-with, and :ends-with.
    Comparing UUID fields against with these operations requires casting as the right side will have `%` for `LIKE` operations."
   [_driver :- :keyword
-   field   :- :metabase.lib.schema.expression/expression]
+   field   :- [:or :metabase.lib.schema.expression/expression uuid?]]
   (if (uuid-field? field)
     [::cast-to-text {} field]
     field))

@@ -329,7 +329,8 @@
 (defn save-transient-dashboard!
   "Save a denormalized description of `dashboard`."
   [dashboard parent-collection-id]
-  (queries/check-parameter-source-card-permissions (:parameters dashboard))
+  (queries/check-parameter-source-card-permissions
+   (lib/normalize [:maybe [:sequential :metabase.parameters.schema/parameter]] (:parameters dashboard)))
   (t2/with-transaction [_conn]
     (let [{dashcards      :dashcards
            tabs           :tabs

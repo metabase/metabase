@@ -13,6 +13,7 @@
    [clojure.set :as set]
    [malli.error :as me]
    [medley.core :as m]
+   [metabase.dashboards.schema]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]

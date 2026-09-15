@@ -122,7 +122,7 @@
 (mu/defn ldap-groups->mb-group-ids :- [:set ms/PositiveInt]
   "Translate a set of a user's group DNs to a set of MB group IDs using the configured mappings."
   [ldap-groups              :- [:maybe [:sequential ms/NonBlankString]]
-   {:keys [group-mappings]} :- [:select-keys LDAPSettings [:group-mappings]]]
+   {:keys [group-mappings]} :- LDAPSettings]
   (-> group-mappings
       (select-keys (map #(DN. (str %)) ldap-groups))
       vals

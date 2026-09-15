@@ -57,18 +57,10 @@
 
 (mr/def ::auth-identity
   "A AuthIdentity as selected from the app DB: every column of `:auth_identity`."
-  [:map {:closed true}
-   [:id           ms/PositiveInt]
-   [:user_id      ::lib.schema.id/user]
-   [:provider     [:or :keyword :string]]
-   [:credentials  [:maybe ::auth-identity.credentials]]
-   [:metadata     [:maybe ::auth-identity.metadata]]
-   [:provider_id  [:maybe :string]]
-   [:last_used_at [:maybe ms/TemporalInstant]]
-   [:expires_at   [:maybe ms/TemporalInstant]]
-   [:created_at   ms/TemporalInstant]
-   [:updated_at   ms/TemporalInstant]
-   [:confirmed_at [:maybe ms/TemporalInstant]]])
+  [:merge
+   ::auth-identity.update
+   [:map {:closed true}
+    [:id           ms/PositiveInt]]])
 
 (mr/def ::auth-identity.update
   "What an update (or insert) of a AuthIdentity accepts: every column of `:auth_identity` except `id`, all optional."

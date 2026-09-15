@@ -2,7 +2,6 @@
   "/api/database endpoints."
   (:require
    [clojure.string :as str]
-   [malli.util :as mut]
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
@@ -16,7 +15,6 @@
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -134,9 +132,7 @@
                                           [:transforms_permissions [:enum :write :none]]]]]
   "For each database in DBS add a `:transforms_permissions` field describing the current user's permissions for
   creating/running Transforms. Will be either `:write` or `:none`."
-  [dbs :- [:maybe [:sequential
-                   (-> (mr/schema ::warehouses.schema/database)
-                       (mut/assoc :native_permissions [:enum :write :none]))]]]
+  [dbs :- [:maybe [:sequential ::warehouses.schema/database]]]
   (for [db dbs]
     (assoc db
            :transforms_permissions
@@ -178,8 +174,7 @@
   "Since cumulative count and cumulative sum aggregations are done in Clojure-land we can't use Cards that use queries
   with those aggregations as source queries. This function determines whether `card` is using one of those queries so
   we can filter it out in Clojure-land."
-  [{query :dataset_query, :as _card} :- [:map {:closed true}
-                                         [:dataset_query ::lib-be.schema/maybe-legacy-or-empty-query]]]
+  [{query :dataset_query, :as _card} :- ::queries.schema/card]
   (match/match-one (lib/aggregations query) [#{:cum-count :cum-sum} & _] true))
 
 (defn card-can-be-used-as-source-query?

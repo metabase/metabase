@@ -394,7 +394,11 @@
            :stages   [{:lib/type :mbql.stage/native
                        :native   "SELECT * FROM VENUES;"}]}
           (query-with-stage-metadata-from-card meta/metadata-provider
-                                               {:dataset-query   {:database (meta/id)
+                                               {:lib/type        :metadata/card
+                                                :id              1
+                                                :name            "Venues"
+                                                :database-id     (meta/id)
+                                                :dataset-query   {:database (meta/id)
                                                                   :type     :native
                                                                   :native   {:query "SELECT * FROM VENUES;"}}
                                                 :result-metadata (get-in (mock-cards) [:venues :result-metadata])}))))

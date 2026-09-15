@@ -62,13 +62,6 @@
 (def ^:private ^{:arglists '([s])} decode-base64-json
   (comp json/decode codecs/bytes->str codec/base64-decode))
 
-(mr/def ::json-value
-  "A JSON value decoded off the wire: a scalar, a sequence of JSON values, or a string-keyed map of them."
-  [:or
-   :string number? :boolean :nil
-   [:sequential [:ref ::json-value]]
-   [:map-of :string [:ref ::json-value]]])
-
 (mr/def ::cell-query
   "A base64-encoded JSON cell query (a filter clause) taken on the query string. The `:decode/api` step
   base64-decodes and JSON-parses it, then it is validated against [[::ads/root.cell-query]] -- so a handler
@@ -155,9 +148,7 @@
                                   [:map
                                    [:dataset_query ::ads/query]]]
   "Wrap query map into a Query object (mostly to facilitate type dispatch)."
-  [query :- (ms/string-keyed-map ::json-value)]
-  ;; `query` comes straight from `decode-base64-json`, so it's still string-keyed JSON; keywordize it before
-  ;; validating/normalizing it as an MBQL query, which expects keyword keys throughout.
+  [query :- ms/RingRequestBody]
   (let [query (api.macros/decode-and-validate-params :body ::lib-be.schema/maybe-legacy-query
                                                      (walk/keywordize-keys query))]
     (mi/instance :model/Query

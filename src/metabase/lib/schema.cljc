@@ -737,7 +737,8 @@
   Deliberately NOT closed: drivers add their own keys, e.g. Mongo adds `:collection`, `:projections` and `:mbql?`
   (see `:metabase.driver.mongo.query-processor/compiled-pipeline`), and for a query that was already native the
   compiled form is the native stage itself, carrying every key a `::stage.native` has."
-  [:map {:closed true}
+  [:map {::mr/deliberately-open true
+         :description "drivers add their own keys to a compiled query, and an already-native query compiles to its whole native stage"}
    [:query  [:or
              ::native-query-document-value
              [:schema {::mr/deliberately-open true

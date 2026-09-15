@@ -47,11 +47,11 @@
              :active          true {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn candidate-tables-with-field-stats
-  "The active, visible Tables of the Database with `database-id` (optionally narrowed to `schema`) that have at least
-  one non-key Field, with their field count and list-likeness."
+  "The id, schema, name, entity type, Database, field count, and list-likeness of the active, visible Tables of the
+  Database with `database-id` (optionally narrowed to `schema`) that have at least one non-key Field."
   [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]]
-  (t2/select [:model/Table :metabase_table.*
+  (t2/select [:model/Table :id :schema :display_name :entity_type :db_id
               [:ts.count :num-fields]
               [[:and
                 [:>= :ts.count 2]

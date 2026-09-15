@@ -65,8 +65,6 @@
 
 (mr/def ::values-from-card-query.options
   [:map {:closed true}
-   ;; a string to search text columns by substring, or any other Field value to match a non-text column exactly
-   ;; (e.g. searching a numeric aggregation column)
    [:query-string {:optional true} [:maybe ms/FieldValue]]
    ;; when present, the matching column is added as a second breakout so that each row becomes a
    ;; [value label] pair used for remapping
@@ -74,7 +72,6 @@
    ;; when present, restrict the values to an exact match on the value column (used to fetch the
    ;; remapped label for a single selected value)
    [:exact-value {:optional true} [:maybe [:or ms/FieldValue [:sequential ms/FieldValue]]]]
-   ;; which stage of a multi-stage query to search the columns of; defaults to the last stage
    [:stage-number {:optional true} [:maybe :int]]])
 
 (mu/defn- card-query :- [:maybe ::lib.schema/query]

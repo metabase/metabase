@@ -884,6 +884,17 @@
          (:id segment))
     (assoc :name (str "Segment " (:id segment)))))
 
+(mr/def ::segment.definition
+  "Segment definition: empty, an MBQL 5 query, or a legacy inner query."
+  [:multi {:dispatch (fn [definition]
+                       (cond
+                         (empty? definition)      :empty
+                         (:lib/type definition)   :mbql5
+                         :else                    :legacy))}
+   [:empty  [:= {} {}]]
+   [:mbql5  [:ref :metabase.lib.schema/query]]
+   [:legacy [:ref :metabase.legacy-mbql.schema/MBQLInnerQuery]]])
+
 (mr/def ::segment
   "More or less the same as a [[metabase.segments.models.segment]], but with kebab-case keys."
   [:map
@@ -895,9 +906,7 @@
    [:table-id   ::lib.schema.id/table]
    ;; the MBQL snippet defining this Segment; this may still be in legacy
    ;; format. [[metabase.lib.segment/segment-definition]] handles conversion to MBQL 5 if needed.
-   [:definition [:maybe [:or
-                         [:ref :metabase.lib.schema/query]
-                         [:ref :metabase.legacy-mbql.schema/MBQLInnerQuery]]]]
+   [:definition [:maybe [:ref ::segment.definition]]]
    [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:entity-id   {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:archived    {:optional true} [:maybe :boolean]]
@@ -1163,16 +1172,56 @@
    [:lib/type [:= {:default :metadata/results} :metadata/results]]
    [:columns [:sequential ::column]]])
 
+(mr/def ::transform.source-incremental-strategy
+  "Incremental strategy of a Transform source, as stored in the app DB."
+  [:map {:closed true}
+   [:type                       [:or :keyword :string]]
+   [:checkpoint-filter-field-id {:optional true} [:maybe ::lib.schema.id/field]]
+   [:lookback                   {:optional true} [:maybe [:map {:closed true}
+                                                          [:value pos-int?]
+                                                          [:unit  :string]]]]])
+
+(mr/def ::transform.target-incremental-strategy
+  "Incremental strategy of a Transform target, as stored in the app DB."
+  [:map {:closed true}
+   [:type       [:or :keyword :string]]
+   [:unique-key {:optional true} [:sequential [:map {:closed true}
+                                               [:name     {:optional true} :string]
+                                               [:field-id {:optional true} [:maybe ::lib.schema.id/field]]]]]])
+
+(mr/def ::transform.source-table
+  "One source table entry of a Python Transform source, as stored in the app DB."
+  [:map {:closed true}
+   [:alias       :string]
+   [:database_id {:optional true} [:maybe :int]]
+   [:schema      {:optional true} [:maybe :string]]
+   [:table       {:optional true} :string]
+   [:table_id    {:optional true} [:maybe :int]]])
+
+(mr/def ::transform.source
+  "The `:source` of a Transform: a query or a Python script."
+  [:map {:closed true}
+   [:type                        {:optional true} [:or :keyword :string]]
+   [:query                       {:optional true} [:ref ::card.query]]
+   [:source-incremental-strategy {:optional true} [:maybe [:ref ::transform.source-incremental-strategy]]]
+   [:source-database             {:optional true} [:maybe :int]]
+   [:source-tables               {:optional true} [:sequential [:ref ::transform.source-table]]]
+   [:body                        {:optional true} :string]])
+
+(mr/def ::transform.target
+  "The `:target` table of a Transform."
+  [:map {:closed true}
+   [:type                        {:optional true} [:or :keyword :string]]
+   [:database                    {:optional true} [:maybe ::lib.schema.id/database]]
+   [:schema                      {:optional true} [:maybe :string]]
+   [:name                        {:optional true} :string]
+   [:target-incremental-strategy {:optional true} [:maybe [:ref ::transform.target-incremental-strategy]]]])
+
 (mr/def ::transform
   "TODO (Cam 10/1/25) -- I'm putting this here as a placeholder until you guys go fill it out a little more."
   [:map {:closed true}
    [:lib/type [:= :metadata/transform]]
    [:id     ::lib.schema.id/transform]
    [:name   {:optional true} :string]
-   [:source {:optional true} [:map {:closed true}
-                              [:type {:optional true} [:or :keyword :string]]
-                              [:query {:optional true} [:ref ::card.query]]]]
-   [:target {:optional true} [:map {:closed true}
-                              [:type {:optional true} [:or :keyword :string]]
-                              [:schema {:optional true} [:maybe :string]]
-                              [:name   {:optional true} :string]]]])
+   [:source {:optional true} [:ref ::transform.source]]
+   [:target {:optional true} [:ref ::transform.target]]])

@@ -15,7 +15,7 @@
   "Result-metadata-shape column entry spliced into `:cols` of pivot query results. Extends
   [[lib.pivot/pivot-grouping-column-metadata]] with the snake_case mirrors and explicit `:lib/desired-column-alias`
   the result-metadata layer expects."
-  (merge lib.pivot/pivot-grouping-column-metadata
+  (merge (dissoc lib.pivot/pivot-grouping-column-metadata :lib/type :base-type)
          {:display_name             lib.pivot/pivot-grouping-column-name
           :lib/desired-column-alias lib.pivot/pivot-grouping-column-name
           :base_type                :type/Integer

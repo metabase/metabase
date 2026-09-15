@@ -14,7 +14,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.error-type :as qp.error-type]
    ;; the legacy QP pipeline still conveys the metadata provider via the ambient store; no MBQL 5 path yet
@@ -24,6 +23,7 @@
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [mapv empty? some]])
   (:import
    (java.io ByteArrayInputStream)
@@ -289,12 +289,23 @@
                                             [(mdb/unique-identifier) db-id])))
    :ttl/threshold 1000))
 
+(def DatabaseOrId
+  "Anything [[database->driver]] and its friends ([[ensure-lib-database]], [[supports?]], [[features]]) can resolve a
+  driver from, or convert to Lib metadata: a raw id, a Database row, Lib metadata, or any other value carrying enough
+  of one (`:engine`, `:id`, or `:lib/type`) for that -- callers pass hydrated list items, search results,
+  config-file entries, and other partial objects alike."
+  [:or
+   {:error/message "Database or ID"}
+   ::lib.schema.id/database
+   [:map {:closed false, ::mr/deliberately-open true,
+          :description "a Database row, Lib metadata, or any value exposing enough of one for driver resolution"}]])
+
 (mu/defn database->driver :- :keyword
   "Look up the driver that should be used for a Database. Lightly cached.
 
   (This is cached for a second, so as to avoid repeated application DB calls if this function is called several times
   over the duration of a single API request or sync operation.)"
-  [database-or-id :- [:maybe [:or ::lib.schema.id/database :metabase.warehouses.schema/database-or-metadata]]]
+  [database-or-id :- [:maybe DatabaseOrId]]
   (if-let [driver (:engine database-or-id)]
     ;; ensure we get the driver as a keyword (sometimes it's a String)
     (keyword driver)
@@ -343,10 +354,10 @@
                     [driver feature (mdb/unique-identifier) (:id database) (:updated-at database)])))))
 
 ;;; this can get called in post-select which doesn't always have ID
-(mu/defn ensure-lib-database :- ::lib.schema.metadata/database
+(mu/defn ensure-lib-database :- [:map [:lib/type [:= :metadata/database]]]
   "Ensures the database is in Lib metadata format (SnakeHatingMap with kebab-case keys).
    If passed a Toucan2 instance, converts it. If already Lib metadata, returns as-is."
-  [database :- :metabase.warehouses.schema/database-or-metadata]
+  [database :- DatabaseOrId]
   (if-not (:lib/type database)
     (lib-be/instance->metadata (dissoc database :tables :schedules) :metadata/database)
     database))
@@ -362,7 +373,7 @@
   and move on for now."
   [driver   :- :keyword
    feature  :- :keyword
-   database :- [:maybe :metabase.warehouses.schema/database-or-metadata]]
+   database :- [:maybe DatabaseOrId]]
   (let [database (some-> database ensure-lib-database)
         f        (if *memoize-supports?* memoized-supports?* supports?*)]
     (f driver feature database)))
@@ -411,7 +422,7 @@
 (mu/defn features
   "Return a set of all features supported by `driver` with respect to `database`."
   [driver   :- :keyword
-   database :- :metabase.warehouses.schema/database-or-metadata]
+   database :- DatabaseOrId]
   (let [database (ensure-lib-database database)]
     (if *memoize-supports?*
       (memoized-features* driver database)

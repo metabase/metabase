@@ -23,12 +23,9 @@
 
 (mr/def ::osi-ai-context
   "A OsiAiContext as selected from the app DB: every column of `:osi_ai_context`."
-  [:map {:closed true}
-   [:entity_type     [:or :keyword :string]]
-   [:entity_local_id ms/PositiveInt]
-   [:ai_context      ::osi-ai-context.ai-context]
-   [:created_at      ms/TemporalInstant]
-   [:updated_at      ms/TemporalInstant]])
+  [:merge
+   ::osi-ai-context.update
+   [:map {:closed true}]])
 
 (mr/def ::osi-ai-context.update
   "What an update (or insert) of a OsiAiContext accepts: every column of `:osi_ai_context` except `id`, all optional."

@@ -19,7 +19,7 @@
 
 (mr/def ::analysis-finding-error
   "Schema for an AnalysisFindingError record."
-  [:map
+  [:map {:closed true}
    [:id                    ms/PositiveInt]
    [:analyzed_entity_type  ::deps.dependency-types/dependency-types]
    [:analyzed_entity_id    ms/PositiveInt]

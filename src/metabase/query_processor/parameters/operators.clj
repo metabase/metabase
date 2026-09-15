@@ -81,6 +81,7 @@
   [:map {:closed true}
    [:type    ::lib.schema.parameter/type]
    [:value   {:optional true} ::lib.schema.parameter/parameter.value]
+   [:default {:optional true} ::lib.schema.parameter/parameter.value]
    [:options {:optional true} [:maybe ::lib.schema.parameter/parameter.options]]
    [:target  [:tuple [:= :dimension] [:or :mbql.clause/field :mbql.clause/expression]]]])
 

@@ -47,42 +47,16 @@
   get a nice performance boost."
   (u.memo/fast-memo u/->kebab-case-en))
 
-(def ^:private database-columns
-  [:id :engine :name :dbms_version :settings :is_audit :is_attached_dwh :details :write_data_details :admin_details :timezone
-   :router_database_id])
-
-(def ^:private table-columns
-  [:id :db_id :name :display_name :schema :active :visibility_type :database_require_filter])
-
-(def ^:private column-columns
-  [:active :base_type :coercion_strategy :data_sensitivity :database_partitioned :database_type :description
-   :display_name :effective_type :fingerprint :fk_target_field_id :id :name :nfc_path :parent_id :position
-   :semantic_type :settings :table_id :visibility_type])
-
-(def ^:private segment-columns
-  [:id :table_id :name :description :archived :definition])
-
-(def ^:private measure-columns
-  [:id :table_id :name :description :archived :definition :dimensions :dimension_mappings])
-
-(def ^:private native-query-snippet-columns
-  [:id :name :description :content :archived :collection_id :template_tags])
-
-(def ^:private transform-columns
-  [:id :name :source :target])
-
-(mr/def ::metadata-database-row
-  "A Database row as the `:metadata/database` select returns it."
-  [:select-keys :metabase.warehouses.schema/database (conj database-columns :features)])
-
-(mr/def ::metadata-table-row
-  "A Table row as the `:metadata/table` select returns it."
-  [:select-keys :metabase.warehouse-schema.schema/table table-columns])
+(def ^:private metric-columns
+  "The Card columns Lib metric metadata carries."
+  [:archived :card_schema :collection_id :created_at :dashboard_id :database_id :dataset_query :description
+   :dimension_mappings :dimensions :display :entity_id :id :name :result_metadata :source_card_id :table_id :type
+   :visualization_settings])
 
 (mr/def ::metadata-column-row
   "A Field row as the `:metadata/column` select returns it, with the columns of its Dimension and FieldValues."
   [:merge
-   [:select-keys :metabase.warehouse-schema.schema/field column-columns]
+   :metabase.warehouse-schema.schema/field
    [:map {:closed true}
     [:dimension/human_readable_field_id [:maybe ::lib.schema.id/field]]
     [:dimension/id                      [:maybe pos-int?]]
@@ -91,21 +65,11 @@
     [:values/human_readable_values      [:maybe :string]]
     [:values/values                     [:maybe :string]]]])
 
-(mr/def ::metadata-segment-row
-  "A Segment row as the `:metadata/segment` select returns it."
-  [:select-keys :metabase.segments.schema/segment segment-columns])
-
-(mr/def ::metadata-measure-row
-  "A Measure row as the `:metadata/measure` select returns it."
-  [:select-keys :metabase.measures.schema/measure measure-columns])
-
-(mr/def ::metadata-native-query-snippet-row
-  "A NativeQuerySnippet row as the `:metadata/native-query-snippet` select returns it."
-  [:select-keys :metabase.native-query-snippets.schema/native-query-snippet native-query-snippet-columns])
-
-(mr/def ::metadata-transform-row
-  "A Transform row as the `:metadata/transform` select returns it."
-  [:select-keys :metabase.transforms.schema/transform transform-columns])
+(mr/def ::model-field
+  "A `:model/Field` instance: a Field row, or a Card result metadata column X-Rays tags as a Field."
+  [:or
+   :metabase.warehouse-schema.schema/field
+   :metabase.legacy-mbql.schema/legacy-column-metadata])
 
 (mr/def ::instance
   "A Toucan 2 instance [[instance->metadata]] converts, by its model, or a legacy result metadata column."
@@ -115,18 +79,18 @@
            :lazy-refs true}
    [::legacy-column                :metabase.legacy-mbql.schema/legacy-column-metadata]
    [::lib-column                   ::lib.schema.metadata/column]
-   [:metadata/database             ::metadata-database-row]
-   [:metadata/table                ::metadata-table-row]
-   [:metadata/native-query-snippet ::metadata-native-query-snippet-row]
-   [:metadata/transform            ::metadata-transform-row]
+   [:metadata/database             :metabase.warehouses.schema/database]
+   [:metadata/table                :metabase.warehouse-schema.schema/table]
+   [:metadata/native-query-snippet :metabase.native-query-snippets.schema/native-query-snippet]
+   [:metadata/transform            :metabase.transforms.schema/transform]
    [:metadata/column               ::metadata-column-row]
    [:metadata/card                 :metabase.queries.schema/card]
    [:metadata/metric               :metabase.queries.schema/card]
-   [:metadata/segment              ::metadata-segment-row]
-   [:metadata/measure              ::metadata-measure-row]
+   [:metadata/segment              :metabase.segments.schema/segment]
+   [:metadata/measure              :metabase.measures.schema/measure]
    [:model/Database                :metabase.warehouses.schema/database]
    [:model/Table                   :metabase.warehouse-schema.schema/table]
-   [:model/Field                   :metabase.warehouse-schema.schema/field]
+   [:model/Field                   ::model-field]
    [:model/Card                    :metabase.queries.schema/card]
    [:model/Segment                 :metabase.segments.schema/segment]
    [:model/Measure                 :metabase.measures.schema/measure]
@@ -175,7 +139,7 @@
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
   (merge (next-method query-type model parsed-args honeysql)
-         {:select database-columns}))
+         {:select [:id :engine :name :dbms_version :settings :is_audit :is_attached_dwh :details :write_data_details :admin_details :timezone :router_database_id]}))
 
 (t2/define-after-select :metadata/database
   [database]
@@ -201,7 +165,7 @@
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
   (merge (next-method query-type model parsed-args honeysql)
-         {:select table-columns
+         {:select [:id :db_id :name :display_name :schema :active :visibility_type :database_require_filter]
           :from   [(warehouse-schema-overlay/table-query)]}))
 
 (t2/define-after-select :metadata/table
@@ -245,13 +209,32 @@
   [query-type model parsed-args honeysql]
   (merge
    (next-method query-type model parsed-args honeysql)
-   {:select    (into (perf/mapv #(keyword "field" (name %)) column-columns)
-                     [:dimension/human_readable_field_id
-                      :dimension/id
-                      :dimension/name
-                      :dimension/type
-                      :values/human_readable_values
-                      :values/values])
+   {:select    [:field/active
+                :field/base_type
+                :field/coercion_strategy
+                :field/data_sensitivity
+                :field/database_partitioned
+                :field/database_type
+                :field/description
+                :field/display_name
+                :field/effective_type
+                :field/fingerprint
+                :field/fk_target_field_id
+                :field/id
+                :field/name
+                :field/nfc_path
+                :field/parent_id
+                :field/position
+                :field/semantic_type
+                :field/settings
+                :field/table_id
+                :field/visibility_type
+                :dimension/human_readable_field_id
+                :dimension/id
+                :dimension/name
+                :dimension/type
+                :values/human_readable_values
+                :values/values]
     :from      [(warehouse-schema-overlay/field-query {:alias :field})]
     :left-join [[(t2/table-name :model/Table) :table]
                 [:= :field/table_id :table/id]
@@ -366,7 +349,8 @@
 
 (t2/define-after-select :metadata/metric
   [metric]
-  (instance->metadata metric :metadata/metric))
+  (let [keep? (set metric-columns)]
+    (instance->metadata (reduce dissoc metric (remove keep? (keys metric))) :metadata/metric)))
 
 ;;;
 ;;; Segment
@@ -395,7 +379,12 @@
   [query-type model parsed-args honeysql]
   (merge
    (next-method query-type model parsed-args honeysql)
-   {:select    (perf/mapv #(keyword "segment" (name %)) segment-columns)
+   {:select    [:segment/id
+                :segment/table_id
+                :segment/name
+                :segment/description
+                :segment/archived
+                :segment/definition]
     :from      [[(t2/table-name :model/Segment) :segment]]
     :left-join [[(t2/table-name :model/Table) :table]
                 [:= :segment/table_id :table/id]]}))
@@ -431,7 +420,14 @@
   [query-type model parsed-args honeysql]
   (merge
    (next-method query-type model parsed-args honeysql)
-   {:select    (perf/mapv #(keyword "measure" (name %)) measure-columns)
+   {:select    [:measure/id
+                :measure/table_id
+                :measure/name
+                :measure/description
+                :measure/archived
+                :measure/definition
+                :measure/dimensions
+                :measure/dimension_mappings]
     :from      [[(t2/table-name :model/Measure) :measure]]
     :left-join [[(t2/table-name :model/Table) :table]
                 [:= :measure/table_id :table/id]]}))
@@ -456,7 +452,7 @@
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
   (merge (next-method query-type model parsed-args honeysql)
-         {:select native-query-snippet-columns}))
+         {:select [:id :name :description :content :archived :collection_id :template_tags]}))
 
 (t2/define-after-select :metadata/native-query-snippet
   [snippet]
@@ -478,7 +474,7 @@
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
   (merge (next-method query-type model parsed-args honeysql)
-         {:select transform-columns}))
+         {:select [:id :name :source :target]}))
 
 (t2/define-after-select :metadata/transform
   [snippet]

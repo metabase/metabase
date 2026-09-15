@@ -55,7 +55,8 @@
           result             (if (= (keyword (:type source)) :query)
                                (let [database-id      (-> source :query :database)
                                      base-provider    (lib-be/application-database-metadata-provider database-id)
-                                     metadata         (lib-be/instance->metadata transform-to-check :metadata/transform)
+                                     metadata         (-> (lib-be/instance->metadata transform-to-check :metadata/transform)
+                                                          (select-keys [:lib/type :id :name :source :target]))
                                      updated-metadata (cond-> metadata
                                                         source (assoc :source source))
                                      edits            {:transform [updated-metadata]}

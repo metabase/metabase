@@ -843,9 +843,22 @@
               [:payload                 {:optional true} [:maybe ::SystemEventPayload]]
               [:triggering_subscription {:optional true} [:maybe ::notification.schema/notification-subscription]]]))
 
+(def ^:private NotificationWithRawHandlers
+  "An unsaved Notification as `POST /api/notification/send` hands it to `send-notification!`: no id or timestamps of
+  its own, but the raw (pre-hydration) `:handlers` and `:subscriptions` straight off the request body."
+  (hydrated-notification-schema
+   [:merge
+    ::CreateNotificationHandlerParams
+    [:map {:closed true}
+     [:template   {:optional true} [:maybe ::models.channel/ChannelTemplateUserProvided]]
+     [:channel    {:optional true} [:maybe ::models.channel/Channel]]
+     [:recipients {:optional true} [:sequential ::CreateNotificationRecipientParams]]]]
+   {:with-id? false}))
+
 (mu/defn hydrate-notification :- [:or ::FullyHydratedNotification [:sequential ::FullyHydratedNotification]]
   "Fully hydrate notifictitons."
   [notification-or-notifications :- [:or NotificationWithInlinePayload
+                                     NotificationWithRawHandlers
                                      [:sequential ::notification.schema/notification]]]
   (t2/hydrate notification-or-notifications :creator :payload :subscriptions [:handlers :channel :template [:recipients :recipients-detail]]))
 

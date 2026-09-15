@@ -9,6 +9,8 @@
    [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.queries.schema]
+   [metabase.segments.schema]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -32,7 +34,8 @@
    [:model/Table   [:merge :metabase.warehouse-schema.schema/table [:ref ::related-keys]]]
    [:model/Field   [:ref ::field]]
    [:model/Segment [:merge :metabase.segments.schema/segment [:ref ::related-keys]]]
-   [:model/Card    [:merge :metabase.queries.schema/card [:ref ::related-keys]]]
+   [:model/Card    [:merge :metabase.queries.schema/card [:ref ::related-keys]
+                    [:map [:entity_type {:optional true} :keyword]]]]
    [:model/Query   [:ref ::adhoc-question]]])
 
 (mr/def ::filter-clause
@@ -48,6 +51,12 @@
 (mr/def ::root.cell-query
   ::filter-clause)
 
+(mr/def ::root.cell-query-input
+  "A `::root.cell-query` before [[metabase.xrays.automagic-dashboards.comparison/comparison-dashboard]] and friends
+  normalize it with `(lib/normalize ::root.cell-query ...)`: a raw, possibly-legacy filter clause as callers (API
+  params decoded from JSON, or a hand-written test clause) actually pass it in."
+  ::lib.schema.common/possibly-unnormalized-clause)
+
 (mr/def ::root
   [:map {:closed true}
    [:database                   ::lib.schema.id/database]
@@ -60,8 +69,6 @@
    [:source                     {:optional true} [:maybe ::source]]
    [:url                        {:optional true} :string]
    [:dashboard-templates-prefix {:optional true} [:sequential :string]]
-   ;; `automagic-dashboard` merges `automagic-analysis`'s `opts` (see `::automagic-analysis.opts`) straight into the
-   ;; root map before passing it along, so root also needs to tolerate these opts keys.
    [:comparison?                {:optional true} [:maybe :boolean]]
    [:rules-prefix               {:optional true} [:maybe [:sequential :string]]]
    [:dashboard-template         {:optional true} [:maybe [:sequential :string]]]
@@ -96,23 +103,28 @@
   [:map {:closed true}
    [:dataset_query ::query]
    [:database-id   {:optional true} ::lib.schema.id/database]
-   [:table-id      {:optional true} [:maybe ::lib.schema.id/table]]])
+   [:table-id      {:optional true} [:maybe ::lib.schema.id/table]]
+   [:entity_type   {:optional true} :keyword]])
 
 (mr/def ::card-or-question
   "Either a Card row, or the [[::adhoc-question]] wrapper for a raw query. Several helpers in
-  [[metabase.xrays.automagic-dashboards.core]] duck-type over both."
+  [[metabase.xrays.automagic-dashboards.core]] duck-type over both. Either may carry the `:entity_type`
+  [[metabase.xrays.automagic-dashboards.core/source]] assoc's on."
   [:or
-   :metabase.queries.schema/card
+   [:merge :metabase.queries.schema/card [:map [:entity_type {:optional true} :keyword]]]
    ::adhoc-question])
 
 (mr/def ::external-op
   [:merge
    ::lib.schema.common/external-op
    [:map
-    [:args [:sequential [:multi
-                         {:dispatch coll?, :error/message "Should be a literal or column metadata"}
-                         [false ::lib.schema.literal/param-value]
-                         [true  ::lib.schema.metadata/column]]]]]])
+    [:args [:sequential
+            [:multi
+             {:dispatch      (fn [x] (cond (map? x) :column, (sequential? x) :aggregation, :else :literal))
+              :error/message "Should be a literal, column metadata, or a nested aggregation clause"}
+             [:literal     [:or ::lib.schema.literal/param-value :keyword]]
+             [:column      ::lib.schema.metadata/column]
+             [:aggregation [:ref ::aggregation]]]]]]])
 
 (mr/def ::aggregation
   [:or ::lib.schema.aggregation/aggregation ::external-op])
@@ -318,7 +330,7 @@
    [:database_id            {:optional true} [:maybe ::lib.schema.id/database]]
    [:table_id               {:optional true} [:maybe ::lib.schema.id/table]]
    [:text                   {:optional true} [:maybe :string]]
-   [:series                 {:optional true} [:sequential [:ref ::card]]]
+   [:series                 {:optional true} [:maybe [:sequential [:ref ::card]]]]
    [:height                 {:optional true} number?]
    [:position               {:optional true} number?]])
 
@@ -345,7 +357,7 @@
    [:dashboard_tab_id       {:optional true} [:maybe :int]]
    [:creator_id             {:optional true} [:maybe ::lib.schema.id/user]]
    [:series                 {:optional true} [:maybe [:sequential ::card]]]
-   [:parameter_mappings     {:optional true} [:sequential ::parameter-mapping]]])
+   [:parameter_mappings     {:optional true} [:maybe [:sequential ::parameter-mapping]]]])
 
 (mr/def ::dashboard-parameter
   "A filter widget [[metabase.xrays.automagic-dashboards.filters/add-filters]] adds to a dashboard."
@@ -378,14 +390,15 @@
    [:transient_name     {:optional true} [:maybe ::string-or-18n-string]]
    [:description        {:optional true} [:maybe ::string-or-18n-string]]
    [:creator_id         {:optional true} [:maybe ::lib.schema.id/user]]
-   [:parameters         {:optional true} [:sequential ::dashboard-parameter]]
-   [:dashcards          {:optional true} [:sequential ::dashcard]]
-   [:filters            {:optional true} [:sequential ::item]]
+   [:parameters         {:optional true} [:maybe [:sequential ::dashboard-parameter]]]
+   [:dashcards          {:optional true} [:maybe [:sequential ::dashcard]]]
+   [:filters            {:optional true} [:maybe [:sequential ::item]]]
    [:related            {:optional true} ::related]
    [:more               {:optional true} [:maybe :string]]
    [:transient_filters  {:optional true} [:maybe [:sequential ::filter-clause]]]
    [:param_fields       {:optional true} [:maybe [:map-of :string [:sequential ::item]]]]
-   [:auto_apply_filters {:optional true} :boolean]])
+   [:auto_apply_filters {:optional true} :boolean]
+   [:width              {:optional true} [:enum "fixed" "full"]]])
 
 (mr/def ::card-template
   "A grounded, combined metric augmented with the extra keys the dashboard-populating code

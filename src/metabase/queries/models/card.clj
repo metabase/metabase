@@ -47,6 +47,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.fn :as mu.fn]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -372,7 +373,7 @@
   [{query :dataset_query, card-type :type, source-card :source_card_id, :as _card}
    :- [:maybe [:map {:closed true}
                [:dataset_query   {:optional true} [:maybe ::queries.schema/card.dataset-query]]
-               [:type            {:optional true} [:maybe ::queries.schema/card.type]]
+               [:type            {:optional true} [:maybe [:or ::queries.schema/card.type :string]]]
                [:source_card_id  {:optional true} [:maybe ::lib.schema.id/card]]]]]
   (assert (not (and (query/query-is-native? query)
                     (some? source-card)))
@@ -772,8 +773,7 @@
       (m/assoc-some :source_card_id (-> card :dataset_query source-card-id))
       public-sharing/remove-public-uuid-if-public-sharing-is-disabled
       add-query-description-to-metric-card
-      ;; At this point, the card should be at schema version 20 or higher. Some sort of odd query like an
-      ;; aggregation over cards doesn't look like a real Card row; leave those as-is.
+      ;; At this point, the card should be at schema version 20 or higher.
       (cond-> (plausible-card-select? card) upgrade-card-schema-to-latest)
       monitor-blank-dataset-query))
 
@@ -782,13 +782,18 @@
   [card]
   (merge card (card.metadata/populate-result-metadata (select-keys card [:dataset_query :result_metadata :type]))))
 
+(defn- normalize-card
+  "Normalize a `card` so it satisfies the `::queries.schema/card` schema, throwing if it doesn't."
+  [card]
+  (mu.fn/validate-output {:fn-name `normalize-card} [:maybe ::queries.schema/card] (lib/normalize ::queries.schema/card card)))
+
 (t2/define-before-insert :model/Card
   [card]
   (u/prog1
     (-> card
         (assoc :metabase_version config/mb-version-string
                :card_schema current-schema-version)
-        (->> (lib/normalize ::queries.schema/card))
+        normalize-card
         ;; Must have an entity_id before populating the metadata. TODO (Cam 7/11/25) -- actually, this is no longer true,
         ;; since we're removing `:ident`s; we can probably remove this now.
         (u/assoc-default :entity_id (u/generate-nano-id))
@@ -817,7 +822,7 @@
   [:map {:closed true}
    [:dataset_query   {:optional true} [:maybe ::queries.schema/card.dataset-query]]
    [:result_metadata {:optional true} [:maybe ::queries.schema/card.result-metadata]]
-   [:type            {:optional true} [:maybe ::queries.schema/card.type]]])
+   [:type            {:optional true} [:maybe [:or ::queries.schema/card.type :string]]]])
 
 (mu/defn- populate-result-metadata :- [:map
                                        [:result_metadata {:optional true} [:maybe
@@ -861,8 +866,8 @@
 
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
-  (let [changes (some->> card t2/changes (lib/normalize ::queries.schema/card))
-        card    (lib/normalize ::queries.schema/card card)]
+  (let [changes (some->> card t2/changes normalize-card)
+        card    (normalize-card card)]
     (collection/check-allowed-content (:type card) (:collection_id changes))
     (-> card
         (dissoc :verified-result-metadata?)
@@ -1353,13 +1358,19 @@
 
 (defn- import-result-metadata [metadata]
   (when metadata
-    (for [m metadata]
-      (-> m
-          (m/update-existing :table_id  serdes/*import-table-fk*)
-          (m/update-existing :id        serdes/*import-field-fk*)
-          (m/update-existing :field_ref serdes/import-mbql)
-          ;; FIXME: remove that `if` after v52
-          (m/update-existing :fk_target_field_id #(if (number? %) % (serdes/*import-field-fk* %)))))))
+    (let [imported (for [m metadata]
+                     (-> m
+                         (m/update-existing :table_id  serdes/*import-table-fk*)
+                         (m/update-existing :id        serdes/*import-field-fk*)
+                         (m/update-existing :field_ref serdes/import-mbql)
+                         ;; FIXME: remove that `if` after v52
+                         (m/update-existing :fk_target_field_id #(if (number? %) % (serdes/*import-field-fk* %)))
+                         lib/normalize-result-metadata-column))]
+      (if (mr/validate [:sequential ::lib.schema.metadata/lib-or-legacy-column] imported)
+        imported
+        (do
+          (log/warn "Ignoring invalid imported Card result_metadata")
+          nil)))))
 
 (defn- result-metadata-deps [allow-int-ids? metadata]
   (when (seq metadata)
@@ -1439,7 +1450,8 @@
    :defaults {:archived            false
               :archived_directly   false
               :collection_preview  true
-              :enable_embedding    false}})
+              :enable_embedding    false}
+   :coerce   {:type ::lib.schema.metadata/card.type}})
 
 (defn- card-deps
   "The serdes dependencies of a Card as `:serdes/meta` paths. `allow-int-ids?` selects raw-appdb vs serialized ref semantics for

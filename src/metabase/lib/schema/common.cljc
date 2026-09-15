@@ -444,8 +444,8 @@
    [:operator [:multi {:dispatch string?}
                [true  :string]
                [false :keyword]]]
-   [:args     [:schema {:decode/normalize vec} [:sequential [:ref :metabase.lib.schema.expression/expression]]]]
-   [:options  {:optional true} ::options]])
+   [:args     [:schema {:decode/normalize vec} [:sequential [:ref :metabase.lib.common/op-arg]]]]
+   [:options  {:optional true} [:maybe [:ref ::clause-options]]]])
 
 #?(:clj
    (defn- instance-of-class* [& classes]

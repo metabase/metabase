@@ -103,7 +103,7 @@
    [:compojure/route         {:optional true} [:maybe [:tuple :keyword :string]]]
    [:remember                {:optional true} [:maybe :string]]
    [:slack/validated?        {:optional true} :boolean]
-   [:token-scopes            {:optional true} [:maybe [:set :keyword]]]
+   [:token-scopes            {:optional true} [:maybe [:set [:or :keyword :string]]]]
    [:token-scopes-checked    {:optional true} :boolean]
    [:mcp-ui-session-id       {:optional true} [:maybe :string]]
    [:mcp-ui-credential       {:optional true} [:maybe
@@ -113,7 +113,8 @@
                                                 [:sid          :string]
                                                 [:exp          :int]
                                                 [:scp          {:optional true} [:sequential :string]]
-                                                [:token-scopes {:optional true} [:maybe [:set :keyword]]]]]]])
+                                                [:unr          {:optional true} :boolean]
+                                                [:token-scopes {:optional true} [:maybe [:set [:or :string :keyword]]]]]]]])
 
 (mr/def ::response
   "What an endpoint handler can return: JSON-shaped data, a full Ring response map, or a file/stream for downloads."

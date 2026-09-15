@@ -14,23 +14,10 @@
 
 (mr/def ::pulse
   "A Pulse as selected from the app DB: every column of `:pulse`."
-  [:map {:closed true}
-   [:id                  ::lib.schema.id/pulse]
-   [:creator_id          ::lib.schema.id/user]
-   [:name                [:maybe :string]]
-   [:created_at          ms/TemporalInstant]
-   [:updated_at          ms/TemporalInstant]
-   [:skip_if_empty       :boolean]
-   [:alert_condition     [:maybe :string]]
-   [:alert_first_only    [:maybe :boolean]]
-   [:alert_above_goal    [:maybe :boolean]]
-   [:collection_id       [:maybe ::lib.schema.id/collection]]
-   [:collection_position [:maybe :int]]
-   [:archived            [:maybe :boolean]]
-   [:dashboard_id        [:maybe ::lib.schema.id/dashboard]]
-   [:parameters          [:sequential ::pulse.parameter]]
-   [:entity_id           :string]
-   [:disable_links       [:maybe :boolean]]])
+  [:merge
+   ::pulse.update
+   [:map {:closed true}
+    [:id                  ::lib.schema.id/pulse]]])
 
 (mr/def ::pulse.update
   "What an update (or insert) of a Pulse accepts: every column of `:pulse` except `id`, all optional."
@@ -53,17 +40,10 @@
 
 (mr/def ::pulse-card
   "A PulseCard as selected from the app DB: every column of `:pulse_card`."
-  [:map {:closed true}
-   [:id                ms/PositiveInt]
-   [:pulse_id          ::lib.schema.id/pulse]
-   [:card_id           ::lib.schema.id/card]
-   [:position          :int]
-   [:include_csv       :boolean]
-   [:include_xls       :boolean]
-   [:dashboard_card_id [:maybe ::lib.schema.id/card]]
-   [:entity_id         :string]
-   [:format_rows       [:maybe :boolean]]
-   [:pivot_results     [:maybe :boolean]]])
+  [:merge
+   ::pulse-card.update
+   [:map {:closed true}
+    [:id                ms/PositiveInt]]])
 
 (mr/def ::pulse-card.update
   "What an update (or insert) of a PulseCard accepts: every column of `:pulse_card` except `id`, all optional."
@@ -93,20 +73,10 @@
 
 (mr/def ::pulse-channel
   "A PulseChannel as selected from the app DB: every column of `:pulse_channel`."
-  [:map {:closed true}
-   [:id             ms/PositiveInt]
-   [:pulse_id       ::lib.schema.id/pulse]
-   [:channel_type   [:or :keyword :string]]
-   [:details        ::pulse-channel.details]
-   [:schedule_type  [:or :keyword :string]]
-   [:schedule_hour  [:maybe :int]]
-   [:schedule_day   [:maybe :string]]
-   [:created_at     ms/TemporalInstant]
-   [:updated_at     ms/TemporalInstant]
-   [:schedule_frame [:maybe [:or :keyword :string]]]
-   [:enabled        :boolean]
-   [:entity_id      :string]
-   [:channel_id     [:maybe ms/PositiveInt]]])
+  [:merge
+   ::pulse-channel.update
+   [:map {:closed true}
+    [:id             ms/PositiveInt]]])
 
 (mr/def ::pulse-channel.update
   "What an update (or insert) of a PulseChannel accepts: every column of `:pulse_channel` except `id`, all optional."
@@ -126,10 +96,10 @@
 
 (mr/def ::pulse-channel-recipient
   "A PulseChannelRecipient as selected from the app DB: every column of `:pulse_channel_recipient`."
-  [:map {:closed true}
-   [:id               ms/PositiveInt]
-   [:pulse_channel_id ms/PositiveInt]
-   [:user_id          ::lib.schema.id/user]])
+  [:merge
+   ::pulse-channel-recipient.update
+   [:map {:closed true}
+    [:id               ms/PositiveInt]]])
 
 (mr/def ::pulse-channel-recipient.update
   "What an update (or insert) of a PulseChannelRecipient accepts: every column of `:pulse_channel_recipient` except `id`, all optional."

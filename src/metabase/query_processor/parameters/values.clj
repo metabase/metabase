@@ -160,7 +160,7 @@
                                                                                        (:type param))))
                                                                 (dissoc tag-opts :case-sensitive)
                                                                 tag-opts)]
-                                                 (cond-> (select-keys param [:type :value :options])
+                                                 (cond-> (select-keys param [:type :value :default :options])
                                                    (seq tag-opts)
                                                    (assoc :options tag-opts))))
                                              params)]

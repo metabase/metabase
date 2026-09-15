@@ -1,5 +1,5 @@
 (ns metabase.query-processor.compile
-  (:refer-clojure :exclude [compile empty? select-keys])
+  (:refer-clojure :exclude [compile empty?])
   (:require
    [clojure.set :as set]
    [metabase.driver :as driver]
@@ -14,7 +14,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [empty? select-keys]]))
+   [metabase.util.performance :refer [empty?]]))
 
 (mr/def ::native-query-document-value
   "A driver's compiled native query: a native query document, or the driver's own shape, as `:metabase.lib.schema/compiled-native-query` accepts it."
@@ -26,13 +26,15 @@
 
 (mr/def ::compiled
   "Compiled query and parameters (SQL or whatever native query language)."
-  [:map {:closed true}
+  [:map {::mr/deliberately-open true
+         :description "drivers add their own keys to a compiled query, e.g. Mongo's `:collection`, `:projections` and `:mbql?` or BigQuery's `:qp/table-name`, and an already-native query compiles to its whole native stage"}
    [:query ::native-query-document-value]
    [:params {:optional true} [:maybe [:sequential :metabase.lib.schema.common/field-value]]]])
 
 (mr/def ::compiled-with-inlined-parameters
   "Query with inlined parameters (:params must be empty)"
-  [:map {:closed true}
+  [:map {::mr/deliberately-open true
+         :description "drivers add their own keys to a compiled query, e.g. Mongo's `:collection`, `:projections` and `:mbql?` or BigQuery's `:qp/table-name`"}
    [:query ::native-query-document-value]
    [:params {:optional true} [:maybe [:sequential {:max 0} :metabase.lib.schema.common/field-value]]]])
 
@@ -51,9 +53,7 @@
   [query :- ::lib.schema/query]
   (assert (not (:qp/compiled query)) "This query has already been compiled!")
   (if (lib/native-only-query? query)
-    (-> (lib/query-stage query -1)
-        (set/rename-keys {:native :query})
-        (select-keys [:query :params]))
+    (set/rename-keys (lib/query-stage query -1) {:native :query})
     (driver/mbql->native driver/*driver* query)))
 
 (mu/defn compile-preprocessed :- ::compiled

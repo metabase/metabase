@@ -1,5 +1,6 @@
 (ns metabase.queries.schema
   (:require
+   [metabase.content-verification.schema]
    [metabase.documents.schema :as documents.schema]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib-metric.schema :as lib-metric.schema]
@@ -10,6 +11,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.schema]
    [potemkin :as p]))
 
 (p/import-vars
@@ -218,14 +220,10 @@
 
 (mr/def ::parameter-card
   "A ParameterCard as selected from the app DB: every column of `:parameter_card`."
-  [:map {:closed true}
-   [:id                        ms/PositiveInt]
-   [:updated_at                ms/TemporalInstant]
-   [:created_at                ms/TemporalInstant]
-   [:card_id                   ::lib.schema.id/card]
-   [:parameterized_object_type [:or :keyword :string]]
-   [:parameterized_object_id   ms/PositiveInt]
-   [:parameter_id              :string]])
+  [:merge
+   ::parameter-card.update
+   [:map {:closed true}
+    [:id                        ms/PositiveInt]]])
 
 (mr/def ::parameter-card.update
   "What an update (or insert) of a ParameterCard accepts: every column of `:parameter_card` except `id`, all optional."
@@ -243,10 +241,9 @@
 
 (mr/def ::query
   "A Query as selected from the app DB: every column of `:query`."
-  [:map {:closed true}
-   [:query_hash             [:or bytes? :string]]
-   [:average_execution_time :int]
-   [:query                  [:maybe ::query.query]]])
+  [:merge
+   ::query.update
+   [:map {:closed true}]])
 
 (mr/def ::query.update
   "What an update (or insert) of a Query accepts: every column of `:query` except `id`, all optional."
@@ -262,44 +259,11 @@
 
 (mr/def ::query-execution
   "A QueryExecution as selected from the app DB: every column of `:query_execution`, plus `:row_count` added by the model's after-select hook."
-  [:map {:closed true}
-   [:id                          ms/PositiveInt]
-   [:hash                        [:or bytes? :string]]
-   [:started_at                  ms/TemporalInstant]
-   [:running_time                :int]
-   [:result_rows                 :int]
-   [:native                      :boolean]
-   [:context                     [:maybe [:or :keyword :string]]]
-   [:error                       [:maybe :string]]
-   [:executor_id                 [:maybe ::lib.schema.id/user]]
-   [:card_id                     [:maybe ::lib.schema.id/card]]
-   [:dashboard_id                [:maybe ::lib.schema.id/dashboard]]
-   [:pulse_id                    [:maybe ::lib.schema.id/pulse]]
-   [:database_id                 [:maybe ::lib.schema.id/database]]
-   [:cache_hit                   [:maybe :boolean]]
-   [:action_id                   [:maybe ::lib.schema.id/action]]
-   [:is_sandboxed                [:maybe :boolean]]
-   [:cache_hash                  [:maybe [:or bytes? :string]]]
-   [:embedding_client            [:maybe :string]]
-   [:embedding_sdk_version       [:maybe :string]]
-   [:parameterized               [:maybe :boolean]]
-   [:transform_id                [:maybe ::lib.schema.id/transform]]
-   [:lens_id                     [:maybe :string]]
-   [:lens_params                 [:maybe ::query-execution.lens-params]]
-   [:auth_method                 [:maybe [:or :keyword :string]]]
-   [:tenant_id                   [:maybe ms/PositiveInt]]
-   [:is_impersonated             [:maybe :boolean]]
-   [:is_db_routed                [:maybe :boolean]]
-   [:parameters                  [:maybe :string]]
-   [:embedding_hostname          [:maybe :string]]
-   [:embedding_path              [:maybe :string]]
-   [:user_agent                  [:maybe :string]]
-   [:ip_address                  [:maybe :string]]
-   [:sanitized_user_agent        [:maybe :string]]
-   [:embedding_route             [:maybe :string]]
-   [:metabase_version            [:maybe :string]]
-   [:embedding_client_identifier [:maybe :string]]
-   [:row_count                   {:optional true} :int]])
+  [:merge
+   ::query-execution.update
+   [:map {:closed true}
+    [:id                          ms/PositiveInt]
+    [:row_count                   {:optional true} :int]]])
 
 (mr/def ::query-execution.update
   "What an update (or insert) of a QueryExecution accepts: every column of `:query_execution` except `id`, all optional."
@@ -342,12 +306,10 @@
 
 (mr/def ::query-table
   "A QueryTable as selected from the app DB: every column of `:query_table`."
-  [:map {:closed true}
-   [:id       ms/PositiveInt]
-   [:card_id  ::lib.schema.id/card]
-   [:table_id [:maybe ::lib.schema.id/table]]
-   [:schema   [:maybe :string]]
-   [:table    :string]])
+  [:merge
+   ::query-table.update
+   [:map {:closed true}
+    [:id       ms/PositiveInt]]])
 
 (mr/def ::query-table.update
   "What an update (or insert) of a QueryTable accepts: every column of `:query_table` except `id`, all optional."
@@ -367,16 +329,10 @@
 
 (mr/def ::stored-result
   "A StoredResult as selected from the app DB: every column of `:stored_result`."
-  [:map {:closed true}
-   [:id                ms/PositiveInt]
-   [:result_data       [:or bytes? :string]]
-   [:creator_id        [:maybe ::lib.schema.id/user]]
-   [:database_id       [:maybe ::lib.schema.id/database]]
-   [:dataset_query     ::stored-result.dataset-query]
-   [:data_access_token [:maybe ::stored-result.data-access-token]]
-   [:row_count         [:maybe :int]]
-   [:created_at        ms/TemporalInstant]
-   [:updated_at        ms/TemporalInstant]])
+  [:merge
+   ::stored-result.update
+   [:map {:closed true}
+    [:id                ms/PositiveInt]]])
 
 (mr/def ::stored-result.update
   "What an update (or insert) of a StoredResult accepts: every column of `:stored_result` except `id`, all optional."
@@ -392,13 +348,10 @@
 
 (mr/def ::stored-result-use
   "A StoredResultUse as selected from the app DB: every column of `:stored_result_use`."
-  [:map {:closed true}
-   [:id               ms/PositiveInt]
-   [:stored_result_id ms/PositiveInt]
-   [:exploration_id   [:maybe ms/PositiveInt]]
-   [:created_at       ms/TemporalInstant]
-   [:updated_at       ms/TemporalInstant]
-   [:card_id          [:maybe ::lib.schema.id/card]]])
+  [:merge
+   ::stored-result-use.update
+   [:map {:closed true}
+    [:id               ms/PositiveInt]]])
 
 (mr/def ::stored-result-use.update
   "What an update (or insert) of a StoredResultUse accepts: every column of `:stored_result_use` except `id`, all optional."

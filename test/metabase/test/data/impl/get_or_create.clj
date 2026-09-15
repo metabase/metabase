@@ -88,7 +88,7 @@
 
 (mu/defn- add-extra-metadata!
   "Add extra metadata like Field base-type, etc."
-  [{:keys [table-definitions], :as _database-definition} :- tx/ValidDatabaseDefinition
+  [{:keys [table-definitions], :as _database-definition} :- tx/DatabaseDefinitionSchema
    db                                                    :- :metabase.warehouses.schema/database]
   (doseq [{:keys [table-name], :as table-definition} table-definitions]
     (let [table (delay (or (tx/metabase-instance table-definition db)
@@ -422,7 +422,7 @@
 (mu/defn- create-and-sync-Database!
   "Add DB object to Metabase DB. Return an instance of `:model/Database`."
   [driver                                           :- :keyword
-   {:keys [database-name], :as database-definition} :- tx/ValidDatabaseDefinition]
+   {:keys [database-name], :as database-definition} :- tx/DatabaseDefinitionSchema]
   (let [connection-details (tx/dbdef->connection-details driver :db database-definition)
         db                 (first (t2/insert-returning-instances! :model/Database
                                                                   (merge

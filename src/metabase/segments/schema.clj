@@ -3,9 +3,11 @@
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.users.schema]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.schema]))
 
 (mr/def ::definition
   "Schema for a segment's `:definition`; accepts a full MBQL query, converting legacy MBQL on decode."
@@ -27,28 +29,23 @@
             (nil? (lib/current-limit query))))]]])
 
 (mr/def ::segment.definition
-  "The `:definition` column of a Segment, decoded."
-  ::lib-be.schema/maybe-legacy-query)
+  "The `:definition` column of a Segment, decoded. Accepts an already-normalized MBQL5/legacy query, or a
+  not-yet-normalized legacy query/fragment as ingested from serdes before the model's before-insert hook
+  normalizes and validates it (see `validate-mbql5-definition`)."
+  [:or
+   ::lib-be.schema/maybe-legacy-query
+   [:map {:closed false, ::mr/deliberately-open true,
+          :description "a not-yet-normalized legacy MBQL query or fragment"}]])
 
 (mr/def ::segment
   "A Segment as selected from the app DB: every column of `:segment`, plus `:creator` and `:table` some callers
   hydrate onto it."
-  [:map {:closed true}
-   [:id                      ms/PositiveInt]
-   [:table_id                ::lib.schema.id/table]
-   [:creator_id              ::lib.schema.id/user]
-   [:name                    :string]
-   [:description             [:maybe :string]]
-   [:archived                :boolean]
-   [:definition              [:maybe ::segment.definition]]
-   [:created_at              ms/TemporalInstant]
-   [:updated_at              ms/TemporalInstant]
-   [:points_of_interest      [:maybe :string]]
-   [:caveats                 [:maybe :string]]
-   [:show_in_getting_started :boolean]
-   [:entity_id               :string]
-   [:creator                 {:optional true} [:maybe :metabase.users.schema/user]]
-   [:table                   {:optional true} [:maybe :metabase.warehouse-schema.schema/table]]])
+  [:merge
+   ::segment.update
+   [:map {:closed true}
+    [:id                      ms/PositiveInt]
+    [:creator                 {:optional true} [:maybe :metabase.users.schema/user]]
+    [:table                   {:optional true} [:maybe :metabase.warehouse-schema.schema/table]]]])
 
 (mr/def ::segment.update
   "What an update (or insert) of a Segment accepts: every column of `:segment` except `id`, all optional."

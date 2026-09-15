@@ -476,10 +476,10 @@
       (doseq [[model-key ds] (group-by :model-key deletes)]
         (remote-sync.db/delete-instances! model-key (mapv :model_id ds)))
       (when (seq deletes)
-        (remote-sync.db/delete-rsos-of-keys! deletes))
+        (remote-sync.db/delete-rsos-of-keys! (mapv #(select-keys % [:model_type :model_id]) deletes)))
       (when (seq sync-rows)
         ;; fold file_path + content_hash into the insert so the touched rows are written once (chunked)
-        (remote-sync.db/delete-rsos-of-keys! sync-rows)
+        (remote-sync.db/delete-rsos-of-keys! (mapv #(select-keys % [:model_type :model_id]) sync-rows))
         (insert-with-metadata! sync-rows (when ingestable (source.ingestable/cached-file-paths ingestable))))
       (when finalize! (finalize!)))
     ;; We skip the whole-appdb reindex the full load runs. Added/modified entities are already

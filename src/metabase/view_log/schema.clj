@@ -11,27 +11,10 @@
 
 (mr/def ::view-log
   "A ViewLog as selected from the app DB: every column of `:view_log`."
-  [:map {:closed true}
-   [:id                          ms/PositiveInt]
-   [:user_id                     [:maybe ::lib.schema.id/user]]
-   [:model                       [:or :keyword :string]]
-   [:model_id                    [:maybe :int]]
-   [:timestamp                   ms/TemporalInstant]
-   [:metadata                    [:maybe ::view-log.metadata]]
-   [:has_access                  [:maybe :boolean]]
-   [:context                     [:maybe [:or :keyword :string]]]
-   [:embedding_client            [:maybe :string]]
-   [:embedding_sdk_version       [:maybe :string]]
-   [:auth_method                 [:maybe [:or :keyword :string]]]
-   [:tenant_id                   [:maybe ms/PositiveInt]]
-   [:embedding_hostname          [:maybe :string]]
-   [:embedding_path              [:maybe :string]]
-   [:user_agent                  [:maybe :string]]
-   [:ip_address                  [:maybe :string]]
-   [:sanitized_user_agent        [:maybe :string]]
-   [:embedding_route             [:maybe :string]]
-   [:metabase_version            [:maybe :string]]
-   [:embedding_client_identifier [:maybe :string]]])
+  [:merge
+   ::view-log.update
+   [:map {:closed true}
+    [:id                          ms/PositiveInt]]])
 
 (mr/def ::view-log.update
   "What an update (or insert) of a ViewLog accepts: every column of `:view_log` except `id`, all optional."

@@ -6,6 +6,7 @@
    [metabase.request.schema :as request.schema]
    [metabase.request.settings :as request.settings]
    [metabase.request.util :as request.util]
+   [metabase.session.schema]
    [metabase.session.settings :as session.settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]

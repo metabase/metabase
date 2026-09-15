@@ -455,7 +455,7 @@
                      [:map
                       [:lib/uuid       {:optional true} ::lib.schema.common/uuid]
                       [:effective-type {:optional true} ::lib.schema.common/base-type]]]]
-    literal :- [:or :string number? :boolean [:fn {:error/message "big integer?"} u.number/bigint?]]]
+    literal :- [:ref ::lib.schema.literal/value.value]]
    (let [base-type      (or (:base-type opts) (lib.schema.expression/type-of-resolved literal))
          effective-type (or (:effective-type opts) base-type)]
      (-> [:value

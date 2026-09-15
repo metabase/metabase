@@ -253,7 +253,7 @@
       api/generic-204-no-content
       (driver.conn/with-write-connection
         (let [[success? error] (ddl.i/check-can-persist database)
-              schema           (ddl.i/schema-name database (system/site-uuid))]
+              schema           (ddl.i/schema-name (select-keys database [:id]) (system/site-uuid))]
           (if success?
             ;; do secrets require special handling to not clobber them or mess up encryption?
             (do (model-persistence.db/update-database! id {:settings (assoc (:settings database) :persist-models-enabled true)})

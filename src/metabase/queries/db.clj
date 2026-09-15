@@ -8,6 +8,7 @@
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.schema :as queries.schema]
+   [metabase.query-processor.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]

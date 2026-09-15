@@ -14,18 +14,13 @@
 
 (mr/def ::session
   "A Session as selected from the app DB: every column of `:core_session`."
-  [:map {:closed true}
-   [:id                   :string]
-   [:user_id              ::lib.schema.id/user]
-   [:created_at           ms/TemporalInstant]
-   [:anti_csrf_token      [:maybe :string]]
-   [:key                  :string]
-   [:key_hashed           :string]
-   [:type                 [:enum :normal :full-app-embed]]
-   [:auth_identity_id     [:maybe ms/PositiveInt]]
-   [:mfa_auth_identity_id [:maybe ms/PositiveInt]]
-   [:expires_at           [:maybe ms/TemporalInstant]]
-   [:last_active_at       [:maybe ms/TemporalInstant]]])
+  [:merge
+   ::session.update
+   [:map {:closed true}
+    [:id                   :string]
+    [:key                  {:optional true} :string]
+    [:type                 {:optional true} [:enum :normal :full-app-embed]]
+    [:mfa_auth_identity_id {:optional true} [:maybe ms/PositiveInt]]]])
 
 (mr/def ::session.update
   "What an update (or insert) of a Session accepts: every column of `:core_session` except `id`, all optional."

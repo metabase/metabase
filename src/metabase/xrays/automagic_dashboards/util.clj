@@ -108,8 +108,8 @@
              (update :base_type keyword)
              (update :semantic_type keyword)
              (->> (mi/instance :model/Field))
-             (assoc :xrays/database-id (:database root))
-             (analyze/run-classifiers {}))))
+             (analyze/run-classifiers {})
+             (assoc :xrays/database-id (:database root)))))
      ;; otherwise this isn't returning something, and that's probably an error. Log it.
      (log/warnf "Cannot resolve Field %s in automagic analysis context" field-id-or-name-or-clause))))
 

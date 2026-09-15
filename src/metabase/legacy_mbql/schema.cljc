@@ -1763,7 +1763,8 @@
      [:projections   {:optional true} [:maybe [:sequential :string]]]
      [:mbql?         {:optional true} [:maybe :boolean]]
      [:qp/table-name {:optional true} [:maybe :string]]
-     [:query-permissions/referenced-card-ids {:optional true} [:maybe [:set ::lib.schema.id/card]]]]
+     [:query-permissions/referenced-card-ids {:optional true} [:maybe [:set ::lib.schema.id/card]]]
+     [:query-permissions/sandboxed-table     {:optional true} [:ref ::lib.schema.id/table]]]
     inner-query-internal-keys)
    (lib.schema.common/disallowed-keys
     {:lib/type     "Legacy MBQL inner queries must not have :lib/type"

@@ -16,6 +16,7 @@
    [grouper.core :as grouper]
    [metabase.app-db.core :as mdb]
    [metabase.batch-processing.settings :as batch-processing.settings]
+   [metabase.parameters.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms])

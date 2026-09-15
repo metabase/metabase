@@ -426,9 +426,7 @@
   Questions (questions stored 'in' the dashboard rather than a collection) and reference the rest (assuming
   permissions)."
   [deep-copy? :- ms/MaybeBooleanValue
-   dashcards :- [:sequential [:map {:closed true}
-                              [:card   {:optional true} [:maybe :metabase.queries.schema/card]]
-                              [:series {:optional true} [:maybe [:sequential :metabase.queries.schema/card]]]]]]
+   dashcards :- [:sequential :metabase.dashboards.schema/dashboard-card]]
   (let [card->cards (fn [{:keys [card series]}] (into [card] series))
         readable? (fn [card] (and (mi/model card) (mi/can-read? card)))
         card->decision (fn [parent-card card]
@@ -1453,7 +1451,7 @@
   (with-dashboard-load-id dashboard_load_id
     (m/mapply qp.dashboard/process-query-for-dashcard
               (merge
-               body
+               (dissoc body :dashboard_load_id)
                {:dashboard (api/check-404 (dashboards-rest.db/dashboard dashboard-id))
                 :card      (api/check-404 (dashboards-rest.db/card card-id))
                 :dashcard  (api/check-404 (dashboards-rest.db/dashcard dashcard-id))}))))

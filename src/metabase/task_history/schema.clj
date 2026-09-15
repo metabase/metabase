@@ -65,7 +65,7 @@
    [:success       :int]
    [:error         :int]
    [:skipped       {:optional true} :int]
-   [:trigger       {:optional true} :string]
+   [:trigger       {:optional true} [:maybe (ms/InstanceOfClass org.quartz.Trigger)]]
    [:error-details {:optional true} [:sequential [:map {:closed true}
                                                   [:persisted-info-id ms/PositiveInt]
                                                   [:error {:optional true} [:maybe :string]]]]]])
@@ -124,10 +124,8 @@
 
 (mr/def ::task-details.test-or-unknown
   "The `:task_details` of a task not otherwise listed here: the ad-hoc shapes the `with-task-history` unit tests
-  give a random task name."
-  [:map {:closed true}
-   [:id     {:optional true} :int]
-   [:result {:optional true} :int]])
+  give a random task name, whose keys are by design arbitrary and not ours to declare."
+  [:map {:closed false, ::mr/deliberately-open true, :description "an ad-hoc :task_details shape a test made up"}])
 
 (mr/def ::task-history.task-details
   "The `:task_details` column of a TaskHistory, decoded: the union of the shapes recorded for each task name (see
@@ -172,17 +170,10 @@
 
 (mr/def ::task-history
   "A TaskHistory as selected from the app DB: every column of `:task_history`."
-  [:map {:closed true}
-   [:id           ms/PositiveInt]
-   [:task         :string]
-   [:db_id        [:maybe ::lib.schema.id/database]]
-   [:started_at   ms/TemporalInstant]
-   [:ended_at     [:maybe ms/TemporalInstant]]
-   [:duration     [:maybe :int]]
-   [:task_details [:maybe ::task-history.task-details]]
-   [:status       [:or :keyword :string]]
-   [:run_id       [:maybe ms/PositiveInt]]
-   [:logs         [:maybe [:sequential ::task-history.log]]]])
+  [:merge
+   ::task-history.update
+   [:map {:closed true}
+    [:id           ms/PositiveInt]]])
 
 (mr/def ::task-history.update
   "What an update (or insert) of a TaskHistory accepts: every column of `:task_history` except `id`, all optional."
@@ -199,17 +190,10 @@
 
 (mr/def ::task-run
   "A TaskRun as selected from the app DB: every column of `:task_run`."
-  [:map {:closed true}
-   [:id              ms/PositiveInt]
-   [:run_type        [:or :keyword :string]]
-   [:entity_type     [:or :keyword :string]]
-   [:entity_id       ms/PositiveInt]
-   [:started_at      ms/TemporalInstant]
-   [:ended_at        [:maybe ms/TemporalInstant]]
-   [:status          [:or :keyword :string]]
-   [:process_uuid    :string]
-   [:updated_at      ms/TemporalInstant]
-   [:notification_id [:maybe ms/PositiveInt]]])
+  [:merge
+   ::task-run.update
+   [:map {:closed true}
+    [:id              ms/PositiveInt]]])
 
 (mr/def ::task-run.update
   "What an update (or insert) of a TaskRun accepts: every column of `:task_run` except `id`, all optional."

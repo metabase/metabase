@@ -70,25 +70,10 @@
 
 (mr/def ::security-advisory
   "A SecurityAdvisory as selected from the app DB: every column of `:security_advisory`."
-  [:map {:closed true}
-   [:id                ms/PositiveInt]
-   [:advisory_id       :string]
-   [:severity          [:or :keyword :string]]
-   [:title             :string]
-   [:description       :string]
-   [:advisory_url      [:maybe :string]]
-   [:remediation       :string]
-   [:affected_versions ::affected-versions]
-   [:matching_query    [:maybe ::security-advisory.matching-query]]
-   [:published_at      ms/TemporalInstant]
-   [:fetched_at        ms/TemporalInstant]
-   [:match_status      [:or :keyword :string]]
-   [:last_evaluated_at [:maybe ms/TemporalInstant]]
-   [:acknowledged_by   [:maybe :int]]
-   [:acknowledged_at   [:maybe ms/TemporalInstant]]
-   [:last_notified_at  [:maybe ms/TemporalInstant]]
-   [:updated_at        ms/TemporalInstant]
-   [:download_jar_urls [:maybe ::download-jar-urls]]])
+  [:merge
+   ::security-advisory.update
+   [:map {:closed true}
+    [:id                ms/PositiveInt]]])
 
 (mr/def ::security-advisory.update
   "What an update (or insert) of a SecurityAdvisory accepts: every column of `:security_advisory` except `id`, all optional."

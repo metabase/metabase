@@ -620,5 +620,5 @@
     (when-let [newly-created-cards (seq @new-cards)]
       (doseq [card newly-created-cards]
         (events/publish-event! :event/card-create {:object card :user-id api/*current-user-id*})))
-    (events/publish-event! :event/dashboard-create {:object dashboard :user-id api/*current-user-id*})
+    (events/publish-event! :event/dashboard-create {:object (dissoc dashboard :uncopied) :user-id api/*current-user-id*})
     dashboard))

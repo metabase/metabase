@@ -18,6 +18,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -174,7 +175,9 @@
    [:model_id               {:optional true} ::lib.schema.id/card]
    [:archived               {:optional true} :boolean]
    [:description            {:optional true} [:maybe :string]]
-   [:parameters             {:optional true} [:maybe ::actions.schema/action.parameters]]
+   [:parameters             {:optional true} [:maybe [:sequential
+                                                      [:map {:closed false, ::mr/deliberately-open true,
+                                                             :description "one action parameter, as authored by the client before `lib/normalize` coerces its legacy clause tags to keywords"}]]]]
    [:database_id            {:optional true} [:maybe ::lib.schema.id/database]]
    [:parameter_mappings     {:optional true} [:maybe ::parameters.schema/parameter-mappings]]
    [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]

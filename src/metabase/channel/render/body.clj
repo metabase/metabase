@@ -14,6 +14,7 @@
    [metabase.channel.render.table-data :as table-data]
    [metabase.channel.render.util :as render.util]
    [metabase.channel.settings :as channel.settings]
+   [metabase.dashboards.schema]
    [metabase.formatter.core :as formatter]
    [metabase.geojson.api :as geojson.api]
    [metabase.geojson.settings :as geojson.settings]
@@ -23,6 +24,7 @@
    [metabase.pivot.core :as pivot.core]
    [metabase.pivot.postprocess :as pivot.postprocess]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.pivot]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.tiles.settings :as tiles.settings]
@@ -75,8 +77,9 @@
 ;;; --------------------------------------------------- Formatting ---------------------------------------------------
 
 (mu/defn- format-scalar-value
+  "Formats a scalar card's value for rendering, whether a single value or an array-typed column's sequence of them."
   [timezone-id            :- [:maybe :string]
-   value                  :- ms/FieldValue
+   value                  :- [:or ms/FieldValue [:sequential ms/FieldValue]]
    col                    :- [:maybe :metabase.legacy-mbql.schema/legacy-column-metadata]
    visualization-settings :- [:maybe ms/VisualizationSettings]]
   (cond
@@ -168,7 +171,7 @@
   "The `:data` of a QP result, as the render pipeline reads it."
   [:map {:closed true}
    [:cols             {:optional true} [:maybe [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]]]
-   [:rows             {:optional true} [:maybe [:sequential [:sequential ms/FieldValue]]]]
+   [:rows             {:optional true} [:maybe [:sequential [:sequential [:or ms/FieldValue [:sequential ms/FieldValue]]]]]]
    [:viz-settings     {:optional true} [:maybe ms/VisualizationSettings]]
    [:results_metadata {:optional true} [:maybe [:map {:closed true}
                                                 [:columns [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]]]]]
@@ -178,12 +181,14 @@
    [:insights         {:optional true} [:maybe [:sequential Insight]]]
    [:rows_truncated   {:optional true} [:maybe :int]]
    [:csv-include-bom? {:optional true} [:maybe :boolean]]
+   [:rows-file-size   {:optional true} [:maybe :int]]
    [:pivot-export-options {:optional true} [:maybe [:map {:closed true}
                                                     [:pivot-rows         {:optional true} [:maybe [:sequential :int]]]
                                                     [:pivot-cols         {:optional true} [:maybe [:sequential :int]]]
                                                     [:pivot-measures     {:optional true} [:maybe [:sequential :int]]]
                                                     [:show-row-totals    {:optional true} :boolean]
-                                                    [:show-column-totals {:optional true} :boolean]]]]])
+                                                    [:show-column-totals {:optional true} :boolean]
+                                                    [:column-sort-order  {:optional true} [:maybe :metabase.query-processor.pivot/column-sort-order]]]]]])
 
 (mr/def ::QPResult
   "A QP result map (`{:data ..., :error ...}`), as the render pipeline receives it."

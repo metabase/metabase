@@ -73,20 +73,10 @@
 
 (mr/def ::comment
   "A Comment as selected from the app DB: every column of `:comment`."
-  [:map {:closed true}
-   [:id                ms/PositiveInt]
-   [:parent_comment_id [:maybe ms/PositiveInt]]
-   [:target_type       [:or :keyword :string]]
-   [:target_id         ms/PositiveInt]
-   [:child_target_id   [:maybe :string]]
-   [:creator_id        ::lib.schema.id/user]
-   [:content           ::comment.content]
-   [:is_resolved       :boolean]
-   [:created_at        ms/TemporalInstant]
-   [:updated_at        ms/TemporalInstant]
-   [:deleted_at        [:maybe ms/TemporalInstant]]
-   [:content_html      [:maybe :string]]
-   [:context           [:maybe ::comment.context]]])
+  [:merge
+   ::comment.update
+   [:map {:closed true}
+    [:id                ms/PositiveInt]]])
 
 (mr/def ::comment.update
   "What an update (or insert) of a Comment accepts: every column of `:comment` except `id`, all optional."
@@ -106,12 +96,10 @@
 
 (mr/def ::comment-reaction
   "A CommentReaction as selected from the app DB: every column of `:comment_reaction`."
-  [:map {:closed true}
-   [:id         ms/PositiveInt]
-   [:comment_id ms/PositiveInt]
-   [:user_id    ::lib.schema.id/user]
-   [:emoji      :string]
-   [:created_at ms/TemporalInstant]])
+  [:merge
+   ::comment-reaction.update
+   [:map {:closed true}
+    [:id         ms/PositiveInt]]])
 
 (mr/def ::comment-reaction.update
   "What an update (or insert) of a CommentReaction accepts: every column of `:comment_reaction` except `id`, all optional."

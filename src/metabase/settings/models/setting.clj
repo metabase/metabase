@@ -103,8 +103,6 @@
   (get-value-of-type :string (keyword id)))
 
 (defmethod serdes/load-one! "Setting" [{:keys [key value]} _]
-  ;; YAML parses an unquoted scalar (e.g. `value: 8080`) as its literal type rather than a string; settings are
-  ;; always stored (and exported) as strings, so coerce back before writing.
   (set-value-of-type! :string key (some-> value str)))
 
 (def ^:private Type

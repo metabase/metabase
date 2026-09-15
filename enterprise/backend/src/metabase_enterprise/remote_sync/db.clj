@@ -602,7 +602,7 @@
   (t2/delete! :model/RemoteSyncObject :model_type model-type :model_id [:in model-ids]))
 
 (mu/defn delete-rsos-of-keys!
-  "Delete the RemoteSyncObjects keyed by the `:model_type`/`:model_id` of `rows` (other keys are ignored)."
+  "Delete the RemoteSyncObjects keyed by the `:model_type`/`:model_id` of `rows`."
   [rows :- [:sequential [:map {:closed true} [:model_type :string] [:model_id ms/PositiveInt]]]]
   (t2/delete! :model/RemoteSyncObject {:where (rso-keys-expr rows)}))
 

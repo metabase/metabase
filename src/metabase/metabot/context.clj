@@ -396,7 +396,8 @@
    [:slack_channel_id           {:optional true} [:maybe :string]]
    [:default_database_id        {:optional true} [:maybe :int]]
    [:code_editor                {:optional true} [:maybe CodeEditorContextSchema]]
-   [:research_plan              {:optional true} [:maybe ::research-plan]]])
+   [:research_plan              {:optional true} [:maybe ::research-plan]]
+   [:references                 {:optional true} [:maybe ms/OpaqueJSONObject]]])
 
 (defn- query-for-sql-parsing
   "Given an item in context, return the query if it is a native query or SQL transform that can have table usage parsed

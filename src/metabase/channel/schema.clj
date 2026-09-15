@@ -143,13 +143,10 @@
 
 (mr/def ::channel-template
   "A ChannelTemplate as selected from the app DB: every column of `:channel_template`."
-  [:map {:closed true}
-   [:id           ms/PositiveInt]
-   [:name         :string]
-   [:channel_type [:or :keyword :string]]
-   [:details      [:maybe ::channel-template.details]]
-   [:created_at   ms/TemporalInstant]
-   [:updated_at   ms/TemporalInstant]])
+  [:merge
+   ::channel-template.update
+   [:map {:closed true}
+    [:id           ms/PositiveInt]]])
 
 (mr/def ::channel-template.update
   "What an update (or insert) of a ChannelTemplate accepts: every column of `:channel_template` except `id`, all optional."

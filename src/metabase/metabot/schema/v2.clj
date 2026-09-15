@@ -26,10 +26,8 @@
    [clojure.string :as str]
    [malli.error :as me]
    [metabase.config.core :as config]
-   [metabase.request.schema :as request.schema]
    [metabase.util.log :as log]
-   [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -161,7 +159,9 @@
    [:source         {:optional true} [:maybe [:ref ::tool-payload]]]
    [:schema         {:optional true} [:maybe :string]]
    [:url            {:optional true} [:maybe :string]]
-   [:title          {:optional true} [:maybe :string]]])
+   [:title          {:optional true} [:maybe :string]]
+   [:entity_id      {:optional true} [:maybe :int]]
+   [:link           {:optional true} [:maybe :string]]])
 
 (mr/def ::structured-output
   "The `persisted-structured-output-keys` subset of a tool's `:structured-output`/
@@ -314,6 +314,11 @@
                              [:type [:= "message-metadata"]]
                              [:messageMetadata {:optional true} :any]]]])
 
+(mr/def ::tool-io
+  "A tool call's `:input`/`:rawInput`/`:output`: an arbitrary JSON value whose shape the calling tool (or the LLM
+  provider) owns, not us."
+  [:schema {::mr/deliberately-open true, :description "arbitrary tool call arguments or result"} :any])
+
 (mr/def ::tool-ui-part
   [:multi {:dispatch :state}
    ["input-streaming"    [:map {:closed true}
@@ -321,7 +326,7 @@
                           [:toolCallId :string]
                           [:state [:= "input-streaming"]]
                           [:providerExecuted {:optional true} :boolean]
-                          [:input {:optional true} [:maybe (ms/string-keyed-map ::request.schema/json-value)]]
+                          [:input {:optional true} ::tool-io]
                           [:output {:optional true} ::never]
                           [:errorText {:optional true} ::never]
                           [:approval {:optional true} ::never]]]
@@ -330,7 +335,7 @@
                           [:toolCallId :string]
                           [:state [:= "input-available"]]
                           [:providerExecuted {:optional true} :boolean]
-                          [:input {:optional true} [:maybe (ms/string-keyed-map ::request.schema/json-value)]]
+                          [:input {:optional true} ::tool-io]
                           [:output {:optional true} ::never]
                           [:errorText {:optional true} ::never]
                           [:callProviderMetadata {:optional true} ::provider-metadata]
@@ -339,7 +344,7 @@
                           [:type [:fn tool-type?]]
                           [:toolCallId :string]
                           [:state [:= "approval-requested"]]
-                          [:input {:optional true} [:maybe (ms/string-keyed-map ::request.schema/json-value)]]
+                          [:input {:optional true} ::tool-io]
                           [:providerExecuted {:optional true} :boolean]
                           [:output {:optional true} ::never]
                           [:errorText {:optional true} ::never]
@@ -352,7 +357,7 @@
                           [:type [:fn tool-type?]]
                           [:toolCallId :string]
                           [:state [:= "approval-responded"]]
-                          [:input {:optional true} [:maybe (ms/string-keyed-map ::request.schema/json-value)]]
+                          [:input {:optional true} ::tool-io]
                           [:providerExecuted {:optional true} :boolean]
                           [:output {:optional true} ::never]
                           [:errorText {:optional true} ::never]
@@ -366,7 +371,7 @@
                           [:toolCallId :string]
                           [:state [:= "output-available"]]
                           [:providerExecuted {:optional true} :boolean]
-                          [:input {:optional true} [:maybe (ms/string-keyed-map ::request.schema/json-value)]]
+                          [:input {:optional true} ::tool-io]
                           [:output {:optional true} ::stored-tool-output]
                           [:errorText {:optional true} ::never]
                           [:callProviderMetadata {:optional true} ::provider-metadata]
@@ -380,8 +385,8 @@
                           [:toolCallId :string]
                           [:state [:= "output-error"]]
                           [:providerExecuted {:optional true} :boolean]
-                          [:input {:optional true} [:maybe (ms/string-keyed-map ::request.schema/json-value)]]
-                          [:rawInput {:optional true} [:maybe (ms/string-keyed-map ::request.schema/json-value)]]
+                          [:input {:optional true} ::tool-io]
+                          [:rawInput {:optional true} ::tool-io]
                           [:output {:optional true} ::never]
                           [:errorText :string]
                           [:callProviderMetadata {:optional true} ::provider-metadata]
@@ -394,7 +399,7 @@
                           [:toolCallId :string]
                           [:state [:= "output-denied"]]
                           [:providerExecuted {:optional true} :boolean]
-                          [:input {:optional true} [:maybe (ms/string-keyed-map ::request.schema/json-value)]]
+                          [:input {:optional true} ::tool-io]
                           [:output {:optional true} ::never]
                           [:errorText {:optional true} ::never]
                           [:callProviderMetadata {:optional true} ::provider-metadata]
@@ -410,7 +415,7 @@
                           [:toolName :string]
                           [:toolCallId :string]
                           [:state [:= "input-streaming"]]
-                          [:input {:optional true} [:maybe (ms/string-keyed-map ::request.schema/json-value)]]
+                          [:input {:optional true} ::tool-io]
                           [:providerExecuted {:optional true} :boolean]
                           [:output {:optional true} ::never]
                           [:errorText {:optional true} ::never]
@@ -420,7 +425,7 @@
                           [:toolName :string]
                           [:toolCallId :string]
                           [:state [:= "input-available"]]
-                          [:input {:optional true} [:maybe (ms/string-keyed-map ::request.schema/json-value)]]
+                          [:input {:optional true} ::tool-io]
                           [:providerExecuted {:optional true} :boolean]
                           [:output {:optional true} ::never]
                           [:errorText {:optional true} ::never]
@@ -431,7 +436,7 @@
                           [:toolName :string]
                           [:toolCallId :string]
                           [:state [:= "approval-requested"]]
-                          [:input {:optional true} [:maybe (ms/string-keyed-map ::request.schema/json-value)]]
+                          [:input {:optional true} ::tool-io]
                           [:providerExecuted {:optional true} :boolean]
                           [:output {:optional true} ::never]
                           [:errorText {:optional true} ::never]
@@ -445,7 +450,7 @@
                           [:toolName :string]
                           [:toolCallId :string]
                           [:state [:= "approval-responded"]]
-                          [:input {:optional true} [:maybe (ms/string-keyed-map ::request.schema/json-value)]]
+                          [:input {:optional true} ::tool-io]
                           [:providerExecuted {:optional true} :boolean]
                           [:output {:optional true} ::never]
                           [:errorText {:optional true} ::never]
@@ -459,7 +464,7 @@
                           [:toolName :string]
                           [:toolCallId :string]
                           [:state [:= "output-available"]]
-                          [:input {:optional true} [:maybe (ms/string-keyed-map ::request.schema/json-value)]]
+                          [:input {:optional true} ::tool-io]
                           [:providerExecuted {:optional true} :boolean]
                           [:output {:optional true} ::stored-tool-output]
                           [:errorText {:optional true} ::never]
@@ -474,8 +479,8 @@
                           [:toolName :string]
                           [:toolCallId :string]
                           [:state [:= "output-error"]]
-                          [:input {:optional true} [:maybe (ms/string-keyed-map ::request.schema/json-value)]]
-                          [:rawInput {:optional true} [:maybe (ms/string-keyed-map ::request.schema/json-value)]]
+                          [:input {:optional true} ::tool-io]
+                          [:rawInput {:optional true} ::tool-io]
                           [:providerExecuted {:optional true} :boolean]
                           [:output {:optional true} ::never]
                           [:errorText :string]
@@ -489,7 +494,7 @@
                           [:toolName :string]
                           [:toolCallId :string]
                           [:state [:= "output-denied"]]
-                          [:input {:optional true} [:maybe (ms/string-keyed-map ::request.schema/json-value)]]
+                          [:input {:optional true} ::tool-io]
                           [:providerExecuted {:optional true} :boolean]
                           [:output {:optional true} ::never]
                           [:errorText {:optional true} ::never]
@@ -543,7 +548,7 @@
    [::data            [:map {:closed true}
                        [:type [:fn data-type?]]
                        [:id {:optional true} :string]
-                       [:data {:optional true} [:maybe ::tool-payload]]]]])
+                       [:data {:optional true} [:maybe ::tool-io]]]]])
 
 (mr/def ::ui-message
   [:map

@@ -8,7 +8,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.warehouses.schema]))
 
 (set! *warn-on-reflection* true)
 

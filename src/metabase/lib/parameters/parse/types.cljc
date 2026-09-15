@@ -322,6 +322,7 @@
    ::no-value
    ::field-filter
    ::temporal-unit
+   ::date
    ::referenced-card-query
    ::referenced-table-query
    ::referenced-query-snippet

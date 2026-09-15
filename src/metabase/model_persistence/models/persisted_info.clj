@@ -7,7 +7,6 @@
    [metabase.model-persistence.db :as model-persistence.db]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -66,7 +65,7 @@
 
 (mu/defn query-hash
   "Base64 string of the hash of a query."
-  [query :- ::qp.schema/any-query]
+  [query :- :metabase.lib-be.schema/maybe-legacy-or-empty-query]
   (String. ^bytes (codecs/bytes->b64 (qp.util/query-hash query))))
 
 (def ^:dynamic *allow-persisted-substitution*

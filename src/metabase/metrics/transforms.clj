@@ -15,8 +15,6 @@
   "Normalize a dimension after JSON parsing. Keys are kebab-case and type values are keywords.
   See [[lib-metric.schema/persisted-dimension]]."
   [dim :- [:map {:closed true}
-           ;; nil until assigned during reconciliation of a computed dimension; see
-           ;; [[metabase.lib-metric.schema/computed-dimension]]
            [:id                    [:maybe ::lib-metric.schema/dimension-id]]
            [:lib/source            {:optional true} [:maybe [:or :keyword :string]]]
            [:name                  {:optional true} [:maybe :string]]

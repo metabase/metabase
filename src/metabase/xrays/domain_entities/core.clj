@@ -11,6 +11,7 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]
+   [metabase.warehouse-schema.schema]
    [metabase.xrays.domain-entities.hierarchy :as domain-entities.hierarchy]
    [metabase.xrays.domain-entities.specs :as domain-entities.specs :refer [*domain-entity-specs* MBQL]]
    [toucan2.core :as t2]))

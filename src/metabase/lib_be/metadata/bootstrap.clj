@@ -12,14 +12,14 @@
    [metabase.util.performance :as perf]))
 
 (def ^:private Query
-  :metabase.lib.util/legacy-or-mbql5-query)
+  :metabase.lib.util/query-like)
 
 (mu/defn- source-card-id-for-mbql5-query :- [:maybe ::lib.schema.id/card]
-  [query :- :metabase.lib.util/mbql5-query]
+  [query :- Query]
   (-> query :stages first :source-card))
 
 (mu/defn- source-card-id-for-legacy-query :- [:maybe ::lib.schema.id/card]
-  [query :- :metabase.lib.util/legacy-query]
+  [query :- Query]
   (let [inner-query         (:query query)
         deepest-inner-query (loop [inner-query inner-query]
                               (let [source-query (:source-query inner-query)]

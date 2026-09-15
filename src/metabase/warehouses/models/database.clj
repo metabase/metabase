@@ -11,7 +11,6 @@
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
-   [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -409,7 +408,7 @@
       (and driver
            (:id database)
            (driver.impl/registered? driver))
-      (assoc :features (driver.u/features driver (lib-be/instance->metadata (t2.realize/realize database) :metadata/database)))
+      (assoc :features (driver.u/features driver (t2.realize/realize database)))
 
       (and driver
            (driver.impl/registered? driver)

@@ -1,5 +1,8 @@
 (ns metabase.dashboards.schema
   (:require
+   [metabase.actions.schema]
+   [metabase.collections.schema]
+   [metabase.content-verification.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.parameters.schema :as parameters.schema]
@@ -30,8 +33,7 @@
   [:merge
    ::dashboard.update
    [:map {:closed true}
-    [:id                         {:optional true} [:maybe ::lib.schema.id/dashboard]]
-    [:parameters                 {:optional true} [:maybe ::parameters]]
+    [:id                         ::lib.schema.id/dashboard]
     [:moderation_status          {:optional true} [:maybe [:or :keyword :string]]]
     [:resolved-params            {:optional true} [:maybe [:map-of ms/NonBlankString ::parameters.schema/resolved-parameter]]]
     [:dashcards                  {:optional true} [:maybe [:sequential [:or ::dashcard [:ref ::dashboard-card]]]]]
@@ -48,12 +50,12 @@
     [:last_used_param_values     {:optional true} [:maybe [:map-of :string :metabase.users.schema/user-parameter-value.value]]]
     [:creator                    {:optional true} [:maybe :metabase.users.schema/user]]
     [:last-edit-info             {:optional true} [:maybe
-                                                    [:map {:closed true}
-                                                     [:timestamp  [:maybe ms/TemporalInstant]]
-                                                     [:id         [:maybe ms/PositiveInt]]
-                                                     [:first_name [:maybe :string]]
-                                                     [:last_name  [:maybe :string]]
-                                                     [:email      [:maybe :string]]]]]]])
+                                                   [:map {:closed true}
+                                                    [:timestamp  [:maybe ms/TemporalInstant]]
+                                                    [:id         [:maybe ms/PositiveInt]]
+                                                    [:first_name [:maybe :string]]
+                                                    [:last_name  [:maybe :string]]
+                                                    [:email      [:maybe :string]]]]]]])
 
 (mr/def ::dashboard.update
   "What an update (or insert) of a Dashboard accepts: every column of `:report_dashboard` except `id`, all optional."
@@ -97,29 +99,17 @@
 (mr/def ::dashboard-card
   "A DashboardCard as selected from the app DB: every column of `:report_dashboardcard`, plus the keys some callers
   hydrate onto it."
-  [:map {:closed true}
-   [:id                     ::lib.schema.id/dashcard]
-   [:created_at             ms/TemporalInstant]
-   [:updated_at             ms/TemporalInstant]
-   [:size_x                 :int]
-   [:size_y                 :int]
-   [:row                    :int]
-   [:col                    :int]
-   [:card_id                [:maybe ::lib.schema.id/card]]
-   [:dashboard_id           ::lib.schema.id/dashboard]
-   [:parameter_mappings     [:sequential ::dashboard-card.parameter-mapping]]
-   [:visualization_settings ::dashboard-card.visualization-settings]
-   [:entity_id              :string]
-   [:action_id              [:maybe ::lib.schema.id/action]]
-   [:dashboard_tab_id       [:maybe ms/PositiveInt]]
-   [:inline_parameters      [:maybe [:sequential :string]]]
-   [:collection_authority_level {:optional true} [:maybe [:or :keyword :string]]]
-   [:card                   {:optional true} [:maybe [:ref ::queries.schema/card]]]
-   [:series                 {:optional true} [:maybe [:sequential [:ref ::queries.schema/card]]]]
-   [:action                 {:optional true} [:maybe [:merge
+  [:merge
+   ::dashboard-card.update
+   [:map {:closed true}
+    [:id                     ::lib.schema.id/dashcard]
+    [:collection_authority_level {:optional true} [:maybe [:or :keyword :string]]]
+    [:card                   {:optional true} [:maybe [:ref ::queries.schema/card]]]
+    [:series                 {:optional true} [:maybe [:sequential [:ref ::queries.schema/card]]]]
+    [:action                 {:optional true} [:maybe [:merge
                                                        :metabase.actions.schema/action
                                                        [:map {:closed true}
-                                                        [:database_enabled_actions {:optional true} :boolean]]]]]])
+                                                        [:database_enabled_actions {:optional true} :boolean]]]]]]])
 
 (mr/def ::dashboard-card.update
   "What an update (or insert) of a DashboardCard accepts: every column of `:report_dashboardcard` except `id`, all optional."
@@ -141,11 +131,10 @@
 
 (mr/def ::dashboard-card-series
   "A DashboardCardSeries as selected from the app DB: every column of `:dashboardcard_series`."
-  [:map {:closed true}
-   [:id               ms/PositiveInt]
-   [:dashboardcard_id ::lib.schema.id/dashcard]
-   [:card_id          ::lib.schema.id/card]
-   [:position         :int]])
+  [:merge
+   ::dashboard-card-series.update
+   [:map {:closed true}
+    [:id               ms/PositiveInt]]])
 
 (mr/def ::dashboard-card-series.update
   "What an update (or insert) of a DashboardCardSeries accepts: every column of `:dashboardcard_series` except `id`, all optional."
@@ -156,14 +145,10 @@
 
 (mr/def ::dashboard-tab
   "A DashboardTab as selected from the app DB: every column of `:dashboard_tab`."
-  [:map {:closed true}
-   [:id           ms/PositiveInt]
-   [:dashboard_id ::lib.schema.id/dashboard]
-   [:name         :string]
-   [:position     :int]
-   [:entity_id    :string]
-   [:created_at   ms/TemporalInstant]
-   [:updated_at   ms/TemporalInstant]])
+  [:merge
+   ::dashboard-tab.update
+   [:map {:closed true}
+    [:id           ms/PositiveInt]]])
 
 (mr/def ::dashboard-tab.update
   "What an update (or insert) of a DashboardTab accepts: every column of `:dashboard_tab` except `id`, all optional."

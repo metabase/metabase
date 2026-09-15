@@ -327,7 +327,7 @@
   (let [raw (->> (map :inputTextDelta chunks)
                  (str/join ""))]
     (try
-      (json/decode raw)
+      (json/decode+kw raw)
       (catch Exception e
         (log/warn "Failed to parse tool arguments as JSON, passing raw string"
                   {:tool    (:toolName (first chunks))
@@ -335,7 +335,7 @@
                    :raw-len (count raw)})
         ;; Return a map with a sentinel key so the tool sees an error via schema validation
         ;; rather than a cryptic JSON parse stacktrace.
-        {"_raw_arguments" raw}))))
+        {:_raw_arguments raw}))))
 
 (defn- try-decode-json-string
   "If `v` is a string that looks like a JSON object or array, decode it.
@@ -346,7 +346,7 @@
              (or (str/starts-with? trimmed "{")
                  (str/starts-with? trimmed "["))))
     (try
-      (json/decode v)
+      (json/decode+kw v)
       (catch Exception _ v))
     v))
 

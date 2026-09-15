@@ -468,18 +468,16 @@
       (:url parsed)              (update :url url-escape)
       ;; un-nest {:request-options {:request-options <my-options>}} => {:request-options <my-options>}
       (:request-options parsed)  (update :request-options :request-options)
-      (map? (:http-body parsed)) (update :http-body update-keys name)
-      ;; convert query parameters into a flat map [{:k :a, :v 1} {:k :b, :v 2} {:k :b, :v 3}] => {"a" 1, "b" [2 3]}
+      (map? (:http-body parsed)) (update :http-body update-keys u/qualified-name)
+      ;; convert query parameters into a flat map [{:k :a, :v 1} {:k :b, :v 2} {:k :b, :v 3}] => {:a 1, :b [2 3]}
       (:query-parameters parsed) (update :query-parameters (fn [query-params]
-                                                             (update-keys
-                                                              (update-vals (->> query-params
-                                                                                (map :values)
-                                                                                (group-by :k))
-                                                                           (fn [values]
-                                                                             (if (> (count values) 1)
-                                                                               (map :v values)
-                                                                               (:v (first values)))))
-                                                              name))))))
+                                                             (update-vals (->> query-params
+                                                                               (map :values)
+                                                                               (group-by :k))
+                                                                          (fn [values]
+                                                                            (if (> (count values) 1)
+                                                                              (map :v values)
+                                                                              (:v (first values))))))))))
 
 (def ^:private response-timeout-ms (u/seconds->ms 45))
 

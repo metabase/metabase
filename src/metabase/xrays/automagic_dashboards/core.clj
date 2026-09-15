@@ -287,7 +287,7 @@
     :else                   (->> card table-id xrays.db/table)))
 
 (mu/defmethod ->root :model/Card :- ::ads/root
-  [card :- :metabase.queries.schema/card]
+  [card :- ::ads/card-or-question]
   (let [source (source card)]
     {:entity                     card
      :source                     source
@@ -434,7 +434,7 @@
                                           (update field :semantic_type keyword)
                                           (mi/instance :model/Field field)
                                           (analyze/run-classifiers field {})
-                                          (assoc field :db db)))))]
+                                          (assoc field :db db :xrays/database-id (u/the-id db))))))]
           (constantly source-fields))
         (constantly [])))))
 

@@ -7,15 +7,10 @@
 
 (mr/def ::notification
   "A Notification as selected from the app DB: every column of `:notification`."
-  [:map {:closed true}
-   [:id           ms/PositiveInt]
-   [:payload_type [:or :keyword :string]]
-   [:active       :boolean]
-   [:created_at   ms/TemporalInstant]
-   [:updated_at   ms/TemporalInstant]
-   [:internal_id  {:optional true} [:maybe :string]]
-   [:payload_id   [:maybe ms/PositiveInt]]
-   [:creator_id   [:maybe ::lib.schema.id/user]]])
+  [:merge
+   ::notification.update
+   [:map {:closed true}
+    [:id           ms/PositiveInt]]])
 
 (mr/def ::notification.update
   "What an update (or insert) of a Notification accepts: every column of `:notification` except `id`, all optional."
@@ -30,14 +25,10 @@
 
 (mr/def ::notification-card
   "A NotificationCard as selected from the app DB: every column of `:notification_card`."
-  [:map {:closed true}
-   [:id             ms/PositiveInt]
-   [:card_id        [:maybe ::lib.schema.id/card]]
-   [:send_once      :boolean]
-   [:send_condition [:or :keyword :string]]
-   [:created_at     ms/TemporalInstant]
-   [:updated_at     ms/TemporalInstant]
-   [:disable_links  [:maybe :boolean]]])
+  [:merge
+   ::notification-card.update
+   [:map {:closed true}
+    [:id             ms/PositiveInt]]])
 
 (mr/def ::notification-card.update
   "What an update (or insert) of a NotificationCard accepts: every column of `:notification_card` except `id`, all optional."
@@ -51,15 +42,10 @@
 
 (mr/def ::notification-handler
   "A NotificationHandler as selected from the app DB: every column of `:notification_handler`."
-  [:map {:closed true}
-   [:id              ms/PositiveInt]
-   [:channel_type    [:or :keyword :string]]
-   [:notification_id ms/PositiveInt]
-   [:channel_id      [:maybe ms/PositiveInt]]
-   [:template_id     [:maybe ms/PositiveInt]]
-   [:active          :boolean]
-   [:created_at      ms/TemporalInstant]
-   [:updated_at      ms/TemporalInstant]])
+  [:merge
+   ::notification-handler.update
+   [:map {:closed true}
+    [:id              ms/PositiveInt]]])
 
 (mr/def ::notification-handler.update
   "What an update (or insert) of a NotificationHandler accepts: every column of `:notification_handler` except `id`, all optional."
@@ -85,15 +71,10 @@
 
 (mr/def ::notification-recipient
   "A NotificationRecipient as selected from the app DB: every column of `:notification_recipient`."
-  [:map {:closed true}
-   [:id                      ms/PositiveInt]
-   [:notification_handler_id ms/PositiveInt]
-   [:type                    [:or :keyword :string]]
-   [:user_id                 [:maybe ::lib.schema.id/user]]
-   [:permissions_group_id    [:maybe ms/PositiveInt]]
-   [:details                 [:maybe ::notification-recipient.details]]
-   [:created_at              ms/TemporalInstant]
-   [:updated_at              ms/TemporalInstant]])
+  [:merge
+   ::notification-recipient.update
+   [:map {:closed true}
+    [:id                      ms/PositiveInt]]])
 
 (mr/def ::notification-recipient.update
   "What an update (or insert) of a NotificationRecipient accepts: every column of `:notification_recipient` except `id`, all optional."
@@ -108,14 +89,10 @@
 
 (mr/def ::notification-subscription
   "A NotificationSubscription as selected from the app DB: every column of `:notification_subscription`."
-  [:map {:closed true}
-   [:id              ms/PositiveInt]
-   [:notification_id ms/PositiveInt]
-   [:type            [:or :keyword :string]]
-   [:event_name      [:maybe [:or :keyword :string]]]
-   [:created_at      ms/TemporalInstant]
-   [:cron_schedule   [:maybe :string]]
-   [:ui_display_type [:maybe [:or :keyword :string]]]])
+  [:merge
+   ::notification-subscription.update
+   [:map {:closed true}
+    [:id              ms/PositiveInt]]])
 
 (mr/def ::notification-subscription.update
   "What an update (or insert) of a NotificationSubscription accepts: every column of `:notification_subscription` except `id`, all optional."

@@ -31,13 +31,46 @@
    ::lib-be.schema/internal-query
    ::unnormalized-query])
 
+(mr/def ::internal-query.column
+  "A column of an internal (audit app) query's results, as the query's function declares it."
+  [:map {:closed true}
+   [:name          :string]
+   [:display_name  :string]
+   [:base_type     ::lib.schema.common/base-type]
+   [:remapped_to   {:optional true} :string]
+   [:remapped_from {:optional true} :string]
+   [:code          {:optional true} :boolean]])
+
+(mr/def ::insight.best-fit
+  "A trendline formula fitted to a query's results, one of the curve shapes the insights calculation can fit."
+  [:or
+   [:tuple [:= :+] number? [:tuple [:= :*] number? [:= :x]]]
+   [:tuple [:= :*] number? [:tuple [:= :exp] [:tuple [:= :*] number? [:= :x]]]]
+   [:tuple [:= :+] number? [:tuple [:= :*] number? [:tuple [:= :log] [:= :x]]]]
+   [:tuple [:= :*] number? [:tuple [:= :pow] [:= :x] number?]]])
+
+(mr/def ::insight
+  "One entry of the `:insights` calculated for a query's results."
+  [:map {:closed true}
+   [:last-value     {:optional true} [:maybe number?]]
+   [:previous-value {:optional true} [:maybe number?]]
+   [:last-change    {:optional true} [:maybe number?]]
+   [:slope          {:optional true} [:maybe number?]]
+   [:offset         {:optional true} [:maybe number?]]
+   [:best-fit       {:optional true} [:maybe ::insight.best-fit]]
+   [:col            {:optional true} [:maybe :string]]
+   [:unit           {:optional true} [:maybe :keyword]]])
+
 (mr/def ::metadata
   "The map threaded through the post-processing `rff`/`rf` chain: an accumulator of query result metadata that grows
   as it passes through QP middleware, and is eventually merged into the final result's `:data` key. See
   [[metabase.query-processor.postprocess/middleware]] and [[metabase.query-processor.execute/middleware]] for the
   middleware that add to it."
   [:map {:closed true}
-   [:cols                    {:optional true} [:sequential [:or ::result-metadata.column ::mbql.s/driver-column]]]
+   [:cols                    {:optional true} [:sequential [:or
+                                                            ::result-metadata.column
+                                                            ::mbql.s/driver-column
+                                                            ::internal-query.column]]]
    [:native_form             {:optional true} :metabase.query-processor.compile/compiled]
    [:dataset                 {:optional true} :boolean]
    [:model                   {:optional true} :boolean]
@@ -59,7 +92,12 @@
                                                                                               [false [:fn {:error/message "map"} map?]]]]]]]
    [:pivot?                  {:optional true} :boolean]
    [:is_sandboxed            {:optional true} :boolean]
-   [:download_perms          {:optional true} [:or :keyword :string]]])
+   [:download_perms          {:optional true} [:or :keyword :string]]
+   [:results_metadata        {:optional true} [:map {:closed true}
+                                               [:columns ::result-metadata.columns]]]
+   [:insights                {:optional true} [:maybe [:sequential ::insight]]]
+   [:rows_truncated          {:optional true} :int]
+   [:pivot_rows_truncated    {:optional true} :int]])
 
 (mr/def ::accumulator
   "The running accumulator of a QP reducing function, whose shape is whatever that (possibly caller-supplied) reducing function accumulates."

@@ -11,6 +11,7 @@
    [clojure.set :as set]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.dashboards.schema]
    [metabase.revisions.db :as revisions.db]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -64,7 +65,7 @@
   the revisions table. But this table is populated from events asynchronously so when editing and wanting
   last-edit-info, you must construct it from `@api/*current-user*` and the current timestamp rather than checking the
   revisions table as those revisions may not be present yet."
-  [user :- [:maybe [:select-keys :metabase.users.schema/user.update [:id :first_name :last_name :email]]]]
+  [user :- [:maybe :metabase.users.schema/user.update]]
   (merge {:timestamp (t/instant)}
          (select-keys user [:id :first_name :last_name :email])))
 

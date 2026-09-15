@@ -357,11 +357,7 @@
 
 (mu/defmethod driver/execute-write-query! :h2
   [driver :- :keyword
-   query  :- [:map {:closed true}
-              [:type     [:= :native]]
-              [:database {:optional true} driver-api/schema.id.database]
-              [:native   [:map {:closed true}
-                          [:query :string]]]]]
+   query  :- :metabase.lib.util/legacy-query]
   (check-native-query-not-using-default-user query)
   (check-action-commands-allowed query)
   ((get-method driver/execute-write-query! :sql-jdbc) driver query))

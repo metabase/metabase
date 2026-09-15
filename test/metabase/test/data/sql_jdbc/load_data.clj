@@ -150,8 +150,8 @@
 
 (mu/defn- reducible-chunks  :- (lib.schema.common/instance-of-class clojure.lang.IReduceInit)
   [driver   :- :keyword
-   dbdef    :- tx/ValidDatabaseDefinition
-   tabledef :- tx/ValidTableDefinition]
+   dbdef    :- tx/DatabaseDefinitionSchema
+   tabledef :- tx/TableDefinitionSchema]
   (let [rows        (:rows tabledef)
         chunk-size  (chunk-size driver dbdef tabledef)
         row-xform   (comp

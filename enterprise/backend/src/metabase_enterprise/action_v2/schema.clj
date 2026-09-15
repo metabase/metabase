@@ -21,19 +21,10 @@
 
 (mr/def ::undo
   "A Undo as selected from the app DB: every column of `:data_edit_undo_chain`."
-  [:map {:closed true}
-   [:id         ms/PositiveInt]
-   [:batch_num  :int]
-   [:table_id   ::lib.schema.id/table]
-   [:row_pk     ::undo.row-pk]
-   [:user_id    ::lib.schema.id/user]
-   [:scope      [:or :keyword :string]]
-   [:undoable   :boolean]
-   [:raw_before [:maybe ::undo.raw-before]]
-   [:raw_after  [:maybe ::undo.raw-after]]
-   [:undone     :boolean]
-   [:created_at ms/TemporalInstant]
-   [:updated_at ms/TemporalInstant]])
+  [:merge
+   ::undo.update
+   [:map {:closed true}
+    [:id         ms/PositiveInt]]])
 
 (mr/def ::action-mapping
   "A `:mapping` produced by `default-mapping`: which table the action targets and where the row data plugs in."

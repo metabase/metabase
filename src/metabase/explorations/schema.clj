@@ -10,18 +10,10 @@
 
 (mr/def ::exploration
   "A Exploration as selected from the app DB: every column of `:exploration`."
-  [:map {:closed true}
-   [:id                  ms/PositiveInt]
-   [:name                :string]
-   [:description         [:maybe :string]]
-   [:creator_id          ::lib.schema.id/user]
-   [:collection_id       [:maybe ::lib.schema.id/collection]]
-   [:archived            :boolean]
-   [:archived_directly   :boolean]
-   [:collection_position [:maybe :int]]
-   [:entity_id           [:maybe :string]]
-   [:created_at          ms/TemporalInstant]
-   [:updated_at          ms/TemporalInstant]])
+  [:merge
+   ::exploration.update
+   [:map {:closed true}
+    [:id                  ms/PositiveInt]]])
 
 (mr/def ::exploration.update
   "What an update (or insert) of a Exploration accepts: every column of `:exploration` except `id`, all optional."
@@ -71,14 +63,10 @@
 
 (mr/def ::exploration-block
   "A ExplorationBlock as selected from the app DB: every column of `:exploration_block`."
-  [:map {:closed true}
-   [:id                    ms/PositiveInt]
-   [:exploration_thread_id ms/PositiveInt]
-   [:metrics               [:maybe [:sequential ::exploration-block.metric]]]
-   [:dimensions            [:maybe [:sequential ::exploration-block.dimension]]]
-   [:position              :int]
-   [:created_at            ms/TemporalInstant]
-   [:updated_at            ms/TemporalInstant]])
+  [:merge
+   ::exploration-block.update
+   [:map {:closed true}
+    [:id                    ms/PositiveInt]]])
 
 (mr/def ::exploration-block.update
   "What an update (or insert) of a ExplorationBlock accepts: every column of `:exploration_block` except `id`, all optional."
@@ -92,18 +80,10 @@
 
 (mr/def ::exploration-page
   "A ExplorationPage as selected from the app DB: every column of `:exploration_page`."
-  [:map {:closed true}
-   [:id                   ms/PositiveInt]
-   [:entity_id            [:maybe :string]]
-   [:exploration_block_id ms/PositiveInt]
-   [:card_id              ::lib.schema.id/card]
-   [:dimension_id         :string]
-   [:query_type           [:or :keyword :string]]
-   [:position             :int]
-   [:starred              :boolean]
-   [:hidden               :boolean]
-   [:created_at           ms/TemporalInstant]
-   [:updated_at           ms/TemporalInstant]])
+  [:merge
+   ::exploration-page.update
+   [:map {:closed true}
+    [:id                   ms/PositiveInt]]])
 
 (mr/def ::exploration-page.update
   "What an update (or insert) of a ExplorationPage accepts: every column of `:exploration_page` except `id`, all optional."
@@ -139,29 +119,10 @@
 
 (mr/def ::exploration-query
   "A ExplorationQuery as selected from the app DB: every column of `:exploration_query`."
-  [:map {:closed true}
-   [:id                     ms/PositiveInt]
-   [:exploration_thread_id  ms/PositiveInt]
-   [:page_id                ms/PositiveInt]
-   [:name                   [:maybe :string]]
-   [:card_id                ::lib.schema.id/card]
-   [:database_id            ::lib.schema.id/database]
-   [:segment_id             [:maybe ::lib.schema.id/segment]]
-   [:dimension_id           :string]
-   [:query_type             [:or :keyword :string]]
-   [:display                [:maybe [:or :keyword :string]]]
-   [:visualization_settings [:maybe ::exploration-query.visualization-settings]]
-   [:dataset_query          [:maybe ::exploration-query.dataset-query]]
-   [:params                 [:maybe ::exploration-query.params]]
-   [:position               :int]
-   [:status                 [:or :keyword :string]]
-   [:error_message          [:maybe :string]]
-   [:started_at             [:maybe ms/TemporalInstant]]
-   [:finished_at            [:maybe ms/TemporalInstant]]
-   [:entity_id              [:maybe :string]]
-   [:created_at             ms/TemporalInstant]
-   [:updated_at             ms/TemporalInstant]
-   [:data_access_token      [:maybe ::exploration-query.data-access-token]]])
+  [:merge
+   ::exploration-query.update
+   [:map {:closed true}
+    [:id                     ms/PositiveInt]]])
 
 (mr/def ::exploration-query.update
   "What an update (or insert) of a ExplorationQuery accepts: every column of `:exploration_query` except `id`, all optional."
@@ -194,16 +155,10 @@
 
 (mr/def ::exploration-query-result
   "A ExplorationQueryResult as selected from the app DB: every column of `:exploration_query_result`."
-  [:map {:closed true}
-   [:id                               ms/PositiveInt]
-   [:exploration_query_id             ms/PositiveInt]
-   [:stored_result_id                 ms/PositiveInt]
-   [:created_at                       ms/TemporalInstant]
-   [:interestingness_score            [:maybe number?]]
-   [:contextual_interestingness_score [:maybe number?]]
-   [:chart_stats                      [:maybe ::exploration-query-result.chart-stats]]
-   [:metric_description               [:maybe :string]]
-   [:chart_description                [:maybe :string]]])
+  [:merge
+   ::exploration-query-result.update
+   [:map {:closed true}
+    [:id                               ms/PositiveInt]]])
 
 (mr/def ::exploration-query-result.update
   "What an update (or insert) of a ExplorationQueryResult accepts: every column of `:exploration_query_result` except `id`, all optional."
@@ -276,23 +231,10 @@
 
 (mr/def ::exploration-thread
   "A ExplorationThread as selected from the app DB: every column of `:exploration_thread`."
-  [:map {:closed true}
-   [:id                    ms/PositiveInt]
-   [:exploration_id        ms/PositiveInt]
-   [:name                  [:maybe :string]]
-   [:prompt                [:maybe :string]]
-   [:position              :int]
-   [:source_page_id        [:maybe ms/PositiveInt]]
-   [:started_at            [:maybe ms/TemporalInstant]]
-   [:entity_id             [:maybe :string]]
-   [:created_at            ms/TemporalInstant]
-   [:updated_at            ms/TemporalInstant]
-   [:completed_at          [:maybe ms/TemporalInstant]]
-   [:analysis_started_at   [:maybe ms/TemporalInstant]]
-   [:query_plan_started_at [:maybe ms/TemporalInstant]]
-   [:query_plan_transcript [:maybe ::exploration-thread.query-plan-transcript]]
-   [:canceled_at           [:maybe ms/TemporalInstant]]
-   [:data_access_token     [:maybe ::exploration-thread.data-access-token]]])
+  [:merge
+   ::exploration-thread.update
+   [:map {:closed true}
+    [:id                    ms/PositiveInt]]])
 
 (mr/def ::exploration-thread.update
   "What an update (or insert) of a ExplorationThread accepts: every column of `:exploration_thread` except `id`, all optional."
@@ -315,13 +257,10 @@
 
 (mr/def ::exploration-thread-timeline
   "A ExplorationThreadTimeline as selected from the app DB: every column of `:exploration_thread_timeline`."
-  [:map {:closed true}
-   [:id                    ms/PositiveInt]
-   [:exploration_thread_id ms/PositiveInt]
-   [:timeline_id           ms/PositiveInt]
-   [:position              :int]
-   [:created_at            ms/TemporalInstant]
-   [:updated_at            ms/TemporalInstant]])
+  [:merge
+   ::exploration-thread-timeline.update
+   [:map {:closed true}
+    [:id                    ms/PositiveInt]]])
 
 (mr/def ::exploration-thread-timeline.update
   "What an update (or insert) of a ExplorationThreadTimeline accepts: every column of `:exploration_thread_timeline` except `id`, all optional."

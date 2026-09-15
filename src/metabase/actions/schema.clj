@@ -210,11 +210,9 @@
 
 (mr/def ::httpaction
   "A HTTPAction as selected from the app DB: every column of `:http_action`."
-  [:map {:closed true}
-   [:action_id       ::lib.schema.id/action]
-   [:template        ::http-action.template]
-   [:response_handle [:maybe :string]]
-   [:error_handle    [:maybe :string]]])
+  [:merge
+   ::httpaction.update
+   [:map {:closed true}]])
 
 (mr/def ::httpaction.update
   "What an update (or insert) of a HTTPAction accepts: every column of `:http_action` except `id`, all optional."

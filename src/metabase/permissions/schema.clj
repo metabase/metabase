@@ -52,13 +52,10 @@
 
 (mr/def ::application-permissions-revision
   "A ApplicationPermissionsRevision as selected from the app DB: every column of `:application_permissions_revision`."
-  [:map {:closed true}
-   [:id         ms/PositiveInt]
-   [:before     [:maybe ::application-permissions-revision.before]]
-   [:after      [:maybe ::application-permissions-revision.after]]
-   [:user_id    ::lib.schema.id/user]
-   [:created_at ms/TemporalInstant]
-   [:remark     [:maybe :string]]])
+  [:merge
+   ::application-permissions-revision.update
+   [:map {:closed true}
+    [:id         ms/PositiveInt]]])
 
 (mr/def ::application-permissions-revision.update
   "What an update (or insert) of a ApplicationPermissionsRevision accepts: every column of `:application_permissions_revision` except `id`, all optional."
@@ -88,13 +85,10 @@
 
 (mr/def ::collection-permission-graph-revision
   "A CollectionPermissionGraphRevision as selected from the app DB: every column of `:collection_permission_graph_revision`."
-  [:map {:closed true}
-   [:id         ms/PositiveInt]
-   [:before     [:maybe ::collection-permission-graph-revision.before]]
-   [:after      [:maybe ::collection-permission-graph-revision.after]]
-   [:user_id    ::lib.schema.id/user]
-   [:created_at ms/TemporalInstant]
-   [:remark     [:maybe :string]]])
+  [:merge
+   ::collection-permission-graph-revision.update
+   [:map {:closed true}
+    [:id         ms/PositiveInt]]])
 
 (mr/def ::collection-permission-graph-revision.update
   "What an update (or insert) of a CollectionPermissionGraphRevision accepts: every column of `:collection_permission_graph_revision` except `id`, all optional."
@@ -107,15 +101,11 @@
 
 (mr/def ::data-permissions
   "A DataPermissions as selected from the app DB: every column of `:data_permissions`."
-  [:map {:closed true}
-   [:id                  ms/PositiveInt]
-   [:group_id            ms/PositiveInt]
-   [:perm_type           [:or :keyword :string]]
-   [:db_id               ::lib.schema.id/database]
-   [:schema_name         [:maybe :string]]
-   [:table_id            [:maybe ::lib.schema.id/table]]
-   [:perm_value          [:or :keyword :string]]
-   [:unique_perms_helper {:optional true} [:maybe :int]]])
+  [:merge
+   ::data-permissions.update
+   [:map {:closed true}
+    [:id                  ms/PositiveInt]
+    [:unique_perms_helper {:optional true} [:maybe :int]]]])
 
 (mr/def ::data-permissions.update
   "What an update (or insert) of a DataPermissions accepts: every column of `:data_permissions` except `id`, all optional."
@@ -129,13 +119,10 @@
 
 (mr/def ::permissions
   "A Permissions as selected from the app DB: every column of `:permissions`."
-  [:map {:closed true}
-   [:id            ms/PositiveInt]
-   [:object        :string]
-   [:group_id      ms/PositiveInt]
-   [:perm_value    [:maybe [:or :keyword :string]]]
-   [:perm_type     [:maybe [:or :keyword :string]]]
-   [:collection_id [:maybe ::lib.schema.id/collection]]])
+  [:merge
+   ::permissions.update
+   [:map {:closed true}
+    [:id            ms/PositiveInt]]])
 
 (mr/def ::permissions.update
   "What an update (or insert) of a Permissions accepts: every column of `:permissions` except `id`, all optional."
@@ -158,14 +145,11 @@
 (mr/def ::permissions-group
   "A PermissionsGroup as selected from the app DB: every column of `:permissions_group`, plus `:members` some
   callers hydrate onto it."
-  [:map {:closed true}
-   [:id                ms/PositiveInt]
-   [:name              :string]
-   [:entity_id         :string]
-   [:magic_group_type  [:maybe [:or :keyword :string]]]
-   [:is_tenant_group   :boolean]
-   [:is_data_app_group :boolean]
-   [:members           {:optional true} [:sequential [:map {:closed true} [:email :string] [:entity_id :string]]]]])
+  [:merge
+   ::permissions-group.update
+   [:map {:closed true}
+    [:id                ms/PositiveInt]
+    [:members           {:optional true} [:sequential [:map {:closed true} [:email :string] [:entity_id :string]]]]]])
 
 (mr/def ::permissions-group.member
   "A member of a PermissionsGroup as `metabase.permissions.db/group-members` selects it: the User columns the group
@@ -194,11 +178,10 @@
 
 (mr/def ::permissions-group-membership
   "A PermissionsGroupMembership as selected from the app DB: every column of `:permissions_group_membership`."
-  [:map {:closed true}
-   [:id               ms/PositiveInt]
-   [:user_id          ::lib.schema.id/user]
-   [:group_id         ms/PositiveInt]
-   [:is_group_manager :boolean]])
+  [:merge
+   ::permissions-group-membership.update
+   [:map {:closed true}
+    [:id               ms/PositiveInt]]])
 
 (mr/def ::permissions-group-membership.update
   "What an update (or insert) of a PermissionsGroupMembership accepts: every column of `:permissions_group_membership` except `id`, all optional."
@@ -246,13 +229,10 @@
 
 (mr/def ::permissions-revision
   "A PermissionsRevision as selected from the app DB: every column of `:permissions_revision`."
-  [:map {:closed true}
-   [:id         ms/PositiveInt]
-   [:before     [:maybe ::permissions-revision.before]]
-   [:after      [:maybe ::permissions-revision.after]]
-   [:user_id    ::lib.schema.id/user]
-   [:created_at ms/TemporalInstant]
-   [:remark     [:maybe :string]]])
+  [:merge
+   ::permissions-revision.update
+   [:map {:closed true}
+    [:id         ms/PositiveInt]]])
 
 (mr/def ::permissions-revision.update
   "What an update (or insert) of a PermissionsRevision accepts: every column of `:permissions_revision` except `id`, all optional."

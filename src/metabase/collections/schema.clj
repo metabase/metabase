@@ -100,26 +100,13 @@
 
 (mr/def ::collection
   "A Collection as selected from the app DB: every column of `:collection`."
-  [:map {:closed true}
-   [:id                   ::lib.schema.id/collection]
-   [:name                 :string]
-   [:description          [:maybe :string]]
-   [:archived             :boolean]
-   [:location             :string]
-   [:personal_owner_id    [:maybe ::lib.schema.id/user]]
-   [:slug                 :string]
-   [:namespace            [:maybe [:or :keyword :string]]]
-   [:authority_level      [:maybe [:or :keyword :string]]]
-   [:entity_id            :string]
-   [:created_at           ms/TemporalInstant]
-   [:type                 [:maybe [:or :keyword :string]]]
-   [:is_sample            :boolean]
-   [:archive_operation_id [:maybe :string]]
-   [:archived_directly    [:maybe :boolean]]
-   [:is_remote_synced     [:maybe :boolean]]
-   [:can_write            {:optional true} :boolean]
-   [:is_personal          {:optional true} [:maybe :boolean]]
-   [:effective_location   {:optional true} [:maybe :string]]])
+  [:merge
+   ::collection.update
+   [:map {:closed true}
+    [:id                   ::lib.schema.id/collection]
+    [:can_write            {:optional true} :boolean]
+    [:is_personal          {:optional true} [:maybe :boolean]]
+    [:effective_location   {:optional true} [:maybe :string]]]])
 
 (mr/def ::root-collection
   "The placeholder for the Root Collection, which has no row, as `metabase.collections.models.collection.root` builds it."

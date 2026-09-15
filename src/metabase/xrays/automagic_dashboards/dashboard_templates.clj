@@ -8,7 +8,6 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase.dashboards.constants :as dashboards.constants]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.query-processor.util :as qp.util]
    [metabase.types.core :as types]
    [metabase.util :as u]
@@ -41,7 +40,12 @@
 (def ^:private Score
   [:int {:min 0, :max max-score}])
 
-(def ^:private MBQL [:maybe ::lib.schema.common/possibly-unnormalized-clause])
+(def ^:private MBQL
+  "A metric/filter clause as it appears in a dashboard template YAML: legacy-ish MBQL extended with `[dimension X]`
+  placeholders that grounding later resolves into real column refs, so it is not a normalized MBQL clause and must
+  not be decoded as one (coercing it through the real MBQL clause schema turns its string tokens, like the `X` in
+  `[dimension X]`, into keywords and breaks dimension matching)."
+  [:maybe {::mr/deliberately-open true} [:sequential :any]])
 
 (def ^:private Identifier
   [:string

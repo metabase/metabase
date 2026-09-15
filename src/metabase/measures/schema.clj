@@ -4,9 +4,11 @@
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.users.schema]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.schema]))
 
 (set! *warn-on-reflection* true)
 
@@ -35,21 +37,12 @@
 (mr/def ::measure
   "A Measure as selected from the app DB: every column of `:measure`, plus `:creator` and `:table` some callers
   hydrate onto it."
-  [:map {:closed true}
-   [:id                 ms/PositiveInt]
-   [:table_id           ::lib.schema.id/table]
-   [:creator_id         ::lib.schema.id/user]
-   [:name               :string]
-   [:description        [:maybe :string]]
-   [:archived           :boolean]
-   [:definition         ::measure.definition]
-   [:created_at         ms/TemporalInstant]
-   [:updated_at         ms/TemporalInstant]
-   [:entity_id          :string]
-   [:dimensions         [:maybe [:sequential ::measure.dimension]]]
-   [:dimension_mappings [:maybe [:sequential ::measure.dimension-mapping]]]
-   [:creator            {:optional true} [:maybe :metabase.users.schema/user]]
-   [:table              {:optional true} [:maybe :metabase.warehouse-schema.schema/table]]])
+  [:merge
+   ::measure.update
+   [:map {:closed true}
+    [:id                 ms/PositiveInt]
+    [:creator            {:optional true} [:maybe :metabase.users.schema/user]]
+    [:table              {:optional true} [:maybe :metabase.warehouse-schema.schema/table]]]])
 
 (mr/def ::measure.update
   "What an update (or insert) of a Measure accepts: every column of `:measure` except `id`, all optional."

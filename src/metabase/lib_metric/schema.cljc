@@ -55,6 +55,7 @@
 ;;; -----------------------------------------------------------------------------------------------------------------
 
 (mr/def ::dimension-id
+  "UUID string identifying a dimension."
   ::lib.schema.metadata/dimension-id)
 
 (mr/def ::dimension-group
@@ -93,7 +94,12 @@
   ::lib.schema.metadata/dimension-mapping.target)
 
 (mr/def ::dimension-mapping
-  ::lib.schema.metadata/dimension-mapping)
+  "Schema for a dimension mapping."
+  [:map {:closed true}
+   [:type         ::dimension-mapping.type]
+   [:table-id     {:optional true} [:maybe ::lib.schema.id/table]]
+   [:dimension-id ::dimension-id]
+   [:target       ::dimension-mapping.target]])
 
 (mr/def ::dimension-reference.options
   "Options map for dimension references."
@@ -327,7 +333,22 @@
   ::lib.schema.metadata/dimension-status)
 
 (mr/def ::persisted-dimension
-  ::lib.schema.metadata/persisted-dimension)
+  "Schema for a persisted dimension definition with status tracking."
+  [:map {:closed true}
+   [:id               ::dimension-id]
+   [:name             {:optional true} [:maybe :string]]
+   [:display-name     {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:description      {:optional true} [:maybe :string]]
+   [:effective-type   {:optional true} [:maybe ::lib.schema.common/base-type]]
+   [:semantic-type    {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
+   [:has-field-values {:optional true} [:maybe [:enum :list :search :none]]]
+   [:status           {:optional true} [:maybe ::dimension-status]]
+   [:status-message   {:optional true} [:maybe :string]]
+   [:sources          {:optional true} [:maybe [:sequential ::dimension-source]]]
+   [:group            {:optional true} [:maybe ::dimension-group]]
+   [:lib/source       {:optional true} [:maybe [:or ::lib.schema.metadata/column.source :string]]]
+   [:default-temporal-unit {:optional true} ::lib.schema.temporal-bucketing/unit]
+   [:default          {:optional true} [:maybe :boolean]]])
 
 (mr/def ::persisted-dimensions
   "Schema for a sequence of persisted dimensions."
@@ -368,6 +389,7 @@
    [:id               ::dimension-id]  ; UUID string
    [:name             {:optional true} [:maybe :string]]
    [:display-name     {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:description      {:optional true} [:maybe :string]]
    [:effective-type   {:optional true} [:maybe ::lib.schema.common/base-type]]
    [:semantic-type    {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
    [:has-field-values {:optional true} [:maybe [:enum :list :search :none]]]
@@ -375,6 +397,7 @@
    [:status-message   {:optional true} [:maybe :string]]
    [:sources          {:optional true} [:maybe [:sequential ::dimension-source]]]
    [:group            {:optional true} [:maybe ::dimension-group]]
+   [:lib/source       {:optional true} [:maybe [:or ::lib.schema.metadata/column.source :string]]]
    [:default-temporal-unit {:optional true} ::lib.schema.temporal-bucketing/unit]
    [:default          {:optional true} [:maybe :boolean]]
    ;; Source tracking
@@ -408,6 +431,7 @@
    [:semantic-type {:optional true} [:maybe :keyword]]
    [:has-field-values {:optional true} [:maybe [:enum :list :search :none]]]
    [:lib/source {:optional true} [:maybe :keyword]]
+   [:sources {:optional true} [:maybe [:sequential ::dimension-source]]]
    [:group {:optional true} [:maybe ::dimension-group]]])
 
 (mr/def ::computed-pair

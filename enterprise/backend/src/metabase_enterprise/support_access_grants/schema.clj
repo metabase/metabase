@@ -57,17 +57,10 @@
 
 (mr/def ::support-access-grant-log
   "A SupportAccessGrantLog as selected from the app DB: every column of `:support_access_grant_log`."
-  [:map {:closed true}
-   [:id                    ms/PositiveInt]
-   [:user_id               [:maybe ::lib.schema.id/user]]
-   [:ticket_number         [:maybe :string]]
-   [:notes                 [:maybe :string]]
-   [:grant_start_timestamp ms/TemporalInstant]
-   [:grant_end_timestamp   ms/TemporalInstant]
-   [:revoked_at            [:maybe ms/TemporalInstant]]
-   [:revoked_by_user_id    [:maybe ::lib.schema.id/user]]
-   [:created_at            ms/TemporalInstant]
-   [:updated_at            ms/TemporalInstant]])
+  [:merge
+   ::support-access-grant-log.update
+   [:map {:closed true}
+    [:id                    ms/PositiveInt]]])
 
 (mr/def ::support-access-grant-log.update
   "What an update (or insert) of a SupportAccessGrantLog accepts: every column of `:support_access_grant_log` except `id`, all optional."

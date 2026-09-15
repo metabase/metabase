@@ -61,6 +61,8 @@
 (mr/def ::pivot-cols     [:sequential ::pivot.common/index])
 (mr/def ::pivot-measures [:sequential ::pivot.common/index])
 
+(mr/def ::column-sort-order [:map-of [:maybe ::pivot.common/index] [:maybe :keyword]])
+
 (mr/def ::pivot-opts [:maybe
                       [:map {:closed true}
                        [:pivot-rows         {:optional true} [:maybe ::pivot-rows]]
@@ -68,7 +70,7 @@
                        [:pivot-measures     {:optional true} [:maybe ::pivot-measures]]
                        [:show-row-totals    {:optional true} [:maybe :boolean]]
                        [:show-column-totals {:optional true} [:maybe :boolean]]
-                       [:column-sort-order  {:optional true} [:maybe [:map-of [:maybe ::pivot.common/index] [:maybe :keyword]]]]]])
+                       [:column-sort-order  {:optional true} [:maybe ::column-sort-order]]]])
 
 (mr/def ::pivot.common/breakout-combinations
   [:and
@@ -343,7 +345,7 @@
     (when (some some? (vals pivot-opts))
       pivot-opts)))
 
-(mu/defn- column-sort-order :- ::pivot-opts
+(mu/defn- column-sort-order :- [:maybe ::column-sort-order]
   "Looks at the `pivot_table.column_sort_order` key in the card's visualization settings and generates a map from the
   column's index to the setting (either ascending or descending)."
   [query        :- ::qp.schema/any-query

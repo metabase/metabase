@@ -63,19 +63,10 @@
 
 (mr/def ::replacement-run
   "A ReplacementRun as selected from the app DB: every column of `:source_replacement_run`."
-  [:map {:closed true}
-   [:id                 ms/PositiveInt]
-   [:source_entity_type [:or :keyword :string]]
-   [:source_entity_id   ms/PositiveInt]
-   [:target_entity_type [:or :keyword :string]]
-   [:target_entity_id   ms/PositiveInt]
-   [:status             [:or :keyword :string]]
-   [:is_active          [:maybe :boolean]]
-   [:progress           [:maybe number?]]
-   [:message            [:maybe :string]]
-   [:user_id            [:maybe ::lib.schema.id/user]]
-   [:start_time         ms/TemporalInstant]
-   [:end_time           [:maybe ms/TemporalInstant]]])
+  [:merge
+   ::replacement-run.update
+   [:map {:closed true}
+    [:id                 ms/PositiveInt]]])
 
 (mr/def ::replacement-run.update
   "What an update (or insert) of a ReplacementRun accepts: every column of `:source_replacement_run` except `id`, all optional."

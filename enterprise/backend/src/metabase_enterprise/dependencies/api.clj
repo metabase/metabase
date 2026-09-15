@@ -6,6 +6,7 @@
    [metabase-enterprise.dependencies.models.analysis-finding-error :as analysis-finding-error]
    [metabase-enterprise.dependencies.models.dependency :as dependency]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
+   [metabase-enterprise.sandbox.schema]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -16,9 +17,12 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.validate :as lib.schema.validate]
+   [metabase.measures.schema]
+   [metabase.native-query-snippets.schema]
    [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
+   [metabase.segments.schema]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -59,13 +63,23 @@
    [:enum :table :snippet :transform :dashboard :document :sandbox :segment :question :model :metric :measure]
    ::deps.dependency-types/entity-id])
 
+(mr/def ::dependent-error
+  "One entry of `::base-entity`'s `:dependents_errors`: either the slim `{:type :detail}` shape
+  [[normalize-finding-error]] produces for an entity's own errors (`node-errors`), or the raw AnalysisFindingError row
+  `node-downstream-errors` keeps so callers can tell which downstream entity each error belongs to."
+  [:or
+   [:map {:closed true}
+    [:type ::lib.schema.validate/validate-error-type]
+    [:detail {:optional true} [:maybe :string]]]
+   ::analysis-finding-error/analysis-finding-error])
+
 (mr/def ::base-entity
   [:map
    [:id                pos-int?]
    [:type              :keyword]
    [:data              [:map]]
    [:dependents_count  [:maybe [:ref ::usages]]]
-   [:dependents_errors {:optional true} [:set [:ref ::analysis-finding-error/analysis-finding-error]]]])
+   [:dependents_errors {:optional true} [:set [:ref ::dependent-error]]]])
 
 (defn- fields-for [entity-key]
   ;; these specs should really use something like
@@ -171,9 +185,7 @@
                       ::usages]]
    errors :- [:maybe [:map-of
                       [:tuple ::deps.dependency-types/dependency-types ::deps.dependency-types/entity-id]
-                      [:set [:map {:closed true}
-                             [:type ::lib.schema.validate/validate-error-type]
-                             [:detail {:optional true} [:maybe :string]]]]]]]
+                      [:set ::dependent-error]]]]
   (cond-> {:id id
            :type entity-type
            :data (-> (select-keys entity (entity-keys entity-type))
@@ -257,14 +269,15 @@
   "Fetches errors caused by the given source entities (what downstream entities they're breaking).
    Filters out errors where the analyzed entity is not visible to the current user.
    Unlike `node-errors` which fetches errors on an entity, this fetches errors that
-   the entity is causing in other entities that depend on it."
+   the entity is causing in other entities that depend on it. Keeps the raw AnalysisFindingError shape (unlike
+   `node-errors`'s normalized one) so callers can tell which downstream entity each error belongs to."
   [nodes-by-type]
   (letfn [(errors-by-source-type-and-id [[source-type ids]]
             (when (seq ids)
               (let [finding-errors (dependencies.db/finding-errors-from-sources
                                     source-type ids (current-user-visibility nil))]
                 (u/group-by (juxt :source_entity_type :source_entity_id)
-                            normalize-finding-error conj #{} finding-errors))))]
+                            identity conj #{} finding-errors))))]
     (->> nodes-by-type
          (into {} (mapcat errors-by-source-type-and-id))
          not-empty)))

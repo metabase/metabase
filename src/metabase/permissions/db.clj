@@ -307,6 +307,11 @@
 
 ;;; --------------------------------------------- PermissionsGroup ---------------------------------------------
 
+(mu/defn magic-group
+  "The ID, name, and type of the magic PermissionsGroup of `magic-group-type`, or nil."
+  [magic-group-type :- :string]
+  (t2/select-one [:model/PermissionsGroup :id :name :magic_group_type] :magic_group_type magic-group-type))
+
 (mu/defn group-by-magic-type
   "The PermissionsGroup of `magic-group-type`, or nil."
   [magic-group-type :- :string]

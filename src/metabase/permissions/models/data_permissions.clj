@@ -18,6 +18,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.schema]
+   [metabase.warehouses.schema]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import

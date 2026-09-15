@@ -46,6 +46,10 @@
 (mr/def ::dimension-ref-options
   "Options for dimension references (bucketing, binning, etc.)."
   [:map {:closed true}
+   [:lib/uuid {:optional true} [:maybe :string]]
+   [:display-name {:optional true} [:maybe :string]]
+   [:effective-type {:optional true} [:maybe keyword?]]
+   [:semantic-type {:optional true} [:maybe keyword?]]
    [:temporal-unit {:optional true} [:maybe keyword?]]
    [:binning {:optional true} [:maybe ::lib-metric.schema/binning]]])
 

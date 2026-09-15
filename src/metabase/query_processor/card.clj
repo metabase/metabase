@@ -96,9 +96,9 @@
    parameters  :- [:maybe ::parameters.schema/parameters]
    constraints :- [:maybe ::lib.schema.constraints/constraints]
    middleware  :- [:maybe ::lib.schema.middleware-options/middleware-options]
-   & [ids] :- [:* [:map {:closed true}
-                   [:dashboard-id {:optional true} [:maybe ::lib.schema.id/dashboard]]
-                   [:dashcard-id  {:optional true} [:maybe ::lib.schema.id/dashcard]]]]]
+   & [ids] :- [:* [:maybe [:map {:closed true}
+                           [:dashboard-id {:optional true} [:maybe ::lib.schema.id/dashboard]]
+                           [:dashcard-id  {:optional true} [:maybe ::lib.schema.id/dashcard]]]]]]
   (when (seq dataset-query)
     (let [stage-numbers           (explict-stage-references parameters)
           explicit-stage-numbers? (boolean (seq stage-numbers))
@@ -399,7 +399,7 @@
              ;; passed to the QP
              make-run    process-query-for-card-default-run-fn}}
    :- [:maybe [:map {:closed true}
-               [:parameters     {:optional true} [:maybe ::parameters.schema/parameters]]
+               [:parameters     {:optional true} [:maybe ::parameters.schema/parameters-with-optional-types]]
                [:constraints    {:optional true} [:maybe ::lib.schema.constraints/constraints]]
                [:context        {:optional true} [:maybe ::lib.schema.info/context]]
                [:dashboard-id   {:optional true} [:maybe ::lib.schema.id/dashboard]]

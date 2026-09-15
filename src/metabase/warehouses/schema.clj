@@ -2,6 +2,7 @@
   "Malli schemas for the warehouses module."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util.cron]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -33,49 +34,20 @@
 
 (mr/def ::database
   "A Database as selected from the app DB: every column of `:metabase_database`, plus `:features` added by the model's after-select hook."
-  [:map {:closed true}
-   [:id                          ::lib.schema.id/database]
-   [:created_at                  ms/TemporalInstant]
-   [:updated_at                  ms/TemporalInstant]
-   [:name                        :string]
-   [:description                 [:maybe :string]]
-   [:details                     ::database.details]
-   [:engine                      [:or :keyword :string]]
-   [:is_sample                   :boolean]
-   [:is_full_sync                :boolean]
-   [:points_of_interest          [:maybe :string]]
-   [:caveats                     [:maybe :string]]
-   [:metadata_sync_schedule      :string]
-   [:cache_field_values_schedule [:maybe :string]]
-   [:timezone                    [:maybe :string]]
-   [:is_on_demand                :boolean]
-   [:auto_run_queries            :boolean]
-   [:refingerprint               [:maybe :boolean]]
-   [:cache_ttl                   [:maybe :int]]
-   [:initial_sync_status         [:or :keyword :string]]
-   [:creator_id                  [:maybe ::lib.schema.id/user]]
-   [:settings                    [:maybe ::database.settings]]
-   [:dbms_version                [:maybe ::database.dbms-version]]
-   [:is_audit                    :boolean]
-   [:uploads_enabled             :boolean]
-   [:uploads_schema_name         [:maybe :string]]
-   [:uploads_table_prefix        [:maybe :string]]
-   [:is_attached_dwh             :boolean]
-   [:router_database_id          [:maybe ::lib.schema.id/database]]
-   [:provider_name               [:maybe :string]]
-   [:write_data_details          [:maybe ::database.write-data-details]]
-   [:admin_details               [:maybe ::database.admin-details]]
-   [:is_stub                     :boolean]
-   [:features                    {:optional true} [:maybe [:set :keyword]]]
-   [:can-manage                  {:optional true} [:maybe :boolean]]
-   [:can_upload                  {:optional true} [:maybe :boolean]]
-   [:tables                      {:optional true} [:maybe [:sequential [:ref :metabase.warehouse-schema.schema/table]]]]
-   [:native_permissions          {:optional true} [:maybe [:enum :write :none]]]
-   [:router_user_attribute       {:optional true} [:maybe :string]]
-   [:schedules                   {:optional true} [:maybe [:map {:closed true}
-                                                           [:metadata_sync      :metabase.util.cron/ScheduleMap]
-                                                           [:cache_field_values [:maybe :metabase.util.cron/ScheduleMap]]]]]
-   [:transforms_permissions      {:optional true} [:maybe [:enum :write :none]]]])
+  [:merge
+   ::database.update
+   [:map {:closed true}
+    [:id                          ::lib.schema.id/database]
+    [:features                    {:optional true} [:maybe [:set :keyword]]]
+    [:can-manage                  {:optional true} [:maybe :boolean]]
+    [:can_upload                  {:optional true} [:maybe :boolean]]
+    [:tables                      {:optional true} [:maybe [:sequential [:ref :metabase.warehouse-schema.schema/table]]]]
+    [:native_permissions          {:optional true} [:maybe [:enum :write :none]]]
+    [:router_user_attribute       {:optional true} [:maybe :string]]
+    [:schedules                   {:optional true} [:maybe [:map {:closed true}
+                                                            [:metadata_sync      :metabase.util.cron/ScheduleMap]
+                                                            [:cache_field_values [:maybe :metabase.util.cron/ScheduleMap]]]]]
+    [:transforms_permissions      {:optional true} [:maybe [:enum :write :none]]]]])
 
 (mr/def ::database.update
   "What an update (or insert) of a Database accepts: every column of `:metabase_database` except `id`, all optional."

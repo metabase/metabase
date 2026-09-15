@@ -71,7 +71,9 @@
 
 (defn- metadata->cols [metadata]
   (for [[k v] metadata]
-    (assoc v :name (name k))))
+    (cond-> (assoc v :name (name k))
+      (:remapped_to v)   (update :remapped_to name)
+      (:remapped_from v) (update :remapped_from name))))
 
 (mu/defn- format-results [{:keys [results metadata]} :- [:map {:closed true}
                                                          [:results  [:sequential [:map-of :string ms/FieldValue]]]

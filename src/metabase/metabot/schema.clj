@@ -34,15 +34,25 @@
   [:string {:decode/normalize lib.schema.common/normalize-string-key}])
 
 (mr/def ::query
-  "Either an MBQL 5 query or a legacy MBQL query, whichever format the tool that produced it stored."
-  [:or ::lib.schema/query :metabase.legacy-mbql.schema/Query])
+  "Either an MBQL 5 query, a legacy MBQL query, or the loosely-typed shape either takes after round-tripping
+  through tool-call JSON or persisted turn state: keys are keywords, but enum-ish values (e.g. `:lib/type`,
+  `:type`) may still be plain strings, and a brand-new query may be just `{:database <id>}`."
+  [:or
+   ::lib.schema/query
+   :metabase.legacy-mbql.schema/Query
+   [:map {::mr/deliberately-open true
+          :description "A JSON-round-tripped or in-progress MBQL query, whose enum values and completeness are not
+  yet normalized."}
+    [:database {:optional true} [:maybe :int]]]])
 
 (mr/def ::todo
+  "One todo item of persisted turn state; only `:id` is guaranteed, since state can hold a partial item
+  between the turn that creates it and the turn that fills in its details."
   [:map {:closed true}
    [:id :string]
-   [:content :string]
-   [:status [:enum "pending" "in_progress" "completed" "cancelled"]]
-   [:priority [:enum "high" "medium" "low"]]])
+   [:content  {:optional true} [:maybe :string]]
+   [:status   {:optional true} [:maybe [:enum "pending" "in_progress" "completed" "cancelled"]]]
+   [:priority {:optional true} [:maybe [:enum "high" "medium" "low"]]]])
 
 (mr/def ::chart-timeline-event
   [:map {:closed true}
@@ -217,22 +227,10 @@
 
 (mr/def ::ai-usage-log
   "A AiUsageLog as selected from the app DB: every column of `:ai_usage_log`."
-  [:map {:closed true}
-   [:id                    ms/PositiveInt]
-   [:created_at            ms/TemporalInstant]
-   [:source                [:or :keyword :string]]
-   [:model                 [:or :keyword :string]]
-   [:prompt_tokens         :int]
-   [:completion_tokens     :int]
-   [:total_tokens          :int]
-   [:user_id               [:maybe ::lib.schema.id/user]]
-   [:tenant_id             [:maybe ms/PositiveInt]]
-   [:conversation_id       [:maybe :string]]
-   [:profile_id            [:maybe :string]]
-   [:request_id            [:maybe :string]]
-   [:ai_proxied            [:maybe :boolean]]
-   [:cache_creation_tokens [:maybe :int]]
-   [:cache_read_tokens     [:maybe :int]]])
+  [:merge
+   ::ai-usage-log.update
+   [:map {:closed true}
+    [:id                    ms/PositiveInt]]])
 
 (mr/def ::ai-usage-log.update
   "What an update (or insert) of a AiUsageLog accepts: every column of `:ai_usage_log` except `id`, all optional."
@@ -254,15 +252,10 @@
 
 (mr/def ::metabot
   "A Metabot as selected from the app DB: every column of `:metabot`."
-  [:map {:closed true}
-   [:id                   ms/PositiveInt]
-   [:name                 :string]
-   [:description          [:maybe :string]]
-   [:entity_id            :string]
-   [:created_at           ms/TemporalInstant]
-   [:updated_at           ms/TemporalInstant]
-   [:use_verified_content [:maybe :boolean]]
-   [:collection_id        [:maybe ::lib.schema.id/collection]]])
+  [:merge
+   ::metabot.update
+   [:map {:closed true}
+    [:id                   ms/PositiveInt]]])
 
 (mr/def ::metabot.update
   "What an update (or insert) of a Metabot accepts: every column of `:metabot` except `id`, all optional."
@@ -277,20 +270,10 @@
 
 (mr/def ::metabot-conversation
   "A MetabotConversation as selected from the app DB: every column of `:metabot_conversation`."
-  [:map {:closed true}
-   [:id                          :string]
-   [:created_at                  ms/TemporalInstant]
-   [:user_id                     ::lib.schema.id/user]
-   [:title                       [:maybe :string]]
-   [:ip_address                  [:maybe :string]]
-   [:slack_team_id               [:maybe :string]]
-   [:slack_channel_id            [:maybe :string]]
-   [:slack_thread_ts             [:maybe :string]]
-   [:embedding_hostname          [:maybe :string]]
-   [:embedding_path              [:maybe :string]]
-   [:user_agent                  [:maybe :string]]
-   [:sanitized_user_agent        [:maybe :string]]
-   [:forked_from_conversation_id [:maybe :string]]])
+  [:merge
+   ::metabot-conversation.update
+   [:map {:closed true}
+    [:id                          :string]]])
 
 (mr/def ::metabot-conversation.update
   "What an update (or insert) of a MetabotConversation accepts: every column of `:metabot_conversation` except `id`, all optional."
@@ -310,15 +293,10 @@
 
 (mr/def ::metabot-feedback
   "A MetabotFeedback as selected from the app DB: every column of `:metabot_feedback`."
-  [:map {:closed true}
-   [:message_id        ms/PositiveInt]
-   [:positive          :boolean]
-   [:issue_type        [:maybe [:or :keyword :string]]]
-   [:freeform_feedback [:maybe :string]]
-   [:created_at        ms/TemporalInstant]
-   [:updated_at        ms/TemporalInstant]
-   [:id                ms/PositiveInt]
-   [:user_id           ::lib.schema.id/user]])
+  [:merge
+   ::metabot-feedback.update
+   [:map {:closed true}
+    [:id                ms/PositiveInt]]])
 
 (mr/def ::metabot-feedback.update
   "What an update (or insert) of a MetabotFeedback accepts: every column of `:metabot_feedback` except `id`, all optional."
@@ -337,9 +315,9 @@
 
 (mr/def ::metabot-message.usage
   "The `:usage` column of a MetabotMessage, decoded."
-  [:map-of :string [:map {:closed true}
-                    [:prompt :int]
-                    [:completion :int]]])
+  (ms/string-keyed-map [:map {:closed true}
+                        [:prompt :int]
+                        [:completion :int]]))
 
 (mr/def ::metabot-message.state
   "The `:state` column of a MetabotMessage, decoded."
@@ -347,28 +325,10 @@
 
 (mr/def ::metabot-message
   "A MetabotMessage as selected from the app DB: every column of `:metabot_message`."
-  [:map {:closed true}
-   [:id                     ms/PositiveInt]
-   [:created_at             ms/TemporalInstant]
-   [:profile_id             :string]
-   [:role                   [:or :keyword :string]]
-   [:data                   [:sequential ::metabot-message.data-part]]
-   [:usage                  [:maybe ::metabot-message.usage]]
-   [:total_tokens           :int]
-   [:conversation_id        :string]
-   [:slack_msg_id           [:maybe :string]]
-   [:channel_id             [:maybe :string]]
-   [:deleted_at             [:maybe ms/TemporalInstant]]
-   [:deleted_by_user_id     [:maybe ::lib.schema.id/user]]
-   [:user_id                [:maybe ::lib.schema.id/user]]
-   [:ai_proxied             [:maybe :boolean]]
-   [:external_id            [:maybe :string]]
-   [:finished               [:maybe :boolean]]
-   [:error                  [:maybe :string]]
-   [:data_version           :int]
-   [:state                  [:maybe ::metabot-message.state]]
-   [:forked_from_message_id [:maybe ms/PositiveInt]]
-   [:context_tokens         [:maybe :int]]])
+  [:merge
+   ::metabot-message.update
+   [:map {:closed true}
+    [:id                     ms/PositiveInt]]])
 
 (mr/def ::metabot-message.update
   "What an update (or insert) of a MetabotMessage accepts: every column of `:metabot_message` except `id`, all optional."
@@ -396,15 +356,10 @@
 
 (mr/def ::metabot-prompt
   "A MetabotPrompt as selected from the app DB: every column of `:metabot_prompt`."
-  [:map {:closed true}
-   [:id         ms/PositiveInt]
-   [:model      [:or :keyword :string]]
-   [:card_id    ::lib.schema.id/card]
-   [:entity_id  :string]
-   [:prompt     :string]
-   [:created_at ms/TemporalInstant]
-   [:updated_at ms/TemporalInstant]
-   [:metabot_id ms/PositiveInt]])
+  [:merge
+   ::metabot-prompt.update
+   [:map {:closed true}
+    [:id         ms/PositiveInt]]])
 
 (mr/def ::metabot-prompt.update
   "What an update (or insert) of a MetabotPrompt accepts: every column of `:metabot_prompt` except `id`, all optional."
@@ -419,15 +374,10 @@
 
 (mr/def ::metabot-source-feedback
   "A MetabotSourceFeedback as selected from the app DB: every column of `:metabot_source_feedback`."
-  [:map {:closed true}
-   [:id          ms/PositiveInt]
-   [:message_id  ms/PositiveInt]
-   [:user_id     ::lib.schema.id/user]
-   [:source_id   ms/PositiveInt]
-   [:source_type [:or :keyword :string]]
-   [:positive    :boolean]
-   [:created_at  ms/TemporalInstant]
-   [:updated_at  ms/TemporalInstant]])
+  [:merge
+   ::metabot-source-feedback.update
+   [:map {:closed true}
+    [:id          ms/PositiveInt]]])
 
 (mr/def ::metabot-source-feedback.update
   "What an update (or insert) of a MetabotSourceFeedback accepts: every column of `:metabot_source_feedback` except `id`, all optional."
@@ -442,11 +392,10 @@
 
 (mr/def ::metabot-used-table
   "A MetabotUsedTable as selected from the app DB: every column of `:metabot_used_table`."
-  [:map {:closed true}
-   [:id         ms/PositiveInt]
-   [:message_id ms/PositiveInt]
-   [:table_id   ::lib.schema.id/table]
-   [:created_at ms/TemporalInstant]])
+  [:merge
+   ::metabot-used-table.update
+   [:map {:closed true}
+    [:id         ms/PositiveInt]]])
 
 (mr/def ::metabot-used-table.update
   "What an update (or insert) of a MetabotUsedTable accepts: every column of `:metabot_used_table` except `id`, all optional."

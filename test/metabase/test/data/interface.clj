@@ -125,28 +125,37 @@
 (def ValidFieldDefinition
   [:and FieldDefinitionSchema (ms/InstanceOfClass FieldDefinition)])
 
+(def TableDefinitionSchema
+  "Like [[ValidTableDefinition]], but doesn't require the value (or its `:field-definitions`) to actually be
+  `TableDefinition`/`FieldDefinition` instances -- just to have the right shape. Some callers build a
+  `DatabaseDefinition` ad hoc with `map->DatabaseDefinition` and leave the nested table/field definitions as plain
+  maps."
+  [:map {:closed true}
+   [:table-name                     ms/NonBlankString]
+   [:field-definitions              [:sequential FieldDefinitionSchema]]
+   [:rows                           [:sequential [:sequential ::dataset-value]]]
+   [:table-comment {:optional true} [:maybe ms/NonBlankString]]])
+
 (def ValidTableDefinition
-  [:and
-   [:map {:closed true}
-    [:table-name                     ms/NonBlankString]
-    [:field-definitions              [:sequential ValidFieldDefinition]]
-    [:rows                           [:sequential [:sequential ::dataset-value]]]
-    [:table-comment {:optional true} [:maybe ms/NonBlankString]]]
-   (ms/InstanceOfClass TableDefinition)])
+  [:and TableDefinitionSchema (ms/InstanceOfClass TableDefinition)])
+
+(def DatabaseDefinitionSchema
+  "Like [[ValidDatabaseDefinition]], but doesn't require the value (or its nested table/field definitions) to
+  actually be `DatabaseDefinition`/`TableDefinition`/`FieldDefinition` instances -- just to have the right shape."
+  [:map {:closed true}
+   [:database-name ms/NonBlankString] ; this must be unique
+   [:table-definitions [:sequential TableDefinitionSchema]]
+   [:options [:maybe [:map {:closed true}
+                      [:native-ddl {:optional true} [:sequential ::native-ddl-form]]
+                      ;; When true, drivers that support it (e.g., MySQL) will disable FK checks during data loading.
+                      ;; Useful for datasets with self-referencing FKs that need to be inserted in a single batch.
+                      [:disable-fk-checks {:optional true} :boolean]
+                      ;; static datasets are not subject to periodic GC
+                      [:static {:optional true} :boolean]]]]
+   [:hash-key {:optional true} [:maybe (ms/InstanceOfClass DatabaseDefinition)]]])
 
 (def ValidDatabaseDefinition
-  [:and
-   [:map {:closed true}
-    [:database-name ms/NonBlankString] ; this must be unique
-    [:table-definitions [:sequential ValidTableDefinition]]
-    [:options [:maybe [:map {:closed true}
-                       [:native-ddl {:optional true} [:sequential ::native-ddl-form]]
-                       ;; When true, drivers that support it (e.g., MySQL) will disable FK checks during data loading.
-                       ;; Useful for datasets with self-referencing FKs that need to be inserted in a single batch.
-                       [:disable-fk-checks {:optional true} :boolean]
-                       ;; static datasets are not subject to periodic GC
-                       [:static {:optional true} :boolean]]]]]
-   (ms/InstanceOfClass DatabaseDefinition)])
+  [:and DatabaseDefinitionSchema (ms/InstanceOfClass DatabaseDefinition)])
 
 ;; TODO - this should probably be a protocol instead
 ;; Tech debt issue: #39350

@@ -21,18 +21,10 @@
 
 (mr/def ::cache-config
   "A CacheConfig as selected from the app DB: every column of `:cache_config`."
-  [:map {:closed true}
-   [:id                    ms/PositiveInt]
-   [:model                 [:or :keyword :string]]
-   [:model_id              [:maybe :int]]
-   [:created_at            ms/TemporalInstant]
-   [:updated_at            ms/TemporalInstant]
-   [:strategy              [:or :keyword :string]]
-   [:config                ::cache-config.config]
-   [:state                 [:maybe ::cache-config.state]]
-   [:invalidated_at        [:maybe ms/TemporalInstant]]
-   [:next_run_at           [:maybe ms/TemporalInstant]]
-   [:refresh_automatically [:maybe :boolean]]])
+  [:merge
+   ::cache-config.update
+   [:map {:closed true}
+    [:id                    ms/PositiveInt]]])
 
 (mr/def ::cache-config.update
   "What an update (or insert) of a CacheConfig accepts: every column of `:cache_config` except `id`, all optional."
@@ -50,11 +42,9 @@
 
 (mr/def ::query-cache
   "A QueryCache as selected from the app DB: every column of `:query_cache`."
-  [:map {:closed true}
-   [:query_hash         [:or bytes? :string]]
-   [:updated_at         ms/TemporalInstant]
-   [:results            [:or bytes? :string]]
-   [:refresh_started_at [:maybe ms/TemporalInstant]]])
+  [:merge
+   ::query-cache.update
+   [:map {:closed true}]])
 
 (mr/def ::query-cache.update
   "What an update (or insert) of a QueryCache accepts: every column of `:query_cache` except `id`, all optional."

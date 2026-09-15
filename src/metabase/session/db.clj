@@ -77,6 +77,6 @@
   (t2/select-one :model/User :id user-id))
 
 (mu/defn user-login-status
-  "The User with `user-id`, or nil."
+  "The id, active flag, last login, and tenant id of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one :model/User :id user-id))
+  (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :id user-id))
