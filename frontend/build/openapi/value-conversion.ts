@@ -47,16 +47,6 @@ export function isAugmentedLibType(type: ts.Type): boolean {
   );
 }
 
-export type StringConversion =
-  | "String"
-  | "the template literal"
-  | "encodeURIComponent";
-
-export type StringPart =
-  | { kind: "text"; text: string; from: ts.Type }
-  /** The text is not known from the type. `unmodelled` says why the type cannot stand in for it. */
-  | { kind: "type"; type: ts.Type; unmodelled?: string };
-
 const LIB_DIRECTORY = ts.getDefaultLibFilePath({}).replace(/[^/\\]+$/, "");
 
 export function isLibDeclaration(
@@ -118,30 +108,23 @@ function isTextLike(type: ts.Type): boolean {
  * What each part of `type` becomes after a string conversion.
  * String literals, `string`, `number` and `bigint` keep their type, because the backend reads back the same text.
  */
-export function stringParts(
-  checker: ts.TypeChecker,
-  type: ts.Type,
-): StringPart[] {
-  return unionMembers(checker, type).map((part): StringPart => {
+export function stringShapes(checker: ts.TypeChecker, type: ts.Type): Shape[] {
+  return unionMembers(checker, type).map((part): Shape => {
     if (part.isStringLiteral()) {
       return { kind: "type", type: part };
     }
     const text = singleText(checker, part);
     if (text !== undefined) {
-      return { kind: "text", text, from: part };
+      return { kind: "text", text };
     }
     return isTextLike(part)
       ? { kind: "type", type: part }
       : {
-          kind: "type",
-          type: part,
-          unmodelled: "its text is known only at runtime",
+          kind: "unverified",
+          from: part,
+          reason: "its text is known only at runtime",
         };
   });
-}
-
-export function keepsType(parts: StringPart[]): boolean {
-  return parts.every((part) => part.kind === "type" && !part.unmodelled);
 }
 
 function dropReason(type: ts.Type): string | undefined {

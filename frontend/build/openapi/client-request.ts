@@ -18,15 +18,12 @@ import {
   unwrap,
 } from "./typescript-utils";
 import {
-  type StringConversion,
-  type StringPart,
   isAugmentedLibType,
   isLibDeclaration,
   isLibType,
   isPrototypeMember,
   jsonView,
-  keepsType,
-  stringParts,
+  stringShapes,
 } from "./value-conversion";
 
 // `frontend/src/metabase/api/api.ts:22`
@@ -63,11 +60,6 @@ export interface ClientRequest {
 
 type Payload = Extract<Shape, { kind: "type" | "object" }>;
 
-interface PayloadPair {
-  params: Payload;
-  body: Payload;
-}
-
 interface ModelContext {
   checker: ts.TypeChecker;
   at: ts.Node;
@@ -86,15 +78,20 @@ export function modelClientRequest(
   const body = bodyPayloads(context, rtk.body, method);
   const queryNotes = [...params.notes];
   const bodyNotes = [...body.notes];
-  const pairs: PayloadPair[] = params.payloads.flatMap((paramsPayload) =>
-    body.payloads.map((bodyPayload) => ({
-      params: withoutCacheKey(paramsPayload, "params", queryNotes),
-      body: withoutCacheKey(bodyPayload, "body", bodyNotes),
-    })),
+  const paramsVariants = params.payloads.map((payload) =>
+    withoutCacheKey(payload, "params", queryNotes),
+  );
+  const bodyVariants = body.payloads.map((payload) =>
+    withoutCacheKey(payload, "body", bodyNotes),
   );
   const { pathSlots, query, tags } = rtk.url;
   const { parameters: tagParameters, unverified: tagUnverified } =
-    substituteTags(context, tags, pairs);
+    substituteTags(
+      context,
+      tags,
+      paramsVariants,
+      bodyVariants.some((payload) => !isEmpty(payload)),
+    );
   const parameters = pathParameters(context, pathSlots, tagParameters);
 
   const inline = inlineQuery(query);
@@ -119,26 +116,20 @@ export function modelClientRequest(
     from: undefined,
   };
 
-  const queryVariants: Shape[] = [];
-  const bodyVariants: Shape[] = [];
-  for (const pair of pairs) {
-    let sentQuery = sendAsQuery(context, pair.params, queryNotes, onUnverified);
-    if (foldsBody) {
-      sentQuery = mergeQueryPayloads(
-        sentQuery,
-        sendAsQuery(context, pair.body, queryNotes, onUnverified),
-        onUnverified,
-      );
-      bodyVariants.push(typeShape(checker.getUndefinedType()));
-    } else {
-      bodyVariants.push(sendAsJson(context, pair.body, bodyNotes));
-    }
-    sentQuery = mergeQueryPayloads(inlinePayload, sentQuery, onUnverified);
-    queryVariants.push(
-      isEmpty(sentQuery) ? typeShape(checker.getUndefinedType()) : sentQuery,
-    );
-  }
+  const sources = [
+    [inlinePayload],
+    paramsVariants.map((payload) =>
+      sendAsQuery(context, payload, queryNotes, onUnverified),
+    ),
+  ];
+  let sentBody: Shape[];
   if (foldsBody) {
+    sources.push(
+      bodyVariants.map((payload) =>
+        sendAsQuery(context, payload, queryNotes, onUnverified),
+      ),
+    );
+    sentBody = [typeShape(checker.getUndefinedType())];
     queryNotes.push(
       ...bodyNotes.splice(0),
       "a GET body is sent as query parameters, so it is compared with the backend query (ApiClient._prepareRequest)",
@@ -146,21 +137,30 @@ export function modelClientRequest(
     bodyNotes.push(
       "a GET body is sent as query parameters, so no request body is sent (ApiClient._prepareRequest)",
     );
+  } else {
+    sentBody = bodyVariants.map((payload) =>
+      sendAsJson(context, payload, bodyNotes),
+    );
   }
+  const queryVariants = queryPayloads(sources, onUnverified);
 
   return {
     method,
     path: rtk.url.path,
     pathParameters: parameters,
     query: {
-      variants: queryVariants,
+      variants: body.failure
+        ? []
+        : queryVariants.map((payload) =>
+            isEmpty(payload) ? typeShape(checker.getUndefinedType()) : payload,
+          ),
       notes: [...new Set(queryNotes)],
       unverified: queryUnverified,
       // A query with no keys is always possible, so nothing about it is certain.
       alwaysSent: false,
     },
     body: {
-      variants: bodyVariants,
+      variants: body.failure ? [] : sentBody,
       notes: [...new Set(bodyNotes)],
       unverified: foldsBody ? undefined : body.unverified,
       alwaysSent: !foldsBody && body.alwaysSent,
@@ -484,13 +484,6 @@ function mayBeEmptyArray(checker: ts.TypeChecker, type: ts.Type): boolean {
   return "minLength" in type.target && type.target.minLength === 0;
 }
 
-interface Stringified {
-  values: Shape[];
-  notes: string[];
-  /** Why the text sent cannot be compared: a value whose text is known only at runtime. */
-  unverified: string | undefined;
-}
-
 function elementTypes(
   checker: ts.TypeChecker,
   array: ts.Type,
@@ -513,16 +506,15 @@ function stringifiedValues(
   found: Shape[],
   reason: string,
   items: boolean,
-): Stringified {
+) {
   let unverified: string | undefined;
-  const partValue = (part: StringPart): Shape => {
-    if (part.kind === "text") {
-      return { kind: "text", text: part.text };
+  const convert = (type: ts.Type): Shape[] => {
+    const shapes = stringShapes(checker, type);
+    const gap = shapes.find((shape) => shape.kind === "unverified");
+    if (gap) {
+      unverified ??= `${source} (${typeText(checker, gap.from)}) is sent as text, and ${gap.reason} (${reason})`;
     }
-    if (part.unmodelled) {
-      unverified ??= `${source} (${typeText(checker, part.type)}) is sent as text, and ${part.unmodelled} (${reason})`;
-    }
-    return typeShape(part.type);
+    return shapes;
   };
   const values = found.flatMap((value): Shape[] => {
     const type = plainType(value);
@@ -532,18 +524,16 @@ function stringifiedValues(
     const parts = unionMembers(checker, type);
     const results = parts.map((part): Shape => {
       if (items && (checker.isArrayType(part) || checker.isTupleType(part))) {
-        const itemParts = elementTypes(checker, part).flatMap((element) =>
-          stringParts(checker, element),
-        );
-        return keepsType(itemParts)
+        const itemParts = elementTypes(checker, part).flatMap(convert);
+        return itemParts.every((shape) => shape.kind === "type")
           ? typeShape(part)
           : {
               kind: "items",
               from: part,
-              item: unionShape(itemParts.map(partValue)),
+              item: unionShape(itemParts),
             };
       }
-      return unionShape(stringParts(checker, part).map(partValue));
+      return unionShape(convert(part));
     });
     return results.every((result, index) => plainType(result) === parts[index])
       ? [value]
@@ -724,21 +714,19 @@ function sendAsJson(
   );
 }
 
-function mergeQueryPayloads(
-  first: Payload,
-  second: Payload,
+function queryPayloads(
+  sources: Payload[][],
   onUnverified: (reason: string) => void,
-): Payload {
-  if (isEmpty(first)) {
-    return second;
-  }
-  if (isEmpty(second)) {
-    return first;
-  }
-  onUnverified(
-    "query parameters come from more than one source, which the checker does not model (ApiClient._prepareRequest)",
+): Payload[] {
+  const nonempty = sources.filter((variants) =>
+    variants.some((payload) => !isEmpty(payload)),
   );
-  return first;
+  if (nonempty.length > 1) {
+    onUnverified(
+      "query parameters come from more than one source, which the checker does not model (ApiClient._prepareRequest)",
+    );
+  }
+  return nonempty[0] ?? sources[0] ?? [];
 }
 
 function extraOptionsUnverified(rtk: RtkRequest): string | undefined {
@@ -815,31 +803,12 @@ function pathTextUnverified(
     : `${source} may be ${JSON.stringify(text)}, which new URL does not keep as one path segment (ApiClient.buildUrl)`;
 }
 
-function spanValues(
-  { checker }: ModelContext,
-  expression: ts.Expression,
-): Stringified & { encoded: boolean } {
-  const argument = encodedArgument(checker, expression);
-  const conversion: StringConversion = argument
-    ? "encodeURIComponent"
-    : "the template literal";
-  return {
-    ...stringifiedValues(
-      checker,
-      `\${${unwrap(expression).getText()}}`,
-      [typeShape(checker.getTypeAtLocation(argument ?? unwrap(expression)))],
-      `${conversion} applies String`,
-      false,
-    ),
-    encoded: argument !== undefined,
-  };
-}
-
 function substituteTag(
   checker: ts.TypeChecker,
   name: string,
-  { params, body }: PayloadPair,
-): Omit<SentPathParameter, "source"> & PayloadPair {
+  params: Payload,
+  hasBody: boolean,
+): Omit<SentPathParameter, "source"> & { params: Payload } {
   const field =
     params.kind === "object"
       ? params.fields.find((field) => field.name === name)
@@ -864,13 +833,12 @@ function substituteTag(
           index.keyType,
         ),
       ));
-  if (unknownKeys || (mayBeMissing && !isEmpty(body))) {
+  if (unknownKeys || (mayBeMissing && hasBody)) {
     return {
       values: [],
       notes: [],
       unverified: `:${name} may be supplied by runtime keys or the body, which the checker does not model (substituteUrlTags)`,
       params,
-      body,
     };
   }
   return {
@@ -889,7 +857,6 @@ function substituteTag(
             fields: params.fields.filter((field) => field.name !== name),
           }
         : params,
-    body,
   };
 }
 
@@ -897,21 +864,21 @@ function substituteTag(
 function substituteTags(
   { checker }: ModelContext,
   tags: TagSlot[],
-  pairs: PayloadPair[],
+  params: Payload[],
+  hasBody: boolean,
 ): { parameters: SentPathParameter[]; unverified: string | undefined } {
   let unsupported: string | undefined;
   const parameters = tags.map((slot) => {
     const values: Shape[] = [];
     const notes: string[] = [];
     let unverified: string | undefined;
-    for (const pair of pairs) {
-      const substituted = substituteTag(checker, slot.name, pair);
+    for (const [index, payload] of params.entries()) {
+      const substituted = substituteTag(checker, slot.name, payload, hasBody);
       values.push(...substituted.values);
       notes.push(...substituted.notes);
       unverified ??= substituted.unverified;
       unsupported ??= substituted.unverified;
-      pair.params = substituted.params;
-      pair.body = substituted.body;
+      params[index] = substituted.params;
     }
     const sent = stringifiedValues(
       checker,
@@ -935,12 +902,18 @@ function substituteTags(
 
 // A template literal converts a span with `String`, and `encodeURIComponent` does the same to its argument.
 function spanParameter(
-  context: ModelContext,
+  { checker }: ModelContext,
   expression: ts.Expression,
 ): SentPathParameter {
-  const { values, notes, unverified, encoded } = spanValues(
-    context,
-    expression,
+  const argument = encodedArgument(checker, expression);
+  const source = `\${${unwrap(expression).getText()}}`;
+  const conversion = argument ? "encodeURIComponent" : "the template literal";
+  const { values, notes, unverified } = stringifiedValues(
+    checker,
+    source,
+    [typeShape(checker.getTypeAtLocation(argument ?? unwrap(expression)))],
+    `${conversion} applies String`,
+    false,
   );
   return {
     source: "template expression",
@@ -948,12 +921,7 @@ function spanParameter(
     notes,
     unverified:
       unverified ??
-      pathTextUnverified(
-        context.checker,
-        `\${${unwrap(expression).getText()}}`,
-        values,
-        encoded,
-      ),
+      pathTextUnverified(checker, source, values, argument !== undefined),
   };
 }
 

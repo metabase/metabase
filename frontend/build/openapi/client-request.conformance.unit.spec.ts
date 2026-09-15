@@ -415,6 +415,18 @@ describe("modelClientRequest against the real API client", () => {
 
   // `JSON.stringify` throws for a bigint, so the client never sends this body.
 
+  it("should retain the absent query alternative of a nullable GET body", async () => {
+    await expectConformance(
+      {
+        endpoint:
+          '{ query: (body: { limit: number } | null) => ({ url: "/api/x", params: {}, body }) }',
+        argument: "null",
+      },
+      sentRequest({}),
+      projected({ query: [{ limit: ["number"] }, "nothing"] }),
+    );
+  });
+
   const cases: [string, Fixture, Outcome, Projection | "unverified"][] = [
     [
       "should send GET when the request names no method",
