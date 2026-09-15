@@ -227,6 +227,88 @@
                                        :expected-status 403)]
         (is (= "registration_not_supported" (:error response)))))))
 
+(deftest dynamic-register-rejects-unregistered-scopes-test
+  (testing "GHY-4542: registration is unauthenticated, and a client's registered scopes are the ceiling
+            `/oauth/authorize` checks requests against. Storing a self-nominated `*` or `agent:*` lets the
+            client request it later and receive a token `scope-matches?` treats as a wildcard grant, so
+            any scope that is not a registered scope is rejected before anything is stored. The error
+            points the client at the metadata document listing the supported scopes and does not echo
+            what it sent."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (doseq [[scope rejected] [["*" "*"]
+                                  ["agent:*" "agent:*"]
+                                  ["bogus" "bogus"]
+                                  ["agent:content:read *" "*"]
+                                  ["agent:ü\"x\\" "agent:"]]]
+          (testing (pr-str scope)
+            (let [before      (t2/count :model/OAuthClient)
+                  response    (register-client! {:redirect_uris ["https://example.com/callback"]
+                                                 :scope         scope}
+                                                :expected-status 400)
+                  description (str (:error_description response))]
+              (is (= "invalid_client_metadata" (:error response)))
+              (is (str/includes? description
+                                 "scopes_supported at http://localhost:3000/.well-known/oauth-authorization-server")
+                  "the description tells the client where the supported scopes are listed")
+              (is (not (str/includes? description rejected))
+                  "the description does not echo the rejected scope")
+              (is (re-matches #"[\x20-\x21\x23-\x5B\x5D-\x7E]*" description)
+                  "the description stays within the RFC 6749 section 5.2 error_description character set")
+              (is (= before (t2/count :model/OAuthClient))
+                  "no client is stored"))))))))
+
+(deftest dynamic-register-rejects-empty-scope-test
+  (testing "GHY-4542: a client that sends `scope` but leaves it empty would register with no scopes and could
+            never authorize, since /oauth/authorize requires a scope. That is rejected rather than silently
+            replaced with the default ceiling, which is reserved for a client that omits `scope` entirely
+            (pinned in `dynamic-register-accepts-registered-scopes-test`)."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        ;; `nil` is encoded as JSON null. Were the key dropped in decoding, the client would get the default
+        ;; ceiling and a 201.
+        (doseq [body [{:redirect_uris ["https://example.com/callback"] :scope nil}
+                      {:redirect_uris ["https://example.com/callback"] :scope ""}
+                      {:redirect_uris ["https://example.com/callback"] :scope "   "}]]
+          (testing (pr-str body)
+            (let [before   (t2/count :model/OAuthClient)
+                  response (register-client! body :expected-status 400)]
+              (is (= {:error             "invalid_client_metadata"
+                      :error_description (str "The scope must not be empty. Omit scope, or include only scopes "
+                                              "listed in scopes_supported at "
+                                              "http://localhost:3000/.well-known/oauth-authorization-server")}
+                     response))
+              (is (= before (t2/count :model/OAuthClient))
+                  "no client is stored"))))
+        (testing "`scope` is a space-delimited string, so an empty JSON array fails the body schema"
+          (let [before (t2/count :model/OAuthClient)]
+            (register-client! {:redirect_uris ["https://example.com/callback"] :scope []}
+                              :expected-status 400)
+            (is (= before (t2/count :model/OAuthClient))
+                "no client is stored")))))))
+
+(deftest dynamic-register-accepts-registered-scopes-test
+  (testing "GHY-4542: rejecting unregistered scopes must not reject registered ones"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (testing "an explicit set of registered scopes is stored as sent"
+          (let [response (register-client! {:redirect_uris ["https://example.com/callback"]
+                                            :scope         "agent:content:read agent:query:run"})]
+            (is (= #{"agent:content:read" "agent:query:run"}
+                   (set (:scopes (t2/select-one :model/OAuthClient :client_id (:client_id response))))))))
+        (testing "`mb:full` is registered, and the Metabase CLI registers with it explicitly"
+          (let [response (register-client! {:redirect_uris ["https://example.com/callback"]
+                                            :scope         oauth-server/full-access-scope})]
+            (is (= #{oauth-server/full-access-scope}
+                   (set (:scopes (t2/select-one :model/OAuthClient :client_id (:client_id response))))))))
+        (testing "omitting `scope` still registers the client with the default ceiling"
+          (let [response (register-client! {:redirect_uris ["https://example.com/callback"]})]
+            (is (= (set (oauth-server/default-grant-scopes))
+                   (set (:scopes (t2/select-one :model/OAuthClient :client_id (:client_id response))))))))))))
+
 (deftest discovery-registration-endpoint-disabled-test
   (testing "Discovery document omits registration_endpoint when DCR is disabled"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"
@@ -259,7 +341,7 @@
                         :client_name        "Test Auth Client"
                         :grant_types        ["authorization_code" "refresh_token"]
                         :response_types     ["code"]
-                        :scopes             ["profile"]
+                        :scopes             ["agent:content:read"]
                         :application_type   "web"
                         :registration_type  "static"}
          [inserted]    (t2/insert-returning-instances! :model/OAuthClient (merge defaults overrides))]
@@ -276,12 +358,12 @@
                          :client_id     client-id
                          :redirect_uri  "https://example.com/callback"
                          :response_type "code"
-                         :scope         "profile"
+                         :scope         "agent:content:read"
                          :state         "test-state")
               body      (:body response)]
           (is (str/includes? (get-in response [:headers "Content-Type"]) "text/html"))
           (is (str/includes? body "Test Auth Client"))
-          (is (str/includes? body "profile"))
+          (is (str/includes? body "agent:content:read"))
           (is (str/includes? body client-id))
           (is (str/includes? body "test-state"))
           (is (str/includes? body "/oauth/authorize/decision")))))))
@@ -332,7 +414,7 @@
           :client_id     client-id
           :redirect_uri  "https://example.com/callback"
           :response_type "code"
-          :scope         "profile"
+          :scope         "agent:content:read"
           :state         "test-state"
           (mapcat identity extra-params))))
 
@@ -390,7 +472,7 @@
                              :client_id     client-id
                              :redirect_uri  "https://example.com/callback"
                              :response_type "code"
-                             :scope         "profile"
+                             :scope         "agent:content:read"
                              :state         "test-state"}
                             302
                             :csrf-cookie csrf-cookie)
@@ -422,7 +504,7 @@
                              :client_id     client-id
                              :redirect_uri  "https://example.com/callback"
                              :response_type "code"
-                             :scope         "profile"
+                             :scope         "agent:content:read"
                              :state         "test-state"}
                             302
                             :csrf-cookie csrf-cookie)
@@ -486,7 +568,7 @@
                               :client_id     client-id
                               :redirect_uri  "https://example.com/callback"
                               :response_type "code"
-                              :scope         "profile"
+                              :scope         "agent:content:read"
                               :state         "test-state"}
                              302
                              :csrf-cookie csrf-cookie)
@@ -524,7 +606,7 @@
       :client_id     client-id
       :redirect_uri  "https://example.com/callback"
       :response_type "code"
-      :scope         "profile"
+      :scope         "agent:content:read"
       :state         "test-state"}
      302
      :csrf-cookie (extract-csrf-cookie consent-resp))))
@@ -563,7 +645,7 @@
                           :client_id     client-id
                           :redirect_uri  "https://example.com/callback"
                           :response_type "code"
-                          :scope         "profile"
+                          :scope         "agent:content:read"
                           :state         "test-state"}
                          403)]
           (is (= "csrf_validation_failed" (:error (:body response)))))))))
@@ -583,7 +665,7 @@
                              :client_id     client-id
                              :redirect_uri  "https://example.com/callback"
                              :response_type "code"
-                             :scope         "profile"
+                             :scope         "agent:content:read"
                              :state         "test-state"}
                             403
                             :csrf-cookie csrf-cookie)]
@@ -608,7 +690,7 @@
                              :client_id     client-id
                              :redirect_uri  "https://example.com/callback"
                              :response_type "code"
-                             :scope         "profile"
+                             :scope         "agent:content:read"
                              :state         "tampered-state"}  ;; tampered state
                             403
                             :csrf-cookie csrf-cookie)]
@@ -632,7 +714,7 @@
                              :client_id     client-id
                              :redirect_uri  "https://example.com/callback"
                              :response_type "code"
-                             :scope         "profile"
+                             :scope         "agent:content:read"
                              :state         "test-state"}
                             403
                             :csrf-cookie csrf-cookie)]
@@ -656,7 +738,7 @@
                              :client_id     client-id
                              :redirect_uri  "https://example.com/callback"
                              :response_type "code"
-                             :scope         "profile"
+                             :scope         "agent:content:read"
                              :state         "test-state"}
                             403
                             :csrf-cookie csrf-cookie)]
@@ -701,7 +783,7 @@
                        :client_id     client-id
                        :redirect_uri  "https://example.com/callback"
                        :response_type "code"
-                       :scope         "profile"
+                       :scope         "agent:content:read"
                        :state         "test-state"}
                       302
                       :csrf-cookie csrf-cookie)
@@ -771,7 +853,7 @@
                                                   :client_name    "Other Client"
                                                   :grant_types    ["authorization_code"]
                                                   :response_types ["code"]
-                                                  :scopes         ["profile"]})
+                                                  :scopes         ["agent:content:read"]})
               code          (authorize-and-get-code! (:client_id client-a))
               response      (token-request!
                              {:grant_type    "authorization_code"
@@ -911,7 +993,7 @@
                               :client_id     client-id
                               :redirect_uri  "https://example.com/callback"
                               :response_type "code"
-                              :scope         "profile"
+                              :scope         "agent:content:read"
                               :state         "test-state"}
                              extra-params)
                       302
@@ -1099,7 +1181,7 @@
                              :client_id     client-id
                              :redirect_uri  "https://example.com/callback"
                              :response_type "code"
-                             :scope         "profile"
+                             :scope         "agent:content:read"
                              :state         state)
               consent-body  (:body consent-resp)
               csrf-token    (extract-csrf-token-from-consent consent-body)
@@ -1114,7 +1196,7 @@
                            :client_id     client-id
                            :redirect_uri  "https://example.com/callback"
                            :response_type "code"
-                           :scope         "profile"
+                           :scope         "agent:content:read"
                            :state         state}
                           302
                           :csrf-cookie csrf-cookie)
@@ -1136,7 +1218,7 @@
                          :client_id     client-id
                          :redirect_uri  "https://example.com/callback"
                          :response_type "code"
-                         :scope         "profile"
+                         :scope         "agent:content:read"
                          :state         "test-state")
               body      (:body response)]
           (is (not (str/includes? body "<script>alert('xss')</script>"))
@@ -1269,19 +1351,68 @@
                          :state         "test-state")]
           (is (= "invalid_scope" (get-in response [:body :error]))))))))
 
-(deftest authorize-without-scope-still-renders-consent-test
-  (testing "a client that sends no `scope` at all is not the same case as one whose scopes were all
-            narrowed away -- narrowing answers nil for both, and only the first may drop the parameter.
-            This pins that the `invalid_scope` branch above did not swallow the no-scope request."
+(deftest authorize-rejects-unregistered-scopes-test
+  (testing "GHY-4542: a client that registered a wildcard such as `*` before registration validated scopes
+            can still request it, and `scope-matches?` would honor it as a wildcard grant. /authorize
+            rejects any requested scope that is not a registered scope, and tells the client where the
+            supported scopes are listed without echoing what it sent. The check runs on the raw requested
+            scope, before resource narrowing: after it, a client omitting `resource` would get through and
+            one sending it would have `*` silently dropped instead of rejected."
+    (doseq [site-url ["http://localhost:3000" "http://localhost:3000/metabase"]]
+      (testing (str "site-url " site-url)
+        (mt/with-temporary-setting-values [site-url site-url]
+          (t2/with-transaction [_conn nil {:rollback-only true}]
+            (doseq [[registered requested rejected]
+                    [[["*"] "*" "*"]
+                     [["agent:*"] "agent:*" "agent:*"]
+                     [["agent:content:read" "*"] "agent:content:read *" "*"]
+                     ;; shipped as a scope in v0.60-v0.61 and since removed, so older DCR clients hold it
+                     [["agent:content:read" "agent:table:read"] "agent:content:read agent:table:read" "agent:table:read"]]
+                    resource [nil (str site-url (mcp/mcp-canonical-path))]]
+              (testing (pr-str {:requested requested :resource resource})
+                (let [client-id   (:client_id (create-test-client! {:scopes registered}))
+                      response    (apply mt/user-http-request-full-response
+                                         :crowberto :get 400 "oauth/authorize"
+                                         :client_id     client-id
+                                         :redirect_uri  "https://example.com/callback"
+                                         :response_type "code"
+                                         :scope         requested
+                                         :state         "test-state"
+                                         (when resource [:resource resource]))
+                      description (str (get-in response [:body :error_description]))]
+                  (is (= "invalid_scope" (get-in response [:body :error])))
+                  (is (str/includes? description
+                                     (str "scopes_supported at " site-url "/.well-known/oauth-authorization-server"))
+                      "the description points at the metadata document, including the site-url subpath")
+                  (is (not (str/includes? description rejected))
+                      "the description does not echo the rejected scope")
+                  (is (re-matches #"[\x20-\x21\x23-\x5B\x5D-\x7E]*" description)
+                      "the description stays within the RFC 6749 section 5.2 error_description character set"))))))))))
+
+(deftest authorize-rejects-missing-scope-test
+  (testing "GHY-4542: a request with no scope used to render a consent screen listing no permissions and
+            mint a token with no scopes. Nothing downstream should have to tell a scope-less OAuth token
+            apart from scope-unaware auth, so /authorize answers `invalid_scope` instead, whether `scope`
+            is absent, empty, or whitespace, and with or without a `resource` indicator."
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [client-id (:client_id (create-test-client! {:scopes ["agent:content:read"]}))]
-          (is (mt/user-http-request :crowberto :get 200 "oauth/authorize"
-                                    :client_id     client-id
-                                    :redirect_uri  "https://example.com/callback"
-                                    :response_type "code"
-                                    :resource      (str "http://localhost:3000" (mcp/mcp-canonical-path))
-                                    :state         "test-state")))))))
+          (doseq [scope-params [[] [:scope ""] [:scope "   "]]
+                  resource     [nil (str "http://localhost:3000" (mcp/mcp-canonical-path))]]
+            (testing (pr-str {:scope-params scope-params :resource resource})
+              (let [response    (apply mt/user-http-request-full-response
+                                       :crowberto :get 400 "oauth/authorize"
+                                       :client_id     client-id
+                                       :redirect_uri  "https://example.com/callback"
+                                       :response_type "code"
+                                       :state         "test-state"
+                                       (concat scope-params
+                                               (when resource [:resource resource])))
+                    description (str (get-in response [:body :error_description]))]
+                (is (= "invalid_scope" (get-in response [:body :error])))
+                (is (= (str "The request must include a scope. Request only scopes listed in scopes_supported at "
+                            "http://localhost:3000/.well-known/oauth-authorization-server")
+                       description))))))))))
 
 (deftest mb-full-client-can-still-authorize-test
   (testing "removing `mb:full` from the advertised sets must not break a first-party client that

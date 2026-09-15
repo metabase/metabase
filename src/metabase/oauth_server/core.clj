@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.api-scope.core :as api-scope]
    [metabase.mcp.core :as mcp]
    [metabase.oauth-server.db :as oauth-server.db]
    [metabase.oauth-server.scopes :as scopes]
@@ -31,10 +32,40 @@
 
   `mb:full` is deliberately absent. Advertising it here puts a full-access grant in front of every client that reads
   discovery metadata, so keeping it out means no client is led toward it. Note this is not a gate: dynamic
-  registration is unauthenticated and passes a client-supplied `scope` through unchecked, so a client that names
-  `mb:full` itself still registers with it. Keeping it off this list narrows who finds it, not who may ask."
+  registration is unauthenticated and accepts any registered scope, so a client that names `mb:full` itself still
+  registers with it. Keeping it off this list narrows who finds it, not who may ask."
   []
   (vec (into (sorted-set) (mcp/all-scopes))))
+
+(defn all-scopes-registered?
+  "True when every scope in the space-delimited `scope` string is registered via
+  [[metabase.api-scope.core/defscope]]. A nil or blank `scope` has none that are not."
+  [scope]
+  (every? api-scope/registered-scope? (api-scope/parse-scopes scope)))
+
+(defn- authorization-server-metadata-url
+  "Absolute URL of the RFC 8414 authorization server metadata document, which lists `scopes_supported`."
+  []
+  (str (system/site-url) "/.well-known/oauth-authorization-server"))
+
+(defn unsupported-scopes-description
+  "The `error_description` for a request naming a scope that is not registered. Deliberately does not echo the
+  request's scopes."
+  []
+  (str "The request contained unsupported scopes. Request only scopes listed in scopes_supported at "
+       (authorization-server-metadata-url)))
+
+(defn missing-scope-description
+  "The `error_description` for an authorization request with no scope."
+  []
+  (str "The request must include a scope. Request only scopes listed in scopes_supported at "
+       (authorization-server-metadata-url)))
+
+(defn empty-scope-description
+  "The `error_description` for a client registration whose `scope` is present but empty."
+  []
+  (str "The scope must not be empty. Omit scope, or include only scopes listed in scopes_supported at "
+       (authorization-server-metadata-url)))
 
 (defn mcp-resource-scopes
   "The scopes advertised for the MCP resource at `path`. RFC 9728 metadata answers \"what does *this* resource

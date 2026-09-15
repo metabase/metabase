@@ -211,11 +211,30 @@
      :body    {"error" "registration_not_supported"}}
     (with-throttling-429 [registration-throttler (request/ip-address request)]
       (or (when-let [provider (oauth-server/get-provider)]
-            (if (nil? body)
+            (cond
+              (nil? body)
               {:status  400
                :headers {"Content-Type" "application/json"}
                :body    {"error"             "invalid_client_metadata"
                          "error_description" "Invalid or missing JSON body"}}
+
+              ;; Only an omitted `scope` gets the default below; an empty one would register a client that
+              ;; can never authorize.
+              (and (contains? body :scope) (str/blank? (:scope body)))
+              {:status  400
+               :headers {"Content-Type" "application/json"}
+               :body    {"error"             "invalid_client_metadata"
+                         "error_description" (oauth-server/empty-scope-description)}}
+
+              ;; A client's registered scopes are the ceiling /authorize checks requests against, so a
+              ;; self-nominated wildcard such as `*` would later be granted as one.
+              (not (oauth-server/all-scopes-registered? (:scope body)))
+              {:status  400
+               :headers {"Content-Type" "application/json"}
+               :body    {"error"             "invalid_client_metadata"
+                         "error_description" (oauth-server/unsupported-scopes-description)}}
+
+              :else
               (try
                 ;; MCP clients frequently omit application_type, scope, and may request
                 ;; unsupported grant types. We are required to support poorly-configured
@@ -294,26 +313,36 @@
      :body    ""}
     (or (when-let [provider (oauth-server/get-provider)]
           (try
-            (let [parsed       (oidc/parse-authorization-request provider query-params)
+            (let [;; A blank scope is dropped so the provider validates the client and redirect URI first;
+                  ;; the missing scope is then reported as `invalid_scope` below.
+                  parsed       (oidc/parse-authorization-request provider
+                                                                 (cond-> query-params
+                                                                   (str/blank? (:scope query-params)) (dissoc :scope)))
+                  ;; A scope-less request would otherwise mint a token with no scopes.
+                  _            (when (str/blank? (:scope parsed))
+                                 (throw (ex-info "no scope was requested"
+                                                 {:oauth-error       "invalid_scope"
+                                                  :error-description (oauth-server/missing-scope-description)})))
+                  ;; Checked on the raw request, before narrowing: narrowing would silently drop an
+                  ;; unregistered scope when `resource` is sent and keep it when it is not.
+                  _            (when-not (oauth-server/all-scopes-registered? (:scope parsed))
+                                 (throw (ex-info "requested scope is not a registered scope"
+                                                 {:oauth-error       "invalid_scope"
+                                                  :error-description (oauth-server/unsupported-scopes-description)})))
                   ;; Narrow before signing: the signature then binds the narrowed scope through the
                   ;; consent form round-trip, so the decision endpoint grants exactly what was shown.
-                  requested    (some-> (:scope parsed) str str/trim not-empty)
                   narrowed     (oauth-server/narrow-scope-to-resource (:resource parsed) (:scope parsed))
-                  ;; `narrow-scope-to-resource` answers nil both for "no scope was requested" and for
-                  ;; "a scope was requested and nothing survived". Only the first may drop the parameter.
-                  ;; The second means the client asked exclusively for scopes this resource does not
-                  ;; accept: dropping it there renders a consent screen listing nothing and mints a
+                  ;; Nothing surviving means the client asked exclusively for scopes this resource does not
+                  ;; accept: dropping the parameter there renders a consent screen listing nothing and mints a
                   ;; zero-scope token, which looks like success and leaves an empty `tools/list` with no
                   ;; in-product way to widen the grant. RFC 6749 section 4.1.2.1 has an error for it.
-                  _            (when (and requested (not narrowed))
+                  _            (when-not narrowed
                                  (throw (ex-info "no requested scope is accepted by the named resource"
                                                  {:oauth-error       "invalid_scope"
                                                   :error-description (str "The requested scopes are not accepted by "
                                                                           "the requested resource.")
                                                   :resource          (:resource parsed)})))
-                  parsed       (if narrowed
-                                 (assoc parsed :scope narrowed)
-                                 (dissoc parsed :scope))
+                  parsed       (assoc parsed :scope narrowed)
                   client       (proto/get-client (:client-store provider) (:client_id parsed))
                   csrf-token   (generate-csrf-token)
                   oauth-params (select-keys parsed oauth-param-keys)
