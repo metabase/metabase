@@ -532,6 +532,125 @@
             (finally
               (t2/delete! :model/Transform :id (:id result)))))))))
 
+(defn- venues-stage-query
+  "An MBQL 5 query over venues in the numeric-id dialect with no top-level `:database` — the
+   shape `execute_query` takes, whose first stage alone names the warehouse. Carries the count and
+   breakout the agent's first real call did, so the inferred key lands on a query that then has to
+   normalize and preprocess as a whole."
+  []
+  {:lib/type "mbql/query"
+   :stages   [{:lib/type     "mbql.stage/mbql"
+               :source-table (mt/id :venues)
+               :aggregation  [["count" {}]]
+               :breakout     [["field" {} (mt/id :venues :category_id)]]}]})
+
+(deftest transform-write-infers-database-from-source-table-test
+  (testing "an inline `definition` whose first stage names a numeric source-table but no top-level
+            `database` is accepted, with the table's database filled in — execute_query takes that
+            query as-is, and the accepted-shapes sentence promises `definition` takes the same dialect"
+    (with-transforms
+      (with-target-db-support
+        (let [result (tool-result (write! {:method     "create"
+                                           :name       "Inferred database"
+                                           :definition {:type "query" :query (venues-stage-query)}
+                                           :target     {:name "mcp_inferred_db" :schema (venues-schema)}}))
+              stored (t2/select-one-fn :source :model/Transform :id (:id result))]
+          (try
+            (testing "the stored source carries the inferred database"
+              (is (= (mt/id) (-> stored :query :database)))
+              (is (= (mt/id :venues) (-> stored :query :stages first :source-table))))
+            (testing "and the target database follows it"
+              (is (= (mt/id) (-> result :target :database))))
+            (finally
+              (t2/delete! :model/Transform :id (:id result)))))))))
+
+(deftest transform-write-infers-database-from-source-card-test
+  (testing "a first stage naming a numeric source-card infers the card's database the same way"
+    (with-transforms
+      (with-target-db-support
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query (venues-query)}]
+          (let [result (tool-result (write! {:method     "create"
+                                             :name       "Inferred from card"
+                                             :definition {:type  "query"
+                                                          :query {:lib/type "mbql/query"
+                                                                  :stages   [{:lib/type    "mbql.stage/mbql"
+                                                                              :source-card card-id}]}}
+                                             :target     {:name "mcp_inferred_card_db" :schema (venues-schema)}}))
+                stored (t2/select-one-fn :source :model/Transform :id (:id result))]
+            (try
+              (is (= (mt/id) (-> stored :query :database)))
+              (is (= card-id (-> stored :query :stages first :source-card)))
+              (is (= (mt/id) (-> result :target :database)))
+              (finally
+                (t2/delete! :model/Transform :id (:id result))))))))))
+
+(deftest transform-write-database-inference-limits-test
+  (with-transforms
+    (with-target-db-support
+      (let [create! (fn [user query]
+                      (write! user write-scopes {:method     "create"
+                                                 :name       "x"
+                                                 :definition {:type "query" :query query}
+                                                 :target     {:name "mcp_inference_limits" :schema (venues-schema)}}))]
+        (testing "a query naming neither a source-table nor a source-card is still refused for the missing database"
+          (let [error (tool-error (create! :crowberto {:lib/type "mbql/query"
+                                                       :stages   [{:lib/type "mbql.stage/mbql"}]}))]
+            (is (re-find #"not valid MBQL" error))
+            (is (re-find #"Query must include :database" error))))
+        (testing "an unknown table id is a teaching error naming the id, not a stack trace"
+          (is (re-find #"No table found with id 2147483647"
+                       (tool-error (create! :crowberto {:lib/type "mbql/query"
+                                                        :stages   [{:lib/type     "mbql.stage/mbql"
+                                                                    :source-table Integer/MAX_VALUE}]})))))
+        (testing "an unknown card id likewise"
+          (is (re-find #"No saved question or model found with id 2147483647"
+                       (tool-error (create! :crowberto {:lib/type "mbql/query"
+                                                        :stages   [{:lib/type    "mbql.stage/mbql"
+                                                                    :source-card Integer/MAX_VALUE}]})))))
+        (testing "a table the caller cannot read is reported exactly like one that does not exist, so the
+                  inference lookup does not let the id enumerate tables across hidden databases"
+          (mt/with-no-data-perms-for-all-users!
+            (is (re-find (re-pattern (str "No table found with id " (mt/id :venues)))
+                         (tool-error (create! :rasta {:lib/type "mbql/query"
+                                                      :stages   [{:lib/type     "mbql.stage/mbql"
+                                                                  :source-table (mt/id :venues)}]}))))))
+        (is (zero? (t2/count :model/Transform :name "x")) "nothing is written by any refusal")))))
+
+(deftest transform-write-cross-database-join-still-rejected-test
+  (testing "inferring the database from the first stage does not let a join on a table in another
+            database through: the query is rejected with or without an explicit `database`"
+    (with-transforms
+      (with-target-db-support
+        (let [orig-venues    (mt/id :venues)
+              orig-venues-id (mt/id :venues :id)]
+          (mt/with-temp-copy-of-db
+            (let [other-db     (mt/id)
+                  other-venues (mt/id :venues)
+                  cross-join   (fn [database]
+                                 (cond-> {:lib/type "mbql/query"
+                                          :stages   [{:lib/type     "mbql.stage/mbql"
+                                                      :source-table other-venues
+                                                      :joins        [{:lib/type   "mbql/join"
+                                                                      :alias      "v2"
+                                                                      :stages     [{:lib/type     "mbql.stage/mbql"
+                                                                                    :source-table orig-venues}]
+                                                                      :conditions [["=" {}
+                                                                                    ["field" {} (mt/id :venues :id)]
+                                                                                    ["field" {:join-alias "v2"} orig-venues-id]]]}]}]}
+                                   database (assoc :database database)))
+                  attempt!     (fn [database]
+                                 (write! {:method     "create"
+                                          :name       "cross db join"
+                                          :definition {:type "query" :query (cross-join database)}
+                                          :target     {:name "mcp_cross_db_join" :schema (venues-schema)}}))]
+              (is (not= orig-venues other-venues) "the copy really is a second database")
+              (let [inferred (tool-error (attempt! nil))
+                    explicit (tool-error (attempt! other-db))]
+                (is (re-find #"belongs to a different Database" inferred))
+                (testing "and inference changes nothing but the missing key: both forms fail the same way"
+                  (is (= explicit inferred))))
+              (is (zero? (t2/count :model/Transform :name "cross db join"))))))))))
+
 (deftest transform-write-accepted-shapes-names-both-dialects-test
   (testing "GHY-4240: the sentence every source-shape error ends with is what teaches the agent how to
             retry, so it has to name both dialects the tool actually resolves — it once said

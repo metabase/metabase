@@ -57,6 +57,44 @@
        (format "The transform's query is not valid MBQL: %s %s"
                (common/ellipsize (ex-message e) 300) accepted-shapes)))))
 
+(defn- first-stage
+  "The stage that names a numeric-ref query's source: `stages[0]` of an MBQL 5 query, or the inner
+   `:query` of a legacy MBQL 4 one."
+  [query]
+  (or (first (:stages query)) (:query query)))
+
+(defn- infer-database
+  "`query` with its top-level `:database` filled from the first stage's numeric `:source-table`
+   (the table's `db_id`) or `:source-card` (the card's `database_id`) when the caller left it off.
+   `execute_query` resolves the warehouse from the first stage and never consults `:database`, and
+   the accepted-shapes sentence promises `definition` takes that same dialect, so a query that names
+   its source is not sent back for the redundant key. Left alone when `:database` is set or the
+   first stage names neither, so [[normalize-transform-query]] still reports the missing key.
+
+   Read-checked, and an unreadable table or card is reported exactly like an absent one: this lookup
+   runs before any metadata provider exists, so an unchecked existence answer would let the id
+   enumerate tables and cards across databases the caller cannot otherwise see."
+  [query]
+  (if (:database query)
+    query
+    (let [{:keys [source-table source-card]} (first-stage query)
+          readable (fn [row] (when (and row (mi/can-read? row)) row))]
+      (cond
+        (pos-int? source-table)
+        (if-let [table (readable (mcp.db/table-by-id source-table))]
+          (assoc query :database (:db_id table))
+          (common/throw-teaching-error
+           (format "No table found with id %d. Name a table from browse_data." source-table)))
+
+        (pos-int? source-card)
+        (if-let [card (readable (mcp.db/select-one-by-id :model/Card source-card))]
+          (assoc query :database (:database_id card))
+          (common/throw-teaching-error
+           (format "No saved question or model found with id %d. Name a card from search." source-card)))
+
+        :else
+        query))))
+
 (defn- definition->query
   "The query inside a caller-supplied `definition`, resolved to canonical MBQL 5. Source kinds this
    tool can't author are refused here rather than stored in a degraded form."
@@ -88,7 +126,7 @@
         (normalize-transform-query
          (if (v2.queries/portable-query? query)
            (v2.queries/resolve-external-query query accepted-shapes)
-           query))))))
+           (infer-database query)))))))
 
 (defn- check-native-source-gates!
   "The gates an inline native `definition` passes: the `agent:sql:run` scope and the
