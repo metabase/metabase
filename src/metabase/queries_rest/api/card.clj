@@ -537,12 +537,14 @@
     ;; check that we have permissions for the collection we're trying to save this card to, if applicable.
     ;; if a `dashboard-id` is specified, check permissions on the *dashboard's* collection ID.
     (api/create-check :model/Card {:collection_id (actual-collection-id card)})
+    (when-let [dashboard-id (:dashboard_id card)]
+      (queries/check-shared-dashboard-timeline-permissions! (queries-rest.db/dashboard dashboard-id) [card]))
     (try
       (lib/check-card-overwrite ::no-id query)
       (catch clojure.lang.ExceptionInfo e
         (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400)))))
     (let [created-card (queries/with-copy-source-card source-card
-                          (queries/create-card! card @api/*current-user*))]
+                         (queries/create-card! card @api/*current-user*))]
       (when (and (some? (:result_metadata card))
                  (= (name (:type created-card)) "question"))
         (events/publish-event! :event/card-create-with-result-metadata
@@ -592,7 +594,10 @@
   [card-before-update :- ::queries.schema/card
    card-updates       :- ::queries.schema/card]
   (when (api/column-will-change? :dashboard_id card-before-update card-updates)
-    (check-allowed-to-remove-from-existing-dashboards card-before-update))
+    (check-allowed-to-remove-from-existing-dashboards card-before-update)
+    (when-let [dashboard-id (:dashboard_id card-updates)]
+      (queries/check-shared-dashboard-timeline-permissions! (queries-rest.db/dashboard dashboard-id)
+                                                            [(merge card-before-update card-updates)])))
   (collection/check-allowed-to-change-collection card-before-update card-updates))
 
 (mu/defn- check-update-result-metadata-data-perms

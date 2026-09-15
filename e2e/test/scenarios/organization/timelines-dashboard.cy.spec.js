@@ -122,6 +122,51 @@ describe("scenarios > organization > timelines > dashboard", () => {
       .should("be.visible");
   });
 
+  it("should not let a user add a card with a restricted timeline to a public dashboard", () => {
+    cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
+    H.createCollection({ name: "Restricted" }).then(({ body: { id } }) => {
+      H.createTimelineWithEvents({
+        timeline: { name: "Releases", collection_id: id },
+        events: [
+          { name: "Secret bday party", timestamp: "2027-10-20T00:00:00Z" },
+        ],
+      }).then(({ timeline }) => {
+        H.createQuestion({
+          ...questionDetails,
+          visualization_settings: {
+            "timeline.selected_timeline_ids": [timeline.id],
+          },
+        });
+      });
+      cy.updateCollectionGraph({
+        [ALL_USERS_GROUP]: { [id]: "none" },
+        [COLLECTION_GROUP]: { [id]: "none" },
+        [DATA_GROUP]: { [id]: "none" },
+      });
+    });
+    H.createDashboard({ name: "Shared dashboard" }).then(({ body: { id } }) => {
+      H.createPublicDashboardLink(id);
+      cy.wrap(id).as("dashboardId");
+    });
+
+    cy.signInAsNormalUser();
+    cy.intercept("PUT", "/api/dashboard/*").as("saveDashboard");
+    H.visitDashboard("@dashboardId");
+    H.editDashboard();
+    H.openQuestionsSidebar();
+    H.sidebar().findByText("Orders by month").click();
+    H.getDashboardCards().should("have.length", 1);
+    cy.findByTestId("edit-bar").findByTestId("save-edit-button").click();
+
+    cy.wait("@saveDashboard").its("response.statusCode").should("eq", 403);
+    cy.get("@dashboardId").then((id) => {
+      cy.signInAsAdmin();
+      cy.request("GET", `/api/dashboard/${id}`)
+        .its("body.dashcards")
+        .should("have.length", 0);
+    });
+  });
+
   describe("analytics", () => {
     beforeEach(() => {
       H.resetSnowplow();

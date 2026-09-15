@@ -826,6 +826,32 @@
           (doseq [timeline (queries.db/timelines (set timeline-ids))]
             (api/read-check timeline)))))))
 
+(defn- dashboard-exposed-timeline-ids
+  "The ids of the timelines whose events `card` shows when it is on a dashboard."
+  [{:keys [display archived] settings :visualization_settings}]
+  (let [timeline-ids (:timeline.selected_timeline_ids settings)]
+    (when (and (not archived)
+               (timeline-events-supported-display? display)
+               (not (false? (:timeline_events.enabled settings)))
+               (sequential? timeline-ids))
+      (filter pos-int? timeline-ids))))
+
+(defn check-shared-dashboard-timeline-permissions!
+  "Placing `cards` on `dashboard` shows their selected timeline events to anyone who opens it when the dashboard is
+  publicly shared or embedded, so the current user needs read access to those timelines."
+  [dashboard cards]
+  (when (and api/*current-user-id*
+             (or (:public_uuid dashboard) (:enable_embedding dashboard)))
+    (let [timeline-ids (into #{} (mapcat dashboard-exposed-timeline-ids) cards)]
+      (doseq [timeline (queries.db/timelines timeline-ids)]
+        (api/read-check timeline)))))
+
+(defn check-shared-dashboard-timeline-permissions-for-card-ids!
+  "[[check-shared-dashboard-timeline-permissions!]] for the saved Cards with `card-ids`."
+  [dashboard card-ids]
+  (when (seq card-ids)
+    (check-shared-dashboard-timeline-permissions! dashboard (queries.db/cards (set card-ids)))))
+
 (def ^:dynamic *copy-source-card*
   "The Card a new Card is being copied from, if any. Its timeline visibility settings count as the previous state, so
   copying a Card does not require read access to the timelines it already selects."

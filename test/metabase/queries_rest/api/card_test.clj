@@ -3033,7 +3033,7 @@
                                        (assoc (card-with-name-and-query)
                                               :source_card_id (:id source-card)
                                               :visualization_settings {:timeline.selected_timeline_ids
-                                                                        [(:id timeline) (:id timeline-2)]})))))
+                                                                       [(:id timeline) (:id timeline-2)]})))))
         (testing "source_card_id must itself be readable"
           (mt/with-temp [:model/Collection unreadable-collection {}
                          :model/Card unreadable-card {:collection_id (:id unreadable-collection)}]
@@ -3042,6 +3042,34 @@
                    (mt/user-http-request :rasta :post 403 "card"
                                          (assoc (card-with-name-and-query)
                                                 :source_card_id (:id unreadable-card)))))))))))
+
+(deftest card-with-restricted-timeline-on-public-dashboard-test
+  (mt/with-temporary-setting-values [enable-public-sharing true]
+    (mt/with-temp [:model/Collection restricted {}
+                   :model/Timeline timeline {:collection_id (:id restricted)}
+                   :model/Card source-card {:dataset_query          (mt/mbql-query venues)
+                                            :display                :line
+                                            :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}
+                   :model/Dashboard dashboard {:public_uuid (str (random-uuid))}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
+      (mt/with-model-cleanup [:model/Card]
+        (testing "POST /api/card cannot copy the card into a public dashboard"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :post 403 "card"
+                                       (assoc (card-with-name-and-query)
+                                              :display                "line"
+                                              :source_card_id         (:id source-card)
+                                              :dashboard_id           (:id dashboard)
+                                              :visualization_settings (:visualization_settings source-card))))))
+        (testing "PUT /api/card/:id cannot move the card into a public dashboard"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :put 403 (str "card/" (:id source-card))
+                                       {:dashboard_id (:id dashboard)})))
+          (is (nil? (t2/select-one-fn :dashboard_id :model/Card (:id source-card)))))
+        (testing "a user who can read the timeline can move the card into the public dashboard"
+          (is (= (:id dashboard)
+                 (:dashboard_id (mt/user-http-request :crowberto :put 200 (str "card/" (:id source-card))
+                                                      {:dashboard_id (:id dashboard)})))))))))
 
 (deftest change-collection-permissions-test
   (testing "PUT /api/card/:id"

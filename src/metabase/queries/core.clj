@@ -27,6 +27,8 @@
   card-param-values
   card-param-remapped-value]
  [metabase.queries.models.card
+  check-shared-dashboard-timeline-permissions!
+  check-shared-dashboard-timeline-permissions-for-card-ids!
   create-card!
   with-copy-source-card]
  [metabase.queries.metadata
