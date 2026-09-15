@@ -27,7 +27,10 @@
   card-param-values
   card-param-remapped-value]
  [metabase.queries.models.card
-  create-card!]
+  check-shared-dashboard-timeline-permissions!
+  check-shared-dashboard-timeline-permissions-for-card-ids!
+  create-card!
+  with-copy-source-card]
  [metabase.queries.metadata
   batch-fetch-card-metadata
   ;; TODO does this belong here, or in the `dashboards` module?
@@ -41,6 +44,7 @@
   parameter-template-tag?
   sole-dashboard-id
   starting-card-schema-version
+  timeline-events-supported-display?
   update-card!
   visible-metric-cards-where-clause]
  [metabase.queries.models.card.metadata

@@ -100,7 +100,7 @@
 ;;;; serialization
 
 (defmethod serdes/generate-path "TimelineEvent" [_ event]
-  [(serdes/infer-self-path "Timeline" (t2/select-one :model/Timeline :id (:timeline_id event)))
+  [(serdes/infer-self-path "Timeline" (timeline.db/timeline (:timeline_id event)))
    (serdes/infer-self-path "TimelineEvent" event)])
 
 (defmethod serdes/make-spec "TimelineEvent" [_model-name _opts]

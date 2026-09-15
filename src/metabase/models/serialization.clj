@@ -1844,7 +1844,7 @@
         timeline-ids (concat
                       (filter #(or (raw-ref-id? allow-int-ids? %) (entity-id? %)) selected-ids)
                       (if allow-int-ids?
-                        (mapcat #(t2/select-fn-set :timeline_id [:model/TimelineEvent :timeline_id] :id [:in %])
+                        (mapcat models.db/timeline-ids-of-events
                                 (partition-all query-batch-size (filter pos-int? excluded-ids)))
                         (map first (filter timeline-event-ref? excluded-ids))))]
     (into #{} (map (fn [id] [{:model "Timeline" :id id}])) timeline-ids)))
