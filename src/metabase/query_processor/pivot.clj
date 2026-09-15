@@ -822,28 +822,31 @@
 (defn- pivot-parity-flows
   "Ordered flow list for the parity checker, given `driver` and the (preprocessed) `query`. Family-level
   rules live here — driver developers only touch [[metabase.driver/database-supports?]] on
-  `:native-pivot-tables`.
+  `:native-pivot-tables` and `:native-pivot-tables/window-functions`.
 
   * every driver runs `:multi-query` — the reference flow, one query per breakout combination.
-  * every SQL driver additionally runs `:union-all` — the unconditional SQL single-query fallback.
-  * SQL drivers that declare `:native-pivot-tables` additionally run `:native-pivot-query` (which the
-    SQL compiler renders as `GROUPING SETS`). Skipped when the query has a window-function aggregation,
-    which composes with `GROUPING SETS` incorrectly.
+  * every SQL driver additionally runs `:union-all` — the SQL family's unconditional single-query
+    fallback shape.
+  * every driver that declares `:native-pivot-tables` additionally runs `:native-pivot-query`, which
+    each family's compiler renders as its native single-scan shape (`GROUPING SETS` on SQL, `$facet`
+    on Mongo). Exception: when the query has a window-function aggregation and the driver does NOT
+    declare `:native-pivot-tables/window-functions`, `:native-pivot-query` is dropped — SQL's
+    `GROUPING SETS` composes nonsensically with window functions (a running total spanning detail
+    and subtotal rows).
 
   Non-`:multi-query` labels double as [[*force-compilation-shape*]] values that the driver's compiler
   recognises. When [[qp.settings/use-native-pivot-tables]] is on and parity is off, the first
   non-`:multi-query` entry is the compilation shape the driver will use."
   [driver query database]
-  (cond
-    (isa? driver/hierarchy driver :sql)
-    (cond-> [:multi-query :union-all]
-      (and (driver.u/supports? driver :native-pivot-tables database)
-           (not (some lib.schema.aggregation/window-aggregation-expression?
-                      (lib/aggregations query))))
-      (conj :native-pivot-query))
-
-    :else
-    [:multi-query]))
+  (let [sql?         (isa? driver/hierarchy driver :sql)
+        native?      (driver.u/supports? driver :native-pivot-tables database)
+        native-safe? (and native?
+                          (or (not (some lib.schema.aggregation/window-aggregation-expression?
+                                         (lib/aggregations query)))
+                              (driver.u/supports? driver :native-pivot-tables/window-functions database)))]
+    (cond-> [:multi-query]
+      sql?         (conj :union-all)
+      native-safe? (conj :native-pivot-query))))
 
 (defn- run-pivot-flow
   "Run one pivot `flow` against `query`. `primary-flow` uses the caller's `rff` and lets

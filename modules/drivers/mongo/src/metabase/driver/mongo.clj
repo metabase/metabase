@@ -523,6 +523,8 @@
                               :metadata/key-constraints             false
                               :native-parameter-card-reference      false
                               :native-parameters                    true
+                              :native-pivot-tables                  true
+                              :native-pivot-tables/window-functions true
                               :native-requires-specified-collection true
                               :nested-fields                        true
                               :nested-queries                       true

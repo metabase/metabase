@@ -1029,9 +1029,10 @@
     ;; `{{table}}` gets replaced by a reference to a table.
     :parameters/table-reference
     ;;
-    ;; Does this driver natively support pivot queries via a single `GROUP BY GROUPING SETS (...)` query, instead of
-    ;; the legacy multi-query path? Drivers that opt in must also derive from `:sql` (which provides the
-    ;; `:pivot` clause compiler).
+    ;; Does this driver have a native single-scan pivot compiler — one that runs the shared upstream
+    ;; (filters/joins/expressions) once and emits every breakout combination in a single query, rather
+    ;; than a query per combination? Drivers that opt in must supply a `:pivot` clause compiler that
+    ;; emits the `pivot-grouping` column alongside the breakouts and aggregations.
     :native-pivot-tables})
 
 (defmulti database-supports?
