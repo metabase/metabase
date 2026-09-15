@@ -27,10 +27,11 @@
 (mr/def ::FilterParams
   [:map {:closed true}
    [:user-id            {:optional true} ms/PositiveInt]
-   ;; a single `?ids=` arrives as a bare string; coerce so one id and many behave the same
-   [:ids                {:optional true} (ms/QueryVectorOf :string)]
+   ;; a single `?ids=` arrives as a bare string; coerce so one id and many behave the same. `:and` decodes through
+   ;; its first child only, so the coercion runs before the length check
+   [:ids                {:optional true} [:and (ms/QueryVectorOf :string) [:vector {:max 1000} :string]]]
    [:provider           {:optional true} (into [:enum] session-providers)]
-   [:type               {:optional true} [:enum "normal" "full-app-embed"]]
+   [:type               {:optional true} ::sm.schema/session-type]
    [:tenancy            {:default :all}  [:enum :all :internal :external]]
    [:created-before     {:optional true} ms/TemporalString]
    [:created-after      {:optional true} ms/TemporalString]
@@ -49,7 +50,7 @@
                          [:id          ms/PositiveInt]
                          [:email       :string]
                          [:common_name [:maybe :string]]]]
-   [:type               [:enum "normal" "full-app-embed"]]
+   [:type               ::sm.schema/session-type]
    [:provider           :string]
    [:created_at         ms/TemporalInstant]
    [:last_active_at     [:maybe ms/TemporalInstant]]
@@ -65,7 +66,7 @@
    ::FilterParams
    [:map {:closed true}
     ;; in a JSON body `ids` arrives as a real array, so it needs none of the single-value coercion a query string does
-    [:ids             {:optional true} [:sequential :string]]
+    [:ids             {:optional true} [:sequential {:max 1000} :string]]
     [:exclude-current {:default true}  :boolean]]])
 
 (mr/def ::RevokeByCriteriaResult
@@ -186,8 +187,6 @@
                             :details {:criteria criteria, :count revoked, :remaining remaining}})
     (doseq [[user-id revoked-for-user] (frequencies user-ids)]
       (events/publish-event! :event/session-revoked
-                             ;; `:model`/`:model-id` explicitly, and as the keyword, for the same reason as in the
-                             ;; by-id endpoint above
                              {:user-id  api/*current-user-id*
                               :model    :model/User
                               :model-id user-id

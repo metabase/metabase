@@ -193,6 +193,22 @@
         (testing "`mcp` is not an accepted filter value: those sessions are never listed"
           (is (some? (mt/user-http-request :crowberto :get 400 "ee/session-management" :provider "mcp"))))))))
 
+(deftest ids-length-limit-test
+  (testing "`ids` may name at most 1000 sessions: every id is a bind parameter, and a page never holds more"
+    (let [at-limit  (vec (repeat 1000 "a"))
+          too-many  (conj at-limit "a")]
+      (testing "GET"
+        ;; one-character ids keep the 1001-key query string under Jetty's request header limit, so the 400 is malli's
+        (is (some? (mt/user-http-request :crowberto :get 400 "ee/session-management" :ids too-many)))
+        (is (= 0 (:total (mt/user-http-request :crowberto :get 200 "ee/session-management" :ids at-limit)))
+            "the limit is inclusive")
+        (is (= 0 (:total (mt/user-http-request :crowberto :get 200 "ee/session-management" :ids "a")))
+            "and a single bare id is still coerced to a vector before the length check"))
+      (testing "POST"
+        (is (some? (mt/user-http-request :crowberto :post 400 "ee/session-management/revoke" {:ids too-many})))
+        (is (= 0 (:revoked (mt/user-http-request :crowberto :post 200 "ee/session-management/revoke" {:ids at-limit})))
+            "the limit is inclusive")))))
+
 (deftest filter-by-created-at-test
   (testing "`created-before`/`created-after` bound a half-open range on created_at"
     (mt/with-temp [:model/User {user-id :id} {}]
@@ -414,6 +430,23 @@
                 "the session created after the select is still live and still matches")
             (is (session-exists? @raced)
                 "and it was not revoked")))))))
+
+(deftest revoke-count-mismatch-is-logged-test
+  (testing "a matched session that disappears before the delete is logged, not hidden in the counts"
+    (mt/with-temp [:model/User {user-id :id} {}]
+      (let [kept    (insert-session! user-id)
+            gone    (insert-session! user-id)
+            delete! (mt/original-fn #'sm.db/delete-sessions-by-ids!)]
+        (mt/with-dynamic-fn-redefs [sm.db/delete-sessions-by-ids! (fn [ids]
+                                                                    ;; a logout between the select and the delete
+                                                                    (t2/delete! (t2/table-name :model/Session) :id gone)
+                                                                    (delete! ids))]
+          (mt/with-log-messages-for-level [messages [metabase-enterprise.session-management.db :info]]
+            (let [response (mt/user-http-request :crowberto :post 200 "ee/session-management/revoke" {:user-id user-id})]
+              (is (= 1 (:revoked response)) "only the row actually deleted is counted")
+              (is (not (session-exists? kept)))
+              (is (some #(str/includes? (:message %) "matched 2 session(s) but deleted 1") (messages))
+                  "and the gap is written to the log"))))))))
 
 (deftest revoke-audit-test
   (testing "a revoke writes one summary row plus one row per affected user, and never touches an MCP session"
