@@ -79,9 +79,13 @@ jobs:
           path: ./target/uberjar/metabase.jar
           retention-days: 30
 
-  # Two runners, taking alternate commits. Waiting for the paint to settle puts
-  # the whole list past one job's ceiling, and alternating rather than splitting
-  # by date keeps any difference between the two runners off the time axis.
+  # Four runners, each taking a contiguous block of dates. Runners of the same
+  # class differ by about 10%, so handing neighbouring commits to different ones
+  # turns that difference into a sawtooth across the whole series. A block keeps
+  # neighbours on one machine.
+  #
+  # The blocks overlap by two commits, so each seam is measured by both runners
+  # and the offset between them is a measurement rather than a guess.
   backfill:
     needs: [build]
     # A commit whose build failed has no jar, and the loop skips it with a warning.
@@ -91,7 +95,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        half: [0, 1]
+        include:
+          - { block: 0, from: 1, to: 31 }
+          - { block: 1, from: 30, to: 60 }
+          - { block: 2, from: 59, to: 89 }
+          - { block: 3, from: 88, to: 114 }
     env:
       MB_JETTY_PORT: "4000"
       SITE: http://localhost:4000
@@ -174,7 +182,7 @@ jobs:
               echo "::warning::Could not measure ${sha}"
             fi
             echo "::endgroup::"
-          done < <(awk -v half=${{ matrix.half }} 'NR % 2 == half' .github/backfill-load-times-commits.tsv)
+          done < <(awk -v from=${{ matrix.from }} -v to=${{ matrix.to }} 'NR >= from && NR <= to' .github/backfill-load-times-commits.tsv)
 
           echo "Measured ${measured}, failed ${failed}"
           [ "$measured" -gt 0 ]
@@ -182,6 +190,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: bundle-load-times-backfill-${{ matrix.half }}
+          name: bundle-load-times-backfill-${{ matrix.block }}
           path: artifacts/
           retention-days: 30
