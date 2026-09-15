@@ -2462,7 +2462,7 @@
   [n unit offset-n offset-unit options]
   (let [{:keys [start-of-week] :as options} (js->clj options :keywordize-keys true)]
     (u.time/format-relative-date-range
-     {:start-of-week (some-> start-of-week keyword)}
+     {:start-of-week (keyword (or start-of-week :sunday))}
      n
      (keyword unit)
      offset-n
