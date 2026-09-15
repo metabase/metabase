@@ -20,11 +20,8 @@ describe("shouldOpenInBlankWindow", () => {
     expect(result).toBe(false);
   });
 
-  it("should always return true when the host requests a new window", () => {
-    PLUGIN_HOST_NAVIGATION.host = {
-      handleLink: async () => false,
-      sameOriginTarget: "_blank",
-    };
+  it("should always return true when a host owns navigation", () => {
+    PLUGIN_HOST_NAVIGATION.host = { handleLink: async () => false };
     const url = `${window.location.origin}/dashboard/1`;
     const result = shouldOpenInBlankWindow(url);
     expect(result).toBe(true);
@@ -74,11 +71,8 @@ describe("getUrlTarget", () => {
     expect(result).toBe("_self");
   });
 
-  it("should always return _blank when the host requests a new window", () => {
-    PLUGIN_HOST_NAVIGATION.host = {
-      handleLink: async () => false,
-      sameOriginTarget: "_blank",
-    };
+  it("should always return _blank when a host owns navigation", () => {
+    PLUGIN_HOST_NAVIGATION.host = { handleLink: async () => false };
     const url = `${window.location.origin}/dashboard/1`;
     const result = getUrlTarget(url);
     expect(result).toBe("_blank");
@@ -95,7 +89,7 @@ describe("openUrl()", () => {
 
   it("should not open the url when the host link handler returns true", async () => {
     const handleLink = jest.fn().mockResolvedValue(true);
-    PLUGIN_HOST_NAVIGATION.host = { handleLink, sameOriginTarget: "_blank" };
+    PLUGIN_HOST_NAVIGATION.host = { handleLink };
 
     const openInSameWindow = jest.fn();
     const openInBlankWindow = jest.fn();
@@ -109,7 +103,7 @@ describe("openUrl()", () => {
 
   it("should open the url when the host link handler returns false", async () => {
     const handleLink = jest.fn().mockResolvedValue(false);
-    PLUGIN_HOST_NAVIGATION.host = { handleLink, sameOriginTarget: "_blank" };
+    PLUGIN_HOST_NAVIGATION.host = { handleLink };
 
     const openInSameWindow = jest.fn();
     const openInBlankWindow = jest.fn();
@@ -144,34 +138,8 @@ describe("openUrl()", () => {
 describe("host navigation policy", () => {
   afterEach(resetPluginSlots);
 
-  it("should open same-origin links in a new window when no link handler is installed", () => {
-    PLUGIN_HOST_NAVIGATION.host = {
-      handleLink: null,
-      sameOriginTarget: "_blank",
-    };
-    expect(getUrlTarget(window.location.origin + "/dashboard/1")).toBe(
-      "_blank",
-    );
-  });
-
-  it("should keep same-origin navigation inside the app when the host only intercepts links", async () => {
-    const handleLink = jest.fn().mockResolvedValue(false);
-    const openInSameOrigin = jest.fn();
-    const openInBlankWindow = jest.fn();
-    PLUGIN_HOST_NAVIGATION.host = { handleLink, sameOriginTarget: "_self" };
-    await openUrl("/dashboard/1", { openInSameOrigin, openInBlankWindow });
-    expect(handleLink).toHaveBeenCalled();
-    expect(openInSameOrigin).toHaveBeenCalledWith(
-      expect.objectContaining({ pathname: "/dashboard/1" }),
-    );
-    expect(openInBlankWindow).not.toHaveBeenCalled();
-  });
-
   it("should restore the default navigation policy on reset", () => {
-    PLUGIN_HOST_NAVIGATION.host = {
-      handleLink: null,
-      sameOriginTarget: "_blank",
-    };
+    PLUGIN_HOST_NAVIGATION.host = { handleLink: async () => false };
     resetPluginSlots();
     expect(getUrlTarget(window.location.origin + "/dashboard/1")).toBe("_self");
   });

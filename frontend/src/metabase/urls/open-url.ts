@@ -54,7 +54,7 @@ export function shouldOpenInBlankWindow(
     blankOnDifferentOrigin = true,
   }: ShouldOpenInBlankWindowOptions = {},
 ): boolean {
-  if (PLUGIN_HOST_NAVIGATION.host?.sameOriginTarget === "_blank") {
+  if (PLUGIN_HOST_NAVIGATION.host) {
     return true;
   }
   const isMetaKey = event && event.metaKey != null ? event.metaKey : metaKey;
@@ -73,7 +73,7 @@ export function shouldOpenInBlankWindow(
 export function getUrlTarget(
   url: string | undefined,
 ): "_self" | "_blank" | undefined {
-  if (PLUGIN_HOST_NAVIGATION.host?.sameOriginTarget === "_blank") {
+  if (PLUGIN_HOST_NAVIGATION.host) {
     return "_blank";
   }
 

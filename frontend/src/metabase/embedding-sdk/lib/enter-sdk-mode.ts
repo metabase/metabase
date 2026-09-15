@@ -10,7 +10,6 @@ const skipEmbeddedHeader: OnBeforeRequestHandler = async () => {};
 export function enterSdkMode() {
   EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
   PLUGIN_HOST_NAVIGATION.host = {
-    sameOriginTarget: "_blank",
     handleLink: async (url) => {
       const { handled } = await handleLinkSdkPlugin(url);
       return handled;

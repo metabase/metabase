@@ -2,7 +2,7 @@ import { setupSdkPlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { reinitialize } from "metabase/plugins";
-import { PLUGIN_HOST_NAVIGATION, openUrl } from "metabase/urls";
+import { PLUGIN_HOST_NAVIGATION, getUrlTarget, openUrl } from "metabase/urls";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import { enterSdkMode } from "./enter-sdk-mode";
@@ -25,8 +25,10 @@ describe("enterSdkMode", () => {
     ensureMetabaseProviderPropsStore().cleanup();
   });
 
-  it("should install a host that opens same-origin links in a new window", () => {
-    expect(PLUGIN_HOST_NAVIGATION.host?.sameOriginTarget).toBe("_blank");
+  it("should install a host that opens same-origin links outside the app", () => {
+    expect(getUrlTarget(window.location.origin + "/dashboard/1")).toBe(
+      "_blank",
+    );
   });
 
   it("should report the handled flag from the plugin as the host link handler result", async () => {
@@ -35,7 +37,7 @@ describe("enterSdkMode", () => {
       pluginsConfig: { handleLink },
     });
 
-    await expect(PLUGIN_HOST_NAVIGATION.host?.handleLink?.(url)).resolves.toBe(
+    await expect(PLUGIN_HOST_NAVIGATION.host?.handleLink(url)).resolves.toBe(
       true,
     );
     expect(handleLink).toHaveBeenCalledWith(url);
@@ -48,7 +50,7 @@ describe("enterSdkMode", () => {
       },
     });
 
-    await expect(PLUGIN_HOST_NAVIGATION.host?.handleLink?.(url)).resolves.toBe(
+    await expect(PLUGIN_HOST_NAVIGATION.host?.handleLink(url)).resolves.toBe(
       false,
     );
   });

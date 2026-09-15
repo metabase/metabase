@@ -179,7 +179,7 @@ describe("registered JSX url formatting", () => {
   it("should call the host link handler and prevent default when one is installed", () => {
     const url = "https://example.com/dashboard/1";
     const handleLink = jest.fn().mockResolvedValue(true);
-    PLUGIN_HOST_NAVIGATION.host = { handleLink, sameOriginTarget: "_blank" };
+    PLUGIN_HOST_NAVIGATION.host = { handleLink };
 
     // Unjustified type cast. FIXME
     const node = formatValue(url, {
@@ -219,12 +219,9 @@ describe("registered JSX url formatting", () => {
     expect(event.defaultPrevented).toBe(false);
   });
 
-  it("should return an ExternalLink for same origin links when the host opens links in a new window", () => {
+  it("should return an ExternalLink for same origin links when a host owns navigation", () => {
     mockSettings({ "site-url": SITE_URL });
-    PLUGIN_HOST_NAVIGATION.host = {
-      handleLink: null,
-      sameOriginTarget: "_blank",
-    };
+    PLUGIN_HOST_NAVIGATION.host = { handleLink: jest.fn() };
 
     expect(
       isElementOfType(

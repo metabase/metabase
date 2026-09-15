@@ -6,7 +6,7 @@ import ReactMarkdown from "react-markdown";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
-import { PLUGIN_HOST_NAVIGATION, getUrlTarget } from "metabase/urls";
+import { PLUGIN_HOST_NAVIGATION } from "metabase/urls";
 import { isSameOrSiteUrlOrigin } from "metabase/utils/dom";
 import {
   type MarkdownTemplateValues,
@@ -18,32 +18,36 @@ import {
 function renderJsxLink(url: string, text: ReactNode): ReactElement {
   const className = cx(CS.link, CS.linkWrappable);
 
-  const handleLink = PLUGIN_HOST_NAVIGATION.host?.handleLink;
-  const onClickCaptureByHost = handleLink
-    ? {
-        onClickCapture: async (e: React.MouseEvent<HTMLAnchorElement>) => {
-          e.preventDefault(); // Prevent immediately while we await the response
-          const handled = await handleLink(url);
-          if (!handled) {
-            window.open(url, getUrlTarget(url), "noopener");
-          }
-        },
-      }
-    : {};
+  const host = PLUGIN_HOST_NAVIGATION.host;
 
-  if (
-    isSameOrSiteUrlOrigin(url) &&
-    PLUGIN_HOST_NAVIGATION.host?.sameOriginTarget !== "_blank"
-  ) {
+  if (host) {
     return (
-      <Link className={className} to={url} {...onClickCaptureByHost}>
+      <ExternalLink
+        className={className}
+        href={url}
+        onClickCapture={async (e: React.MouseEvent<HTMLAnchorElement>) => {
+          e.preventDefault(); // Prevent immediately while we await the response
+          const handled = await host.handleLink(url);
+          if (!handled) {
+            window.open(url, "_blank", "noopener");
+          }
+        }}
+      >
+        {text}
+      </ExternalLink>
+    );
+  }
+
+  if (isSameOrSiteUrlOrigin(url)) {
+    return (
+      <Link className={className} to={url}>
         {text}
       </Link>
     );
   }
 
   return (
-    <ExternalLink className={className} href={url} {...onClickCaptureByHost}>
+    <ExternalLink className={className} href={url}>
       {text}
     </ExternalLink>
   );
