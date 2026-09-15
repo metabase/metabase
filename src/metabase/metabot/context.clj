@@ -4,9 +4,7 @@
    [medley.core :as m]
    [metabase.activity-feed.core :as activity-feed]
    [metabase.api.common :as api]
-   [metabase.collections.schema :as collections.schema]
    [metabase.config.core :as config]
-   [metabase.driver :as driver]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
@@ -19,13 +17,11 @@
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.table-utils :as table-utils]
    [metabase.parameters.schema :as parameters.schema]
-   [metabase.transforms.schema :as transforms.schema]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.schema :as warehouse-schema.schema])
+   [metabase.util.malli.schema :as ms])
   (:import
    (java.time OffsetDateTime)
    (java.time.format DateTimeFormatter)))
@@ -192,101 +188,9 @@
    [:type [:= "code_editor"]]
    [:buffers [:sequential CodeEditorBufferSchema]]])
 
-(def ^:private TransformSourceTableSchema
-  "One entry of a Python transform's `source-tables`."
-  [:map {:closed true}
-   [:alias :string]
-   [:table_id {:optional true} [:maybe :int]]
-   [:schema {:optional true} [:maybe :string]]
-   [:database_id {:optional true} [:maybe :int]]])
-
-(def ^:private TransformSourceSchema
-  "A transform's `:source`. Everything but `:type` is optional so a draft transform -- no database chosen, no
-  source tables picked -- validates just like a saved one."
-  [:multi {:dispatch (comp keyword :type)}
-   [:query
-    [:map {:closed true}
-     [:type [:or [:= :query] [:= "query"]]]
-     [:query {:optional true} [:maybe [:or :string ItemQuerySchema]]]
-     [:source-incremental-strategy {:optional true} [:maybe ::transforms.schema/source-incremental-strategy]]]]
-   [:python
-    [:map {:closed true}
-     [:type [:or [:= :python] [:= "python"]]]
-     [:body {:optional true} [:maybe :string]]
-     [:source-database {:optional true} [:maybe :int]]
-     [:source-tables {:optional true} [:maybe [:sequential TransformSourceTableSchema]]]
-     [:source-incremental-strategy {:optional true} [:maybe ::transforms.schema/source-incremental-strategy]]]]])
-
-(def ^:private TransformTargetSchema
-  "A transform's `:target`. Everything but `:type` is optional so an unsaved/suggested transform -- which may omit
-  `:database` or the incremental strategy -- validates just like a saved one."
-  [:multi {:dispatch (comp keyword :type)}
-   [:table
-    [:map {:closed true}
-     [:type [:or [:= :table] [:= "table"]]]
-     [:name {:optional true} [:maybe :string]]
-     [:schema {:optional true} [:maybe :string]]
-     [:database {:optional true} [:maybe :int]]]]
-   [:table-incremental
-    [:map {:closed true}
-     [:type [:or [:= :table-incremental] [:= "table-incremental"]]]
-     [:name {:optional true} [:maybe :string]]
-     [:schema {:optional true} [:maybe :string]]
-     [:database {:optional true} [:maybe :int]]
-     [:target-incremental-strategy {:optional true} [:maybe ::transforms.schema/target-incremental-strategy]]]]])
-
-(def ^:private TransformCreatorSchema
-  "The `:creator` hydrated onto a transform, mirroring the transforms REST API's own response shape."
-  [:map {:closed true}
-   [:id :int]
-   [:email :string]
-   [:first_name {:optional true} [:maybe :string]]
-   [:last_name {:optional true} [:maybe :string]]
-   [:common_name {:optional true} [:maybe :string]]
-   [:last_login {:optional true} [:maybe :string]]
-   [:is_qbnewb {:optional true} [:maybe :boolean]]
-   [:is_superuser {:optional true} [:maybe :boolean]]
-   [:is_data_analyst {:optional true} [:maybe :boolean]]
-   [:tenant_id {:optional true} [:maybe :int]]
-   [:date_joined {:optional true} [:maybe :string]]])
-
-(def ^:private TransformOwnerSchema
-  "The `:owner` hydrated onto a transform, mirroring the transforms REST API's own response shape."
-  [:map {:closed true}
-   [:id {:optional true} [:maybe :int]]
-   [:email {:optional true} [:maybe :string]]
-   [:first_name {:optional true} [:maybe :string]]
-   [:last_name {:optional true} [:maybe :string]]
-   [:common_name {:optional true} [:maybe :string]]])
-
-(def ^:private TransformLastRunSchema
-  "The `:last_run` hydrated onto a transform, mirroring the transforms REST API's own response shape."
-  [:map {:closed true}
-   [:id {:optional true} [:maybe :int]]
-   [:transform_id {:optional true} [:maybe :int]]
-   [:run_method {:optional true} [:maybe [:or :string :keyword]]]
-   [:status {:optional true} [:maybe [:or :string :keyword]]]
-   [:is_active {:optional true} [:maybe :boolean]]
-   [:start_time {:optional true} [:maybe :string]]
-   [:end_time {:optional true} [:maybe :string]]
-   [:message {:optional true} [:maybe :string]]
-   [:user_id {:optional true} [:maybe :int]]
-   [:transform_name {:optional true} [:maybe :string]]
-   [:transform_entity_id {:optional true} [:maybe :string]]
-   [:job_run_id {:optional true} [:maybe :int]]
-   [:dag_run_id {:optional true} [:maybe :int]]
-   [:checkpoint_filter_field_id {:optional true} [:maybe :int]]
-   [:checkpoint_lo_value {:optional true} [:maybe :string]]
-   [:checkpoint_hi_value {:optional true} [:maybe :string]]
-   [:metered_as {:optional true} [:maybe :string]]])
-
-(def ^:private TransformTableDependencySchema
-  "One entry of a transform's `:table_dependencies`."
-  [:or ::driver/native-query-deps.table-dep ::driver/native-query-deps.transform-dep])
-
 (def ^:private item-entries
   "The keys of a viewing context item this code reads. The rest of the item is the shape of one of
-  `MetabotEntityInfo`'s variants (card/dashboard/adhoc/document/transform) or `MetabotCodeEditorContext`, so
+  `MetabotEntityInfo`'s variants (card/dashboard/adhoc/document) or `MetabotCodeEditorContext`, so
   everything the frontend can send is named here rather than forwarded opaquely."
   [[:id              {:optional true} [:maybe [:or :int :string]]]
    [:name            {:optional true} [:maybe :string]]
@@ -294,9 +198,6 @@
    [:database_schema {:optional true} [:maybe :string]]
    [:sql_engine      {:optional true} [:maybe :string]]
    [:error           {:optional true} [:maybe :string]]
-   [:source_type     {:optional true} [:maybe [:or :string :keyword]]]
-   [:source          {:optional true} [:maybe TransformSourceSchema]]
-   [:target          {:optional true} [:maybe TransformTargetSchema]]
    [:used_tables     {:optional true} [:maybe [:sequential [:map {:closed true}
                                                             [:id              {:optional true} [:maybe :int]]
                                                             [:type            {:optional true} [:maybe [:or :keyword :string]]]
@@ -305,39 +206,7 @@
                                                             [:description     {:optional true} [:maybe :string]]]]]]
    [:buffers         {:optional true} [:maybe [:sequential CodeEditorBufferSchema]]]
    [:query           {:optional true} ItemQuerySchema]
-   [:chart_configs   {:optional true} [:maybe [:vector ChartConfigSchema]]]
-   ;; Transform fields (`MetabotTransformInfo` = `Transform | SuggestedTransform | DraftTransform`), mirroring the
-   ;; transforms REST API's own response shape. All optional: a draft/suggested/unsaved transform may carry only a
-   ;; handful of these.
-   [:collection_id   {:optional true} [:maybe :int]]
-   [:created_at      {:optional true} [:maybe :string]]
-   [:updated_at      {:optional true} [:maybe :string]]
-   [:source_readable {:optional true} [:maybe :boolean]]
-   [:can_read        {:optional true} [:maybe :boolean]]
-   [:can_write       {:optional true} [:maybe :boolean]]
-   [:can_execute     {:optional true} [:maybe :boolean]]
-   [:source_database_id {:optional true} [:maybe :int]]
-   [:deleted         {:optional true} [:maybe :boolean]]
-   [:creator_id      {:optional true} [:maybe :int]]
-   [:owner_user_id   {:optional true} [:maybe :int]]
-   [:owner_email     {:optional true} [:maybe :string]]
-   [:owner           {:optional true} [:maybe TransformOwnerSchema]]
-   [:last_checkpoint_value {:optional true} [:maybe :string]]
-   [:dependency      {:optional true} [:maybe :boolean]]
-   [:scheduled       {:optional true} [:maybe :boolean]]
-   [:collection      {:optional true} [:maybe ::collections.schema/collection]]
-   [:tag_ids         {:optional true} [:maybe [:sequential :int]]]
-   [:table           {:optional true} [:maybe ::warehouse-schema.schema/table]]
-   [:last_run        {:optional true} [:maybe TransformLastRunSchema]]
-   [:creator         {:optional true} [:maybe TransformCreatorSchema]]
-   ;; Driver index-method metadata, keyed by index-kind. Never read by this code -- forwarded as the frontend
-   ;; sent it -- and the driver's own schema for it isn't closed-schema-clean, so it's opaque rather than typed.
-   [:requestable_indexes {:optional true} [:maybe ms/OpaqueJSONObject]]
-   [:target_db_id    {:optional true} [:maybe :int]]
-   [:target_table_id {:optional true} [:maybe :int]]
-   [:run_trigger     {:optional true} [:maybe [:or :string :keyword]]]
-   [:entity_id       {:optional true} [:maybe :string]]
-   [:table_dependencies {:optional true} [:maybe [:sequential TransformTableDependencySchema]]]])
+   [:chart_configs   {:optional true} [:maybe [:vector ChartConfigSchema]]]])
 
 (def DefaultItemSchema
   "Default schema of viewing context item."

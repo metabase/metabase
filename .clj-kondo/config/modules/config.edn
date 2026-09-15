@@ -1492,8 +1492,7 @@
               util
               util.config
               warehouse-schema-overlay
-              warehouses
-              warehouses.schema}
+              warehouses}
    :model-exports #{:model/AiUsageLog
                     :model/Metabot
                     :model/MetabotConversation
