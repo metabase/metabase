@@ -591,7 +591,7 @@
    clojure.core/defprotocol                                                                                                  hooks.clojure.core.def/lint-def
    clojure.core/defrecord                                                                                                    hooks.clojure.core.def/lint-def
    clojure.core/deftype                                                                                                      hooks.clojure.core.def/lint-def
-   clojure.core/ex-info                                                                                                      hooks.metabase.prose-interpolation/lint-ex-info
+   clojure.core/ex-info                                                                                                      hooks.metabase.agent-message/lint-ex-info
    clojure.core/ns                                                                                                           hooks.clojure.core.ns/lint-ns
    clojure.core/require                                                                                                      hooks.clojure.core.require/lint-require
    clojure.core/requiring-resolve                                                                                            hooks.clojure.core.require/lint-requiring-resolve
@@ -687,11 +687,15 @@
    metabase.lib.test-util.macros/mbql-query                                                                                  hooks.metabase.test.data/mbql-query
    metabase.lib.test-util.macros/mbql-5-query                                                                                hooks.metabase.test.data/mbql-query
    metabase.lib.test-util.macros/with-testing-against-standard-queries                                                       hooks.metabase.lib.test-util.macros/with-testing-against-standard-queries
-   metabase.mcp.transport/jsonrpc-error                                                                                      hooks.metabase.prose-interpolation/lint-jsonrpc-error
-   metabase.mcp.v2.common/error-content                                                                                      hooks.metabase.prose-interpolation/lint-teaching-exit
-   metabase.mcp.v2.common/success-content                                                                                    hooks.metabase.prose-interpolation/lint-success-content
-   metabase.mcp.v2.common/throw-teaching-error                                                                               hooks.metabase.prose-interpolation/lint-teaching-exit
-   metabase.mcp.v2.message/msg                                                                                               hooks.metabase.prose-interpolation/lint-msg
+   metabase.mcp.transport/jsonrpc-error                                                                                      hooks.metabase.agent-message/lint-jsonrpc-error
+   metabase.mcp.v2.common/ellipsize                                                                                          hooks.metabase.agent-message/lint-ellipsize
+   metabase.mcp.v2.common/error-content                                                                                      hooks.metabase.agent-message/lint-teaching-exit
+   metabase.mcp.v2.common/list-content                                                                                       hooks.metabase.agent-message/lint-list-content
+   metabase.mcp.v2.common/success-content                                                                                    hooks.metabase.agent-message/lint-success-content
+   metabase.mcp.v2.common/throw-teaching-error                                                                               hooks.metabase.agent-message/lint-teaching-exit
+   metabase.mcp.v2.dashboard-ops/op-error!                                                                                   hooks.metabase.agent-message/lint-op-error
+   metabase.mcp.v2.message/msg                                                                                               hooks.metabase.agent-message/lint-msg
+   metabase.mcp.v2.queries/check-execute-sql-enabled!                                                                        hooks.metabase.agent-message/lint-teaching-exit
    metabase.mcp.v2.tools.parameters-test/with-fixtures                                                                       hooks.common/with-one-binding
    metabase.metrics.api-dimension-test/with-seeded-metric                                                                    hooks.common/with-one-binding
    metabase.model-persistence.api-test/with-persistence-setup!                                                               hooks.common/with-one-top-level-binding
@@ -906,11 +910,16 @@
   {:pattern "^metabase\\.app-db\\..*"
    :name    app-db-namespaces}
   ;;
-  ;; source namespaces whose prose reaches an LLM agent: `metabase.mcp.transport` and `metabase.mcp.v2.*`, excluding
-  ;; test namespaces.
+  ;; MCP source namespaces, whose prose reaches an LLM agent, excluding test namespaces.
   ;;
-  {:pattern "^(?!.*-test(?:\\..*)?$)(?!.*test-util)^metabase\\.mcp\\.(?:transport$|v2\\..*)"
-   :name    agent-prose-namespaces}]
+  {:pattern "^(?!.*-test(?:\\..*)?$)(?!.*test-util)metabase\\.mcp\\..*"
+   :name    agent-message-namespaces}
+  ;;
+  ;; MCP source namespaces whose caller-facing errors are MCP exits: `metabase.mcp.transport` and `metabase.mcp.v2.*`.
+  ;; Other MCP namespaces' 4xx `ex-info`s are admin API and middleware errors, not MCP exits.
+  ;;
+  {:pattern "^(?!.*-test(?:\\..*)?$)(?!.*test-util)metabase\\.mcp\\.(?:transport$|v2\\..*)"
+   :name    agent-exit-namespaces}]
 
  :config-in-ns
  {metabase.app-db.custom-migrations
@@ -936,9 +945,11 @@
   app-db-namespaces
   {:linters {:metabase/t2-query-namespace {:level :off}}}
 
-  agent-prose-namespaces
-  {:linters {:metabase/agent-message-exit  {:level :warning}
-             :metabase/agent-message-lines {:level :warning}}}
+  agent-message-namespaces
+  {:linters {:metabase/agent-message-lines {:level :warning}}}
+
+  agent-exit-namespaces
+  {:linters {:metabase/agent-message-exit {:level :warning}}}
 
   ;; .cljc tests run in both Clojure and ClojureScript — `with-dynamic-fn-redefs` is JVM-only,
   ;; so leave these alone.

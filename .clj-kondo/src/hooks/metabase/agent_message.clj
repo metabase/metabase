@@ -1,7 +1,7 @@
-(ns hooks.metabase.prose-interpolation
+(ns hooks.metabase.agent-message
   "Hooks linting agent-facing prose built with `metabase.mcp.v2.message/msg` (`:metabase/agent-message-lines`) and the
-  exits that carry it to the agent (`:metabase/agent-message-exit`). Each hook checks only when its linter's level is
-  configured and not `:off`, and returns its input unchanged."
+  exits and helpers that carry it to the agent (`:metabase/agent-message-exit`). Each hook checks only when its
+  linter's level is configured and not `:off`, and returns its input unchanged."
   (:require
    [clj-kondo.hooks-api :as hooks]
    [clojure.string :as str]))
@@ -94,13 +94,59 @@
                     (or width precision (seq (str/replace flags "<" ""))))))
          (re-seq format-specifier line))))
 
+(def ^:private valid-conversion
+  "The conversions `java.util.Formatter` accepts, with each date/time conversion's required suffix."
+  #"[bBhHsScCdoxXeEfgGaA%n]|[tT][HIklMSLNpzZsQBbhAaCYyjmdeRTrDFc]")
+
+(defn- malformed-specifier?
+  "Whether format string `line` has a `%` that doesn't begin a valid `java.util.Formatter` specifier."
+  [line]
+  (let [valid-removed (str/replace line format-specifier
+                                   (fn [[specifier & groups]]
+                                     (if (re-matches valid-conversion (last groups)) "" specifier)))]
+    (str/includes? valid-removed "%")))
+
+(defn- line-problem
+  "The finding message for the first problem with a `msg` line, given its literal string or nil; nil when it has none."
+  [line]
+  (cond
+    (nil? line)
+    (str "Each line of a `msg` must be a string literal or a `str` of string literals; "
+         "pass values as arguments after the vector.")
+
+    (line-break? line)
+    "A `msg` line can't contain a line break, `%n`, or control character; put each line in its own string."
+
+    (altered-string-conversion? line)
+    "`%s` in a `msg` line can't take a width, precision, flags, or `%S`; they would cut or alter the quoted value."
+
+    (malformed-specifier? line)
+    "A `%` in a `msg` line must begin a format specifier; write a literal percent sign as `%%`."))
+
+(defn- lint-lines!
+  "Flag each of `line-nodes` whose literal string, the matching element of `lines`, has a problem."
+  [line-nodes lines]
+  (doseq [[line-node line] (map vector line-nodes lines)]
+    (when-let [problem (line-problem line)]
+      (reg-msg-finding! line-node problem))))
+
 (defn- plural
   [n word]
   (str n " " word (when-not (= 1 n) "s")))
 
+(defn- lint-arg-count!
+  "Flag `msg` call `node` when its `args` don't number the arguments its literal `lines` consume."
+  [node lines args]
+  (let [indexes  (map first (consumed-args (str/join "\n" lines)))
+        expected (if (seq indexes) (inc (apply max indexes)) 0)
+        given    (count args)]
+    (when (not= expected given)
+      (reg-msg-finding! node (format "The `msg` lines take %s but %d %s given."
+                                     (plural expected "argument") given (if (= 1 given) "is" "are"))))))
+
 (defn lint-msg
-  "Flag `msg` calls whose lines aren't a literal vector of single-line literal strings, that alter a `%s` value, or
-  whose arguments don't match the lines' format specifiers."
+  "Flag `msg` calls whose lines aren't a literal vector of single-line literal strings, that alter a `%s` value or
+  hold a malformed specifier, or whose arguments don't match the lines' format specifiers."
   [{:keys [node config] :as input}]
   (when (level-on? config msg-linter)
     (let [[fn-node lines-node & args] (:children node)]
@@ -109,29 +155,10 @@
                           "`msg` takes a literal vector of line strings, one string per line of the message.")
         (let [line-nodes (:children lines-node)
               lines      (map literal-string line-nodes)]
-          (doseq [[line-node line] (map vector line-nodes lines)]
-            (cond
-              (nil? line)
-              (reg-msg-finding! line-node
-                                (str "Each line of a `msg` must be a string literal or a `str` of string literals; "
-                                     "pass values as arguments after the vector."))
-
-              (line-break? line)
-              (reg-msg-finding! line-node
-                                (str "A `msg` line can't contain a line break, `%n`, or control character; "
-                                     "put each line in its own string."))
-
-              (altered-string-conversion? line)
-              (reg-msg-finding! line-node
-                                (str "`%s` in a `msg` line can't take a width, precision, flags, or `%S`; "
-                                     "they would cut or alter the quoted value."))))
-          (when (every? some? lines)
-            (let [indexes  (map first (consumed-args (str/join "\n" lines)))
-                  expected (if (seq indexes) (inc (apply max indexes)) 0)
-                  given    (count args)]
-              (when (not= expected given)
-                (reg-msg-finding! node (format "The `msg` lines take %s but %d %s given."
-                                               (plural expected "argument") given (if (= 1 given) "is" "are"))))))))))
+          (lint-lines! line-nodes lines)
+          ;; A malformed specifier can't be counted, and its line already has a finding.
+          (when (and (every? some? lines) (not-any? malformed-specifier? lines))
+            (lint-arg-count! node lines args))))))
   input)
 
 (def ^:private exit-linter :metabase/agent-message-exit)
@@ -163,51 +190,121 @@
     (and (= "encode" (name sym))
          (boolean (some-> (namespace sym) (str/ends-with? "json"))))))
 
+(defn- builds-string?
+  "Whether `node` is a string literal or a call that builds a string."
+  [node]
+  (or (hooks/string-node? node)
+      (calls-core? node #{"str" "format" "pr-str"})
+      (calls-i18n? node)
+      (calls? node string-ns "join")
+      (calls-json-encode? node)))
+
+(defn- clause-results
+  "The result nodes of `clauses`, alternating test and result nodes, with a trailing default when their count is odd."
+  [clauses]
+  (concat (take-nth 2 (rest clauses))
+          (when (odd? (count clauses)) [(last clauses)])))
+
+(defn- result-fn-marker?
+  [node]
+  (and (hooks/keyword-node? node) (= :>> (hooks/sexpr node))))
+
+(defn- condp-results
+  "The result nodes of `condp` `clauses`: each test's result, skipping `:>>` result functions, and any default."
+  [clauses]
+  (loop [[_test result & more :as clauses] clauses
+         acc                               []]
+    (cond
+      (empty? clauses)           acc
+      (nil? (next clauses))      (conj acc (first clauses))
+      (result-fn-marker? result) (recur (next more) acc)
+      :else                      (recur more (conj acc result)))))
+
+(defn- branch-results
+  "The nodes branching form `node` can evaluate to, or nil when it isn't one."
+  [node]
+  (let [args (rest (:children node))]
+    (cond
+      (calls-core? node #{"if" "if-not" "if-let"}) (rest args)
+      (calls-core? node #{"or"})                   args
+      (calls-core? node #{"cond"})                 (clause-results args)
+      (calls-core? node #{"case"})                 (clause-results (rest args))
+      (calls-core? node #{"condp"})                (condp-results (drop 2 args)))))
+
+(defn- tail-result
+  "The node threading or body form `node` evaluates to, or nil when it isn't one."
+  [node]
+  (let [args (rest (:children node))]
+    (cond
+      (calls-core? node #{"->" "->>" "cond->" "cond->>"})      (first args)
+      (calls-core? node #{"when" "when-not" "when-let" "let"}) (when (next args) (last args))
+      (calls-core? node #{"do"})                               (last args))))
+
 (defn- stringy?
   "Whether `node` syntactically evaluates to text: a string literal, a call that builds a string, or a threading,
   branching, or body form whose result is one."
   [node]
-  (let [args (rest (:children node))]
-    (boolean
-     (or (hooks/string-node? node)
-         (calls-core? node #{"str" "format" "pr-str"})
-         (calls-i18n? node)
-         (calls? node string-ns "join")
-         (calls-json-encode? node)
-         (and (calls-core? node #{"->" "->>" "cond->" "cond->>"})
-              (stringy? (first args)))
-         (and (calls-core? node #{"if" "if-not" "if-let"})
-              (some stringy? (rest args)))
-         (and (calls-core? node #{"when" "when-not" "when-let" "let"})
-              (next args)
-              (stringy? (last args)))
-         (and (calls-core? node #{"do"})
-              (stringy? (last args)))
-         (and (calls-core? node #{"or"})
-              (some stringy? args))))))
+  (boolean
+   (or (builds-string? node)
+       (some stringy? (branch-results node))
+       (some-> (tail-result node) stringy?))))
 
 (defn- lint-exit-text!
-  "Flag the argument of exit call `node` at child `index` when it is text rather than a `msg`."
+  "Flag `arg`, the message passed to `target` (a description of where it goes), when it is text rather than a `msg`."
+  [arg target]
+  (when (and arg (stringy? arg))
+    (reg-exit-finding! arg (format (str "`%s` passes text to %s; "
+                                        "build agent-facing text with `msg` so interpolated values are cleaned.")
+                                   (pr-str (hooks/sexpr arg))
+                                   target))))
+
+(defn- lint-exit-arg!
+  "Flag the argument at child `index` of call `node` when it is text rather than a `msg`."
   [node index]
-  (let [arg (nth (:children node) index nil)]
-    (when (and arg (stringy? arg))
-      (reg-exit-finding! arg (format (str "`%s` passes text to `%s`; "
-                                          "build agent-facing text with `msg` so interpolated values are cleaned.")
-                                     (pr-str (hooks/sexpr arg))
-                                     (name (call-name node)))))))
+  (lint-exit-text! (nth (:children node) index nil) (str "`" (name (call-name node)) "`")))
 
 (defn lint-teaching-exit
-  "Flag a teaching-error exit whose message, the first argument, is text rather than a `msg`."
+  "Flag a call throwing or returning a teaching error whose message, the first argument, is text rather than a `msg`."
   [{:keys [node] :as input}]
   (when (exit-enabled? input)
-    (lint-exit-text! node 1))
+    (lint-exit-arg! node 1))
   input)
 
 (defn lint-jsonrpc-error
   "Flag a `jsonrpc-error` whose message, the third argument, is text rather than a `msg`."
   [{:keys [node] :as input}]
   (when (exit-enabled? input)
-    (lint-exit-text! node 3))
+    (lint-exit-arg! node 3))
+  input)
+
+(defn lint-op-error
+  "Flag an `op-error!` whose detail message, the third argument, is text rather than a `msg`."
+  [{:keys [node] :as input}]
+  (when (exit-enabled? input)
+    (lint-exit-arg! node 3))
+  input)
+
+(defn lint-ellipsize
+  "Flag an `ellipsize` whose message, the first argument, is text rather than a `msg`."
+  [{:keys [node] :as input}]
+  (when (exit-enabled? input)
+    (lint-exit-arg! node 1))
+  input)
+
+(defn- map-value
+  "The value node of keyword `k` in map literal `node`, or nil."
+  [node k]
+  (when (hooks/map-node? node)
+    (some (fn [[key-node value-node]]
+            (when (and (hooks/keyword-node? key-node) (= k (hooks/sexpr key-node)))
+              value-node))
+          (partition 2 (:children node)))))
+
+(defn lint-list-content
+  "Flag a `list-content` whose literal options map has an `:empty-hint` that is text rather than a `msg`."
+  [{:keys [node] :as input}]
+  (when (exit-enabled? input)
+    (lint-exit-text! (map-value (nth (:children node) 3 nil) :empty-hint) "`list-content`'s `:empty-hint`"))
   input)
 
 (defn lint-success-content
