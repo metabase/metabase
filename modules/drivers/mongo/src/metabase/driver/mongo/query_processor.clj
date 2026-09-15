@@ -706,11 +706,12 @@ function(bin) {
                         java.time.OffsetTime     (t/offset-time t report-zone)
                         java.time.OffsetDateTime (t/offset-date-time t report-zone)
                         java.time.ZonedDateTime  (t/offset-date-time t report-zone)))
-        t           (normalize-t t)]
+        t           (normalize-t t)
+        options     {:start-of-week (driver-api/start-of-week)}]
     (letfn [(extract [unit]
-              (u.date/extract t unit))
+              (u.date/extract options t unit))
             (bucket [unit]
-              ($date-from-string (u.date/bucket t unit)))]
+              ($date-from-string (u.date/bucket options t unit)))]
       (case (or unit :default)
         :default         ($date-from-string t)
         :minute          (bucket :minute)
@@ -739,16 +740,18 @@ function(bin) {
 
 (mu/defmethod ->rvalue :relative-datetime
   [query _stage-number [_ _opts amount unit] :- :mbql.clause/relative-datetime]
-  (let [t (-> (t/zoned-date-time)
-              (t/with-zone-same-instant (t/zone-id (or (driver-api/report-timezone-id-if-supported :mongo (driver-api/database query))
-                                                       "UTC"))))]
+  (let [t       (-> (t/zoned-date-time)
+                    (t/with-zone-same-instant
+                      (t/zone-id (or (driver-api/report-timezone-id-if-supported :mongo (driver-api/database query))
+                                     "UTC"))))
+        options {:start-of-week (driver-api/start-of-week)}]
     ($date-from-string
      (t/offset-date-time
       (if (= unit :default)
         t
         (-> t
             (u.date/add unit amount)
-            (u.date/bucket unit)))))))
+            (#(u.date/bucket options % unit))))))))
 
 ;;; ---------------------------------------------------- functions ---------------------------------------------------
 
@@ -1297,7 +1300,7 @@ function(bin) {
 
 (mu/defmethod negate :default :- ::lib.schema.mbql-clause/clause
   [expr :- ::lib.schema.expression/boolean]
-  (lib/negate-boolean-expression expr))
+  (lib/negate-boolean-expression {:start-of-week (driver-api/start-of-week)} expr))
 
 (mu/defmethod negate :and :- ::lib.schema.mbql-clause/clause
   [[_ opts & subclauses] :- :mbql.clause/and]

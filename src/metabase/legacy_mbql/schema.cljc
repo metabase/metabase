@@ -973,7 +973,7 @@
                              :quarter-of-year [:get-quarter field])
               extract-unit (if (= unit :day-of-week) :day-of-week-iso unit)]
           (into [:!= extract-expr]
-                (map #(u.time/extract % extract-unit))
+                (map #(u.time/extract {:start-of-week :monday} % extract-unit))
                 args))
         &match))))
 

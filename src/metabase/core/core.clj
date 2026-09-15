@@ -21,6 +21,7 @@
    [metabase.initialization-status.core :as init-status]
    [metabase.llm.startup :as llm.startup]
    [metabase.logger.core :as logger]
+   [metabase.mcp.core :as mcp]
    [metabase.metrics.core :as metrics]
    [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
@@ -30,6 +31,7 @@
    [metabase.server.core :as server]
    [metabase.settings.core :as setting]
    [metabase.setup.core :as setup]
+   [metabase.sso.auth-wrapper :as auth-wrapper]
    [metabase.startup.core :as startup]
    [metabase.system.core :as system]
    [metabase.task.core :as task]
@@ -277,8 +279,10 @@
   (log/info "Starting Metabase in STANDALONE mode")
   (try
     ;; launch embedded webserver
-    (let [server-routes (server/make-routes #'api-routes/routes)
-          handler       (server/make-handler server-routes)]
+    (let [server-routes (server/make-routes auth-wrapper/routes #'api-routes/routes)
+          cors           {:origins-fn         #'mcp/cors-origins
+                          :sandbox-origin?-fn #'mcp/sandbox-origin?}
+          handler        (server/make-handler server-routes {:cors cors})]
       (server/start-web-server! handler))
     ;; run our initialization process
     (init!)

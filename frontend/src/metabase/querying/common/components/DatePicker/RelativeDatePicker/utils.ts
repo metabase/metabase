@@ -1,4 +1,4 @@
-import { dayjs } from "metabase/dayjs";
+import { type Dayjs, dayjs } from "metabase/dayjs";
 import { DATE_PICKER_TRUNCATION_UNITS } from "metabase/querying/common/constants";
 import type {
   DatePickerTruncationUnit,
@@ -7,6 +7,7 @@ import type {
   RelativeDatePickerValue,
   RelativeIntervalDirection,
 } from "metabase/querying/common/types";
+import { DAY_OF_WEEK_OPTIONS } from "metabase/utils/date-time";
 import * as Lib from "metabase-lib";
 
 import { DEFAULT_VALUE, TABS } from "./constants";
@@ -120,14 +121,11 @@ export function getUnitOptions(
   }));
 }
 
-export function formatDateRange({
-  value,
-  unit,
-  offsetValue,
-  offsetUnit,
-  options,
-}: RelativeDatePickerValue): string {
-  return Lib.formatRelativeDateRange({
+export function formatDateRange(
+  timeConfig: Lib.TimeConfig,
+  { value, unit, offsetValue, offsetUnit, options }: RelativeDatePickerValue,
+): string {
+  return Lib.formatRelativeDateRange(timeConfig, {
     value,
     unit,
     offsetValue,
@@ -137,16 +135,53 @@ export function formatDateRange({
 }
 
 export function isOutOfBounds(
+  timeConfig: Lib.TimeConfig,
   { value, unit, offsetValue, offsetUnit }: RelativeDatePickerValue,
   minDate?: Date,
   maxDate?: Date,
 ): boolean {
   const base = dayjs().add(offsetValue ?? 0, offsetUnit ?? "day");
-  const start = base.add(Math.min(value, 0), unit).startOf(unit).toDate();
-  const end = base.add(Math.max(value, 0), unit).endOf(unit).toDate();
+  const start = startOfUnit(
+    timeConfig,
+    base.add(Math.min(value, 0), unit),
+    unit,
+  ).toDate();
+  const end = endOfUnit(
+    timeConfig,
+    base.add(Math.max(value, 0), unit),
+    unit,
+  ).toDate();
   return (
     (minDate != null && start < minDate) || (maxDate != null && end > maxDate)
   );
+}
+
+function startOfUnit(
+  timeConfig: Lib.TimeConfig,
+  date: Dayjs,
+  unit: DatePickerTruncationUnit,
+): Dayjs {
+  if (unit !== "week") {
+    return date.startOf(unit);
+  }
+
+  const firstDay = DAY_OF_WEEK_OPTIONS.findIndex(
+    ({ id }) => id === timeConfig["start-of-week"],
+  );
+  const daysSinceFirstDay = (date.day() - firstDay + 7) % 7;
+  return date.subtract(daysSinceFirstDay, "day").startOf("day");
+}
+
+function endOfUnit(
+  timeConfig: Lib.TimeConfig,
+  date: Dayjs,
+  unit: DatePickerTruncationUnit,
+): Dayjs {
+  return unit === "week"
+    ? startOfUnit(timeConfig, date, unit)
+        .add(1, "week")
+        .subtract(1, "millisecond")
+    : date.endOf(unit);
 }
 
 export function getDefaultValue(

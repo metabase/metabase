@@ -2,16 +2,22 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.mcp.core :as mcp]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.server.middleware.security :as mw.security]
    [metabase.test :as mt]))
+
+(def ^:private cors
+  {:origins-fn         #'mcp/cors-origins
+   :sandbox-origin?-fn #'mcp/sandbox-origin?})
 
 (defn- get-cors-origin-header
   "Returns the Access-Control-Allow-Origin header value for a given request origin."
   [request-origin]
   (let [wrapped-handler (mw.security/add-security-headers
                          (fn [_request respond _raise]
-                           (respond {:status 200 :headers {} :body "ok"})))
+                           (respond {:status 200, :headers {}, :body "ok"}))
+                         cors)
         response (wrapped-handler {:headers {"origin" request-origin}
                                    :uri "/api/dashboard/1"}
                                   identity identity)]
@@ -32,7 +38,8 @@
   [request-origin]
   (let [wrapped-handler (mw.security/add-security-headers
                          (fn [_request respond _raise]
-                           (respond {:status 200 :headers {} :body "ok"})))
+                           (respond {:status 200, :headers {}, :body "ok"}))
+                         cors)
         response (wrapped-handler {:headers {"origin" request-origin}
                                    :uri "/api/metabase-mcp"}
                                   identity identity)]

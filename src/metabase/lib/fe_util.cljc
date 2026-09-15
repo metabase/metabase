@@ -6,6 +6,7 @@
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.card :as lib.card]
    [metabase.lib.common :as lib.common]
+   [metabase.lib.date-time :as lib.date-time]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -82,9 +83,10 @@
    To mitigate that expressions are converted to `:between` form which is handled correctly by filter picker. For more
    info on the issue see the comment [https://github.com/metabase/metabase/issues/12496#issuecomment-1629317661].
    This functionality is backend approach to \"smaller solution\"."
-  [[_operator options column-arg dt-arg :as _expression-clause]]
+  [time-config [_operator options column-arg dt-arg :as _expression-clause]]
   (let [temporal-unit (:temporal-unit (lib.options/options column-arg))
-        interval (u.time/to-range (u.time/coerce-to-timestamp dt-arg) {:unit temporal-unit :n 1})
+        interval (u.time/to-range (u.time/coerce-to-timestamp dt-arg)
+                                  (assoc time-config :unit temporal-unit, :n 1))
         formatter (if (contains? expandable-time-units temporal-unit)
                     fmt.date/datetime->iso-string
                     fmt.date/date->iso-string)]
@@ -138,7 +140,8 @@
   [query stage-number clause]
   ((get-method expression-parts-method :default)
    query stage-number (cond-> clause
-                        (expandable-temporal-expression? clause) expand-temporal-expression)))
+                        (expandable-temporal-expression? clause)
+                        (#(expand-temporal-expression (lib.date-time/config query) %)))))
 
 (defn- composite-clause-in-stages-0-to?
   "True when any stage 0..`max-stage` contains an `:aggregation` or `:expressions` clause with
@@ -789,7 +792,8 @@
 
    Falls back to the full filter display-name"
   [query stage-number filter-clause]
-  (let [->temporal-name #(u.time/format-unit % nil)
+  (let [time-config    (lib.date-time/config query)
+        ->temporal-name #(u.time/format-unit time-config % nil)
         temporal? #(lib.util/original-isa? % :type/Temporal)
         unit= (fn [maybe-clause unit-or-units]
                 (let [units (set (u/one-or-many unit-or-units))]
@@ -797,33 +801,35 @@
                    (temporal? maybe-clause)
                    (lib.util/clause? maybe-clause)
                    (clojure.core/contains? units (:temporal-unit (second maybe-clause))))))
-        ->unit {:get-hour :hour-of-day
-                :get-month :month-of-year
-                :get-quarter :quarter-of-year}]
+        ->unit       {:get-hour :hour-of-day
+                      :get-month :month-of-year
+                      :get-quarter :quarter-of-year}]
     (match/match-one filter-clause
       [#{:= :in} _ [:get-day-of-week _ (_ :guard temporal?) :iso] (b :guard int?)]
-      (inflections/plural (u.time/format-unit b :day-of-week-iso))
+      (inflections/plural (u.time/format-unit time-config b :day-of-week-iso))
 
       [#{:!= :not-in} _ [:get-day-of-week _ (_ :guard temporal?) :iso] (b :guard int?)]
-      (i18n/tru "Excludes {0}" (inflections/plural (u.time/format-unit b :day-of-week-iso)))
+      (i18n/tru "Excludes {0}" (inflections/plural (u.time/format-unit time-config b :day-of-week-iso)))
 
       [#{:= :in} _ [(f :guard #{:get-hour :get-month :get-quarter}) _ (_ :guard temporal?)] (b :guard int?)]
-      (u.time/format-unit b (->unit f))
+      (u.time/format-unit time-config b (->unit f))
 
       [#{:!= :not-in} _ [(f :guard #{:get-hour :get-month :get-quarter}) _ (_ :guard temporal?)] (b :guard int?)]
-      (i18n/tru "Excludes {0}" (u.time/format-unit b (->unit f)))
+      (i18n/tru "Excludes {0}" (u.time/format-unit time-config b (->unit f)))
 
       [#{:= :in} _ (x :guard (unit= x lib.schema.temporal-bucketing/datetime-truncation-units)) (y :guard string?)]
-      (u.time/format-relative-date-range y 0 (:temporal-unit (second x)) nil nil {:include-current true})
+      (u.time/format-relative-date-range time-config
+                                         y 0 (:temporal-unit (second x)) nil nil
+                                         {:include-current true})
 
       [:during _ (x :guard temporal?) (y :guard string?) unit]
-      (u.time/format-relative-date-range y 1 unit -1 unit {})
+      (u.time/format-relative-date-range time-config y 1 unit -1 unit nil)
 
       [#{:= :in} _ (x :guard temporal?) (y :guard (or (int? y) (string? y)))]
-      (lib.temporal-bucket/describe-temporal-pair x y)
+      (lib.temporal-bucket/describe-temporal-pair time-config x y)
 
       [#{:!= :not-in} _ (x :guard temporal?) (y :guard (or (int? y) (string? y)))]
-      (i18n/tru "Excludes {0}" (lib.temporal-bucket/describe-temporal-pair x y))
+      (i18n/tru "Excludes {0}" (lib.temporal-bucket/describe-temporal-pair time-config x y))
 
       [:< _ (x :guard temporal?) (y :guard string?)]
       (i18n/tru "Before {0}" (->temporal-name y))

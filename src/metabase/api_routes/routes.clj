@@ -57,7 +57,7 @@
    [metabase.query-processor.api]
    [metabase.revisions.api]
    [metabase.search.api]
-   [metabase.segments.api]
+   [metabase.segments.rest.api]
    [metabase.session.api]
    [metabase.settings-rest.api]
    [metabase.setup-rest.api]
@@ -118,7 +118,7 @@
          metabase.public-sharing-rest.api/keep-me
          metabase.query-processor.api/keep-me
          metabase.revisions.api/keep-me
-         metabase.segments.api/keep-me
+         metabase.segments.rest.api/keep-me
          metabase.settings-rest.api/keep-me
          metabase.setup-rest.api/keep-me
          metabase.task-history.api/keep-me
@@ -241,7 +241,7 @@
    "/pulse"                metabase.pulse.api/pulse-routes
    "/revision"             (+auth 'metabase.revisions.api)
    "/search"               (+auth metabase.search.api/routes)
-   "/segment"              (+auth 'metabase.segments.api)
+   "/segment"              (+auth 'metabase.segments.rest.api)
    "/session"              metabase.session.api/routes
    "/setting"              (+auth 'metabase.settings-rest.api)
    "/setup"                'metabase.setup-rest.api

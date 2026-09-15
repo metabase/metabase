@@ -4,7 +4,7 @@
    [metabase.api.routes.common :as routes.common]
    [metabase.api.util.handlers :as handlers]
    [metabase.explorations.api :as explorations.api]
-   [metabase.server.test-handler :as server.test-handler]))
+   [metabase.test.server.handler :as test.server.handler]))
 
 (set! *warn-on-reflection* true)
 
@@ -14,13 +14,13 @@
   (delay
     (handlers/routes
      (handlers/route-map-handler {"/exploration" (routes.common/+auth explorations.api/routes)})
-     (server.test-handler/app-api-routes))))
+     (test.server.handler/app-api-routes))))
 
 (defn do-with-exploration-routes
   "Run `thunk` with `/api/exploration` served by the test HTTP client. The application does not mount the explorations
   API while the feature is disabled, so tests that exercise its endpoints over HTTP need this."
   [thunk]
-  (server.test-handler/do-with-api-routes @api-routes-with-explorations thunk))
+  (test.server.handler/do-with-api-routes @api-routes-with-explorations thunk))
 
 (defn exploration-routes-fixture
   "`clojure.test` fixture form of [[do-with-exploration-routes]]."

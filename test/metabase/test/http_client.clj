@@ -14,9 +14,9 @@
    [metabase.server.instance :as server.instance]
    [metabase.server.middleware.session :as mw.session]
    [metabase.server.streaming-response :as streaming-response]
-   [metabase.server.test-handler :as server.test-handler]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
    [metabase.test.initialize :as initialize]
+   [metabase.test.server.handler :as test.server.handler]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.json :as json]
@@ -404,7 +404,7 @@
         _           (log/debug method-name (pr-str url) (pr-str request))
         thunk       (fn []
                       (try
-                        ((server.test-handler/test-handler) request coerce-mock-response-body (fn raise [e] (throw e)))
+                        ((test.server.handler/test-handler) request coerce-mock-response-body (fn raise [e] (throw e)))
                         (catch clojure.lang.ExceptionInfo e
                           (log/debug e method-name url)
                           (ex-data e))

@@ -156,30 +156,31 @@
 (defn- humanize-datetime
   "Convert a time data type into a human friendly string."
   [t unit]
-  (let [dt (if (integer? t)
-             (u.time/coerce-to-timestamp t {:unit unit})
-             (u.date/parse t))]
+  (let [options {:start-of-week (lib-be/start-of-week)}
+        dt      (if (integer? t)
+                  (u.time/coerce-to-timestamp t (assoc options :unit unit))
+                  (u.date/parse t))]
     (case unit
       :second          (tru "at {0}" (t/format "h:mm:ss a, MMMM d, YYYY" dt))
       :minute          (tru "at {0}" (t/format "h:mm a, MMMM d, YYYY" dt))
       :hour            (tru "at {0}" (t/format "h a, MMMM d, YYYY" dt))
       :day             (tru "on {0}" (t/format "MMMM d, YYYY" dt))
       :week            (tru "in {0} week - {1}"
-                            (pluralize (u.date/extract dt :week-of-year))
-                            (str (u.date/extract dt :year)))
+                            (pluralize (u.date/extract options dt :week-of-year))
+                            (str (u.date/extract options dt :year)))
       :month           (tru "in {0}" (t/format "MMMM YYYY" dt))
       :quarter         (tru "in Q{0} - {1}"
-                            (u.date/extract dt :quarter-of-year)
-                            (str (u.date/extract dt :year)))
+                            (u.date/extract options dt :quarter-of-year)
+                            (str (u.date/extract options dt :year)))
       :year            (t/format "YYYY" dt)
       :day-of-week     (t/format "EEEE" dt)
       :hour-of-day     (tru "at {0}" (t/format "h a" dt))
       :month-of-year   (t/format "MMMM" dt)
-      :quarter-of-year (tru "Q{0}" (u.date/extract dt :quarter-of-year))
+      :quarter-of-year (tru "Q{0}" (u.date/extract options dt :quarter-of-year))
       (:minute-of-hour
        :day-of-month
        :day-of-year
-       :week-of-year)  (u.date/extract dt unit))))
+       :week-of-year)  (u.date/extract options dt unit))))
 
 (mu/defmethod humanize-filter-value :=
   [root                            :- ::ads/root

@@ -44,6 +44,12 @@
 (defn- prep-options [options]
   (merge internal/default-options (u/normalize-map options)))
 
+(defn- require-time-config [{:keys [start-of-week] :as time-config}]
+  (when-not start-of-week
+    (throw (ex-info "Date operations require :start-of-week"
+                    {:time-config time-config})))
+  time-config)
+
 (defn ^:export timestamp-coercible?
   "Check whether value is coercible to timestamp. Condition resembles [[coerce-to-timestamp]]."
   [value]
@@ -87,12 +93,9 @@
   "Formats a temporal-value (iso date/time string, int for hour/minute) given the temporal-bucketing unit.
   If unit is nil, formats the full date/time.
 
-  If `locale` is provided, that locale will be used for localizing the formatter. In CLJ this should be a `Locale`. Not
-  supported in CLJS since we have to rely on the browser's locale."
-  ([temporal-value unit]
-   (internal/format-unit temporal-value unit))
-  ([temporal-value unit locale]
-   (internal/format-unit temporal-value unit locale)))
+  `time-config` must include `:start-of-week`. If `:locale` is provided, it will be used for localizing the formatter."
+  [time-config temporal-value unit]
+  (internal/format-unit (require-time-config time-config) temporal-value unit))
 
 (defn parse-unit
   "Parses a string given the unit of time to parse by."
@@ -109,16 +112,20 @@
 
 (defn format-relative-date-range
   "Given a `n` `unit` time interval and the current date, return a string representing the date-time range.
+   `time-config` must contain `:start-of-week` as a weekday keyword.
    Provide an `offset-n` and `offset-unit` time interval to change the date used relative to the current date.
    `options` is a map and supports `:include-current` to include the current given unit of time in the range."
-  ([n unit]
-   (format-relative-date-range n unit nil nil nil))
-  ([n unit offset-n offset-unit]
-   (format-relative-date-range n unit offset-n offset-unit nil))
-  ([n unit offset-n offset-unit options]
-   (internal/format-relative-date-range n unit offset-n offset-unit options))
-  ([t n unit offset-n offset-unit options]
-   (internal/format-relative-date-range (coerce-to-timestamp t) n unit offset-n offset-unit options)))
+  ([time-config n unit]
+   (format-relative-date-range time-config n unit nil nil nil))
+  ([time-config n unit offset-n offset-unit]
+   (format-relative-date-range time-config n unit offset-n offset-unit nil))
+  ([time-config n unit offset-n offset-unit options]
+   (internal/format-relative-date-range (require-time-config time-config) n unit offset-n offset-unit options))
+  ([time-config t n unit offset-n offset-unit options]
+   (let [time-config (require-time-config time-config)]
+     (internal/format-relative-date-range time-config
+                                          (coerce-to-timestamp t)
+                                          n unit offset-n offset-unit options))))
 
 (defn yyyyMMddhhmmss->parts
   "Generate parts vector for `yyyy-MM-ddThh:mm:ss` format `date-str`. Trailing parts, if not present in the string,

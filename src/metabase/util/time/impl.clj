@@ -61,15 +61,14 @@
        (= (t/month d1) (t/month d2))))
 
 ;;; ---------------------------------------------- information -------------------------------------------------------
-(defn first-day-of-week
-  "The first day of the week varies by locale, but Metabase has a setting that overrides it.
-  In JVM, we can just read the setting directly."
-  []
-  ((requiring-resolve 'metabase.settings.core/get) :start-of-week))
-
 (def default-options
   "The default map of options."
   {:locale (Locale/getDefault)})
+
+(defn- start-of-week [{:keys [start-of-week] :as time-config}]
+  (or start-of-week
+      (throw (ex-info "Week-based time operations require :start-of-week"
+                      {:time-config time-config}))))
 
 ;;; ------------------------------------------------ to-range --------------------------------------------------------
 (defn- minus-ms [value]
@@ -108,8 +107,8 @@
                   (t/truncate-to :days))]
     [start (minus-ms (t/plus start (t/days n)))]))
 
-(defmethod common/to-range :week [value {:keys [n] :or {n 1}}]
-  (let [first-day (first-day-of-week)
+(defmethod common/to-range :week [value {:keys [n] :or {n 1} :as options}]
+  (let [first-day (start-of-week options)
         start (-> value
                   (t/truncate-to :days)
                   (t/adjust :previous-or-same-day-of-week first-day))]
@@ -124,7 +123,8 @@
 (declare truncate add)
 
 (defmethod common/to-range :quarter [value {:keys [n] :or {n 1}}]
-  (let [value (truncate value :quarter)]
+  (let [value (-> (t/adjust value (u.date/adjuster :first-day-of-quarter))
+                  (t/truncate-to :days))]
     [value (minus-ms (add value :quarter n))]))
 
 (defmethod common/to-range :year [value {:keys [n] :or {n 1}}]
@@ -186,11 +186,11 @@
       (t/truncate-to :days)
       (t/plus (t/days (dec value)))))
 
-(defmethod common/number->timestamp :day-of-week [value _]
+(defmethod common/number->timestamp :day-of-week [value options]
   ;; Metabase uses 1 to mean the start of the week, based on the Metabase setting for the first day of the week.
   ;; Moment uses 0 as the first day of the week in its configured locale.
   ;; For Java, get the first day of the week from the setting, and offset by `(dec value)` for the current day.
-  (number->timestamp value (first-day-of-week)))
+  (number->timestamp value (start-of-week options)))
 
 (defmethod common/number->timestamp :day-of-week-iso [value _]
   (number->timestamp value :monday))
@@ -203,11 +203,11 @@
   ;; We force the initial date to be in a leap year (2016).
   (t/plus magic-base-date (t/days (dec value))))
 
-(defmethod common/number->timestamp :week-of-year [value _]
+(defmethod common/number->timestamp :week-of-year [value options]
   (-> (now)
       (t/truncate-to :days)
       (t/adjust :first-day-of-year)
-      (t/adjust :previous-or-same-day-of-week (first-day-of-week))
+      (t/adjust :previous-or-same-day-of-week (start-of-week options))
       (t/plus (t/weeks (dec value)))))
 
 (defmethod common/number->timestamp :month-of-year [value _]
@@ -309,18 +309,20 @@
       (long (/ (unit-diff :day before after) 7))
 
       :month
-      (let [diff-months (- (u.date/extract after :month-of-year)
-                           (u.date/extract before :month-of-year))
-            diff-years  (- (u.date/extract after :year)
-                           (u.date/extract before :year))]
+      (let [options     {:start-of-week :sunday}
+            diff-months (- (u.date/extract options after :month-of-year)
+                           (u.date/extract options before :month-of-year))
+            diff-years  (- (u.date/extract options after :year)
+                           (u.date/extract options before :year))]
         (+ diff-months (* diff-years 12)))
 
       :quarter
       (long (/ (unit-diff :month before after) 3))
 
       :year
-      (- (u.date/extract after :year)
-         (u.date/extract before :year)))))
+      (let [options {:start-of-week :sunday}]
+        (- (u.date/extract options after :year)
+           (u.date/extract options before :year))))))
 
 (defn day-diff
   "Returns the time elapsed between `before` and `after` in days (an integer)."
@@ -349,58 +351,65 @@
 (defn ^:private format-extraction-unit
   "Formats a date-time value given the temporal extraction unit.
   If unit is not supported, returns nil."
-  [t unit ^Locale locale]
-  (when-let [^DateTimeFormatter formatter (some-> unit
-                                                  unit-formats
-                                                  t/formatter
-                                                  (cond-> #_formatter locale (.withLocale (i18n/locale locale))))]
-    (.format formatter t)))
+  [{:keys [locale] :as time-config} t unit]
+  (if (= unit :week-of-year)
+    (str (u.date/extract time-config t unit))
+    (when-let [^DateTimeFormatter formatter (some-> unit
+                                                    unit-formats
+                                                    t/formatter
+                                                    (cond-> #_formatter locale
+                                                            (.withLocale (i18n/locale locale))))]
+      (.format formatter t))))
 
 (defn format-unit
   "Formats a temporal-value (iso date/time string, int for extraction units) given the temporal-bucketing unit.
    If unit is nil, formats the full date/time"
-  ([input unit] (format-unit input unit nil))
-  ([input unit locale]
-   (cond
-     (string? input)
-     (let [time? (common/matches-time? input)
-           date? (common/matches-date? input)
-           date-time? (common/matches-date-time? input)
-           t (cond
-               time? (t/local-time input)
-               date? (t/local-date input)
-               date-time? (coerce-local-date-time input))]
-       (if t
-         (or
-          (format-extraction-unit t unit locale)
+  [time-config input unit]
+  (cond
+    (string? input)
+    (let [time? (common/matches-time? input)
+          date? (common/matches-date? input)
+          date-time? (common/matches-date-time? input)
+          t (cond
+              time? (t/local-time input)
+              date? (t/local-date input)
+              date-time? (coerce-local-date-time input))]
+      (if t
+        (or
+         (format-extraction-unit time-config t unit)
+         (cond
+           time? (t/format "h:mm a" t)
+           date? (t/format "MMM d, yyyy" t)
+           :else (t/format "MMM d, yyyy, h:mm a" t)))
+        input))
+
+    (number? input)
+    (case (keyword unit)
+      :hour-of-day  (str (cond (zero? input) "12" (<= input 12) input :else (- input 12))
+                         " "
+                         (if (<= input 11) "AM" "PM"))
+      :week-of-year (str input)
+      (or
+       (format-extraction-unit time-config
+                               (common/number->timestamp input (assoc time-config :unit unit))
+                               unit)
+       (str input)))
+
+    (instance? java.time.temporal.TemporalAccessor input)
+    (let [input ^java.time.temporal.TemporalAccessor input]
+      (or (format-extraction-unit time-config input unit)
           (cond
-            time? (t/format "h:mm a" t)
-            date? (t/format "MMM d, yyyy" t)
-            :else (t/format "MMM d, yyyy, h:mm a" t)))
-         input))
+            ;; no hour, must be date
+            (not (.isSupported input (t/field :hour-of-day)))
+            (t/format "MMM d, yyyy" input)
 
-     (number? input)
-     (if (= unit :hour-of-day)
-       (str (cond (zero? input) "12" (<= input 12) input :else (- input 12)) " " (if (<= input 11) "AM" "PM"))
-       (or
-        (format-extraction-unit (common/number->timestamp input {:unit unit}) unit locale)
-        (str input)))
+            ;; no day, must be time
+            (not (.isSupported input (t/field :day-of-month)))
+            (t/format "h:mm a" input)
 
-     (instance? java.time.temporal.TemporalAccessor input)
-     (let [input ^java.time.temporal.TemporalAccessor input]
-       (or (format-extraction-unit input unit locale)
-           (cond
-             ;; no hour, must be date
-             (not (.isSupported input (t/field :hour-of-day)))
-             (t/format "MMM d, yyyy" input)
-
-             ;; no day, must be time
-             (not (.isSupported input (t/field :day-of-month)))
-             (t/format "h:mm a" input)
-
-             :else ;; otherwise both date and time
-             (t/format "MMM d, yyyy, h:mm a" input))
-           (str input))))))
+            :else ;; otherwise both date and time
+            (t/format "MMM d, yyyy, h:mm a" input))
+          (str input)))))
 
 (defn parse-unit
   "Parse a unit of time/date, e.g., 'Wed' or 'August' or '14'."
@@ -418,15 +427,16 @@
   "Formats a time difference between two temporal values.
    Drops redundant information."
   [temporal-value-1 temporal-value-2]
-  (let [default-format #(str (format-unit temporal-value-1 nil)
+  (let [time-config  {:start-of-week :sunday}
+        default-format #(str (format-unit time-config temporal-value-1 nil)
                              " – "
-                             (format-unit temporal-value-2 nil))]
+                             (format-unit time-config temporal-value-2 nil))]
     (cond
       (some (complement string?) [temporal-value-1 temporal-value-2])
       (default-format)
 
       (= temporal-value-1 temporal-value-2)
-      (format-unit temporal-value-1 nil)
+      (format-unit time-config temporal-value-1 nil)
 
       (and (common/matches-time? temporal-value-1)
            (common/matches-time? temporal-value-2))
@@ -476,32 +486,35 @@
   "Given a `n` `unit` time interval and the current date, return a string representing the date-time range.
    Provide an `offset-n` and `offset-unit` time interval to change the date used relative to the current date.
    `options` is a map and supports `:include-current` to include the current given unit of time in the range."
-  ([n unit offset-n offset-unit opts]
-   (format-relative-date-range (now) n unit offset-n offset-unit opts))
-  ([t n unit offset-n offset-unit {:keys [include-current]}]
+  ([time-config n unit offset-n offset-unit options]
+   (format-relative-date-range time-config (now) n unit offset-n offset-unit options))
+  ([time-config t n unit offset-n offset-unit {:keys [include-current] :as options}]
    (let [offset-now (cond-> t
                       (neg? n) (apply-offset n unit)
                       (and (pos? n) (not include-current)) (apply-offset 1 unit)
                       (and offset-n offset-unit) (apply-offset offset-n offset-unit))
-         pos-n (cond-> (abs n)
-                 include-current inc)
+         pos-n (max 1 (cond-> (abs n)
+                        include-current inc))
          date-ranges (map (if (#{:hour :minute} unit)
                             #(t/format "yyyy-MM-dd'T'HH:mm" (t/local-date-time %))
                             #(str (t/local-date %)))
                           (common/to-range offset-now
-                                           {:unit unit
-                                            :n pos-n
-                                            :offset-n offset-n
-                                            :offset-unit offset-unit}))]
+                                           (merge time-config
+                                                  options
+                                                  {:unit        unit
+                                                   :n           pos-n
+                                                   :offset-n    offset-n
+                                                   :offset-unit offset-unit})))]
      (apply format-diff date-ranges))))
 
 (defn truncate
   "Clojure implementation of [[metabase.util.time/truncate]]; basically the same as [[u.date/truncate]] but also
   handles ISO-8601 strings."
-  [t unit]
-  (if (string? t)
-    (str (truncate (u.date/parse t) unit))
-    (u.date/truncate t unit)))
+  [time-config t unit]
+  (let [unit (keyword unit)]
+    (if (string? t)
+      (str (truncate time-config (u.date/parse t) unit))
+      (u.date/truncate time-config t unit))))
 
 (defn add
   "Clojure implementation of [[metabase.util.time/add]]; basically the same as [[u.date/add]] but also handles
@@ -539,5 +552,5 @@
 
 (defn extract
   "Extract a field such as `:minute-of-hour` from a temporal value `t`."
-  [t unit]
-  (u.date/extract t unit))
+  [time-config t unit]
+  (u.date/extract time-config t unit))

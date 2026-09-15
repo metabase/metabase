@@ -8,6 +8,7 @@ import type {
 import { Button, Group, Stack, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
+import { useTimeConfig } from "../use-time-config";
 import { formatDateRange } from "../utils";
 
 import { getCurrentValue, getUnitGroups } from "./utils";
@@ -23,10 +24,11 @@ export function CurrentDatePicker({
   availableUnits,
   onChange,
 }: CurrentDatePickerProps) {
+  const timeConfig = useTimeConfig();
   const unitGroups = getUnitGroups(availableUnits);
 
   const getTooltipLabel = (unit: DatePickerTruncationUnit) => {
-    return formatDateRange(getCurrentValue(unit));
+    return formatDateRange(timeConfig, getCurrentValue(unit));
   };
 
   const handleClick = (unit: DatePickerTruncationUnit) => {

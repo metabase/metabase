@@ -148,10 +148,11 @@
 
 (mu/defn- desugar-during :- ::clause
   "Transform a `:during` expression to an `:and` expression."
-  [expr :- ::clause]
+  [time-config :- [:map [:start-of-week :keyword]]
+   expr         :- ::clause]
   (match/replace expr
     [:during opts arg value unit]
-    (let [lower-bound (u.time/truncate value unit)
+    (let [lower-bound (u.time/truncate time-config value unit)
           upper-bound (u.time/add lower-bound unit 1)]
       (-> (lib.filter/and
            (lib.filter/>= (with-default-temporal-bucket-in-refs arg) lower-bound)
@@ -298,16 +299,17 @@
 
 (mu/defn- temporal-case-expression :- :mbql.clause/case
   "Creates a `:case` expression with a condition for each value of the given unit."
-  [expr :- ::clause
-   opts :- :map
-   unit :- :keyword
-   n    :- :int]
+  [time-config :- [:map [:start-of-week :keyword]]
+   expr         :- ::clause
+   opts         :- :map
+   unit         :- :keyword
+   n            :- :int]
   (let [user-locale #?(:clj  (i18n/user-locale)
                        :cljs nil)]
     (-> (lib.expression/case
          (mapv (fn [raw-value]
                  [(lib.filter/= (lib.util/fresh-uuids expr) raw-value)
-                  (u.time/format-unit raw-value unit user-locale)])
+                  (u.time/format-unit (assoc time-config :locale user-locale) raw-value unit)])
                (range 1 (inc n))))
         (lib.options/update-options merge opts {:default ""}))))
 
@@ -317,51 +319,55 @@
 
   Uses the user's locale rather than the site locale, so the results will depend on the runner of the query, not just
   the query itself. Filtering should be done based on the number, rather than the name."
-  [expression :- ::clause]
+  [time-config :- [:map [:start-of-week :keyword]]
+   expression   :- ::clause]
   (match/replace expression
-    [:month-name   opts expr] (&recur (temporal-case-expression expr opts :month-of-year   12))
-    [:quarter-name opts expr] (&recur (temporal-case-expression expr opts :quarter-of-year  4))
-    [:day-name     opts expr] (&recur (temporal-case-expression expr opts :day-of-week      7))))
+    [:month-name   opts expr] (&recur (temporal-case-expression time-config expr opts :month-of-year   12))
+    [:quarter-name opts expr] (&recur (temporal-case-expression time-config expr opts :quarter-of-year  4))
+    [:day-name     opts expr] (&recur (temporal-case-expression time-config expr opts :day-of-week      7))))
 
 (mu/defn- desugar-expression :- ::clause
   "Rewrite various 'syntactic sugar' expressions like `:/` with more than two args into something simpler for drivers
   to compile."
-  [expression :- ::clause]
+  [time-config :- [:map [:start-of-week :keyword]]
+   expression   :- ::clause]
   ;; The `mbql.jvm-u/desugar-host-and-domain` is implemented only for jvm because regexes are not compatible with
   ;; Safari.
   (let [desugar-host-and-domain* #?(:clj  lib.filter.desugar.jvm/desugar-host-and-domain
                                     :cljs (fn [x]
                                             (log/warn "`desugar-host-and-domain` implemented only on JVM.")
                                             x))]
-    (-> expression
-        desugar-divide-with-extra-args
-        desugar-host-and-domain*
-        desugar-temporal-names)))
+    (desugar-temporal-names time-config
+                            (-> expression
+                                desugar-divide-with-extra-args
+                                desugar-host-and-domain*))))
 
 (mu/defn- maybe-desugar-expression :- ::clause
-  [clause :- ::clause]
-  (cond-> clause
-    (or (lib.util/clause-of-type? clause :field)
-        (mr/validate ::lib.schema.expression/expression clause))
-    desugar-expression))
+  [time-config :- [:map [:start-of-week :keyword]]
+   clause       :- ::clause]
+  (if (or (lib.util/clause-of-type? clause :field)
+          (mr/validate ::lib.schema.expression/expression clause))
+    (desugar-expression time-config clause)
+    clause))
 
 (mu/defn desugar-filter-clause :- ::clause
   "Rewrite various 'syntatic sugar' filter clauses like `:time-interval` and `:inside` as simpler, logically
   equivalent clauses. This can be used to simplify the number of filter clauses that need to be supported by anything
   that needs to enumerate all the possible filter types."
-  [filter-clause :- ::clause]
-  (-> filter-clause
-      desugar-current-relative-datetime
-      desugar-in
-      desugar-multi-argument-comparisons
-      desugar-does-not-contain
-      desugar-time-interval
-      desugar-relative-time-interval
-      desugar-is-null-and-not-null
-      desugar-is-empty-and-not-empty
-      desugar-inside
-      lib.filter.simplify-compound/simplify-compound-filter
-      desugar-temporal-extract
-      desugar-during
-      desugar-if
-      maybe-desugar-expression))
+  [time-config  :- [:map [:start-of-week :keyword]]
+   filter-clause :- ::clause]
+  (let [filter-clause (-> filter-clause
+                          desugar-current-relative-datetime
+                          desugar-in
+                          desugar-multi-argument-comparisons
+                          desugar-does-not-contain
+                          desugar-time-interval
+                          desugar-relative-time-interval
+                          desugar-is-null-and-not-null
+                          desugar-is-empty-and-not-empty
+                          desugar-inside
+                          lib.filter.simplify-compound/simplify-compound-filter
+                          desugar-temporal-extract)
+        filter-clause (desugar-during time-config filter-clause)
+        filter-clause (desugar-if filter-clause)]
+    (maybe-desugar-expression time-config filter-clause)))

@@ -1,15 +1,16 @@
-(ns metabase.server.test-handler
+(ns metabase.test.server.handler
   (:require
+   [metabase.api-routes.core :as api-routes]
    [metabase.api.macros :as api.macros]
    [metabase.server.core :as server]
+   [metabase.sso.auth-wrapper :as auth-wrapper]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (defn app-api-routes
   "The application's own API route tree, the handler mounted under `/api`."
   []
-  ;; late-bound: a static require here would drag the whole API route tree into the server module
-  #_{:clj-kondo/ignore [:metabase/modules]} (requiring-resolve 'metabase.api-routes.core/routes))
+  #'api-routes/routes)
 
 (mu/defn make-test-handler :- ::api.macros/handler
   "Build the full Ring handler (server routes plus middleware) that serves `api-routes` under `/api`. Defaults to
@@ -18,7 +19,7 @@
    (make-test-handler (app-api-routes)))
 
   ([api-routes :- ::api.macros/handler]
-   (let [server-routes (server/make-routes api-routes)
+   (let [server-routes (server/make-routes auth-wrapper/routes api-routes)
          handler       (server/make-handler server-routes)]
      (fn [request respond raise]
        (letfn [(raise' [e]

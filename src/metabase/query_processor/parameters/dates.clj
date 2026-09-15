@@ -10,6 +10,7 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
@@ -76,10 +77,12 @@
    (comparison-range start end unit :day))
 
   ([start end unit resolution]
-   (merge
-    (u.date/comparison-range start unit :>= {:resolution resolution})
-    (u.date/comparison-range end   unit :<= {:resolution resolution, :end :inclusive})
-    {:unit unit})))
+   (let [time-config {:start-of-week (lib-be/start-of-week)}
+         options     {:resolution resolution}]
+     (merge
+      (u.date/comparison-range time-config start unit :>= options)
+      (u.date/comparison-range time-config end unit :<= (assoc options :end :inclusive))
+      {:unit unit}))))
 
 (defn- second-range
   [start end]

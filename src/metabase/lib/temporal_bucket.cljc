@@ -446,9 +446,10 @@
 (mu/defn describe-temporal-pair :- :string
   "Return a string describing the temporal pair.
    Used when comparing temporal values like `[:!= ... [:field {:temporal-unit :day-of-week} ...] \"2022-01-01\"]`"
-  [temporal-column
+  [time-config   :- [:map [:start-of-week :keyword]]
+   temporal-column
    temporal-value :- [:or :int :string]]
-  (u.time/format-unit temporal-value (:unit (temporal-bucket temporal-column))))
+  (u.time/format-unit time-config temporal-value (:unit (temporal-bucket temporal-column))))
 
 (defn add-temporal-bucket-to-ref
   "Internal helper shared between a few implementations of [[with-temporal-bucket-method]].
