@@ -28,7 +28,7 @@
    [:sql    ::lib.schema.common/non-blank-string]])
 
 (mr/def ::rows-data
-  "Inline test data."
+  "Test data written out in the request: the columns, with the type each is cast to, and the rows."
   [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
    [:format  {:decode/normalize lib.schema.common/normalize-keyword} [:= :rows]]
    [:columns [:sequential {:min 1} ::column]]
@@ -71,15 +71,17 @@
    [:empty  ::expectation.empty]])
 
 (mr/def ::inputs
-  "The `:inputs` column of a TransformTest."
+  "Test data for the tables the transform reads. Every table it reads needs one, and an input for
+  a table it does not read is refused."
   [:sequential ::input])
 
 (mr/def ::expectations
-  "The `:expectations` column of a TransformTest."
+  "The checks run against the transform's output. Names must be unique within a test."
   [:sequential ::expectation])
 
 (mr/def ::transform-test
-  "A TransformTest as selected from the app DB: every column of `:transform_test`."
+  "A saved transform test: the transform it covers, the inputs that stand in for its source
+  tables, and the expectations checked against its output."
   [:map {:closed true}
    [:id           ms/PositiveInt]
    [:entity_id    :string]
@@ -93,7 +95,7 @@
    [:updated_at   ms/TemporalInstant]])
 
 (mr/def ::transform-test.create
-  "What a user sends to create a TransformTest."
+  "What a client sends to create a transform test."
   [:map {:closed true}
    [:transform_id ::lib.schema.id/transform]
    [:name         ::lib.schema.common/non-blank-string]
@@ -102,7 +104,7 @@
    [:expectations ::expectations]])
 
 (mr/def ::transform-test.update
-  "What a user sends to update a TransformTest."
+  "What a client sends to update a transform test. Omitted fields are left unchanged."
   [:map {:closed true}
    [:transform_id {:optional true} ::lib.schema.id/transform]
    [:name         {:optional true} ::lib.schema.common/non-blank-string]
@@ -111,10 +113,10 @@
    [:expectations {:optional true} ::expectations]])
 
 (mr/def ::status
-  "The outcome of a transform test run or of one of its expectations.
+  "The outcome of a transform test run, or of one of its expectations.
 
-  `:error` is an expectation outcome only: its own query could not be run. The run itself
-  completed, so the other expectations still reported — which is why this is not a refusal."
+  `:error` is an expectation outcome only: that expectation's own query could not be run, while
+  the rest of the run completed and still reported."
   [:enum {:decode/normalize lib.schema.common/normalize-keyword} :passed :failed :error])
 
 (mr/def ::expectation-result
@@ -133,8 +135,7 @@
 (mr/def ::run-result
   "The outcome of a transform test run.
 
-  `:tables` maps each generated temp-table name to the table the author wrote, so a message that
-  escaped rewriting can still be read."
+  `:tables` maps each temp table the run created to the table it stood in for."
   [:map {:closed true}
    [:status       ::status]
    [:expectations [:sequential ::expectation-result]]

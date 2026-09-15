@@ -63,7 +63,11 @@
   expectation's own `:error` rather than discarding the answers of the others.
 
   Any other status means the run was refused and nothing meaningful ran. The body then carries an
-  `:error-code` naming which refusal it was."
+  `:error-code` naming which refusal it was:
+
+  400 — the test is wrong, and its author can fix it.
+  422 — the test is fine; the transform or its database prevents a run here.
+  501 — the test asks for something not built yet."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   ;; The app-db read is inside the `try` on purpose: reading a transform test constructs its
