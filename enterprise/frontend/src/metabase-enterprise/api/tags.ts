@@ -10,6 +10,7 @@ import {
   provideUserTags,
 } from "metabase/api/tags";
 import {
+  type AdminSession,
   type CardDependencyNode,
   DEPENDENCY_TYPES,
   type DashboardDependencyNode,
@@ -51,6 +52,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "ai-controls-usage-tenant-limits",
   "data-complexity-scores",
   "security-advisory",
+  "session",
 ] as const;
 
 export type EnterpriseTagType = TagType | (typeof ENTERPRISE_TAG_TYPES)[number];
@@ -241,6 +243,18 @@ export function provideSupportAccessGrantListTags(
     listTag("support-access-grant"),
     ...grants.flatMap(provideSupportAccessGrantTags),
   ];
+}
+
+export function provideAdminSessionTags(
+  session: AdminSession,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("session", session.id), ...provideUserTags(session.user)];
+}
+
+export function provideAdminSessionListTags(
+  sessions: AdminSession[],
+): TagDescription<EnterpriseTagType>[] {
+  return [listTag("session"), ...sessions.flatMap(provideAdminSessionTags)];
 }
 
 export function provideSourceReplacementRunTags(
