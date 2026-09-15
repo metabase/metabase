@@ -1,4 +1,4 @@
-import { BarChart, LineChart, ScatterChart } from "echarts/charts";
+import { BarChart, LineChart } from "echarts/charts";
 import { GridComponent } from "echarts/components";
 import * as echarts from "echarts/core";
 import { SVGRenderer } from "echarts/renderers";
@@ -15,7 +15,7 @@ import type { NumericXAxisModel } from "../model/types";
 
 import { getNumericAxisPadding } from "./numeric-axis-padding";
 
-echarts.use([BarChart, LineChart, ScatterChart, GridComponent, SVGRenderer]);
+echarts.use([BarChart, LineChart, GridComponent, SVGRenderer]);
 
 const createAxis = (
   overrides: Partial<NumericXAxisModel> = {},
@@ -41,16 +41,22 @@ const createLayout = (width: number) =>
   });
 
 describe("getNumericAxisPadding", () => {
+  it("keeps unpadded scatter axes on their native scale", () => {
+    expect(
+      getNumericAxisPadding(createAxis({ isPadded: false }), createLayout(900)),
+    ).toBeUndefined();
+  });
+
   describe.each([
     { width: 299, padding: 8 },
     { width: 300, padding: 16 },
     { width: 899, padding: 16 },
     { width: 900, padding: 24 },
   ])("$width px axis", ({ width, padding }) => {
-    it.each(["line", "bar", "scatter"] as const)(
+    it.each(["line", "bar"] as const)(
       "places the irregular numeric endpoints and %s data at the requested insets (UXW-5182)",
       (seriesType) => {
-        const axis = createAxis({ isPadded: seriesType !== "scatter" });
+        const axis = createAxis();
         const layout = createLayout(width);
         layout.xAxisMarkWidthRatio = seriesType === "bar" ? 0.8 : undefined;
         const result = getNumericAxisPadding(axis, layout);

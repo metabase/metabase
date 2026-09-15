@@ -98,27 +98,29 @@ describe.each([
     expect(model.leftAxisModel?.formatter(1000)).toBe("1,000");
   });
 
-  it("adds render positions while preserving category values and original rows", () => {
-    const model = buildModel("auto", { width: 8, height: 6 });
+  if (display !== "scatter") {
+    it("adds render positions while preserving category values and original rows", () => {
+      const model = buildModel("auto", { width: 8, height: 6 });
 
-    expect(model.xAxisModel).toMatchObject({
-      axisType: "category",
-      positions: { values: [1, 2] },
+      expect(model.xAxisModel).toMatchObject({
+        axisType: "category",
+        positions: { values: [1, 2] },
+      });
+      expect(
+        model.transformedDataset.map((datum) => [
+          datum[X_AXIS_DATA_KEY],
+          datum[X_AXIS_POSITION_KEY],
+          datum[INDEX_KEY],
+        ]),
+      ).toEqual([
+        [1, 0, 0],
+        [2, 1, 1],
+      ]);
+      expect(
+        model.dataset.every((datum) => !(X_AXIS_POSITION_KEY in datum)),
+      ).toBe(true);
     });
-    expect(
-      model.transformedDataset.map((datum) => [
-        datum[X_AXIS_DATA_KEY],
-        datum[X_AXIS_POSITION_KEY],
-        datum[INDEX_KEY],
-      ]),
-    ).toEqual([
-      [1, 0, 0],
-      [2, 1, 1],
-    ]);
-    expect(
-      model.dataset.every((datum) => !(X_AXIS_POSITION_KEY in datum)),
-    ).toBe(true);
-  });
+  }
 
   it("keeps render positions out of question datasets", () => {
     const model = buildModel("auto");

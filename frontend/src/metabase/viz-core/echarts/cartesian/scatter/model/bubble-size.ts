@@ -1,14 +1,7 @@
 import * as d3 from "d3";
 
 import type { Extent } from "../../../../types";
-import { X_AXIS_DATA_KEY } from "../../constants/dataset";
-import type {
-  ChartDataset,
-  DataKey,
-  Datum,
-  SeriesModel,
-  XAxisModel,
-} from "../../model/types";
+import type { DataKey, Datum } from "../../model/types";
 
 const MIN_BUBBLE_DIAMETER = 15;
 const MAX_BUBBLE_DIAMETER = 75;
@@ -47,68 +40,4 @@ export function getBubbleDiameterScale(
     .range([MIN_BUBBLE_DIAMETER, MAX_BUBBLE_DIAMETER]);
 
   return (datum: Datum) => scale(Number(datum[bubbleSizeDataKey]));
-}
-
-function getXAxisEndValues(axisModel: XAxisModel) {
-  if (axisModel.axisType === "category") {
-    const values = axisModel.positions?.values;
-    return [values?.[0], values?.[values.length - 1]];
-  }
-  if (axisModel.axisType === "value") {
-    return axisModel.extent;
-  }
-  return axisModel.range.map((value) =>
-    axisModel.toEChartsAxisValue(value.toISOString()),
-  );
-}
-
-export function getScatterXAxisEndMarkWidths(
-  dataset: ChartDataset,
-  seriesModels: SeriesModel[],
-  bubbleSizeDomain: Extent | null,
-  axisModel: XAxisModel,
-): XAxisModel["endMarkWidths"] {
-  if (!axisModel.isDashboard) {
-    return undefined;
-  }
-
-  const [firstValue, lastValue] = getXAxisEndValues(axisModel);
-  const visibleSeries = seriesModels
-    .filter((seriesModel) => seriesModel.visible)
-    .map((seriesModel) => ({
-      dataKey: seriesModel.dataKey,
-      diameter: getBubbleDiameterScale(
-        bubbleSizeDomain,
-        "bubbleSizeDataKey" in seriesModel
-          ? seriesModel.bubbleSizeDataKey
-          : undefined,
-      ),
-    }));
-  const widths = { first: 0, last: 0 };
-
-  for (const datum of dataset) {
-    const xValue = datum[X_AXIS_DATA_KEY];
-    const isFirst = xValue === firstValue;
-    const isLast = xValue === lastValue;
-    if (!isFirst && !isLast) {
-      continue;
-    }
-    for (const { dataKey, diameter } of visibleSeries) {
-      if (!Number.isFinite(datum[dataKey])) {
-        continue;
-      }
-      const width = typeof diameter === "number" ? diameter : diameter(datum);
-      if (!Number.isFinite(width)) {
-        continue;
-      }
-      if (isFirst) {
-        widths.first = Math.max(widths.first, width);
-      }
-      if (isLast) {
-        widths.last = Math.max(widths.last, width);
-      }
-    }
-  }
-
-  return widths;
 }

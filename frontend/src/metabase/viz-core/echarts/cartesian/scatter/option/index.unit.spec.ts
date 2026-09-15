@@ -24,7 +24,10 @@ import {
 } from "metabase-types/api/mocks";
 
 import { DEFAULT_VISUALIZATION_THEME } from "../../../../shared/utils/theme";
-import type { RenderingContext } from "../../../../types";
+import type {
+  ComputedVisualizationSettings,
+  RenderingContext,
+} from "../../../../types";
 import { X_AXIS_DATA_KEY, X_AXIS_POSITION_KEY } from "../../constants/dataset";
 import { getChartLayout } from "../../layout";
 import {
@@ -59,6 +62,7 @@ const setup = (
   {
     width = 400,
     hasBubbleSize = false,
+    xAxisScale = "ordinal",
     compactAxis = false,
     rows = [
       ["A", 10],
@@ -68,14 +72,25 @@ const setup = (
   }: {
     width?: number;
     hasBubbleSize?: boolean;
+    xAxisScale?: ComputedVisualizationSettings["graph.x_axis.scale"];
     compactAxis?: boolean;
     rows?: RowValue[][];
   } = {},
 ) => {
+  const dimensionColumn = createMockColumn({
+    name: "category",
+    base_type: "type/Text",
+  });
+  if (xAxisScale === "timeseries") {
+    dimensionColumn.base_type = "type/DateTime";
+    dimensionColumn.unit = "month";
+  } else if (xAxisScale !== "ordinal") {
+    dimensionColumn.base_type = "type/Float";
+  }
   const settings = createMockVisualizationSettings({
     "graph.dimensions": ["category"],
     "graph.metrics": ["count"],
-    "graph.x_axis.scale": "ordinal",
+    "graph.x_axis.scale": xAxisScale,
     "graph.x_axis.axis_enabled": compactAxis ? "compact" : true,
     "graph.y_axis.scale": "linear",
     "graph.y_axis.axis_enabled": true,
@@ -90,7 +105,7 @@ const setup = (
         card: createMockCard({ id: 1, display: "scatter" }),
         data: createMockDatasetData({
           cols: [
-            createMockColumn({ name: "category", base_type: "type/Text" }),
+            dimensionColumn,
             createMockColumn({ name: "count", base_type: "type/Integer" }),
             ...(hasBubbleSize
               ? [createMockColumn({ name: "size", base_type: "type/Integer" })]
@@ -147,134 +162,210 @@ beforeEach(() =>
 );
 afterEach(() => echarts.setPlatformAPI({ measureText: previousMeasureText }));
 
-describe("scatter X-axis encoding", () => {
-  it("uses category positions for dashboard points and retains source categories", () => {
-    const { model, layout, option } = setup(true);
-
-    expect(layout.dashboardXAxis).toBeDefined();
-    expect(option.xAxis).toMatchObject({ type: "value" });
-    expect(option.series).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          type: "scatter",
-          encode: { x: X_AXIS_POSITION_KEY, y: model.seriesModels[0].dataKey },
-          symbolSize: 15,
-        }),
-      ]),
-    );
-    expect(option.dataset).toEqual([
-      expect.objectContaining({
-        dimensions: expect.arrayContaining([
-          X_AXIS_DATA_KEY,
-          X_AXIS_POSITION_KEY,
-        ]),
-        source: model.transformedDataset,
-      }),
-    ]);
-    expect(
-      model.transformedDataset.map((datum) => datum[X_AXIS_DATA_KEY]),
-    ).toEqual(["A", "B", "A"]);
+function renderScatter(
+  isDashboard: boolean,
+  options: Parameters<typeof setup>[1],
+) {
+  const result = setup(isDashboard, options);
+  const width = options?.width ?? 400;
+  const { model, layout, option } = result;
+  const chart = echarts.init(null, undefined, {
+    renderer: "svg",
+    ssr: true,
+    width,
+    height: 300,
   });
+  try {
+    chart.setOption(option);
+    chart.renderToSVGString();
+    const elements = chart.getZr().storage.getDisplayList(true);
+    const labels = elements.flatMap((element) => {
+      const text: unknown = element.style.text;
+      const bounds = getBounds(element);
+      if (
+        element.type !== "tspan" ||
+        typeof text !== "string" ||
+        bounds.x < layout.padding.left ||
+        bounds.y < layout.bounds.bottom
+      ) {
+        return [];
+      }
+      return [{ text: text.trim(), bounds }];
+    });
+    const bubbles = elements
+      .filter((element) => element.type === "path")
+      .map(getBounds);
+    const positions = model.transformedDataset.flatMap((datum) => {
+      const value = datum[X_AXIS_DATA_KEY];
+      if (typeof value !== "number" && typeof value !== "string") {
+        return [];
+      }
+      return [
+        (chart.convertToPixel({ xAxisIndex: 0 }, value) - layout.padding.left) /
+          getXAxisWidth(layout),
+      ];
+    });
+    return { ...result, labels, bubbles, positions };
+  } finally {
+    chart.dispose();
+  }
+}
 
-  it("keeps native category encoding outside dashboards", () => {
-    const { model, layout, option } = setup(false);
+const numericRows = (firstBubbleSize = 0): RowValue[][] => [
+  [20.96, 1, firstBubbleSize],
+  [3000.01, 40, 10],
+  [15000.03, 120, 100],
+  [43186.48, 280, 0],
+];
 
-    expect(layout.dashboardXAxis).toBeUndefined();
-    expect(option.xAxis).toMatchObject({ type: "category" });
-    expect(option.series).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          type: "scatter",
-          encode: { x: X_AXIS_DATA_KEY, y: model.seriesModels[0].dataKey },
-        }),
-      ]),
-    );
-  });
+describe("scatter X-axis padding", () => {
+  it.each([280, 600, 1000])(
+    "preserves native numeric ticks and bubble positions at width %s",
+    (width) => {
+      const options = {
+        width,
+        rows: numericRows(100),
+        xAxisScale: "linear" as const,
+        hasBubbleSize: true,
+      };
+      const { labels, layout, positions } = renderScatter(true, options);
+      const { labels: questionLabels } = renderScatter(false, options);
+      expect(layout.dashboardXAxis).toBeUndefined();
+      expect(labels.map(({ text }) => text)).toEqual(
+        questionLabels.map(({ text }) => text),
+      );
+      expect(positions[0]).toBeCloseTo(20.96 / 50000, 6);
+      expect(positions[3]).toBeCloseTo(43186.48 / 50000, 6);
+    },
+  );
+
+  it.each([600, 1000])(
+    "measures padding from the zero label while bubbles extend before it at width %s",
+    (width) => {
+      const { labels, bubbles, layout } = renderScatter(true, {
+        width,
+        rows: numericRows(100),
+        xAxisScale: "linear",
+        hasBubbleSize: true,
+      });
+      expect(labels[0].text).toBe("0");
+      expect(labels[labels.length - 1].text).toBe("50,000");
+      expect(labels[0].bounds.x - layout.padding.left).toBeCloseTo(
+        getXAxisLabelPadding(getXAxisWidth(layout)),
+        3,
+      );
+      expect(bubbles).toHaveLength(4);
+      expect(bubbles[0].x + bubbles[0].width / 2).toBeLessThan(
+        labels[0].bounds.x,
+      );
+    },
+  );
 
   it.each([
-    { name: "an endpoint", largeBubbleIndex: 0 },
-    { name: "the middle", largeBubbleIndex: 5 },
-  ])(
-    "centers unequal endpoint labels over dense bubbles with the largest bubble at $name",
-    ({ largeBubbleIndex }) => {
-      const values = [
-        "A",
-        ...Array.from({ length: 10 }, (_, index) => `K${index}`),
-        "Long endpoint label",
-      ];
-      const rows = values.map((value, index) => [
-        value,
-        30 + index * 3,
-        index === largeBubbleIndex ? 100 : 0,
-      ]);
-      const width = 700;
-      const { model, layout, option } = setup(true, {
-        width,
+    { scale: "linear", values: [20.96, 3000.01, 15000.03, 43186.48] },
+    { scale: "ordinal", values: ["A", "B", "C", "D"] },
+    {
+      scale: "timeseries",
+      values: ["2025-01-01", "2025-02-01", "2025-03-01", "2025-04-01"],
+    },
+    { scale: "log", values: [1, 10, 100, 1000] },
+    { scale: "pow", values: [1, 10, 100, 1000] },
+  ] as const)(
+    "retains native $scale ticks and positions in dashboard cards",
+    ({ scale, values }) => {
+      const options = {
+        width: 1000,
+        rows: values.map((value, index) => [
+          value,
+          10 + index * 10,
+          index * 30,
+        ]),
+        xAxisScale: scale,
         hasBubbleSize: true,
-        compactAxis: true,
-        rows,
-      });
-      const chart = echarts.init(null, undefined, {
-        renderer: "svg",
-        ssr: true,
-        width,
-        height: 300,
-      });
-
-      try {
-        chart.setOption(option);
-        chart.renderToSVGString();
-        const elements = chart.getZr().storage.getDisplayList(true);
-        const symbols = elements
-          .filter((element) => element.type === "path")
-          .map(getBounds);
-        const labelBounds = (text: string) =>
-          elements
-            .filter((element) => {
-              const value: unknown = element.style.text;
-              return (
-                element.type === "tspan" &&
-                typeof value === "string" &&
-                value.trim() === text
-              );
-            })
-            .map(getBounds)[0];
-        const firstLabel = labelBounds(values[0]);
-        const lastLabel = labelBounds(values[values.length - 1]);
-        const firstSymbol = symbols[0];
-        const lastSymbol = symbols[symbols.length - 1];
-
-        expect(layout.dashboardXAxis).toBeDefined();
-        expect(symbols).toHaveLength(values.length);
-        expect(firstLabel).toBeDefined();
-        expect(lastLabel).toBeDefined();
-        if (!firstLabel || !lastLabel || !firstSymbol || !lastSymbol) {
-          return;
-        }
-
-        expect(firstLabel.x + firstLabel.width / 2).toBeCloseTo(
-          firstSymbol.x + firstSymbol.width / 2,
-          4,
-        );
-        expect(lastLabel.x + lastLabel.width / 2).toBeCloseTo(
-          lastSymbol.x + lastSymbol.width / 2,
-          4,
-        );
-        const padding = getXAxisLabelPadding(getXAxisWidth(layout));
-        expect(firstSymbol.x - layout.padding.left).toBeCloseTo(
-          padding - 0.5,
-          4,
-        );
-        expect(
-          width - layout.padding.right - lastLabel.x - lastLabel.width,
-        ).toBeCloseTo(padding, 4);
-        expect(model.xAxisModel.endMarkWidths?.first).toBeCloseTo(
-          largeBubbleIndex === 0 ? 75 : 15,
-        );
-        expect(model.xAxisModel.endMarkWidths?.last).toBeCloseTo(15);
-      } finally {
-        chart.dispose();
+      };
+      const { labels: questionLabels, positions: questionPositions } =
+        renderScatter(false, options);
+      const { labels, positions, layout } = renderScatter(true, options);
+      expect(layout.dashboardXAxis).toBeUndefined();
+      expect(labels.map(({ text }) => text)).toEqual(
+        questionLabels.map(({ text }) => text),
+      );
+      expect(positions).toHaveLength(values.length);
+      for (let index = 0; index < values.length; index++) {
+        expect(positions[index]).toBeCloseTo(questionPositions[index], 6);
       }
+    },
+  );
+
+  it("retains rounded numeric ticks (UXW-5182)", () => {
+    const { labels } = renderScatter(true, {
+      width: 1000,
+      rows: numericRows(),
+      xAxisScale: "linear",
+      hasBubbleSize: true,
+    });
+    expect(labels.map(({ text }) => text)).toEqual([
+      "0",
+      "10,000",
+      "20,000",
+      "30,000",
+      "40,000",
+      "50,000",
+    ]);
+  });
+
+  it.each(["linear", "ordinal", "timeseries"] as const)(
+    "ignores bubble size when positioning %s ticks and points",
+    (scale) => {
+      const values = {
+        linear: [20.96, 3000.01, 15000.03, 43186.48],
+        ordinal: ["A", "B", "C", "D"],
+        timeseries: ["2025-01-01", "2025-02-01", "2025-03-01", "2025-04-01"],
+      }[scale];
+      const charts = [0, 100].map((firstSize) =>
+        renderScatter(true, {
+          width: 1000,
+          xAxisScale: scale,
+          hasBubbleSize: true,
+          rows: values.map((value, index) => [
+            value,
+            10 + index * 10,
+            index === 0 ? firstSize : 100,
+          ]),
+        }),
+      );
+      expect(charts[0].positions).toEqual(charts[1].positions);
+      expect(charts[0].labels).toEqual(charts[1].labels);
+      expect(charts[0].bubbles[0].width).toBeLessThan(
+        charts[1].bubbles[0].width,
+      );
+    },
+  );
+
+  it.each([false, true])(
+    "uses native category encoding when isDashboard=%s",
+    (isDashboard) => {
+      const { model, layout, option } = setup(isDashboard);
+      expect(layout.dashboardXAxis).toBeUndefined();
+      expect(option.xAxis).toMatchObject({ type: "category" });
+      expect(option.series).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            type: "scatter",
+            encode: { x: X_AXIS_DATA_KEY, y: model.seriesModels[0].dataKey },
+            symbolSize: 15,
+          }),
+        ]),
+      );
+      expect(option.dataset).toEqual([
+        expect.objectContaining({
+          dimensions: expect.not.arrayContaining([X_AXIS_POSITION_KEY]),
+          source: model.transformedDataset,
+        }),
+      ]);
+      expect(
+        model.transformedDataset.map((datum) => datum[X_AXIS_DATA_KEY]),
+      ).toEqual(["A", "B", "A"]);
     },
   );
 });

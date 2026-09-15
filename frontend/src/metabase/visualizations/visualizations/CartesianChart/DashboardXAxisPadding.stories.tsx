@@ -151,6 +151,16 @@ export const BubbleEndpoints: Story = {
   },
 };
 
+export const NumericBubbleTicks: Story = {
+  decorators: [createWaitForChartsDecorator({ count: 2 })],
+  args: {
+    charts: [
+      example("Dashboard numeric bubbles", "numericBubbles", 1000, 280),
+      example("Full-page numeric bubbles", "numericBubbles", 1000, 280, false),
+    ],
+  },
+};
+
 export const DashboardAndQuestion: Story = {
   decorators: [createWaitForChartsDecorator({ count: 2 })],
   args: {

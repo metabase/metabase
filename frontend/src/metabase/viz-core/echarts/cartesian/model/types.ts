@@ -138,7 +138,6 @@ export type BaseXAxisModel = {
   axisType: OptionAxisType;
   canBrush?: boolean;
   isDashboard?: boolean;
-  endMarkWidths?: { first: number; last: number };
 };
 
 export type CategoryXAxisModel = BaseXAxisModel & {

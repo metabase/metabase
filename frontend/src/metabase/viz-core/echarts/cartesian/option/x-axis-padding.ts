@@ -49,16 +49,9 @@ export function getDashboardXAxisLayout(
   const { getXTickWidth } = chartLayout.ticksDimensions;
   const centerLabels =
     chartLayout.xAxisMarkWidthRatio !== undefined ||
-    chartLayout.getXAxisMarkWidth !== undefined ||
-    chartLayout.xAxisEndMarkWidths !== undefined;
-  const firstWidth = Math.max(
-    getXTickWidth(firstLabel),
-    chartLayout.xAxisEndMarkWidths?.first ?? 0,
-  );
-  const lastWidth = Math.max(
-    getXTickWidth(lastLabel),
-    chartLayout.xAxisEndMarkWidths?.last ?? 0,
-  );
+    chartLayout.getXAxisMarkWidth !== undefined;
+  const firstWidth = getXTickWidth(firstLabel);
+  const lastWidth = getXTickWidth(lastLabel);
   const maxWidth = Math.max(firstWidth, lastWidth);
   const insets = getXAxisInsets(
     axisWidth,

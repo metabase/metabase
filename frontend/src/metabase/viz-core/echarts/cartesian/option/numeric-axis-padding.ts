@@ -53,6 +53,9 @@ export function getNumericAxisPadding(
 ): DashboardXAxis | undefined {
   if (
     !axis.isDashboard ||
+    !axis.isPadded ||
+    !axis.extent.every(Number.isFinite) ||
+    axis.extent[0] >= axis.extent[1] ||
     (chartLayout.axisEnabledSetting !== true &&
       chartLayout.axisEnabledSetting !== "compact")
   ) {

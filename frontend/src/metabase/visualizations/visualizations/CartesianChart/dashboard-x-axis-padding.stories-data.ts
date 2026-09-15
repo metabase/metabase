@@ -146,6 +146,36 @@ export const axisPaddingSeries = {
   ]),
   largeEndpointBubble: createBubbleSeries([100, 40, 0]),
   largeMiddleBubble: createBubbleSeries([0, 100, 0]),
+  numericBubbles: createSeries(
+    "scatter",
+    [
+      [20.96, 30, 0],
+      [5264.12, 85, 40],
+      [10500.5, 135, 20],
+      [20645.25, 200, 100],
+      [32100.8, 260, 35],
+      [41000.25, 285, 80],
+      [43186.48, 310, 55],
+    ],
+    [
+      createMockColumn({
+        name: "amount",
+        display_name: "Amount",
+        base_type: "type/Float",
+        source: "breakout",
+      }),
+      countColumn,
+      createMockColumn({ ...countColumn, name: "size", display_name: "Size" }),
+    ],
+    {
+      "graph.metrics": ["count"],
+      "graph.x_axis.scale": "linear",
+      "scatter.bubble": "size",
+      "graph.y_axis.auto_range": false,
+      "graph.y_axis.min": 0,
+      "graph.y_axis.max": 350,
+    },
+  ),
   waterfall: createSeries(
     "waterfall",
     [

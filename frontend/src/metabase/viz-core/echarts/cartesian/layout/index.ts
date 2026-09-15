@@ -944,7 +944,6 @@ function getBaseChartLayout(
     axisEnabledSetting,
     panelGap: 0,
     xAxisMarkWidthRatio: getXAxisMarkWidthRatio(input, settings),
-    xAxisEndMarkWidths: input.xAxisModel.endMarkWidths,
   };
   layout.dashboardXAxis = getDashboardXAxis(
     input.xAxisModel,
