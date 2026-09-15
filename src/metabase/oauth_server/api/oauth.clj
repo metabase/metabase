@@ -13,6 +13,7 @@
    [metabase.oauth-server.models.oauth-client-event :as client-event]
    [metabase.oauth-server.settings :as oauth-settings]
    [metabase.request.core :as request]
+   [metabase.server.middleware.security :as mw.security]
    [metabase.system.core :as system]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
@@ -353,15 +354,17 @@
                   csrf-token   (generate-csrf-token)
                   oauth-params (select-keys parsed oauth-param-keys)
                   params-sig   (sign-oauth-params csrf-token oauth-params)]
-              (-> {:status  200
-                   :headers {"Content-Type" "text/html; charset=utf-8"}
-                   :body    (consent-page/render-consent-page
-                             {:client-name  (some-> (:client-name client) (truncate 64))
-                              :nonce        (:nonce request)
-                              :csrf-token   csrf-token
-                              :params-sig   params-sig
-                              :scopes       (requested-scope-descriptions (:scope oauth-params))
-                              :oauth-params oauth-params})}
+              (-> {:status                                200
+                   :headers                               {"Content-Type" "text/html; charset=utf-8"}
+                   ;; the page's inline script is nonce'd, so it needs the nonce in `script-src`
+                   mw.security/script-nonce-response-key true
+                   :body                                  (consent-page/render-consent-page
+                                                           {:client-name  (some-> (:client-name client) (truncate 64))
+                                                            :nonce        (:nonce request)
+                                                            :csrf-token   csrf-token
+                                                            :params-sig   params-sig
+                                                            :scopes       (requested-scope-descriptions (:scope oauth-params))
+                                                            :oauth-params oauth-params})}
                   (response/set-cookie csrf-cookie-name csrf-token (csrf-cookie-opts 600))))
             (catch ExceptionInfo e
               (log/warnf "OAuth authorize request failed: %s" (ex-message e))

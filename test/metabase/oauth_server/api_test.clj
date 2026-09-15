@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase.config.core :as config]
    [metabase.mcp.core :as mcp]
    [metabase.oauth-server.api.oauth :as api.oauth]
    [metabase.oauth-server.core :as oauth-server]
@@ -1660,3 +1661,23 @@
   (testing "GHY-4555: the consent order ranks exactly the v2 scopes, so a new v2 scope is not silently listed last"
     (is (= (set (mcp/v2-scopes)) (set @#'api.oauth/consent-scope-order)))
     (is (= (count (mcp/v2-scopes)) (count @#'api.oauth/consent-scope-order)))))
+
+(deftest consent-page-opts-into-script-nonce-test
+  (testing (str "GHY-4568: the consent page's inline script needs a `script-src` nonce. Dev mode allows "
+                "'unsafe-inline' and adds no nonce, so a response that forgot to opt in would work locally and have "
+                "its script blocked in production. Outside dev mode, the CSP header's nonce must be the one on the "
+                "page's script tag.")
+    (with-redefs [config/is-dev? false]
+      (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+        (t2/with-transaction [_conn nil {:rollback-only true}]
+          (let [client-id    (:client_id (create-test-client!))
+                response     (get-consent-page! :crowberto client-id)
+                header-nonce (some->> (get-in response [:headers "Content-Security-Policy"])
+                                      (re-find #"script-src[^;]*'nonce-([^']+)'")
+                                      second)
+                body-nonce   (some->> (:body response)
+                                      (re-find #"<script nonce=\"([^\"]+)\">")
+                                      second)]
+            (is (seq header-nonce) "the CSP header's script-src carries a nonce")
+            (is (seq body-nonce) "the page has a nonce'd script tag")
+            (is (= header-nonce body-nonce))))))))

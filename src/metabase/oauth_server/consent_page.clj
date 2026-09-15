@@ -115,6 +115,71 @@
         (when full-access?
           (full-access-warning client-name))])]))
 
+(def ^:private consent-form-script
+  "Progressive enhancement for the consent form; the server enforces everything it does. Keeps Authorize disabled while
+   no scope checkbox is ticked (a locked, pre-ticked one counts), and debounces the decision: on submit it shows a
+   spinner on the clicked button and disables both, re-enabling them if the page is restored from the bfcache."
+  "(function () {
+  var form = document.getElementById('consent-form');
+  if (!form) { return; }
+  var buttons = form.querySelectorAll('button[name=\"approved\"]');
+  var allow = form.querySelector('button.allow');
+  var boxes = form.querySelectorAll('input[type=\"checkbox\"]');
+  var submitting = false;
+  var lastClicked = null;
+
+  function syncAllow() {
+    if (submitting || !allow || boxes.length === 0) { return; }
+    var anyTicked = false;
+    for (var i = 0; i < boxes.length; i++) {
+      if (boxes[i].checked) { anyTicked = true; }
+    }
+    allow.disabled = !anyTicked;
+  }
+
+  function removeDecisionInput() {
+    var input = form.querySelector('input[type=\"hidden\"][name=\"approved\"]');
+    if (input) { input.parentNode.removeChild(input); }
+  }
+
+  for (var i = 0; i < buttons.length; i++) {
+    buttons[i].addEventListener('click', function () { lastClicked = this; });
+  }
+
+  form.addEventListener('change', syncAllow);
+
+  form.addEventListener('submit', function (event) {
+    if (submitting) { event.preventDefault(); return; }
+    var submitter = event.submitter || lastClicked;
+    if (!submitter || submitter.name !== 'approved') { return; }
+    submitting = true;
+    // A disabled button is left out of the submitted form, so carry its decision in a hidden input.
+    removeDecisionInput();
+    var decision = document.createElement('input');
+    decision.type = 'hidden';
+    decision.name = 'approved';
+    decision.value = submitter.value;
+    form.appendChild(decision);
+    submitter.classList.add('loading');
+    submitter.setAttribute('aria-busy', 'true');
+    for (var i = 0; i < buttons.length; i++) { buttons[i].disabled = true; }
+  });
+
+  window.addEventListener('pageshow', function (event) {
+    if (!event.persisted) { return; }
+    submitting = false;
+    removeDecisionInput();
+    for (var i = 0; i < buttons.length; i++) {
+      buttons[i].disabled = false;
+      buttons[i].classList.remove('loading');
+      buttons[i].removeAttribute('aria-busy');
+    }
+    syncAllow();
+  });
+
+  syncAllow();
+})();")
+
 (defn render-consent-page
   "Render a server-side HTML consent page for the OAuth authorization flow.
 
@@ -173,9 +238,16 @@
                             font-family: inherit; cursor: pointer;
                             transition: background-color 0.15s ease, border-color 0.15s ease, filter 0.15s ease; }
                    .allow { background: " brand-color "; color: #fff; border: 1px solid " brand-color "; }
-                   .allow:hover { filter: brightness(0.9); }
+                   .allow:hover:not(:disabled) { filter: brightness(0.9); }
                    .deny  { background: #fff; color: #4c5773; border: 1px solid #ddd; }
-                   .deny:hover  { background: #f9fbfc; border-color: #ccc; }"))]]
+                   .deny:hover:not(:disabled)  { background: #f9fbfc; border-color: #ccc; }
+                   button:disabled { cursor: default; opacity: 0.55; }
+                   button.loading:disabled { opacity: 1; }
+                   button.loading::before { content: ''; display: inline-block; width: 0.875em; height: 0.875em;
+                                            margin-right: 0.5em; vertical-align: -0.125em; border-radius: 50%;
+                                            border: 2px solid; border-right-color: transparent;
+                                            animation: consent-spin 0.7s linear infinite; }
+                   @keyframes consent-spin { to { transform: rotate(360deg); } }"))]]
        [:body
         [:div.consent
          [:div.logo
@@ -187,7 +259,7 @@
           [:strong (appearance/application-name)] " on your behalf:"]
          ;; Absolute action: a root-relative path would drop the subpath when Metabase is hosted
          ;; under one (site-url like https://example.com/metabase).
-         [:form {:method "POST" :action (absolute-url "/oauth/authorize/decision")}
+         [:form {:id "consent-form" :method "POST" :action (absolute-url "/oauth/authorize/decision")}
           (render-scope-list scopes client-name)
           (when-let [redirect-host (some-> (:redirect_uri oauth-params) not-empty (java.net.URI.) (.getHost))]
             [:p.destination "Redirects to " [:strong redirect-host]])
@@ -199,4 +271,5 @@
             [:input {:type "hidden" :name (name k) :value v}])
           [:div.actions
            [:button.deny {:type "submit" :name "approved" :value "false"} "Cancel"]
-           [:button.allow {:type "submit" :name "approved" :value "true"} "Authorize"]]]]]]))))
+           [:button.allow {:type "submit" :name "approved" :value "true"} "Authorize"]]]]
+        [:script {:nonce nonce} (h/raw consent-form-script)]]]))))

@@ -206,3 +206,18 @@
       (is (re-find #"(?s)value=\"mb:full\"(?:(?!</li>).)*class=\"warning\"" html))
       (is (not (re-find #"(?s)class=\"warning\".*type=\"checkbox\" value=\"mb:full\"" html))
           "the warning does not precede the checkbox it is about"))))
+
+(deftest consent-page-script-test
+  (let [html (render-with-scopes! checkbox-scopes)]
+    (testing "GHY-4568: the page's inline script carries the CSP nonce, without which a production CSP blocks it"
+      (is (re-find #"<script nonce=\"test-nonce\">" html)))
+    (testing "GHY-4568: the script debounces the decision and restores the buttons when the page comes back from the bfcache"
+      (let [script (second (re-find #"(?s)<script nonce=\"test-nonce\">(.*?)</script>" html))]
+        (is (re-find #"addEventListener\('submit'" script))
+        (is (re-find #"addEventListener\('pageshow'" script))
+        (testing (str "a disabled button is left out of the submitted form, so the clicked button's `approved` value "
+                      "is copied into a hidden input before the buttons are disabled")
+          (is (re-find #"(?s)name = 'approved'.*disabled = true" script)))))
+    (testing "without the script the buttons still submit their own `approved` value, and Authorize is not disabled"
+      (is (re-find #"<button class=\"deny\" name=\"approved\" type=\"submit\" value=\"false\">" html))
+      (is (re-find #"<button class=\"allow\" name=\"approved\" type=\"submit\" value=\"true\">" html)))))
