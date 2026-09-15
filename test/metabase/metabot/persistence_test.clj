@@ -1042,7 +1042,7 @@
             valid JSON. Without this, an unusual ex-data value would fail the
             whole UPDATE and the row would stay with error=nil — looking like
             a clean success."
-    (let [real-encode json/encode
+    (let [real-encode (mt/original-fn #'json/encode)
           ;; Simulate an encoder that chokes on a specific marker value, but
           ;; otherwise behaves normally — so the fallback's *second* encode call
           ;; (with :data swapped for pr-str) still succeeds.
@@ -1053,7 +1053,7 @@
                                   (= ::poison (some-> v :data :marker)))
                            (throw (ex-info "simulated encoder failure" {}))
                            (if opts (real-encode v opts) (real-encode v)))))]
-      (with-redefs [json/encode fail-encode]
+      (mt/with-dynamic-fn-redefs [json/encode fail-encode]
         (let [encoded (#'metabot-persistence/safe-encode-error
                        {:message "wrapper"
                         :type    "java.lang.RuntimeException"

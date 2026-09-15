@@ -827,12 +827,12 @@
     ;; The other half of the guard above: moving the privilege calls into the select list means an unreadable
     ;; relation now reaches Clojure, and this is the one place that drops it.
     (mt/with-temp [:model/Database db {:engine :redshift, :details {}}]
-      (with-redefs [sql-jdbc.execute/reducible-query
-                    (fn [_database _sql]
-                      (for [[nm selectable] [["readable" true]
-                                             ["unreadable" false]
-                                             ["missing" nil]
-                                             ["stringly" "false"]]]
-                        {:name nm, :schema "s", :type "table", :description nil, :selectable selectable}))]
+      (mt/with-dynamic-fn-redefs [sql-jdbc.execute/reducible-query
+                                  (fn [_database _sql]
+                                    (for [[nm selectable] [["readable" true]
+                                                           ["unreadable" false]
+                                                           ["missing" nil]
+                                                           ["stringly" "false"]]]
+                                      {:name nm, :schema "s", :type "table", :description nil, :selectable selectable}))]
         (is (= [{:name "readable", :schema "s", :description nil}]
                (into [] (#'redshift/describe-database-tables db))))))))

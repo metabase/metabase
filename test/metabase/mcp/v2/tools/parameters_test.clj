@@ -785,8 +785,8 @@
             the fetch actually failed (the dashboard path re-throws; the question path must not diverge)"
     (do-with-people-name-card!
      (fn [card-id]
-       (with-redefs [search-values-query/search-values-query
-                     (fn [& _] (throw (ex-info "simulated warehouse timeout" {:simulated true})))]
+       (mt/with-dynamic-fn-redefs [search-values-query/search-values-query
+                                   (fn [& _] (throw (ex-info "simulated warehouse timeout" {:simulated true})))]
          (let [error (params-error {:target "question" :id card-id :parameter_id "_PN_"})]
            (is (re-find #"[Ee]rror" error) "the failure is reported as an error")
            (is (not (re-find #"No values available" error))

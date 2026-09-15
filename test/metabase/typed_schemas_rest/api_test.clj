@@ -30,8 +30,8 @@
     (is (not (str/includes? (:body response) "verified: false")))))
 
 (deftest query-params-are-decoded-at-endpoint-test
-  (with-redefs [typed-schemas/build-semantic-schema identity
-                typed-schemas/render-typescript pr-str]
+  (mt/with-dynamic-fn-redefs [typed-schemas/build-semantic-schema identity
+                              typed-schemas/render-typescript pr-str]
     (let [response (-> (mt/user-http-request-full-response
                         :crowberto
                         :get
