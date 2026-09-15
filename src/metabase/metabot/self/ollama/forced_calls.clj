@@ -219,17 +219,30 @@
             ([result chunk]
              (let [{:keys [delta finish_reason]} (get-in chunk [:choices 0])
                    content                       (not-empty (:content delta))]
+               ;; Taken before the chunk is judged, not as an alternative to judging it: a build
+               ;; older than ollama/ollama#17485 puts the last content fragment and `finish_reason`
+               ;; in one chunk, and testing the two as `cond` branches dropped the finish chunk on
+               ;; those builds — silently on `stop`, and expensively on `length`, where the
+               ;; truncation reached the caller as a parse error over a half-written answer instead.
+               ;; The connection check cannot catch this: it probes with a non-streaming request.
+               (when content (.append buffer ^String content))
                (cond
-                 content (do (.append buffer ^String content) result)
-
                  ;; the answer is complete: flush the call, then the finish chunk that closes it.
                  ;; `length` stands as it is — truncation has to stay visible, and dressing it up as a
                  ;; completed call would hide it behind a JSON parse error
                  finish_reason (-> result
                                    (flush!)
                                    (rf (cond-> chunk
+                                         ;; the fragment left with the buffer it was appended to;
+                                         ;; leaving it here too would put the grammar's raw answer on
+                                         ;; the content channel, which is what this transducer exists
+                                         ;; to keep it off
+                                         content (update-in [:choices 0 :delta] dissoc :content)
+
                                          (= "stop" finish_reason)
                                          (assoc-in [:choices 0 :finish_reason] "tool_calls"))))
+
+                 content result
 
                  :else (rf result chunk))))))))))
 

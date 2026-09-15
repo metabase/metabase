@@ -139,3 +139,68 @@
                                                      :finish_reason "tool_calls"})))
     (is (= :not-honored (forced/probe-verdict true {:message {:content "{\"title\": \"x\"}"}
                                                     :finish_reason "stop"})))))
+
+;;; ------------------------------------------- Reading the answer back --------------------------------------------
+
+(defn- content-chunk
+  ([content] (content-chunk content nil))
+  ([content finish-reason]
+   {:choices [(cond-> {:index 0 :delta {:content content}}
+                finish-reason (assoc :finish_reason finish-reason))]}))
+
+(defn- finish-chunk [finish-reason]
+  {:choices [{:index 0 :delta {} :finish_reason finish-reason}]})
+
+(defn- read-back
+  "`chunks` put through the transducer `plan` calls for, as a vector."
+  [plan chunks]
+  (into [] (forced/read-back-xf plan) chunks))
+
+(defn- tool-calls [chunks]
+  (mapcat #(get-in % [:choices 0 :delta :tool_calls]) chunks))
+
+(defn- finish-reasons [chunks]
+  (keep #(get-in % [:choices 0 :finish_reason]) chunks))
+
+(def ^:private structured-plan (forced/plan {:schema schema} false))
+
+(deftest ^:parallel read-back-moves-the-answer-onto-the-tool-channel-test
+  (testing "content is held back and re-emitted as one tool call, so the raw answer is never shown"
+    (let [out (read-back structured-plan
+                         [(content-chunk "{\"title\": ")
+                          (content-chunk "\"Late orders\"}")
+                          (finish-chunk "stop")])]
+      (is (= [{:name "structured_output" :arguments "{\"title\": \"Late orders\"}"}]
+             (map :function (tool-calls out))))
+      (is (empty? (keep #(get-in % [:choices 0 :delta :content]) out))
+          "no content reaches the channel this transducer exists to keep it off")
+      (testing "and `stop` is restated as the tool call it actually was"
+        (is (= ["tool_calls"] (finish-reasons out)))))))
+
+(deftest ^:parallel read-back-reads-a-chunk-carrying-both-content-and-finish-reason-test
+  (testing (str "an Ollama build older than ollama/ollama#17485 puts the last content fragment and "
+                "`finish_reason` in one chunk. Taking the content used to end the chunk's handling "
+                "there, dropping the finish chunk entirely.")
+    (testing "the trailing fragment still lands in the call, and the finish chunk still closes it"
+      (let [out (read-back structured-plan
+                           [(content-chunk "{\"title\": ")
+                            (content-chunk "\"Late orders\"}" "stop")])]
+        (is (= [{:name "structured_output" :arguments "{\"title\": \"Late orders\"}"}]
+               (map :function (tool-calls out)))
+            "the fragment that shared the finish chunk is not lost")
+        (is (= ["tool_calls"] (finish-reasons out)))
+        (is (empty? (keep #(get-in % [:choices 0 :delta :content]) out))
+            "and the fragment does not also ride out on the content channel")))
+    (testing "a truncated answer stays diagnosable as truncation rather than as a broken call"
+      (let [out (read-back structured-plan
+                           [(content-chunk "{\"title\": \"Late or" "length")])]
+        (is (= ["length"] (finish-reasons out))
+            "the `length` that used to be swallowed, leaving a parse error over a half-written answer")))))
+
+(deftest ^:parallel read-back-leaves-an-unconstrained-stream-alone-test
+  (testing "without a grammar there is no transducer, so nothing is buffered or rewritten"
+    (is (nil? (forced/read-back-xf (forced/plan {:schema schema} true))))
+    (is (nil? (forced/read-back-xf nil))))
+  (testing "chunks carrying neither content nor a finish reason pass straight through"
+    (let [reasoning {:choices [{:index 0 :delta {:reasoning "thinking"}}]}]
+      (is (= [reasoning] (read-back structured-plan [reasoning]))))))
