@@ -1199,8 +1199,8 @@
 
 (deftest remove-embedding-params
   (testing "parameters that are not in the `embedding-params` map at all should get removed by `enabled-params`"
-    (is (= {:parameters []}
-           (#'api.embed.common/enabled-params {:parameters [{:slug "foo"}]} {})))))
+    (is (= []
+           (#'api.embed.common/enabled-params [{:id "_FOO_", :type :category, :slug "foo"}] {})))))
 
 (deftest make-sure-that-multiline-series-word-as-expected---4768-
   (testing "make sure that multiline series word as expected (#4768)"

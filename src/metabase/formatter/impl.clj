@@ -303,7 +303,7 @@
      ;; for numbers, return a format function that has already computed the differences.
      ;; todo: do the same for temporal strings
      (and apply-formatting?
-          #_{:clj-kondo/ignore [:deprecated-var]} (types/temporal-field? col)) ; legacy usage -- do not use going forward
+          #_{:clj-kondo/ignore [:deprecated-var]} (types/temporal-field? (select-keys col [:base_type :effective_type]))) ; legacy usage -- do not use going forward
      (datetime/make-temporal-str-formatter timezone-id col visualization-settings)
 
      (and apply-formatting? (isa? (:semantic_type col) :type/Coordinate))

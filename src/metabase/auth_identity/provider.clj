@@ -65,7 +65,6 @@
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -307,11 +306,7 @@
    [:body {:optional true} [:maybe [:or ms/RingRequestBody (ms/InstanceOfClass java.io.InputStream)]]]
    [:browser-id {:optional true} [:maybe :string]]
    [:character-encoding {:optional true} [:maybe :string]]
-   [:claims {:optional true} [:maybe [:schema {::mr/deliberately-open true
-                                               :description "A provider's decoded JWT/OIDC claims: an arbitrary,
-                                               provider-owned bag of keys, string- or keyword-keyed depending on the
-                                               decoder."}
-                                      :map]]]
+   [:claims {:optional true} [:maybe ms/JWTClaims]]
    [:code {:optional true} [:maybe :string]]
    [:content-length {:optional true} [:maybe :int]]
    [:content-type {:optional true} [:maybe :string]]
@@ -341,10 +336,7 @@
    [:request-id {:optional true} [:maybe (ms/InstanceOfClass java.util.UUID)]]
    [:request-method {:optional true} [:maybe :keyword]]
    [:route-metadata {:optional true} [:maybe :metabase.api.macros/route-metadata]]
-   [:route-params {:optional true} [:maybe [:schema {::mr/deliberately-open true
-                                                     :description "Ring/reitit route params: string- or
-                                                      keyword-keyed depending on the router."}
-                                            :map]]]
+   [:route-params {:optional true} [:maybe ms/RingRequestParams]]
    [:saml-data {:optional true} [:maybe ms/SAMLAttributes]]
    [:scheme {:optional true} [:maybe :keyword]]
    [:server-name {:optional true} [:maybe :string]]

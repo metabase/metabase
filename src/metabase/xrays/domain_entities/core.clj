@@ -1,6 +1,7 @@
 (ns metabase.xrays.domain-entities.core
   (:require
    [clojure.string :as str]
+   [malli.core :as mc]
    [medley.core :as m]
    ;; legacy usage, do not use legacy MBQL stuff in new code.
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.legacy-mbql.util :as mbql.u]
@@ -14,17 +15,17 @@
    [metabase.xrays.domain-entities.specs :as domain-entities.specs :refer [*domain-entity-specs* MBQL]]
    [toucan2.core :as t2]))
 
-(def ^:private FieldOrColumn
-  "A field-like value: a real Field row, Lib column metadata, or one of the hybrid QP/result-metadata shapes in
-  between (Card :result_metadata, table :fields, a transform step's expected-cols, ...). Too many shapes flow
-  through here to enumerate as a closed schema."
-  [:schema {:closed false, ::mr/deliberately-open true} :map])
+(mr/def ::field-or-column
+  "A Field row, or the column metadata of a Card's `:result_metadata` or a query's expected columns."
+  [:multi {:dispatch t2/model}
+   [:model/Field :metabase.warehouse-schema.schema/field]
+   [::mc/default :metabase.lib.schema.metadata/lib-or-legacy-column]])
 
 (mu/defn field-type :- [:or
                         ::lib.schema.common/base-type
                         ::lib.schema.common/semantic-or-relation-type]
   "Return the most specific type of a given field."
-  [field :- FieldOrColumn]
+  [field :- ::field-or-column]
   ((some-fn :semantic_type :base_type) field))
 
 (def SourceName
@@ -84,7 +85,7 @@
 
 (mu/defn mbql-reference :- MBQL
   "Return MBQL clause for a given field-like object."
-  [{:keys [id name base_type]} :- FieldOrColumn]
+  [{:keys [id name base_type]} :- ::field-or-column]
   (if id
     [:field id nil]
     [:field name {:base-type base_type}]))

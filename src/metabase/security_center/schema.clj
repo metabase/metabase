@@ -37,8 +37,8 @@
 
 (mr/def ::driver
   "The app DB an advisory's `:matching_query` is written for. `:default` is the fallback used when there is no query
-  for the app DB in use. Any other keyword names another driver's dialect and falls back to `:default` when absent."
-  :keyword)
+  for the app DB in use."
+  [:enum :default :h2 :mysql :postgres])
 
 (mr/def ::honeysql-query
   "A HoneySQL 2 query map, as EDN keyed by its top-level clause keywords."
@@ -58,9 +58,11 @@
 (mr/def ::matching-query
   "HoneySQL query keyed by dialect. nil means affects all instances.
    Stored as EDN to preserve keywords that HoneySQL requires for identifiers/operators."
-  [:maybe [:map-of {::mr/deliberately-open true
-                    :description "driver keyword -> HoneySQL query; any driver keyword may appear, unrecognized ones just fall back to :default"}
-           ::driver ::honeysql-query]])
+  [:maybe [:map {:closed true}
+           [:default  {:optional true} ::honeysql-query]
+           [:h2       {:optional true} ::honeysql-query]
+           [:mysql    {:optional true} ::honeysql-query]
+           [:postgres {:optional true} ::honeysql-query]]])
 
 (mr/def ::security-advisory.matching-query
   "The `:matching_query` column of a SecurityAdvisory, decoded."

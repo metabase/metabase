@@ -67,10 +67,7 @@
 ;;
 
 (mr/def ::query
-  "A query at any stage of QP processing: raw legacy MBQL, MBQL 5, or internal audit shape, not-yet-normalized, or
-  already preprocessed/compiled with QP-, driver-, and sandboxing-internal keys layered on. This namespace only reads
-  a handful of well-known keys and otherwise walks the map structurally, so it deliberately does not fix a schema for
-  the rest."
+  "A query at any stage of QP processing, carrying the internal keys that QP middleware, drivers, and sandboxing own."
   [:map {:closed false, ::mr/deliberately-open true, :description "a query at any stage of QP processing"}])
 
 (defn- merge-source-ids

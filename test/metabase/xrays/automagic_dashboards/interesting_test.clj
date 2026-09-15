@@ -121,17 +121,23 @@
   (testing "Tests for when only a fieldspec is provided in the dimension definition.
             The expectation is a `source` will be provided with populated fields."
     (let [quantity-field           {:name          "QUANTITY BUT NAME DOES NOT MATTER"
+                                    :display_name  "Quantity"
+                                    :base_type     :type/*
                                     :semantic_type :type/Quantity}
-          generic-number-field     {:name          "QUANTITY IS MY NAME, BUT I AM A GENERIC NUMBER"
-                                    :semantic_type :type/GenericNumber}
+          generic-number-field     {:name          "QUANTITY IS MY NAME, BUT I AM A DISCOUNT"
+                                    :display_name  "Discount"
+                                    :base_type     :type/*
+                                    :semantic_type :type/Discount}
           another-field            {:name          "X"
-                                    :semantic_type :type/GenericNumber}
+                                    :display_name  "X"
+                                    :base_type     :type/*
+                                    :semantic_type :type/Discount}
           context                  {:source
                                     {:fields [quantity-field
                                               generic-number-field]}}
           quantity-dimension       {:field_type [:type/Quantity], :score 100}
           gt-quantity-dimension    {:field_type [:entity/GenericTable :type/Quantity], :score 100}
-          generic-number-dimension {:field_type [:type/GenericNumber], :score 100}]
+          generic-number-dimension {:field_type [:type/Discount], :score 100}]
       (testing "A match occurs when the dimension field_type tablespec and fieldspec
                 match the table entity_type and field semantic_type."
         (is (=? [quantity-field]
@@ -534,9 +540,9 @@
                            :metric-name "AvgDiscount"}
                           {:metric ["sum" ["dimension" "GenericNumber"]], :score 100, :metric-name "Sum"}
                           {:metric ["avg" ["dimension" "GenericNumber"]], :score 100, :metric-name "Avg"}]
-          total-field    (t2/instance :model/Field {:id 1, :name "TOTAL", :base_type :type/Number})
-          discount-field (t2/instance :model/Field {:id 2, :name "DISCOUNT", :base_type :type/Number})
-          income-field   (t2/instance :model/Field {:id 3, :name "INCOME", :base_type :type/Number})]
+          total-field    (t2/instance :model/Field {:id 1, :name "TOTAL", :display_name "Total", :base_type :type/Number})
+          discount-field (t2/instance :model/Field {:id 2, :name "DISCOUNT", :display_name "Discount", :base_type :type/Number})
+          income-field   (t2/instance :model/Field {:id 3, :name "INCOME", :display_name "Income", :base_type :type/Number})]
       (testing "When no dimensions are provided, we produce grounded dimensionless metrics"
         (is (= [{:metric-name           "Count"
                  :metric-title          "Count"

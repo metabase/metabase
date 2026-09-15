@@ -158,6 +158,11 @@
   (when (seq token)
     (format "%s/api/%s/v2/status" base-url token)))
 
+(def ^:private Meters
+  "The `:meters` of a token status response, keyed by the meter names the license server defines, each meter's fields
+  also being the license server's."
+  [:map {:closed false, ::mr/deliberately-open true, :description "license-server meters"}])
+
 (def TokenStatus
   "Schema for a response from the token status API."
   [:map {:closed true}
@@ -173,8 +178,7 @@
    [:company       {:optional true} [:string {:min 1}]]
    [:store-users   {:optional true} [:maybe [:sequential [:map {:closed true}
                                                           [:email :string]]]]]
-   [:meters        {:optional true} [:map {:closed false, ::mr/deliberately-open true
-                                           :description "meters, keyed by whichever meter names the license server defines"}]]
+   [:meters        {:optional true} Meters]
    [:quotas        {:optional true} [:sequential [:map {:closed true}
                                                   [:hosting-feature {:optional true} :string]
                                                   [:soft-limit      {:optional true} number?]

@@ -93,9 +93,8 @@
                                  [:pivot_results     {:optional true} [:maybe ms/BooleanValue]]]]]]]])]
    ;; for testing only
    [:notification/testing
-    (into [:map {:closed false, ::mr/deliberately-open true
-                 :description "a :notification/testing notification's extra keys are whatever the test needs"}]
-          notification-common-entries)]])
+    (mut/merge NotificationBase [:map {:closed true}
+                                 [:payload {:optional true} [:maybe ::models.notification/SystemEventPayload]]])]])
 
 (mr/def ::NotificationPayload
   "Schema for the notification payload."

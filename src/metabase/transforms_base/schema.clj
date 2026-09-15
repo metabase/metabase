@@ -35,6 +35,14 @@
                                         [:value pos-int?]
                                         [:unit [:or :string :keyword]]]]]])
 
+(mr/def ::target-incremental-strategy
+  "An incremental strategy on a transform's target: append the new rows, or merge them on a unique key."
+  [:map {:closed true}
+   [:type       [:or :string :keyword]]
+   [:unique-key {:optional true} [:sequential [:map {:closed true}
+                                               [:name     {:optional true} :string]
+                                               [:field-id {:optional true} [:maybe ::lib.schema.id/field]]]]]])
+
 (mr/def ::transform-target
   "Target specification for a transform. Must include at least :type and :name."
   [:map {:closed true}
@@ -43,9 +51,7 @@
    [:schema {:optional true} [:maybe :string]]
    [:name :string]
    [:indexes {:optional true} [:sequential ::indexes.schema/index-structured]]
-   [:target-incremental-strategy {:optional true}
-    [:map {:closed false, ::mr/deliberately-open true,
-           :description "a target's incremental strategy, owned by metabase.transforms.schema"}]]
+   [:target-incremental-strategy {:optional true} ::target-incremental-strategy]
    [:index-request-ids {:optional true} [:sequential pos-int?]]])
 
 (mr/def ::transform

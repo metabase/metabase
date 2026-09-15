@@ -77,7 +77,7 @@
             (t2/delete! :model/User :email new-user-email)))))))
 
 (def ^:private default-invitor
-  {:email "crowberto@metabase.com", :is_active true, :first_name "Crowberto"})
+  {:email "crowberto@metabase.com", :first_name "Crowberto"})
 
 ;; Admins are notified of new joins via `all-admin-recipients`, which excludes admins who haven't yet accepted their
 ;; own invitation (i.e. `last_login` is still nil). These tests therefore construct fresh admin users with explicit
@@ -128,7 +128,7 @@
           (mt/with-temp [:model/User inactive-admin {:is_superuser true, :is_active false}]
             (is (= {"<New User>"   ["You're invited to join Metabase's Metabase"]
                     (:email admin) ["<New User> accepted their Metabase invite"]}
-                   (-> (invite-user-accept-and-check-inboxes! :invitor (assoc inactive-admin :is_active false))
+                   (-> (invite-user-accept-and-check-inboxes! :invitor (select-keys inactive-admin [:email :first_name]))
                        (select-keys ["<New User>" (:email admin) (:email inactive-admin)]))))))))))
 
 (deftest pending-admin-no-email-test

@@ -295,7 +295,9 @@
    [:cookies            {:optional true} [:map-of :string ::request.schema/cookie-attrs]]
    [:redirect-strategy  {:optional true} :keyword]
    [:decompress-body    {:optional true} :boolean]
-   [:form-params        {:optional true} [:map {:closed false, ::mr/deliberately-open true}]]])
+   [:form-params        {:optional true} [:map {:closed true}
+                                          [:SAMLResponse :string]
+                                          [:RelayState   {:optional true} [:maybe :string]]]]])
 
 (def ^:private ClientParamsMap
   [:map {:closed true}

@@ -182,10 +182,7 @@
   (walk/postwalk #(cond-> % (map? %) (update-keys (fn [k] (cond-> k (keyword? k) u/qualified-name)))) x))
 
 (def ^:private AuditedInstance
-  "A Toucan instance of any model, or a synthetic map standing in for one (e.g. a virtual root collection, or
-  `{:id id}` after deletion): `:object`/`:previous-object` are audited generically via `model-details`, which
-  dispatches on the instance's own model and falls back to `:default` (and so to whatever keys the map happens to
-  carry) for values it doesn't recognize."
+  "An audited object of any model, whose keys that model owns and `model-details` (dispatching on the model) picks from."
   [:map {:closed false, ::mr/deliberately-open true, :description "an audited entity"}])
 
 (mr/def ::event-params [:map {:closed true

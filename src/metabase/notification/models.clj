@@ -790,10 +790,7 @@
            [:map {:closed true}
             [:event_topic   [:fn #(= "event" (-> % keyword namespace))]]
             [:disable_links {:optional true} [:maybe :boolean]]
-            [:event_info    {:optional true}
-             [:schema {::mr/deliberately-open true
-                       :description           "the event_info of a topic without a registered notification info schema, e.g. one a test registers at runtime via events.notification/supported-topics"}
-              :any]]]]])))
+            [:event_info    {:optional true} [:maybe [:map {:closed true}]]]]]])))
 
 (defn hydrated-notification-schema
   "Schema for a notification hydrated with its creator, subscriptions and handlers, where each handler matches
@@ -838,14 +835,13 @@
      [:recipients {:optional true} [:sequential ::NotificationRecipient]]]]))
 
 (def ^:private NotificationWithInlinePayload
-  "A raw notification row that already carries an inline `:payload`, the shape `metabase.notification.events.notification`
-  hands `send-notification!` for a `:notification/system-event` notification before any `:payload_id`-based hydration."
+  "A Notification row as `send-notification!` is handed it before hydration: with the system event `:payload`
+  `metabase.notification.events.notification` assocs on, or the `:triggering_subscription`
+  `metabase.notification.task.send` assocs on."
   (mut/merge ::notification.schema/notification
              [:map {:closed true}
-              [:payload {:optional true}
-               [:schema {::mr/deliberately-open true
-                         :description "an inline payload assembled before persistence, e.g. a system event's :event_info/:event_topic"}
-                :any]]]))
+              [:payload                 {:optional true} [:maybe ::SystemEventPayload]]
+              [:triggering_subscription {:optional true} [:maybe ::notification.schema/notification-subscription]]]))
 
 (mu/defn hydrate-notification :- [:or ::FullyHydratedNotification [:sequential ::FullyHydratedNotification]]
   "Fully hydrate notifictitons."

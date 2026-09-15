@@ -121,6 +121,12 @@
                                                   [:message {:optional true} [:maybe :string]]
                                                   [:type    {:optional true} [:maybe :string]]]]]]])
 
+(def ^:private ToolCallArguments
+  "A tool call's arguments as the LLM wrote them against the tool's own schema, keyed by that tool's argument names:
+  string keys off the wire, keyword keys when built in Clojure."
+  [:map-of {::mr/deliberately-open true, :description "tool call arguments"}
+   [:or :string :keyword] ::request.schema/json-value])
+
 (def ^:private AISDKPart
   "One element of the `:input` sequence passed to a provider adapter: an AISDK part keyed by
   `:type` (`:text`, `:reasoning`, `:tool-input`, `:tool-output`), or a plain role message keyed
@@ -132,9 +138,7 @@
    [:text              {:optional true} [:maybe :string]]
    [:content           {:optional true} [:maybe :string]]
    [:function          {:optional true} [:maybe :string]]
-   [:arguments         {:optional true} [:maybe [:map-of {::mr/deliberately-open true
-                                                          :description "a tool call's arguments, string- or keyword-keyed depending on whether they came over the wire or were built in Clojure"}
-                                                 [:or :string :keyword] ::request.schema/json-value]]]
+   [:arguments         {:optional true} [:maybe ToolCallArguments]]
    [:result            {:optional true} [:maybe ToolResult]]
    [:error             {:optional true} [:maybe [:map {:closed true}
                                                  [:message {:optional true} [:maybe :string]]
@@ -184,14 +188,18 @@
    [:minimum     {:optional true} number?]
    [:maximum     {:optional true} number?]])
 
+(def ^:private JSONSchemaProperties
+  "The `:properties` of a JSON Schema node, keyed by the field names the caller's structured-output schema declares:
+  string keys off the wire, keyword keys when built in Clojure."
+  [:map-of {::mr/deliberately-open true, :description "JSON Schema properties"}
+   [:or :string :keyword] JSONSchemaLeaf])
+
 (def ^:private JSONSchemaNode
   "A JSON Schema node, sent verbatim to an LLM provider as the structured-output schema.
   `:properties` keys are the field names the schema itself declares, not ours to enumerate."
   [:map {:closed true}
    [:type                 {:optional true} [:maybe :string]]
-   [:properties           {:optional true} [:map-of {::mr/deliberately-open true
-                                                     :description "JSON Schema properties, string- or keyword-keyed depending on whether they came over the wire or were built in Clojure"}
-                                            [:or :string :keyword] JSONSchemaLeaf]]
+   [:properties           {:optional true} JSONSchemaProperties]
    [:required             {:optional true} [:vector :string]]
    [:additionalProperties {:optional true} :boolean]])
 

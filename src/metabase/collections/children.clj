@@ -594,6 +594,12 @@
       (update :dashboard #(when % (select-keys % [:id :name :moderation_status])))
       (assoc :fully_parameterized (queries/fully-parameterized? (select-keys row [:dataset_query])))))
 
+(defn- assoc-based-on-upload
+  "Assoc `:based_on_upload` onto each of the model `rows` that is based on an upload."
+  [rows]
+  (let [id->table-id (upload/models-based-on-upload (map #(select-keys % upload/based-on-upload-input-keys) rows))]
+    (map #(m/assoc-some % :based_on_upload (id->table-id (:id %))) rows)))
+
 (defn- post-process-card-like
   [{:keys [hydrate-based-on-upload]} rows]
   (let [hydration [:can_write
@@ -606,7 +612,7 @@
     (as-> (map post-process-card-row rows) $
       (apply t2/hydrate $ hydration)
       (cond-> $
-        hydrate-based-on-upload upload/model-hydrate-based-on-upload)
+        hydrate-based-on-upload assoc-based-on-upload)
       (map post-process-card-row-after-hydrate $))))
 
 (defmethod post-process-collection-children :card

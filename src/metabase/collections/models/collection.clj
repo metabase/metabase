@@ -327,7 +327,7 @@
 (mu/defmethod mi/can-read? :model/Collection
   ([instance]
    (or (is-trash? instance)
-       (perms/can-read-audit-helper :model/Collection instance)))
+       (perms/can-read-audit-helper :model/Collection (t2/instance :model/Collection (select-keys instance [:id :namespace])))))
   ([_model pk :- pos-int?]
    (or (is-trash? pk)
        (mi/can-read? (collections.db/collection pk)))))
@@ -1579,7 +1579,7 @@
    (for [collection-or-id (cons
                            collection
                            (collections.db/unarchived-collection-ids-with-location-like (str (children-location collection) "%")))]
-     (perms/collection-readwrite-path collection-or-id))))
+     (perms/collection-readwrite-path (u/the-id collection-or-id)))))
 
 (mu/defn perms-for-archiving :- [:set perms/PathSchema]
   "Return the set of Permissions needed to archive or unarchive a `collection`. Since archiving a Collection is
@@ -1628,7 +1628,9 @@
                    (u/the-id collection))
     (throw (Exception. (tru "You cannot move a Collection into itself or into one of its descendants."))))
   (set
-   (cons (perms/collection-readwrite-path new-parent)
+   (cons (perms/collection-readwrite-path (if (collection.root/is-root-collection? new-parent)
+                                            (select-keys new-parent [::collection.root/is-root? :authority_level :namespace])
+                                            (u/the-id new-parent)))
          (perms-for-collection-and-descendants collection))))
 
 (mu/defn collection->descendant-ids :- [:maybe [:set ms/PositiveInt]]
@@ -1648,7 +1650,7 @@
                         (str (children-location collection) "%")
                         archive-operation-id)]
     (set
-     (cons (perms/collection-readwrite-path collection)
+     (cons (perms/collection-readwrite-path (u/the-id collection))
            (map perms/collection-readwrite-path descendant-ids)))))
 
 (def ^:dynamic *allow-modifying-tenant-root-collections?*
@@ -1935,7 +1937,7 @@
   bad experience -- we do not want a User to move a Collection that they have read/write perms for (by definition) to
   somewhere else and lose all access for it."
   [collection :- (ms/InstanceOf :model/Collection) new-location :- LocationPath]
-  (copy-collection-permissions! (parent {:location new-location}) (cons collection (descendants collection))))
+  (copy-collection-permissions! (parent {:location new-location}) (map u/the-id (cons collection (descendants collection)))))
 
 (mu/defn- revoke-perms-when-moving-into-personal-collection!
   "When moving a `collection` that is *not* a descendant of a Personal Collection into a Personal Collection or one of
@@ -1947,7 +1949,7 @@
   (collections.db/delete-permissions-with-objects! (for [collection (cons collection (descendants collection))
                                                          path-fn    [perms/collection-read-path
                                                                      perms/collection-readwrite-path]]
-                                                     (path-fn collection))))
+                                                     (path-fn (u/the-id collection)))))
 
 (defn- update-perms-when-moving-across-personal-boundry!
   "If a Collection is moving 'across the boundry' and will become a descendant of a Personal Collection, or will cease
@@ -2075,8 +2077,8 @@
     (when (:personal_owner_id collection)
       (throw (Exception. (tru "You cannot delete a Personal Collection!")))))
   ;; Delete permissions records for this Collection
-  (collections.db/delete-permissions-with-objects! [(perms/collection-readwrite-path collection)
-                                                    (perms/collection-read-path collection)]))
+  (collections.db/delete-permissions-with-objects! [(perms/collection-readwrite-path (u/the-id collection))
+                                                    (perms/collection-read-path (u/the-id collection))]))
 
 ;;; -------------------------------------------------- IModel Impl ---------------------------------------------------
 
@@ -2092,8 +2094,8 @@
       ;; This is not entirely accurate as you need to be a superuser to modify a collection itself (e.g., changing its
       ;; name) but if you have write perms you can add/remove cards
       #{(case read-or-write
-          :read  (perms/collection-read-path collection-or-id)
-          :write (perms/collection-readwrite-path collection-or-id))})))
+          :read  (perms/collection-read-path (u/the-id collection-or-id))
+          :write (perms/collection-readwrite-path (u/the-id collection-or-id)))})))
 
 (def instance-analytics-collection-type
   "The value of the `:type` field for the `instance-analytics` Collection created in [[metabase-enterprise.audit-app.audit]]"
@@ -2401,7 +2403,7 @@
                   archived-directly? (:archived_directly coll)
                   parent-archived? (get parent-id->archived? parent-id false)
                   descendant-ids (get op-id->descendant-ids (:archive_operation_id coll) [])
-                  perm-paths (set (cons (perms/collection-readwrite-path coll)
+                  perm-paths (set (cons (perms/collection-readwrite-path (u/the-id coll))
                                         (map perms/collection-readwrite-path descendant-ids)))]]
         (assoc coll :can_restore (boolean (and (:archived coll)
                                                archived-directly?

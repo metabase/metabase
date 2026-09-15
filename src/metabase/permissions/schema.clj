@@ -35,13 +35,20 @@
   (into [:enum {:error/message "Invalid permission value"}]
         (distinct (mapcat :values (vals data-permissions)))))
 
+(mr/def ::application-permissions-graph.groups
+  "Application permissions by group, or the part of them a change touches: group id -> permission type -> level."
+  [:map-of ms/PositiveInt [:map {:closed true}
+                           [:setting      {:optional true} [:enum :yes :no]]
+                           [:monitoring   {:optional true} [:enum :yes :no]]
+                           [:subscription {:optional true} [:enum :yes :no]]]])
+
 (mr/def ::application-permissions-revision.before
   "The `:before` column of a ApplicationPermissionsRevision, decoded."
-  :map)
+  ::application-permissions-graph.groups)
 
 (mr/def ::application-permissions-revision.after
   "The `:after` column of a ApplicationPermissionsRevision, decoded."
-  :map)
+  ::application-permissions-graph.groups)
 
 (mr/def ::application-permissions-revision
   "A ApplicationPermissionsRevision as selected from the app DB: every column of `:application_permissions_revision`."
@@ -62,16 +69,22 @@
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
    [:remark     {:optional true} [:maybe :string]]])
 
+(mr/def ::collection-permission-graph.groups
+  "Collection permissions by group, or the part of them a change touches: group id -> collection id (or `:root`) -> level."
+  [:map-of ms/PositiveInt [:map-of [:or [:= :root] ms/PositiveInt] [:enum :write :read :none]]])
+
 (mr/def ::collection-permission-graph-revision.before
-  "The `:before` column of a CollectionPermissionGraphRevision, decoded: a permissions-graph snapshot this code
-  stores and echoes back but never reads by key, so its shape (group/namespace/collection ids as keys) is
-  deliberately left open."
-  [:or [:map {:closed false, ::mr/deliberately-open true}] :string])
+  "The `:before` column of a CollectionPermissionGraphRevision, decoded."
+  [:or
+   [:= ""]
+   [:map {:closed true}
+    [:revision  {:optional true} [:maybe :int]]
+    [:namespace {:optional true} [:maybe [:or :keyword :string]]]
+    [:groups    {:optional true} ::collection-permission-graph.groups]]])
 
 (mr/def ::collection-permission-graph-revision.after
-  "The `:after` column of a CollectionPermissionGraphRevision, decoded: same shape as
-  [[collection-permission-graph-revision.before]]."
-  [:or [:map {:closed false, ::mr/deliberately-open true}] :string])
+  "The `:after` column of a CollectionPermissionGraphRevision, decoded."
+  [:or [:= ""] ::collection-permission-graph.groups])
 
 (mr/def ::collection-permission-graph-revision
   "A CollectionPermissionGraphRevision as selected from the app DB: every column of `:collection_permission_graph_revision`."
@@ -194,13 +207,42 @@
    [:group_id         {:optional true} [:maybe ms/PositiveInt]]
    [:is_group_manager {:optional true} [:maybe :boolean]]])
 
+(mr/def ::data-permissions-graph.schemas
+  "An API-style data permission on one database: a level for all of it, or schema name -> a level or table id -> level."
+  [:or
+   :keyword
+   [:map-of :string [:or
+                     :keyword
+                     [:map-of ms/PositiveInt [:or
+                                              :keyword
+                                              [:map {:closed true}
+                                               [:read  {:optional true} :keyword]
+                                               [:query {:optional true} :keyword]]]]]]])
+
+(mr/def ::data-permissions-graph.native-and-schemas
+  "An API-style data permission split into its native-query level and its per-schema levels."
+  [:map {:closed true}
+   [:native  {:optional true} [:maybe :keyword]]
+   [:schemas {:optional true} ::data-permissions-graph.schemas]])
+
+(mr/def ::data-permissions-graph.groups
+  "API-style data permissions by group, or the part of them a change touches: group id -> database id -> permissions."
+  [:map-of ms/PositiveInt [:maybe [:map-of ms/PositiveInt [:map {:closed true}
+                                                           [:view-data      {:optional true} ::data-permissions-graph.schemas]
+                                                           [:create-queries {:optional true} ::data-permissions-graph.schemas]
+                                                           [:data           {:optional true} ::data-permissions-graph.native-and-schemas]
+                                                           [:download       {:optional true} ::data-permissions-graph.native-and-schemas]
+                                                           [:data-model     {:optional true} ::data-permissions-graph.native-and-schemas]
+                                                           [:details        {:optional true} [:enum :yes :no]]
+                                                           [:transforms     {:optional true} [:enum :yes :no]]]]]])
+
 (mr/def ::permissions-revision.before
   "The `:before` column of a PermissionsRevision, decoded."
-  :map)
+  ::data-permissions-graph.groups)
 
 (mr/def ::permissions-revision.after
   "The `:after` column of a PermissionsRevision, decoded."
-  :map)
+  ::data-permissions-graph.groups)
 
 (mr/def ::permissions-revision
   "A PermissionsRevision as selected from the app DB: every column of `:permissions_revision`."

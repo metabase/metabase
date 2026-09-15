@@ -125,7 +125,7 @@
   "The placeholder for the Root Collection, which has no row, as `metabase.collections.models.collection.root` builds it."
   [:map {:closed true}
    [:metabase.collections.models.collection.root/is-root? [:= true]]
-   [:authority_level  [:maybe [:or :keyword :string]]]
+   [:authority_level  {:optional true} [:maybe [:or :keyword :string]]]
    [:id               {:optional true} [:= "root"]]
    [:name             {:optional true} :string]
    [:namespace        {:optional true} [:maybe [:or :keyword :string]]]

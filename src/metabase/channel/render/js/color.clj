@@ -6,7 +6,6 @@
    [metabase.channel.render.js.renderer :as renderer]
    [metabase.formatter.core :as formatter]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
@@ -16,8 +15,7 @@
   being handed to the JS color picking code. Currently it just needs column names from `:cols`, and the query results
   from `:rows`"
   [:map {:closed true}
-   [:cols [:sequential [:map {:closed false, ::mr/deliberately-open true,
-                              :description "a query result column; only :name is read here"}
+   [:cols [:sequential [:map {:closed true}
                         [:name :string]]]]
    [:rows [:sequential [:sequential
                         [:or ms/FieldValue

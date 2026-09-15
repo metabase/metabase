@@ -37,7 +37,6 @@
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
    [steffan-westcott.clj-otel.api.trace.span :as span]
@@ -268,10 +267,7 @@
   [card   :- [:map {:closed true}
               [:visualization_settings {:optional true} [:maybe ::queries.schema/card.visualization-settings]]
               [:dataset_query          {:optional true} [:maybe ::queries.schema/card.dataset-query]]
-              [:result_metadata        {:optional true}
-               [:maybe [:sequential [:map {:closed false, ::mr/deliberately-open true,
-                                           :description "a query result column; only :name is read here"}
-                                     [:name {:optional true} [:maybe :string]]]]]]]
+              [:result_metadata        {:optional true} [:maybe ::queries.schema/card.result-metadata]]]
    source :- [:enum ::breakouts ::aggregations]]
   (if-let [names (get-in card [:visualization_settings (case source
                                                          ::breakouts    :graph.dimensions

@@ -74,23 +74,15 @@
 
 ;;; --------------------------------------------------- Formatting ---------------------------------------------------
 
-(mr/def ::render-column
-  "A query-result column as the render pipeline threads it: normally a legacy column-metadata map, but
-  `table-data/visible-columns` may annotate it with pipeline-internal keys (`:source-idx`, `:remapped_to_column`),
-  and test/synthetic data may omit optional display fields, so extra and missing decorative keys are tolerated."
-  [:map {:closed false, ::mr/deliberately-open true,
-         :description "a legacy column-metadata map, possibly annotated with pipeline-internal keys"}
-   [:name :string]])
-
 (mu/defn- format-scalar-value
   [timezone-id            :- [:maybe :string]
    value                  :- ms/FieldValue
-   col                    :- [:maybe ::render-column]
+   col                    :- [:maybe :metabase.legacy-mbql.schema/legacy-column-metadata]
    visualization-settings :- [:maybe ms/VisualizationSettings]]
   (cond
     ;; legacy usage -- do not use going forward
     #_{:clj-kondo/ignore [:deprecated-var]}
-    (types/temporal-field? col)
+    (types/temporal-field? (select-keys col [:base_type :effective_type]))
     ((formatter/make-temporal-str-formatter timezone-id col {}) value)
 
     (number? value)
@@ -142,14 +134,14 @@
 (mu/defn- query-results->row-seq
   "Returns a seq of stringified formatted rows that can be rendered into HTML"
   [timezone-id  :- [:maybe :string]
-   visible-cols :- [:sequential ::render-column]
+   visible-cols :- [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]
    rows         :- [:sequential [:sequential ms/FieldValue]]
    viz-settings :- [:maybe ms/VisualizationSettings]]
   (let [formatters (mapv #(formatter/create-formatter timezone-id % viz-settings) visible-cols)]
     (for [row rows]
-      {:row (mapv (fn [col fmt-fn]
-                    (fmt-fn (nth row (:source-idx col) nil)))
-                  visible-cols
+      {:row (mapv (fn [value fmt-fn]
+                    (fmt-fn value))
+                  row
                   formatters)})))
 
 (def ^:private TrendlineFormula
@@ -175,11 +167,11 @@
 (mr/def ::QPResultData
   "The `:data` of a QP result, as the render pipeline reads it."
   [:map {:closed true}
-   [:cols             {:optional true} [:maybe [:sequential ::render-column]]]
+   [:cols             {:optional true} [:maybe [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]]]
    [:rows             {:optional true} [:maybe [:sequential [:sequential ms/FieldValue]]]]
    [:viz-settings     {:optional true} [:maybe ms/VisualizationSettings]]
    [:results_metadata {:optional true} [:maybe [:map {:closed true}
-                                                [:columns [:sequential ::render-column]]]]]
+                                                [:columns [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]]]]]
    [:results_timezone {:optional true} [:maybe :string]]
    [:format-rows?     {:optional true} [:maybe :boolean]]
    [:native_form      {:optional true} [:maybe ::qp.compile/compiled]]
@@ -221,7 +213,11 @@
          row-limit    (min (channel.settings/attachment-table-row-limit) 100)]
      (cons
       (query-results->header-row card visible-cols)
-      (query-results->row-seq timezone-id visible-cols (take row-limit rows) viz-settings)))))
+      (query-results->row-seq timezone-id
+                              (mapv #(dissoc % :source-idx :remapped_to_column) visible-cols)
+                              (for [row (take row-limit rows)]
+                                (mapv #(nth row (:source-idx %) nil) visible-cols))
+                              viz-settings)))))
 
 (defn- strong-limit-text [number]
   [:strong {:style (style/style {:color style/color-gray-3})} (h (formatter/format-scalar-number number))])
@@ -267,20 +263,15 @@
   [:or :metabase.queries.schema/card ::adhoc-card])
 
 (mr/def ::dashcard
-  "A DashboardCard as `render`ed for a Dashboard Subscription: usually a full DashboardCard row, but some paths
-  (dashboard-link generation, tests) render from a minimal or synthetic map, so only the keys the render pipeline
-  reads are declared and the rest passes through, plus the `:series-results` key `notification.payload.execute`
-  attaches for multi-series cards."
-  [:map {:closed false, ::mr/deliberately-open true,
-         :description "a DashboardCard row, or a minimal/synthetic stand-in for one"}
-   [:id                     {:optional true} [:maybe ::lib.schema.id/dashcard]]
-   [:dashboard_id           {:optional true} [:maybe ::lib.schema.id/dashboard]]
-   [:card_id                {:optional true} [:maybe ::lib.schema.id/card]]
-   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
-   [:series-results         {:optional true} [:maybe [:sequential
-                                                      [:map {:closed true}
-                                                       [:card   {:optional true} [:maybe [:ref :metabase.queries.schema/card]]]
-                                                       [:result {:optional true} [:maybe ::QPResult]]]]]]])
+  "A DashboardCard as `render`ed for a Dashboard Subscription, plus the `:series-results` key
+  `notification.payload.execute` attaches for multi-series cards."
+  [:merge
+   :metabase.dashboards.schema/dashboard-card
+   [:map {:closed true}
+    [:series-results {:optional true} [:maybe [:sequential
+                                               [:map {:closed true}
+                                                [:card   {:optional true} [:maybe [:ref :metabase.queries.schema/card]]]
+                                                [:result {:optional true} [:maybe ::QPResult]]]]]]]])
 
 (mr/def ::render-type
   [:enum :inline :attachment])
@@ -355,7 +346,8 @@
         minibar-cols                (minibar-columns (get-in unordered-data [:results_metadata :columns] []) viz-settings)
         table-body                  [:div
                                      (table/render-table
-                                      (select-keys unordered-data [:cols :rows])
+                                      {:cols (mapv #(select-keys % [:name]) (:cols unordered-data))
+                                       :rows (:rows unordered-data)}
                                       {:cols-for-color-lookup (mapv :name filtered-cols)
                                        :col-names             (streaming.common/column-titles filtered-cols viz-settings format-rows?)}
                                       (prep-for-html-rendering timezone-id card data)
@@ -868,7 +860,7 @@
                              (let [base-rows (into [] (comp (filter #(zero? (nth % pg-idx)))
                                                             (map #(vec (m/remove-nth pg-idx %))))
                                                    (:rows data))]
-                               {:cols columns :rows base-rows}))]
+                               {:cols (mapv #(select-keys % [:name]) columns) :rows base-rows}))]
             ;; Unlike the flat :table path, a pivot aggregates all rows into a bounded grid rather than
             ;; truncating displayed rows, so the flat-table row-count truncation warning doesn't apply.
             (pivot->hiccup output {:color-data     color-data

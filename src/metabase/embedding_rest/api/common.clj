@@ -280,20 +280,13 @@
               (map (comp keyword :slug)))
         dashboard-or-card-params))
 
-(mr/def ::has-parameters
-  "A Card or Dashboard row, or any reduced/public projection of one: `enabled-params` only reads and rewrites
-  `:parameters` on it, so every other key is left unconstrained and passed through untouched."
-  [:map {:closed false, ::mr/deliberately-open true}
-   [:parameters {:optional true} [:maybe [:sequential [:map {:closed false} [:slug ms/NonBlankString]]]]]])
-
 (mu/defn- enabled-params
-  "Keep only the `:parameters` of `dashboard-or-card` whose slug is listed as `enabled` in the `embedding-params`
-  whitelist, so the frontend doesn't display widgets for params (`disabled`, `locked`, or unlisted) the user can't
-  set."
-  [dashboard-or-card :- ::has-parameters
-   embedding-params  :- ms/EmbeddingParams]
-  (let [param-slugs-to-keep (enabled-param-slugs (:parameters dashboard-or-card) embedding-params)]
-    (update dashboard-or-card :parameters (partial filter #(contains? param-slugs-to-keep (keyword (:slug %)))))))
+  "Keep only the `parameters` whose slug is listed as `enabled` in the `embedding-params` whitelist, so the frontend
+  doesn't display widgets for params (`disabled`, `locked`, or unlisted) the user can't set."
+  [parameters       :- [:maybe [:sequential ::parameters.schema/parameter]]
+   embedding-params :- ms/EmbeddingParams]
+  (let [param-slugs-to-keep (enabled-param-slugs parameters embedding-params)]
+    (filter #(contains? param-slugs-to-keep (keyword (:slug %))) parameters)))
 
 (defn- remove-token-parameters
   "Removes any parameters with slugs matching keys provided in `token-params`, as these should not be exposed to the
@@ -367,7 +360,7 @@
     (-> (api.public/public-card card-id :enable-embedding? enable-embedding?)
         api.public/combine-parameters-and-template-tags
         (remove-token-parameters token-params)
-        (enabled-params resolved-embedding-params)
+        (update :parameters enabled-params resolved-embedding-params)
         api.public/keep-param-fields-for-parameters
         (assoc :embedding_params resolved-embedding-params))))
 
@@ -482,7 +475,7 @@
         (substitute-token-parameters-in-text token-params)
         (remove-locked-parameters embedding-params)
         (remove-token-parameters token-params)
-        (enabled-params embedding-params)
+        (update :parameters enabled-params embedding-params)
         api.public/keep-param-fields-for-parameters)))
 
 (defn- get-embed-dashboard-context

@@ -1,6 +1,5 @@
 (ns metabase.xrays.automagic-dashboards.schema
   (:require
-   [malli.core :as mc]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
@@ -18,16 +17,23 @@
 (mr/def ::string-or-18n-string
   [:or :string [:fn {:error/message "localized string"} i18n/localized-string?]])
 
+(mr/def ::related-keys
+  "What [[metabase.xrays.related]] and the candidate-table ranking pin on an entity they return."
+  [:map {:closed true}
+   [:similarity {:optional true} [:maybe number?]]
+   [:num-fields {:optional true} [:maybe :int]]
+   [:list-like? {:optional true} [:maybe [:or :boolean :int]]]
+   [:link       {:optional true} [:maybe ::lib.schema.id/field]]])
+
 (mr/def ::root.entity
   [:multi
    {:dispatch t2/model}
-   [:xrays/Metric [:ref ::metric]]
-   [::mc/default  [:schema
-                   {:closed false, ::mr/deliberately-open true,
-                    :description "Any x-rayable entity (Table, Field, Segment, Card, ad-hoc Query, or another
-                    entity-shaped map produced along the way) other than an :xrays/Metric -- too many shapes flow
-                    through here to enumerate as a closed map."}
-                   [:map [:name {:optional true} :string]]]]])
+   [:xrays/Metric  [:ref ::metric]]
+   [:model/Table   [:merge :metabase.warehouse-schema.schema/table [:ref ::related-keys]]]
+   [:model/Field   [:ref ::field]]
+   [:model/Segment [:merge :metabase.segments.schema/segment [:ref ::related-keys]]]
+   [:model/Card    [:merge :metabase.queries.schema/card [:ref ::related-keys]]]
+   [:model/Query   [:ref ::adhoc-question]]])
 
 (mr/def ::filter-clause
   [:and
@@ -136,7 +142,8 @@
    [:field_type      ::field-type]
    [:score           {:optional true} nat-int?]
    [:max_cardinality {:optional true} nat-int?]
-   [:named           {:optional true} [:string {:min 1}]]])
+   [:named           {:optional true} [:string {:min 1}]]
+   [:links_to        {:optional true} :keyword]])
 
 (mr/def ::dimension-template
   "A specification for the basic keys in a dimension template."
@@ -188,14 +195,19 @@
   [:map-of
    :string
    [:map {:closed true}
-    [:matches [:sequential ::item]]]])
+    [:matches         [:sequential ::item]]
+    [:field_type      {:optional true} ::field-type]
+    [:score           {:optional true} nat-int?]
+    [:max_cardinality {:optional true} nat-int?]
+    [:named           {:optional true} [:string {:min 1}]]
+    [:links_to        {:optional true} :keyword]
+    [:name            {:optional true} :string]
+    [:card-score      {:optional true} number?]]])
 
 (mr/def ::dim-name->dim-defs+matches
   "The \"full\" grounded dimensions which matches dimension names
   to the dimension definition combined with matching fields."
-  [:merge
-   ::dim-name->dim-def
-   ::dim-name->matching-fields])
+  ::dim-name->matching-fields)
 
 (mr/def ::normalized-metric-template
   "A \"normalized\" metric template is a map containing the metric name as a key
@@ -264,17 +276,30 @@
    [:filter      ::external-op]
    [:filter-name :string]])
 
+(mr/def ::field.xray-keys
+  "What X-Rays pins on a Field while grounding it to a dimension: the matched dimension definition, the Database, the
+  FK it was reached through, and the scores it ranks it by."
+  [:map {:closed true}
+   [:db                 {:optional true} [:maybe [:ref :metabase.warehouses.schema/database]]]
+   [:link               {:optional true} [:maybe ::lib.schema.id/field]]
+   [:aggregation        {:optional true} [:maybe :string]]
+   [:field_type         {:optional true} [:maybe ::field-type]]
+   [:links_to           {:optional true} [:maybe :keyword]]
+   [:named              {:optional true} [:maybe :string]]
+   [:max_cardinality    {:optional true} [:maybe nat-int?]]
+   [:score              {:optional true} [:maybe number?]]
+   [:card-score         {:optional true} [:maybe number?]]
+   [:interestingness    {:optional true} [:maybe number?]]
+   [:similarity         {:optional true} [:maybe number?]]
+   [:xrays/database-id  {:optional true} [:maybe ::lib.schema.id/database]]])
+
 (mr/def ::field
-  "A field-like value X-Rays binds to a dimension: a real Field (or Table) row, merged with whatever the grounding
-  process annotates it with (:db, :link, :field_type, :score, :named, :max_cardinality, :card-score,
-  :xrays/database-id, ...). As mentioned elsewhere X-Rays does some kind of insane nonsense and creates fields with
-  types like `:type/GenericNumber` when instantiating templates, so there are too many shapes to enumerate as a
-  closed map."
-  [:and
-   [:schema {:closed false, ::mr/deliberately-open true} :map]
-   [:fn
-    {:error/message "Should be a field with snake_case keys"}
-    (complement :base-type)]])
+  "A Field X-Rays binds to a dimension: a Field row, or a Card's result metadata column wrapped as a Field, plus the
+  keys grounding pins on it."
+  [:multi {:dispatch (fn [field]
+                       (if (contains? field :created_at) :row :result-column))}
+   [:row           [:merge :metabase.warehouse-schema.schema/field [:ref ::field.xray-keys]]]
+   [:result-column [:merge :metabase.legacy-mbql.schema/legacy-column-metadata [:ref ::field.xray-keys]]]])
 
 (mr/def ::card
   "A \"card\" as it flows through the dashboard-building pipeline: the keys [[metabase.xrays.automagic-dashboards

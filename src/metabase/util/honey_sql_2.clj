@@ -287,8 +287,7 @@
         (= s (u/lower-case-en s)))]]]])
 
 (def ^:private TypeInfo
-  "Type info for a `TypedHoneySQLForm`, before it is normalized by [[normalize-type-info]]. Left open (not closed)
-  because drivers extend it with their own namespaced keys, e.g. `:metabase.driver.postgres/target-timezone`."
+  "Type info for a `TypedHoneySQLForm` before [[normalize-type-info]], open to the namespaced keys drivers own (e.g. `:metabase.driver.postgres/target-timezone`)."
   [:map {:closed false, ::mr/deliberately-open true}
    [:database-type  {:optional true} [:maybe ms/KeywordOrString]]
    [:base-type      {:optional true} [:maybe :keyword]]
@@ -403,8 +402,7 @@
   [:fn {:error/message "::h2x/typed Honey SQL form"} typed?])
 
 (mr/def ::honeysql-clause-opts
-  "A Honey SQL 2 clause's own options map, e.g. `:over`'s window spec (`:partition-by`/`:order-by`) or a driver's
-  `:cast` options — shape is clause- and driver-specific and owned by the Honey SQL library, not Metabase."
+  "A map inside a Honey SQL 2 clause (a window spec, a subquery, ...), whose keys the Honey SQL library and the clauses drivers register own."
   [:map {:closed false, ::mr/deliberately-open true}])
 
 (mr/def ::honeysql-expr

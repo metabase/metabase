@@ -13,7 +13,6 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
@@ -496,18 +495,12 @@
   []
   (:id (t2/select-one [:model/ApplicationPermissionsRevision [:%max.id :id]])))
 
-(def ^:private RevisionBeforeAfter
-  "The `:before`/`:after` value of a permissions revision insert: a permission-graph snapshot this code stores and
-  echoes back but never reads by key, or the empty-string placeholder some callers write. Deliberately open: it's
-  the pre-JSON-encoding graph (int/keyword keys), not the string-keyed shape it becomes in storage."
-  [:maybe [:or [:schema {::mr/deliberately-open true} :any] :string]])
-
 (mu/defn insert-collection-permission-graph-revision!
   "Insert `revision` into CollectionPermissionGraphRevision."
   [revision :- [:map {:closed true}
                 [:id      {:optional true} ms/PositiveInt]
-                [:before  {:optional true} RevisionBeforeAfter]
-                [:after   {:optional true} RevisionBeforeAfter]
+                [:before  {:optional true} ::permissions.schema/collection-permission-graph-revision.before]
+                [:after   {:optional true} ::permissions.schema/collection-permission-graph-revision.after]
                 [:user_id {:optional true} [:maybe ::lib.schema.id/user]]
                 [:remark  {:optional true} [:maybe :string]]]]
   (t2/insert! :model/CollectionPermissionGraphRevision revision))
@@ -516,8 +509,8 @@
   "Insert `revision` into CollectionPermissionGraphRevision and return the new instance."
   [revision :- [:map {:closed true}
                 [:id      {:optional true} ms/PositiveInt]
-                [:before  {:optional true} RevisionBeforeAfter]
-                [:after   {:optional true} RevisionBeforeAfter]
+                [:before  {:optional true} ::permissions.schema/collection-permission-graph-revision.before]
+                [:after   {:optional true} ::permissions.schema/collection-permission-graph-revision.after]
                 [:user_id {:optional true} [:maybe ::lib.schema.id/user]]
                 [:remark  {:optional true} [:maybe :string]]]]
   (first (t2/insert-returning-instances! :model/CollectionPermissionGraphRevision revision)))
@@ -526,8 +519,8 @@
   "Insert `revision` into PermissionsRevision and return the new instance."
   [revision :- [:map {:closed true}
                 [:id      {:optional true} ms/PositiveInt]
-                [:before  {:optional true} RevisionBeforeAfter]
-                [:after   {:optional true} RevisionBeforeAfter]
+                [:before  {:optional true} [:maybe ::permissions.schema/permissions-revision.before]]
+                [:after   {:optional true} [:maybe ::permissions.schema/permissions-revision.after]]
                 [:user_id {:optional true} [:maybe ::lib.schema.id/user]]
                 [:remark  {:optional true} [:maybe :string]]]]
   (first (t2/insert-returning-instances! :model/PermissionsRevision revision)))
@@ -536,8 +529,8 @@
   "Insert `revision` into ApplicationPermissionsRevision and return the new instance."
   [revision :- [:map {:closed true}
                 [:id      {:optional true} ms/PositiveInt]
-                [:before  {:optional true} RevisionBeforeAfter]
-                [:after   {:optional true} RevisionBeforeAfter]
+                [:before  {:optional true} [:maybe ::permissions.schema/application-permissions-revision.before]]
+                [:after   {:optional true} [:maybe ::permissions.schema/application-permissions-revision.after]]
                 [:user_id {:optional true} [:maybe ::lib.schema.id/user]]
                 [:remark  {:optional true} [:maybe :string]]]]
   (first (t2/insert-returning-instances! :model/ApplicationPermissionsRevision revision)))

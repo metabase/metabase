@@ -99,9 +99,6 @@
 
 (def ^:private submit-object
   [:or
-   [:schema {::mr/deliberately-open true
-             :description "an opaque payload forwarded to the batch's processing fn, not read by submit! itself"}
-    :any]
    [:enum :ok :not-found :invalid-format]
    [:map {:closed true}
     [:model [:enum :model/Card :model/Dashboard :model/Table :model/Document]]

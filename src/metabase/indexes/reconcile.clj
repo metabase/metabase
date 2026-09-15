@@ -134,7 +134,7 @@
   "Physical indexes on `table-name` (`schema`) in `database` via `driver/fetch-table-indexes`.
   Returns `nil` if the driver can't introspect indexes or the warehouse is unreachable, so callers can distinguish
   fetch failure from a successful empty index list."
-  [database   :- [:map {:closed false, ::mr/deliberately-open true} [:engine [:or :keyword :string]]]
+  [database   :- :metabase.warehouses.schema/database
    schema     :- [:maybe :string]
    table-name :- :string]
   (try

@@ -3,11 +3,7 @@
    [clojure.test :refer :all]
    [metabase.driver]
    [metabase.indexes.reconcile :as reconcile]
-   [toucan2.core :as t2]))
-
-(def ^:private fake-database
-  "A `:model/Database` instance carrying just the key [[reconcile/fetch-warehouse-indexes]] reads."
-  (t2/instance :model/Database {:engine :postgres}))
+   [metabase.test :as mt]))
 
 (def ^:private managed-btree
   {:id 1 :transform_id 7 :index_name "by_cat"
@@ -135,10 +131,10 @@
   (testing "delegates to the driver method"
     (with-redefs [metabase.driver/fetch-table-indexes (fn [_driver _db _schema _table] [wh-btree])]
       (is (= [wh-btree]
-             (reconcile/fetch-warehouse-indexes fake-database "public" "t")))))
+             (reconcile/fetch-warehouse-indexes (mt/db) "public" "t")))))
   (testing "preserves a successful empty warehouse response"
     (with-redefs [metabase.driver/fetch-table-indexes (fn [& _] [])]
-      (is (= [] (reconcile/fetch-warehouse-indexes fake-database "public" "t")))))
+      (is (= [] (reconcile/fetch-warehouse-indexes (mt/db) "public" "t")))))
   (testing "swallows driver/connection errors and returns nil"
     (with-redefs [metabase.driver/fetch-table-indexes (fn [& _] (throw (ex-info "boom" {})))]
-      (is (nil? (reconcile/fetch-warehouse-indexes fake-database "public" "t"))))))
+      (is (nil? (reconcile/fetch-warehouse-indexes (mt/db) "public" "t"))))))

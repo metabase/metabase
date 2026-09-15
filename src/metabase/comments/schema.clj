@@ -33,11 +33,23 @@
   "The `:content` column of a Comment, decoded: the ProseMirror document the comment was written in."
   ::prose-mirror-node)
 
+(mr/def ::prose-mirror-node.json-attrs
+  "The `attrs` of a ProseMirror node as decoded JSON, before normalization stringifies its keys: the keys belong to the
+  editor's node type and may be keywords or strings."
+  [:map {:closed false, ::mr/deliberately-open true, :description "ProseMirror node attrs"}])
+
+(mr/def ::prose-mirror-node.json
+  "A ProseMirror node as decoded JSON, before normalization stringifies the keys of its `attrs`."
+  [:map {:closed true}
+   [:type                     :string]
+   [:attrs   {:optional true} [:maybe [:ref ::prose-mirror-node.json-attrs]]]
+   [:content {:optional true} [:sequential [:ref ::prose-mirror-node.json]]]
+   [:marks   {:optional true} [:sequential [:ref ::prose-mirror-node.json]]]
+   [:text    {:optional true} :string]])
+
 (mu/defn normalize-content :- [:maybe ::comment.content]
   "Normalize a comment's content on its way in from the API or out of the application database."
-  [content :- [:maybe [:schema {::mr/deliberately-open true
-                                :description "raw ProseMirror content before normalization stringifies its attrs keys"}
-                       :any]]]
+  [content :- [:maybe ::prose-mirror-node.json]]
   (some->> content (lib/normalize ::comment.content)))
 
 (mr/def ::comment.highlight

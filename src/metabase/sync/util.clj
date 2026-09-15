@@ -536,9 +536,8 @@
    [:end-time   {:optional true} (ms/InstanceOfClass Temporal)]])
 
 (def ^:private StepStats
-  "Step-specific stats a `sync-fn` may add to its `StepRunMetadata`, across all of the sync/analyze steps. A `sync-fn`
-  may add any other ad-hoc key too, so this is deliberately open."
-  [:map {:closed false, ::mr/deliberately-open true, :description "step-specific sync stats; a sync-fn may add any key"}
+  "Step-specific stats a `sync-fn` may add to its `StepRunMetadata`, across all of the sync/analyze steps."
+  [:map {:closed true}
    [:added-indexes          {:optional true} :int]
    [:created                {:optional true} :int]
    [:deleted                {:optional true} :int]

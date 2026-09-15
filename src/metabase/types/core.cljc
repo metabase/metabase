@@ -385,9 +385,8 @@
 
 (mr/def ::snake-cased-type-info
   "E.g. the version coming back from the app DB as opposed to Lib metadata. This should eventually be considered
-  deprecated. Deliberately open: callers pass whatever Field/column-shaped map they have on hand (an app-DB row,
-  a legacy column, Lib metadata, ...) and only `:base_type`/`:effective_type` are read."
-  [:map {:closed false, ::mr/deliberately-open true, :description "a Field- or column-like map"}
+  deprecated."
+  [:map {:closed true}
    [:base_type      :metabase.lib.schema.common/base-type]
    [:effective_type {:optional true} [:maybe :metabase.lib.schema.common/base-type]]])
 

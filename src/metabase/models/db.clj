@@ -107,8 +107,7 @@
           [model [:map {:closed true} [:model [:= model]] [:rows [:sequential schema]]]])))
 
 (mr/def ::after-select-row
-  "A model row run through after-select machinery: it may be a fresh selection, an already API-hydrated row, or a
-  historical revision snapshot from an older schema version, so its shape is not fixed here."
+  "A row not yet run through its model's after-select, e.g. a stored revision snapshot whose keys older Metabase versions own."
   [:map {:closed false, ::mr/deliberately-open true,
          :description "shape depends on the model, hydration state, and revision history"}])
 

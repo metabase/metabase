@@ -21,7 +21,7 @@
 
 (mu/defn field-isa?
   "`isa?` on a field, checking semantic_type and then base_type"
-  [{:keys [base_type semantic_type]} :- ::ads/field
+  [{:keys [base_type semantic_type]} :- [:or ::ads/field ::ads/root.entity]
    ;; for some insane reason this is called with totally imaginary types like `:type/GenericNumber`
    t :- [:and
          qualified-keyword?

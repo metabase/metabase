@@ -15,7 +15,8 @@
    [:human_readable_field_id [:maybe ::lib.schema.id/field]]
    [:created_at              ms/TemporalInstant]
    [:updated_at              ms/TemporalInstant]
-   [:entity_id               :string]])
+   [:entity_id               :string]
+   [:human_readable_field    {:optional true} [:maybe [:ref ::field]]]])
 
 (mr/def ::dimension.update
   "What an update (or insert) of a Dimension accepts: every column of `:dimension` except `id`, all optional."
@@ -75,7 +76,10 @@
    [:database_is_generated      [:maybe :boolean]]
    [:database_default           [:maybe :string]]
    [:dimension_interestingness  [:maybe number?]]
-   [:data_sensitivity           [:maybe [:or :keyword :string]]]])
+   [:data_sensitivity           [:maybe [:or :keyword :string]]]
+   [:dimensions                 {:optional true} [:maybe [:sequential [:ref ::dimension]]]]
+   [:name_field                 {:optional true} [:maybe :metabase.queries.schema/param-field.name-field]]
+   [:target                     {:optional true} [:maybe [:ref ::field]]]])
 
 (mr/def ::field.update
   "What an update (or insert) of a Field accepts: every column of `:metabase_field` except `id`, all optional."

@@ -5,6 +5,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
 
@@ -18,7 +19,7 @@
   (tenants.db/delete-permissions-with-objects! (for [coll (cons collection (collection/descendants collection))
                                                      path-fn [perms/collection-read-path
                                                               perms/collection-readwrite-path]]
-                                                 (path-fn coll))))
+                                                 (path-fn (u/the-id coll)))))
 
 (mu/defn- grant-perms-when-moving-out-of-tenant-specific!
   "When moving a descendant of a tenant-specific Collection into a regular Collection namespace, we need to grant it
@@ -30,7 +31,7 @@
   [collection :- (ms/InstanceOf :model/Collection) new-location :- @#'collection/LocationPath]
   ;; TODO(johnswanson, 2025-11-25) fix the private bits
   (#'collection/copy-collection-permissions! (#'collection/parent {:location new-location})
-                                             (cons collection (collection/descendants collection))))
+                                             (map u/the-id (cons collection (collection/descendants collection)))))
 
 (defenterprise update-perms-for-tenant-specific-namespace-change!
   "If a Collection is moving into or out of the tenant-specific namespace, adjust the Permissions for it accordingly.

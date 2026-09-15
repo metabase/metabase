@@ -19,7 +19,6 @@
    [metabase.util.i18n :as i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -394,13 +393,10 @@
    [:type             (into [:enum] allowed-user-types)]])
 
 (def ^:private Invitor
-  "Info about the admin creating the user, used in the new user notification code: only `:email`/`:first_name` are
-  read, so this accepts either a full current user (with `:attributes` already added) or just a display-name/email
-  pair, whichever a caller has on hand."
-  [:map {:closed false, ::mr/deliberately-open true,
-         :description "invitor: at least an :email, plus optionally :first_name and other current-user fields"}
-   [:email      {:optional true} [:maybe ms/Email]]
-   [:first_name {:optional true} [:maybe ms/NonBlankString]]])
+  "The name and email of the admin creating the user, used in the new user notification code."
+  [:map {:closed true}
+   [:email      ms/Email]
+   [:first_name [:maybe :string]]])
 
 (defn serdes-synthesize-user!
   "Creates a new user with a default password, when deserializing eg. a `:creator_id` field whose email address doesn't

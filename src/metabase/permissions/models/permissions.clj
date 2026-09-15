@@ -176,7 +176,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -398,7 +397,7 @@
 
   NOTE: This function is meant for internal usage in this namespace only; use one of the other functions like
   `revoke-data-perms!` elsewhere instead of calling this directly."
-  [group-or-id :- permissions.path/MapOrID path :- perms.u/PathSchema]
+  [group-or-id :- permissions.path/GroupOrID path :- perms.u/PathSchema]
   (let [group-id (u/the-id group-or-id)
         paths    (conj (perms.u/->v2-path path) path)]
     (when-let [revoked (permissions.db/related-permission-objects group-id path paths)]
@@ -443,16 +442,13 @@
                {:metabase.collections.models.collection.root/is-root? true
                 :namespace                                            nil}))})))
 
-(mr/def ::read-checked-instance
-  "A Collection, or any other content row with a `:collection_id`, whose read access [[can-read-audit-helper]]
-  audits: hydrated views and search hits carry columns from other models, so this stays open."
-  [:map {:closed false, ::mr/deliberately-open true}])
-
 ;;; TODO -- this is a predicate function that returns truthy or falsey, it should end in a `?` -- Cam
 (mu/defn can-read-audit-helper
   "Audit instances should only be readable if audit app is enabled."
   [model    :- [:= :model/Collection]
-   instance :- ::read-checked-instance]
+   instance :- [:map {:closed true}
+                [:id        ms/PositiveInt]
+                [:namespace {:optional true} [:maybe [:or :keyword :string]]]]]
   (if (and (not (premium-features/enable-audit-app?))
            (case model
              :model/Collection (audit/is-collection-id-audit? (:id instance))
@@ -567,7 +563,7 @@
 (mu/defn- check-is-modifiable-collection
   "Check whether `collection-or-id` refers to a collection that can have permissions modified. Personal collections, the
   Trash, and descendants of those can't have their permissions modified."
-  [collection-or-id :- permissions.path/MapOrID]
+  [collection-or-id :- permissions.path/CollectionOrID]
   ;; skip the whole thing for the root collection, we know it's not a personal collection, trash, or descendant of one
   ;; of them.
   (when-not (:metabase.collections.models.collection.root/is-root? collection-or-id)
@@ -585,13 +581,13 @@
 
 (mu/defn revoke-collection-permissions!
   "Revoke all access for `group-or-id` to a Collection."
-  [group-or-id :- permissions.path/MapOrID collection-or-id :- permissions.path/MapOrID]
+  [group-or-id :- permissions.path/GroupOrID collection-or-id :- permissions.path/CollectionOrID]
   (check-is-modifiable-collection collection-or-id)
   (delete-related-permissions! group-or-id (permissions.path/collection-readwrite-path collection-or-id)))
 
 (mu/defn grant-collection-readwrite-permissions!
   "Grant full access to a Collection, which means a user can view all Cards in the Collection and add/remove Cards."
-  [group-or-id :- permissions.path/MapOrID collection-or-id :- permissions.path/MapOrID]
+  [group-or-id :- permissions.path/GroupOrID collection-or-id :- permissions.path/CollectionOrID]
   (check-is-modifiable-collection collection-or-id)
   (when (perms-group/is-tenant-group? group-or-id)
     (throw (ex-info (tru "Tenant groups cannot have write access to any collections.") {})))
@@ -599,7 +595,7 @@
 
 (mu/defn grant-collection-read-permissions!
   "Grant read access to a Collection, which means a user can view all Cards in the Collection."
-  [group-or-id :- permissions.path/MapOrID collection-or-id :- permissions.path/MapOrID]
+  [group-or-id :- permissions.path/GroupOrID collection-or-id :- permissions.path/CollectionOrID]
   (check-is-modifiable-collection collection-or-id)
   (let [collection (collection-or-id->collection collection-or-id)]
     (when (perms-group/is-tenant-group? group-or-id)
