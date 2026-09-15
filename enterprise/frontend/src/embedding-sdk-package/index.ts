@@ -93,7 +93,10 @@ export {
 } from "embedding-sdk-bundle/components/public/StaticQuestion";
 export { type MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 
-export type { DashCardMenuItem } from "metabase/embedding-sdk/types/plugins";
+export type {
+  DashCardMenuItem,
+  MetabaseClickAction,
+} from "metabase/embedding-sdk/types/plugins";
 export type {
   CustomDashboardCardMenuItem,
   DashboardCardCustomMenuItem,
@@ -117,7 +120,6 @@ export type {
   MetabaseClickActionPluginsConfig,
   MetabaseColorKey,
   MetabaseColors,
-  MetabaseClickAction,
   MetabaseComponentTheme,
   MetabaseCollection,
   MetabaseCollectionItem,
