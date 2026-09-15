@@ -150,7 +150,30 @@
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Only image elements may embed data: URIs"
                                 (js.svg/svg-string->bytes
                                  (str "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" width=\"10\" height=\"10\">"
-                                      inner "</svg>")))))))
+                                      inner "</svg>"))))))
+      (testing "a CSS url() reference to a data: URI is refused too — Batik resolves fill/style/filter/mask/clip-path
+                references through the same loader"
+        (doseq [attr ["fill" "filter" "mask" "clip-path"]]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"url\(\) references must be local"
+                                (js.svg/svg-string->bytes
+                                 (str "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"10\" height=\"10\">"
+                                      "<rect width=\"10\" height=\"10\" " attr "=\"url(" nested "#g)\"/></svg>")))
+              attr))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"url\(\) references must be local"
+                              (js.svg/svg-string->bytes
+                               (str "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"10\" height=\"10\">"
+                                    "<rect width=\"10\" height=\"10\" style=\"fill: url( '" nested "#g' )\"/></svg>")))
+            "inline style, with the quoting and spacing CSS allows")
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"CSS escapes are not allowed"
+                              (js.svg/svg-string->bytes
+                               (str "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"10\" height=\"10\">"
+                                    "<rect width=\"10\" height=\"10\" fill=\"\\75 rl(#x)\"/></svg>")))
+            "a CSS escape that could spell url( past the scan"))
+      (testing "a local url(#id) reference — how charts use gradients and clip paths — still renders"
+        (is (bytes? (js.svg/svg-string->bytes
+                     (str "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"10\" height=\"10\">"
+                          "<linearGradient id=\"lg\"><stop offset=\"0\" stop-color=\"red\"/></linearGradient>"
+                          "<rect width=\"10\" height=\"10\" fill=\"url(#lg)\" style=\"stroke: url( #lg )\"/></svg>"))))))
     (testing "a small embedded image within the budget still renders"
       (is (bytes? (js.svg/svg-string->bytes (data-uri-svg (png-data-uri 64) "xlink:href")))))))
 

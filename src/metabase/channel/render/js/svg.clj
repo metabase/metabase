@@ -177,16 +177,43 @@
   (let [xlink (.getAttributeNS el "http://www.w3.org/1999/xlink" "href")]
     (if (str/blank? xlink) (.getAttribute el "href") xlink)))
 
+(def ^:private css-attributes
+  "Attributes Batik interprets as CSS: `style`, and the presentation attributes whose values may carry a `url()`
+  reference."
+  #{"style" "fill" "stroke" "filter" "mask" "clip-path" "marker" "marker-start" "marker-mid" "marker-end" "cursor"})
+
+(defn- check-attribute-references!
+  "Refuse a `url()` reference in any non-href attribute of `el` unless it is a local `#fragment` (Batik resolves
+  `fill=\"url(data:...)\"`, `style`, `filter`, `mask`, `clip-path` etc. through its document loader too), and refuse
+  CSS escapes in [[css-attributes]], which could spell `url(` or `data:` in a way a plain scan would miss."
+  [refuse! ^Element el]
+  (let [attrs (.getAttributes el)]
+    (doseq [i (range (.getLength attrs))
+            :let [^Node attr (.item attrs i)
+                  attr-name  (or (.getLocalName attr) (.getNodeName attr))
+                  value      (.getNodeValue attr)]
+            :when (not= "href" attr-name)]
+      (doseq [[_ target] (re-seq #"(?i)url\s*\(([^)]*)\)" value)
+              :let [target (str/trim (str/replace target #"[\"']" ""))]
+              :when (not (str/starts-with? target "#"))]
+        (refuse! (i18n/tru "url() references must be local (#id), in attribute {0}" attr-name)
+                 {:attribute attr-name}))
+      (when (and (contains? css-attributes attr-name) (str/includes? value "\\"))
+        (refuse! (i18n/tru "CSS escapes are not allowed, in attribute {0}" attr-name)
+                 {:attribute attr-name})))))
+
 (defn- check-embedded-resources!
-  "Fail the render if any element other than `<image>`/`<feImage>` references a `data:` URI (Batik would load a
-  nested svg — and its DOCTYPE — through its own parser, bypassing [[refuse-doctype!]]), if an embedded image isn't
-  a base64 raster ImageIO can size from its header, or if the embedded images exceed [[max-embedded-image-pixels]]."
+  "Fail the render if any element references a `data:` URI other than as a raster image on `<image>`/`<feImage>` — via
+  href or a CSS `url()` (see [[check-attribute-references!]]) — since Batik would load a nested svg, and its DOCTYPE,
+  through its own parser, bypassing [[refuse-doctype!]]; if an embedded image isn't a base64 raster ImageIO can size
+  from its header; or if the embedded images exceed [[max-embedded-image-pixels]]."
   [^SVGOMDocument svg-document]
   (let [^NodeList nodes (.getElementsByTagNameNS svg-document "*" "*")
         elements        (for [i (range (.getLength nodes))] (.item nodes i))
         refuse!         (fn [message data]
                           (throw (ex-info message (assoc data :type ::embedded-resource-refused))))
         total           (reduce (fn [total ^Element el]
+                                  (check-attribute-references! refuse! el)
                                   (let [href (element-href el)]
                                     (if-not (str/starts-with? href "data:")
                                       total
