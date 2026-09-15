@@ -6,18 +6,17 @@ import { baseQuery } from "metabase/api/api";
 
 import {
   type ClientRequest,
-  type SentPayload,
   type SentValue,
   modelClientRequest,
 } from "./client-request";
 import { resolveRtkRequest } from "./rtk-request";
+import { describeShape } from "./shape";
 import {
   ENDPOINT_PRELUDE,
   cleanupFixtures,
   endpointObject,
   programFrom,
 } from "./test-fixtures";
-import type { JsonView } from "./value-conversion";
 
 type SentBody =
   | { kind: "none" }
@@ -159,295 +158,94 @@ async function send(fixture: Fixture): Promise<Outcome> {
   };
 }
 
-function escapeRegExp(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+type PayloadProjection = string | Record<string, string[]>;
+interface Projection {
+  method: string;
+  path: string;
+  parameters: (string | string[])[];
+  query: string | PayloadProjection[];
+  body: string | PayloadProjection[];
+  failure: boolean;
+  unverified: boolean;
 }
 
-/** Whether the text the client sent is one the modelled type can produce. */
-function typeAcceptsText(
+function projected(overrides: Partial<Projection>): Projection {
+  return {
+    method: "GET",
+    path: "/api/x",
+    parameters: [],
+    query: ["nothing"],
+    body: ["nothing"],
+    failure: false,
+    unverified: false,
+    ...overrides,
+  };
+}
+
+function valuesProjection(
   checker: ts.TypeChecker,
-  type: ts.Type,
-  text: string,
-): boolean {
-  if (type.isUnion()) {
-    return type.types.some((member) => typeAcceptsText(checker, member, text));
-  }
-  if (type.isStringLiteral()) {
-    return type.value === text;
-  }
-  if (type.isNumberLiteral()) {
-    return String(type.value) === text;
-  }
-  if (type.flags & ts.TypeFlags.BooleanLiteral) {
-    return checker.typeToString(type) === text;
-  }
-  if (type.flags & ts.TypeFlags.StringLike) {
-    return true;
-  }
-  if (type.flags & ts.TypeFlags.NumberLike) {
-    return text !== "" && Number.isFinite(Number(text));
-  }
-  if (type.flags & ts.TypeFlags.BooleanLike) {
-    return text === "true" || text === "false";
-  }
-  if (type.flags & ts.TypeFlags.Null) {
-    return text === "null";
-  }
-  if (type.flags & (ts.TypeFlags.Undefined | ts.TypeFlags.Void)) {
-    return text === "undefined";
-  }
-  const element =
-    checker.isArrayType(type) &&
-    checker.getIndexTypeOfType(type, ts.IndexKind.Number);
-  if (element) {
-    return typeAcceptsText(checker, element, text);
-  }
-  // The model makes no claim about the text of any other type.
-  return true;
-}
-
-function valueAcceptsText(
-  checker: ts.TypeChecker,
-  value: SentValue,
-  text: string,
-): boolean {
-  switch (value.kind) {
-    case "empty":
-      return text === "";
-    case "text":
-      return value.text === text;
-    case "json":
-      return value.view.kind === "type"
-        ? typeAcceptsText(checker, value.view.type, text)
-        : true;
-  }
-}
-
-/** Whether the JSON value the client sent is one the view describes. */
-function viewAccepts(
-  checker: ts.TypeChecker,
-  view: JsonView,
-  value: unknown,
-): boolean {
-  switch (view.kind) {
-    case "null":
-      return value === null;
-    case "empty":
-      return isRecord(value) && Object.keys(value).length === 0;
-    case "union":
-      return view.members.some((member) => viewAccepts(checker, member, value));
-    case "array":
-      return (
-        Array.isArray(value) &&
-        value.every((item) => viewAccepts(checker, view.element, item))
-      );
-    case "object":
-      return (
-        isRecord(value) &&
-        Object.keys(value).every((key) =>
-          view.fields.some((field) => field.name === key),
-        ) &&
-        view.fields.every(
-          (field) =>
-            (field.optional && !(field.name in value)) ||
-            (field.name in value &&
-              viewAccepts(checker, field.view, value[field.name])),
-        )
-      );
-    case "type": {
-      const { type } = view;
-      if (type.isStringLiteral()) {
-        return value === type.value;
-      }
-      if (type.flags & ts.TypeFlags.StringLike) {
-        return typeof value === "string";
-      }
-      if (type.flags & ts.TypeFlags.NumberLike) {
-        return typeof value === "number";
-      }
-      if (type.flags & ts.TypeFlags.BooleanLike) {
-        return typeof value === "boolean";
-      }
-      return true;
-    }
-    case "throws":
-      return true;
-  }
-}
-
-function valueAcceptsJson(
-  checker: ts.TypeChecker,
-  value: SentValue,
-  sent: unknown,
-): boolean {
-  return value.kind === "json" ? viewAccepts(checker, value.view, sent) : true;
-}
-
-function isArrayValue(checker: ts.TypeChecker, value: SentValue): boolean {
-  if (value.kind === "empty") {
-    return false;
-  }
-  if (value.itemOf !== undefined) {
-    return true;
-  }
-  return (
-    value.kind === "json" &&
-    value.view.kind === "type" &&
-    (checker.isArrayType(value.view.type) ||
-      checker.isTupleType(value.view.type))
-  );
-}
-
-/**
- * Why one modelled payload does not describe the entries the client sent: a key the model has no field for,
- * a required field that was not sent, a value the field does not allow, or a key repeated without an array.
- */
-function entryMismatches<Sent>(
-  checker: ts.TypeChecker,
-  variant: SentPayload,
-  entries: [string, Sent][],
-  accepts: (value: SentValue, sent: Sent) => boolean,
-  label: string,
+  values: SentValue[],
 ): string[] {
-  if (variant.kind === "nothing") {
-    return entries.map(
-      ([key]) => `${label} ${key} is sent but nothing is modelled`,
-    );
-  }
-  if (variant.kind === "type") {
-    // Keys known only at runtime make no claim.
-    return [];
-  }
-  const anyKey = variant.indexes.length > 0;
-  const names = new Set(entries.map(([key]) => key));
-  const mismatches: string[] = [];
-  for (const name of names) {
-    const field = variant.fields.find((candidate) => candidate.name === name);
-    const sentValues = entries.filter(([key]) => key === name);
-    if (!field) {
-      if (!anyKey) {
-        mismatches.push(`${label} ${name} is not a modelled field`);
+  return values
+    .map((value) => {
+      if (value.kind === "empty") {
+        return "empty";
       }
-      continue;
-    }
-    if (
-      sentValues.length > 1 &&
-      !field.values.some((value) => isArrayValue(checker, value))
-    ) {
-      mismatches.push(`${label} ${name} is sent ${sentValues.length} times`);
-    }
-    for (const [, sent] of sentValues) {
-      if (!field.values.some((value) => accepts(value, sent))) {
-        mismatches.push(
-          `${label} ${name}: ${JSON.stringify(sent)} is not a value the model allows`,
-        );
-      }
-    }
-  }
-  for (const field of variant.fields) {
-    if (!field.optional && !names.has(field.name)) {
-      mismatches.push(`required ${label} ${field.name} is not sent`);
-    }
-  }
-  return mismatches;
+      const text =
+        value.kind === "text"
+          ? JSON.stringify(value.text)
+          : value.view.kind === "throws" || value.view.kind === "unverified"
+            ? value.view.kind
+            : describeShape(checker, value.view);
+      return value.itemOf ? `each ${text}` : text;
+    })
+    .sort();
 }
 
-function bodyEntries(
-  variant: SentPayload,
-  body: SentBody,
-): [string, unknown][] | string {
-  if (variant.kind === "nothing") {
-    return body.kind === "none" ? [] : "a body is sent but nothing is modelled";
+function partProjection(
+  checker: ts.TypeChecker,
+  part: ClientRequest["query"],
+): string | PayloadProjection[] {
+  if (part.unverified) {
+    return "unverified";
   }
-  if (body.kind === "none") {
-    return "no body is sent but one is modelled";
-  }
-  if (body.kind !== "json" || !isRecord(body.value)) {
-    return variant.kind === "type" ? [] : "the body is not a JSON object";
-  }
-  return Object.entries(body.value);
+  return part.variants.map((variant) => {
+    if (variant.kind === "nothing") {
+      return "nothing";
+    }
+    if (variant.kind === "type") {
+      return checker.typeToString(variant.type);
+    }
+    return Object.fromEntries([
+      ...variant.fields.map((field) => [
+        `${field.name}${field.optional ? "?" : ""}`,
+        valuesProjection(checker, field.values),
+      ]),
+      ...variant.indexes.map((index) => [
+        `[${checker.typeToString(index.keyType)}]`,
+        valuesProjection(checker, index.values),
+      ]),
+    ]);
+  });
 }
 
-/** Why the model does not describe this outcome; empty when it does. */
-function mismatches(modelled: Modelled, outcome: Outcome): string[] {
-  const { request, checker } = modelled;
+function projection({ checker, request }: Modelled): Projection | "unverified" {
   if (request.unverified) {
-    return [];
+    return "unverified";
   }
-  // The model predicts a throw as a request failure, or as a body value JSON.stringify throws for.
-  const predictsThrow =
-    request.failure !== undefined ||
-    request.body.variants.some(
-      (variant) =>
-        variant.kind === "fields" &&
-        variant.fields.some((field) =>
-          field.values.some(
-            (value) => value.kind === "json" && value.view.kind === "throws",
-          ),
-        ),
-    );
-  if (predictsThrow || outcome.kind === "thrown") {
-    return predictsThrow && outcome.kind === "thrown"
-      ? []
-      : [
-          `the model ${predictsThrow ? "predicts" : "does not predict"} a throw, and the client ${outcome.kind === "thrown" ? "threw" : "sent the request"}`,
-        ];
-  }
-  const sent = outcome.request;
-  // A part fits when any one of its variants describes what was sent.
-  const anyVariant = (lists: string[][]) =>
-    lists.some((list) => !list.length) ? [] : lists.flat();
-  const pattern = new RegExp(
-    `^${escapeRegExp(request.path).replaceAll(escapeRegExp("{param}"), "([^/]*)")}$`,
-  );
-  const match = pattern.exec(sent.path);
-  return [
-    ...(sent.method === request.method
-      ? []
-      : [`method ${sent.method} is not ${request.method}`]),
-    ...(match
-      ? request.pathParameters.flatMap((parameter, index) => {
-          const segment = decodeURIComponent(match[index + 1] ?? "");
-          return parameter.unverified ||
-            parameter.values.some((value) =>
-              valueAcceptsText(checker, value, segment),
-            )
-            ? []
-            : [
-                `path parameter ${index}: ${JSON.stringify(segment)} is not a text the model allows`,
-              ];
-        })
-      : [`path ${sent.path} does not match ${request.path}`]),
-    ...(request.query.unverified
-      ? []
-      : anyVariant(
-          request.query.variants.map((variant) =>
-            entryMismatches(
-              checker,
-              variant,
-              sent.query,
-              (value, text) => valueAcceptsText(checker, value, text),
-              "query key",
-            ),
-          ),
-        )),
-    ...(request.body.unverified
-      ? []
-      : anyVariant(
-          request.body.variants.map((variant) => {
-            const entries = bodyEntries(variant, sent.body);
-            return typeof entries === "string"
-              ? [entries]
-              : entryMismatches(
-                  checker,
-                  variant,
-                  entries,
-                  (value, json) => valueAcceptsJson(checker, value, json),
-                  "body key",
-                );
-          }),
-        )),
-  ];
+  return {
+    method: request.method,
+    path: request.path,
+    parameters: request.pathParameters.map((parameter) =>
+      parameter.unverified
+        ? "unverified"
+        : valuesProjection(checker, parameter.values),
+    ),
+    query: partProjection(checker, request.query),
+    body: partProjection(checker, request.body),
+    failure: request.failure !== undefined,
+    unverified: request.unverified !== undefined,
+  };
 }
 
 function sentRequest(request: Partial<SentRequest>): Outcome {
@@ -463,23 +261,13 @@ function sentRequest(request: Partial<SentRequest>): Outcome {
   };
 }
 
-/**
- * Sends the fixture through the real client and checks the model describes what arrived.
- * `ruleNotApplied` is what the client would send without the rule under test; the model must reject it.
- */
 async function expectConformance(
   fixture: Fixture,
   expected: Outcome,
-  ruleNotApplied?: Outcome,
+  expectedModel: Projection | "unverified",
 ) {
-  const modelled = model(fixture);
-  const outcome = await send(fixture);
-  expect(outcome).toEqual(expected);
-  expect(mismatches(modelled, outcome)).toEqual([]);
-  if (ruleNotApplied) {
-    expect(mismatches(modelled, ruleNotApplied)).not.toEqual([]);
-  }
-  return modelled;
+  expect(projection(model(fixture))).toEqual(expectedModel);
+  expect(await send(fixture)).toEqual(expected);
 }
 
 describe("modelClientRequest against the real API client", () => {
@@ -501,7 +289,7 @@ describe("modelClientRequest against the real API client", () => {
         argument: "7",
       },
       sentRequest({ path: "/api/x/7" }),
-      sentRequest({ method: "POST", path: "/api/x/7" }),
+      projected({ path: "/api/x/{param}", parameters: [["number"]] }),
     );
   });
 
@@ -516,7 +304,7 @@ describe("modelClientRequest against the real API client", () => {
         method: "POST",
         body: { kind: "json", value: { name: "n" } },
       }),
-      sentRequest({ method: "POST" }),
+      projected({ method: "POST", body: [{ name: ["string"] }] }),
     );
   });
 
@@ -528,12 +316,13 @@ describe("modelClientRequest against the real API client", () => {
         argument: '{ name: "n" }',
       },
       sentRequest({ query: [["name", "n"]] }),
-      sentRequest({ body: { kind: "json", value: { name: "n" } } }),
+      projected({ query: [{ name: ["string"] }] }),
     );
   });
 
   it.each([
     ["void", "undefined"],
+    ["undefined", "undefined"],
     ["null", "null"],
   ])("should send no query parameters for %s params", async (type, value) => {
     await expectConformance(
@@ -542,7 +331,7 @@ describe("modelClientRequest against the real API client", () => {
         argument: value,
       },
       sentRequest({}),
-      sentRequest({ query: [["key", "value"]] }),
+      projected({}),
     );
   });
 
@@ -556,12 +345,7 @@ describe("modelClientRequest against the real API client", () => {
         argument: `{ skipped: ${value}, kept: "k" }`,
       },
       sentRequest({ query: [["kept", "k"]] }),
-      sentRequest({
-        query: [
-          ["skipped", value],
-          ["kept", "k"],
-        ],
-      }),
+      projected({ query: [{ kept: ["string"] }] }),
     );
   });
 
@@ -573,6 +357,7 @@ describe("modelClientRequest against the real API client", () => {
         argument: '{ q: null, kept: "k" }',
       },
       sentRequest({ query: [["kept", "k"]] }),
+      projected({ query: [{ "q?": ["string"], kept: ["string"] }] }),
     );
   });
 
@@ -589,21 +374,21 @@ describe("modelClientRequest against the real API client", () => {
           ["archived", "true"],
         ],
       }),
-      sentRequest({ query: [["limit", "10"]] }),
+      projected({
+        query: [{ limit: ["number"], archived: ['"false"', '"true"'] }],
+      }),
     );
   });
 
   it("should leave an object query value unverified, because its text is known only at runtime", async () => {
-    const { request } = await expectConformance(
+    await expectConformance(
       {
         endpoint:
           '{ query: (params: { options: { a: number } }) => ({ url: "/api/x", params }) }',
         argument: "{ options: { a: 1 } }",
       },
       sentRequest({ query: [["options", "[object Object]"]] }),
-    );
-    expect(request.query.unverified).toMatch(
-      /^options \({ a: number; }\) is sent as text, and its text is known only at runtime/,
+      projected({ query: "unverified" }),
     );
   });
 
@@ -620,12 +405,7 @@ describe("modelClientRequest against the real API client", () => {
           ["ids", "undefined"],
         ],
       }),
-      sentRequest({
-        query: [
-          ["ids", "nil"],
-          ["ids", "undefined"],
-        ],
-      }),
+      projected({ query: [{ "ids?": ['each "null"', 'each "undefined"'] }] }),
     );
   });
 
@@ -637,7 +417,7 @@ describe("modelClientRequest against the real API client", () => {
         argument: "{ flag: true }",
       },
       sentRequest({ query: [["flag", "true"]] }),
-      sentRequest({ query: [["flag", "1"]] }),
+      projected({ query: [{ flag: ['"false"', '"true"'] }] }),
     );
   });
 
@@ -647,6 +427,7 @@ describe("modelClientRequest against the real API client", () => {
     await expectConformance(
       { endpoint, argument: "{ ids: [] }" },
       sentRequest({}),
+      projected({ query: [{ "ids?": ["number[]"] }] }),
     );
     await expectConformance(
       { endpoint, argument: "{ ids: [1, 2] }" },
@@ -656,6 +437,7 @@ describe("modelClientRequest against the real API client", () => {
           ["ids", "2"],
         ],
       }),
+      projected({ query: [{ "ids?": ["number[]"] }] }),
     );
   });
 
@@ -667,12 +449,10 @@ describe("modelClientRequest against the real API client", () => {
         argument: '{ cardId: 5, q: "text" }',
       },
       sentRequest({ path: "/api/x/5/query", query: [["q", "text"]] }),
-      sentRequest({
-        path: "/api/x/5/query",
-        query: [
-          ["cardId", "5"],
-          ["q", "text"],
-        ],
+      projected({
+        path: "/api/x/{param}/query",
+        parameters: [["number"]],
+        query: [{ q: ["string"] }],
       }),
     );
   });
@@ -685,21 +465,22 @@ describe("modelClientRequest against the real API client", () => {
         argument: "{ flag: true }",
       },
       sentRequest({ path: "/api/x/true" }),
-      sentRequest({ path: "/api/x/1" }),
+      projected({
+        path: "/api/x/{param}",
+        parameters: [['"false"', '"true"']],
+      }),
     );
   });
 
   it("should leave a URL tag filled from an object unverified, because its text is known only at runtime", async () => {
-    const { request } = await expectConformance(
+    await expectConformance(
       {
         endpoint:
           '{ query: (params: { options: { a: number } }) => ({ url: "/api/x/:options", params }) }',
         argument: "{ options: { a: 1 } }",
       },
       sentRequest({ path: "/api/x/%5Bobject%20Object%5D" }),
-    );
-    expect(request.pathParameters[0]?.unverified).toMatch(
-      /^:options \({ a: number; }\) is sent as text, and its text is known only at runtime/,
+      projected({ path: "/api/x/{param}", parameters: ["unverified"] }),
     );
   });
 
@@ -710,34 +491,33 @@ describe("modelClientRequest against the real API client", () => {
         argument: "true",
       },
       sentRequest({ path: "/api/x/true" }),
-      sentRequest({ path: "/api/x/1" }),
+      projected({
+        path: "/api/x/{param}",
+        parameters: [['"false"', '"true"']],
+      }),
     );
   });
 
   it("should leave an object template span unverified, because its text is known only at runtime", async () => {
-    const { request } = await expectConformance(
+    await expectConformance(
       {
         endpoint:
           "{ query: (options: { a: number }) => ({ url: `/api/x/${options}` }) }",
         argument: "{ a: 1 }",
       },
       sentRequest({ path: "/api/x/[object%20Object]" }),
-    );
-    expect(request.pathParameters[0]?.unverified).toBe(
-      "${options} ({ a: number; }) is sent as text, and its text is known only at runtime (the template literal applies String)",
+      projected({ path: "/api/x/{param}", parameters: ["unverified"] }),
     );
   });
 
   it("should leave a tuple template span unverified, because its text is known only at runtime", async () => {
-    const { request } = await expectConformance(
+    await expectConformance(
       {
         endpoint: "{ query: (pair: [1, null]) => ({ url: `/api/x/${pair}` }) }",
         argument: "[1, null]",
       },
       sentRequest({ path: "/api/x/1," }),
-    );
-    expect(request.pathParameters[0]?.unverified).toMatch(
-      /known only at runtime/,
+      projected({ path: "/api/x/{param}", parameters: ["unverified"] }),
     );
   });
 
@@ -748,7 +528,7 @@ describe("modelClientRequest against the real API client", () => {
         argument: "undefined",
       },
       sentRequest({ path: "/api/x/undefined" }),
-      sentRequest({ path: "/api/x/missing" }),
+      projected({ path: "/api/x/{param}", parameters: [['"undefined"']] }),
     );
   });
 
@@ -760,6 +540,7 @@ describe("modelClientRequest against the real API client", () => {
         argument: '{ name: "a/b" }',
       },
       sentRequest({ path: "/api/x/a%2Fb" }),
+      projected({ path: "/api/x/{param}", parameters: [["string"]] }),
     );
   });
 
@@ -778,11 +559,7 @@ describe("modelClientRequest against the real API client", () => {
         path: "/api/x/t",
         body: { kind: "json", value: { name: "n" } },
       }),
-      sentRequest({
-        method: "POST",
-        path: "/api/x/t",
-        body: { kind: "json", value: { token: "t", name: "n" } },
-      }),
+      "unverified",
     );
   });
 
@@ -800,6 +577,7 @@ describe("modelClientRequest against the real API client", () => {
         path: "/api/x/p",
         body: { kind: "json", value: { token: "t", name: "n" } },
       }),
+      "unverified",
     );
   });
 
@@ -818,6 +596,7 @@ describe("modelClientRequest against the real API client", () => {
         path: "/api/x/t",
         body: { kind: "json", value: { name: "n" } },
       }),
+      "unverified",
     );
   });
 
@@ -829,6 +608,10 @@ describe("modelClientRequest against the real API client", () => {
         argument: "{}",
       },
       sentRequest({ path: "/api/x//query" }),
+      projected({
+        path: "/api/x/{param}/query",
+        parameters: [["empty", "number"]],
+      }),
     );
   });
 
@@ -840,12 +623,16 @@ describe("modelClientRequest against the real API client", () => {
         argument: "1",
       },
       sentRequest({ path: "/api/x/1", query: [["flag", "true"]] }),
-      sentRequest({ path: "/api/x/1", query: [["flag", "false"]] }),
+      projected({
+        path: "/api/x/{param}",
+        parameters: [["number"]],
+        query: [{ flag: ['"true"'] }],
+      }),
     );
   });
 
   it("should leave the query unverified when an inline query span is not one known text", async () => {
-    const { request } = await expectConformance(
+    await expectConformance(
       {
         endpoint:
           "{ query: (flag: boolean) => ({ url: `/api/x?a=${flag}&b=${encodeURIComponent(flag)}` }) }",
@@ -857,13 +644,11 @@ describe("modelClientRequest against the real API client", () => {
           ["b", "true"],
         ],
       }),
-    );
-    expect(request.query.unverified).toMatch(
-      /^\$\{flag\} is put into the URL template's query string/,
+      projected({ query: "unverified" }),
     );
   });
 
-  it("should read an unencoded inline query span that carries its own query separator", async () => {
+  it("should leave dynamic inline query separators unverified", async () => {
     await expectConformance(
       {
         endpoint:
@@ -876,7 +661,7 @@ describe("modelClientRequest against the real API client", () => {
           ["y", "1"],
         ],
       }),
-      sentRequest({ query: [["v", "x&y=1"]] }),
+      projected({ query: "unverified" }),
     );
   });
 
@@ -887,12 +672,7 @@ describe("modelClientRequest against the real API client", () => {
         argument: "undefined",
       },
       sentRequest({ query: [["q", "a b!"]] }),
-      sentRequest({
-        query: [
-          ["q", "a+b%21"],
-          ["skip", "1"],
-        ],
-      }),
+      projected({ query: [{ q: ['"a b!"'] }] }),
     );
   });
 
@@ -904,7 +684,7 @@ describe("modelClientRequest against the real API client", () => {
         argument: "7",
       },
       sentRequest({ path: "/api/x/fixed" }),
-      sentRequest({ path: "/api/x/7" }),
+      projected({ path: "/api/x/{param}", parameters: [['"fixed"']] }),
     );
   });
 
@@ -912,10 +692,11 @@ describe("modelClientRequest against the real API client", () => {
     await expectConformance(
       {
         endpoint:
-          "{ query: (id: string) => ({ url: `/api/x/${encodeURIComponent(id)}` }) }",
-        argument: '"a b"',
+          "{ query: (id: number) => ({ url: `/api/x/${encodeURIComponent(id)}` }) }",
+        argument: "7",
       },
-      sentRequest({ path: "/api/x/a%20b" }),
+      sentRequest({ path: "/api/x/7" }),
+      projected({ path: "/api/x/{param}", parameters: [["number"]] }),
     );
   });
 
@@ -945,11 +726,15 @@ describe("modelClientRequest against the real API client", () => {
     ],
   ])(
     "should remove __rtkCacheKey from the %s",
-    async (_channel, endpoint, expected, ruleNotApplied) => {
+    async (_channel, endpoint, expected) => {
       await expectConformance(
         { endpoint, argument: '{ __rtkCacheKey: "key", q: "text" }' },
         expected,
-        ruleNotApplied,
+        projected(
+          _channel === "body"
+            ? { method: "POST", body: [{ q: ["string"] }] }
+            : { query: [{ q: ["string"] }] },
+        ),
       );
     },
   );
@@ -963,7 +748,7 @@ describe("modelClientRequest against the real API client", () => {
           argument: `new ${type}()`,
         },
         sentRequest({}),
-        sentRequest({ body: { kind: "raw", type } }),
+        projected({}),
       );
     },
   );
@@ -971,14 +756,14 @@ describe("modelClientRequest against the real API client", () => {
   it.each(["FormData", "URLSearchParams"])(
     "should send a non-GET %s body as it is",
     async (type) => {
-      const { request } = await expectConformance(
+      await expectConformance(
         {
           endpoint: `{ query: (body: ${type}) => ({ method: "POST", url: "/api/x", body }) }`,
           argument: `new ${type}()`,
         },
         sentRequest({ method: "POST", body: { kind: "raw", type } }),
+        projected({ method: "POST", body: "unverified" }),
       );
-      expect(request.body.unverified).toMatch(/sent as-is/);
     },
   );
 
@@ -995,10 +780,7 @@ describe("modelClientRequest against the real API client", () => {
         method: "POST",
         body: { kind: "json", value: { x: 1 } },
       }),
-      sentRequest({
-        method: "POST",
-        body: { kind: "json", value: { x: 1, sum: 2 } },
-      }),
+      projected({ method: "POST", body: [{ x: ["number"] }] }),
     );
   });
 
@@ -1008,14 +790,14 @@ describe("modelClientRequest against the real API client", () => {
   ])(
     "should leave a body that is %s unverified",
     async (_name, type, argument) => {
-      const { request } = await expectConformance(
+      await expectConformance(
         {
           endpoint: `{ query: (body: ${type}) => ({ method: "POST", url: "/api/x", body }) }`,
           argument,
         },
         sentRequest({ method: "POST", body: { kind: "json", value: {} } }),
+        projected({ method: "POST", body: "unverified" }),
       );
-      expect(request.body.unverified).toMatch(/copied with \{ \.\.\.value \}/);
     },
   );
 
@@ -1030,10 +812,7 @@ describe("modelClientRequest against the real API client", () => {
         method: "POST",
         body: { kind: "json", value: { when: "1970-01-01T00:00:00.000Z" } },
       }),
-      sentRequest({
-        method: "POST",
-        body: { kind: "json", value: { when: 0 } },
-      }),
+      projected({ method: "POST", body: [{ when: ["string"] }] }),
     );
   });
 
@@ -1048,10 +827,7 @@ describe("modelClientRequest against the real API client", () => {
         method: "POST",
         body: { kind: "json", value: { ids: [1, null] } },
       }),
-      sentRequest({
-        method: "POST",
-        body: { kind: "json", value: { ids: [1, "null"] } },
-      }),
+      projected({ method: "POST", body: [{ ids: ["(number | null)[]"] }] }),
     );
   });
 
@@ -1067,10 +843,7 @@ describe("modelClientRequest against the real API client", () => {
         method: "POST",
         body: { kind: "json", value: { tags: {}, name: "n" } },
       }),
-      sentRequest({
-        method: "POST",
-        body: { kind: "json", value: { tags: { a: "b" }, name: "n" } },
-      }),
+      projected({ method: "POST", body: [{ tags: ["{}"], name: ["string"] }] }),
     );
   });
 
@@ -1085,6 +858,10 @@ describe("modelClientRequest against the real API client", () => {
         method: "POST",
         body: { kind: "json", value: { collections: { "1": true } } },
       }),
+      projected({
+        method: "POST",
+        body: [{ collections: ["Record<number, boolean>"] }],
+      }),
     );
   });
 
@@ -1096,7 +873,7 @@ describe("modelClientRequest against the real API client", () => {
         argument: "null",
       },
       sentRequest({ method: "PUT", body: { kind: "json", value: {} } }),
-      sentRequest({ method: "PUT" }),
+      projected({ method: "PUT", body: [{}] }),
     );
   });
 
@@ -1107,7 +884,7 @@ describe("modelClientRequest against the real API client", () => {
         argument: "null",
       },
       sentRequest({}),
-      sentRequest({ body: { kind: "json", value: {} } }),
+      projected({}),
     );
   });
 
@@ -1119,7 +896,7 @@ describe("modelClientRequest against the real API client", () => {
         argument: "undefined",
       },
       sentRequest({ method: "PUT" }),
-      sentRequest({ method: "PUT", body: { kind: "json", value: {} } }),
+      projected({ method: "PUT" }),
     );
   });
 
@@ -1135,12 +912,17 @@ describe("modelClientRequest against the real API client", () => {
         path: "/api/x/1",
         body: { kind: "json", value: {} },
       }),
-      sentRequest({ method: "DELETE", path: "/api/x/1" }),
+      projected({
+        path: "/api/x/{param}",
+        parameters: [["number"]],
+        method: "DELETE",
+        body: [{}],
+      }),
     );
   });
 
   it("should leave a DELETE body built from an empty object rest unverified", async () => {
-    const { request } = await expectConformance(
+    await expectConformance(
       {
         endpoint:
           '{ query: ({ id, ...body }: { id: number }) => ({ method: "DELETE", url: `/api/x/${id}`, body }) }',
@@ -1151,37 +933,45 @@ describe("modelClientRequest against the real API client", () => {
         path: "/api/x/1",
         body: { kind: "json", value: {} },
       }),
+      projected({
+        path: "/api/x/{param}",
+        parameters: [["number"]],
+        method: "DELETE",
+        body: "unverified",
+      }),
     );
-    expect(request.body.unverified).toMatch(/object rest body/);
   });
 
   it("should leave the query unverified for an empty object rest in a GET body", async () => {
-    const { request } = await expectConformance(
+    await expectConformance(
       {
         endpoint:
           "{ query: ({ id, ...body }: { id: number }) => ({ url: `/api/x/${id}`, body }) }",
         argument: "{ id: 1 }",
       },
       sentRequest({ path: "/api/x/1" }),
+      projected({
+        path: "/api/x/{param}",
+        parameters: [["number"]],
+        query: "unverified",
+      }),
     );
-    expect(request.query.unverified).toMatch(/object rest body/);
-    expect(request.body.unverified).toBeUndefined();
   });
 
   it("should leave a URL tag unverified when params keys are known only at runtime", async () => {
-    const { request } = await expectConformance(
+    await expectConformance(
       {
         endpoint:
           '{ query: (params: Record<string, string>) => ({ url: "/api/x/:cardId", params }) }',
         argument: '{ cardId: "5", q: "text" }',
       },
       sentRequest({ path: "/api/x/5", query: [["q", "text"]] }),
+      "unverified",
     );
-    expect(request.pathParameters[0]?.unverified).toMatch(/index signature/);
   });
 
   it("should mark GET query parameters unverified when a value with no declared keys is merged with other fields", async () => {
-    const { request } = await expectConformance(
+    await expectConformance(
       {
         declarations: "type Args = { params: {}; body: { name: string } };",
         endpoint:
@@ -1194,20 +984,24 @@ describe("modelClientRequest against the real API client", () => {
           ["name", "n"],
         ],
       }),
+      projected({ query: "unverified" }),
     );
-    expect(request.query.unverified).toMatch(/more than one source/);
   });
 
   it("should leave the query unverified for an empty object rest in params", async () => {
-    const { request } = await expectConformance(
+    await expectConformance(
       {
         endpoint:
           "{ query: ({ id, ...params }: { id: number }) => ({ url: `/api/x/${id}`, params }) }",
         argument: "{ id: 1 }",
       },
       sentRequest({ path: "/api/x/1" }),
+      projected({
+        path: "/api/x/{param}",
+        parameters: [["number"]],
+        query: "unverified",
+      }),
     );
-    expect(request.query.unverified).toMatch(/object rest params/);
   });
 
   it("should leave an undefined property out of a JSON body", async () => {
@@ -1221,28 +1015,24 @@ describe("modelClientRequest against the real API client", () => {
         method: "POST",
         body: { kind: "json", value: { name: "n" } },
       }),
-      sentRequest({
-        method: "POST",
-        body: { kind: "json", value: { name: "n", note: null } },
-      }),
+      projected({ method: "POST", body: [{ name: ["string"] }] }),
     );
   });
 
   it("should throw before sending an array body", async () => {
-    const { request } = await expectConformance(
+    await expectConformance(
       {
         endpoint:
           '{ query: (body: string[]) => ({ method: "POST", url: "/api/x", body }) }',
         argument: '["a"]',
       },
       { kind: "thrown" },
-      sentRequest({ method: "POST", body: { kind: "json", value: ["a"] } }),
+      projected({ method: "POST", failure: true, query: [], body: [] }),
     );
-    expect(request.failure).toMatch(/array body/);
   });
 
   it("should mark a key sent from both GET params and body unverified", async () => {
-    const { request } = await expectConformance(
+    await expectConformance(
       {
         declarations:
           "type Args = { params: { q: string }; body: { q: string } };",
@@ -1256,25 +1046,24 @@ describe("modelClientRequest against the real API client", () => {
           ["q", "b"],
         ],
       }),
+      projected({ query: "unverified" }),
     );
-    expect(request.query.unverified).toMatch(/twice/);
   });
 
   it("should mark a request unverified when extraOptions replaces its URL", async () => {
-    const { request } = await expectConformance(
+    await expectConformance(
       {
         endpoint:
           '{ query: (_: void) => ({ url: "/api/x" }), extraOptions: { url: "/api/y" } }',
         argument: "undefined",
       },
       sentRequest({ path: "/api/y" }),
+      "unverified",
     );
-    expect(request.unverified).toMatch(/extraOptions/);
-    expect(request.path).toBe("/api/x");
   });
 
   it("should leave a body that is an unknown value unverified", async () => {
-    const { request } = await expectConformance(
+    await expectConformance(
       {
         endpoint:
           '{ query: (body: unknown) => ({ method: "POST", url: "/api/x", body }) }',
@@ -1284,12 +1073,12 @@ describe("modelClientRequest against the real API client", () => {
         method: "POST",
         body: { kind: "json", value: { any: "thing" } },
       }),
+      projected({ method: "POST", body: "unverified" }),
     );
-    expect(request.body.unverified).toMatch(/known only at runtime/);
   });
 
   it("should keep a nested field that drops undefined as optional in the JSON body", async () => {
-    const { request } = await expectConformance(
+    await expectConformance(
       {
         declarations:
           "type Args = { inner: { a: string | undefined; b: number } };",
@@ -1301,47 +1090,35 @@ describe("modelClientRequest against the real API client", () => {
         method: "POST",
         body: { kind: "json", value: { inner: { b: 1 } } },
       }),
-      sentRequest({
+      projected({
         method: "POST",
-        body: { kind: "json", value: { inner: { a: null, b: 1 } } },
+        body: [{ inner: ["{ a?: string; b: number; }"] }],
       }),
     );
-    expect(request.body.variants.map((variant) => variant.kind)).toEqual([
-      "fields",
-    ]);
   });
 
   it("should leave the query unverified when an inline query key is built at runtime", async () => {
-    const { request } = await expectConformance(
+    await expectConformance(
       {
         declarations: 'const search: string = "built=later";',
         endpoint: "{ query: (_: void) => ({ url: `/api/x?${search}` }) }",
         argument: "undefined",
       },
       sentRequest({ query: [["built", "later"]] }),
+      projected({ query: "unverified" }),
     );
-    expect(request.query.unverified).toMatch(/query string/);
   });
 
   // `JSON.stringify` throws for a bigint, so the client never sends this body.
   it("should mark a bigint body field as a request the client never sends", async () => {
-    const { request } = await expectConformance(
+    await expectConformance(
       {
         endpoint:
           '{ query: (body: { big: bigint }) => ({ method: "POST", url: "/api/x", body }) }',
         argument: "{ big: 1n }",
       },
       { kind: "thrown" },
+      projected({ method: "POST", body: [{ big: ["throws"] }] }),
     );
-    const [variant] = request.body.variants;
-    const big =
-      variant?.kind === "fields"
-        ? variant.fields.find((field) => field.name === "big")
-        : undefined;
-    expect(
-      big?.values.map((value) =>
-        value.kind === "json" ? value.view.kind : value.kind,
-      ),
-    ).toEqual(["throws"]);
   });
 });

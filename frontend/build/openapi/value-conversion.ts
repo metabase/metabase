@@ -1,5 +1,6 @@
 import ts from "typescript";
 
+import type { Shape, ShapeField } from "./shape";
 import {
   isTypeReference,
   properties,
@@ -7,45 +8,50 @@ import {
   unionMembers,
 } from "./typescript-utils";
 
-/** A property the runtime value does not own, so a spread copy and `JSON.stringify` both leave it out. */
-export function isPrototypeMember(
-  checker: ts.TypeChecker,
-  property: ts.Symbol,
-): boolean {
+export function isPrototypeMember(property: ts.Symbol): boolean {
   if (property.name.startsWith("__@")) {
     return true;
   }
-  const declaration = property.declarations?.[0];
-  if (
-    declaration &&
-    (ts.isGetAccessorDeclaration(declaration) ||
-      ts.isSetAccessorDeclaration(declaration) ||
-      ts.isMethodDeclaration(declaration) ||
-      ts.isMethodSignature(declaration))
-  ) {
-    return true;
-  }
-  return checker.getTypeOfSymbol(property).getCallSignatures().length > 0;
-}
-
-/** Whether the type is declared by the TypeScript lib, whose objects keep their data behind prototype accessors. */
-export function isLibType(type: ts.Type): boolean {
-  const declaration = (type.aliasSymbol ?? type.getSymbol())?.declarations?.[0];
   return (
-    isLibDeclaration(declaration) &&
-    declaration !== undefined &&
-    (ts.isInterfaceDeclaration(declaration) ||
-      ts.isClassDeclaration(declaration))
+    property.declarations?.some(
+      (declaration) =>
+        (ts.isClassDeclaration(declaration.parent) ||
+          ts.isClassExpression(declaration.parent)) &&
+        (ts.isGetAccessorDeclaration(declaration) ||
+          ts.isSetAccessorDeclaration(declaration) ||
+          ts.isMethodDeclaration(declaration)),
+    ) ?? false
   );
 }
 
-/** The JavaScript operation that turns a value into text on its way to the URL. */
+export function isLibType(type: ts.Type): boolean {
+  const declarations = (type.aliasSymbol ?? type.getSymbol())?.declarations;
+  return (
+    declarations !== undefined &&
+    declarations.length > 0 &&
+    declarations.every(isLibDeclaration) &&
+    declarations.some(
+      (declaration) =>
+        ts.isInterfaceDeclaration(declaration) ||
+        ts.isClassDeclaration(declaration),
+    )
+  );
+}
+
+export function isAugmentedLibType(type: ts.Type): boolean {
+  const declarations =
+    (type.aliasSymbol ?? type.getSymbol())?.declarations ?? [];
+  return (
+    declarations.some(isLibDeclaration) &&
+    declarations.some((declaration) => !isLibDeclaration(declaration))
+  );
+}
+
 export type StringConversion =
   | "String"
   | "the template literal"
   | "encodeURIComponent";
 
-/** What one part of a value's type becomes after a string conversion. */
 export type StringPart =
   | { kind: "text"; text: string; from: ts.Type }
   /** The text is not known from the type. `unmodelled` says why the type cannot stand in for it. */
@@ -65,14 +71,10 @@ function isSymbolType(type: ts.Type): boolean {
   return (type.flags & ts.TypeFlags.ESSymbolLike) !== 0;
 }
 
-/** The one text a single, non-union type always converts to, if there is one. */
 function singleText(
   checker: ts.TypeChecker,
   type: ts.Type,
 ): string | undefined {
-  if (type.isStringLiteral()) {
-    return type.value;
-  }
   if (type.isLiteral()) {
     const { value } = type;
     return typeof value === "object"
@@ -138,32 +140,11 @@ export function stringParts(
   });
 }
 
-/** Whether every part of `type` keeps its type after a string conversion, so nothing about it changes. */
 export function keepsType(parts: StringPart[]): boolean {
   return parts.every((part) => part.kind === "type" && !part.unmodelled);
 }
 
-/** What `JSON.stringify` writes for a value (JSON.stringify). */
-export type JsonView =
-  | { kind: "type"; type: ts.Type }
-  | { kind: "null"; from: ts.Type; reason: string }
-  | { kind: "empty"; from: ts.Type; reason: string }
-  | { kind: "object"; from: ts.Type; fields: JsonField[] }
-  | { kind: "array"; from: ts.Type; element: JsonView }
-  | { kind: "union"; from: ts.Type; members: JsonView[] }
-  | { kind: "throws"; from: ts.Type; reason: string };
-
-export interface JsonField {
-  name: string;
-  view: JsonView;
-  optional: boolean;
-  declaration: ts.Declaration | undefined;
-}
-
-function dropReason(
-  checker: ts.TypeChecker,
-  type: ts.Type,
-): string | undefined {
+function dropReason(type: ts.Type): string | undefined {
   if (type.flags & (ts.TypeFlags.Undefined | ts.TypeFlags.Void)) {
     return "undefined";
   }
@@ -173,29 +154,27 @@ function dropReason(
   return type.getCallSignatures().length > 0 ? "a function" : undefined;
 }
 
-function toJsonReturn(
-  checker: ts.TypeChecker,
-  type: ts.Type,
-): ts.Type | undefined {
-  const toJson = checker.getPropertyOfType(type, "toJSON");
-  const signatures = toJson
-    ? checker.getTypeOfSymbol(toJson).getCallSignatures()
-    : [];
-  const [only, ...more] = signatures;
-  return only && !more.length
-    ? checker.getReturnTypeOfSignature(only)
-    : undefined;
-}
-
-const jsonViews = new WeakMap<ts.Type, JsonView>();
+const jsonViews = new WeakMap<ts.Type, Shape>();
 const building = new Set<ts.Type>();
 let recursions = 0;
+let buildSteps = 0;
 
 /**
  * How one value's type is serialised, following `JSON.stringify`'s rules.
- * Where a type recurs inside itself, the declared type stands in from that point.
+ * Recursive types stand in for themselves only when their fields survive JSON unchanged.
  */
-export function jsonView(checker: ts.TypeChecker, type: ts.Type): JsonView {
+export function jsonView(checker: ts.TypeChecker, type: ts.Type): Shape {
+  if (!building.size) {
+    buildSteps = 0;
+  }
+  buildSteps += 1;
+  if (buildSteps > 20_000_000 || building.size > 1_000) {
+    return {
+      kind: "unverified",
+      from: type,
+      reason: "JSON modelling exceeded its type walk budget",
+    };
+  }
   const cached = jsonViews.get(type);
   if (cached) {
     return cached;
@@ -206,9 +185,9 @@ export function jsonView(checker: ts.TypeChecker, type: ts.Type): JsonView {
   }
   building.add(type);
   const before = recursions;
-  let view: JsonView;
+  let view: Shape;
   try {
-    view = buildJsonView(checker, type);
+    view = buildShape(checker, type);
   } finally {
     building.delete(type);
   }
@@ -216,14 +195,23 @@ export function jsonView(checker: ts.TypeChecker, type: ts.Type): JsonView {
   if (recursions === before) {
     jsonViews.set(type, view);
   }
-  return view;
+  return recursions !== before && (view.kind !== "type" || view.type !== type)
+    ? {
+        kind: "unverified",
+        from: type,
+        reason:
+          "the checker does not model JSON conversions inside a recursive type",
+      }
+    : view;
 }
 
-function buildJsonView(checker: ts.TypeChecker, type: ts.Type): JsonView {
+function buildShape(checker: ts.TypeChecker, type: ts.Type): Shape {
   const members = unionMembers(checker, type);
   if (members.length > 1) {
     const views = members.map((member) => jsonView(checker, member));
-    return views.every((view) => view.kind === "type")
+    return views.every(
+      (view, index) => view.kind === "type" && view.type === members[index],
+    )
       ? { kind: "type", type }
       : { kind: "union", from: type, members: views };
   }
@@ -237,9 +225,35 @@ function buildJsonView(checker: ts.TypeChecker, type: ts.Type): JsonView {
   if (!(type.flags & ts.TypeFlags.Object) && !type.isIntersection()) {
     return { kind: "type", type };
   }
-  const returned = toJsonReturn(checker, type);
-  if (returned) {
-    return jsonView(checker, returned);
+  if (type.isIntersection()) {
+    const primitive = type.types.find(
+      (member) =>
+        member.flags &
+        (ts.TypeFlags.StringLike |
+          ts.TypeFlags.NumberLike |
+          ts.TypeFlags.BooleanLike |
+          ts.TypeFlags.BigIntLike),
+    );
+    if (primitive) {
+      return jsonView(checker, primitive);
+    }
+  }
+  const toJson = checker.getPropertyOfType(type, "toJSON");
+  if (toJson) {
+    const signatures = checker.getTypeOfSymbol(toJson).getCallSignatures();
+    const [signature] = signatures;
+    if (
+      !signature ||
+      signatures.length !== 1 ||
+      !toJson.declarations?.every(isLibDeclaration)
+    ) {
+      return {
+        kind: "unverified",
+        from: type,
+        reason: "the checker does not model a custom toJSON method",
+      };
+    }
+    return jsonView(checker, checker.getReturnTypeOfSignature(signature));
   }
   if (type.getCallSignatures().length > 0 || isSymbolType(type)) {
     return { kind: "type", type };
@@ -253,21 +267,31 @@ function buildJsonView(checker: ts.TypeChecker, type: ts.Type): JsonView {
           (element) => element !== undefined,
         );
     const parts = elements.flatMap((element) => unionMembers(checker, element));
-    const views = parts.map((part): JsonView => {
-      const dropped = dropReason(checker, part);
+    const views = parts.map((part): Shape => {
+      const dropped = dropReason(part);
       return dropped
         ? { kind: "null", from: part, reason: `${dropped} in an array` }
         : jsonView(checker, part);
     });
     const [only, ...more] = views;
-    const element: JsonView = only
+    const element: Shape = only
       ? more.length
         ? { kind: "union", from: type, members: views }
         : only
       : { kind: "type", type: checker.getNeverType() };
-    return element.kind === "type" && !more.length
+    return views.every(
+      (view, index) => view.kind === "type" && view.type === parts[index],
+    )
       ? { kind: "type", type }
       : { kind: "array", from: type, element };
+  }
+  if (isAugmentedLibType(type)) {
+    return {
+      kind: "unverified",
+      from: type,
+      reason:
+        "the checker does not model own properties of an augmented library type",
+    };
   }
   if (!type.isIntersection() && isLibType(type)) {
     return {
@@ -276,14 +300,28 @@ function buildJsonView(checker: ts.TypeChecker, type: ts.Type): JsonView {
       reason: `a ${typeText(checker, type)} has no own properties to serialise`,
     };
   }
+  const indexes = checker.getIndexInfosOfType(type);
+  if (
+    indexes.some((index) => {
+      const view = jsonView(checker, index.type);
+      return view.kind !== "type" || view.type !== index.type;
+    })
+  ) {
+    return {
+      kind: "unverified",
+      from: type,
+      reason:
+        "the checker does not model JSON conversions in an object with index signatures",
+    };
+  }
   const declared = properties(type);
   const fields = declared.flatMap(
-    (property): { field: JsonField; unchanged: boolean }[] => {
-      if (isPrototypeMember(checker, property)) {
+    (property): { field: ShapeField; unchanged: boolean }[] => {
+      if (isPrototypeMember(property)) {
         return [];
       }
       const parts = unionMembers(checker, checker.getTypeOfSymbol(property));
-      const kept = parts.filter((part) => !dropReason(checker, part));
+      const kept = parts.filter((part) => !dropReason(part));
       if (!kept.length) {
         return [];
       }
@@ -294,7 +332,7 @@ function buildJsonView(checker: ts.TypeChecker, type: ts.Type): JsonView {
         {
           field: {
             name: property.name,
-            view:
+            shape:
               only && !more.length
                 ? only
                 : {
@@ -307,11 +345,19 @@ function buildJsonView(checker: ts.TypeChecker, type: ts.Type): JsonView {
           },
           // A value that dropped undefined stays as declared only when the property was optional already.
           unchanged:
-            only !== undefined &&
-            !more.length &&
-            only.kind === "type" &&
-            only.type === kept[0] &&
-            (kept.length === parts.length || declaredOptional),
+            views.every(
+              (view, index) =>
+                view.kind === "type" && view.type === kept[index],
+            ) &&
+            (kept.length === parts.length ||
+              (declaredOptional &&
+                parts.every(
+                  (part) =>
+                    kept.includes(part) ||
+                    (part.flags &
+                      (ts.TypeFlags.Undefined | ts.TypeFlags.Void)) !==
+                      0,
+                ))),
         },
       ];
     },
@@ -319,29 +365,41 @@ function buildJsonView(checker: ts.TypeChecker, type: ts.Type): JsonView {
   const unchanged =
     fields.length === declared.length &&
     fields.every((entry) => entry.unchanged);
+  if (!unchanged && indexes.length) {
+    return {
+      kind: "unverified",
+      from: type,
+      reason:
+        "the checker does not model JSON conversions in an object with index signatures",
+    };
+  }
   return unchanged
     ? { kind: "type", type }
     : {
         kind: "object",
         from: type,
         fields: fields.map((entry) => entry.field),
+        indexes: [],
       };
 }
 
-/** One position where `JSON.stringify` changes the value. */
 export interface JsonConversion {
   kind: "left out" | "null" | "empty object" | "toJSON";
   path: string;
   detail: string;
 }
 
-/** Every position where `JSON.stringify` changes the value. */
 export function jsonConversions(
   checker: ts.TypeChecker,
-  view: JsonView,
+  view: Shape,
   path: string,
   from?: ts.Type,
+  visited = new Set<Shape>(),
 ): JsonConversion[] {
+  if (visited.has(view)) {
+    return [];
+  }
+  visited.add(view);
   switch (view.kind) {
     case "type":
       return from && from !== view.type
@@ -353,7 +411,10 @@ export function jsonConversions(
             },
           ]
         : [];
+    case "text":
+    case "items":
     case "throws":
+    case "unverified":
       return [];
     case "null":
       return [
@@ -372,14 +433,20 @@ export function jsonConversions(
         },
       ];
     case "array":
-      return jsonConversions(checker, view.element, `${path}[]`);
+      return jsonConversions(
+        checker,
+        view.element,
+        `${path}[]`,
+        undefined,
+        visited,
+      );
     case "union":
       return view.members.flatMap((member) =>
-        jsonConversions(checker, member, path),
+        jsonConversions(checker, member, path, undefined, visited),
       );
     case "object":
       return [
-        ...properties(view.from)
+        ...(view.from ? properties(view.from) : [])
           .filter(
             (property) =>
               !view.fields.some((field) => field.name === property.name),
@@ -392,13 +459,18 @@ export function jsonConversions(
             }),
           ),
         ...view.fields.flatMap((field) =>
-          jsonConversions(checker, field.view, `${path}.${field.name}`),
+          jsonConversions(
+            checker,
+            field.shape,
+            `${path}.${field.name}`,
+            undefined,
+            visited,
+          ),
         ),
       ];
   }
 }
 
-/** One note per kind of conversion, naming a few of the positions. */
 export function jsonConversionNotes(
   conversions: JsonConversion[],
   examples = 3,
@@ -411,42 +483,4 @@ export function jsonConversionNotes(
     const rest = found.length - shown.length;
     return `JSON.stringify writes ${found.length} ${found.length === 1 ? "value" : "values"} differently at ${shown.join(", ")}${rest > 0 ? ` and ${rest} more` : ""}: ${first?.detail ?? ""} (JSON.stringify)`;
   });
-}
-
-const jsonViewTexts = new WeakMap<JsonView, string>();
-
-export function describeJsonView(
-  checker: ts.TypeChecker,
-  view: JsonView,
-): string {
-  const cached = jsonViewTexts.get(view);
-  if (cached !== undefined) {
-    return cached;
-  }
-  const text = jsonViewText(checker, view);
-  jsonViewTexts.set(view, text);
-  return text;
-}
-
-function jsonViewText(checker: ts.TypeChecker, view: JsonView): string {
-  switch (view.kind) {
-    case "type":
-      return typeText(checker, view.type);
-    case "null":
-      return "null";
-    case "empty":
-      return "{}";
-    case "array": {
-      const element = describeJsonView(checker, view.element);
-      return view.element.kind === "union" ? `(${element})[]` : `${element}[]`;
-    }
-    case "union":
-      return view.members
-        .map((member) => describeJsonView(checker, member))
-        .join(" | ");
-    case "object":
-      return `{ ${view.fields.map((field) => `${field.name}${field.optional ? "?" : ""}: ${describeJsonView(checker, field.view)};`).join(" ")} }`;
-    case "throws":
-      return typeText(checker, view.from);
-  }
 }

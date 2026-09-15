@@ -8,10 +8,10 @@ import {
   modelClientRequest,
 } from "./client-request";
 import { resolveRtkRequest } from "./rtk-request";
+import { type Shape, typeShape } from "./shape";
 import {
   type CompareContext,
   LINE_BREAK,
-  type Shape,
   TypeWalkError,
   type UnconstrainedPosition,
   type Verdict,
@@ -20,7 +20,6 @@ import {
   compareTypes,
   isStackOverflow,
   looseTypeVerdict,
-  typeShape,
 } from "./type-comparison";
 import {
   hasComputedName,
@@ -29,7 +28,6 @@ import {
   propertyType,
   unwrap,
 } from "./typescript-utils";
-import { type JsonView, describeJsonView } from "./value-conversion";
 
 export type ContractStatus =
   | "compatible"
@@ -518,6 +516,12 @@ function comparePart(
   expected: ts.Type,
   at: ts.Node,
 ): Verdict {
+  if (!part.unverified && !part.variants.length) {
+    return {
+      status: "unverified",
+      message: "the request model produced no variants",
+    };
+  }
   if (part.unverified) {
     // Whatever the unverified value holds, a part the client always sends cannot fit a backend that declares none.
     if (
@@ -581,13 +585,13 @@ function payloadShape(checker: ts.TypeChecker, payload: SentPayload): Shape {
         description: payload.description,
         fields: payload.fields.map((field) => ({
           name: field.name,
-          shape: valuesShape(checker, field.values),
+          shape: valuesShape(field.values),
           optional: field.optional,
           declaration: field.declaration,
         })),
         indexes: payload.indexes.map((index) => ({
           keyType: index.keyType,
-          shape: valuesShape(checker, index.values),
+          shape: valuesShape(index.values),
           declaration: index.declaration,
         })),
       };
@@ -595,18 +599,15 @@ function payloadShape(checker: ts.TypeChecker, payload: SentPayload): Shape {
 }
 
 /** One shape for the values a field may hold; items of the same array are sent one key per item. */
-function valuesShape(checker: ts.TypeChecker, values: SentValue[]): Shape {
+function valuesShape(values: SentValue[]): Shape {
   const arrays = new Map<ts.Type, Shape[]>();
   const members: Shape[] = [];
   for (const value of values) {
     const itemOf = value.kind === "empty" ? undefined : value.itemOf;
     if (itemOf) {
-      arrays.set(itemOf, [
-        ...(arrays.get(itemOf) ?? []),
-        valueShape(checker, value),
-      ]);
+      arrays.set(itemOf, [...(arrays.get(itemOf) ?? []), valueShape(value)]);
     } else {
-      members.push(valueShape(checker, value));
+      members.push(valueShape(value));
     }
   }
   for (const [from, items] of arrays) {
@@ -620,48 +621,13 @@ function unionShape(members: Shape[]): Shape {
   return only && members.length === 1 ? only : { kind: "union", members };
 }
 
-function valueShape(checker: ts.TypeChecker, value: SentValue): Shape {
+function valueShape(value: SentValue): Shape {
   switch (value.kind) {
     case "json":
-      return viewShape(checker, value.view);
+      return value.view;
     case "text":
     case "empty":
       return { kind: "text", text: value.kind === "text" ? value.text : "" };
-  }
-}
-
-function viewShape(checker: ts.TypeChecker, view: JsonView): Shape {
-  switch (view.kind) {
-    case "type":
-      return typeShape(view.type);
-    case "null":
-    case "empty":
-    case "throws":
-      return view;
-    case "array":
-      return {
-        kind: "array",
-        from: view.from,
-        element: viewShape(checker, view.element),
-      };
-    case "union":
-      return {
-        kind: "union",
-        members: view.members.map((member) => viewShape(checker, member)),
-      };
-    case "object":
-      return {
-        kind: "object",
-        from: view.from,
-        description: describeJsonView(checker, view),
-        fields: view.fields.map((field) => ({
-          name: field.name,
-          shape: viewShape(checker, field.view),
-          optional: field.optional,
-          declaration: field.declaration,
-        })),
-        indexes: [],
-      };
   }
 }
 
@@ -731,7 +697,7 @@ function pathParameterVerdict(
               context,
               "request",
               location,
-              valueShape(context.checker, value),
+              valueShape(value),
               expected,
               node,
             ),

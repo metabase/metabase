@@ -1,6 +1,13 @@
 import ts from "typescript";
 
 import {
+  type Shape,
+  type ShapeField,
+  type ShapeIndex,
+  describeShape,
+  typeShape,
+} from "./shape";
+import {
   indexAccepts,
   isObjectLike,
   isTypeReference,
@@ -16,13 +23,13 @@ interface Problem {
   message: string;
 }
 
-/** One `any`, `unknown` or unresolved type declaration, with every path that reaches it. */
+/** One `any`, `unknown` or unresolved type declaration, at its first shortest path. */
 export interface UnconstrainedPosition {
   side: Side;
   type: string;
   /** The declaring type and member with `file:line`, absent for a member TypeScript synthesized. */
   declaration?: string;
-  /** Sorted shortest first, then alphabetically. */
+  /** One shortest path; grouped declarations can share this position. */
   paths: string[];
 }
 
@@ -46,14 +53,9 @@ export interface CompareContext {
   walkDepthBudget?: number;
 }
 
-/**
- * The most types one walk may visit, and the deepest it may go, before it is treated as not terminating.
- * Real walks stay far below both, so reaching either means a type keeps producing new types.
- */
-export const WALK_STEP_BUDGET = 20_000_000;
-export const WALK_DEPTH_BUDGET = 1_000;
+const WALK_STEP_BUDGET = 20_000_000;
+const WALK_DEPTH_BUDGET = 1_000;
 
-/** A type walk that went past its budget or overflowed the call stack. */
 export class TypeWalkError extends Error {
   override name = "TypeWalkError";
 }
@@ -149,7 +151,7 @@ interface Position {
   declaration: ts.Declaration | undefined;
 }
 
-export type Side = "frontend" | "backend";
+type Side = "frontend" | "backend";
 
 interface Direction {
   from: Side;
@@ -158,7 +160,7 @@ interface Direction {
 
 export const LINE_BREAK = "\n  ";
 
-export const COMPATIBLE: Verdict = {
+const COMPATIBLE: Verdict = {
   status: "compatible",
   message: "Compatible",
 };
@@ -218,7 +220,7 @@ function declarationLabel(declaration: ts.Declaration, root: string): string {
   return member ? `${member.replace(/^\./, "")} (${where})` : where;
 }
 
-export function fieldLabel(
+function fieldLabel(
   path: string,
   declaration: ts.Declaration | undefined,
   root: string,
@@ -237,42 +239,6 @@ export function fieldLabel(
   return `${path} (${location})`;
 }
 
-/** What one side of a comparison holds at a position: a type, or what the client sends there. */
-export type Shape =
-  | { kind: "type"; type: ts.Type }
-  | { kind: "text"; text: string }
-  | { kind: "null"; from: ts.Type }
-  | { kind: "empty"; from: ts.Type }
-  | { kind: "throws"; from: ts.Type; reason: string }
-  | {
-      kind: "object";
-      from: ts.Type | undefined;
-      description: string;
-      fields: ShapeField[];
-      indexes: ShapeIndex[];
-    }
-  | { kind: "array"; from: ts.Type; element: Shape }
-  /** A query array, sent as one value per item. */
-  | { kind: "items"; from: ts.Type; item: Shape }
-  | { kind: "union"; members: Shape[] };
-
-export interface ShapeField {
-  name: string;
-  shape: Shape;
-  optional: boolean;
-  declaration: ts.Declaration | undefined;
-}
-
-export interface ShapeIndex {
-  keyType: ts.Type;
-  shape: Shape;
-  declaration: ts.Declaration | undefined;
-}
-
-export function typeShape(type: ts.Type): Shape {
-  return { kind: "type", type };
-}
-
 /** The type that stands for the shape, when it has one. */
 function shapeType(shape: Shape): ts.Type | undefined {
   switch (shape.kind) {
@@ -283,31 +249,6 @@ function shapeType(shape: Shape): ts.Type | undefined {
       return undefined;
     default:
       return shape.from;
-  }
-}
-
-export function describeShape(checker: ts.TypeChecker, shape: Shape): string {
-  switch (shape.kind) {
-    case "type":
-      return typeText(checker, shape.type);
-    case "text":
-      return JSON.stringify(shape.text);
-    case "null":
-      return "null";
-    case "empty":
-      return "{}";
-    case "throws":
-      return typeText(checker, shape.from);
-    case "object":
-      return shape.description;
-    case "array":
-      return `${describeShape(checker, shape.element)}[]`;
-    case "items":
-      return `(${describeShape(checker, shape.item)})[]`;
-    case "union":
-      return shape.members
-        .map((member) => describeShape(checker, member))
-        .join(" | ");
   }
 }
 
@@ -326,7 +267,6 @@ function textReadings(checker: ts.TypeChecker, text: string): ts.Type[] {
   return readings;
 }
 
-/** The members a sent shape is one of, each compared on its own. */
 function sentVariants(checker: ts.TypeChecker, shape: Shape): Shape[] {
   if (shape.kind === "union") {
     return shape.members.flatMap((member) => sentVariants(checker, member));
@@ -362,10 +302,9 @@ function shapeProblems(
     ids.set(key, ids.size);
     return ids.size - 1;
   };
-  // Each pair of sent shape and target type is walked once. A repeat still on the walk is a recursive type,
-  // and a finished repeat points back to the first path.
   const walking = new Set<string>();
   const walked = new Map<string, { path: string; problems: Problem[] }>();
+  let recursions = 0;
   const mismatch = (message: string): Problem => ({
     status: "mismatch",
     message,
@@ -438,6 +377,12 @@ function shapeProblems(
   ): void => {
     switch (sent.kind) {
       case "union":
+        return;
+      case "unverified":
+        problems.push({
+          status: "unverified",
+          message: `${label}: ${sent.reason}`,
+        });
         return;
       case "throws":
         problems.push(
@@ -526,9 +471,17 @@ function shapeProblems(
       }
       return;
     }
-    const key = `${idOf(sent.kind === "type" ? sent.type : sent)}|${idOf(target)}`;
+    const pair = `${idOf(sent.kind === "type" ? sent.type : sent)}|${idOf(target)}`;
+    const key = isFrontend(direction.to)
+      ? `${pair}|${siblings.map((sibling) => idOf(sibling.kind === "type" ? sibling.type : sibling)).join(",")}`
+      : pair;
     const first = walked.get(key);
-    if (first) {
+    // A failed union trial emits nothing; a reference is valid only while its original diagnostic survives.
+    if (
+      first &&
+      (!first.problems.length ||
+        first.problems.some((problem) => problems.includes(problem)))
+    ) {
       if (first.problems.length) {
         problems.push({
           status: problemStatus(first.problems),
@@ -537,10 +490,12 @@ function shapeProblems(
       }
       return;
     }
-    if (walking.has(key)) {
+    if (walking.has(pair)) {
+      recursions += 1;
       return;
     }
-    walking.add(key);
+    walking.add(pair);
+    const before = recursions;
     const found = collect(() => {
       if (objectTargets.length === 1 && objectTargets[0]) {
         compareInto(
@@ -565,8 +520,11 @@ function shapeProblems(
         );
       }
     });
-    walking.delete(key);
-    walked.set(key, { path, problems: found });
+    walking.delete(pair);
+    // A recursive assumption is valid only inside the comparison that is still checking it.
+    if (before === recursions) {
+      walked.set(key, { path, problems: found });
+    }
     problems.push(...found);
   };
 
@@ -582,7 +540,7 @@ function shapeProblems(
     siblings?: Shape[],
   ): void => {
     const label = fieldLabel(path, declaration, root);
-    const type = shapeType(sent);
+    const type = sent.kind === "type" ? sent.type : undefined;
     const candidates = type
       ? members.filter((member) => checker.isTypeAssignableTo(type, member))
       : members;
@@ -591,14 +549,20 @@ function shapeProblems(
       visit(sent, only, path, declaration, depth, siblings);
       return;
     }
-    const accepted = candidates.some(
-      (member) =>
-        collect(() => visit(sent, member, path, declaration, depth, siblings))
-          .length === 0,
-    );
-    if (!accepted) {
-      problems.push(notAssignable(label, sent, whole));
+    const attempts: Problem[][] = [];
+    for (const member of candidates) {
+      const found = collect(() =>
+        visit(sent, member, path, declaration, depth, siblings),
+      );
+      if (!found.length) {
+        return;
+      }
+      attempts.push(found);
     }
+    const undecided = attempts.find((attempt) =>
+      attempt.every((problem) => problem.status === "unverified"),
+    );
+    problems.push(...(undecided ?? [notAssignable(label, sent, whole)]));
   };
 
   const fieldsOf = (
@@ -926,7 +890,7 @@ function unconstrainedPositions(
   const { checker, root: rootDirectory } = context;
   const walk = new TypeWalk(context, "unconstrained type walk");
   const found: UnconstrainedPosition[] = [];
-  const visited = new Set<ts.Type>();
+  const visited = new Set<ts.Type | Shape>();
   let depth = 0;
   type Entry = { shape: Shape; position: Position };
   // Union members and the values a field may hold sit at the same path, so they join the current level.
@@ -951,17 +915,15 @@ function unconstrainedPositions(
       case "null":
       case "empty":
       case "throws":
+      case "unverified":
         return;
       case "object":
       case "array":
       case "items":
-        // What the client sends for a type reaches the same declarations as the type itself.
-        if (reached) {
-          if (visited.has(reached)) {
-            return;
-          }
-          visited.add(reached);
+        if (visited.has(shape)) {
+          return;
         }
+        visited.add(shape);
         level.push({ shape, position: { path, declaration } });
         return;
       case "type":
@@ -1155,15 +1117,13 @@ function looseShapeVerdict(
   };
 }
 
-/** One `unverified` verdict with the positions of every verdict given, or undefined when none is. */
-export function looseTypeVerdicts(
+function looseTypeVerdicts(
   verdicts: (Verdict | undefined)[],
 ): Verdict | undefined {
   const found = verdicts.filter((verdict) => verdict !== undefined);
   return found.length ? combineVerdicts(found, []) : undefined;
 }
 
-/** Compares what one side holds at a position with the type the other side declares there. */
 export function compareShape(
   context: CompareContext,
   kind: "request" | "response",

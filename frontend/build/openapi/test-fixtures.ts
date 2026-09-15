@@ -9,7 +9,7 @@ import ts from "typescript";
  * `defineEndpoint` and `EndpointBuilder` type a fixture's query function the way RTK's builder does,
  * so a fixture cannot build a request a real endpoint cannot.
  */
-export const BASE_QUERY_ARGS = `type BaseQueryArgs = string | { method?: "GET" | "POST" | "PUT" | "DELETE"; url: string | null; params?: Record<string, unknown> | null | void; body?: unknown };`;
+const BASE_QUERY_ARGS = `type BaseQueryArgs = string | { method?: "GET" | "POST" | "PUT" | "DELETE"; url: string | null; params?: Record<string, unknown> | null | void; body?: unknown };`;
 
 export const ENDPOINT_PRELUDE = `${BASE_QUERY_ARGS}
   function defineEndpoint<Argument>(endpoint: {
@@ -32,14 +32,13 @@ export const ENDPOINT_BUILDER = `${BASE_QUERY_ARGS}
 
 const directories: string[] = [];
 
-/** Removes the temporary directories the fixtures were written to; call it from `afterEach`. */
 export function cleanupFixtures(): void {
   for (const directory of directories.splice(0)) {
     fs.rmSync(directory, { recursive: true, force: true });
   }
 }
 
-export interface FixtureProgram {
+interface FixtureProgram {
   root: string;
   files: Record<string, string>;
   program: ts.Program;
@@ -102,7 +101,6 @@ export function programFrom(
   return { root, files, program, checker: program.getTypeChecker() };
 }
 
-/** The object literal of `const endpoint = defineEndpoint({ ... })` in a compiled fixture. */
 export function endpointObject(
   program: ts.Program,
   file: string,

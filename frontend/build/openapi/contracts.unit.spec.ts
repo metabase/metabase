@@ -105,6 +105,38 @@ function withResponse(response: string, declarations = "") {
 }
 
 describe("API contract checks", () => {
+  it("should check repeated response types with their own union siblings", () => {
+    const results = check({
+      frontend:
+        "type T = { x: number; a?: string }; type ErdResponse = { first: T; second: T };",
+      backend: withResponse(
+        "{ first: S | Alt; second: S }",
+        "type S = { x: number }; type Alt = { x: number; a: string };",
+      ),
+      endpoint,
+    });
+    expect(resultFor(results, "response.2XX")).toMatchObject({
+      status: "mismatch",
+      message: expect.stringContaining("$.second.a"),
+    });
+  });
+
+  it("should report a disagreement at the path that failed after trying a union", () => {
+    const results = check({
+      frontend:
+        "type A = { x: number; a?: string }; type B = { x: number }; type ErdResponse = { first: A | B; second: A };",
+      backend: withResponse(
+        "{ first: S; second: S }",
+        "type S = { x: number };",
+      ),
+      endpoint,
+    });
+    expect(resultFor(results, "response.2XX")).toMatchObject({
+      status: "mismatch",
+      message: expect.stringContaining("$.second.a"),
+    });
+  });
+
   it("should keep checking a typed EndpointBuilder after its variable is renamed", () => {
     const results = check({
       frontend: `${frontend}\ndeclare const renamed: EndpointBuilder;`,
@@ -819,7 +851,7 @@ describe("diagnostic messages", () => {
     });
   });
 
-  it("should point to the first path when a shape repeats its field coverage problems", () => {
+  it("should reference a repeated disagreement that was actually reported", () => {
     const results = check({
       frontend:
         "interface Owner { id: number; nickname?: string } interface ErdResponse { first: Owner; second: Owner }",
@@ -875,7 +907,7 @@ describe("walks that do not finish", () => {
     frontendTypes: string,
     backendTypes: string,
     options: Parameters<typeof checkContracts>[4],
-    wrapChecker?: (checker: ts.TypeChecker) => ts.TypeChecker,
+    configureChecker?: (checker: ts.TypeChecker) => void,
   ) {
     const { root, files, program } = programFrom({
       "endpoint.ts": `${ENDPOINT_BUILDER}
@@ -884,14 +916,10 @@ describe("walks that do not finish", () => {
     `,
       "types.gen.d.ts": backendTypes,
     });
-    const checked = wrapChecker
-      ? Object.assign(Object.create(program), {
-          getTypeChecker: () => wrapChecker(program.getTypeChecker()),
-        })
-      : program;
+    configureChecker?.(program.getTypeChecker());
     return () =>
       checkContracts(
-        checked,
+        program,
         [files["endpoint.ts"] ?? ""],
         files["types.gen.d.ts"] ?? "",
         root,
@@ -928,16 +956,18 @@ describe("walks that do not finish", () => {
       "type ErdResponse = { nodes: { owner: { email: number } }[] };",
       backend,
       {},
-      (checker) =>
-        Object.assign(Object.create(checker), {
-          isTypeAssignableTo: (from: ts.Type, to: ts.Type) => {
+      (checker) => {
+        const assignable = checker.isTypeAssignableTo.bind(checker);
+        jest
+          .spyOn(checker, "isTypeAssignableTo")
+          .mockImplementation((from, to) => {
             calls += 1;
             if (calls > 1) {
               throw new RangeError("Maximum call stack size exceeded");
             }
-            return checker.isTypeAssignableTo(from, to);
-          },
-        }),
+            return assignable(from, to);
+          });
+      },
     );
     expect(run).toThrow(
       /^API contract check endpoints:example:response\.2XX stopped: the field walk overflowed the call stack at \$/,
@@ -949,16 +979,17 @@ describe("walks that do not finish", () => {
       "type ErdResponse = { nodes: { owner: { email: number } }[] };",
       backend,
       {},
-      (checker) =>
-        Object.assign(Object.create(checker), {
-          // The response check reads the 2XX type before any walk starts.
-          getTypeOfSymbolAtLocation: (symbol: ts.Symbol, node: ts.Node) => {
+      (checker) => {
+        const symbolType = checker.getTypeOfSymbolAtLocation.bind(checker);
+        jest
+          .spyOn(checker, "getTypeOfSymbolAtLocation")
+          .mockImplementation((symbol, node) => {
             if (symbol.name === "2XX") {
               throw new RangeError("Maximum call stack size exceeded");
             }
-            return checker.getTypeOfSymbolAtLocation(symbol, node);
-          },
-        }),
+            return symbolType(symbol, node);
+          });
+      },
     );
     expect(run).toThrow(
       "API contract check endpoints:example:response.2XX stopped: the call stack overflowed outside a type walk",
@@ -1084,6 +1115,127 @@ describe("type printing order", () => {
 describe("request comparison rules", () => {
   const frontend = "type ErdResponse = { id: number };";
 
+  it.each([
+    [
+      "undefined params",
+      "undefined",
+      '{ url: "/api/user", params: arg }',
+      "Get",
+      "query: { required: string }",
+      "request.query",
+      "mismatch",
+    ],
+    [
+      "undefined params with a body",
+      "undefined",
+      '{ method: "POST", url: "/api/user", params: arg, body: { bad: 1 } }',
+      "Post",
+      "body: { required: string }",
+      "request.body",
+      "mismatch",
+    ],
+    [
+      "duplicate inline query keys",
+      "void",
+      '{ url: "/api/user?flag=true&flag=oops" }',
+      "Get",
+      "query: { flag: boolean }",
+      "request.query",
+      "unverified",
+    ],
+    [
+      "converted union member",
+      '{ kind: "a"; date: Date }',
+      '{ method: "POST", url: "/api/user", body: arg }',
+      "Post",
+      'body: { kind: "a"; date: string } | { kind: "b"; count: number }',
+      "request.body",
+      "compatible",
+    ],
+    [
+      "mixed union members",
+      '{ kind: "a"; count: number }',
+      '{ method: "POST", url: "/api/user", body: arg }',
+      "Post",
+      'body: { kind: "a"; date: string } | { kind: "b"; count: number }',
+      "request.body",
+      "mismatch",
+    ],
+    [
+      "unsupported conversion against a union",
+      "{ value: { toJSON(): { id: string } } }",
+      '{ method: "POST", url: "/api/user", body: arg }',
+      "Post",
+      "body: { value: { id: string } } | { value: { name: string } }",
+      "request.body",
+      "unverified",
+    ],
+    [
+      "optional symbol",
+      "{ inner: { a?: string | symbol; b: number } }",
+      '{ method: "POST", url: "/api/user", body: arg }',
+      "Post",
+      "body: { inner: { a?: string; b: number } }",
+      "request.body",
+      "compatible",
+    ],
+    [
+      "optional function",
+      "{ inner: { a?: string | (() => void); b: number } }",
+      '{ method: "POST", url: "/api/user", body: arg }',
+      "Post",
+      "body: { inner: { a?: string; b: number } }",
+      "request.body",
+      "compatible",
+    ],
+    [
+      "JSON index signatures",
+      "{ inner: { a: Date; [key: string]: unknown } }",
+      '{ method: "POST", url: "/api/user", body: arg }',
+      "Post",
+      "body: { inner: { a: string } }",
+      "request.body",
+      "unverified",
+    ],
+    [
+      "own toJSON",
+      "{ id: number; toJSON: () => { name: string } }",
+      '{ method: "POST", url: "/api/user", body: arg }',
+      "Post",
+      "body: { id: number }",
+      "request.body",
+      "unverified",
+    ],
+    [
+      "branded primitive",
+      'string & { readonly __brand: "Id" }',
+      '{ method: "POST", url: "/api/user", body: { id: arg } }',
+      "Post",
+      'body: { id: { length: number; __brand: "Id" } }',
+      "request.body",
+      "mismatch",
+    ],
+    [
+      "own getter",
+      "{ inner: { get a(): number } }",
+      '{ method: "POST", url: "/api/user", body: arg }',
+      "Post",
+      "body: { inner: { a: number } }",
+      "request.body",
+      "compatible",
+    ],
+  ])(
+    "should handle %s without a false verdict",
+    (_name, argument, expression, method, contract, part, status) => {
+      const results = check({
+        frontend: `${frontend} type Args = ${argument};`,
+        backend: `export type ${method}UserData = { url: "/api/user"; ${contract} }; export type ${method}UserResponses = { "2XX": { id: number } };`,
+        endpoint: request("Args", `arg => (${expression})`),
+      });
+      expect(resultFor(results, part)?.status).toBe(status);
+    },
+  );
+
   function operation({
     method = "Get",
     url = "/api/user",
@@ -1100,6 +1252,51 @@ describe("request comparison rules", () => {
   function request(argument: string, query: string) {
     return `builder.query<ErdResponse, ${argument}>({ query: ${query} })`;
   }
+
+  it("should inspect nested cache keys after removing the top-level key", () => {
+    const results = check({
+      frontend: `${frontend} type Args = { __rtkCacheKey?: unknown; child?: Args };`,
+      backend: `type Backend = { __rtkCacheKey?: string; child?: Backend }; ${operation({ method: "Post", body: "body: { child?: Backend }" })}`,
+      endpoint: request(
+        "Args",
+        '(body) => ({ method: "POST", url: "/api/user", body })',
+      ),
+    });
+    expect(resultFor(results, "request.body")?.status).toBe("unverified");
+  });
+
+  it("should leave conversions in a recursive JSON body unverified", () => {
+    const results = check({
+      frontend: `${frontend} interface TreeNode { date: Date; children: TreeNode[] }`,
+      backend: `type BackendNode = { date: string; children: BackendNode[] }; ${operation({ method: "Post", body: "body: BackendNode" })}`,
+      endpoint: request(
+        "TreeNode",
+        '(body) => ({ method: "POST", url: "/api/user", body })',
+      ),
+    });
+    expect(resultFor(results, "request.body")).toMatchObject({
+      status: "unverified",
+      message: expect.stringContaining(
+        "JSON conversions inside a recursive type",
+      ),
+    });
+  });
+
+  it("should finish JSON modelling when a small type graph has millions of paths", () => {
+    const graph = ["type T0 = { value: string | undefined };"];
+    for (let depth = 1; depth <= 24; depth++) {
+      graph.push(`type T${depth} = { a: T${depth - 1}; b: T${depth - 1} };`);
+    }
+    const results = check({
+      frontend: `${frontend} ${graph.join("\n")}`,
+      backend: `${graph.join("\n")} ${operation({ method: "Post", body: "body: T24" })}`,
+      endpoint: request(
+        "T24",
+        '(body) => ({ method: "POST", url: "/api/user", body })',
+      ),
+    });
+    expect(resultFor(results, "request.body")?.status).toBe("mismatch");
+  });
 
   it("should compare the text String gives for query values", () => {
     const results = check({

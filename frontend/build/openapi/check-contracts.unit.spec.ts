@@ -8,13 +8,14 @@ import {
   CONTRACTS_REPORT_PATH,
   GENERATED_DECLARATIONS_PATH,
 } from "./paths";
+import { ENDPOINT_BUILDER } from "./test-fixtures";
 
 const SCRIPT = path.join(__dirname, "check-contracts.ts");
 const ENDPOINT_ID = "endpoints:example";
 
 function endpointSource(user: string) {
   return `
-    type EndpointBuilder = { query<R, A>(definition: { query: (args: A) => unknown }): unknown };
+    ${ENDPOINT_BUILDER}
     declare const renamed: EndpointBuilder;
     type User = ${user};
     const endpoints = { example: renamed /* a comment must not hide this call */
