@@ -187,11 +187,11 @@
                            :name "Query Example"
                            :parameters [{:id "id"
                                          :slug "id"
-                                         :type "number"
+                                         :type :number
                                          :target [:variable [:template-tag "id"]]}
                                         {:id "name"
                                          :slug "name"
-                                         :type "text"
+                                         :type :text
                                          :required false
                                          :target [:variable [:template-tag "name"]]}]
                            :visualization_settings {:inline true}
@@ -238,10 +238,10 @@
                                                :body "{\"the_parameter\": {{id}}}"
                                                :headers "{\"x-test\": \"{{id}}\"}"}
                                     :parameters [{:id "id"
-                                                  :type "number"
+                                                  :type :number
                                                   :target [:dimension [:template-tag "id"]]}
                                                  {:id "fail"
-                                                  :type "text"
+                                                  :type :text
                                                   :target [:dimension [:template-tag "fail"]]}]
                                     :response_handle ".body"
                                     :model_id model-id

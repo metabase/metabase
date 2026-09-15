@@ -65,13 +65,8 @@
 (p.types/defrecord+ DatabaseDefinition [database-name table-definitions options])
 
 (mr/def ::dataset-value
-  "One cell value in a test dataset row: a FieldValue scalar, a nested sequence, or a string-keyed map."
-  [:or
-   ms/FieldValue
-   bytes?
-   [:tuple [:= :raw] :string]
-   [:sequential [:ref ::dataset-value]]
-   [:map-of :string [:ref ::dataset-value]]])
+  "One cell value in a test dataset row, whose type is whatever the driver's test extension knows how to insert."
+  [:schema {::mr/deliberately-open true, :description "a test dataset cell value"} :any])
 
 (mr/def ::native-ddl-value
   [:or

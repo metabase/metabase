@@ -136,10 +136,7 @@
    [:creator               {:optional true} [:maybe user-summary-schema]]
    [:table                 {:optional true} [:maybe [:ref :metabase.warehouse-schema.schema/table]]]
    [:last_run              {:optional true} [:maybe ::transform-run]]
-   [:collection            {:optional true} [:maybe [:merge
-                                                      :metabase.collections.schema/collection
-                                                      [:map {:closed true}
-                                                       [:is_personal {:optional true} [:maybe :boolean]]]]]]
+   [:collection            {:optional true} [:maybe :metabase.collections.schema/collection-or-root]]
    [:owner                 {:optional true} [:maybe user-summary-schema]]])
 
 (mr/def ::transform.update

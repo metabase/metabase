@@ -214,6 +214,7 @@
    [:action_id              {:optional true} [:maybe ::lib.schema.id/action]]
    [:dashboard_tab_id       {:optional true} [:maybe :int]]
    [:inline_parameters      {:optional true} [:maybe [:sequential :string]]]
+   [:collection_authority_level {:optional true} [:maybe [:or :keyword :string]]]
    [:card                   {:optional true} [:maybe :metabase.queries.schema/card]]
    [:series                 {:optional true} [:maybe [:sequential :metabase.queries.schema/card]]]])
 

@@ -3,13 +3,11 @@
    [metabase.documents.schema :as documents.schema]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib-metric.schema :as lib-metric.schema]
-   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.schema :as permissions.schema]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [potemkin :as p]))
@@ -50,10 +48,8 @@
     [:persisted/query_hash  {:optional true} [:maybe :string]]
     [:persisted/state       {:optional true} [:maybe :string]]
     [:persisted/table_name  {:optional true} [:maybe :string]]
-    [:collection            {:optional true} [:maybe [:merge
-                                                      :metabase.collections.schema/collection
-                                                      [:map {:closed true}
-                                                       [:is_personal {:optional true} [:maybe :boolean]]]]]]
+    [:dashboardcard_id      {:optional true} [:maybe ::lib.schema.id/dashcard]]
+    [:collection            {:optional true} [:maybe :metabase.collections.schema/collection-or-root]]
     [:creator               {:optional true} [:maybe [:or :metabase.users.schema/user :metabase.users.schema/user.update]]]
     [:dashboard             {:optional true} [:maybe [:ref :metabase.dashboards.schema/dashboard]]]
     [:moderation_reviews    {:optional true} [:sequential :metabase.content-verification.schema/moderation-review]]
@@ -101,15 +97,6 @@
                                                 :metabase.warehouse-schema.schema/dimension
                                                 [:map {:closed true}
                                                  [:human_readable_field {:optional true} [:maybe ::param-field.name-field]]]]]]]])
-
-(mu/defn normalize-card :- [:maybe ::card]
-  "Normalize a `card` so it satisfies the `::card` schema."
-  [card :- [:maybe
-            [:merge
-             ::card
-             [:map {:closed true}
-              [:result_metadata {:optional true} [:maybe :metabase.request.schema/json-value]]]]]]
-  (lib/normalize ::card card))
 
 (mr/def ::card.dataset-query
   "The `:dataset_query` column of a Card, decoded."

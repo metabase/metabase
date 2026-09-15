@@ -44,11 +44,7 @@
     [:param_fields               {:optional true} [:maybe [:map-of :string [:sequential ::queries.schema/param-field]]]]
     [:is_remote_synced           {:optional true} :boolean]
     [:moderation_reviews         {:optional true} [:sequential :metabase.content-verification.schema/moderation-review]]
-    [:collection                 {:optional true} [:maybe [:merge
-                                                            :metabase.collections.schema/collection
-                                                            [:map {:closed true}
-                                                             [:is_personal        {:optional true} [:maybe :boolean]]
-                                                             [:effective_location {:optional true} [:maybe :string]]]]]]
+    [:collection                 {:optional true} [:maybe :metabase.collections.schema/collection-or-root]]
     [:last_used_param_values     {:optional true} [:maybe [:map-of :string :metabase.users.schema/user-parameter-value.value]]]
     [:creator                    {:optional true} [:maybe :metabase.users.schema/user]]
     [:last-edit-info             {:optional true} [:maybe
@@ -117,6 +113,7 @@
    [:action_id              [:maybe ::lib.schema.id/action]]
    [:dashboard_tab_id       [:maybe ms/PositiveInt]]
    [:inline_parameters      [:maybe [:sequential :string]]]
+   [:collection_authority_level {:optional true} [:maybe [:or :keyword :string]]]
    [:card                   {:optional true} [:maybe [:ref ::queries.schema/card]]]
    [:series                 {:optional true} [:maybe [:sequential [:ref ::queries.schema/card]]]]
    [:action                 {:optional true} [:maybe [:merge

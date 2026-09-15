@@ -243,28 +243,18 @@
       (let [new-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)]
         (update-field-values-for-on-demand-dbs! old-param-field-ids new-param-field-ids)))))
 
-(def ^:private DashboardWithSeriesAndCard
-  [:map {:closed true}
-   [:id ms/PositiveInt]
-   [:dashcards [:sequential [:map {:closed true}
-                             [:card_id {:optional true} [:maybe ms/PositiveInt]]
-                             [:card {:optional true} [:maybe [:map {:closed true}
-                                                              [:id ms/PositiveInt]]]]]]]])
-
 (mu/defn update-dashcards!
   "Update the `dashcards` belonging to `dashboard`.
    This function is provided as a convenience instead of doing this yourself; it also makes sure various cleanup steps
    are performed when finished, for example updating FieldValues for On-Demand DBs.
    Returns `nil`."
-  [dashboard     :- DashboardWithSeriesAndCard
-   new-dashcards :- [:sequential [:map {:closed true}
-                                  [:id                     ms/PositiveInt]
-                                  [:action_id              {:optional true} [:maybe ms/PositiveInt]]
-                                  [:parameter_mappings     {:optional true} [:maybe [:sequential ::parameters.schema/parameter-mapping]]]
-                                  [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
-                                  [:inline_parameters      {:optional true} [:maybe [:sequential ms/NonBlankString]]]
-                                  [:series                 {:optional true} [:maybe [:sequential [:map {:closed true} [:id ms/PositiveInt]]]]]
-                                  [:card                   {:optional true} [:maybe ::queries.schema/card]]]]]
+  [dashboard     :- ::dashboards.schema/dashboard
+   new-dashcards :- [:sequential [:merge
+                                  ::dashboards.schema/dashboard-card.update
+                                  [:map {:closed true}
+                                   [:id     ms/PositiveInt]
+                                   [:series {:optional true} [:maybe [:sequential [:map {:closed true} [:id ms/PositiveInt]]]]]
+                                   [:card   {:optional true} [:maybe ::queries.schema/card]]]]]]
   (let [old-dashcards    (:dashcards dashboard)
         id->old-dashcard (m/index-by :id old-dashcards)
         old-dashcard-ids (set (keys id->old-dashcard))

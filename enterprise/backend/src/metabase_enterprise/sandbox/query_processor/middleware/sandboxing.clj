@@ -449,7 +449,7 @@
 
 ;;;; Post-processing
 
-(mu/defn- merge-metadata :- [:map {:closed true}
+(mu/defn- merge-metadata :- [:map
                              [:cols [:sequential ::mbql.s/legacy-column-metadata]]]
   "Merge column metadata from the non-sandboxed version of the query into the sandboxed results `metadata`. This way the
   final results metadata coming back matches what we'd get if the query was not running in a sandbox."

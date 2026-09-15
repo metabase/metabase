@@ -212,17 +212,8 @@
    (mbql-fully-qualified-names->ids* resolver exported)))
 
 (mr/def ::mbql-node
-  "One node reachable while importing an MBQL expression: the whole query, a single legacy or lib clause, a
-  parameter, a sequence of any of those, or a scalar reached while walking one."
-  [:or
-   :metabase.legacy-mbql.schema/Query
-   :metabase.lib.schema/query
-   :metabase.lib.schema.mbql-clause/clause
-   :metabase.lib.schema.ref/ref
-   :metabase.parameters.schema/parameter
-   :metabase.parameters.schema/parameter-mapping
-   :string :number :boolean :keyword :nil
-   [:sequential [:ref ::mbql-node]]])
+  "Any node reached while walking an MBQL form being imported, which may or may not be an MBQL clause."
+  [:schema {::mr/deliberately-open true, :description "an MBQL form node"} :any])
 
 (defn- mbql-clause-tag
   "Is given form an MBQL entity reference?"

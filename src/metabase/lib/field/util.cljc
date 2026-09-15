@@ -118,7 +118,7 @@
                          :lib/source-column-alias  source-alias
                          :lib/desired-column-alias desired-alias)))))))
 
-(mu/defn update-keys-for-col-from-previous-stage :- [:map {:closed true}
+(mu/defn update-keys-for-col-from-previous-stage :- [:map
                                                      [:lib/type [:= :metadata/column]]]
   "For a column that came from a previous stage, change the keys for things that mean 'this happened in the current
   stage' to the equivalent keys that mean 'this happened at some stage in the past' e.g.

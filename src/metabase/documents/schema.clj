@@ -40,10 +40,7 @@
                                                     [:email      {:optional true} :string]
                                                     [:first_name {:optional true} [:maybe :string]]
                                                     [:last_name  {:optional true} [:maybe :string]]]]]
-   [:collection          {:optional true} [:maybe [:merge
-                                                    :metabase.collections.schema/collection
-                                                    [:map {:closed true}
-                                                     [:is_personal {:optional true} [:maybe :boolean]]]]]]
+   [:collection          {:optional true} [:maybe :metabase.collections.schema/collection-or-root]]
    [:is_placeholder      :boolean]])
 
 (mr/def ::document.update

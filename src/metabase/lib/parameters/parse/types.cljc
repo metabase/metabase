@@ -286,13 +286,13 @@
   [:map {:closed true}
    [:lib/type      [:= ::function-param]]
    [:function-name :string]
-   [:args          [:sequential :metabase.lib.parameters.parse/parsed-token]]])
+   [:args          [:sequential [:ref :metabase.lib.parameters.parse/parsed-token]]]])
 
 (mu/defn function-param :- ::function-param
   "Create a new parsed `function-param` from map `m`."
   [m :- [:map {:closed true}
          [:function-name :string]
-         [:args          [:sequential :metabase.lib.parameters.parse/parsed-token]]]]
+         [:args          [:sequential [:ref :metabase.lib.parameters.parse/parsed-token]]]]]
   (assoc m :lib/type ::function-param))
 
 (defn function-param?
@@ -303,11 +303,11 @@
 (mr/def ::optional
   [:map {:closed true}
    [:lib/type [:= ::optional]]
-   [:args     [:sequential :metabase.lib.parameters.parse/parsed-token]]])
+   [:args     [:sequential [:ref :metabase.lib.parameters.parse/parsed-token]]]])
 
 (mu/defn optional :- ::optional
   "Create a new parsed `optional` param from map `m`."
-  [args :- [:sequential :metabase.lib.parameters.parse/parsed-token]]
+  [args :- [:sequential [:ref :metabase.lib.parameters.parse/parsed-token]]]
   {:lib/type ::optional
    :args     args})
 

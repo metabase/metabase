@@ -701,7 +701,7 @@
             (let [new-version (inc (:card_schema card))]
               (recur (assoc (upgrade-card-schema-to card new-version)
                             :card_schema new-version))))))
-      queries.schema/normalize-card))
+      (->> (lib/normalize ::queries.schema/card))))
 
 (defonce ^:private unique-cards-with-blank-dataset-query
   (atom #{}))
@@ -768,7 +768,7 @@
     (-> card
         (assoc :metabase_version config/mb-version-string
                :card_schema current-schema-version)
-        queries.schema/normalize-card
+        (->> (lib/normalize ::queries.schema/card))
         ;; Must have an entity_id before populating the metadata. TODO (Cam 7/11/25) -- actually, this is no longer true,
         ;; since we're removing `:ident`s; we can probably remove this now.
         (u/assoc-default :entity_id (u/generate-nano-id))
@@ -823,8 +823,8 @@
 
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
-  (let [changes (some-> card t2/changes queries.schema/normalize-card)
-        card    (queries.schema/normalize-card card)]
+  (let [changes (some->> card t2/changes (lib/normalize ::queries.schema/card))
+        card    (lib/normalize ::queries.schema/card card)]
     (collection/check-allowed-content (:type card) (:collection_id changes))
     (-> card
         (dissoc :verified-result-metadata?)

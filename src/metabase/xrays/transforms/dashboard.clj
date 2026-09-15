@@ -25,7 +25,7 @@
                              [:query    [:map {:closed true} [:source-table ::lib.schema.id/table]]]
                              [:database ::lib.schema.id/database]]]
    [:name                   [:maybe :string]]
-   [:collection_id          [:= nil]]
+   [:collection_id          :nil]
    [:visualization_settings ms/VisualizationSettings]
    [:display                :keyword]])
 

@@ -995,18 +995,8 @@
 ;;; ## MBQL Fields
 
 (mr/def ::mbql-node
-  "One node reachable while exporting or importing an MBQL query: the whole query, a single legacy or lib clause, a
-  parameter, template tags, a sequence of any of those, or a scalar reached while walking one."
-  [:or
-   :metabase.legacy-mbql.schema/Query
-   :metabase.legacy-mbql.schema/TemplateTagMap
-   :metabase.lib.schema/query
-   :metabase.lib.schema.mbql-clause/clause
-   :metabase.lib.schema.ref/ref
-   :metabase.parameters.schema/parameter
-   :metabase.parameters.schema/parameter-mapping
-   :string :number :boolean :keyword :nil
-   [:sequential [:ref ::mbql-node]]])
+  "Any node reached while walking an MBQL form being exported or imported, which may or may not be an MBQL clause."
+  [:schema {::mr/deliberately-open true, :description "an MBQL form node"} :any])
 
 (def ^:private MBQLNode
   [:ref ::mbql-node])

@@ -259,10 +259,10 @@
     native-extras             :- [:maybe ::native-extras]]
    (let [tags (extract-template-tags metadata-providerable sql-or-other-native-query)]
      (cond-> (lib.query/query-with-stages metadata-providerable
-                                          [{:lib/type           :mbql.stage/native
-                                            :lib/stage-metadata results-metadata
-                                            :template-tags      tags
-                                            :native             sql-or-other-native-query}])
+                                          [(m/assoc-some {:lib/type      :mbql.stage/native
+                                                          :template-tags tags
+                                                          :native        sql-or-other-native-query}
+                                                         :lib/stage-metadata results-metadata)])
        native-extras (with-native-extras native-extras)))))
 
 (mu/defn with-different-database :- ::lib.schema/query

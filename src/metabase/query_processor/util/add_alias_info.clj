@@ -86,18 +86,12 @@
 ;;; of the kooky extra info we add here... none of it should affect calculated metadata
 
 (mu/defn- returned-columns :- :metabase.lib.metadata.calculation/returned-columns
-  [query :- [:merge
-             ::lib.schema/query
-             [:map
-              [::original ::lib.schema/query]]]
+  [query :- ::lib.schema/query
    path  :- ::lib.walk/path]
   (lib.walk/apply-f-for-stage-at-path lib/returned-columns (::original query) path))
 
 (mu/defn- resolve-field-ref :- :metabase.lib.metadata.calculation/visible-column
-  [query      :- [:merge
-                  ::lib.schema/query
-                  [:map
-                   [::original ::lib.schema/query]]]
+  [query      :- ::lib.schema/query
    stage-path :- ::lib.walk/path
    field-ref  :- :mbql.clause/field]
   (u/prog1 (lib.walk/apply-f-for-stage-at-path lib/metadata (::original query) stage-path field-ref)

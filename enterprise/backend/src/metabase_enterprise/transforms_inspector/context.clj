@@ -230,7 +230,9 @@
    [:conditions     {:optional true} ::lib.schema.join/conditions]
    [:join-table     {:optional true} ::honeysql-table-ref]
    [:join-condition {:optional true} [:maybe [:or ::honeysql-condition
-                                              [:cat [:= :and] [:+ [:ref ::honeysql-condition]]]]]]])
+                                              [:and
+                                               [:fn {:error/message "an :and of conditions"} #(= :and (first %))]
+                                               [:sequential [:or [:= :and] [:ref ::honeysql-condition]]]]]]]])
 
 (def ^:private QueryInfo
   [:map {:closed true}

@@ -201,7 +201,7 @@
   (api/create-check :model/Card {:collection_id (:collection_id card)})
   (card/create-card! (assoc card :type :question :dashboard_id nil) creator))
 
-(mu/defn update-cards-in-ast :- [:map {:closed true} [:document :any]
+(mu/defn update-cards-in-ast :- [:map [:document :any]
                                  [:content_type :string]]
   "Rewrite the card FK (`[:attrs \"id\"]`) of every cardEmbed node found in `card-id-map`.
   Touches nothing else on the node — in particular a node's `:_id` never changes here."

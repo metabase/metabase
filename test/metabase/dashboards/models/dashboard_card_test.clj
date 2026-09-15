@@ -179,7 +179,6 @@
       (testing "return value from the update call should be nil"
         (is (nil? (dashboard-card/update-dashboard-card!
                    {:id                     dashcard-id
-                    :actor_id               (mt/user->id :rasta)
                     :dashboard_id           nil
                     :card_id                nil
                     :size_x                 5
@@ -231,21 +230,21 @@
         (testing "Should have more calls if there are changes to the dashcards"
           (t2/with-call-count [call-count]
             (dashboard/update-dashcards! dashboard [{:id     (:id dashcard-1)
-                                                     :cardId card-id
+                                                     :card_id card-id
                                                      :row    1
                                                      :col    2
                                                      :size_x 3
                                                      :size_y 4
                                                      :series [{:id series-id-1}]}
                                                     {:id     (:id dashcard-2)
-                                                     :cardId card-id
+                                                     :card_id card-id
                                                      :row    1
                                                      :col    2
                                                      :size_x 3
                                                      :size_y 4
                                                      :series [{:id series-id-2}]}
                                                     {:id     (:id dashcard-3)
-                                                     :cardId card-id
+                                                     :card_id card-id
                                                      :row    1
                                                      :col    2
                                                      :size_x 3

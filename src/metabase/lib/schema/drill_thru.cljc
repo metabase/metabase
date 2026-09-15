@@ -75,7 +75,7 @@
 
 (mr/def ::drill-thru.fk-details
   [:merge
-   ::drill-thru.common.with-column
+   ::drill-thru.common
    [:map
     [:type      [:= :drill-thru/fk-details]]
     [:column    [:ref ::drill-thru.fk-details.fk-column]]
@@ -161,7 +161,6 @@
    ::drill-thru.common.with-column
    [:map
     [:type         [:= :drill-thru/column-filter]]
-    [:column       [:ref ::lib.schema.metadata/column]]
     [:query        [:ref ::lib.schema/query]]
     [:stage-number number?]]])
 

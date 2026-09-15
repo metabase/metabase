@@ -3,11 +3,13 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.dashboards.db :as dashboards.db]
+   [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.parameters.core :as parameters]
    [metabase.parameters.schema :as parameters.schema]
+   [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -182,14 +184,14 @@
       (dashboards.db/insert-dashcard-series! card-series))))
 
 (def ^:private DashboardCardUpdates
-  [:map {:closed true}
-   [:id                                      ms/PositiveInt]
-   [:action_id              {:optional true} [:maybe ms/PositiveInt]]
-   [:parameter_mappings     {:optional true} [:maybe [:sequential ::parameters.schema/parameter-mapping]]]
-   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
-   [:inline_parameters      {:optional true} [:maybe [:sequential ms/NonBlankString]]]
-   ;; series is a sequence of IDs of additional cards after the first to include as "additional serieses"
-   [:series                 {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
+  [:merge
+   ::dashboards.schema/dashboard-card.update
+   [:map {:closed true}
+    [:id                     ms/PositiveInt]
+    ;; series is a sequence of IDs of additional cards after the first to include as "additional serieses"
+    [:series {:optional true} [:maybe [:sequential ms/PositiveInt]]]
+    [:card   {:optional true} [:maybe ::queries.schema/card]]
+    [:collection_authority_level {:optional true} [:maybe [:or :keyword :string]]]]])
 
 (defn- shallow-updates
   "Returns the keys in `new` that have different values than the corresponding keys in `old`"
@@ -218,14 +220,11 @@
       nil)))
 
 (def ^:private NewDashboardCard
-  ;; TODO - make the rest of the options explicit instead of just allowing whatever for other keys (#40021)
-  [:map {:closed true}
-   [:dashboard_id                            ms/PositiveInt]
-   [:action_id              {:optional true} [:maybe ms/PositiveInt]]
-   [:parameter_mappings     {:optional true} [:maybe [:sequential ::parameters.schema/parameter-mapping]]]
-   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
-   [:inline_parameters      {:optional true} [:maybe [:sequential ms/NonBlankString]]]
-   [:series                 {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
+  [:merge
+   ::dashboards.schema/dashboard-card.update
+   [:map {:closed true}
+    [:dashboard_id           ms/PositiveInt]
+    [:series {:optional true} [:maybe [:sequential ms/PositiveInt]]]]])
 
 (mu/defn create-dashboard-cards!
   "Create a new DashboardCard by inserting it into the database along with all associated pieces of data such as

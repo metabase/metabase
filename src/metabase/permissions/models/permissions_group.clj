@@ -39,7 +39,7 @@
 (defn- magic-group [magic-group-type]
   (mdb/memoize-for-application-db
    (fn []
-     (u/prog1 (permissions.db/magic-group magic-group-type)
+     (u/prog1 (permissions.db/group-by-magic-type magic-group-type)
        ;; normally it is impossible to delete the magic [[all-users]] or [[admin]] Groups -- see
        ;; [[check-not-magic-group]]. This assertion is here to catch us if we do something dumb when hacking on
        ;; the MB code -- to make tests fail fast. For that reason it's not i18n'ed.

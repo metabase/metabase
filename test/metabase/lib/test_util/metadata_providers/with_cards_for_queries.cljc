@@ -23,6 +23,10 @@
                      :database-id   (or (when (pos-int? database-id)
                                           database-id)
                                         (u/the-id (lib.metadata/database parent-metadata-provider)))
-                     :table-id      (lib.util/source-table-id query)
+                     :table-id      (if (:lib/type query)
+                                      (lib.util/source-table-id query)
+                                      (let [table-id (get-in query [:query :source-table])]
+                                        (when (pos-int? table-id)
+                                          table-id)))
                      :dataset-query query}))
                  queries)}))

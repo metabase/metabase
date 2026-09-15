@@ -242,6 +242,12 @@
             query'                      (assoc query :stages (:stages join))]
         (recur query' (if (empty? more) [:stages 0] more))))))
 
+(mr/def ::walked-clause
+  "An MBQL clause, or a literal argument of one, as [[walk-clause]] visits it."
+  [:or
+   [:ref ::lib.schema.mbql-clause/clause]
+   ::lib.schema.expression/expression])
+
 (mu/defn apply-f-for-stage-at-path
   "Use a function that takes top-level `query` and `stage-number` with a `query` and `path`,
   via [[query-for-stage-at-path]]. Lets you use stuff like [[metabase.lib.aggregation/resolve-aggregation]] in
@@ -255,7 +261,7 @@
   [f          :- fn?
    query      :- ::lib.schema/query
    stage-path :- ::path
-   & args     :- [:* ::lib.schema.expression/expression]]
+   & args     :- [:* [:or ::walked-clause [:ref ::lib.schema.join/join] [:ref :metabase.lib.metadata.calculation/visible-columns.options]]]]
   (let [{:keys [query stage-number]} (query-for-path query stage-path)]
     (apply f query stage-number args)))
 
@@ -364,8 +370,8 @@
 
   on every MBQL subclause of `clause`, then on `clause` itself. (Also includes non-clause arguments like the `1` and
   `2` in `[:= {} [:field {} 1] 2]`.)"
-  [clause :- ::lib.schema.expression/expression
-   f      :- [:=> [:cat ::lib.schema.expression/expression] [:maybe ::lib.schema.expression/expression]]]
+  [clause :- ::walked-clause
+   f      :- [:=> [:cat ::walked-clause] [:maybe ::walked-clause]]]
   (walk-clause* clause (walk-clause-wrap-f f)))
 
 (mu/defn walk-clauses*
@@ -376,8 +382,8 @@
     (f clause)
 
   on every clause in the normal places clauses live in a query."
-  [clauses :- [:maybe [:sequential ::lib.schema.expression/expression]]
-   f       :- [:=> [:cat ::lib.schema.expression/expression] [:maybe ::lib.schema.expression/expression]]]
+  [clauses :- [:maybe [:sequential ::walked-clause]]
+   f       :- [:=> [:cat ::walked-clause] [:maybe ::walked-clause]]]
   ;; we're doing this the hard way instead of using `mapv` to avoid allocating new objects/creating a new query map
   ;; if we don't actually change anything
   (when clauses
@@ -398,7 +404,7 @@
 
   for every clause in the stage."
   [stage :- ::lib.schema/stage
-   f     :- [:=> [:cat ::lib.schema.expression/expression] [:maybe ::lib.schema.expression/expression]]]
+   f     :- [:=> [:cat ::walked-clause] [:maybe ::walked-clause]]]
   (when (lib.util/mbql-stage? stage)
     (reduce
      (fn [stage k]

@@ -196,7 +196,7 @@
         (testing "Update action"
           (let [action (action/select-action :id action-id)]
             ;; Update columns on both the action and the subtype table
-            (action/update! (assoc action :name "New name" :kind "row/update") action)
+            (action/update! (assoc action :name "New name" :kind :row/update) action)
             (let [new-action (action/select-action :id action-id)]
               (is (partial= {:name "New name"
                              :kind :row/update} new-action)))))))))

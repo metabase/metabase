@@ -54,6 +54,11 @@
 (def ^:private table-columns
   [:id :db_id :name :display_name :schema :active :visibility_type :database_require_filter])
 
+(def ^:private column-columns
+  [:active :base_type :coercion_strategy :data_sensitivity :database_partitioned :database_type :description
+   :display_name :effective_type :fingerprint :fk_target_field_id :id :name :nfc_path :parent_id :position
+   :semantic_type :settings :table_id :visibility_type])
+
 (def ^:private native-query-snippet-columns
   [:id :name :description :content :archived :collection_id :template_tags])
 
@@ -67,6 +72,18 @@
 (mr/def ::metadata-table-row
   "A Table row as the `:metadata/table` select returns it."
   [:select-keys :metabase.warehouse-schema.schema/table table-columns])
+
+(mr/def ::metadata-column-row
+  "A Field row as the `:metadata/column` select returns it, with the columns of its Dimension and FieldValues."
+  [:merge
+   [:select-keys :metabase.warehouse-schema.schema/field column-columns]
+   [:map {:closed true}
+    [:dimension/human_readable_field_id [:maybe ::lib.schema.id/field]]
+    [:dimension/id                      [:maybe pos-int?]]
+    [:dimension/name                    [:maybe :string]]
+    [:dimension/type                    [:maybe :string]]
+    [:values/human_readable_values      [:maybe [:sequential [:maybe :string]]]]
+    [:values/values                     [:maybe [:sequential :metabase.lib.schema.literal/param-value]]]]])
 
 (mr/def ::metadata-native-query-snippet-row
   "A NativeQuerySnippet row as the `:metadata/native-query-snippet` select returns it."
@@ -83,7 +100,7 @@
    [:metadata/table                ::metadata-table-row]
    [:metadata/native-query-snippet ::metadata-native-query-snippet-row]
    [:metadata/transform            ::metadata-transform-row]
-   [:metadata/column               :metabase.warehouse-schema.schema/field]
+   [:metadata/column               ::metadata-column-row]
    [:metadata/card                 :metabase.queries.schema/card]
    [:metadata/metric               :metabase.queries.schema/card]
    [:metadata/segment              :metabase.segments.schema/segment]
@@ -209,32 +226,13 @@
   [query-type model parsed-args honeysql]
   (merge
    (next-method query-type model parsed-args honeysql)
-   {:select    [:field/active
-                :field/base_type
-                :field/coercion_strategy
-                :field/data_sensitivity
-                :field/database_partitioned
-                :field/database_type
-                :field/description
-                :field/display_name
-                :field/effective_type
-                :field/fingerprint
-                :field/fk_target_field_id
-                :field/id
-                :field/name
-                :field/nfc_path
-                :field/parent_id
-                :field/position
-                :field/semantic_type
-                :field/settings
-                :field/table_id
-                :field/visibility_type
-                :dimension/human_readable_field_id
-                :dimension/id
-                :dimension/name
-                :dimension/type
-                :values/human_readable_values
-                :values/values]
+   {:select    (into (perf/mapv #(keyword "field" (name %)) column-columns)
+                     [:dimension/human_readable_field_id
+                      :dimension/id
+                      :dimension/name
+                      :dimension/type
+                      :values/human_readable_values
+                      :values/values])
     :from      [(warehouse-schema-overlay/field-query {:alias :field})]
     :left-join [[(t2/table-name :model/Table) :table]
                 [:= :field/table_id :table/id]
