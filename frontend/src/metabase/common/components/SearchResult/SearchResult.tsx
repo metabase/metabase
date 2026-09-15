@@ -17,7 +17,6 @@ import {
   Icon,
   Loader,
   Stack,
-  rem,
 } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
 import { isSyncCompleted } from "metabase/utils/syncing";
@@ -246,10 +245,11 @@ export function SearchResult({
       )}
       {showXRayButton && (
         <Box className={S.xraySection} pos="relative">
+          {/* TODO: replace with ActionIcon (GDGT-2457) */}
           <Button
-            w={rem(32)}
-            h={rem(32)}
-            leftSection={<Icon name="bolt" />}
+            variant="transparent"
+            size="compact-md"
+            leftSection={<Icon name="bolt" c="icon-primary" />}
             onClick={onXRayClick}
           />
         </Box>

@@ -243,35 +243,31 @@ export function DetailViewSidesheet({
             {isNavEnabled && (
               <>
                 <Tooltip disabled={!onPreviousClick} label={t`Previous row`}>
+                  {/* TODO: replace with ActionIcon (GDGT-2457) */}
                   <Button
                     aria-label={t`Previous row`}
-                    c="text-primary"
                     disabled={!onPreviousClick}
-                    h={20}
-                    leftSection={<Icon name="chevronup" />}
-                    p={0}
-                    variant="subtle"
+                    leftSection={<Icon c="icon-primary" name="chevronup" />}
+                    size="compact-md"
+                    variant="transparent"
                     style={{
                       opacity: onPreviousClick ? undefined : 0.5,
                     }}
-                    w={20}
                     onClick={onPreviousClick}
                   />
                 </Tooltip>
 
                 <Tooltip disabled={!onNextClick} label={t`Next row`}>
+                  {/* TODO: replace with ActionIcon (GDGT-2457) */}
                   <Button
                     aria-label={t`Next row`}
-                    c="text-primary"
                     disabled={!onNextClick}
-                    h={20}
-                    leftSection={<Icon name="chevrondown" />}
-                    p={0}
-                    variant="subtle"
+                    leftSection={<Icon c="icon-primary" name="chevrondown" />}
+                    size="compact-md"
+                    variant="transparent"
                     style={{
                       opacity: onNextClick ? undefined : 0.5,
                     }}
-                    w={20}
                     onClick={onNextClick}
                   />
                 </Tooltip>
@@ -288,15 +284,13 @@ export function DetailViewSidesheet({
               >
                 <Menu.Target>
                   <Tooltip label={t`Actions`}>
+                    {/* TODO: replace with ActionIcon (GDGT-2457) */}
                     <Button
                       aria-label={t`Actions`}
-                      c="text-primary"
                       data-testid="actions-menu"
-                      h={20}
-                      leftSection={<Icon name="ellipsis" />}
-                      p={0}
-                      variant="subtle"
-                      w={20}
+                      leftSection={<Icon c="icon-primary" name="ellipsis" />}
+                      size="compact-md"
+                      variant="transparent"
                     />
                   </Tooltip>
                 </Menu.Target>
@@ -319,32 +313,28 @@ export function DetailViewSidesheet({
                 <Tooltip
                   label={linkCopied ? t`Copied!` : t`Copy link to this record`}
                 >
+                  {/* TODO: replace with ActionIcon (GDGT-2457) */}
                   <Button
                     aria-label={
                       linkCopied ? t`Copied!` : t`Copy link to this record`
                     }
-                    c="text-primary"
-                    h={20}
-                    leftSection={<Icon name="link" />}
-                    p={0}
-                    variant="subtle"
-                    w={20}
+                    leftSection={<Icon c="icon-primary" name="link" />}
+                    size="compact-md"
+                    variant="transparent"
                     onClick={handleCopyLink}
                   />
                 </Tooltip>
 
                 <Tooltip label={t`Open in full page`}>
                   <Box>
+                    {/* TODO: replace with ActionIcon (GDGT-2457) */}
                     <Button
                       aria-label={t`Open in full page`}
-                      c="text-primary"
                       component={Link}
-                      h={20}
-                      leftSection={<Icon name="expand" />}
-                      p={0}
+                      leftSection={<Icon c="icon-primary" name="expand" />}
+                      size="compact-md"
+                      variant="transparent"
                       to={url}
-                      variant="subtle"
-                      w={20}
                     />
                   </Box>
                 </Tooltip>

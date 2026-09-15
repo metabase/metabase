@@ -192,13 +192,13 @@ class SnippetSidebarInner extends Component<
                       }
                     }}
                   />
+                  {/* TODO: replace with ActionIcon (GDGT-2457) */}
                   <Button
                     variant="transparent"
+                    size="compact-md"
                     onClick={this.hideSearch}
-                    className={S.HeaderButton}
-                  >
-                    <Icon name="close" />
-                  </Button>
+                    leftSection={<Icon name="close" c="icon-primary" />}
+                  />
                 </>
               ) : (
                 <>
@@ -214,6 +214,7 @@ class SnippetSidebarInner extends Component<
                   <Flex
                     align="center"
                     justify="flex-end"
+                    gap="md"
                     data-testid="snippet-header-buttons"
                   >
                     {PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.map((f) =>
@@ -221,24 +222,24 @@ class SnippetSidebarInner extends Component<
                     )}
 
                     {snippets.length >= MIN_SNIPPETS_FOR_SEARCH && (
+                      // TODO: replace with ActionIcon (GDGT-2457)
                       <Button
                         variant="transparent"
+                        size="compact-md"
                         onClick={this.showSearch}
-                        className={S.HeaderButton}
-                      >
-                        <Icon name="search" />
-                      </Button>
+                        leftSection={<Icon name="search" c="icon-primary" />}
+                      />
                     )}
 
                     {showAddMenu && (
                       <Menu position="bottom-end">
                         <Menu.Target>
+                          {/* TODO: replace with ActionIcon (GDGT-2457) */}
                           <Button
                             variant="transparent"
-                            className={S.HeaderButton}
-                          >
-                            <Icon name="add" />
-                          </Button>
+                            size="compact-md"
+                            leftSection={<Icon name="add" c="icon-primary" />}
+                          />
                         </Menu.Target>
                         <Menu.Dropdown>
                           {[

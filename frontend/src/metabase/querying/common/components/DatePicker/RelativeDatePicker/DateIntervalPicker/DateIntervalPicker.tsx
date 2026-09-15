@@ -101,11 +101,13 @@ export function DateIntervalPicker({
           }}
         />
         <Tooltip label={t`Starting from…`} position="bottom">
+          {/* TODO: replace with ActionIcon (GDGT-2457) */}
           <Button
+            variant="transparent"
+            size="compact-md"
+            ml="sm"
             aria-label={t`Starting from…`}
-            c="text-secondary"
-            variant="subtle"
-            leftSection={<Icon name="arrow_left_to_line" />}
+            leftSection={<Icon c="icon-primary" name="arrow_left_to_line" />}
             onClick={handleStartingFromClick}
           />
         </Tooltip>

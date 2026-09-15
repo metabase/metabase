@@ -35,7 +35,7 @@ export const EmbeddingLegaleseModal = ({ opened, onClose }: ModalProps) => {
         <Button
           onClick={onClose}
           variant="subtle"
-          radius="xs"
+          color="neutral"
           disabled={loading}
         >{t`Cancel`}</Button>
         <Button

@@ -56,13 +56,20 @@ export const ModelExplanationBanner = () => {
           <Text size="md" lh="1.5">
             {t`Models are somewhat like virtual tables: do all your joins and custom columns once, save it as a model, then query it like a table.`}
           </Text>
-          <Group gap="lg">
+          <Group gap="xl">
             {showMetabaseLinks && (
-              <Button variant="subtle" p={0}>
-                <ExternalLink href={url}>{t`Read the docs`}</ExternalLink>
-              </Button>
+              <Button
+                component={ExternalLink}
+                href={url}
+                variant="transparent"
+                size="compact-md"
+              >{t`Read the docs`}</Button>
             )}
-            <Button variant="subtle" p={0} onClick={dismissBanner}>
+            <Button
+              variant="transparent"
+              size="compact-md"
+              onClick={dismissBanner}
+            >
               {t`Dismiss`}
             </Button>
           </Group>

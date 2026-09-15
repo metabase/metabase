@@ -24,12 +24,12 @@ export const ChannelSettingsBlock = ({
           <Text className={CS.textShortLineHeight}>{title}</Text>
         </Group>
 
+        {/* TODO: replace with ActionIcon (GDGT-2457) */}
         <Button
-          data-testid="remove-channel-button"
-          leftSection={<Icon name="close" />}
-          color="text-primary"
-          variant="subtle"
+          variant="transparent"
           size="compact-md"
+          data-testid="remove-channel-button"
+          leftSection={<Icon c="icon-primary" name="close" />}
           onClick={onRemoveChannel}
         />
       </Group>

@@ -31,13 +31,12 @@ export function PermissionsEditBar({
       key="save"
       onClick={openModal}
       disabled={!isDirty}
-      variant="filled"
-      size="sm"
+      variant="on-dark-primary"
     >{t`Save changes`}</Button>
   );
 
   const cancelButton = (
-    <Button variant="subtle" size="sm" onClick={onCancel} key="cancel">
+    <Button variant="on-dark-secondary" onClick={onCancel} key="cancel">
       {t`Cancel`}
     </Button>
   );

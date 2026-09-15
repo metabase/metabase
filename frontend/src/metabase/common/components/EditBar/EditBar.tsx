@@ -2,7 +2,7 @@ import cx from "classnames";
 import type { ReactNode } from "react";
 
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
-import { Group, Icon } from "metabase/ui";
+import { Flex, Group, Icon } from "metabase/ui";
 
 import styles from "./EditBar.module.css";
 
@@ -35,9 +35,7 @@ export function EditBar({
         <span className={styles.title}>{title}</span>
       </Group>
       {center && <div>{center}</div>}
-      <div className={cx(styles.buttonsContainer, { [styles.brand]: isBrand })}>
-        {buttons}
-      </div>
+      <Flex gap="md">{buttons}</Flex>
     </FullWidthContainer>
   );
 }

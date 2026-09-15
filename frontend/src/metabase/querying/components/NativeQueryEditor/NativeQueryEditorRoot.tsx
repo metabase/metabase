@@ -387,10 +387,8 @@ export const NativeQueryEditorRoot = forwardRef<
                       >
                         <Button
                           data-testid="accept-proposed-changes-button"
-                          variant="filled"
-                          bg="feedback-positive"
-                          px="0"
-                          w="2.5rem"
+                          variant="light"
+                          color="positive"
                           onClick={() => {
                             const proposedQuery =
                               proposedQuestion.legacyNativeQuery();
@@ -399,9 +397,8 @@ export const NativeQueryEditorRoot = forwardRef<
                               onAcceptProposed(proposedQuery.datasetQuery());
                             }
                           }}
-                        >
-                          <Icon name="check" />
-                        </Button>
+                          leftSection={<Icon name="check" />}
+                        />
                       </Tooltip>
                       <Tooltip
                         label={t`Reject proposed changes`}
@@ -409,14 +406,11 @@ export const NativeQueryEditorRoot = forwardRef<
                       >
                         <Button
                           data-testid="reject-proposed-changes-button"
-                          w="2.5rem"
-                          px="0"
-                          variant="filled"
-                          bg="feedback-negative"
+                          variant="light"
+                          color="negative"
                           onClick={onRejectProposed}
-                        >
-                          <Icon name="close" />
-                        </Button>
+                          leftSection={<Icon name="close" />}
+                        />
                       </Tooltip>
                     </>
                   )}

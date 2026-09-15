@@ -207,15 +207,14 @@ const UploadTableRow = ({
       <td>{createdAtString}</td>
       <td>{item.schema}</td>
       <td>
-        <Flex align="center" justify="flex-end">
+        <Flex align="center" justify="flex-end" py="sm">
+          {/* TODO: replace with ActionIcon (GDGT-2457) */}
           <Button
             onClick={() => onTrash(item)}
-            variant="subtle"
-            className="Button Button--borderless"
-            color="text-secondary"
-          >
-            <Icon name="trash" />
-          </Button>
+            variant="transparent"
+            size="compact-md"
+            leftSection={<Icon c="icon-primary" name="trash" />}
+          />
         </Flex>
       </td>
     </tr>

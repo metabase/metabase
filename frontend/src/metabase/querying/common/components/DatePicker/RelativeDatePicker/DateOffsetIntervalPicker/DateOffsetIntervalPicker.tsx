@@ -138,10 +138,11 @@ export function DateOffsetIntervalPicker({
             floatingStrategy: "fixed",
           }}
         />
+        {/* TODO: replace with ActionIcon (GDGT-2457) */}
         <Button
-          c="text-secondary"
-          variant="subtle"
-          leftSection={<Icon name="close" />}
+          variant="transparent"
+          size="compact-md"
+          leftSection={<Icon c="icon-primary" name="close" />}
           aria-label={t`Remove offset`}
           onClick={handleOffsetRemove}
         />
