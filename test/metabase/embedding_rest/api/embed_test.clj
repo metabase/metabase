@@ -1105,6 +1105,16 @@
         (is (= "Message seems corrupt or manipulated"
                (client/client :get 400 (with-new-secret-key! (dashcard-url dashcard)))))))))
 
+(deftest dashcard-archived-card-test
+  (testing "GET /api/embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id[/:export-format]"
+    (testing "refuses a trashed Card, indistinguishably from a missing one, even though its DashboardCard row survives"
+      (with-embedding-enabled-and-new-secret-key!
+        (with-temp-dashcard [dashcard {:dash {:enable_embedding true}
+                                       :card {:archived true}}]
+          (do-response-formats [response-format _request-options]
+            (is (= "Not found."
+                   (client/client :get 400 (str (dashcard-url dashcard) response-format))))))))))
+
 (deftest dashboard-locked-params-test
   (with-embedding-enabled-and-new-secret-key!
     (with-temp-dashcard [dashcard {:dash {:enable_embedding true, :embedding_params {:venue_id "locked"}}}]
@@ -1706,6 +1716,16 @@
         (is (= "Embedding is not enabled for this object."
                (client/client :get 400 (pivot-dashcard-url dashcard))))))))
 
+(deftest pivot-dashcard-archived-card-test
+  (testing "GET /api/embed/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id refuses a trashed Card"
+    (mt/dataset test-data
+      (with-embedding-enabled-and-new-secret-key!
+        (with-temp-dashcard [dashcard {:dash     {:enable_embedding true, :parameters []}
+                                       :card     (assoc (api.pivots/pivot-card) :archived true)
+                                       :dashcard {:parameter_mappings []}}]
+          (is (= "Not found."
+                 (client/client :get 400 (pivot-dashcard-url dashcard)))))))))
+
 (deftest pivot-dashcard-signing-check-test
   (mt/dataset test-data
     (testing (str "check that if embedding is enabled globally and for the object that requests fail if they are signed "
@@ -2237,6 +2257,20 @@
                                                  card-id)
                      :latField (tiles.api-test/encoded-lat-field-ref)
                      :lonField (tiles.api-test/encoded-lon-field-ref)))))))))
+
+(deftest dashcard-tile-archived-card-test
+  (testing "GET api/embed/tiles/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y refuses a trashed Card"
+    (with-embedding-enabled-and-new-secret-key!
+      (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:enable_embedding true}
+                     :model/Card          {card-id :id}      {:dataset_query (venues-query)
+                                                              :archived      true}
+                     :model/DashboardCard {dashcard-id :id}  {:card_id      card-id
+                                                              :dashboard_id dashboard-id}]
+        (is (= "Not found."
+               (client/client :get 400 (format "embed/tiles/dashboard/%s/dashcard/%d/card/%d/1/1/1"
+                                               (dash-token dashboard-id) dashcard-id card-id)
+                              :latField (tiles.api-test/encoded-lat-field-ref)
+                              :lonField (tiles.api-test/encoded-lon-field-ref))))))))
 
 (deftest dashcard-tile-query-does-not-save-last-used-parameters-test
   (testing "GET api/embed/tiles/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y"
