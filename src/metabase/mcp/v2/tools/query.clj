@@ -121,7 +121,7 @@
    these itself; that is defense in depth, not this boundary's contract."
   [:lib/type :database :stages :parameters])
 
-(defn- query-failed
+(defn- query-failure-message
   "The teaching message for a QP `result` that didn't complete, carrying its error text quoted."
   [result]
   (if-let [error (:error result)]
@@ -142,7 +142,7 @@
                            :info        {:executed-by api/*current-user-id*
                                          :context     :agent})))]
     (when-not (= (:status result) :completed)
-      (common/throw-teaching-error (query-failed result)))
+      (common/throw-teaching-error (query-failure-message result)))
     result))
 
 (defn- execute-page!
@@ -612,7 +612,7 @@ Dialect (JSON): tables and columns go by NUMERIC ID — never invent or guess id
                                  (fn [query info]
                                    (qp (update query :info merge info) nil)))))]
     (when-not (= (:status result) :completed)
-      (common/throw-teaching-error (query-failed result)))
+      (common/throw-teaching-error (query-failure-message result)))
     result))
 
 (defn- saved-question-steering-line

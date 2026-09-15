@@ -431,11 +431,11 @@
                            [[] (byte-size base)]
                            (drop offset all-fields))
         next-offset (+ offset (count included))
-        message     (when (< next-offset total)
+        line        (when (< next-offset total)
                       (message/msg ["%s: %d of %d fields, continue with `offset: %d`."]
                                    (or (:name payload) (:id payload)) (count included) total next-offset))]
     {:payload (assoc base :fields included)
-     :message message}))
+     :message line}))
 
 (defn- assemble-tables
   "Apply the byte budget to `payloads` (in request order): whole tables until the budget runs out.
@@ -446,9 +446,9 @@
   (if (and (seq payloads)
            (or (some? offset)
                (> (byte-size (first payloads)) get-fields-byte-budget)))
-    (let [{:keys [payload message]} (slice-table-payload (first payloads) (or offset 0))]
+    (let [{:keys [payload] line :message} (slice-table-payload (first payloads) (or offset 0))]
       {:tables  [payload]
-       :message message})
+       :message line})
     (loop [[payload & more :as remaining] payloads
            used   0
            tables []]
@@ -493,7 +493,7 @@
                       detailed? withhold-restricted-fingerprints)
           related   (related-tables-by-requested-table browsable-db-ids rows)
           payloads  (mapv #(project-table args related %) rows)
-          {:keys [tables message]} (assemble-tables payloads offset)
+          {:keys [tables] line :message} (assemble-tables payloads offset)
           ;; `tables` is a prefix of `payloads`, which is index-aligned with `rows`, so the tables
           ;; the budget dropped are the matching suffix of `rows` — named from the source rows
           ;; because a `fields` projection can strip `:id`/`:name` off the payloads.
@@ -508,8 +508,8 @@
                           (drop (count tables) rows))
           body      (cond-> {:tables tables}
                       (seq omitted) (assoc :omitted omitted))]
-      (common/success-content (if message
-                                (message/msg ["%s" "%s"] (message/raw (json/encode body)) message)
+      (common/success-content (if line
+                                (message/msg ["%s" "%s"] (message/raw (json/encode body)) line)
                                 body)))))
 
 ;;; -------------------------------------------------- The tool ----------------------------------------------------

@@ -126,11 +126,6 @@
   [args]
   (v2.resolve/resolve-collection-id-or-personal (:collection_id args)))
 
-(defn- copy-name
-  "The default name of a copy of `source`, in the user's locale."
-  [source]
-  (tru "Copy of {0}" (:name source)))
-
 (def ^:private duplicate-content-args-schema
   [:map {:closed true}
    [:type [:enum {:description "The kind of content to copy. Card flavors other than question (model, metric) aren't supported yet."}
@@ -163,7 +158,7 @@
        (message/msg ["`is_deep_copy` applies to dashboards only — omit it when duplicating type %s."] type)))
     (let [source        (fetch id)
           collection-id (destination-collection-id args)
-          copy          (copy! source collection-id (or new_name (copy-name source))
+          copy          (copy! source collection-id (or new_name (tru "Copy of {0}" (:name source)))
                                (boolean is_deep_copy))]
       (common/success-content
        ;; `new_name` defaults to "Copy of <source name>", so echoing the copy's name hands back the

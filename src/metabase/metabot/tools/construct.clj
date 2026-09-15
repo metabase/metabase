@@ -766,9 +766,7 @@
 
   `opts` may carry `:recovery-hint`, a function from an agent error's `ex-data` to a sentence
   string (or nil) telling the caller's agent how to recover; the sentence is appended to the
-  agent error's message. The pipeline states what went wrong and the caller supplies the
-  vocabulary, because only the caller knows which tools its agent has. Omitting it yields bare
-  statements, for callers that attach recovery text themselves."
+  agent error's message. Omitting it leaves agent errors with the pipeline's bare statement."
   ([external-query]
    (execute-representations-query external-query nil))
   ([external-query {:keys [recovery-hint]}]

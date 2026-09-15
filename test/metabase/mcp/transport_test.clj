@@ -564,7 +564,7 @@
             (is (= -32000 (get-in response [:body :error :code])))
             (is (re-matches #"Too many attempts! You must wait \d+ seconds before trying again\."
                             (get-in response [:body :error :message]))
-                "GHY-4544: the refusal is server prose, not quoted")
+                "GHY-4544: the refusal is the throttle library's own sentence, not quoted")
             (is (nil? (get-in response [:body :result])))))))))
 
 (deftest throttle-charges-per-jsonrpc-message-not-per-request-test
@@ -586,7 +586,7 @@
             (is (= -32000 (get-in response [:body :error :code])))
             (is (re-matches #"Too many attempts! You must wait \d+ seconds before trying again\."
                             (get-in response [:body :error :message]))
-                "GHY-4544: the refusal is server prose, not quoted")))))
+                "GHY-4544: the refusal is the throttle library's own sentence, not quoted")))))
     (testing "a single message costs exactly one attempt, so a cap of 1 serves it and refuses the next"
       (let [session-id (initialize!)]
         (with-redefs-fn {#'mcp.transport/mcp-throttler (throttle/make-throttler :user-id :attempts-threshold 1)}

@@ -248,7 +248,7 @@
   (let [held  (sort (filter string? token-scopes))
         needs (if (set? required)
                 (message/msg ["one of %s"] (message/raw (str/join ", " (sort required))))
-                (message/msg ["%s"] (message/raw (str required))))]
+                (message/raw (str required)))]
     (if (seq held)
       (message/msg ["Insufficient scope to call tool: %s. Requires %s; your token holds %s."]
                    (message/raw tool-name) needs (common/list-message held))

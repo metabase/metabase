@@ -184,14 +184,12 @@
                  (message/msg ["browse_collection(namespace: \"transforms\")"])
 
                  (collection-scoping? args)
-                 (message/msg ["browse_collection(id: %s, mode: \"items\"%s%s)"]
-                              collection_id
-                              (if (seq types)
-                                (message/msg [", type: [%s]"] (common/list-message (sort types)))
-                                (message/msg [""]))
-                              (if created_by
-                                (message/msg [", created_by: \"me\""])
-                                (message/msg [""])))
+                 (message/msg ["browse_collection(%s)"]
+                              (common/list-message
+                               (cond-> [(message/msg ["id: %s"] collection_id)
+                                        (message/msg ["mode: \"items\""])]
+                                 (seq types) (conj (message/msg ["type: [%s]"] (common/list-message (sort types))))
+                                 created_by  (conj (message/msg ["created_by: \"me\""])))))
 
                  created_by
                  (message/msg [(str "browse_collection(id: <collection>, mode: \"items\", created_by: \"me\") "
