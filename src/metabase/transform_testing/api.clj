@@ -5,6 +5,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.models.interface :as mi]
    [metabase.transform-testing.db :as transform-testing.db]
+   [metabase.transform-testing.errors :as transform-testing.errors]
    [metabase.transform-testing.runner :as transform-testing.runner]
    [metabase.transform-testing.schema :as transform-testing.schema]
    [metabase.util.malli.schema :as ms]))
@@ -55,11 +56,28 @@
   nil)
 
 (api.macros/defendpoint :post "/:id/run" :- ::transform-testing.schema/run-result
-  "Run a transform test."
+  "Run a transform test.
+
+  A 200 means the run happened and `:status` says whether it passed. Any other status means the run
+  was refused and nothing meaningful ran; the body then carries an `:error-code` naming which
+  refusal it was, drawn from `metabase.transform-testing.errors/all`."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (let [transform-test (api/write-check (transform-testing.db/transform-test id))]
-    (transform-testing.runner/run-transform-test! transform-test)))
+  (try
+    (-> (transform-testing.db/transform-test id)
+        api/write-check
+        transform-testing.runner/run-transform-test!)
+    (catch clojure.lang.ExceptionInfo e
+      (if-let [error-type (:error-type (ex-data e))]
+        ;; `:error-code`, not a spelling of our own: `api-exception-response` returns a structured
+        ;; body only for a non-500 status carrying that exact key. Anything else falls through to
+        ;; the branch that attaches a stacktrace — or, where an administrator has turned
+        ;; stacktraces off, to a bare "Something went wrong" with the type silently dropped.
+        (throw (ex-info (ex-message e)
+                        (assoc (dissoc (ex-data e) :error-type)
+                               :status-code (transform-testing.errors/status-code error-type)
+                               :error-code  error-type)))
+        (throw e)))))
 
 (def ^{:arglists '([request respond raise])} transform-test-routes
   "`/api/transform-test` routes."

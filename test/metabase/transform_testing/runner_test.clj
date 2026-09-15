@@ -5,6 +5,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sql-tools.settings :as sql-tools.settings]
    [metabase.test :as mt]
+   [metabase.transform-testing.errors :as transform-testing.errors]
    [metabase.transform-testing.runner :as transform-testing.runner])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -48,7 +49,7 @@
                      (transform-testing.runner/run-transform-test! transform-test))))))))))
 
 (deftest run-transform-test-rejects-undeclared-input-test
-  (testing "Guard A: a transform reading a table with no declared input is rejected with a 400,"
+  (testing "Guard A: a transform reading a table with no declared input is refused,"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
       ;; the transform reads people, but the test declares no input for it — running would leave
       ;; people pointing at the real table (read production, false-green). Must reject before running.
@@ -67,8 +68,10 @@
                         (catch ExceptionInfo e e))]
             (testing "throws"
               (is (some? ex)))
-            (testing "with a 400 status and names the undeclared table"
-              (is (= 400 (:status-code (ex-data ex))))
+            (testing "with a typed refusal that names the undeclared table"
+              ;; The runner is agnostic to HTTP; that a type maps to a status is settled once,
+              ;; exhaustively, in errors-test.
+              (is (= ::transform-testing.errors/missing-inputs (:error-type (ex-data ex))))
               (is (re-find (re-pattern (str "(?i)" table)) (ex-message ex))))))))))
 
 (deftest run-transform-test-rejects-partially-declared-inputs-test
@@ -92,13 +95,15 @@
           (let [ex (try (transform-testing.runner/run-transform-test! transform-test)
                         nil
                         (catch ExceptionInfo e e))]
-            (is (= 400 (:status-code (ex-data ex))))
+            ;; The runner is agnostic to HTTP; that a type maps to a status is settled once,
+            ;; exhaustively, in errors-test.
+            (is (= ::transform-testing.errors/missing-inputs (:error-type (ex-data ex))))
             (testing "names the undeclared people, not the declared orders"
               (is (re-find (re-pattern (str "(?i)" people)) (ex-message ex)))
               (is (not (re-find (re-pattern (str "(?i)" orders)) (ex-message ex)))))))))))
 
 (deftest run-transform-test-rejects-unused-input-test
-  (testing "Guard A: a declared input for a table the transform does not read is rejected 400,"
+  (testing "Guard A: a declared input for a table the transform does not read is refused,"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
       ;; reads only people, but declares an input for orders too — a stale/mistyped fake.
       (let [mp                            (mt/metadata-provider)
@@ -118,7 +123,9 @@
           (let [ex (try (transform-testing.runner/run-transform-test! transform-test)
                         nil
                         (catch ExceptionInfo e e))]
-            (is (= 400 (:status-code (ex-data ex))))
+            ;; The runner is agnostic to HTTP; that a type maps to a status is settled once,
+            ;; exhaustively, in errors-test.
+            (is (= ::transform-testing.errors/unused-inputs (:error-type (ex-data ex))))
             (testing "names the unused orders, not the read people"
               (is (re-find (re-pattern (str "(?i)" orders)) (ex-message ex)))
               (is (not (re-find (re-pattern (str "(?i)" people)) (ex-message ex)))))))))))
@@ -158,7 +165,9 @@
                          {:transform_id transform-id :inputs [] :expectations []}]
             (let [e (try (transform-testing.runner/run-transform-test! transform-test)
                          (catch ExceptionInfo e e))]
-              (is (= 400 (:status-code (ex-data e))))
+              ;; The runner is agnostic to HTTP; that a type maps to a status is settled once,
+              ;; exhaustively, in errors-test.
+              (is (= ::transform-testing.errors/unparseable-source (:error-type (ex-data e))))
               (is (re-find #"could not be parsed" (ex-message e))))))))))
 
 (deftest run-transform-test-dangling-column-qualifier-test

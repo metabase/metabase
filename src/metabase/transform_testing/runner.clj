@@ -17,7 +17,10 @@
       → build temp names + replacements   : compile the inputs and rewrite the source      [pure]
       → open ONE connection (executor)    : create temp inputs + output, check, drop on exit
 
-  Everything before the connection is pure; a bad test is rejected before any temp table exists."
+  Everything before the connection is pure; a bad test is rejected before any temp table exists.
+
+  The runner also owns the taxonomy of outcomes. A refusal — nothing ran, or the run could not
+  finish — is a typed throw from `errors`, which the API layer turns into a status code."
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
@@ -26,6 +29,7 @@
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.transform-testing.compile :as transform-testing.compile]
    [metabase.transform-testing.db :as transform-testing.db]
+   [metabase.transform-testing.errors :as transform-testing.errors]
    [metabase.transform-testing.executor :as transform-testing.executor]
    [metabase.transform-testing.expectations :as transform-testing.expectations]
    [metabase.transform-testing.schema :as transform-testing.schema]
@@ -34,18 +38,51 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
 
+(set! *warn-on-reflection* true)
+
+(defn- temp->logical
+  "The map from each generated temp-table name to the name the author wrote, for rewriting warehouse
+  error messages that can only speak in generated names."
+  [transform input->temp output-table]
+  (into {output-table (transform-testing.validator/table-label (:target transform))}
+        (map (fn [[input temp]] [temp (transform-testing.validator/table-label (:table input))]))
+        input->temp))
+
+(defn- warehouse-said
+  "What the warehouse told us about `e`, with every generated temp-table name replaced by the one
+  the author wrote, or nil when it said nothing."
+  [e names]
+  (transform-testing.errors/remap-message (ex-message e) names))
+
+(defn- rethrow-remapped
+  "Rethrow `e` as `error-type` behind `message`, quoting the warehouse where it had something to say."
+  [e error-type message names]
+  (let [cause (warehouse-said e names)]
+    (throw (transform-testing.errors/ex
+            error-type
+            (if cause (str message " " cause) message)
+            {:cause cause}
+            e))))
+
 (mu/defn run-transform-test! :- ::transform-testing.schema/run-result
-  "Run the transform test `transform-test` against temp tables and return whether all expectations passed."
+  "Run the transform test `transform-test` against temp tables and report what each expectation found."
   [{:keys [transform_id inputs expectations]} :- ::transform-testing.schema/transform-test]
   ;; --- resolve (app-db) ---
   (let [transform (api/check-404 (transform-testing.db/transform transform_id))
-        _         (api/check-400 (transforms-base.u/query-transform? transform)
-                                 (tru "Only query transforms can be tested."))
+        _         (when-not (transforms-base.u/query-transform? transform)
+                    (throw (transform-testing.errors/ex
+                            ::transform-testing.errors/unsupported-transform
+                            (tru "Only query transforms can be tested.")
+                            {:transform-id transform_id})))
         database  (api/check-404 (transform-testing.db/database
                                   (transforms-base.u/transform-source-database transform)))
         driver    (keyword (:engine database))
-        _         (api/check-400 (driver.u/supports? driver :transforms/testing database)
-                                 (tru "The database of this transform does not support transform testing."))
+        _         (when-not (driver.u/supports? driver :transforms/testing database)
+                    (throw (transform-testing.errors/ex
+                            ::transform-testing.errors/unsupported-driver
+                            (tru "The {0} database of this transform does not support transform testing."
+                                 (name driver))
+                            {:driver driver})))
         ;; --- compile source once (pure): SQL + the tables it reads, before any replacement ---
         compiled-source (try
                           (transform-testing.compile/compile-source driver transform)
@@ -56,21 +93,29 @@
                               ;; their SQL. It is a syntax diagnostic about their own query: no data,
                               ;; no schema — safe to return. Prefer the cause's bare message over the
                               ;; "sqlglot call failed: " wrapper.
-                              (api/check-400 false
-                                             (tru "The transform source SQL could not be parsed for test input validation: {0}"
-                                                  (or (some-> (ex-cause e) ex-message) (ex-message e))))
+                              (throw (transform-testing.errors/ex
+                                      ::transform-testing.errors/unparseable-source
+                                      (tru "The transform source SQL could not be parsed for test input validation: {0}"
+                                           (or (some-> (ex-cause e) ex-message) (ex-message e)))
+                                      {:transform-id transform_id}))
                               (throw e))))
         ;; --- validate (pure): the declared inputs must be exactly the tables the transform reads.
         ;;     Both directions are 400s; checks the same referenced-tables the rewrite will remap. ---
         refs      (:referenced-tables compiled-source)
         missing   (transform-testing.validator/missing-inputs driver inputs refs)
-        _         (api/check-400 (empty? missing)
-                                 (tru "The transform reads table(s) with no declared test input: {0}. Add an input for each."
-                                      (str/join ", " (map transform-testing.validator/table-label missing))))
+        _         (when (seq missing)
+                    (throw (transform-testing.errors/ex
+                            ::transform-testing.errors/missing-inputs
+                            (tru "The transform reads table(s) with no declared test input: {0}. Add an input for each."
+                                 (str/join ", " (map transform-testing.validator/table-label missing)))
+                            {:tables (mapv transform-testing.validator/table-label missing)})))
         unused    (transform-testing.validator/unused-inputs driver inputs refs)
-        _         (api/check-400 (empty? unused)
-                                 (tru "Test input(s) declared for table(s) the transform does not read: {0}. Remove them."
-                                      (str/join ", " (map transform-testing.validator/table-label unused))))
+        _         (when (seq unused)
+                    (throw (transform-testing.errors/ex
+                            ::transform-testing.errors/unused-inputs
+                            (tru "Test input(s) declared for table(s) the transform does not read: {0}. Remove them."
+                                 (str/join ", " (map transform-testing.validator/table-label unused)))
+                            {:tables (mapv transform-testing.validator/table-label unused)})))
         ;; --- compile (pure): temp names + queries over them ---
         ;; The association that matters: each input → the temp table built for it. Everything later
         ;; (seeding, replacements, cleanup, Guard B) is derived from this map, not from any ordering.
@@ -82,6 +127,7 @@
                                       (tru "Duplicate test inputs; each input table may be declared only once.")))
         input->temp  (into {} (map (fn [input] [input (driver/temp-table-name driver)])) inputs)
         output-table (driver/temp-table-name driver)
+        names        (temp->logical transform input->temp output-table)
         replacements (transform-testing.compile/table-replacements driver transform input->temp output-table)
         compiled-transform (transform-testing.compile/compile-transform driver compiled-source replacements)
         ;; --- validate (pure, Guard B): the rewrite left no real table behind. Every table the
@@ -102,10 +148,20 @@
      (fn [conn]
        (try
          (doseq [[input temp] input->temp]
-           (transform-testing.executor/create-temp-table!
-            driver conn temp (transform-testing.compile/compile-input driver input)))
-         (transform-testing.executor/create-temp-table!
-          driver conn output-table compiled-transform)
+           (try
+             (transform-testing.executor/create-temp-table!
+              driver conn temp (transform-testing.compile/compile-input driver input))
+             (catch Exception e
+               (rethrow-remapped e ::transform-testing.errors/setup-failed
+                                 (tru "Could not create the test input for {0}:"
+                                      (transform-testing.validator/table-label (:table input)))
+                                 names))))
+         (try
+           (transform-testing.executor/create-temp-table! driver conn output-table compiled-transform)
+           (catch Exception e
+             (rethrow-remapped e ::transform-testing.errors/transform-failed
+                               (tru "The transform under test failed to run:")
+                               names)))
          ;; --- check (pure-ish): expectations against the output temp table ---
          (let [context  {:driver driver :conn conn :output-table output-table :replacements replacements}
                statuses (mapv #(transform-testing.expectations/check-expectation context %) expectations)]
