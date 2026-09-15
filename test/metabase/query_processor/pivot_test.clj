@@ -440,17 +440,17 @@
   (testing "the two pivot paths stash the same [:middleware :pivot-options] on the query given to qp/process-query"
     (mt/dataset test-data
       (qp.store/with-metadata-provider (mt/id)
-        (let [query                  (-> (qp.pivot.test-util/pivot-query)
-                                         qp.middleware.normalize/normalize-preprocessing-middleware)
-              [multi-p multi-stub]   (capture-first-query)
-              [sql-p sql-stub]       (capture-first-query)]
+        (let [query                    (-> (qp.pivot.test-util/pivot-query)
+                                           qp.middleware.normalize/normalize-preprocessing-middleware)
+              [multi-p multi-stub]     (capture-first-query)
+              [single-p single-stub]   (capture-first-query)]
           (mt/with-dynamic-fn-redefs [qp.core/process-query multi-stub]
             (#'qp.pivot/run-pivot-query-multi query nil))
-          (mt/with-dynamic-fn-redefs [qp.core/process-query sql-stub]
-            (#'qp.pivot/run-sql-pivot-query query nil))
+          (mt/with-dynamic-fn-redefs [qp.core/process-query single-stub]
+            (#'qp.pivot/run-single-query-pivot query nil))
           (is (some? (get-in @multi-p [:middleware :pivot-options])))
-          (is (= (get-in @multi-p [:middleware :pivot-options])
-                 (get-in @sql-p   [:middleware :pivot-options]))))))))
+          (is (= (get-in @multi-p  [:middleware :pivot-options])
+                 (get-in @single-p [:middleware :pivot-options]))))))))
 
 (deftest ^:mb/driver-tests pivot-with-expression-referencing-breakout-e2e-test
   (testing "pivot with a breakout that references an expression"
@@ -1481,7 +1481,7 @@
                                     :pivot_rows  [0]
                                     :pivot_cols  [1]})
                             qp.middleware.normalize/normalize-preprocessing-middleware)
-            results     (#'qp.pivot/run-sql-pivot-query query nil)]
+            results     (#'qp.pivot/run-single-query-pivot query nil)]
         (testing "row count matches the requested cap"
           (is (= max-results (count (mt/rows results)))))
         (testing "result emits :pivot_rows_truncated (not :rows_truncated) so the FE pivot truncation warning fires"

@@ -713,7 +713,7 @@
     (not (lib.pivot/has-pivot? query))
     (lib.pivot/with-pivot {:rows [] :columns [] :show-row-totals true :show-column-totals true})))
 
-(defn- run-sql-pivot-query
+(defn- run-single-query-pivot
   "Translate `query`'s pivot intent (legacy top-level keys and/or viz-settings) into an MBQL5 `:pivot` clause
   on the last stage and submit to the standard QP through `rff`."
   [query rff]
@@ -834,7 +834,7 @@
   log inspection) can see per-flow timings without extra plumbing."
   [flow query rff primary-flow]
   (let [primary?    (= flow primary-flow)
-        runner      (if (= flow :multi-query) run-pivot-query-multi run-sql-pivot-query)
+        runner      (if (= flow :multi-query) run-pivot-query-multi run-single-query-pivot)
         force-shape (case flow
                       :multi-query   nil
                       :grouping-sets :grouping-sets
@@ -932,7 +932,7 @@
          (let [db                (query-database query)
                sql-driver?       (isa? driver/hierarchy (:engine db) :sql)
                use-single-query? (and sql-driver? (qp.settings/use-native-pivot-tables))
-               primary           (if use-single-query? run-sql-pivot-query run-pivot-query-multi)]
+               primary           (if use-single-query? run-single-query-pivot run-pivot-query-multi)]
            (binding [qp.pipeline/*pivot?* true]
              (if (and sql-driver? (pivot-parity-enabled?))
                (run-with-parity-check query rff use-single-query?)
