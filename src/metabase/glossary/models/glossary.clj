@@ -32,11 +32,19 @@
 
 ;;; ---------------------- Serialization ----------------------------
 
+(defmethod serdes/load-find-local "Glossary"
+  [path]
+  ;; Files exported before `entity_id` existed are keyed by term.
+  (let [{:keys [id]} (last path)]
+    (if (serdes/entity-id? id)
+      (serdes/lookup-by-id :model/Glossary id)
+      (glossary.db/glossary-entry-by-term id))))
+
 (defmethod serdes/load-one! "Glossary"
   [ingested maybe-local]
-  ;; `term` is unique, so match on it before inserting: files exported before `entity_id` existed are keyed by
-  ;; term, and two instances can each create the same term under different entity_ids. The loader generates a
-  ;; throwaway entity_id for a term-keyed file, so keep the local row's identity in that case.
+  ;; `term` is unique, so match on it before inserting: two instances can each create the same term under
+  ;; different entity_ids. The loader generates a throwaway entity_id for a term-keyed file, so keep the local
+  ;; row's identity in that case.
   (let [local       (or maybe-local (glossary.db/glossary-entry-by-term (:term ingested)))
         term-keyed? (not= (-> ingested serdes/path last :id) (:entity_id ingested))]
     (serdes/default-load-one! (cond-> ingested

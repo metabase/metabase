@@ -801,6 +801,19 @@ serdes/meta:
 "
           entity-id term definition entity-id (str/replace (u/lower-case-en term) #"\s+" "_")))
 
+(defn generate-legacy-glossary-yaml
+  "Generates YAML content for a Glossary entry as exported before `entity_id` existed: keyed on the term."
+  [term definition]
+  (format "term: %s
+definition: %s
+created_at: '2024-08-28T09:46:18.671622Z'
+creator_id: rasta@metabase.com
+serdes/meta:
+- id: %s
+  model: Glossary
+"
+          term definition term))
+
 (defn generate-transform-tag-yaml
   "Generates YAML content for a TransformTag with the given `entity-id` and `name`."
   [entity-id name]

@@ -3001,6 +3001,15 @@
           (serdes.load/load-metabase! (ingestion-in-memory @serialized))
           (is (= 1 (t2/count :model/Glossary))))))))
 
+(deftest glossary-load-find-local-test
+  (mt/with-temp [:model/Glossary entry {:term "ARR" :definition "Annual recurring revenue"}]
+    (testing "an entity_id path finds the row"
+      (is (= (:id entry) (:id (serdes/load-find-local [{:model "Glossary" :id (:entity_id entry)}])))))
+    (testing "a term-keyed path from a pre-entity_id export finds the row"
+      (is (= (:id entry) (:id (serdes/load-find-local [{:model "Glossary" :id "ARR"}])))))
+    (testing "an unknown term finds nothing"
+      (is (nil? (serdes/load-find-local [{:model "Glossary" :id "No such term"}]))))))
+
 (deftest glossary-import-matches-existing-term-test
   (let [glossary-file (fn [id entity]
                         (merge {:serdes/meta [{:model "Glossary" :id id}]

@@ -18,6 +18,7 @@
    [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
@@ -329,6 +330,48 @@
                  (is (= :success (:status result)) (str "import should succeed: " result))
                  (is (not (t2/exists? :model/Glossary :id (:id entry))))
                  (is (nil? (rso entry))))))))))))
+
+(deftest term-keyed-file-survives-full-import-test
+  (mt/with-temporary-setting-values [remote-sync-enabled true]
+    (mt/with-model-cleanup [:model/Glossary :model/Collection :model/RemoteSyncTask]
+      (do-with-synced-library!
+       (fn []
+         (let [legacy (fn [term definition]
+                        {"main" {library-yaml-path    (library-yaml)
+                                 test-collection-path (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection")
+                                 (str "glossary/" (u/lower-case-en term) ".yaml")
+                                 (test-helpers/generate-legacy-glossary-yaml term definition)}})]
+           (testing "a term-keyed file updates the matching local row and the full import keeps it"
+             (mt/with-temp [:model/Glossary entry {:term "ARR" :definition "local"}]
+               (with-rso! entry "synced")
+               (let [mock   (test-helpers/create-mock-source :initial-files (legacy "ARR" "from the repo"))
+                     result (run-import! (source.p/snapshot mock) :force? true)]
+                 (is (= :success (:status result)) (str "import should succeed: " result))
+                 (is (=? {:id (:id entry) :entity_id (:entity_id entry) :definition "from the repo"}
+                         (t2/select-one :model/Glossary :term "ARR")))
+                 (is (=? {:status "synced"} (rso entry))))))
+           (testing "a term-keyed file with no local match is inserted and kept across full imports"
+             (let [mock (test-helpers/create-mock-source :initial-files (legacy "Bookings" "Signed contracts"))]
+               (is (= :success (:status (run-import! (source.p/snapshot mock) :force? true))))
+               (let [{:keys [id entity_id]} (t2/select-one :model/Glossary :term "Bookings")]
+                 (is (= 21 (count entity_id)))
+                 (is (= :success (:status (run-import! (source.p/snapshot mock) :force? true))))
+                 (is (= [id] (t2/select-fn-vec :id :model/Glossary :term "Bookings"))))))
+           (testing "an unsynced local row matched by term is not reported as a deletion"
+             (mt/with-temp [:model/Glossary entry {:term "MRR" :definition "local"}]
+               (with-rso! entry "create")
+               (let [mock   (test-helpers/create-mock-source :initial-files (legacy "MRR" "from the repo"))
+                     result (run-import! (source.p/snapshot mock) :force? true :force-deletion? false)]
+                 (is (= :success (:status result)) (str "import should succeed: " result))
+                 (is (= "from the repo" (t2/select-one-fn :definition :model/Glossary :id (:id entry)))))))))))))
+
+(deftest extract-imported-entities-resolves-term-keyed-paths-test
+  (mt/with-temp [:model/Glossary entry {:term "ARR" :definition "Annual recurring revenue"}]
+    (let [paths [[{:model "Glossary" :id (:entity_id entry)}]
+                 [{:model "Glossary" :id "ARR"}]
+                 [{:model "Glossary" :id "No such term"}]]]
+      (is (= #{(:entity_id entry)}
+             (get-in (spec/extract-imported-entities paths) [:by-entity-id "Glossary"]))))))
 
 (def ^:private base-tree
   "A snapshot with the synced Library and one plain collection, and no glossary files."

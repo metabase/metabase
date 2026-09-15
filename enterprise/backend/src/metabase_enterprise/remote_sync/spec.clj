@@ -916,7 +916,12 @@
 
 (defmethod extract-identity-from-serdes-path ::entity-id-extractor
   [_ serdes-path]
-  (:id (last serdes-path)))
+  (let [id (:id (last serdes-path))]
+    (if (serdes/entity-id? id)
+      id
+      ;; A path keyed on a natural key (a glossary term, before `entity_id` existed) names whichever local row
+      ;; the loader matches it to, so resolve it to that row's entity_id; nil when no such row exists yet.
+      (:entity_id (serdes/load-find-local serdes-path)))))
 
 (defmethod extract-identity-from-serdes-path :path
   [_ serdes-path]
