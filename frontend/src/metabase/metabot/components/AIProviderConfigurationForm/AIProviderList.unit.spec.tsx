@@ -127,23 +127,10 @@ describe("AIProviderList", () => {
     );
   });
 
-  it("warns that removing the openai connection also turns off semantic search", async () => {
+  it("does not warn about other features when removing a connection", async () => {
     setup();
 
     const modal = await openRemoveDialog("openai");
-
-    expect(
-      within(modal).getByText(/Semantic search also runs on this connection/),
-    ).toBeInTheDocument();
-    expect(
-      within(modal).getByText(/saved credentials will be deleted/),
-    ).toBeInTheDocument();
-  });
-
-  it("does not warn about dependent features when removing the anthropic connection", async () => {
-    setup();
-
-    const modal = await openRemoveDialog("anthropic");
 
     expect(
       within(modal).getByText(/saved credentials will be deleted/),

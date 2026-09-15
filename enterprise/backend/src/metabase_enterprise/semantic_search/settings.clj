@@ -17,7 +17,8 @@
   (some-> value str/trim not-empty))
 
 (defsetting ee-embedding-provider
-  (deferred-tru "The registered embedding provider to use")
+  (deferred-tru (str "The embedding provider to use: a built-in or plugin embedder, or the key of an AI provider "
+                     "connection, whose type then selects the embedding API."))
   :encryption :when-encryption-key-set
   :visibility :settings-manager
   :default "ai-service"
@@ -62,16 +63,6 @@
   :type :positive-integer
   :export? false
   :doc false)
-
-(defn openai-api-base-url
-  "Get the OpenAI API base url from the existing LLM settings."
-  []
-  (llm-settings/llm-openai-api-base-url))
-
-(defn openai-api-key
-  "Get the OpenAI API key from the existing LLM settings."
-  []
-  (llm-settings/llm-openai-api-key))
 
 (defsetting ee-embedding-service-base-url
   (deferred-tru "URL of the OpenAI-compatible embedding service (e.g. a LiteLLM proxy).")
