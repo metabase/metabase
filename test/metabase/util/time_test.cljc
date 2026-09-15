@@ -217,6 +217,12 @@
     (is (same? (from-zulu exp-from) from) "start dates should be the same")
     (is (same? (from-zulu exp-to)   to)   "end dates should be the same")))
 
+(deftest quarter-to-range-does-not-require-week-config-test
+  (let [[from to] (shared.ut/to-range (shared.ut/coerce-to-timestamp "2022-08-19T00:00:00" nil)
+                                      {:unit :quarter})]
+    (is (same? (from-zulu "2022-07-01T00:00:00Z") from))
+    (is (same? (from-zulu "2022-09-30T23:59:59.999Z") to))))
+
 (defn- time-from [s]
   #?(:cljs (dayjs s #js ["HH:mm:ss.SSS" "HH:mm:ss" "HH:mm"])
      :clj  (t/local-time s)))
@@ -288,7 +294,10 @@
   (is (= "1 PM" (format-unit "2023-10-03T13:30:00" :hour-of-day)))
   (is (= "30" (format-unit 30 :minute-of-hour)))
   (is (= "1 PM" (format-unit 13 :hour-of-day)))
-  (is (= "12 AM" (format-unit 0 :hour-of-day))))
+  (is (= "12 AM" (format-unit 0 :hour-of-day)))
+  (testing "week-of-year respects start-of-week"
+    (is (= "1" (shared.ut/format-unit {:start-of-week :sunday} "2023-01-02" :week-of-year)))
+    (is (= "2" (shared.ut/format-unit {:start-of-week :monday} "2023-01-02" :week-of-year)))))
 
 (deftest parse-unit-test
   (are [exp input unit-in unit-out locale-in locale-out]
