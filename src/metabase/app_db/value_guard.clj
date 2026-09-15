@@ -40,11 +40,22 @@
        (= :auto/param (first x))))
 
 (defn- well-formed-marker?
-  "Whether `x` is a `[:auto/param v]` marker written the one supported way."
+  "Whether `x` is a marker this can lift.
+
+  Two shapes reach here. `[:auto/param v]` is what a caller writes in a query map. Toucan builds a
+  kv-arg -- `(t2/select :model/X :locale [:auto/param v])` -- into `[:auto/param :locale v]`, taking
+  the marker keyword for the operator and folding the column in, so that arity is a marked kv-arg
+  rather than a mistake."
   [x]
   (and (marker-form? x)
        (vector? x)
-       (= 2 (count x))))
+       (contains? #{2 3} (count x))))
+
+(defn- kv-arg-marker?
+  "Whether `x` is the `[:auto/param column v]` form Toucan builds from a marked kv-arg."
+  [x]
+  (and (well-formed-marker? x)
+       (= 3 (count x))))
 
 (defn- check-well-formed!
   "A marker-shaped form that is not `[:auto/param v]` is always a mistake. HoneySQL does not know the
@@ -87,14 +98,18 @@
                     ;; Replace the whole form, so the payload is never descended into.
                     (do
                       (check-well-formed! x)
-                      (let [v (second x)]
+                      (let [kv? (kv-arg-marker? x)
+                            v   (if kv? (nth x 2) (second x))
+                            ;; A marked kv-arg has to come back out as a comparison, since Toucan
+                            ;; folded the column into the marker rather than building one.
+                            wrap (if kv? #(vector := (second x) %) identity)]
                         (if (nil? v)
                           ;; HoneySQL turns a literal nil in a comparison into `IS NULL`; a bound
                           ;; parameter gets `= ?`, which no row satisfies. Leave nil to HoneySQL.
-                          nil
+                          (wrap nil)
                           (let [k (param-key)]
                             (vswap! params assoc k v)
-                            [:param k]))))))
+                            (wrap [:param k])))))))
                 query)]
     [walked @params]))
 

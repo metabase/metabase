@@ -50,8 +50,16 @@
     (are [query] (thrown-with-msg? clojure.lang.ExceptionInfo #"Malformed"
                                    (#'value-guard/auto-param query))
       {:where [:= :a [:auto/param]]}
-      {:where [:= :a [:auto/param 1 2]]}
+      {:where [:= :a [:auto/param 1 2 3]]}
       {:where [:= :a (list :auto/param 5)]})))
+
+(deftest ^:parallel binds-a-marked-kv-arg-test
+  (testing "Toucan folds a marked kv-arg into [:auto/param column value]; it comes back as a comparison"
+    (is (= ["WHERE locale = ?" "de"]
+           (formatted {:where [:auto/param :locale "de"]}))))
+  (testing "a marked kv-arg holding nil still compares as IS NULL"
+    (is (= ["WHERE locale IS NULL"]
+           (formatted {:where [:auto/param :locale nil]})))))
 
 (deftest ^:parallel leaves-nil-to-honeysql-test
   (testing "a bound nil compares as `= ?`, which no row satisfies -- leave it a literal so it is IS NULL"
