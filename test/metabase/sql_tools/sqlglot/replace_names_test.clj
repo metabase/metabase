@@ -136,3 +136,37 @@
            (replace-names :clickhouse
                           "SELECT * FROM `zz`.`src` WHERE `id` = {uid: UInt32}"
                           {:tables {{:schema "zz" :table "src"} "iso__src"}})))))
+
+(deftest ^:parallel table-qualified-column-follows-table-rename-test
+  (testing "A column qualified by a replaced table is qualified by its replacement"
+    (is (= "SELECT users.id, users.name FROM users"
+           (replace-names :postgres
+                          "SELECT people.id, people.name FROM people"
+                          {:tables {{:table "people"} "users"}})))))
+
+(deftest ^:parallel schema-qualified-column-follows-table-rename-test
+  (testing "A schema-qualified column loses the schema along with its table"
+    (is (= "SELECT tmp_people.id FROM tmp_people WHERE tmp_people.name IS NULL"
+           (replace-names :postgres
+                          "SELECT public.people.id FROM public.people WHERE public.people.name IS NULL"
+                          {:tables {{:schema "public" :table "people"} {:schema nil :table "tmp_people"}}}))))
+  (testing "Quoted qualifiers stay quoted"
+    (is (= "SELECT \"tmp_people\".\"ID\" FROM \"tmp_people\""
+           (replace-names :postgres
+                          "SELECT \"PUBLIC\".\"PEOPLE\".\"ID\" FROM \"PUBLIC\".\"PEOPLE\""
+                          {:tables {{:schema "PUBLIC" :table "PEOPLE"} {:schema nil :table "tmp_people"}}})))))
+
+(deftest ^:parallel alias-qualified-column-is-not-renamed-test
+  (testing "A qualifier naming an alias is left alone, even when a replaced table has the same name"
+    (is (= "SELECT people.id FROM orders AS people"
+           (replace-names :postgres
+                          "SELECT people.id FROM orders AS people"
+                          {:tables {{:table "people"} "users"}})))))
+
+(deftest ^:parallel qualified-column-rename-with-table-rename-test
+  (testing "A column rename still applies when its table qualifier is renamed"
+    (is (= "SELECT transactions.amount FROM transactions"
+           (replace-names :postgres
+                          "SELECT orders.total FROM orders"
+                          {:tables  {{:table "orders"} "transactions"}
+                           :columns {{:table "orders" :column "total"} "amount"}})))))
