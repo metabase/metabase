@@ -1,7 +1,6 @@
 (ns metabase.sync.db
-  "Application database queries for the sync module. Table reads here ask for the rows sync itself wrote
-  (`{:user-settings? false}`): it reconciles them against what the warehouse reports, so it has to see a Table as it
-  recorded it, whatever a reader would be shown instead.
+  "Application database queries for the sync module. Table reads go through [[raw-table-query]]: sync reconciles what
+  it wrote against what the warehouse reports, so it has to see a Table as it recorded it.
 
   Every function here is a direct Toucan 2 call with no additional logic, so the rest of the module never talks to
   `toucan2.core` itself."
@@ -71,44 +70,51 @@
    changes     :- ::warehouses.schema/database.update]
   (t2/update! :model/Database database-id changes))
 
+(defn- raw-table-query
+  "The Table source sync reads from: neither user settings nor workspace remapping applied."
+  ([]
+   (raw-table-query nil))
+  ([opts]
+   (warehouse-schema-overlay/table-query (assoc opts :user-settings? false :workspace-remapping? false))))
+
 ;;; ------------------------------------------------- Table -------------------------------------------------
 
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-one :model/Table :id table-id {:from [(raw-table-query)]}))
 
 (mu/defn table-in-database
   "The Table with `table-id` in the Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database
    table-id    :- ::lib.schema.id/table]
-  (t2/select-one :model/Table :db_id database-id :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-one :model/Table :db_id database-id :id table-id {:from [(raw-table-query)]}))
 
 (mu/defn table-by-name
   "The Table named `table-name` in the Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database
    table-name  :- :string]
-  (t2/select-one :model/Table :db_id database-id :name table-name {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-one :model/Table :db_id database-id :name table-name {:from [(raw-table-query)]}))
 
 (mu/defn table-by-schema-and-name
   "The Table named `table-name` in `schema` of the Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]
    table-name  :- :string]
-  (t2/select-one :model/Table :db_id database-id :name table-name :schema schema {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-one :model/Table :db_id database-id :name table-name :schema schema {:from [(raw-table-query)]}))
 
 (mu/defn inactive-table-by-schema-and-name
   "The inactive Table named `table-name` in `schema` of the Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]
    table-name  :- :string]
-  (t2/select-one :model/Table :db_id database-id :schema schema :name table-name :active false {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-one :model/Table :db_id database-id :schema schema :name table-name :active false {:from [(raw-table-query)]}))
 
 (mu/defn active-table-id-by-name
   "The ID of the active Table named `table-name` in the Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database
    table-name  :- :string]
-  (t2/select-one-pk :model/Table :db_id database-id :name table-name :active true {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-one-pk :model/Table :db_id database-id :name table-name :active true {:from [(raw-table-query)]}))
 
 (mu/defn sync-tables-by-lower-name-and-schema
   "The synced Tables of the Database with `database-id` whose lower-cased name and schema match."
@@ -119,7 +125,7 @@
              :db_id database-id
              :%lower.name lower-name
              :%lower.schema lower-schema
-             {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]
+             {:from [(raw-table-query)]
               :where sync-tables-clause}))
 
 (mu/defn tables-by-name
@@ -140,32 +146,32 @@
              :active false
              :archived_at nil
              :transform_target false
-             :deactivated_at [:< (h2x/add-interval-honeysql-form (app-db/db-type) :%now amount unit)] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+             :deactivated_at [:< (h2x/add-interval-honeysql-form (app-db/db-type) :%now amount unit)] {:from [(raw-table-query)]}))
 
 (mu/defn table-database-ids
   "A map of Table ID to Database ID for `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select-pk->fn :db_id :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-pk->fn :db_id :model/Table :id [:in table-ids] {:from [(raw-table-query)]}))
 
 (mu/defn table-schemas-reducible
   "Reducible `:schema` rows of the Tables of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/reducible-select [:model/Table :schema] :db_id database-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/reducible-select [:model/Table :schema] :db_id database-id {:from [(raw-table-query)]}))
 
 (mu/defn active-table-ids-reducible
   "Reducible `:id` rows of the active Tables of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/reducible-select [:model/Table :id] :db_id database-id :active true {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/reducible-select [:model/Table :id] :db_id database-id :active true {:from [(raw-table-query)]}))
 
 (mu/defn active-table-count
   "The number of active Tables in the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/count :model/Table :db_id database-id :active true {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/count :model/Table :db_id database-id :active true {:from [(raw-table-query)]}))
 
 (mu/defn sync-table-ids
   "The IDs of the synced Tables of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-fn-vec :id :model/Table :db_id database-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]
+  (t2/select-fn-vec :id :model/Table :db_id database-id {:from [(raw-table-query)]
                                                          :where sync-tables-clause}))
 
 (mu/defn sync-table-schemas
@@ -178,7 +184,7 @@
 (mu/defn sync-tables-count
   "The number of synced Tables in the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/count :model/Table :db_id database-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]
+  (t2/count :model/Table :db_id database-id {:from [(raw-table-query)]
                                              :where sync-tables-clause}))
 
 (mu/defn sync-tables-reducible
@@ -189,7 +195,7 @@
    table-names  :- [:maybe [:or [:set :string] [:sequential :string]]]]
   (t2/reducible-select :model/Table
                        :db_id database-id
-                       {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]
+                       {:from [(raw-table-query)]
                         :where    [:and sync-tables-clause
                                    (when (seq schema-names) [:in :schema schema-names])
                                    (when (seq table-names) [:in :name table-names])]
@@ -200,7 +206,7 @@
   [database-id :- ::lib.schema.id/database]
   (t2/reducible-select :model/Table
                        {:select    [:t.*]
-                        :from      [(warehouse-schema-overlay/table-query {:alias :t})]
+                        :from      [(raw-table-query {:alias :t})]
                         :left-join [[^:allow-subquery {:select   [:table_id
                                                                   [[:min :last_analyzed] :earliest_last_analyzed]]
                                                        :from     [(warehouse-schema-overlay/field-query)]
@@ -393,7 +399,7 @@
                                 [:= :dimension_interestingness nil]
                                 [:not-in :visibility_type ["sensitive" "retired"]]
                                 [:in :table_id ^:allow-subquery {:select [:id]
-                                                                 :from   [(warehouse-schema-overlay/table-query {:user-settings? false})]
+                                                                 :from   [(raw-table-query)]
                                                                  :where  [:= :db_id database-id]}]]}))
 
 (mu/defn top-level-field-ids-by-name
@@ -409,7 +415,7 @@
    schema+table+names :- [:sequential [:tuple :string :string :string]]]
   (t2/reducible-query {:select     [[:f.id]]
                        :from      [(warehouse-schema-overlay/field-query {:alias :f})]
-                       :inner-join [(warehouse-schema-overlay/table-query {:alias :t}) [:= :f.table_id :t.id]]
+                       :inner-join [(raw-table-query {:alias :t}) [:= :f.table_id :t.id]]
                        :where      [:and
                                     [:in [:composite [:coalesce :t.schema "__null__"] :t.name :f.name] schema+table+names]
                                     [:= :t.db_id database-id]
@@ -426,7 +432,7 @@
   (t2/select-pks-set :model/Field
                      {:from [(warehouse-schema-overlay/field-query)]}
                      :table_id [:in ^:allow-subquery {:select [[:t.id]]
-                                                      :from   [(warehouse-schema-overlay/table-query {:alias :t})]
+                                                      :from   [(raw-table-query {:alias :t})]
                                                       :where  [:= :t.db_id database-id]}]
                      :parent_id nil
                      :database_indexed true))
@@ -508,7 +514,7 @@
   ^:allow-subquery
   {:select    [[[:min :f.id] :id]]
    :from      [(warehouse-schema-overlay/field-query {:alias :f})]
-   :join      [(warehouse-schema-overlay/table-query {:alias :t}) [:= :f.table_id :t.id]]
+   :join      [(raw-table-query {:alias :t}) [:= :f.table_id :t.id]]
    :left-join [[:metabase_field_user_settings :u] [:= :f.id :u.field_id]]
    :where     [:and
                [:= :u.fk_target_field_id nil]
@@ -615,7 +621,7 @@
   (t2/select-fn-set :table_id :model/Field
                     {:select   [[:metabase_field.table_id :table_id]]
                      :from     [(warehouse-schema-overlay/field-query {:user-settings? false})]
-                     :join     [(warehouse-schema-overlay/table-query {:user-settings? false}) [:= :metabase_field.table_id :metabase_table.id]]
+                     :join     [(raw-table-query) [:= :metabase_field.table_id :metabase_table.id]]
                      :where    [:and
                                 [:= :metabase_table.db_id database-id]
                                 [:= :metabase_table.active true]
@@ -627,7 +633,7 @@
 (mu/defn tables-by-schema-and-name-reducible
   "Reducible Tables with `table-ids`, ordered by schema and name."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/reducible-select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]
+  (t2/reducible-select :model/Table :id [:in table-ids] {:from [(raw-table-query)]
                                                          :order-by [[:schema :asc] [:name :asc]]}))
 
 (mu/defn update-field-data-sensitivity!

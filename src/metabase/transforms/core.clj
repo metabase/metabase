@@ -55,6 +55,7 @@
  [metabase.transforms.canceling
   cancel-run!]
  [metabase.transforms.execute
+  delete-target-table!
   execute!]
  [metabase.transforms-base.ordering
   transform-ordering

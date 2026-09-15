@@ -206,6 +206,7 @@
      audit-app.view-log
      warehouses.schema
      warehouse-schema-overlay
+     workspaces
      xrays})
 
 (defn- affected-modules

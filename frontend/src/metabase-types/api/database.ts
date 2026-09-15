@@ -10,6 +10,7 @@ export type InitialSyncStatus = LongTaskStatus;
 export type DatabaseSettings = {
   [key: string]: any;
   "database-enable-actions"?: boolean;
+  "workspaces-schema"?: string | null;
 };
 
 export type DatabaseFeature =

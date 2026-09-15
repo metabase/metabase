@@ -376,6 +376,7 @@ export const tokenFeatures = [
   "writable_connection",
   "admin_security_center",
   "ai_controls",
+  "workspaces",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -849,6 +850,7 @@ export interface EnterpriseSettings extends Settings {
   "mcp-apps-cors-enabled-clients": string[] | null;
   "mcp-apps-cors-custom-origins": string | null;
   "transforms-meter-locked": boolean | null;
+  "workspaces-enabled": boolean;
   /**
    * @deprecated
    */

@@ -84,13 +84,6 @@
                               :table-privileges                       true}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
-(defmethod driver/qualified-name-components :sqlserver
-  [_driver]
-  ;; SQL Server emits `db.schema.table` (3-part) when crossing databases. Single-DB
-  ;; queries are typically `schema.table`, but table remapping rows must be keyed
-  ;; on the more general 3-part shape.
-  [:db :schema])
-
 (defmethod driver.sql/table-qualification-style :sqlserver
   [_driver]
   :table-qualification-style/db-schema-table)

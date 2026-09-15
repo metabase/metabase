@@ -491,38 +491,6 @@
 
 (defmethod escape-entity-name-for-metadata :default [_driver table-name] table-name)
 
-(defmulti qualified-name-components
-  "Which **AST identifier positions** does this driver populate when referencing a table?
-  Returns an ordered subset of `#{:db :schema}`. The `:table` position is always implicit.
-
-  These positions correspond to SQLGlot's `Table.catalog` (`:db`) and `Table.db`
-  (`:schema`) AST fields — *not* warehouse vocabulary. A warehouse calling its top
-  level \"database\" (e.g. ClickHouse) does **not** use the `:db` position here unless
-  it emits a 3-part `catalog.schema.table` identifier; it uses `:schema` because that's
-  the AST position holding the level above the table.
-
-  Concrete mapping:
-  - 1-level (`SELECT * FROM t`):           `[]`            — Mongo
-  - 1-level over a catalog (`SELECT * FROM t`, but consumers need a catalog
-    name to route across DBs): `[:db]` — MySQL.
-    The compiled SQL is still bare; this slot tells consumers MySQL has a
-    meaningful database identifier (= JDBC `TABLE_CAT`) above the table.
-  - 2-level (`SELECT * FROM s.t`):         `[:schema]`     — Postgres, Redshift, ClickHouse, H2, Oracle
-  - 3-level (`SELECT * FROM c.s.t`):       `[:db :schema]` — Snowflake, SQL Server, BigQuery
-    (Snowflake `db.schema.table`; SQL Server `db.schema.table`; BigQuery
-    `project.dataset.table`).
-
-  Used by table remapping to decide:
-  - which columns to populate when storing a `:model/TableRemapping` row
-  - which AST positions to match against during query rewriting
-
-  Defaults to `[:schema]` (Postgres-style)."
-  {:added "0.62.0" :arglists '([driver])}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
-
-(defmethod qualified-name-components ::driver [_driver] [:schema])
-
 (mr/def ::describe-fks.options
   [:maybe
    [:map
