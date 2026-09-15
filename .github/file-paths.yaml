@@ -95,11 +95,15 @@ frontend_unit_infra: &frontend_unit_infra
 
 frontend_loki_infra: &frontend_loki_infra
   - *frontend_configs
-  - *frontend_ci
+  - *shared_ci
   - *frontend_loki_ci
-  - "frontend/build/**"
-  - "frontend/test/**"
+  - "frontend/build/shared/**"
+  - "frontend/test/__support__/**"
   - "patches/**"
+  # Storybook serves resources/frontend_client as static files, and the stories bundle the app's SVGs.
+  - "resources/frontend_client/**"
+  - "frontend/**/*.svg"
+  - "enterprise/frontend/**/*.svg"
 
 frontend_loki_all:
   - *frontend_sources
