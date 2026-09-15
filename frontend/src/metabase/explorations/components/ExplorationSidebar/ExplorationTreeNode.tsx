@@ -64,7 +64,7 @@ const HEADING_ICON: Record<
   { name: IconProps["name"]; color: IconProps["c"] }
 > = {
   root: { name: "insight", color: "brand" },
-  "sub-exploration": { name: "git_branch", color: "brand" },
+  "sub-exploration": { name: "corner_down_right", color: "brand" },
   "metric-group": { name: "metric", color: "text-secondary" },
 };
 

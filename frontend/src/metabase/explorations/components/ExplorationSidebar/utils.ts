@@ -67,6 +67,12 @@ export interface ExplorationTreeDocument {
   type: "document";
 }
 
+function isExplorationTreeHeading(
+  node: ITreeNodeItem<ExplorationTreeNode>,
+): node is ITreeNodeItem<ExplorationTreeHeading> {
+  return node.data?.type === "heading";
+}
+
 function isExplorationTreePage(
   node: ITreeNodeItem<ExplorationTreeNode>,
 ): node is ITreeNodeItem<ExplorationTreePage> {
@@ -108,7 +114,10 @@ export type InitialSidebarEntity =
 
 export type SelectedSidebarEntity = InitialSidebarEntity;
 
-type TreeItemFilter = (treeItem: ITreeNodeItem<ExplorationTreeNode>) => boolean;
+type TreeItemFilter = (treeItem: ITreeNodeItem<ExplorationTreeItem>) => boolean;
+type TreeHeadingFilter = (
+  treeHeading: ITreeNodeItem<ExplorationTreeHeading>,
+) => boolean;
 
 function collectHeadingPages(
   nodes: ITreeNodeItem<ExplorationTreeNode>[],
@@ -145,13 +154,11 @@ function getSummaryDocumentNode(
   };
 }
 
-export function getExplorationSidebarTree(
+function getExplorationSidebarTree(
   exploration: Exploration,
   treeItemFilter: TreeItemFilter,
+  treeHeadingFilter: TreeHeadingFilter,
   sortOrder: ExplorationSortOrder = DEFAULT_SORT_ORDER,
-  {
-    keepEmptyRestartableThreads = false,
-  }: { keepEmptyRestartableThreads?: boolean } = {},
 ): ITreeNodeItem<ExplorationTreeNode>[] {
   const threads = exploration.threads ?? [];
   const initialThreadId = threads[0]?.id;
@@ -245,7 +252,7 @@ export function getExplorationSidebarTree(
     }
   });
 
-  const pruned = pruneEmptyHeadings(topLevel, keepEmptyRestartableThreads);
+  const pruned = pruneHeadings(topLevel, treeHeadingFilter);
 
   const summaryNode = getSummaryDocumentNode(exploration.document);
   if (summaryNode != null && treeItemFilter(summaryNode)) {
@@ -280,38 +287,21 @@ function getInterestingnessByPageKey(
   return interestingnessByPageKey;
 }
 
-function isEmptyRestartableThreadHeading(
-  node: ITreeNodeItem<ExplorationTreeNode>,
-): boolean {
-  const data = node.data;
-  return (
-    data?.type === "heading" &&
-    data.thread != null &&
-    isRestartableExplorationThreadStatus(data.thread.status)
-  );
-}
-
-function pruneEmptyHeadings(
+function pruneHeadings(
   nodes: ITreeNodeItem<ExplorationTreeNode>[],
-  keepEmptyRestartableThreads: boolean,
+  treeHeadingFilter: TreeHeadingFilter,
 ): ITreeNodeItem<ExplorationTreeNode>[] {
   return nodes
     .map((node) =>
       node.children?.length
         ? {
             ...node,
-            children: pruneEmptyHeadings(
-              node.children,
-              keepEmptyRestartableThreads,
-            ),
+            children: pruneHeadings(node.children, treeHeadingFilter),
           }
         : node,
     )
     .filter(
-      (node) =>
-        node.data?.type !== "heading" ||
-        (node.children?.length ?? 0) > 0 ||
-        (keepEmptyRestartableThreads && isEmptyRestartableThreadHeading(node)),
+      (node) => !isExplorationTreeHeading(node) || treeHeadingFilter(node),
     );
 }
 
@@ -374,7 +364,7 @@ function getExplorationQueryTree(
 
   const headings: ITreeNodeItem<ExplorationTreeNode>[] = blocks.map((block) => {
     const children: ITreeNodeItem<ExplorationTreeNode>[] = block.pages
-      .map((page): ITreeNodeItem<ExplorationTreeNode> | null => {
+      .map((page): ITreeNodeItem<ExplorationTreeItem> | null => {
         const queries = page.query_ids
           .map((id) => queriesById.get(id))
           .filter((q): q is ExplorationQuery => q != null);
@@ -403,7 +393,7 @@ function getExplorationQueryTree(
         };
       })
       .filter(
-        (node): node is ITreeNodeItem<ExplorationTreeNode> =>
+        (node): node is ITreeNodeItem<ExplorationTreeItem> =>
           node != null && treeItemFilter(node),
       );
 
@@ -583,25 +573,24 @@ export function getExplorationSidebarModel({
   showHidden: boolean;
   sortOrder?: ExplorationSortOrder;
 }): ExplorationSidebarModel {
-  const tabFilter = tabsInfo[selectedSidebarTab].treeItemFilter;
+  const { treeItemFilter: tabItemFilter, treeHeadingFilter } =
+    tabsInfo[selectedSidebarTab];
   const treeItemFilter = showHidden
-    ? tabFilter
-    : (node: ITreeNodeItem<ExplorationTreeNode>) =>
-        tabFilter(node) && !isHiddenTreeItem(node);
+    ? tabItemFilter
+    : (node: ITreeNodeItem<ExplorationTreeItem>) =>
+        tabItemFilter(node) && !isHiddenTreeItem(node);
 
-  // Empty failed/canceled threads only belong on All
-  const keepEmptyRestartableThreads = selectedSidebarTab === "all";
   const tree = getExplorationSidebarTree(
     exploration,
     treeItemFilter,
+    treeHeadingFilter,
     sortOrder,
-    { keepEmptyRestartableThreads },
   );
   const treeWithHidden = getExplorationSidebarTree(
     exploration,
-    tabFilter,
+    tabItemFilter,
+    treeHeadingFilter,
     sortOrder,
-    { keepEmptyRestartableThreads },
   );
 
   const hasPages = treeHasPages(tree);
@@ -656,6 +645,7 @@ export type ExplorationSidebarTabsInfo = Record<
     value: ExplorationSidebarTab;
     label: string;
     treeItemFilter: TreeItemFilter;
+    treeHeadingFilter: TreeHeadingFilter;
     emptyTreeMessage: string;
   }
 >;
@@ -678,6 +668,19 @@ export function getExplorationSidebarTabsInfo(
       value: "all",
       label: t`All`,
       treeItemFilter: () => true,
+      treeHeadingFilter: (node) => {
+        if ((node.children?.length ?? 0) > 0) {
+          return true;
+        }
+        const status = node.data?.thread?.status;
+        // Empty pending/running threads still show a loading row; empty
+        // failed/canceled threads stay so Restart remains reachable.
+        return (
+          status === "pending" ||
+          status === "running" ||
+          (status != null && isRestartableExplorationThreadStatus(status))
+        );
+      },
       emptyTreeMessage: t`Nothing to see here yet.`,
     },
     stars: {
@@ -687,6 +690,7 @@ export function getExplorationSidebarTabsInfo(
         isExplorationTreePage(node) &&
         node.data?.page_id != null &&
         starredPageIds.has(node.data.page_id),
+      treeHeadingFilter: (node) => (node.children?.length ?? 0) > 0,
       emptyTreeMessage: t`Nothing's been starred yet.`,
     },
     discussions: {
@@ -696,6 +700,7 @@ export function getExplorationSidebarTabsInfo(
         isExplorationTreePage(node) &&
         node.data?.page_id != null &&
         discussionPageIds.has(node.data.page_id),
+      treeHeadingFilter: (node) => (node.children?.length ?? 0) > 0,
       emptyTreeMessage: t`No discussions yet.`,
     },
   };
