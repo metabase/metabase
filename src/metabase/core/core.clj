@@ -35,6 +35,7 @@
    [metabase.task.core :as task]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.log :as log]
    [metabase.util.queue :as queue]
    [metabase.util.system-info :as u.system-info]
@@ -172,6 +173,19 @@
     (when (config/load-sample-content?)
       (sample-data/extract-and-sync-sample-database!))))
 
+(defn- network-policy-settings
+  "Every registered Setting whose name ends in `-allowed-networks`."
+  []
+  (filter #(str/ends-with? (name %) "-allowed-networks")
+          (keys @setting/registered-settings)))
+
+(defn- validate-env-vars
+  "Stop startup when environment variables do not match allowed values"
+  []
+  (doseq [setting-name (network-policy-settings)
+          :let         [[env-var-name raw-value] (setting/env-var-source setting-name)]]
+    (u.http/env-network-policy env-var-name raw-value)))
+
 (defn- init!*
   "General application initialization function which should be run once at application startup."
   []
@@ -195,6 +209,7 @@
   (embeddings.startup/ensure-in-process-provider!)
   (init-status/set-progress! 0.3)
   (setting/validate-settings-formatting!)
+  (validate-env-vars)
   ;; startup database.  validates connection & runs any necessary migrations
   (log/info "Setting up and migrating Metabase DB. Please sit tight, this may take a minute...")
   ;; Cal 2024-04-03:

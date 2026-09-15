@@ -36,16 +36,14 @@
   :type       :keyword
   :visibility :internal
   :export?    false
+  :setter     :none
+  :doc        (str "Allowed network for the map tile server.")
   :getter     (fn []
-                (or (setting/get-value-of-type :keyword :map-tile-server-allowed-networks)
-                    (if (premium-features/is-hosted?)
-                      :external-only
-                      :allow-private)))
-  :setter     (fn [new-value]
-                (when (some? new-value)
-                  (assert (#{:external-only :allow-private :allow-all} (keyword new-value))
-                          (tru "Invalid map-tile-server-allowed-networks! Only values of external-only, allow-private, and allow-all are allowed.")))
-                (setting/set-value-of-type! :keyword :map-tile-server-allowed-networks new-value)))
+                (let [[env-var-name raw-value] (setting/env-var-source :map-tile-server-allowed-networks)]
+                  (or (u.http/env-network-policy env-var-name raw-value)
+                      (if (premium-features/is-hosted?)
+                        :external-only
+                        :allow-private)))))
 
 (defn- valid-map-tile-server-url?
   "Whether `template` is safe to store. It must be http(s) and its host must be allowed

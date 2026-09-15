@@ -14,6 +14,7 @@
    [metabase.lib.test-util :as lib.tu]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -925,8 +926,27 @@
       (is (= :external-only (driver.settings/warehouse-allowed-networks)))
       (is (=? {:status-code 400}
               (ssrf-error #(driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"}))))))
-  (testing "an unrecognized policy fails closed at the point of use rather than quietly allowing everything"
+  (testing "an unrecognized policy is refused outright rather than silently leaving the instance on some other
+           policy -- startup reads this Setting, so the instance does not come up at all"
     (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "unknown-policy"]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                            #"Unknown network policy"
-                            (driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"}))))))
+                            #"Invalid MB_WAREHOUSE_ALLOWED_NETWORKS"
+                            (driver.settings/warehouse-allowed-networks))))))
+
+(deftest warehouse-allowed-networks-is-environment-only-test
+  (testing "the policy is read from the environment only: a value that reached the setting table -- an older
+           version's admin API, a serialization import, a direct write -- is ignored, not trusted"
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks nil]
+      (mt/with-premium-features #{:hosting}
+        (mt/with-temporary-raw-setting-values [warehouse-allowed-networks "allow-all"]
+          (is (= :external-only (driver.settings/warehouse-allowed-networks)))
+          (is (=? {:status-code 400}
+                  (ssrf-error #(driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"}))))))))
+  (testing "and the environment still wins over a stored value"
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "allow-private"]
+      (mt/with-temporary-raw-setting-values [warehouse-allowed-networks "external-only"]
+        (is (= :allow-private (driver.settings/warehouse-allowed-networks))))))
+  (testing "nothing can write it: it is a read-only Setting"
+    (is (thrown-with-msg? UnsupportedOperationException
+                          #"read-only setting"
+                          (setting/set! :warehouse-allowed-networks :allow-all)))))
