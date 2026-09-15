@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.actions.core :as actions]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.typed-schemas.common :as common]
    [metabase.typed-schemas.db :as typed-schemas.db]
@@ -112,17 +113,14 @@
   "Returns template-tag types for query action parameters."
   [{:keys [type dataset_query]}]
   (when (and (= (lib.schema.common/normalize-keyword type) :query) dataset_query)
-    (let [stage-tags (some-> dataset_query :stages first :template-tags)
-          native-tags (some-> dataset_query :native :template-tags)
-          tags (or stage-tags native-tags)]
+    (let [tags (lib/template-tags dataset_query)]
       (into {}
-            (for [[tag-key tag] tags]
-              [(or (:name tag)
-                   (cond
-                     (string? tag-key)  tag-key
-                     (keyword? tag-key) (clojure.core/name tag-key)
-                     :else              nil))
-               (:type tag)])))))
+            (for [{tag-name :name tag-type :type} tags]
+              [(cond
+                 (string? tag-name)  tag-name
+                 (keyword? tag-name) (clojure.core/name tag-name)
+                 :else               nil)
+               tag-type])))))
 
 (defn- model-action-error-message
   "Returns the error message for model action schema failures."
