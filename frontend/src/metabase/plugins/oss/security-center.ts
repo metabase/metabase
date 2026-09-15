@@ -1,11 +1,12 @@
 import type { ComponentType } from "react";
 
-import { definePluginSlot } from "metabase/plugin-slots";
 import {
   PluginPlaceholder,
   pluginPlaceholderRoute,
 } from "metabase/plugins/components/PluginPlaceholder";
 import type { PluginRoute } from "metabase/plugins/types";
+
+import { definePluginSlot } from "../slot";
 
 type SecurityCenterNavItemProps = {
   currentPath: string;
