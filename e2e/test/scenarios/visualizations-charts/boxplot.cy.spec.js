@@ -176,8 +176,8 @@ describe("scenarios > visualizations > boxplot", () => {
       cy.findByLabelText("Goal label").clear().type("Target");
     });
 
-    H.echartsContainer().findByText("Target").should("exist");
     H.goalLine().should("exist");
+    H.goalLineMarker().should("exist");
   });
 
   it("should render in dashboard and support drill-through on boxes and outliers", () => {

@@ -887,7 +887,9 @@ export const getGoalLineHoverData = (
   // Unjustified type cast. FIXME
   const element = event.event.event.target as Element;
 
-  if (element?.nodeName !== "text") {
+  // Every element of the goal series except the marker is silent, so any hover
+  // reaching here came from the marker. The element only anchors the tooltip.
+  if (element == null) {
     return null;
   }
 

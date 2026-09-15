@@ -450,8 +450,8 @@ describe("scenarios > visualizations > waterfall", () => {
       cy.findByLabelText("Goal label").clear().type("Target");
     });
 
-    H.echartsContainer().findByText("Target").should("exist");
     H.goalLine().should("exist");
+    H.goalLineMarker().should("exist");
   });
 
   describe("scenarios > visualizations > waterfall settings", () => {

@@ -90,7 +90,7 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
 
       cy.log("Set the goal on timeseries question");
       H.visitQuestion(timeSeriesQuestionId);
-      cy.findByTestId("chart-container").should("contain", "Goal");
+      H.goalLine().should("exist");
 
       cy.findByLabelText("Move, trash, and more…").click();
       H.popover().findByText("Create an alert").click();

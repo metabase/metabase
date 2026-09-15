@@ -11,7 +11,7 @@ import { GOAL_LINE_SERIES_ID, X_AXIS_DATA_KEY } from "../constants/dataset";
 import { CHART_STYLE, Z_INDEXES } from "../constants/style";
 import type { ChartDataset } from "../model/types";
 
-export const GOAL_LINE_DASH = [3, 4];
+export const GOAL_LINE_DASH = [1, 3];
 
 function getFirstNonNullXValue(dataset: ChartDataset) {
   for (let i = 0; i < dataset.length; i++) {
@@ -50,6 +50,90 @@ export function getGoalLineParams(model: GoalLineParamsSource): GoalLineParams {
     toEChartsAxisValue: model.yAxisScaleTransforms.toEChartsAxisValue,
     labelOnLeft: model.rightAxisModel != null,
   };
+}
+
+function buildGoalLineLabel({
+  labelOnLeft,
+  xStart,
+  xEnd,
+  y,
+  fontSize,
+  settings,
+  renderingContext,
+}: {
+  labelOnLeft: boolean;
+  xStart: number;
+  xEnd: number;
+  y: number;
+  fontSize: number;
+  settings: ComputedVisualizationSettings;
+  renderingContext: RenderingContext;
+}) {
+  return [
+    {
+      type: "text" as const,
+      x: labelOnLeft ? xStart : xEnd,
+      y: y - fontSize - CHART_STYLE.goalLine.label.margin,
+      blur: {
+        style: {
+          opacity: 1,
+        },
+      },
+      style: {
+        align: labelOnLeft ? ("left" as const) : ("right" as const),
+        text: settings["graph.goal_label"] ?? "",
+        fontFamily: renderingContext.fontFamily,
+        fontSize,
+        fontWeight: CHART_STYLE.goalLine.label.weight,
+        fill: renderingContext.getColor("text-secondary"),
+      },
+    },
+  ];
+}
+
+function buildGoalLineMarker({
+  xEnd,
+  y,
+  renderingContext,
+}: {
+  xEnd: number;
+  y: number;
+  renderingContext: RenderingContext;
+}) {
+  const { outerRingRadius, innerRingRadius, ringWidth, hitAreaRadius } =
+    CHART_STYLE.goalLine.marker;
+  const stroke = renderingContext.getColor("text-primary");
+
+  const ring = (r: number) => ({
+    type: "circle" as const,
+    shape: { cx: xEnd, cy: y, r },
+    silent: true,
+    blur: {
+      style: {
+        opacity: 1,
+      },
+    },
+    style: {
+      fill: "none",
+      stroke,
+      lineWidth: ringWidth,
+    },
+  });
+
+  // Sits on top so hovering anywhere near the marker, not just on the thin
+  // rings, triggers the goal tooltip. A zero-opacity fill keeps it invisible
+  // while staying hit-testable; ECharts renders a "transparent" fill as
+  // fill="none", which receives no pointer events.
+  const hitArea = {
+    type: "circle" as const,
+    shape: { cx: xEnd, cy: y, r: hitAreaRadius },
+    style: {
+      fill: stroke,
+      opacity: 0,
+    },
+  };
+
+  return [ring(outerRingRadius), ring(innerRingRadius), hitArea];
 }
 
 export function getGoalLineSeriesOption(
@@ -92,45 +176,39 @@ export function getGoalLineSeriesOption(
           y1: y,
           y2: y,
         },
+        // Only the marker is a hover target, so the line itself is inert.
+        silent: true,
         blur: {
           style: {
             opacity: 1,
           },
         },
         style: {
-          lineWidth: 2,
+          lineWidth: 1,
           stroke: renderingContext.getColor("text-secondary"),
           color: renderingContext.getColor("text-secondary"),
           lineDash: GOAL_LINE_DASH,
         },
       };
 
-      const align = labelOnLeft ? ("left" as const) : ("right" as const);
-      const labelX = labelOnLeft ? xStart : xEnd;
-      const labelY = y - fontSize - CHART_STYLE.goalLine.label.margin;
-
-      const label = {
-        type: "text" as const,
-        x: labelX,
-        y: labelY,
-        blur: {
-          style: {
-            opacity: 1,
-          },
-        },
-        style: {
-          align,
-          text: settings["graph.goal_label"] ?? "",
-          fontFamily: renderingContext.fontFamily,
-          fontSize,
-          fontWeight: CHART_STYLE.goalLine.label.weight,
-          fill: renderingContext.getColor("text-secondary"),
-        },
-      };
+      // Static renders have no hover, so they keep the inline label to stay
+      // readable. Interactive charts show the marker and reveal the value on
+      // hover instead.
+      const endDecoration = renderingContext.isStatic
+        ? buildGoalLineLabel({
+            labelOnLeft,
+            xStart,
+            xEnd,
+            y,
+            fontSize,
+            settings,
+            renderingContext,
+          })
+        : buildGoalLineMarker({ xEnd, y, renderingContext });
 
       return {
         type: "group" as const,
-        children: [line, label],
+        children: [line, ...endDecoration],
       };
     },
   };

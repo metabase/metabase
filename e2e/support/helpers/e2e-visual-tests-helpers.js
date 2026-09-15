@@ -38,6 +38,15 @@ export function goalLine() {
   );
 }
 
+/**
+ * The goal marker's hover target: an invisible circle covering the bullseye
+ * rings at the end of the goal line. It is the only shape the chart renders
+ * with a zero-opacity fill.
+ */
+export function goalLineMarker() {
+  return echartsContainer().find("path[fill-opacity='0']");
+}
+
 export function trendLine() {
   return echartsContainer().find(
     `path[stroke-dasharray='${TREND_LINE_DASH.join(",")}']`,
