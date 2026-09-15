@@ -41,7 +41,7 @@
   "The map from each generated temp-table name to the name the author wrote, for rewriting warehouse
   error messages that can only speak in generated names."
   [transform input->temp output-table]
-  (into {output-table (transform-testing.validator/table-label (:target transform))}
+  (into {output-table (transform-testing.validator/table-label (select-keys (:target transform) [:schema :name]))}
         (map (fn [[input temp]] [temp (transform-testing.validator/table-label (:table input))]))
         input->temp))
 

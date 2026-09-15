@@ -139,3 +139,12 @@
    [:status       ::status]
    [:expectations [:sequential ::expectation-result]]
    [:tables       [:map-of :string :string]]])
+
+(mr/def ::connection
+  "A connection from `driver/do-with-test-connection`: a JDBC connection, or the BigQuery client and session that stand
+  in for one."
+  [:or
+   (ms/InstanceOfClass java.sql.Connection)
+   [:map {:closed true}
+    [:client     (ms/InstanceOfClass Object)]
+    [:session-id :string]]])

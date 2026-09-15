@@ -36,7 +36,7 @@
    output-table :- :string
    columns      :- [:sequential ::transform-testing.schema/column]
    sql-names    :- [:sequential :string]
-   rows         :- [:sequential :map]]
+   rows         :- [:sequential ::transform-testing.schema/row]]
   (let [cols   (mapv keyword sql-names)
         tagged (fn [from tag] {:select (conj cols [[:inline tag] src-column]) :from [from]})]
     (transform-testing.compile/compiled

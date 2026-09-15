@@ -29,6 +29,7 @@
    [metabase.transform-testing.schema :as transform-testing.schema]
    [metabase.transforms-base.schema :as transforms-base.schema]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -39,7 +40,7 @@
   "A compiled native query."
   [:map {:closed true}
    [:query  :string]
-   [:params [:maybe [:sequential :any]]]])
+   [:params [:maybe [:sequential ::lib.schema.common/field-value]]]])
 
 (mr/def ::table
   "A table by schema and name, as parsed from a query or declared as an input."
@@ -53,7 +54,7 @@
   the guard and the rewrite operate on the same tables."
   [:map {:closed true}
    [:query             :string]
-   [:params            [:maybe [:sequential :any]]]
+   [:params            [:maybe [:sequential ::lib.schema.common/field-value]]]
    [:referenced-tables [:set ::table]]])
 
 (mr/def ::table-replacements
@@ -216,10 +217,20 @@
     (odd? (count (filter #(= \" %) database-type)))             "it has an unclosed double quote"
     (not (parens-balanced? database-type))                      "its parentheses are unbalanced"))
 
+(mr/def ::honeysql-query
+  "A HoneySQL query this module builds: a `SELECT` over tables, derived tables, or a `UNION ALL` of such queries."
+  [:map {:closed true}
+   [:select    {:optional true} [:sequential ::h2x/expr]]
+   [:from      {:optional true} [:sequential [:or ::h2x/expr [:tuple [:ref ::honeysql-query] :keyword]]]]
+   [:where     {:optional true} ::h2x/expr]
+   [:group-by  {:optional true} [:sequential ::h2x/expr]]
+   [:having    {:optional true} ::h2x/expr]
+   [:union-all {:optional true} [:sequential [:ref ::honeysql-query]]]])
+
 (mu/defn compiled :- ::compiled-query
   "`honeysql` formatted for `driver` as a compiled query."
   [driver   :- :keyword
-   honeysql :- :map]
+   honeysql :- ::honeysql-query]
   (let [[query & params] (sql.qp/format-honeysql driver honeysql)]
     {:query query :params (vec params)}))
 
@@ -244,7 +255,7 @@
   [[cast-target]] checks."
   [columns   :- [:sequential ::transform-testing.schema/column]
    sql-names :- [:sequential :string]
-   rows      :- [:sequential :map]]
+   rows      :- [:sequential ::transform-testing.schema/row]]
   ;; Eager, and that matters: [[cast-target]] refuses a type that could escape its cast, and a lazy
   ;; `for` would defer that refusal until something realized the sequence — inside HoneySQL
   ;; formatting, well past any caller prepared to catch it. A guard that runs at an unpredictable

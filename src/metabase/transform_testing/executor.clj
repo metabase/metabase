@@ -9,6 +9,7 @@
   arguments (driver, conn, compiled-query, table name)."
   (:require
    [metabase.driver :as driver]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.transform-testing.compile :as transform-testing.compile]
    [metabase.transform-testing.schema :as transform-testing.schema]
    [metabase.util.log :as log]
@@ -17,7 +18,7 @@
 (mu/defn create-temp-table!
   "Create the temp table `table` from the compiled `query` on `conn`."
   [driver :- :keyword
-   conn   :- :some
+   conn   :- ::transform-testing.schema/connection
    table  :- :string
    query  :- ::transform-testing.compile/compiled-query]
   (driver/execute-on-connection! driver conn (driver/compile-create-temp-table driver {:table table :query query})))
@@ -25,7 +26,7 @@
 (mu/defn drop-temp-table!
   "Drop the temp table `table` on `conn` if it exists, logging a failure instead of throwing it."
   [driver :- :keyword
-   conn   :- :some
+   conn   :- ::transform-testing.schema/connection
    table  :- :string]
   (try
     (driver/execute-on-connection! driver conn (driver/compile-drop-temp-table driver table))
@@ -35,7 +36,7 @@
 (mu/defn table-columns :- [:sequential ::transform-testing.schema/column]
   "The columns of the temp table `table` on `conn`, in order, fetching no rows."
   [driver :- :keyword
-   conn   :- :some
+   conn   :- ::transform-testing.schema/connection
    table  :- :string]
   (let [{:keys [query params]} (transform-testing.compile/compiled
                                 driver
@@ -46,7 +47,7 @@
 (mu/defn run-query
   "Run the compiled `[sql params]` `query` on `conn`, returning `{:rows :columns}`."
   [driver   :- :keyword
-   conn     :- :some
-   query    :- [:tuple :string [:sequential :any]]
+   conn     :- ::transform-testing.schema/connection
+   query    :- [:tuple :string [:maybe [:sequential ::lib.schema.common/field-value]]]
    max-rows :- :int]
   (driver/query-on-connection driver conn query {:max-rows max-rows}))
