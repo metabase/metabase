@@ -138,8 +138,13 @@
         (is (str/includes? instructions "codex mcp login")))
       (testing "no retry until the user has reconnected"
         (is (re-find #"(?i)(don't|do not) retry" instructions)))
-      (testing "the consent screen is all-or-nothing, so the model must not invent a step to tick a permission"
-        (is (re-find #"(?i)no per-permission" instructions)))
+      (testing "GHY-4555: the consent screen shows a newly requested permission unticked, so the model warns the user
+                to tick it before they reconnect, and asks rather than sending them through consent unprompted"
+        (is (not (re-find #"(?i)no per-permission" instructions)))
+        (is (re-find #"(?i)unticked" instructions))
+        (is (re-find #"(?i)must tick it" instructions))
+        (is (re-find #"(?i)before they reconnect" instructions))
+        (is (re-find #"(?i)ask whether they want to grant it" instructions)))
       (testing "the skills guidance is kept"
         (is (re-find #"learn\(\)" instructions))))))
 
@@ -1116,3 +1121,63 @@
          (is (= 200 (:status response)))
          (is (nil? (get-in response [:headers "WWW-Authenticate"])))
          (is (= "served" (-> response :body :result :content first :text))))))))
+
+(defn- bearer-instructions!
+  "The `initialize` result's `instructions` for a Bearer token holding `scopes`."
+  [scopes]
+  ;; An atom because `do-with-bearer-token!` does not return `f`'s value.
+  (let [instructions (atom nil)]
+    (do-with-bearer-token!
+     scopes
+     (fn [headers]
+       (reset! instructions (-> (client/client-full-response :post 200 endpoint
+                                                             {:request-options {:headers headers}}
+                                                             (jsonrpc-request "initialize" {:capabilities {}}))
+                                (get-in [:body :result :instructions])))))
+    @instructions))
+
+(def ^:private baseline-connection-sentence
+  (str "This connection has: \"See your Metabase content and data structure\" (agent:content:read); "
+       "\"Run queries against your connected databases and see the results\" (agent:query:run); "
+       "\"View resources\" (agent:resource:read). "
+       "It does not have: \"Create, edit and trash Metabase content\" (agent:content:write); "
+       "\"Write and run its own raw SQL on your connected databases\" (agent:sql:run); "
+       "\"Set up scheduled delivery of your data to email addresses and Slack channels it chooses\" "
+       "(agent:delivery:write)."))
+
+(deftest initialize-instructions-list-the-connection-permissions-test
+  (testing "GHY-4555: the consent screen lets the user leave a requested permission unticked, and Claude Code and Codex
+            drop the 403's error_description, so the instructions tell the model which of the surface's permissions
+            this connection holds, named as the consent screen names them"
+    (let [baseline (bearer-instructions! (set mcp.paths/v2-baseline-scopes))]
+      (testing "a baseline token lists what it has and what it lacks, in surface order"
+        (is (str/includes? baseline baseline-connection-sentence) baseline))
+      (testing "a missing permission is not assumed to be declined, and a successful call outranks the list"
+        (is (re-find #"(?i)not requested by your client yet, or left unticked by the user" baseline))
+        (is (re-find #"(?i)don't assume which" baseline))
+        (is (re-find #"(?i)if a call succeeds, trust that over this list" baseline)))
+      (testing "the general guidance is kept"
+        (is (re-find #"learn\(\)" baseline))
+        (is (re-find #"(?i)not an expired login" baseline)))
+      (testing "a token holding every surface scope lists nothing missing"
+        (let [all-six (bearer-instructions! (set mcp.paths/v2-surface-scopes))]
+          (is (str/includes? all-six "This connection has: \"See your Metabase content and data structure\""))
+          (doseq [scope mcp.paths/v2-surface-scopes]
+            (is (str/includes? all-six (str "(" scope ")")) scope))
+          (is (str/ends-with? all-six "\"View resources\" (agent:resource:read)."))
+          (is (not (str/includes? all-six "does not have")))
+          (is (not (str/includes? all-six "don't assume which")))
+          (testing "and one token's list is never served to another"
+            (is (not= baseline all-six))
+            (is (= baseline (bearer-instructions! (set mcp.paths/v2-baseline-scopes)))))))
+      (testing "a token holding none of the surface scopes says so"
+        (let [none (bearer-instructions! #{"agent:question:create"})]
+          (is (str/includes? none "This connection has: none. It does not have: \"See your Metabase content"))))
+      (testing "an unrestricted cookie session gets no list"
+        (let [[_ response] (initialize!)
+              cookie       (get-in response [:body :result :instructions])]
+          (is (re-find #"learn\(\)" cookie))
+          (is (not (str/includes? cookie "This connection has")))
+          (is (not (str/includes? cookie "does not have")))
+          (testing "and a cookie session after a scoped token still gets none"
+            (is (not= baseline cookie))))))))

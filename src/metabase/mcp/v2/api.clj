@@ -7,7 +7,9 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.api.macros.scope :as api.scope]
    [metabase.mcp.paths :as mcp.paths]
+   [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.transport :as transport]
    [metabase.mcp.v2.registry :as registry]
@@ -145,11 +147,11 @@
   "Wrap routes so they may only be accessed when the MCP server is enabled."
   mcp.validation/+mcp-enabled)
 
-(def ^:private server-instructions
-  "The `initialize` result's `instructions` — the only channel that reaches the model before any tool call. It points
-  at the `learn` skills once, settles the routing choices a model makes before reading any tool description closely
-  (structured queries are the default, raw SQL the escape hatch, `visualize_query` for charts when listed), and
-  explains the scope-denial failures that clients rewrite before the model sees them."
+(def ^:private general-instructions
+  "The part of the `initialize` instructions every caller gets. It points at the `learn` skills once, settles the
+  routing choices a model makes before reading any tool description closely (structured queries are the default, raw
+  SQL the escape hatch, `visualize_query` for charts when listed), and explains the scope-denial failures that clients
+  rewrite before the model sees them."
   (str "This server ships task-shaped docs as skills. learn() lists the topics; learn(topic) returns one.\n"
        "Before your first complex write — native template_tags, dashboard parameter wiring, a multi-stage or joined "
        "query, visualization settings — read the matching skill unless it is already in context.\n"
@@ -158,17 +160,49 @@
        "When visualize_query is available, use it for any request to show, chart, plot, or visualize data (pass a "
        "query_handle from execute_query or execute_sql when you have one); don't draw the chart yourself.\n"
        "Teaching errors embed the relevant contract, so a failed call always names its fix.\n"
-       ;; Must match what the consent screen shows: one Authorize button, no per-permission choices. Given less, the
-       ;; model invents a step asking the user to tick the permission.
+       ;; Must match what the consent screen shows: a permission the connection lacks starts unticked. Told nothing, a
+       ;; user clicks Authorize without ticking it and the step-up grants nothing.
        "Your client may hide that error. If a Metabase tool call fails with a message about re-authorization, an "
        "expired token, \"insufficient scope\", \"Unauthorized\", or just \"tool execution failed\", the usual cause is a "
        "missing permission on this connection, not an expired login. Tell the user which tool failed and which "
        "permission it needs, using the name in the \"Requires the … permission\" sentence that starts the tool's "
-       "description, which is how Metabase's consent screen names it. To grant it, the user reconnects Metabase in "
-       "their client and clicks Authorize on the consent screen, e.g. in Claude Code: /mcp, select this server, "
-       "Re-authenticate; in Codex: "
-       "`codex mcp login <server>`, then start a new session. The consent screen has no per-permission choices, so "
-       "don't ask the user to check or select anything. Don't retry the tool until the user says they have reconnected."))
+       "description, which is how Metabase's consent screen names it, and ask whether they want to grant it. To grant "
+       "it, the user reconnects Metabase in their client, e.g. in Claude Code: /mcp, select this server, "
+       "Re-authenticate; in Codex: `codex mcp login <server>`, then start a new session. On the consent screen a "
+       "permission the connection lacks is unticked, and the user must tick it before clicking Authorize; tell them "
+       "so before they reconnect. Don't retry the tool until the user agrees and says they have reconnected."))
+
+(defn- permission-list
+  "`scopes` as the model should name them: each scope's consent-screen label, quoted, then the scope in parentheses,
+   separated by semicolons (labels may contain commas)."
+  [scopes]
+  (str/join "; " (for [scope scopes]
+                   (if-let [label (registry/english-scope-label scope)]
+                     (str "\"" label "\" (" scope ")")
+                     scope))))
+
+(defn- connection-permissions
+  "Sentences telling the model which of `surface-scopes` `token-scopes` grants and which it lacks, or nil when
+   `token-scopes` is unrestricted (nil or holding the unrestricted sentinel)."
+  [surface-scopes token-scopes]
+  (when-not (or (nil? token-scopes) (contains? token-scopes ::api.scope/unrestricted))
+    (let [{granted true missing false} (group-by #(mcp.scope/matches? token-scopes %) surface-scopes)]
+      (str "This connection has: " (if (seq granted) (permission-list granted) "none") "."
+           (when (seq missing)
+             (str " It does not have: " (permission-list missing) ". A missing permission was either not requested by "
+                  "your client yet, or left unticked by the user on the consent screen; don't assume which. If a tool "
+                  "needs one, tell the user which permission and why, ask whether they want to grant it, and only "
+                  "retry after they agree and reconnect. This list reflects the connection when it started; if a call "
+                  "succeeds, trust that over this list."))))))
+
+(defn- server-instructions
+  "The `initialize` result's `instructions` for a caller holding `token-scopes` — the only channel that reaches the
+   model before any tool call. A scoped caller is also told which [[mcp.paths/v2-surface-scopes]] it holds."
+  [token-scopes]
+  ;; Built per call, never cached: the permission list belongs to one token.
+  (str general-instructions
+       (some->> (connection-permissions mcp.paths/v2-surface-scopes token-scopes)
+                (str "\n"))))
 
 (def ^:private default-ask-scopes
   "The `scope` of the 401 challenge: [[metabase.mcp.paths/v2-baseline-scopes]], which an uninstructed client requests
@@ -189,7 +223,7 @@
    {:dispatch-method-fn dispatch-method
     ;; No :prompts — a surface must not advertise methods it answers with method-not-found.
     :capabilities       {:tools {:listChanged true} :resources {}}
-    :instructions       server-instructions
+    :instructions-fn    server-instructions
     :tools-hash-fn      registry/tools-hash
     :endpoint-paths     mcp.paths/endpoint-paths
     :default-path       mcp.paths/canonical-path

@@ -338,7 +338,7 @@
 
 (defn- handle-post
   "Handle a POST request containing one or more JSON-RPC messages."
-  [{:keys [dispatch-method-fn capabilities instructions endpoint-paths default-path]} user-id request]
+  [{:keys [dispatch-method-fn capabilities instructions-fn endpoint-paths default-path]} user-id request]
   (let [body            (walk/keywordize-keys (:body request))
         session-id      (get-in request [:headers "mcp-session-id"])
         eval-session-id (eval-session-override request)
@@ -371,7 +371,9 @@
             supports-mcp-ui? (mcp-app-ui-capability? params)
             session-id       (mcp.session/create! user-id {:supports-mcp-ui?
                                                            supports-mcp-ui?})
-            init-response (handle-initialize (:id body) params capabilities instructions)]
+            init-response    (handle-initialize (:id body) params capabilities
+                                                (when instructions-fn
+                                                  (instructions-fn (:token-scopes request))))]
         ;; Record the session row (EE-only, best-effort). Identity + PII are captured once
         ;; here, from the on-thread request, and never overwritten.
         (mcp.usage/record-mcp-session!
@@ -673,8 +675,9 @@
    - `:capabilities` — the server capabilities the `initialize` handshake advertises. Must match
      what `:dispatch-method-fn` actually serves (e.g. advertise `:resources` only when the
      surface dispatches `resources/*`).
-   - `:instructions` — optional string returned as the `initialize` result's `instructions`
-     field, surfaced to the model by clients that support it.
+   - `:instructions-fn` — optional `(fn [token-scopes])` returning the string (or nil) sent as the
+     `initialize` result's `instructions` field, surfaced to the model by clients that support it.
+     Called on every `initialize` with the scopes the transport dispatches that request with.
    - `:tools-hash-fn` — `(fn [])` returning a stable hash of the listed tool set,
      polled by the GET/SSE keepalive to emit `notifications/tools/list_changed`.
    - `:endpoint-paths` — the URL paths (relative to site-url) the 401 and 403 `WWW-Authenticate`
