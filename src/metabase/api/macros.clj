@@ -702,20 +702,19 @@
     (endpoint-core-fn* ~parsed-args)))
 
 (mu/defn- params :- [:maybe ms/RawJSON]
-  "Fetch `:route` or `:query` parameters from a `request`, string-keyed like they arrive off the wire -- the decode
-  transformer renames them to whatever keys the endpoint's own schema declares."
+  "Fetch `:route` or `:query` parameters from a `request`."
   [request     :- ::request
    params-type :- [:enum :route :query]]
   (case params-type
-    :route (not-empty (:route-params request))
-    :query (not-empty (:query-params request))))
+    :route (:route-params request)
+    :query (some-> (:query-params request) (update-keys keyword))))
 
 (mu/defn- request-body :- [:maybe ms/RawJSON]
   "The body params of `request`: the parts of a multipart request, the form params of a form request, or the parsed
   JSON body. An unparsed body (an `InputStream`) is not a param map."
   [request :- ::request]
-  (or (not-empty (:multipart-params request))
-      (not-empty (:form-params request))
+  (or (some-> (not-empty (:multipart-params request)) (update-keys keyword))
+      (some-> (not-empty (:form-params request)) (update-keys keyword))
       (when-let [body (:body request)]
         (when-not (instance? java.io.InputStream body)
           body))))
@@ -867,7 +866,7 @@
                            routes)))))
 
 (defn- decode-route-params [route-params]
-  (-> route-params (update-vals ring.util.codec/url-decode) (update-keys name)))
+  (update-vals route-params ring.util.codec/url-decode))
 
 (mu/defn- find-matching-handler :- [:maybe [:tuple ::request ::handler]]
   "Find the appropriate handler from `handler-map` to handle `request`. Returns a tuple of

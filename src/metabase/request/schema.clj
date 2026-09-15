@@ -65,7 +65,7 @@
    [:query-params            {:optional true} [:map-of :string [:or :string [:sequential :string]]]]
    [:form-params             {:optional true} [:map-of :string [:or :string [:sequential :string]]]]
    [:multipart-params        {:optional true} [:map-of :string [:or :string ::multipart-file]]]
-   [:route-params            {:optional true} [:map-of :string :string]]
+   [:route-params            {:optional true} ms/RawJSON]
    [:cookies                 {:optional true} [:map-of :string ::cookie-attrs]]
    [:route-metadata          {:optional true} [:maybe :metabase.api.macros/route-metadata]]
    [:compojure/path          {:optional true} :string]

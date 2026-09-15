@@ -4,6 +4,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [malli.core :as mc]
+   [malli.util :as mut]
    [metabase.config.core :as config]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
@@ -94,11 +95,28 @@
 ;;; schema gets created below by [[user-key-value-schema]] and [[update-user-key-value-schema]]
 (mr/def ::user-key-value any?)
 
+(defn- namespace-kvp-schema
+  "The schema of a whole key-value pair in `namespace`: its registered schema, merged with the keys every pair has."
+  [namespace]
+  (let [common [:map {:closed true}
+                [:key        :string]
+                [:namespace  :keyword]
+                [:expires-at [:maybe ::expires-at]]]
+        schema (mc/schema (mr/schema namespace))]
+    (case (mc/type schema)
+      :map   (mut/merge common schema)
+      :multi (into [:multi (mc/properties schema)]
+                   (map (fn [[dispatch-value _props branch]]
+                          [dispatch-value (mut/merge common branch)]))
+                   (mc/children schema))
+      schema)))
+
 (defn- user-key-value-schema
   "Build the schema for a `::user-key-value`"
   []
   [:and
    [:map {:closed true}
+    [:key :string]
     [:expires-at [:maybe ::expires-at]]
     [:namespace ::namespace]
     [:value {:encode/database json/encode
@@ -107,7 +125,7 @@
    (into [:multi
           {:dispatch :namespace}]
          (map (fn [namespace]
-                [namespace namespace]))
+                [namespace (namespace-kvp-schema namespace)]))
          (known-namespaces))])
 
 (defn- update-user-key-value-schema! []

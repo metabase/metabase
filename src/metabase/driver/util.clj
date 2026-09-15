@@ -24,8 +24,6 @@
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   ;; ms/InstanceOf validates Toucan Database instances; lib.schema has no app-db instance schemas
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms]
    [metabase.util.performance :refer [mapv empty? some]])
   (:import
    (java.io ByteArrayInputStream)
@@ -296,13 +294,7 @@
 
   (This is cached for a second, so as to avoid repeated application DB calls if this function is called several times
   over the duration of a single API request or sync operation.)"
-  [database-or-id :- [:or
-                      {:error/message "Database or ID"}
-                      (ms/InstanceOf :model/Database)
-                      :metabase.warehouses.schema/database
-                      :metabase.warehouses.schema/database.update
-                      ::lib.schema.metadata/database
-                      ::lib.schema.id/database]]
+  [database-or-id :- [:or ::lib.schema.id/database :metabase.warehouses.schema/database-or-metadata]]
   (if-let [driver (:engine database-or-id)]
     ;; ensure we get the driver as a keyword (sometimes it's a String)
     (keyword driver)
@@ -354,9 +346,7 @@
 (mu/defn ensure-lib-database :- ::lib.schema.metadata/database
   "Ensures the database is in Lib metadata format (SnakeHatingMap with kebab-case keys).
    If passed a Toucan2 instance, converts it. If already Lib metadata, returns as-is."
-  [database :- [:or
-                ::lib.schema.metadata/database
-                (ms/InstanceOf :model/Database)]]
+  [database :- :metabase.warehouses.schema/database-or-metadata]
   (if-not (:lib/type database)
     (lib-be/instance->metadata database :metadata/database)
     database))
@@ -372,11 +362,7 @@
   and move on for now."
   [driver   :- :keyword
    feature  :- :keyword
-   database :- [:maybe
-                [:or
-                 ;; this can get called with an incomplete object in post-select
-                 ::lib.schema.metadata/database
-                 (ms/InstanceOf :model/Database)]]]
+   database :- [:maybe :metabase.warehouses.schema/database-or-metadata]]
   (let [database (some-> database ensure-lib-database)
         f        (if *memoize-supports?* memoized-supports?* supports?*)]
     (f driver feature database)))
@@ -425,10 +411,7 @@
 (mu/defn features
   "Return a set of all features supported by `driver` with respect to `database`."
   [driver   :- :keyword
-   database :- [:or
-                ;; this can get called in post-select which doesn't always have ID
-                ::lib.schema.metadata/database
-                (ms/InstanceOf :model/Database)]]
+   database :- :metabase.warehouses.schema/database-or-metadata]
   (let [database (ensure-lib-database database)]
     (if *memoize-supports?*
       (memoized-features* driver database)

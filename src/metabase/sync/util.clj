@@ -68,10 +68,7 @@
     #(events/isa? % ::event)]])
 
 (def ^:private DatabaseOrId
-  [:or
-   ::lib.schema.id/database
-   :metabase.warehouses.schema/database
-   :metabase.lib.schema.metadata/database])
+  [:or ::lib.schema.id/database :metabase.warehouses.schema/database-or-metadata])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          SYNC OPERATION "MIDDLEWARE"                                           |
@@ -133,7 +130,7 @@
   `database-id`. `f` is executed between the logging of the two events."
   {:style/indent [:form]}
   ;; we can do everyone a favor and infer the name of the individual begin and sync events
-  ([event-name-prefix :- Topic
+  ([event-name-prefix :- [:enum :sync :analyze :refingerprint :cache-field-values :sync-metadata]
     database-or-id    :- DatabaseOrId
     f                 :- fn?]
    (letfn [(event-keyword [prefix suffix]

@@ -193,7 +193,7 @@
                         [:user-id          {:optional true} [:maybe pos-int?]]
                         [:model            {:optional true} [:maybe [:or :keyword :string]]]
                         [:model-id         {:optional true} [:maybe pos-int?]]
-                        [:details          {:optional true} [:maybe ms/OpaqueJSONObject]]
+                        [:details          {:optional true} [:maybe ms/RawJSON]]
                         [:details-changed? {:optional true} [:maybe :boolean]]])
 
 (mu/defn construct-event
