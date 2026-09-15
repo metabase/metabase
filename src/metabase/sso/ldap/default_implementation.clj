@@ -57,7 +57,7 @@
                          user-base
                          options)]
       (log/debugf "LDAP search returned %d result(s)" (count search-result))
-      (some-> (first search-result) (update-keys (comp str/lower-case name))))))
+      (some-> (first search-result) (update-keys (comp u/lower-case-en name))))))
 
 (mu/defn- process-group-membership-filter :- ms/NonBlankString
   "Replace DN and UID placeholders with values returned by the LDAP server."
@@ -94,9 +94,9 @@
            sync-groups?]
     :as   settings}              :- LDAPSettings
    group-membership-filter       :- ms/NonBlankString]
-  (let [first-name (get result (str/lower-case first-name-attribute))
-        last-name  (get result (str/lower-case last-name-attribute))
-        email      (get result (str/lower-case email-attribute))]
+  (let [first-name (get result (u/lower-case-en first-name-attribute))
+        last-name  (get result (u/lower-case-en last-name-attribute))
+        email      (get result (u/lower-case-en email-attribute))]
     {:dn         dn
      :first-name first-name
      :last-name  last-name

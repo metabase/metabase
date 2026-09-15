@@ -23,7 +23,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
    [metabase.util.performance :refer [every? some get-in]]
    [metabase.util.time :as u.time])
   (:import
@@ -277,8 +276,8 @@
 
 (mu/defn- range->filter :- :mbql.clause/between
   [{:keys [start end]} :- [:map {:closed true}
-                           [:start (ms/InstanceOfClass Temporal)]
-                           [:end   (ms/InstanceOfClass Temporal)]]
+                           [:start (lib.schema.common/instance-of-class Temporal)]
+                           [:end   (lib.schema.common/instance-of-class Temporal)]]
    field-clause        :- :mbql.clause/field]
   (lib/between (with-temporal-unit-if-field field-clause :day) (->iso-8601-date start) (->iso-8601-date end)))
 
@@ -407,7 +406,7 @@
                                   [:range  {:optional true} fn?]
                                   [:filter {:optional true} fn?]]]
    decoder-type   :- [:enum :range :filter]
-   decoder-param  :- [:or [:maybe (ms/InstanceOfClass java.time.LocalDateTime)] :mbql.clause/field :mbql.clause/expression]
+   decoder-param  :- [:or [:maybe (lib.schema.common/instance-of-class java.time.LocalDateTime)] :mbql.clause/field :mbql.clause/expression]
    date-string    :- :string]
   (some (fn [{parser :parser, parser-result-decoder decoder-type}]
           (when-let [parser-result (and parser-result-decoder (parser date-string))]

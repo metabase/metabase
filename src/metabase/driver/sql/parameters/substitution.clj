@@ -21,7 +21,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
    [metabase.util.performance :refer [mapv not-empty]])
   (:import
    (clojure.lang IPersistentVector Keyword)
@@ -48,7 +47,7 @@
 (mu/defn make-stmt-subs :- PreparedStatementSubstitution
   "Create a `PreparedStatementSubstitution` map for `sql-string` and the `param-seq`"
   [sql-string :- :string
-   param-seq  :- [:maybe [:sequential ms/FieldValue]]]
+   param-seq  :- [:maybe [:sequential :metabase.lib.schema.common/field-value]]]
   {:sql-string   sql-string
    :param-values param-seq})
 
@@ -135,7 +134,7 @@
 (mr/def ::param-snippet-info
   [:map {:closed true}
    [:replacement-snippet     {:optional true} :string] ; allowed to be blank if this is an optional param
-   [:prepared-statement-args {:optional true} [:maybe [:sequential ms/FieldValue]]]])
+   [:prepared-statement-args {:optional true} [:maybe [:sequential :metabase.lib.schema.common/field-value]]]])
 
 ;; TODO (Cam 2026-05-21) Update this to take an explicit `metadata-providerable`
 (defmulti ->replacement-snippet-info

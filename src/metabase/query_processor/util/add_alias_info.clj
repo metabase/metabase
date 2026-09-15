@@ -45,7 +45,6 @@
    [medley.core :as m]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.options :as lib.options]
@@ -533,10 +532,10 @@
 
   If this is a nested column, the path to the column, e.g. for `grandparent.parent.child` this will be `[\"grandparent\"
   \"child\"]."
-  ([query :- [:or ::lib.schema/query ::mbql.s/Query ::mbql.s/MBQLInnerQuery]]
+  ([query :- [:or ::lib.schema/query :metabase.legacy-mbql.schema/Query :metabase.legacy-mbql.schema/MBQLInnerQuery]]
    (add-alias-info query nil))
 
-  ([query   :- [:or ::lib.schema/query ::mbql.s/Query ::mbql.s/MBQLInnerQuery]
+  ([query   :- [:or ::lib.schema/query :metabase.legacy-mbql.schema/Query :metabase.legacy-mbql.schema/MBQLInnerQuery]
     options :- [:maybe ::options]]
    (cond
      ;; MBQL 5 query

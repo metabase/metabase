@@ -29,7 +29,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
    [metabase.util.performance :refer [mapv not-empty select-keys]])
   (:import
    (com.mchange.v2.c3p0 C3P0ProxyConnection)
@@ -115,7 +114,7 @@
    [:ssl-truststore-path           {:optional true} [:maybe string?]]
    [:ssl-truststore-options        {:optional true} [:maybe string?]]
    [:ssl-truststore-password-value {:optional true} [:maybe string?]]
-   [::mc/default                   ms/DatabaseDetails]])
+   [::mc/default                   :metabase.lib.schema.common/database-details]])
 
 ;;; Everything after the `@` in `jdbc:oracle:thin:@...` is a *connect descriptor*, which the driver reads as
 ;;; instructions and not merely as an address: a scheme there sends it to fetch a URL, read a file, or ask an LDAP

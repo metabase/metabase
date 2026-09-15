@@ -4,8 +4,6 @@
    [clojure.string :as str]
    [metabase.analyze.schema :as analyze.schema]
    [metabase.config.core :as config]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
@@ -135,7 +133,7 @@
   "Schema that allows a `:model/Field` or a column from a query resultset"
   [:or
    ::analyze.schema/Field
-   ::mbql.s/legacy-column-metadata])
+   :metabase.legacy-mbql.schema/legacy-column-metadata])
 
 (mu/defn infer-semantic-type-by-name :- [:maybe :keyword]
   "Classifier that infers the semantic type of a `field` based on its name and base type."

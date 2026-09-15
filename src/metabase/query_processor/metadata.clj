@@ -8,7 +8,6 @@
    [metabase.analyze.core :as analyze]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -77,7 +76,7 @@
     (driver/query-result-metadata driver query)))
 
 (mu/defn- add-extra-column-metadata :- :map
-  [col           :- [:or ::lib.schema.metadata/column ::mbql.s/legacy-column-metadata]
+  [col           :- [:or ::lib.schema.metadata/column :metabase.legacy-mbql.schema/legacy-column-metadata]
    legacy-or-lib :- [:enum ::legacy ::lib]]
   (let [display-name-key (case legacy-or-lib
                            ::legacy :display_name

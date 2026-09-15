@@ -1,5 +1,5 @@
 (ns metabase.query-processor.compile
-  (:refer-clojure :exclude [compile empty?])
+  (:refer-clojure :exclude [compile empty? select-keys])
   (:require
    [clojure.set :as set]
    [metabase.driver :as driver]
@@ -14,8 +14,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [metabase.util.performance :refer [empty?]]))
+   [metabase.util.performance :refer [empty? select-keys]]))
 
 (mr/def ::native-query-document-value
   :metabase.lib.schema/native-query-document-value)
@@ -24,13 +23,13 @@
   "Compiled query and parameters (SQL or whatever native query language)."
   [:map {:closed true}
    [:query ::native-query-document-value]
-   [:params {:optional true} [:maybe [:sequential ms/FieldValue]]]])
+   [:params {:optional true} [:maybe [:sequential :metabase.lib.schema.common/field-value]]]])
 
 (mr/def ::compiled-with-inlined-parameters
   "Query with inlined parameters (:params must be empty)"
   [:map {:closed true}
    [:query ::native-query-document-value]
-   [:params {:optional true} [:maybe [:sequential {:max 0} ms/FieldValue]]]])
+   [:params {:optional true} [:maybe [:sequential {:max 0} :metabase.lib.schema.common/field-value]]]])
 
 (mr/def ::query-with-compiled-query
   "An MBQL 5 query that also has a compiled native query attached (unless it was already a native-only query in the first

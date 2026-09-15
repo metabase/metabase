@@ -7,7 +7,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.order-by :as lib.schema.order-by]
    [metabase.query-processor.core :as qp]

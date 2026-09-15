@@ -1,6 +1,5 @@
 (ns metabase.lib-be.metadata.bootstrap
   (:require
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib-be.db :as lib-be.db]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -14,14 +13,14 @@
    [metabase.util.performance :as perf]))
 
 (def ^:private Query
-  [:or ::mbql.s/Query ::lib.schema/query])
+  [:or :metabase.legacy-mbql.schema/Query ::lib.schema/query])
 
 (mu/defn- source-card-id-for-mbql5-query :- [:maybe ::lib.schema.id/card]
   [query :- ::lib.schema/query]
   (-> query :stages first :source-card))
 
 (mu/defn- source-card-id-for-legacy-query :- [:maybe ::lib.schema.id/card]
-  [query :- ::mbql.s/Query]
+  [query :- :metabase.legacy-mbql.schema/Query]
   (let [inner-query         (:query query)
         deepest-inner-query (loop [inner-query inner-query]
                               (let [source-query (:source-query inner-query)]

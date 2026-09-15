@@ -7,8 +7,7 @@
    [metabase.driver.connection :as driver.conn]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli :as mu])
   (:import
    (com.google.auth.oauth2 ServiceAccountCredentials)
    (java.io ByteArrayInputStream)))
@@ -30,7 +29,7 @@
   (ServiceAccountCredentials/fromStream (ByteArrayInputStream. (.getBytes service-account-json))))
 
 (def ^:private RequiredDetails
-  [:map [:service-account-json :string] [::mc/default ms/DatabaseDetails]])
+  [:map [:service-account-json :string] [::mc/default :metabase.lib.schema.common/database-details]])
 
 (mu/defn database-details->service-account-credential
   "Returns a `ServiceAccountCredentials` (not scoped) for the given `db-details`, which is based upon the value

@@ -4,7 +4,6 @@
    [buddy.core.hash :as buddy-hash]
    [malli.core :as mc]
    [malli.transform :as mtx]
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib-be.models.transforms :as lib-be.models.transforms]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema :as lib.schema]
@@ -36,7 +35,7 @@
       (lib.schema.util/sorted-maps lib.schema.common/unfussy-sorted-map)))
 
 (def ^:private QueryOrInternalQuery
-  [:or ::lib-be.schema/empty-query ::lib-be.schema/internal-query ::mbql.s/Query ::lib.schema/query])
+  [:or ::lib-be.schema/empty-query ::lib-be.schema/internal-query :metabase.legacy-mbql.schema/Query ::lib.schema/query])
 
 (mu/defn query->hash-input :- :map
   "Normalize and strip `query` to the canonical form used for hashing."

@@ -177,6 +177,24 @@
   "A Database's `:settings`; the `.cljc` equivalent of [[metabase.util.malli.schema/DatabaseSettings]]."
   [:map {:closed false, ::mr/deliberately-open true, :description "database settings"}])
 
+(mr/def ::raw-json
+  "A JSON value decoded off the wire, before a schema decodes and validates it; the `.cljc` equivalent
+  of [[metabase.util.malli.schema/RawJSON]]."
+  [:schema
+   {:registry {::raw-json.value [:or
+                                 :string
+                                 number?
+                                 :boolean
+                                 :nil
+                                 [:sequential [:ref ::raw-json.value]]
+                                 [:map {:closed false, ::mr/deliberately-open true, :description "raw JSON object"}]]}}
+   [:ref ::raw-json.value]])
+
+(mr/def ::field-value
+  "One value of a Field; the `.cljc` equivalent of [[metabase.util.malli.schema/FieldValue]]."
+  [:maybe [:or :string number? :boolean uuid? #?(:clj [:fn {:error/message "instance of java.time.temporal.Temporal"}
+                                                       #(instance? java.time.temporal.Temporal %)])]])
+
 (mr/def ::uuid
   [:string
    {:decode/normalize (fn [x]

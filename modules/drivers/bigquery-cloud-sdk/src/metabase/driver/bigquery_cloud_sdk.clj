@@ -29,7 +29,6 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [metabase.util.performance :as perf])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
@@ -109,7 +108,7 @@
    [:api-host :token-host]))
 
 (mu/defn- database-details->client
-  ^BigQuery [details :- ms/DatabaseDetails]
+  ^BigQuery [details :- :metabase.lib.schema.common/database-details]
   (driver.u/validate-connection-hosts! :bigquery-cloud-sdk details)
   (let [base-creds   (bigquery.common/database-details->service-account-credential details)
         creds        (.createScoped base-creds bigquery-scopes)
@@ -1063,8 +1062,8 @@
   [respond     :- fn?
    database    :- driver-api/schema.metadata.database
    sql         :- :string
-   parameters  :- [:maybe [:sequential ms/FieldValue]]
-   cancel-chan :- [:maybe (ms/InstanceOfClass ManyToManyChannel)]]
+   parameters  :- [:maybe [:sequential :metabase.lib.schema.common/field-value]]
+   cancel-chan :- [:maybe (driver-api/instance-of-class ManyToManyChannel)]]
   {:pre [(map? database) (map? (:details database))]}
   ;; automatically retry the query if it times out or otherwise fails. This is on top of the auto-retry added by
   ;; `execute`

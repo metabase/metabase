@@ -35,7 +35,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]
    [metabase.util.performance :refer [mapv select-keys not-empty]]))
 
@@ -361,7 +360,7 @@
        [:constraints    {:optional true} [:maybe ::lib.schema.constraints/constraints]]
        [:context        {:optional true} [:maybe ::lib.schema.info/context]]
        [:dashboard-id   {:optional true} [:maybe ::lib.schema.id/dashboard]]
-       [:dashcard       {:optional true} [:maybe (ms/InstanceOf :model/DashboardCard)]]
+       [:dashcard       {:optional true} [:maybe [:ref :metabase.dashboards.schema/dashboard-card]]]
        [:middleware     {:optional true} [:maybe ::lib.schema.middleware-options/middleware-options]]
        [:qp             {:optional true} [:maybe ifn?]]
        [:make-run       {:optional true} [:maybe ifn?]]

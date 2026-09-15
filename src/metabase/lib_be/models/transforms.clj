@@ -2,7 +2,6 @@
   (:refer-clojure :exclude [empty?])
   (:require
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib-be.metadata.bootstrap :as lib-be.bootstrap]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
@@ -29,15 +28,15 @@
                               [true  [:= {:description "empty map"} {}]]
                               [false ::lib.schema/query]]]
   "Normalize an MBQL `query` to MBQL 5 and attach a metadata provider."
-  ([query :- [:maybe [:or [:= {} {}] ::mbql.s/Query ::lib.schema/query]]]
+  ([query :- [:maybe [:or [:= {} {}] :metabase.legacy-mbql.schema/Query ::lib.schema/query]]]
    (normalize-query nil query))
 
   ([metadata-providerable :- [:maybe ::lib.metadata.protocols/metadata-providerable]
-    query                 :- [:maybe [:or [:= {} {}] ::mbql.s/Query ::lib.schema/query]]]
+    query                 :- [:maybe [:or [:= {} {}] :metabase.legacy-mbql.schema/Query ::lib.schema/query]]]
    (normalize-query metadata-providerable query nil))
 
   ([metadata-providerable :- [:maybe ::lib.metadata.protocols/metadata-providerable]
-    query                 :- [:maybe [:or [:= {} {}] ::mbql.s/Query ::lib.schema/query]]
+    query                 :- [:maybe [:or [:= {} {}] :metabase.legacy-mbql.schema/Query ::lib.schema/query]]
     {:keys [strict?]}     :- [:maybe
                               [:map
                                {:closed true}

@@ -2,7 +2,6 @@
   (:require
    [malli.core :as mc]
    [malli.transform :as mtx]
-   [metabase.legacy-mbql.schema :as legacy-mbql.schema]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -36,7 +35,7 @@
 
 (mr/def ::query
   "Either an MBQL 5 query or a legacy MBQL query, whichever format the tool that produced it stored."
-  [:or ::lib.schema/query ::legacy-mbql.schema/Query])
+  [:or ::lib.schema/query :metabase.legacy-mbql.schema/Query])
 
 (mr/def ::todo
   [:map {:closed true}

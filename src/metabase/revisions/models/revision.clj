@@ -194,7 +194,7 @@
 
 (def ^:private PushRevisionInput
   (into [:multi {:dispatch :entity}]
-        (for [[model schema] revisions.db/revisioned-model-row-schema]
+        (for [model (keys revisions.db/revisioned-model-row-schema)]
           [model [:map {:closed true}
                   [:id                            pos-int?]
                   [:object                        (ms/InstanceOf model)]

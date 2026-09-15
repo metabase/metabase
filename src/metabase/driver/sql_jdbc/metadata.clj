@@ -7,7 +7,6 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [metabase.util.performance :refer [mapv]]))
 
 (set! *warn-on-reflection* true)
@@ -25,7 +24,7 @@
   ([driver      :- :keyword
     database    :- driver-api/schema.metadata.database
     ^String sql :- :string
-    params      :- [:maybe [:sequential ms/FieldValue]]]
+    params      :- [:maybe [:sequential :metabase.lib.schema.common/field-value]]]
    (sql-jdbc.execute/do-with-connection-with-options
     driver
     database

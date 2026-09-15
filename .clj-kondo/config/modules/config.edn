@@ -1444,7 +1444,6 @@
               lib
               lib.agent-lib
               lib.be
-              lib.legacy-mbql
               lib.metadata
               lib.schema
               metabot.llm
@@ -2218,7 +2217,6 @@
            util
            util.config}
    :model-imports #{:model/Card
-                    :model/DashboardCard
                     :model/DashboardCardSeries
                     :model/Database
                     :model/QueryCache
@@ -2512,7 +2510,8 @@
            request
            settings
            util}
-   :model-exports #{:model/LoginHistory}}
+   :model-exports #{:model/LoginHistory}
+   :model-imports #{:model/User}}
 
   settings
   {:team "DevEx"
@@ -3894,7 +3893,7 @@
            premium-features
            remote-sync
            util}
-   :model-imports #{:model/NativeQuerySnippet}}
+   :model-imports #{:model/Collection :model/NativeQuerySnippet}}
 
   enterprise/permissions
   {:team "UX West"

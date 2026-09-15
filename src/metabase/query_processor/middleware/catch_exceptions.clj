@@ -16,7 +16,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
    [metabase.util.performance :refer [some get-in]])
   (:import
    (clojure.lang ExceptionInfo)
@@ -63,12 +62,12 @@
   "The map shape produced by one of this namespace's private `format-exception` methods."
   [:map {:closed true}
    [:status            [:enum :failed :interrupted]]
-   [:class             {:optional true} (ms/InstanceOfClass Class)]
+   [:class             {:optional true} (lib.schema.common/instance-of-class Class)]
    [:error             {:optional true} [:maybe :string]]
    [:stacktrace        {:optional true} [:maybe [:sequential :string]]]
    [:error_type        {:optional true} :keyword]
    [:error_is_curated  {:optional true} :boolean]
-   [:ex-data           {:optional true} ms/OpaqueJSONObject]
+   [:ex-data           {:optional true} :metabase.lib.schema.common/raw-json]
    [:state             {:optional true} [:maybe :string]]])
 
 ;; TODO -- some of this logic duplicates the functionality of `clojure.core/Throwable->map`, we should consider

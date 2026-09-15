@@ -24,7 +24,6 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [metabase.util.performance :refer [some mapv empty? get-in]]
    [taoensso.nippy :as nippy])
   (:import
@@ -487,8 +486,8 @@
 
   Each row represents leaf in sampled documents, its type and indices of keys present in the path of mongo of nested
   object."
-  [database :- (ms/InstanceOf :model/Database)
-   table    :- (ms/InstanceOf :model/Table)]
+  [database :- [:fn {:error/message "a Database"} #(driver-api/instance-of? :model/Database %)]
+   table    :- [:fn {:error/message "a Table"} #(driver-api/instance-of? :model/Table %)]]
   (let [pipeline (describe-table-pipeline {:collection-name       (:name table)
                                            :sample-size           (* table-rows-sample/nested-field-sample-limit 2)
                                            :document-sample-depth describe-table-query-depth

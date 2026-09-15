@@ -14,7 +14,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [metabase.util.performance :refer [every? mapv]])
   (:import
    (com.mongodb.client
@@ -48,7 +47,7 @@
   wrong here and the query we generated is off."
   [columns             :- ::mongo.qp/projections
    ;; first row col names seems to be `java.util.LinkedHashMap$LinkedKeySet`
-   first-row-col-names :- (ms/InstanceOfClass java.util.Collection)]
+   first-row-col-names :- (driver-api/instance-of-class java.util.Collection)]
   {:pre [(every? string? columns) (every? string? first-row-col-names)]}
   (when (seq first-row-col-names)
     (let [expected-cols   (set (for [col-name columns]
@@ -87,7 +86,7 @@
   thr query result metadata."
   [{:keys [mbql? projections]} :- ::mongo.qp/compiled-pipeline-with-collection
    query                :- ::mongo.qp/pipeline
-   first-row-col-names  :- [:maybe (ms/InstanceOfClass java.util.Collection)]]
+   first-row-col-names  :- [:maybe (driver-api/instance-of-class java.util.Collection)]]
   ;; some of the columns may or may not come back in every row, because of course with mongo some key can be missing.
   ;; That's ok, the logic below where we call `(mapv row columns)` will end up adding `nil` results for those columns.
   (if-not (and mbql? (seq projections))

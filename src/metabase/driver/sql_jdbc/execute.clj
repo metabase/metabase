@@ -28,7 +28,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [metabase.util.performance :as perf :refer [empty? get-in mapv]]
    [potemkin :as p])
   (:import
@@ -261,7 +260,7 @@
 
 (def ^:private DbOrIdOrSpec
   [:and
-   [:or :int driver-api/schema.metadata.database ms/DatabaseDetails]
+   [:or :int driver-api/schema.metadata.database :metabase.lib.schema.common/database-details]
    [:fn
     ;; can't wrap a java.sql.Connection here because we're not
     ;; responsible for its lifecycle and that means you can't use
@@ -362,7 +361,7 @@
   deprecated [[sql-jdbc.execute.old/connection-with-timezone]] method."
   {:added "0.47.0"}
   [driver           :- :keyword
-   db-or-id-or-spec :- [:or ::lib.schema.id/database driver-api/schema.metadata.database ms/DatabaseDetails]
+   db-or-id-or-spec :- [:or ::lib.schema.id/database driver-api/schema.metadata.database :metabase.lib.schema.common/database-details]
    options          :- ConnectionOptions
    f                :- fn?]
   (binding [*connection-recursion-depth* (inc *connection-recursion-depth*)]

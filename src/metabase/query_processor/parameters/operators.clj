@@ -18,7 +18,6 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]
    [metabase.util.performance :refer [get-in]]))
 
@@ -34,7 +33,7 @@
 (mu/defn- verify-type-and-arity
   [field       :- [:or :mbql.clause/field :mbql.clause/expression]
    param-type  :- ::lib.schema.parameter/type
-   param-value :- [:sequential ms/FieldValue]]
+   param-value :- [:sequential :metabase.lib.schema.common/field-value]]
   (letfn [(maybe-arity-error [n]
             (when (not= n (count param-value))
               (throw (ex-info (format "Operations Invalid arity: expected %s but received %s"

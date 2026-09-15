@@ -6,10 +6,10 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
    [metabase.util.regex :as u.regex]))
 
 (mr/def ::any-query
@@ -33,13 +33,13 @@
    [:native_form             {:optional true} :metabase.query-processor.compile/compiled]
    [:dataset                 {:optional true} :boolean]
    [:model                   {:optional true} :boolean]
-   [:viz-settings            {:optional true} ms/VisualizationSettings]
+   [:viz-settings            {:optional true} :metabase.lib.schema.common/visualization-settings]
    [:format-rows?            {:optional true} :boolean]
    [:csv-include-bom?        {:optional true} :boolean]
    [:results_timezone        {:optional true} [:maybe :string]]
    [:requested_timezone      {:optional true} [:maybe :string]]
    [:cache-version           {:optional true} :int]
-   [:last-ran                {:optional true} ms/TemporalInstant]
+   [:last-ran                {:optional true} (lib.schema.common/instance-of-class java.time.temporal.Temporal)]
    [:pivot-export-options    {:optional true} [:map {:closed true}
                                                [:pivot-rows         {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
                                                [:pivot-cols         {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
