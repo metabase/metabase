@@ -59,10 +59,6 @@ async function setup(rawSeries: RawSeries) {
   await delay(0);
 }
 
-function getGoalLineLabel() {
-  return screen.getByText(GOAL_LABEL);
-}
-
 describe.each(DYNAMIC_GOAL_GRAPH_DISPLAYS)(
   "%s chart dynamic goal",
   (display) => {
@@ -144,4 +140,8 @@ function createSeries(
       }),
     },
   ];
+}
+
+function getGoalLineLabel() {
+  return screen.getByText(GOAL_LABEL);
 }
