@@ -302,7 +302,7 @@
 ;; TODO: If we are extending remove remark functionality to other drivers, we should consider making this
 ;;       test (1) general, so other drivers can use it and (2) parallel. That would require making
 ;;       `sql-jdbc.execute/statement-or-prepared-statement` dynamic so it can be temporarily modified using `binding`
-;;       instead of `with-redefs` in [[query->native!]].
+;;       instead of `mt/with-dynamic-fn-redefs` in [[query->native!]].
 ;; TODO: If that is the case, also the solution should be generalized, taking into account existing functionality
 ;;       for removing remark in other drivers, eg. bigquery. Generalization could be accomplished with help
 ;;       of [[metabase.driver.sql-jdbc.execute/inject-remark]].
