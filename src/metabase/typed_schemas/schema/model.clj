@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.actions.core :as actions]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.typed-schemas.common :as common]
    [metabase.typed-schemas.db :as typed-schemas.db]
    [metabase.typed-schemas.schema.common :as schema.common]
@@ -114,15 +115,14 @@
   (when (and (= (lib.schema.common/normalize-keyword type) :query) dataset_query)
     (let [stage-tags (some-> dataset_query :stages first :template-tags)
           native-tags (some-> dataset_query :native :template-tags)
-          tags (or stage-tags native-tags)]
+          tags (lib.schema.template-tag/normalize-template-tags (or stage-tags native-tags))]
       (into {}
-            (for [[tag-key tag] tags]
-              [(or (:name tag)
-                   (cond
-                     (string? tag-key)  tag-key
-                     (keyword? tag-key) (clojure.core/name tag-key)
-                     :else              nil))
-               (:type tag)])))))
+            (for [{tag-name :name tag-type :type} tags]
+              [(cond
+                 (string? tag-name)  tag-name
+                 (keyword? tag-name) (clojure.core/name tag-name)
+                 :else               nil)
+               tag-type])))))
 
 (defn- model-action-error-message
   "Returns the error message for model action schema failures."

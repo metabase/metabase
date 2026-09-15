@@ -48,9 +48,7 @@
    [:include-metric-library? {:optional true}
     [:boolean {:description "Whether to include the root metrics library."}]]
    [:include-models? {:optional true}
-    [:boolean {:description (str "Whether to include readable models with actions when no "
-                                 "database scope is given. A `:database` scope always includes "
-                                 "that database's models, regardless of this option.")}]]])
+    [:boolean {:description "Whether to include readable models with actions."}]]])
 
 (def Items
   "Fetched schema entities, ready for pure assembly by [[create-schema]].
@@ -93,13 +91,11 @@
      :metrics metrics}))
 
 (defn- models-for-scope
-  "Returns `{:models [...] :errors [...]}` scoped to `database-ids`, or all readable
-  models when requested without a database scope."
+  "Returns models and errors only when requested. Uses `database-ids` as the scope, or reads all models when nil."
   [source database-ids include-models?]
-  (cond
-    database-ids    (source/models source database-ids)
-    include-models? (source/models source nil)
-    :else           {:models [] :errors []}))
+  (if include-models?
+    (source/models source database-ids)
+    {:models [] :errors []}))
 
 (defn fetch-items
   "Fetches the schema entities selected by [[SemanticSchemaOptions]].
