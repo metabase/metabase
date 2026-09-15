@@ -145,7 +145,6 @@ export const MCP_APPS_BOOTSTRAP_SETTING_KEYS = [
   "last-used-native-database-id",
   "ldap-configured?",
   "ldap-enabled",
-  "llm-anthropic-api-key-configured?",
   "loading-message",
   "map-tile-server-url",
   "mcp-enabled?",
