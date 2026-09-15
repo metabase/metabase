@@ -168,13 +168,17 @@
              " sites -- lower `disclosure-call-site-budget` to lock in the reduction."))))
 
 ;;; Opening a Secret against its own bound audience is the one way to get plaintext without naming a destination the
-;;; caller actually holds. It is legitimate for the type to offer (tests, tooling), never for production code to use.
+;;; caller actually holds. It is legitimate for the type to offer (tests, tooling) and for the model binding in
+;;; `metabase.models.interface` to consult (it binds only what is still unbound), never for production code to use.
+(def ^:private bound-audience-home
+  #{"src/metabase/util/secret.clj" "src/metabase/models/interface.clj"})
+
 (deftest bound-audience-is-not-used-in-production-code-test
-  (let [users (files-matching #"(?<![\w-])bound-audience(?![\w-])")]
-    (is (empty? (disj users "src/metabase/util/secret.clj"))
+  (let [users (remove bound-audience-home (files-matching #"(?<![\w-])bound-audience(?![\w-])"))]
+    (is (empty? users)
         (str "These namespaces open a Secret against its own bound audience, which bypasses the check. Expose it to "
              "the destination the code is actually about to use:\n  "
-             (str/join "\n  " (sort (disj users "src/metabase/util/secret.clj")))))))
+             (str/join "\n  " (sort users))))))
 
 ;;; Files that open a Secret, i.e. hand a stored credential to the peer it was saved for. Each one is a sink: the last
 ;;; point before the value leaves the process. Two rules apply there, and a new entry means neither has been checked:
@@ -196,6 +200,9 @@
     "enterprise/backend/src/metabase_enterprise/transforms_python/python_runner.clj"
     "enterprise/backend/src/metabase_enterprise/transforms_python/s3.clj"
     "src/metabase/channel/email.clj"
+    "src/metabase/channel/impl/http.clj"
+    ;; serialization export: opens a channel's auth values against the channel's own details, which always match
+    "src/metabase/channel/models/channel.clj"
     "src/metabase/sso/ldap.clj"})
 
 (deftest secret-opening-sinks-ratchet-test

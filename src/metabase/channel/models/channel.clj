@@ -15,6 +15,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.secret :as u.secret]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -50,6 +51,11 @@
 (t2/deftransforms :model/Channel
   {:type    (mi/transform-validator mi/transform-keyword (partial mi/assert-namespaced "channel"))
    :details (update (mi/transform-encrypted-json "channel.details") :out #(comp stringify-auth-info-keys %))})
+
+;; an HTTP channel's auth values are sent to its URL, so they are bound to it: moving the URL while keeping the
+;; stored values is refused until they are entered again
+(mi/define-secrets :model/Channel
+  {[:details :auth-info] [:map [:url ::u.secret/url]]})
 
 (mr/def ::Channel
   "Channel schema."
@@ -107,11 +113,20 @@
 (defmethod serdes/storage-path "Channel" [channel _ctx]
   [{:label "channels"} {:label (:name channel) :key (serdes/entity-id "Channel" channel)}])
 
+(defn- export-details
+  "`details` with each stored auth secret opened for export. They are bound to this channel's own URL, so opening
+  them against `details` itself always succeeds; the export carries the plaintext, as it did before secrets were
+  wrapped."
+  [details]
+  (cond-> details
+    (map? (:auth-info details)) (update :auth-info update-vals #(u.secret/maybe-expose % details))))
+
 (defmethod serdes/make-spec "Channel"
   [_model-name _opts]
-  {:copy           [:name :description :type :details :active]
-   :transform      {:created_at (serdes/date)}
-   :defaults {:active true}})
+  {:copy      [:name :description :type :active]
+   :transform {:created_at (serdes/date)
+               :details    {:export export-details :import identity}}
+   :defaults  {:active true}})
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                       :model/ChannelTemplate                                    ;;

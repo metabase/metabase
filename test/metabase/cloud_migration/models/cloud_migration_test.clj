@@ -7,6 +7,7 @@
    [metabase.config.core :as config]
    [metabase.task.core :as task]
    [metabase.test :as mt]
+   [metabase.util.secret :as u.secret]
    [toucan2.core :as t2]))
 
 (use-fixtures :each (fn [thunk]
@@ -20,9 +21,15 @@
                  cloud-migration/migrate! identity]
      ~@body))
 
+(defn- stored-migration
+  "The migration row the API `response` created, as [[cloud-migration/migrate!]] receives it in production: read back
+  from the app DB, with its upload URL a bound Secret rather than the mask the response carries."
+  [response]
+  (t2/select-one :model/CloudMigration (:id response)))
+
 (defn- fake-upload-route-handler
   [migration]
-  {(:upload_url migration)
+  {(u.secret/expose (:upload_url migration) {})
    (fn [{:keys [body request-method]}]
      ;; slurp it to progress the upload
      (slurp body)
@@ -41,7 +48,8 @@
   (is (= 99 (cloud-migration/abs-progress 100 51 99))))
 
 (deftest migrate!-test
-  (let [migration         (mock-external-calls! (mt/user-http-request :crowberto :post 200 "cloud-migration"))
+  (let [migration         (stored-migration
+                           (mock-external-calls! (mt/user-http-request :crowberto :post 200 "cloud-migration")))
         progress-calls    (atom {:setup  []
                                  :dump   []
                                  :upload []
@@ -70,7 +78,8 @@
               "one progress call during other stages"))))))
 
 (deftest migrate!-test-managed-scheduler
-  (let [migration         (mock-external-calls! (mt/user-http-request :crowberto :post 200 "cloud-migration"))]
+  (let [migration         (stored-migration
+                           (mock-external-calls! (mt/user-http-request :crowberto :post 200 "cloud-migration")))]
     (mt/with-dynamic-fn-redefs [cloud-migration/cluster?     (constantly false)]
       (http-fake/with-fake-routes-in-isolation (fake-upload-route-handler migration)
         (testing "works when quartz scheduler is running"
@@ -87,7 +96,8 @@
 
 (deftest migrate!-test-2
   (testing "exits early on terminal state"
-    (let [migration (mock-external-calls! (mt/user-http-request :crowberto :post 200 "cloud-migration"))]
+    (let [migration (stored-migration
+                     (mock-external-calls! (mt/user-http-request :crowberto :post 200 "cloud-migration")))]
       (mt/user-http-request :crowberto :put 200 "cloud-migration/cancel")
       (try
         (#'cloud-migration/migrate! migration)
@@ -125,3 +135,22 @@
       (testing "not in dev is not honored"
         (with-redefs [config/is-dev? false]
           (is (= "https://store.metabase.com" (#'cloud-migration.settings/store-url-default))))))))
+
+(deftest upload-url-is-a-secret-with-no-configurable-destination-test
+  (mt/with-model-cleanup [:model/CloudMigration]
+    (let [migration (t2/insert-returning-instance! :model/CloudMigration {:external_id 1
+                                                                          :upload_url  "https://up.loady/signed"
+                                                                          :state       :init})
+          url       (:upload_url migration)]
+      (is (u.secret/secret? url))
+      (testing "the presigned URL is a bearer credential to a fixed peer: it opens to the empty audience only"
+        (is (= "https://up.loady/signed" (u.secret/expose url {})))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not bound to the requested audience"
+                              (u.secret/expose url {:host "elsewhere"}))))
+      (testing "read back with its row it is still opened the same way"
+        (is (= "https://up.loady/signed"
+               (u.secret/expose (:upload_url (t2/select-one :model/CloudMigration (:id migration))) {}))))
+      (testing "but selected on its own, without the row, it cannot be opened at all"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no bound audience"
+                              (u.secret/expose (t2/select-one-fn :upload_url :model/CloudMigration (:id migration))
+                                               {})))))))

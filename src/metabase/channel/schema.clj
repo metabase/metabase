@@ -12,7 +12,8 @@
   [:map {:closed true}
    [:url                           ms/Url]
    [:auth-method                   [:enum "none" "header" "query-param" "request-body"]]
-   [:auth-info    {:optional true} (ms/string-keyed-map :string)]
+   ;; a value is a plain String as a request supplies it, or the stored Secret once the row has been read back
+   [:auth-info    {:optional true} (ms/string-keyed-map [:or :string :metabase.util.secret/secret])]
    [:fe-form-type {:optional true} [:enum "api-key" "bearer" "basic" "none"]]
    [:method       {:optional true} [:enum "get" "post" "put"]]])
 

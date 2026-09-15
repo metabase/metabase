@@ -195,6 +195,33 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must be an audience map or a known disclosure reason"
                               (u.secret/expose s not-an-audience)))))))
 
+(deftest ^:parallel bind-test
+  (let [unbound (u.secret/secret "hunter2")]
+    (testing "an unbound secret can be bound once the record it lives in is known, without surfacing the plaintext"
+      (let [bound (u.secret/bind unbound db-schema {:host "db.example.com" :port 5432 :name "ignored"})]
+        (is (= {:host "db.example.com" :port 5432} (u.secret/bound-audience bound)))
+        (is (= "hunter2" (u.secret/expose bound {:host "DB.example.com" :port "5432"})))
+        (testing "binding to the empty audience works the same way"
+          (is (= "hunter2" (u.secret/expose (u.secret/bind unbound [:map] {}) {}))))
+        (testing "the original is untouched, and the bound copy keeps the kind's prefix length"
+          (is (nil? (u.secret/bound-audience unbound)))
+          (is (= "mb_ab" (u.secret/prefix (u.secret/bind (u.secret/secret "mb_abcdef" {:prefix-length 5})
+                                                         db-schema
+                                                         {:host "h"})))))
+        (testing "a bound secret cannot be bound again: that would be re-aiming it"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"already bound"
+                                (u.secret/bind bound db-schema {:host "evil.example.com"}))))))))
+
+(deftest ^:parallel masked?-test
+  (testing "recognizes a mask this namespace produced, with or without a revealed prefix"
+    (is (true? (u.secret/masked? (u.secret/mask (u.secret/secret "hunter2")))))
+    (is (true? (u.secret/masked? (u.secret/mask (u.secret/secret "mb_abcdef" {:prefix-length 5}))))))
+  (testing "and nothing else"
+    (is (false? (u.secret/masked? "hunter2")))
+    (is (false? (u.secret/masked? "****")))
+    (is (false? (u.secret/masked? nil)))
+    (is (false? (u.secret/masked? (u.secret/secret "hunter2"))))))
+
 (deftest ^:parallel bound-audience-test
   (is (nil? (u.secret/bound-audience (u.secret/secret "s"))))
   (testing "the bound audience is the canonical form of the record the secret was created from"

@@ -19,6 +19,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.secret :as u.secret]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline])
@@ -36,6 +37,10 @@
 
 (t2/deftransforms :model/CloudMigration
   {:state mi/transform-keyword})
+
+;; the presigned upload URL is a bearer credential for a peer Store chooses, not one any field selects
+(mi/define-secrets :model/CloudMigration
+  {:upload_url {}})
 
 (def ^:private read-only-mode-inclusions
   (->> copy/entities (map t2/table-name) (into #{})))
@@ -165,7 +170,8 @@
         file-length       (.length file)]
     (if-not (> file-length part-size)
       ;; single put uses SSE, but multipart doesn't support it.
-      (put-file upload_url file on-progress :headers {"x-amz-server-side-encryption" "aws:kms"})
+      (put-file (u.secret/maybe-expose upload_url {}) file on-progress
+                :headers {"x-amz-server-side-encryption" "aws:kms"})
       (let [;; seq of up to part-size ranges
             ;; e.g. for a 250mb file [[0 100e6] [100e6 200e6] [200e6 250e6]]
             parts

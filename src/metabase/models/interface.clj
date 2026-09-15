@@ -14,6 +14,7 @@
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [malli.core :as mc]
    [medley.core :as m]
    ;; Toucan out-transforms normalize stored legacy MBQL on read; needed until the app db is MBQL 5
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -38,9 +39,13 @@
    [potemkin :as p]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
+   [toucan2.pipeline :as t2.pipeline]
    [toucan2.protocols :as t2.protocols]
    [toucan2.tools.before-insert :as t2.before-insert]
+   [toucan2.tools.before-update :as t2.before-update]
    [toucan2.tools.hydrate :as t2.hydrate]
+   [toucan2.tools.simple-out-transform :as t2.simple-out-transform]
+   [toucan2.tools.transformed :as t2.transformed]
    [toucan2.util :as t2.u])
   (:import
    (java.sql Blob)
@@ -376,6 +381,229 @@
            (encryption/maybe-encrypt v))
     :out (comp #(some-> % (u.secret/secret opts))
                (decrypt-error-context source encryption/maybe-decrypt))}))
+
+;;; ------------------------------------------------ model secrets --------------------------------------------------
+
+(methodical/defmulti secret-columns
+  "The secrets `model` declares with [[define-secrets]], as a map of column path to audience; `nil` for a model that
+  declares none."
+  {:arglists '([model])}
+  t2.u/dispatch-on-first-arg)
+
+(methodical/defmethod secret-columns :default
+  [_model]
+  nil)
+
+(defn- update-at
+  "`(f v)` at `path` in `m`, where an empty `path` addresses `m` itself. `m` unchanged when nothing is at `path`."
+  [m path f]
+  (cond
+    (empty? path)          (f m)
+    (nil? (get-in m path)) m
+    :else                  (update-in m path f)))
+
+(defn- each-leaf
+  "`f` over what a declared path holds: a map there is one secret per value, under names that are not themselves
+  secret (an HTTP channel's header names); anything else is the secret."
+  [f]
+  (fn [v]
+    (if (map? v)
+      (update-vals v f)
+      (f v))))
+
+(defn- audience-record
+  "The map a secret at `path` in `m` is bound to: the map it lives in, which for a column is `m` itself."
+  [m path]
+  (if-let [parent (butlast path)]
+    (get-in m (vec parent))
+    m))
+
+(defn- audience-schema
+  "The Malli map schema an `audience` from [[define-secrets]] compares under: `{}` is the empty audience."
+  [audience]
+  (if (= {} audience) [:map] audience))
+
+(defn- audience-keys
+  "The keys of the record an `audience` selects."
+  [audience]
+  (when-not (= {} audience)
+    (map first (mc/children (mc/schema audience)))))
+
+(defn- open-for-write
+  "A transform over the value written to a column whose `nested` path holds a secret with `audience`: a Secret there
+  is opened against the map it is being written into, so the plaintext reaches the database and a Secret bound
+  elsewhere is refused before anything does. A plain value is a fresh credential and passes through."
+  [audience nested]
+  (fn [v]
+    (update-at v nested
+               (each-leaf (fn [leaf]
+                            (cond
+                              (not (u.secret/secret? leaf))
+                              leaf
+
+                              (= {} audience)
+                              (u.secret/expose leaf {})
+
+                              ;; a column's audience is the row, which a column transform never sees
+                              (empty? nested)
+                              (throw (ex-info "A Secret whose audience is the row must be exposed before it is written."
+                                              {:error-code :secret-row-audience-write}))
+
+                              :else
+                              (u.secret/expose leaf (audience-record v nested))))))))
+
+(defn- wrap-unbound
+  "A transform over the value read from a column whose `nested` path holds a secret: each one comes back as an unbound
+  Secret, which [[bind-secrets]] binds once the row it lives in is known."
+  [nested]
+  (fn [v]
+    (update-at v nested (each-leaf #(cond-> % (not (u.secret/secret? %)) u.secret/secret)))))
+
+(defn secret-transforms
+  "`transforms` for `model`, with its declared secrets wrapped on the way out and opened on the way in. Public only
+  because [[define-secrets]] expands to a call to it."
+  [model transforms]
+  (reduce (fn [transforms [[column & nested] audience]]
+            (let [{:keys [in out] :or {in identity, out identity}} (get transforms column)]
+              (assoc transforms column {:in  (comp in (open-for-write audience nested))
+                                        :out (comp (wrap-unbound nested) out)})))
+          transforms
+          (secret-columns model)))
+
+(defn- bind-secrets
+  "`row` with each unbound Secret it declares bound to the audience selected from the map it lives in, provided the
+  row carries its primary key and that map carries every audience key. A column selected on its own has neither, so
+  its secrets stay unbound and cannot be opened at all."
+  [row]
+  (let [model (t2/model row)]
+    (reduce (fn [row [path audience]]
+              (let [record (audience-record row path)]
+                (if (and (every? #(contains? row %) (t2/primary-keys model))
+                         (map? record)
+                         (every? #(contains? record %) (audience-keys audience)))
+                  (update-at row path
+                             (each-leaf #(cond-> %
+                                           (and (u.secret/secret? %) (nil? (u.secret/bound-audience %)))
+                                           (u.secret/bind (audience-schema audience) record))))
+                  row)))
+            row
+            (secret-columns model))))
+
+;; Not [[t2/define-after-select]]: that hook cannot see the query type, and `select-fn` and friends hand it the whole
+;; row even when the caller asked for one column. A column asked for on its own is exactly the read that must come
+;; back unexposable, so the binding happens in an out-transform of our own that skips those query types.
+(t2.simple-out-transform/define-out-transform [:toucan.result-type/instances ::has-secrets]
+  [row]
+  (if (isa? &query-type :toucan.query-type/select.instances.fns)
+    row
+    (bind-secrets row)))
+
+;; A preferred results transform runs first. Binding needs the column transforms to have produced the Secrets, and a
+;; model's own after-select should see them bound.
+(methodical/prefer-method! #'t2.pipeline/results-transform
+                           [:toucan.result-type/instances :toucan2.tools.transformed/transformed.model]
+                           [:toucan.result-type/instances ::has-secrets])
+(methodical/prefer-method! #'t2.pipeline/results-transform
+                           [:toucan.result-type/instances :toucan2.tools.default-fields/default-fields]
+                           [:toucan.result-type/instances ::has-secrets])
+(methodical/prefer-method! #'t2.pipeline/results-transform
+                           [:toucan.result-type/instances ::has-secrets]
+                           [:toucan.result-type/instances :toucan2.tools.after-select/after-select])
+(methodical/prefer-method! #'t2.pipeline/results-transform
+                           [:toucan.result-type/instances ::has-secrets]
+                           [:toucan.result-type/instances :toucan2.tools.after/model])
+
+(defn mask-secrets
+  "`row` with each declared secret replaced by its mask, the form it takes in a response."
+  [row]
+  (reduce (fn [row [path _]]
+            (update-at row path (each-leaf #(cond-> % (u.secret/secret? %) u.secret/mask))))
+          row
+          (secret-columns (t2/model row))))
+
+(defn with-stored-secrets
+  "`incoming`, a `model` row as a request supplies it, with each masked secret replaced by the Secret at the same
+  path in `stored`. A client that echoes back the mask it was shown keeps the stored credential, still bound to the
+  destination it was saved for; a value that is not a mask is a fresh credential and is kept as given.
+
+  An update does this on its own (see [[define-secrets]]); this is for a read-only use of a request's values, such
+  as a connection test against an existing row."
+  [model incoming stored]
+  (let [stored-at (fn [path k] (let [m (get-in stored path)]
+                                 ;; a request body arrives keywordized where the stored map is string-keyed
+                                 (or (get m k) (get m (u/qualified-name k)))))]
+    (reduce (fn [incoming [path _]]
+              (update-at incoming path
+                         (fn [v]
+                           (if (map? v)
+                             (reduce-kv (fn [m k leaf]
+                                          (cond-> m
+                                            (and (u.secret/masked? leaf) (u.secret/secret? (stored-at path k)))
+                                            (assoc k (stored-at path k))))
+                                        v v)
+                             (if (and (u.secret/masked? v) (u.secret/secret? (get-in stored path)))
+                               (get-in stored path)
+                               v)))))
+            incoming
+            (secret-columns model))))
+
+(defn restore-masked-secrets
+  "The instance an update is about to write, with each masked secret among its changes replaced by the Secret stored
+  in the row: a client echoing back the mask keeps the credential, still bound to where it was saved. Public only
+  because [[define-secrets]] expands to a call to it."
+  [instance]
+  (let [model   (t2/model instance)
+        changes (t2/changes instance)
+        stored  (t2/original instance)]
+    (reduce (fn [instance [[column] _]]
+              (cond-> instance
+                (contains? changes column)
+                (assoc column (get (with-stored-secrets model (select-keys changes [column]) stored) column))))
+            instance
+            (secret-columns model))))
+
+(defn normalize-secret-columns
+  "A [[define-secrets]] declaration with each column path as a vector. Public only because [[define-secrets]] expands
+  to a call to it."
+  [column->audience]
+  (update-keys column->audience #(if (keyword? %) [%] (vec %))))
+
+(defmacro define-secrets
+  "Declare the secrets `model` stores, as a map of column path to audience:
+
+    (define-secrets :model/Channel
+      {[:details :auth-info] [:map [:url ::u.secret/url]]})
+
+    (define-secrets :model/CloudMigration
+      {:upload_url {}})
+
+  A path is a column, or a path into a JSON column. What it holds is the secret, or a map with one secret per value.
+  The audience is a Malli map schema selected from the map the secret lives in -- the row for a column, the parent
+  map for a nested path -- or `{}` for a credential whose destination is fixed rather than configured. A column not
+  declared is not a secret.
+
+  Reading the model returns each secret as a [[metabase.util.secret/secret]] bound to its audience, or unbound when
+  the column was selected without the row it lives in. Writing one back opens it against the map it is written into,
+  refusing a Secret bound elsewhere; a plain value writes as a fresh credential, and an update carrying the mask a
+  response showed keeps the stored one. JSON encoding masks each secret."
+  {:style/indent 1}
+  [model column->audience]
+  `(do
+     (methodical/defmethod secret-columns ~model
+       [~'_model]
+       (normalize-secret-columns ~column->audience))
+     (methodical/defmethod t2.transformed/transforms :around ~model
+       [model#]
+       (secret-transforms model# (~'next-method model#)))
+     (t2.u/maybe-derive ~model :toucan2.tools.transformed/transformed.model)
+     ;; an around method needs a primary to wrap; a model without a before-update of its own gets an identity one,
+     ;; which a later define-before-update on the model replaces
+     (when-not (contains? (methodical/primary-methods t2.before-update/before-update) ~model)
+       (t2/define-before-update ~model [row#] row#))
+     (methodical/defmethod t2.before-update/before-update :around ~model
+       [model# row#]
+       (~'next-method model# (restore-masked-secrets row#)))
+     (derive ~model ::has-secrets)))
 
 ;;; TODO (Cam 10/27/25) -- this stuff should be moved into a different module instead of the general models interface,
 ;;; either `queries` or a new module along with [[metabase.models.visualization-settings]].
@@ -878,6 +1106,11 @@
 (json/add-encoder
  Instance
  #'to-json)
+
+(methodical/defmethod to-json :around ::has-secrets
+  "A model with [[define-secrets]] encodes each secret as its mask."
+  [instance json-generator]
+  (next-method (mask-secrets instance) json-generator))
 
 ;;;; etc
 

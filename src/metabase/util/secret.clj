@@ -150,7 +150,11 @@
   (mask [this]
         "A rendering of this secret that is safe to return over the API.")
   (bound-audience [this]
-                  "The canonical audience this secret is bound to, or `nil` if it is not bound to a network peer."))
+                  "The canonical audience this secret is bound to, or `nil` if it is not bound to a network peer.")
+  (bind [this schema record]
+        "A copy of this secret bound to the audience `schema` selects from `record`, keeping the plaintext and the
+    prefix length. For a secret created without row context, such as one a column transform produced, once the row
+    it lives in is known. Throws if this secret is already bound: re-binding would re-aim it."))
 
 (defn- assert-same-audience!
   "Throw a 400 with `:error-code :secret-audience-mismatch` unless `requested` names the audience `bound`, comparing
@@ -205,6 +209,13 @@
       mask-string))
 
   (bound-audience [_this] audience)
+
+  (bind [_this schema record]
+    (when (some? audience)
+      (throw (ex-info "This secret is already bound to an audience and cannot be re-bound."
+                      {:error-code :secret-already-bound
+                       :bound      audience})))
+    (Secret. value-fn schema (canonical-audience schema record) prefix-length))
 
   Object
   (toString [_this] (trs "<< REDACTED SECRET >>"))
@@ -274,6 +285,13 @@
   (if (secret? v)
     (derive-with v f)
     (f v)))
+
+(defn masked?
+  "Whether `v` is a String produced by [[mask]], i.e. a client echoed back the mask it was shown rather than supplying
+  a new value. A data question only: whether a stored secret may then be reused is decided by the audience check, so
+  a forged mask authorizes nothing and at worst is treated as a freshly supplied value."
+  [v]
+  (boolean (and (string? v) (str/ends-with? v mask-string))))
 
 (mr/def ::secret
   "An instance of a metabase.util.secret.ISecret."

@@ -8,6 +8,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.secret :as u.secret]
    [toucan2.core :as t2]))
 
 (comment
@@ -244,3 +245,74 @@
                       :topic    :channel-update
                       :user_id  (mt/user->id :crowberto)}
                      (mt/latest-audit-log-entry :channel-update))))))))))
+
+;;; ---------------------------------------------- stored auth secrets ----------------------------------------------
+
+(def ^:private http-details
+  {:url         "https://hooks.example.com/abc"
+   :auth-method "header"
+   :auth-info   {"Authorization" "Bearer token-value"}})
+
+(deftest http-channel-auth-info-is-masked-in-responses-test
+  (mt/with-temp [:model/Channel {id :id} {:name "prod-webhook" :type :channel/http :details http-details}]
+    (testing "GET masks the auth values"
+      (is (= {:Authorization u.secret/mask-string}
+             (get-in (mt/user-http-request :crowberto :get 200 (str "channel/" id)) [:details :auth-info]))))
+    (testing "and so does the listing"
+      (is (= {:Authorization u.secret/mask-string}
+             (->> (mt/user-http-request :crowberto :get 200 "channel")
+                  (filter #(= id (:id %)))
+                  first :details :auth-info))))))
+
+(deftest http-channel-put-echoing-the-mask-keeps-the-stored-secret-test
+  (mt/with-temp [:model/Channel {id :id} {:name "prod-webhook" :type :channel/http :details http-details}]
+    (testing "a client that sends the mask back keeps the stored value, and may change anything but the URL"
+      (mt/user-http-request :crowberto :put 200 (str "channel/" id)
+                            {:type    "channel/http"
+                             :details (assoc http-details
+                                             :auth-method "query-param"
+                                             :auth-info   {"Authorization" u.secret/mask-string})})
+      (let [{:keys [details]} (t2/select-one :model/Channel id)]
+        (is (= "query-param" (:auth-method details)))
+        (is (= "Bearer token-value" (u.secret/expose (get-in details [:auth-info "Authorization"]) details)))))
+    (testing "but moving the URL while echoing the mask is refused, and nothing changes"
+      (let [resp (mt/user-http-request :crowberto :put 400 (str "channel/" id)
+                                       {:type    "channel/http"
+                                        :details (assoc http-details
+                                                        :url       "https://evil.example.com/abc"
+                                                        :auth-info {"Authorization" u.secret/mask-string})})]
+        (is (= "secret-audience-mismatch" (:error-code resp)))
+        (is (= "https://hooks.example.com/abc" (get-in (t2/select-one :model/Channel id) [:details :url])))))
+    (testing "moving the URL with a fresh value is fine"
+      (mt/user-http-request :crowberto :put 200 (str "channel/" id)
+                            {:type    "channel/http"
+                             :details (assoc http-details
+                                             :url       "https://new.example.com/abc"
+                                             :auth-info {"Authorization" "Bearer new-token"})})
+      (let [{:keys [details]} (t2/select-one :model/Channel id)]
+        (is (= "https://new.example.com/abc" (:url details)))
+        (is (= "Bearer new-token" (u.secret/expose (get-in details [:auth-info "Authorization"]) details)))))))
+
+(deftest http-channel-test-with-stored-secret-test
+  (mt/with-temporary-setting-values [http-channel-allowed-networks :allow-all]
+    (channel.http-test/with-server [url [channel.http-test/post-200]]
+      (let [hook (str url (:path channel.http-test/post-200))]
+        (mt/with-temp [:model/Channel {id :id} {:name    "prod-webhook"
+                                                :type    :channel/http
+                                                :details (assoc http-details :url hook)}]
+          (testing "testing an existing channel with the mask echoed back uses the stored value"
+            (is (= {:ok true}
+                   (mt/user-http-request :crowberto :post 200 "channel/test"
+                                         {:id      id
+                                          :type    "channel/http"
+                                          :details (assoc http-details
+                                                          :url       hook
+                                                          :auth-info {"Authorization" u.secret/mask-string})}))))
+          (testing "but not against a different URL: the refusal reaches the client as such"
+            (let [resp (mt/user-http-request :crowberto :post 400 "channel/test"
+                                             {:id      id
+                                              :type    "channel/http"
+                                              :details (assoc http-details
+                                                              :url       (str hook "/elsewhere")
+                                                              :auth-info {"Authorization" u.secret/mask-string})})]
+              (is (= "secret-audience-mismatch" (:error-code (:data resp)))))))))))

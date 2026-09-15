@@ -15,7 +15,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.secret :as u.secret]))
 
 (def ^:private image-width
   "Maximum width of the rendered PNG of HTML to be sent to HTTP Content that exceeds this width (e.g. a table with
@@ -53,25 +54,28 @@
                       {:status-code 400})))))
 
 (mu/defmethod channel/send! :channel/http
-  [{{:keys [url method auth-method auth-info]} :details} :- HTTPChannel
+  [{{:keys [url method auth-method auth-info] :as details} :details} :- HTTPChannel
    request]
   (let [strategy (channel.settings/http-channel-allowed-networks)
         resolver (u.http/network-policy-dns-resolver strategy)]
     (check-url! strategy url)
-    (let [req (-> (merge
-                   {:accept       :json
-                    :content-type :json
-                    :method       :post}
-                   (when method
-                     {:method (keyword method)})
-                   (cond-> request
-                     (= "request-body" auth-method) (update :body merge auth-info)
-                     (= "header" auth-method)       (update :headers merge auth-info)
-                     (= "query-param" auth-method)  (update :query-params merge auth-info)))
-                  (assoc :url url)
-                  ;; Remove an incoming resolver under :allow-all; rendered requests must not control
-                  ;; DNS resolution.
-                  (u/assoc-dissoc :dns-resolver resolver))]
+    ;; a stored auth value is a Secret bound to the URL it was saved with; it is opened here against the very details
+    ;; it is about to be sent with, so a moved URL is refused before anything reaches the network
+    (let [auth-info (update-vals auth-info #(u.secret/maybe-expose % details))
+          req       (-> (merge
+                         {:accept       :json
+                          :content-type :json
+                          :method       :post}
+                         (when method
+                           {:method (keyword method)})
+                         (cond-> request
+                           (= "request-body" auth-method) (update :body merge auth-info)
+                           (= "header" auth-method)       (update :headers merge auth-info)
+                           (= "query-param" auth-method)  (update :query-params merge auth-info)))
+                        (assoc :url url)
+                        ;; Remove an incoming resolver under :allow-all; rendered requests must not control
+                        ;; DNS resolution.
+                        (u/assoc-dissoc :dns-resolver resolver))]
       (http/request (cond-> req
                       (or (map? (:body req))
                           (sequential? (:body req))) (update :body json/encode))))))

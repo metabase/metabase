@@ -134,10 +134,18 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/test"
-  "Test a channel connection"
+  "Test a channel connection. With an `id`, a masked secret in `details` stands for the one stored on that channel, so
+  an existing channel can be re-tested without re-entering its credentials; the stored value is only ever sent to the
+  URL it was saved for."
   [_route-params
    _query-params
-   {:keys [type details]} :- (channel-body-schema
-                              [[:type ChannelType]])]
+   {:keys [id type details]} :- (channel-body-schema
+                                 [[:id   {:optional true} ms/PositiveInt]
+                                  [:type ChannelType]])]
   (perms/check-has-application-permission :setting)
-  (test-channel-connection! type details))
+  (let [details (if id
+                  (:details (mi/with-stored-secrets :model/Channel
+                              {:details details}
+                              (api/write-check (channel.db/channel id))))
+                  details)]
+    (test-channel-connection! type details)))
