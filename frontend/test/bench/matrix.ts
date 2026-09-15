@@ -189,6 +189,12 @@ function spreadPercent(values: number[]) {
         coldLargestPaintMs: cold.median.largestContentfulPaintMs,
         coldPageReadyMs: cold.median.pageReadyMs,
         warmPageReadyMs: required(warm.secondLoad, "secondLoad").pageReadyMs,
+        // The same two readings for the visits that follow, so a returning
+        // user's page is measured by when it draws rather than by
+        // DOMContentLoaded alone.
+        warmLargestPaintMs: required(warm.secondLoad, "secondLoad").largestContentfulPaintMs,
+        steadyLargestPaintMs: required(warm.steady, "steady").largestContentfulPaintMs,
+        steadyPageReadyMs: required(warm.steady, "steady").pageReadyMs,
         locale: cold.locale,
         scripts: cold.scripts,
         scriptKb: cold.scriptKb,
