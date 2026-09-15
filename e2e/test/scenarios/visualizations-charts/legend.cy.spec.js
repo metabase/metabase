@@ -151,7 +151,9 @@ describe("scenarios > visualizations > legend", () => {
     }).then(({ dashboard }) => H.visitDashboard(dashboard.id));
 
     H.getDashboardCard(0).within(() =>
-      H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first().realHover(),
+      H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY)
+        .first()
+        .realHover({ scrollBehavior: "nearest" }),
     );
     H.assertEChartsTooltip({
       header: "2025",
@@ -201,7 +203,9 @@ describe("scenarios > visualizations > legend", () => {
     });
 
     H.getDashboardCard(0).within(() =>
-      H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first().realHover(),
+      H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY)
+        .first()
+        .realHover({ scrollBehavior: "nearest" }),
     );
     H.assertEChartsTooltip({
       header: "2025",
@@ -595,7 +599,7 @@ function hideSeries(legendItemIndex) {
   cy.findAllByTestId("legend-item")
     .eq(legendItemIndex)
     .findByLabelText("Hide series")
-    .click();
+    .click({ scrollBehavior: "nearest" });
 }
 
 function showSeries(legendItemIndex) {
@@ -603,7 +607,7 @@ function showSeries(legendItemIndex) {
   cy.findAllByTestId("legend-item")
     .eq(legendItemIndex)
     .findByLabelText("Show series")
-    .click();
+    .click({ scrollBehavior: "nearest" });
 }
 
 function getPieChartLegendItemPercentage(sliceName) {
