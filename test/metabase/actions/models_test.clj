@@ -5,8 +5,10 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.actions.models :as action]
+   [metabase.actions.schema :as actions.schema]
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
+   [metabase.lib.core :as lib]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -205,17 +207,19 @@
   (mt/with-actions-enabled
     (mt/with-actions [{model-id :id, model-db-id :database_id} {:type :model, :dataset_query (mt/mbql-query categories)}]
       (testing "insert! derives :database_id from the query's database"
-        (let [action-id (action/insert! {:type          :query
-                                         :name          "derive db insert"
-                                         :model_id      model-id
-                                         :database_id   Integer/MAX_VALUE   ; bogus; the query targets the model DB
-                                         :dataset_query (mt/native-query {:query "update categories set name = 'x' where id = 1"})})]
+        (let [action-id (action/insert! (lib/normalize ::actions.schema/action.for-insert
+                                                       {:type          :query
+                                                        :name          "derive db insert"
+                                                        :model_id      model-id
+                                                        :database_id   Integer/MAX_VALUE   ; bogus; the query targets the model DB
+                                                        :dataset_query (mt/native-query {:query "update categories set name = 'x' where id = 1"})}))]
           (is (= model-db-id (:database_id (action/select-action :id action-id))))))
       (testing "update! re-derives :database_id from the query"
-        (let [action-id (action/insert! {:type          :query
-                                         :name          "derive db update"
-                                         :model_id      model-id
-                                         :dataset_query (mt/native-query {:query "update categories set name = 'x' where id = 1"})})
+        (let [action-id (action/insert! (lib/normalize ::actions.schema/action.for-insert
+                                                       {:type          :query
+                                                        :name          "derive db update"
+                                                        :model_id      model-id
+                                                        :dataset_query (mt/native-query {:query "update categories set name = 'x' where id = 1"})}))
               existing  (action/select-action :id action-id)]
           ;; a :database_id-only update can't repoint the action away from the query's database
           (action/update! {:id action-id, :database_id Integer/MAX_VALUE} existing)
@@ -339,7 +343,7 @@
     (mt/with-actions-enabled
       (mt/with-actions [{model-id :id} {:type :model, :dataset_query (mt/mbql-query foo)}]
         (let [action-data         {:type     :implicit
-                                   :kind     "row/create"
+                                   :kind     :row/create
                                    :name     "create foo"
                                    :model_id model-id}
               action-id           (action/insert! action-data)
@@ -360,7 +364,7 @@
     (mt/with-actions-enabled
       (mt/with-actions [{model-id :id} {:type :model, :dataset_query (mt/mbql-query foo)}]
         (let [action-data {:type     :implicit
-                           :kind     "row/create"
+                           :kind     :row/create
                            :name     "create foo"
                            :model_id model-id}
               action-id   (action/insert! action-data)

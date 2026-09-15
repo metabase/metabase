@@ -14,8 +14,7 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.settings.core :as setting]
    [metabase.util.malli :as mu]
-   [metabase.util.memoize :as memoize]
-   [metabase.util.performance :as perf]))
+   [metabase.util.memoize :as memoize]))
 
 (set! *warn-on-reflection* true)
 
@@ -32,7 +31,7 @@
    Returns metrics as metadata objects with :lib/type :metadata/metric."
   [metadata-spec]
   (try
-    (lib-metric.db/metrics (perf/select-keys metadata-spec [:id :name :table-ids :card-ids]))
+    (lib-metric.db/metrics metadata-spec)
     (catch Throwable e
       (throw (ex-info "Error fetching metrics with spec"
                       {:metadata-spec metadata-spec}
@@ -63,7 +62,7 @@
   "Fetch measures matching spec for dimension extraction."
   [metadata-spec]
   (try
-    (lib-metric.db/measures (perf/select-keys metadata-spec [:id :name :table-ids]))
+    (lib-metric.db/measures metadata-spec)
     (catch Throwable e
       (throw (ex-info "Error fetching measures for dimensions"
                       {:metadata-spec metadata-spec}

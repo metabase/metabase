@@ -16,26 +16,18 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [empty?]]))
 
-(mr/def ::native-query-document-value
-  "A driver's compiled native query: a native query document, or the driver's own shape, as `:metabase.lib.schema/compiled-native-query` accepts it."
-  [:or
-   :metabase.lib.schema/native-query-document-value
-   [:schema {::mr/deliberately-open true
-             :description "a driver's native query in the driver's own shape, e.g. a keyword-keyed map from a JSON request"}
-    :some]])
-
 (mr/def ::compiled
   "Compiled query and parameters (SQL or whatever native query language)."
   [:map {::mr/deliberately-open true
          :description "drivers add their own keys to a compiled query, e.g. Mongo's `:collection`, `:projections` and `:mbql?` or BigQuery's `:qp/table-name`, and an already-native query compiles to its whole native stage"}
-   [:query ::native-query-document-value]
+   [:query ::lib.schema/driver-native-query]
    [:params {:optional true} [:maybe [:sequential :metabase.lib.schema.common/field-value]]]])
 
 (mr/def ::compiled-with-inlined-parameters
   "Query with inlined parameters (:params must be empty)"
   [:map {::mr/deliberately-open true
          :description "drivers add their own keys to a compiled query, e.g. Mongo's `:collection`, `:projections` and `:mbql?` or BigQuery's `:qp/table-name`"}
-   [:query ::native-query-document-value]
+   [:query ::lib.schema/driver-native-query]
    [:params {:optional true} [:maybe [:sequential {:max 0} :metabase.lib.schema.common/field-value]]]])
 
 (mr/def ::query-with-compiled-query

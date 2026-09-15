@@ -206,9 +206,7 @@
 (mu/defn table-identifier :- :string
   "Returns a string that can be used as a table identifier in SQL, including a schema if provided."
   [{:keys [schema name] :as _table}
-   :- [:map {:closed true}
-       [:schema {:optional true} [:maybe :string]]
-       [:name :string]]]
+   :- [:or :metabase.warehouse-schema.schema/table :metabase.warehouse-schema.schema/table.update]]
   (if (str/blank? schema)
     name
     (str schema "." name)))
@@ -747,13 +745,13 @@
 
 (defn- add-columns! [driver database table field->type & args]
   (when (seq field->type)
-    (apply driver/add-columns! driver (:id database) (table-identifier (select-keys table [:schema :name]))
+    (apply driver/add-columns! driver (:id database) (table-identifier table)
            (field->db-type driver field->type)
            args)))
 
 (defn- alter-columns! [driver database table field->new-type & args]
   (when (seq field->new-type)
-    (apply driver/alter-table-columns! driver (:id database) (table-identifier (select-keys table [:schema :name]))
+    (apply driver/alter-table-columns! driver (:id database) (table-identifier table)
            (field->db-type driver field->new-type)
            args)))
 
@@ -854,8 +852,8 @@
                                     :upload-seconds    (u/since-ms timer)}]
             (try
               (when replace-rows?
-                (driver/truncate! driver (:id database) (table-identifier (select-keys table [:schema :name]))))
-              (driver/insert-into! driver (:id database) (table-identifier (select-keys table [:schema :name])) column-names parsed-rows)
+                (driver/truncate! driver (:id database) (table-identifier table)))
+              (driver/insert-into! driver (:id database) (table-identifier table) column-names parsed-rows)
               (catch Throwable e
                 (throw (ex-info (ex-message e) {:status-code 422}))))
             (when create-auto-pk?
@@ -943,7 +941,7 @@
   [table & {:keys [archive-cards?]}]
   (let [database   (table/database table)
         driver     (driver.u/database->driver database)
-        table-name (table-identifier (select-keys table [:schema :name]))]
+        table-name (table-identifier table)]
     (check-can-delete table database)
     ;; Attempt to delete the underlying data from the customer database.
     ;; We perform this before marking the table as inactive in the app db so that even if it false, the table is still

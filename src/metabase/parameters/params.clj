@@ -227,7 +227,7 @@
   parameter target's Field ID when the target is already field-id-based (nil when it must be resolved from filterable
   columns)."
   [:map {:closed true}
-   [:dashcard              ::parameters.schema/parameter-mapping-with-dashcard.dashcard]
+   [:dashcard              :metabase.dashboards.schema/dashboard-card]
    [:param-mapping         ::parameters.schema/parameter-mapping-with-dashcard]
    [:param-target-field-id [:maybe ::lib.schema.id/field]]])
 
@@ -374,7 +374,7 @@
 (mu/defn- mapping->param-dashcard-info :- ::param-dashcard-info
   "Build the `param-dashcard-info` for a parameter `mapping` on `dashcard`, resolving `:param-target-field-id` when the
   target is already field-id-based."
-  [dashcard :- ::parameters.schema/parameter-mapping-with-dashcard.dashcard
+  [dashcard :- :metabase.dashboards.schema/dashboard-card
    mapping  :- ::parameters.schema/parameter-mapping-with-dashcard]
   (let [card (find-card-for-mapping dashcard mapping)]
     {:dashcard              dashcard
@@ -405,7 +405,7 @@
 
 (mu/defn dashcards->param-id->field-ids* :- [:map-of ::lib.schema.parameter/id [:set ::lib.schema.id/field]]
   "Return map of parameter ids to mapped field ids."
-  [dashcards :- [:sequential ::parameters.schema/parameter-mapping-with-dashcard.dashcard]]
+  [dashcards :- [:sequential :metabase.dashboards.schema/dashboard-card]]
   (let [param-dashcard-infos (into []
                                    (mapcat (fn [dashcard]
                                              (for [mapping (:parameter_mappings dashcard)]
@@ -419,8 +419,8 @@
 (mu/defn- dashcards->param-id->field-ids :- [:map-of ::lib.schema.parameter/id [:set ::lib.schema.id/field]]
   "Return a map of Parameter ID to the set of Field IDs referenced by parameters in the Cards on the given `dashcards`,
   or `nil` if none are referenced. `dashcards` must be hydrated with :card."
-  [dashcards :- [:sequential ::parameters.schema/parameter-mapping-with-dashcard.dashcard]]
-  (transduce (comp (map #(some-> (:card %) (select-keys [:dataset_query])))
+  [dashcards :- [:sequential :metabase.dashboards.schema/dashboard-card]]
+  (transduce (comp (map :card)
                    (map card->template-tag-id->field-ids))
              (partial merge-with set/union)
              (dashcards->param-id->field-ids* dashcards)
@@ -429,7 +429,7 @@
 (mu/defn dashcards->param-field-ids :- [:set ::lib.schema.id/field]
   "Return a set of Field IDs referenced by parameters in Cards in the given `dashcards`, or `nil` if
   none are referenced. `dashcards` must be hydrated with :card."
-  [dashcards :- [:sequential ::parameters.schema/parameter-mapping-with-dashcard.dashcard]]
+  [dashcards :- [:sequential :metabase.dashboards.schema/dashboard-card]]
   (into #{} cat (vals (dashcards->param-id->field-ids dashcards))))
 
 (mu/defn dashboard-param->field-ids :- [:set ::lib.schema.id/field]
@@ -464,14 +464,14 @@
 
   Mostly used for determining Fields referenced by Cards for purposes other than processing queries. Filters out
   `:field` clauses which use names."
-  [card :- [:maybe [:select-keys :metabase.queries.schema/card [:dataset_query]]]]
+  [card :- [:maybe :metabase.queries.schema/card]]
   (some-> card :dataset_query not-empty lib-be/normalize-query lib/all-template-tags-id->field-ids))
 
 (methodical/defmethod t2/simple-hydrate [:model/Card :param_fields]
   "Add a `:param_fields` map (template-tag ID -> vector of Fields) for all of the Fields referenced by the parameters
   of a Card."
   [_model k card]
-  (let [param-fields (or (some-> card (select-keys [:dataset_query]) card->template-tag-id->field-ids param-field-ids->fields)
+  (let [param-fields (or (some-> card card->template-tag-id->field-ids param-field-ids->fields)
                          {})]
     (assoc card k param-fields)))
 
@@ -479,7 +479,7 @@
   "Returns a set of all Field IDs referenced by template tags on this card.
 
   To get these IDs broken out by the Param ID that references them, use [[card->template-tag-param-id->field-ids]]."
-  [card :- [:maybe [:select-keys :metabase.queries.schema/card [:dataset_query]]]]
+  [card :- [:maybe :metabase.queries.schema/card]]
   (some-> card :dataset_query not-empty lib-be/normalize-query lib/all-template-tag-field-ids not-empty))
 
 (def ^:private ParamWithMapping
@@ -494,13 +494,7 @@
   "Return map of Dashboard parameter key -> param with resolved `:mappings` (see the `:resolved-params` hydration
   in [[metabase.dashboards.models.dashboard]] for an example). Callers that only need the mappings (e.g. the QP) can
   pass slim dashcards instead of paying for the full hydration."
-  [dashboard :- [:or
-                 :metabase.dashboards.schema/dashboard
-                 [:map {:closed true}
-                  [:parameters [:maybe [:sequential ::parameters.schema/parameter]]]
-                  [:dashcards [:maybe [:sequential [:or
-                                                    :metabase.dashboards.schema/dashboard-card
-                                                    ::parameters.schema/parameter-mapping-with-dashcard.dashcard]]]]]]]
+  [dashboard :- :metabase.dashboards.schema/dashboard]
   (let [param-key->mappings (apply
                              merge-with set/union
                              (for [dashcard (:dashcards dashboard)

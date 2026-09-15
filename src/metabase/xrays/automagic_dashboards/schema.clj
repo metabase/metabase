@@ -400,22 +400,42 @@
    [:auto_apply_filters {:optional true} :boolean]
    [:width              {:optional true} [:enum "fixed" "full"]]])
 
+(mr/def ::transform-card.layout
+  "The section layout keys [[metabase.xrays.transforms.dashboard]] assocs onto each card it lays out."
+  [:map {:closed true}
+   [:group         :string]
+   [:width         number?]
+   [:height        number?]
+   [:card-score    number?]
+   [:position      number?]
+   [:title         {:optional true} [:maybe :string]]
+   [:visualization {:optional true} [:tuple [:or :keyword :string]]]
+   [:text          {:optional true} [:maybe :string]]])
+
+(mr/def ::transform-card
+  "A card [[metabase.xrays.transforms.dashboard]] lays out: a saved Card, or an unsaved source-table or text card, with its section layout keys."
+  [:or
+   [:merge :metabase.queries.schema/card ::transform-card.layout]
+   [:merge :metabase.queries.schema/card.update ::transform-card.layout]])
+
 (mr/def ::card-template
   "A grounded, combined metric augmented with the extra keys the dashboard-populating code
-  ([[metabase.xrays.automagic-dashboards.populate]]) reads off a card before rendering it. A plain text/group-heading
-  card carries none of the metric keys, so they're all optional here."
-  [:merge
-   ::combined-metric
-   [:map {:closed true}
-    [:metric-name            {:optional true} :string]
-    [:metric-title           {:optional true} :string]
-    [:metric-score           {:optional true} nat-int?]
-    [:metric-definition      {:optional true} ::grounded-metric.definition]
-    [:dataset_query          {:optional true} ::query]
-    [:y_label                {:optional true} :string]
-    [:series_labels          {:optional true} [:sequential :string]]
-    [:text                   {:optional true} :string]
-    [:visualization-settings {:optional true} ms/VisualizationSettings]]])
+  ([[metabase.xrays.automagic-dashboards.populate]]) reads off a card before rendering it, or a card a transform
+  dashboard lays out. A plain text/group-heading card carries none of the metric keys, so they're all optional here."
+  [:or
+   [:merge
+    ::combined-metric
+    [:map {:closed true}
+     [:metric-name            {:optional true} :string]
+     [:metric-title           {:optional true} :string]
+     [:metric-score           {:optional true} nat-int?]
+     [:metric-definition      {:optional true} ::grounded-metric.definition]
+     [:dataset_query          {:optional true} ::query]
+     [:y_label                {:optional true} :string]
+     [:series_labels          {:optional true} [:sequential :string]]
+     [:text                   {:optional true} :string]
+     [:visualization-settings {:optional true} ms/VisualizationSettings]]]
+   ::transform-card])
 
 (mr/def ::dashboard-template
   "This is somewhat different [[metabase.xrays.automagic-dashboards.schema/DashboardTemplate]], I haven't exactly worked

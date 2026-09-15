@@ -748,7 +748,7 @@
   - Additional options such as how many cards to show, a cell query (a drill through), etc."
   [entity opts]
   (automagic-analysis-method
-   (lib/normalize ::ads/root.entity entity)
+   (m/assoc-some (lib/normalize ::ads/root.entity entity) :xrays/database-id (:xrays/database-id entity))
    (lib/normalize ::automagic-analysis.opts opts)))
 
 (defmethod automagic-analysis-method :model/Table

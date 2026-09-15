@@ -4,10 +4,10 @@
    [metabase.appearance.core :as appearance]
    [metabase.driver :as driver]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.system.core :as system]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.warehouses.schema :as warehouses.schema])
   (:import
    (java.time Instant)
    (java.time.format DateTimeFormatter)))
@@ -19,7 +19,7 @@
   multiple connections from multiple metabases remain distinct. The UUID will have the first character of each section taken.
 
   (schema-name {:id 234} \"143dd8ce-e116-4c7f-8d6d-32e99eaefbbc\") ->  \"metabase_cache_1e483_1\""
-  [{:keys [id] :as _database} :- [:map {:closed true} [:id ::lib.schema.id/database]]
+  [{:keys [id] :as _database} :- ::warehouses.schema/database-or-metadata
    site-uuid-string           :- ::lib.schema.common/non-blank-string]
   (let [instance-string (apply str (map first (str/split site-uuid-string #"-")))]
     (format "metabase_cache_%s_%s" instance-string id)))

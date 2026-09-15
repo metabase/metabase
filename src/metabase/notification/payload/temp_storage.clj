@@ -198,7 +198,12 @@
 (def ^:private FileContext
   "A debugging label for the data [[notification-rff]] is storing: only ever `pr-str`'d into a log line or frozen
   into a spill file's preamble, never read back by key."
-  [:map-of :string [:or :string :keyword symbol? number? :boolean nil?]])
+  [:map {:closed true}
+   [:dashboard_id {:optional true} [:maybe pos-int?]]
+   [:card_id      {:optional true} [:maybe pos-int?]]
+   [:dashcard_id  {:optional true} [:maybe pos-int?]]
+   [:card-id      {:optional true} [:maybe pos-int?]]
+   [:context      {:optional true} symbol?]])
 
 (defn make-resident-budget
   "Create a shared [[ResidentBudget]] for one notification. `limits` is a map of `:per-card`/`:resident-cap`/`:floor`

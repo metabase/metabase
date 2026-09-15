@@ -168,7 +168,7 @@
   ([card      :- :metabase.queries.schema/card
     field-ref :- [:or :mbql.clause/field :mbql.clause/expression]
     opts      :- [:maybe ::values-from-card-query.options]]
-   (values-from-card* (card-query (:id card) (lib-be/normalize-query (:dataset_query card))) field-ref opts)))
+   (values-from-card* (card-query (:id card) (some-> (:dataset_query card) not-empty lib-be/normalize-query)) field-ref opts)))
 
 (defn- can-get-card-values?
   "Whether the prebuilt value-source `query` exposes the `value-field` column."
@@ -208,7 +208,7 @@
                    (when-not (mi/can-read? card)
                      (throw (ex-info "You don't have permissions to do that." {:status-code 403})))
                    (or (when-not (:archived card)
-                         (when-let [query (card-query (:id card) (lib-be/normalize-query (:dataset_query card)))]
+                         (when-let [query (card-query (:id card) (some-> (:dataset_query card) not-empty lib-be/normalize-query))]
                            (when (can-get-card-values? query (:value_field config))
                              (card-values query config query-string))))
                        (default-case-thunk)))
@@ -257,7 +257,7 @@
   (when-let [label-field (:label_field config)]
     (when-let [card (parameters.db/card (:card_id config))]
       (when (and (not (:archived card)) (mi/can-read? card))
-        (when-let [query (card-query (:id card) (lib-be/normalize-query (:dataset_query card)))]
+        (when-let [query (card-query (:id card) (some-> (:dataset_query card) not-empty lib-be/normalize-query))]
           (when (can-get-card-values? query (:value_field config))
             (first (:values (values-from-card* query
                                                (lib/->mbql5 (:value_field config))

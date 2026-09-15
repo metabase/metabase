@@ -28,6 +28,7 @@
   (possibly nested) operator clause, or a subquery."
   {::expr  [:or :keyword :string number? :boolean nil? (ms/InstanceOfClass java.time.temporal.Temporal)
             [:sequential [:ref ::expr]]
+            [:set [:ref ::expr]]
             [:ref ::query]]
    ::query [:map {:closed true}
             [:select     {:optional true} [:or [:ref ::expr] [:sequential [:ref ::expr]]]]

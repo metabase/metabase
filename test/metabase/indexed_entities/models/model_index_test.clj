@@ -210,7 +210,8 @@
           (testing (str "scenario: " scenario)
             (let [[pk-ref value-ref] (or field-refs
                                          (->> model :result_metadata (map :field_ref)))
-                  [error values]  (#'model-index/fetch-values {:model_id  (u/the-id model)
+                  [error values]  (#'model-index/fetch-values {:id        1
+                                                               :model_id  (u/the-id model)
                                                                :pk_ref    pk-ref
                                                                :value_ref value-ref})]
               (is (nil? error))

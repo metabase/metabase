@@ -32,7 +32,7 @@
 (mu/defn- cards->section
   "Build a section of cards and format them according to what the automagic dashboards code expects."
   [group :- :string
-   cards :- [:sequential [:or :metabase.queries.schema/card SourceTableCard]]]
+   cards :- [:maybe [:sequential [:or :metabase.queries.schema/card SourceTableCard]]]]
   (mapcat (fn [{:keys [name description display] :as card}]
             (cond-> [(assoc card
                             :group         group
@@ -51,8 +51,7 @@
           cards))
 
 (mu/defn- card-for-source-table
-  [table :- [:map {:closed true}
-             [:db_id ::lib.schema.id/database]]]
+  [table :- :metabase.warehouse-schema.schema/table]
   {:pre [(map? table)]}
   {:creator_id             api/*current-user-id*
    :dataset_query          {:type     :query

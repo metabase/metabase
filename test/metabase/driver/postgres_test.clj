@@ -472,7 +472,8 @@
                                                             :nfc-path      ["jsons" "values" "qty"]
                                                             :database-type "integer"})]})
         (let [field-clause [:field
-                            {:binning
+                            {:lib/uuid (str (random-uuid))
+                             :binning
                              {:strategy  :num-bins
                               :num-bins  100
                               :min-value 0.75
@@ -2332,7 +2333,7 @@
                                       (temp-storage/notification-rff
                                        {:budget (temp-storage/make-resident-budget
                                                  {:per-card 5000 :resident-cap Long/MAX_VALUE :floor Long/MAX_VALUE})}
-                                       {"context" "complex-types-in-notification-payload"}))]
+                                       {:context 'complex-types-in-notification-payload}))]
         (is (integer? (:data.rows-file-size results)))
         (is (temp-storage/streaming-temp-file? (-> results :data :rows)))
         (is (=? [1

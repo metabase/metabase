@@ -10,11 +10,6 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
-(mr/def ::dashcard
-  [:map {:closed true}
-   [:id   {:optional true} ::lib.schema.id/dashcard]
-   [:card {:optional true} [:ref ::queries.schema/card]]])
-
 (mr/def ::parameters
   [:sequential
    ;; the same as the normal parameters schema, but type is optional here.
@@ -36,7 +31,7 @@
     [:id                         ::lib.schema.id/dashboard]
     [:moderation_status          {:optional true} [:maybe [:or :keyword :string]]]
     [:resolved-params            {:optional true} [:maybe [:map-of ms/NonBlankString ::parameters.schema/resolved-parameter]]]
-    [:dashcards                  {:optional true} [:maybe [:sequential [:or ::dashcard [:ref ::dashboard-card]]]]]
+    [:dashcards                  {:optional true} [:maybe [:sequential [:ref ::dashboard-card]]]]
     [:tabs                       {:optional true} [:maybe [:sequential ::dashboard-tab]]]
     [:collection_authority_level {:optional true} [:maybe [:or :keyword :string]]]
     [:can_write                  {:optional true} :boolean]
@@ -47,7 +42,7 @@
     [:is_remote_synced           {:optional true} :boolean]
     [:moderation_reviews         {:optional true} [:sequential :metabase.content-verification.schema/moderation-review]]
     [:collection                 {:optional true} [:maybe :metabase.collections.schema/collection-or-root]]
-    [:last_used_param_values     {:optional true} [:maybe [:map-of :string :metabase.users.schema/user-parameter-value.value]]]
+    [:last_used_param_values     {:optional true} [:maybe [:map-of :string [:maybe :metabase.users.schema/user-parameter-value.value]]]]
     [:creator                    {:optional true} [:maybe :metabase.users.schema/user]]
     [:last-edit-info             {:optional true} [:maybe
                                                    [:map {:closed true}

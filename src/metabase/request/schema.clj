@@ -19,7 +19,9 @@
    [:is-group-manager?  {:optional true} :boolean]
    [:permissions-set    {:optional true} [:set :string]]
    [:auth-provider      {:optional true} [:maybe :string]]
-   [:settings           {:optional true} [:maybe [:or ms/UserSettings :string]]]])
+   [:settings           {:optional true} [:maybe [:or ms/UserSettings :string]]]
+   [:token-scopes       {:optional true} [:maybe [:set [:or :keyword :string]]]]
+   [:token-scopes-checked {:optional true} :boolean]])
 
 (mr/def ::json-value
   "A JSON-shaped value: a scalar, a sequence of JSON values, or a string-keyed JSON object."

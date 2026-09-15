@@ -345,7 +345,8 @@
               (is (= [:=
                       [::bigquery.qp/extract :dayofweek expected-identifier nil]
                       [:inline 1]]
-                     (sql.qp/->honeysql :bigquery-cloud-sdk [:= {} [:field {:temporal-unit     :day-of-week
+                     (sql.qp/->honeysql :bigquery-cloud-sdk [:= {} [:field {:lib/uuid          (str (random-uuid))
+                                                                            :temporal-unit     :day-of-week
                                                                             ::add/source-table "ABC"} (:id field)] 1]))))))))))
 
 (deftest reconcile-unix-timestamps-test
@@ -502,7 +503,8 @@
                   :bigquery-cloud-sdk
                   (sql.qp/->honeysql
                    :bigquery-cloud-sdk
-                   [:field {:temporal-unit      :week
+                   [:field {:lib/uuid           (str (random-uuid))
+                            :temporal-unit      :week
                             :base-type          :type/Date
                             ::add/source-table  ::add/source
                             ::add/source-alias  "date"
@@ -549,7 +551,7 @@
               (is (= expected
                      (between->sql [:between
                                     {}
-                                    [:field {::add/source-table (mt/id :checkins)} (mt/id :checkins :date)]
+                                    [:field {:lib/uuid (str (random-uuid)), ::add/source-table (mt/id :checkins)} (mt/id :checkins :date)]
                                     (t/local-date "2019-11-11")
                                     (t/local-date "2019-11-12")]))))
             (testing "Should be able to get temporal type from a `:field` with `:temporal-unit`"
@@ -557,7 +559,8 @@
                            (rest expected))
                      (between->sql [:between
                                     {}
-                                    [:field {::add/source-table (mt/id :checkins)
+                                    [:field {:lib/uuid          (str (random-uuid))
+                                             ::add/source-table (mt/id :checkins)
                                              :temporal-unit     :day} (mt/id :checkins :date)]
                                     (t/local-date "2019-11-11")
                                     (t/local-date "2019-11-12")]))))
@@ -565,7 +568,7 @@
               (is (= ["WHERE `date` BETWEEN ? AND ?" (t/local-date "2019-11-11") (t/local-date "2019-11-12")]
                      (between->sql [:between
                                     {}
-                                    [:field {:base-type :type/Date} "date"]
+                                    [:field {:lib/uuid (str (random-uuid)), :base-type :type/Date} "date"]
                                     (t/local-date-time "2019-11-11T12:00:00")
                                     (t/local-date-time "2019-11-12T12:00:00")]))))))))))
 
@@ -847,7 +850,8 @@
                                           :bigquery-cloud-sdk
                                           [:=
                                            {}
-                                           [:field {:temporal-unit     unit
+                                           [:field {:lib/uuid          (str (random-uuid))
+                                                    :temporal-unit     unit
                                                     ::add/source-table "ABC"} 1]
                                            [:relative-datetime {} -1 unit]])}
                                  {:dialect ::h2x/unquoted-dialect}))))))))))
@@ -872,7 +876,8 @@
                                                        :bigquery-cloud-sdk
                                                        [:=
                                                         {}
-                                                        [:field {:temporal-unit     unit
+                                                        [:field {:lib/uuid          (str (random-uuid))
+                                                                 :temporal-unit     unit
                                                                  ::add/source-table "ABC"} 1]
                                                         [:relative-datetime {} -1 unit]])}
                                               {:dialect ::h2x/unquoted-dialect})]

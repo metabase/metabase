@@ -729,6 +729,14 @@
               [:map-of :string [:ref ::value]]]}}
    ::value])
 
+(mr/def ::driver-native-query
+  "A driver's native query: a native query document, or a form in the driver's own shape such as a keyword-keyed map decoded from a JSON request."
+  [:or
+   ::native-query-document-value
+   [:schema {::mr/deliberately-open true
+             :description "a driver's native query in the driver's own shape, e.g. a keyword-keyed map from a JSON request"}
+    :some]])
+
 (mr/def ::compiled-native-query
   "A native query compiled from this query by [[metabase.query-processor.compile]], ready to hand to the driver.
   `:query` is whatever native form the driver uses -- a string for SQL drivers, a map for Mongo -- so it is only
@@ -739,11 +747,7 @@
   compiled form is the native stage itself, carrying every key a `::stage.native` has."
   [:map {::mr/deliberately-open true
          :description "drivers add their own keys to a compiled query, and an already-native query compiles to its whole native stage"}
-   [:query  [:or
-             ::native-query-document-value
-             [:schema {::mr/deliberately-open true
-                       :description "a driver's native query in the driver's own shape, e.g. a keyword-keyed map from a JSON request"}
-              :some]]]
+   [:query  ::driver-native-query]
    [:params {:optional true} [:maybe [:sequential [:ref ::literal/param-value]]]]])
 
 (def ^:private query-map

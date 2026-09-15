@@ -163,8 +163,9 @@
       (mt/with-temp [:model/Transform transform {:name "Test Transform"
                                                  :source {:type :query
                                                           :query query}
-                                                 :target {:schema "PUBLIC"
-                                                          :name "test_output"}}]
+                                                 :target {:type   "table"
+                                                          :schema "PUBLIC"
+                                                          :name   "test_output"}}]
         (is (= {:card #{}
                 :measure #{}
                 :segment #{}
@@ -186,8 +187,9 @@
       (mt/with-temp [:model/Transform transform {:name "Test Transform"
                                                  :source {:type :query
                                                           :query query}
-                                                 :target {:schema "PUBLIC"
-                                                          :name "test_output"}}]
+                                                 :target {:type   "table"
+                                                          :schema "PUBLIC"
+                                                          :name   "test_output"}}]
         (is (= {:card #{}
                 :measure #{}
                 :segment #{}
@@ -208,8 +210,9 @@
       (mt/with-temp [:model/Transform transform {:name "Test Transform"
                                                  :source {:type :query
                                                           :query query}
-                                                 :target {:schema "PUBLIC"
-                                                          :name "test_output"}}]
+                                                 :target {:type   "table"
+                                                          :schema "PUBLIC"
+                                                          :name   "test_output"}}]
         (is (= {:card #{}
                 :measure #{}
                 :segment #{}
@@ -226,8 +229,9 @@
                                                                           (transforms.tu/source-table-entry "ORDERS" orders-id)]
                                                           :source-database (mt/id)
                                                           :body "..."}
-                                                 :target {:schema "PUBLIC"
-                                                          :name "test_output"}}]
+                                                 :target {:type   "table"
+                                                          :schema "PUBLIC"
+                                                          :name   "test_output"}}]
         (is (= {:table #{products-id orders-id}}
                (calculation/calculate-deps :transform transform)))))))
 
@@ -244,7 +248,8 @@
         (mt/with-temp [:model/Transform transform {:name   "Table Tag Transform"
                                                    :source {:type  :query
                                                             :query query}
-                                                   :target {:schema "PUBLIC"
+                                                   :target {:type   "table"
+                                                            :schema "PUBLIC"
                                                             :name   "test_output"}}]
           (is (=? {:table #(contains? % products-id)} (calculation/calculate-deps :transform transform))))))))
 

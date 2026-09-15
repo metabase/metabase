@@ -112,13 +112,18 @@
   "The placeholder for the Root Collection, which has no row, as `metabase.collections.models.collection.root` builds it."
   [:map {:closed true}
    [:metabase.collections.models.collection.root/is-root? [:= true]]
-   [:authority_level  {:optional true} [:maybe [:or :keyword :string]]]
-   [:id               {:optional true} [:= "root"]]
-   [:name             {:optional true} :string]
-   [:namespace        {:optional true} [:maybe [:or :keyword :string]]]
-   [:is_personal      {:optional true} :boolean]
-   [:is_remote_synced {:optional true} :boolean]
-   [:can_write        {:optional true} :boolean]])
+   [:authority_level     {:optional true} [:maybe [:or :keyword :string]]]
+   [:id                  {:optional true} [:= "root"]]
+   [:name                {:optional true} :string]
+   [:namespace           {:optional true} [:maybe [:or :keyword :string]]]
+   [:is_personal         {:optional true} :boolean]
+   [:is_remote_synced    {:optional true} :boolean]
+   [:can_write           {:optional true} :boolean]
+   [:parent_id           {:optional true} :nil]
+   [:effective_location  {:optional true} [:maybe :string]]
+   [:effective_ancestors {:optional true} [:sequential [:ref ::collection]]]
+   [:can_restore         {:optional true} :boolean]
+   [:can_delete          {:optional true} :boolean]])
 
 (mr/def ::collection-or-root
   "A Collection row, or the Root Collection placeholder."

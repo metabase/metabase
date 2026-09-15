@@ -15,13 +15,9 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.measures.schema]
-   [metabase.native-query-snippets.schema]
    [metabase.premium-features.core :as premium-features]
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
-   [metabase.segments.schema]
-   [metabase.transforms.schema :as transforms.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -136,15 +132,7 @@
   [original-mp     :- ::lib.schema.metadata/metadata-providerable
    start-type      :- ::deps.dependency-types/dependency-types
    start-id        :- ::deps.dependency-types/entity-id
-   previous-object :- [:or
-                       :metabase.warehouses.schema/database
-                       :metabase.warehouse-schema.schema/table
-                       :metabase.warehouse-schema.schema/field
-                       ::queries.schema/card
-                       :metabase.segments.schema/segment
-                       :metabase.measures.schema/measure
-                       :metabase.native-query-snippets.schema/native-query-snippet
-                       ::transforms.schema/transform]
+   previous-object :- ::queries.schema/card
    metadata-type   :- :keyword]
   ;; Notes on metadata providers:
   ;;
@@ -182,8 +170,7 @@
                   :id)
         graph (mbql-graph original-mp)
         cards (dependent-mbql-cards graph start-type start-id)
-        previous-metadata (-> (lib-be/instance->metadata previous-object metadata-type)
-                              (select-keys (mu/map-schema-keys ::lib.schema.metadata/card)))
+        previous-metadata (lib-be/instance->metadata previous-object metadata-type)
         pre-update-mp (deps.metadata-provider/override-metadata-provider
                        {:base-provider (fresh-mp db-id)
                         :updated-entities {start-type [previous-metadata]}})

@@ -65,7 +65,7 @@
   the revisions table. But this table is populated from events asynchronously so when editing and wanting
   last-edit-info, you must construct it from `@api/*current-user*` and the current timestamp rather than checking the
   revisions table as those revisions may not be present yet."
-  [user :- [:maybe :metabase.users.schema/user.update]]
+  [user :- [:maybe :metabase.users.schema/user]]
   (merge {:timestamp (t/instant)}
          (select-keys user [:id :first_name :last_name :email])))
 

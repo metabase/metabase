@@ -108,7 +108,7 @@
   specs are tested with; its keys are that model's."
   [:map {:closed false, ::mr/deliberately-open true, :description "row of an unregistered model"}])
 
-(def ^:private ModelRow
+(mr/def ::model-row
   "A `{:model ..., :row ...}` pair naming one of the models the generic entity helpers below are called with, the
   row typed by that model's own update schema."
   (conj (into [:multi {:dispatch :model, :lazy-refs true}]
@@ -116,8 +116,8 @@
                 [model (model-schema-key "model-row" model)]))
         [::mc/default [:map {:closed true} [:model :keyword] [:row ::unregistered-model-row]]]))
 
-(def ^:private ModelRows
-  "Like [[ModelRow]], but for a batch of rows of the same model."
+(mr/def ::model-rows
+  "Like `::model-row`, but for a batch of rows of the same model."
   (conj (into [:multi {:dispatch :model, :lazy-refs true}]
               (for [model (keys model-row-schema)]
                 [model (model-schema-key "model-rows" model)]))
@@ -173,22 +173,22 @@
 (mu/defn update-entity!
   "Apply `entity`'s `:row` (a column diff) to `entity`'s `:model` row with `id`, returning the number updated."
   [id     :- [:or :int :string]
-   entity :- ModelRow]
+   entity :- ::model-row]
   (t2/update! (:model entity) id (:row entity)))
 
 (mu/defn insert-entity!
   "Insert `entity`'s `:row` into `entity`'s `:model` and return the inserted instance."
-  [entity :- ModelRow]
+  [entity :- ::model-row]
   (t2/insert-returning-instance! (:model entity) (:row entity)))
 
 (mu/defn insert-entity-returning-pk!
   "Insert `entity`'s `:row` into `entity`'s `:model` and return its primary key."
-  [entity :- ModelRow]
+  [entity :- ::model-row]
   (t2/insert-returning-pk! (:model entity) (:row entity)))
 
 (mu/defn insert-entities!
   "Insert `entities`'s `:rows` into `entities`'s `:model`, returning the number inserted."
-  [entities :- ModelRows]
+  [entities :- ::model-rows]
   (t2/insert! (:model entities) (:rows entities)))
 
 (mu/defn delete-entity!

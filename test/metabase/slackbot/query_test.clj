@@ -303,7 +303,7 @@
 
 (deftest generate-card-output-display-type-test
   (testing "generate-card-output returns correct type based on card display"
-    (let [mock-results {:data {:cols [{:name "x" :base_type :type/Integer}]
+    (let [mock-results {:data {:cols [{:name "x" :display_name "x" :base_type :type/Integer}]
                                :rows [[1] [2]]}}]
       (mt/with-dynamic-fn-redefs
         [slackbot.query/pulse-card-query-results (constantly mock-results)]

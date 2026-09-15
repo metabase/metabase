@@ -111,6 +111,7 @@
   "The `:params` column of a ExplorationQuery, decoded."
   [:map {:closed true}
    [:segment_id  {:optional true} [:maybe ms/PositiveInt]]
+   [:k           {:optional true} [:maybe :int]]
    [:value_index {:optional true} [:maybe nat-int?]]])
 
 (mr/def ::exploration-query.data-access-token

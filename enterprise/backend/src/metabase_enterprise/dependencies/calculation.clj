@@ -78,10 +78,7 @@
   {:table (into #{} (keep :table-id) dimension-mappings)})
 
 (mu/defn- upstream-deps:python-transform :- ::deps.schema/upstream-deps
-  [{{tables :source-tables} :source} :- [:map {:closed true}
-                                         [:source [:map {:closed true}
-                                                   [:source-tables {:optional true}
-                                                    [:sequential :metabase.transforms-base.util/source-table-entry]]]]]]
+  [{{tables :source-tables} :source :as _py-transform} :- ::transforms.schema/transform]
   {:table (into #{} (keep :table_id) tables)})
 
 ;; Modified implementation of documents.models.document/document-deps
@@ -109,7 +106,7 @@
   {:pre [(some? query)]}
   (let [query          (lib-be/normalize-query query)
         base-deps      (merge-with into
-                                   (if (seq query) (upstream-deps:query query) {})
+                                   (upstream-deps:query query)
                                    (upstream-deps:dimension-mappings dimension-mappings))
         param-card-ids (keep #(-> % :values_source_config :card_id) (:parameters card))]
     (reduce (fn [deps card-id]
@@ -121,11 +118,10 @@
   [_ transform]
   (cond
     (transforms-base.u/query-transform? transform)
-    (let [query (lib-be/normalize-query (-> transform :source :query))]
-      (if (seq query) (upstream-deps:query query) {}))
+    (upstream-deps:query (lib-be/normalize-query (-> transform :source :query)))
 
     (transforms-base.u/python-transform? transform)
-    (upstream-deps:python-transform (select-keys transform [:source]))
+    (upstream-deps:python-transform transform)
 
     :else (do (log/warnf "Don't know how to analyze the deps of Transform %d with source type '%s'"
                          (:id transform) (-> transform :source :type))

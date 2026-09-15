@@ -27,13 +27,21 @@
    [:style {:optional true} [:maybe :string]]
    [:key-columns {:optional true} [:sequential [:maybe :string]]]])
 
-(mu/defn match-key :- ::match-key
-  "The [[::match-key]] for a warehouse index map (see the schema for how each kind is keyed)."
-  [{:keys [kind key-columns] am :access-method nm :name} :- ::driver/table-index]
+(mu/defn- ->match-key :- ::match-key
+  "The [[::match-key]] for an index of `kind` named `nm` with access method `am` over `key-columns`."
+  [kind        :- :keyword
+   nm          :- [:maybe :string]
+   am          :- [:maybe :string]
+   key-columns :- [:sequential [:maybe :string]]]
   (cond
     (= kind :distkey)                     {:kind :distkey :style am :key-columns key-columns}
     (contains? unnamed-inline-kinds kind) {:kind kind :key-columns key-columns}
     :else                                 {:kind :named :name nm}))
+
+(mu/defn match-key :- ::match-key
+  "The [[::match-key]] for a warehouse index map (see the schema for how each kind is keyed)."
+  [{:keys [kind key-columns] am :access-method nm :name} :- ::driver/table-index]
+  (->match-key kind nm am key-columns))
 
 (mu/defn index-name :- :string
   "Physical index name for a structured def: a named kind's `:name`, else its `:kind` as a string (one inline key per
@@ -47,10 +55,7 @@
   (let [{:keys [kind style columns]} structured
         ;; only a :key distkey has a meaningful column; :all/:even ignore any stray column the form sent
         key-columns (if (and (= kind :distkey) (not= style :key)) [] (mapv :name columns))]
-    (match-key {:kind          kind
-                :name          index_name
-                :access-method (some-> style name)
-                :key-columns   key-columns})))
+    (->match-key kind index_name (some-> style name) key-columns)))
 
 (defn warehouse-key-set
   "Set of [[match-key]]s for the warehouse indexes, to test managed requests against with [[present-in-warehouse?]]."

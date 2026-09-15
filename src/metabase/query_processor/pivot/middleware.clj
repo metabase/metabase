@@ -1,7 +1,7 @@
 (ns metabase.query-processor.pivot.middleware
   "Query Processor post-processing middleware responsible for massaging Pivot QP ([[metabase.query-processor.pivot]])
   (sub)query results into the correct shape."
-  (:refer-clojure :exclude [empty? mapv select-keys])
+  (:refer-clojure :exclude [empty? mapv])
   (:require
    [medley.core :as m]
    [metabase.lib.pivot :as lib.pivot]
@@ -9,7 +9,7 @@
    [metabase.query-processor.pivot.common :as pivot.common]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :as perf :refer [empty? mapv select-keys]]))
+   [metabase.util.performance :as perf :refer [empty? mapv]]))
 
 (def ^:private pivot-grouping-column-metadata
   "Result-metadata-shape column entry spliced into `:cols` of pivot query results. Extends
@@ -70,9 +70,7 @@
 (mu/defn- column-mapping-for-subquery :- ::pivot-column-mapping
   [{num-remapped-cols      :qp.pivot/num-remapped-cols
     num-remapped-breakouts :qp.pivot/num-remapped-breakouts
-    :as                    _subquery} :- [:map {:closed true}
-                                          [:qp.pivot/num-remapped-cols      nat-int?]
-                                          [:qp.pivot/num-remapped-breakouts ::pivot.common/num-breakouts]]
+    :as                    _subquery} :- ::lib.schema/query
    subquery-breakout-combination :- ::pivot.common/breakout-combination]
   ;; all pivot queries consist of *breakout columns* + *other columns*. Breakout columns are always first, and the only
   ;; thing that can change between subqueries. The other columns will always be the same, and in the same order.
@@ -119,9 +117,7 @@
   index is selected, we have to shift the indexes before which a mapped index is inserted."
   [{breakout-combination :qp.pivot/remapped-breakout-combination
     remap                :qp.pivot/remapped-indexes
-    :as                  _subquery} :- [:map {:closed true}
-                                        [:qp.pivot/remapped-breakout-combination ::pivot.common/breakout-combination]
-                                        [:qp.pivot/remapped-indexes              ::pivot.common/remapped-indexes]]]
+    :as                  _subquery} :- ::lib.schema/query]
   (if (or (empty? remap)
           (empty? breakout-combination))
     breakout-combination
@@ -144,11 +140,8 @@
                      mapped-index (into (take-while some? (iterate remap mapped-index)))))))))))
 
 (mu/defn- column-mapping [subquery :- ::lib.schema/query]
-  (let [full-breakout-combination (full-breakout-combination
-                                   (select-keys subquery [:qp.pivot/remapped-breakout-combination :qp.pivot/remapped-indexes]))]
-    (column-mapping-for-subquery
-     (select-keys subquery [:qp.pivot/num-remapped-cols :qp.pivot/num-remapped-breakouts])
-     full-breakout-combination)))
+  (let [full-breakout-combination (full-breakout-combination subquery)]
+    (column-mapping-for-subquery subquery full-breakout-combination)))
 
 (mu/defn- row-mapping-fn :- [:=> [:cat ::row] ::row]
   "This function needs to be called for each row so that it can actually shape the row according to the

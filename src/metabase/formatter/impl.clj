@@ -224,7 +224,7 @@
 
   ([value        :- number?
     column       :- [:or :metabase.legacy-mbql.schema/legacy-column-metadata :metabase.lib.schema.metadata/lib-or-legacy-column]
-    viz-settings :- ms/VisualizationSettings]
+    viz-settings :- [:maybe ms/VisualizationSettings]]
    (let [fmttr (number-formatter column viz-settings true)]
      (fmttr value))))
 
@@ -293,11 +293,11 @@
   "Create a formatter for a column based on its timezone, column metadata, and visualization-settings"
   ([timezone-id            :- [:maybe :string]
     col                    :- [:maybe [:or :metabase.legacy-mbql.schema/legacy-column-metadata :metabase.lib.schema.metadata/lib-or-legacy-column]]
-    visualization-settings :- ms/VisualizationSettings]
+    visualization-settings :- [:maybe ms/VisualizationSettings]]
    (create-formatter timezone-id col visualization-settings true))
   ([timezone-id            :- [:maybe :string]
     col                    :- [:maybe [:or :metabase.legacy-mbql.schema/legacy-column-metadata :metabase.lib.schema.metadata/lib-or-legacy-column]]
-    visualization-settings :- ms/VisualizationSettings
+    visualization-settings :- [:maybe ms/VisualizationSettings]
     apply-formatting?      :- :boolean]
    (cond
      ;; for numbers, return a format function that has already computed the differences.

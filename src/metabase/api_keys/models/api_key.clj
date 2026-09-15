@@ -71,7 +71,7 @@
 (def ^:private ApiKeyPipelineRow
   "The shape `add-prefix`/`add-key` receive: a before-insert or before-update `:model/ApiKey` instance, every column
   optional at this stage, plus the two internal keys the CRUD hooks thread through."
-  (mut/merge (mut/optional-keys ::api-keys.schema/api-key)
+  (mut/merge ::api-keys.schema/api-key.update
              [:map {:closed true}
               [::api-keys/unhashed-key {:optional true} ::api-keys.schema/key.unhashed-or-secret]
               [::api-keys/group-id     {:optional true} pos-int?]]))

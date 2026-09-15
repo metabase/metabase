@@ -916,11 +916,7 @@
   `AS`).
 
     (field-source-table-aliases [:field 1 nil]) ; -> [\"public\" \"venues\"]"
-  [[_ opts id-or-name] :- [:tuple
-                           [:= :field]
-                           [:maybe [:map {:closed false, ::mr/deliberately-open true,
-                                          :description "a :field clause's options map -- keys added by QP middleware as compilation proceeds"}]]
-                           [:or :int :string]]]
+  [[_ opts id-or-name] :- :mbql.clause/field]
   (let [source-table (or (get opts driver-api/qp.add.source-table)
                          (when (integer? id-or-name)
                            (:table-id (driver-api/field (driver-api/metadata-provider) id-or-name))))]
@@ -1769,11 +1765,24 @@
                    (:base-type opts))
                :type/UUID))))
 
+(mr/def ::compilable-expression
+  "An argument [[->honeysql]] compiles in a filter: an MBQL 5 expression, a UUID, or a driver's own clause (tagged with a
+  namespaced keyword, e.g. `:metabase.driver.sqlserver/cast`) wrapping one."
+  [:or
+   :metabase.lib.schema.expression/expression
+   uuid?
+   [:and
+    vector?
+    [:cat
+     qualified-keyword?
+     [:? [:or [:= {} {}] :metabase.lib.schema.common/options]]
+     [:* [:schema [:or :string [:ref ::compilable-expression]]]]]]])
+
 (mu/defn- maybe-cast-uuid-for-equality
   "For := and :!=. Comparing UUID fields against non-uuid values requires casting."
   [driver :- :keyword
-   field  :- [:or :metabase.lib.schema.expression/expression uuid?]
-   arg    :- [:or :metabase.lib.schema.expression/expression uuid?]]
+   field  :- ::compilable-expression
+   arg    :- ::compilable-expression]
   (if (and (uuid-field? field)
            ;; If the arg is a uuid we are happy especially for joins (#46558)
            (not (uuid-field? arg))
@@ -1789,7 +1798,7 @@
   "For :contains, :starts-with, and :ends-with.
    Comparing UUID fields against with these operations requires casting as the right side will have `%` for `LIKE` operations."
   [_driver :- :keyword
-   field   :- [:or :metabase.lib.schema.expression/expression uuid?]]
+   field   :- ::compilable-expression]
   (if (uuid-field? field)
     [::cast-to-text {} field]
     field))

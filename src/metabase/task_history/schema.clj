@@ -122,11 +122,6 @@
    [:attempted_retries   {:optional true} :int]
    [:retry_errors        {:optional true} [:sequential ::retry-error]]])
 
-(mr/def ::task-details.test-or-unknown
-  "The `:task_details` of a task not otherwise listed here: the ad-hoc shapes the `with-task-history` unit tests
-  give a random task name, whose keys are by design arbitrary and not ours to declare."
-  [:map {:closed false, ::mr/deliberately-open true, :description "an ad-hoc :task_details shape a test made up"}])
-
 (mr/def ::task-history.task-details
   "The `:task_details` column of a TaskHistory, decoded: the union of the shapes recorded for each task name (see
   the `with-task-history` call sites)."
@@ -140,7 +135,6 @@
    ::task-details.persist-refresh
    ::task-details.sync-step
    ::task-details.failure
-   ::task-details.test-or-unknown
    ::task-details.empty])
 
 (mr/def ::task-history.log.trunc

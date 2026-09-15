@@ -182,6 +182,8 @@
    [:rows_truncated   {:optional true} [:maybe :int]]
    [:csv-include-bom? {:optional true} [:maybe :boolean]]
    [:rows-file-size   {:optional true} [:maybe :int]]
+   [:model            {:optional true} [:maybe :boolean]]
+   [:dataset          {:optional true} [:maybe :boolean]]
    [:pivot-export-options {:optional true} [:maybe [:map {:closed true}
                                                     [:pivot-rows         {:optional true} [:maybe [:sequential :int]]]
                                                     [:pivot-cols         {:optional true} [:maybe [:sequential :int]]]
@@ -196,6 +198,8 @@
    [:data                    {:optional true} [:maybe ::QPResultData]]
    [:error                   {:optional true} [:maybe :string]]
    [:row_count               {:optional true} [:maybe :int]]
+   [:data.rows-file-size     {:optional true} [:maybe :int]]
+   [:notification/truncated? {:optional true} [:maybe :boolean]]
    [:status                  {:optional true} [:maybe [:enum :completed :failed]]]
    [:database_id             {:optional true} [:maybe ::lib.schema.id/database]]
    [:started_at              {:optional true} [:maybe [:or :string (ms/InstanceOfClass java.time.temporal.Temporal)]]]
@@ -265,7 +269,15 @@
 
 (mr/def ::card
   "A card as `render`ed for a Pulse/Dashboard Subscription: either a real Card, or an ad-hoc (unsaved) card."
-  [:or :metabase.queries.schema/card ::adhoc-card])
+  [:or
+   [:merge
+    :metabase.queries.schema/card
+    [:map {:closed true}
+     [:include_csv   {:optional true} [:maybe :boolean]]
+     [:include_xls   {:optional true} [:maybe :boolean]]
+     [:format_rows   {:optional true} [:maybe :boolean]]
+     [:pivot_results {:optional true} [:maybe :boolean]]]]
+   ::adhoc-card])
 
 (mr/def ::dashcard
   "A DashboardCard as `render`ed for a Dashboard Subscription, plus the `:series-results` key
@@ -275,8 +287,10 @@
    [:map {:closed true}
     [:series-results {:optional true} [:maybe [:sequential
                                                [:map {:closed true}
-                                                [:card   {:optional true} [:maybe [:ref :metabase.queries.schema/card]]]
-                                                [:result {:optional true} [:maybe ::QPResult]]]]]]]])
+                                                [:type     {:optional true} [:= :card]]
+                                                [:card     {:optional true} [:maybe [:ref :metabase.queries.schema/card]]]
+                                                [:dashcard {:optional true} [:maybe [:ref :metabase.dashboards.schema/dashboard-card]]]
+                                                [:result   {:optional true} [:maybe ::QPResult]]]]]]]])
 
 (mr/def ::render-type
   [:enum :inline :attachment])

@@ -446,12 +446,7 @@
    [:here                  {:optional true} [:set :keyword]]
    [:below                 {:optional true} [:set :keyword]]
    [:is_library_root       {:optional true} :boolean]
-   [:effective_ancestors   {:optional true}
-    [:sequential [:or RootCollection [:map {:closed true}
-                                      [:id                {:optional true} [:maybe ms/PositiveInt]]
-                                      [:name               {:optional true} [:maybe :string]]
-                                      [:personal_owner_id  {:optional true} [:maybe ms/PositiveInt]]
-                                      [:type               {:optional true} [:maybe :string]]]]]]])
+   [:effective_ancestors   {:optional true} [:sequential ::collections.schema/collection-or-root]]])
 
 (mu/defn shared-tenant-collection?
   "Whether or not a collection is a tenant collection."
@@ -1628,9 +1623,7 @@
                    (u/the-id collection))
     (throw (Exception. (tru "You cannot move a Collection into itself or into one of its descendants."))))
   (set
-   (cons (perms/collection-readwrite-path (if (collection.root/is-root-collection? new-parent)
-                                            (select-keys new-parent [::collection.root/is-root? :authority_level :namespace])
-                                            (u/the-id new-parent)))
+   (cons (perms/collection-readwrite-path new-parent)
          (perms-for-collection-and-descendants collection))))
 
 (mu/defn collection->descendant-ids :- [:maybe [:set ms/PositiveInt]]

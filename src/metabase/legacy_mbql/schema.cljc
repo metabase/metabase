@@ -1514,7 +1514,8 @@
    [:display-name ::lib.schema.common/non-blank-string]
    ;; TODO -- `:id` is actually 100% required but we have a lot of tests that don't specify it because this constraint
    ;; wasn't previously enforced; we need to go in and fix those tests and make this non-optional
-   [:id {:optional true} [:ref ::lib.schema.template-tag/id]]])
+   [:id {:optional true} [:ref ::lib.schema.template-tag/id]]
+   [:sectionid {:optional true} ::lib.schema.common/non-blank-string]])
 
 ;; Example:
 ;;
@@ -1526,14 +1527,16 @@
 ;;     :snippet-id   1}
 (mr/def ::TemplateTag.Snippet
   "Schema for a native query snippet template tag."
-  [:merge
-   ::TemplateTag.Common
-   [:map {:closed true}
-    [:type         [:= {:decode/normalize helpers/normalize-keyword} :snippet]]
-    [:snippet-name ::lib.schema.common/non-blank-string]
-    [:snippet-id   ::lib.schema.id/snippet]
-    ;; database to which this Snippet belongs. Doesn't always seen to be specified.
-    [:database {:optional true} ::lib.schema.id/database]]])
+  [:and
+   [:merge
+    ::TemplateTag.Common
+    [:map {:closed true}
+     [:type         [:= {:decode/normalize helpers/normalize-keyword} :snippet]]
+     [:snippet-name ::lib.schema.common/non-blank-string]
+     [:snippet-id   ::lib.schema.id/snippet]
+     ;; database to which this Snippet belongs. Doesn't always seen to be specified.
+     [:database {:optional true} ::lib.schema.id/database]]]
+   [:ref ::lib.schema.template-tag/disallow-dimension]])
 
 ;; Example:
 ;;
@@ -1544,11 +1547,15 @@
 ;;     :card-id      1635}
 (mr/def ::TemplateTag.SourceQuery
   "Schema for a source query template tag."
-  [:merge
-   ::TemplateTag.Common
-   [:map {:closed true}
-    [:type    [:= {:decode/normalize helpers/normalize-keyword} :card]]
-    [:card-id ::lib.schema.id/card]]])
+  [:and
+   [:merge
+    ::TemplateTag.Common
+    [:map {:closed true}
+     [:type     [:= {:decode/normalize helpers/normalize-keyword} :card]]
+     [:card-id  ::lib.schema.id/card]
+     [:default  {:optional true} [:ref ::lib.schema.parameter/parameter.value]]
+     [:required {:optional true} :boolean]]]
+   [:ref ::lib.schema.template-tag/disallow-dimension]])
 
 (mr/def ::TemplateTag.SourceFilter
   "Schema for a single source-filter applied to a table template tag."
@@ -1567,15 +1574,17 @@
 ;;     :source-filters [{:op :> :field-id 3 :value 500}]}
 (mr/def ::TemplateTag.SourceTable
   "Schema for a source query template tag."
-  [:merge
-   ::TemplateTag.Common
-   [:map {:closed true}
-    [:type                  [:= {:decode/normalize helpers/normalize-keyword} :table]]
-    [:table-id              ::lib.schema.id/table]
-    [:emit-alias            {:optional true} :boolean]
-    [:source-filters        {:optional true} [:sequential [:ref ::TemplateTag.SourceFilter]]]
-    [:default               {:optional true} [:ref ::lib.schema.parameter/parameter.value]]
-    [:required              {:optional true} :boolean]]])
+  [:and
+   [:merge
+    ::TemplateTag.Common
+    [:map {:closed true}
+     [:type                  [:= {:decode/normalize helpers/normalize-keyword} :table]]
+     [:table-id              ::lib.schema.id/table]
+     [:emit-alias            {:optional true} :boolean]
+     [:source-filters        {:optional true} [:sequential [:ref ::TemplateTag.SourceFilter]]]
+     [:default               {:optional true} [:ref ::lib.schema.parameter/parameter.value]]
+     [:required              {:optional true} :boolean]]]
+   [:ref ::lib.schema.template-tag/disallow-dimension]])
 
 (mr/def ::TemplateTag.Value.Common
   "Stuff shared between the Field filter and raw value template tag schemas."
@@ -1651,15 +1660,18 @@
 ;;     :default      "1"}
 (mr/def ::TemplateTag.RawValue
   "Schema for a raw value template tag."
-  [:merge
-   ::TemplateTag.Value.Common
-   [:map {:closed true}
-    [:type
-     [:ref
-      {:description
-       "`:type` is used be the FE to determine which type of widget to display for the template tag, and to determine
-  which types of parameters are allowed to be passed in for this template tag."}]
-     ::lib.schema.template-tag/raw-value.type]]])
+  [:and
+   [:merge
+    ::TemplateTag.Value.Common
+    [:map {:closed true}
+     [:type
+      [:ref
+       {:description
+        "`:type` is used be the FE to determine which type of widget to display for the template tag, and to determine
+  which types of parameters are allowed to be passed in for this template tag."}
+       ::lib.schema.template-tag/raw-value.type]]
+     [:widget-type {:optional true} [:maybe [:ref ::WidgetType]]]]]
+   [:ref ::lib.schema.template-tag/disallow-dimension]])
 
 (mr/def ::TemplateTag
   "Schema for a template tag as specified in a native query. There are four types of template tags, differentiated by
@@ -1964,7 +1976,8 @@
     [:ref ::legacy-column-metadata.qualified-keys]]
    (lib.schema.common/disallowed-keys
     {:lib/type          "Legacy results metadata should not have :lib/type, use :metabase.lib.schema.metadata/column for Lib metadata"
-     :model/inner_ident ":model/inner_ident is deprecated"})
+     :model/inner_ident ":model/inner_ident is deprecated"
+     :lib/model-display-name ":lib/model-display-name is deprecated"})
    (letfn [(disallowed-key? [k]
              (or (not (keyword? k))
                  (let [disallowed-char (if (qualified-keyword? k)

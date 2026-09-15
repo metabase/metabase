@@ -40,12 +40,12 @@
 (def ^:private Score
   [:int {:min 0, :max max-score}])
 
+(mr/def ::template-clause
+  "A metric or filter clause in a dashboard template: a vector of strings, keywords, numbers, booleans, nils, and nested clauses, whose `[dimension X]` placeholders grounding later resolves."
+  [:sequential [:or :string :keyword number? :boolean :nil [:ref ::template-clause]]])
+
 (def ^:private MBQL
-  "A metric/filter clause as it appears in a dashboard template YAML: legacy-ish MBQL extended with `[dimension X]`
-  placeholders that grounding later resolves into real column refs, so it is not a normalized MBQL clause and must
-  not be decoded as one (coercing it through the real MBQL clause schema turns its string tokens, like the `X` in
-  `[dimension X]`, into keywords and breaks dimension matching)."
-  [:maybe {::mr/deliberately-open true} [:sequential :any]])
+  [:maybe ::template-clause])
 
 (def ^:private Identifier
   [:string

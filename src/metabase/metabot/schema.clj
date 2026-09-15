@@ -2,9 +2,9 @@
   (:require
    [malli.core :as mc]
    [malli.transform :as mtx]
-   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.util :as lib.util]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
@@ -34,16 +34,8 @@
   [:string {:decode/normalize lib.schema.common/normalize-string-key}])
 
 (mr/def ::query
-  "Either an MBQL 5 query, a legacy MBQL query, or the loosely-typed shape either takes after round-tripping
-  through tool-call JSON or persisted turn state: keys are keywords, but enum-ish values (e.g. `:lib/type`,
-  `:type`) may still be plain strings, and a brand-new query may be just `{:database <id>}`."
-  [:or
-   ::lib.schema/query
-   :metabase.legacy-mbql.schema/Query
-   [:map {::mr/deliberately-open true
-          :description "A JSON-round-tripped or in-progress MBQL query, whose enum values and completeness are not
-  yet normalized."}
-    [:database {:optional true} [:maybe :int]]]])
+  "An MBQL 5 or legacy query in any state of normalization, as it round-trips through tool-call JSON or persisted turn state."
+  ::lib.util/query-like)
 
 (mr/def ::todo
   "One todo item of persisted turn state; only `:id` is guaranteed, since state can hold a partial item
@@ -318,6 +310,11 @@
   (ms/string-keyed-map [:map {:closed true}
                         [:prompt :int]
                         [:completion :int]]))
+
+(defn normalize-usage
+  "Normalize the model keys of a MetabotMessage `:usage` value to strings according to [[::metabot-message.usage]]."
+  [usage]
+  (mc/decode ::metabot-message.usage usage (mtx/transformer {:name :normalize})))
 
 (mr/def ::metabot-message.state
   "The `:state` column of a MetabotMessage, decoded."

@@ -63,7 +63,8 @@
      (qp.store/with-metadata-provider (mt/id)
        (sql.qp/->honeysql
         (or driver/*driver* :h2)
-        [:field {::add/source-table (mt/id table-key)
+        [:field {:lib/uuid          (str (random-uuid))
+                 ::add/source-table (mt/id table-key)
                  ::add/source-alias field-name
                  ::add/desired-alias field-name}
          field-id])))))

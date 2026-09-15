@@ -32,7 +32,7 @@
 (mu/defn record-login-history!
   "Record login history for a user, and send them an email if this is their first time logging in from this device."
   [session-id  :- string?
-   user        :- :metabase.users.schema/login-user
+   user        :- :metabase.users.schema/user
    device-info :- request/DeviceInfo]
   (let [history-entry (login-history/record-login-history! session-id (u/the-id user) device-info)]
     (when-not (or (:embedded device-info) (:token_exchange device-info))

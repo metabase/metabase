@@ -12,6 +12,8 @@
   for [[qp.error-type]], which maybe belongs in Lib too!"
   (:refer-clojure :exclude [get-in])
   (:require
+   [malli.core :as mc]
+   [malli.util :as mut]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
@@ -77,13 +79,10 @@
     param))
 
 (mr/def ::field-filter-operator-param
-  "An operator parameter built during field filter substitution, whose `:target` already wraps an MBQL 5 ref."
-  [:map {:closed true}
-   [:type    ::lib.schema.parameter/type]
-   [:value   {:optional true} ::lib.schema.parameter/parameter.value]
-   [:default {:optional true} ::lib.schema.parameter/parameter.value]
-   [:options {:optional true} [:maybe ::lib.schema.parameter/parameter.options]]
-   [:target  [:tuple [:= :dimension] [:or :mbql.clause/field :mbql.clause/expression]]]])
+  "A parameter built during field filter substitution, whose `:target` already wraps an MBQL 5 ref."
+  (mut/assoc (first (mc/children (mr/resolve-schema ::lib.schema.parameter/parameter)))
+             :target
+             [:tuple [:= :dimension] [:or :mbql.clause/field :mbql.clause/expression]]))
 
 (mu/defn to-clause :- ::lib.schema.expression/boolean
   "Convert an operator style parameter into an mbql clause. Will also do arity checks and throws an ex-info with

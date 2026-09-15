@@ -518,20 +518,10 @@
 (mu/defn- expand**
   "Expand parameters inside a top-level native `query`. Not recursive. Expands against `meta/metadata-provider` unless
   an explicit metadata provider `mp` is supplied (handy for overriding field metadata)."
-  ([query :- [:or
-              [:map {:closed true}
-               [:lib/type [:= :mbql/query]]]
-              [:map {:closed true}
-               [:native [:map {:closed true}
-                         [:query :string]]]]]]
+  ([query :- :metabase.lib.util/query-like]
    (expand** meta/metadata-provider query))
   ([mp :- ::lib.schema.metadata/metadata-providerable
-    {:keys [parameters], :as query} :- [:or
-                                        [:map {:closed true}
-                                         [:lib/type [:= :mbql/query]]]
-                                        [:map {:closed true}
-                                         [:native [:map {:closed true}
-                                                   [:query :string]]]]]]
+    {:keys [parameters], :as query} :- :metabase.lib.util/query-like]
    (driver/with-driver :h2
      (-> (if (:lib/type query)
            (lib/query mp (dissoc query :parameters))

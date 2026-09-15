@@ -9,7 +9,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -118,12 +117,6 @@
     (dissoc membership
             :__test-only-sigil-allowing-direct-insertion-of-permissions-group-memberships)))
 
-(mr/def ::user-or-id
-  "A User ID, or a User as login flows have it."
-  [:or
-   pos-int?
-   :metabase.users.schema/login-user])
-
 (mu/defn add-users-to-groups!
   "Creates permission group memberships from aa sequence of maps of users, groups and is-group-manager?."
   [pgms :- [:sequential
@@ -131,7 +124,7 @@
              [:group [:or
                       pos-int?
                       ::permissions.schema/permissions-group]]
-             [:user ::user-or-id]
+             [:user [:or pos-int? :metabase.users.schema/user]]
              [:is-group-manager? {:optional true}
               :boolean]]]]
   (when (seq pgms)

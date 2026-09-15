@@ -48,7 +48,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.fn :as mu.fn]
-   [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]
@@ -312,11 +311,9 @@
   Pass false when the query itself is not changing, so that an unrelated update (rename, archive, ...) doesn't wipe
   a previously-valid table_id just because the derivation can no longer resolve it (e.g. the source card was
   deleted)."
-  ([card :- [:map {:closed true}
-             [:dataset_query {:optional true} [:maybe ::queries.schema/card.dataset-query]]]]
+  ([card :- ::queries.schema/card]
    (populate-query-fields card true))
-  ([{query :dataset_query, :as card} :- [:map {:closed true}
-                                         [:dataset_query {:optional true} [:maybe ::queries.schema/card.dataset-query]]]
+  ([{query :dataset_query, :as card} :- ::queries.schema/card
     clear-stale-table-id? :- :boolean]
    (merge
     card
@@ -338,12 +335,6 @@
             (when database-id
               {:database_id database-id})))))))))
 
-(defn- populate-query-fields-onto
-  "Merge [[populate-query-fields]]'s derived fields onto the full `card`."
-  ([card] (populate-query-fields-onto card true))
-  ([card clear-stale-table-id?]
-   (merge card (populate-query-fields (select-keys card [:dataset_query]) clear-stale-table-id?))))
-
 (defn- check-field-filter-fields-are-from-correct-database
   "Check that all native query Field filter parameters reference Fields belonging to the Database the query points
   against. This is done when saving a Card. The goal here is to prevent people from saving Cards with invalid queries
@@ -355,7 +346,7 @@
   [{{query-db-id :database, :as query} :dataset_query, :as card}]
   ;; for updates if `query` isn't being updated we don't need to validate anything.
   (when query
-    (when-let [field-ids (not-empty (params/card->template-tag-field-ids (select-keys card [:dataset_query])))]
+    (when-let [field-ids (not-empty (params/card->template-tag-field-ids card))]
       (doseq [{:keys [field-id field-name table-name field-db-id]} (queries.db/field-database-info-for-ids (set field-ids))]
         (when-not (= field-db-id query-db-id)
           (throw (ex-info (letfn [(describe-database [db-id]
@@ -370,11 +361,7 @@
 
 (mu/defn- assert-valid-type
   "Check that the card is a valid model if being saved as one. Throw an exception if not."
-  [{query :dataset_query, card-type :type, source-card :source_card_id, :as _card}
-   :- [:maybe [:map {:closed true}
-               [:dataset_query   {:optional true} [:maybe ::queries.schema/card.dataset-query]]
-               [:type            {:optional true} [:maybe [:or ::queries.schema/card.type :string]]]
-               [:source_card_id  {:optional true} [:maybe ::lib.schema.id/card]]]]]
+  [{query :dataset_query, card-type :type, source-card :source_card_id, :as _card} :- [:maybe ::queries.schema/card]]
   (assert (not (and (query/query-is-native? query)
                     (some? source-card)))
           "A native SQL question cannot have a source card.")
@@ -388,8 +375,7 @@
   nil)
 
 (mu/defn- assert-not-native-audit-db-query
-  [{query :dataset_query, :as _card} :- [:maybe [:map {:closed true}
-                                                 [:dataset_query {:optional true} [:maybe ::queries.schema/card.dataset-query]]]]]
+  [{query :dataset_query, :as _card} :- [:maybe ::queries.schema/card]]
   (when (and (seq query)
              (= (:database query) audit/audit-db-id)
              (lib/any-native-stage? query))
@@ -470,8 +456,8 @@
     (u/prog1 card
       (check-field-filter-fields-are-from-correct-database card)
       ;; TODO: add a check to see if all id in :parameter_mappings are in :parameters (#40013)
-      (assert-valid-type (select-keys card [:dataset_query :type :source_card_id]))
-      (assert-not-native-audit-db-query (select-keys card [:dataset_query]))
+      (assert-valid-type card)
+      (assert-not-native-audit-db-query card)
       (params/assert-valid-parameters card)
       (params/assert-valid-parameter-mappings card)
       (collection/check-collection-namespace :model/Card (:collection_id card)))))
@@ -547,8 +533,7 @@
   meaning there are no clauses such as filter, limit, breakout...
 
   It should be the opposite of [[metabase.lib.stage/has-clauses]] but for all stages."
-  [{query :dataset_query :as _card} :- [:map {:closed true}
-                                        [:dataset_query {:optional true} [:maybe ::queries.schema/card.dataset-query]]]]
+  [{query :dataset_query :as _card} :- ::queries.schema/card]
   (and (seq query)
        (every? (fn [stage-number]
                  (and (lib/mbql-stage? query stage-number)
@@ -569,7 +554,7 @@
   ;; does that happen in the `PUT` endpoint? (#40013)
   (u/prog1 card
     (when (:dataset_query changes)
-      (assert-not-native-audit-db-query (select-keys changes [:dataset_query])))
+      (assert-not-native-audit-db-query changes))
     (let [;; Fetch old card data if necessary, and share the data between multiple checks.
           old-card-info (when (or (contains? changes :type)
                                   (:dataset_query changes)
@@ -578,8 +563,8 @@
       ;; if the template tag params for this Card have changed in any way we need to update the FieldValues for
       ;; On-Demand DB Fields
       (when (some-> changes :dataset_query lib/native-only-query?)
-        (let [old-param-field-ids (params/card->template-tag-field-ids (select-keys old-card-info [:dataset_query]))
-              new-param-field-ids (params/card->template-tag-field-ids (select-keys changes [:dataset_query]))]
+        (let [old-param-field-ids (params/card->template-tag-field-ids old-card-info)
+              new-param-field-ids (params/card->template-tag-field-ids changes)]
           (when (and (seq new-param-field-ids)
                      (not= old-param-field-ids new-param-field-ids))
             (let [newly-added-param-field-ids (set/difference new-param-field-ids old-param-field-ids)]
@@ -591,7 +576,7 @@
       ;; updating a model dataset query to not support implicit actions will disable implicit actions if they exist
       (when (and (:dataset_query changes)
                  (= (:type old-card-info) :model)
-                 (not (model-supports-implicit-actions? (select-keys changes [:dataset_query]))))
+                 (not (model-supports-implicit-actions? changes)))
         (disable-implicit-action-for-model! id))
       ;; Changing from a Model to a Question: archive associated actions
       (when (and (= (:type changes) :question)
@@ -610,7 +595,7 @@
         (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes)))
       ;; additional checks (Enterprise Edition only)
       (pre-update-check-sandbox-constraints card changes)
-      (assert-valid-type (select-keys card [:dataset_query :type :source_card_id])))))
+      (assert-valid-type card))))
 
 (defn- metadata-provider-fetch?
   "Whether `card` was selected as one of the lib metadata-provider models (`:metadata/card`, `:metadata/metric`, ...)
@@ -777,15 +762,11 @@
       (cond-> (plausible-card-select? card) upgrade-card-schema-to-latest)
       monitor-blank-dataset-query))
 
-(defn- populate-result-metadata-for-insert
-  "Merge freshly-inferred `:result_metadata` onto `card` (see [[metabase.queries.models.card.metadata/populate-result-metadata]])."
-  [card]
-  (merge card (card.metadata/populate-result-metadata (select-keys card [:dataset_query :result_metadata :type]))))
-
 (defn- normalize-card
-  "Normalize a `card` so it satisfies the `::queries.schema/card` schema, throwing if it doesn't."
+  "`card` normalized to `::queries.schema/card`, checked against that schema wherever `mu/defn`s are instrumented."
   [card]
-  (mu.fn/validate-output {:fn-name `normalize-card} [:maybe ::queries.schema/card] (lib/normalize ::queries.schema/card card)))
+  (cond->> (lib/normalize ::queries.schema/card card)
+    (mu.fn/instrument-ns? *ns*) (mu.fn/validate-output {:fn-name `normalize-card} [:maybe ::queries.schema/card])))
 
 (t2/define-before-insert :model/Card
   [card]
@@ -797,16 +778,16 @@
         ;; Must have an entity_id before populating the metadata. TODO (Cam 7/11/25) -- actually, this is no longer true,
         ;; since we're removing `:ident`s; we can probably remove this now.
         (u/assoc-default :entity_id (u/generate-nano-id))
-        populate-result-metadata-for-insert
+        card.metadata/populate-result-metadata
         pre-insert
-        populate-query-fields-onto
+        populate-query-fields
         public-sharing/add-public-uuid-prefix)
     (collection/check-allowed-content (:type <>) (:collection_id <>))))
 
 (t2/define-after-insert :model/Card
   [card]
   (u/prog1 card
-    (when-let [field-ids (seq (params/card->template-tag-field-ids (select-keys card [:dataset_query])))]
+    (when-let [field-ids (seq (params/card->template-tag-field-ids card))]
       (log/info "Card references Fields in params:" field-ids)
       (sync.field-values/update-field-values-for-on-demand-dbs! field-ids))
     (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))))
@@ -816,14 +797,6 @@
     (assoc card :collection_id (queries.db/dashboard-collection-id dashboard-id))
     card))
 
-(mr/def ::populate-result-metadata.card
-  "The Card columns [[populate-result-metadata]] and [[populate-result-metadata-onto]] read: its query, existing
-  metadata, and type."
-  [:map {:closed true}
-   [:dataset_query   {:optional true} [:maybe ::queries.schema/card.dataset-query]]
-   [:result_metadata {:optional true} [:maybe ::queries.schema/card.result-metadata]]
-   [:type            {:optional true} [:maybe [:or ::queries.schema/card.type :string]]]])
-
 (mu/defn- populate-result-metadata :- [:map
                                        [:result_metadata {:optional true} [:maybe
                                                                            [:sequential
@@ -831,25 +804,15 @@
   "If we have fresh result_metadata, we don't have to populate it anew. When result_metadata doesn't
   change for a native query, populate-result-metadata removes it (set to nil) unless prevented by the
   verified-result-metadata? flag (see #37009)."
-  [card                      :- ::populate-result-metadata.card
-   changes                   :- [:maybe ::populate-result-metadata.card]
-   type-changing?            :- :boolean
+  [card                      :- ::queries.schema/card
+   changes                   :- [:maybe ::queries.schema/card]
    verified-result-metadata? :- [:maybe :boolean]]
   (-> (cond-> card
         (or (empty? (:result_metadata card))
             (not verified-result-metadata?)
-            type-changing?)
+            (contains? (t2/changes card) :type))
         (card.metadata/populate-result-metadata changes))
       (m/update-existing :result_metadata #(some->> % (lib/normalize [:sequential ::lib.schema.metadata/lib-or-legacy-column])))))
-
-(defn- populate-result-metadata-onto
-  "Merge [[populate-result-metadata]]'s derived `:result_metadata` onto the full `card`."
-  [card changes verified-result-metadata?]
-  (merge card
-         (populate-result-metadata (select-keys card [:dataset_query :result_metadata :type])
-                                   (some-> changes (select-keys [:dataset_query :result_metadata :type]))
-                                   (contains? changes :type)
-                                   verified-result-metadata?)))
 
 (defn- clear-metabot-origin
   "A card edited after being saved from a Metabot conversation no longer materializes
@@ -866,7 +829,7 @@
 
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
-  (let [changes (some->> card t2/changes normalize-card)
+  (let [changes (some-> card t2/changes normalize-card)
         card    (normalize-card card)]
     (collection/check-allowed-content (:type card) (:collection_id changes))
     (-> card
@@ -874,10 +837,10 @@
         (assoc :card_schema current-schema-version)
         (apply-dashboard-question-updates changes)
         (m/update-existing :dataset_query lib-be/normalize-query)
-        (populate-result-metadata-onto changes verified-result-metadata?)
+        (populate-result-metadata changes verified-result-metadata?)
         ;; populate-query-fields must run before pre-update in case source_card_id should be nilled.
         ;; Only allow it to nil out a stale table_id when the query itself is changing.
-        (populate-query-fields-onto (contains? changes :dataset_query))
+        (populate-query-fields (contains? changes :dataset_query))
         (clear-metabot-origin changes)
         (pre-update changes)
         maybe-populate-initially-published-at
@@ -1305,8 +1268,7 @@
 
 (mu/defn fully-parameterized?
   "Given a Card, returns `true` if its query is fully parameterized."
-  [{query :dataset_query, :as _card} :- [:map {:closed true}
-                                         [:dataset_query [:maybe [:or ::lib.schema/query ::lib-be.schema/empty-query]]]]]
+  [{query :dataset_query, :as _card} :- ::queries.schema/card]
   (if (empty? query)
     true
     (lib/fully-parameterized-query? query)))
@@ -1358,19 +1320,13 @@
 
 (defn- import-result-metadata [metadata]
   (when metadata
-    (let [imported (for [m metadata]
-                     (-> m
-                         (m/update-existing :table_id  serdes/*import-table-fk*)
-                         (m/update-existing :id        serdes/*import-field-fk*)
-                         (m/update-existing :field_ref serdes/import-mbql)
-                         ;; FIXME: remove that `if` after v52
-                         (m/update-existing :fk_target_field_id #(if (number? %) % (serdes/*import-field-fk* %)))
-                         lib/normalize-result-metadata-column))]
-      (if (mr/validate [:sequential ::lib.schema.metadata/lib-or-legacy-column] imported)
-        imported
-        (do
-          (log/warn "Ignoring invalid imported Card result_metadata")
-          nil)))))
+    (for [m metadata]
+      (-> m
+          (m/update-existing :table_id  serdes/*import-table-fk*)
+          (m/update-existing :id        serdes/*import-field-fk*)
+          (m/update-existing :field_ref serdes/import-mbql)
+          ;; FIXME: remove that `if` after v52
+          (m/update-existing :fk_target_field_id #(if (number? %) % (serdes/*import-field-fk* %)))))))
 
 (defn- result-metadata-deps [allow-int-ids? metadata]
   (when (seq metadata)
@@ -1450,8 +1406,7 @@
    :defaults {:archived            false
               :archived_directly   false
               :collection_preview  true
-              :enable_embedding    false}
-   :coerce   {:type ::lib.schema.metadata/card.type}})
+              :enable_embedding    false}})
 
 (defn- card-deps
   "The serdes dependencies of a Card as `:serdes/meta` paths. `allow-int-ids?` selects raw-appdb vs serialized ref semantics for

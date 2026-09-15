@@ -21,11 +21,7 @@
    ::document.update
    [:map {:closed true}
     [:id                  ms/PositiveInt]
-    [:creator             {:optional true} [:maybe [:map {:closed true}
-                                                    [:id         {:optional true} ::lib.schema.id/user]
-                                                    [:email      {:optional true} :string]
-                                                    [:first_name {:optional true} [:maybe :string]]
-                                                    [:last_name  {:optional true} [:maybe :string]]]]]
+    [:creator             {:optional true} [:maybe :metabase.users.schema/user]]
     [:collection          {:optional true} [:maybe :metabase.collections.schema/collection-or-root]]
     [:can_write           {:optional true} :boolean]
     [:can_delete          {:optional true} :boolean]

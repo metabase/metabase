@@ -607,7 +607,9 @@
 (mu/defn update-data-perms-graph!*
   "Takes an API-style perms graph and sets the permissions in the database accordingly.
    Uses bulk operations to minimize database round-trips."
-  ([graph :- [:map-of ::permissions-rest.schema/group-id [:maybe ::permissions-rest.schema/strict-db-graph]]]
+  ([graph :- [:map-of
+              ::permissions-rest.schema/group-id
+              [:maybe [:map-of ::permissions-rest.schema/id ::permissions-rest.schema/db-perms]]]]
    (let [affected-group-ids  (keys graph)
          affected-db-ids     (into #{} (mapcat keys) (vals graph))
          all-tables          (when (seq affected-db-ids)

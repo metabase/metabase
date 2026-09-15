@@ -39,6 +39,7 @@
    {:registry
     {::expr  [:or :keyword :string number? :boolean nil?
               [:sequential [:ref ::expr]]
+              [:set [:ref ::expr]]
               [:ref ::query]]
      ::query [:map {:closed true}
               [:select    {:optional true} [:sequential [:ref ::expr]]]

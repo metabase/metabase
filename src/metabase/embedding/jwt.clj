@@ -29,8 +29,8 @@
   "Normalize the `:params` and `:_embedding_params` slug maps of decoded `claims` back to string keys."
   [claims]
   (cond-> claims
-    (:params claims)            (update :params update-keys name)
-    (:_embedding_params claims) (update :_embedding_params update-keys name)))
+    (map? (:params claims))            (update :params update-keys name)
+    (map? (:_embedding_params claims)) (update :_embedding_params update-keys name)))
 
 (defn unsign
   "Parse a \"signed\" (base-64 encoded) JWT and return a Clojure representation. Check that the signature is

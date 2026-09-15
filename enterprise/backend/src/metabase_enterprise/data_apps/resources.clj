@@ -43,8 +43,8 @@
 (defn- apply-collection-permissions!
   "Gives the group read access. Preserves permission grants that are already correct."
   [group collection]
-  (let [read-path (perms/collection-read-path (:id collection))
-        write-path (perms/collection-readwrite-path (:id collection))
+  (let [read-path (perms/collection-read-path collection)
+        write-path (perms/collection-readwrite-path collection)
         permissions-by-group (group-by :group_id
                                        (data-apps.db/permissions-for-paths-excluding-group
                                         ["/" read-path write-path] (:id (perms/admin-group))))
@@ -52,9 +52,9 @@
     ;; Remove write grants and access from other groups
     (doseq [group-id (keys permissions-by-group)
             :when (not (and (= group-id (:id group)) app-read-only?))]
-      (perms/revoke-collection-permissions! group-id (:id collection)))
+      (perms/revoke-collection-permissions! group-id collection))
     (when-not app-read-only?
-      (perms/grant-collection-read-permissions! (:id group) (:id collection)))))
+      (perms/grant-collection-read-permissions! group collection))))
 
 (defn- apply-resource-permissions!
   [group collection]

@@ -196,20 +196,6 @@
                   (:id dim))
       nil)))
 
-(mr/def ::metric-for-dimension-annotation
-  "A metric as [[annotate-dimensions-with-field-data]] reads it: its `:dimensions` (each carrying at least an
-  `:id`, resolved via `metabase.lib-metric.core/resolve-dimension-to-field-id`) and optional
-  `:dimension_mappings`, both otherwise passed through untouched -- their full shape belongs to lib-metric,
-  not this batch-loader."
-  [:map {:closed false, ::mr/deliberately-open true, :description "a metric's :dimensions/:dimension_mappings, shape owned by lib-metric"}
-   [:dimensions {:optional true} [:maybe [:sequential
-                                          [:map {:closed false, ::mr/deliberately-open true,
-                                                 :description "a dimension, shape owned by lib-metric"}
-                                           [:id :string]]]]]
-   [:dimension_mappings {:optional true} [:maybe [:sequential
-                                                  [:map {:closed false, ::mr/deliberately-open true,
-                                                         :description "a dimension mapping, shape owned by lib-metric"}]]]]])
-
 (mu/defn annotate-dimensions-with-field-data :- [:sequential :map]
   "Given a vector of `:model/Field` columns and a seq of metrics (each carrying
    `:dimensions` and optional `:dimension_mappings`), batch-load those columns from
@@ -224,7 +210,7 @@
    Returns the metrics seq with `:dimensions` updated in place. `metrics` is the
    last arg so this composes cleanly with `->>` pipelines."
   [field-cols :- [:sequential :keyword]
-   metrics    :- [:sequential ::metric-for-dimension-annotation]]
+   metrics    :- [:sequential :metabase.queries.schema/card]]
   ;; Resolve each (metric, dimension) pair exactly once and carry the field id alongside its
   ;; dimension, so the merge pass below reads it instead of resolving all over again.
   (let [dims+fids  (mapv (fn [metric]

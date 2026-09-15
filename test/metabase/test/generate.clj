@@ -130,7 +130,7 @@
 (s/def ::kind #{"row/create" "row/update" "row/delete"})
 
 ;; * http_action
-(s/def ::template #{{}})
+(s/def ::template #{{:method "GET" :url "https://example.com"}})
 
 ;; * pulse
 (s/def ::row pos-int?)

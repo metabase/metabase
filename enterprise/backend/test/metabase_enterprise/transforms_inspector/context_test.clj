@@ -203,9 +203,11 @@
 
 (deftest build-context-mbql-sources-test
   (testing "build-context extracts source tables from MBQL query"
-    (let [transform {:source {:type :query
+    (let [transform {:id     1
+                     :source {:type :query
                               :query (simple-orders-query)}
-                     :target {:schema "nonexistent" :name "nonexistent_table" :type "table"}}
+                     :target {:schema "nonexistent" :name "nonexistent_table" :type "table"}
+                     :name   "test"}
           ctx (context/build-context transform)]
       (is (= :mbql (:source-type ctx)))
       (is (seq (:sources ctx)))
@@ -215,9 +217,11 @@
 
 (deftest build-context-not-run-test
   (testing "build-context returns nil target when target table doesn't exist"
-    (let [transform {:source {:type :query
+    (let [transform {:id     1
+                     :source {:type :query
                               :query (simple-orders-query)}
-                     :target {:schema "nonexistent" :name "nonexistent_table" :type "table"}}
+                     :target {:schema "nonexistent" :name "nonexistent_table" :type "table"}
+                     :name   "test"}
           ctx (context/build-context transform)]
       (is (nil? (:target ctx)))
       (is (false? (:has-column-matches? ctx))))))
@@ -225,9 +229,11 @@
 (deftest build-context-with-joins-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "build-context extracts join structure from MBQL query with LEFT JOIN"
-      (let [transform {:source {:type :query
+      (let [transform {:id     1
+                       :source {:type :query
                                 :query (joined-orders-products-query)}
-                       :target {:schema "nonexistent" :name "nonexistent_table" :type "table"}}
+                       :target {:schema "nonexistent" :name "nonexistent_table" :type "table"}
+                       :name   "test"}
             ctx (context/build-context transform)]
         (is (true? (:has-joins? ctx)))
         (is (= 1 (count (:join-structure (:mbql-context ctx)))))
@@ -245,11 +251,13 @@
     (testing "build-context populates column-matches when target exists"
       ;; Use products table as a fake target to avoid running a transform
       (let [products-table (t2/select-one :model/Table (mt/id :products))
-            transform {:source {:type :query
+            transform {:id     1
+                       :source {:type :query
                                 :query (joined-orders-products-query)}
                        :target {:schema (:schema products-table)
                                 :name   (:name products-table)
-                                :type   "table"}}
+                                :type   "table"}
+                       :name   "test"}
             ctx (context/build-context transform)]
         (is (some? (:target ctx)))
         (is (true? (:has-column-matches? ctx)))

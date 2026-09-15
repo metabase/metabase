@@ -88,8 +88,8 @@
      :cljs (regexp? x)))
 
 (mr/def ::op-arg
-  "A value `->op-arg` can turn into a clause argument: a literal, a metadata ref, an already-built clause, an
-  external-op map, a regex, or a (possibly nested) sequence of these."
+  "A value `->op-arg` can turn into a clause argument: a literal, a metadata ref, an already-built clause, a clause
+  whose arguments are still any of these, an external-op map, a regex, or a (possibly nested) sequence of these."
   [:or
    :string
    :boolean
@@ -104,6 +104,7 @@
    ::lib.schema.metadata/measure
    ::schema.common/external-op
    ::lib.schema.mbql-clause/clause
+   [:and vector? [:cat :keyword [:? ::schema.common/options] [:* [:schema [:ref ::op-arg]]]]]
    [:sequential [:ref ::op-arg]]])
 
 #?(:clj

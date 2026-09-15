@@ -6,7 +6,6 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.lib.schema.middleware-options :as lib.schema.middleware-options]
-   [metabase.lib.util :as lib.util]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -32,7 +31,7 @@
   [:schema
    {:description      (deferred-tru "value must be a valid MBQL query.")
     :decode/normalize #(normalize-query % (tru "value must be a valid MBQL query."))}
-   [:or ::lib.schema/query ::lib.util/legacy-query]])
+   [:ref ::lib.schema/query]])
 
 (mr/def ::internal-query.scope
   "Mirrors `metabase.actions.types/scope.normalized`. Duplicated (rather than referenced) so this namespace does not

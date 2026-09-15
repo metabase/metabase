@@ -264,10 +264,7 @@
   (map #(update-keys % u/->kebab-case-en) cols))
 
 (mu/defn- source-cols
-  [card   :- [:map {:closed true}
-              [:visualization_settings {:optional true} [:maybe ::queries.schema/card.visualization-settings]]
-              [:dataset_query          {:optional true} [:maybe ::queries.schema/card.dataset-query]]
-              [:result_metadata        {:optional true} [:maybe ::queries.schema/card.result-metadata]]]
+  [card   :- ::queries.schema/card
    source :- [:enum ::breakouts ::aggregations]]
   (if-let [names (get-in card [:visualization_settings (case source
                                                          ::breakouts    :graph.dimensions
@@ -281,16 +278,10 @@
                        ::breakouts    :lib/breakout?
                        ::aggregations #(= (:lib/source %) :source/aggregations))))))
 
-(def ^:private source-cols-keys
-  "The keys of a card [[source-cols]] reads."
-  [:visualization_settings :dataset_query :result_metadata])
-
 (defn- area-bar-line-series-are-compatible?
   [first-card second-card]
   (and (#{:area :line :bar} (:display second-card))
-       (let [first-card         (select-keys first-card source-cols-keys)
-             second-card        (select-keys second-card source-cols-keys)
-             initial-dimensions (source-cols first-card ::breakouts)
+       (let [initial-dimensions (source-cols first-card ::breakouts)
              new-dimensions     (source-cols second-card ::breakouts)
              new-metrics        (source-cols second-card ::aggregations)]
          (cond

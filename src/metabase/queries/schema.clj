@@ -66,7 +66,7 @@
     [:persisted/table_name  {:optional true} [:maybe :string]]
     [:dashboardcard_id      {:optional true} [:maybe ::lib.schema.id/dashcard]]
     [:collection            {:optional true} [:maybe :metabase.collections.schema/collection-or-root]]
-    [:creator               {:optional true} [:maybe [:or :metabase.users.schema/user :metabase.users.schema/user.update]]]
+    [:creator               {:optional true} [:maybe :metabase.users.schema/user]]
     [:dashboard             {:optional true} [:maybe [:ref :metabase.dashboards.schema/dashboard]]]
     [:document              {:optional true} [:maybe ::documents.schema/document]]
     [:last-edit-info        {:optional true} [:maybe
@@ -192,7 +192,7 @@
    [:result_metadata                           {:optional true} [:maybe [:or
                                                                          ::card.result-metadata
                                                                          [:sequential ::card.result-metadata.model-override]]]]
-   [:collection_position                       {:optional true} [:maybe :int]]
+   [:collection_position                       {:optional true} [:maybe [:or :int [:tuple [:enum :+ :-] [:= :collection_position] [:= 1]]]]]
    [:entity_id                                 {:optional true} [:maybe :string]]
    [:parameters                                {:optional true} [:maybe [:sequential ::card.parameter]]]
    [:parameter_mappings                        {:optional true} [:maybe [:sequential ::card.parameter-mapping]]]
@@ -321,7 +321,7 @@
 
 (mr/def ::stored-result.dataset-query
   "The `:dataset_query` column of a StoredResult, decoded."
-  ::lib-be.schema/maybe-legacy-or-empty-query)
+  :metabase.lib.util/query-like)
 
 (mr/def ::stored-result.data-access-token
   "The `:data_access_token` column of a StoredResult, decoded."

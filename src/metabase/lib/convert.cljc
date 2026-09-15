@@ -606,10 +606,10 @@
         (:columns stage-metadata)))
 
 (mu/defn- chain-stages
-  ([m :- [:map {:closed true} [:stages [:sequential ::lib.util/query-like]]]]
-   (chain-stages m nil))
+  ([stages :- [:sequential ::lib.util/query-like]]
+   (chain-stages stages nil))
 
-  ([{:keys [stages]}                                       :- [:map {:closed true} [:stages [:sequential ::lib.util/query-like]]]
+  ([stages                                                 :- [:sequential ::lib.util/query-like]
     {:keys [top-level?], :or {top-level? true}, :as _opts} :- [:maybe
                                                                [:map {:closed true}
                                                                 [:top-level? [:maybe :boolean]]]]]
@@ -702,7 +702,7 @@
            (when (seq (:columns metadata))
              {:source-metadata (stage-metadata->legacy-metadata metadata)})
            (let [inner-query (chain-stages
-                              (select-keys base [:stages])
+                              (:stages base)
                               {:top-level? false})]
              ;; if [[chain-stages]] returns any additional keys like `:filter` at the top-level then we need to wrap
              ;; it all in `:source-query` (QUE-1566, QUE-1603)
@@ -762,7 +762,7 @@
     (let [base        (merge (disqualify (dissoc query :info))
                              (select-keys query [:info]))
           parameters  (:parameters base)
-          inner-query (chain-stages (select-keys base [:stages]))
+          inner-query (chain-stages (:stages base))
           query-type  (if (-> query :stages last :lib/type (= :mbql.stage/native))
                         :native
                         :query)]

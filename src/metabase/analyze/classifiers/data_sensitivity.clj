@@ -5,7 +5,6 @@
    [clojure.string :as str]
    [metabase.config.core :as config]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
@@ -244,13 +243,6 @@
                        (some rule-table-tokens table-tokens))]
         category))))
 
-(def ^:private Field
-  [:map {:closed true}
-   [:name          :string]
-   [:base_type     :keyword]
-   [:semantic_type {:optional true} [:maybe :keyword]]
-   [:fingerprint   {:optional true} [:maybe ::lib.schema.metadata.fingerprint/fingerprint]]])
-
 (def ^:private TableContext
   [:maybe
    [:map {:closed true}
@@ -261,7 +253,7 @@
   "Infer the `data_sensitivity` category of `field` from its name, base type, semantic type, and fingerprint, with
   `table-context` (`:name`, `:entity_type` of its Table) gating the weaker rules. Returns the highest-precedence
   matching category, or nil when no rule matches. Never returns `:PUBLIC`."
-  [{field-name :name, :keys [base_type semantic_type fingerprint]} :- Field
+  [{field-name :name, :keys [base_type semantic_type fingerprint]} :- :metabase.warehouse-schema.schema/field
    {table-name :name, :keys [entity_type]} :- TableContext]
   (let [tokens (name->tokens field-name)]
     (->> (concat (token-matches tokens base_type)

@@ -138,7 +138,7 @@
 
 (defn- cards-sharing-dashboard
   [card]
-  (if-let [dashboards (not-empty (xrays.db/dashboard-ids-for-card (:id card)))]
+  (if-let [dashboards (some-> (:id card) xrays.db/dashboard-ids-for-card not-empty)]
     (->> (xrays.db/other-card-ids-on-dashboards dashboards (:id card))
          (map xrays.db/card)
          filter-visible

@@ -702,6 +702,7 @@
     (into {:binning           ":binning is deprecated; use :lib/binning instead"
            :field-ref         ":field-ref is deprecated. For QP result metadata, use :metabase.lib.metadata.result-metadata/field-ref"
            :ident             ":ident is deprecated and should not be included in column metadata"
+           :lib/model-display-name ":lib/model-display-name is deprecated and should not be included in column metadata"
            :model/inner-ident ":model/inner_ident (normalized to :model/inner-ident) is deprecated and should not be included in column metadata"
            :source            ":source is deprecated; use :lib/source instead. For QP result metadata, use :metabase.lib.metadata.result-metadata/source"
            :source-alias      ":source-alias is deprecated; use :lib/join-alias or :lib/original-join-alias instead"
@@ -1222,6 +1223,7 @@
   [:map {:closed true}
    [:lib/type [:= :metadata/transform]]
    [:id     ::lib.schema.id/transform]
-   [:name   {:optional true} :string]
-   [:source {:optional true} [:ref ::transform.source]]
-   [:target {:optional true} [:ref ::transform.target]]])
+   [:name        {:optional true} :string]
+   [:source      {:optional true} [:ref ::transform.source]]
+   [:source-type {:optional true} [:maybe [:enum :python :native :mbql]]]
+   [:target      {:optional true} [:ref ::transform.target]]])

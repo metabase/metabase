@@ -194,7 +194,7 @@
    timezone-id :- [:maybe :string]
    card        :- [:maybe ::body/card]
    dashcard    :- [:maybe ::body/dashcard]
-   {:keys [data error] :as results} :- ::body/QPResult]
+   {:keys [data error] :as results} :- [:maybe ::body/QPResult]]
   (try
     (when error
       (throw (ex-info (tru "Card has errors: {0}" error) (assoc results :card-error true))))
@@ -238,14 +238,14 @@
     timezone-id :- [:maybe :string]
     card        :- [:maybe ::body/card]
     dashcard    :- [:maybe ::body/dashcard]
-    results     :- ::body/QPResult]
+    results     :- [:maybe ::body/QPResult]]
    (render-pulse-card render-type timezone-id card dashcard results nil))
 
   ([render-type :- ::body/render-type
     timezone-id :- [:maybe :string]
     card        :- [:maybe ::body/card]
     dashcard    :- [:maybe ::body/dashcard]
-    results     :- ::body/QPResult
+    results     :- [:maybe ::body/QPResult]
     options     :- [:maybe ::body/options]]
    (let [{title             :content
           title-attachments :attachments} (make-title-if-needed render-type card dashcard options)
@@ -290,18 +290,19 @@
   attachments"
   ([timezone-id :- [:maybe :string]
     card        :- [:maybe ::body/card]
-    results     :- ::body/QPResult]
+    results     :- [:maybe ::body/QPResult]]
    (render-pulse-card-for-display timezone-id card results nil))
 
   ([timezone-id :- [:maybe :string]
     card        :- [:maybe ::body/card]
-    results     :- ::body/QPResult
+    results     :- [:maybe ::body/QPResult]
     options     :- [:maybe ::body/options]]
    (:content (render-pulse-card :inline timezone-id card nil results options))))
 
 (mr/def ::part
   "The `{:card :dashcard :result}` shape a Pulse/Dashboard Subscription section carries."
   [:map {:closed true}
+   [:type     {:optional true} [:= :card]]
    [:card     {:optional true} [:maybe ::body/card]]
    [:dashcard {:optional true} [:maybe ::body/dashcard]]
    [:result   {:optional true} [:maybe ::body/QPResult]]])

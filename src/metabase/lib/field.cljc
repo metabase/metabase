@@ -803,13 +803,12 @@
   Note that this value is not necessarily the same as the value of `has_field_values` in the application database.
   `has_field_values` may be unset, in which case we will try to infer it. `:auto-list` is not currently understood by
   the FE filter stuff, so we will instead return `:list`; the distinction is not important to it anyway."
-  [{:keys [has-field-values], :as field} :- [:map {:closed true}
-                                             ;; this doesn't use `::lib.schema.metadata/column` because it's stricter
-                                             ;; than we need and the REST API calls this function with optimized Field
-                                             ;; maps that don't include some keys like `:name`
-                                             [:base-type        {:optional true} [:maybe ::lib.schema.common/base-type]]
-                                             [:effective-type   {:optional true} [:maybe ::lib.schema.common/base-type]]
-                                             [:has-field-values {:optional true} [:maybe ::lib.schema.metadata/column.has-field-values]]]]
+  [{:keys [has-field-values], :as field} :- [:or
+                                             ::lib.schema.metadata/column
+                                             [:map {:closed true}
+                                              [:base-type        {:optional true} [:maybe ::lib.schema.common/base-type]]
+                                              [:effective-type   {:optional true} [:maybe ::lib.schema.common/base-type]]
+                                              [:has-field-values {:optional true} [:maybe ::lib.schema.metadata/column.has-field-values]]]]]
   (cond
     ;; if `has_field_values` is set in the DB, use that value; but if it's `auto-list`, return the value as `list` to
     ;; avoid confusing FE code, which can remain blissfully unaware that `auto-list` is a thing
@@ -843,5 +842,5 @@
        :search-field-id (when (int? search-field-id) search-field-id)
        :search-field (when (int? search-field-id) search-column)
        :has-field-values (if (int? column-field-id)
-                           (infer-has-field-values (select-keys column [:base-type :effective-type :has-field-values]))
+                           (infer-has-field-values column)
                            :none)})))

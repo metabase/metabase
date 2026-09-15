@@ -195,6 +195,12 @@
    [:table-id ::lib.schema.id/table]
    [:values   ::row]])
 
+(mr/def ::data-grid.row.input
+  "A data-grid row action input before its normalization resolves the database."
+  [:map {:closed true}
+   [:table-id ::lib.schema.id/table]
+   [:row      ::row]])
+
 (mr/def ::any-arg-map
   "One arg map an action can be invoked with, in any of the shapes [[action-arg-map-schema]] recognizes."
   [:or
@@ -202,6 +208,7 @@
    ::model.row.update
    ::model.row.delete
    ::table.common
+   ::data-grid.row.input
    ::implicit
    ::table.insert
    [:= {} {}]])

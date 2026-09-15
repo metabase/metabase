@@ -319,8 +319,7 @@
                 :semantic_type       nil}]]
              (updates-that-will-be-performed!
               (merge default-metadata
-                     {:id             field-id
-                      :base-type      :type/Text
+                     {:base-type      :type/Text
                       :effective-type :type/Text})
               (merge default-metadata
                      {:id             field-id

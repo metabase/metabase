@@ -6,17 +6,15 @@
    [metabase.util.malli.schema :as ms]))
 
 (mr/def ::undo.row-pk
-  "The `:row_pk` column of a Undo, decoded: a snapshot of an arbitrary table's primary-key columns, keyword-keyed
-  as Toucan reads a row, before JSON-encoding stringifies the keys. Deliberately open: the key set and column
-  value types vary with the table."
+  "The `:row_pk` column of a Undo, decoded: a warehouse table's primary-key columns, whose keys and values that table owns."
   [:map {:closed false, ::mr/deliberately-open true}])
 
 (mr/def ::undo.raw-before
-  "The `:raw_before` column of a Undo, decoded: same shape as [[undo.row-pk]], for a full row snapshot."
+  "The `:raw_before` column of a Undo, decoded: a warehouse table row, whose keys and values that table owns."
   [:map {:closed false, ::mr/deliberately-open true}])
 
 (mr/def ::undo.raw-after
-  "The `:raw_after` column of a Undo, decoded: same shape as [[undo.row-pk]], for a full row snapshot."
+  "The `:raw_after` column of a Undo, decoded: a warehouse table row, whose keys and values that table owns."
   [:map {:closed false, ::mr/deliberately-open true}])
 
 (mr/def ::undo

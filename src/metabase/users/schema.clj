@@ -19,6 +19,10 @@
            (not-any? #(str/starts-with? (name %) "@") (keys attributes)))]
     (deferred-tru "login attribute keys must not start with `@`"))])
 
+(def UserAttributes
+  "The combined attributes of a User: its login and JWT attributes plus the system (`@`-prefixed) attributes like its tenant's."
+  (ms/string-keyed-map [:ref ::lib.schema.parameter/parameter.value]))
+
 (def NewUser
   "Required/optionals parameters needed to create a new user (for any backend)"
   [:map {:closed true}
@@ -61,6 +65,8 @@
    ::user.update
    [:map {:closed true}
     [:id              ::lib.schema.id/user]
+    [:common_name     {:optional true} [:maybe :string]]
+    [:attributes      {:optional true} [:maybe UserAttributes]]
     [:user_group_memberships {:optional true} [:sequential [:map {:closed true} [:name :string] [:entity_id :string]]]]]])
 
 (mr/def ::user.full
@@ -121,21 +127,7 @@
    [:tenant_id               {:optional true} [:maybe ms/PositiveInt]]
    [:jwt_attributes          {:optional true} [:maybe LoginAttributes]]
    [:deactivated_with_tenant {:optional true} [:maybe :boolean]]
-   [:is_data_analyst         {:optional true} [:maybe :boolean]]
-   [:id                      {:optional true} [:maybe ::lib.schema.id/user]]
-   [:common_name             {:optional true} [:maybe :string]]
-   [:attributes              {:optional true} [:maybe LoginAttributes]]])
-
-(mr/def ::login-user
-  "A User as login and session bookkeeping receives it: a full row, or the login-status columns
-  `metabase.auth-identity.db` selects."
-  [:or
-   [:ref ::user]
-   [:map {:closed true}
-    [:id         ::lib.schema.id/user]
-    [:is_active  {:optional true} :boolean]
-    [:last_login [:maybe ms/TemporalInstant]]
-    [:tenant_id  {:optional true} [:maybe ms/PositiveInt]]]])
+   [:is_data_analyst         {:optional true} [:maybe :boolean]]])
 
 (mr/def ::user-filters
   "Options accepted by `metabase.users.db/filter-clauses` (and, by extension, any db.clj function that filters

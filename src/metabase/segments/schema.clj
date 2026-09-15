@@ -29,13 +29,8 @@
             (nil? (lib/current-limit query))))]]])
 
 (mr/def ::segment.definition
-  "The `:definition` column of a Segment, decoded. Accepts an already-normalized MBQL5/legacy query, or a
-  not-yet-normalized legacy query/fragment as ingested from serdes before the model's before-insert hook
-  normalizes and validates it (see `validate-mbql5-definition`)."
-  [:or
-   ::lib-be.schema/maybe-legacy-query
-   [:map {:closed false, ::mr/deliberately-open true,
-          :description "a not-yet-normalized legacy MBQL query or fragment"}]])
+  "The `:definition` column of a Segment, decoded."
+  ::lib-be.schema/maybe-legacy-query)
 
 (mr/def ::segment
   "A Segment as selected from the app DB: every column of `:segment`, plus `:creator` and `:table` some callers

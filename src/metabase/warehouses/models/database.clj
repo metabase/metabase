@@ -633,9 +633,11 @@
   driver can't be clearly determined, this simply returns the default set (driver.u/default-sensitive-fields)."
   [database]
   (if (and (some? database) (not-empty database))
-    (let [driver (driver.u/database->driver database)]
+    (let [driver (if-let [engine (:engine database)]
+                   (keyword engine)
+                   (driver.u/database->driver (:id database)))]
       (if (some? driver)
-        (driver.u/sensitive-fields (driver.u/database->driver database))
+        (driver.u/sensitive-fields driver)
         driver.u/default-sensitive-fields))
     driver.u/default-sensitive-fields))
 

@@ -57,7 +57,7 @@
             viz-settings'               (assoc viz-settings :output-order output-order)]
         (qp.si/begin! w
                       (-> results
-                          (assoc-in [:data :format-rows?] format-rows?)
+                          (assoc-in [:data :format-rows?] (boolean format-rows?))
                           (assoc-in [:data :pivot?] pivot?)
                           (assoc-in [:data :csv-include-bom?] csv-include-bom?)
                           (assoc-in [:data :ordered-cols] ordered-cols))

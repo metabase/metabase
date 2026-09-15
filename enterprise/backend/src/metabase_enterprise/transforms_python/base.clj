@@ -8,7 +8,6 @@
    [clojure.core.async :as a]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [malli.util :as mut]
    [metabase-enterprise.transforms-python.db :as transforms-python.db]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase-enterprise.transforms-python.s3 :as s3]
@@ -268,7 +267,7 @@
    cancel-chan :- ::transforms-base.schema/chan
    message-log :- ::transforms-base.schema/atom
    {:keys [with-stage-timing-fn source-range-params]}
-   :- (mut/select-keys ::transforms-base.schema/execute-base-options [:with-stage-timing-fn :source-range-params])]
+   :- ::transforms-base.schema/execute-base-options]
   ;; Resolve name-based source table refs to table IDs (throws if any not found)
   (let [resolved-source-tables (transforms-base.u/resolve-source-tables (:source-tables source))]
     (with-open [shared-storage-ref (s3/open-shared-storage! resolved-source-tables)]

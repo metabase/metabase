@@ -201,8 +201,7 @@
                           ::documents.schema/document
                           :metabase-enterprise.sandbox.schema/sandbox
                           :metabase.segments.schema/segment
-                          :metabase.measures.schema/measure
-                          [:map {:closed true} [:id {:optional true} :int]]]]]]
+                          :metabase.measures.schema/measure]]]]
   (boolean
    (case entity-type
      :card (some-> entity

@@ -330,7 +330,9 @@
    Fetches the stored secret and fills in `-path` `-options` `-value` for each secret property.
    Operates on `:details`, `:write_data_details`, and `:admin_details`."
   [database]
-  (let [driver  (driver.u/database->driver database)
+  (let [driver  (if-let [engine (:engine database)]
+                  (keyword engine)
+                  (driver.u/database->driver (:id database)))
         hydrate (fn [details]
                   (reduce-over-details-secret-values driver details hydrate-redacted-secret))]
     ;; Very low-level operation here, so not using driver.conn/* utils:

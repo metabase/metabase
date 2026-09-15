@@ -38,7 +38,7 @@
     #{}
     #{((case read-or-write
          :read  permissions.path/collection-read-path
-         :write permissions.path/collection-readwrite-path) (select-keys collection [::is-root? :authority_level :namespace]))}))
+         :write permissions.path/collection-readwrite-path) collection)}))
 
 (def ^RootCollection root-collection
   "Special placeholder object representing the Root Collection, which isn't really a real Collection."

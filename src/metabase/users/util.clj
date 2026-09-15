@@ -95,7 +95,7 @@
                                                 :user-group-memberships :user_group_memberships
                                                 :login-attributes       :login_attributes
                                                 :tenant-id              :tenant_id}))
-                          (select-keys @api/*current-user* [:email :first_name])
+                          @api/*current-user*
                           (= source :setup)
                           invite-target)))]
       (when-let [password (:password attributes)]

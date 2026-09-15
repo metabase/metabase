@@ -223,9 +223,9 @@
 
 (mu/defn batch-fetch-dashboard-metadata
   "Fetch dependent metadata for dashboards."
-  [dashboards :- [:sequential
-                  [:map {:closed true}
-                   [:dashcards {:optional true} [:maybe [:sequential :metabase.dashboards.schema/dashboard-card]]]]]]
+  [dashboards :- [:sequential [:or
+                               :metabase.dashboards.schema/dashboard
+                               :metabase.xrays.automagic-dashboards.schema/dashboard]]]
   (let [dashcards (mapcat :dashcards dashboards)
         cards     (for [{:keys [card series]} dashcards
                         :let   [all (conj series card)]

@@ -89,10 +89,10 @@
                                                           (swap! received conj payload)
                                                           (.countDown latch)
                                                           :sent)]
-          (doseq [i (range 200)]
+          (doseq [i (range 1 201)]
             (metaplow/track-event! :snowplow/dashboard {:event :dashboard-created :dashboard-id i}))
           (is (true? (.await latch 1 TimeUnit/SECONDS))
               "Pipeline did not process all 200 events within 1s")
           (is (= 200 (count @received)))
-          (is (= (set (range 200))
+          (is (= (set (range 1 201))
                  (set (map #(get-in % [:payload :data "dashboard_id"]) @received)))))))))

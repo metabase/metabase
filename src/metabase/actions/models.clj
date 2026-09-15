@@ -4,7 +4,6 @@
    [metabase.actions.db :as actions.db]
    [metabase.actions.schema :as actions.schema]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
@@ -18,13 +17,10 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
-   [toucan2.tools.hydrate :as t2.hydrate])
-  (:import
-   (java.time.temporal Temporal)))
+   [toucan2.tools.hydrate :as t2.hydrate]))
 
 (set! *warn-on-reflection* true)
 
@@ -167,38 +163,9 @@
           :implicit (actions.db/insert-implicit-action! row))
         (:id action)))))
 
-(def ^:private ActionInsertData
-  "The keys [[actions.schema/action.for-insert]] normalizes, accepted here before normalization."
-  [:map {:closed true}
-   [:name                   {:optional true} :string]
-   [:type                   {:optional true} [:or :keyword :string]]
-   [:model_id               {:optional true} ::lib.schema.id/card]
-   [:archived               {:optional true} :boolean]
-   [:description            {:optional true} [:maybe :string]]
-   [:parameters             {:optional true} [:maybe [:sequential
-                                                      [:map {:closed false, ::mr/deliberately-open true,
-                                                             :description "one action parameter, as authored by the client before `lib/normalize` coerces its legacy clause tags to keywords"}]]]]
-   [:database_id            {:optional true} [:maybe ::lib.schema.id/database]]
-   [:parameter_mappings     {:optional true} [:maybe ::parameters.schema/parameter-mappings]]
-   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
-   [:created_at             {:optional true} (ms/InstanceOfClass Temporal)]
-   [:updated_at             {:optional true} (ms/InstanceOfClass Temporal)]
-   [:public_uuid            {:optional true} [:maybe ms/UUIDString]]
-   [:public_uuid_prefix     {:optional true} [:maybe :string]]
-   [:made_public_by_id      {:optional true} [:maybe ::lib.schema.id/user]]
-   [:creator_id             {:optional true} [:maybe ::lib.schema.id/user]]
-   [:entity_id              {:optional true} [:maybe :string]]
-   [:legacy_query           {:optional true} [:maybe :string]]
-   [:template               {:optional true} [:maybe ::actions.schema/http-action.template]]
-   [:response_handle        {:optional true} [:maybe ::actions.schema/http-action.json-query]]
-   [:error_handle           {:optional true} [:maybe ::actions.schema/http-action.json-query]]
-   [:disabled               {:optional true} :boolean]
-   [:kind                   {:optional true} [:or :keyword :string]]
-   [:dataset_query          {:optional true} [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]])
-
 (mu/defn insert! :- ::actions.schema/id
   "Inserts an Action and related type table. Returns the action id."
-  [action-data :- ActionInsertData]
+  [action-data :- ::actions.schema/action.for-insert]
   (insert*! (lib/normalize ::actions.schema/action.for-insert action-data)))
 
 (mu/defn- update*!

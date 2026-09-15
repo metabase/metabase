@@ -60,8 +60,8 @@
   [:merge
    ::users.schema/user
    [:map {:closed true}
-    [:date_joined RowTimestamp]
-    [:last_login  RowTimestamp]]])
+    [:date_joined {:optional true} RowTimestamp]
+    [:last_login  {:optional true} RowTimestamp]]])
 
 (def notification-types
   "Set of valid notification types."
@@ -830,9 +830,11 @@
    [:merge
     ::NotificationHandler
     [:map
-     [:template   {:optional true} [:maybe ::models.channel/ChannelTemplate]]
-     [:channel    {:optional true} [:maybe ::models.channel/Channel]]
-     [:recipients {:optional true} [:sequential ::NotificationRecipient]]]]))
+     [:template        {:optional true} [:maybe ::models.channel/ChannelTemplate]]
+     [:channel         {:optional true} [:maybe ::models.channel/Channel]]
+     [:recipients      {:optional true} [:sequential ::NotificationRecipient]]
+     [:attachment_only {:optional true} [:maybe :boolean]]
+     [:include_pdf     {:optional true} [:maybe :boolean]]]]))
 
 (def ^:private NotificationWithInlinePayload
   "A Notification row as `send-notification!` is handed it before hydration: with the system event `:payload`
@@ -859,6 +861,7 @@
   "Fully hydrate notifictitons."
   [notification-or-notifications :- [:or NotificationWithInlinePayload
                                      NotificationWithRawHandlers
+                                     [:ref ::FullyHydratedNotification]
                                      [:sequential ::notification.schema/notification]]]
   (t2/hydrate notification-or-notifications :creator :payload :subscriptions [:handlers :channel :template [:recipients :recipients-detail]]))
 

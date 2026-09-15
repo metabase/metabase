@@ -22,8 +22,10 @@
    [:channel :string]])
 
 (mr/def ::email-details
-  "The connection `:details` of a `:channel/email` channel: there are none, email is configured by settings."
-  [:map {:closed true}])
+  "The connection `:details` of a `:channel/email` channel: an optional SMTP host and port, as email is otherwise configured by settings."
+  [:map {:closed true}
+   [:host {:optional true} [:maybe :string]]
+   [:port {:optional true} [:maybe :int]]])
 
 (mr/def ::test-details
   "The `:details` of the test-only `:channel/metabase-test` channel, which exists so a test can drive a connection test

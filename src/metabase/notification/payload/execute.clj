@@ -233,9 +233,9 @@
                                                                       ;; Pass streaming rff with 2000 row threshold
                                                                       (notification.temp-storage/notification-rff
                                                                        {:budget spill-budget}
-                                                                       {"dashboard_id" dashboard_id
-                                                                        "card_id" card-id
-                                                                        "dashcard_id" (u/the-id dashcard)})))))
+                                                                       {:dashboard_id dashboard_id
+                                                                        :card_id card-id
+                                                                        :dashcard_id (u/the-id dashcard)})))))
                                                  fixup-viz-settings
                                                  format-qp-result)}))
                result         (result-fn card_id)
@@ -394,7 +394,7 @@
                                                                        ;; uses its own (unshared) spill budget
                                                                        (notification.temp-storage/notification-rff
                                                                         {:budget (new-spill-budget)}
-                                                                        {"card-id" card-id})))))
+                                                                        {:card-id card-id})))))
                      fixup-viz-settings
                      format-qp-result))]
     (log/debugf "Result has %d rows" (:row_count result))

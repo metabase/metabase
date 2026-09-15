@@ -8,7 +8,7 @@
                              :param {:type   \"date/range\"
                                      :target [\"dimension\" [\"template-tag\" \"checkin_date\"]]
                                      :value  \"2015-01-01~2016-09-01\"}}}"
-  (:refer-clojure :exclude [every? some mapv not-empty get-in select-keys])
+  (:refer-clojure :exclude [every? some mapv not-empty get-in])
   (:require
    [clojure.string :as str]
    [metabase.lib.core :as lib]
@@ -29,7 +29,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [every? get-in mapv not-empty select-keys some]])
+   [metabase.util.performance :refer [every? get-in mapv not-empty some]])
   (:import
    (clojure.lang ExceptionInfo)
    (java.util UUID)))
@@ -160,7 +160,7 @@
                                                                                        (:type param))))
                                                                 (dissoc tag-opts :case-sensitive)
                                                                 tag-opts)]
-                                                 (cond-> (select-keys param [:type :value :default :options])
+                                                 (cond-> (dissoc param :target)
                                                    (seq tag-opts)
                                                    (assoc :options tag-opts))))
                                              params)]

@@ -650,7 +650,7 @@
         pk       (first (t2/primary-keys model))
         id       (get local pk)]
     (log/tracef "Upserting %s %d" model-name id)
-    (models.db/update-entity! id {:model model :row ingested})
+    (models.db/update-entity! id (lib/normalize :metabase.models.db/model-row {:model model :row ingested}))
     (models.db/entity-by-pk model pk id)))
 
 (defmulti load-insert!
@@ -672,7 +672,7 @@
 
 (defmethod load-insert! :default [model-name ingested]
   (log/tracef "Inserting %s" model-name)
-  (models.db/insert-entity! {:model (t2.model/resolve-model (symbol model-name)) :row ingested}))
+  (models.db/insert-entity! (lib/normalize :metabase.models.db/model-row {:model (t2.model/resolve-model (symbol model-name)) :row ingested})))
 
 (defmulti load-one!
   "Black box for integrating a deserialized entity into this appdb.
@@ -1002,11 +1002,11 @@
 (def ^:private MBQLNode
   [:ref ::mbql-node])
 
-(mu/defn- mbql-ref? :- [:maybe [:enum :field :field-id :dimension :metric :segment :measure :aggregation :expression]]
+(mu/defn- mbql-ref? :- [:maybe [:enum :field :field-id :dimension :metric :segment :measure]]
   "Is given form an MBQL entity reference?"
   [form :- MBQLNode]
   (when (and (vector? form)
-             (#{:field :field-id :dimension :metric :segment :measure :aggregation :expression} (keyword (first form))))
+             (#{:field :field-id :dimension :metric :segment :measure} (keyword (first form))))
     (keyword (first form))))
 
 (mr/def ::mbql-3-field-id-ref
@@ -1124,10 +1124,10 @@
     ;; if required UUIDs are already calculated don't recalculate when we recurse.
     (binding [*required-lib-uuids-for-export* (or *required-lib-uuids-for-export* (collect-required-lib-uuids x))]
       (cond
-        (and (vector? x) (mbql-ref? x)) (export-mbql-ref x)
-        (sequential? x)                 (mapv export-mbql x)
-        (map? x)                        (export-mbql-map x)
-        :else                           x))))
+        (mbql-ref? x)   (export-mbql-ref x)
+        (sequential? x) (mapv export-mbql x)
+        (map? x)        (export-mbql-map x)
+        :else           x))))
 
 (defn- portable-id?
   "True if the provided string is an Entity ID."
@@ -1164,9 +1164,6 @@
        :table-id                     (cond-> m
                                        (vector? v)
                                        (update k *import-table-fk*))
-       (:base-type :effective-type :temporal-unit :inherited-temporal-unit) (cond-> m
-                                                                              (string? v)
-                                                                              (update k keyword))
        #_else                        (update m k import-mbql*)))
    m
    m))
@@ -1181,12 +1178,6 @@
     [#{:field "field"} (fully-qualified-name :guard vector?) (opts :guard (or (map? opts) (nil? opts)))]
     [:field (*import-field-fk* fully-qualified-name) (some-> opts import-mbql-update-refs)]
 
-    [#{:field "field"} (opts :guard map?) (field-name :guard string?)]
-    [:field (import-mbql-map opts) field-name]
-
-    [#{:field "field"} (field-name :guard string?) (opts :guard (or (map? opts) (nil? opts)))]
-    [:field field-name (some-> opts import-mbql-update-refs)]
-
     ;; MBQL 3 `:field-id` can (allegedly) still show up sometimes? Support it just in case.
     [#{:field :field-id "field" "field-id"} (id :guard vector?)]
     [:field (*import-field-fk* id) nil]
@@ -1199,24 +1190,6 @@
 
     [#{:measure "measure"} opts (entity-id :guard portable-id?)]
     [:measure (import-mbql-map opts) (*import-fk* entity-id 'Measure)]
-
-    [#{:dimension "dimension"} target]
-    [:dimension (import-mbql-update-refs target)]
-
-    [#{:dimension "dimension"} target opts]
-    [:dimension (import-mbql-update-refs target) opts]
-
-    [#{:variable "variable"} target]
-    [:variable (import-mbql-update-refs target)]
-
-    [#{:expression "expression"} (expression-name :guard string?) opts]
-    [:expression expression-name (import-mbql-map opts)]
-
-    [#{:expression "expression"} (expression-name :guard string?)]
-    [:expression expression-name]
-
-    [#{:aggregation "aggregation"} (index :guard int?)]
-    [:aggregation index]
 
     ;; support legacy MBQL 4 refs for things like the serialized Audit v2 queries
     [#{:metric "metric"} (entity-id :guard portable-id?)]

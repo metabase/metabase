@@ -47,7 +47,7 @@
   wrong here and the query we generated is off."
   [columns             :- ::mongo.qp/projections
    ;; first row col names seems to be `java.util.LinkedHashMap$LinkedKeySet`
-   first-row-col-names :- (driver-api/instance-of-class java.util.Collection)]
+   first-row-col-names :- [:maybe (driver-api/instance-of-class java.util.Collection)]]
   {:pre [(every? string? columns) (every? string? first-row-col-names)]}
   (when (seq first-row-col-names)
     (let [expected-cols   (set (for [col-name columns]

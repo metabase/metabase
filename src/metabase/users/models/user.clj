@@ -19,7 +19,6 @@
    [metabase.util.i18n :as i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.default-fields :as t2.default-fields]))
@@ -367,37 +366,6 @@
 
 (declare form-password-reset-url)
 
-(def ^:private CurrentUserRow
-  "The shape of the current user (see [[metabase.request.session/find-user]]): a `current-user-columns` row plus
-  `:common_name`, before [[add-attributes]] adds `:attributes`. Only `:type` is required: [[add-attributes]] reads
-  just `:type`/`:login_attributes`/`:jwt_attributes` and otherwise passes the row through unchanged, so unit tests
-  exercising just that merge logic pass a bare `{:type ... :login_attributes ... :jwt_attributes ...}` map."
-  [:map {:closed true}
-   [:id               {:optional true} ms/PositiveInt]
-   [:email            {:optional true} ms/Email]
-   [:first_name       {:optional true} [:maybe ms/NonBlankString]]
-   [:last_name        {:optional true} [:maybe :string]]
-   [:common_name      {:optional true} [:maybe :string]]
-   [:date_joined      {:optional true} ms/TemporalInstant]
-   [:last_login       {:optional true} [:maybe ms/TemporalInstant]]
-   [:is_superuser     {:optional true} :boolean]
-   [:is_active        {:optional true} :boolean]
-   [:is_qbnewb        {:optional true} :boolean]
-   [:is_data_analyst  {:optional true} :boolean]
-   [:tenant_id        {:optional true} [:maybe ms/PositiveInt]]
-   [:sso_source       {:optional true} [:maybe [:or :keyword :string]]]
-   [:updated_at       {:optional true} ms/TemporalInstant]
-   [:login_attributes {:optional true} [:maybe users.schema/LoginAttributes]]
-   [:jwt_attributes   {:optional true} [:maybe users.schema/LoginAttributes]]
-   [:locale           {:optional true} [:maybe :string]]
-   [:type             (into [:enum] allowed-user-types)]])
-
-(def ^:private Invitor
-  "The name and email of the admin creating the user, used in the new user notification code."
-  [:map {:closed true}
-   [:email      ms/Email]
-   [:first_name [:maybe :string]]])
-
 (defn serdes-synthesize-user!
   "Creates a new user with a default password, when deserializing eg. a `:creator_id` field whose email address doesn't
   match any existing user."
@@ -409,11 +377,11 @@
   This function will create the user, which will trigger the built-in system event
   notification to send an invite via email."
   ([new-user :- users.schema/NewUser
-    invitor  :- Invitor
+    invitor  :- ::users.schema/user
     setup?   :- :boolean]
    (create-and-invite-user! new-user invitor setup? nil))
   ([new-user      :- users.schema/NewUser
-    invitor       :- Invitor
+    invitor       :- ::users.schema/user
     setup?        :- :boolean
     invite-target :- [:maybe users.schema/InviteTarget]]
    ;; create the new user
@@ -462,7 +430,10 @@
   "Adds the `:attributes` key to a user. Only personal users carry attributes; for other user types (API-key, internal)
   this is always `{}`, so e.g. sandboxed queries made with an API key report a missing user attribute instead of
   reading attributes stored on the user row."
-  [{:keys [login_attributes jwt_attributes] :as user} :- CurrentUserRow]
+  [{:keys [login_attributes jwt_attributes] :as user} :- [:merge
+                                                          ::users.schema/user
+                                                          [:map {:closed true}
+                                                           [:type (into [:enum] allowed-user-types)]]]]
   (assoc user :attributes (if (= (:type user) :personal)
                             (merge {} (tenants/login-attributes user) jwt_attributes login_attributes)
                             {})))

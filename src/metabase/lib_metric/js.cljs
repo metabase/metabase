@@ -866,7 +866,7 @@
       (let [mp    (:metadata-provider definition)
             field (resolve-dimension-field mp dimension)
             has-fv (when field
-                     (lib.field/infer-has-field-values (select-keys field [:base-type :effective-type :has-field-values])))
+                     (lib.field/infer-has-field-values field))
             can-remap (boolean
                        (when field
                          (get-in field [:lib/external-remap :field-id])))]

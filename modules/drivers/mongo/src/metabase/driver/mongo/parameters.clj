@@ -136,7 +136,7 @@
       (lib/parsed-field-filter-param? v)
       (let [no-value? (= (:value v) lib/parsed-param-no-value-placeholder)]
         (cond
-          (params.ops/operator? (get-in v [:value :type]))
+          (some-> (get-in v [:value :type]) params.ops/operator?)
           (let [param (:value v)
                 field-name (if (str/blank? (:alias v))
                              (mongo.qp/field->name query (:field v) ".")

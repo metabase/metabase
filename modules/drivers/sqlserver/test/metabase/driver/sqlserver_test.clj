@@ -946,7 +946,7 @@
                                           :where  (sql.qp/->honeysql
                                                    :sqlserver
                                                    [:= {}
-                                                    [:field {} (mt/id :attempts :datetime)]
+                                                    [:field {:lib/uuid (str (random-uuid))} (mt/id :attempts :datetime)]
                                                     (sql.qp/compiled [:raw "?"])])})))]
           (doseq [param [datetime-string datetime-localdatetime]
                   :let  [query [base-query param]]]

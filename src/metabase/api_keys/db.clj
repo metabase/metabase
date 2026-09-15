@@ -85,7 +85,7 @@
 
 (mu/defn insert-user!
   "Insert the User `row` and return its id."
-  [row :- (mut/select-keys ::users.schema/user.update [:email :first_name :last_name :type])]
+  [row :- ::users.schema/user.update]
   (t2/insert-returning-pk! :model/User row))
 
 (mu/defn insert-api-key!

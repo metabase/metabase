@@ -6,6 +6,7 @@
    [clojure.core.cache :as cache]
    [clojure.core.cache.wrapped :as cache.wrapped]
    [clojure.string :as str]
+   [malli.core :as mc]
    [metabase.lib-be.db :as lib-be.db]
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
    [metabase.lib.metadata.invocation-tracker :as lib.metadata.invocation-tracker]
@@ -46,12 +47,6 @@
   [[u/->kebab-case-en]] has), since the keys here are static and finite we can just memoize them forever and
   get a nice performance boost."
   (u.memo/fast-memo u/->kebab-case-en))
-
-(def ^:private metric-columns
-  "The Card columns Lib metric metadata carries."
-  [:archived :card_schema :collection_id :created_at :dashboard_id :database_id :dataset_query :description
-   :dimension_mappings :dimensions :display :entity_id :id :name :result_metadata :source_card_id :table_id :type
-   :visualization_settings])
 
 (mr/def ::metadata-column-row
   "A Field row as the `:metadata/column` select returns it, with the columns of its Dimension and FieldValues."
@@ -101,6 +96,41 @@
   {:metadata/card   ::lib.schema.metadata/card
    :metadata/column ::lib.schema.metadata/column})
 
+(def ^:private metadata-type->lib-schema
+  {:metadata/card                 ::lib.schema.metadata/card
+   :metadata/database             ::lib.schema.metadata/database
+   :metadata/measure              ::lib.schema.metadata/measure
+   :metadata/metric               ::lib.schema.metadata/metric
+   :metadata/native-query-snippet ::lib.schema.metadata/native-query-snippet
+   :metadata/segment              ::lib.schema.metadata/segment
+   :metadata/table                ::lib.schema.metadata/table
+   :metadata/transform            ::lib.schema.metadata/transform})
+
+(defn- schema-keys
+  [schema]
+  (let [schema (mc/deref-all (mr/resolve-schema schema))]
+    (case (mc/type schema)
+      :map (into #{} (map first) (mc/children schema))
+      :and (perf/some schema-keys (mc/children schema))
+      nil)))
+
+(def ^:private metadata-type->keys
+  "The keys the Lib metadata schema of a metadata type declares, by metadata type."
+  (u.memo/fast-memo (fn [metadata-type]
+                      (some-> (metadata-type->lib-schema metadata-type) schema-keys))))
+
+(defn- drop-undeclared-columns
+  "`instance` without the unqualified keys the Lib metadata schema of `metadata-type` doesn't declare."
+  [instance metadata-type]
+  (if-let [declared (metadata-type->keys metadata-type)]
+    (reduce-kv (fn [m k _v]
+                 (if (or (qualified-keyword? k) (contains? declared k))
+                   m
+                   (dissoc m k)))
+               instance
+               instance)
+    instance))
+
 ;; TODO (Cam 2026-08-27) Consider whether we should just have this be the normal behavior for normalizing
 ;; application-database-style metadata to Lib-style metadata, e.g. why can't we just use
 ;;
@@ -119,6 +149,7 @@
     (-> instance
         (perf/update-keys memoized-kebab-key)
         (assoc :lib/type metadata-type)
+        (drop-undeclared-columns metadata-type)
         normalize
         u.snake-hating-map/snake-hating-map
         (vary-meta assoc :metabase/toucan-instance instance))))
@@ -349,8 +380,7 @@
 
 (t2/define-after-select :metadata/metric
   [metric]
-  (let [keep? (set metric-columns)]
-    (instance->metadata (reduce dissoc metric (remove keep? (keys metric))) :metadata/metric)))
+  (instance->metadata metric :metadata/metric))
 
 ;;;
 ;;; Segment

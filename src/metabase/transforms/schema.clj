@@ -31,7 +31,7 @@
 (mr/def ::orphaned-query
   "The MBQL 5 query of a transform whose source database was deleted, kept as a breadcrumb with its `:database` nulled."
   [:map {:closed true}
-   [:lib/type [:= :mbql/query]]
+   [:lib/type [:= {:decode/normalize lib.schema.common/normalize-keyword} :mbql/query]]
    [:database :nil]
    [:stages   [:ref :metabase.lib.schema/stages]]
    [:lib/metadata {:optional true} [:ref :metabase.lib.schema.metadata/metadata-provider]]])
@@ -41,19 +41,17 @@
            :dispatch         (comp keyword :type)}
    [:query
     [:map {:closed true}
-     [:type {:decode/normalize lib.schema.common/normalize-keyword} [:enum :query "query"]]
+     [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :query]]
      [:query [:or
-              ::lib-be.schema/maybe-legacy-query
               ::orphaned-query
-              [:map {:closed false, ::mr/deliberately-open true,
-                     :description "a not-yet-normalized legacy MBQL query or fragment, as ingested from serdes before the model's before-insert hook normalizes and validates it"}]]]
+              ::lib-be.schema/maybe-legacy-query]]
      [:source-incremental-strategy {:optional true} ::source-incremental-strategy]]]
    [:python
     [:map {:closed true}
      [:source-database {:optional true} :int]
      ;; NB: if source is checkpoint, only one table allowed
      [:source-tables   [:sequential ::transforms-base.u/source-table-entry]]
-     [:type {:decode/normalize lib.schema.common/normalize-keyword} [:enum :python "python"]]
+     [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :python]]
      [:body :string]
      [:source-incremental-strategy {:optional true} ::source-incremental-strategy]]]])
 
@@ -115,10 +113,11 @@
    [:map {:closed true} [:table ::lib.schema.id/table]]
    [:map {:closed true} [:transform ::lib.schema.id/transform]]])
 
-(def ^:private user-summary-schema
-  "A User as `:creator`/`:owner` may be hydrated onto a Transform: either the id/email/name summary
-  `transforms.db/user-summaries-by-id` selects, or a full `t2/hydrate`d User row."
-  [:or :metabase.users.schema/user :metabase.users.schema/user.update])
+(mr/def ::transform.owner
+  "The `:owner` hydrated onto a Transform: its owning User, or just the `:email` of an owner outside Metabase."
+  [:or
+   :metabase.users.schema/user
+   [:map {:closed true} [:email :string]]])
 
 (mr/def ::transform
   "A Transform as selected from the app DB: every column of `:transform`, plus `:creator`, `:table`, `:last_run`,
@@ -127,11 +126,11 @@
    ::transform.update
    [:map {:closed true}
     [:id                    ::lib.schema.id/transform]
-    [:creator               {:optional true} [:maybe user-summary-schema]]
+    [:creator               {:optional true} [:maybe :metabase.users.schema/user]]
     [:table                 {:optional true} [:maybe [:ref :metabase.warehouse-schema.schema/table]]]
     [:last_run              {:optional true} [:maybe ::transform-run]]
     [:collection            {:optional true} [:maybe :metabase.collections.schema/collection-or-root]]
-    [:owner                 {:optional true} [:maybe user-summary-schema]]
+    [:owner                 {:optional true} [:maybe ::transform.owner]]
     [:can_read              {:optional true} :boolean]
     [:can_write             {:optional true} :boolean]
     [:can_execute           {:optional true} :boolean]

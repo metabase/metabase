@@ -6,13 +6,18 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
+(mr/def ::database.undecryptable-column
+  "An encrypted JSON column of a Database read without the key that encrypted it, which the model's transform logs and
+  returns as the raw ciphertext string."
+  :string)
+
 (mr/def ::database.details
   "The `:details` column of a Database, decoded."
-  ms/DatabaseDetails)
+  [:or ms/DatabaseDetails ::database.undecryptable-column])
 
 (mr/def ::database.settings
   "The `:settings` column of a Database, decoded."
-  ms/DatabaseSettings)
+  [:or ms/DatabaseSettings ::database.undecryptable-column])
 
 (mr/def ::database.dbms-version
   "The `:dbms_version` column of a Database, decoded."
@@ -26,11 +31,11 @@
 
 (mr/def ::database.write-data-details
   "The `:write_data_details` column of a Database, decoded."
-  ms/DatabaseDetails)
+  [:or ms/DatabaseDetails ::database.undecryptable-column])
 
 (mr/def ::database.admin-details
   "The `:admin_details` column of a Database, decoded."
-  ms/DatabaseDetails)
+  [:or ms/DatabaseDetails ::database.undecryptable-column])
 
 (mr/def ::database
   "A Database as selected from the app DB: every column of `:metabase_database`, plus `:features` added by the model's after-select hook."

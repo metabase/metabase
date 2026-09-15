@@ -188,7 +188,7 @@
   "DEPRECATED: Use Lib to generate MBQL queries instead of hand-rolling legacy MBQL queries in new tests.
 
   Like `mbql-query`, but for native queries."
-  [inner-native-query :- ::mbql.s/TopLevelNativeInnerQuery]
+  [inner-native-query :- :metabase.lib.util/query-like]
   {:deprecated "0.61.0"}
   {:database (id)
    :type     :native

@@ -484,10 +484,7 @@
 
 (mu/defn send-notification!
   "The function to send a notification. Defaults to `notification.send/send-notification-async!`."
-  [notification :- [:fn {:error/message "a Notification (a Toucan instance or a hydrated Notification map)"}
-                    (fn [x] (and (map? x)
-                                 ((some-fn nil? pos-int?) (:id x))
-                                 (some? (:payload_type x))))]
+  [notification :- ::notification.payload/Notification
    & {:keys [] :as options} :- [:maybe Options]]
   (let [options (merge *default-options* options)
         sync?   (:notification/sync? options)]

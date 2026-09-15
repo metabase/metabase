@@ -57,24 +57,15 @@
 ;; future
 
 (mr/def ::bson-value
-  "A Mongo aggregation pipeline rvalue: a BSON-compatible literal, an ordered document of nested
-  `::bson-value`s (string keys, since these are built as Clojure maps before BSON conversion), or an
-  array of them."
-  [:schema
-   {:registry
-    {::value [:or
-              :nil
-              :boolean
-              :string
-              :keyword
-              number?
-              (lib.schema.common/instance-of-class java.util.Date)
-              (lib.schema.common/instance-of-class ObjectId)
-              (lib.schema.common/instance-of-class Binary)
-              (lib.schema.common/instance-of-class org.bson.Document)
-              [:sequential [:ref ::value]]
-              [:map-of :string [:ref ::value]]]}}
-   ::value])
+  "A value inside a Mongo aggregation pipeline, whose shape (BSON literals, arrays, and documents keyed by strings or keywords) the Mongo query language owns."
+  [:schema {::mr/deliberately-open true
+            :description "a Mongo aggregation pipeline value, shaped by the Mongo query language"}
+   :any])
+
+(mr/def ::bson-document
+  "A document inside a Mongo aggregation pipeline, whose string or keyword keys the Mongo query language owns."
+  [:map {:closed false, ::mr/deliberately-open true
+         :description "a Mongo aggregation pipeline document, keyed by the Mongo query language"}])
 
 (mr/def ::$project-stage
   [:map-of
@@ -92,13 +83,11 @@
 (mr/def ::$match-stage
   [:map-of
    [:= "$match"]
-   [:map-of
-    [:and
-     ::lib.schema.common/non-blank-string
-     [:fn
-      {:error/message "not a $not condition"}
-      (complement #{"$not"})]]
-    ::bson-value]])
+   [:and
+    ::bson-document
+    [:fn
+     {:error/message "not a $not condition"}
+     (fn [m] (not-any? #{:$not "$not"} (keys m)))]]])
 
 (mr/def ::$group-stage
   [:map-of
@@ -116,14 +105,14 @@
    [:map
     {:closed true} ; add more stuff as needed
     [:from     :string]
-    [:let      [:map-of :string ::bson-value]]
+    [:let      ::bson-document]
     [:pipeline [:ref ::pipeline]]
     [:as       :string]]])
 
 (mr/def ::$unwind-stage
   [:map-of
    [:= "$unwind"]
-   [:map-of ::lib.schema.common/non-blank-string ::bson-value]])
+   ::bson-document])
 
 (mr/def ::$limit-stage
   [:map-of
@@ -175,7 +164,7 @@
     (lib.schema.common/instance-of-class org.bson.Document)]
    [false
     [:and
-     [:map-of :string ::bson-value]
+     ::bson-document
      [:fn
       {:error/message "map with a single key"}
       #(= (count %) 1)]
@@ -364,9 +353,9 @@
 (defmacro ^:private mongo-let
   {:style/indent 1}
   [[field value] & body]
-  {"$let" {"vars" {(name field) value}
-           "in"   `(let [~field ~(keyword (str "$$" (name field)))]
-                     ~@body)}})
+  {:$let {:vars {(keyword field) value}
+          :in   `(let [~field ~(keyword (str "$$" (name field)))]
+                   ~@body)}})
 
 (declare with-rvalue-temporal-bucketing)
 
@@ -445,41 +434,41 @@ function(bin) {
                      coercion)]
     (cond
       (isa? coercion :Coercion/UNIXNanoSeconds->DateTime)
-      {"$dateFromParts" {"millisecond" {$divide [field-name 1000000]}, "year" 1970, "timezone" "UTC"}}
+      {:$dateFromParts {:millisecond {$divide [field-name 1000000]}, :year 1970, :timezone "UTC"}}
 
       (isa? coercion :Coercion/UNIXMicroSeconds->DateTime)
-      {"$dateFromParts" {"millisecond" {$divide [field-name 1000]}, "year" 1970, "timezone" "UTC"}}
+      {:$dateFromParts {:millisecond {$divide [field-name 1000]}, :year 1970, :timezone "UTC"}}
 
       (isa? coercion :Coercion/UNIXMilliSeconds->DateTime)
-      {"$dateFromParts" {"millisecond" field-name, "year" 1970, "timezone" "UTC"}}
+      {:$dateFromParts {:millisecond field-name, :year 1970, :timezone "UTC"}}
 
       (isa? coercion :Coercion/UNIXSeconds->DateTime)
-      {"$dateFromParts" {"second" field-name, "year" 1970, "timezone" "UTC"}}
+      {:$dateFromParts {:second field-name, :year 1970, :timezone "UTC"}}
 
       (isa? coercion :Coercion/YYYYMMDDHHMMSSString->Temporal)
-      {"$dateFromString" {"dateString" field-name
-                          "format"     "%Y%m%d%H%M%S"
-                          "onError"    field-name}}
+      {"$dateFromString" {:dateString field-name
+                          :format     "%Y%m%d%H%M%S"
+                          :onError    field-name}}
 
       (isa? coercion :Coercion/YYYYMMDDHHMMSSBytes->Temporal)
-      {"$dateFromString" {"dateString" {"$function"
-                                        {"body" base64-decoder
-                                         "args" [field-name]
-                                         "lang" "js"}}
-                          "format"     "%Y%m%d%H%M%S"
-                          "onError"    field-name}}
+      {"$dateFromString" {:dateString {"$function"
+                                       {:body base64-decoder
+                                        :args [field-name]
+                                        :lang "js"}}
+                          :format     "%Y%m%d%H%M%S"
+                          :onError    field-name}}
 
       (isa? coercion :Coercion/ISO8601Bytes->Temporal)
-      {"$dateFromString" {"dateString" {"$function"
-                                        {"body" base64-decoder
-                                         "args" [field-name]
-                                         "lang" "js"}}
-                          "onError"    field-name}}
+      {"$dateFromString" {:dateString {"$function"
+                                       {:body base64-decoder
+                                        :args [field-name]
+                                        :lang "js"}}
+                          :onError    field-name}}
 
       ;; mongo only supports datetime
       (isa? coercion :Coercion/ISO8601->DateTime)
-      {"$dateFromString" {"dateString" field-name
-                          "onError"    field-name}}
+      {"$dateFromString" {:dateString field-name
+                          :onError    field-name}}
 
       (isa? coercion :Coercion/ISO8601->Date)
       (throw (ex-info (tru "MongoDB does not support parsing strings as dates. Try parsing to a datetime instead")
@@ -545,20 +534,20 @@ function(bin) {
                           (* 24 60 60 1000)]}]})
 
 (defn- truncate-to-resolution [column resolution]
-  (mongo-let [parts {"$dateToParts" {"timezone" (driver-api/results-timezone-id)
-                                     "date" column}}]
-    {"$dateFromParts" (into {"timezone" (driver-api/results-timezone-id)}
-                            (for [part (concat (take-while (partial not= resolution)
-                                                           [:year :month :day :hour :minute :second :millisecond])
-                                               [resolution])]
-                              [(name part) (str (name parts) \. (name part))]))}))
+  (mongo-let [parts {:$dateToParts {:timezone (driver-api/results-timezone-id)
+                                    :date column}}]
+    {:$dateFromParts (into {:timezone (driver-api/results-timezone-id)}
+                           (for [part (concat (take-while (partial not= resolution)
+                                                          [:year :month :day :hour :minute :second :millisecond])
+                                              [resolution])]
+                             [part (str (name parts) \. (name part))]))}))
 
 (mu/defn- days-till-start-of-first-full-week
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    column                :- ::bson-value]
   (let [start-of-year                (with-rvalue-temporal-bucketing metadata-providerable column :year)
         day-of-week-of-start-of-year (with-rvalue-temporal-bucketing metadata-providerable start-of-year :day-of-week)]
-    {"$subtract" [8 day-of-week-of-start-of-year]}))
+    {:$subtract [8 day-of-week-of-start-of-year]}))
 
 (mu/defn- week-of-year
   "Full explanation of this magic is in [[metabase.driver.sql.query-processor/week-of-year]]."
@@ -570,11 +559,11 @@ function(bin) {
                                                          :us :sunday
                                                          :instance nil)]
                  (days-till-start-of-first-full-week metadata-providerable column))]
-    {"$toInt" {"$add" [1 {"$ceil" {$divide [{"$subtract" [doy dtsofw]} 7]}}]}}))
+    {:$toInt {:$add [1 {:$ceil {:$divide [{:$subtract [doy dtsofw]} 7]}}]}}))
 
 (defn- extract
   [op column]
-  {op {"date" column "timezone" (driver-api/results-timezone-id)}})
+  {op {:date column :timezone (driver-api/results-timezone-id)}})
 
 (mu/defn- with-rvalue-temporal-bucketing
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
@@ -592,10 +581,10 @@ function(bin) {
                                   (driver.u/semantic-version-gte [5]))]
       (letfn [(truncate [unit]
                 (if supports-dateTrunc?
-                  {"$dateTrunc" {"date" column
-                                 "unit" (name unit)
-                                 "timezone" (driver-api/results-timezone-id)
-                                 "startOfWeek" (name (driver-api/start-of-week))}}
+                  {:$dateTrunc {:date column
+                                :unit (name unit)
+                                :timezone (driver-api/results-timezone-id)
+                                :startOfWeek (name (driver-api/start-of-week))}}
                   (truncate-to-resolution column unit)))]
         (case unit
           :default          column
@@ -616,9 +605,9 @@ function(bin) {
           :week-of-year     (let [week-start (if supports-dateTrunc?
                                                (truncate :week)
                                                (week column))]
-                              {"$ceil" {$divide [{$dayOfYear week-start}
-                                                 7.0]}})
-          :week-of-year-iso (extract "$isoWeek" column)
+                              {:$ceil {$divide [{$dayOfYear week-start}
+                                                7.0]}})
+          :week-of-year-iso (extract :$isoWeek column)
           :week-of-year-us  (week-of-year metadata-providerable column :us)
           :week-of-year-instance  (week-of-year metadata-providerable column :instance)
           :month            (truncate :month)
@@ -630,15 +619,15 @@ function(bin) {
           (if supports-dateTrunc?
             (truncate :quarter)
             ;; mongo-let vars are referenced via :$$parts.* keywords, which kondo can't see
-            (mongo-let [#_{:clj-kondo/ignore [:unused-binding]} parts {"$dateToParts" {"date" column "timezone" (driver-api/results-timezone-id)}}]
-              {"$dateFromParts" {"year"  :$$parts.year
-                                 "month" {$subtract [:$$parts.month
-                                                     {$mod [{$add [:$$parts.month 2]}
-                                                            3]}]}
-                                 "timezone" (driver-api/results-timezone-id)}}))
+            (mongo-let [#_{:clj-kondo/ignore [:unused-binding]} parts {:$dateToParts {:date column :timezone (driver-api/results-timezone-id)}}]
+              {:$dateFromParts {:year  :$$parts.year
+                                :month {$subtract [:$$parts.month
+                                                   {$mod [{$add [:$$parts.month 2]}
+                                                          3]}]}
+                                :timezone (driver-api/results-timezone-id)}}))
 
           :quarter-of-year
-          {"$toInt" {"$ceil" {$divide [(extract $month column) 3.0]}}}
+          {:$toInt {:$ceil {$divide [(extract $month column) 3.0]}}}
 
           :year
           (truncate :year)
@@ -710,7 +699,7 @@ function(bin) {
     :else value))
 
 (defn- $date-from-string [s]
-  {"$dateFromString" {"dateString" (str s)}})
+  {:$dateFromString {:dateString (str s)}})
 
 (mu/defn- absolute-datetime-or-time->rvalue
   [metadata-providerable   :- ::lib.schema.metadata/metadata-providerable
@@ -1037,40 +1026,40 @@ function(bin) {
   (let [rvalue (->rvalue query stage-number expr)]
     (case (or mode :iso)
       :iso
-      {"$dateFromString" {"dateString" rvalue
-                          "onError"    rvalue}}
+      {"$dateFromString" {:dateString rvalue
+                          :onError    rvalue}}
 
       :simple
-      {"$dateFromString" {"dateString" rvalue
-                          "format"     "%Y%m%d%H%M%S"
-                          "onError"    rvalue}}
+      {"$dateFromString" {:dateString rvalue
+                          :format     "%Y%m%d%H%M%S"
+                          :onError    rvalue}}
 
       :simple-bytes
-      {"$dateFromString" {"dateString" {"$function"
-                                        {"body" base64-decoder
-                                         "args" [rvalue]
-                                         "lang" "js"}}
-                          "format"     "%Y%m%d%H%M%S"
-                          "onError"    rvalue}}
+      {"$dateFromString" {:dateString {"$function"
+                                       {:body base64-decoder
+                                        :args [rvalue]
+                                        :lang "js"}}
+                          :format     "%Y%m%d%H%M%S"
+                          :onError    rvalue}}
 
       :iso-bytes
-      {"$dateFromString" {"dateString" {"$function"
-                                        {"body" base64-decoder
-                                         "args" [rvalue]
-                                         "lang" "js"}}
-                          "onError"    rvalue}}
+      {"$dateFromString" {:dateString {"$function"
+                                       {:body base64-decoder
+                                        :args [rvalue]
+                                        :lang "js"}}
+                          :onError    rvalue}}
 
       :unix-nanoseconds
-      {"$dateFromParts" {"millisecond" {$divide [rvalue 1000000]}, "year" 1970, "timezone" "UTC"}}
+      {:$dateFromParts {:millisecond {$divide [rvalue 1000000]}, :year 1970, :timezone "UTC"}}
 
       :unix-microseconds
-      {"$dateFromParts" {"millisecond" {$divide [rvalue 1000]}, "year" 1970, "timezone" "UTC"}}
+      {:$dateFromParts {:millisecond {$divide [rvalue 1000]}, :year 1970, :timezone "UTC"}}
 
       :unix-milliseconds
-      {"$dateFromParts" {"millisecond" rvalue, "year" 1970, "timezone" "UTC"}}
+      {:$dateFromParts {:millisecond rvalue, :year 1970, :timezone "UTC"}}
 
       :unix-seconds
-      {"$dateFromParts" {"second" rvalue, "year" 1970, "timezone" "UTC"}}
+      {:$dateFromParts {:second rvalue, :year 1970, :timezone "UTC"}}
 
       ;; else
       (throw (ex-info (tru "Driver {0} does not support {1}" :mongo mode)
@@ -1079,16 +1068,16 @@ function(bin) {
 (mu/defmethod ->rvalue :datetime-add
   [query stage-number [_ _opts inp amount unit] :- :mbql.clause/datetime-add]
   (check-date-operations-supported query)
-  {"$dateAdd" {"startDate" (->rvalue query stage-number inp)
-               "unit"      unit
-               "amount"    amount}})
+  {"$dateAdd" {:startDate (->rvalue query stage-number inp)
+               :unit      unit
+               :amount    amount}})
 
 (mu/defmethod ->rvalue :datetime-subtract
   [query stage-number [_ _opts inp amount unit]]
   (check-date-operations-supported query)
-  {"$dateSubtract" {"startDate" (->rvalue query stage-number inp)
-                    "unit"      unit
-                    "amount"    amount}})
+  {"$dateSubtract" {:startDate (->rvalue query stage-number inp)
+                    :unit      unit
+                    :amount    amount}})
 
 (defmulti datetime-diff
   "Helper function for ->rvalue for `datetime-diff` clauses."
@@ -1105,17 +1094,17 @@ function(bin) {
 
 (defmethod datetime-diff :month
   [x y _unit]
-  {$add [{"$dateDiff" {"startDate" x, "endDate" y, "unit" "month"}}
+  {$add [{"$dateDiff" {:startDate x, :endDate y, :unit "month"}}
          ;; dateDiff counts month boundaries not whole months, so we need to adjust
          ;; if x<y but x>y in the month calendar then subtract one month
          ;; if x>y but x<y in the month calendar then add one month
-         {"$switch" {"branches" [{"case" {"$and" [{$lt [x y]}
-                                                  {$gt [{$dayOfMonth x} {$dayOfMonth y}]}]}
-                                  "then" -1}
-                                 {"case" {"$and" [{$gt [x y]}
-                                                  {$lt [{$dayOfMonth x} {$dayOfMonth y}]}]}
-                                  "then" 1}]
-                     "default"  0}}]})
+         {:$switch {:branches [{:case {:$and [{$lt [x y]}
+                                              {$gt [{$dayOfMonth x} {$dayOfMonth y}]}]}
+                                :then -1}
+                               {:case {:$and [{$gt [x y]}
+                                              {$lt [{$dayOfMonth x} {$dayOfMonth y}]}]}
+                                :then 1}]
+                    :default  0}}]})
 
 (defmethod datetime-diff :week
   [x y _unit]
@@ -1123,7 +1112,7 @@ function(bin) {
 
 (defn- simple-datediff
   [x y unit]
-  {"$dateDiff" {"startDate" x, "endDate" y, "unit" unit}})
+  {"$dateDiff" {:startDate x, :endDate y, :unit unit}})
 
 (defmethod datetime-diff :day    [x y unit] (simple-datediff x y unit))
 (defmethod datetime-diff :minute [x y unit] (simple-datediff x y unit))
@@ -1132,7 +1121,7 @@ function(bin) {
 (defmethod datetime-diff :hour
   [x y _unit]
   ;; mongo's dateDiff with hour isn't accurate to the millisecond
-  {$divide [{"$dateDiff" {"startDate" x, "endDate" y, "unit" "millisecond"}}
+  {$divide [{"$dateDiff" {:startDate x, :endDate y, :unit "millisecond"}}
             3600000]})
 
 (mu/defmethod ->rvalue :datetime-diff
@@ -1394,7 +1383,7 @@ function(bin) {
         needle (if case-sensitive?
                  (->rvalue query stage-number needle)
                  {$toLower (->rvalue query stage-number needle)})]
-    {"$indexOfCP" [source needle]}))
+    {:$indexOfCP [source needle]}))
 
 (mu/defmethod compile-cond :contains
   [query stage-number [_ opts field value] :- :mbql.clause/contains]
@@ -1410,10 +1399,10 @@ function(bin) {
                  {$eq (if (get opts :case-sensitive true)
                         [a b]
                         [{$strcasecmp [a b]} 0])})]
-    (strcmp {"$substrCP" [(->rvalue query stage-number field)
-                          {$subtract [{"$strLenCP" (->rvalue query stage-number field)}
-                                      {"$strLenCP" (->rvalue query stage-number value)}]}
-                          {"$strLenCP" (->rvalue query stage-number value)}]}
+    (strcmp {:$substrCP [(->rvalue query stage-number field)
+                         {$subtract [{:$strLenCP (->rvalue query stage-number field)}
+                                     {:$strLenCP (->rvalue query stage-number value)}]}
+                         {:$strLenCP (->rvalue query stage-number value)}]}
             (->rvalue query stage-number value))))
 
 (mu/defmethod compile-cond :=
@@ -1561,13 +1550,13 @@ function(bin) {
             pipeline  (-> (handle-filters query stage-number {:query pipeline} filters)
                           :query)
             lookup-as (get-join-alias join-alias)
-            stages    [{$lookup {"from"     (find-source-collection query join)
-                                 "let"      (into {} (map (juxt :alias :rvalue)) mapping)
-                                 "pipeline" pipeline
-                                 "as"       lookup-as}}
-                       {$unwind {"path" (str \$ lookup-as)
+            stages    [{$lookup {:from     (find-source-collection query join)
+                                 :let      (into {} (map (juxt :alias :rvalue)) mapping)
+                                 :pipeline pipeline
+                                 :as       lookup-as}}
+                       {$unwind {:path (str \$ lookup-as)
                                  ;; left and inner joins are supported, the default is left join
-                                 "preserveNullAndEmptyArrays" (not= strategy :inner-join)}}]]
+                                 :preserveNullAndEmptyArrays (not= strategy :inner-join)}}]]
         (-> pipeline-ctx
             (append-projections projections)
             (update :query into stages))))))
@@ -1588,10 +1577,10 @@ function(bin) {
 
 (mu/defmethod ->rvalue :case
   [query stage-number [_ _opts cases default-value] :- :mbql.clause/case]
-  {"$switch" {"branches" (vec (for [[pred expr] cases]
-                                {"case" (compile-cond query stage-number pred)
-                                 "then" (->rvalue query stage-number expr)}))
-              "default"  (->rvalue query stage-number default-value)}})
+  {:$switch {:branches (vec (for [[pred expr] cases]
+                              {:case (compile-cond query stage-number pred)
+                               :then (->rvalue query stage-number expr)}))
+             :default  (->rvalue query stage-number default-value)}})
 
 (mu/defn- aggregation->rvalue
   [query        :- ::lib.schema/query
@@ -1709,7 +1698,7 @@ function(bin) {
   [query stage-number [_tag _opts expr :as ag] :- :mbql.clause/var]
   (let [stddev-expr (name (gensym "$stddev-"))]
     {:group {(subs stddev-expr 1) (aggregation->rvalue query stage-number (lib/stddev expr))}
-     :post  [{(driver-api/mbql-5-aggregation-name query stage-number ag) {"$pow" [stddev-expr 2]}}]}))
+     :post  [{(driver-api/mbql-5-aggregation-name query stage-number ag) {:$pow [stddev-expr 2]}}]}))
 
 (mu/defmethod expand-aggregation :cum-sum :- ::expanded-aggregation
   [query stage-number [_tag _opts expr :as ag] :- :mbql.clause/cum-sum]

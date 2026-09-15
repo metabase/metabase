@@ -102,21 +102,32 @@
                       {:driver driver, :honeysql-query honeysql-query}
                       e)))))
 
+(mr/def ::honeysql-expr
+  "A Honey SQL 2 expression inside an audit query: a plain expression, a subquery, or a vector form containing these."
+  [:or
+   ::h2x/expr
+   [:ref ::honeysql-query]
+   [:sequential [:ref ::honeysql-expr]]])
+
 (mr/def ::honeysql-query
   "A Honey SQL 2 query map as this namespace's audit queries build it: a `:with` CTE's body and a `:union-all`
   branch are each themselves one of these."
   [:map {:closed true}
-   [:with       {:optional true} [:sequential [:tuple :keyword [:ref ::honeysql-query]]]]
-   [:select     {:optional true} [:sequential ::h2x/expr]]
-   [:from       {:optional true} [:sequential ::h2x/expr]]
-   [:join       {:optional true} [:sequential ::h2x/expr]]
-   [:left-join  {:optional true} [:sequential ::h2x/expr]]
-   [:where      {:optional true} ::h2x/expr]
-   [:group-by   {:optional true} [:sequential ::h2x/expr]]
-   [:order-by   {:optional true} [:sequential ::h2x/expr]]
-   [:limit      {:optional true} ::h2x/expr]
-   [:offset     {:optional true} ::h2x/expr]
-   [:union-all  {:optional true} [:sequential [:ref ::honeysql-query]]]])
+   [:with            {:optional true} [:sequential [:tuple :keyword [:ref ::honeysql-query]]]]
+   [:select          {:optional true} [:sequential [:ref ::honeysql-expr]]]
+   [:select-distinct {:optional true} [:sequential [:ref ::honeysql-expr]]]
+   [:from            {:optional true} [:sequential [:ref ::honeysql-expr]]]
+   [:join            {:optional true} [:sequential [:ref ::honeysql-expr]]]
+   [:left-join       {:optional true} [:sequential [:ref ::honeysql-expr]]]
+   [:inner-join      {:optional true} [:sequential [:ref ::honeysql-expr]]]
+   [:where           {:optional true} [:ref ::honeysql-expr]]
+   [:group-by        {:optional true} [:sequential [:ref ::honeysql-expr]]]
+   [:having          {:optional true} [:ref ::honeysql-expr]]
+   [:partition-by    {:optional true} [:sequential [:ref ::honeysql-expr]]]
+   [:order-by        {:optional true} [:sequential [:ref ::honeysql-expr]]]
+   [:limit           {:optional true} ::h2x/expr]
+   [:offset          {:optional true} ::h2x/expr]
+   [:union-all       {:optional true} [:sequential [:ref ::honeysql-query]]]])
 
 (mu/defn- reduce-results* :- :some
   [honeysql-query :- ::honeysql-query

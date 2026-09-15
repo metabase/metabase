@@ -61,6 +61,7 @@
    [metabase.events.core :as events]
    [metabase.notification.core :as notification]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
@@ -255,15 +256,6 @@
     provider)
   :hierarchy #'auth-identity.hierarchy/hierarchy)
 
-(def ^:private PipelineUser
-  "The subset of User columns the login pipeline threads through `:user`: what
-  [[metabase.auth-identity.db/user-login-columns]], `-by-email`, or `-status` select."
-  [:map {:closed true}
-   [:id ms/PositiveInt]
-   [:is_active :boolean]
-   [:last_login [:maybe ms/TemporalInstant]]
-   [:tenant_id {:optional true} [:maybe ms/PositiveInt]]])
-
 (def ^:private DeviceInfo
   "Device information for session tracking, as attached to a login request."
   [:map {:closed true}
@@ -361,7 +353,7 @@
   If the user does not have `:is_active true`, the response is not successful and an error message is returned. A
   request that resolved no user at all is left alone: link-only flows legitimately finish without one."
   [request :- (into [:map {:closed true}
-                     [:user {:optional true} [:maybe PipelineUser]]]
+                     [:user {:optional true} [:maybe ::users.schema/user]]]
                     login-pipeline-entries)]
   (cond-> request
     (and (nil? (:error request))
@@ -374,7 +366,7 @@
   "Create a new session for a user with the given provider.
    Updates the last_used_at timestamp on the corresponding AuthIdentity."
   [request :- (into [:map {:closed true}
-                     [:user PipelineUser]]
+                     [:user ::users.schema/user]]
                     login-pipeline-entries)
    provider :- :keyword]
   (if-not (get-in request [:user :is_active])
@@ -459,7 +451,7 @@
 
 (mu/defn update-user!
   "Updates a user from user-data in the request"
-  [{user-id :id} :- PipelineUser
+  [{user-id :id} :- ::users.schema/user
    user-data     :- UserData
    provider      :- :keyword]
   (t2/with-transaction [_]

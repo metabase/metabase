@@ -232,7 +232,7 @@
   [cards-to-create :- [:map-of [:int {:max -1}] CardCreateSchema]
    document-id :- ms/PositiveInt
    document-collection-id :- [:or :nil ms/PositiveInt]
-   creator :- [:map {:closed true} [:id ms/PositiveInt]]]
+   creator :- :metabase.users.schema/user]
   (when (seq cards-to-create)
     (reduce-kv
      (fn [result-map original-key card-data]
@@ -256,11 +256,7 @@
 
   Returns:
   - map of old-card-id -> cloned-card-id"
-  [{:keys [id collection_id] :as document} :- [:map {:closed true}
-                                               [:id ms/PositiveInt]
-                                               [:collection_id [:maybe :metabase.lib.schema.id/collection]]
-                                               [:document ::documents.schema/document.document]
-                                               [:content_type [:or :keyword :string]]]]
+  [{:keys [id collection_id] :as document} :- ::documents.schema/document]
   (let [card-ids (prose-mirror/collect-ast document #(when (and (= prose-mirror/card-embed-type (:type %))
                                                                 (pos-int? (get (:attrs %) "id")))
                                                        (get (:attrs %) "id")))
@@ -272,7 +268,7 @@
                 (assoc accum
                        (:id card)
                        (:id (clone-card! (assoc card :document_id id :collection_id collection_id)
-                                         (select-keys @api/*current-user* [:id])))))
+                                         @api/*current-user*))))
               {}
               to-clone))))
 
@@ -341,7 +337,7 @@
                                                                                           :document document
                                                                                           :content_type prose-mirror/prose-mirror-content-type})
                                                                (when-not (empty? cards)
-                                                                 (create-cards-for-document! cards document-id collection_id (select-keys @api/*current-user* [:id]))))]
+                                                                 (create-cards-for-document! cards document-id collection_id @api/*current-user*)))]
                              (when (seq cards-to-update-in-ast)
                                (documents.db/update-document! document-id
                                                               (update-cards-in-ast
@@ -397,11 +393,9 @@
                                                                                                                          :collection_position collection_position}))
       (let [card-id-map (when document
                           (merge
-                           (clone-cards-in-document! (-> existing-document
-                                                         (select-keys [:id :collection_id :content_type])
-                                                         (assoc :document document)))
+                           (clone-cards-in-document! (assoc existing-document :document document))
                            (when-not (empty? cards)
-                             (create-cards-for-document! cards document-id collection_id (select-keys @api/*current-user* [:id])))))
+                             (create-cards-for-document! cards document-id collection_id @api/*current-user*))))
             draft-card-id-map (into {} (filter (comp neg? key) card-id-map))
             pairings (draft-stored-result-pairings document
                                                    (:content_type existing-document)
@@ -650,17 +644,18 @@
     ;; NOTE: unlike the readers below, this feeds `deserialization-dependencies`, which runs on the already-serialized
     ;; form where `:entityId` is a serdes path (a vector of {:model :id} maps), not a raw id — so it is not guarded
     ;; with `node-entity-id` here.
-    (set (prose-mirror/collect-ast document (fn document-deps [{:keys [type attrs]}]
-                                              (cond
-                                                (and (= prose-mirror/smart-link-type type)
-                                                     (contains? model->serdes-model (get attrs "model")))
-                                                (get attrs "entityId")
+    (set (prose-mirror/collect-ast (update document :document prose-mirror/normalize-document)
+                                   (fn document-deps [{:keys [type attrs]}]
+                                     (cond
+                                       (and (= prose-mirror/smart-link-type type)
+                                            (contains? model->serdes-model (get attrs "model")))
+                                       (get attrs "entityId")
 
-                                                (= prose-mirror/card-embed-type type)
-                                                (get attrs "id")
+                                       (= prose-mirror/card-embed-type type)
+                                       (get attrs "id")
 
-                                                :else
-                                                nil))))))
+                                       :else
+                                       nil))))))
 
 (defmethod serdes/deserialization-dependencies "Document"
   [{:keys [collection_id] :as document}]

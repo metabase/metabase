@@ -382,7 +382,7 @@
                     (t2/delete! :model/Table :id table-id)
                     (driver/drop-table! driver/*driver*
                                         (u/the-id (:db_id table))
-                                        (#'upload/table-identifier (select-keys table [:schema :name])))))))))))))
+                                        (#'upload/table-identifier table))))))))))))
 
 (defn do-with-uploads-enabled!
   "Set uploads_enabled to true the current database, and as an admin user, run the thunk"
@@ -415,7 +415,7 @@
          (when true #_(not= driver/*driver* :redshift) ; redshift tests flake when tables are dropped
                (driver/drop-table! driver/*driver*
                                    (:db_id table)
-                                   (#'upload/table-identifier (select-keys table [:schema :name])))))))
+                                   (#'upload/table-identifier table))))))
 
 (defn- table->card [table]
   (t2/select-one :model/Card :table_id (:id table)))
@@ -1524,7 +1524,7 @@
                (when (and new-table (not= driver/*driver* :redshift)) ; redshift tests flake when tables are dropped
                  (driver/drop-table! driver/*driver*
                                      (mt/id)
-                                     (#'upload/table-identifier (select-keys new-table [:schema :name]))))))))))
+                                     (#'upload/table-identifier new-table)))))))))
 
 (deftest can-update-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)

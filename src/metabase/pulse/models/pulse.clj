@@ -23,6 +23,7 @@
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
@@ -49,8 +50,14 @@
   (derive :hook/entity-id)
   (derive ::mi/read-policy.full-perms-for-perms-set))
 
+(def ^:private transform-pulse-parameters
+  "Toucan 2 transform for a Pulse's `:parameters`, normalized like a Dashboard's but with each `:type` optional."
+  {:in  (comp mi/json-in #(lib/normalize ::parameters.schema/parameters-with-optional-types %))
+   :out (comp (mi/catch-normalization-exceptions #(lib/normalize ::parameters.schema/parameters-with-optional-types %))
+              mi/json-out-with-keywordization)})
+
 (t2/deftransforms :model/Pulse
-  {:parameters mi/transform-json})
+  {:parameters transform-pulse-parameters})
 
 (defn- assert-valid-parameters [{:keys [parameters]}]
   (when-not (mr/validate [:maybe
@@ -259,7 +266,8 @@
    [:details        {:optional true} ::pulse.schema/pulse-channel.details]
    [:enabled        {:optional true} :boolean]
    [:pulse_id       {:optional true} ::lib.schema.id/pulse]
-   [:recipients     {:optional true} [:maybe [:sequential RecipientInput]]]
+   [:entity_id      {:optional true} [:maybe :string]]
+   [:recipients     {:optional true} [:maybe [:sequential [:or RecipientInput :metabase.users.schema/user]]]]
    [:schedule_type  {:optional true} [:or :keyword :string]]
    [:schedule_day   {:optional true} [:maybe :string]]
    [:schedule_hour  {:optional true} [:maybe :int]]

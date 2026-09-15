@@ -83,14 +83,14 @@
                                   :type  :timestamp
                                   :as    {:date     (t/local-date "2019-12-10")
                                           :datetime (t/local-date-time "2019-12-10T14:47:00")}}
-    :unix-timestamp-seconds      {:value [:field {::add/source-table (meta/id :checkins)} 4]
+    :unix-timestamp-seconds      {:value [:field {:lib/uuid (str (random-uuid)), ::add/source-table (meta/id :checkins)} 4]
                                   :type  :timestamp
                                   :as    (let [expected (-> [:timestamp_seconds (h2x/identifier :field "PUBLIC.CHECKINS" "unix_seconds")]
                                                             (h2x/with-database-type-info "timestamp"))]
                                            {:date      [:date expected]
                                             :datetime  [:datetime expected]
                                             :timestamp expected})}
-    :unix-timestamp-milliseconds {:value [:field {::add/source-table (meta/id :checkins)} 5]
+    :unix-timestamp-milliseconds {:value [:field {:lib/uuid (str (random-uuid)), ::add/source-table (meta/id :checkins)} 5]
                                   :type  :timestamp
                                   :as    (let [expected (-> [:timestamp_millis (h2x/identifier :field "PUBLIC.CHECKINS" "unix_milliseconds")]
                                                             (h2x/with-database-type-info "timestamp"))]
@@ -108,15 +108,18 @@
 
    :field-ref-fns
    {:basic                               (fn [field]
-                                           [:field {::add/source-table "ABC"} (:id field)])
+                                           [:field {:lib/uuid (str (random-uuid)), ::add/source-table "ABC"} (:id field)])
     :default-temporal-unit               (fn [field]
-                                           [:field {:temporal-unit     :default
+                                           [:field {:lib/uuid          (str (random-uuid))
+                                                    :temporal-unit     :default
                                                     ::add/source-table "ABC"} (:id field)])
     :base-type                           (fn [field]
-                                           [:field {:base-type         (:base-type field)
+                                           [:field {:lib/uuid          (str (random-uuid))
+                                                    :base-type         (:base-type field)
                                                     ::add/source-table "ABC"} (:name field)])
     :base-type-and-default-temporal-unit (fn [field]
-                                           [:field {:base-type         (:base-type field)
+                                           [:field {:lib/uuid          (str (random-uuid))
+                                                    :base-type         (:base-type field)
                                                     :temporal-unit     :default
                                                     ::add/source-table "ABC"} (:name field)])}
 

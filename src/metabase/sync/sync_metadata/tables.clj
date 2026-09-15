@@ -110,15 +110,8 @@
    [:data_authority          {:optional true} [:maybe :keyword]]])
 
 (def ^:private TableMetadataOrInstance
-  "Either a [[TableMetadata]] (a table map fresh from the driver), a full `:model/Table` instance (e.g. what
-  [[reactivate-table!]] passes), or the partial-column Table projection [[existing-tables-by-name+schema]] selects
-  (`:id`, `:name`, `:schema`, `:data_authority`, `:active`, plus [[keys-to-update]]) -- the shapes
-  [[cruft-dependent-cols]] and [[table-name+schema]] accept."
-  [:or TableMetadata
-   :metabase.warehouse-schema.schema/table
-   [:select-keys :metabase.warehouse-schema.schema/table
-    [:id :name :schema :data_authority :active
-     :description :database_require_filter :estimated_row_count :visibility_type :initial_sync_status :is_writable]]])
+  "Either a [[TableMetadata]] fresh from the driver or a Table row."
+  [:or TableMetadata :metabase.warehouse-schema.schema/table])
 
 (mu/defn- update-database-metadata!
   "If there is a version in the db-metadata update the DB to have that in the DB model"

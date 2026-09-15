@@ -113,7 +113,7 @@
   [:map {:closed true}
    [:cancelled? {:optional true} ifn?]
    [:run-id {:optional true} [:maybe pos-int?]]
-   [:with-stage-timing-fn {:optional true} ifn?]
+   [:with-stage-timing-fn {:optional true} [:maybe ifn?]]
    [:publish-events? {:optional true} :boolean]
    [:message-log {:optional true} [:maybe ::atom]]
    [:cancel-chan {:optional true} [:maybe ::chan]]

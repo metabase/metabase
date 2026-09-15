@@ -106,10 +106,7 @@
   [timezone part options]
   (case (:type part)
     :card
-    (channel.render/render-pulse-section timezone
-                                         (select-keys (channel.shared/maybe-realize-data-rows part)
-                                                      [:card :dashcard :result])
-                                         options)
+    (channel.render/render-pulse-section timezone (channel.shared/maybe-realize-data-rows part) options)
 
     :text
     (let [inline-params   (:inline_parameters part)

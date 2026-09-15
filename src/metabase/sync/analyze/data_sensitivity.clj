@@ -49,8 +49,7 @@
   [field :- i/FieldInstance
    table :- i/TableInstance]
   (sync-util/with-error-handling (format "Error classifying data sensitivity for %s" (sync-util/name-for-logging field))
-    (let [category (analyze/infer-data-sensitivity (select-keys field [:name :base_type :semantic_type :fingerprint])
-                                                   {:name (:name table) :entity_type (:entity_type table)})]
+    (let [category (analyze/infer-data-sensitivity field {:name (:name table) :entity_type (:entity_type table)})]
       (sync.db/update-field-data-sensitivity! (u/the-id field) (or category :PUBLIC))
       category)))
 

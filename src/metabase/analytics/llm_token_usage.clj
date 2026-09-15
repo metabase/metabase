@@ -85,12 +85,26 @@
       (analytics/inc! :metabase-metabot/llm-cache-read-tokens labels cache-read-tokens))
     (analytics/observe! :metabase-metabot/llm-tokens-per-call labels (+ prompt-tokens completion-tokens))))
 
+(def ^:private TrackTokenUsageGates
+  "The `:snowplow`/`:prometheus` gate keys of [[track-token-usage!]]."
+  [:map {:closed true}
+   [:snowplow   :boolean]
+   [:prometheus :boolean]])
+
+(def ^:private UntrackedSnowplowArgs
+  "The Snowplow-only keys a Prometheus-only [[track-token-usage!]] call may still carry, possibly nil."
+  (mut/merge (mut/optional-keys SnowplowArgs)
+             [:map {:closed true}
+              [:request-id          {:optional true} [:maybe :string]]
+              [:total-tokens        {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
+              [:estimated-costs-usd {:optional true} [:maybe number?]]]))
+
 (def ^:private TrackTokenUsageArgs
-  "The `:snowplow`/`:prometheus` gate keys plus every key [[track-snowplow!]] or [[track-prometheus!]] can read, all optional."
-  (mut/merge [:map {:closed true}
-              [:snowplow   :boolean]
-              [:prometheus :boolean]]
-             (mut/optional-keys (mut/merge SnowplowArgs PrometheusArgs))))
+  "The gate keys plus the keys of whichever of [[track-snowplow!]] and [[track-prometheus!]] the gates enable."
+  [:multi {:dispatch (juxt :snowplow :prometheus)}
+   [[true false] (mut/merge TrackTokenUsageGates SnowplowArgs)]
+   [[false true] (mut/merge (mut/merge TrackTokenUsageGates UntrackedSnowplowArgs) PrometheusArgs)]
+   [[true true]  (mut/merge (mut/merge TrackTokenUsageGates SnowplowArgs) PrometheusArgs)]])
 
 (mu/defn track-token-usage!
   "Convenience wrapper that fires Snowplow and/or Prometheus token tracking.
@@ -100,9 +114,9 @@
     - `:prometheus` (required boolean) — pass `false` to suppress Prometheus"
   [{:keys [snowplow prometheus] :as opts}
    :- [:and
-       TrackTokenUsageArgs
        [:fn {:error/message "at least one of :snowplow or :prometheus must be true"}
-        (fn [{:keys [snowplow prometheus]}] (or snowplow prometheus))]]]
+        (fn [{:keys [snowplow prometheus]}] (or snowplow prometheus))]
+       TrackTokenUsageArgs]]
   (when snowplow
     (track-snowplow! (select-keys opts snowplow-arg-keys)))
   (when prometheus

@@ -96,7 +96,7 @@
   (check-native-query-perms! database_id (:dataset_query action))
   (let [model (api/write-check :model/Card model_id)]
     (when (and (= action-type :implicit)
-               (not (queries/model-supports-implicit-actions? (select-keys model [:dataset_query]))))
+               (not (queries/model-supports-implicit-actions? model)))
       (throw (ex-info (tru "Implicit actions are not supported for models with clauses.")
                       {:status-code 400})))
     (doseq [db-id (cond-> [(:database_id model)] database_id (conj database_id))]

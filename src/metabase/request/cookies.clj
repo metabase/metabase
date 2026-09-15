@@ -8,7 +8,6 @@
    [metabase.request.util :as request.util]
    [metabase.session.schema]
    [metabase.session.settings :as session.settings]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -145,13 +144,7 @@
     session-type :type
     anti-csrf-token :anti_csrf_token
     session-expires-at :expires_at
-    :as _session-instance} :- [:or
-                               :metabase.session.schema/session
-                               [:map {:closed true}
-                                [:key             [:or uuid? [:re u/uuid-regex]]]
-                                [:type            {:optional true} [:enum :normal :full-app-embed]]
-                                [:anti_csrf_token {:optional true} [:maybe :string]]
-                                [:expires_at      {:optional true} [:maybe ms/TemporalInstant]]]]
+    :as _session-instance} :- :metabase.session.schema/session
    request-time :- (ms/InstanceOfClass java.time.temporal.Temporal)]
   (let [;; Calculate max-age based on session expiration if present
         max-age-seconds (when session-expires-at

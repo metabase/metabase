@@ -480,7 +480,7 @@
                 (send!)
                 (wait! 2)
                 (testing "the next turn in the same thread picks it up instead of {}"
-                  (is (= {:queries {:q1 {:database 1}}}
+                  (is (= {:queries {"q1" {:database 1}}}
                          (:state (last @ai-request-calls)))))))))))))
 
 (deftest ^:synchronized slackbot-streaming-records-streamed-error-test

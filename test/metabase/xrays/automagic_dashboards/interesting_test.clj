@@ -87,9 +87,13 @@
 (deftest ^:parallel field-candidates-with-tablespec-specialization
   (testing "Test for when both a tablespec and fieldspec are provided in the dimension definition"
     (let [matching-field           {:name          "QUANTITY BUT NAME DOES NOT MATTER"
+                                    :display_name  "Quantity"
+                                    :base_type     :type/*
                                     :semantic_type :type/Quantity}
-          non-matching-field       {:name          "QUANTITY IS MY NAME, BUT I AM A GENERIC NUMBER"
-                                    :semantic_type :type/GenericNumber}
+          non-matching-field       {:name          "QUANTITY IS MY NAME, BUT I AM A DISCOUNT"
+                                    :display_name  "Discount"
+                                    :base_type     :type/*
+                                    :semantic_type :type/Discount}
           context                  {:tables
                                     [{:entity_type :entity/GenericTable
                                       :fields      [matching-field
@@ -159,6 +163,7 @@
   (testing "Candidate bindings with one field and multiple bindings"
     (let [field                {:base_type     :type/Integer
                                 :name          "QUANTITY"
+                                :display_name  "Quantity"
                                 :semantic_type :type/Quantity}
           context              {:tables
                                 [{:entity_type :entity/GenericTable
@@ -181,9 +186,11 @@
   (testing "Candidate bindings with multiple fields and bindings"
     (let [nurnies       {:base_type     :type/Integer
                          :name          "Number of Nurnies"
+                         :display_name  "Number of Nurnies"
                          :semantic_type :type/Quantity}
           greebles      {:base_type     :type/Integer
                          :name          "Number of Greebles"
+                         :display_name  "Number of Greebles"
                          :semantic_type :type/Quantity}
           context       {:tables
                          [{:entity_type :entity/GenericTable
@@ -215,12 +222,15 @@
   (testing "Candidate bindings with multiple fields and bindings"
     (let [nurnies       {:base_type     :type/Integer
                          :name          "Number of Nurnies"
+                         :display_name  "Number of Nurnies"
                          :semantic_type :type/Quantity}
           greebles      {:base_type     :type/Integer
                          :name          "Number of Greebles"
+                         :display_name  "Number of Greebles"
                          :semantic_type :type/Quantity}
-          froobs        {:base_type :type/Float
-                         :name      "A double number field"}
+          froobs        {:base_type    :type/Float
+                         :name         "A double number field"
+                         :display_name "A double number field"}
           context       {:tables
                          [{:entity_type :entity/GenericTable
                            :fields      [nurnies
@@ -278,12 +288,15 @@
   (testing "Perform end-to-end dimension binding with multiple dimensions and fields."
     (let [nurnies       {:base_type     :type/Integer
                          :name          "Number of Nurnies"
+                         :display_name  "Number of Nurnies"
                          :semantic_type :type/Quantity}
           greebles      {:base_type     :type/Integer
                          :name          "Number of Greebles"
+                         :display_name  "Number of Greebles"
                          :semantic_type :type/Quantity}
-          froobs        {:base_type :type/Float
-                         :name      "A double number field"}
+          froobs        {:base_type    :type/Float
+                         :name         "A double number field"
+                         :display_name "A double number field"}
           context       {:tables
                          [{:entity_type :entity/GenericTable
                            :fields      [nurnies
@@ -302,21 +315,24 @@
                           :score 100
                           :matches    [{:base_type     :type/Integer
                                         :name          "Number of Nurnies"
+                                        :display_name  "Number of Nurnies"
                                         :semantic_type :type/Quantity
                                         :link          nil
                                         :field_type    [:entity/GenericTable :type/Quantity]
                                         :score         100}
                                        {:base_type     :type/Integer
                                         :name          "Number of Greebles"
+                                        :display_name  "Number of Greebles"
                                         :semantic_type :type/Quantity
                                         :link          nil
                                         :field_type    [:entity/GenericTable :type/Quantity]
                                         :score         100}]}
               "GenericNumber" {:field_type [:entity/GenericTable :type/Number]
                                :score      80
-                               :matches    [{:base_type  :type/Float
-                                             :name       "A double number field"
-                                             :link       nil
+                               :matches    [{:base_type    :type/Float
+                                             :name         "A double number field"
+                                             :display_name "A double number field"
+                                             :link         nil
                                              :field_type [:entity/GenericTable :type/Number]
                                              :score      80}]}}
              bindings)))))
@@ -337,10 +353,12 @@
                                           :fields      [{:semantic_type  :type/Discount
                                                          :name           "DISCOUNT"
                                                          :effective_type :type/Float
+                                                         :display_name   "Discount"
                                                          :base_type      :type/Float}
                                                         {:semantic_type  :type/Quantity
                                                          :name           "QUANTITY"
                                                          :effective_type :type/Integer
+                                                         :display_name   "Quantity"
                                                          :base_type      :type/Integer}]}
                                  :tables [{:entity_type :entity/TransactionTable
                                            :fields      [{:semantic_type  :type/Discount
@@ -360,9 +378,9 @@
 (deftest ^:parallel bind-dimensions-single-field-binding-subtleties-test
   (testing "Fields are always bound to one and only one dimension."
     (let [context        {:tables [{:entity_type :entity/GenericTable
-                                    :fields      [{:name "DISCOUNT" :base_type :type/Float}
-                                                  {:name "QUANTITY" :base_type :type/Float}
-                                                  {:name "Date" :base_type :type/Date}]}]}
+                                    :fields      [{:name "DISCOUNT" :display_name "Discount" :base_type :type/Float}
+                                                  {:name "QUANTITY" :display_name "Quantity" :base_type :type/Float}
+                                                  {:name "Date" :display_name "Date" :base_type :type/Date}]}]}
           dimension-defs [{"Date" {:field_type [:entity/GenericTable :type/Date], :score 100}}
                           {"Profit" {:field_type [:entity/GenericTable :type/Float], :score 100}}
                           {"Revenue" {:field_type [:entity/GenericTable :type/Float], :score 100}}

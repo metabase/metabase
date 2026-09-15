@@ -579,14 +579,14 @@
             (with-redefs [driver/can-connect? (constantly true)]
               (is (= nil
                      (:valid (update! 200))))
-              (let [curr-db (t2/select-one [:model/Database :name :engine :details :is_full_sync], :id db-id)]
+              (let [curr-db (t2/select-one [:model/Database :id :name :engine :details :is_full_sync], :id db-id)]
                 (is (=
                      {:details      {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}
                       :engine       :h2
                       :name         "Cam's Awesome Toucan Database"
                       :is_full_sync false
                       :features     (driver.u/features :h2 curr-db)}
-                     (into {} curr-db)))))))))))
+                     (dissoc (into {} curr-db) :id)))))))))))
 
 (deftest update-database-test-2
   (testing "PUT /api/database/:id"
@@ -2496,20 +2496,20 @@
             :tunnel-private-key-passphrase "fooquux"
             :access-token                  "foobarfoo"
             :refresh-token                 "foobarquux"}
-           (#'api.database/upsert-sensitive-fields (merge (mt/db)
-                                                          {:description nil
-                                                           :name        "customer success BQ"
-                                                           :details     {:use-service-account           nil
-                                                                         :dataset-id                    "dacort"
-                                                                         :service-account-json          "{}"
-                                                                         :use-jvm-timezone              false
-                                                                         :password                      "password"
-                                                                         :pass                          "pass"
-                                                                         :tunnel-pass                   "tunnel-pass"
-                                                                         :tunnel-private-key            "tunnel-private-key"
-                                                                         :tunnel-private-key-passphrase "tunnel-private-key-passphrase"
-                                                                         :access-token                  "access-token"
-                                                                         :refresh-token                 "refresh-token"}})
+           (#'api.database/upsert-sensitive-fields {:description nil
+                                                    :name        "customer success BQ"
+                                                    :details     {:use-service-account           nil
+                                                                  :dataset-id                    "dacort"
+                                                                  :service-account-json          "{}"
+                                                                  :use-jvm-timezone              false
+                                                                  :password                      "password"
+                                                                  :pass                          "pass"
+                                                                  :tunnel-pass                   "tunnel-pass"
+                                                                  :tunnel-private-key            "tunnel-private-key"
+                                                                  :tunnel-private-key-passphrase "tunnel-private-key-passphrase"
+                                                                  :access-token                  "access-token"
+                                                                  :refresh-token                 "refresh-token"}
+                                                    :id          (mt/id)}
                                                    {:service-account-json          "{\"foo\": \"bar\"}"
                                                     :password                      "foo"
                                                     :pass                          "bar"
@@ -2532,20 +2532,20 @@
             :tunnel-private-key-passphrase "tunnel-private-key-passphrase"
             :access-token                  "access-token"
             :refresh-token                 "refresh-token"}
-           (#'api.database/upsert-sensitive-fields (merge (mt/db)
-                                                          {:description nil
-                                                           :name        "customer success BQ"
-                                                           :details     {:use-service-account           nil
-                                                                         :dataset-id                    "dacort"
-                                                                         :use-jvm-timezone              false
-                                                                         :service-account-json          "{}"
-                                                                         :password                      "password"
-                                                                         :pass                          "pass"
-                                                                         :tunnel-pass                   "tunnel-pass"
-                                                                         :tunnel-private-key            "tunnel-private-key"
-                                                                         :tunnel-private-key-passphrase "tunnel-private-key-passphrase"
-                                                                         :access-token                  "access-token"
-                                                                         :refresh-token                 "refresh-token"}})
+           (#'api.database/upsert-sensitive-fields {:description nil
+                                                    :name        "customer success BQ"
+                                                    :details     {:use-service-account           nil
+                                                                  :dataset-id                    "dacort"
+                                                                  :use-jvm-timezone              false
+                                                                  :service-account-json          "{}"
+                                                                  :password                      "password"
+                                                                  :pass                          "pass"
+                                                                  :tunnel-pass                   "tunnel-pass"
+                                                                  :tunnel-private-key            "tunnel-private-key"
+                                                                  :tunnel-private-key-passphrase "tunnel-private-key-passphrase"
+                                                                  :access-token                  "access-token"
+                                                                  :refresh-token                 "refresh-token"}
+                                                    :id          (mt/id)}
                                                    {:service-account-json          secret/protected-password
                                                     :password                      "new-password"
                                                     :pass                          secret/protected-password
@@ -2568,20 +2568,20 @@
             :tunnel-private-key-passphrase "tunnel-private-key-passphrase"
             :access-token                  "access-token"
             :refresh-token                 "refresh-token"}
-           (#'api.database/upsert-sensitive-fields (merge (mt/db)
-                                                          {:description nil
-                                                           :name        "customer success BQ"
-                                                           :details     {:use-service-account           nil
-                                                                         :dataset-id                    "dacort"
-                                                                         :use-jvm-timezone              false
-                                                                         :service-account-json          "{}"
-                                                                         :password                      "password"
-                                                                         :pass                          "pass"
-                                                                         :tunnel-pass                   "tunnel-pass"
-                                                                         :tunnel-private-key            "tunnel-private-key"
-                                                                         :tunnel-private-key-passphrase "tunnel-private-key-passphrase"
-                                                                         :access-token                  "access-token"
-                                                                         :refresh-token                 "refresh-token"}})
+           (#'api.database/upsert-sensitive-fields {:description nil
+                                                    :name        "customer success BQ"
+                                                    :details     {:use-service-account           nil
+                                                                  :dataset-id                    "dacort"
+                                                                  :use-jvm-timezone              false
+                                                                  :service-account-json          "{}"
+                                                                  :password                      "password"
+                                                                  :pass                          "pass"
+                                                                  :tunnel-pass                   "tunnel-pass"
+                                                                  :tunnel-private-key            "tunnel-private-key"
+                                                                  :tunnel-private-key-passphrase "tunnel-private-key-passphrase"
+                                                                  :access-token                  "access-token"
+                                                                  :refresh-token                 "refresh-token"}
+                                                    :id          (mt/id)}
                                                    {:service-account-json          secret/protected-password
                                                     :password                      secret/protected-password
                                                     :pass                          secret/protected-password
@@ -2991,9 +2991,10 @@
             :port 5432
             :password "new-password"}
            (#'api.database/upsert-sensitive-fields
-            (merge (mt/db)
-                   {:details {:host "localhost" :port 5432 :password "main-pass"}
-                    :write_data_details {:host "localhost" :port 5432 :password "write-pass"}})
+            {:engine :h2
+             :id (mt/id)
+             :details {:host "localhost" :port 5432 :password "main-pass"}
+             :write_data_details {:host "localhost" :port 5432 :password "write-pass"}}
             {:host "localhost"
              :port 5432
              :password "new-password"}
@@ -3003,9 +3004,10 @@
               :port 5432
               :password "write-pass"}
              (#'api.database/upsert-sensitive-fields
-              (merge (mt/db)
-                     {:details {:host "localhost" :port 5432 :password "main-pass"}
-                      :write_data_details {:host "localhost" :port 5432 :password "write-pass"}})
+              {:engine :h2
+               :id (mt/id)
+               :details {:host "localhost" :port 5432 :password "main-pass"}
+               :write_data_details {:host "localhost" :port 5432 :password "write-pass"}}
               {:host "localhost"
                :port 5432
                :password secret/protected-password}
@@ -3159,9 +3161,10 @@
             :port 5432
             :password "new-password"}
            (#'api.database/upsert-sensitive-fields
-            (merge (mt/db)
-                   {:details {:host "localhost" :port 5432 :password "main-pass"}
-                    :admin_details {:host "localhost" :port 5432 :password "admin-pass"}})
+            {:engine :h2
+             :id (mt/id)
+             :details {:host "localhost" :port 5432 :password "main-pass"}
+             :admin_details {:host "localhost" :port 5432 :password "admin-pass"}}
             {:host "localhost"
              :port 5432
              :password "new-password"}
@@ -3171,9 +3174,10 @@
               :port 5432
               :password "admin-pass"}
              (#'api.database/upsert-sensitive-fields
-              (merge (mt/db)
-                     {:details {:host "localhost" :port 5432 :password "main-pass"}
-                      :admin_details {:host "localhost" :port 5432 :password "admin-pass"}})
+              {:engine :h2
+               :id (mt/id)
+               :details {:host "localhost" :port 5432 :password "main-pass"}
+               :admin_details {:host "localhost" :port 5432 :password "admin-pass"}}
               {:host "localhost"
                :port 5432
                :password secret/protected-password}

@@ -193,17 +193,16 @@
                      [:tabs  {:optional true} [:sequential [:merge :metabase.dashboards.schema/dashboard-tab.update
                                                             [:map {:closed true} [:id {:optional true} ms/PositiveInt]]]]]]})
 
-(def ^:private revision-object-row-schema
-  "The row schema of each model whose row schema already types every key its revision `:object` may carry."
-  {:model/Card      :metabase.queries.schema/card
-   :model/Dashboard :metabase.dashboards.schema/dashboard})
-
-(def ^:private revision-object-hydrated-keys
-  "The row schema of each model whose revision `:object` keeps keys callers hydrate onto the object, and those keys."
-  {:model/Document  [:metabase.documents.schema/document [:creator :collection :can_write :can_delete :can_restore :is_remote_synced]]
-   :model/Measure   [:metabase.measures.schema/measure [:creator :table]]
-   :model/Segment   [:metabase.segments.schema/segment [:creator :table]]
-   :model/Transform [:metabase.transforms.schema/transform [:table :last_run :collection :owner :tag_ids]]})
+(def revisioned-model-select-schema
+  "The literal registry keyword of the row schema (as selected, hydrated keys included) of each model revisions are
+  tracked for."
+  {:model/Card        :metabase.queries.schema/card
+   :model/Dashboard   :metabase.dashboards.schema/dashboard
+   :model/Document    :metabase.documents.schema/document
+   :model/Exploration :metabase.explorations.schema/exploration
+   :model/Measure     :metabase.measures.schema/measure
+   :model/Segment     :metabase.segments.schema/segment
+   :model/Transform   :metabase.transforms.schema/transform})
 
 (mr/def ::unregistered-model-object
   "The revision `:object` of a model outside [[revisioned-model-row-schema]] (a test double), whose keys that model's own `serialize-instance` owns."
@@ -213,17 +212,15 @@
   "A revision `:object` as stored, whose keys the Metabase version that recorded it owns (fields may since have been dropped)."
   [:map {:closed false, ::mr/deliberately-open true}])
 
-(doseq [[model schema] revisioned-model-row-schema
-        :let [[row-schema hydrated-keys] (get revision-object-hydrated-keys model)]]
+(doseq [[model schema] revisioned-model-select-schema]
   (mr/register! (revision-schema-key "revision-row" model)
                 [:map {:closed true}
                  [:model        [:= (name model)]]
                  [:model_id     ms/PositiveInt]
                  [:user_id      [:maybe ::lib.schema.id/user]]
-                 [:object       (cond-> [:merge (get revision-object-row-schema model schema)
-                                         (into [:map {:closed true} [:id {:optional true} ms/PositiveInt]]
-                                               (get revision-object-extra-keys model))]
-                                  row-schema (conj [:select-keys row-schema hydrated-keys]))]
+                 [:object       [:merge schema
+                                 (into [:map {:closed true} [:id {:optional true} ms/PositiveInt]]
+                                       (get revision-object-extra-keys model))]]
                  [:is_creation  :boolean]
                  [:is_reversion :boolean]
                  [:message      {:optional true} [:maybe :string]]]))

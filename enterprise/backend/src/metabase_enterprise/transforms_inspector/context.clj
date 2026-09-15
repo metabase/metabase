@@ -1,7 +1,6 @@
 (ns metabase-enterprise.transforms-inspector.context
   "Context building for Transform Inspector."
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
    [metabase-enterprise.transforms-inspector.db :as transforms-inspector.db]
    [metabase-enterprise.transforms-inspector.query-analysis :as query-analysis]
@@ -301,22 +300,17 @@
    [:has-column-matches? :boolean]
    [:column-matches [:maybe [:sequential ::column-match]]]])
 
-(def ^:private TransformInput
-  "The parts of a transform `build-context` needs: its source and target specification."
-  [:map {:closed true}
-   [:source ::transforms.schema/transform.source]
-   [:target ::transforms.schema/transform.target]
-   [:target_db_id {:optional true} [:maybe ::lib.schema.id/database]]])
-
 (mu/defn build-context :- ::context
   "Build context for lens discovery and generation."
-  [transform :- TransformInput]
+  [transform :- ::transforms.schema/transform]
   (let [source-type (transforms-base.u/transform-source-type (:source transform))
         sources-info (mapv build-table-info (extract-sources transform))
         target-table (get-target-table transform)
         target-info (when target-table
-                      (build-table-info (select-keys (set/rename-keys target-table {:id :table-id :name :table-name :db_id :db-id})
-                                                     [:table-id :table-name :schema :db-id])))
+                      (build-table-info {:table-id   (:id target-table)
+                                         :table-name (:name target-table)
+                                         :schema     (:schema target-table)
+                                         :db-id      (:db_id target-table)}))
         query-info (query-analysis/analyze-query transform source-type sources-info)
         join-structure (:join-structure query-info)
         column-matches (when (and (seq sources-info) target-info)

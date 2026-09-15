@@ -55,12 +55,11 @@
     value-type :- :keyword
     value :- FieldFilterValue
     options :- FieldFilterOptions]
-   (merge (lib/parsed-field-filter-param {:lib/type  :metadata/column
-                                          :name      (name field-name)
-                                          :base-type (or base-type :type/*)}
-                                         (cond-> {:type value-type, :value value}
-                                           (map? options) (assoc :options options)))
-          options)))
+   (lib/parsed-field-filter-param {:lib/type  :metadata/column
+                                   :name      (name field-name)
+                                   :base-type (or base-type :type/*)}
+                                  (cond-> {:type value-type, :value value}
+                                    (map? options) (assoc :options options)))))
 
 (defn- substitute [param->value x]
   (#'mongo.params/substitute

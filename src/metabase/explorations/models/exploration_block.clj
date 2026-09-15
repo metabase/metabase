@@ -12,6 +12,7 @@
    [metabase.explorations.db :as explorations.db]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -59,9 +60,24 @@
                               explore-filters)))))
           metrics)))
 
+(defn- normalize-dimension-mappings
+  "Normalize the `:dimension_mappings` of each metric selection read back from JSON."
+  [metrics]
+  (when metrics
+    (mapv (fn [metric]
+            (cond-> metric
+              (seq (:dimension_mappings metric))
+              (update :dimension_mappings
+                      (fn [mappings]
+                        (mapv (fn [mapping]
+                                (cond-> (update mapping :target metrics/normalize-target-ref)
+                                  (:type mapping) (update :type keyword)))
+                              mappings)))))
+          metrics)))
+
 (def ^:private transform-metrics
   {:in  (:in mi/transform-json)
-   :out (comp normalize-explore-filters (:out mi/transform-json))})
+   :out (comp normalize-dimension-mappings normalize-explore-filters (:out mi/transform-json))})
 
 (t2/deftransforms :model/ExplorationBlock
   {:metrics    transform-metrics

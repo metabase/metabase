@@ -88,7 +88,7 @@
   "A single native DDL statement: raw SQL, or a Honey SQL clause map."
   [:or :string [:ref ::native-ddl-clause]])
 
-(def FieldDefinitionSchema
+(def ^:private FieldDefinitionSchema
   [:schema
    {:registry
     {::field-definition
@@ -122,26 +122,22 @@
       [:nested-fields     {:optional true} [:maybe [:sequential [:ref ::field-definition]]]]]}}
    ::field-definition])
 
-(def ValidFieldDefinition
+(def ^:private ValidFieldDefinition
   [:and FieldDefinitionSchema (ms/InstanceOfClass FieldDefinition)])
 
 (def TableDefinitionSchema
-  "Like [[ValidTableDefinition]], but doesn't require the value (or its `:field-definitions`) to actually be
-  `TableDefinition`/`FieldDefinition` instances -- just to have the right shape. Some callers build a
-  `DatabaseDefinition` ad hoc with `map->DatabaseDefinition` and leave the nested table/field definitions as plain
-  maps."
+  "Schema for a table definition, either a `TableDefinition` record or a plain map of the same shape."
   [:map {:closed true}
    [:table-name                     ms/NonBlankString]
    [:field-definitions              [:sequential FieldDefinitionSchema]]
    [:rows                           [:sequential [:sequential ::dataset-value]]]
    [:table-comment {:optional true} [:maybe ms/NonBlankString]]])
 
-(def ValidTableDefinition
+(def ^:private ValidTableDefinition
   [:and TableDefinitionSchema (ms/InstanceOfClass TableDefinition)])
 
 (def DatabaseDefinitionSchema
-  "Like [[ValidDatabaseDefinition]], but doesn't require the value (or its nested table/field definitions) to
-  actually be `DatabaseDefinition`/`TableDefinition`/`FieldDefinition` instances -- just to have the right shape."
+  "Schema for a database definition, either a `DatabaseDefinition` record or a plain map of the same shape."
   [:map {:closed true}
    [:database-name ms/NonBlankString] ; this must be unique
    [:table-definitions [:sequential TableDefinitionSchema]]
@@ -154,7 +150,7 @@
                       [:static {:optional true} :boolean]]]]
    [:hash-key {:optional true} [:maybe (ms/InstanceOfClass DatabaseDefinition)]]])
 
-(def ValidDatabaseDefinition
+(def ^:private ValidDatabaseDefinition
   [:and DatabaseDefinitionSchema (ms/InstanceOfClass DatabaseDefinition)])
 
 ;; TODO - this should probably be a protocol instead
