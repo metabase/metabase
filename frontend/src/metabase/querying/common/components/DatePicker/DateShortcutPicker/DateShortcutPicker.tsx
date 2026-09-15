@@ -7,11 +7,10 @@ import type {
   RelativeDatePickerValue,
   RelativeIntervalDirection,
 } from "metabase/querying/common/types";
-import { Box, Button, Divider } from "metabase/ui";
+import { Button, Divider, Stack } from "metabase/ui";
 
-import { MIN_WIDTH } from "../constants";
+import { ITEM_BUTTON_VARS, MIN_WIDTH } from "../constants";
 
-import Styles from "./DateShortcutPicker.module.css";
 import { getShortcutOptionGroups, getTypeOptions } from "./utils";
 
 interface DateShortcutPickerProps {
@@ -40,19 +39,19 @@ export function DateShortcutPicker({
   }, [availableOperators]);
 
   return (
-    <Box p="sm" miw={MIN_WIDTH}>
+    <Stack p="lg" gap="lg" miw={MIN_WIDTH}>
       {renderBackButton?.()}
       {shortcutGroups.map((group, groupIndex) => (
         <Fragment key={groupIndex}>
-          {groupIndex > 0 && <Divider mx="lg" my="sm" />}
+          {groupIndex > 0 && <Divider />}
           {group.map((option, optionIndex) => (
             <Button
               key={optionIndex}
-              classNames={{
-                root: Styles.Button,
-              }}
-              display="block"
-              variant="subtle"
+              variant="transparent"
+              size="compact-md"
+              color="neutral"
+              justify="flex-start"
+              vars={() => ({ root: ITEM_BUTTON_VARS })}
               onClick={() => onChange(option.value)}
             >
               {option.label}
@@ -60,23 +59,21 @@ export function DateShortcutPicker({
           ))}
         </Fragment>
       ))}
-      {shortcutGroups.length > 0 && typeOptions.length > 0 && (
-        <Divider mx="lg" my="sm" />
-      )}
+      {shortcutGroups.length > 0 && typeOptions.length > 0 && <Divider />}
       {typeOptions.map((option, optionIndex) => (
         <Button
           key={optionIndex}
-          classNames={{
-            root: Styles.Button,
-          }}
-          display="block"
-          variant="subtle"
+          variant="transparent"
+          size="compact-md"
+          color="neutral"
+          justify="flex-start"
+          vars={() => ({ root: ITEM_BUTTON_VARS })}
           onClick={() => onSelectType(option.type)}
           data-testid={`date-picker-type-${option.type}`}
         >
           {option.label}
         </Button>
       ))}
-    </Box>
+    </Stack>
   );
 }

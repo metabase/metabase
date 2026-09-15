@@ -101,7 +101,7 @@ export const LicenseTokenForm = ({
             />
           </Flex>
           <Divider mx={{ base: "-2rem", sm: "-4rem" }} mt="xxl" mb="lg" />
-          <Stack gap="xs">
+          <Stack gap="xs" align="flex-start">
             <Button
               onClick={onSkip}
               variant="transparent"

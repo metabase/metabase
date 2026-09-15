@@ -21,7 +21,7 @@ import {
   Text,
 } from "metabase/ui";
 
-import { MIN_WIDTH } from "../constants";
+import { ITEM_BUTTON_VARS, MIN_WIDTH } from "../constants";
 import type { DatePickerSubmitButtonProps } from "../types";
 import { renderDefaultSubmitButton } from "../utils";
 
@@ -126,33 +126,35 @@ export function ExcludeOptionPicker({
         withArrow={!readOnly}
       >{t`Exclude…`}</BackButton>
       <Divider />
-      <Box p="sm">
+      <Stack p="lg" gap="lg">
         {unitOptions.map((option, index) => (
           <Button
             key={index}
+            variant="transparent"
+            size="compact-md"
             color="neutral"
-            display="block"
-            variant="subtle"
+            justify="flex-start"
+            vars={() => ({ root: ITEM_BUTTON_VARS })}
             onClick={() => onSelectUnit(option.unit)}
           >
             {option.label}
           </Button>
         ))}
-        {unitOptions.length > 0 && operatorOptions.length > 0 && (
-          <Divider mx="lg" my="sm" />
-        )}
+        {unitOptions.length > 0 && operatorOptions.length > 0 && <Divider />}
         {operatorOptions.map((option, index) => (
           <Button
             key={index}
+            variant="transparent"
+            size="compact-md"
             color={option.operator === value?.operator ? "brand" : "neutral"}
-            display="block"
-            variant="subtle"
+            justify="flex-start"
+            vars={() => ({ root: ITEM_BUTTON_VARS })}
             onClick={() => handleChange(option.operator)}
           >
             {option.label}
           </Button>
         ))}
-      </Box>
+      </Stack>
     </Box>
   );
 }
@@ -251,5 +253,5 @@ function ExcludeValuePicker({
 }
 
 function BackButton(props: PopoverBackButtonProps) {
-  return <PopoverBackButton px="lg" py="sm" {...props} />;
+  return <PopoverBackButton px="lg" py="md" h="auto" {...props} />;
 }

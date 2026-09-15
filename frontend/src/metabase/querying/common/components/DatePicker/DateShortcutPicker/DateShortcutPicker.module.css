@@ -1,8 +1,0 @@
-.Button {
-  color: var(--mb-color-text-primary);
-
-  &:hover {
-    color: var(--mb-color-core-brand);
-    background-color: transparent;
-  }
-}

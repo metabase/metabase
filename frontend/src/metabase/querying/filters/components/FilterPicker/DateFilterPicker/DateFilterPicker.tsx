@@ -70,7 +70,6 @@ export function DateFilterPicker({
         renderBackButton={() =>
           onBack ? (
             <PopoverBackButton
-              p="sm"
               onClick={onBack}
               disabled={readOnly}
               withArrow={!readOnly}
