@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 
 import { sdkBundleExports } from "embedding-sdk-bundle/sdk-bundle-exports";
+import { applyDocumentLocales } from "metabase/utils/boot-locale";
 
 import { DataAppIframeApp } from "./components/DataAppIframeApp/DataAppIframeApp";
 
@@ -19,8 +20,11 @@ import { DataAppIframeApp } from "./components/DataAppIframeApp/DataAppIframeApp
 // implementations the package component facades look up at render time.
 window.METABASE_EMBEDDING_SDK_BUNDLE = sdkBundleExports;
 
-const init = () => {
+const init = async () => {
   document.body.style.margin = "0";
+
+  // This page is served from our own document, which carries the catalogues.
+  await applyDocumentLocales();
 
   const rootElement = document.getElementById("root");
 
