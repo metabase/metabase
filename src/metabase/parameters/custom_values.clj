@@ -190,8 +190,15 @@
 
 ;;; --------------------------------------------- Putting it together ----------------------------------------------
 
+(defn- input-box?
+  "Is `parameter`'s widget an Input box (`values_query_type` `none`), the setting that says to offer no list of values?
+  The frontend never asks for values for such a widget, so the values routes should not hand them out either."
+  [parameter]
+  (= :none (some-> (:values_query_type parameter) keyword)))
+
 (mu/defn parameter->values :- ms/FieldValuesResult
-  "Given a parameter with a custom-values source, return the values.
+  "Given a parameter with a custom-values source, return the values. A parameter whose widget is an Input box offers
+  no values, whatever its source.
 
   `default-case-thunk` is a 0-arity function that returns values list when:
   - :values_source_type = card but the card is archived or the card no longer contains the value-field.
@@ -201,21 +208,23 @@
    default-case-thunk :- [:=> [:cat :any] [:map {:closed true}
                                            [:has_more_values :boolean]
                                            [:values ms/FieldValuesList]]]]
-  (case (:values_source_type parameter)
-    :static-list (static-list-values parameter query-string)
-    :card        (let [config (:values_source_config parameter)
-                       card   (parameters.db/card (:card_id config))]
-                   (when-not (mi/can-read? card)
-                     (throw (ex-info "You don't have permissions to do that." {:status-code 403})))
-                   (or (when-not (:archived card)
-                         (when-let [query (card-query (:id card) (some-> (:dataset_query card) not-empty lib-be/normalize-query))]
-                           (when (can-get-card-values? query (:value_field config))
-                             (card-values query config query-string))))
-                       (default-case-thunk)))
-    nil          (default-case-thunk)
-    (throw (ex-info (tru "Invalid parameter source {0}" (:values_source_type parameter))
-                    {:status-code 400
-                     :parameter   parameter}))))
+  (if (input-box? parameter)
+    {:values [], :has_more_values false}
+    (case (:values_source_type parameter)
+      :static-list (static-list-values parameter query-string)
+      :card        (let [config (:values_source_config parameter)
+                         card   (parameters.db/card (:card_id config))]
+                     (when-not (mi/can-read? card)
+                       (throw (ex-info "You don't have permissions to do that." {:status-code 403})))
+                     (or (when-not (:archived card)
+                           (when-let [query (card-query (:id card) (some-> (:dataset_query card) not-empty lib-be/normalize-query))]
+                             (when (can-get-card-values? query (:value_field config))
+                               (card-values query config query-string))))
+                         (default-case-thunk)))
+      nil          (default-case-thunk)
+      (throw (ex-info (tru "Invalid parameter source {0}" (:values_source_type parameter))
+                      {:status-code 400
+                       :parameter   parameter})))))
 
 (defn pk-of-fk-pk-field-ids
   "Check if the collection `field-ids` contains the IDs of FK fields pointing to the same PK and

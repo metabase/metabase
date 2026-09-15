@@ -1522,6 +1522,44 @@
                                (param-values-url :card field-filter-uuid
                                                  (:field-values param-keys) "bar"))))))))))))
 
+(deftest param-values-input-box-test
+  (testing "A filter set to Input box (values_query_type = none) offers no values, even anonymously (SEC-1211)"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (let [name-param-id     "_NAME_"
+            category-param-id "_CATEGORY_"
+            parameters        [{:id                name-param-id
+                                :name              "Name"
+                                :slug              "name"
+                                :type              :string/=
+                                :values_query_type "none"
+                                :target            [:dimension [:field (mt/id :venues :name) nil]]}
+                               {:id                category-param-id
+                                :name              "Category"
+                                :slug              "category"
+                                :type              :id
+                                :values_query_type "none"
+                                :target            [:dimension [:field (mt/id :venues :category_id) nil]]}]]
+        (mt/with-temp [:model/Card {card-id :id, card-uuid :public_uuid} {:public_uuid   (str (random-uuid))
+                                                                          :dataset_query (mt/mbql-query venues {:filter [:= $price 1]})
+                                                                          :parameters    parameters}
+                       :model/Dashboard {dash-uuid :public_uuid, dashboard-id :id} {:public_uuid (str (random-uuid))
+                                                                                    :parameters  (mapv #(dissoc % :target) parameters)}
+                       :model/DashboardCard _ {:dashboard_id       dashboard-id
+                                               :card_id            card-id
+                                               :parameter_mappings (for [{:keys [id target]} parameters]
+                                                                     {:parameter_id id, :card_id card-id, :target target})}]
+          (doseq [[model uuid] [[:card card-uuid] [:dashboard dash-uuid]]]
+            (testing (format "GET /api/public/%s/:uuid/params/:param-key/values" (name model))
+              (is (= {:values [], :has_more_values false}
+                     (client/client :get 200 (param-values-url model uuid name-param-id)))))
+            (testing (format "GET /api/public/%s/:uuid/params/:param-key/search/:query" (name model))
+              (is (= {:values [], :has_more_values false}
+                     (client/client :get 200 (param-values-url model uuid name-param-id "red")))))
+            (testing (format "GET /api/public/%s/:uuid/params/:param-key/remapping still labels a chosen value" (name model))
+              (is (= [2 "American"]
+                     (client/client :get 200 (format "public/%s/%s/params/%s/remapping?value=2"
+                                                     (name model) uuid category-param-id)))))))))))
+
 (deftest card-param-fields-public-columns-test
   (testing "GET /api/public/card/:uuid :param_fields only carry the public Field columns"
     (mt/with-temporary-setting-values [enable-public-sharing true]
