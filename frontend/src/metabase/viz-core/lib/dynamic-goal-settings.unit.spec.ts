@@ -10,6 +10,7 @@ describe("getDynamicGoalSettingKeys", () => {
     expect(getDynamicGoalSettingKeys("bar")).toEqual(["graph.goal_value"]);
     expect(getDynamicGoalSettingKeys("gauge")).toEqual(["gauge.segments"]);
     expect(getDynamicGoalSettingKeys("line")).toEqual(["graph.goal_value"]);
+    expect(getDynamicGoalSettingKeys("row")).toEqual(["graph.goal_value"]);
     expect(getDynamicGoalSettingKeys("scalar")).toEqual(["scalar.segments"]);
   });
 
