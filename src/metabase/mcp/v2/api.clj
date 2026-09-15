@@ -11,6 +11,7 @@
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.transport :as transport]
+   [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resources :as v2.resources]
    ;; Tool namespaces self-register via `deftool` when loaded. The core surface ships with the `learn`
@@ -55,6 +56,14 @@
     (cond-> (filterv #(or (= required %) (mcp.scope/matches? held %)) surface-scopes)
       (not (some #{required} surface-scopes)) (conj required))))
 
+(defn- with-step-up-challenge
+  "`error-response` marked with [[transport/insufficient-scope]] for the scope an `insufficient-scope` detail names,
+   asking for [[step-up-scopes]] over `token-scopes`."
+  [error-response token-scopes {:keys [required-scope description]}]
+  (transport/insufficient-scope error-response
+                                (step-up-scopes mcp.paths/v2-surface-scopes token-scopes required-scope)
+                                description))
+
 (defn- handle-tools-call [id params session-id token-scopes request-context]
   (let [tool-name        (:name params)
         arguments        (or (:arguments params) {})
@@ -72,11 +81,7 @@
                              :request-context  request-context})]
     (if-let [{:keys [code message insufficient-scope]} error]
       (cond-> (transport/jsonrpc-error id code message)
-        insufficient-scope (transport/insufficient-scope
-                            (step-up-scopes mcp.paths/v2-surface-scopes
-                                            token-scopes
-                                            (:required-scope insufficient-scope))
-                            (:description insufficient-scope)))
+        insufficient-scope (with-step-up-challenge token-scopes insufficient-scope))
       (transport/jsonrpc-response id result))))
 
 (defn- handle-resources-list [id _params]
@@ -86,16 +91,13 @@
   "The JSON-RPC error refusing request `id` a read of `uri` because `token-scopes` lack `required-scope`, marked with
    [[transport/insufficient-scope]]."
   [id uri token-scopes required-scope]
-  (let [held (sort (filter string? token-scopes))]
-    (transport/insufficient-scope
-     (transport/jsonrpc-error id -32600 (str "Insufficient scope to read resource: " uri ". Requires " required-scope "; "
-                                             (if (seq held)
-                                               (str "your token holds " (str/join ", " held) ".")
-                                               "your token holds no scopes.")))
-     (step-up-scopes mcp.paths/v2-surface-scopes token-scopes required-scope)
-     (str uri " requires " required-scope
-          (when-let [label (registry/english-scope-label required-scope)]
-            (str " (" label ")"))))))
+  (with-step-up-challenge
+    (transport/jsonrpc-error
+     id
+     common/error-code-invalid-request
+     (registry/insufficient-scope-message (str "read resource: " uri) required-scope token-scopes))
+    token-scopes
+    (registry/insufficient-scope uri required-scope)))
 
 (defn- handle-resources-read [id params session-id token-scopes]
   (let [uri (:uri params)]
@@ -175,16 +177,13 @@
        "don't ask the user to check or select anything. Don't retry the tool until the user says they have reconnected."))
 
 (def ^:private default-ask-scopes
-  "The `scope` of the 401 challenge: [[metabase.mcp.paths/v2-baseline-scopes]], which an uninstructed client requests
-  on first connect.
-
-  Every tool is listed whatever the token holds. A call needing a scope the token lacks is answered with a 403
-  `insufficient_scope` naming the union of held and required scopes, and each tool declares its scope in
-  `securitySchemes`, so a client steps up to the rest of the surface rather than being granted it up front. The
-  surface still accepts all of [[metabase.mcp.paths/v2-surface-scopes]].
-
-  Every scope here must be inside the OAuth server's default grant ceiling, or a client that follows the challenge
-  is answered \"Invalid scope\"."
+  "The `scope` of the 401 challenge, which an uninstructed client requests on first connect. Every scope here must be
+  inside the OAuth server's default grant ceiling."
+  ;; Every tool is listed whatever the token holds. A call needing a scope the token lacks is answered with a 403
+  ;; `insufficient_scope` naming the union of held and required scopes, and each tool declares its scope in
+  ;; `securitySchemes`, so a client steps up to the rest of the surface rather than being granted it up front. The
+  ;; surface still accepts all of [[metabase.mcp.paths/v2-surface-scopes]]. A scope outside the ceiling is answered
+  ;; "Invalid scope" for a client that follows the challenge.
   mcp.paths/v2-baseline-scopes)
 
 (def ^{:arglists '([request respond raise])} handler

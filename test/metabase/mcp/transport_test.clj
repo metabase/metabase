@@ -809,9 +809,10 @@
                   "resource_metadata=\"" url "\", "
                   "error_description=\"execute_sql requires agent:sql:run\"")
              (challenge url ["agent:content:read" "agent:sql:run"] "execute_sql requires agent:sql:run"))))
-    (testing "quotes and backslashes are escaped, so the description cannot close its quoted-string early"
+    (testing "quotes and backslashes are replaced, not escaped: RFC 6750 excludes both from the parameter values, so
+              the description can neither close its quoted-string early nor carry an escape a strict parser rejects"
       (is (str/ends-with? (challenge url ["a"] "say \"hi\" \\ bye")
-                          "error_description=\"say \\\"hi\\\" \\\\ bye\"")))
+                          "error_description=\"say 'hi' / bye\"")))
     (testing "characters outside printable ASCII are replaced, since header values are not reliably UTF-8"
       (is (str/ends-with? (challenge url ["a"] "café — ok\r\nX-Injected: 1")
                           "error_description=\"caf? ? ok??X-Injected: 1\"")))
@@ -819,7 +820,7 @@
       (is (= (str "Bearer error=\"insufficient_scope\", scope=\"a b\", resource_metadata=\"" url "\"")
              (challenge url ["a" "b"] nil))))))
 
-(deftest legacy-scoped-bearer-token-never-yields-an-empty-tool-list-test
+(deftest legacy-scoped-bearer-token-is-challenged-then-refused-test
   (testing (str "GHY-4343: `/api/metabase-mcp` now serves the v2 tool surface, but every MCP client connected to a "
                 "shipped v0.60-v0.63 release holds a token carrying the pre-v2 per-entity agent scopes. No legacy "
                 "scope satisfies any v2 tool scope and `registry/list-tools` then filtered silently, so the pre-fix "
@@ -868,7 +869,7 @@
                                     {:token (oidc.util/hash-token token)} {:revoked_at :%now})
                 init    (client/client-full-response :post 401 "metabase-mcp" (headers)
                                                      (jsonrpc-request "initialize" {:capabilities {}}))]
-            (testing "after the migration the token is refused at the handshake, so no empty tool list is reachable"
+            (testing "after the migration the token is refused at the handshake, so it never holds a useless session"
               (is (= 401 (:status init)))
               (is (nil? (get-in init [:headers "Mcp-Session-Id"]))
                   "a revoked token must not be handed a working MCP session")

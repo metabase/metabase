@@ -65,9 +65,10 @@
   "All supported OAuth scopes: those declared on agent-api endpoints via defendpoint metadata, the
    scopes v2 tools gate on (registry), and the scopes v2 UI resources gate on (e.g. visualize_query).
 
-   This set is the floor of every dynamically registered client's ceiling, and the OAuth server's `validate-scope`
-   checks a requested scope against that ceiling. So a scope the v2 401 challenge asks for must be here, or a
-   client that follows the challenge is answered \"Invalid scope\" instead of having its grant narrowed."
+   While dynamic registration is enabled, this set is the floor of every dynamically registered client's ceiling,
+   and the OAuth server's `validate-scope` checks a requested scope against that ceiling. So a scope the v2 401
+   challenge asks for must be here, or a client that follows the challenge is answered \"Invalid scope\" instead of
+   having its grant narrowed."
   []
   (-> (sorted-set)
       ;; agent-api scopes from defendpoint metadata
@@ -97,7 +98,6 @@
   mcp.paths/v2-surface-scopes)
 
 (defn v2-baseline-scopes
-  "The subset of [[v2-scopes]] a client is told to request when it first connects; it steps up to the rest on a 403
-   `insufficient_scope`."
+  "The subset of [[v2-scopes]] a client is told to request when it first connects."
   []
   mcp.paths/v2-baseline-scopes)

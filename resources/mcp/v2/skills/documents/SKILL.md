@@ -77,7 +77,7 @@ Edit one bullet - match its text only, never the `- ` marker, so the edit stays 
 ## Don't
 
 - Don't `question_write` the master card to change an embedded chart — a no-op for the document; edit the clone id.
-- Don't put Markdown syntax in `new_str` that you mean as literal characters - it is parsed and formats; escape it (`\*`).
+- Don't put Markdown syntax in `new_str` that you mean literally - it is parsed; escape it (`\*`).
 - Don't include the `- ` marker in a bullet edit - match the item's text only.
 - Don't full-rewrite for a small change — every comment thread is orphaned, irreversibly.
 - Don't write tables, strikethrough, or task lists — no document representation.

@@ -204,13 +204,16 @@
     (str (system/site-url) "/.well-known/oauth-protected-resource" path)))
 
 (defn- quoted-string
-  "`s` as an RFC 7230 quoted-string: `\"` and `\\` are backslash-escaped, and every character outside printable
-   ASCII becomes `?`."
+  "`s` as a double-quoted auth-param value: `\"` becomes `'`, `\\` becomes `/`, and every character outside
+   printable ASCII becomes `?`."
   [s]
+  ;; Replaced rather than backslash-escaped: RFC 6750 section 3 excludes `\"` and `\\` from `scope` and
+  ;; `error_description` values outright, so an escaped quote is still invalid there.
   (str "\""
        (-> (str s)
            (str/replace #"[^\x20-\x7E]" "?")
-           (str/replace #"[\"\\]" "\\\\$0"))
+           (str/replace "\"" "'")
+           (str/replace "\\" "/"))
        "\""))
 
 (defn- insufficient-scope-challenge
@@ -654,12 +657,13 @@
   ;; Comma-separated per RFC 7235's `#auth-param`. Both MCP SDKs currently pull each parameter
   ;; with an unanchored per-field regex and would accept spaces, but every spec and vendor example
   ;; uses commas and the stricter parsers proposed upstream would not.
-  (str "Bearer realm=\"mcp\", resource_metadata=\"" (resource-metadata-url endpoint-paths default-path request) "\""
+  (str "Bearer realm=\"mcp\""
+       ", resource_metadata=" (quoted-string (resource-metadata-url endpoint-paths default-path request))
        ;; A client that reads this prefers it over the resource metadata's `scopes_supported`,
        ;; which is what lets a surface ask for less than it accepts: the wider set stays
        ;; advertised and requestable, this is only what an uninstructed client asks for.
        (when (seq default-ask-scopes)
-         (str ", scope=\"" (str/join " " default-ask-scopes) "\""))))
+         (str ", scope=" (quoted-string (str/join " " default-ask-scopes))))))
 
 (defn make-handler
   "Build a Ring async handler for one MCP surface. Uses JSON-RPC 2.0 over HTTP rather than REST,

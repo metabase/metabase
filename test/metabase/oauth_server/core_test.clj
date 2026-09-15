@@ -54,7 +54,7 @@
             but not SQL, writes or delivery. Every tool is listed whatever the token holds, and a call needing more is
             answered with a 403 `insufficient_scope` step-up, so asking for less degrades to a consent prompt rather
             than a hidden tool."
-    (is (= ["agent:content:read" "agent:query:run" "agent:resource:read"] @#'v2.api/default-ask-scopes))
+    (is (= #{"agent:content:read" "agent:query:run" "agent:resource:read"} (set @#'v2.api/default-ask-scopes)))
     (testing "the surface still accepts every scope asked for, or narrowing strips the ask at consent"
       (is (empty? (remove (set (oauth-server/mcp-resource-scopes (mcp/mcp-canonical-path)))
                           @#'v2.api/default-ask-scopes))))

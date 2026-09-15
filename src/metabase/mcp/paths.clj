@@ -43,8 +43,8 @@
 
    - what the MCP resource accepts when RFC 8707 narrowing trims a requested scope
      ([[metabase.oauth-server.core/narrow-scope-to-resource]]);
-   - what the OAuth server will actually grant — a dynamic client's ceiling always includes
-     [[metabase.mcp.core/all-scopes]], and `validate-scope` checks requests against that ceiling;
+   - what the OAuth server will actually grant: while dynamic registration is enabled, a dynamic client's
+     ceiling includes [[metabase.mcp.core/all-scopes]], and `validate-scope` checks requests against that ceiling;
    - what v2 tools and resources may gate on.
 
    When the challenge drifted ahead of the grant, a client that followed it asked for exactly what it was told
@@ -62,9 +62,9 @@
    "agent:resource:read"])
 
 (def v2-baseline-scopes
-  "The subset of [[v2-surface-scopes]], in its order, that an MCP client is told to request when it first connects,
-   through the 401 challenge and the protected-resource metadata: reading and running queries. A client reaches the
-   rest of the surface (writes, raw SQL, delivery) by stepping up on a 403 `insufficient_scope`."
+  "The subset of [[v2-surface-scopes]], in its order, that an MCP client is told to request when it first connects:
+   reading and running queries."
+  ;; A client reaches the rest of the surface (writes, raw SQL, delivery) by stepping up on a 403 `insufficient_scope`.
   ;; `agent:query:run` is here because charts must not need a step-up: Claude Desktop retries a tool after step-up
   ;; over a session that declares no MCP Apps support, so a stepped-up `visualize_query` is refused and never embeds.
   ["agent:content:read"

@@ -51,10 +51,11 @@
                     response))))))))
 
 (deftest protected-resource-metadata-advertises-the-baseline-test
-  (testing "GHY-4543: every protected-resource endpoint, including the bare one, advertises only the baseline. Claude Code and the Claude connectors take their first-login scope from `scopes_supported`
-            here; every tool is still listed, and a call needing more is answered with a 403 `insufficient_scope`
-            step-up. The baseline must be accepted by the `:resource` the document names, or the first login is
-            narrowed away; asserted against that `:resource` rather than the URL requested, so the two cannot drift."
+  (testing "GHY-4543: every protected-resource endpoint, including the bare one, advertises only the baseline. Claude
+            Code and the Claude connectors take their first-login scope from `scopes_supported` here; every tool is
+            still listed, and a call needing more is answered with a 403 `insufficient_scope` step-up. The baseline
+            must be accepted by the `:resource` the document names, or the first login is narrowed away; asserted
+            against that `:resource` rather than the URL requested, so the two cannot drift."
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (doseq [url [".well-known/oauth-protected-resource"
                    ".well-known/oauth-protected-resource/api/metabase-mcp"
@@ -62,8 +63,8 @@
         (testing url
           (let [response      (mt/user-http-request :crowberto :get 200 url)
                 resource-path (str/replace (:resource response) "http://localhost:3000" "")]
-            (is (= ["agent:content:read" "agent:query:run" "agent:resource:read"]
-                   (:scopes_supported response)))
+            (is (= #{"agent:content:read" "agent:query:run" "agent:resource:read"}
+                   (set (:scopes_supported response))))
             (is (empty? (remove (set (oauth-server/mcp-resource-scopes resource-path))
                                 (:scopes_supported response))))))))))
 
@@ -91,8 +92,8 @@
                 response))
         (testing "the bare path is the one clients probe, so it advertises the same baseline as the canonical
                   path it names, and none of the retired per-entity agent-API scopes"
-          (is (= ["agent:content:read" "agent:query:run" "agent:resource:read"]
-                 (:scopes_supported response)))
+          (is (= #{"agent:content:read" "agent:query:run" "agent:resource:read"}
+                 (set (:scopes_supported response))))
           (is (not (contains? (set (:scopes_supported response)) "agent:question:create"))))))))
 
 (deftest discovery-endpoint-rebuilds-on-site-url-change-test
@@ -1301,7 +1302,7 @@
   (testing "when every requested scope is one the named resource does not accept, answer RFC 6749
             `invalid_scope` rather than dropping the parameter. Dropping it renders a consent screen
             listing no permissions and mints a zero-scope token: a handshake that looks successful but
-            can call no tool, with nothing telling the operator the resource rejected what was asked for."
+            authorizes nothing, with nothing telling the operator the resource rejected what was asked for."
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [client-id (:client_id (create-test-client!

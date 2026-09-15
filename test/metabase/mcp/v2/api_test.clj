@@ -803,8 +803,8 @@
         (is (= surface (step-up-scopes surface #{"*"} "s:b")))))))
 
 (defn- bearer-session-post!
-  "Handshake with bearer `headers` and return a fn `(post! expected-status body & {:keys [path headers]})` that POSTs
-  within that session."
+  "Handshake with bearer `headers` and return a fn `(post! expected-status body & {:keys [path extra-headers]})` that
+  POSTs within that session."
   [headers]
   (let [session-id (-> (client/client-full-response :post 200 endpoint
                                                     {:request-options {:headers headers}}
@@ -837,7 +837,7 @@
                          "scope=\"agent:content:read agent:sql:run\", "
                          "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
                          "error_description=\"execute_sql requires agent:sql:run "
-                         "(Write and run its own raw SQL on your connected databases)\"")
+                         "(" (registry/english-scope-label "agent:sql:run") ")\"")
                     (get-in response [:headers "WWW-Authenticate"]))
                  "scope is the held v2 scopes plus the required one; the legacy non-v2 scope is not echoed")
              (testing "the body is still the JSON-RPC error, for clients that read it"
@@ -894,7 +894,7 @@
                        "scope=\"agent:content:read agent:query:run agent:delivery:write\", "
                        "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
                        "error_description=\"alert_write requires agent:query:run "
-                       "(Run queries against your connected databases and see the results)\"")
+                       "(" (registry/english-scope-label "agent:query:run") ")\"")
                   (get-in response [:headers "WWW-Authenticate"])))
            (is (= -32600 (get-in response [:body :error :code])))
            (is (re-find #"requires the agent:query:run scope" (get-in response [:body :error :message])))
@@ -959,7 +959,7 @@
                            "scope=\"agent:content:read agent:query:run agent:sql:run agent:resource:read\", "
                            "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
                            "error_description=\"execute_sql requires agent:sql:run "
-                           "(Write and run its own raw SQL on your connected databases)\"")
+                           "(" (registry/english-scope-label "agent:sql:run") ")\"")
                       (get-in response [:headers "WWW-Authenticate"])))))))))))
 
 (deftest data-resource-read-without-its-scope-is-a-403-insufficient-scope-challenge-test
@@ -980,7 +980,7 @@
                            "scope=\"agent:content:read agent:resource:read\", "
                            "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
                            "error_description=\"catalog://metabase/fields requires agent:resource:read "
-                           "(View resources)\"")
+                           "(" (registry/english-scope-label "agent:resource:read") ")\"")
                       (get-in response [:headers "WWW-Authenticate"])))
                (testing "the body is the JSON-RPC error, with no transport-internal marker"
                  (is (= #{:jsonrpc :id :error} (set (keys (:body response)))))
@@ -1086,8 +1086,8 @@
             (testing "a token without even agent:resource:read reads the shell too, and still mints none"
               (is (nil? (embedded-credential (shell-text #{"agent:content:read"}))))
               (is (zero? @minted)))
-            (testing "a token holding every scope a read could need reads the fields catalog, and mints none: only a shell
-                      embeds a credential"
+            (testing "a token holding every scope a read could need reads the fields catalog, and mints none: only
+                      a shell embeds a credential"
               (do-with-bearer-token!
                #{"agent:content:read" "agent:query:run" "agent:resource:read"}
                (fn [headers]

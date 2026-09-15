@@ -54,7 +54,8 @@
 
 (defn mcp-resource-advertised-scopes
   "The RFC 9728 `scopes_supported` for the MCP resource at `path`: the baseline a client requests on first connect, a
-  subset of [[mcp-resource-scopes]]. The rest is reached by a 403 `insufficient_scope` step-up."
+  subset of [[mcp-resource-scopes]]."
+  ;; Narrower than what the resource accepts: a client reaches the rest by a 403 `insufficient_scope` step-up.
   [_path]
   (vec (mcp/v2-baseline-scopes)))
 

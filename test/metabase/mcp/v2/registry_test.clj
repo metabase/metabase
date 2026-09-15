@@ -45,7 +45,7 @@
       (let [{:keys [error]} (registry/call-tool #{"agent:metadata:read"} nil "test_echo" {})]
         (is (= {:required-scope "agent:content:read"
                 :description    (str "test_echo requires agent:content:read "
-                                     "(See your Metabase content and data structure)")}
+                                     "(" (registry/english-scope-label "agent:content:read") ")")}
                (:insufficient-scope error)))))))
 
 (deftest ^:parallel call-tool-in-handler-scope-denial-test
@@ -63,8 +63,8 @@
         (is (= {:code               common/error-code-invalid-request
                 :message            "Doing that requires the agent:query:run scope."
                 :insufficient-scope {:required-scope "agent:query:run"
-                                     :description    (str "test_echo requires agent:query:run (Run queries against "
-                                                          "your connected databases and see the results)")}}
+                                     :description    (str "test_echo requires agent:query:run ("
+                                                          (registry/english-scope-label "agent:query:run") ")")}}
                (:error outcome)))
         (testing "and is logged as an error"
           (is (= [["error" common/error-code-invalid-request]]

@@ -165,9 +165,10 @@
    :openWorldHint   false})
 
 (defn- with-required-permission
-  "`description` preceded by a sentence naming the permission `scope` requires, so clients that truncate long
-   descriptions keep it. `scope-label` is the scope's consent-screen description, or nil when it has none."
+  "`description` preceded by a sentence naming the permission `scope` requires. `scope-label` is the scope's
+   consent-screen description, or nil when it has none."
   [description scope scope-label]
+  ;; First, so clients that truncate long descriptions keep it.
   (str "Requires the "
        (if scope-label
          (str "\"" scope-label "\" permission (" scope ").")
@@ -221,10 +222,9 @@
    `mcp-v2-disabled-tools` setting and the client extensions `options` advertises
    (`:supports-mcp-ui?` — MCP Apps tools are hidden from clients that can't render an iframe
    rather than failing at call time). Token scopes don't filter the list; [[call-tool]] enforces them.
-
-   The 0-arity assumes full extension support: it backs [[tools-hash]], whose transport hook
-   has no session, so the hash must not depend on per-session capabilities."
+   The 0-arity assumes full extension support."
   ([]
+   ;; Full support because [[tools-hash]] has no session, so the hash must not depend on per-session capabilities.
    (list-tools {:supports-mcp-ui? true}))
   ([options]
    (let [disabled  (disabled-tool-names)
@@ -259,29 +259,29 @@
   (when-let [explanation ((mr/explainer schema) arguments)]
     (str "Invalid arguments: " (common/humanize-detail (me/humanize explanation)))))
 
-(defn- insufficient-scope-message
-  "The scope-denial error text. Names the scope the tool requires and the ones the token holds — both are
-   in hand here, and a message that names only the tool leaves the caller with nothing to act on, against
-   the server's own `initialize` instructions promising that a failed call always names its fix.
-
-   `required` is a scope string or a set of alternatives ([[metabase.mcp.scope/matches?]] accepts either);
-   `token-scopes` may carry the `::api.scope/unrestricted` keyword alongside its strings, which is not a
-   scope a caller can request, so only strings are listed back."
-  [tool-name required token-scopes]
+(defn insufficient-scope-message
+  "The scope-denial error text refusing `action` (e.g. \"call tool: execute_sql\"): names `required`, a scope string
+   or a set of alternatives, and the scope strings `token-scopes` holds."
+  [action required token-scopes]
+  ;; Both scopes are named because a message that names only the tool leaves the caller with nothing to act on,
+  ;; against the server's `initialize` instructions promising that a failed call names its fix. `token-scopes` may
+  ;; carry the `::api.scope/unrestricted` keyword, which is not a scope a caller can request, so only strings are
+  ;; listed back.
   (let [held  (sort (filter string? token-scopes))
         needs (if (set? required)
                 (str "one of " (str/join ", " (sort required)))
                 (str required))]
-    (str "Insufficient scope to call tool: " tool-name ". Requires " needs "; "
+    (str "Insufficient scope to " action ". Requires " needs "; "
          (if (seq held)
            (str "your token holds " (str/join ", " held) ".")
            "your token holds no scopes."))))
 
-(defn- insufficient-scope
-  "The `:insufficient-scope` detail of an error refusing `tool-name` for want of `required-scope`."
-  [tool-name required-scope]
+(defn insufficient-scope
+  "The `:insufficient-scope` detail of an error refusing `subject`, a tool name or resource URI, for want of
+   `required-scope`: `{:required-scope ... :description ...}`."
+  [subject required-scope]
   {:required-scope required-scope
-   :description    (str tool-name " requires " required-scope
+   :description    (str subject " requires " required-scope
                         (when-let [label (english-scope-label required-scope)]
                           (str " (" label ")")))})
 
@@ -302,7 +302,7 @@
 
       (not (mcp.scope/matches? token-scopes (:scope tool)))
       {:error {:code               common/error-code-invalid-request
-               :message            (insufficient-scope-message tool-name (:scope tool) token-scopes)
+               :message            (insufficient-scope-message (str "call tool: " tool-name) (:scope tool) token-scopes)
                :insufficient-scope (insufficient-scope tool-name (:scope tool))}}
 
       ;; A UI tool the client can't render is a caller error, not a hidden tool: unlike the

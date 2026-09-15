@@ -49,11 +49,11 @@
            [:bearer_methods_supported [:sequential :string]]]]])
 
 (defn- protected-resource-metadata
-  "OAuth Protected Resource Metadata (RFC 9728) advertising `resource-path` as the protected resource.
-
-   `:scopes_supported` is the baseline for `resource-path`, derived from it rather than passed
-   in so the resource and its advertised scopes cannot disagree."
+  "OAuth Protected Resource Metadata (RFC 9728) advertising `resource-path` as the protected resource, with the
+   baseline scopes for `resource-path` as `:scopes_supported`."
   [resource-path]
+  ;; The scopes are derived from `resource-path` rather than passed in, so the resource and its advertised scopes
+  ;; cannot disagree.
   (let [site-url (system/site-url)]
     {:status  200
      :headers {"Content-Type" "application/json"}
