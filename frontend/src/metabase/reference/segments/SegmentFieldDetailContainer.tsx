@@ -14,13 +14,13 @@ import { useLocation, useParams } from "metabase/router";
 import type { ClearStateProps } from "../reference";
 import {
   type ReferenceRouteParams,
-  getField,
+  getFieldId,
   getIsEditing,
-  getSegment,
   getSegmentId,
 } from "../selectors";
 
 import SegmentFieldSidebar from "./SegmentFieldSidebar";
+import { useSegmentPage } from "./use-segment-page";
 
 const mapDispatchToProps = {
   ...actions,
@@ -34,10 +34,11 @@ function SegmentFieldDetailContainer(props: SegmentFieldDetailContainerProps) {
   const dispatch = useDispatch();
   const params = useParams<ReferenceRouteParams>();
 
-  const segment = useSelector((state) => getSegment(state, { params }));
   const segmentId = useSelector((state) => getSegmentId(state, { params }));
-  const field = useSelector((state) => getField(state, { params }));
+  const fieldId = useSelector((state) => getFieldId(state, { params }));
   const isEditing = useSelector(getIsEditing);
+  const { segment, table } = useSegmentPage(segmentId);
+  const field = table?.fields?.find(({ id }) => id === fieldId);
 
   const { loading, loadingError } = useReferenceFetch(() =>
     fetchSegmentFieldsData(dispatch, segmentId),
@@ -55,10 +56,19 @@ function SegmentFieldDetailContainer(props: SegmentFieldDetailContainerProps) {
     <SidebarLayout
       className={cx(CS.flexFull, CS.relative)}
       style={isEditing ? { paddingTop: "43px" } : {}}
-      sidebar={<SegmentFieldSidebar segment={segment} field={field} />}
+      sidebar={
+        <SegmentFieldSidebar
+          segmentId={segmentId}
+          segmentName={segment?.name}
+          fieldId={fieldId}
+          fieldName={field?.name}
+        />
+      }
     >
       <SegmentFieldDetail
         params={params}
+        field={field}
+        table={table}
         loading={loading}
         loadingError={loadingError}
       />
