@@ -4,6 +4,7 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn collection
@@ -32,10 +33,10 @@
   "The distinct `:collection_id`s of the published, unarchived Tables."
   []
   (t2/query {:select-distinct [:collection_id]
-             :from :metabase_table
-             :where [:and
-                     [:= :is_published true]
-                     [:= :archived_at nil]]}))
+             :from            [(warehouse-schema-overlay/table-query)]
+             :where           [:and
+                               [:= :is_published true]
+                               [:= :archived_at nil]]}))
 
 (mu/defn top-level-cards-in-collection
   "The Cards in the Collection with `collection-id` that belong to no Dashboard, newest first."

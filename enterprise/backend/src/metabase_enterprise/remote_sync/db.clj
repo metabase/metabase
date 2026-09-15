@@ -8,6 +8,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (def ^:private Conditions
@@ -135,11 +136,15 @@
   (t2/select-one model :id id))
 
 (mu/defn instance-with-columns
-  "The `columns` of the instance of `model` with `id`, or nil."
+  "The `columns` of the instance of `model` with `id`, or nil; a Table is read through the overlay."
   [model   :- :keyword
    columns :- [:sequential :keyword]
    id      :- ms/PositiveInt]
-  (t2/select-one (into [model] columns) :id id))
+  (t2/select-one (into [model] columns)
+                 :id id
+                 (if (= model :model/Table)
+                   {:from [(warehouse-schema-overlay/table-query)]}
+                   {})))
 
 (mu/defn instance-names
   "The `:id` and `:name` of the instances of `model` with `ids`."
@@ -179,15 +184,15 @@
     :model/Field   {:alias  "f"
                     :select [:f.name :f.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
                     :from   [[:metabase_field :f]]
-                    :join   [[:metabase_table :t] [:= :f.table_id :t.id]]}
+                    :join   [(warehouse-schema-overlay/table-query {:alias :t}) [:= :f.table_id :t.id]]}
     :model/Segment {:alias  "s"
                     :select [:s.name :s.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
                     :from   [[:segment :s]]
-                    :join   [[:metabase_table :t] [:= :s.table_id :t.id]]}
+                    :join   [(warehouse-schema-overlay/table-query {:alias :t}) [:= :s.table_id :t.id]]}
     :model/Measure {:alias  "s"
                     :select [:s.name :s.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
                     :from   [[:measure :s]]
-                    :join   [[:metabase_table :t] [:= :s.table_id :t.id]]}))
+                    :join   [(warehouse-schema-overlay/table-query {:alias :t}) [:= :s.table_id :t.id]]}))
 
 (mu/defn tracking-details-by-id
   "The name, table id, collection id, and table name of the `model-key` (Field, Segment, or Measure) instance with
@@ -270,10 +275,15 @@
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select [:model/Card :id :type :card_schema] :id [:in card-ids]))
 
-(mu/defn field-user-settings-exist?
-  "Whether the Field with `field-id` has FieldUserSettings."
-  [field-id :- ::lib.schema.id/field]
-  (t2/exists? :model/FieldUserSettings :field_id field-id))
+(mu/defn user-settings-exist-for-table?
+  "Whether the Table with `table-id`, or any of its Fields, has a user-settings row."
+  [table-id :- ::lib.schema.id/table]
+  (or (t2/exists? :model/TableUserSettings :table_id table-id)
+      (t2/exists? :model/FieldUserSettings
+                  {:from  [[(t2/table-name :model/FieldUserSettings) :u]]
+                   :join  [(warehouse-schema-overlay/field-query {:alias :f :user-settings? false})
+                           [:= :f.id :u.field_id]]
+                   :where [:= :f.table_id table-id]})))
 
 (mu/defn snippets
   "The `:id`, `:name`, and `:collection_id` of every NativeQuerySnippet."

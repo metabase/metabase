@@ -32,11 +32,6 @@
       (not= (:type model) :model)
       (:archived model)))
 
-(defn- model-index-trigger-key
-  [model-index-id]
-  (triggers/key
-   (format "metabase.task.IndexValues.trigger.%d" model-index-id)))
-
 (defn- refresh-index!
   "Refresh the index on a model. Note, if the index should be removed (no longer a model, archived,
   etc, (see [[should-deindex?]])) will delete the indexing job."
@@ -46,7 +41,7 @@
                       (indexed-entities.db/card (:model_id model-index)))]
     (if (should-deindex? model model-index)
       (u/ignore-exceptions
-        (let [trigger-key (model-index-trigger-key model-index-id)]
+        (let [trigger-key (model-index/trigger-key model-index-id)]
           (task/delete-trigger! trigger-key)
           (indexed-entities.db/delete-model-index! model-index-id)))
       (model-index/add-values! model-index))))
@@ -72,7 +67,7 @@
 (defn- refresh-trigger ^org.quartz.CronTrigger [model-index]
   (triggers/build
    (triggers/with-description (format "Refresh index on model %d" (:model_id model-index)))
-   (triggers/with-identity (model-index-trigger-key (:id model-index)))
+   (triggers/with-identity (model-index/trigger-key (:id model-index)))
    (triggers/using-job-data {"model-index-id" (u/the-id model-index)})
    (triggers/for-job (jobs/key refresh-model-index-key))
    (triggers/start-now)
@@ -94,12 +89,6 @@
            (log/info (u/format-color :red "Index already present for model: %s" (:model_id model-index))))
          (catch Exception e
            (log/warnf "Error scheduling indexing for model: %s: %s" (:model_id model-index) (ex-message e))))))
-
-(defn remove-indexing-job
-  "Public API to remove an indexing job on a model."
-  [model-index]
-  (let [trigger-key (model-index-trigger-key (:id model-index))]
-    (task/delete-trigger! trigger-key)))
 
 (defn- recreate-missing-triggers!
   "Ensure all model indexes in the database have triggers in Quartz."

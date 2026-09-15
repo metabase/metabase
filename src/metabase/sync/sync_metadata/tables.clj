@@ -9,7 +9,6 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.sync.db :as sync.db]
    [metabase.sync.fetch-metadata :as fetch-metadata]
@@ -20,7 +19,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.humanization :as warehouse-schema.humanization]))
 
 (set! *warn-on-reflection* true)
 
@@ -138,7 +138,7 @@
            :description             (:description table)
            :database_require_filter (:database_require_filter table)
            :display_name            (or (:display_name table)
-                                        (humanization/name->human-readable-name (:name table)))
+                                        (warehouse-schema.humanization/name->human-readable-name (:name table)))
            :name                    (:name table)
            :is_writable             (:is_writable table)}
           (when (:field_order table)

@@ -31,6 +31,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
    [metabase.pulse.task.send-pulses :as task.send-pulses]
+   [metabase.pulse.task.send-pulses-trigger :as task.send-pulses-trigger]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.settings.models.setting :as setting]
    [metabase.sync.task.sync-databases-test :as task.sync-databases-test]
@@ -1809,7 +1810,7 @@
               pulse-id (:id (new-instance-with-default :pulse {:creator_id user-id}))
               pc       (new-instance-with-default :pulse_channel {:pulse_id pulse-id})]
           ;; trigger this so we schedule a trigger for send-pulse
-          (task.send-pulses/update-send-pulse-trigger-if-needed! pulse-id pc :add-pc-ids #{(:id pc)})
+          (task.send-pulses-trigger/update-send-pulse-trigger-if-needed! pulse-id pc :add-pc-ids #{(:id pc)})
           (testing "sanity check that we have a send pulse trigger and 2 jobs"
             (is (= 1 (count (pulse-channel-test/send-pulse-triggers pulse-id))))
             (is (= #{"metabase.task.send-pulses.send-pulse.job"

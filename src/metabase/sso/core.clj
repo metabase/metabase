@@ -4,6 +4,7 @@
    [metabase.sso.google]
    [metabase.sso.ldap]
    [metabase.sso.ldap.default-implementation]
+   [metabase.sso.ldap.settings]
    [metabase.sso.oidc.check]
    [metabase.sso.oidc.state]
    [metabase.sso.settings]
@@ -26,10 +27,11 @@
  [metabase.sso.settings
   google-auth-client-id
   google-auth-enabled
-  ldap-enabled
   send-new-sso-user-admin-email?
   sso-enabled?
-  sso-source-enabled?])
+  sso-source-enabled?]
+ [metabase.sso.ldap.settings
+  ldap-enabled])
 
 ;; the re-exported var carries the docstring; kondo can't see through import-def
 #_{:clj-kondo/ignore [:missing-docstring]}
