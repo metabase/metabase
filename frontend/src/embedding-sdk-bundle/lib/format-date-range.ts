@@ -1,7 +1,6 @@
-import { getFormattedDate } from "@mantine/dates";
-
 import type { DateRangeValue } from "embedding-sdk-bundle/components/public/DateRangeCalendar/DateRangeCalendar";
 import { dayjs } from "metabase/dayjs";
+import { getFormattedDate } from "metabase/ui";
 
 export interface FormatDateOptions {
   format?: string;
