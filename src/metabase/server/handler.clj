@@ -83,7 +83,8 @@
   ;; ▼▼▼ The returned `handlers` will see the requests in order from BOTTOM-TO-TOP, but the middleware is CONSTRUCTED/WRAPPED from TOP-TO-BOTTOM. ▼▼▼
   (->> [        ;; Inside of the middleware onion
         #'mw.exceptions/catch-uncaught-exceptions    ; catch any Exceptions that weren't passed to `raise`
-        #'mw.exceptions/catch-api-exceptions         ; catch exceptions and return them in our expected format
+        (fn [handler]
+          (#'mw.exceptions/catch-api-exceptions handler cors)) ; catch exceptions and return them with configured headers
         #'mw.log/log-api-call                        ; log info about the request, db call counts etc.
         #'agent-api.usage/wrap-record-cli-usage      ; record CLI usage analytics for metabase-cli REST API calls
         #'mw.browser-cookie/ensure-browser-id-cookie ; add cookie to identify browser; add `:browser-id` to the request
@@ -136,7 +137,10 @@
    options]
   (let [middleware (middleware options)
         handler    (atom (apply-middleware server-routes options))]
-    (doseq [varr  (concat [#'middleware #'mw.security/add-security-headers] middleware)
+    (doseq [varr  (concat [#'middleware
+                           #'mw.exceptions/catch-api-exceptions
+                           #'mw.security/add-security-headers]
+                          middleware)
             :when (instance? clojure.lang.IRef varr)]
       (add-watch varr ::reload (fn [_key _ref _old-state _new-state]
                                  (log/infof "%s changed, rebuilding handler" varr)
