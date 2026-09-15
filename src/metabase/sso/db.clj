@@ -14,8 +14,8 @@
    excluded-group-ids :- [:set ms/PositiveInt]]
   (t2/select-fn-set :group_id :model/PermissionsGroupMembership
                     {:where [:and
-                             [:= :user_id user-id]
-                             [:not-in :group_id excluded-group-ids]]}))
+                             [:= :user_id (long user-id)]
+                             [:not-in :group_id (mapv long excluded-group-ids)]]}))
 
 (mu/defn user-group-ids-among
   "The ids among `group-ids` of the PermissionsGroups the User with `user-id` belongs to, other than
@@ -25,21 +25,25 @@
    excluded-group-ids :- [:set ms/PositiveInt]]
   (t2/select-fn-set :group_id :model/PermissionsGroupMembership
                     {:where [:and
-                             [:= :user_id user-id]
-                             [:in :group_id group-ids]
-                             [:not-in :group_id excluded-group-ids]]}))
+                             [:= :user_id (long user-id)]
+                             [:in :group_id (mapv long group-ids)]
+                             [:not-in :group_id (mapv long excluded-group-ids)]]}))
 
 (mu/defn auth-identity-exists?
   "Whether the User with `user-id` has an AuthIdentity for `provider`."
   [user-id  :- ::lib.schema.id/user
    provider :- :string]
-  (t2/exists? :model/AuthIdentity :user_id user-id :provider provider))
+  (t2/exists? :model/AuthIdentity {:where [:and
+                                           [:= :user_id (long user-id)]
+                                           [:= :provider [:auto/param provider]]]}))
 
 (mu/defn insert-auth-identity!
   "Insert an AuthIdentity linking the User with `user-id` to `provider-id` at `provider`."
   [user-id     :- ::lib.schema.id/user
    provider    :- :string
    provider-id :- :string]
+  ;; No marker: the row is validated against `::auth-identity` before insert, so a value here is
+  ;; already constrained to a string and a marker would fail that validation.
   (t2/insert! :model/AuthIdentity {:user_id user-id, :provider provider, :provider_id provider-id}))
 
 (mu/defn set-auth-identity-metadata!
@@ -47,4 +51,7 @@
   [user-id  :- ::lib.schema.id/user
    provider :- :string
    metadata :- [:maybe ::auth-identity.schema/auth-identity.metadata]]
+  ;; No marker here. `t2/update!` takes its conditions as column/value pairs rather than a query
+  ;; map, so a marker is folded into the pair and never reaches a value slot; and the changes map is
+  ;; validated against the model's schema, which a marker would fail.
   (t2/update! :model/AuthIdentity {:user_id user-id, :provider provider} {:metadata metadata}))
