@@ -1642,6 +1642,63 @@ databaseChangeLog:
         - customChange:
             class: "metabase.app_db.custom_migrations.BackfillExampleDashboardIdValueWithAad"
 
+  - changeSet:
+      id: v58.2026-09-15T00:00:00
+      author: Bryan Maass
+      comment: Add saml_session_index to core_session
+      changes:
+        - addColumn:
+            tableName: core_session
+            columns:
+              - column:
+                  name: saml_session_index
+                  type: varchar(254)
+                  remarks: SessionIndex from the SAML login assertion, sent back in the SLO LogoutRequest to identify this session. NULL for non-SAML sessions and for sessions created before this column existed.
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: core_session
+            columnName: saml_session_index
+
+  - changeSet:
+      id: v58.2026-09-15T00:00:01
+      author: Bryan Maass
+      comment: Add saml_name_id to core_session
+      changes:
+        - addColumn:
+            tableName: core_session
+            columns:
+              - column:
+                  name: saml_name_id
+                  type: varchar(254)
+                  remarks: NameID from the SAML login assertion. Sent back in the SLO LogoutRequest, since the IdP identifies the subject by this and not by email. NULL for non-SAML sessions.
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: core_session
+            columnName: saml_name_id
+
+  - changeSet:
+      id: v58.2026-09-15T00:00:02
+      author: Bryan Maass
+      comment: Add saml_name_id_format to core_session
+      changes:
+        - addColumn:
+            tableName: core_session
+            columns:
+              - column:
+                  name: saml_name_id_format
+                  type: varchar(254)
+                  remarks: Format attribute of the SAML NameID. Echoed back in the LogoutRequest because some IdPs compare it literally. NULL when the IdP sent none.
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: core_session
+            columnName: saml_name_id_format
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
