@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { getTimelineEventCheckbox } from "__support__/timelines";
 import { act, waitFor } from "__support__/ui";
@@ -6,17 +7,17 @@ import { getFetchedTimelines } from "metabase/timelines/panel/selectors";
 import { checkNotNull } from "metabase/utils/types";
 import {
   hideTimelines,
-  showCreatedTimelineEvent,
   showTimelineEvents,
   showTimelines,
 } from "metabase/visualizations/lib/timeline-events-visibility";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { TimelineEventsVisibilityUpdate } from "metabase/visualizations/types";
-import type { TimelineEventsVisibility } from "metabase-types/api";
+import type { Card, TimelineEventsVisibility } from "metabase-types/api";
 import {
   createMockCard,
   createMockTimeline,
   createMockTimelineEvent,
+  createMockUnsavedCard,
 } from "metabase-types/api/mocks";
 
 import {
@@ -45,6 +46,7 @@ const { trackSimpleEvent } = jest.requireMock("metabase/analytics");
 const CARD = createMockCard({
   ...TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD,
   display: "line",
+  visualization_settings: { "graph.show_values": true },
 });
 
 const RC1 = createMockTimelineEvent({
@@ -84,6 +86,16 @@ const updateVisibility = (
     store.dispatch(updateTimelineEventsVisibility(update));
   });
 
+const getSavedSettings = () => {
+  const body = checkNotNull(
+    fetchMock.callHistory.lastCall(`path:/api/card/${CARD.id}`, {
+      method: "PUT",
+    })?.options.body,
+  );
+  const card: Card = JSON.parse(body.toString());
+  return card.visualization_settings;
+};
+
 const setupWithTimelines = async (visibility?: TimelineEventsVisibility) => {
   const { store } = await setup({
     card: createMockCard({
@@ -107,6 +119,30 @@ describe("QueryBuilder > timeline events", () => {
     const store = await setupWithTimelines();
 
     expect(getVisibleEventIds(store)).toEqual([RC1.id, RC2.id]);
+  });
+
+  it("shows root-collection events for an ad-hoc question", async () => {
+    const { store } = await setup({
+      card: createMockUnsavedCard({
+        dataset_query: CARD.dataset_query,
+        display: "line",
+      }),
+      timelines: [
+        createMockTimeline({ ...TIMELINE, collection_id: null }),
+        createMockTimeline({
+          id: 2,
+          collection_id: 123,
+          events: [createMockTimelineEvent({ ...RC1, id: 97, timeline_id: 2 })],
+        }),
+      ],
+    });
+
+    await waitFor(() => {
+      expect(getVisibleEventIds(store)).toEqual([RC1.id, RC2.id]);
+    });
+    expect(
+      checkNotNull(getQuestion(store.getState())).settings(),
+    ).not.toHaveProperty("timeline.selected_timeline_ids");
   });
 
   it("shows only the events a saved question recorded", async () => {
@@ -144,39 +180,14 @@ describe("QueryBuilder > timeline events", () => {
       }),
     );
     expect(getIsDirty(store.getState())).toBe(true);
-  });
 
-  it("saving without touching events records nothing, so dashcards show none", async () => {
-    const store = await setupWithTimelines();
-    const state = store.getState();
+    await saveQuestion();
 
-    const question = getSubmittableQuestion(
-      state,
-      checkNotNull(getQuestion(state)),
-    );
-
-    expect(question.settings()).not.toHaveProperty(
-      "timeline.selected_timeline_ids",
-    );
-  });
-
-  it("saving after turning events on records them", async () => {
-    const store = await setupWithTimelines(EVENTS_OFF);
-
-    await updateVisibility(store, (visibility, timelines) =>
-      showTimelines(visibility, [TIMELINE.id], timelines),
-    );
-    const state = store.getState();
-
-    const question = getSubmittableQuestion(
-      state,
-      checkNotNull(getQuestion(state)),
-    );
-
-    expect(question.settings()).toEqual(
+    expect(await getSavedSettings()).toEqual(
       expect.objectContaining({
+        "graph.show_values": true,
         "timeline.selected_timeline_ids": [TIMELINE.id],
-        "timeline.excluded_timeline_event_ids": [],
+        "timeline.excluded_timeline_event_ids": [RC1.id],
       }),
     );
   });
@@ -237,42 +248,41 @@ describe("QueryBuilder > timeline events", () => {
     );
     await saveQuestion();
 
+    expect(await getSavedSettings()).toEqual(
+      expect.objectContaining(EVENTS_OFF),
+    );
+
     expect(trackSimpleEvent).toHaveBeenCalledWith({
       event: "question_timeline_events_saved",
       target_id: CARD.id,
     });
   });
 
-  it("saving other changes to a question with a recorded selection tracks nothing", async () => {
-    await setupWithTimelines({
+  it("saving other changes preserves recorded events without tracking an event change", async () => {
+    const savedVisibility = {
       "timeline.selected_timeline_ids": [TIMELINE.id],
       "timeline.excluded_timeline_event_ids": [RC1.id],
-    });
+    };
+    await setupWithTimelines(savedVisibility);
 
     await triggerVisualizationQueryChange();
     await saveQuestion();
 
+    expect(await getSavedSettings()).toEqual(
+      expect.objectContaining(savedVisibility),
+    );
     expect(trackSimpleEvent).not.toHaveBeenCalled();
   });
 
-  it("saving a question that never recorded a selection tracks nothing", async () => {
+  it("saving unrelated changes does not record collection-default events or track an event change", async () => {
     await setupWithTimelines();
 
     await triggerVisualizationQueryChange();
     await saveQuestion();
 
-    expect(trackSimpleEvent).not.toHaveBeenCalled();
-  });
-
-  it("saving an unrelated change to a question with a previously recorded selection tracks nothing", async () => {
-    await setupWithTimelines({
-      "timeline.selected_timeline_ids": [TIMELINE.id],
-      "timeline.excluded_timeline_event_ids": [RC1.id],
-    });
-
-    await triggerVisualizationQueryChange();
-    await saveQuestion();
-
+    const settings = await getSavedSettings();
+    expect(settings).not.toHaveProperty("timeline.selected_timeline_ids");
+    expect(settings).not.toHaveProperty("timeline.excluded_timeline_event_ids");
     expect(trackSimpleEvent).not.toHaveBeenCalled();
   });
 
@@ -303,21 +313,6 @@ describe("QueryBuilder > timeline events", () => {
       checkNotNull(getQuestion(store.getState())).settings(),
     ).not.toHaveProperty("timeline.selected_timeline_ids");
     expect(getIsDirty(store.getState())).toBe(false);
-  });
-
-  it("creating an event on a hidden timeline shows the whole timeline", async () => {
-    const store = await setupWithTimelines(EVENTS_OFF);
-    const created = createMockTimelineEvent({
-      id: 97,
-      timeline_id: TIMELINE.id,
-      timestamp: "2025-06-03T00:00:00Z",
-    });
-
-    await updateVisibility(store, (visibility, timelines) =>
-      showCreatedTimelineEvent(visibility, created, timelines),
-    );
-
-    expect(getVisibleEventIds(store)).toEqual([RC1.id, RC2.id]);
   });
 
   it("shows an event created on a timeline that has not been fetched yet", async () => {

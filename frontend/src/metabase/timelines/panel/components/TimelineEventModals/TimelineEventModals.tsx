@@ -8,6 +8,7 @@ import type {
   CollectionId,
   TimelineEvent,
   TimelineEventId,
+  TimelineEventSource,
 } from "metabase-types/api";
 
 import EditEventModal from "../../containers/EditEventModal";
@@ -29,11 +30,13 @@ const getModalLabel = (type: TimelineEventModalState["type"]) =>
 export function TimelineEventModals({
   modal,
   collectionId,
+  source,
   onEventCreated,
   onClose,
 }: {
   modal: TimelineEventModalState | null;
   collectionId: CollectionId | null | undefined;
+  source?: TimelineEventSource;
   onEventCreated?: (event: TimelineEvent) => void;
   onClose: () => void;
 }) {
@@ -51,6 +54,7 @@ export function TimelineEventModals({
     .with({ type: "new" }, () => (
       <NewEventModal
         collectionId={collectionId}
+        source={source}
         onEventCreated={onEventCreated}
         onClose={onClose}
       />

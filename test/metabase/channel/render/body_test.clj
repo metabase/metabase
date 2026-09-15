@@ -877,6 +877,34 @@
               (is (=? [tl-a tl-b] (:timeline_events (#'body/add-dashcard-timeline-events {:card card})))))
             (is (= 2 (count (:timeline_events (first cards-with-data)))))))))))
 
+(deftest subscription-render-omits-timeline-events-test
+  (testing "A chart saved with timeline events renders in a subscription, without showing any of the events"
+    (mt/dataset test-data
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [event-name "Kilroy Was Here"]
+          (mt/with-temp [:model/Collection {collection-id :id} {:name "Timeline Collection"}
+                         :model/Timeline {timeline-id :id} {:name          "Releases"
+                                                            :collection_id collection-id}
+                         :model/TimelineEvent _ {:timeline_id timeline-id
+                                                 :name        event-name
+                                                 :timestamp   #t "2019-05-15T00:00:00Z"}
+                         :model/Card {card-id :id}
+                         {:display                :line
+                          :collection_id          collection-id
+                          :dataset_query          (mt/mbql-query orders
+                                                    {:aggregation [[:count]]
+                                                     :breakout    [!month.created_at]})
+                          :visualization_settings {:timeline.selected_timeline_ids [timeline-id]}}
+                         :model/Dashboard {dash-id :id} {:collection_id collection-id}
+                         :model/DashboardCard {dashcard-id :id} {:dashboard_id dash-id
+                                                                 :card_id      card-id}]
+            (let [doc (render.tu/render-dashcard-as-hickory! dashcard-id)]
+              (testing "the line chart itself renders"
+                (is (seq (hik.s/select (hik.s/tag :path) doc))))
+              (testing "the saved event is nowhere in the rendered chart"
+                (is (empty? (hik.s/select (hik.s/find-in-text (re-pattern event-name)) doc)))
+                (is (not (str/includes? (pr-str doc) event-name)))))))))))
+
 (deftest unknown-column-settings-test
   (testing "Unknown `:column_settings` keys don't break static-viz rendering with a Null Pointer Exception (#27941)."
     (mt/dataset test-data

@@ -174,3 +174,35 @@ export const trackDashboardEventsShown = (dashboardId: DashboardId) => {
     target_id: getDashboardId(dashboardId),
   });
 };
+
+export type DashboardEventsPanelLocation =
+  | "chart"
+  | "dashcard_menu"
+  | "dashboard_menu";
+
+export const trackDashboardEventsPanelOpened = (
+  dashboardId: DashboardId | undefined,
+  location: DashboardEventsPanelLocation,
+) => {
+  trackSimpleEvent({
+    event: "dashboard_events_panel_opened",
+    target_id: getDashboardId(dashboardId),
+    triggered_from: location,
+  });
+};
+
+export type DashboardEventsVisibilityLocation = "dashboard" | "dashcard";
+export type DashboardEventsVisibilityChange = "shown" | "hidden";
+
+export const trackDashboardEventsVisibilityChanged = (
+  dashboardId: DashboardId | undefined,
+  location: DashboardEventsVisibilityLocation,
+  change: DashboardEventsVisibilityChange,
+) => {
+  trackSimpleEvent({
+    event: "dashboard_events_visibility_changed",
+    target_id: getDashboardId(dashboardId),
+    triggered_from: location,
+    event_detail: change,
+  });
+};

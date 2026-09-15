@@ -3396,3 +3396,47 @@
           (is (every? #(and (string? %) (re-matches #"[A-Za-z0-9_-]{21}" %)) entity-ids))
           (is (thrown? Exception (t2/insert! :timeline_event event))
               "new events must carry an entity ID"))))))
+
+(deftest timeline-event-entity-ids-rollback-test
+  (testing "v64.h1c4r5 thru v64.0npr54: rolling back leaves timeline events readable and writable by older code"
+    (impl/test-migrations ["v64.h1c4r5" "v64.0npr54"] [migrate!]
+      (let [user-id       (t2/insert-returning-pk! :core_user {:email       "migration-storks@example.com"
+                                                               :password    "password"
+                                                               :date_joined :%now
+                                                               :entity_id   (u/generate-nano-id)})
+            timeline-id   (t2/insert-returning-pk! :timeline {:name       "Rollback seasons"
+                                                              :icon       "star"
+                                                              :creator_id user-id
+                                                              :created_at :%now
+                                                              :updated_at :%now
+                                                              :entity_id  (u/generate-nano-id)})
+            event         {:name         "Swallows return"
+                           :archived     false
+                           :icon         "star"
+                           :timeline_id  timeline-id
+                           :creator_id   user-id
+                           :created_at   :%now
+                           :updated_at   :%now
+                           :timestamp    #t "2027-04-20T00:00:00Z"
+                           :time_matters false
+                           :timezone     "UTC"}
+            _             (t2/insert! :timeline_event [event (assoc event
+                                                                    :name "Swifts leave"
+                                                                    :archived true
+                                                                    :timestamp #t "2027-08-15T00:00:00Z")])
+            portable-data (fn []
+                            (map #(select-keys % [:name :timestamp :timeline_id :archived])
+                                 (t2/select :timeline_event {:order-by [:id]})))
+            before        (portable-data)]
+        (migrate!)
+        (migrate! :down 63)
+        (testing "events written before the upgrade are still there, unchanged"
+          (is (= before (portable-data))))
+        (testing "and an event can be written without an entity ID again"
+          (is (some? (t2/insert-returning-pk! :timeline_event (assoc event :name "Storks nest")))))
+        (migrate!)
+        (testing "migrating forward again gives every event a distinct portable ID"
+          (let [entity-ids (map :entity_id (t2/select :timeline_event {:order-by [:id]}))]
+            (is (= 3 (count entity-ids)))
+            (is (= 3 (count (set entity-ids))))
+            (is (every? #(and (string? %) (re-matches #"[A-Za-z0-9_-]{21}" %)) entity-ids))))))))

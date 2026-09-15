@@ -44,7 +44,7 @@
    :snowplow/metabot          "1-0-1"
    :snowplow/search           "1-0-1"
    :snowplow/model            "1-0-0"
-   :snowplow/timeline         "1-0-0"
+   :snowplow/timeline         "1-0-1"
    :snowplow/task             "1-0-0"
    :snowplow/upsell           "1-0-0"
    :snowplow/action           "1-0-0"
