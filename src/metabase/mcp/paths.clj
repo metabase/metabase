@@ -62,8 +62,11 @@
    "agent:resource:read"])
 
 (def v2-baseline-scopes
-  "The least-privilege subset of [[v2-surface-scopes]], in its order: what an MCP client is told to request when it
-   first connects, through the 401 challenge and the protected-resource metadata. A client reaches the rest of the
-   surface by stepping up on a 403 `insufficient_scope`."
+  "The subset of [[v2-surface-scopes]], in its order, that an MCP client is told to request when it first connects,
+   through the 401 challenge and the protected-resource metadata: reading and running queries. A client reaches the
+   rest of the surface (writes, raw SQL, delivery) by stepping up on a 403 `insufficient_scope`."
+  ;; `agent:query:run` is here because charts must not need a step-up: Claude Desktop retries a tool after step-up
+  ;; over a session that declares no MCP Apps support, so a stepped-up `visualize_query` is refused and never embeds.
   ["agent:content:read"
+   "agent:query:run"
    "agent:resource:read"])

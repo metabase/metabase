@@ -97,7 +97,7 @@
   mcp.paths/v2-surface-scopes)
 
 (defn v2-baseline-scopes
-  "The least-privilege subset of [[v2-scopes]] a client is told to request when it first connects; it steps up to
-   the rest on a 403 `insufficient_scope`."
+  "The subset of [[v2-scopes]] a client is told to request when it first connects; it steps up to the rest on a 403
+   `insufficient_scope`."
   []
   mcp.paths/v2-baseline-scopes)

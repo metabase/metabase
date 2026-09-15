@@ -51,8 +51,7 @@
                     response))))))))
 
 (deftest protected-resource-metadata-advertises-the-baseline-test
-  (testing "GHY-4543: every protected-resource endpoint, including the bare one, advertises only the least-privilege
-            baseline. Claude Code and the Claude connectors take their first-login scope from `scopes_supported`
+  (testing "GHY-4543: every protected-resource endpoint, including the bare one, advertises only the baseline. Claude Code and the Claude connectors take their first-login scope from `scopes_supported`
             here; every tool is still listed, and a call needing more is answered with a 403 `insufficient_scope`
             step-up. The baseline must be accepted by the `:resource` the document names, or the first login is
             narrowed away; asserted against that `:resource` rather than the URL requested, so the two cannot drift."
@@ -63,7 +62,7 @@
         (testing url
           (let [response      (mt/user-http-request :crowberto :get 200 url)
                 resource-path (str/replace (:resource response) "http://localhost:3000" "")]
-            (is (= ["agent:content:read" "agent:resource:read"]
+            (is (= ["agent:content:read" "agent:query:run" "agent:resource:read"]
                    (:scopes_supported response)))
             (is (empty? (remove (set (oauth-server/mcp-resource-scopes resource-path))
                                 (:scopes_supported response))))))))))
@@ -92,7 +91,7 @@
                 response))
         (testing "the bare path is the one clients probe, so it advertises the same baseline as the canonical
                   path it names, and none of the retired per-entity agent-API scopes"
-          (is (= ["agent:content:read" "agent:resource:read"]
+          (is (= ["agent:content:read" "agent:query:run" "agent:resource:read"]
                  (:scopes_supported response)))
           (is (not (contains? (set (:scopes_supported response)) "agent:question:create"))))))))
 
@@ -1379,7 +1378,7 @@
                                        oauth-server-dynamic-registration-enabled true]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [{:keys [authorize token]} (register-then-authorize-mcp!
-                                         {:scope "agent:content:read agent:resource:read"}
+                                         {:scope "agent:content:read agent:query:run agent:resource:read"}
                                          (str/join " " (sort v2-scope-set)))]
           (testing "the step-up request reaches the consent page"
             (is (= 200 (:status authorize)) (pr-str (:body authorize)))
@@ -1416,7 +1415,7 @@
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [not-mcp                   (first (remove v2-scope-set (oauth-server/default-grant-scopes)))
               {:keys [authorize token]} (register-then-authorize-mcp!
-                                         {:scope "agent:content:read agent:resource:read"}
+                                         {:scope "agent:content:read agent:query:run agent:resource:read"}
                                          (str/join " " (conj (sort v2-scope-set) not-mcp)))]
           (is (some? not-mcp) "the default ceiling holds a scope the MCP resource does not accept")
           (is (= 200 (:status authorize)) (pr-str (:body authorize)))
@@ -1447,13 +1446,13 @@
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (testing "control: the same flow reaches consent for a scope inside the default ceiling"
           (let [response (register-then-authorize-without-resource!
-                          {:scope "agent:content:read agent:resource:read"}
+                          {:scope "agent:content:read agent:query:run agent:resource:read"}
                           "agent:content:write")]
             (is (= 200 (:status response)) (pr-str (:body response)))))
         (doseq [scope [oauth-server/full-access-scope "*" "agent:*" "bogus:nonsense"]]
           (testing scope
             (let [response (register-then-authorize-without-resource!
-                            {:scope "agent:content:read agent:resource:read"}
+                            {:scope "agent:content:read agent:query:run agent:resource:read"}
                             scope)]
               (is (= 400 (:status response)))
               (is (= "invalid_request" (get-in response [:body :error]))))))))))

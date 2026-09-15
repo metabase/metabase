@@ -51,7 +51,7 @@
 (defn- protected-resource-metadata
   "OAuth Protected Resource Metadata (RFC 9728) advertising `resource-path` as the protected resource.
 
-   `:scopes_supported` is the least-privilege baseline for `resource-path`, derived from it rather than passed
+   `:scopes_supported` is the baseline for `resource-path`, derived from it rather than passed
    in so the resource and its advertised scopes cannot disagree."
   [resource-path]
   (let [site-url (system/site-url)]

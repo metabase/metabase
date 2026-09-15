@@ -169,7 +169,8 @@
        "don't ask the user to check or select anything. Don't retry the tool until the user says they have reconnected."))
 
 (def ^:private default-ask-scopes
-  "The `scope` of the 401 challenge: the least-privilege baseline an uninstructed client requests on first connect.
+  "The `scope` of the 401 challenge: [[metabase.mcp.paths/v2-baseline-scopes]], which an uninstructed client requests
+  on first connect.
 
   Every tool is listed whatever the token holds. A call needing a scope the token lacks is answered with a 403
   `insufficient_scope` naming the union of held and required scopes, and each tool declares its scope in
