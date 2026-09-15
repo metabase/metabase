@@ -44,6 +44,7 @@
     BigQueryException
     BigQueryOptions
     Clustering
+    ConnectionProperty
     Dataset
     DatasetId
     Field
@@ -1128,7 +1129,8 @@
                               ;; statements by using a different driver-native API for affected-row counts.
                               :transforms/accurate-rows-affected false
                               :transforms/python                true
-                              :transforms/table                 true}]
+                              :transforms/table                 true
+                              :transforms/testing               true}]
   (defmethod driver/database-supports? [:bigquery-cloud-sdk feature] [_driver _feature _db] supported?))
 
 (defmethod driver/qualified-name-components :bigquery-cloud-sdk
@@ -1296,6 +1298,70 @@
   [_driver table]
   (let [table-str (get-table-str table)]
     [(str "DROP TABLE IF EXISTS " table-str)]))
+
+(defn- session-query-config
+  "The configuration of a job running the `[sql params]` query in the session `session-id`, or creating a new session
+  when `session-id` is nil."
+  ^QueryJobConfiguration [^String session-id [^String sql params]]
+  (let [builder (doto (QueryJobConfiguration/newBuilder sql)
+                  (bigquery.params/set-parameters! params)
+                  (.setUseLegacySql false))]
+    (if session-id
+      (.setConnectionProperties builder [(-> (ConnectionProperty/newBuilder)
+                                             (.setKey "session_id")
+                                             (.setValue session-id)
+                                             (.build))])
+      (.setCreateSession builder true))
+    (.build builder)))
+
+(defn- run-session-job!
+  "Runs the `[sql params]` query in the session `session-id`, or in a new session when `session-id` is nil, and returns
+  its finished job."
+  ^Job [^BigQuery client session-id query]
+  (let [job (.create client (JobInfo/of (session-query-config session-id query)) (u/varargs BigQuery$JobOption))]
+    (.getQueryResults job (u/varargs BigQuery$QueryResultsOption))
+    job))
+
+(defmethod driver/do-with-test-connection :bigquery-cloud-sdk
+  [driver database f]
+  (let [details    (driver/connection-spec driver database)
+        client     (database-details->client details)
+        _          (driver.conn/track-connection-acquisition! details)
+        job        (.reload (run-session-job! client nil ["SELECT 1" nil]) (u/varargs BigQuery$JobOption))
+        session-id (.getSessionId (.getSessionInfo (.getStatistics job)))]
+    (try
+      (f {:client client, :session-id session-id})
+      (finally
+        (try
+          (run-session-job! client session-id ["CALL BQ.ABORT_SESSION()" nil])
+          (catch Exception e
+            (log/warnf "Failed to abort BigQuery transform test session: %s" (ex-message e))))))))
+
+(defmethod driver/execute-on-connection! :bigquery-cloud-sdk
+  [_driver {:keys [client session-id]} query]
+  (run-session-job! client session-id query)
+  {:rows-affected 0})
+
+(defmethod driver/query-on-connection :bigquery-cloud-sdk
+  [_driver {:keys [client session-id]} query {:keys [max-rows]}]
+  (let [^TableResult result (.getQueryResults (run-session-job! client session-id query)
+                                              (u/varargs BigQuery$QueryResultsOption))]
+    (into []
+          (comp (map (fn [^FieldValueList row]
+                       (perf/mapv #(.getValue ^FieldValue %) row)))
+                (if max-rows (take max-rows) identity))
+          (.iterateAll result))))
+
+(defmethod driver/compile-create-temp-table :bigquery-cloud-sdk
+  [_driver {:keys [table query]}]
+  (let [{sql-query :query sql-params :params} query]
+    [(format "CREATE TEMP TABLE %s AS %s" (get-table-str (keyword table)) sql-query)
+     sql-params]))
+
+(defmethod driver/compile-drop-temp-table :bigquery-cloud-sdk
+  [_driver table]
+  [(str "DROP TABLE IF EXISTS " (get-table-str (keyword table)))
+   []])
 
 (defmethod driver/create-table! :bigquery-cloud-sdk
   [driver database-id table-name column-definitions & {:keys [primary-key indexes]}]

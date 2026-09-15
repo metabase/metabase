@@ -24,6 +24,7 @@
     [:schema {:optional true} [:maybe :string]]
     [:table :string]]
    [:map {:closed true}
+    [:db [:maybe :string]]
     [:schema [:maybe :string]]
     [:table :string]]])
 
@@ -55,7 +56,7 @@
           (for [[{:keys [schema name]} temp-table] (conj (mapv vector (map :table inputs) input-temp-tables)
                                                          [{:schema target-schema :name target-name} output-temp-table])
                 table-key                         (table-keys driver schema name)]
-            [table-key {:schema nil :table temp-table}]))))
+            [table-key {:db nil :schema nil :table temp-table}]))))
 
 (mu/defn replace-tables :- :string
   "`sql` reading from the temp tables of `replacements` instead of the tables they replace."
