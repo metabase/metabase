@@ -75,8 +75,16 @@
 (def curated-search-models
   "Search models that can carry a curation signal, so the `:curated?` filter restricts to these (and
   keeps them consistent across the appdb and in-place engines). Includes `table`, which is exactly why
-  curated content stays visible where the older verified-only filter dropped it (BOT-1536)."
-  #{"card" "dataset" "metric" "dashboard" "table"})
+  curated content stays visible where the older verified-only filter dropped it (BOT-1536).
+  Measures and segments inherit curation from their published parent table (`root_collection_type` on the index
+  row; the in-place engine approximates it as the parent table being published)."
+  #{"card"
+    "dashboard"
+    "dataset"
+    "measure"
+    "metric"
+    "segment"
+    "table"})
 
 (def models-search-order
   "The order of this list influences the order of the results: items earlier in the
