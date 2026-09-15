@@ -79,7 +79,7 @@ jest.mock("metabase/visualizations/components/Visualization", () => {
   return { __esModule: true, default: StubVisualization };
 });
 
-const STATS_PATH = Urls.monitorAiAuditingUsage();
+const STATS_PATH = Urls.monitorAiAuditingUsageMetric("conversations");
 const CONVERSATIONS_PATH = Urls.monitorAiAuditingConversations();
 
 const { database: auditDatabase } = buildAuditViewsFixture();
@@ -225,7 +225,10 @@ function setup({
 
   return renderWithProviders(
     <>
-      <Route path={STATS_PATH} element={<ConversationStatsPage />} />
+      <Route
+        path={`${Urls.monitorAiAuditingUsage()}/:metric`}
+        element={<ConversationStatsPage />}
+      />
       <Route
         path={CONVERSATIONS_PATH}
         element={<div data-testid="conversations-page" />}
@@ -295,9 +298,11 @@ describe("ConversationStatsPage", () => {
       { tab: "Tokens", metric: "tokens" },
       { tab: "Messages", metric: "messages" },
     ])(
-      "switches to the $metric charts and records the metric in the url",
+      "switches to the $metric charts at the $metric route, keeping the filters",
       async ({ tab, metric }) => {
-        const { router } = setup();
+        const { router } = setup({
+          initialRoute: `${STATS_PATH}?date=past6days~`,
+        });
 
         await screen.findByText("Conversations by day");
         await userEvent.click(screen.getByRole("tab", { name: tab }));
@@ -310,14 +315,29 @@ describe("ConversationStatsPage", () => {
           expect(await screen.findByText(title)).toBeInTheDocument();
         }
         await waitFor(() => {
-          expect(parseSearchQuery(router?.location.search ?? "")).toMatchObject(
-            {
-              metric,
-            },
-          );
+          expect(router?.location).toMatchObject({
+            pathname: Urls.monitorAiAuditingUsageMetric(metric),
+            search: "?date=past6days~",
+          });
         });
       },
     );
+
+    it("redirects an unknown metric to the Conversations tab, keeping the filters", async () => {
+      const { router } = setup({
+        initialRoute: `${Urls.monitorAiAuditingUsage()}/unknown?date=past6days~`,
+      });
+
+      await waitFor(() => {
+        expect(router?.location).toMatchObject({
+          pathname: STATS_PATH,
+          search: "?date=past6days~",
+        });
+      });
+      expect(
+        await screen.findByRole("tab", { name: "Conversations" }),
+      ).toHaveAttribute("aria-selected", "true");
+    });
 
     it("buckets the timeseries by hour for a single-day date filter", async () => {
       setup({ initialRoute: `${STATS_PATH}?date=${SINGLE_DAY}` });
