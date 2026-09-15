@@ -18,3 +18,7 @@ Some clients (like Claude Desktop) ask you to approve or block each tool the fir
 The descriptions and argument notes here are exactly what your agent sees (which is why they sound robotic). Your agent can also call the `learn` tool for longer guides on the things a tool description can't fit.
 
 Several tools take or return a `query_handle`. A handle stands for a query that already ran (or was validated), so your agent can visualize or save exactly that query without sending it again. Handles expire after 24 hours.
+
+Your agent should reach for `execute_query` for anything it can say in Metabase's structured query language: counts, sums, averages, grouping, filtering, sorting, and joins. `execute_sql` is for what that language can't express (window functions, CTEs, set operations, engine-specific functions) or for when you ask for SQL outright.
+
+The query tools take a `row_limit`. That's the page size for one call, not a cap on the result: a longer result comes back marked truncated, and `execute_query` also returns a cursor for the next page. To get the top or first N rows, the query itself needs a `limit` (with an `order-by`) in its stage.
