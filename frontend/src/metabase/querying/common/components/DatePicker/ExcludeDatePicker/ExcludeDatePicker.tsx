@@ -12,7 +12,6 @@ import { useSetting } from "metabase/settings";
 import type { PopoverBackButtonProps } from "metabase/ui";
 import {
   Box,
-  Button,
   Checkbox,
   Divider,
   Group,
@@ -21,7 +20,8 @@ import {
   Text,
 } from "metabase/ui";
 
-import { ITEM_BUTTON_VARS, MIN_WIDTH } from "../constants";
+import { DatePickerMenuItem } from "../DatePickerMenuItem";
+import { MIN_WIDTH } from "../constants";
 import type { DatePickerSubmitButtonProps } from "../types";
 import { renderDefaultSubmitButton } from "../utils";
 
@@ -126,35 +126,28 @@ export function ExcludeOptionPicker({
         withArrow={!readOnly}
       >{t`Exclude…`}</BackButton>
       <Divider />
-      <Stack p="lg" gap="lg">
+      <Box p="sm">
         {unitOptions.map((option, index) => (
-          <Button
+          <DatePickerMenuItem
             key={index}
-            variant="transparent"
-            size="compact-md"
-            color="neutral"
-            justify="flex-start"
-            vars={() => ({ root: ITEM_BUTTON_VARS })}
             onClick={() => onSelectUnit(option.unit)}
           >
             {option.label}
-          </Button>
+          </DatePickerMenuItem>
         ))}
-        {unitOptions.length > 0 && operatorOptions.length > 0 && <Divider />}
+        {unitOptions.length > 0 && operatorOptions.length > 0 && (
+          <Divider mx="lg" my="sm" />
+        )}
         {operatorOptions.map((option, index) => (
-          <Button
+          <DatePickerMenuItem
             key={index}
-            variant="transparent"
-            size="compact-md"
-            color={option.operator === value?.operator ? "brand" : "neutral"}
-            justify="flex-start"
-            vars={() => ({ root: ITEM_BUTTON_VARS })}
+            isSelected={option.operator === value?.operator}
             onClick={() => handleChange(option.operator)}
           >
             {option.label}
-          </Button>
+          </DatePickerMenuItem>
         ))}
-      </Stack>
+      </Box>
     </Box>
   );
 }

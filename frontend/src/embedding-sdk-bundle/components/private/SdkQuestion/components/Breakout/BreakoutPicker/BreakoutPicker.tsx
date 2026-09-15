@@ -5,7 +5,7 @@ import {
   useBreakoutQueryHandlers,
 } from "metabase/query_builder";
 import { BreakoutPopover } from "metabase/querying/notebook/components/BreakoutStep";
-import { Button, Divider, Icon, Stack } from "metabase/ui";
+import { Divider, PopoverBackButton, Stack } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import { useSdkQuestionContext } from "../../../context";
@@ -29,18 +29,9 @@ export const BreakoutPickerInner = ({
 
   return (
     <Stack gap={0} w="18.75rem">
-      <Button
-        size="lg"
-        variant="subtle"
-        color="neutral"
-        leftSection={<Icon name="chevronleft" />}
-        onClick={() => onClose?.()}
-        styles={{
-          inner: { display: "flex", justifyContent: "flex-start" },
-        }}
-      >
+      <PopoverBackButton px="lg" py="md" h="auto" onClick={() => onClose?.()}>
         {breakoutItem?.displayName ?? t`Back`}
-      </Button>
+      </PopoverBackButton>
       <Divider />
       <BreakoutPopover
         query={query}

@@ -214,6 +214,7 @@ class SnippetSidebarInner extends Component<
                   <Flex
                     align="center"
                     justify="flex-end"
+                    gap="md"
                     data-testid="snippet-header-buttons"
                   >
                     {PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.map((f) =>

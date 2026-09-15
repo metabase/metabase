@@ -29,7 +29,6 @@ export const SidesheetSubPageTitle = ({
     <Button
       variant="transparent"
       size="compact-md"
-      color="neutral"
       h="auto"
       fz="inherit"
       lh="inherit"

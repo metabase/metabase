@@ -133,7 +133,7 @@ export const TimelineSidebar = ({
   return (
     <SidebarContent title={title} onClose={onClose}>
       {focusedTimelineEventIds != null && (
-        <Box mx="xl" mb="sm">
+        <Box mx="xl" mb="md">
           <Button
             variant="transparent"
             size="compact-md"

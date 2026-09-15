@@ -28,8 +28,8 @@ export const RuleListing = ({
     </Stack>
     <Box>
       <Button
-        variant="subtle"
-        color="neutral"
+        variant="transparent"
+        size="compact-md"
         onClick={onAdd}
         leftSection={<Icon name="add" />}
       >

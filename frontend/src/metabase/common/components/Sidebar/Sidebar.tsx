@@ -68,7 +68,6 @@ export function Sidebar({
           {onCancel && (
             <Button
               variant="transparent"
-              color="neutral"
               size="compact-md"
               onClick={onCancel}
               aria-label={t`Cancel`}

@@ -7,9 +7,10 @@ import type {
   RelativeDatePickerValue,
   RelativeIntervalDirection,
 } from "metabase/querying/common/types";
-import { Button, Divider, Stack } from "metabase/ui";
+import { Box, Divider } from "metabase/ui";
 
-import { ITEM_BUTTON_VARS, MIN_WIDTH } from "../constants";
+import { DatePickerMenuItem } from "../DatePickerMenuItem";
+import { MIN_WIDTH } from "../constants";
 
 import { getShortcutOptionGroups, getTypeOptions } from "./utils";
 
@@ -39,41 +40,33 @@ export function DateShortcutPicker({
   }, [availableOperators]);
 
   return (
-    <Stack p="lg" gap="lg" miw={MIN_WIDTH}>
+    <Box p="sm" miw={MIN_WIDTH}>
       {renderBackButton?.()}
       {shortcutGroups.map((group, groupIndex) => (
         <Fragment key={groupIndex}>
-          {groupIndex > 0 && <Divider />}
+          {groupIndex > 0 && <Divider mx="lg" my="sm" />}
           {group.map((option, optionIndex) => (
-            <Button
+            <DatePickerMenuItem
               key={optionIndex}
-              variant="transparent"
-              size="compact-md"
-              color="neutral"
-              justify="flex-start"
-              vars={() => ({ root: ITEM_BUTTON_VARS })}
               onClick={() => onChange(option.value)}
             >
               {option.label}
-            </Button>
+            </DatePickerMenuItem>
           ))}
         </Fragment>
       ))}
-      {shortcutGroups.length > 0 && typeOptions.length > 0 && <Divider />}
+      {shortcutGroups.length > 0 && typeOptions.length > 0 && (
+        <Divider mx="lg" my="sm" />
+      )}
       {typeOptions.map((option, optionIndex) => (
-        <Button
+        <DatePickerMenuItem
           key={optionIndex}
-          variant="transparent"
-          size="compact-md"
-          color="neutral"
-          justify="flex-start"
-          vars={() => ({ root: ITEM_BUTTON_VARS })}
           onClick={() => onSelectType(option.type)}
           data-testid={`date-picker-type-${option.type}`}
         >
           {option.label}
-        </Button>
+        </DatePickerMenuItem>
       ))}
-    </Stack>
+    </Box>
   );
 }

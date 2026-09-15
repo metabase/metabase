@@ -29,12 +29,7 @@ export function FilterPickerFooter({
       align="center"
     >
       {onClear ? (
-        <Button
-          variant="transparent"
-          color="neutral"
-          size="compact-md"
-          onClick={onClear}
-        >
+        <Button variant="transparent" size="compact-md" onClick={onClear}>
           {t`Clear`}
         </Button>
       ) : isValidElement(children) ? (

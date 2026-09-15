@@ -15,7 +15,6 @@ export function PopoverBackButton(props: PopoverBackButtonProps) {
     <Button
       variant="transparent"
       size="compact-md"
-      color="neutral"
       justify="flex-start"
       p={0}
       aria-label={t`Back`}

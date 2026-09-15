@@ -52,7 +52,6 @@ export function DateFilterPicker({
               {onClear ? (
                 <Button
                   variant="transparent"
-                  color="neutral"
                   size="compact-md"
                   onClick={onClear}
                 >
@@ -68,6 +67,9 @@ export function DateFilterPicker({
         renderBackButton={() =>
           onBack ? (
             <PopoverBackButton
+              px="sm"
+              py="md"
+              h="auto"
               onClick={onBack}
               disabled={readOnly}
               withArrow={!readOnly}

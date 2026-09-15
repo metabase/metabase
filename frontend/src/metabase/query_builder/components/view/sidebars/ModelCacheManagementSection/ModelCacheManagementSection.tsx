@@ -90,7 +90,6 @@ export function ModelCacheManagementSection({ model }: Props) {
               <Button
                 variant="transparent"
                 size="compact-md"
-                color="neutral"
                 onClick={() => onRefresh(model.id())}
               >
                 {t`Create now`}
