@@ -15,12 +15,12 @@ Metabase's native 2FA applies to password logins and LDAP logins. 2FA for Single
 
 To enable two-factor authentication:
 
-1. Go to **Admin** > **Settings** > **Authentication** > **Overview**. <!-- TODO: verify path against branch -->
+1. Go to **Admin** > **Settings** > **Authentication** > **Overview**.
 2. Scroll to the **Two-factor authentication** card.
 3. Enable the **Allow two-factor authentication** toggle. Once enabled, people who log in with a password or LDAP can enroll in 2FA from the **Authentication** tab in their account settings.
-4. In **Require two-factor authentication**, select an option:
+4. In **Require two-factor authentication**, select an option. You must set up 2FA for your own account before you can require it.
    - **Don't require**: People can enroll in 2FA, but they don't have to. This is the default.
-   - **Require now**: Metabase logs out everyone (including you) who hasn't logged in with 2FA. Anyone who hasn't enrolled sets up 2FA at their next login.
+   - **Require now**: Metabase logs out everyone who hasn't logged in with 2FA. Anyone who hasn't enrolled sets up 2FA at their next login.
    - **Require by a certain date**: Under **Enrollment deadline**, select a date. When the deadline passes, 2FA is required for everyone and Metabase logs out anyone who hasn't logged in with 2FA.
 
 Requiring 2FA doesn't affect API keys.
