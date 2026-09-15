@@ -2,6 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.actions.core :as actions]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.typed-schemas.schema.common :as schema.common]
    [metabase.typed-schemas.schema.model :as schema.model]))
@@ -17,6 +19,22 @@
            (schema.model/model-schema
             {:id   42
              :name "Orders model"})))))
+
+(deftest model-schema-supports-persisted-mbql5-template-tags-test
+  (let [mp           (mt/metadata-provider)
+        action-query (lib/native-query mp "UPDATE birds SET name = {{name}}")]
+    (mt/with-actions [model {:name          "Bird model"
+                             :type          :model
+                             :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :categories)))}
+                      {action-id :action-id} {:name          "Update bird"
+                                              :database_id   (mt/id)
+                                              :dataset_query action-query
+                                              :parameters    [{:id "name", :name "Name", :type :text}]}]
+      (let [action (actions/select-action :id action-id)]
+        (is (sequential? (get-in action [:dataset_query :stages 0 :template-tags])))
+        (is (=? [{:slug "name", :displayName "Name", :jsType "string"}]
+                (get-in (schema.model/model-schema model)
+                        [:actions "updateBird" :parameters])))))))
 
 (deftest model-schemas-includes-only-actionable-models-test
   (with-redefs [schema.common/select-schema-cards
