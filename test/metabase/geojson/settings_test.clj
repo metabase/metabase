@@ -33,6 +33,10 @@
                     "http://fe80::"                            false
                     "169.254.169.254"                          false
                     "http://169.254.169.254/secret-stuff.json" false
+                    "http://0.0.0.0"                           false
+                    "http://[::]"                              false
+                    "http://100.64.0.1"                        false
+                    "http://[fc00::1]"                         false
                     ;; alternate IPv4 encodings (hex, octal, integer)
                     "http://0xa9fea9fe"                        false
                     "https://0xa9fea9fe"                       false
