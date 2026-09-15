@@ -3,7 +3,6 @@
    [metabase.lib-be.db :as lib-be.db]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
@@ -13,14 +12,14 @@
    [metabase.util.performance :as perf]))
 
 (def ^:private Query
-  [:or :metabase.legacy-mbql.schema/Query ::lib.schema/query])
+  :metabase.lib.util/legacy-or-mbql5-query)
 
 (mu/defn- source-card-id-for-mbql5-query :- [:maybe ::lib.schema.id/card]
-  [query :- ::lib.schema/query]
+  [query :- :metabase.lib.util/mbql5-query]
   (-> query :stages first :source-card))
 
 (mu/defn- source-card-id-for-legacy-query :- [:maybe ::lib.schema.id/card]
-  [query :- :metabase.legacy-mbql.schema/Query]
+  [query :- :metabase.lib.util/legacy-query]
   (let [inner-query         (:query query)
         deepest-inner-query (loop [inner-query inner-query]
                               (let [source-query (:source-query inner-query)]
@@ -107,7 +106,11 @@
    ::lib.schema.id/database
    ::lib.schema.id/saved-questions-virtual-database])
 
-(mu/defn resolve-database :- [:maybe [:or ::empty-map Query]]
+(mu/defn resolve-database :- [:maybe
+                              [:or
+                               ::empty-map
+                               [:map
+                                [:database ::lib.schema.id/database]]]]
   "If query has `:database` `-1337` (the legacy database ID for queries using a source Card that had an unknown
   database), resolve the correct database ID and assoc it into the query."
   ([query :- [:maybe [:or ::empty-map Query]]]

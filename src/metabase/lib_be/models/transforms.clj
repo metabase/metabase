@@ -28,15 +28,15 @@
                               [true  [:= {:description "empty map"} {}]]
                               [false ::lib.schema/query]]]
   "Normalize an MBQL `query` to MBQL 5 and attach a metadata provider."
-  ([query :- [:maybe [:or [:= {} {}] :metabase.legacy-mbql.schema/Query ::lib.schema/query]]]
+  ([query :- [:maybe :metabase.lib.util/query-like]]
    (normalize-query nil query))
 
   ([metadata-providerable :- [:maybe ::lib.metadata.protocols/metadata-providerable]
-    query                 :- [:maybe [:or [:= {} {}] :metabase.legacy-mbql.schema/Query ::lib.schema/query]]]
+    query                 :- [:maybe :metabase.lib.util/query-like]]
    (normalize-query metadata-providerable query nil))
 
   ([metadata-providerable :- [:maybe ::lib.metadata.protocols/metadata-providerable]
-    query                 :- [:maybe [:or [:= {} {}] :metabase.legacy-mbql.schema/Query ::lib.schema/query]]
+    query                 :- [:maybe :metabase.lib.util/query-like]
     {:keys [strict?]}     :- [:maybe
                               [:map
                                {:closed true}

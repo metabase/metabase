@@ -152,12 +152,12 @@
 (mu/defn query-with-stages :- ::lib.schema/query
   "Create a query from a sequence of stages."
   ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-    stages                :- ::lib.schema/stages]
+    stages                :- [:sequential ::lib.util/query-like]]
    (query-with-stages (:id (lib.metadata/database metadata-providerable)) metadata-providerable stages))
 
   ([database-id           :- ::lib.schema.id/database
     metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-    stages                :- ::lib.schema/stages]
+    stages                :- [:sequential ::lib.util/query-like]]
    (->> (merge
          {:lib/type     :mbql/query
           :lib/metadata (lib.metadata/->metadata-provider metadata-providerable)
@@ -305,13 +305,7 @@
   existing MBQL query or saved question or whatever. If the thing in question does not already include metadata, pass
   it in separately -- metadata is needed for most query manipulation operations."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   x                     :- [:or
-                             ::lib.schema/query
-                             ::lib.util/legacy-query
-                             ::lib.schema/stage
-                             ::lib.schema.metadata/table
-                             ::lib.schema.metadata/card
-                             ::lib.schema.metadata/metric]]
+   x                     :- ::lib.util/query-like]
   (ensure-cached-metadata-provider (query-method metadata-providerable x)))
 
 (mu/defn ->query :- ::lib.schema/query
@@ -320,13 +314,7 @@
   Create a new MBQL query from anything that could conceptually be an MBQL query, like a Database or Table or an
   existing MBQL query or saved question or whatever. If the thing in question does not already include metadata, pass
   it in separately -- metadata is needed for most query manipulation operations."
-  [x                     :- [:or
-                             ::lib.schema/query
-                             ::lib.util/legacy-query
-                             ::lib.schema/stage
-                             ::lib.schema.metadata/table
-                             ::lib.schema.metadata/card
-                             ::lib.schema.metadata/metric]
+  [x                     :- ::lib.util/query-like
    metadata-providerable :- ::lib.schema.metadata/metadata-providerable]
   (query metadata-providerable x))
 
