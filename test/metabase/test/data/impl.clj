@@ -217,7 +217,7 @@
 
 (mu/defn database-source-dataset-name :- :string
   "Get the name of the test dataset this Database was created from, e.g. `test-data`."
-  [database :- [:map {:closed true} [:settings [:map {:closed true} [:database-source-dataset-name :string]]]]]
+  [database :- [:or ::warehouses.schema/database ::warehouses.schema/database.update]]
   (get-in database [:settings :database-source-dataset-name]))
 
 (mu/defn the-table-id :- ::lib.schema.id/table
