@@ -46,13 +46,13 @@
   `DimensionBindings`."
   [:map-of
    SourceName
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/xrays/domain_entities/core.clj:49"}
     [:dimensions DimensionBindings]
     [:entity {:optional true} SourceEntity]]])
 
 (def ^:private MetricOrSegmentEntry
   "The value half of a domain-entity spec's `:metrics`/`:segments` map entries."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/xrays/domain_entities/core.clj:55"}
    [:name        :string]
    [:aggregation {:optional true} MBQL]
    [:breakout    {:optional true} [:sequential MBQL]]

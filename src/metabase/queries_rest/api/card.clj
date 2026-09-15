@@ -265,7 +265,7 @@
   (map #(update-keys % u/->kebab-case-en) cols))
 
 (mu/defn- source-cols
-  [card   :- [:map {:closed true}
+  [card   :- [:map {:closed true, :probe/id "src/metabase/queries_rest/api/card.clj:268"}
               [:visualization_settings {:optional true} [:maybe ::queries.schema/card.visualization-settings]]
               [:dataset_query          {:optional true} [:maybe ::queries.schema/card.dataset-query]]
               [:result_metadata        {:optional true}

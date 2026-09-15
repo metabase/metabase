@@ -20,7 +20,7 @@
 (def ^:private StaleSpec
   "A single staleness cutoff: a `model` row is stale under this spec when `column` is older than `age`
   `unit`s ago."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/run_tracking/db.clj:23"}
    [:column :keyword]
    [:age pos-int?]
    [:unit StaleUnit]])
@@ -78,7 +78,7 @@
   [model    :- :keyword
    active   :- ActivePredicate
    ids      :- [:sequential ms/PositiveInt]
-   terminal :- [:map {:closed true}
+   terminal :- [:map {:closed true, :probe/id "src/metabase/run_tracking/db.clj:81"}
                 [:status    {:optional true} [:maybe [:or :string :keyword]]]
                 [:end_time  {:optional true} [:maybe [:or :string :keyword]]]
                 [:ended_at  {:optional true} [:maybe [:or :string :keyword]]]

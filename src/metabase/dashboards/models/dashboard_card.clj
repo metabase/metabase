@@ -186,7 +186,7 @@
 (def ^:private DashboardCardUpdates
   [:merge
    ::dashboards.schema/dashboard-card.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/dashboards/models/dashboard_card.clj:189"}
     [:id                     ms/PositiveInt]
     ;; series is a sequence of IDs of additional cards after the first to include as "additional serieses"
     [:series {:optional true} [:maybe [:sequential ms/PositiveInt]]]
@@ -222,7 +222,7 @@
 (def ^:private NewDashboardCard
   [:merge
    ::dashboards.schema/dashboard-card.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/dashboards/models/dashboard_card.clj:225"}
     [:dashboard_id                ms/PositiveInt]
     [:id                          {:optional true} [:maybe :metabase.lib.schema.id/dashcard]]
     [:card                        {:optional true} [:maybe [:ref ::queries.schema/card]]]

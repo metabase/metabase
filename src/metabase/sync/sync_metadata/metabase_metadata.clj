@@ -19,7 +19,7 @@
    [metabase.util.malli.schema :as ms]))
 
 (def ^:private KeypathComponents
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/sync/sync_metadata/metabase_metadata.clj:22"}
    [:table-name [:maybe ms/NonBlankString]]
    [:field-name [:maybe ms/NonBlankString]]
    [:k          :keyword]])

@@ -213,7 +213,7 @@
 
 (mr/def ::bookmark-row
   "A bookmark row left joined against the Card, Dashboard, Collection, Document, and Exploration tables."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/bookmarks/db.clj:216"}
    [:created_at                (ms/InstanceOfClass java.time.temporal.Temporal)]
    [:type                      [:enum "card" "collection" "dashboard" "document" "exploration"]]
    [:item_id                   ms/PositiveInt]

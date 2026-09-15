@@ -40,10 +40,10 @@
   through to an open `:row`, since this map can't know their shape."
   (into [:multi {:dispatch :model}]
         (conj (for [[model schema] revisioned-model-row-schema]
-                [model [:map {:closed true}
+                [model [:map {:closed true, :probe/id "src/metabase/revisions/db.clj:43"}
                         [:model [:= model]]
-                        [:row [:merge schema [:map {:closed true} [:id {:optional true} ms/PositiveInt]]]]]])
-              [::mc/default [:map {:closed true}
+                        [:row [:merge schema [:map {:closed true, :probe/id "src/metabase/revisions/db.clj:45"} [:id {:optional true} ms/PositiveInt]]]]]])
+              [::mc/default [:map {:closed true, :probe/id "src/metabase/revisions/db.clj:46"}
                              [:model :keyword]
                              [:row [:map {:closed false, ::mr/deliberately-open true}]]]])))
 
@@ -185,11 +185,11 @@
   "Extra keys [[metabase.revisions.impl.dashboard/serialize-instance]] and friends add to some models' revision
   `:object` beyond their own row schema."
   {:model/Dashboard [[:cards {:optional true} [:sequential [:merge :metabase.dashboards.schema/dashboard-card.update
-                                                            [:map {:closed true}
+                                                            [:map {:closed true, :probe/id "src/metabase/revisions/db.clj:188"}
                                                              [:id     {:optional true} ::lib.schema.id/dashcard]
                                                              [:series {:optional true} [:sequential ::lib.schema.id/card]]]]]]
                      [:tabs  {:optional true} [:sequential [:merge :metabase.dashboards.schema/dashboard-tab.update
-                                                            [:map {:closed true} [:id {:optional true} ms/PositiveInt]]]]]]})
+                                                            [:map {:closed true, :probe/id "src/metabase/revisions/db.clj:192"} [:id {:optional true} ms/PositiveInt]]]]]]})
 
 (def ^:private RevisionRow
   "A Revision row, `:object` typed by the row schema of the model named `:model` (a string, e.g. \"Card\"), plus
@@ -199,7 +199,7 @@
   (into [:multi {:dispatch :model}]
         (conj (for [[model schema] revisioned-model-row-schema]
                 [(name model)
-                 [:map {:closed true}
+                 [:map {:closed true, :probe/id "src/metabase/revisions/db.clj:202"}
                   [:model        [:= (name model)]]
                   [:model_id     ms/PositiveInt]
                   [:user_id      [:maybe ::lib.schema.id/user]]
@@ -209,7 +209,7 @@
                   [:is_creation  :boolean]
                   [:is_reversion :boolean]
                   [:message      {:optional true} [:maybe :string]]]])
-              [::mc/default [:map {:closed true}
+              [::mc/default [:map {:closed true, :probe/id "src/metabase/revisions/db.clj:212"}
                              [:model        :string]
                              [:model_id     ms/PositiveInt]
                              [:user_id      [:maybe ::lib.schema.id/user]]

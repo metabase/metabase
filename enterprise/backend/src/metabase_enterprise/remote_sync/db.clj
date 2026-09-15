@@ -37,7 +37,7 @@
 
 (def ^:private Path
   "A `{:db_name :schema :table_name :field_name}` path used to locate a Table or Field."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/remote_sync/db.clj:40"}
    [:db_name    :string]
    [:schema     {:optional true} [:maybe :string]]
    [:table_name :string]
@@ -603,7 +603,7 @@
 
 (mu/defn delete-rsos-of-keys!
   "Delete the RemoteSyncObjects keyed by the `:model_type`/`:model_id` of `rows` (other keys are ignored)."
-  [rows :- [:sequential [:map {:closed true} [:model_type :string] [:model_id ms/PositiveInt]]]]
+  [rows :- [:sequential [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/remote_sync/db.clj:606"} [:model_type :string] [:model_id ms/PositiveInt]]]]
   (t2/delete! :model/RemoteSyncObject {:where (rso-keys-expr rows)}))
 
 (mu/defn delete-all-rsos!

@@ -15,7 +15,7 @@
 
 (mr/def ::field-stats
   "Statistics for a field from fingerprints."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/transforms_inspector/schema.clj:18"}
    [:distinct_count {:optional true} :int]
    [:nil_percent {:optional true} :double]
    ;; Number stats
@@ -30,7 +30,7 @@
 
 (mr/def ::field
   "Field metadata for inspector."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/transforms_inspector/schema.clj:33"}
    [:id pos-int?]
    [:name :string]
    [:display_name {:optional true} [:maybe :string]]
@@ -40,7 +40,7 @@
 
 (mr/def ::table
   "Table metadata."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/transforms_inspector/schema.clj:43"}
    [:table_id pos-int?]
    [:table_name :string]
    [:schema {:optional true} [:maybe :string]]

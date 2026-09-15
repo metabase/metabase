@@ -87,7 +87,7 @@
    (active-fields metadata-providerable table-id nil))
   ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
     table-id              :- ::lib.schema.id/table
-    opts                  :- [:maybe [:map {:closed true}
+    opts                  :- [:maybe [:map {:closed true, :probe/id "src/metabase/lib/metadata.cljc:90"}
                                       [:include-sensitive? {:optional true} [:maybe :boolean]]]]]
    (fields* metadata-providerable table-id opts)))
 

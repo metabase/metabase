@@ -39,7 +39,7 @@
   [token :- :string
    grant-ends-at :- ::schema/timestamp
    & {:keys [expires-in-ms]
-      :or {expires-in-ms (* 48 60 60 1000)}} :- [:maybe [:map {:closed true} [:expires-in-ms {:optional true} [:maybe :int]]]]]
+      :or {expires-in-ms (* 48 60 60 1000)}} :- [:maybe [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/support_access_grants/provider.clj:42"} [:expires-in-ms {:optional true} [:maybe :int]]]]]
   {:token_hash (u.password/hash-bcrypt token)
    :expires_at (t/plus (t/instant) (t/millis expires-in-ms))
    :grant_ends_at grant-ends-at

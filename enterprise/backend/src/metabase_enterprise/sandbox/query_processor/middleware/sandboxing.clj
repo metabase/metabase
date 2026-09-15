@@ -43,7 +43,7 @@
 ;;; from [[metabase-enterprise.sandbox.api.util/enforced-sandboxes-for-tables]] for consistency with all of the rest
 ;;; of the QP code. Or maybe add this to the Metadata Provider (or a special "Enterprise" Metadata Provider)?
 (mr/def ::sandbox
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/sandbox/query_processor/middleware/sandboxing.clj:46"}
    [:id                   {:optional true} [:maybe :int]]
    [:group_id             {:optional true} [:maybe :int]]
    [:table_id             ::lib.schema.id/table]

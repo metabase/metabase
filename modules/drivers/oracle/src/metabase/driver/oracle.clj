@@ -239,7 +239,7 @@
   (database-type->base-type column-type))
 
 (mr/def ::spec
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "modules/drivers/oracle/src/metabase/driver/oracle.clj:242"}
    [:classname                          :string]
    [:subprotocol                        :string]
    ["v$session.program"                 :string]

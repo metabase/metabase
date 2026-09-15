@@ -247,7 +247,7 @@
 (mu/defn- add-group :- [:tuple ::ads/dashboard ::grid]
   [dashboard :- ::ads/dashboard
    grid      :- ::grid
-   group     :- [:maybe [:map {:closed true}
+   group     :- [:maybe [:map {:closed true, :probe/id "src/metabase/xrays/automagic_dashboards/populate.clj:250"}
                          [:title ::ads/string-or-18n-string]
                          [:score {:optional true} :int]
                          [:comparison_title {:optional true} [:maybe ::ads/string-or-18n-string]]

@@ -60,7 +60,7 @@
     [:map {:closed true} [:a ::open]]
     [:or :int ::open]
     map?
-    [:map {:closed true} [:settings map?]]
+    [:map {:closed true, :probe/id "test/metabase/api/macros/defendpoint/closed_schemas_test.clj:63"} [:settings map?]]
     [:multi {:dispatch :type} [:a [:map [:type [:= :a]]]]]))
 
 (deftest ^:parallel keyword-keyed-map-of-is-found-test

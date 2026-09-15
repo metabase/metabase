@@ -259,7 +259,7 @@
 (mr/def ::execution.row-diff
   "One effect recorded against the `:effects` key of [[::execution-context]]: the before/after state of a row a
   perform-action!* method modified."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/actions/schema.clj:262"}
    [:table-id ::lib.schema.id/table]
    [:db-id    ::lib.schema.id/database]
    [:before   [:maybe ::lib.schema.actions/row]]
@@ -267,7 +267,7 @@
 
 (mr/def ::execution-context
   "The `context` map threaded through `metabase.actions.actions/perform-action!*` and its driver implementations."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/actions/schema.clj:270"}
    [:user-id          {:optional true} [:maybe ms/PositiveInt]]
    [:scope            {:optional true} [:maybe ::actions.types/scope.hydrated]]
    [:driver           {:optional true} [:maybe :keyword]]

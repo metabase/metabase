@@ -78,7 +78,7 @@
 
 (mr/def ::field-filter-operator-param
   "An operator parameter built during field filter substitution, whose `:target` already wraps an MBQL 5 ref."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/query_processor/parameters/operators.clj:81"}
    [:type    ::lib.schema.parameter/type]
    [:value   {:optional true} ::lib.schema.parameter/parameter.value]
    [:options {:optional true} [:maybe ::lib.schema.parameter/parameter.options]]

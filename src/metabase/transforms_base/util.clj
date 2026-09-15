@@ -584,14 +584,14 @@
 ;;; ------------------------------------------------- Table DDL -------------------------------------------------
 
 (mr/def ::column-definition
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/transforms_base/util.clj:587"}
    [:name :string]
    [:type ::lib.schema.common/base-type]
    [:nullable? {:optional true} :boolean]
    [:database-type {:optional true} [:maybe :string]]])
 
 (mr/def ::table-definition
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/transforms_base/util.clj:594"}
    [:name :keyword]
    [:columns [:sequential ::column-definition]]
    [:primary-key {:optional true} [:sequential :string]]
@@ -875,7 +875,7 @@
   Enriches entries with full metadata via [[normalize-source-tables]]."
   [m :- [:map-of :string
          [:or :int
-          [:map {:closed true}
+          [:map {:closed true, :probe/id "src/metabase/transforms_base/util.clj:878"}
            [:database_id {:optional true} [:maybe :int]]
            [:schema      {:optional true} [:maybe :string]]
            [:table       {:optional true} [:maybe :string]]

@@ -259,7 +259,7 @@
 (def ^:private PipelineUser
   "The subset of User columns the login pipeline threads through `:user`: what
   [[metabase.auth-identity.db/user-login-columns]], `-by-email`, or `-status` select."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/auth_identity/provider.clj:262"}
    [:id ms/PositiveInt]
    [:is_active :boolean]
    [:last_login [:maybe ms/TemporalInstant]]
@@ -267,7 +267,7 @@
 
 (def ^:private DeviceInfo
   "Device information for session tracking, as attached to a login request."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/auth_identity/provider.clj:270"}
    [:device_id {:optional true} [:maybe ms/NonBlankString]]
    [:device_description {:optional true} [:maybe ms/NonBlankString]]
    [:ip_address {:optional true} [:maybe ms/NonBlankString]]
@@ -276,7 +276,7 @@
 
 (def ^:private UserData
   "SSO provider-produced data used to create or update a User during login."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/auth_identity/provider.clj:279"}
    [:email :string]
    [:first_name {:optional true} [:maybe :string]]
    [:last_name {:optional true} [:maybe :string]]
@@ -290,7 +290,7 @@
 
 (def ^:private CookieAttrs
   "One `:cookies` entry of a Ring request: a cookie's value and its attributes."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/auth_identity/provider.clj:293"}
    [:value {:optional true} :string]
    [:path {:optional true} :string]
    [:domain {:optional true} :string]
@@ -368,7 +368,7 @@
 
   If the user does not have `:is_active true`, the response is not successful and an error message is returned. A
   request that resolved no user at all is left alone: link-only flows legitimately finish without one."
-  [request :- (into [:map {:closed true}
+  [request :- (into [:map {:closed true, :probe/id "src/metabase/auth_identity/provider.clj:371"}
                      [:user {:optional true} [:maybe PipelineUser]]]
                     login-pipeline-entries)]
   (cond-> request
@@ -381,7 +381,7 @@
 (mu/defn- create-session!
   "Create a new session for a user with the given provider.
    Updates the last_used_at timestamp on the corresponding AuthIdentity."
-  [request :- (into [:map {:closed true}
+  [request :- (into [:map {:closed true, :probe/id "src/metabase/auth_identity/provider.clj:384"}
                      [:user PipelineUser]]
                     login-pipeline-entries)
    provider :- :keyword]

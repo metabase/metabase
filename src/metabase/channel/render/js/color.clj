@@ -15,7 +15,7 @@
   "This is a pretty loose schema, more as a safety net as we have a long feedback loop for this being broken as it's
   being handed to the JS color picking code. Currently it just needs column names from `:cols`, and the query results
   from `:rows`"
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/channel/render/js/color.clj:18"}
    [:cols [:sequential [:map {:closed false, ::mr/deliberately-open true,
                               :description "a query result column; only :name is read here"}
                         [:name :string]]]]

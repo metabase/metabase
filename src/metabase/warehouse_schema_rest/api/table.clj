@@ -178,7 +178,7 @@
 
 (def ^:private TableUpdateBodySingle
   "Body of `PUT /api/table/:id`."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/warehouse_schema_rest/api/table.clj:181"}
    [:display_name            {:optional true} [:maybe ms/NonBlankString]]
    [:entity_type             {:optional true} [:maybe EntityType]]
    [:visibility_type         {:optional true} [:maybe TableVisibilityType]]
@@ -196,7 +196,7 @@
 
 (def ^:private TableUpdateBodyBulk
   "Body of the deprecated `PUT /api/table/`."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/warehouse_schema_rest/api/table.clj:199"}
    [:ids                                      [:sequential ms/PositiveInt]]
    [:display_name            {:optional true} [:maybe ms/NonBlankString]]
    [:entity_type             {:optional true} [:maybe EntityType]]
@@ -451,7 +451,7 @@
 
 (mu/defn- update-csv!
   "This helper function exists to make testing the POST /api/table/:id/{action}-csv endpoints easier."
-  [options :- [:map {:closed true}
+  [options :- [:map {:closed true, :probe/id "src/metabase/warehouse_schema_rest/api/table.clj:454"}
                [:table-id ms/PositiveInt]
                [:filename :string]
                [:file (ms/InstanceOfClass java.io.File)]

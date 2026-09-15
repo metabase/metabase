@@ -22,7 +22,7 @@
 
 (def SortParams
   "Schema for sort parameters."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/cache/models/cache_config.clj:25"}
    [:sort_column    {:default :name} (into [:enum] available-sort-columns)]
    [:sort_direction {:default :asc}  [:enum :asc :desc]]])
 

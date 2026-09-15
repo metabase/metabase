@@ -426,7 +426,7 @@
   Questions (questions stored 'in' the dashboard rather than a collection) and reference the rest (assuming
   permissions)."
   [deep-copy? :- ms/MaybeBooleanValue
-   dashcards :- [:sequential [:map {:closed true}
+   dashcards :- [:sequential [:map {:closed true, :probe/id "src/metabase/dashboards_rest/api.clj:429"}
                               [:card   {:optional true} [:maybe :metabase.queries.schema/card]]
                               [:series {:optional true} [:maybe [:sequential :metabase.queries.schema/card]]]]]]
   (let [card->cards (fn [{:keys [card series]}] (into [card] series))

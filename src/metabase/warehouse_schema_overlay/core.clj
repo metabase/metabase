@@ -72,7 +72,7 @@
 
   ([{:keys [alias user-settings?]
      :or   {alias          (t2/table-name :model/Field)
-            user-settings? true}} :- [:maybe [:map {:closed true}
+            user-settings? true}} :- [:maybe [:map {:closed true, :probe/id "src/metabase/warehouse_schema_overlay/core.clj:75"}
                                               [:alias          {:optional true} :keyword]
                                               [:user-settings? {:optional true} :boolean]]]]
    [(if user-settings?
@@ -153,7 +153,7 @@
 
   ([{:keys [alias user-settings?]
      :or   {alias          (t2/table-name :model/Table)
-            user-settings? true}} :- [:maybe [:map {:closed true}
+            user-settings? true}} :- [:maybe [:map {:closed true, :probe/id "src/metabase/warehouse_schema_overlay/core.clj:156"}
                                               [:alias          {:optional true} :keyword]
                                               [:user-settings? {:optional true} :boolean]]]]
    [(if user-settings?

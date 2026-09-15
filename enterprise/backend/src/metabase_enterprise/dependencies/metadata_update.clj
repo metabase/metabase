@@ -50,7 +50,7 @@
                    node-id))))))
 
 (mr/def ::column-metadata-edits
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/dependencies/metadata_update.clj:53"}
    [:id                       {:optional true} [:maybe ::lib.schema.id/field]]
    [:description              {:optional true} [:maybe :string]]
    [:display-name             {:optional true} [:maybe :string]]

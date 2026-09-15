@@ -61,7 +61,7 @@
 
 (mu/defn table-name :- [:maybe :string]
   "Computes a table name from a table reference"
-  [raw-col :- [:map {:closed true}
+  [raw-col :- [:map {:closed true, :probe/id "src/metabase/sql_tools/common.clj:64"}
                [:database {:optional true} :string]
                [:schema {:optional true} :string]
                [:table {:optional true} :string]

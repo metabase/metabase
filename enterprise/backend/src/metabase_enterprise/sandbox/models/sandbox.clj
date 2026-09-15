@@ -127,7 +127,7 @@
             sandboxes)))
 
 (def ^:private SandboxLike
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/sandbox/models/sandbox.clj:130"}
    [:id                   {:optional true} ms/PositiveInt]
    [:table_id             ::lib.schema.id/table]
    [:group_id             {:optional true} ms/PositiveInt]

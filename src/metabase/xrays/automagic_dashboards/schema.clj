@@ -43,7 +43,7 @@
   ::filter-clause)
 
 (mr/def ::root
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/xrays/automagic_dashboards/schema.clj:46"}
    [:database                   ::lib.schema.id/database]
    [:entity                     {:optional true} [:ref ::root.entity]]
    [:query-filter               {:optional true} [:maybe [:sequential ::filter-clause]]]
@@ -64,7 +64,7 @@
 (mr/def ::source
   [:or
    (ms/InstanceOf #{:model/Table :model/Card})
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/xrays/automagic_dashboards/schema.clj:67"}
     [:entity_type [:and
                    qualified-keyword?
                    [:fn
@@ -74,7 +74,7 @@
 
 (mr/def ::context
   "The big ball of mud data object from which we generate x-rays"
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/xrays/automagic_dashboards/schema.clj:77"}
    [:source       {:optional true} ::source]
    [:root         {:optional true} [:ref ::root]]
    [:tables       {:optional true} [:sequential ::source]]
@@ -87,7 +87,7 @@
 (mr/def ::adhoc-question
   "The ad-hoc \"question\" wrapper automagic-dashboards builds for a raw query that is not backed by a saved Card
   (see [[metabase.xrays.api.automagic-dashboards/adhoc-query-instance]])."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/xrays/automagic_dashboards/schema.clj:90"}
    [:dataset_query ::query]
    [:database-id   {:optional true} ::lib.schema.id/database]
    [:table-id      {:optional true} [:maybe ::lib.schema.id/table]]])
@@ -132,7 +132,7 @@
 
 (mr/def ::dimension-value
   "A specification for the basic keys in the value of a dimension template."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/xrays/automagic_dashboards/schema.clj:135"}
    [:field_type      ::field-type]
    [:score           {:optional true} nat-int?]
    [:max_cardinality {:optional true} nat-int?]
@@ -162,7 +162,7 @@
 
 (mr/def ::filter-value
   "A specification for the basic keys in the value of a filter template."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/xrays/automagic_dashboards/schema.clj:165"}
    [:filter ::lib.schema.common/possibly-unnormalized-clause]
    [:score nat-int?]])
 
@@ -187,7 +187,7 @@
    and a sequence of matching items satisfying this dimension"
   [:map-of
    :string
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/xrays/automagic_dashboards/schema.clj:190"}
     [:matches [:sequential ::item]]]])
 
 (mr/def ::dim-name->dim-defs+matches
@@ -245,7 +245,7 @@
     [:metrics       {:optional true} [:sequential :string]]
     [:filters       {:optional true} [:sequential :string]]
     [:description   {:optional true} [:maybe ::string-or-18n-string]]
-    [:dimensions    {:optional true} [:sequential [:map-of :string [:map {:closed true}
+    [:dimensions    {:optional true} [:sequential [:map-of :string [:map {:closed true, :probe/id "src/metabase/xrays/automagic_dashboards/schema.clj:248"}
                                                                     [:aggregation {:optional true} :string]]]]]
     ;; HUH??
     [:order_by      {:optional true} [:sequential [:map-of :string [:enum "ascending" "descending"]]]]
@@ -280,7 +280,7 @@
   "A \"card\" as it flows through the dashboard-building pipeline: the keys [[metabase.xrays.automagic-dashboards
   .populate/add-normal-dashcard]] builds it with, plus the render-stage additions
   [[metabase.xrays.automagic-dashboards.comparison/dashboard->cards]] assocs onto it."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/xrays/automagic_dashboards/schema.clj:283"}
    [:id                     {:optional true} [:or symbol? ::lib.schema.id/card]]
    [:dataset_query          {:optional true} ::query]
    [:creator_id             {:optional true} [:maybe ::lib.schema.id/user]]
@@ -300,13 +300,13 @@
 (mr/def ::parameter-mapping
   "One entry of a dashcard's `:parameter_mappings`, as
   [[metabase.xrays.automagic-dashboards.filters/add-filter]] builds it."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/xrays/automagic_dashboards/schema.clj:303"}
    [:parameter_id :string]
    [:target       ::lib.schema.common/possibly-unnormalized-clause]
    [:card_id      {:optional true} [:or symbol? ::lib.schema.id/card]]])
 
 (mr/def ::dashcard
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/xrays/automagic_dashboards/schema.clj:309"}
    [:id                     {:optional true} [:or symbol? ::lib.schema.id/dashcard]]
    [:card                   {:optional true} ::card]
    [:card_id                {:optional true} [:or symbol? ::lib.schema.id/card]]
@@ -324,7 +324,7 @@
 
 (mr/def ::dashboard-parameter
   "A filter widget [[metabase.xrays.automagic-dashboards.filters/add-filters]] adds to a dashboard."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/xrays/automagic_dashboards/schema.clj:327"}
    [:id        :string]
    [:name      [:maybe :string]]
    [:slug      :string]
@@ -333,7 +333,7 @@
 
 (mr/def ::related-entry
   "One entry in a [[::related]] bucket: a link to another x-ray."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/xrays/automagic_dashboards/schema.clj:336"}
    [:url         :string]
    [:title       ::string-or-18n-string]
    [:description [:maybe ::string-or-18n-string]]])
@@ -341,14 +341,14 @@
 (mr/def ::related
   "The `:related` links of a populated dashboard: up to 4 buckets (which ones depend on the entity's model), each a
   list of links round-robined from candidates like segments, tables, or drilldown fields."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/xrays/automagic_dashboards/schema.clj:344"}
    [:zoom-in  {:optional true} [:sequential ::related-entry]]
    [:zoom-out {:optional true} [:sequential ::related-entry]]
    [:related  {:optional true} [:sequential ::related-entry]]
    [:compare  {:optional true} [:sequential ::related-entry]]])
 
 (mr/def ::dashboard
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/xrays/automagic_dashboards/schema.clj:351"}
    [:name               {:optional true} ::string-or-18n-string]
    [:transient_name     {:optional true} [:maybe ::string-or-18n-string]]
    [:description        {:optional true} [:maybe ::string-or-18n-string]]
@@ -368,7 +368,7 @@
   card carries none of the metric keys, so they're all optional here."
   [:merge
    ::combined-metric
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/xrays/automagic_dashboards/schema.clj:371"}
     [:metric-name            {:optional true} :string]
     [:metric-title           {:optional true} :string]
     [:metric-score           {:optional true} nat-int?]
@@ -382,13 +382,13 @@
 (mr/def ::dashboard-template
   "This is somewhat different [[metabase.xrays.automagic-dashboards.schema/DashboardTemplate]], I haven't exactly worked
   out what the schema is supposed to be yet."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/xrays/automagic_dashboards/schema.clj:385"}
    [:cards           {:optional true} [:maybe [:sequential ::card-template]]]
    [:title           {:optional true} [:maybe ::string-or-18n-string]]
    [:transient_title {:optional true} [:maybe ::string-or-18n-string]]
    [:description     {:optional true} [:maybe ::string-or-18n-string]]
    [:filters         {:optional true} [:sequential ::item]]
-   [:groups          {:optional true} [:maybe [:map-of :string [:map {:closed true}
+   [:groups          {:optional true} [:maybe [:map-of :string [:map {:closed true, :probe/id "src/metabase/xrays/automagic_dashboards/schema.clj:391"}
                                                                 [:title             {:optional true} ::string-or-18n-string]
                                                                 [:score             {:optional true} :int]
                                                                 [:comparison_title  {:optional true} [:maybe ::string-or-18n-string]]

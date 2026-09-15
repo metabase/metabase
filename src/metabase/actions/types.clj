@@ -85,7 +85,7 @@
      [:dashboard-id                   ::fk-or-missing-id]
      [:collection-id                  ::fk-or-missing-id]]]
    [:unknown
-    [:map {:closed true}
+    [:map {:closed true, :probe/id "src/metabase/actions/types.clj:88"}
      [:type          [:enum :unknown]]
      [:unknown       {:optional true} [:enum :model-action]]
      [:card-id       {:optional true} ms/PositiveInt]

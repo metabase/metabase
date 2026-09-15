@@ -28,7 +28,7 @@
 
 (mr/def ::grant-response
   "Schema for a support access grant object in API responses."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/support_access_grants/schema.clj:31"}
    [:id ms/PositiveInt]
    [:user_id ms/PositiveInt]
    [:user_name [:maybe :string]]

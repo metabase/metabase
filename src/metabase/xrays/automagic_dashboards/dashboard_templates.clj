@@ -73,7 +73,7 @@
     (comp (with-defaults {:score max-score})
           (shorthand-definition :metric))}
    Identifier
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/xrays/automagic_dashboards/dashboard_templates.clj:76"}
     [:metric MBQL]
     [:score  Score]
     [:name {:optional true} LocalizedString]]])
@@ -84,7 +84,7 @@
     (comp (with-defaults {:score max-score})
           (shorthand-definition :filter))}
    Identifier
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/xrays/automagic_dashboards/dashboard_templates.clj:87"}
     [:filter MBQL]
     [:score  Score]]])
 
@@ -146,7 +146,7 @@
     (comp (with-defaults {:score max-score})
           (shorthand-definition :field_type))}
    Identifier
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/xrays/automagic_dashboards/dashboard_templates.clj:149"}
     [:field_type AppliesTo]
     [:score      Score]
     [:links_to        {:optional true} TableType]
@@ -188,7 +188,7 @@
                                    {x {}}
                                    x))}
    Identifier
-   [:map {:closed true} [:aggregation {:optional true} :string]]])
+   [:map {:closed true, :probe/id "src/metabase/xrays/automagic_dashboards/dashboard_templates.clj:191"} [:aggregation {:optional true} :string]]])
 
 (def ^:private Card
   [:map-of
@@ -198,7 +198,7 @@
                     :height     populate/default-card-height})}
    Identifier
    [:map
-    {:closed true
+    {:closed true, :probe/id "src/metabase/xrays/automagic_dashboards/dashboard_templates.clj:201"
      :decode/dashboard-template (fn [x]
                                   (if (sequential? x)
                                     (into {} x)
@@ -228,7 +228,7 @@
                                    x
                                    (apply merge x)))}
    Identifier
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/xrays/automagic_dashboards/dashboard_templates.clj:231"}
     [:title LocalizedString]
     [:score :int]
     [:comparison_title {:optional true} LocalizedString]
@@ -310,7 +310,7 @@
 (def DashboardTemplate
   "Specification defining an automagic dashboard."
   [:and
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/xrays/automagic_dashboards/dashboard_templates.clj:313"}
     [:title                   LocalizedString]
     [:dashboard-template-name :string]
     [:specificity             :int]

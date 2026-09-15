@@ -96,7 +96,7 @@
    parameters  :- [:maybe ::parameters.schema/parameters]
    constraints :- [:maybe ::lib.schema.constraints/constraints]
    middleware  :- [:maybe ::lib.schema.middleware-options/middleware-options]
-   & [ids] :- [:* [:map {:closed true}
+   & [ids] :- [:* [:map {:closed true, :probe/id "src/metabase/query_processor/card.clj:99"}
                    [:dashboard-id {:optional true} [:maybe ::lib.schema.id/dashboard]]
                    [:dashcard-id  {:optional true} [:maybe ::lib.schema.id/dashcard]]]]]
   (when (seq dataset-query)
@@ -398,7 +398,7 @@
              ;; param `make-run` can be used to control how the query is ran, e.g. if you need to customize the `context`
              ;; passed to the QP
              make-run    process-query-for-card-default-run-fn}}
-   :- [:maybe [:map {:closed true}
+   :- [:maybe [:map {:closed true, :probe/id "src/metabase/query_processor/card.clj:401"}
                [:parameters     {:optional true} [:maybe ::parameters.schema/parameters]]
                [:constraints    {:optional true} [:maybe ::lib.schema.constraints/constraints]]
                [:context        {:optional true} [:maybe ::lib.schema.info/context]]

@@ -245,7 +245,7 @@
         category))))
 
 (def ^:private Field
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/analyze/classifiers/data_sensitivity.clj:248"}
    [:name          :string]
    [:base_type     :keyword]
    [:semantic_type {:optional true} [:maybe :keyword]]
@@ -253,7 +253,7 @@
 
 (def ^:private TableContext
   [:maybe
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/analyze/classifiers/data_sensitivity.clj:256"}
     [:name        {:optional true} [:maybe :string]]
     [:entity_type {:optional true} [:maybe :keyword]]]])
 

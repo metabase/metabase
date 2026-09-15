@@ -311,10 +311,10 @@
   Pass false when the query itself is not changing, so that an unrelated update (rename, archive, ...) doesn't wipe
   a previously-valid table_id just because the derivation can no longer resolve it (e.g. the source card was
   deleted)."
-  ([card :- [:map {:closed true}
+  ([card :- [:map {:closed true, :probe/id "src/metabase/queries/models/card.clj:314"}
              [:dataset_query {:optional true} [:maybe ::queries.schema/card.dataset-query]]]]
    (populate-query-fields card true))
-  ([{query :dataset_query, :as card} :- [:map {:closed true}
+  ([{query :dataset_query, :as card} :- [:map {:closed true, :probe/id "src/metabase/queries/models/card.clj:317"}
                                          [:dataset_query {:optional true} [:maybe ::queries.schema/card.dataset-query]]]
     clear-stale-table-id? :- :boolean]
    (merge
@@ -370,7 +370,7 @@
 (mu/defn- assert-valid-type
   "Check that the card is a valid model if being saved as one. Throw an exception if not."
   [{query :dataset_query, card-type :type, source-card :source_card_id, :as _card}
-   :- [:maybe [:map {:closed true}
+   :- [:maybe [:map {:closed true, :probe/id "src/metabase/queries/models/card.clj:373"}
                [:dataset_query   {:optional true} [:maybe ::queries.schema/card.dataset-query]]
                [:type            {:optional true} [:maybe ::queries.schema/card.type]]
                [:source_card_id  {:optional true} [:maybe ::lib.schema.id/card]]]]]
@@ -387,7 +387,7 @@
   nil)
 
 (mu/defn- assert-not-native-audit-db-query
-  [{query :dataset_query, :as _card} :- [:maybe [:map {:closed true}
+  [{query :dataset_query, :as _card} :- [:maybe [:map {:closed true, :probe/id "src/metabase/queries/models/card.clj:390"}
                                                  [:dataset_query {:optional true} [:maybe ::queries.schema/card.dataset-query]]]]]
   (when (and (seq query)
              (= (:database query) audit/audit-db-id)
@@ -546,7 +546,7 @@
   meaning there are no clauses such as filter, limit, breakout...
 
   It should be the opposite of [[metabase.lib.stage/has-clauses]] but for all stages."
-  [{query :dataset_query :as _card} :- [:map {:closed true}
+  [{query :dataset_query :as _card} :- [:map {:closed true, :probe/id "src/metabase/queries/models/card.clj:549"}
                                         [:dataset_query {:optional true} [:maybe ::queries.schema/card.dataset-query]]]]
   (and (seq query)
        (every? (fn [stage-number]
@@ -814,7 +814,7 @@
 (mr/def ::populate-result-metadata.card
   "The Card columns [[populate-result-metadata]] and [[populate-result-metadata-onto]] read: its query, existing
   metadata, and type."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/queries/models/card.clj:817"}
    [:dataset_query   {:optional true} [:maybe ::queries.schema/card.dataset-query]]
    [:result_metadata {:optional true} [:maybe ::queries.schema/card.result-metadata]]
    [:type            {:optional true} [:maybe ::queries.schema/card.type]]])
@@ -1300,7 +1300,7 @@
 
 (mu/defn fully-parameterized?
   "Given a Card, returns `true` if its query is fully parameterized."
-  [{query :dataset_query, :as _card} :- [:map {:closed true}
+  [{query :dataset_query, :as _card} :- [:map {:closed true, :probe/id "src/metabase/queries/models/card.clj:1303"}
                                          [:dataset_query [:maybe [:or ::lib.schema/query ::lib-be.schema/empty-query]]]]]
   (if (empty? query)
     true

@@ -30,7 +30,7 @@
 ;; The 'pivot-grouping' is the giveaway. If you ever see that column, you know you're dealing with raw pivot rows.
 
 (mr/def ::pivot-spec
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/pivot/postprocess.clj:33"}
    [:column-titles  [:sequential [:string]]]
    [:pivot-rows     [:sequential [:int {:min 0}]]]
    [:pivot-cols     [:sequential [:int {:min 0}]]]

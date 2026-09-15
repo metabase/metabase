@@ -8,7 +8,7 @@
    [metabase.util.malli.schema :as ms]))
 
 (mr/def ::dashcard
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/dashboards/schema.clj:11"}
    [:id   {:optional true} ::lib.schema.id/dashcard]
    [:card {:optional true} [:ref ::queries.schema/card]]])
 
@@ -29,7 +29,7 @@
   `:id` and the keys some callers hydrate onto it."
   [:merge
    ::dashboard.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/dashboards/schema.clj:32"}
     [:id                         {:optional true} [:maybe ::lib.schema.id/dashboard]]
     [:parameters                 {:optional true} [:maybe ::parameters]]
     [:moderation_status          {:optional true} [:maybe [:or :keyword :string]]]
@@ -48,7 +48,7 @@
     [:last_used_param_values     {:optional true} [:maybe [:map-of :string :metabase.users.schema/user-parameter-value.value]]]
     [:creator                    {:optional true} [:maybe :metabase.users.schema/user]]
     [:last-edit-info             {:optional true} [:maybe
-                                                    [:map {:closed true}
+                                                    [:map {:closed true, :probe/id "src/metabase/dashboards/schema.clj:51"}
                                                      [:timestamp  [:maybe ms/TemporalInstant]]
                                                      [:id         [:maybe ms/PositiveInt]]
                                                      [:first_name [:maybe :string]]
@@ -118,7 +118,7 @@
    [:series                 {:optional true} [:maybe [:sequential [:ref ::queries.schema/card]]]]
    [:action                 {:optional true} [:maybe [:merge
                                                        :metabase.actions.schema/action
-                                                       [:map {:closed true}
+                                                       [:map {:closed true, :probe/id "src/metabase/dashboards/schema.clj:121"}
                                                         [:database_enabled_actions {:optional true} :boolean]]]]]])
 
 (mr/def ::dashboard-card.update

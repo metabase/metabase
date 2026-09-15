@@ -581,7 +581,7 @@
   that must survive normalization untouched, so the elements mirror both key spellings without pointing at either
   source schema, which would rewrite keys and drop deprecated ones on decode."
   [:sequential
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/lib/schema.cljc:584"}
     [:base_type            {:optional true} [:maybe [:or :string :keyword]]]
     [:base-type            {:optional true} [:maybe [:or :string :keyword]]]
     [:display_name         {:optional true} [:maybe :string]]
@@ -590,7 +590,7 @@
     [:active               {:optional true} [:maybe :boolean]]
     [:description          {:optional true} [:maybe :string]]
     [:binning_info         {:optional true} [:maybe
-                                             [:map {:closed true}
+                                             [:map {:closed true, :probe/id "src/metabase/lib/schema.cljc:593"}
                                               [:strategy         {:optional true} [:maybe [:or :string :keyword]]]
                                               [:binning_strategy {:optional true} [:maybe [:or :string :keyword]]]
                                               [:bin_width        {:optional true} [:maybe number?]]
@@ -737,7 +737,7 @@
   Deliberately NOT closed: drivers add their own keys, e.g. Mongo adds `:collection`, `:projections` and `:mbql?`
   (see `:metabase.driver.mongo.query-processor/compiled-pipeline`), and for a query that was already native the
   compiled form is the native stage itself, carrying every key a `::stage.native` has."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib/schema.cljc:740"}
    [:query  [:or
              ::native-query-document-value
              [:schema {::mr/deliberately-open true

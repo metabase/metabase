@@ -373,7 +373,7 @@
   `:common_name`, before [[add-attributes]] adds `:attributes`. Only `:type` is required: [[add-attributes]] reads
   just `:type`/`:login_attributes`/`:jwt_attributes` and otherwise passes the row through unchanged, so unit tests
   exercising just that merge logic pass a bare `{:type ... :login_attributes ... :jwt_attributes ...}` map."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/users/models/user.clj:376"}
    [:id               {:optional true} ms/PositiveInt]
    [:email            {:optional true} ms/Email]
    [:first_name       {:optional true} [:maybe ms/NonBlankString]]

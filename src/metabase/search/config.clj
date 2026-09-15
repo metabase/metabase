@@ -206,7 +206,7 @@
 
 (def ^:private FilterDefNoKey
   "[[FilterDef]] without the `:key` entry, which [[build-filters]] fills in from the map key."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/search/config.clj:209"}
    [:type                              :keyword]
    [:field            {:optional true} :string]
    [:context-key      {:optional true} :keyword]
@@ -217,7 +217,7 @@
 (def ^:private FilterDefs
   "The filter-name -> (relaxed) filter-definition map [[build-filters]] accepts, keyed by every filter name in
   [[filters]]."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/search/config.clj:220"}
    [:archived       {:optional true} FilterDefNoKey]
    [:collection-id  {:optional true} FilterDefNoKey]
    [:created-at     {:optional true} FilterDefNoKey]

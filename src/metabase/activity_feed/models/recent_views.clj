@@ -515,7 +515,7 @@
    (get-recents user-id context {}))
   ([user-id :- [:maybe ms/PositiveInt]
     context :- [:sequential [:enum :views :selections]]
-    options :- [:map {:closed true}
+    options :- [:map {:closed true, :probe/id "src/metabase/activity_feed/models/recent_views.clj:518"}
                 [:include-metadata? {:optional true} [:maybe :boolean]]
                 [:models {:optional true} [:maybe [:sequential (into [:enum] rv-models)]]]]]
    (let [models (:models options)

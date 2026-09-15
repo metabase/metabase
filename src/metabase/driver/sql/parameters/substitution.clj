@@ -132,7 +132,7 @@
    :metabase.lib.parameters.parse.types/date-time-range])
 
 (mr/def ::param-snippet-info
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/driver/sql/parameters/substitution.clj:135"}
    [:replacement-snippet     {:optional true} :string] ; allowed to be blank if this is an optional param
    [:prepared-statement-args {:optional true} [:maybe [:sequential :metabase.lib.schema.common/field-value]]]])
 

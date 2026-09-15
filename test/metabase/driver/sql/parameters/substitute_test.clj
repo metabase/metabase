@@ -519,18 +519,18 @@
   "Expand parameters inside a top-level native `query`. Not recursive. Expands against `meta/metadata-provider` unless
   an explicit metadata provider `mp` is supplied (handy for overriding field metadata)."
   ([query :- [:or
-              [:map {:closed true}
+              [:map {:closed true, :probe/id "test/metabase/driver/sql/parameters/substitute_test.clj:522"}
                [:lib/type [:= :mbql/query]]]
-              [:map {:closed true}
-               [:native [:map {:closed true}
+              [:map {:closed true, :probe/id "test/metabase/driver/sql/parameters/substitute_test.clj:524"}
+               [:native [:map {:closed true, :probe/id "test/metabase/driver/sql/parameters/substitute_test.clj:525"}
                          [:query :string]]]]]]
    (expand** meta/metadata-provider query))
   ([mp :- ::lib.schema.metadata/metadata-providerable
     {:keys [parameters], :as query} :- [:or
-                                        [:map {:closed true}
+                                        [:map {:closed true, :probe/id "test/metabase/driver/sql/parameters/substitute_test.clj:530"}
                                          [:lib/type [:= :mbql/query]]]
-                                        [:map {:closed true}
-                                         [:native [:map {:closed true}
+                                        [:map {:closed true, :probe/id "test/metabase/driver/sql/parameters/substitute_test.clj:532"}
+                                         [:native [:map {:closed true, :probe/id "test/metabase/driver/sql/parameters/substitute_test.clj:533"}
                                                    [:query :string]]]]]]
    (driver/with-driver :h2
      (-> (if (:lib/type query)

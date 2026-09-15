@@ -23,7 +23,7 @@
   [:enum :card :transform :snippet :table])
 
 (mr/def ::updates-map
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/dependencies/core.clj:26"}
    [:card      {:optional true} [:sequential ::lib.schema.metadata/card]]
    [:transform {:optional true} [:sequential ::lib.schema.metadata/transform]]
    [:snippet   {:optional true} [:sequential ::lib.schema.metadata/native-query-snippet]]
@@ -52,7 +52,7 @@
     updated-entities :- ::updates-map
     & {:keys [graph dependents include-native?]}
     :- [:maybe
-        [:map {:closed true}
+        [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/dependencies/core.clj:55"}
          [:graph            {:optional true} [:maybe ::graph/graph]]
          [:dependents       {:optional true} [:maybe [:map-of ::entity-type [:set :int]]]]
          [:include-native?  {:optional true} [:maybe :boolean]]]]]
@@ -126,7 +126,7 @@
   ([edits :- ::updates-map
     & {:keys [base-provider graph include-native?]}
     :- [:maybe
-        [:map {:closed true}
+        [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/dependencies/core.clj:129"}
          [:base-provider   {:optional true} [:maybe ::lib.schema.metadata/metadata-provider]]
          [:graph           {:optional true} [:maybe ::graph/graph]]
          [:include-native? {:optional true} [:maybe :boolean]]]]]

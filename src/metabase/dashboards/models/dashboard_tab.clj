@@ -64,7 +64,7 @@
 (mu/defn create-tabs! :- [:map-of neg-int? pos-int?]
   "Create the new tabs and returned a mapping from temporary tab ID to the new tab ID."
   [dashboard-id :- ms/PositiveInt
-   new-tabs     :- [:sequential [:map {:closed true} [:id neg-int?]]]]
+   new-tabs     :- [:sequential [:map {:closed true, :probe/id "src/metabase/dashboards/models/dashboard_tab.clj:67"} [:id neg-int?]]]]
   (let [new-tab-ids (dashboards.db/insert-dashboard-tabs! (->> new-tabs
                                                                (map #(dissoc % :id))
                                                                (map #(assoc % :dashboard_id dashboard-id))))]

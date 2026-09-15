@@ -95,7 +95,7 @@
            [:user_id      {:optional true} [:maybe ::lib.schema.id/user]]
            [:provider     {:optional true} [:maybe [:or :keyword :string]]]
            [:credentials  {:optional true} [:maybe ::auth-identity.schema/auth-identity.credentials.totp]]
-           [:metadata     {:optional true} [:maybe [:map {:closed true}]]]
+           [:metadata     {:optional true} [:maybe [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/mfa/db.clj:98"}]]]
            [:provider_id  {:optional true} [:maybe :string]]
            [:last_used_at {:optional true} [:maybe ms/TemporalInstant]]
            [:expires_at   {:optional true} [:maybe ms/TemporalInstant]]

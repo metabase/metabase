@@ -98,13 +98,13 @@
   row typed by that model's own update schema."
   (into [:multi {:dispatch :model}]
         (for [[model schema] model-row-schema]
-          [model [:map {:closed true} [:model [:= model]] [:row schema]]])))
+          [model [:map {:closed true, :probe/id "src/metabase/models/db.clj:101"} [:model [:= model]] [:row schema]]])))
 
 (def ^:private ModelRows
   "Like [[ModelRow]], but for a batch of rows of the same model."
   (into [:multi {:dispatch :model}]
         (for [[model schema] model-row-schema]
-          [model [:map {:closed true} [:model [:= model]] [:rows [:sequential schema]]]])))
+          [model [:map {:closed true, :probe/id "src/metabase/models/db.clj:107"} [:model [:= model]] [:rows [:sequential schema]]]])))
 
 (mr/def ::after-select-row
   "A model row run through after-select machinery: it may be a fresh selection, an already API-hydrated row, or a
@@ -115,7 +115,7 @@
 (def ^:private AfterSelectEntity
   "A `{:model ..., :row ...}` pair naming any model (including test-only ones derived from `:metabase/model`, and
   ones outside [[model-row-schema]]) and a row of arbitrary shape to run through its after-select machinery."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/models/db.clj:118"}
    [:model [:or :keyword symbol?]]
    [:row ::after-select-row]])
 

@@ -40,13 +40,13 @@
 (mr/def ::exploration-block.metric.explore-filter
   "One entry of a block metric selection's `:explore_filters` vector, decoded."
   [:multi {:dispatch :operator}
-   ["=" [:map {:closed true}
+   ["=" [:map {:closed true, :probe/id "src/metabase/explorations/schema.clj:43"}
          [:operator       [:= "="]]
          [:field_ref      [:ref :metabase.lib.schema.parameter/dimension.target]]
          [:value          [:maybe [:or :string number? :boolean]]]
          [:display_value  ms/NonBlankString]
          [:dimension_name {:optional true} [:maybe :string]]]]
-   ["between" [:map {:closed true}
+   ["between" [:map {:closed true, :probe/id "src/metabase/explorations/schema.clj:49"}
                [:operator       [:= "between"]]
                [:field_ref      [:ref :metabase.lib.schema.parameter/dimension.target]]
                [:values         [:tuple [:maybe [:or :string number? :boolean]]
@@ -56,14 +56,14 @@
 
 (mr/def ::exploration-block.metric
   "One entry of the `:metrics` column of a ExplorationBlock, decoded."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/explorations/schema.clj:59"}
    [:card_id ms/PositiveInt]
    [:dimension_mappings {:optional true} [:maybe [:sequential ::metrics/dimension-mapping]]]
    [:explore_filters    {:optional true} [:maybe [:sequential ::exploration-block.metric.explore-filter]]]])
 
 (mr/def ::exploration-block.dimension
   "One entry of the `:dimensions` column of a ExplorationBlock, decoded."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/explorations/schema.clj:66"}
    [:dimension-id   ms/UUIDString]
    [:display-name   {:optional true} [:maybe :string]]
    [:effective-type {:optional true} [:maybe :string]]
@@ -129,7 +129,7 @@
 
 (mr/def ::exploration-query.params
   "The `:params` column of a ExplorationQuery, decoded."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/explorations/schema.clj:132"}
    [:segment_id  {:optional true} [:maybe ms/PositiveInt]]
    [:value_index {:optional true} [:maybe nat-int?]]])
 
@@ -219,12 +219,12 @@
 
 (mr/def ::exploration-thread.query-plan-transcript.plan-item
   "One entry of the `:plan` a query planner emits."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/explorations/schema.clj:222"}
    [:block_id     ms/PositiveInt]
    [:metric_id    ms/PositiveInt]
    [:dimension_id ms/UUIDString]
    [:variant      :string]
-   [:params       {:optional true} [:map {:closed true}
+   [:params       {:optional true} [:map {:closed true, :probe/id "src/metabase/explorations/schema.clj:227"}
                                     [:segment_id {:optional true} ms/PositiveInt]
                                     [:k          {:optional true} :int]]]
    [:rationale    {:optional true} [:maybe :string]]])
@@ -233,17 +233,17 @@
   "The planner-implementation-specific `:transcript` a query planner emits (see
   `metabase.explorations.query-plan.planner/plan!`); shape is per-implementation, only `:mechanical` exists today."
   [:or
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/explorations/schema.clj:236"}
     [:reason   :string]
     [:n-blocks :int]]
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/explorations/schema.clj:239"}
     [:strategy :string]
     [:n-items  :int]
     [:n-blocks :int]]])
 
 (mr/def ::exploration-thread.query-plan-transcript.body
   "The `:transcript` entry of a query-plan transcript, decoded."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/explorations/schema.clj:246"}
    [:outcome      {:optional true} [:maybe [:enum :ok :failed :skip-not-applicable]]]
    [:rationale    {:optional true} [:maybe :string]]
    [:plan         {:optional true} [:maybe [:sequential ::exploration-thread.query-plan-transcript.plan-item]]]
@@ -252,7 +252,7 @@
 
 (mr/def ::exploration-thread.query-plan-transcript
   "The `:query_plan_transcript` column of a ExplorationThread, decoded."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/explorations/schema.clj:255"}
    [:generated-at {:optional true} [:maybe :string]]
    [:thread-id    {:optional true} [:maybe ms/PositiveInt]]
    [:planner      {:optional true} [:maybe :keyword]]
@@ -265,7 +265,7 @@
 (def ^:private DataAccessToken
   "A digested effective-data-access token: sandbox/impersonation/routing fingerprints, keyed by table or database
   id."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/explorations/schema.clj:268"}
    [:sandbox       {:optional true} [:map-of ::lib.schema.id/table :string]]
    [:impersonation {:optional true} [:map-of ::lib.schema.id/database :string]]
    [:routing       {:optional true} [:map-of ::lib.schema.id/database :string]]])

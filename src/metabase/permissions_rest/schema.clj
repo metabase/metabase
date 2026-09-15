@@ -132,7 +132,7 @@
 
 (mr/def ::data-permissions-graph
   "Used to transform, and verify data permissions graph"
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/permissions_rest/schema.clj:135"}
    [:groups   [:map-of [:ref ::group-id] [:maybe [:ref ::strict-db-graph]]]]
    [:revision {:optional true} [:maybe ms/Int]]])
 

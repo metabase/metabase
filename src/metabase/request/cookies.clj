@@ -146,7 +146,7 @@
     session-expires-at :expires_at
     :as _session-instance} :- [:or
                                :metabase.session.schema/session
-                               [:map {:closed true}
+                               [:map {:closed true, :probe/id "src/metabase/request/cookies.clj:149"}
                                 [:key             [:or uuid? [:re u/uuid-regex]]]
                                 [:type            {:optional true} [:enum :normal :full-app-embed]]
                                 [:anti_csrf_token {:optional true} [:maybe :string]]

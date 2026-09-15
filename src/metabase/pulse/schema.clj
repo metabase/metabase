@@ -83,7 +83,7 @@
   `:emails`; slack carries `:channel`/`:channels`/`:channel_id`; both may carry `:include_pdf`/
   `:attachment_only`), so every key is optional here rather than modeled as a `:channel_type`-dispatched
   `:multi`."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/pulse/schema.clj:86"}
    [:channel         {:optional true} [:maybe :string]]
    [:channels        {:optional true} [:maybe :string]]
    [:channel_id      {:optional true} [:maybe :string]]

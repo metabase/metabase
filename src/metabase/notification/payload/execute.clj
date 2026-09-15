@@ -323,7 +323,7 @@
    [::mc/default :map]])
 
 (def ^:private ExecuteDashboardOpts
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/notification/payload/execute.clj:326"}
    [:spill-budget      {:optional true} notification.temp-storage/ResidentBudget]
    [:only-card-ids     {:optional true} [:maybe [:set ms/PositiveInt]]]
    [:attached-card-ids {:optional true} [:maybe [:set ms/PositiveInt]]]])

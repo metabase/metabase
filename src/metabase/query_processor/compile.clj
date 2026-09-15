@@ -26,13 +26,13 @@
 
 (mr/def ::compiled
   "Compiled query and parameters (SQL or whatever native query language)."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/query_processor/compile.clj:29"}
    [:query ::native-query-document-value]
    [:params {:optional true} [:maybe [:sequential :metabase.lib.schema.common/field-value]]]])
 
 (mr/def ::compiled-with-inlined-parameters
   "Query with inlined parameters (:params must be empty)"
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/query_processor/compile.clj:35"}
    [:query ::native-query-document-value]
    [:params {:optional true} [:maybe [:sequential {:max 0} :metabase.lib.schema.common/field-value]]]])
 

@@ -74,7 +74,7 @@
   Tool vars are validated at registration time to ensure they have required metadata; any
   `:always-on-skills` are validated to refer to registered skills, and any `:terminal-tools` to
   refer to tools the profile actually exposes."
-  [profile :- [:map {:closed true}
+  [profile :- [:map {:closed true, :probe/id "src/metabase/metabot/agent/profiles.clj:77"}
                [:name :keyword]
                [:prompt-template :string]
                [:max-iterations :int]

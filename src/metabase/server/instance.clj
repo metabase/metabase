@@ -104,7 +104,7 @@
   "Create a new async Jetty server with `handler` and `options`. Handy for creating the real Metabase web server, and
   creating one-off web servers for tests and REPL usage."
   ^Server [handler :- ::api.macros/handler
-           options :- [:maybe [:map {:closed true}
+           options :- [:maybe [:map {:closed true, :probe/id "src/metabase/server/instance.clj:107"}
                                [:port                 {:optional true} :int]
                                [:host                 {:optional true} :string]
                                [:max-threads          {:optional true} :int]

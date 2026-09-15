@@ -198,7 +198,7 @@
 (mr/def ::parameter-mapping-with-dashcard.dashcard
   "Shape of the `:dashcard` attached to a `::parameter-mapping-with-dashcard`: a DashboardCard row hydrated with
   `:card` and `:series`, as done by the `:resolved-params` hydration."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/parameters/schema.cljc:201"}
    [:id                     {:optional true} ::lib.schema.id/dashcard]
    [:created_at             {:optional true} ::lib.schema.literal/param-value]
    [:updated_at             {:optional true} ::lib.schema.literal/param-value]
@@ -219,7 +219,7 @@
    [:series                 {:optional true} [:maybe [:sequential :metabase.queries.schema/card]]]
    [:action                 {:optional true} [:maybe [:merge
                                                       :metabase.actions.schema/action
-                                                      [:map {:closed true}
+                                                      [:map {:closed true, :probe/id "src/metabase/parameters/schema.cljc:222"}
                                                        [:database_enabled_actions {:optional true} :boolean]]]]]])
 
 (mr/def ::parameter-mapping-with-dashcard

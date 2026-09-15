@@ -62,7 +62,7 @@
 (mr/def ::pivot-measures [:sequential ::pivot.common/index])
 
 (mr/def ::pivot-opts [:maybe
-                      [:map {:closed true}
+                      [:map {:closed true, :probe/id "src/metabase/query_processor/pivot.clj:65"}
                        [:pivot-rows         {:optional true} [:maybe ::pivot-rows]]
                        [:pivot-cols         {:optional true} [:maybe ::pivot-cols]]
                        [:pivot-measures     {:optional true} [:maybe ::pivot-measures]]

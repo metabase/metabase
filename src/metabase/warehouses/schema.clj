@@ -15,12 +15,12 @@
 
 (mr/def ::database.dbms-version
   "The `:dbms_version` column of a Database, decoded."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/warehouses/schema.clj:18"}
    [:flavor           {:optional true} :string]
    [:version          {:optional true} :string]
    [:semantic-version {:optional true} [:or
                                         [:sequential :int]
-                                        [:map {:closed true} [:major :int] [:minor :int]]]]
+                                        [:map {:closed true, :probe/id "src/metabase/warehouses/schema.clj:23"} [:major :int] [:minor :int]]]]
    [:cloud            {:optional true} :boolean]])
 
 (mr/def ::database.write-data-details
@@ -72,7 +72,7 @@
    [:tables                      {:optional true} [:maybe [:sequential [:ref :metabase.warehouse-schema.schema/table]]]]
    [:native_permissions          {:optional true} [:maybe [:enum :write :none]]]
    [:router_user_attribute       {:optional true} [:maybe :string]]
-   [:schedules                   {:optional true} [:maybe [:map {:closed true}
+   [:schedules                   {:optional true} [:maybe [:map {:closed true, :probe/id "src/metabase/warehouses/schema.clj:75"}
                                                            [:metadata_sync      :metabase.util.cron/ScheduleMap]
                                                            [:cache_field_values [:maybe :metabase.util.cron/ScheduleMap]]]]]
    [:transforms_permissions      {:optional true} [:maybe [:enum :write :none]]]])

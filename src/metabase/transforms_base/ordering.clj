@@ -100,7 +100,7 @@
 
 (def ^:private TransformIdAndTargetTable
   "The subset of a Transform row [[output-table-map]] reads: its id and its target Table id, if any."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/transforms_base/ordering.clj:103"}
    [:id :metabase.lib.schema.id/transform]
    [:target_table_id {:optional true} [:maybe :metabase.lib.schema.id/table]]])
 

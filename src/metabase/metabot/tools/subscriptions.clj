@@ -82,7 +82,7 @@
    [:dashboard_id :int]
    [:email {:optional true} [:maybe :string]]
    [:slack_channel {:optional true} [:maybe :string]]
-   [:schedule [:map {:closed true}
+   [:schedule [:map {:closed true, :probe/id "src/metabase/metabot/tools/subscriptions.clj:85"}
                [:frequency [:enum "hourly" "daily" "weekly" "monthly"]]
                [:hour {:optional true} [:maybe :int]]
                [:day_of_week {:optional true} [:maybe :string]]

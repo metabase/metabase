@@ -49,7 +49,7 @@
     [:maybe [:sequential
              [:merge
               ::models.notification/NotificationHandler
-              [:map {:closed true}
+              [:map {:closed true, :probe/id "src/metabase/notification/payload/core.clj:52"}
                [:channel         {:optional true} [:maybe ::models.channel/Channel]]
                [:template        {:optional true} [:maybe ::models.channel/ChannelTemplate]]
                [:recipients      {:optional true} [:sequential ::models.notification/NotificationRecipient]]
@@ -59,32 +59,32 @@
 
 (def ^:private NotificationBase
   "The common notification entries as a closed map, for `[:notification/system-event]` and the other payload types."
-  (into [:map {:closed true}] notification-common-entries))
+  (into [:map {:closed true, :probe/id "src/metabase/notification/payload/core.clj:62"}] notification-common-entries))
 
 (mr/def ::Notification
   "Schema for the notification."
   [:multi {:dispatch :payload_type}
    ;; system event is a bit special in that part of the payload comes from the event itself
    [:notification/system-event
-    (mut/merge NotificationBase [:map {:closed true} [:payload ::models.notification/SystemEventPayload]])]
+    (mut/merge NotificationBase [:map {:closed true, :probe/id "src/metabase/notification/payload/core.clj:69"} [:payload ::models.notification/SystemEventPayload]])]
    [:notification/card
-    (mut/merge NotificationBase [:map {:closed true}
+    (mut/merge NotificationBase [:map {:closed true, :probe/id "src/metabase/notification/payload/core.clj:71"}
                                  [:payload    {:optional true} ::models.notification/NotificationCard]
                                  [:creator_id                  ms/PositiveInt]])]
    [:notification/dashboard
     (mut/merge NotificationBase
-               [:map {:closed true}
+               [:map {:closed true, :probe/id "src/metabase/notification/payload/core.clj:76"}
                 [:creator_id ms/PositiveInt]
                 ;; replacement of pulse
                 [:dashboard_subscription
-                 [:map {:closed true}
+                 [:map {:closed true, :probe/id "src/metabase/notification/payload/core.clj:80"}
                   [:id             {:optional true} [:maybe ms/PositiveInt]]
                   [:dashboard_id ms/PositiveInt]
                   [:disable_links  {:optional true} [:maybe :boolean]]
                   [:skip_if_empty  {:optional true} :boolean]
                   [:parameters {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-optional-type]]]
                   [:dashboard_subscription_dashcards {:optional true}
-                   [:sequential [:map {:closed true}
+                   [:sequential [:map {:closed true, :probe/id "src/metabase/notification/payload/core.clj:87"}
                                  [:card_id                            [:maybe ms/PositiveInt]]
                                  [:dashboard_card_id {:optional true} [:maybe ms/PositiveInt]]
                                  [:include_csv       {:optional true} [:maybe ms/BooleanValue]]

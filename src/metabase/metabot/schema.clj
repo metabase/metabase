@@ -38,14 +38,14 @@
   [:or ::lib.schema/query :metabase.legacy-mbql.schema/Query])
 
 (mr/def ::todo
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/schema.clj:41"}
    [:id :string]
    [:content :string]
    [:status [:enum "pending" "in_progress" "completed" "cancelled"]]
    [:priority [:enum "high" "medium" "low"]]])
 
 (mr/def ::chart-timeline-event
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/schema.clj:48"}
    [:name :string]
    [:description {:optional true} [:maybe :string]]
    [:timestamp :string]])
@@ -53,7 +53,7 @@
 (mr/def ::column-info
   "A chart column's name and inferred type, as sent for chart analysis. Mirrors
   `metabase.metabot.context/ColumnInfoSchema`."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/schema.clj:56"}
    [:name :string]
    [:type {:optional true} [:maybe (into [:enum] #{"number" "string" "date" "datetime" "time" "boolean" "null"})]]])
 
@@ -66,14 +66,14 @@
 (mr/def ::chart-data
   "One pre-materialized table of raw chart data (columns + rows). Mirrors
   `metabase.metabot.context/ChartDataSchema`."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/schema.clj:69"}
    [:columns [:sequential ::column-info]]
    [:rows [:sequential [:sequential [:or :string number?]]]]])
 
 (mr/def ::series-config
   "One series of a chart, pre-materialized by the frontend for `analyze_chart`. Mirrors
   `metabase.metabot.context/SeriesConfigSchema`."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/schema.clj:76"}
    [:x ::column-info]
    [:y {:optional true} [:maybe ::column-info]]
    [:x_values {:optional true} [:maybe [:sequential ::row-value]]]
@@ -85,7 +85,7 @@
 (mr/def ::chart-config
   "A `chart_configs` entry: a chart's title, pre-materialized series data, and the query that produced it.
   Mirrors `metabase.metabot.context/ChartConfigSchema`."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/schema.clj:88"}
    [:title {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]
    [:data {:optional true} [:maybe [:sequential ::chart-data]]]
@@ -95,18 +95,18 @@
    [:display_type {:optional true} [:maybe [:or :string :keyword]]]])
 
 (mr/def ::chart
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/schema.clj:98"}
    [:chart_id {:optional true} [:maybe :string]]
    [:query_id {:optional true} [:maybe :string]]
    [:queries {:optional true} [:maybe [:sequential [:maybe ::query]]]]
    [:visualization_settings {:optional true}
-    [:maybe [:map {:closed true}
+    [:maybe [:map {:closed true, :probe/id "src/metabase/metabot/schema.clj:103"}
              [:chart_type {:optional true} [:maybe [:or :string :keyword]]]]]]
    [:timeline_events {:optional true} [:maybe [:sequential ::chart-timeline-event]]]
    [:chart_config {:optional true} [:maybe ::chart-config]]])
 
 (mr/def ::transform.target
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/schema.clj:109"}
    [:type [:or [:= :table] [:= "table"]]]
    [:name {:optional true} [:maybe :string]]
    [:database {:optional true} [:maybe :int]]
@@ -115,7 +115,7 @@
 (mr/def ::transform.source-table
   "One entry of a Python transform's `source-tables`. Mirrors
   `metabase.metabot.context/TransformSourceTableSchema`."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/schema.clj:118"}
    [:alias :string]
    [:table_id {:optional true} [:maybe :int]]
    [:schema {:optional true} [:maybe :string]]
@@ -123,17 +123,17 @@
 
 (mr/def ::transform.source
   [:multi {:dispatch (comp keyword :type)}
-   [:query [:map {:closed true}
+   [:query [:map {:closed true, :probe/id "src/metabase/metabot/schema.clj:126"}
             [:type [:or [:= :query] [:= "query"]]]
             [:query {:optional true} [:maybe ::query]]]]
-   [:python [:map {:closed true}
+   [:python [:map {:closed true, :probe/id "src/metabase/metabot/schema.clj:129"}
              [:type [:or [:= :python] [:= "python"]]]
              [:body {:optional true} [:maybe :string]]
              [:source-database {:optional true} [:maybe :int]]
              [:source-tables {:optional true} [:maybe [:sequential ::transform.source-table]]]]]])
 
 (mr/def ::transform
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/schema.clj:136"}
    [:id {:optional true} [:maybe :string]]
    [:name {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]
@@ -141,7 +141,7 @@
    [:source {:optional true} [:maybe ::transform.source]]])
 
 (mr/def ::state
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/schema.clj:144"}
    [:queries {:optional true} [:map-of ::state-map-key ::query]]
    [:charts {:optional true} [:map-of ::state-map-key ::chart]]
    [:chart-configs {:optional true} [:map-of ::state-map-key ::chart-config]]
@@ -337,7 +337,7 @@
 
 (mr/def ::metabot-message.usage
   "The `:usage` column of a MetabotMessage, decoded."
-  [:map-of :string [:map {:closed true}
+  [:map-of :string [:map {:closed true, :probe/id "src/metabase/metabot/schema.clj:340"}
                     [:prompt :int]
                     [:completion :int]]])
 

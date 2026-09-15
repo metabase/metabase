@@ -152,7 +152,7 @@
    [:magic_group_type  [:maybe [:or :keyword :string]]]
    [:is_tenant_group   :boolean]
    [:is_data_app_group :boolean]
-   [:members           {:optional true} [:sequential [:map {:closed true} [:email :string] [:entity_id :string]]]]])
+   [:members           {:optional true} [:sequential [:map {:closed true, :probe/id "src/metabase/permissions/schema.clj:155"} [:email :string] [:entity_id :string]]]]])
 
 (mr/def ::permissions-group.member
   "A member of a PermissionsGroup as `metabase.permissions.db/group-members` selects it: the User columns the group

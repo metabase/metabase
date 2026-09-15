@@ -454,7 +454,7 @@
   nil)
 
 (def ^:private Options
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/notification/send.clj:457"}
    [:notification/sync? :boolean]])
 
 (def ^:dynamic *default-options*

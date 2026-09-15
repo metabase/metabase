@@ -298,7 +298,7 @@
    [:db                      {:optional true} [:maybe [:ref :metabase.warehouses.schema/database]]]
    [:fields                  {:optional true} [:maybe [:sequential ::field]]]
    [:transform               {:optional true} [:maybe [:ref :metabase.transforms.schema/transform]]]
-   [:owner                   {:optional true} [:maybe [:map {:closed true}
+   [:owner                   {:optional true} [:maybe [:map {:closed true, :probe/id "src/metabase/warehouse_schema/schema.clj:301"}
                                                        [:id          {:optional true} ::lib.schema.id/user]
                                                        [:email       {:optional true} :string]
                                                        [:first_name  {:optional true} [:maybe :string]]

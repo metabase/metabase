@@ -161,7 +161,7 @@
   ([definition :- ::lib-metric.schema/metric-definition]
    (->query-plan definition {}))
   ([definition :- ::lib-metric.schema/metric-definition
-    opts       :- [:map {:closed true}
+    opts       :- [:map {:closed true, :probe/id "src/metabase/lib_metric/definition.cljc:164"}
                    [:limit       {:optional true} [:maybe pos-int?]]
                    [:values-only {:optional true} [:maybe :boolean]]]]
    (let [ast (->ast definition)]

@@ -98,7 +98,7 @@
 (defn- namespace-kvp-schema
   "The schema of a whole key-value pair in `namespace`: its registered schema, merged with the keys every pair has."
   [namespace]
-  (let [common [:map {:closed true}
+  (let [common [:map {:closed true, :probe/id "src/metabase/user_key_value/models/user_key_value/types.clj:101"}
                 [:key        :string]
                 [:namespace  :keyword]
                 [:expires-at [:maybe ::expires-at]]]
@@ -115,7 +115,7 @@
   "Build the schema for a `::user-key-value`"
   []
   [:and
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/user_key_value/models/user_key_value/types.clj:118"}
     [:key :string]
     [:expires-at [:maybe ::expires-at]]
     [:namespace ::namespace]

@@ -22,7 +22,7 @@
 
 (mu/defn- column-info
   [query :- ::lib.schema/query
-   {initial-columns :cols} :- [:maybe [:map {:closed true}
+   {initial-columns :cols} :- [:maybe [:map {:closed true, :probe/id "test/metabase/lib/metadata/result_metadata_test.cljc:25"}
                                        [:cols    {:optional true} ::result-metadata/initial-cols]
                                        [:columns {:optional true} [:sequential :keyword]]]]]
   (result-metadata/returned-columns query initial-columns))

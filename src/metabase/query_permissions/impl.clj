@@ -395,7 +395,7 @@
 
 (mr/def ::required-perms
   "The permissions required to run a query, as returned by [[required-perms-for-query]]."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/query_permissions/impl.clj:398"}
    [:paths                 {:optional true} [:set :string]]
    [:card-ids              {:optional true} [:set ::lib.schema.id/card]]
    [:perms/view-data       {:optional true} ::perm-value]

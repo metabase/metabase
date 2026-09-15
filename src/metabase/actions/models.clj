@@ -168,7 +168,7 @@
 
 (def ^:private ActionInsertData
   "The keys [[actions.schema/action.for-insert]] normalizes, accepted here before normalization."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/actions/models.clj:171"}
    [:name                   {:optional true} :string]
    [:type                   {:optional true} [:or :keyword :string]]
    [:model_id               {:optional true} ::lib.schema.id/card]

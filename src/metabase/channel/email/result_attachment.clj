@@ -46,7 +46,7 @@
   [^OutputStream os                                              :- (ms/InstanceOfClass OutputStream)
    {:keys [export-format format-rows? pivot? csv-include-bom?]
     :or   {csv-include-bom? true}
-    :as   _options}                                              :- [:map {:closed true}
+    :as   _options}                                              :- [:map {:closed true, :probe/id "src/metabase/channel/email/result_attachment.clj:49"}
                                                                      [:export-format    :keyword]
                                                                      [:format-rows?     {:optional true} [:maybe :boolean]]
                                                                      [:pivot?           {:optional true} [:maybe :boolean]]

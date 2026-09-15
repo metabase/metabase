@@ -212,14 +212,14 @@
   [[metabase.revisions.api-test/revert-ignores-extra-fields]])."
   (into [:multi {:dispatch :entity}]
         (conj (for [[model schema] revisioned-model-row-select-schema]
-                [model [:map {:closed true}
+                [model [:map {:closed true, :probe/id "src/metabase/revisions/models/revision.clj:215"}
                         [:id                            pos-int?]
                         [:object                        [:merge schema [:map {:closed false, ::mr/deliberately-open true}]]]
                         [:entity                        [:= model]]
                         [:user-id                       [:maybe pos-int?]]
                         [:is-creation? {:optional true} [:maybe :boolean]]
                         [:message      {:optional true} [:maybe :string]]]])
-              [::mc/default [:map {:closed true}
+              [::mc/default [:map {:closed true, :probe/id "src/metabase/revisions/models/revision.clj:222"}
                              [:id                            pos-int?]
                              [:object                        [:map {:closed false, ::mr/deliberately-open true}]]
                              [:entity                        [:fn toucan-model?]]

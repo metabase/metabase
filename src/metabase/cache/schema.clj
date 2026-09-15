@@ -7,7 +7,7 @@
 (mr/def ::cache-config.config
   "The `:config` column of a CacheConfig, decoded: a cache strategy body with `:type` and `:refresh_automatically`
   stripped off, so it's whichever subset of these fields the strategy in the `:strategy` column calls for."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/cache/schema.clj:10"}
    [:name             {:optional true} [:maybe :string]]
    [:multiplier       {:optional true} number?]
    [:min_duration_ms  {:optional true} number?]
@@ -17,7 +17,7 @@
 
 (mr/def ::cache-config.state
   "The `:state` column of a CacheConfig, decoded."
-  [:map {:closed true}])
+  [:map {:closed true, :probe/id "src/metabase/cache/schema.clj:20"}])
 
 (mr/def ::cache-config
   "A CacheConfig as selected from the app DB: every column of `:cache_config`."

@@ -28,7 +28,7 @@
 (mr/def ::query
   "The shape [[find-stale-query]] must return, and [[metabase-enterprise.stale.db]] consumes: a HoneySQL
   map selecting `id`/`model`/`name`/`last_used_at` from a single table."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/staleness/core.clj:31"}
    [:select    [:sequential ::select-entry]]
    [:from      :keyword]
    [:left-join {:optional true} [:sequential [:or :keyword ::predicate]]]

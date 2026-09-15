@@ -29,7 +29,7 @@
   {::expr  [:or :keyword :string number? :boolean nil? (ms/InstanceOfClass java.time.temporal.Temporal)
             [:sequential [:ref ::expr]]
             [:ref ::query]]
-   ::query [:map {:closed true}
+   ::query [:map {:closed true, :probe/id "src/metabase/search/in_place/legacy.clj:32"}
             [:select     {:optional true} [:or [:ref ::expr] [:sequential [:ref ::expr]]]]
             [:from       {:optional true} [:or [:ref ::expr] [:sequential [:ref ::expr]]]]
             [:where      {:optional true} [:ref ::expr]]

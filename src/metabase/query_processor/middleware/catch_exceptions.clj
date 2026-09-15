@@ -62,7 +62,7 @@
 
 (mr/def ::format-exception-result
   "The map shape produced by one of this namespace's private `format-exception` methods."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/query_processor/middleware/catch_exceptions.clj:65"}
    [:status            [:enum :failed :interrupted]]
    [:class             {:optional true} (lib.schema.common/instance-of-class Class)]
    [:error             {:optional true} [:maybe :string]]
@@ -120,7 +120,7 @@
   "The in-flight QueryExecution info that userland query processing attaches to exceptions: the columns about to be saved, plus the query and start time."
   [:merge
    ::queries.schema/query-execution.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/query_processor/middleware/catch_exceptions.clj:123"}
     [:json_query        {:optional true} ::qp.schema/any-query]
     [:start_time_millis {:optional true} :int]]])
 
@@ -129,7 +129,7 @@
   (dissoc query-execution :result_rows :hash :executor_id :dashboard_id :pulse_id :native :start_time_millis))
 
 (def ^:private ExtraInfo
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/query_processor/middleware/catch_exceptions.clj:132"}
    [:native       {:optional true} [:maybe :metabase.query-processor.compile/compiled]]
    [:preprocessed {:optional true} [:maybe :metabase.lib.schema/query]]])
 

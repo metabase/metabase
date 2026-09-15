@@ -19,7 +19,7 @@
   multiple connections from multiple metabases remain distinct. The UUID will have the first character of each section taken.
 
   (schema-name {:id 234} \"143dd8ce-e116-4c7f-8d6d-32e99eaefbbc\") ->  \"metabase_cache_1e483_1\""
-  [{:keys [id] :as _database} :- [:map {:closed true} [:id ::lib.schema.id/database]]
+  [{:keys [id] :as _database} :- [:map {:closed true, :probe/id "src/metabase/driver/ddl/interface.clj:22"} [:id ::lib.schema.id/database]]
    site-uuid-string           :- ::lib.schema.common/non-blank-string]
   (let [instance-string (apply str (map first (str/split site-uuid-string #"-")))]
     (format "metabase_cache_%s_%s" instance-string id)))

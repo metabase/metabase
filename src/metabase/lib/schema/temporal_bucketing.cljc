@@ -182,7 +182,7 @@
         datetime-interval-units))
 
 (mr/def ::option
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib/schema/temporal_bucketing.cljc:185"}
    [:lib/type [:= :option/temporal-bucketing]]
    [:unit ::unit]
    [:default {:optional true} :boolean]

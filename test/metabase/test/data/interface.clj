@@ -92,12 +92,12 @@
   [:schema
    {:registry
     {::field-definition
-     [:map {:closed true}
+     [:map {:closed true, :probe/id "test/metabase/test/data/interface.clj:95"}
       [:field-name                          ms/NonBlankString]
       [:base-type                           [:or
-                                             [:map {:closed true}
+                                             [:map {:closed true, :probe/id "test/metabase/test/data/interface.clj:98"}
                                               [:natives [:map-of :string ms/NonBlankString]]]
-                                             [:map {:closed true}
+                                             [:map {:closed true, :probe/id "test/metabase/test/data/interface.clj:100"}
                                               [:native ms/NonBlankString]]
                                              ms/FieldType]]
       ;; this was added pretty recently (in the 44 cycle) so it might not be supported everywhere. It should work for
@@ -139,7 +139,7 @@
    [:map {:closed true}
     [:database-name ms/NonBlankString] ; this must be unique
     [:table-definitions [:sequential ValidTableDefinition]]
-    [:options [:maybe [:map {:closed true}
+    [:options [:maybe [:map {:closed true, :probe/id "test/metabase/test/data/interface.clj:142"}
                        [:native-ddl {:optional true} [:sequential ::native-ddl-form]]
                        ;; When true, drivers that support it (e.g., MySQL) will disable FK checks during data loading.
                        ;; Useful for datasets with self-referencing FKs that need to be inserted in a single batch.
@@ -895,7 +895,7 @@
    (dataset-definition database-name table-definitions {}))
   ([database-name :- ms/NonBlankString
     table-definitions :- [:sequential DatasetTableDefinition]
-    options :- [:map {:closed true}
+    options :- [:map {:closed true, :probe/id "test/metabase/test/data/interface.clj:898"}
                 [:native-ddl {:optional true} [:sequential ::native-ddl-form]]
                 [:disable-fk-checks {:optional true} :boolean]
                 [:static {:optional true} :boolean]]]
@@ -984,7 +984,7 @@
   "Define a new test dataset using the definition in an EDN file in the `test/metabase/test/data/dataset_definitions/`
   directory. (Filename should be `dataset-name` + `.edn`.)"
   [dataset-name :- ms/NonBlankString
-   options      :- [:map {:closed true}
+   options      :- [:map {:closed true, :probe/id "test/metabase/test/data/interface.clj:987"}
                     [:native-ddl        {:optional true} [:sequential ::native-ddl-form]]
                     [:disable-fk-checks {:optional true} :boolean]
                     [:static            {:optional true} :boolean]]]

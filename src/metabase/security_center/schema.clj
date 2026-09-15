@@ -19,7 +19,7 @@
 
 (mr/def ::version-range
   "A single affected version range with inclusive min and exclusive fixed."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/security_center/schema.clj:22"}
    [:min   ::semver]
    [:fixed ::semver]])
 
@@ -28,7 +28,7 @@
 
 (mr/def ::download-jar-url
   "A downloadable JAR for a given fixed version."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/security_center/schema.clj:31"}
    [:version ::semver]
    [:url     :string]])
 
@@ -42,7 +42,7 @@
 
 (mr/def ::honeysql-query
   "A HoneySQL 2 query map, as EDN keyed by its top-level clause keywords."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/security_center/schema.clj:45"}
    [:with        {:optional true} [:sequential [:tuple :keyword [:ref ::honeysql-query]]]]
    [:select      {:optional true} [:sequential ::h2x/expr]]
    [:delete-from {:optional true} ::h2x/expr]

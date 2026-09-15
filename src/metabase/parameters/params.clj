@@ -225,14 +225,14 @@
   "Internal bookkeeping for one parameter `mapping` on a hydrated `dashcard`: the dashcard, the mapping, and the
   parameter target's Field ID when the target is already field-id-based (nil when it must be resolved from filterable
   columns)."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/parameters/params.clj:228"}
    [:dashcard              ::parameters.schema/parameter-mapping-with-dashcard.dashcard]
    [:param-mapping         ::parameters.schema/parameter-mapping-with-dashcard]
    [:param-target-field-id [:maybe ::lib.schema.id/field]]])
 
 (mr/def ::field-id-context
   "Accumulator threaded through [[field-id-into-context-rf]]."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/parameters/params.clj:235"}
    [:card-id->filterable-columns [:map-of ::lib.schema.id/card [:map-of :int [:sequential ::lib.schema.metadata/column]]]]
    [:param-id->field-ids        [:map-of ::lib.schema.parameter/id [:set ::lib.schema.id/field]]]])
 
@@ -495,7 +495,7 @@
   pass slim dashcards instead of paying for the full hydration."
   [dashboard :- [:or
                  :metabase.dashboards.schema/dashboard
-                 [:map {:closed true}
+                 [:map {:closed true, :probe/id "src/metabase/parameters/params.clj:498"}
                   [:parameters [:maybe [:sequential ::parameters.schema/parameter]]]
                   [:dashcards [:maybe [:sequential [:or
                                                     :metabase.dashboards.schema/dashboard-card

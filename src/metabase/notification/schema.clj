@@ -75,11 +75,11 @@
 (mr/def ::notification-recipient.details
   "The `:details` column of a NotificationRecipient, decoded."
   [:or
-   [:map {:closed true}]
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/notification/schema.clj:78"}]
+   [:map {:closed true, :probe/id "src/metabase/notification/schema.clj:79"}
     [:value                    :string]
     [:channel_id {:optional true} [:maybe :string]]]
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/notification/schema.clj:82"}
     [:pattern                  :string]
     [:is_optional {:optional true} :boolean]]])
 

@@ -357,10 +357,10 @@
 
 (mu/defmethod driver/execute-write-query! :h2
   [driver :- :keyword
-   query  :- [:map {:closed true}
+   query  :- [:map {:closed true, :probe/id "src/metabase/driver/h2.clj:360"}
               [:type     [:= :native]]
               [:database {:optional true} driver-api/schema.id.database]
-              [:native   [:map {:closed true}
+              [:native   [:map {:closed true, :probe/id "src/metabase/driver/h2.clj:363"}
                           [:query :string]]]]]
   (check-native-query-not-using-default-user query)
   (check-action-commands-allowed query)

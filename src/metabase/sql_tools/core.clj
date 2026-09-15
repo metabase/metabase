@@ -22,14 +22,14 @@
 (mr/def ::table-spec
   "Schema for table identifier used in replacements. `:db` is the top-level qualifier for
   drivers that emit one (BigQuery project, ClickHouse database)."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/sql_tools/core.clj:25"}
    [:table :string]
    [:schema {:optional true} [:maybe :string]]
    [:db {:optional true} [:maybe :string]]])
 
 (mr/def ::column-spec
   "Schema for column identifier used in replacements."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/sql_tools/core.clj:32"}
    [:column :string]
    [:table {:optional true} [:maybe :string]]
    [:schema {:optional true} [:maybe :string]]
@@ -39,21 +39,21 @@
   "Schema for table replacement target - can be a string or a map with schema/table/db."
   [:or
    :string
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/sql_tools/core.clj:42"}
     [:schema {:optional true} [:maybe :string]]
     [:table {:optional true} [:maybe :string]]
     [:db {:optional true} [:maybe :string]]]])
 
 (mr/def ::replacements
   "Schema for replace-names replacements map."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/sql_tools/core.clj:49"}
    [:schemas {:optional true} [:map-of :string :string]]
    [:tables {:optional true} [:map-of ::table-spec ::table-replacement-value]]
    [:columns {:optional true} [:map-of ::column-spec :string]]])
 
 (mr/def ::replace-names-opts
   "Schema for replace-names options."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/sql_tools/core.clj:56"}
    [:allow-unused? {:optional true} :boolean]])
 
 (mr/def ::simple-query-result

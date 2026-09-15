@@ -100,7 +100,7 @@
      [:fn {:error/message "must start with a field/expression tag"} (comp #{"field" "expression" :field :expression} first)]]]])
 
 (mr/def ::model-index
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/indexed_entities/models/model_index.clj:103"}
    [:model_id   ::lib.schema.id/card]
    [:value_ref  ::raw-or-normalized-field-ref]
    [:pk_ref     ::raw-or-normalized-field-ref]

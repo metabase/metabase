@@ -54,7 +54,7 @@
   [:tuple
    [:enum :field :expression :aggregation]
    [:and
-    [:map {:closed true}
+    [:map {:closed true, :probe/id "src/metabase/query_processor/middleware/add_remaps.clj:57"}
      [:semantic-type   {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
      [:database-type   {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
      [:name            {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
@@ -88,7 +88,7 @@
 (mr/def ::external-remapping
   "Schema for the info we fetch about `external` type Dimensions that will be used for remappings in this Query. Fetched
   by the pre-processing portion of the middleware, and passed along to the post-processing portion."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/query_processor/middleware/add_remaps.clj:91"}
    [:id                        ::lib.schema.id/dimension]              ; unique ID for the remapping
    [:name                      ::lib.schema.common/non-blank-string]   ; display name for the remapping
    [:field-id                  ::lib.schema.id/field]                  ; ID of the Field being remapped
@@ -120,13 +120,13 @@
 
 (mr/def ::remap-info
   [:and
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/query_processor/middleware/add_remaps.clj:123"}
     [:original-field-clause :mbql.clause/field]
     [:new-field-clause      [:and
                              :mbql.clause/field
                              [:tuple
                               [:= :field]
-                              [:map {:closed true}
+                              [:map {:closed true, :probe/id "src/metabase/query_processor/middleware/add_remaps.clj:129"}
                                [::new-field-dimension-id ::lib.schema.id/dimension]
                                [:lib/uuid      {:optional true} ::lib.schema.common/uuid]
                                [:source-field  {:optional true} ::lib.schema.id/field]
@@ -392,7 +392,7 @@
 ;;;; Post-processing
 
 (mr/def ::internal-remapping-info
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/query_processor/middleware/add_remaps.clj:395"}
    ;; index of original column
    [:col-index      :int]
    ;; names
@@ -405,7 +405,7 @@
    [:new-column      ::qp.schema/result-metadata.column]])
 
 (mr/def ::internal-columns-info
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/query_processor/middleware/add_remaps.clj:408"}
    [:internal-only-dims [:maybe [:sequential ::internal-remapping-info]]]
    ;; this is just (map :new-column internal-only-dims)
    [:internal-only-cols [:maybe ::qp.schema/result-metadata.columns]]])

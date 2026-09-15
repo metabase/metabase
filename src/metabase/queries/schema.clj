@@ -41,7 +41,7 @@
   Card before passing it here."
   [:merge
    ::card.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/queries/schema.clj:44"}
     [:id                    {:optional true} [:maybe ::lib.schema.id/card]]
     [:persisted/active      {:optional true} [:maybe :boolean]]
     [:persisted/definition  {:optional true} [:maybe :string]]
@@ -54,7 +54,7 @@
     [:dashboard             {:optional true} [:maybe [:ref :metabase.dashboards.schema/dashboard]]]
     [:document              {:optional true} [:maybe ::documents.schema/document]]
     [:last-edit-info        {:optional true} [:maybe
-                                              [:map {:closed true}
+                                              [:map {:closed true, :probe/id "src/metabase/queries/schema.clj:57"}
                                                [:timestamp  [:maybe ms/TemporalInstant]]
                                                [:id         [:maybe ms/PositiveInt]]
                                                [:first_name [:maybe :string]]
@@ -87,7 +87,7 @@
     [:query_average_duration    {:optional true} [:maybe number?]]
     [:download_perms            {:optional true} [:maybe [:enum :none :limited :full]]]
     [:in_dashboards             {:optional true} [:maybe [:sequential
-                                                          [:map {:closed true}
+                                                          [:map {:closed true, :probe/id "src/metabase/queries/schema.clj:90"}
                                                            [:id                ::lib.schema.id/dashboard]
                                                            [:name              :string]
                                                            [:collection_id     [:maybe ::lib.schema.id/collection]]
@@ -97,7 +97,7 @@
 
 (mr/def ::param-field.name-field
   "A Field trimmed to the columns a parameter widget needs, as the `:name_field` hydration attaches it."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/queries/schema.clj:100"}
    [:id                 ::lib.schema.id/field]
    [:table_id           [:maybe ::lib.schema.id/table]]
    [:display_name       [:maybe :string]]
@@ -113,7 +113,7 @@
   "A `::param-field.name-field` further hydrated with its own `:name_field`, as the `:target` hydration attaches it."
   [:merge
    ::param-field.name-field
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/queries/schema.clj:116"}
     [:name_field {:optional true} [:maybe ::param-field.name-field]]]])
 
 (mr/def ::param-field
@@ -121,11 +121,11 @@
   Dashboard."
   [:merge
    ::param-field.target
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/queries/schema.clj:124"}
     [:target     {:optional true} [:maybe ::param-field.target]]
     [:dimensions {:optional true} [:sequential [:merge
                                                 :metabase.warehouse-schema.schema/dimension
-                                                [:map {:closed true}
+                                                [:map {:closed true, :probe/id "src/metabase/queries/schema.clj:128"}
                                                  [:human_readable_field {:optional true} [:maybe ::param-field.name-field]]]]]]]])
 
 (mr/def ::card.dataset-query
@@ -241,7 +241,7 @@
 
 (mr/def ::query-execution.lens-params
   "The `:lens_params` column of a QueryExecution, decoded."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/queries/schema.clj:244"}
    [:join_step {:optional true} [:maybe :int]]])
 
 (mr/def ::query-execution

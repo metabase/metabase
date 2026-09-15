@@ -160,7 +160,7 @@
 
 (def TokenStatus
   "Schema for a response from the token status API."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/premium_features/token_check.clj:163"}
    [:valid                          :boolean]
    [:status                         [:string {:min 1}]]
    [:error-details {:optional true} [:maybe [:string {:min 1}]]]
@@ -171,11 +171,11 @@
    [:valid-thru    {:optional true} [:string {:min 1}]]
    [:max-users     {:optional true} pos-int?]
    [:company       {:optional true} [:string {:min 1}]]
-   [:store-users   {:optional true} [:maybe [:sequential [:map {:closed true}
+   [:store-users   {:optional true} [:maybe [:sequential [:map {:closed true, :probe/id "src/metabase/premium_features/token_check.clj:174"}
                                                           [:email :string]]]]]
    [:meters        {:optional true} [:map {:closed false, ::mr/deliberately-open true
                                            :description "meters, keyed by whichever meter names the license server defines"}]]
-   [:quotas        {:optional true} [:sequential [:map {:closed true}
+   [:quotas        {:optional true} [:sequential [:map {:closed true, :probe/id "src/metabase/premium_features/token_check.clj:178"}
                                                   [:hosting-feature {:optional true} :string]
                                                   [:soft-limit      {:optional true} number?]
                                                   [:usage           {:optional true} number?]]]]])

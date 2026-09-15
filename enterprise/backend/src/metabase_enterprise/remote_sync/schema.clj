@@ -203,19 +203,19 @@
 (mr/def ::remote-sync-task.outcome
   "The `:outcome` column of a RemoteSyncTask, decoded."
   [:multi {:dispatch :kind}
-   ["pulled"       [:map {:closed true}
+   ["pulled"       [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/remote_sync/schema.clj:206"}
                     [:kind   [:= "pulled"]]
                     [:count  :int]
                     [:branch :string]]]
-   ["pull-skipped" [:map {:closed true}
+   ["pull-skipped" [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/remote_sync/schema.clj:210"}
                     [:kind [:= "pull-skipped"]]]]
-   ["pushed"       [:map {:closed true}
+   ["pushed"       [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/remote_sync/schema.clj:212"}
                     [:kind   [:= "pushed"]]
                     [:count  :int]
                     [:branch :string]]]
-   ["push-skipped" [:map {:closed true}
+   ["push-skipped" [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/remote_sync/schema.clj:216"}
                     [:kind [:= "push-skipped"]]]]
-   ["merged"       [:map {:closed true}
+   ["merged"       [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/remote_sync/schema.clj:218"}
                     [:kind   [:= "merged"]]
                     [:pulled :int]
                     [:pushed :int]

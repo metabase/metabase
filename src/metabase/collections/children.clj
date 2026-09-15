@@ -200,7 +200,7 @@
 
 (def CollectionChildrenOptions
   "The `options` map accepted by [[collection-children]] and [[collection-filter-metadata]]."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/collections/children.clj:203"}
    [:show-dashboard-questions?     :boolean]
    [:show-exploration-documents?   {:optional true} [:maybe :boolean]]
    [:collection-type {:optional true} [:maybe CollectionType]]
@@ -213,7 +213,7 @@
    ;; column (see [[creator-filterable-models]]) return nothing.
    [:created-by-id {:optional true} [:maybe pos-int?]]
    [:search-text  {:optional true} [:maybe :string]]
-   [:sort-info    {:optional true} [:maybe [:map {:closed true}
+   [:sort-info    {:optional true} [:maybe [:map {:closed true, :probe/id "src/metabase/collections/children.clj:216"}
                                             [:sort-column (into [:enum {:error/message "sort-columns"}]
                                                                 (map normalize-sort-choice)
                                                                 valid-sort-columns)]
@@ -886,7 +886,7 @@
 (mu/defn- coalesce-edit-info :- revisions/MaybeAnnotated
   "Hoist all of the last edit information into a map under the key :last-edit-info. Considers this information present
   if `:last_edit_user` is not nil."
-  [row :- [:map {:closed true}
+  [row :- [:map {:closed true, :probe/id "src/metabase/collections/children.clj:889"}
            [:last_edit_user       {:optional true} [:maybe :int]]
            [:last_edit_last_name  {:optional true} [:maybe :string]]
            [:last_edit_first_name {:optional true} [:maybe :string]]

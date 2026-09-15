@@ -287,7 +287,7 @@
 
 (def ^:private RequestOptions
   "The clj-http request options this test client actually uses."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "test/metabase/test/http_client.clj:290"}
    [:headers            {:optional true} [:map-of :string [:maybe :string]]]
    [:as                 {:optional true} :keyword]
    [:content-type       {:optional true} [:or :string :keyword]]

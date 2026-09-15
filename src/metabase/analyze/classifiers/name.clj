@@ -132,7 +132,7 @@
 (def ^:private MinimalFieldOrColumn
   "The subset of a Field/column map this classifier actually reads: name, base type, and (when already
   known) semantic type."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/analyze/classifiers/name.clj:135"}
    [:name          {:optional true} [:maybe :string]]
    [:base_type     {:optional true} [:maybe ms/FieldType]]
    [:semantic_type {:optional true} [:maybe ms/FieldSemanticOrRelationType]]])

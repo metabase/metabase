@@ -41,31 +41,31 @@
 (def ^:private AnthropicProviderMetadata
   "Anthropic-specific data carried on a reasoning part: a redacted-thinking block's opaque
   payload, or a signed-thinking block's signature."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/self/core.clj:44"}
    [:redactedData {:optional true} [:maybe :string]]
    [:signature    {:optional true} [:maybe :string]]])
 
 (def ^:private OpenAIProviderMetadata
   "OpenAI-specific data carried on a reasoning part, needed to replay it across tool-call
   round-trips despite `store:false`."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/self/core.clj:51"}
    [:encryptedContent {:optional true} [:maybe :string]]
    [:itemId           {:optional true} [:maybe :string]]])
 
 (def ^:private MistralProviderMetadata
   "Mistral-specific data carried on a reasoning part: a think chunk's captured signature."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/self/core.clj:57"}
    [:signature {:optional true} [:maybe :string]]])
 
 (def ^:private GoogleProviderMetadata
   "Google-specific data carried on a tool-input part: the thought signature Gemini 3.x requires
   when a functionCall is replayed in the current turn."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/self/core.clj:63"}
    [:thoughtSignature {:optional true} [:maybe :string]]])
 
 (def ^:private ProviderMetadata
   "Vendor-specific data carried verbatim on a reasoning/tool-input part, namespaced by provider."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/self/core.clj:68"}
    [:anthropic {:optional true} [:maybe AnthropicProviderMetadata]]
    [:openai    {:optional true} [:maybe OpenAIProviderMetadata]]
    [:google    {:optional true} [:maybe GoogleProviderMetadata]]
@@ -73,7 +73,7 @@
 
 (def ToolEntry
   "A tool definition map with :tool-name, :doc, :schema, :fn, and optionally :decode/:prompt."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/self/core.clj:76"}
    [:tool-name :string]
    [:doc {:optional true} [:maybe :string]]
    [:schema MalliSchema]
@@ -94,7 +94,7 @@
 (def ^:private DataPart
   "One entry of a tool's `:data-parts`: `metabase.metabot.agent.streaming`'s `{:type :data, ...}`
   constructors."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/self/core.clj:97"}
    [:type      [:= :data]]
    [:data-type :string]
    [:data      {:optional true} [:maybe ::schema.v2/tool-payload]]])
@@ -108,7 +108,7 @@
    number?
    :boolean
    :nil
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/metabot/self/core.clj:111"}
     [:output            {:optional true} [:maybe :string]]
     [:structured-output {:optional true} [:maybe RawStructuredOutput]]
     [:structured_output {:optional true} [:maybe RawStructuredOutput]]
@@ -117,7 +117,7 @@
     [:resources         {:optional true} [:sequential ::schema.v2/tool-payload]]
     [:instructions      {:optional true} [:maybe :string]]
     [:status-code       {:optional true} [:maybe :int]]
-    [:error             {:optional true} [:maybe [:map {:closed true}
+    [:error             {:optional true} [:maybe [:map {:closed true, :probe/id "src/metabase/metabot/self/core.clj:120"}
                                                   [:message {:optional true} [:maybe :string]]
                                                   [:type    {:optional true} [:maybe :string]]]]]]])
 
@@ -125,7 +125,7 @@
   "One element of the `:input` sequence passed to a provider adapter: an AISDK part keyed by
   `:type` (`:text`, `:reasoning`, `:tool-input`, `:tool-output`), or a plain role message keyed
   by `:role` instead."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/self/core.clj:128"}
    [:type              {:optional true} [:maybe :keyword]]
    [:role              {:optional true} [:maybe (ms/enum-keywords-and-strings :user :system :assistant :tool)]]
    [:id                {:optional true} [:maybe :string]]
@@ -136,27 +136,27 @@
                                                           :description "a tool call's arguments, string- or keyword-keyed depending on whether they came over the wire or were built in Clojure"}
                                                  [:or :string :keyword] ::request.schema/json-value]]]
    [:result            {:optional true} [:maybe ToolResult]]
-   [:error             {:optional true} [:maybe [:map {:closed true}
+   [:error             {:optional true} [:maybe [:map {:closed true, :probe/id "src/metabase/metabot/self/core.clj:139"}
                                                  [:message {:optional true} [:maybe :string]]
                                                  [:type    {:optional true} [:maybe :string]]]]]
    [:provider-metadata {:optional true} [:maybe ProviderMetadata]]])
 
 (def ^:private ApiKeyCredentials
   "The `{:api-key ... :base-url ...}` connection shape shared by most providers."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/self/core.clj:146"}
    [:api-key         {:optional true} [:maybe :string]]
    [:base-url        {:optional true} [:maybe :string]]
    [:model-reasoning {:optional true} [:maybe [:or :boolean :string]]]])
 
 (def ^:private BedrockCredentials
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/self/core.clj:152"}
    [:access-key-id     {:optional true} [:maybe :string]]
    [:secret-access-key {:optional true} [:maybe :string]]
    [:session-token     {:optional true} [:maybe :string]]
    [:region            {:optional true} [:maybe :string]]])
 
 (def ^:private GoogleCredentials
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/self/core.clj:159"}
    [:service-account-key {:optional true} [:maybe :string]]
    [:oauth-access-token  {:optional true} [:maybe :string]]
    [:project-id          {:optional true} [:maybe :string]]
@@ -168,17 +168,17 @@
 
 (def ^:private ReasoningConfig
   "A dialect-shaped reasoning/thinking directive, sent verbatim to the provider."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/self/core.clj:171"}
    [:type    :string]
    [:display {:optional true} [:maybe :string]]])
 
 (def ^:private JSONSchemaLeaf
   "A leaf JSON Schema node: no `:properties` of its own, one further leaf level of `:items` for
   an array-typed leaf."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/self/core.clj:178"}
    [:type        {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]
-   [:items       {:optional true} [:map {:closed true}
+   [:items       {:optional true} [:map {:closed true, :probe/id "src/metabase/metabot/self/core.clj:181"}
                                    [:type        {:optional true} [:maybe :string]]
                                    [:description {:optional true} [:maybe :string]]]]
    [:minimum     {:optional true} number?]
@@ -187,7 +187,7 @@
 (def ^:private JSONSchemaNode
   "A JSON Schema node, sent verbatim to an LLM provider as the structured-output schema.
   `:properties` keys are the field names the schema itself declares, not ours to enumerate."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/self/core.clj:190"}
    [:type                 {:optional true} [:maybe :string]]
    [:properties           {:optional true} [:map-of {::mr/deliberately-open true
                                                      :description "JSON Schema properties, string- or keyword-keyed depending on whether they came over the wire or were built in Clojure"}
@@ -225,7 +225,7 @@
                         ignore it
     :prompt-cache-key - prompt-cache affinity hint (the conversation id); adapters whose
                         provider caches opt-in per key forward it (Mistral), others ignore it"
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/self/core.clj:228"}
    [:model            {:optional true} :string]
    [:system           {:optional true} [:maybe :string]]
    [:input            {:optional true} [:sequential AISDKPart]]

@@ -7,7 +7,7 @@
 
 (mr/def ::view-log.metadata
   "The `:metadata` column of a ViewLog, decoded."
-  [:map {:closed true}])
+  [:map {:closed true, :probe/id "src/metabase/view_log/schema.clj:10"}])
 
 (mr/def ::view-log
   "A ViewLog as selected from the app DB: every column of `:view_log`."

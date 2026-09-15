@@ -254,7 +254,7 @@
 
 (mr/def ::ValueTypeInfo
   [:map
-   {:closed true, :decode/normalize (fn [m]
+   {:closed true, :probe/id "src/metabase/legacy_mbql/schema.cljc:257", :decode/normalize (fn [m]
                                       (when (map? m)
                                         (update-keys m (comp keyword u/->snake_case_en))))
     :description      (str "Type info about a value in a `:value` clause. Added automatically by `wrap-value-literals`"
@@ -826,7 +826,7 @@
         lib.schema.expression.temporal/datetime-modes))
 
 (mr/def ::DatetimeOptions
-  [:map {:closed true, :decode/normalize lib.schema.common/normalize-map}
+  [:map {:closed true, :probe/id "src/metabase/legacy_mbql/schema.cljc:829", :decode/normalize lib.schema.common/normalize-map}
    [:mode {:optional true} [:ref ::DatetimeOptionsMode]]])
 
 (defclause datetime
@@ -1082,7 +1082,7 @@
 
 (mr/def ::StringFilterOptions
   [:map
-   {:closed true, :decode/normalize lib.schema.common/normalize-map}
+   {:closed true, :probe/id "src/metabase/legacy_mbql/schema.cljc:1085", :decode/normalize lib.schema.common/normalize-map}
    ;; default true
    [:case-sensitive {:optional true} :boolean]])
 
@@ -1105,7 +1105,7 @@
 
 (mr/def ::TimeIntervalOptions
   [:map
-   {:closed true, :decode/normalize lib.schema.common/normalize-map}
+   {:closed true, :probe/id "src/metabase/legacy_mbql/schema.cljc:1108", :decode/normalize lib.schema.common/normalize-map}
    ;; Should we include partial results for the current day/month/etc? Defaults to `false`; set this to `true` to
    ;; include them.
    [:include-current {:optional true} :boolean]])
@@ -1209,7 +1209,7 @@
 
 (mr/def ::CaseOptions
   [:map
-   {:closed true, :decode/normalize lib.schema.common/normalize-map
+   {:closed true, :probe/id "src/metabase/legacy_mbql/schema.cljc:1212", :decode/normalize lib.schema.common/normalize-map
     :error/message    ":case options"}
    [:default {:optional true} [:ref ::ExpressionArg]]])
 
@@ -1372,7 +1372,7 @@
 (mr/def ::AggregationOptionsOptions
   "Additional options for any aggregation clause when wrapping it in `:aggregation-options`."
   [:map
-   {:closed true, :error/message    ":aggregation-options options"
+   {:closed true, :probe/id "src/metabase/legacy_mbql/schema.cljc:1375", :error/message    ":aggregation-options options"
     :decode/normalize (fn [m]
                         (let [m (if (nil? m)
                                   {}
@@ -1528,7 +1528,7 @@
   "Schema for a native query snippet template tag."
   [:merge
    ::TemplateTag.Common
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/legacy_mbql/schema.cljc:1531"}
     [:type         [:= {:decode/normalize helpers/normalize-keyword} :snippet]]
     [:snippet-name ::lib.schema.common/non-blank-string]
     [:snippet-id   ::lib.schema.id/snippet]
@@ -1546,13 +1546,13 @@
   "Schema for a source query template tag."
   [:merge
    ::TemplateTag.Common
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/legacy_mbql/schema.cljc:1549"}
     [:type    [:= {:decode/normalize helpers/normalize-keyword} :card]]
     [:card-id ::lib.schema.id/card]]])
 
 (mr/def ::TemplateTag.SourceFilter
   "Schema for a single source-filter applied to a table template tag."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/legacy_mbql/schema.cljc:1555"}
    [:field-id ::lib.schema.id/field]
    [:op       (into [:enum] lib.schema.template-tag/allowed-source-filter-ops)]
    [:value    [:ref ::lib.schema.parameter/parameter.value]]])
@@ -1569,7 +1569,7 @@
   "Schema for a source query template tag."
   [:merge
    ::TemplateTag.Common
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/legacy_mbql/schema.cljc:1572"}
     [:type                  [:= {:decode/normalize helpers/normalize-keyword} :table]]
     [:table-id              ::lib.schema.id/table]
     [:emit-alias            {:optional true} :boolean]
@@ -1600,7 +1600,7 @@
   `:metabase.lib.schema.template-tag/field-filter.options`; the map stays open there and here because these options
   are merged into the parameter value the QP builds for the tag."
   [:map
-   {:closed true, :decode/normalize (fn [m]
+   {:closed true, :probe/id "src/metabase/legacy_mbql/schema.cljc:1603", :decode/normalize (fn [m]
                                       (when (map? m)
                                         (update-keys m lib.schema.common/normalize-keyword)))}
    [:case-sensitive  {:optional true} :boolean]
@@ -1610,7 +1610,7 @@
   "Schema for a field filter template tag."
   [:merge
    ::TemplateTag.Value.Common
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/legacy_mbql/schema.cljc:1613"}
     [:type      [:= {:decode/normalize helpers/normalize-keyword} :dimension]]
     [:dimension [:ref ::field]]
     [:alias     {:optional true} :string]
@@ -1636,7 +1636,7 @@
   "Schema for a temporal unit template tag."
   [:merge
    ::TemplateTag.Value.Common
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/legacy_mbql/schema.cljc:1639"}
     [:type      [:= {:decode/normalize helpers/normalize-keyword} :temporal-unit]]
     [:dimension [:ref ::field]]
     [:alias     {:optional true} :string]]])
@@ -1653,7 +1653,7 @@
   "Schema for a raw value template tag."
   [:merge
    ::TemplateTag.Value.Common
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/legacy_mbql/schema.cljc:1656"}
     [:type
      [:ref
       {:description
@@ -1777,7 +1777,7 @@
    [:merge
     {:decode/normalize #'remove-empty-keys-from-native-inner-query}
     ::NativeQuery.Common
-    [:map {:closed true}
+    [:map {:closed true, :probe/id "src/metabase/legacy_mbql/schema.cljc:1780"}
      [:query ::native-query-form]]]
    (lib.schema.common/disallowed-keys
     {:native "A top-level native inner query should have the :query key, not :native"})])
@@ -1787,7 +1787,7 @@
    [:merge
     {:decode/normalize #'remove-empty-keys-from-native-inner-query}
     ::NativeQuery.Common
-    [:map {:closed true}
+    [:map {:closed true, :probe/id "src/metabase/legacy_mbql/schema.cljc:1790"}
      [:native ::native-query-form]]]
    (lib.schema.common/disallowed-keys
     {:query "A top-level native inner query should have the :native key, not :query"})])
@@ -1888,7 +1888,7 @@
 
 (mr/def ::driver-column
   "A column as a driver's `execute-reducible-query` reports it, before annotation adds the rest of its metadata."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/legacy_mbql/schema.cljc:1891"}
    [:name           :string]
    [:base_type      {:optional true} [:maybe ::lib.schema.common/base-type]]
    [:effective_type {:optional true} [:maybe ::lib.schema.common/base-type]]
@@ -2014,7 +2014,7 @@
     [:field \"my_field\" {:base-type :field/Integer, :join-alias \"my_join_alias\"}]"
   [:and
    [:map
-    {:closed true, :decode/normalize lib.schema.common/normalize-map}
+    {:closed true, :probe/id "src/metabase/legacy_mbql/schema.cljc:2017", :decode/normalize lib.schema.common/normalize-map}
     [:source-table
      {:optional true
       :description "*What* to JOIN. Self-joins can be done by using the same `:source-table` as in the query where
@@ -2168,7 +2168,7 @@
   [:and
    (into
     [:map
-     {:closed true, :decode/normalize lib.schema.common/normalize-map}
+     {:closed true, :probe/id "src/metabase/legacy_mbql/schema.cljc:2171", :decode/normalize lib.schema.common/normalize-map}
      [:source-query {:optional true} [:ref ::SourceQuery]]
      [:source-table {:optional true} [:ref ::SourceTable]]
      [:aggregation  {:optional true} [:ref ::Aggregations]]
@@ -2314,7 +2314,7 @@
    {:decode/normalize #'normalize-query}
    ;; need to move source metadata to the correct location FIRST so it gets normalized by the schema below
    [:ref ::CheckQueryDoesNotHaveSourceMetadata]
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/legacy_mbql/schema.cljc:2317"}
     [:database   {:optional true} ::DatabaseID]
     [:type
      [:enum

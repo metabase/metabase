@@ -198,7 +198,7 @@
                           :metabase-enterprise.sandbox.schema/sandbox
                           :metabase.segments.schema/segment
                           :metabase.measures.schema/measure
-                          [:map {:closed true} [:id {:optional true} :int]]]]]]
+                          [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/dependencies/models/dependency.clj:201"} [:id {:optional true} :int]]]]]]
   (boolean
    (case entity-type
      :card (some-> entity

@@ -37,7 +37,7 @@
 
 (mr/def ::action-mapping
   "A `:mapping` produced by `default-mapping`: which table the action targets and where the row data plugs in."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/action_v2/schema.clj:40"}
    [:table-id {:optional true} ::lib.schema.id/table]
    [:row      :keyword]])
 
@@ -48,9 +48,9 @@
   ;; - action expressions (e.g., unsaved data app actions. might not need these with auto save)
   ;; - dashboard buttons (unless we deprecate them instead)
   [:or
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/action_v2/schema.clj:51"}
     [:model-action-id ms/PositiveInt]]
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/action_v2/schema.clj:53"}
     [:action-kw :keyword]
     [:mapping [:maybe ::action-mapping]]]])
 

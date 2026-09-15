@@ -42,8 +42,8 @@
   string here and 404s on ones it can't resolve, so this doesn't restrict strings to the NanoID shape most
   entity_ids have."
   [:or ms/PositiveInt ms/NonBlankString])
-(def ^:private Token [:map {:closed true}
-                      [:resource [:map {:closed true}
+(def ^:private Token [:map {:closed true, :probe/id "src/metabase/embedding_rest/api/embed.clj:45"}
+                      [:resource [:map {:closed true, :probe/id "src/metabase/embedding_rest/api/embed.clj:46"}
                                   [:question {:optional true} ResourceId]
                                   [:dashboard {:optional true} ResourceId]]]
                       [:params api.embed.common/SlugValueMap]])

@@ -60,7 +60,7 @@
 (mu/defn create-review!
   "Create a new ModerationReview"
   [params :-
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/content_verification/models/moderation_review.clj:63"}
     [:moderated_item_id       ms/PositiveInt]
     [:moderated_item_type     moderation/moderated-item-types]
     [:moderator_id            ms/PositiveInt]

@@ -245,14 +245,14 @@
 
 (def ^:private RecipientInput
   "One entry of `PulseChannelInput`'s `:recipients`: either a Metabase User (by `:id`) or a raw email address."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/pulse/models/pulse.clj:248"}
    [:id    {:optional true} ms/PositiveInt]
    [:email {:optional true} :string]])
 
 (def ^:private PulseChannelInput
   "A PulseChannel as [[update-notification-channels!]]/[[create-pulse!]] accept it: a subset of `::pulse-channel`
   columns (`:id`/`:pulse_id` filled in server-side when absent) plus `:recipients`."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/pulse/models/pulse.clj:255"}
    [:id             {:optional true} ms/PositiveInt]
    [:channel_type   {:optional true} [:or :keyword :string]]
    [:channel_id     {:optional true} [:maybe ms/PositiveInt]]
@@ -269,7 +269,7 @@
 
 (def ^:private UpdateNotificationInput
   "What [[update-notification!]] accepts: the keys of a Pulse/Alert to update, all optional except `:id`."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/pulse/models/pulse.clj:272"}
    [:id                    ms/PositiveInt]
    [:name                {:optional true} ms/NonBlankString]
    [:alert_condition     {:optional true} AlertConditions]
@@ -381,7 +381,7 @@
           notification->alert))
 
 (def ^:private RetrieveAlertsOpts
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/pulse/models/pulse.clj:384"}
    [:archived? {:optional true} [:maybe :boolean]]
    [:user-id   {:optional true} [:maybe ms/PositiveInt]]])
 
@@ -402,7 +402,7 @@
      alert)))
 
 (def ^:private RetrievePulsesOpts
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/pulse/models/pulse.clj:405"}
    [:archived?    {:optional true} [:maybe :boolean]]
    [:dashboard-id {:optional true} [:maybe ms/PositiveInt]]
    [:user-id      {:optional true} [:maybe ms/PositiveInt]]])
@@ -514,7 +514,7 @@
 (mu/defn retrieve-user-alerts-for-card
   "Find all alerts for `card-id` that `user-id` is set to receive"
   [{:keys [archived? card-id user-id]
-    :or   {archived? false}} :- [:map {:closed true}
+    :or   {archived? false}} :- [:map {:closed true, :probe/id "src/metabase/pulse/models/pulse.clj:517"}
                                  [:card-id pos-int?]
                                  [:user-id pos-int?]
                                  [:archived? {:optional true} boolean?]]]
@@ -525,7 +525,7 @@
 (mu/defn retrieve-alerts-for-cards
   "Find all alerts for `card-ids`, used for admin users"
   [{:keys [archived? card-ids]
-    :or   {archived? false}} :- [:map {:closed true}
+    :or   {archived? false}} :- [:map {:closed true, :probe/id "src/metabase/pulse/models/pulse.clj:528"}
                                  [:card-ids [:maybe [:or
                                                      [:sequential pos-int?]
                                                      [:set pos-int?]]]]
@@ -631,7 +631,7 @@
   Returns the newly created Pulse, or throws an Exception."
   [cards    :- [:sequential CardRef]
    channels :- [:sequential PulseChannelInput]
-   kvs      :- [:map {:closed true}
+   kvs      :- [:map {:closed true, :probe/id "src/metabase/pulse/models/pulse.clj:634"}
                 [:name                                 ms/NonBlankString]
                 [:creator_id                           ms/PositiveInt]
                 [:skip_if_empty       {:optional true} [:maybe :boolean]]

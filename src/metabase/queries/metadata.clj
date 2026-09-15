@@ -100,7 +100,7 @@
   Options:
     - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive (default false)"
   [queries :- [:maybe [:sequential ::lib.schema/query]]
-   opts    :- [:maybe [:map {:closed true} [:include-sensitive-fields? {:optional true} :boolean]]]]
+   opts    :- [:maybe [:map {:closed true, :probe/id "src/metabase/queries/metadata.clj:103"} [:include-sensitive-fields? {:optional true} :boolean]]]]
   (let [source-table-ids       (into #{}
                                      (mapcat lib/all-source-table-ids)
                                      queries)
@@ -224,7 +224,7 @@
 (mu/defn batch-fetch-dashboard-metadata
   "Fetch dependent metadata for dashboards."
   [dashboards :- [:sequential
-                  [:map {:closed true}
+                  [:map {:closed true, :probe/id "src/metabase/queries/metadata.clj:227"}
                    [:dashcards {:optional true} [:maybe [:sequential :metabase.dashboards.schema/dashboard-card]]]]]]
   (let [dashcards (mapcat :dashcards dashboards)
         cards     (for [{:keys [card series]} dashcards

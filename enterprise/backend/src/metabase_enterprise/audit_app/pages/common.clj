@@ -105,7 +105,7 @@
 (mr/def ::honeysql-query
   "A Honey SQL 2 query map as this namespace's audit queries build it: a `:with` CTE's body and a `:union-all`
   branch are each themselves one of these."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/audit_app/pages/common.clj:108"}
    [:with       {:optional true} [:sequential [:tuple :keyword [:ref ::honeysql-query]]]]
    [:select     {:optional true} [:sequential ::h2x/expr]]
    [:from       {:optional true} [:sequential ::h2x/expr]]

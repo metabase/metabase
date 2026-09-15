@@ -113,7 +113,7 @@
             database :- ::database
             & {:keys [use-report-timezone-id-if-unsupported?]
                :or   {use-report-timezone-id-if-unsupported? false}}
-            :- [:maybe [:map {:closed true}
+            :- [:maybe [:map {:closed true, :probe/id "src/metabase/query_processor/timezone.clj:116"}
                         [:use-report-timezone-id-if-unsupported? {:optional true} [:maybe :boolean]]]]]
    (valid-timezone-id
     (or (valid-timezone-id *results-timezone-id-override*)

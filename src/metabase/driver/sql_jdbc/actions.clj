@@ -554,7 +554,7 @@
       :xform   (mapcat #(map (partial input-fn database (:table-id %)) (:rows %)))})))
 
 (mr/def ::table-row-input
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/driver/sql_jdbc/actions.clj:557"}
    [:database {:optional true} driver-api/schema.id.database]
    [:table-id driver-api/schema.id.table]
    [:row driver-api/schema.actions.args.row]])

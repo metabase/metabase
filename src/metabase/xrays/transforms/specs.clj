@@ -72,7 +72,7 @@
 
 (def ^:private Joins
   [:sequential
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/xrays/transforms/specs.clj:75"}
     [:source    Source]
     [:condition MBQL]
     [:strategy {:optional true} JoinStrategy]]])
@@ -81,7 +81,7 @@
 
 (def Step
   "Transform step"
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/xrays/transforms/specs.clj:84"}
    [:source    Source]
    [:name      Source]
    [:transform TransformName]
@@ -117,7 +117,7 @@
 
 (def TransformSpec
   "Transform spec"
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/xrays/transforms/specs.clj:120"}
    [:name     TransformName]
    [:requires Requires]
    [:provides Provides]

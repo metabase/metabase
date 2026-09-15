@@ -165,7 +165,7 @@
         true))]])
 
 (mr/def ::strategy.option
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib/schema/join.cljc:168"}
    [:lib/type [:= :option/join.strategy]]
    [:strategy [:ref ::strategy]]
    [:default {:optional true} :boolean]])

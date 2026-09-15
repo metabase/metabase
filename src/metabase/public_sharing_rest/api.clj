@@ -193,7 +193,7 @@
    & {:keys [qp]
       :or   {qp qp.card/process-query-for-card-default-qp}
       :as   options} :- [:maybe
-                         [:map {:closed true}
+                         [:map {:closed true, :probe/id "src/metabase/public_sharing_rest/api.clj:196"}
                           [:qp             {:optional true} [:maybe ifn?]]
                           [:constraints    {:optional true} [:maybe ::lib.schema.constraints/constraints]]
                           [:context        {:optional true} [:maybe ::lib.schema.info/context]]
@@ -298,7 +298,7 @@
   the general public. Throws a 404 if the Dashboard doesn't exist. With `:enable-embedding? true`, additionally
   requires embedding to be enabled."
   [dashboard-id :- [:maybe ::lib.schema.id/dashboard]
-   & {:as options} :- [:maybe [:map {:closed true} [:enable-embedding? {:optional true} [:maybe :boolean]]]]]
+   & {:as options} :- [:maybe [:map {:closed true, :probe/id "src/metabase/public_sharing_rest/api.clj:301"} [:enable-embedding? {:optional true} [:maybe :boolean]]]]]
   (binding [params/*ignore-current-user-perms-and-return-all-field-values* true
             params/*field-id-context* (atom params/empty-field-id-context)]
     (-> (api/check-404 (public-sharing-rest.db/public-dashboard dashboard-id options))

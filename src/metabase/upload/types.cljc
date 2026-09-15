@@ -212,7 +212,7 @@
 
 (mu/defn- settings->type->check :- type->check-schema
   [{:keys [number-separators] :as _settings}
-   :- [:map {:closed true}
+   :- [:map {:closed true, :probe/id "src/metabase/upload/types.cljc:215"}
        [:number-separators [:enum "." ".," ",." ", " ".’"]]]]
   (let [int-string?   (regex-matcher (int-regex number-separators))
         float-or-int? (regex-matcher (float-or-int-regex number-separators))
@@ -270,7 +270,7 @@
 
 (mu/defn column-types-from-rows :- [:sequential (into [:enum] column-types)]
   "Given the types of the existing columns (if there are any), and rows to be added, infer the best supporting types."
-  [settings       :- [:map {:closed true}
+  [settings       :- [:map {:closed true, :probe/id "src/metabase/upload/types.cljc:273"}
                       [:number-separators [:enum "." ".," ",." ", " ".’"]]]
    existing-types :- [:maybe [:sequential [:maybe (into [:enum] column-types)]]]
    rows           :- [:sequential [:sequential [:maybe :string]]]]

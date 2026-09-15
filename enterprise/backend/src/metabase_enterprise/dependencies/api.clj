@@ -171,7 +171,7 @@
                       ::usages]]
    errors :- [:maybe [:map-of
                       [:tuple ::deps.dependency-types/dependency-types ::deps.dependency-types/entity-id]
-                      [:set [:map {:closed true}
+                      [:set [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/dependencies/api.clj:174"}
                              [:type ::lib.schema.validate/validate-error-type]
                              [:detail {:optional true} [:maybe :string]]]]]]]
   (cond-> {:id id

@@ -70,8 +70,8 @@
 
 (def UnsignedToken
   "The decoded, but not necessarily resource-id-translated, payload of an embedding JWT."
-  [:map {:closed true}
-   [:resource          {:optional true} [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/embedding_rest/api/common.clj:73"}
+   [:resource          {:optional true} [:map {:closed true, :probe/id "src/metabase/embedding_rest/api/common.clj:74"}
                                          [:question  {:optional true} ResourceId]
                                          [:dashboard {:optional true} ResourceId]]]
    [:params            {:optional true} SlugValueMap]
@@ -471,7 +471,7 @@
 (mu/defn dashboard-for-unsigned-token :- ::dashboards.schema/dashboard
   "Return the info needed for embedding about Dashboard specified in `token`."
   [unsigned-token :- UnsignedToken
-   & {:keys [embedding-params enable-embedding?]} :- [:maybe [:map {:closed true}
+   & {:keys [embedding-params enable-embedding?]} :- [:maybe [:map {:closed true, :probe/id "src/metabase/embedding_rest/api/common.clj:474"}
                                                               [:embedding-params {:optional true} [:maybe ms/EmbeddingParams]]
                                                               [:enable-embedding? {:optional true} [:maybe :boolean]]]]]
   (let [dashboard-id (unsigned-token->dashboard-id unsigned-token)

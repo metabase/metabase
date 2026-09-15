@@ -35,7 +35,7 @@
   [:maybe [:map-of ::lib.schema.parameter/id ::lib.schema.parameter/parameter.value]])
 
 (def ^:private ExecuteActionOpts
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/actions/execution.clj:38"}
    [:allow-http-actions? {:optional true} [:maybe :boolean]]
    [:context             {:optional true} [:maybe :keyword]]
    [:dashboard-id        {:optional true} [:maybe ms/PositiveInt]]])

@@ -14,7 +14,7 @@
 (mu/defn normalize-dimension :- ::lib-metric.schema/persisted-dimension
   "Normalize a dimension after JSON parsing. Keys are kebab-case and type values are keywords.
   See [[lib-metric.schema/persisted-dimension]]."
-  [dim :- [:map {:closed true}
+  [dim :- [:map {:closed true, :probe/id "src/metabase/metrics/transforms.clj:17"}
            ;; nil until assigned during reconciliation of a computed dimension; see
            ;; [[metabase.lib-metric.schema/computed-dimension]]
            [:id                    [:maybe ::lib-metric.schema/dimension-id]]
@@ -28,7 +28,7 @@
            [:status                {:optional true} [:maybe [:or :string :keyword]]]
            [:status-message        {:optional true} [:maybe :string]]
            [:sources               {:optional true} [:maybe [:sequential
-                                                             [:map {:closed true}
+                                                             [:map {:closed true, :probe/id "src/metabase/metrics/transforms.clj:31"}
                                                               [:type     [:or :string :keyword]]
                                                               [:field-id {:optional true} [:maybe :int]]
                                                               [:binning  {:optional true} [:maybe :boolean]]]]]]

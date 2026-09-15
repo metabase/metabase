@@ -82,10 +82,10 @@
 (def ^:private Description :string)
 
 (mr/def ::attribute
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/xrays/domain_entities/specs.clj:85"}
    [:field         {:optional true} BrokenFieldNameTypeKeyword]
    [:domain_entity {:optional true} DomainEntityReference]
-   [:has_many      {:optional true} [:map {:closed true}
+   [:has_many      {:optional true} [:map {:closed true, :probe/id "src/metabase/xrays/domain_entities/specs.clj:88"}
                                      [:domain_entity DomainEntityReference]]]])
 
 (mr/def ::attributes
@@ -111,7 +111,7 @@
   [:map-of
    {:decode/domain-entity-spec add-name-from-key}
    Identifier
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/xrays/domain_entities/specs.clj:114"}
     [:aggregation MBQL]
     [:name        Identifier]
     [:breakout    {:optional true} BreakoutDimensions]
@@ -122,14 +122,14 @@
   [:map-of
    {:decode/domain-entity-spec add-name-from-key}
    Identifier
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/xrays/domain_entities/specs.clj:125"}
     [:filter MBQL]
     [:name   Identifier]
     [:description {:optional true} Description]]])
 
 (def DomainEntitySpec
   "Domain entity spec"
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/xrays/domain_entities/specs.clj:132"}
    [:name                DomainEntityReference]
    [:type                DomainEntityType]
    [:required_attributes ::attributes]

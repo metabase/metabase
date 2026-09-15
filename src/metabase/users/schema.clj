@@ -21,7 +21,7 @@
 
 (def NewUser
   "Required/optionals parameters needed to create a new user (for any backend)"
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/users/schema.clj:24"}
    [:first_name       {:optional true} [:maybe ms/NonBlankString]]
    [:last_name        {:optional true} [:maybe ms/NonBlankString]]
    [:email                             ms/Email]
@@ -70,7 +70,7 @@
    [:is_data_analyst :boolean]
    [:common_name     {:optional true} [:maybe :string]]
    [:attributes      {:optional true} [:maybe LoginAttributes]]
-   [:user_group_memberships {:optional true} [:sequential [:map {:closed true} [:name :string] [:entity_id :string]]]]])
+   [:user_group_memberships {:optional true} [:sequential [:map {:closed true, :probe/id "src/metabase/users/schema.clj:73"} [:name :string] [:entity_id :string]]]]])
 
 (mr/def ::user.full
   "A User as selected from the app DB with every column of `:core_user`, not only the default ones, plus `:common_name` added by the model's after-select hook."
@@ -140,7 +140,7 @@
   `metabase.auth-identity.db` selects."
   [:or
    [:ref ::user]
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/users/schema.clj:143"}
     [:id         ::lib.schema.id/user]
     [:is_active  {:optional true} :boolean]
     [:last_login [:maybe ms/TemporalInstant]]

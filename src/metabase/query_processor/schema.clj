@@ -36,7 +36,7 @@
   as it passes through QP middleware, and is eventually merged into the final result's `:data` key. See
   [[metabase.query-processor.postprocess/middleware]] and [[metabase.query-processor.execute/middleware]] for the
   middleware that add to it."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/query_processor/schema.clj:39"}
    [:cols                    {:optional true} [:sequential [:or ::result-metadata.column ::mbql.s/driver-column]]]
    [:native_form             {:optional true} :metabase.query-processor.compile/compiled]
    [:dataset                 {:optional true} :boolean]
@@ -48,7 +48,7 @@
    [:requested_timezone      {:optional true} [:maybe :string]]
    [:cache-version           {:optional true} :int]
    [:last-ran                {:optional true} (lib.schema.common/instance-of-class java.time.temporal.Temporal)]
-   [:pivot-export-options    {:optional true} [:map {:closed true}
+   [:pivot-export-options    {:optional true} [:map {:closed true, :probe/id "src/metabase/query_processor/schema.clj:51"}
                                                [:pivot-rows         {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
                                                [:pivot-cols         {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
                                                [:pivot-measures     {:optional true} [:maybe [:sequential [:int {:min 0}]]]]

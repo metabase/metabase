@@ -392,7 +392,7 @@
   hydrated with any of the computed keys this namespace or [[metabase.collections.children]] adds, or a
   null-padded row from the collection-items union query. Every key is optional because different call sites
   select or hydrate different subsets."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/collections/models/collection.clj:395"}
    [:id                    {:optional true} ms/PositiveInt]
    [:name                  {:optional true} :string]
    [:description           {:optional true} [:maybe :string]]
@@ -417,7 +417,7 @@
    [:can_delete            {:optional true} :boolean]
    [:effective_location    {:optional true} :string]
    [:effective_children    {:optional true}
-    [:maybe [:set [:map {:closed true}
+    [:maybe [:set [:map {:closed true, :probe/id "src/metabase/collections/models/collection.clj:420"}
                    [:id          ms/PositiveInt]
                    [:name        :string]
                    [:description [:maybe :string]]
@@ -447,7 +447,7 @@
    [:below                 {:optional true} [:set :keyword]]
    [:is_library_root       {:optional true} :boolean]
    [:effective_ancestors   {:optional true}
-    [:sequential [:or RootCollection [:map {:closed true}
+    [:sequential [:or RootCollection [:map {:closed true, :probe/id "src/metabase/collections/models/collection.clj:450"}
                                       [:id                {:optional true} [:maybe ms/PositiveInt]]
                                       [:name               {:optional true} [:maybe :string]]
                                       [:personal_owner_id  {:optional true} [:maybe ms/PositiveInt]]
@@ -835,7 +835,7 @@
 ;; breadcrumbing in the frontend.
 
 (def ^:private CollectionVisibilityConfig
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/collections/models/collection.clj:838"}
    [:cte-name {:optional true} [:maybe :keyword]]
    [:include-trash-collection? {:optional true} :boolean]
    [:include-archived-items {:optional true} [:enum :only :exclude :all]]
@@ -844,7 +844,7 @@
    [:effective-child-of {:optional true} [:maybe CollectionWithLocationAndIDOrRoot]]])
 
 (def ^:private UserScope
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/collections/models/collection.clj:847"}
    [:current-user-id pos-int?]
    [:is-superuser?   :boolean]])
 
@@ -1710,7 +1710,7 @@
   [collection :- CollectionWithLocationAndIDOrRoot
    ;; `updates` is a map *possibly* containing `parent_id`. This allows us to distinguish
    ;; between specifying a `nil` parent_id (move to the root) and not specifying a parent_id.
-   updates :- [:map {:closed true}
+   updates :- [:map {:closed true, :probe/id "src/metabase/collections/models/collection.clj:1713"}
                [:parent_id {:optional true} [:maybe ms/PositiveInt]]
                [:archived  {:optional true} :boolean]]]
   (assert (:archive_operation_id collection))
@@ -1767,7 +1767,7 @@
   [collection :- CollectionWithLocationAndIDOrRoot
    ;; `updates` is a map *possibly* containing `parent_id`. This allows us to distinguish
    ;; between specifying a `nil` parent_id (move to the root) and not specifying a parent_id.
-   updates :- [:map {:closed true}
+   updates :- [:map {:closed true, :probe/id "src/metabase/collections/models/collection.clj:1770"}
                [:parent_id {:optional true} [:maybe ms/PositiveInt]]
                [:archived  {:optional true} :boolean]]]
   (if (:archived updates)

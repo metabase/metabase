@@ -23,7 +23,7 @@
   "A row of the search index table: `search.spec/attr-columns` (with `:id`/`:created_at`/`:updated_at` renamed the
   way `metabase.search.appdb.index/document->entry` renames them), the base columns, and the extra columns the
   active engine specialization adds, each value a Honey SQL 2 expression."
-  (into [:map {:closed true}]
+  (into [:map {:closed true, :probe/id "src/metabase/search/db.clj:26"}]
         (for [column (into #{:model :display_data :legacy_input :model_id :model_created_at :model_updated_at
                              :updated_at :search_vector :with_native_query_vector :search_terms
                              :native_search_terms}

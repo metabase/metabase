@@ -50,7 +50,7 @@ saved later when it is ready."
 
 (def ^:private ModelResultMetadataOptions
   "Options accepted by [[maybe-async-model-result-metadata]]."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/queries/models/card/metadata.clj:53"}
    [:original-query    {:optional true} [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]
    [:query             {:optional true} [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]
    [:metadata          {:optional true} analyze/ResultsMetadata]
@@ -113,7 +113,7 @@ saved later when it is ready."
   This is also complicated because everything is optional, so we cannot assume the client will provide metadata and
   might need to save a metadata edit, or might need to use db-saved metadata on a modified dataset."
   [{:keys [original-query query metadata original-metadata model?], :as options}
-   :- [:map {:closed true}
+   :- [:map {:closed true, :probe/id "src/metabase/queries/models/card/metadata.clj:116"}
        [:original-query    {:optional true} [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]
        [:query             {:optional true} [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]
        [:metadata          {:optional true} analyze/ResultsMetadata]
@@ -163,7 +163,7 @@ saved later when it is ready."
   "Save metadata when (and if) it is ready. Takes a chan that will eventually return metadata. Waits up
   to [[metadata-async-timeout-ms]] for the metadata, and then saves it if the query of the card has not changed."
   [result-metadata-future :- ::future
-   card                   :- [:map {:closed true}
+   card                   :- [:map {:closed true, :probe/id "src/metabase/queries/models/card/metadata.clj:166"}
                               [:id            ::lib.schema.id/card]
                               [:dataset_query ::lib-be.schema/maybe-legacy-or-empty-query]]]
   (let [id (u/the-id card)]

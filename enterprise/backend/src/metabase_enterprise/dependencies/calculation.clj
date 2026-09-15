@@ -74,8 +74,8 @@
   {:table (into #{} (keep :table-id) dimension-mappings)})
 
 (mu/defn- upstream-deps:python-transform :- ::deps.schema/upstream-deps
-  [{{tables :source-tables} :source} :- [:map {:closed true}
-                                         [:source [:map {:closed true}
+  [{{tables :source-tables} :source} :- [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/dependencies/calculation.clj:77"}
+                                         [:source [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/dependencies/calculation.clj:78"}
                                                    [:source-tables {:optional true}
                                                     [:sequential :metabase.transforms-base.util/source-table-entry]]]]]]
   {:table (into #{} (keep :table_id) tables)})

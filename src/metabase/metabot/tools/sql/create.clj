@@ -58,7 +58,7 @@
   - :query-id - The ID of the created query
   - :query-content - The SQL content
   - :database - Database ID"
-  [{:keys [database-id sql]} :- [:map {:closed true}
+  [{:keys [database-id sql]} :- [:map {:closed true, :probe/id "src/metabase/metabot/tools/sql/create.clj:61"}
                                  [:database-id :int]
                                  [:sql :string]
                                  [:name {:optional true} [:maybe :string]]]]

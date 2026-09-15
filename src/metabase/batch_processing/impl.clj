@@ -30,7 +30,7 @@
   [:or (ms/InstanceOfClass clojure.lang.Var) fn?])
 
 (mr/def ::grouper-wrapper
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/batch_processing/impl.clj:33"}
    [:f       ::fn-or-var]
    [:grouper (ms/InstanceOfClass Grouper)]])
 
@@ -43,12 +43,12 @@
   [:fn (fn [q] (and (map? q) (or (contains? q :type) (contains? q :lib/type))))])
 
 (def ^:private sdk-tracked-row
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/batch_processing/impl.clj:46"}
    [:user_id                     {:optional true} [:maybe :int]]
    [:model                       {:optional true} [:maybe [:or :keyword :string]]]
    [:model_id                    {:optional true} [:maybe :int]]
    [:timestamp                   {:optional true} [:maybe [:or (ms/InstanceOfClass java.time.temporal.Temporal) :keyword]]]
-   [:metadata                    {:optional true} [:maybe [:map {:closed true}]]]
+   [:metadata                    {:optional true} [:maybe [:map {:closed true, :probe/id "src/metabase/batch_processing/impl.clj:51"}]]]
    [:has_access                  {:optional true} [:maybe :boolean]]
    [:hash                        {:optional true} [:maybe [:or bytes? :string]]]
    [:started_at                  {:optional true} [:maybe (ms/InstanceOfClass java.time.temporal.Temporal)]]
@@ -71,7 +71,7 @@
    [:parameterized               {:optional true} [:maybe :boolean]]
    [:transform_id                {:optional true} [:maybe :int]]
    [:lens_id                     {:optional true} [:maybe :string]]
-   [:lens_params                 {:optional true} [:maybe [:map {:closed true} [:join_step {:optional true} [:maybe :int]]]]]
+   [:lens_params                 {:optional true} [:maybe [:map {:closed true, :probe/id "src/metabase/batch_processing/impl.clj:74"} [:join_step {:optional true} [:maybe :int]]]]]
    [:auth_method                 {:optional true} [:maybe [:or :keyword :string]]]
    [:tenant_id                   {:optional true} [:maybe :int]]
    [:is_impersonated             {:optional true} [:maybe :boolean]]
@@ -89,7 +89,7 @@
    [:json_query                  {:optional true} [:maybe query-like]]])
 
 (def ^:private id+timestamp
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/batch_processing/impl.clj:92"}
    [:id        {:optional true} [:maybe :int]]
    [:timestamp {:optional true} [:maybe (ms/InstanceOfClass java.time.temporal.Temporal)]]])
 
@@ -103,16 +103,16 @@
              :description "an opaque payload forwarded to the batch's processing fn, not read by submit! itself"}
     :any]
    [:enum :ok :not-found :invalid-format]
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/batch_processing/impl.clj:106"}
     [:model [:enum :model/Card :model/Dashboard :model/Table :model/Document]]
     [:id :int]]
    sdk-tracked-row
    id+timestamp
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/batch_processing/impl.clj:111"}
     [:user-id      ms/PositiveInt]
     [:dashboard-id ms/PositiveInt]
     [:parameters   [:sequential :metabase.parameters.schema/parameter-with-value]]]
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/batch_processing/impl.clj:115"}
     [:user-id   ms/PositiveInt]
     [:model     [:enum :model/Card :model/Table :model/Dashboard :model/Collection :model/Document]]
     [:model-id  ms/PositiveInt]

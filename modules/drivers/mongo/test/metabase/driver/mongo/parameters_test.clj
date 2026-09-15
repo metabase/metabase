@@ -38,7 +38,7 @@
   [:or ms/FieldValue [:sequential ms/FieldValue]])
 
 (def ^:private FieldFilterOptions
-  [:maybe [:map {:closed true} [:case-sensitive {:optional true} :boolean]]])
+  [:maybe [:map {:closed true, :probe/id "modules/drivers/mongo/test/metabase/driver/mongo/parameters_test.clj:41"} [:case-sensitive {:optional true} :boolean]]])
 
 (mu/defn- field-filter :- :metabase.lib.parameters.parse.types/field-filter
   ([field-name :- :string

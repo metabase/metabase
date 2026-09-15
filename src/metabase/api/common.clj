@@ -501,14 +501,14 @@
 
 (def ^:private ModelWithPosition
   "Intended to cover Cards/Dashboards/Pulses, it only asserts collection id and position, allowing extra keys"
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/api/common.clj:504"}
    [:collection_id       [:maybe ms/PositiveInt]]
    [:collection_position [:maybe ms/PositiveInt]]])
 
 (def ^:private ModelWithOptionalPosition
   "Intended to cover Cards/Dashboards/Pulses updates. Collection id and position are optional, if they are not
   present, they didn't change. If they are present, they might have changed and we need to compare."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/api/common.clj:511"}
    [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
    [:collection_position {:optional true} [:maybe ms/PositiveInt]]])
 
@@ -611,7 +611,7 @@
   of maps. `:id` is the only required key for these maps, and order *does not matter* - `present-items` is responsible
   for reordering items the way they were."
   [f :- ifn?
-   items :- [:sequential [:map {:closed true}
+   items :- [:sequential [:map {:closed true, :probe/id "src/metabase/api/common.clj:614"}
                           [:id ms/PositiveInt]
                           [:model :keyword]]]]
   (let [id+model->order (into {} (map-indexed (fn [i row] [[(:id row) (:model row)] i]) items))]

@@ -35,7 +35,7 @@
    [:made_public_by_id   [:maybe ms/PositiveInt]]
    [:public_uuid_prefix  [:maybe :string]]
    [:exploration_id      [:maybe ms/PositiveInt]]
-   [:creator             {:optional true} [:maybe [:map {:closed true}
+   [:creator             {:optional true} [:maybe [:map {:closed true, :probe/id "src/metabase/documents/schema.clj:38"}
                                                    [:id         {:optional true} ::lib.schema.id/user]
                                                    [:email      {:optional true} :string]
                                                    [:first_name {:optional true} [:maybe :string]]

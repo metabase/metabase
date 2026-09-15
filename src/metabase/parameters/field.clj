@@ -80,7 +80,7 @@
   [{has-field-values-type :has_field_values, field-id :id, has_more_values :has_more_values, :as field}
    :- [:merge
        ::warehouse-schema.schema/field
-       [:map {:closed true}
+       [:map {:closed true, :probe/id "src/metabase/parameters/field.clj:83"}
         [:has_more_values {:optional true} [:maybe :boolean]]]]]
   ;; TODO: explain why using remapped fields is restricted to `has_field_values=list`
   (if-let [remapped-field-id (when (= has-field-values-type :list)

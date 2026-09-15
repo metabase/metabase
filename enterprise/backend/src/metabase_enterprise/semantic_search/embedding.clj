@@ -476,7 +476,7 @@
   [{:keys [provider endpoint api-key model-name vector-dimensions texts record-tokens? extra-body snowplow?
            network-policy-floor instance-token?]
     :as opts}
-   :- [:map {:closed true}
+   :- [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/semantic_search/embedding.clj:479"}
        [:provider       :string]
        [:endpoint       :string]
        [:api-key        {:optional true} [:maybe :string]]
@@ -485,7 +485,7 @@
        [:texts          [:sequential :string]]
        [:record-tokens? :boolean]
        [:snowplow?      {:optional true} [:maybe :boolean]]
-       [:extra-body     {:optional true} [:maybe [:map {:closed true}
+       [:extra-body     {:optional true} [:maybe [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/semantic_search/embedding.clj:488"}
                                                   [:dimensions {:optional true} pos-int?]]]]
        [:network-policy-floor {:optional true} [:maybe [:enum :external-only :allow-private :allow-all]]]
        [:instance-token?      {:optional true} [:maybe :boolean]]

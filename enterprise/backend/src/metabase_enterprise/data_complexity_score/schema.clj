@@ -7,47 +7,47 @@
 (mr/def ::data-complexity-score.leaf
   "A `component-score` leaf: a computed `:measurement`/`:score` pair, or an `:error` when computing it failed."
   [:or
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/data_complexity_score/schema.clj:10"}
     [:measurement :double]
     [:score number?]]
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/data_complexity_score/schema.clj:13"}
     [:error :string]]])
 
 (mr/def ::data-complexity-score.catalog
   "One catalog's `score-catalog` result: a `:size`/`:ambiguity` rollup of `::data-complexity-score.leaf`s."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/data_complexity_score/schema.clj:18"}
    [:score [:maybe number?]]
    [:components
-    [:map {:closed true}
-     [:size [:map {:closed true}
+    [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/data_complexity_score/schema.clj:21"}
+     [:size [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/data_complexity_score/schema.clj:22"}
              [:score [:maybe number?]]
-             [:components [:map {:closed true}
+             [:components [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/data_complexity_score/schema.clj:24"}
                            [:entity-count ::data-complexity-score.leaf]
                            [:field-count ::data-complexity-score.leaf]]]]]
-     [:ambiguity [:map {:closed true}
+     [:ambiguity [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/data_complexity_score/schema.clj:27"}
                   [:score [:maybe number?]]
-                  [:components [:map {:closed true}
+                  [:components [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/data_complexity_score/schema.clj:29"}
                                 [:name-collisions ::data-complexity-score.leaf]
                                 [:synonym-pairs ::data-complexity-score.leaf]
                                 [:repeated-measures ::data-complexity-score.leaf]]]]]]]])
 
 (mr/def ::data-complexity-score.score-data
   "The `:score_data` column of a DataComplexityScore, decoded."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/data_complexity_score/schema.clj:36"}
    [:library ::data-complexity-score.catalog]
    [:universe ::data-complexity-score.catalog]
    [:metabot ::data-complexity-score.catalog]
-   [:meta [:map {:closed true}
+   [:meta [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/data_complexity_score/schema.clj:40"}
            [:formula-version :int]
            [:format-version :int]
            [:synonym-threshold number?]
-           [:weights [:map {:closed true}
+           [:weights [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/data_complexity_score/schema.clj:44"}
                       [:entity :int]
                       [:name-collision :int]
                       [:synonym-pair :int]
                       [:field :int]
                       [:repeated-measure :int]]]
-           [:embedding-model {:optional true} [:maybe [:map {:closed true}
+           [:embedding-model {:optional true} [:maybe [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/data_complexity_score/schema.clj:50"}
                                                        [:provider [:maybe :string]]
                                                        [:model-name [:maybe :string]]
                                                        [:model-dimensions [:maybe :int]]]]]

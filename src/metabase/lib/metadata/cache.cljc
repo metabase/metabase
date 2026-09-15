@@ -27,7 +27,7 @@
   [:maybe
    [:merge
     [:ref :metabase.lib.metadata.calculation/visible-columns.options]
-    [:map {:closed true}
+    [:map {:closed true, :probe/id "src/metabase/lib/metadata/cache.cljc:30"}
      [:metabase.lib.metadata.calculation/display-name-style              {:optional true} :metabase.lib.metadata.calculation/display-name-style]
      [:metabase.lib.metadata.calculation/propagate-binning-and-bucketing {:optional true} :boolean]
      [:metabase.lib.metadata.calculation/ref-style                       {:optional true} :keyword]]]])
@@ -37,7 +37,7 @@
   metadata provider, as produced by `prepare-map` in [[cache-key-for-other]] and [[cache-key-for-table-or-card]]."
   []
   (let [query-map-schema (first (mc/children (mr/resolve-schema ::lib.schema/query)))]
-    (mut/merge query-map-schema [:map {:closed true} [:lib/metadata {:optional true} [:maybe :int]]])))
+    (mut/merge query-map-schema [:map {:closed true, :probe/id "src/metabase/lib/metadata/cache.cljc:40"} [:lib/metadata {:optional true} [:maybe :int]]])))
 
 (mr/def ::query-with-hashed-metadata (query-with-hashed-metadata-schema))
 

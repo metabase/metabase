@@ -35,7 +35,7 @@
 (mr/def ::column-group
   "Schema for the metadata returned by [[group-columns]], and accepted by [[columns-group-columns]]."
   [:and
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/lib/column_group.cljc:38"}
     [:lib/type      [:= :metadata/column-group]]
     [::group-type   GroupType]
     [::columns      [:sequential [:ref ::lib.schema.metadata/column]]]

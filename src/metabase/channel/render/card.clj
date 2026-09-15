@@ -301,7 +301,7 @@
 
 (mr/def ::part
   "The `{:card :dashcard :result}` shape a Pulse/Dashboard Subscription section carries."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/channel/render/card.clj:304"}
    [:card     {:optional true} [:maybe ::body/card]]
    [:dashcard {:optional true} [:maybe ::body/dashcard]]
    [:result   {:optional true} [:maybe ::body/QPResult]]])

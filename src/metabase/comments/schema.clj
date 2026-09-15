@@ -44,16 +44,16 @@
   "The chart point a comment is anchored to. Identity only — which column, and which dimension values
   pick out the point — so the client can re-find it in a result set it is separately authorized to
   read."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/comments/schema.clj:47"}
    [:columnName {:optional true} [:maybe :string]]
    [:dimensions {:optional true}
-    [:maybe [:sequential [:map {:closed true}
+    [:maybe [:sequential [:map {:closed true, :probe/id "src/metabase/comments/schema.clj:50"}
                           [:columnName {:optional true} [:maybe :string]]
                           [:value      {:optional true} [:ref ::lib.schema.literal/literal]]]]]]])
 
 (mr/def ::comment.context
   "The `:context` column of a Comment, decoded."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/comments/schema.clj:56"}
    [:timeline_id           {:optional true} [:maybe ms/PositiveInt]]
    [:exploration_query_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]
    [:highlighted           {:optional true} [:maybe ::comment.highlight]]

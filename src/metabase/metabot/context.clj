@@ -619,7 +619,7 @@
   ([context :- ::context]
    (create-context context nil))
   ([context :- ::context
-    opts    :- [:maybe [:map {:closed true}
+    opts    :- [:maybe [:map {:closed true, :probe/id "src/metabase/metabot/context.clj:622"}
                         [:metabot-id  {:optional true} [:maybe :string]]
                         [:profile-id  {:optional true} [:maybe :keyword]]
                         [:date-format {:optional true} [:maybe (ms/InstanceOfClass DateTimeFormatter)]]]]]

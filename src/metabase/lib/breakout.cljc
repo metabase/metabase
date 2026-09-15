@@ -108,7 +108,7 @@
     column                                        :- ::lib.schema.metadata/column
     {:keys [same-binning-strategy?
             same-temporal-bucket?], :as _options} :- [:maybe
-                                                      [:map {:closed true}
+                                                      [:map {:closed true, :probe/id "src/metabase/lib/breakout.cljc:111"}
                                                        [:same-binning-strategy? {:optional true, :default false} [:maybe :boolean]]
                                                        [:same-temporal-bucket? {:optional true, :default false} [:maybe :boolean]]]]]
    (not-empty

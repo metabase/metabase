@@ -123,7 +123,7 @@
 
 (mr/def ::root-collection
   "The placeholder for the Root Collection, which has no row, as `metabase.collections.models.collection.root` builds it."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/collections/schema.clj:126"}
    [:metabase.collections.models.collection.root/is-root? [:= true]]
    [:authority_level  [:maybe [:or :keyword :string]]]
    [:id               {:optional true} [:= "root"]]

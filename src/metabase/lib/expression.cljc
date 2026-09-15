@@ -300,7 +300,7 @@
       (some #(-> % :name u/lower-case-en (= expr-name)) cols)))
 
 (mr/def ::add-expression-options
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib/expression.cljc:303"}
    ;; default: true
    [:add-to-fields? {:optional true} [:maybe :boolean]]])
 

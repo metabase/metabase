@@ -40,7 +40,7 @@
     {::expr  [:or :keyword :string number? :boolean nil?
               [:sequential [:ref ::expr]]
               [:ref ::query]]
-     ::query [:map {:closed true}
+     ::query [:map {:closed true, :probe/id "src/metabase/search/in_place/filter.clj:43"}
               [:select    {:optional true} [:sequential [:ref ::expr]]]
               [:from      {:optional true} [:sequential [:ref ::expr]]]
               [:where     {:optional true} [:ref ::expr]]

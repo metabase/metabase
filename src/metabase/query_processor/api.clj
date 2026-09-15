@@ -62,7 +62,7 @@
    & {:keys [context export-format was-pivot]
       :or   {context       :ad-hoc
              export-format :api}}
-   :- [:maybe [:map {:closed true}
+   :- [:maybe [:map {:closed true, :probe/id "src/metabase/query_processor/api.clj:65"}
                [:context       {:optional true} ::lib.schema.info/context]
                [:export-format {:optional true} ::qp.schema/export-format]
                [:was-pivot     {:optional true} [:maybe :boolean]]]]]

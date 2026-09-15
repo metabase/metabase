@@ -162,7 +162,7 @@
 
 (def ^:private Insight
   "One entry of the `:insights` computed by `metabase.analyze.fingerprint.insights/insights`."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/channel/render/body.clj:165"}
    [:last-value     {:optional true} [:maybe number?]]
    [:previous-value {:optional true} [:maybe number?]]
    [:last-change    {:optional true} [:maybe number?]]
@@ -174,11 +174,11 @@
 
 (mr/def ::QPResultData
   "The `:data` of a QP result, as the render pipeline reads it."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/channel/render/body.clj:177"}
    [:cols             {:optional true} [:maybe [:sequential ::render-column]]]
    [:rows             {:optional true} [:maybe [:sequential [:sequential ms/FieldValue]]]]
    [:viz-settings     {:optional true} [:maybe ms/VisualizationSettings]]
-   [:results_metadata {:optional true} [:maybe [:map {:closed true}
+   [:results_metadata {:optional true} [:maybe [:map {:closed true, :probe/id "src/metabase/channel/render/body.clj:181"}
                                                 [:columns [:sequential ::render-column]]]]]
    [:results_timezone {:optional true} [:maybe :string]]
    [:format-rows?     {:optional true} [:maybe :boolean]]
@@ -186,7 +186,7 @@
    [:insights         {:optional true} [:maybe [:sequential Insight]]]
    [:rows_truncated   {:optional true} [:maybe :int]]
    [:csv-include-bom? {:optional true} [:maybe :boolean]]
-   [:pivot-export-options {:optional true} [:maybe [:map {:closed true}
+   [:pivot-export-options {:optional true} [:maybe [:map {:closed true, :probe/id "src/metabase/channel/render/body.clj:189"}
                                                     [:pivot-rows         {:optional true} [:maybe [:sequential :int]]]
                                                     [:pivot-cols         {:optional true} [:maybe [:sequential :int]]]
                                                     [:pivot-measures     {:optional true} [:maybe [:sequential :int]]]
@@ -195,7 +195,7 @@
 
 (mr/def ::QPResult
   "A QP result map (`{:data ..., :error ...}`), as the render pipeline receives it."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/channel/render/body.clj:198"}
    [:data                    {:optional true} [:maybe ::QPResultData]]
    [:error                   {:optional true} [:maybe :string]]
    [:row_count               {:optional true} [:maybe :int]]
@@ -257,7 +257,7 @@
 
 (mr/def ::adhoc-card
   "Schema for an ad-hoc (unsaved) card."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/channel/render/body.clj:260"}
    [:display :keyword]
    [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
    [:name {:optional true} [:maybe :string]]])
@@ -278,7 +278,7 @@
    [:card_id                {:optional true} [:maybe ::lib.schema.id/card]]
    [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
    [:series-results         {:optional true} [:maybe [:sequential
-                                                      [:map {:closed true}
+                                                      [:map {:closed true, :probe/id "src/metabase/channel/render/body.clj:281"}
                                                        [:card   {:optional true} [:maybe [:ref :metabase.queries.schema/card]]]
                                                        [:result {:optional true} [:maybe ::QPResult]]]]]]])
 
@@ -289,7 +289,7 @@
 ;;; we can keep this as an internal namespace you don't need to know about outside of the module.
 (mr/def ::options
   "Options for Pulse (i.e. Alert/Dashboard Subscription) rendering."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/channel/render/body.clj:292"}
    [:channel.render/include-buttons?           {:description "default: false", :optional true} :boolean]
    [:channel.render/include-title?             {:description "default: false", :optional true} :boolean]
    [:channel.render/include-description?       {:description "default: false", :optional true} :boolean]
@@ -301,7 +301,7 @@
 
 (mr/def ::RenderedPartCard
   "Schema used for functions that operate on pulse card contents and their attachments"
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/channel/render/body.clj:304"}
    [:attachments {:optional true} [:maybe [:map-of :string (ms/InstanceOfClass URL)]]]
    [:content                      ::hiccup]
    [:render/text {:optional true} [:maybe :string]]])

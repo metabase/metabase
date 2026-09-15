@@ -64,7 +64,7 @@
   1000)
 
 (mr/def ::values-from-card-query.options
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/parameters/custom_values.clj:67"}
    ;; a string to search text columns by substring, or any other Field value to match a non-text column exactly
    ;; (e.g. searching a numeric aggregation column)
    [:query-string {:optional true} [:maybe ms/FieldValue]]
@@ -201,7 +201,7 @@
   - :values_source_type = nil."
   [parameter          :- ::parameters.schema/resolved-parameter
    query-string       :- [:maybe ms/NonBlankString]
-   default-case-thunk :- [:=> [:cat :any] [:map {:closed true}
+   default-case-thunk :- [:=> [:cat :any] [:map {:closed true, :probe/id "src/metabase/parameters/custom_values.clj:204"}
                                            [:has_more_values :boolean]
                                            [:values ms/FieldValuesList]]]]
   (case (:values_source_type parameter)

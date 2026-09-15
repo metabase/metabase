@@ -45,7 +45,7 @@
 
 (mr/def ::binning-option
   "Schema for a binning option as presented to the UI."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib_metric/schema.cljc:48"}
    [:lib/type [:= :option/binning]]
    [:display-name :string]
    [:mbql [:maybe ::binning]]
@@ -344,7 +344,7 @@
 
    Metadata is loaded lazily from the provider in the AST builder,
    not stored in the definition."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib_metric/schema.cljc:347"}
    [:lib/type          [:= :metric/definition]]
    [:expression        ::metric-math-expression]
    [:filters           ::instance-filters]
@@ -363,7 +363,7 @@
   "Schema for dimension metadata fetchable via metadata provider.
    Dimensions are extracted from metrics/measures at fetch time, with source
    tracking to identify their parent entity."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib_metric/schema.cljc:366"}
    [:lib/type         [:= :metadata/dimension]]
    [:id               ::dimension-id]  ; UUID string
    [:name             {:optional true} [:maybe :string]]
@@ -400,7 +400,7 @@
 (mr/def ::computed-dimension
   "A dimension computed from a visible column, before reconciliation.
    The :id is nil until assigned during reconciliation."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib_metric/schema.cljc:403"}
    [:id [:maybe ::dimension-id]]
    [:name :string]
    [:display-name {:optional true} [:maybe :string]]
@@ -412,9 +412,9 @@
 
 (mr/def ::computed-pair
   "A computed dimension paired with its mapping (before ID assignment)."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib_metric/schema.cljc:415"}
    [:dimension ::computed-dimension]
-   [:mapping [:map {:closed true}
+   [:mapping [:map {:closed true, :probe/id "src/metabase/lib_metric/schema.cljc:417"}
               [:type ::dimension-mapping.type]
               [:table-id {:optional true} [:maybe ::lib.schema.id/table]]
               [:target ::dimension-mapping.target]]]])

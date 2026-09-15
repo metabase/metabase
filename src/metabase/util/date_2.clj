@@ -389,7 +389,7 @@
      :or   {start      :inclusive
             end        :exclusive
             resolution :millisecond}}
-    :- [:maybe [:map {:closed true}
+    :- [:maybe [:map {:closed true, :probe/id "src/metabase/util/date_2.clj:392"}
                 [:start      {:optional true} [:enum :inclusive :exclusive]]
                 [:end        {:optional true} [:enum :inclusive :exclusive]]
                 [:resolution {:optional true} (into [:enum] add-units)]]]]

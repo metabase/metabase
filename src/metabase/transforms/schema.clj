@@ -100,8 +100,8 @@
 (mr/def ::transform.table-dependency
   "One entry of the `:table_dependencies` column of a Transform, decoded."
   [:or
-   [:map {:closed true} [:table ::lib.schema.id/table]]
-   [:map {:closed true} [:transform ::lib.schema.id/transform]]])
+   [:map {:closed true, :probe/id "src/metabase/transforms/schema.clj:103"} [:table ::lib.schema.id/table]]
+   [:map {:closed true, :probe/id "src/metabase/transforms/schema.clj:104"} [:transform ::lib.schema.id/transform]]])
 
 (def ^:private user-summary-schema
   "A User as `:creator`/`:owner` may be hydrated onto a Transform: either the id/email/name summary

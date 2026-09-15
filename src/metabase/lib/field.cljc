@@ -803,7 +803,7 @@
   Note that this value is not necessarily the same as the value of `has_field_values` in the application database.
   `has_field_values` may be unset, in which case we will try to infer it. `:auto-list` is not currently understood by
   the FE filter stuff, so we will instead return `:list`; the distinction is not important to it anyway."
-  [{:keys [has-field-values], :as field} :- [:map {:closed true}
+  [{:keys [has-field-values], :as field} :- [:map {:closed true, :probe/id "src/metabase/lib/field.cljc:806"}
                                              ;; this doesn't use `::lib.schema.metadata/column` because it's stricter
                                              ;; than we need and the REST API calls this function with optimized Field
                                              ;; maps that don't include some keys like `:name`
