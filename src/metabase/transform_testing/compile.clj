@@ -74,18 +74,18 @@
     (conj {:table table-name})))
 
 (mu/defn table-replacements :- ::table-replacements
-  "The replacements of the tables of `inputs` and the target table of `transform` with the temp tables
-  `input-temp-tables` and `output-temp-table`."
+  "The replacements mapping the input tables (and the transform's target table) to their temp tables.
+  `input->temp` maps each input to the temp table built for it — the association the runner owns; the
+  target table maps to `output-temp-table`."
   [driver            :- :keyword
    transform         :- ::transforms-base.schema/transform
-   inputs            :- ::transform-testing.schema/inputs
-   input-temp-tables :- [:sequential ::lib.schema.common/non-blank-string]
+   input->temp       :- [:map-of ::transform-testing.schema/input ::lib.schema.common/non-blank-string]
    output-temp-table :- ::lib.schema.common/non-blank-string]
   (let [{target-schema :schema target-name :name} (:target transform)]
     (into {}
-          (for [[{:keys [schema name]} temp-table] (conj (mapv vector (map :table inputs) input-temp-tables)
+          (for [[{:keys [schema name]} temp-table] (conj (mapv (fn [[input temp]] [(:table input) temp]) input->temp)
                                                          [{:schema target-schema :name target-name} output-temp-table])
-                table-key                         (table-keys driver schema name)]
+                table-key                          (table-keys driver schema name)]
             [table-key {:db nil :schema nil :table temp-table}]))))
 
 (mu/defn replace-tables :- :string
@@ -123,6 +123,28 @@
      :referenced-tables (into #{}
                               (map (fn [{:keys [schema table]}] {:schema schema :name table}))
                               (sql-tools/referenced-tables-raw driver query {:fail-on-parse-error? true}))}))
+
+(mu/defn referenced-tables :- [:set ::table]
+  "The tables referenced by an arbitrary compiled `sql` string, as `{:schema :name}` maps. Used by
+  Guard B to re-parse the rewritten query and confirm every reference is a temp table (see
+  [[metabase.transform-testing.validator/surviving-tables]]). Same parse as [[compile-source]]."
+  [driver :- :keyword
+   sql    :- :string]
+  (into #{}
+        (map (fn [{:keys [schema table]}] {:schema schema :name table}))
+        (sql-tools/referenced-tables-raw driver sql {:fail-on-parse-error? true})))
+
+(mu/defn dangling-qualifiers :- [:set :string]
+  "The table names used to qualify a column in `sql` that are not a FROM-clause alias — the parser's
+  `:missing-table-alias` field errors. After the rewrite these are references to a real table whose
+  FROM entry was remapped to a temp table (e.g. `people.id` left behind when `FROM people` became a
+  temp table). Guard B ([[metabase.transform-testing.validator/surviving-references]]) rejects them."
+  [driver :- :keyword
+   sql    :- :string]
+  (into #{}
+        (comp (filter (comp #{:missing-table-alias} :type))
+              (map :name))
+        (:errors (sql-tools/field-references driver sql))))
 
 (mu/defn compile-transform :- ::compiled-query
   "The query transform's `compiled-source` rewritten to read from the temp tables of `replacements`

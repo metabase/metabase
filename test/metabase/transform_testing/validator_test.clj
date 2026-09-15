@@ -54,6 +54,25 @@
     (is (= [] (validator/unused-inputs
                :h2 [(sql-input "PUBLIC" "PEOPLE")] #{{:schema nil :name "PEOPLE"}})))))
 
+(deftest surviving-references-test
+  (testing "Guard B: empty when every rewritten reference is a temp table and nothing dangles"
+    (is (= [] (validator/surviving-references
+               #{{:schema nil :name "MB_T1"} {:schema nil :name "MB_T2"}}
+               #{"MB_T1" "MB_T2"} #{}))))
+  (testing "a real table the rewrite missed is reported, labelled schema.name"
+    (is (= ["github_mart.stg_x"]
+           (validator/surviving-references
+            #{{:schema nil :name "MB_T1"} {:schema "github_mart" :name "stg_x"}}
+            #{"MB_T1"} #{}))))
+  (testing "a dangling column-qualifier (missing-table-alias) is reported"
+    (is (= ["people"]
+           (validator/surviving-references #{{:schema nil :name "MB_T1"}} #{"MB_T1"} #{"people"}))))
+  (testing "both survivor kinds combine, deduped and sorted"
+    (is (= ["a_table" "people"]
+           (validator/surviving-references
+            #{{:schema nil :name "MB_T1"} {:schema nil :name "a_table"}}
+            #{"MB_T1"} #{"people" "a_table"})))))
+
 (deftest table-label-test
   (testing "table-label renders schema.name, or bare name when schema unknown — never a raw map"
     (is (= "PEOPLE" (validator/table-label {:schema nil :name "PEOPLE"})))

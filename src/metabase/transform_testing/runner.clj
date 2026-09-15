@@ -72,23 +72,42 @@
                                  (tru "Test input(s) declared for table(s) the transform does not read: {0}. Remove them."
                                       (str/join ", " (map transform-testing.validator/table-label unused))))
         ;; --- compile (pure): temp names + queries over them ---
-        input-tables (mapv (fn [_] (driver/temp-table-name driver)) inputs)
+        ;; The association that matters: each input → the temp table built for it. Everything later
+        ;; (seeding, replacements, cleanup, Guard B) is derived from this map, not from any ordering.
+        ;; Inputs are distinct by contract; a duplicate would silently share/collide a temp table, so
+        ;; reject it rather than model it. Order is incidental and deliberately not relied upon.
+        _            (api/check-400 (or (empty? inputs) (apply distinct? inputs))
+                                    (tru "Duplicate test inputs; each input table may be declared only once."))
+        input->temp  (into {} (map (fn [input] [input (driver/temp-table-name driver)])) inputs)
         output-table (driver/temp-table-name driver)
-        replacements (transform-testing.compile/table-replacements driver transform inputs input-tables output-table)]
+        replacements (transform-testing.compile/table-replacements driver transform input->temp output-table)
+        compiled-transform (transform-testing.compile/compile-transform driver compiled-source replacements)
+        ;; --- validate (pure, Guard B): the rewrite left no real table behind. Every table the
+        ;;     rewritten query reads must be one of our temp tables; a survivor means `replace-names`
+        ;;     could not remap some reference (e.g. a shape the parser missed) and running it would
+        ;;     read the real table or error. Reject before touching the warehouse. ---
+        temp-tables  (conj (into #{} (vals input->temp)) output-table)
+        surviving    (transform-testing.validator/surviving-references
+                      (transform-testing.compile/referenced-tables driver (:query compiled-transform))
+                      temp-tables
+                      (transform-testing.compile/dangling-qualifiers driver (:query compiled-transform)))
+        _            (api/check-400 (empty? surviving)
+                                    (tru "The transform test could not fully remap the source to test tables; these reference(s) remain: {0}. Alias each source table and qualify its columns by the alias (e.g. `FROM my_table t ... t.col`), not by the table name."
+                                         (str/join ", " surviving)))]
     ;; --- execute (I/O): one connection; temp tables live and die here ---
     (driver/do-with-test-connection
      driver database
      (fn [conn]
        (try
-         (doseq [[table input] (map vector input-tables inputs)]
+         (doseq [[input temp] input->temp]
            (transform-testing.executor/create-temp-table!
-            driver conn table (transform-testing.compile/compile-input driver input)))
+            driver conn temp (transform-testing.compile/compile-input driver input)))
          (transform-testing.executor/create-temp-table!
-          driver conn output-table (transform-testing.compile/compile-transform driver compiled-source replacements))
+          driver conn output-table compiled-transform)
          ;; --- check (pure-ish): expectations against the output temp table ---
          (let [context  {:driver driver :conn conn :output-table output-table :replacements replacements}
                statuses (mapv #(transform-testing.expectations/check-expectation context %) expectations)]
            {:status (if (every? #{:passed} statuses) :passed :failed)})
          (finally
-           (doseq [table (conj input-tables output-table)]
+           (doseq [table temp-tables]
              (transform-testing.executor/drop-temp-table! driver conn table))))))))

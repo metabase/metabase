@@ -140,10 +140,10 @@
               (is (re-find #"could not be parsed" (ex-message e))))))))))
 
 (deftest run-transform-test-dangling-column-qualifier-test
-  (testing "a source-table column qualifier that survives the rewrite currently fails at execution."
+  (testing "Guard B: a source-table column qualifier that survives the rewrite is rejected with a 400."
     ;; `SELECT people.id FROM people` rewrites the FROM to the temp table but leaves the `people.id`
-    ;; qualifier dangling, so the CTAS errors. This documents TODAY's behavior; Guard B (GHY-4559)
-    ;; will turn this into a clean 400 telling the author to qualify by alias — update this test then.
+    ;; qualifier dangling — a reference to the real table. Guard B (GHY-4559) catches it before
+    ;; execution and tells the author to qualify by alias, instead of the raw CTAS error it used to be.
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
       (let [mp                            (mt/metadata-provider)
             {schema :schema, table :name} (lib.metadata/table mp (mt/id :people))]
@@ -156,5 +156,10 @@
                         :inputs       [{:table (table-ref :people) :format :sql
                                         :sql "SELECT 1 AS id, 'x' AS name"}]
                         :expectations [{:type :empty :name "all" :sql (str "SELECT * FROM " schema ".people_qualified")}]}]
-          (is (thrown? Exception
-                       (transform-testing.runner/run-transform-test! transform-test))))))))
+          (let [ex (try (transform-testing.runner/run-transform-test! transform-test)
+                        nil
+                        (catch ExceptionInfo e e))]
+            (testing "throws a 400 (not a warehouse error) naming the un-remapped table"
+              (is (some? ex))
+              (is (= 400 (:status-code (ex-data ex))))
+              (is (re-find (re-pattern (str "(?i)" table)) (ex-message ex))))))))))

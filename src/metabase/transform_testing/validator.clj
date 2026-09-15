@@ -1,15 +1,18 @@
 (ns metabase.transform-testing.validator
   "Pure validation: is a transform test complete against the transform it tests?
 
-  Every table the transform reads must have a declared input, else running it would leave that
-  table pointing at the REAL table (via `replace-names` `:allow-unused?`) — a false-green that
-  reads production data into a passing test. Comprehensive-or-error, per the Slack thread; a
-  future `don't-replace` marker for stable dimensions is out of scope.
+  Two guards, both pure and both reporting *what* is wrong as data (the runner decides the 400):
 
-  Pure and HTTP-agnostic: reports *what* is missing as data; the runner decides that missing
-  inputs are a 400. The runner passes in the transform's referenced tables (parsed from its
-  compiled query) and the transform test's declared inputs; this compares them, driver-aware for schema
-  defaulting. No I/O."
+  - Guard A (pre-rewrite, [[missing-inputs]] / [[unused-inputs]]): every table the transform reads
+    must have a declared input, else the rewrite would leave that table pointing at the REAL table
+    (via `replace-names` `:allow-unused?`) — a false-green that reads production data into a passing
+    test. Comprehensive-or-error, per the Slack thread.
+  - Guard B (post-rewrite, [[surviving-tables]]): after the rewrite, every table reference must be
+    one of the temp tables we created. A leftover real table means `replace-names` did not rewrite
+    something it should have (e.g. a reference shape the parser could not match); running it would
+    hit the real table or error at execution. Reject rather than run.
+
+  No I/O; the runner passes in already-parsed table references."
   (:require
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.transform-testing.schema :as transform-testing.schema]
@@ -54,3 +57,27 @@
   (into [] (comp (map :table)
                  (remove (fn [decl] (some #(table-match? driver % decl) referenced-tables))))
         inputs))
+
+(mu/defn surviving-references :- [:sequential :string]
+  "Guard B: the real-table references still in the *rewritten* query, as labels for the author.
+  After the rewrite every reference should be a temp table we created; a leftover means
+  `replace-names` did not remap something and running it would read the real table or error at
+  execution. Two ways a reference survives, both caught here:
+
+  - a real *table* reference (`rewritten-tables` not in `temp-tables`) — a relation the rewrite
+    missed entirely;
+  - a *column qualified by a table name* that is no longer a FROM alias (`dangling-qualifiers`,
+    from the parser's `:missing-table-alias` errors) — e.g. `people.id` after `FROM people` was
+    rewritten to a temp table, which the table-level parse does not see as a reference.
+
+  Empty means the rewrite was total. Deduplicated, sorted, rendered as names for the 400 message."
+  [rewritten-tables    :- [:set [:map [:schema [:maybe :string]] [:name :string]]]
+   temp-tables         :- [:set :string]
+   dangling-qualifiers :- [:set :string]]
+  (->> (concat (->> rewritten-tables
+                    (remove (fn [{:keys [name]}] (contains? temp-tables name)))
+                    (map table-label))
+               dangling-qualifiers)
+       distinct
+       sort
+       vec))
