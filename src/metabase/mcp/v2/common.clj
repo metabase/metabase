@@ -269,7 +269,7 @@
    (select-fields type response-map fields nil))
   ([type response-map fields {:keys [response-format include]}]
    (when (or response-format include)
-     (throw-teaching-error "Use `fields` OR `response_format`/`include`, not both."))
+     (throw-teaching-error "The 'fields' parameter cannot be combined with 'response_format' or 'include'. Pass one or the other."))
    (when (empty? fields)
      (throw-teaching-error "`fields` must name at least one path."))
    (let [catalog (or (projections/catalog type)

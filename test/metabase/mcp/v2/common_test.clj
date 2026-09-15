@@ -207,9 +207,9 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"at least one path"
                             (common/select-fields :fields-test row []))))
     (testing "fields is mutually exclusive with response_format / include"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"OR"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"cannot be combined"
                             (common/select-fields :fields-test row ["name"] {:response-format :detailed})))
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"OR"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"cannot be combined"
                             (common/select-fields :fields-test row ["name"] {:include ["x"]}))))
     (testing "fields on a type with no catalog is a teaching error"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not supported for type"

@@ -231,12 +231,31 @@
          (some-> items enum-values)
          (mapcat enum-values (concat oneOf anyOf))]))
 
+(defn- int-range
+  "The `minimum` and `maximum` a numeric property is held to, when it has both, looking through `oneOf`/`anyOf`
+  the same way [[enum-values]] does: `[:maybe [:int {:min 1 :max 10}]]` publishes them on the nullable branch.
+  Worth publishing because the prose tends to say \"default 2\" and stop — the schema is the only place the
+  ceiling is written. A lone `minimum` is not: it's on every positive-int id, where \"Minimum: 1\" tells the
+  reader nothing. Strings and arrays bound `minLength`/`minItems` instead, so they never match here."
+  [{:keys [minimum maximum oneOf anyOf]}]
+  (if (and minimum maximum)
+    {:minimum minimum :maximum maximum}
+    (some int-range (concat oneOf anyOf))))
+
+(defn- range-sentence
+  "\"Range: 1 to 10.\""
+  [{:keys [minimum maximum]}]
+  (format "Range: %s to %s." minimum maximum))
+
 (defn- description-cell
-  "The Description column for one argument: what values it accepts, then the schema's own prose. An em dash where
-  the schema says nothing at all — escaping the pipes is [[md/table]]'s business, not this function's."
+  "The Description column for one argument: what values it accepts, its numeric bounds, then the schema's own
+  prose. An em dash where the schema says nothing at all — escaping the pipes is [[md/table]]'s business, not
+  this function's."
   [property]
   (let [values (enum-values property)
+        bounds (some-> (int-range property) range-sentence)
         parts  (cond->> (map md/flatten-prose (property-descriptions property))
+                 bounds       (cons bounds)
                  (seq values) (cons (str "One of: " (str/join ", " (map md/code values)) ".")))]
     (if (seq parts)
       (str/join " " parts)

@@ -122,6 +122,18 @@
     ["a" "b"]           {:type "array" :items {:type "string" :enum ["a" "b"]}}
     []                  {:type "string"}))
 
+(deftest ^:parallel int-range-test
+  (are [expected property] (= expected (#'mcp-tools-dox/int-range property))
+    {:minimum 1 :maximum 10} {:type "integer" :minimum 1 :maximum 10}
+    ;; `[:maybe [:int {:min 1 :max 10}]]` — the shape of every optional v2 argument
+    {:minimum 1 :maximum 10} {:oneOf [{:type "integer" :minimum 1 :maximum 10} {:type "null"}]}
+    ;; `[:int {:min 1}]` — every positive-int id; a floor alone tells the reader nothing
+    nil                      {:type "integer" :minimum 1}
+    nil                      {:oneOf [{:type "integer" :minimum 0} {:type "null"}]}
+    ;; a bounded string publishes `minLength`, which is not a range
+    nil                      {:type "string" :minLength 1 :maxLength 21}
+    nil                      {:type "integer"}))
+
 (deftest ^:parallel arguments-markdown-test
   (testing "a tool with no properties says so rather than rendering an empty table"
     (is (= "This tool takes no arguments." (#'mcp-tools-dox/arguments-markdown {:inputSchema {}}))))
@@ -155,6 +167,15 @@
                                                              :enum ["create" "update"]
                                                              :description "What to do."}}}})
                        "One of: `create`, `update`. What to do.")))
+  (testing "a bounded integer publishes its range, after any enum and ahead of its prose"
+    ;; `depth`'s prose says "default 2" and stops — the ceiling is only in the schema
+    (is (str/includes? (#'mcp-tools-dox/arguments-markdown
+                        {:inputSchema {:properties {:depth {:oneOf [{:type        "integer"
+                                                                     :minimum     1
+                                                                     :maximum     10
+                                                                     :description "Levels (default 2)."}
+                                                                    {:type "null"}]}}}})
+                       "Range: 1 to 10. Levels (default 2).")))
   (testing "a pipe in a description doesn't split the row"
     (is (str/includes? (#'mcp-tools-dox/arguments-markdown
                         {:inputSchema {:properties {:q {:type "string" :description "a | b"}}}})

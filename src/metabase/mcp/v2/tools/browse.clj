@@ -527,7 +527,7 @@
    [:include_hidden {:optional true}
     [:maybe [:boolean {:description "Include hidden schemas/tables (list_schemas, list_tables) or hidden fields (get_fields). Sensitive fields are always excluded. Default false."}]]]
    [:limit {:optional true}
-    [:maybe [:int {:min 1 :max 500 :description "list_* actions: maximum rows to return (default 50)."}]]]
+    [:maybe [:int {:min 1 :max 500 :description "list_* actions: maximum rows to return (default 50, max 500)."}]]]
    [:offset {:optional true}
     [:maybe [:int {:min 0 :description "list_* actions: rows to skip, for paging. For get_fields it pages the fields of a single oversized table, as directed by the continuation message."}]]]
    [:response_format {:optional true}
@@ -818,7 +818,7 @@
          [:int {:description "Numeric collection id."}]
          [:string {:min 1 :description "A 21-character entity_id, \"root\" (the per-namespace root), or \"trash\" (items mode only — archived content, making restore discoverable)."}]]]
    [:mode {:optional true}
-    [:maybe [:enum {:description "items (default) lists the collection's contents; tree returns the nested subcollection structure (collections only, no items, no pagination)."}
+    [:maybe [:enum {:description "items (default): one collection's contents — paged, mixed types, filterable and sortable. tree: the nested subcollection structure only (no items, no pagination), for getting oriented across the hierarchy."}
              "items" "tree"]]]
    [:namespace {:optional true}
     [:maybe [:enum {:description "Which collection partition to browse; only meaningful with id: \"root\" (a real collection id already carries its namespace). content (default) holds questions/dashboards/etc.; snippets holds snippet folders and snippets; transforms holds transform folders and transforms; analytics is the read-only usage-analytics tree."}
@@ -837,11 +837,11 @@
    [:sort_direction {:optional true}
     [:maybe [:enum {:description "items mode: sort direction (default asc)."} "asc" "desc"]]]
    [:limit {:optional true}
-    [:maybe [:int {:min 1 :max 500 :description "items mode: maximum rows to return (default 50)."}]]]
+    [:maybe [:int {:min 1 :max 500 :description "items mode: maximum rows to return (default 50, max 500)."}]]]
    [:offset {:optional true}
     [:maybe [:int {:min 0 :description "items mode: rows to skip, for paging."}]]]
    [:depth {:optional true}
-    [:maybe [:int {:min 1 :max 10 :description "tree mode: subcollection levels to expand (default 2). Deeper or trimmed nodes carry a truncation marker naming the re-rooting call."}]]]
+    [:maybe [:int {:min 1 :max 10 :description "tree mode: subcollection levels to expand (default 2, max 10). Deeper or trimmed nodes carry a truncation marker naming the re-rooting call."}]]]
    [:response_format {:optional true}
     [:maybe [:enum {:description "items mode: concise (default) returns {id, name, model, description, collection_position} rows; detailed adds entity_id, collection_id, archived, location, and last-edit info."}
              "concise" "detailed"]]]
@@ -849,7 +849,7 @@
     [:maybe [:sequential [:string {:min 1 :description "items mode: dot-paths picked from the detailed row shape, item-relative (e.g. \"last-edit-info.email\"). Mutually exclusive with response_format."}]]]]])
 
 (registry/deftool browse-collection
-  "Browse collections structurally — one uniform id over every partition: a numeric id, a 21-char entity_id, \"root\" (re-rooted per namespace), or \"trash\" (archived content, items mode only). items mode (default) lists one collection's contents with type/created_by/pinned_state/sort_column/sort_direction and limit/offset paging in the {data, returned, total} envelope; browsing the trash or an archived collection returns archived children. tree mode returns the nested subcollection structure (collections only, no items, no pagination) down to depth (default 2) under a per-node child cap and total node budget; trimmed or deeper nodes carry a marker naming the expansion call, e.g. … 14 more under \"Finance\" — browse_collection(id: 45, mode: \"tree\"); archived subtrees and the trash never appear in trees. For content search or recents use the search tool."
+  "Browse collections structurally. Two modes: items (default) answers \"what's in this one collection\" — a paged, mixed-type listing you can filter and sort; tree answers \"how is the hierarchy laid out\" — collections only, depth-limited and budgeted so a whole instance fits in one response, with truncation markers naming the call that expands a branch. One uniform id over every partition: a numeric id, a 21-char entity_id, \"root\" (re-rooted per namespace), or \"trash\" (archived content, items mode only). items mode lists one collection's contents with type/created_by/pinned_state/sort_column/sort_direction and limit/offset paging (limit default 50, max 500) in the {data, returned, total} envelope; browsing the trash or an archived collection returns archived children. tree mode returns the nested subcollection structure (collections only, no items, no pagination) down to depth (default 2, max 10) under a per-node child cap and total node budget; trimmed or deeper nodes carry a marker naming the expansion call, e.g. … 14 more under \"Finance\" — browse_collection(id: 45, mode: \"tree\"); archived subtrees and the trash never appear in trees. For content search or recents use the search tool."
   {:name        "browse_collection"
    :scope       metabot.scope/agent-content-read
    :annotations {:readOnlyHint true :idempotentHint true}
