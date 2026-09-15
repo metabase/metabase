@@ -14,12 +14,17 @@
    [metabase.channel.render.table-data :as table-data]
    [metabase.channel.render.util :as render.util]
    [metabase.channel.settings :as channel.settings]
+   [metabase.dashboards.schema]
    [metabase.formatter.core :as formatter]
    [metabase.geojson.api :as geojson.api]
    [metabase.geojson.settings :as geojson.settings]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.pivot.core :as pivot.core]
    [metabase.pivot.postprocess :as pivot.postprocess]
+   [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.pivot]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.tiles.settings :as tiles.settings]
@@ -72,11 +77,15 @@
 ;;; --------------------------------------------------- Formatting ---------------------------------------------------
 
 (mu/defn- format-scalar-value
-  [timezone-id :- [:maybe :string] value col visualization-settings]
+  "Formats a scalar card's value for rendering, whether a single value or an array-typed column's sequence of them."
+  [timezone-id            :- [:maybe :string]
+   value                  :- [:or ms/FieldValue [:sequential ms/FieldValue]]
+   col                    :- [:maybe :metabase.legacy-mbql.schema/legacy-column-metadata]
+   visualization-settings :- [:maybe ms/VisualizationSettings]]
   (cond
     ;; legacy usage -- do not use going forward
     #_{:clj-kondo/ignore [:deprecated-var]}
-    (types/temporal-field? col)
+    (types/temporal-field? (select-keys col [:base_type :effective_type]))
     ((formatter/make-temporal-str-formatter timezone-id col {}) value)
 
     (number? value)
@@ -127,25 +136,97 @@
 
 (mu/defn- query-results->row-seq
   "Returns a seq of stringified formatted rows that can be rendered into HTML"
-  [timezone-id :- [:maybe :string] visible-cols rows viz-settings]
+  [timezone-id  :- [:maybe :string]
+   visible-cols :- [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]
+   rows         :- [:sequential [:sequential ms/FieldValue]]
+   viz-settings :- [:maybe ms/VisualizationSettings]]
   (let [formatters (mapv #(formatter/create-formatter timezone-id % viz-settings) visible-cols)]
     (for [row rows]
-      {:row (mapv (fn [col fmt-fn]
-                    (fmt-fn (nth row (:source-idx col) nil)))
-                  visible-cols
+      {:row (mapv (fn [value fmt-fn]
+                    (fmt-fn value))
+                  row
                   formatters)})))
+
+(def ^:private TrendlineFormula
+  "One of the fixed curve shapes [[metabase.analyze.fingerprint.insights/trendline-function-families]] can fit."
+  [:or
+   [:tuple [:= :+] number? [:tuple [:= :*] number? [:= :x]]]
+   [:tuple [:= :*] number? [:tuple [:= :exp] [:tuple [:= :*] number? [:= :x]]]]
+   [:tuple [:= :+] number? [:tuple [:= :*] number? [:tuple [:= :log] [:= :x]]]]
+   [:tuple [:= :*] number? [:tuple [:= :pow] [:= :x] number?]]])
+
+(def ^:private Insight
+  "One entry of the `:insights` computed by `metabase.analyze.fingerprint.insights/insights`."
+  [:map {:closed true}
+   [:last-value     {:optional true} [:maybe number?]]
+   [:previous-value {:optional true} [:maybe number?]]
+   [:last-change    {:optional true} [:maybe number?]]
+   [:slope          {:optional true} [:maybe number?]]
+   [:offset         {:optional true} [:maybe number?]]
+   [:best-fit       {:optional true} [:maybe TrendlineFormula]]
+   [:col            {:optional true} [:maybe :string]]
+   [:unit           {:optional true} [:maybe :keyword]]])
+
+(mr/def ::QPResultData
+  "The `:data` of a QP result, as the render pipeline reads it."
+  [:map {:closed true}
+   [:cols             {:optional true} [:maybe [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]]]
+   [:rows             {:optional true} [:maybe [:sequential [:sequential [:or ms/FieldValue [:sequential ms/FieldValue]]]]]]
+   [:viz-settings     {:optional true} [:maybe ms/VisualizationSettings]]
+   [:results_metadata {:optional true} [:maybe [:map {:closed true}
+                                                [:columns [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]]]]]
+   [:results_timezone {:optional true} [:maybe :string]]
+   [:format-rows?     {:optional true} [:maybe :boolean]]
+   [:native_form      {:optional true} [:maybe ::qp.compile/compiled]]
+   [:insights         {:optional true} [:maybe [:sequential Insight]]]
+   [:rows_truncated   {:optional true} [:maybe :int]]
+   [:csv-include-bom? {:optional true} [:maybe :boolean]]
+   [:rows-file-size   {:optional true} [:maybe :int]]
+   [:model            {:optional true} [:maybe :boolean]]
+   [:dataset          {:optional true} [:maybe :boolean]]
+   [:pivot-export-options {:optional true} [:maybe [:map {:closed true}
+                                                    [:pivot-rows         {:optional true} [:maybe [:sequential :int]]]
+                                                    [:pivot-cols         {:optional true} [:maybe [:sequential :int]]]
+                                                    [:pivot-measures     {:optional true} [:maybe [:sequential :int]]]
+                                                    [:show-row-totals    {:optional true} :boolean]
+                                                    [:show-column-totals {:optional true} :boolean]
+                                                    [:column-sort-order  {:optional true} [:maybe :metabase.query-processor.pivot/column-sort-order]]]]]])
+
+(mr/def ::QPResult
+  "A QP result map (`{:data ..., :error ...}`), as the render pipeline receives it."
+  [:map {:closed true}
+   [:data                    {:optional true} [:maybe ::QPResultData]]
+   [:error                   {:optional true} [:maybe :string]]
+   [:row_count               {:optional true} [:maybe :int]]
+   [:data.rows-file-size     {:optional true} [:maybe :int]]
+   [:notification/truncated? {:optional true} [:maybe :boolean]]
+   [:status                  {:optional true} [:maybe [:enum :completed :failed]]]
+   [:database_id             {:optional true} [:maybe ::lib.schema.id/database]]
+   [:started_at              {:optional true} [:maybe [:or :string (ms/InstanceOfClass java.time.temporal.Temporal)]]]
+   [:running_time            {:optional true} [:maybe :int]]
+   [:json_query              {:optional true} [:maybe [:or ::lib.schema/query :metabase.legacy-mbql.schema/Query]]]
+   [:average_execution_time  {:optional true} [:maybe :int]]
+   [:context                 {:optional true} [:maybe :keyword]]
+   [:card_id                 {:optional true} [:maybe ::lib.schema.id/card]]
+   [:card-error              {:optional true} [:maybe :boolean]]
+   [:cached                  {:optional true} [:maybe :string]]
+   [:tenant_id               {:optional true} [:maybe :int]]])
 
 (mu/defn- prep-for-html-rendering
   "Convert the query results (`cols` and `rows`) into a formatted seq of rows (list of strings) that can be rendered as
   HTML"
   ([timezone-id :- [:maybe :string]
-    card
-    {:keys [cols rows viz-settings], :as _data}]
+    card        :- [:maybe ::card]
+    {:keys [cols rows viz-settings], :as _data} :- ::QPResultData]
    (let [visible-cols (table-data/visible-columns cols)
          row-limit    (min (channel.settings/attachment-table-row-limit) 100)]
      (cons
       (query-results->header-row card visible-cols)
-      (query-results->row-seq timezone-id visible-cols (take row-limit rows) viz-settings)))))
+      (query-results->row-seq timezone-id
+                              (mapv #(dissoc % :source-idx :remapped_to_column) visible-cols)
+                              (for [row (take row-limit rows)]
+                                (mapv #(nth row (:source-idx %) nil) visible-cols))
+                              viz-settings)))))
 
 (defn- strong-limit-text [number]
   [:strong {:style (style/style {:color style/color-gray-3})} (h (formatter/format-scalar-number number))])
@@ -174,11 +255,65 @@
 ;;; |                                                     render                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(mr/def ::hiccup
+  "A node of a Hiccup form: a scalar, a `[tag attrs? & children]` vector (left unstructured -- HTML attribute keys
+  are open-ended), or a seq of such nodes."
+  [:or :string number? :boolean nil? vector? [:sequential [:ref ::hiccup]]])
+
+(mr/def ::adhoc-card
+  "Schema for an ad-hoc (unsaved) card."
+  [:map {:closed true}
+   [:display :keyword]
+   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
+   [:name {:optional true} [:maybe :string]]])
+
+(mr/def ::card
+  "A card as `render`ed for a Pulse/Dashboard Subscription: either a real Card, or an ad-hoc (unsaved) card."
+  [:or
+   [:merge
+    :metabase.queries.schema/card
+    [:map {:closed true}
+     [:include_csv   {:optional true} [:maybe :boolean]]
+     [:include_xls   {:optional true} [:maybe :boolean]]
+     [:format_rows   {:optional true} [:maybe :boolean]]
+     [:pivot_results {:optional true} [:maybe :boolean]]]]
+   ::adhoc-card])
+
+(mr/def ::dashcard
+  "A DashboardCard as `render`ed for a Dashboard Subscription, plus the `:series-results` key
+  `notification.payload.execute` attaches for multi-series cards."
+  [:merge
+   :metabase.dashboards.schema/dashboard-card
+   [:map {:closed true}
+    [:series-results {:optional true} [:maybe [:sequential
+                                               [:map {:closed true}
+                                                [:type     {:optional true} [:= :card]]
+                                                [:card     {:optional true} [:maybe [:ref :metabase.queries.schema/card]]]
+                                                [:dashcard {:optional true} [:maybe [:ref :metabase.dashboards.schema/dashboard-card]]]
+                                                [:result   {:optional true} [:maybe ::QPResult]]]]]]]])
+
+(mr/def ::render-type
+  [:enum :inline :attachment])
+
+;;; I gave these keys below namespaces to make them easier to find usages for but didn't use `metabase.channel.render` so
+;;; we can keep this as an internal namespace you don't need to know about outside of the module.
+(mr/def ::options
+  "Options for Pulse (i.e. Alert/Dashboard Subscription) rendering."
+  [:map {:closed true}
+   [:channel.render/include-buttons?           {:description "default: false", :optional true} :boolean]
+   [:channel.render/include-title?             {:description "default: false", :optional true} :boolean]
+   [:channel.render/include-description?       {:description "default: false", :optional true} :boolean]
+   [:channel.render/disable-links?             {:description "default: false", :optional true} :boolean]
+   [:channel.render/include-inline-parameters? {:description "default: false", :optional true} :boolean]
+   [:channel.render/padding-x                  {:description "default: 0, horizontal pixels around image", :optional true} [:maybe :int]]
+   [:channel.render/padding-y                  {:description "default: 0, vertical pixels around image", :optional true} [:maybe :int]]
+   [:channel.render/scale                      {:description "default: 1.0, a factor, or a fn of the laid-out content's logical width/height returning one", :optional true} [:maybe [:or number? ifn?]]]])
+
 (mr/def ::RenderedPartCard
   "Schema used for functions that operate on pulse card contents and their attachments"
-  [:map
+  [:map {:closed true}
    [:attachments {:optional true} [:maybe [:map-of :string (ms/InstanceOfClass URL)]]]
-   [:content                      [:sequential :any]]
+   [:content                      ::hiccup]
    [:render/text {:optional true} [:maybe :string]]])
 
 (defmulti render
@@ -230,7 +365,8 @@
         minibar-cols                (minibar-columns (get-in unordered-data [:results_metadata :columns] []) viz-settings)
         table-body                  [:div
                                      (table/render-table
-                                      (select-keys unordered-data [:cols :rows])
+                                      {:cols (mapv #(select-keys % [:name]) (:cols unordered-data))
+                                       :rows (:rows unordered-data)}
                                       {:cols-for-color-lookup (mapv :name filtered-cols)
                                        :col-names             (streaming.common/column-titles filtered-cols viz-settings format-rows?)}
                                       (prep-for-html-rendering timezone-id card data)
@@ -743,7 +879,7 @@
                              (let [base-rows (into [] (comp (filter #(zero? (nth % pg-idx)))
                                                             (map #(vec (m/remove-nth pg-idx %))))
                                                    (:rows data))]
-                               {:cols columns :rows base-rows}))]
+                               {:cols (mapv #(select-keys % [:name]) columns) :rows base-rows}))]
             ;; Unlike the flat :table path, a pivot aggregates all rows into a bounded grid rather than
             ;; truncating displayed rows, so the flat-table row-count truncation warning doesn't apply.
             (pivot->hiccup output {:color-data     color-data

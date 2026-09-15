@@ -4,6 +4,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.queries.models.card.metadata :as card.metadata]
+   [metabase.queries.schema :as queries.schema]
    [metabase.test :as mt]))
 
 (deftest ^:parallel populate-result-metadata-normalize-output-test
@@ -44,7 +45,7 @@
                                   :visibility_type           :normal
                                   :display_name              "EDITED DISPLAY"
                                   :base_type                 :type/BigInteger}]}
-              (card.metadata/populate-result-metadata card))))))
+              (card.metadata/populate-result-metadata (lib/normalize ::queries.schema/card card)))))))
 
 (deftest ^:parallel infer-metadata-no-remaps
   (testing "infer-metadata should not include remapped columns (#67128)"

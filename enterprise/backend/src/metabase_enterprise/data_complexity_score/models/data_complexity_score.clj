@@ -1,7 +1,10 @@
 (ns metabase-enterprise.data-complexity-score.models.data-complexity-score
   "Persistence for cached Data Complexity Score snapshots."
   (:require
+   [malli.core :as mc]
+   [malli.transform :as mtx]
    [metabase-enterprise.data-complexity-score.db :as data-complexity-score.db]
+   [metabase-enterprise.data-complexity-score.schema :as data-complexity-score.schema]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -11,8 +14,16 @@
 (doto :model/DataComplexityScore
   (derive :metabase/model))
 
+(defn- score-data-out
+  "Re-keywordize the `:keyword`-typed leaves (e.g. `:meta.text-variant`) that JSON storage round-trips back as
+  strings."
+  [score-data]
+  (when-let [decoded ((:out mi/transform-json) score-data)]
+    (mc/decode ::data-complexity-score.schema/data-complexity-score.score-data decoded
+               (mtx/transformer mtx/json-transformer))))
+
 (t2/deftransforms :model/DataComplexityScore
-  {:score_data mi/transform-json})
+  {:score_data {:in (:in mi/transform-json), :out score-data-out}})
 
 (defn- score-with-calculated-at
   [{:keys [score_data created_at]}]

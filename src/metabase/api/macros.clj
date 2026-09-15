@@ -34,6 +34,7 @@
    [metabase.api.open-api :as open-api]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
+   [metabase.request.schema :as request.schema]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -47,15 +48,27 @@
 ;;;; Malli schema
 ;;;;
 
+(mr/def ::schema-form
+  "A Malli schema as written at a macro call site, unevaluated: a literal schema vector, a bare keyword (a registry
+  ref or a simple type like `:string`), a symbol naming one, an expression that evaluates to one, or `nil`."
+  [:or :keyword symbol? seq? vector? :nil])
+
+(mr/def ::schema-form-or-instance
+  "A schema at the point it's actually used to decode/validate/encode a value: either still a [[::schema-form]]
+  (unevaluated), or already resolved to a compiled Malli schema instance."
+  [:or ::schema-form [:fn {:error/message "a Malli schema"} mc/schema?]])
+
+(mr/def ::route-regex-value
+  "One `::route` regex: a compiled `Pattern`, a symbol naming one, or a form that evaluates to one."
+  [:or
+   (ms/InstanceOfClass java.util.regex.Pattern)
+   symbol?
+   seq?])
+
 (mr/def ::route
-  [:map
+  [:map {:closed true}
    [:path string?]
-   [:regexes {:optional true} [:map-of :keyword [:or
-                                                 (ms/InstanceOfClass java.util.regex.Pattern)
-                                                 ;; presumably a symbol naming a regex
-                                                 symbol?
-                                                 ;; presumably a form that evaluates to a regex
-                                                 seq?]]]])
+   [:regexes {:optional true} [:map-of :string ::route-regex-value]]])
 
 (mr/def ::param-type
   [:enum :route :query :body :request :respond :raise])
@@ -63,22 +76,93 @@
 (mr/def ::params
   [:map-of
    ::param-type
-   [:map
-    [:binding some?]
-    [:schema {:optional true} [:any {:description "Malli map schema for all the params of this type"}]]]])
+   [:map {:closed true}
+    [:binding ::binding-form]
+    [:schema {:optional true} ::schema-form-or-instance]]])
 
 (mr/def ::method
   [:enum :get :post :put :delete :patch])
 
+(mr/def ::nmspace
+  "Anything `clojure.core/the-ns` accepts: a namespace object, or a symbol naming one."
+  [:or symbol? (ms/InstanceOfClass clojure.lang.Namespace)])
+
+(mr/def ::defendpoint-arg
+  "One top-level form in a `defendpoint` call, before [[parse-args]] parses it: a scalar literal, a symbol, or a
+  collection literal (a body form can be any Clojure expression, including a literal map/vector/set/list)."
+  [:or
+   :keyword
+   :string
+   :boolean
+   :nil
+   number?
+   symbol?
+   coll?])
+
 (mr/def ::parsed-args
-  [:map
+  [:map {:closed true}
    [:method          ::method]
    [:route           ::route]
    [:params          ::params]
-   [:body            [:sequential any?]]
-   [:response-schema {:optional true} [:maybe {:description "Malli schema for response. Note this is before we 'wrap if needed'"} any?]]
+   [:body            [:sequential ::defendpoint-arg]]
+   [:response-schema {:optional true} [:maybe {:description "Malli schema for response. Note this is before we 'wrap if needed'"} ::schema-form-or-instance]]
    [:docstr          {:optional true} [:maybe string?]]
-   [:metadata        {:optional true} [:maybe {:description "Metadata map like you'd use with `defn`"} map?]]])
+   [:metadata        {:optional true} [:maybe {:description "Metadata map like you'd use with `defn`"} ::route-metadata]]])
+
+(mr/def ::conformed-schema-specifier
+  [:maybe [:map {:closed true}
+           [:horn [:= :-]]
+           [:schema ::schema-form-or-instance]]])
+
+(mr/def ::binding-form
+  "A defendpoint parameter binding: a plain symbol, or a map/vector destructuring form."
+  [:or
+   symbol?
+   [:sequential [:ref ::binding-form]]
+   [:map-of
+    [:or [:enum :as :or :keys :strs :syms] [:ref ::binding-form]]
+    [:or :keyword :string symbol? [:sequential symbol?]
+     [:map-of symbol? ::defendpoint-arg]]]])
+
+(mr/def ::conformed-param
+  [:map {:closed true}
+   [:binding ::binding-form]
+   [:schema {:optional true} ::conformed-schema-specifier]])
+
+(mr/def ::conformed-params
+  "Shape of `(:params (s/conform ::defendpoint args))`, before [[parse-params]] flattens it into [[::params]]."
+  [:map {:closed true}
+   [:route         {:optional true} ::conformed-param]
+   [:query         {:optional true} ::conformed-param]
+   [:body          {:optional true} ::conformed-param]
+   [:request       {:optional true} ::conformed-param]
+   [:respond-raise {:optional true} [:map {:closed true}
+                                     [:respond symbol?]
+                                     [:raise   symbol?]]]])
+
+(mr/def ::conformed-route
+  "Shape of `(:route (s/conform ::defendpoint args))`, before [[parse-route]] transforms it into [[::route]]."
+  [:multi {:dispatch first}
+   [:path   [:tuple [:= :path] :string]]
+   [:vector [:tuple [:= :vector]
+             [:map {:closed true}
+              [:path    :string]
+              [:regexes [:sequential [:map {:closed true}
+                                      [:key   :keyword]
+                                      [:regex ::route-regex-value]]]]]]]])
+
+(mr/def ::conformed-args
+  "Shape of [[parse-args]]'s in-progress `conformed` value by the time it reaches [[parse-route]] and
+  [[inferred-route-regexes]]: `(s/conform ::defendpoint args)`, with `:params` already turned into [[::params]] by
+  [[parse-params]] (which runs first), but `:route` and `:response-schema` not yet transformed."
+  [:map {:closed true}
+   [:method          ::method]
+   [:route           ::conformed-route]
+   [:response-schema {:optional true} ::conformed-schema-specifier]
+   [:docstr          {:optional true} [:maybe :string]]
+   [:metadata        {:optional true} [:maybe ::route-metadata]]
+   [:params          ::params]
+   [:body            [:sequential ::defendpoint-arg]]])
 
 ;;; TODO -- consider whether unique key really needs to include params + regexes or not. Maybe we should just disallow
 ;;; having two routes with the same method and param that only differ by regex patterns. It makes using this stuff more
@@ -88,7 +172,7 @@
   [:tuple
    #_method ::method
    #_route  string?
-   #_params [:map-of #_param keyword? #_regex-str string?]])
+   #_params [:map-of #_param :string #_regex-str string?]])
 
 (mr/def ::core-fn
   "Schema for the underlying 'core' function generated by [[defendpoint]]. Has the form
@@ -106,7 +190,7 @@
    [:=> [:cat any? any? any?]      any?]
    [:=> [:cat any? any? any? any?] any?]])
 
-(mr/def ::request :map)
+(mr/def ::request ::request.schema/request)
 
 (mr/def ::respond-fn
   [:=> [:cat any?] any?])
@@ -138,7 +222,7 @@
 
 (mr/def ::info
   "The info about an individual endpoint that gets stored in the namespace metadata."
-  [:map
+  [:map {:closed true}
    [:core-fn ::core-fn]
    [:handler ::handler]
    [:form    ::parsed-args]])
@@ -169,8 +253,8 @@
                            :regexes (s/+ ::defendpoint.route.key-regex-pair))))))
 
 (mu/defn- infer-route-param-regex :- [:maybe (ms/InstanceOfClass java.util.regex.Pattern)]
-  [route-param :- :keyword
-   route-params-schema]
+  [route-param         :- :keyword
+   route-params-schema :- [:maybe [:fn {:error/message "a Malli schema"} mc/schema?]]]
   (when (and route-params-schema
              (= (mc/type route-params-schema) :map))
     (some (fn [[k _options v-schema]]
@@ -178,12 +262,12 @@
               (second (metabase.api.common.internal/->matching-regex v-schema))))
           (mc/children route-params-schema))))
 
-(mu/defn- inferred-route-regexes :- [:maybe [:map-of :keyword (ms/InstanceOfClass java.util.regex.Pattern)]]
+(mu/defn- inferred-route-regexes :- [:maybe [:map-of :string (ms/InstanceOfClass java.util.regex.Pattern)]]
   "Auto-infer regexes for the route based on the route args schema. These are either defined by the `:api/regex`
   property in the schema itself (see [[metabase.api.macros-test/RouteParams]] for an example of this), or if one is not
   specified, in [[metabase.api.common.internal/->matching-regex]]."
   [route :- :string
-   args  :- :map]
+   args  :- ::conformed-args]
   (when-let [ks (not-empty (metabase.api.common.internal/route-arg-keywords route))]
     (let [route-params-schema (some-> (get-in args [:params :route :schema])
                                       ;; eval runs at macroexpansion time to resolve the schema form
@@ -195,7 +279,7 @@
        {}
        (keep (fn [k]
                (or (when-let [regex (infer-route-param-regex k route-params-schema)]
-                     [k regex])
+                     [(name k) regex])
                    ;; in dev (REPL usage) warn if we didn't infer a regex for a route param so people can consider
                    ;; adding one.
                    (when config/is-dev?
@@ -208,14 +292,14 @@
        ks))))
 
 (mu/defn- parse-route :- ::route
-  [[route-type route] :- [:tuple [:enum :path :vector] :any]
-   args               :- :map]
+  [[route-type route] :- ::conformed-route
+   args               :- ::conformed-args]
   (case route-type
     :path   (merge
              {:path route}
              (when-let [regexes (not-empty (inferred-route-regexes route args))]
                {:regexes regexes}))
-    :vector (update route :regexes #(into {} (map (juxt :key :regex)) %))))
+    :vector (update route :regexes #(into {} (map (juxt (comp name :key) :regex)) %))))
 
 (s/def ::defendpoint.schema-specifier
   (s/?
@@ -246,7 +330,7 @@
   [:map {:closed true}])
 
 (mu/defn- parse-params :- ::params
-  [params]
+  [params :- ::conformed-params]
   (letfn [(parse-schema [k param]
             (cond
               (:schema param)                      (update param :schema :schema)
@@ -274,7 +358,7 @@
    :body            (s/* any?)))
 
 (mu/defn- parse-args :- ::parsed-args
-  [args :- [:sequential any?]]
+  [args :- [:sequential ::defendpoint-arg]]
   (let [conformed (s/conform ::defendpoint args)]
     (when (= conformed :clojure.spec.alpha/invalid)
       (throw (ex-info (format "Unable to parse defendpoint args: %s" (s/explain-str ::defendpoint args))
@@ -349,8 +433,8 @@
 
 (mu/defn validate-and-encode-response :- any?
   "Impl for [[endpoint-core-fn]]; validate the endpoint response against `schema` "
-  [schema   :- some?
-   response :- any?]
+  [schema   :- ::schema-form-or-instance
+   response :- ::request.schema/response]
   (when *enable-response-validation*
     (when-not (mr/validate schema response)
       (throw (ex-info "Invalid response" ; TODO -- better error message?
@@ -409,11 +493,20 @@
    {}
    (:errors explanation)))
 
+(mr/def ::decode-params-input
+  "What [[decode-and-validate-params]] is handed before decoding: the whole request itself, for a `:request`
+  binding, or the raw route/query/body/form/multipart values for the others, before the endpoint's own schema
+  decodes and validates them."
+  [:maybe [:or
+           ::request.schema/request
+           ms/RingRequestParams
+           ms/RingRequestBody]])
+
 (mu/defn decode-and-validate-params
   "Impl for [[defendpoint]]."
   [params-type :- ::param-type
-   schema      :- some?
-   params]
+   schema      :- ::schema-form-or-instance
+   params      :- ::decode-params-input]
   (let [params  (or params {})
         decoded ((decoder schema) params)]
     (when-not (mr/validate schema decoded)
@@ -610,7 +703,7 @@
   `(endpoint-core-fn-with-optimized-schemas
     (endpoint-core-fn* ~parsed-args)))
 
-(mu/defn- params :- [:maybe [:map-of keyword? any?]]
+(mu/defn- params :- [:maybe ms/RingRequestParams]
   "Fetch `:route` or `:query` parameters from a `request`."
   [request     :- ::request
    params-type :- [:enum :route :query]]
@@ -618,10 +711,10 @@
     :route (:route-params request)
     :query (some-> (:query-params request) (update-keys keyword))))
 
-(mu/defn- request-body
+(mu/defn- request-body :- [:maybe ms/RingRequestBody]
   "The body params of `request`: the parts of a multipart request, the form params of a form request, or the parsed
   JSON body. An unparsed body (an `InputStream`) is not a param map."
-  [request :- :map]
+  [request :- ::request]
   (or (some-> (not-empty (:multipart-params request)) (update-keys keyword))
       (some-> (not-empty (:form-params request)) (update-keys keyword))
       (when-let [body (:body request)]
@@ -701,7 +794,7 @@
   {:style/indent [:form]}
   [middleware       :- [:maybe [:sequential ::middleware]]
    core-fn          :- ::core-fn
-   {:keys [async?]} :- [:map
+   {:keys [async?]} :- [:map {:closed true}
                         [:async? :boolean]]]
   (let [handler (if async?
                   (fn async-handler [request respond raise]
@@ -731,9 +824,27 @@
 
 (mr/def ::ns-endpoints [:map-of ::unique-key ::info])
 
+(mr/def ::metadata-value-or-form
+  "A `defendpoint` metadata value as written in source: either a literal, or (since metadata is an unevaluated form
+  until the endpoint's namespace loads) a symbol referring to one or an expression that evaluates to one."
+  [:or :string :keyword symbol? seq?])
+
 (mr/def ::route-metadata
   "Metadata declared on a route via defendpoint, e.g. `{:scope \"agent:query\"}`."
-  :map)
+  [:map {:closed true}
+   [:scope       {:optional true} ::metadata-value-or-form]
+   [:multipart   {:optional true} [:or :boolean [:map {:closed true}
+                                                 [:max-file-size  {:optional true} [:or :int symbol? seq?]]
+                                                 [:max-file-count {:optional true} [:or :int symbol? seq?]]]]]
+   [:deprecated  {:optional true} [:or :boolean :string]]
+   [:tool        {:optional true} [:map {:closed true}
+                                   [:name         :string]
+                                   [:title        {:optional true} :string]
+                                   [:description  {:optional true} ::metadata-value-or-form]
+                                   [:annotations  {:optional true} [:map {:closed true}
+                                                                    [:read-only?  {:optional true} :boolean]
+                                                                    [:idempotent? {:optional true} :boolean]]]
+                                   [:task-support {:optional true} :keyword]]]])
 
 (mr/def ::handler-map
   [:map-of ::method [:sequential [:tuple
@@ -751,7 +862,7 @@
        (m/map-vals (fn [routes]
                      (mapv (fn [route]
                              [(clout/route-compile (get-in route [:form :route :path])
-                                                   (get-in route [:form :route :regexes] {}))
+                                                   (update-keys (get-in route [:form :route :regexes] {}) keyword))
                               (:handler route)
                               (get-in route [:form :metadata])])
                            routes)))))
@@ -795,9 +906,9 @@
 
 (mu/defn update-ns-endpoints!
   "Update the information about and handler stored in namespace metadata for the endpoints defined by [[defendpoint]]."
-  [nmspace
-   k    :- ::unique-key
-   info :- ::info]
+  [nmspace :- ::nmspace
+   k       :- ::unique-key
+   info    :- ::info]
   ;; we don't want to modify ns metadata during compilation, this will cause it to contain stuff like
   ;;
   ;;    #function[metabase.api.macros/fn--61462/endpoint-handler61461--61463/f--61464]
@@ -886,7 +997,7 @@
   ([]
    (ns-handler *ns*))
 
-  ([nmspace]
+  ([nmspace :- ::nmspace]
    (let [nmspace         (the-ns nmspace)
          resolve-handler (fn []
                            (-> nmspace meta :api/handler))]
@@ -909,7 +1020,7 @@
        :else
        (resolve-handler))))
 
-  ([nmspace & middleware :- [:sequential {:min 1} ::middleware]]
+  ([nmspace :- ::nmspace & middleware :- [:sequential {:min 1} ::middleware]]
    (let [handler (ns-handler nmspace)]
      (open-api/handler-with-open-api-spec
       (apply-middleware handler middleware)
@@ -937,16 +1048,16 @@
   "Get the REST API endpoint handlers and forms in a namespace from its metadata."
   ([]
    (ns-routes *ns*))
-  ([nmspace]
+  ([nmspace :- ::nmspace]
    (-> nmspace the-ns meta :api/endpoints))
-  ([nmspace
+  ([nmspace :- ::nmspace
     method :- ::method]
    (let [routes (ns-routes nmspace)]
      (into (empty routes)
            (filter (fn [[k _info]]
                      (= (first k) method)))
            routes)))
-  ([nmspace
+  ([nmspace :- ::nmspace
     method :- ::method
     route  :- string?]
    (let [routes (ns-routes nmspace method)]
@@ -959,14 +1070,14 @@
                         {:description (format "Tip: you can use %s to list all the defendpoint 2 routes in a namespace" `ns-routes)}
                         ::info]
   "Find the info for a specific route."
-  [nmspace
+  [nmspace :- ::nmspace
    method :- ::method
    route  :- string?]
   (first (vals (ns-routes nmspace method route))))
 
 (mu/defn find-route-fn :- ::core-fn
   "Find the info for a specific route."
-  [nmspace
+  [nmspace :- ::nmspace
    method :- ::method
    route  :- string?]
   (:core-fn (find-route nmspace method route)))

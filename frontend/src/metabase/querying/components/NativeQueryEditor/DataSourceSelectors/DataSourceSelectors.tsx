@@ -6,6 +6,7 @@ import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { getNativeQueryLanguage } from "metabase/databases/utils/engine";
 import {
+  type DataSelectorDatabase,
   DatabaseDataSelector,
   SchemaAndTableDataSelector,
 } from "metabase/querying/common/components/DataSelector";
@@ -26,8 +27,10 @@ interface DataSourceSelectorsProps {
   setDatabaseId: (databaseId: DatabaseId) => void;
   setTableId: (tableId: TableId) => void;
   editorContext?: EditorContext;
-  databaseIsDisabled?: (database: Database) => boolean;
-  databaseDisabledTooltip?: (database: Database) => string | undefined;
+  databaseIsDisabled?: (database: DataSelectorDatabase) => boolean;
+  databaseDisabledTooltip?: (
+    database: DataSelectorDatabase,
+  ) => string | undefined;
 }
 
 export const DataSourceSelectors = ({
@@ -87,8 +90,10 @@ interface PopulatedDataSourceSelectorsProps {
   readOnly?: boolean;
   setDatabaseId: (databaseId: DatabaseId) => void;
   setTableId: (tableId: TableId) => void;
-  databaseIsDisabled?: (database: Database) => boolean;
-  databaseDisabledTooltip?: (database: Database) => string | undefined;
+  databaseIsDisabled?: (database: DataSelectorDatabase) => boolean;
+  databaseDisabledTooltip?: (
+    database: DataSelectorDatabase,
+  ) => string | undefined;
 }
 
 const PopulatedDataSourceSelectors = ({
@@ -153,8 +158,10 @@ interface DatabaseSelectorProps {
   databases: Database[];
   readOnly?: boolean;
   setDatabaseId: (databaseId: DatabaseId) => void;
-  databaseIsDisabled?: (database: Database) => boolean;
-  databaseDisabledTooltip?: (database: Database) => string | undefined;
+  databaseIsDisabled?: (database: DataSelectorDatabase) => boolean;
+  databaseDisabledTooltip?: (
+    database: DataSelectorDatabase,
+  ) => string | undefined;
 }
 
 const DatabaseSelector = ({

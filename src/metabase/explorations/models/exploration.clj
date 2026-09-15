@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [metabase.explorations.db :as explorations.db]
+   [metabase.explorations.schema]
    [metabase.models.interface :as mi]
    [metabase.search.spec :as search.spec]
    [metabase.util.i18n :refer [deferred-tru]]

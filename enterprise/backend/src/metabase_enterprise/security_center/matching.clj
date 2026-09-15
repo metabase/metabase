@@ -84,7 +84,7 @@
   "Execute a matching query against the appdb.
    Returns true if rows matched, false if no rows, :error if query failed.
    nil matching_query means 'affects all instances' — returns true."
-  [matching-query :- [:maybe :map]]
+  [matching-query :- ::schema/matching-query]
   (if (nil? matching-query)
     true
     (if-let [query (select-query-for-dialect matching-query)]

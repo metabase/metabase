@@ -5,7 +5,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.mcp.v2.dashboard-ops :as dashboard-ops]
-   [metabase.parameters.mapping-targets]))
+   [metabase.parameters.mapping-targets]
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs]))
 
 (set! *warn-on-reflection* true)
 
@@ -636,9 +637,9 @@
     (let [current {:id 1 :tabs [] :parameters [{:id "p1" :name "Cat" :type "string/="}]
                    :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4
                                 :parameter_mappings []}]}
-          {:keys [dashcards]} (with-redefs [metabase.parameters.mapping-targets/target-for-field
-                                            (fn [_card _param field-id]
-                                              [:dimension [:field field-id nil]])]
+          {:keys [dashcards]} (dynamic-redefs/with-dynamic-fn-redefs [metabase.parameters.mapping-targets/target-for-field
+                                                                      (fn [_card _param field-id]
+                                                                        [:dimension [:field field-id nil]])]
                                 (dashboard-ops/compile-ops
                                  current
                                  [{:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_field 55}]
@@ -652,9 +653,9 @@
     (let [current {:id 1 :tabs [] :parameters [{:id "p1" :name "Cat" :type "string/="}]
                    :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4
                                 :parameter_mappings []}]}
-          {:keys [dashcards]} (with-redefs [metabase.parameters.mapping-targets/target-for-field
-                                            (fn [_card _param field-id]
-                                              [:dimension [:field field-id nil]])]
+          {:keys [dashcards]} (dynamic-redefs/with-dynamic-fn-redefs [metabase.parameters.mapping-targets/target-for-field
+                                                                      (fn [_card _param field-id]
+                                                                        [:dimension [:field field-id nil]])]
                                 (dashboard-ops/compile-ops
                                  current
                                  [{:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_field 55}
@@ -669,7 +670,7 @@
                    :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4 :parameter_mappings []}]}]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo #"op 0.*wire_parameter"
-           (with-redefs [metabase.parameters.mapping-targets/target-for-field (constantly nil)]
+           (dynamic-redefs/with-dynamic-fn-redefs [metabase.parameters.mapping-targets/target-for-field (constantly nil)]
              (dashboard-ops/compile-ops
               current
               [{:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_field 55}]
@@ -690,9 +691,9 @@
     (let [current {:id 1 :tabs [] :parameters [{:id "p1" :name "Cat" :type "string/="}]
                    :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4 :parameter_mappings []}
                                {:id 8 :card_id 10 :row 4 :col 0 :size_x 4 :size_y 4 :parameter_mappings []}]}
-          {:keys [dashcards]} (with-redefs [metabase.parameters.mapping-targets/target-for-field
-                                            (fn [card _param field-id]
-                                              (when (= 9 (:id card)) [:dimension [:field field-id nil]]))]
+          {:keys [dashcards]} (dynamic-redefs/with-dynamic-fn-redefs [metabase.parameters.mapping-targets/target-for-field
+                                                                      (fn [card _param field-id]
+                                                                        (when (= 9 (:id card)) [:dimension [:field field-id nil]]))]
                                 (dashboard-ops/compile-ops
                                  current
                                  [{:op "wire_parameter" :parameter_id "p1" :dashcard_id 7

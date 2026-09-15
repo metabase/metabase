@@ -529,8 +529,8 @@
     {:closed true}
     [:schema-names {:optional true} [:maybe
                                      [:or
-                                      [:sequential :string]
-                                      [:set :string]]]]
+                                      [:sequential [:maybe :string]]
+                                      [:set [:maybe :string]]]]]
     [:table-names  {:optional true} [:maybe
                                      [:or
                                       [:sequential :string]

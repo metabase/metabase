@@ -48,8 +48,9 @@ export type CreateTestPlanInput = {
   elements: ModuleDef[];
   rules: Rule[];
   changedFiles: string[];
-  // Parsed dependency-cruiser edges, or null to fall back to the rules graph.
-  fileDependencies: FileDependency[] | null;
+  // Loads the dependency-cruiser edges, called only when some suite can be narrowed.
+  // Null falls back to the rules graph.
+  loadFileDependencies: () => FileDependency[] | null;
   testFilesBySuite: { unit: string[]; loki: string[]; e2e: string[] };
   e2eSpecFiles: Record<string, string[]> | null;
   unitInfraTouched: boolean;
@@ -63,6 +64,7 @@ export type CreateTestPlanInput = {
 };
 
 // Tests whose owning module is affected.
+// A spec outside the module tree always runs, because the graph cannot scope it.
 export function filterAffectedTests(
   nodes: ModuleNode[],
   affected: Set<string>,
@@ -70,7 +72,7 @@ export function filterAffectedTests(
 ): string[] {
   return testFiles.filter((file) => {
     const module = mapFileToModule(nodes, file);
-    return module !== null && affected.has(module);
+    return module === null || affected.has(module);
   });
 }
 
@@ -130,7 +132,7 @@ export function createTestPlan({
   elements,
   rules,
   changedFiles,
-  fileDependencies,
+  loadFileDependencies,
   testFilesBySuite,
   e2eSpecFiles,
   unitInfraTouched,
@@ -143,16 +145,11 @@ export function createTestPlan({
   beFilesTotal,
 }: CreateTestPlanInput): TestPlan {
   const rulesGraph = buildModuleGraph(elements, rules);
-  const usageGraph = fileDependencies
-    ? buildUsageModuleGraph(elements, fileDependencies)
-    : rulesGraph;
-
   const nodes = rulesGraph.nodes;
   // Distinct module types (an element type can span several patterns).
   const totalModules = new Set(elements.map((el) => el.type)).size;
   const changedModules = getChangedModules(nodes, changedFiles);
   const rulesAffected = getAffectedModules(rulesGraph, changedFiles);
-  const usageAffected = getAffectedModules(usageGraph, changedFiles);
 
   // The coarse "feature" tier is the only set the e2e manifest is ever
   // collapsed to (see filterAffectedE2eSpecs).
@@ -171,6 +168,14 @@ export function createTestPlan({
     e2eInfraTouched ||
     beFilesChanged > 0 ||
     e2eSpecFiles === null;
+
+  // The cruise takes seconds, so it is skipped when every suite runs in full anyway.
+  const edges =
+    unitForceAll && lokiForceAll && e2eForceAll ? null : loadFileDependencies();
+  const usageGraph = edges
+    ? buildUsageModuleGraph(elements, edges)
+    : rulesGraph;
+  const usageAffected = getAffectedModules(usageGraph, changedFiles);
 
   const select = (forceAll: boolean, affected: Set<string>, files: string[]) =>
     forceAll ? files : filterAffectedTests(nodes, affected, files);

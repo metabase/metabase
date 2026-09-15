@@ -100,14 +100,14 @@
                                       :required    false}
                                      {:name "ssl"}
                                      {:name "use-keystore"
-                                      :visible-if  {:ssl true}}
+                                      :visible-if  {"ssl" true}}
                                      {:name         "keystore-password-value"
                                       :display-name "Keystore Password",
                                       :type         "password",
                                       :required     false,
-                                      :visible-if   {:use-keystore true
+                                      :visible-if   {"use-keystore" true
                                                      ;; this should have been filled in as a transitive dependency
-                                                     :ssl          true}}
+                                                     "ssl"          true}}
                                      {:name         "keystore-options"
                                       :display-name "Keystore"
                                       :options      [{:name  "Local file path"
@@ -116,17 +116,17 @@
                                                       :value "uploaded"}]
                                       :type         "select"
                                       :default      "local"
-                                      :visible-if   {:use-keystore true
-                                                     :ssl          true}}
+                                      :visible-if   {"use-keystore" true
+                                                     "ssl"          true}}
                                      {:name                 "keystore-value"
                                       :type                 "textFile"
                                       :treat-before-posting "base64"
-                                      :visible-if           {:keystore-options "uploaded"}}
+                                      :visible-if           {"keystore-options" "uploaded"}}
                                      {:name        "keystore-path"
                                       :type        "string"
-                                      :visible-if  {:keystore-options "local"
-                                                    :use-keystore true
-                                                    :ssl          true}}]
+                                      :visible-if  {"keystore-options" "local"
+                                                    "use-keystore" true
+                                                    "ssl"          true}}]
                                     false]
                                    [[{:name "host"}
                                      {:name        "password-value"
@@ -135,16 +135,16 @@
                                       :required    false}
                                      {:name "ssl"}
                                      {:name "use-keystore"
-                                      :visible-if  {:ssl true}}
+                                      :visible-if  {"ssl" true}}
                                      {:name         "keystore-password-value"
                                       :display-name "Keystore Password"
                                       :type         "password"
                                       :required     false
-                                      :visible-if   {:use-keystore true}}
+                                      :visible-if   {"use-keystore" true}}
                                      {:name                 "keystore-value"
                                       :type                 "textFile"
                                       :treat-before-posting "base64"
-                                      :visible-if           {:use-keystore true}}]
+                                      :visible-if           {"use-keystore" true}}]
                                     true]]]
       (testing (str " with is-hosted? " is-hosted?)
         (mt/with-premium-features (if is-hosted? #{:hosting} #{})
@@ -196,14 +196,14 @@
              :description "Comma separated names of schemas that should appear in Metabase"
              :helper-text "You can use patterns like \"auth*\" to match multiple schemas"
              :type        "text"
-             :visible-if  {:my-schema-filters-type "inclusion"}
+             :visible-if  {"my-schema-filters-type" "inclusion"}
              :required    true}
             {:name        "my-schema-filters-patterns"
              :placeholder "E.x. public,auth*"
              :description "Comma separated names of schemas that should NOT appear in Metabase"
              :helper-text "You can use patterns like \"auth*\" to match multiple schemas"
              :type        "text"
-             :visible-if  {:my-schema-filters-type "exclusion"}
+             :visible-if  {"my-schema-filters-type" "exclusion"}
              :required    true}
             {:name "last-prop"}]
            (driver.u/connection-props-server->client

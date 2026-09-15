@@ -319,8 +319,7 @@
                 :semantic_type       nil}]]
              (updates-that-will-be-performed!
               (merge default-metadata
-                     {:id             field-id
-                      :base-type      :type/Text
+                     {:base-type      :type/Text
                       :effective-type :type/Text})
               (merge default-metadata
                      {:id             field-id
@@ -499,14 +498,12 @@
       (field-user-settings/upsert-user-settings {:id field-id} {:semantic_type :type/Category})
       (let [updates (updates-that-will-be-performed!
                      (merge default-metadata
-                            {:id             field-id
-                             :base-type      :type/Text
+                            {:base-type      :type/Text
                              :effective-type :type/Text})
                      (merge default-metadata
-                            {:id               field-id
-                             :base-type        :type/Integer
-                             :effective-type   :type/Integer
-                             :data-sensitivity :PII}))]
+                            {:id             field-id
+                             :base-type      :type/Integer
+                             :effective-type :type/Integer}))]
         (is (= #{"FieldUserSettings" "Field"} (into #{} (map first) updates)))
         (is (not-any? (fn [[_ _ changes]] (contains? changes :data_sensitivity)) updates)))))
   (testing "a user-set label survives a column being dropped and re-created with a different type"

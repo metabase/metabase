@@ -115,42 +115,42 @@
     (t/is (thrown-with-msg?
            #?(:clj clojure.lang.ExceptionInfo :cljs :default)
            #"No expression named"
-           (mbql.u/expression-with-name {} "wow")))))
+           (mbql.u/expression-with-name {:source-table 1} "wow")))))
 
 (t/deftest ^:parallel update-field-options-test
   ;; the options exercised here (`:display-name`, `:name`, `:binning`) are real declared ref options. Ref options are
   ;; a closed schema in MBQL 4 as well as MBQL 5, so a stand-in key like `:wow` would be rejected as this function's
   ;; input before it did any of the updating this test is about.
   (t/is (= [:field 1 {:display-name "Wow"}]
-           (mbql.u/update-field-options [:field 1 nil] assoc :display-name "Wow")
+           (mbql.u/update-field-options [:field 1 nil] #(assoc % :display-name "Wow"))
            (mu/disable-enforcement
-             (mbql.u/update-field-options [:field 1 {}] assoc :display-name "Wow"))
-           (mbql.u/update-field-options [:field 1 {:display-name "Meh"}] assoc :display-name "Wow")))
+             (mbql.u/update-field-options [:field 1 {}] #(assoc % :display-name "Wow")))
+           (mbql.u/update-field-options [:field 1 {:display-name "Meh"}] #(assoc % :display-name "Wow"))))
   (t/is (= [:field 1 {:name "a", :display-name "b"}]
-           (mbql.u/update-field-options [:field 1 {:name "a"}] assoc :display-name "b")))
+           (mbql.u/update-field-options [:field 1 {:name "a"}] #(assoc % :display-name "b"))))
   (t/testing "Should remove empty options"
     (t/is (= [:field 1 nil]
-             (mbql.u/update-field-options [:field 1 {:name "a"}] dissoc :name))))
+             (mbql.u/update-field-options [:field 1 {:name "a"}] #(dissoc % :name)))))
   (t/testing "Should normalize the clause"
     (t/is (= [:field 1 nil]
              (mbql.u/update-field-options [:field 1 {:binning {:strategy :default}}]
-                                          assoc-in [:binning :strategy] nil))))
+                                          #(assoc-in % [:binning :strategy] nil)))))
   (t/testing "Should work with `:expression` and `:aggregation` references as well"
     (t/is (= [:expression "wow" {:name "a"}]
-             (mbql.u/update-field-options [:expression "wow"] assoc :name "a")))
+             (mbql.u/update-field-options [:expression "wow"] #(assoc % :name "a"))))
     (t/is (= [:expression "wow" {:name "a", :display-name "b"}]
-             (mbql.u/update-field-options [:expression "wow" {:display-name "b"}] assoc :name "a")))
+             (mbql.u/update-field-options [:expression "wow" {:display-name "b"}] #(assoc % :name "a"))))
     (t/is (= [:aggregation 0 {:name "a"}]
-             (mbql.u/update-field-options [:aggregation 0] assoc :name "a")))
+             (mbql.u/update-field-options [:aggregation 0] #(assoc % :name "a"))))
     (t/is (= [:aggregation 0 {:name "a", :display-name "b"}]
-             (mbql.u/update-field-options [:aggregation 0 {:display-name "b"}] assoc :name "a")))
+             (mbql.u/update-field-options [:aggregation 0 {:display-name "b"}] #(assoc % :name "a"))))
     ;; in the future when we make the 3-arg version the normalized/"official" version we will probably want to stop
     ;; doing this.
     (t/testing "Remove empty options entirely from `:expression` and `:aggregation` (for now)"
       (t/is (= [:expression "wow"]
-               (mbql.u/update-field-options [:expression "wow" {:display-name "b"}] dissoc :display-name)))
+               (mbql.u/update-field-options [:expression "wow" {:display-name "b"}] #(dissoc % :display-name))))
       (t/is (= [:aggregation 0]
-               (mbql.u/update-field-options [:aggregation 0 {:display-name "b"}] dissoc :display-name))))))
+               (mbql.u/update-field-options [:aggregation 0 {:display-name "b"}] #(dissoc % :display-name)))))))
 
 (t/deftest ^:parallel with-temporal-unit-test
   (t/is (= [:field 1 {:temporal-unit :day}]

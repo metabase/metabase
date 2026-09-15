@@ -1,7 +1,7 @@
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { render, screen } from "__support__/ui";
-import { getMetadata } from "metabase/metadata-store";
+import { getEntityLookups } from "metabase/querying/common/components/DataSelector";
 import { checkNotNull } from "metabase/utils/types";
 import { getSchemaDisplayName } from "metabase-lib/v1/metadata/utils/schema";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
@@ -17,9 +17,8 @@ describe("DataSelectorSchemaPicker", () => {
     const state = createMockState({
       entities: createMockEntitiesState({ databases: [database] }),
     });
-    const schemas = checkNotNull(
-      getMetadata(state).database(database.id),
-    ).getSchemas();
+    const lookups = getEntityLookups(state);
+    const schemas = lookups.databaseSchemas(database.id);
 
     render(
       <DataSelectorSchemaPicker

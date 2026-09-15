@@ -77,7 +77,9 @@
 (mu/defn- ldap-login :- [:maybe [:or session.schema/SessionSchema [:map [:mfa/pending? [:= true]]]]]
   "If LDAP is enabled and a matching user exists return a new Session for them (or an MFA-pending
   result map when a second factor is required), or `nil` if they couldn't be authenticated."
-  [username password device-info :- request/DeviceInfo]
+  [username    :- ms/NonBlankString
+   password    :- ms/NonBlankString
+   device-info :- request/DeviceInfo]
   (when (sso/ldap-enabled)
     (let [result (auth-identity/login! :provider/ldap
                                        {:username username

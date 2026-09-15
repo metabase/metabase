@@ -5,12 +5,14 @@
   - more than one handlers where each handler has a channel, optionally a template, and more than one recpients."
   (:require
    [malli.core :as mc]
+   [malli.util :as mut]
    [medley.core :as m]
    [metabase.channel.models.channel :as models.channel]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
    [metabase.models.util.spec-update :as models.u.spec-update]
    [metabase.notification.db :as notification.db]
+   [metabase.notification.schema :as notification.schema]
    [metabase.notification.task.send-trigger :as notification.task.send-trigger]
    [metabase.permissions.core :as perms]
    [metabase.permissions.schema :as permissions.schema]
@@ -58,8 +60,8 @@
   [:merge
    ::users.schema/user
    [:map {:closed true}
-    [:date_joined RowTimestamp]
-    [:last_login  RowTimestamp]]])
+    [:date_joined {:optional true} RowTimestamp]
+    [:last_login  {:optional true} RowTimestamp]]])
 
 (def notification-types
   "Set of valid notification types."
@@ -516,29 +518,29 @@
    ;; the rest of the row. Authorization lives in the model's `before-update` hook (superuser-only).
    :compare-cols [:active :creator_id]
    :extra-cols   [:payload_type :internal_id :payload_id]
-   :nested-specs {:payload       {:model        :model/NotificationCard
-                                  :compare-cols [:send_condition :send_once]
-                                  :extra-cols   [:card_id]}
-                  :subscriptions {:model        :model/NotificationSubscription
-                                  :fk-column    :notification_id
-                                  :compare-cols [:notification_id :type :event_name :cron_schedule :ui_display_type]
-                                  :multi-row?   true}
-                  :handlers      {:model        :model/NotificationHandler
-                                  :fk-column    :notification_id
-                                  :compare-cols [:notification_id :channel_type :channel_id :template_id :active]
-                                  :multi-row?   true
-                                  :nested-specs {:recipients {:model        :model/NotificationRecipient
-                                                              :fk-column    :notification_handler_id
-                                                              :compare-cols [:notification_handler_id :type :user_id :permissions_group_id :details]
-                                                              :multi-row?   true}
-                                                 :template   {:model         :model/ChannelTemplate
-                                                              :ref-in-parent :template_id
-                                                              :compare-cols  [:channel_type :name :details]}}}}})
+   :nested-specs [[:payload       {:model        :model/NotificationCard
+                                   :compare-cols [:send_condition :send_once]
+                                   :extra-cols   [:card_id]}]
+                  [:subscriptions {:model        :model/NotificationSubscription
+                                   :fk-column    :notification_id
+                                   :compare-cols [:notification_id :type :event_name :cron_schedule :ui_display_type]
+                                   :multi-row?   true}]
+                  [:handlers      {:model        :model/NotificationHandler
+                                   :fk-column    :notification_id
+                                   :compare-cols [:notification_id :channel_type :channel_id :template_id :active]
+                                   :multi-row?   true
+                                   :nested-specs [[:recipients {:model        :model/NotificationRecipient
+                                                                :fk-column    :notification_handler_id
+                                                                :compare-cols [:notification_handler_id :type :user_id :permissions_group_id :details]
+                                                                :multi-row?   true}]
+                                                  [:template   {:model         :model/ChannelTemplate
+                                                                :ref-in-parent :template_id
+                                                                :compare-cols  [:channel_type :name :details]}]]}]]})
 
 (defn- update-input-entries
   "Entries from `entries` whose key `spec` uses on update."
   [entries {:keys [compare-cols extra-cols nested-specs multi-row? id-col]}]
-  (let [allowed (into (set (concat compare-cols extra-cols (keys nested-specs)))
+  (let [allowed (into (set (concat compare-cols extra-cols (map first nested-specs)))
                       ;; multi-row rows are matched by their body-supplied id, so keep the id entry
                       (when multi-row? [id-col]))]
     (filterv (comp allowed first) entries)))
@@ -547,7 +549,8 @@
   "::NotificationCard restricted to what the update spec writes - `:id` comes from the URL's notification."
   (into [:map {:closed true}]
         (update-input-entries notification-card-entries
-                              (get-in notification-update-spec [:nested-specs :payload]))))
+                              (second (m/find-first (comp #{:payload} first)
+                                                    (:nested-specs notification-update-spec))))))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                            Helpers                                              ;;
@@ -649,21 +652,147 @@
 ;;                                         Public APIs                                             ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
+(mr/def ::event-topic
+  "One of the event topics a `:notification/system-event` notification can be triggered for."
+  [:enum
+   :event/user-invited
+   :event/notification-create
+   :event/slack-token-invalid
+   :event/comment-created
+   :event/support-access-grant-created
+   :event/transform-failed
+   :event/transform-failure-digest
+   :event/security-advisory-match])
+
+(mr/def ::event-info.user-invited
+  "The `:event_info` of an `:event/user-invited` system event: the invited User instance, plus the extra keys
+  `create-and-invite-user!` stamps on it. `:object` is typed by instance, not by shape, since the extra keys are
+  `assoc`ed onto the real Toucan row rather than replacing it."
+  [:map {:closed true}
+   [:object  [:merge
+              ::users.schema/user
+              [:map {:closed true}
+               [:is_from_setup {:optional true} [:maybe :boolean]]
+               [:invite_method {:optional true} [:maybe :string]]
+               [:invite_target {:optional true} [:maybe users.schema/InviteTarget]]
+               [:sso_source    {:optional true} [:maybe [:or :keyword :string]]]]]]
+   [:details {:optional true}
+    [:map {:closed true}
+     [:invitor [:map {:closed true}
+                [:email                       ms/Email]
+                [:first_name {:optional true} [:maybe :string]]]]]]])
+
+(mr/def ::event-info.security-advisory-match
+  "The `:event_info` of an `:event/security-advisory-match` system event."
+  [:map {:closed true}
+   [:object [:map {:closed true}
+             [:advisory_id       [:string {:min 1}]]
+             [:severity          [:or :keyword :string]]
+             [:title             :string]
+             [:description       :string]
+             [:match_status      [:or :keyword :string]]
+             [:advisory_url      [:maybe :string]]
+             [:remediation       :string]
+             [:affected_versions [:sequential [:map {:closed true}
+                                               [:min   [:re #"^\d+(?:\.\d+)*$"]]
+                                               [:fixed [:re #"^\d+(?:\.\d+)*$"]]]]]]]])
+
+(mr/def ::event-info.notification-create
+  "The `:event_info` of an `:event/notification-create` system event."
+  [:map {:closed true}
+   [:object  [:ref ::FullyHydratedNotification]]
+   [:user-id [:maybe ms/PositiveInt]]])
+
+(mr/def ::event-info.comment-created
+  "The `:event_info` of an `:event/comment-created` system event."
+  [:map {:closed true}
+   [:entity_type    :string]
+   [:entity_title   [:maybe :string]]
+   [:comment_href   :string]
+   [:entity_href    :string]
+   [:created_at     [:maybe ms/TemporalInstant]]
+   [:author         [:maybe :string]]
+   [:comment        [:maybe :string]]
+   [:parent_author  [:maybe :string]]
+   [:parent_comment [:maybe :string]]
+   [:style          [:map {:closed true}
+                     [:color_text_dark   :string]
+                     [:color_text_light  :string]
+                     [:color_text_medium :string]]]
+   [:email          ms/Email]])
+
+(mr/def ::event-info.support-access-grant-created
+  "The `:event_info` of an `:event/support-access-grant-created` system event."
+  [:map {:closed true}
+   [:support_email      [:maybe ms/Email]]
+   [:ticket_number      [:maybe :string]]
+   [:duration_minutes   :int]
+   [:grant_end_time     ms/TemporalInstant]
+   [:password_reset_url :string]
+   [:notes              [:maybe :string]]])
+
+(mr/def ::event-info.transform-failed
+  "The `:event_info` of an `:event/transform-failed` system event."
+  [:map {:closed true}
+   [:email         ms/Email]
+   [:job_name      [:maybe :string]]
+   [:job_href      :string]
+   [:failure_count :int]
+   [:skipped_count :int]
+   [:failures      [:sequential [:map {:closed true}
+                                 [:transform_name [:maybe :string]]
+                                 [:transform_href :string]
+                                 [:message        [:map {:closed true}
+                                                   [:first_line :string]
+                                                   [:details    [:sequential :string]]]]]]]])
+
+(mr/def ::event-info.transform-failure-digest
+  "The `:event_info` of an `:event/transform-failure-digest` system event."
+  [:map {:closed true}
+   [:job_count     :int]
+   [:failure_count :int]
+   [:jobs          [:sequential [:map {:closed true}
+                                 [:job_name      [:maybe :string]]
+                                 [:job_href      :string]
+                                 [:failure_count :int]
+                                 [:first_failed  [:maybe :string]]
+                                 [:latest_error  [:maybe :string]]]]]])
+
+(def event-topic->event-info-schema
+  "The `:event_info` schema published for each supported system event topic (a literal keyword, not a `require`,
+  to avoid a dependency cycle with the module that publishes each event)."
+  {:event/user-invited                 ::event-info.user-invited
+   :event/notification-create          ::event-info.notification-create
+   :event/slack-token-invalid          [:map {:closed true}]
+   :event/comment-created              ::event-info.comment-created
+   :event/support-access-grant-created ::event-info.support-access-grant-created
+   :event/transform-failed             ::event-info.transform-failed
+   :event/transform-failure-digest     ::event-info.transform-failure-digest
+   :event/security-advisory-match      ::event-info.security-advisory-match})
+
 (mr/def ::SystemEventPayload.request
   "The `:payload` of a system event notification as a client may send it: the event topic, plus the `:disable_links`
   `POST /api/notification` stamps on. The event map itself is the server's to supply, so a request carries none."
   [:map {:closed true}
-   [:event_topic   {:optional true} [:fn #(= "event" (-> % keyword namespace))]]
+   [:event_topic   {:optional true} ::event-topic]
    [:disable_links {:optional true} [:maybe :boolean]]])
 
 (mr/def ::SystemEventPayload
-  "The `:payload` of a system event notification on its way to being sent: a [[::SystemEventPayload.request]] plus
-  the event map published under the topic, keyed the way [[metabase.events.core/publish-event!]] was handed it. A
-  `:notification/testing` notification's payload is empty."
-  [:merge
-   ::SystemEventPayload.request
-   [:map {:closed true}
-    [:event_info {:optional true} [:maybe [:map-of :keyword :any]]]]])
+  "The `:payload` of a system event notification on its way to being sent: the event topic, plus the `:disable_links`
+  `POST /api/notification` stamps on, plus the event map published under the topic, keyed the way
+  [[metabase.events.core/publish-event!]] was handed it. A `:notification/testing` notification's payload is empty."
+  (into [:multi {:dispatch :event_topic}]
+        (concat
+         (for [[topic info-schema] event-topic->event-info-schema]
+           [topic [:map {:closed true}
+                   [:event_topic   [:= topic]]
+                   [:disable_links {:optional true} [:maybe :boolean]]
+                   [:event_info    {:optional true} [:maybe info-schema]]]])
+         [[::mc/default
+           [:map {:closed true}
+            [:event_topic   [:fn #(= "event" (-> % keyword namespace))]]
+            [:disable_links {:optional true} [:maybe :boolean]]
+            [:event_info    {:optional true} [:maybe [:map {:closed true}]]]]]])))
 
 (defn hydrated-notification-schema
   "Schema for a notification hydrated with its creator, subscriptions and handlers, where each handler matches
@@ -703,13 +832,39 @@
    [:merge
     ::NotificationHandler
     [:map
-     [:template   {:optional true} [:maybe ::models.channel/ChannelTemplate]]
+     [:template        {:optional true} [:maybe ::models.channel/ChannelTemplate]]
+     [:channel         {:optional true} [:maybe ::models.channel/Channel]]
+     [:recipients      {:optional true} [:sequential ::NotificationRecipient]]
+     [:attachment_only {:optional true} [:maybe :boolean]]
+     [:include_pdf     {:optional true} [:maybe :boolean]]]]))
+
+(def ^:private NotificationWithInlinePayload
+  "A Notification row as `send-notification!` is handed it before hydration: with the system event `:payload`
+  `metabase.notification.events.notification` assocs on, or the `:triggering_subscription`
+  `metabase.notification.task.send` assocs on."
+  (mut/merge ::notification.schema/notification
+             [:map {:closed true}
+              [:payload                 {:optional true} [:maybe ::SystemEventPayload]]
+              [:triggering_subscription {:optional true} [:maybe ::notification.schema/notification-subscription]]]))
+
+(def ^:private NotificationWithRawHandlers
+  "An unsaved Notification as `POST /api/notification/send` hands it to `send-notification!`: no id or timestamps of
+  its own, but the raw (pre-hydration) `:handlers` and `:subscriptions` straight off the request body."
+  (hydrated-notification-schema
+   [:merge
+    ::CreateNotificationHandlerParams
+    [:map {:closed true}
+     [:template   {:optional true} [:maybe ::models.channel/ChannelTemplateUserProvided]]
      [:channel    {:optional true} [:maybe ::models.channel/Channel]]
-     [:recipients {:optional true} [:sequential ::NotificationRecipient]]]]))
+     [:recipients {:optional true} [:sequential ::CreateNotificationRecipientParams]]]]
+   {:with-id? false}))
 
 (mu/defn hydrate-notification :- [:or ::FullyHydratedNotification [:sequential ::FullyHydratedNotification]]
   "Fully hydrate notifictitons."
-  [notification-or-notifications]
+  [notification-or-notifications :- [:or NotificationWithInlinePayload
+                                     NotificationWithRawHandlers
+                                     [:ref ::FullyHydratedNotification]
+                                     [:sequential ::notification.schema/notification]]]
   (t2/hydrate notification-or-notifications :creator :payload :subscriptions [:handlers :channel :template [:recipients :recipients-detail]]))
 
 (mu/defn notifications-for-card :- [:sequential ::FullyHydratedNotification]

@@ -11,7 +11,7 @@
 
 const SHARED_UTILS_LEVELS = [
   // U0 — foundation: leaf plumbing.
-  ["shared/urls", "shared/cljs-dev-tools"],
+  ["shared/urls", "shared/cljs-dev-tools", "shared/types"],
   // U1 — the api client.
   ["shared/api"],
   // U2 — the store slices and hooks.
@@ -19,8 +19,13 @@ const SHARED_UTILS_LEVELS = [
   // U3 — the plugin registry, and instance settings over the api and store.
   ["shared/plugins", "shared/settings"],
   // U4 — the current user, composed over the plugin registry for application permissions,
-  // and the global styles, composed over settings and the store.
-  ["shared/current-user", "shared/styled-components"],
+  // the global styles, composed over settings and the store,
+  // and the settings-page rendering primitives, composed over settings.
+  [
+    "shared/current-user",
+    "shared/styled-components",
+    "shared/settings-components",
+  ],
   // U5 — app services over the store, registry and current user.
   [
     "shared/metadata-store",
@@ -64,6 +69,7 @@ const SHARED_PLATFORM_LEVELS = [
 const SHARED_DOMAIN = [
   "shared/comments",
   "shared/custom-viz",
+  "shared/embedding-ee",
   "shared/metrics-ui",
   "shared/nav",
   "shared/notifications",
@@ -93,7 +99,7 @@ const levelAllows = (levels, base = []) =>
 
 const sharedRules = [
   // Later rules win, so these must come after the baseline shared/* allow they narrow.
-  // Edges to untiered modules (common, embedding, types) fall through to that allow.
+  // Edges to untiered modules (common, embedding, documents) fall through to that allow.
   {
     from: SHARED_UTILS,
     disallow: TIERED_SHARED,

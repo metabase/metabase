@@ -14,7 +14,7 @@
   "Default function returning a reducing function. Results are returned in the 'standard' map format e.g.
 
     {:data {:cols [...], :rows [...]}, :row_count ...}"
-  [metadata]
+  [metadata :- ::qp.schema/metadata]
   (let [row-count (volatile! 0)
         rows      (volatile! (transient []))]
     (fn default-rf
@@ -39,10 +39,11 @@
 
   `row-thunk` is a function that, when called, should return the next row in the results, or falsey if no more rows
   exist."
-  ([row-thunk]
+  ([row-thunk :- fn?]
    (reducible-rows row-thunk qp.pipeline/*canceled-chan*))
 
-  ([row-thunk canceled-chan]
+  ([row-thunk     :- fn?
+    canceled-chan :- [:maybe (lib.schema.common/instance-of-class clojure.core.async.impl.channels.ManyToManyChannel)]]
    (reify
      clojure.lang.IReduceInit
      (reduce [_ rf init]

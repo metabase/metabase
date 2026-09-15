@@ -536,7 +536,7 @@
   `metabot_message` `messages` (in reader order, e.g. from [[live-messages]]):
   errored and in-flight turns are dropped, aborted turns replay their partial
   content."
-  [messages :- [:sequential :map]]
+  [messages :- [:sequential ::metabot.schema/metabot-message]]
   (into []
         (mapcat turn->llm-messages)
         (rows->turns messages)))

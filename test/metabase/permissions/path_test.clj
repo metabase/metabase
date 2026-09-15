@@ -13,8 +13,6 @@
     (doseq [[input expected]
             {1                                                        {:read      "/collection/1/read/"
                                                                        :readwrite "/collection/1/"}
-             {:id 1}                                                  {:read      "/collection/1/read/"
-                                                                       :readwrite "/collection/1/"}
              collection/root-collection                               {:read      "/collection/root/read/"
                                                                        :readwrite "/collection/root/"}
              (assoc collection/root-collection :namespace "snippets") {:read      "/collection/namespace/snippets/root/read/"

@@ -7,15 +7,11 @@
 
 (mr/def ::login-history
   "A LoginHistory as selected from the app DB: every column of `:login_history`, plus `:active` added by the model's after-select hook."
-  [:map {:closed true}
-   [:id                 ms/PositiveInt]
-   [:timestamp          ms/TemporalInstant]
-   [:user_id            ::lib.schema.id/user]
-   [:session_id         {:optional true} [:maybe :string]]
-   [:device_id          :string]
-   [:device_description :string]
-   [:ip_address         :string]
-   [:active             {:optional true} :boolean]])
+  [:merge
+   ::login-history.update
+   [:map {:closed true}
+    [:id                 ms/PositiveInt]
+    [:active             {:optional true} :boolean]]])
 
 (mr/def ::login-history.update
   "What an update (or insert) of a LoginHistory accepts: every column of `:login_history` except `id`, all optional."

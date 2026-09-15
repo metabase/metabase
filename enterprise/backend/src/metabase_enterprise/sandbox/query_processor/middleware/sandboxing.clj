@@ -43,16 +43,19 @@
 ;;; from [[metabase-enterprise.sandbox.api.util/enforced-sandboxes-for-tables]] for consistency with all of the rest
 ;;; of the QP code. Or maybe add this to the Metadata Provider (or a special "Enterprise" Metadata Provider)?
 (mr/def ::sandbox
-  [:map
+  [:map {:closed true}
+   [:id                   {:optional true} [:maybe :int]]
+   [:group_id             {:optional true} [:maybe :int]]
    [:table_id             ::lib.schema.id/table]
    [:card_id              {:optional true} [:maybe ::lib.schema.id/card]]
+   [:table                {:optional true} [:maybe :metabase.warehouse-schema.schema/table]]
    [:attribute_remappings {:optional true} [:maybe
                                             [:map-of
                                              #_attribute-name ::lib.schema.common/non-blank-string
                                              #_target         ::lib.schema.parameter/target]]]])
 
 (mu/defn- query->all-table-ids :- [:maybe [:set ::lib.schema.id/table]]
-  [query]
+  [query :- ::lib.schema/query]
   (u/prog1 (lib/all-source-table-ids query)
     (when (seq <>)
       (lib.metadata/bulk-metadata-or-throw query :metadata/table <>))))
@@ -454,8 +457,7 @@
   "Merge column metadata from the non-sandboxed version of the query into the sandboxed results `metadata`. This way the
   final results metadata coming back matches what we'd get if the query was not running in a sandbox."
   [original-metadata :- [:sequential ::mbql.s/legacy-column-metadata]
-   metadata          :- [:map
-                         [:cols [:sequential ::mbql.s/legacy-column-metadata]]]]
+   metadata          :- :metabase.query-processor.schema/metadata]
   (letfn [(merge-cols [cols]
             (let [col-name->expected-col (m/index-by :name original-metadata)]
               (for [col cols]

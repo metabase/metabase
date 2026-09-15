@@ -15,11 +15,13 @@
    [clojure.walk :as walk]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.settings :as analytics.settings]
+   [metabase.analytics.snowplow :as snowplow]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.retry :as retry]
    [metabase.version.core :as version]))
 
@@ -162,9 +164,9 @@
 (mu/defn track-event! :- :boolean
   "Send a single analytics event to the Metaplow collector. Returns true when the event was enqueued, false when
   Metaplow tracking is disabled or the queue is full."
-  ([schema data]
+  ([schema :- snowplow/SnowplowSchema data :- snowplow/SnowplowEventData]
    (track-event! schema data nil))
-  ([schema :- :keyword data _user-id]
+  ([schema :- snowplow/SnowplowSchema data :- snowplow/SnowplowEventData _user-id :- [:maybe ms/PositiveInt]]
    (boolean
     (when (analytics.settings/metaplow-tracking-enabled)
       (try

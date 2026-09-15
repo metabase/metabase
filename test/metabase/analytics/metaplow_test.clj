@@ -59,9 +59,9 @@
   (testing "When metaplow-tracking-enabled is false the event is not enqueued and the call returns false"
     (mt/with-temporary-setting-values [metaplow-url nil]
       (let [collector (atom [])]
-        (with-redefs [metaplow/enqueue! (fn [payload]
-                                          (swap! collector conj payload)
-                                          true)]
+        (mt/with-dynamic-fn-redefs [metaplow/enqueue! (fn [payload]
+                                                        (swap! collector conj payload)
+                                                        true)]
           (is (false? (metaplow/track-event! :snowplow/dashboard {:event :dashboard-created})))
           (is (empty? @collector)))))))
 
@@ -70,6 +70,9 @@
                                      anon-tracking-enabled true]
     (testing "track-event! enqueues onto the real channel and the pipeline worker invokes send-event-with-retries!"
       (let [received (promise)]
+        ;; the pipeline's worker threads are spawned once from a defonce delay, so they never inherit a
+        ;; test's *local-redefs*; only a root swap reaches them
+        #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
         (with-redefs [metaplow/send-event-with-retries! (fn [payload]
                                                           (deliver received payload)
                                                           :sent)]
@@ -85,14 +88,17 @@
     (testing "Sending 200 events: all of them traverse the pipeline"
       (let [received (atom [])
             latch    (CountDownLatch. 200)]
+        ;; the pipeline's worker threads are spawned once from a defonce delay, so they never inherit a
+        ;; test's *local-redefs*; only a root swap reaches them
+        #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
         (with-redefs [metaplow/send-event-with-retries! (fn [payload]
                                                           (swap! received conj payload)
                                                           (.countDown latch)
                                                           :sent)]
-          (doseq [i (range 200)]
+          (doseq [i (range 1 201)]
             (metaplow/track-event! :snowplow/dashboard {:event :dashboard-created :dashboard-id i}))
           (is (true? (.await latch 1 TimeUnit/SECONDS))
               "Pipeline did not process all 200 events within 1s")
           (is (= 200 (count @received)))
-          (is (= (set (range 200))
+          (is (= (set (range 1 201))
                  (set (map #(get-in % [:payload :data "dashboard_id"]) @received)))))))))
