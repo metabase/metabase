@@ -7,7 +7,7 @@ import {
   type SentValue,
   modelClientRequest,
 } from "./client-request";
-import { resolveRtkRequest } from "./rtk-request";
+import { type RtkRequest, resolveRtkRequest } from "./rtk-request";
 import { type Shape, typeShape } from "./shape";
 import {
   type CompareContext,
@@ -61,6 +61,7 @@ interface Operation {
 interface CheckContext extends CompareContext {
   generated: ts.SourceFile;
   operations: Map<string, Operation[]>;
+  responsesOnly?: boolean;
 }
 
 interface Endpoint {
@@ -76,7 +77,7 @@ interface ResolvedEndpoint {
   node: ts.CallExpression;
   config: ts.ObjectLiteralExpression;
   responseType: ts.TypeNode;
-  client: ClientRequest;
+  request: RtkRequest;
   operation: Operation;
   /** The HTTP method and backend path, e.g. `GET /api/card/{id}`. */
   route: string;
@@ -87,7 +88,9 @@ export function checkContracts(
   endpointFiles: string[],
   generatedFile: string,
   root: string,
-  budgets: Pick<CompareContext, "walkStepBudget" | "walkDepthBudget"> = {},
+  options: Pick<CompareContext, "walkStepBudget" | "walkDepthBudget"> & {
+    responsesOnly?: boolean;
+  } = {},
 ): ContractResult[] {
   assertCheckable(program, [generatedFile, ...endpointFiles], root);
   const checker = program.getTypeChecker();
@@ -100,7 +103,7 @@ export function checkContracts(
     generated,
     operations: backendOperations(checker, generated),
     root,
-    ...budgets,
+    ...options,
   };
   const results = discoverEndpoints(
     program,
@@ -344,7 +347,7 @@ function checkEndpoint(context: CheckContext, endpoint: Endpoint): Check[] {
     }
     return [
       ...checkResponse(context, resolved),
-      ...checkRequest(context, resolved),
+      ...(context.responsesOnly ? [] : checkRequest(context, resolved)),
     ];
   } catch (error) {
     throw error instanceof TypeWalkError &&
@@ -355,7 +358,7 @@ function checkEndpoint(context: CheckContext, endpoint: Endpoint): Check[] {
 }
 
 function resolveEndpoint(
-  { checker, operations }: CheckContext,
+  { operations }: CheckContext,
   { id, node, name }: Endpoint,
 ): ResolvedEndpoint | { unverified: string } {
   const config = node.arguments[0] && unwrap(node.arguments[0]);
@@ -389,9 +392,8 @@ function resolveEndpoint(
         "Cannot statically identify one HTTP request (queryFn, dynamic URL/method, conditional returns, computed properties, accessors, or spread).",
     };
   }
-  const client = modelClientRequest(checker, rtk, node);
-  const clientRoute = `${client.method} ${client.path}`;
-  const candidates = operations.get(routeKey(client.method, client.path)) ?? [];
+  const clientRoute = `${rtk.method} ${rtk.url.path}`;
+  const candidates = operations.get(routeKey(rtk.method, rtk.url.path)) ?? [];
   if (candidates.length > 1) {
     return { unverified: `Ambiguous backend operations for ${clientRoute}` };
   }
@@ -404,9 +406,9 @@ function resolveEndpoint(
     node,
     config,
     responseType,
-    client,
+    request: rtk,
     operation,
-    route: `${client.method} ${operation.path}`,
+    route: `${rtk.method} ${operation.path}`,
   };
 }
 
@@ -474,7 +476,8 @@ function checkRequest(
   resolved: ResolvedEndpoint,
 ): Check[] {
   const { checker, generated } = context;
-  const { endpointId, node, client, operation, route } = resolved;
+  const { endpointId, node, request, operation, route } = resolved;
+  const client = modelClientRequest(checker, request, node);
   if (client.failure) {
     return [{ kind: "request", status: "mismatch", message: client.failure }];
   }
@@ -505,7 +508,7 @@ function checkRequest(
         node,
       ),
     ),
-    ...checkPathParameters(context, resolved),
+    ...checkPathParameters(context, resolved, client),
   ];
 }
 
@@ -633,7 +636,8 @@ function valueShape(value: SentValue): Shape {
 
 function checkPathParameters(
   context: CheckContext,
-  { endpointId, node, client, operation, route }: ResolvedEndpoint,
+  { endpointId, node, operation, route }: ResolvedEndpoint,
+  client: ClientRequest,
 ): Check[] {
   const { checker, generated } = context;
   const pathType = propertyType(checker, operation.data, "path", generated);

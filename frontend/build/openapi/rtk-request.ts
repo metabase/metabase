@@ -2,14 +2,23 @@ import ts from "typescript";
 
 import { hasComputedName, member, unwrap } from "./typescript-utils";
 
-interface UrlTemplate {
-  head: string;
-  spans: { expression: ts.Expression; literal: string }[];
+export type UrlSlot =
+  | { kind: "text"; text: string }
+  | { kind: "span"; expression: ts.Expression }
+  | { kind: "tag"; name: string };
+
+export type TagSlot = Extract<UrlSlot, { kind: "tag" }>;
+
+interface RequestUrl {
+  path: string;
+  pathSlots: UrlSlot[];
+  query: UrlSlot[];
+  tags: TagSlot[];
 }
 
 export interface RtkRequest {
-  method: string | undefined;
-  url: UrlTemplate;
+  method: string;
+  url: RequestUrl;
   params: ts.Expression | undefined;
   body: ts.Expression | undefined;
   extraOptions: ts.Expression | undefined;
@@ -60,19 +69,67 @@ function returnExpression(fn: ts.Node): ts.Expression | undefined {
   return value && unwrap(value);
 }
 
-function urlTemplate(url: ts.Expression): UrlTemplate | undefined {
-  if (ts.isStringLiteral(url) || ts.isNoSubstitutionTemplateLiteral(url)) {
-    return { head: url.text, spans: [] };
+function textSlots(text: string): UrlSlot[] {
+  const slots: UrlSlot[] = [];
+  let last = 0;
+  for (const match of text.matchAll(/:\w+/g)) {
+    slots.push({ kind: "text", text: text.slice(last, match.index) });
+    slots.push({ kind: "tag", name: match[0].slice(1) });
+    last = match.index + match[0].length;
   }
-  if (!ts.isTemplateExpression(url)) {
+  slots.push({ kind: "text", text: text.slice(last) });
+  return slots;
+}
+
+function splitAtQuery(slots: UrlSlot[]): {
+  path: UrlSlot[];
+  query: UrlSlot[];
+} {
+  const index = slots.findIndex(
+    (slot) => slot.kind === "text" && slot.text.includes("?"),
+  );
+  const at = slots[index];
+  if (index === -1 || !at || at.kind !== "text") {
+    return { path: slots, query: [] };
+  }
+  const split = at.text.indexOf("?");
+  return {
+    path: [
+      ...slots.slice(0, index),
+      { kind: "text", text: at.text.slice(0, split) },
+    ],
+    query: [
+      { kind: "text", text: at.text.slice(split + 1) },
+      ...slots.slice(index + 1),
+    ],
+  };
+}
+
+function urlTemplate(url: ts.Expression): RequestUrl | undefined {
+  if (
+    !ts.isStringLiteral(url) &&
+    !ts.isNoSubstitutionTemplateLiteral(url) &&
+    !ts.isTemplateExpression(url)
+  ) {
     return undefined;
   }
+  const slots = ts.isTemplateExpression(url)
+    ? [
+        ...textSlots(url.head.text),
+        ...url.templateSpans.flatMap((span): UrlSlot[] => [
+          { kind: "span", expression: unwrap(span.expression) },
+          ...textSlots(span.literal.text),
+        ]),
+      ]
+    : textSlots(url.text);
+  const { path, query } = splitAtQuery(slots);
   return {
-    head: url.head.text,
-    spans: url.templateSpans.map((span) => ({
-      expression: unwrap(span.expression),
-      literal: span.literal.text,
-    })),
+    path: path
+      .map((slot) => (slot.kind === "text" ? slot.text : "{param}"))
+      .join(""),
+    pathSlots: path,
+    query,
+    tags: slots.filter((slot): slot is TagSlot => slot.kind === "tag"),
   };
 }
 
@@ -106,7 +163,7 @@ export function resolveRtkRequest(
     return undefined;
   }
   return {
-    method: method?.text,
+    method: method?.text ?? "GET",
     url,
     params: object && expressionMember(object, "params"),
     body: object && expressionMember(object, "body"),

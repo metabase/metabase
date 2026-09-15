@@ -282,44 +282,6 @@ describe("modelClientRequest against the real API client", () => {
     jest.restoreAllMocks();
   });
 
-  it("should send GET when the request names no method", async () => {
-    await expectConformance(
-      {
-        endpoint: "{ query: (id: number) => ({ url: `/api/x/${id}` }) }",
-        argument: "7",
-      },
-      sentRequest({ path: "/api/x/7" }),
-      projected({ path: "/api/x/{param}", parameters: [["number"]] }),
-    );
-  });
-
-  it("should send a JSON body for a non-GET request", async () => {
-    await expectConformance(
-      {
-        endpoint:
-          '{ query: (body: { name: string }) => ({ method: "POST", url: "/api/x", body }) }',
-        argument: '{ name: "n" }',
-      },
-      sentRequest({
-        method: "POST",
-        body: { kind: "json", value: { name: "n" } },
-      }),
-      projected({ method: "POST", body: [{ name: ["string"] }] }),
-    );
-  });
-
-  it("should send a GET body as query parameters", async () => {
-    await expectConformance(
-      {
-        endpoint:
-          '{ query: (body: { name: string }) => ({ url: "/api/x", body }) }',
-        argument: '{ name: "n" }',
-      },
-      sentRequest({ query: [["name", "n"]] }),
-      projected({ query: [{ name: ["string"] }] }),
-    );
-  });
-
   it.each([
     ["void", "undefined"],
     ["undefined", "undefined"],
@@ -349,78 +311,6 @@ describe("modelClientRequest against the real API client", () => {
     );
   });
 
-  it("should leave out a nullable query value that is null", async () => {
-    await expectConformance(
-      {
-        endpoint:
-          '{ query: (params: { q: string | null; kept: string }) => ({ url: "/api/x", params }) }',
-        argument: '{ q: null, kept: "k" }',
-      },
-      sentRequest({ query: [["kept", "k"]] }),
-      projected({ query: [{ "q?": ["string"], kept: ["string"] }] }),
-    );
-  });
-
-  it("should send number and boolean query values as text", async () => {
-    await expectConformance(
-      {
-        endpoint:
-          '{ query: (params: { limit: number; archived: boolean }) => ({ url: "/api/x", params }) }',
-        argument: "{ limit: 10, archived: true }",
-      },
-      sentRequest({
-        query: [
-          ["limit", "10"],
-          ["archived", "true"],
-        ],
-      }),
-      projected({
-        query: [{ limit: ["number"], archived: ['"false"', '"true"'] }],
-      }),
-    );
-  });
-
-  it("should leave an object query value unverified, because its text is known only at runtime", async () => {
-    await expectConformance(
-      {
-        endpoint:
-          '{ query: (params: { options: { a: number } }) => ({ url: "/api/x", params }) }',
-        argument: "{ options: { a: 1 } }",
-      },
-      sentRequest({ query: [["options", "[object Object]"]] }),
-      projected({ query: "unverified" }),
-    );
-  });
-
-  it("should send null and undefined array items as text", async () => {
-    await expectConformance(
-      {
-        endpoint:
-          '{ query: (params: { ids: (null | undefined)[] }) => ({ url: "/api/x", params }) }',
-        argument: "{ ids: [null, undefined] }",
-      },
-      sentRequest({
-        query: [
-          ["ids", "null"],
-          ["ids", "undefined"],
-        ],
-      }),
-      projected({ query: [{ "ids?": ['each "null"', 'each "undefined"'] }] }),
-    );
-  });
-
-  it("should send a boolean query value as true or false", async () => {
-    await expectConformance(
-      {
-        endpoint:
-          '{ query: (params: { flag: boolean }) => ({ url: "/api/x", params }) }',
-        argument: "{ flag: true }",
-      },
-      sentRequest({ query: [["flag", "true"]] }),
-      projected({ query: [{ flag: ['"false"', '"true"'] }] }),
-    );
-  });
-
   it("should leave out an empty array and repeat the key for each array item", async () => {
     const endpoint =
       '{ query: (params: { ids: number[] }) => ({ url: "/api/x", params }) }';
@@ -438,265 +328,6 @@ describe("modelClientRequest against the real API client", () => {
         ],
       }),
       projected({ query: [{ "ids?": ["number[]"] }] }),
-    );
-  });
-
-  it("should fill a URL tag from params and leave the other params in the query", async () => {
-    await expectConformance(
-      {
-        endpoint:
-          '{ query: (params: { cardId: number; q: string }) => ({ url: "/api/x/:cardId/query", params }) }',
-        argument: '{ cardId: 5, q: "text" }',
-      },
-      sentRequest({ path: "/api/x/5/query", query: [["q", "text"]] }),
-      projected({
-        path: "/api/x/{param}/query",
-        parameters: [["number"]],
-        query: [{ q: ["string"] }],
-      }),
-    );
-  });
-
-  it("should fill a URL tag with the text String gives for a boolean", async () => {
-    await expectConformance(
-      {
-        endpoint:
-          '{ query: (params: { flag: boolean }) => ({ url: "/api/x/:flag", params }) }',
-        argument: "{ flag: true }",
-      },
-      sentRequest({ path: "/api/x/true" }),
-      projected({
-        path: "/api/x/{param}",
-        parameters: [['"false"', '"true"']],
-      }),
-    );
-  });
-
-  it("should leave a URL tag filled from an object unverified, because its text is known only at runtime", async () => {
-    await expectConformance(
-      {
-        endpoint:
-          '{ query: (params: { options: { a: number } }) => ({ url: "/api/x/:options", params }) }',
-        argument: "{ options: { a: 1 } }",
-      },
-      sentRequest({ path: "/api/x/%5Bobject%20Object%5D" }),
-      projected({ path: "/api/x/{param}", parameters: ["unverified"] }),
-    );
-  });
-
-  it("should send a boolean template span as its text", async () => {
-    await expectConformance(
-      {
-        endpoint: "{ query: (flag: boolean) => ({ url: `/api/x/${flag}` }) }",
-        argument: "true",
-      },
-      sentRequest({ path: "/api/x/true" }),
-      projected({
-        path: "/api/x/{param}",
-        parameters: [['"false"', '"true"']],
-      }),
-    );
-  });
-
-  it("should leave an object template span unverified, because its text is known only at runtime", async () => {
-    await expectConformance(
-      {
-        endpoint:
-          "{ query: (options: { a: number }) => ({ url: `/api/x/${options}` }) }",
-        argument: "{ a: 1 }",
-      },
-      sentRequest({ path: "/api/x/[object%20Object]" }),
-      projected({ path: "/api/x/{param}", parameters: ["unverified"] }),
-    );
-  });
-
-  it("should leave a tuple template span unverified, because its text is known only at runtime", async () => {
-    await expectConformance(
-      {
-        endpoint: "{ query: (pair: [1, null]) => ({ url: `/api/x/${pair}` }) }",
-        argument: "[1, null]",
-      },
-      sentRequest({ path: "/api/x/1," }),
-      projected({ path: "/api/x/{param}", parameters: ["unverified"] }),
-    );
-  });
-
-  it("should send an undefined template span as undefined", async () => {
-    await expectConformance(
-      {
-        endpoint: "{ query: (id: undefined) => ({ url: `/api/x/${id}` }) }",
-        argument: "undefined",
-      },
-      sentRequest({ path: "/api/x/undefined" }),
-      projected({ path: "/api/x/{param}", parameters: [['"undefined"']] }),
-    );
-  });
-
-  it("should encode a URL tag value", async () => {
-    await expectConformance(
-      {
-        endpoint:
-          '{ query: (params: { name: string }) => ({ url: "/api/x/:name", params }) }',
-        argument: '{ name: "a/b" }',
-      },
-      sentRequest({ path: "/api/x/a%2Fb" }),
-      projected({ path: "/api/x/{param}", parameters: [["string"]] }),
-    );
-  });
-
-  it("should fill a URL tag from the body when the params value is undefined", async () => {
-    await expectConformance(
-      {
-        declarations:
-          "type Args = { params: { token: undefined }; body: { token: string; name: string } };",
-        endpoint:
-          '{ query: (arg: Args) => ({ method: "POST", url: "/api/x/:token", params: arg.params, body: arg.body }) }',
-        argument:
-          '{ params: { token: undefined }, body: { token: "t", name: "n" } }',
-      },
-      sentRequest({
-        method: "POST",
-        path: "/api/x/t",
-        body: { kind: "json", value: { name: "n" } },
-      }),
-      "unverified",
-    );
-  });
-
-  it("should fill a URL tag from params and keep the body key when the params value is defined", async () => {
-    await expectConformance(
-      {
-        declarations:
-          "type Args = { params: { token: string | undefined }; body: { token: string; name: string } };",
-        endpoint:
-          '{ query: (arg: Args) => ({ method: "POST", url: "/api/x/:token", params: arg.params, body: arg.body }) }',
-        argument: '{ params: { token: "p" }, body: { token: "t", name: "n" } }',
-      },
-      sentRequest({
-        method: "POST",
-        path: "/api/x/p",
-        body: { kind: "json", value: { token: "t", name: "n" } },
-      }),
-      "unverified",
-    );
-  });
-
-  it("should fill a URL tag from the body and remove it when the params value may be undefined", async () => {
-    await expectConformance(
-      {
-        declarations:
-          "type Args = { params: { token: string | undefined }; body: { token: string; name: string } };",
-        endpoint:
-          '{ query: (arg: Args) => ({ method: "POST", url: "/api/x/:token", params: arg.params, body: arg.body }) }',
-        argument:
-          '{ params: { token: undefined }, body: { token: "t", name: "n" } }',
-      },
-      sentRequest({
-        method: "POST",
-        path: "/api/x/t",
-        body: { kind: "json", value: { name: "n" } },
-      }),
-      "unverified",
-    );
-  });
-
-  it("should send an empty path segment when a URL tag has no value", async () => {
-    await expectConformance(
-      {
-        endpoint:
-          '{ query: (params: { cardId?: number }) => ({ url: "/api/x/:cardId/query", params }) }',
-        argument: "{}",
-      },
-      sentRequest({ path: "/api/x//query" }),
-      projected({
-        path: "/api/x/{param}/query",
-        parameters: [["empty", "number"]],
-      }),
-    );
-  });
-
-  it("should keep an inline query string from the URL template", async () => {
-    await expectConformance(
-      {
-        endpoint:
-          "{ query: (id: number) => ({ url: `/api/x/${id}?flag=true` }) }",
-        argument: "1",
-      },
-      sentRequest({ path: "/api/x/1", query: [["flag", "true"]] }),
-      projected({
-        path: "/api/x/{param}",
-        parameters: [["number"]],
-        query: [{ flag: ['"true"'] }],
-      }),
-    );
-  });
-
-  it("should leave the query unverified when an inline query span is not one known text", async () => {
-    await expectConformance(
-      {
-        endpoint:
-          "{ query: (flag: boolean) => ({ url: `/api/x?a=${flag}&b=${encodeURIComponent(flag)}` }) }",
-        argument: "true",
-      },
-      sentRequest({
-        query: [
-          ["a", "true"],
-          ["b", "true"],
-        ],
-      }),
-      projected({ query: "unverified" }),
-    );
-  });
-
-  it("should leave dynamic inline query separators unverified", async () => {
-    await expectConformance(
-      {
-        endpoint:
-          '{ query: (value: "x&y=1") => ({ url: `/api/x?v=${value}` }) }',
-        argument: '"x&y=1"',
-      },
-      sentRequest({
-        query: [
-          ["v", "x"],
-          ["y", "1"],
-        ],
-      }),
-      projected({ query: "unverified" }),
-    );
-  });
-
-  it("should read inline query text after URLSearchParams decoding", async () => {
-    await expectConformance(
-      {
-        endpoint: "{ query: (_: void) => ({ url: `/api/x?q=a+b%21#skip=1` }) }",
-        argument: "undefined",
-      },
-      sentRequest({ query: [["q", "a b!"]] }),
-      projected({ query: [{ q: ['"a b!"'] }] }),
-    );
-  });
-
-  it("should not treat a local encodeURIComponent as the global one", async () => {
-    await expectConformance(
-      {
-        endpoint:
-          '{ query: (id: number) => { function encodeURIComponent(value: number): "fixed" { return "fixed"; } return { url: `/api/x/${encodeURIComponent(id)}` }; } }',
-        argument: "7",
-      },
-      sentRequest({ path: "/api/x/fixed" }),
-      projected({ path: "/api/x/{param}", parameters: [['"fixed"']] }),
-    );
-  });
-
-  it("should encode a template span passed through encodeURIComponent", async () => {
-    await expectConformance(
-      {
-        endpoint:
-          "{ query: (id: number) => ({ url: `/api/x/${encodeURIComponent(id)}` }) }",
-        argument: "7",
-      },
-      sentRequest({ path: "/api/x/7" }),
-      projected({ path: "/api/x/{param}", parameters: [["number"]] }),
     );
   });
 
@@ -767,23 +398,6 @@ describe("modelClientRequest against the real API client", () => {
     },
   );
 
-  it("should send a class instance body without its methods and accessors", async () => {
-    await expectConformance(
-      {
-        declarations:
-          'class Point { x = 1; get sum() { return 2; } toText() { return "p"; } }',
-        endpoint:
-          '{ query: (body: Point) => ({ method: "POST", url: "/api/x", body }) }',
-        argument: "new Point()",
-      },
-      sentRequest({
-        method: "POST",
-        body: { kind: "json", value: { x: 1 } },
-      }),
-      projected({ method: "POST", body: [{ x: ["number"] }] }),
-    );
-  });
-
   it.each([
     ["a lib object", "Date", "new Date(0)"],
     ["a primitive", "number", "7"],
@@ -801,8 +415,343 @@ describe("modelClientRequest against the real API client", () => {
     },
   );
 
-  it("should send a Date body field as the text its toJSON gives", async () => {
-    await expectConformance(
+  // `JSON.stringify` throws for a bigint, so the client never sends this body.
+
+  const cases: [string, Fixture, Outcome, Projection | "unverified"][] = [
+    [
+      "should send GET when the request names no method",
+      {
+        endpoint: "{ query: (id: number) => ({ url: `/api/x/${id}` }) }",
+        argument: "7",
+      },
+      sentRequest({ path: "/api/x/7" }),
+      projected({ path: "/api/x/{param}", parameters: [["number"]] }),
+    ],
+    [
+      "should send a JSON body for a non-GET request",
+      {
+        endpoint:
+          '{ query: (body: { name: string }) => ({ method: "POST", url: "/api/x", body }) }',
+        argument: '{ name: "n" }',
+      },
+      sentRequest({
+        method: "POST",
+        body: { kind: "json", value: { name: "n" } },
+      }),
+      projected({ method: "POST", body: [{ name: ["string"] }] }),
+    ],
+    [
+      "should send a GET body as query parameters",
+      {
+        endpoint:
+          '{ query: (body: { name: string }) => ({ url: "/api/x", body }) }',
+        argument: '{ name: "n" }',
+      },
+      sentRequest({ query: [["name", "n"]] }),
+      projected({ query: [{ name: ["string"] }] }),
+    ],
+    [
+      "should leave out a nullable query value that is null",
+      {
+        endpoint:
+          '{ query: (params: { q: string | null; kept: string }) => ({ url: "/api/x", params }) }',
+        argument: '{ q: null, kept: "k" }',
+      },
+      sentRequest({ query: [["kept", "k"]] }),
+      projected({ query: [{ "q?": ["string"], kept: ["string"] }] }),
+    ],
+    [
+      "should send number and boolean query values as text",
+      {
+        endpoint:
+          '{ query: (params: { limit: number; archived: boolean }) => ({ url: "/api/x", params }) }',
+        argument: "{ limit: 10, archived: true }",
+      },
+      sentRequest({
+        query: [
+          ["limit", "10"],
+          ["archived", "true"],
+        ],
+      }),
+      projected({
+        query: [{ limit: ["number"], archived: ['"false"', '"true"'] }],
+      }),
+    ],
+    [
+      "should leave an object query value unverified, because its text is known only at runtime",
+      {
+        endpoint:
+          '{ query: (params: { options: { a: number } }) => ({ url: "/api/x", params }) }',
+        argument: "{ options: { a: 1 } }",
+      },
+      sentRequest({ query: [["options", "[object Object]"]] }),
+      projected({ query: "unverified" }),
+    ],
+    [
+      "should send null and undefined array items as text",
+      {
+        endpoint:
+          '{ query: (params: { ids: (null | undefined)[] }) => ({ url: "/api/x", params }) }',
+        argument: "{ ids: [null, undefined] }",
+      },
+      sentRequest({
+        query: [
+          ["ids", "null"],
+          ["ids", "undefined"],
+        ],
+      }),
+      projected({ query: [{ "ids?": ['each "null"', 'each "undefined"'] }] }),
+    ],
+    [
+      "should send a boolean query value as true or false",
+      {
+        endpoint:
+          '{ query: (params: { flag: boolean }) => ({ url: "/api/x", params }) }',
+        argument: "{ flag: true }",
+      },
+      sentRequest({ query: [["flag", "true"]] }),
+      projected({ query: [{ flag: ['"false"', '"true"'] }] }),
+    ],
+    [
+      "should fill a URL tag from params and leave the other params in the query",
+      {
+        endpoint:
+          '{ query: (params: { cardId: number; q: string }) => ({ url: "/api/x/:cardId/query", params }) }',
+        argument: '{ cardId: 5, q: "text" }',
+      },
+      sentRequest({ path: "/api/x/5/query", query: [["q", "text"]] }),
+      projected({
+        path: "/api/x/{param}/query",
+        parameters: [["number"]],
+        query: [{ q: ["string"] }],
+      }),
+    ],
+    [
+      "should fill a URL tag with the text String gives for a boolean",
+      {
+        endpoint:
+          '{ query: (params: { flag: boolean }) => ({ url: "/api/x/:flag", params }) }',
+        argument: "{ flag: true }",
+      },
+      sentRequest({ path: "/api/x/true" }),
+      projected({
+        path: "/api/x/{param}",
+        parameters: [['"false"', '"true"']],
+      }),
+    ],
+    [
+      "should leave a URL tag filled from an object unverified, because its text is known only at runtime",
+      {
+        endpoint:
+          '{ query: (params: { options: { a: number } }) => ({ url: "/api/x/:options", params }) }',
+        argument: "{ options: { a: 1 } }",
+      },
+      sentRequest({ path: "/api/x/%5Bobject%20Object%5D" }),
+      projected({ path: "/api/x/{param}", parameters: ["unverified"] }),
+    ],
+    [
+      "should send a boolean template span as its text",
+      {
+        endpoint: "{ query: (flag: boolean) => ({ url: `/api/x/${flag}` }) }",
+        argument: "true",
+      },
+      sentRequest({ path: "/api/x/true" }),
+      projected({
+        path: "/api/x/{param}",
+        parameters: [['"false"', '"true"']],
+      }),
+    ],
+    [
+      "should leave an object template span unverified, because its text is known only at runtime",
+      {
+        endpoint:
+          "{ query: (options: { a: number }) => ({ url: `/api/x/${options}` }) }",
+        argument: "{ a: 1 }",
+      },
+      sentRequest({ path: "/api/x/[object%20Object]" }),
+      projected({ path: "/api/x/{param}", parameters: ["unverified"] }),
+    ],
+    [
+      "should leave a tuple template span unverified, because its text is known only at runtime",
+      {
+        endpoint: "{ query: (pair: [1, null]) => ({ url: `/api/x/${pair}` }) }",
+        argument: "[1, null]",
+      },
+      sentRequest({ path: "/api/x/1," }),
+      projected({ path: "/api/x/{param}", parameters: ["unverified"] }),
+    ],
+    [
+      "should send an undefined template span as undefined",
+      {
+        endpoint: "{ query: (id: undefined) => ({ url: `/api/x/${id}` }) }",
+        argument: "undefined",
+      },
+      sentRequest({ path: "/api/x/undefined" }),
+      projected({ path: "/api/x/{param}", parameters: [['"undefined"']] }),
+    ],
+    [
+      "should encode a URL tag value",
+      {
+        endpoint:
+          '{ query: (params: { name: string }) => ({ url: "/api/x/:name", params }) }',
+        argument: '{ name: "a/b" }',
+      },
+      sentRequest({ path: "/api/x/a%2Fb" }),
+      projected({ path: "/api/x/{param}", parameters: [["string"]] }),
+    ],
+    [
+      "should fill a URL tag from the body when the params value is undefined",
+      {
+        declarations:
+          "type Args = { params: { token: undefined }; body: { token: string; name: string } };",
+        endpoint:
+          '{ query: (arg: Args) => ({ method: "POST", url: "/api/x/:token", params: arg.params, body: arg.body }) }',
+        argument:
+          '{ params: { token: undefined }, body: { token: "t", name: "n" } }',
+      },
+      sentRequest({
+        method: "POST",
+        path: "/api/x/t",
+        body: { kind: "json", value: { name: "n" } },
+      }),
+      "unverified",
+    ],
+    [
+      "should fill a URL tag from params and keep the body key when the params value is defined",
+      {
+        declarations:
+          "type Args = { params: { token: string | undefined }; body: { token: string; name: string } };",
+        endpoint:
+          '{ query: (arg: Args) => ({ method: "POST", url: "/api/x/:token", params: arg.params, body: arg.body }) }',
+        argument: '{ params: { token: "p" }, body: { token: "t", name: "n" } }',
+      },
+      sentRequest({
+        method: "POST",
+        path: "/api/x/p",
+        body: { kind: "json", value: { token: "t", name: "n" } },
+      }),
+      "unverified",
+    ],
+    [
+      "should fill a URL tag from the body and remove it when the params value may be undefined",
+      {
+        declarations:
+          "type Args = { params: { token: string | undefined }; body: { token: string; name: string } };",
+        endpoint:
+          '{ query: (arg: Args) => ({ method: "POST", url: "/api/x/:token", params: arg.params, body: arg.body }) }',
+        argument:
+          '{ params: { token: undefined }, body: { token: "t", name: "n" } }',
+      },
+      sentRequest({
+        method: "POST",
+        path: "/api/x/t",
+        body: { kind: "json", value: { name: "n" } },
+      }),
+      "unverified",
+    ],
+    [
+      "should send an empty path segment when a URL tag has no value",
+      {
+        endpoint:
+          '{ query: (params: { cardId?: number }) => ({ url: "/api/x/:cardId/query", params }) }',
+        argument: "{}",
+      },
+      sentRequest({ path: "/api/x//query" }),
+      projected({
+        path: "/api/x/{param}/query",
+        parameters: [["empty", "number"]],
+      }),
+    ],
+    [
+      "should keep an inline query string from the URL template",
+      {
+        endpoint:
+          "{ query: (id: number) => ({ url: `/api/x/${id}?flag=true` }) }",
+        argument: "1",
+      },
+      sentRequest({ path: "/api/x/1", query: [["flag", "true"]] }),
+      projected({
+        path: "/api/x/{param}",
+        parameters: [["number"]],
+        query: [{ flag: ['"true"'] }],
+      }),
+    ],
+    [
+      "should leave the query unverified when an inline query span is not one known text",
+      {
+        endpoint:
+          "{ query: (flag: boolean) => ({ url: `/api/x?a=${flag}&b=${encodeURIComponent(flag)}` }) }",
+        argument: "true",
+      },
+      sentRequest({
+        query: [
+          ["a", "true"],
+          ["b", "true"],
+        ],
+      }),
+      projected({ query: "unverified" }),
+    ],
+    [
+      "should leave dynamic inline query separators unverified",
+      {
+        endpoint:
+          '{ query: (value: "x&y=1") => ({ url: `/api/x?v=${value}` }) }',
+        argument: '"x&y=1"',
+      },
+      sentRequest({
+        query: [
+          ["v", "x"],
+          ["y", "1"],
+        ],
+      }),
+      projected({ query: "unverified" }),
+    ],
+    [
+      "should read inline query text after URLSearchParams decoding",
+      {
+        endpoint: "{ query: (_: void) => ({ url: `/api/x?q=a+b%21#skip=1` }) }",
+        argument: "undefined",
+      },
+      sentRequest({ query: [["q", "a b!"]] }),
+      projected({ query: [{ q: ['"a b!"'] }] }),
+    ],
+    [
+      "should not treat a local encodeURIComponent as the global one",
+      {
+        endpoint:
+          '{ query: (id: number) => { function encodeURIComponent(value: number): "fixed" { return "fixed"; } return { url: `/api/x/${encodeURIComponent(id)}` }; } }',
+        argument: "7",
+      },
+      sentRequest({ path: "/api/x/fixed" }),
+      projected({ path: "/api/x/{param}", parameters: [['"fixed"']] }),
+    ],
+    [
+      "should encode a template span passed through encodeURIComponent",
+      {
+        endpoint:
+          "{ query: (id: number) => ({ url: `/api/x/${encodeURIComponent(id)}` }) }",
+        argument: "7",
+      },
+      sentRequest({ path: "/api/x/7" }),
+      projected({ path: "/api/x/{param}", parameters: [["number"]] }),
+    ],
+    [
+      "should send a class instance body without its methods and accessors",
+      {
+        declarations:
+          'class Point { x = 1; get sum() { return 2; } toText() { return "p"; } }',
+        endpoint:
+          '{ query: (body: Point) => ({ method: "POST", url: "/api/x", body }) }',
+        argument: "new Point()",
+      },
+      sentRequest({
+        method: "POST",
+        body: { kind: "json", value: { x: 1 } },
+      }),
+      projected({ method: "POST", body: [{ x: ["number"] }] }),
+    ],
+    [
+      "should send a Date body field as the text its toJSON gives",
       {
         endpoint:
           '{ query: (body: { when: Date }) => ({ method: "POST", url: "/api/x", body }) }',
@@ -813,11 +762,9 @@ describe("modelClientRequest against the real API client", () => {
         body: { kind: "json", value: { when: "1970-01-01T00:00:00.000Z" } },
       }),
       projected({ method: "POST", body: [{ when: ["string"] }] }),
-    );
-  });
-
-  it("should send an undefined array item in a body as null", async () => {
-    await expectConformance(
+    ],
+    [
+      "should send an undefined array item in a body as null",
       {
         endpoint:
           '{ query: (body: { ids: (number | undefined)[] }) => ({ method: "POST", url: "/api/x", body }) }',
@@ -828,11 +775,9 @@ describe("modelClientRequest against the real API client", () => {
         body: { kind: "json", value: { ids: [1, null] } },
       }),
       projected({ method: "POST", body: [{ ids: ["(number | null)[]"] }] }),
-    );
-  });
-
-  it("should send a Map body field and a function body field as JSON.stringify writes them", async () => {
-    await expectConformance(
+    ],
+    [
+      "should send a Map body field and a function body field as JSON.stringify writes them",
       {
         endpoint:
           '{ query: (body: { tags: Map<string, string>; run: () => void; name: string }) => ({ method: "POST", url: "/api/x", body }) }',
@@ -844,11 +789,9 @@ describe("modelClientRequest against the real API client", () => {
         body: { kind: "json", value: { tags: {}, name: "n" } },
       }),
       projected({ method: "POST", body: [{ tags: ["{}"], name: ["string"] }] }),
-    );
-  });
-
-  it("should send a numeric object key as text", async () => {
-    await expectConformance(
+    ],
+    [
+      "should send a numeric object key as text",
       {
         endpoint:
           '{ query: (body: { collections: Record<number, boolean> }) => ({ method: "POST", url: "/api/x", body }) }',
@@ -862,11 +805,9 @@ describe("modelClientRequest against the real API client", () => {
         method: "POST",
         body: [{ collections: ["Record<number, boolean>"] }],
       }),
-    );
-  });
-
-  it("should send a null non-GET body as an empty JSON object", async () => {
-    await expectConformance(
+    ],
+    [
+      "should send a null non-GET body as an empty JSON object",
       {
         endpoint:
           '{ query: (body: null) => ({ method: "PUT", url: "/api/x", body }) }',
@@ -874,22 +815,18 @@ describe("modelClientRequest against the real API client", () => {
       },
       sentRequest({ method: "PUT", body: { kind: "json", value: {} } }),
       projected({ method: "PUT", body: [{}] }),
-    );
-  });
-
-  it("should send no body for a null GET body", async () => {
-    await expectConformance(
+    ],
+    [
+      "should send no body for a null GET body",
       {
         endpoint: '{ query: (body: null) => ({ url: "/api/x", body }) }',
         argument: "null",
       },
       sentRequest({}),
       projected({}),
-    );
-  });
-
-  it("should send no body for an undefined non-GET body", async () => {
-    await expectConformance(
+    ],
+    [
+      "should send no body for an undefined non-GET body",
       {
         endpoint:
           '{ query: (body: undefined) => ({ method: "PUT", url: "/api/x", body }) }',
@@ -897,11 +834,9 @@ describe("modelClientRequest against the real API client", () => {
       },
       sentRequest({ method: "PUT" }),
       projected({ method: "PUT" }),
-    );
-  });
-
-  it("should send a DELETE body of an empty object literal", async () => {
-    await expectConformance(
+    ],
+    [
+      "should send a DELETE body of an empty object literal",
       {
         endpoint:
           '{ query: (id: number) => ({ method: "DELETE", url: `/api/x/${id}`, body: {} }) }',
@@ -918,11 +853,9 @@ describe("modelClientRequest against the real API client", () => {
         method: "DELETE",
         body: [{}],
       }),
-    );
-  });
-
-  it("should leave a DELETE body built from an empty object rest unverified", async () => {
-    await expectConformance(
+    ],
+    [
+      "should leave a DELETE body built from an empty object rest unverified",
       {
         endpoint:
           '{ query: ({ id, ...body }: { id: number }) => ({ method: "DELETE", url: `/api/x/${id}`, body }) }',
@@ -939,11 +872,9 @@ describe("modelClientRequest against the real API client", () => {
         method: "DELETE",
         body: "unverified",
       }),
-    );
-  });
-
-  it("should leave the query unverified for an empty object rest in a GET body", async () => {
-    await expectConformance(
+    ],
+    [
+      "should leave the query unverified for an empty object rest in a GET body",
       {
         endpoint:
           "{ query: ({ id, ...body }: { id: number }) => ({ url: `/api/x/${id}`, body }) }",
@@ -955,11 +886,9 @@ describe("modelClientRequest against the real API client", () => {
         parameters: [["number"]],
         query: "unverified",
       }),
-    );
-  });
-
-  it("should leave a URL tag unverified when params keys are known only at runtime", async () => {
-    await expectConformance(
+    ],
+    [
+      "should leave a URL tag unverified when params keys are known only at runtime",
       {
         endpoint:
           '{ query: (params: Record<string, string>) => ({ url: "/api/x/:cardId", params }) }',
@@ -967,11 +896,9 @@ describe("modelClientRequest against the real API client", () => {
       },
       sentRequest({ path: "/api/x/5", query: [["q", "text"]] }),
       "unverified",
-    );
-  });
-
-  it("should mark GET query parameters unverified when a value with no declared keys is merged with other fields", async () => {
-    await expectConformance(
+    ],
+    [
+      "should mark GET query parameters unverified when a value with no declared keys is merged with other fields",
       {
         declarations: "type Args = { params: {}; body: { name: string } };",
         endpoint:
@@ -985,11 +912,9 @@ describe("modelClientRequest against the real API client", () => {
         ],
       }),
       projected({ query: "unverified" }),
-    );
-  });
-
-  it("should leave the query unverified for an empty object rest in params", async () => {
-    await expectConformance(
+    ],
+    [
+      "should leave the query unverified for an empty object rest in params",
       {
         endpoint:
           "{ query: ({ id, ...params }: { id: number }) => ({ url: `/api/x/${id}`, params }) }",
@@ -1001,11 +926,9 @@ describe("modelClientRequest against the real API client", () => {
         parameters: [["number"]],
         query: "unverified",
       }),
-    );
-  });
-
-  it("should leave an undefined property out of a JSON body", async () => {
-    await expectConformance(
+    ],
+    [
+      "should leave an undefined property out of a JSON body",
       {
         endpoint:
           '{ query: (body: { name: string; note: undefined }) => ({ method: "POST", url: "/api/x", body }) }',
@@ -1016,11 +939,9 @@ describe("modelClientRequest against the real API client", () => {
         body: { kind: "json", value: { name: "n" } },
       }),
       projected({ method: "POST", body: [{ name: ["string"] }] }),
-    );
-  });
-
-  it("should throw before sending an array body", async () => {
-    await expectConformance(
+    ],
+    [
+      "should throw before sending an array body",
       {
         endpoint:
           '{ query: (body: string[]) => ({ method: "POST", url: "/api/x", body }) }',
@@ -1028,11 +949,9 @@ describe("modelClientRequest against the real API client", () => {
       },
       { kind: "thrown" },
       projected({ method: "POST", failure: true, query: [], body: [] }),
-    );
-  });
-
-  it("should mark a key sent from both GET params and body unverified", async () => {
-    await expectConformance(
+    ],
+    [
+      "should mark a key sent from both GET params and body unverified",
       {
         declarations:
           "type Args = { params: { q: string }; body: { q: string } };",
@@ -1047,11 +966,9 @@ describe("modelClientRequest against the real API client", () => {
         ],
       }),
       projected({ query: "unverified" }),
-    );
-  });
-
-  it("should mark a request unverified when extraOptions replaces its URL", async () => {
-    await expectConformance(
+    ],
+    [
+      "should mark a request unverified when extraOptions replaces its URL",
       {
         endpoint:
           '{ query: (_: void) => ({ url: "/api/x" }), extraOptions: { url: "/api/y" } }',
@@ -1059,11 +976,9 @@ describe("modelClientRequest against the real API client", () => {
       },
       sentRequest({ path: "/api/y" }),
       "unverified",
-    );
-  });
-
-  it("should leave a body that is an unknown value unverified", async () => {
-    await expectConformance(
+    ],
+    [
+      "should leave a body that is an unknown value unverified",
       {
         endpoint:
           '{ query: (body: unknown) => ({ method: "POST", url: "/api/x", body }) }',
@@ -1074,11 +989,9 @@ describe("modelClientRequest against the real API client", () => {
         body: { kind: "json", value: { any: "thing" } },
       }),
       projected({ method: "POST", body: "unverified" }),
-    );
-  });
-
-  it("should keep a nested field that drops undefined as optional in the JSON body", async () => {
-    await expectConformance(
+    ],
+    [
+      "should keep a nested field that drops undefined as optional in the JSON body",
       {
         declarations:
           "type Args = { inner: { a: string | undefined; b: number } };",
@@ -1094,11 +1007,9 @@ describe("modelClientRequest against the real API client", () => {
         method: "POST",
         body: [{ inner: ["{ a?: string; b: number; }"] }],
       }),
-    );
-  });
-
-  it("should leave the query unverified when an inline query key is built at runtime", async () => {
-    await expectConformance(
+    ],
+    [
+      "should leave the query unverified when an inline query key is built at runtime",
       {
         declarations: 'const search: string = "built=later";',
         endpoint: "{ query: (_: void) => ({ url: `/api/x?${search}` }) }",
@@ -1106,12 +1017,9 @@ describe("modelClientRequest against the real API client", () => {
       },
       sentRequest({ query: [["built", "later"]] }),
       projected({ query: "unverified" }),
-    );
-  });
-
-  // `JSON.stringify` throws for a bigint, so the client never sends this body.
-  it("should mark a bigint body field as a request the client never sends", async () => {
-    await expectConformance(
+    ],
+    [
+      "should mark a bigint body field as a request the client never sends",
       {
         endpoint:
           '{ query: (body: { big: bigint }) => ({ method: "POST", url: "/api/x", body }) }',
@@ -1119,6 +1027,9 @@ describe("modelClientRequest against the real API client", () => {
       },
       { kind: "thrown" },
       projected({ method: "POST", body: [{ big: ["throws"] }] }),
-    );
+    ],
+  ];
+  it.each(cases)("%s", async (_name, fixture, expected, expectedModel) => {
+    await expectConformance(fixture, expected, expectedModel);
   });
 });

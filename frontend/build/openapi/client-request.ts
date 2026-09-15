@@ -1,6 +1,6 @@
 import ts from "typescript";
 
-import type { RtkRequest } from "./rtk-request";
+import type { RtkRequest, TagSlot, UrlSlot } from "./rtk-request";
 import { type Shape, describeShape } from "./shape";
 import {
   isObjectLike,
@@ -12,15 +12,12 @@ import {
   unwrap,
 } from "./typescript-utils";
 import {
-  type JsonConversion,
   type StringConversion,
   type StringPart,
   isAugmentedLibType,
   isLibDeclaration,
   isLibType,
   isPrototypeMember,
-  jsonConversionNotes,
-  jsonConversions,
   jsonView,
   keepsType,
   stringParts,
@@ -28,9 +25,6 @@ import {
 
 // `frontend/src/metabase/api/api.ts:22`
 const RTK_CACHE_KEY = "__rtkCacheKey";
-// `frontend/src/metabase/api/client/utils.ts:148`
-const URL_TAG = /:\w+/g;
-const PATH_PARAMETER = "{param}";
 const REQUEST_FIELDS = ["url", "method", "params", "body"];
 
 const NULLISH = ts.TypeFlags.Null | ts.TypeFlags.Undefined | ts.TypeFlags.Void;
@@ -119,13 +113,6 @@ interface ModelContext {
   at: ts.Node;
 }
 
-type UrlSlot =
-  | { kind: "text"; text: string }
-  | { kind: "span"; expression: ts.Expression }
-  | { kind: "tag"; name: string };
-
-type TagSlot = Extract<UrlSlot, { kind: "tag" }>;
-
 const NOTHING: Payload = { kind: "nothing" };
 
 export function modelClientRequest(
@@ -134,8 +121,7 @@ export function modelClientRequest(
   at: ts.Node,
 ): ClientRequest {
   const context: ModelContext = { checker, at };
-  // `baseQuery` sends GET unless the request names a method (baseQuery).
-  const method = rtk.method ?? "GET";
+  const { method } = rtk;
   const foldsBody = method === "GET" && rtk.body !== undefined;
 
   const params = paramsPayloads(context, rtk.params);
@@ -148,12 +134,10 @@ export function modelClientRequest(
       body: withoutCacheKey(bodyPayload, "body", bodyNotes),
     })),
   );
-  const slots = urlSlots(rtk);
-  const { path, query } = splitAtQuery(slots);
-  const tags = slots.filter((slot): slot is TagSlot => slot.kind === "tag");
+  const { pathSlots, query, tags } = rtk.url;
   const { parameters: tagParameters, unverified: tagUnverified } =
     substituteTags(context, tags, pairs);
-  const route = pathParameters(context, path, tagParameters);
+  const parameters = pathParameters(context, pathSlots, tagParameters);
 
   const inline = inlineQuery(query);
   queryNotes.push(...inline.notes);
@@ -212,8 +196,8 @@ export function modelClientRequest(
 
   return {
     method,
-    path: route.text,
-    pathParameters: route.parameters,
+    path: rtk.url.path,
+    pathParameters: parameters,
     query: {
       variants: queryVariants,
       notes: [...new Set(queryNotes)],
@@ -814,9 +798,8 @@ function valueKeys(checker: ts.TypeChecker, values: SentValue[]): string {
 
 function jsonValues(
   { checker }: ModelContext,
-  path: string,
   values: SentValue[],
-  conversions: JsonConversion[],
+  notes: string[],
 ): SentValue[] {
   return values.map((value) => {
     const type = plainType(value);
@@ -827,7 +810,9 @@ function jsonValues(
     if (view.kind === "type" && view.type === type) {
       return value;
     }
-    conversions.push(...jsonConversions(checker, view, path, type));
+    notes.push(
+      "body fields are compared after JSON.stringify conversion (JSON.stringify)",
+    );
     return { kind: "json", view };
   });
 }
@@ -837,18 +822,6 @@ function sendAsJson(
   context: ModelContext,
   payload: Payload,
   notes: string[],
-): Payload {
-  const conversions: JsonConversion[] = [];
-  const result = sendAsJsonFields(context, payload, notes, conversions);
-  notes.push(...jsonConversionNotes(conversions));
-  return result;
-}
-
-function sendAsJsonFields(
-  context: ModelContext,
-  payload: Payload,
-  notes: string[],
-  conversions: JsonConversion[],
 ): Payload {
   const { checker } = context;
   return mapFields(
@@ -872,12 +845,7 @@ function sendAsJsonFields(
       if (kept.length === types.length) {
         return {
           ...field,
-          values: jsonValues(
-            context,
-            `$.${field.name}`,
-            field.values,
-            conversions,
-          ),
+          values: jsonValues(context, field.values, notes),
         };
       }
       notes.push(
@@ -887,14 +855,13 @@ function sendAsJsonFields(
         ...field,
         values: jsonValues(
           context,
-          `$.${field.name}`,
           kept.map((type) => typeValue(type)),
-          conversions,
+          notes,
         ),
         optional: true,
       };
     },
-    (values) => jsonValues(context, "$[key]", values, conversions),
+    (values) => jsonValues(context, values, notes),
   );
 }
 
@@ -954,52 +921,6 @@ function extraOptionsUnverified(rtk: RtkRequest): string | undefined {
   return replacesRequest
     ? "extraOptions is spread over the request after url, method, params and body (baseQuery)"
     : undefined;
-}
-
-function urlSlots({ url }: RtkRequest): UrlSlot[] {
-  return [
-    ...textSlots(url.head),
-    ...url.spans.flatMap((span): UrlSlot[] => [
-      { kind: "span", expression: span.expression },
-      ...textSlots(span.literal),
-    ]),
-  ];
-}
-
-function textSlots(text: string): UrlSlot[] {
-  const slots: UrlSlot[] = [];
-  let last = 0;
-  for (const match of text.matchAll(URL_TAG)) {
-    slots.push({ kind: "text", text: text.slice(last, match.index) });
-    slots.push({ kind: "tag", name: match[0].slice(1) });
-    last = match.index + match[0].length;
-  }
-  slots.push({ kind: "text", text: text.slice(last) });
-  return slots;
-}
-
-function splitAtQuery(slots: UrlSlot[]): {
-  path: UrlSlot[];
-  query: UrlSlot[];
-} {
-  const index = slots.findIndex(
-    (slot) => slot.kind === "text" && slot.text.includes("?"),
-  );
-  const at = slots[index];
-  if (index === -1 || !at || at.kind !== "text") {
-    return { path: slots, query: [] };
-  }
-  const split = at.text.indexOf("?");
-  return {
-    path: [
-      ...slots.slice(0, index),
-      { kind: "text", text: at.text.slice(0, split) },
-    ],
-    query: [
-      { kind: "text", text: at.text.slice(split + 1) },
-      ...slots.slice(index + 1),
-    ],
-  };
 }
 
 function encodedArgument(
@@ -1204,16 +1125,13 @@ function pathParameters(
   context: ModelContext,
   path: UrlSlot[],
   tags: SentPathParameter[],
-): { text: string; parameters: SentPathParameter[] } {
+): SentPathParameter[] {
   const remaining = [...tags];
   const parameters: SentPathParameter[] = [];
-  let text = "";
   for (const slot of path) {
     if (slot.kind === "text") {
-      text += slot.text;
       continue;
     }
-    text += PATH_PARAMETER;
     const parameter: SentPathParameter | undefined =
       slot.kind === "span"
         ? spanParameter(context, slot.expression)
@@ -1222,7 +1140,7 @@ function pathParameters(
       parameters.push(parameter);
     }
   }
-  return { text, parameters };
+  return parameters;
 }
 
 function inlineQuery(query: UrlSlot[]): {
