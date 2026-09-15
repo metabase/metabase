@@ -11,7 +11,7 @@ Metabase includes an [MCP (Model Context Protocol)](https://modelcontextprotocol
 
 ## Connect a client to your Metabase MCP server's URL
 
-Your Metabase's MCP server is served from the `/api/metabase-mcp` endpoint. The older `/api/mcp` path still works for clients that were set up with it, but point new clients at `/api/metabase-mcp`. If you connected a client before Metabase 0.64, that client will ask you to authenticate again after you upgrade.
+Your Metabase's MCP server is served from the `/api/metabase-mcp` endpoint.
 
 If your admin has turned on [your Metabase's MCP server](#enable-mcp-server), all you need to do is point your MCP client at your Metabase's MCP server's URL.
 
@@ -24,6 +24,8 @@ Replace `{your-metabase.example.com}` with your Metabase's URL. Admins can also 
 Your client will direct you to an authentication page for your Metabase.
 
 Once authenticated, you can approve or block the tools you want your Agent to have access to in your client (not in your Metabase).
+
+If you connected a client before Metabase 0.64, that client will ask you to authenticate again after you upgrade.
 
 ### Connecting Claude Code to your Metabase's MCP server
 
@@ -57,9 +59,23 @@ If you use Claude on the web or Claude Desktop, go to [Claude's connector direct
 
 One of your Metabase admins will still need to have [turned on your Metabase's MCP server](#enable-mcp-server). You'll authenticate against your own Metabase during setup. If Claude asks you to choose authentication options, see [Choose authentication options in Claude](#choose-authentication-options-in-claude).
 
-## Available tools
+## MCP tools
 
 See [MCP server tools](./mcp-tools.md).
+
+## Using the MCP server
+
+The MCP server will return results as either text or an inline chart, depending on the question you asked.
+
+If you want the MCP server to return an inline chart, ask it to "show" or "visualize" the data:
+
+![Show me the stuff](./images/mcp-chart.png)
+
+Inline charts are limited to bar, line, or table charts (which you can toggle between). You can also drill through the charts or change their time granularity. Depending on which client you're using, drilling through will either let you keep exploring the chart right there in your client, or give you a link to continue your exploration in your Metabase.
+
+If your client is connected to other MCP servers, you can ask questions that combine data from multiple sources. For example, you can ask a question about your customers that combines data from Metabase, your CRM, and your support ticket platform (Though maybe you should put all that data into your Metabase).
+
+See [MCP tools](./mcp-tools.md).
 
 ## MCP server settings
 
@@ -162,20 +178,6 @@ MCP server requests are handled by whatever AI client you're using (like a deskt
 For example, if you ask your AI client to use your Metabase's MCP server "what's our q3 revenue," your client will interact with the MCP server to figure out which tools it needs to field your request. Your AI can decide that it needs to use the tools **search** and **execute_query**, and what those queries might be. Then your client will call those tools for Metabase to run.
 
 You don't need to have an [AI provider](settings.md#choose-ai-provider) configured in Metabase to use your Metabase's MCP server. If you _do_ have an AI provider configured in Metabase to power Metabot, that provider will _not_ be used for MCP server requests. MCP calls by your local client have no effect on token usage for your Metabase's AI connection.
-
-## Using the MCP server
-
-The MCP server will return results as either text or an inline chart, depending on the question you asked.
-
-If you want the MCP server to return an inline chart, ask it to "show" or "visualize" the data:
-
-![Show me the stuff](./images/mcp-chart.png)
-
-Inline charts are limited to bar, line, or table charts (which you can toggle between). You can also drill through the charts or change their time granularity. Depending on which client you're using, drilling through will either let you keep exploring the chart right there in your client, or give you a link to continue your exploration in your Metabase.
-
-If your client is connected to other MCP servers, you can ask questions that combine data from multiple sources. For example, you can ask a question about your customers that combines data from Metabase, your CRM, and your support ticket platform (Though maybe you should put all that data into your Metabase).
-
-See [Available tools](#available-tools) for the list of functionality supported by the MCP server.
 
 ## Use the MCP server with agent-driven development
 
