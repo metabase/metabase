@@ -32,16 +32,21 @@ import {
   type GoalSettingKind,
   getDynamicGoalSettingKeys,
 } from "./dynamic-goal-settings";
-import { segmentIsValid } from "./utils";
 
 export type GoalData = Pick<
   DatasetData,
   "cols" | "rows" | "referenced_entities"
 >;
 
-export type ResolvedGoalSegment = {
+// A bound left empty stays null; at most one bound is null.
+export type ResolvedOpenEndedGoalSegment = {
   color: string;
   label?: string;
+  min: number | null;
+  max: number | null;
+};
+
+export type ResolvedGoalSegment = ResolvedOpenEndedGoalSegment & {
   min: number;
   max: number;
 };
@@ -269,16 +274,21 @@ export function getGoalValues(
   });
 }
 
-export function resolveGoalSegments(
+export function resolveOpenEndedGoalSegments(
   data: GoalData,
   segments: GoalSegment[] | undefined,
   getColor: ColorGetter = color,
-): ResolvedGoalSegment[] {
+): ResolvedOpenEndedGoalSegment[] {
   return validGoalSegments(segments).flatMap((segment) => {
     const min = resolveGoalValue(data, segment.min).value;
     const max = resolveGoalValue(data, segment.max).value;
+    // a set bound that failed to resolve must not pass as one left empty
+    const hasUnresolvedBound =
+      (segment.min != null && min == null) ||
+      (segment.max != null && max == null);
+    const hasBound = min != null || max != null;
 
-    if (min == null || max == null || !segmentIsValid({ min, max })) {
+    if (hasUnresolvedBound || !hasBound) {
       return [];
     }
 
@@ -291,6 +301,22 @@ export function resolveGoalSegments(
       },
     ];
   });
+}
+
+export function resolveGoalSegments(
+  data: GoalData,
+  segments: GoalSegment[] | undefined,
+  getColor: ColorGetter = color,
+): ResolvedGoalSegment[] {
+  return resolveOpenEndedGoalSegments(data, segments, getColor).filter(
+    isClosedGoalSegment,
+  );
+}
+
+function isClosedGoalSegment(
+  segment: ResolvedOpenEndedGoalSegment,
+): segment is ResolvedGoalSegment {
+  return segment.min != null && segment.max != null;
 }
 
 export function getSegmentColor(

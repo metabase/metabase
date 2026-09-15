@@ -3,12 +3,14 @@ import _ from "underscore";
 
 import DashboardS from "metabase/css/dashboard.module.css";
 import { Box, Stack, Text, Tooltip } from "metabase/ui";
+import { GoalResolutionState } from "metabase/visualizations/components/GoalResolutionState";
 import {
   ScalarCardShell,
   useScalarCardShell,
 } from "metabase/visualizations/components/ScalarValue/ScalarCardShell";
 import { ScalarValue } from "metabase/visualizations/components/ScalarValue/ScalarValue";
 import { TransformedVisualization } from "metabase/visualizations/components/TransformedVisualization";
+import { useResolvedGoalData } from "metabase/visualizations/hooks/use-resolved-goal-data";
 import {
   compactifyValue,
   getColor,
@@ -21,7 +23,8 @@ import type {
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import {
   type ComputedVisualizationSettings,
-  segmentIsValid,
+  getGoalSegmentBounds,
+  resolveOpenEndedGoalSegments,
 } from "metabase/viz-core";
 
 import { ScalarValueContainer } from "./ScalarValueContainer";
@@ -47,17 +50,24 @@ function ScalarComponent(
   const scalarRef = useRef<HTMLDivElement>(null);
 
   const {
-    series: [
-      {
-        data: { cols, rows },
-      },
-    ],
+    series: [{ card, data }],
     settings,
     visualizationIsClickable,
     onVisualizationClick,
     rawSeries,
     actionButtons,
   } = props;
+  const { cols, rows } = data;
+
+  const isMultiSeries = rawSeries.length > 1;
+  const scalarSegments = isMultiSeries
+    ? undefined
+    : settings["scalar.segments"];
+  const goalData = useResolvedGoalData(
+    card.dataset_query,
+    data,
+    getGoalSegmentBounds(scalarSegments),
+  );
 
   const label = settings["scalar.label"];
   const sublabel = settings["scalar.sublabel"];
@@ -72,13 +82,28 @@ function ScalarComponent(
     innerTooltipHoverHandlers,
   } = useScalarCardShell(props, { hideTitle: isMetricsViewer });
 
-  if (rawSeries.length > 1) {
+  if (isMultiSeries) {
     return (
       <TransformedVisualization
         transformSeries={scalarToBarTransform}
         originalProps={props}
         VisualizationComponent={BarChart}
       />
+    );
+  }
+
+  if (goalData.status !== "resolved") {
+    return (
+      <ScalarCardShell
+        actionButtons={actionButtons}
+        innerTooltipHoverHandlers={innerTooltipHoverHandlers}
+        showsTitleTooltip={showsTitleTooltip}
+        tier={tier}
+        title={title}
+      >
+        <GoalResolutionState kind="segments" status={goalData.status} />
+        {titleElement}
+      </ScalarCardShell>
     );
   }
 
@@ -96,10 +121,7 @@ function ScalarComponent(
     jsx: true,
   };
 
-  const segments = settings["scalar.segments"]?.filter((segment) =>
-    segmentIsValid(segment, { allowOpenEnded: true }),
-  );
-
+  const segments = resolveOpenEndedGoalSegments(goalData.data, scalarSegments);
   const color = getColor(value, segments);
   const tooltipContent = getTooltipContent(segments);
 

@@ -6,8 +6,9 @@ import { useCallback, useEffect, useRef } from "react";
 import CS from "metabase/css/core/index.css";
 import { formatValue } from "metabase/value-formatting";
 import { GoalResolutionState } from "metabase/visualizations/components/GoalResolutionState";
-import { useResolvedGoalSegments } from "metabase/visualizations/hooks/use-resolved-goal-segments";
+import { useResolvedGoalData } from "metabase/visualizations/hooks/use-resolved-goal-data";
 import type { VisualizationProps } from "metabase/visualizations/types";
+import { getGoalSegmentBounds, resolveGoalSegments } from "metabase/viz-core";
 
 import { GaugeArc } from "./GaugeArc";
 import { GaugeNeedle } from "./GaugeNeedle";
@@ -65,13 +66,15 @@ function GaugeComponent({
 
   const showLabels = svgWidth > MIN_WIDTH_LABEL_THRESHOLD;
 
-  const goalSegments = useResolvedGoalSegments(
+  const goalData = useResolvedGoalData(
     card.dataset_query,
     data,
-    settings["gauge.segments"],
+    getGoalSegmentBounds(settings["gauge.segments"]),
   );
   const segments =
-    goalSegments.status === "resolved" ? goalSegments.segments : [];
+    goalData.status === "resolved"
+      ? resolveGoalSegments(goalData.data, settings["gauge.segments"])
+      : [];
   const gaugeRange = settings["gauge.range"];
   const range: number[] =
     getSegmentsRange(segments) ?? (isGaugeRange(gaugeRange) ? gaugeRange : []);
@@ -144,12 +147,12 @@ function GaugeComponent({
     updateLabelSize();
   });
 
-  if (goalSegments.status !== "resolved") {
+  if (goalData.status !== "resolved") {
     return (
       <GoalResolutionState
         className={className}
         kind="segments"
-        status={goalSegments.status}
+        status={goalData.status}
       />
     );
   }

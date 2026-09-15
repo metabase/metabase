@@ -52,12 +52,15 @@
                    :data   {:cols [{:name "avg"}]
                             :rows [[7]]}}}})
 
-(defn- unresolved-reason [goal refs]
+(defn- thrown-reason [f]
   (try
-    (dynamic-goals/resolve-goal-value goal refs)
+    (f)
     nil
     (catch clojure.lang.ExceptionInfo e
       (:reason (ex-data e)))))
+
+(defn- unresolved-reason [goal refs]
+  (thrown-reason #(dynamic-goals/resolve-goal-value goal refs)))
 
 (deftest ^:parallel resolve-goal-value-passthrough-test
   (are [goal] (= goal (dynamic-goals/resolve-goal-value goal referenced-entities))
@@ -104,6 +107,27 @@
   (testing ":not-a-number when the referenced result has no rows"
     (is (= :not-a-number (unresolved-reason {:id 1 :type "card" :column "total"}
                                             (assoc-in referenced-entities ["card" "1" :data :rows] []))))))
+
+(def ^:private self-data
+  {:cols [{:name "count"} {:name "total"} {:name "name"}]
+   :rows [[3 100 "x"]]})
+
+(deftest ^:parallel resolve-self-column-value-test
+  (testing "a column name resolves to that column's first-row value"
+    (is (= 100 (dynamic-goals/resolve-self-column-value "total" self-data)))
+    (is (= 3 (dynamic-goals/resolve-self-column-value "count" self-data))))
+  (testing "numbers and nil pass through"
+    (are [goal] (= goal (dynamic-goals/resolve-self-column-value goal self-data))
+      5
+      2.5
+      nil))
+  (testing "unresolvable"
+    (are [reason goal data] (= reason (thrown-reason #(dynamic-goals/resolve-self-column-value goal data)))
+      :column-not-found "nope"  self-data
+      :not-a-number     "name"  self-data
+      :not-a-number     "total" (assoc self-data :rows [])
+      :not-a-number     "total" (assoc self-data :rows [[3 ##Inf "x"]])
+      :never-ran        ref-a   self-data)))
 
 (deftest ^:parallel resolve-dynamic-goals-test
   (testing "substitutes referenced values across all goal-bearing settings"
