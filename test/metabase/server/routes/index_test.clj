@@ -3,75 +3,33 @@
    [clojure.test :refer :all]
    [metabase.server.routes.index :as index]
    [metabase.test :as mt]
-   [metabase.util.i18n :as i18n]
-   [metabase.util.json :as json]))
+   [metabase.util.i18n :as i18n]))
 
-(deftest ^:parallel localization-json-file-name-test
-  (is (= "frontend_client/app/locales/es.json"
-         (#'index/localization-json-file-name "es")))
-  (is (= "frontend_client/app/locales/es_MX.json"
-         (#'index/localization-json-file-name "es-MX"))))
+(deftest ^:parallel catalogue-locale-test
+  (testing "a locale with a catalogue resolves to itself (#9938)"
+    (is (= "es" (#'index/catalogue-locale "es")))
+    (is (= "pt_BR" (#'index/catalogue-locale "pt-BR"))))
+  (testing "a locale without a catalogue falls back to the one its language has"
+    (is (= "es" (#'index/catalogue-locale "es-MX"))))
+  (testing "english has no catalogue, it is the msgid source"
+    (is (= "en" (#'index/catalogue-locale "en"))))
+  (testing "an unknown locale falls back to english"
+    (is (= "en" (#'index/catalogue-locale "xx"))))
+  (testing "no locale at all falls back to english"
+    (is (= "en" (#'index/catalogue-locale nil)))))
 
-(deftest ^:parallel load-localization-test
-  (testing "make sure `load-localization` is correctly loading i18n files (#9938)"
-    (is (= {"charset"      "utf-8"
-            "headers"      {"mime-version"              "1.0"
-                            "content-type"              "text/plain; charset=UTF-8"
-                            "content-transfer-encoding" "8bit"
-                            "x-generator"               "POEditor.com"
-                            "project-id-version"        "Metabase"
-                            "language"                  "es"
-                            "plural-forms"              "nplurals=2; plural=(n != 1);"}
-            "translations" {"" {"Your database has been added!" {"msgstr" ["¡Tu base de datos ha sido añadida!"]}}}}
-           (some->
-            (binding [i18n/*user-locale* "es_for_test"]
-              (#'index/load-localization nil))
-            json/decode
-            (update "translations" select-keys [""])
-            (update-in ["translations" ""] select-keys ["Your database has been added!"]))))))
-
-(deftest ^:parallel fallback-localization-test
-  (testing "if locale does not exist it should log a message and return the 'fallback' localalization (english)"
-    (is (= {"headers"      {"language" "xx", "plural-forms" "nplurals=2; plural=(n != 1);"}
-            "translations" {"" {"Metabase" {"msgid" "Metabase", "msgstr" ["Metabase"]}}}}
-           (some->
-            (binding [i18n/*user-locale* "xx"]
-              (#'index/load-localization nil))
-            json/decode)))))
-
-(deftest ^:parallel english-test
-  (testing "english should return the fallback localization (english)"
-    (is (= {"headers"      {"language" "en", "plural-forms" "nplurals=2; plural=(n != 1);"}
-            "translations" {"" {"Metabase" {"msgid" "Metabase", "msgstr" ["Metabase"]}}}}
-           (some->
-            (binding [i18n/*user-locale* "en"]
-              (#'index/load-localization nil))
-            json/decode)))))
-
-(deftest ^:parallel override-localization-test
-  (testing "a valid override is honored no matter what the user locale is"
-    (is (= {"charset"      "utf-8"
-            "headers"      {"mime-version"              "1.0"
-                            "content-type"              "text/plain; charset=UTF-8"
-                            "content-transfer-encoding" "8bit"
-                            "x-generator"               "POEditor.com"
-                            "project-id-version"        "Metabase"
-                            "language"                  "es"
-                            "plural-forms"              "nplurals=2; plural=(n != 1);"}
-            "translations" {"" {"Your database has been added!" {"msgstr" ["¡Tu base de datos ha sido añadida!"]}}}}
-           (some->
-            (binding [i18n/*user-locale* "xx"]
-              (#'index/load-localization "es_for_test"))
-            json/decode
-            (update "translations" select-keys [""])
-            (update-in ["translations" ""] select-keys ["Your database has been added!"])))))
-  (testing "an invalid override causes a fallback to English"
-    (is (= {"headers"      {"language" "yy", "plural-forms" "nplurals=2; plural=(n != 1);"}
-            "translations" {"" {"Metabase" {"msgid" "Metabase", "msgstr" ["Metabase"]}}}}
-           (some->
-            (binding [i18n/*user-locale* "xx"]
-              (#'index/load-localization "yy"))
-            json/decode)))))
+(deftest template-locales-test
+  (testing "the document names the catalogues to load rather than carrying them"
+    (binding [i18n/*user-locale* "es"]
+      (is (= "es" (:userLocale (#'index/template-parameters false {})))))
+    (mt/with-temporary-setting-values [site-locale "es"]
+      (is (= "es" (:siteLocale (#'index/template-parameters false {}))))))
+  (testing "a locale url parameter overrides the user locale, except on static embeds"
+    (binding [i18n/*user-locale* "en"]
+      (is (= "es"
+             (:userLocale (#'index/template-parameters false {:params {:locale "es"}}))))
+      (is (= "en"
+             (:userLocale (#'index/template-parameters true {:params {:locale "es"}})))))))
 
 (deftest load-entrypoint-template-contains-user-locale
   (binding [i18n/*user-locale* "es"]

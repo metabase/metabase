@@ -50,6 +50,7 @@ import { PortalContainer } from "metabase/ui";
 import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
 import { captureClickModifierKeys } from "metabase/urls";
 import { setBasename } from "metabase/utils/basename";
+import { applyDocumentLocales } from "metabase/utils/boot-locale";
 import { captureConsoleErrors } from "metabase/utils/errors";
 import { initMetaplow } from "metabase/utils/metaplow";
 import { initTracing, rotateTraceId } from "metabase/utils/otel";
@@ -171,10 +172,14 @@ function _init(
 }
 
 export function init(...args: Parameters<typeof _init>) {
+  // The catalogues are already in the page as installed chunks, so this resolves
+  // without a request. Rendering before it would paint the app in English.
+  const start = () => applyDocumentLocales().then(() => _init(...args));
+
   if (document.readyState !== "loading") {
-    _init(...args);
+    start();
   } else {
-    document.addEventListener("DOMContentLoaded", () => _init(...args));
+    document.addEventListener("DOMContentLoaded", start);
   }
 }
 

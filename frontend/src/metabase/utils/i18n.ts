@@ -150,15 +150,14 @@ export function siteLocale(): string | undefined {
   return undefined;
 }
 
-// register site locale with ttag, if needed later
-if (window.MetabaseSiteLocalization) {
-  const translationsObject = window.MetabaseSiteLocalization;
-  const locale = translationsObject.headers.language;
+/**
+ * Registers the instance catalogue with ttag without making it the active one,
+ * so `withInstanceLanguage` can switch to it later.
+ */
+export function registerSiteLocalization(
+  translationsObject: LocaleDataWithLanguage,
+): void {
   addMsgIds(translationsObject);
-  addLocale(locale, translationsObject);
-}
-
-// set the initial localization to user locale
-if (window.MetabaseUserLocalization) {
-  setLocalization(window.MetabaseUserLocalization);
+  addLocale(translationsObject.headers.language, translationsObject);
+  window.MetabaseSiteLocalization = translationsObject;
 }

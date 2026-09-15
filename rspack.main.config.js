@@ -28,6 +28,9 @@ const {
   CssVarsDeclarationPlugin,
 } = require("./frontend/build/shared/rspack/plugins/CssVarsDeclarationPlugin/css-vars-declaration-plugin");
 const {
+  LocaleCatalogManifest,
+} = require("./frontend/build/shared/rspack/plugins/LocaleCatalogManifest/locale-catalog-manifest");
+const {
   RESOLVE_ALIASES,
 } = require("./frontend/build/shared/rspack/resolve-aliases");
 const {
@@ -359,6 +362,7 @@ const config = {
     }),
     new OnScriptError(),
     new PreloadAssetTags(),
+    new LocaleCatalogManifest(),
     new HtmlWebpackPlugin({
       filename: "../../index.html",
       chunksSortMode: "manual",
