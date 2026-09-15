@@ -7,6 +7,7 @@
    [metabase.session.core :as session]
    [metabase.session.schema :as session.schema]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -127,6 +128,11 @@
         ;; the select is what tells us which rows (and whose) went, for the response and the audit trail; a DELETE
         ;; over these joined criteria also has no single-statement form that works on H2, MySQL, and Postgres
         revoked      (delete-sessions-by-ids! (mapv :id matched))]
+    (when (not= revoked (count matched))
+      ;; benign, and only ever fewer: the delete names the matched ids, so a session that logs in after the select is
+      ;; untouched (it is what `remaining` reports), while one logged out or swept by cleanup in between is a miss here
+      (log/infof "Revoke matched %d session(s) but deleted %d; the rest went away in between"
+                 (count matched) revoked))
     {:revoked          revoked
      :user-ids         (mapv :user_id matched)
      :current-revoked? (boolean (some #(= 1 (long (:current %))) matched))}))
