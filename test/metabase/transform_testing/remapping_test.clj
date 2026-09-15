@@ -1,4 +1,4 @@
-(ns metabase.transform-testing.remapping-test
+(ns ^:mb/driver-tests metabase.transform-testing.remapping-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -59,9 +59,11 @@
   "The replacement map for `inputs`, whose temp tables are named TMP_IN_1, TMP_IN_2, … and whose
   transform output is TMP_OUT."
   [inputs]
-  (let [temp-names (mapv #(str "TMP_IN_" (inc %)) (range (count inputs)))]
-    (transform-testing.compile/table-replacements
-     :h2 (transform-under-test) inputs temp-names "TMP_OUT")))
+  (transform-testing.compile/table-replacements
+   :h2
+   (transform-under-test)
+   (into {} (map-indexed (fn [i input] [input (str "TMP_IN_" (inc i))])) inputs)
+   "TMP_OUT"))
 
 (defn- only-temp-tables?
   "True iff every table in `refs` is one of the temp tables named by [[replacements-for]]."
