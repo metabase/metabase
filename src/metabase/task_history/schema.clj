@@ -46,7 +46,7 @@
 
 (mr/def ::task-details.run-transforms
   [:map {:closed true}
-   [:job-id          :string]
+   [:job-id          ms/PositiveInt]
    [:run-method      [:= :cron]]
    [:skipped-reason  {:optional true} :string]])
 

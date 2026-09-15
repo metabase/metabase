@@ -5,7 +5,6 @@
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib-be.schema :as lib-be.schema]
-   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
@@ -20,7 +19,7 @@
   super-legacy MBQL, internal audit app queries, etc.) and it might not be normalized yet."
   [:or
    :metabase.lib.util/legacy-query
-   ::lib.schema/query
+   :metabase.lib.util/mbql5-query
    ::lib-be.schema/internal-query])
 
 (mr/def ::metadata

@@ -297,41 +297,14 @@
          (dissoc query :type :query)))
 
 (mr/def ::legacy-query
-  "A legacy MBQL query, still carrying the QP-internal bookkeeping keys middleware layers onto the top-level query
-  map while it's mid-pipeline (before [[pipeline]] converts it to MBQL 5). Sub-schemas for the legacy-only keys are
-  referenced by literal keyword (rather than a require) because `metabase.legacy-mbql.schema` depends on this
-  namespace via `metabase.lib.normalize`."
-  [:map
-   {:closed true, :error/message "legacy query"}
-   [:type       [:enum :native :query]]
-   [:database   {:optional true} [:maybe ::lib.schema.id/database]]
-   [:native     {:optional true} [:maybe :metabase.legacy-mbql.schema/TopLevelNativeInnerQuery]]
-   [:query      {:optional true} [:maybe :metabase.legacy-mbql.schema/MBQLInnerQuery]]
-   [:parameters {:optional true} [:maybe :metabase.lib.schema.parameter/parameters]]
-   [:settings   {:optional true} [:maybe :metabase.lib.schema.settings/settings]]
-   [:constraints {:optional true} [:maybe :metabase.lib.schema.constraints/constraints]]
-   [:middleware {:optional true} [:maybe :metabase.lib.schema.middleware-options/middleware-options]]
-   [:info       {:optional true} [:maybe :metabase.lib.schema.info/info]]
-   [:create-row {:optional true} [:maybe :metabase.lib.schema.actions/row]]
-   [:update-row {:optional true} [:maybe :metabase.lib.schema.actions/row]]
-   [:cache-strategy {:optional true} [:maybe ::lib.schema/cache-strategy]]
-   [:lib/metadata   {:optional true} ::lib.schema.metadata/metadata-provider]
-   [:lib.convert/converted?               {:optional true} :boolean]
-   [:qp/compiled                          {:optional true} [:maybe ::lib.schema/compiled-native-query]]
-   [:qp/compiled-inline                   {:optional true} [:maybe ::lib.schema/compiled-native-query]]
-   [:qp/skip-result-metadata-persistence  {:optional true} :boolean]
-   [:qp/source-card-id                    {:optional true} [:maybe ::lib.schema.id/card]]
-   [:query-permissions/referenced-card-ids {:optional true} [:maybe [:set ::lib.schema.id/card]]]
-   [:impersonation/role                   {:optional true} :string]
-   [:impersonation/admin?                 {:optional true} :boolean]
-   [:user-parameters                      {:optional true} [:maybe :metabase.lib.schema.parameter/parameters]]
-   [:metabase.query-processor.middleware.add-remaps/external-remaps
-    {:optional true} [:maybe ::lib.schema/external-remappings]]
-   [:metabase-enterprise.sandbox.query-processor.middleware.sandboxing/original-metadata
-    {:optional true} [:maybe ::lib.schema/sandboxing.original-metadata]]])
+  "A legacy MBQL query: [[pipeline]] only reads its `:type`, and its inner query may not be normalized yet."
+  [:map {:closed false, ::mr/deliberately-open true, :error/message "legacy query"}
+   [:type [:enum :native :query]]])
 
 (mr/def ::mbql5-query
-  ::lib.schema/query)
+  "An MBQL 5 query that may still be being built, e.g. by [[metabase.lib.convert]] before its clauses get `:lib/uuid`s."
+  [:map {:closed false, ::mr/deliberately-open true, :error/message "MBQL 5 query"}
+   [:lib/type [:= :mbql/query]]])
 
 (mr/def ::legacy-or-mbql5-query
   "Schema for a map that is either a legacy query OR a MBQL 5 query."
@@ -560,14 +533,14 @@
                              (throw (ex-info "Could not convert old :aggregation ref to new UUIDs"
                                              {:aggregation &match})))])))
 
+(mr/def ::query-like
+  "A query, stage, or metadata map in any state of normalization, string keys included, whose type
+  [[normalized-query-type]] reads."
+  [:map {:closed false, ::mr/deliberately-open true, :description "query-like map"}])
+
 (mu/defn normalized-query-type :- [:maybe [:enum #_MBQL5 :mbql/query #_legacy :query :native #_audit :internal]]
   "Get the `:lib/type` or `:type` from `query`, even if it is not-yet normalized."
-  [query :- [:or
-             ::legacy-or-mbql5-query
-             ::lib.schema.metadata/table
-             ::lib.schema.metadata/card
-             ::lib.schema.metadata/metric
-             ::lib.schema/stage]]
+  [query :- [:maybe ::query-like]]
   (when-let [query-type (some-> (some #(get query %)
                                       [:lib/type :type "lib/type" "type"])
                                 keyword)]
@@ -576,12 +549,7 @@
 
 (mu/defn normalized-mbql-version :- [:maybe [:enum :mbql-version/mbql5 :mbql-version/legacy]]
   "Version of MBQL a `query` map is using, either `:mbql-version/mbql-5` or `:mbql-version/legacy`."
-  [query :- [:or
-             ::legacy-or-mbql5-query
-             ::lib.schema.metadata/table
-             ::lib.schema.metadata/card
-             ::lib.schema.metadata/metric
-             ::lib.schema/stage]]
+  [query :- [:maybe ::query-like]]
   (case (normalized-query-type query)
     :mbql/query      :mbql-version/mbql5
     (:query :native) :mbql-version/legacy
