@@ -33,7 +33,6 @@
    [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
-   [metabase.search.spec :as search.spec]
    [metabase.settings.core :as setting]
    [metabase.settings.models.setting]
    [metabase.settings.models.setting.cache :as setting.cache]
@@ -983,22 +982,20 @@
       (testing (str "\n" (pr-str (cons 'with-model-cleanup (map (comp name first) models))) "\n")
         (f))
       (finally
-        (let [search-relevant? (set (keys (search.spec/model-hooks)))
-              deleted-searched (reduce
-                                +
-                                0
-                                (for [[model pk] models
-                                      ;; The first use in a test run may have no previous maximum ID.
-                                      :let [old-max-id (get model->old-max-id model)
-                                            max-id-condition (if old-max-id [:> pk old-max-id] true)
-                                            additional-conditions (with-model-cleanup-additional-conditions model)
-                                            where-clause [:and max-id-condition additional-conditions]
-                                            deleted (t2/query-one
-                                                     {:delete-from (t2/table-name model)
-                                                      :where where-clause})]]
-                                  (if (and (search-relevant? model) (number? deleted)) deleted 0)))]
-          ;; Raw deletes skip Toucan hooks. Reindex only if they removed rows represented in search.
-          (when (pos? deleted-searched)
+        (let [deleted (reduce (fn [total [model pk]]
+                                ;; The first use in a test run may have no previous maximum ID.
+                                (let [old-max-id            (get model->old-max-id model)
+                                      max-id-condition      (if old-max-id [:> pk old-max-id] true)
+                                      additional-conditions (with-model-cleanup-additional-conditions model)]
+                                  (+ total (t2/query-one
+                                            {:delete-from (t2/table-name model)
+                                             :where       [:and max-id-condition additional-conditions]}))))
+                              0
+                              models)]
+          ;; Raw deletes skip Toucan hooks, so a reindex purges whatever the deleted rows contributed to the
+          ;; search index. Cascades count too: deleting a user removes their personal collection, whose index
+          ;; row would otherwise linger. Only an empty cleanup skips the rebuild.
+          (when (pos? deleted)
             (reindex-search-index!)))))))
 
 (defmacro with-model-cleanup
