@@ -440,3 +440,167 @@ describe("ProviderConnectionForm editing a fixed-catalog connection", () => {
     expect(screen.getByLabelText("OAuth access token")).toBeEnabled();
   });
 });
+
+const OLLAMA_TYPE = createMockLlmProviderType({
+  type: "ollama",
+  label: "Ollama",
+  default_model: null,
+  models: [],
+  // Both credentials are optional in the registry, and either satisfies `required_any` — which is
+  // why the form owns Ollama's requirements instead (see ./ollama-form).
+  required_any: [["base-url"], ["api-key"]],
+  fields: [
+    createMockLlmProviderField({
+      key: "hosting",
+      label: "Where Ollama runs",
+      type: "segmented",
+      required: true,
+      options: [
+        { value: "self-hosted", label: "Self-hosted" },
+        { value: "cloud", label: "Cloud" },
+      ],
+      default: "self-hosted",
+    }),
+    createMockLlmProviderField({
+      key: "base-url",
+      label: "API base URL",
+      type: "text",
+      required: false,
+      show_when: { field: "hosting", value: "self-hosted" },
+    }),
+    createMockLlmProviderField({
+      key: "api-key",
+      label: "API key",
+      type: "password",
+      required: false,
+    }),
+  ],
+});
+
+const setupOllama = () => {
+  fetchMock.removeRoutes();
+  fetchMock.clearHistory();
+  setupCreateLlmProviderEndpoint();
+  const onSaved = jest.fn();
+
+  renderWithProviders(
+    <ProviderConnectionForm providerTypes={[OLLAMA_TYPE]} onSaved={onSaved} />,
+  );
+
+  return { onSaved };
+};
+
+const pickOllama = async () => {
+  await userEvent.click(screen.getByRole("button", { name: /Ollama/ }));
+  await screen.findByLabelText("Where Ollama runs");
+};
+
+describe("ProviderConnectionForm with a per-deployment form", () => {
+  it("does not offer to connect a self-hosted server that has only an API key", async () => {
+    setupOllama();
+
+    await pickOllama();
+    await userEvent.type(screen.getByLabelText(/API key/), "k");
+
+    // the reported bug: `required_any` counted the key, so Connect enabled and the save then failed
+    // in the adapter for want of an address
+    expect(screen.getByRole("button", { name: "Connect" })).toBeDisabled();
+  });
+
+  it("offers to connect a self-hosted server once it has an address", async () => {
+    setupOllama();
+
+    await pickOllama();
+    await userEvent.type(
+      screen.getByLabelText(/API base URL/),
+      "https://ollama.example.com/v1",
+    );
+
+    expect(screen.getByRole("button", { name: "Connect" })).toBeEnabled();
+  });
+
+  it("asks Cloud for an API key and nothing else", async () => {
+    setupOllama();
+
+    await pickOllama();
+    await userEvent.click(screen.getByRole("radio", { name: "Cloud" }));
+
+    // Cloud's address is fixed, so the base URL is not part of that form at all
+    expect(screen.queryByLabelText(/API base URL/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Connect" })).toBeDisabled();
+
+    await userEvent.type(await screen.findByLabelText(/API key/), "k");
+
+    expect(screen.getByRole("button", { name: "Connect" })).toBeEnabled();
+  });
+
+  it("saves the deployment alongside its credentials", async () => {
+    const { onSaved } = setupOllama();
+
+    await pickOllama();
+    await userEvent.click(screen.getByRole("radio", { name: "Cloud" }));
+    await userEvent.type(await screen.findByLabelText(/API key/), "k");
+    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+    await waitFor(() => {
+      expect(onSaved).toHaveBeenCalled();
+    });
+    expect(
+      await fetchMock.callHistory
+        .lastCall("path:/api/llm/providers", { method: "POST" })
+        ?.request?.json(),
+    ).toEqual({
+      type: "ollama",
+      name: "Ollama",
+      // no model: Ollama's catalog comes from the server that connecting reaches, so a new
+      // connection adopts whatever its probe exercised
+      config: { hosting: "cloud", "api-key": "k" },
+    });
+  });
+});
+
+describe("ProviderConnectionForm switching Ollama deployments", () => {
+  it("does not save a base URL typed before the admin switched to Cloud", async () => {
+    const { onSaved } = setupOllama();
+
+    await pickOllama();
+    await userEvent.type(
+      screen.getByLabelText(/API base URL/),
+      "https://typed-then-abandoned.example.com/v1",
+    );
+    await userEvent.click(screen.getByRole("radio", { name: "Cloud" }));
+    await userEvent.type(await screen.findByLabelText(/API key/), "k");
+    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+    await waitFor(() => {
+      expect(onSaved).toHaveBeenCalled();
+    });
+    expect(
+      await fetchMock.callHistory
+        .lastCall("path:/api/llm/providers", { method: "POST" })
+        ?.request?.json(),
+    ).toEqual({
+      type: "ollama",
+      name: "Ollama",
+      // blanked rather than carried over: Cloud's address is fixed, so a stored base URL would be
+      // a value nothing reads and the form no longer shows
+      config: { hosting: "cloud", "base-url": "", "api-key": "k" },
+    });
+  });
+
+  it("keeps what was typed when the admin switches back", async () => {
+    setupOllama();
+
+    await pickOllama();
+    await userEvent.type(
+      screen.getByLabelText(/API base URL/),
+      "https://back-and-forth.example.com/v1",
+    );
+    await userEvent.click(screen.getByRole("radio", { name: "Cloud" }));
+    await userEvent.click(screen.getByRole("radio", { name: "Self-hosted" }));
+
+    expect(screen.getByLabelText(/API base URL/)).toHaveValue(
+      "https://back-and-forth.example.com/v1",
+    );
+  });
+});

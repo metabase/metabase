@@ -25,6 +25,7 @@ import {
 import type {
   LlmProviderConfig,
   LlmProviderConnection,
+  LlmProviderField,
   LlmProviderType,
 } from "metabase-types/api";
 
@@ -32,7 +33,12 @@ import { ProviderConfigFields } from "./ProviderConfigFields";
 import { ProviderTypeIcon } from "./ProviderTypeIcon";
 import { ProviderTypePicker } from "./ProviderTypePicker";
 import { findProviderTypeForApiKey } from "./api-key";
-import { getHiddenFieldKeys, isVisibleField } from "./visible-fields";
+import { getOllamaFields, isOllamaProvider } from "./ollama-form";
+import {
+  getHiddenFieldKeys,
+  hasAllRequiredValues,
+  isVisibleField,
+} from "./visible-fields";
 
 export function ProviderConnectionForm({
   providerTypes,
@@ -88,13 +94,9 @@ export function ProviderConnectionForm({
     [providerTypes, typeName],
   );
 
-  const [primaryFields, advancedFields] = useMemo(() => {
-    const fields = providerType?.fields ?? [];
-    return [
-      fields.filter((field) => !field.advanced),
-      fields.filter((field) => field.advanced),
-    ];
-  }, [providerType]);
+  const fields = getFormFields(providerType, config);
+  const primaryFields = fields.filter((field) => !field.advanced);
+  const advancedFields = fields.filter((field) => field.advanced);
 
   const [isAdvancedOpen, { toggle: toggleAdvanced }] = useDisclosure(
     hasStoredAdvancedValues(providerType, connection),
@@ -147,28 +149,14 @@ export function ProviderConnectionForm({
     setError(undefined);
   };
 
-  // A required field the registry gives a default is already satisfied — the form shows that value pre-selected,
-  // and the backend fills it in for a connection that never touched it. A type with alternative credential
-  // groups (Google: a service account key, or an OAuth token with a project ID) additionally needs one group
-  // filled in full; its fields are individually optional because either group will do. A type with paired
-  // credential groups (Bedrock: the AWS key pair) needs each filled in full or left empty in full, and a
-  // dependent field (Bedrock: the session token) only counts filled when the fields it requires are too.
-  const hasValue = (key: string) => (config[key] ?? "").trim() !== "";
+  // Ollama's requirements depend on the deployment picked, which `required_any` cannot express:
+  // either credential satisfies it whatever `hosting` says, which is what let a self-hosted server
+  // be connected with nothing but an API key. `fields` already carries that deployment's flags.
   const isComplete =
     providerType != null &&
-    providerType.fields
-      .filter(
-        (field) =>
-          field.required &&
-          !field.default &&
-          isVisibleField(field, providerType.fields, config),
-      )
-      .every((field) => hasValue(field.key)) &&
-    (providerType.required_any.length === 0 ||
-      providerType.required_any.some((group) => group.every(hasValue))) &&
-    Object.entries(providerType.requires).every(
-      ([key, deps]) => !hasValue(key) || deps.every(hasValue),
-    );
+    (isOllamaProvider(providerType)
+      ? hasAllRequiredValues(fields, config)
+      : isRegistryComplete(providerType, config));
 
   const handleSave = async () => {
     if (!providerType) {
@@ -176,7 +164,8 @@ export function ProviderConnectionForm({
     }
     setError(undefined);
     // A field the form hid is not part of the connection: clearing it is what makes switching
-    // Google's authentication method drop the credential the other one replaced.
+    // Google's authentication method drop the credential the other one replaced, and switching
+    // Ollama's deployment drop a base URL typed before the admin moved to Cloud.
     const cleared = getHiddenFieldKeys(providerType.fields, config).filter(
       (key) => (config[key] ?? "") !== "",
     );
@@ -322,6 +311,42 @@ export function ProviderConnectionForm({
         ))
         .otherwise(() => null)}
     </Stack>
+  );
+}
+
+function getFormFields(
+  providerType: LlmProviderType | undefined,
+  config: LlmProviderConfig,
+): LlmProviderField[] {
+  if (providerType == null) {
+    return [];
+  }
+  // Ollama renders one of two flat forms chosen by its deployment picker — see ./ollama-form.
+  return isOllamaProvider(providerType)
+    ? getOllamaFields(providerType, config)
+    : providerType.fields;
+}
+
+// A type with alternative credential groups (Google: a service account key, or an OAuth token with
+// a project ID) needs one group filled in full; its fields are individually optional because either
+// group will do. A type with paired credential groups (Bedrock: the AWS key pair) needs each filled
+// in full or left empty in full, and a dependent field (Bedrock: the session token) only counts
+// filled when the fields it requires are too.
+function isRegistryComplete(
+  providerType: LlmProviderType,
+  config: LlmProviderConfig,
+) {
+  const hasValue = (key: string) => (config[key] ?? "").trim() !== "";
+  const visibleFields = providerType.fields.filter((field) =>
+    isVisibleField(field, providerType.fields, config),
+  );
+  return (
+    hasAllRequiredValues(visibleFields, config) &&
+    (providerType.required_any.length === 0 ||
+      providerType.required_any.some((group) => group.every(hasValue))) &&
+    Object.entries(providerType.requires).every(
+      ([key, deps]) => !hasValue(key) || deps.every(hasValue),
+    )
   );
 }
 
