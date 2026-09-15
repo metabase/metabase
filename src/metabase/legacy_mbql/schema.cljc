@@ -1859,6 +1859,17 @@
 (mr/def ::legacy-column-metadata.qualified-keys
   (legacy-column-metadata-qualified-keys-schema))
 
+(mr/def ::driver-column
+  "A column as a driver's `execute-reducible-query` reports it, before annotation adds the rest of its metadata."
+  [:map {:closed true}
+   [:name           :string]
+   [:base_type      {:optional true} [:maybe ::lib.schema.common/base-type]]
+   [:effective_type {:optional true} [:maybe ::lib.schema.common/base-type]]
+   [:semantic_type  {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
+   [:database_type  {:optional true} [:maybe :string]]
+   [:display_name   {:optional true} [:maybe :string]]
+   [:field_ref      {:optional true} [:maybe [:ref ::Reference]]]])
+
 (mr/def ::legacy-column-metadata
   "Schema for a single legacy metadata column. This is the pre-Lib equivalent of
   `:metabase.lib.schema.metadata/column`."

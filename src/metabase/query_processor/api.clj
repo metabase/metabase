@@ -62,10 +62,10 @@
    & {:keys [context export-format was-pivot]
       :or   {context       :ad-hoc
              export-format :api}}
-   :- [:map {:closed true}
-       [:context       {:optional true} ::lib.schema.info/context]
-       [:export-format {:optional true} ::qp.schema/export-format]
-       [:was-pivot     {:optional true} [:maybe :boolean]]]]
+   :- [:maybe [:map {:closed true}
+               [:context       {:optional true} ::lib.schema.info/context]
+               [:export-format {:optional true} ::qp.schema/export-format]
+               [:was-pivot     {:optional true} [:maybe :boolean]]]]]
   (span/with-span!
     {:name "run-query-async"}
     ;; store table id trivially iff we get a query with simple source-table

@@ -29,7 +29,7 @@
   [[metabase.query-processor.postprocess/middleware]] and [[metabase.query-processor.execute/middleware]] for the
   middleware that add to it."
   [:map {:closed true}
-   [:cols                    {:optional true} ::result-metadata.columns]
+   [:cols                    {:optional true} [:sequential [:or ::result-metadata.column ::mbql.s/driver-column]]]
    [:native_form             {:optional true} :metabase.query-processor.compile/compiled]
    [:dataset                 {:optional true} :boolean]
    [:model                   {:optional true} :boolean]

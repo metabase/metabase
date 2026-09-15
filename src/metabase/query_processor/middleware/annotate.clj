@@ -20,7 +20,7 @@
    [potemkin :as p]))
 
 (mr/def ::col
-  ::mbql.s/legacy-column-metadata)
+  [:or ::mbql.s/legacy-column-metadata ::mbql.s/driver-column])
 
 (mr/def ::qp-results-cased-col
   "Map where all simple keywords are snake_case, but lib keywords can stay in kebab-case."

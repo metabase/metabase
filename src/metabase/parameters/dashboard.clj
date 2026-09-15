@@ -21,7 +21,7 @@
 
 (mu/defn- param->fields
   [param :- ::parameters.schema/resolved-parameter
-   & {:keys [op-override]} :- [:map {:closed true} [:op-override {:optional true} [:maybe :keyword]]]]
+   & {:keys [op-override]} :- [:maybe [:map {:closed true} [:op-override {:optional true} [:maybe :keyword]]]]]
   (let [op      (or op-override (params/param-type->op (:type param)))
         options (or (:options param) (params/param-type->default-options (:type param)))]
     (for [field-id (params/dashboard-param->field-ids param)]

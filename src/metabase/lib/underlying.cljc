@@ -75,7 +75,7 @@
    (top-level-column query column :rename-superfluous-options? true))
   ([query                                  :- ::lib.schema/query
     column                                 :- ::lib.schema.metadata/column
-    & {:keys [rename-superfluous-options?]} :- TopLevelColumnOptions]
+    & {:keys [rename-superfluous-options?]} :- [:maybe TopLevelColumnOptions]]
    (let [top-query (top-level-query query)]
      (if (= query top-query)
        column ;; Unchanged if this is already a top-level query. That includes keeping the "superfluous" options!

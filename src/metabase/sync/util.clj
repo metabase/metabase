@@ -467,7 +467,7 @@
 
   Returns tables ordered by `[schema name]` so results match the order expected by [[metabase.driver/describe-fks]]."
   [database-or-id                       :- DatabaseOrId
-   & {:keys [schema-names table-names]} :- ::driver/describe-fks.options]
+   & {:keys [schema-names table-names]} :- [:maybe ::driver/describe-fks.options]]
   (eduction (map t2.realize/realize)
             (sync.db/sync-tables-reducible (u/the-id database-or-id) schema-names table-names)))
 

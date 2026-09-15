@@ -398,17 +398,17 @@
              ;; param `make-run` can be used to control how the query is ran, e.g. if you need to customize the `context`
              ;; passed to the QP
              make-run    process-query-for-card-default-run-fn}}
-   :- [:map {:closed true}
-       [:parameters     {:optional true} [:maybe ::parameters.schema/parameters]]
-       [:constraints    {:optional true} [:maybe ::lib.schema.constraints/constraints]]
-       [:context        {:optional true} [:maybe ::lib.schema.info/context]]
-       [:dashboard-id   {:optional true} [:maybe ::lib.schema.id/dashboard]]
-       [:dashcard       {:optional true} [:maybe [:ref :metabase.dashboards.schema/dashboard-card]]]
-       [:middleware     {:optional true} [:maybe ::lib.schema.middleware-options/middleware-options]]
-       [:qp             {:optional true} [:maybe ifn?]]
-       [:make-run       {:optional true} [:maybe ifn?]]
-       [:ignore-cache   {:optional true} [:maybe :boolean]]
-       [:card-transform {:optional true} [:maybe ifn?]]]]
+   :- [:maybe [:map {:closed true}
+               [:parameters     {:optional true} [:maybe ::parameters.schema/parameters]]
+               [:constraints    {:optional true} [:maybe ::lib.schema.constraints/constraints]]
+               [:context        {:optional true} [:maybe ::lib.schema.info/context]]
+               [:dashboard-id   {:optional true} [:maybe ::lib.schema.id/dashboard]]
+               [:dashcard       {:optional true} [:maybe [:ref :metabase.dashboards.schema/dashboard-card]]]
+               [:middleware     {:optional true} [:maybe ::lib.schema.middleware-options/middleware-options]]
+               [:qp             {:optional true} [:maybe ifn?]]
+               [:make-run       {:optional true} [:maybe ifn?]]
+               [:ignore-cache   {:optional true} [:maybe :boolean]]
+               [:card-transform {:optional true} [:maybe ifn?]]]]]
   {:pre [(map? card) (pos-int? (:id card)) (u/maybe? sequential? parameters)]}
   (let [card        (api/read-check card)
         stored-query (:dataset_query card)

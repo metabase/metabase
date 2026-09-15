@@ -277,7 +277,7 @@
    Options:
    - :limit - add limit to query"
   [{:keys [source] :as source-query} :- ::ast.schema/source-query
-   & {:as opts} :- Options]
+   & {:as opts} :- [:maybe Options]]
   (if (needs-two-stage? source)
     (compile-two-stage-query source-query opts)
     (compile-single-stage-query source-query opts)))
@@ -341,7 +341,7 @@
    Options:
    - :limit - add limit to query"
   [{:keys [source] :as source-query} :- ::ast.schema/source-query
-   & {:as opts} :- Options]
+   & {:as opts} :- [:maybe Options]]
   (if (needs-two-stage? source)
     (compile-two-stage-values-query source-query opts)
     (compile-single-stage-values-query source-query opts)))

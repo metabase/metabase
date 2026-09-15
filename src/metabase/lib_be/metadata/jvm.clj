@@ -94,8 +94,9 @@
   [:select-keys :metabase.transforms.schema/transform transform-columns])
 
 (mr/def ::instance
-  "A Toucan 2 instance [[instance->metadata]] converts, by its model."
-  [:multi {:dispatch t2/model, :lazy-refs true}
+  "A Toucan 2 instance [[instance->metadata]] converts, by its model, or a legacy result metadata column."
+  [:multi {:dispatch (fn [instance] (or (t2/model instance) ::legacy-column)), :lazy-refs true}
+   [::legacy-column                :metabase.legacy-mbql.schema/legacy-column-metadata]
    [:metadata/database             ::metadata-database-row]
    [:metadata/table                ::metadata-table-row]
    [:metadata/native-query-snippet ::metadata-native-query-snippet-row]

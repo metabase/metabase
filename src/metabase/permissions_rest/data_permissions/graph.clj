@@ -270,7 +270,7 @@
   "Returns a tree representation of all data permissions. Can be optionally filtered by group ID, database ID,
   and/or permission type. This is intended to power the permissions editor in the admin panel, and should not be used
   for permission enforcement, as it will read much more data than necessary."
-  [& {:as opts} :- ::opts]
+  [& {:as opts} :- [:maybe ::opts]]
   (reduce-into-graph (data-perms-reducible opts) collapse-uniform-view-data))
 
 (defn- maybe-hide-tenant-groups [groups]
@@ -288,7 +288,7 @@
   ([]
    (api-graph {}))
 
-  ([& {:as opts} :- ::opts]
+  ([& {:as opts} :- [:maybe ::opts]]
    {:revision (perms/latest-permissions-revision-id)
     :groups (-> (reduce-into-graph (data-perms-reducible opts)
                                    (fn [perm-map]
