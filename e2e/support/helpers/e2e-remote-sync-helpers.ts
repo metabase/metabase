@@ -19,6 +19,8 @@ export const SYNCED_COLLECTION_FIXTURE_PATH =
 export const SYNCED_TRANSFORMS_COLLECTION_FIXTURE_PATH =
   Cypress.config("projectRoot") +
   "/e2e/support/assets/example_synced_transforms_collection";
+export const SYNCED_LIBRARY_FIXTURE_PATH =
+  Cypress.config("projectRoot") + "/e2e/support/assets/example_synced_library";
 
 // Copy the sample synced collection from the fixture folder to the working directory
 export const copySyncedCollectionFixture = () => {
@@ -31,6 +33,13 @@ export const copySyncedCollectionFixture = () => {
 export const copySyncedTransformsCollectionFixture = () => {
   cy.task("copyDirectory", {
     source: SYNCED_TRANSFORMS_COLLECTION_FIXTURE_PATH,
+    destination: LOCAL_GIT_PATH,
+  });
+};
+// Copy the sample remote-synced Library (with one glossary entry) from the fixture folder to the working directory
+export const copySyncedLibraryFixture = () => {
+  cy.task("copyDirectory", {
+    source: SYNCED_LIBRARY_FIXTURE_PATH,
     destination: LOCAL_GIT_PATH,
   });
 };

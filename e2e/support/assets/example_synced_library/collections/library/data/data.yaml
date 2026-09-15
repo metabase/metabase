@@ -1,0 +1,19 @@
+name: Data
+description: null
+entity_id: librarylibrarydatadat
+slug: data
+created_at: '2026-09-11T00:00:00Z'
+archived: false
+type: library-data
+parent_id: librarylibrarylibrary
+personal_owner_id: null
+namespace: null
+authority_level: null
+serdes/meta:
+- id: librarylibrarydatadat
+  label: data
+  model: Collection
+archive_operation_id: null
+archived_directly: null
+is_sample: false
+is_remote_synced: true
