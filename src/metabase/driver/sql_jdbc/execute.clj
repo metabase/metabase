@@ -997,6 +997,38 @@
                       (.executeUpdate ^PreparedStatement stmt)
                       (.executeUpdate stmt sql))}))
 
+(defmethod driver/do-with-test-connection :sql-jdbc
+  [driver database f]
+  (do-with-connection-with-options
+   driver
+   database
+   {:write? true}
+   (fn [^Connection conn]
+     (.setAutoCommit conn false)
+     (try
+       (f conn)
+       (finally
+         (.rollback conn)
+         (.setAutoCommit conn true))))))
+
+(defmethod driver/execute-on-connection! :sql-jdbc
+  [driver conn [sql params]]
+  (create-and-execute-statement! driver conn sql params))
+
+(defmethod driver/query-on-connection :sql-jdbc
+  [driver conn [sql params] {:keys [max-rows]}]
+  (with-open [stmt (statement-or-prepared-statement driver conn sql params (driver-api/canceled-chan))]
+    (when max-rows
+      (.setMaxRows stmt (int max-rows)))
+    (with-open [^ResultSet rs (if (instance? PreparedStatement stmt)
+                                (.executeQuery ^PreparedStatement stmt)
+                                (.executeQuery stmt ^String sql))]
+      (let [column-count (.getColumnCount (.getMetaData rs))]
+        (loop [rows []]
+          (if (.next rs)
+            (recur (conj rows (mapv #(.getObject rs (int %)) (range 1 (inc column-count)))))
+            rows))))))
+
 (defmethod driver/execute-raw-queries! :sql-jdbc
   [driver conn-spec queries]
   (try

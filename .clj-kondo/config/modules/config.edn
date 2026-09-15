@@ -2784,11 +2784,14 @@
   {:team "Graphy"
    :api  #{metabase.transform-testing.api}
    :uses #{api
+           driver
            lib
            lib.schema
            models
+           sql-tools
+           transforms.base
            util}
-   :model-imports #{:model/Transform :model/User}}
+   :model-imports #{:model/Database :model/Transform :model/User}}
 
   transforms
   {:team "Graphy"

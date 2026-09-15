@@ -109,3 +109,12 @@
    [:description  {:optional true} [:maybe :string]]
    [:inputs       {:optional true} ::inputs]
    [:expectations {:optional true} ::expectations]])
+
+(mr/def ::status
+  "The outcome of a test suite run or of one of its expectations."
+  [:enum {:decode/normalize lib.schema.common/normalize-keyword} :passed :failed])
+
+(mr/def ::run-result
+  "The outcome of a test suite run."
+  [:map {:closed true}
+   [:status ::status]])

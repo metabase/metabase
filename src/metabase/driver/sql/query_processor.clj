@@ -2304,6 +2304,16 @@
                              {:insert-into [(keyword output-table) {:raw sql-query}]}))
      sql-params]))
 
+(defmethod driver/temp-table-name :sql
+  [_driver]
+  (str "mb_test_" (str/replace (str (random-uuid)) "-" "")))
+
+(defmethod driver/compile-create-temp-table :sql
+  [driver {:keys [table query]}]
+  (let [{sql-query :query sql-params :params} query]
+    [(first (format-honeysql driver [:raw ["CREATE TEMPORARY TABLE " [:inline (keyword table)] " AS " sql-query]]))
+     sql-params]))
+
 (defmethod driver/compile-drop-table :sql
   [driver table]
   (format-honeysql driver {:drop-table [:if-exists (keyword table)]}))

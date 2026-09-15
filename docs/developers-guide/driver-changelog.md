@@ -6,6 +6,14 @@ title: Driver interface changelog
 
 ## Metabase 0.64.0
 
+- New feature `:transforms/testing` -- whether the driver can run transform test suites against temp tables. Drivers
+  with this feature implement the new multimethods `metabase.driver/temp-table-name` `[driver]`,
+  `metabase.driver/compile-create-temp-table` `[driver {:keys [table query]}]`,
+  `metabase.driver/compile-rows-query` `[driver columns rows]`,
+  `metabase.driver/do-with-test-connection` `[driver database f]`,
+  `metabase.driver/execute-on-connection!` `[driver conn query]` and
+  `metabase.driver/query-on-connection` `[driver conn query {:keys [max-rows]}]`.
+
 - `metabase.driver.sql-jdbc.execute/cancelation-poisons-connection?` `[driver]` -- whether canceling a `Statement`
   leaves the `Connection` unfit for the next query, so that it must be discarded rather than returned to the
   connection pool. The query processor cancels a `Statement` whenever reduction stops before the `ResultSet` runs out

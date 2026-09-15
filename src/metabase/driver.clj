@@ -956,6 +956,11 @@
     ;; Does this driver support executing python transforms?
     :transforms/python
     ;;
+    ;; Does this driver support running transform test suites against temp tables? Drivers with this feature
+    ;; implement [[temp-table-name]], [[compile-create-temp-table]], [[compile-rows-query]],
+    ;; [[do-with-test-connection]], [[execute-on-connection!]] and [[query-on-connection]].
+    :transforms/testing
+    ;;
     ;; Does this driver support creating an index (in the broad sense -- see the comment above
     ;; [[supported-index-methods]]) as a standalone statement after the transform target table already exists?
     ;; Drivers with this feature implement [[supported-index-methods]] and [[compile-create-index]]. Contrast with
@@ -1449,6 +1454,44 @@
 (defmulti compile-insert
   "Compiles the sql for an insert statement (INSERT INTO ... SELECT), given a compiled inner sql query and a destination."
   {:added "0.58.0", :arglists '([driver {:keys [query output-table]}])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti temp-table-name
+  "Returns a new unique name for a temp table created while running a transform test suite."
+  {:added "0.64.0", :arglists '([driver])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti compile-create-temp-table
+  "Compiles the `[sql params]` statement creating the temp table `table` from the compiled `query`."
+  {:added "0.64.0", :arglists '([driver {:keys [table query]}])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti compile-rows-query
+  "Compiles a `{:query :params}` query returning `rows` with the `columns` of `{:name :base_type}`."
+  {:added "0.64.0", :arglists '([driver columns rows])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti do-with-test-connection
+  "Calls `f` with a single connection to `database` that keeps its temp tables between statements and rolls back
+  everything it did afterwards."
+  {:added "0.64.0", :arglists '([driver database f])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti execute-on-connection!
+  "Executes the `[sql params]` statement on a connection from [[do-with-test-connection]]."
+  {:added "0.64.0", :arglists '([driver conn query])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti query-on-connection
+  "Runs the `[sql params]` query on a connection from [[do-with-test-connection]] and returns at most `max-rows` of
+  its rows as vectors."
+  {:added "0.64.0", :arglists '([driver conn query {:keys [max-rows]}])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

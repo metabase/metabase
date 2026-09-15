@@ -104,7 +104,8 @@
                               :describe-is-generated     true
                               :describe-is-nullable      true
                               :describe-default-expr     true
-                              :metadata/table-existence-check true}]
+                              :metadata/table-existence-check true
+                              :transforms/testing        true}]
   (defmethod driver/database-supports? [:h2 feature]
     [_driver _feature _database]
     supported?))
@@ -745,6 +746,17 @@
 (defmethod sql/default-schema :h2
   [_]
   "PUBLIC")
+
+(defmethod driver/temp-table-name :h2
+  [_driver]
+  (str "MB_TEST_" (u/upper-case-en (str/replace (str (random-uuid)) "-" ""))))
+
+(defmethod driver/compile-create-temp-table :h2
+  [driver {:keys [table query]}]
+  (let [{sql-query :query sql-params :params} query]
+    [(first (sql.qp/format-honeysql driver [:raw ["CREATE LOCAL TEMPORARY TABLE " [:inline (keyword table)]
+                                                  " TRANSACTIONAL AS " sql-query]]))
+     sql-params]))
 
 (defmethod driver/llm-sql-dialect-resource :h2 [_]
   "metabot/prompts/dialects/h2.md")

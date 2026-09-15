@@ -4,6 +4,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.models.interface :as mi]
    [metabase.transform-testing.db :as transform-testing.db]
+   [metabase.transform-testing.runner :as transform-testing.runner]
    [metabase.transform-testing.schema :as transform-testing.schema]
    [metabase.util.malli.schema :as ms]))
 
@@ -52,9 +53,9 @@
   (transform-testing.db/delete-test-suite! id)
   nil)
 
-(api.macros/defendpoint :post "/:id/run" :- :nil
+(api.macros/defendpoint :post "/:id/run" :- ::transform-testing.schema/run-result
   "Run a transform test suite."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (api/read-check (transform-testing.db/test-suite id))
-  nil)
+  (let [suite (api/write-check (transform-testing.db/test-suite id))]
+    (transform-testing.runner/run-test-suite! suite)))

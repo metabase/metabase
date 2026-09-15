@@ -38,3 +38,13 @@
   "Delete the TransformTestSuite with `suite-id`."
   [suite-id :- ms/PositiveInt]
   (t2/delete! :model/TransformTestSuite :id suite-id))
+
+(mu/defn transform
+  "The Transform with `transform-id`, or nil."
+  [transform-id :- ::lib.schema.id/transform]
+  (t2/select-one :model/Transform :id transform-id))
+
+(mu/defn database
+  "The Database with `database-id`, or nil."
+  [database-id :- ::lib.schema.id/database]
+  (t2/select-one :model/Database :id database-id))
