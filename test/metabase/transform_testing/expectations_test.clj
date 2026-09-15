@@ -12,6 +12,8 @@
    [metabase.transform-testing.expectations.protocol :as expectations.protocol]
    [metabase.transform-testing.schema :as transform-testing.schema]))
 
+(set! *warn-on-reflection* true)
+
 ;;; -------------------------------------------- Harness --------------------------------------------
 
 (defn- equals-rows

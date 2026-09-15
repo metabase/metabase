@@ -37,7 +37,9 @@
    ::errors/ambiguous-column           400
    ::errors/missing-inputs             400
    ::errors/unused-inputs              400
+   ::errors/duplicate-input-table      400
    ::errors/unparseable-source         400
+   ::errors/unremapped-reference       400
    ::errors/unsupported-transform      422
    ::errors/unsupported-driver         422
    ::errors/transform-failed           422
@@ -67,7 +69,9 @@
              ::errors/ambiguous-column
              ::errors/missing-inputs
              ::errors/unused-inputs
-             ::errors/unparseable-source}
+             ::errors/duplicate-input-table
+             ::errors/unparseable-source
+             ::errors/unremapped-reference}
            (types-with-status 400))))
   (testing "environment errors — the transform or its database prevents a run here — are 422"
     (is (= #{::errors/unsupported-transform
@@ -101,10 +105,12 @@
     ;; so the typed failure is the cause rather than the thrown class.
     (doseq [form ['(metabase.transform-testing.errors/ex ::undeclared "boom" {})
                   '(metabase.transform-testing.errors/ex ::undeclared "boom" {} nil)]]
-      (let [cause (try (macroexpand form)
-                       nil
-                       (catch clojure.lang.Compiler$CompilerException e
-                         (ex-cause e)))]
+      (let [outcome (try (macroexpand form)
+                         (catch clojure.lang.Compiler$CompilerException e e))
+            cause   (when (instance? clojure.lang.Compiler$CompilerException outcome)
+                      (ex-cause outcome))]
+        (is (instance? clojure.lang.Compiler$CompilerException outcome)
+            "expanding an undeclared type must fail at macro-expansion, not at call time")
         (is (instance? clojure.lang.ExceptionInfo cause))
         (is (= ::undeclared (:invalid-error-type (ex-data cause))))))))
 

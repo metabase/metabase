@@ -228,7 +228,9 @@
           (let [ex (try (transform-testing.runner/run-transform-test! transform-test)
                         nil
                         (catch ExceptionInfo e e))]
-            (is (= 400 (:status-code (ex-data ex))))
+            ;; The runner is agnostic to HTTP; that a type maps to a status is settled once,
+            ;; exhaustively, in errors-test.
+            (is (= ::transform-testing.errors/duplicate-input-table (:error-type (ex-data ex))))
             (is (re-find #"(?i)duplicate" (ex-message ex)))))))))
 
 (deftest run-transform-test-rejects-unparseable-source-test
@@ -269,7 +271,7 @@
           (let [ex (try (transform-testing.runner/run-transform-test! transform-test)
                         nil
                         (catch ExceptionInfo e e))]
-            (testing "throws a 400 (not a warehouse error) naming the un-remapped table"
+            (testing "refuses before the warehouse is touched, naming the un-remapped table"
               (is (some? ex))
-              (is (= 400 (:status-code (ex-data ex))))
+              (is (= ::transform-testing.errors/unremapped-reference (:error-type (ex-data ex))))
               (is (re-find (re-pattern (str "(?i)" table)) (ex-message ex))))))))))

@@ -4,7 +4,8 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
-   [metabase.transform-testing.expectations.report :as expectations.report])
+   [metabase.transform-testing.expectations.report :as expectations.report]
+   [metabase.util :as u])
   (:import
    (java.math BigDecimal)
    (java.sql Timestamp)
@@ -23,8 +24,8 @@
     (is (= 7 (expectations.report/cell 7)))
     (is (= 7 (expectations.report/cell (long 7))))
     (is (= 1.5 (expectations.report/cell 1.5)))
-    (is (= true (expectations.report/cell true)))
-    (is (= false (expectations.report/cell false)))))
+    (is (true? (expectations.report/cell true)))
+    (is (false? (expectations.report/cell false)))))
 
 (deftest cell-bigdecimal-keeps-scale-test
   ;; When scale is the very difference between expected and actual, normalizing it away makes the
@@ -43,7 +44,7 @@
     (doseq [s ["1E+3" "1.0E-8" "1E-10" "123456789E+10"]]
       (let [rendered (expectations.report/cell (BigDecimal. ^String s))]
         (is (string? rendered))
-        (is (not (str/includes? (str/upper-case rendered) "E"))
+        (is (not (str/includes? (u/upper-case-en rendered) "E"))
             (str s " rendered as " (pr-str rendered))))))
   (testing "the plain form is the value, not an approximation of it"
     (is (= "1000" (expectations.report/cell (BigDecimal. "1E+3"))))

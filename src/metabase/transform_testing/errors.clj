@@ -35,7 +35,9 @@
    ::ambiguous-column           400  ; An expectation names a column that matches several, case aside.
    ::missing-inputs             400  ; The transform reads a table with no declared input.
    ::unused-inputs              400  ; An input is declared for a table the transform never reads.
+   ::duplicate-input-table      400  ; Two inputs stand in for the same table.
    ::unparseable-source         400  ; The transform's SQL could not be parsed to find what it reads.
+   ::unremapped-reference       400  ; A real table survived the rewrite into the test's SQL.
 
    ;; 422 — the transform or its environment
    ::unsupported-transform      422  ; Not a query transform (Python, say).

@@ -149,8 +149,11 @@
         ;; would collide on one temp table, silently dropping a fixture. Check :table, not the whole
         ;; input. Order is incidental and deliberately not relied upon.
         _            (let [tables (map :table inputs)]
-                       (api/check-400 (or (empty? tables) (apply distinct? tables))
-                                      (tru "Duplicate test inputs; each input table may be declared only once.")))
+                       (when-not (or (empty? tables) (apply distinct? tables))
+                         (throw (transform-testing.errors/ex
+                                 ::transform-testing.errors/duplicate-input-table
+                                 (tru "Duplicate test inputs; each input table may be declared only once.")
+                                 {:tables (mapv transform-testing.validator/table-label tables)}))))
         input->temp  (into {} (map (fn [input] [input (driver/temp-table-name driver)])) inputs)
         output-table (driver/temp-table-name driver)
         names        (temp->logical transform input->temp output-table)
@@ -165,9 +168,12 @@
                       (transform-testing.compile/referenced-tables driver (:query compiled-transform))
                       temp-tables
                       (transform-testing.compile/dangling-qualifiers driver (:query compiled-transform)))
-        _            (api/check-400 (empty? surviving)
-                                    (tru "The transform test could not fully remap the source to test tables; these reference(s) remain: {0}. Alias each source table and qualify its columns by the alias (e.g. `FROM my_table t ... t.col`), not by the table name."
-                                         (str/join ", " surviving)))
+        _            (when (seq surviving)
+                       (throw (transform-testing.errors/ex
+                               ::transform-testing.errors/unremapped-reference
+                               (tru "The transform test could not fully remap the source to test tables; these reference(s) remain: {0}. Alias each source table and qualify its columns by the alias (e.g. `FROM my_table t ... t.col`), not by the table name."
+                                    (str/join ", " surviving))
+                               {:references (vec surviving)})))
         context      {:driver driver :output-table output-table :replacements replacements}]
     ;; --- execute (I/O): one connection; temp tables live and die here ---
     (driver/do-with-test-connection
