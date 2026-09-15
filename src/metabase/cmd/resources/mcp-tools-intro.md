@@ -17,4 +17,4 @@ Some clients (like Claude Desktop) ask you to approve or block each tool the fir
 
 The descriptions and argument notes here are exactly what your agent sees (which is why they sound robotic). Your agent can also call the `learn` tool for longer guides on the things a tool description can't fit.
 
-Several tools take or return a `query_handle`. A handle stands for a query that already ran (or was validated), so your agent can visualize or save exactly that query without sending it again. Handles expire after 24 hours by default. Admins can change that with the `MB_MCP_QUERY_HANDLE_TTL_HOURS` environment variable.
+Several tools take or return a `query_handle`. A handle stands for a query that already ran (or was validated), so your agent can visualize or save exactly that query without sending it again. Handles expire after 24 hours.

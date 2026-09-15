@@ -23,7 +23,7 @@ Replace `{your-metabase.example.com}` with your Metabase's URL. Admins can also 
 
 Your client will direct you to an authentication page for your Metabase.
 
-Once authenticated, you can approve or block the tools you want your Agent to have access to in your client (not in your Metabase). Admins can also [turn tools off for everyone](#turn-off-specific-tools).
+Once authenticated, you can approve or block the tools you want your Agent to have access to in your client (not in your Metabase).
 
 ### Connecting Claude Code to your Metabase's MCP server
 
@@ -98,26 +98,6 @@ https://mcp.internal.example.com https://*.staging.example.com
 ```
 
 The field accepts wildcards (`*`) for subdomains. Changes take effect in about a minute. Might be a good time to get up and pour yourself a glass of water.
-
-### Turn off the execute SQL tool
-
-The `execute_sql` tool lets an AI client run raw SQL against a database. People still need [native query permissions](../permissions/data.md) on that database to use it. The tool is on by default. To turn it off, set the `MB_MCP_EXECUTE_SQL_ENABLED` environment variable to `false`.
-
-With the tool off, `execute_sql` still shows up in the client's tool list, but every call to it fails. The switch also stops the MCP server from saving raw SQL anywhere: `question_write` refuses native queries, and `transform_write` refuses SQL transforms. AI clients can still run and save queries built with `execute_query`, which uses Metabase's query builder rather than raw SQL, and they can still run saved SQL questions with `run_saved_question`.
-
-To hide the tool from clients as well, add it to the [disabled tools](#turn-off-specific-tools) list.
-
-### Turn off specific tools
-
-To hide any tool from AI clients, set the `MB_MCP_V2_DISABLED_TOOLS` environment variable to a comma-separated list of tool names from the [MCP server tools](./mcp-tools.md) page, for example:
-
-```
-MB_MCP_V2_DISABLED_TOOLS=execute_sql,transform_write,alert_write
-```
-
-Disabled tools don't show up in the client's tool list, and Metabase rejects any attempt to call them. Like the other switches here, this applies to everyone who connects.
-
-Disabling `execute_sql` this way only hides the tool. To also stop clients from saving raw SQL as questions or transforms, use the [execute SQL switch](#turn-off-the-execute-sql-tool).
 
 ## Authentication
 
