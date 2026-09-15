@@ -6,7 +6,6 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.classloader.core :as classloader]
    [metabase.config.core :as config]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
@@ -246,20 +245,11 @@
   can fully or partially edit the data model. If the user does not have data access for any databases, returns only the
   name and ID of these databases, removing all other fields."
   [dbs]
-  (let [filtered-dbs
-        (if-let [f (when config/ee-available?
-                     (classloader/require 'metabase-enterprise.advanced-permissions.common)
-                     (resolve 'metabase-enterprise.advanced-permissions.common/filter-databases-by-data-model-perms))]
-          (f dbs)
-          ;; OSS: editing the data model is admin-only, so fail closed for everyone else. Returning `dbs`
-          ;; unfiltered would make `include_editable_data_model=true` switch off the only check the request
-          ;; gets, since callers skip `api/read-check` when the flag is set.
-          (if (mi/superuser?) dbs (empty dbs)))]
-    (map
-     (fn [db] (if (mi/can-read? db)
-                db
-                (select-keys db [:id :name :tables])))
-     filtered-dbs)))
+  (map
+   (fn [db] (if (mi/can-read? db)
+              db
+              (select-keys db [:id :name :tables])))
+   (schema.table/filter-databases-by-data-model-perms dbs)))
 
 (defn- check-db-data-model-perms
   "Given a DB, checks that *current-user* has any data model editing perms for the DB. If yes, returns the DB,
