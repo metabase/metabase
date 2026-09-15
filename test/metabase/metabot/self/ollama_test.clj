@@ -830,10 +830,6 @@
             :base-url "MB_LLM_OLLAMA_API_BASE_URL"
             :api-key  "MB_LLM_OLLAMA_API_KEY"}
            (llm.provider/connection-env-vars "ollama"))))
-  ;; End to end through the real machinery — env var, setting, connection synthesis, field defaults,
-  ;; adapter — because the seam being protected here spans all of it: an earlier cut of this provider
-  ;; inferred the deployment from which fields were set, which `with-field-defaults` made unreachable,
-  ;; and a unit test on the adapter alone did not notice.
   (letfn [(connection-config []
             (:config (first (llm.provider/connections))))
           (url-for [config]
