@@ -1,7 +1,9 @@
 .triggerButton {
+  --bucket-trigger-color: var(--mb-color-text-disabled-inverse);
+  --bucket-trigger-hover-color: var(--mb-color-text-primary-inverse);
+
   border-radius: 0;
   visibility: hidden;
-  color: var(--mb-color-text-disabled-inverse);
   border-left: 2px solid var(--mb-color-border-neutral-subtle);
 }
 
@@ -12,8 +14,16 @@
 /* No hover on touch devices, so always show the button with readable text */
 @media (hover: none) and (pointer: coarse) {
   .triggerButton {
+    --bucket-trigger-color: var(
+      --select-list-item-text-color,
+      var(--mb-color-core-brand)
+    );
+    --bucket-trigger-hover-color: var(
+      --select-list-item-text-color,
+      var(--mb-color-core-brand)
+    );
+
     visibility: visible;
-    color: var(--select-list-item-text-color, var(--mb-color-core-brand));
   }
 }
 

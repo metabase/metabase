@@ -138,8 +138,8 @@ export function BreakoutColumnListItem({
           <Button
             variant="transparent"
             size="compact-md"
-            className={BreakoutColumnListItemS.RemoveButton}
-            leftSection={<Icon c="icon-primary" name="close" />}
+            w="2rem"
+            leftSection={<Icon c="icon-primary-inverse" name="close" />}
             onClick={handleRemoveColumn}
             aria-label={t`Remove dimension`}
           />

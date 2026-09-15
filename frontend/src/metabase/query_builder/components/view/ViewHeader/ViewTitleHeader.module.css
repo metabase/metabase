@@ -17,12 +17,6 @@
   transition:
     background 300ms linear,
     border 300ms linear;
-
-  &[data-active="true"] {
-    color: var(--mb-color-button_label-filled-brand-default);
-    border-color: var(--mb-color-core-summarize);
-    background-color: var(--mb-color-core-summarize);
-  }
 }
 
 .BackButton {

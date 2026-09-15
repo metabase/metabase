@@ -97,6 +97,7 @@ export const SdkUsageProblemBanner = ({
             <Flex w="100%" justify="end" mt="sm" columnGap="lg">
               <Button
                 variant="subtle"
+                ff={fontFamily}
                 onClick={() => {
                   dispatch(setUsageProblem(null));
                 }}
@@ -105,6 +106,7 @@ export const SdkUsageProblemBanner = ({
               </Button>
               <Button
                 component={ExternalLink}
+                ff={fontFamily}
                 href={problem.documentationUrl}
                 rightSection={<Icon aria-hidden name="external" />}
                 variant="light"

@@ -133,7 +133,6 @@ export const MetabotInlineSQLPrompt = ({
           {canUseSqlGeneration && (
             <Tooltip disabled={isLoading} label={t`Send to ${metabotName}`}>
               <Button
-                className={S.submitButton}
                 data-testid="metabot-inline-sql-generate"
                 variant="filled"
                 px="0"

@@ -135,7 +135,7 @@ export function PermissionsPageLayout({
           title={t`There was an error saving`}
           message={saveError}
           confirmButtonText={t`OK`}
-          confirmButtonProps={{ variant: "default" }}
+          confirmButtonProps={{ variant: "default", color: "neutral" }}
           closeButtonText={null}
         />
 

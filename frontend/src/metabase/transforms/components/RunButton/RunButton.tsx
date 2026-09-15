@@ -190,7 +190,7 @@ function getRunButtonInfo({
     return {
       label: t`Canceled`,
       color: "warning",
-      leftSection: <Icon name="close" c="core-white" aria-hidden />,
+      leftSection: <Icon name="close" aria-hidden />,
       isDisabled,
     };
   }

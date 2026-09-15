@@ -52,6 +52,7 @@ export function DateFilterPicker({
               {onClear ? (
                 <Button
                   variant="transparent"
+                  color="neutral"
                   size="compact-md"
                   onClick={onClear}
                 >

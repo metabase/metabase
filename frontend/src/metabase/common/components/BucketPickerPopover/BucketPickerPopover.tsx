@@ -33,6 +33,11 @@ export interface BucketPickerPopoverProps {
   classNames?: { root?: string; chevronDown?: string };
 }
 
+const TRIGGER_BUTTON_VARS = {
+  "--button-color": "var(--bucket-trigger-color)",
+  "--button-hover-color": "var(--bucket-trigger-hover-color)",
+};
+
 export function BucketPickerPopover({
   triggerLabel,
   ariaLabel,
@@ -96,9 +101,10 @@ export function BucketPickerPopover({
           px="sm"
           miw="35%"
           maw="50%"
+          h="auto"
           size="compact-md"
           variant="transparent"
-          c="core-white"
+          vars={() => ({ root: TRIGGER_BUTTON_VARS })}
           classNames={{ label: S.triggerButtonLabel }}
           rightSection={
             hasChevronDown ? (

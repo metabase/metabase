@@ -96,7 +96,6 @@ function _PulsesListSidebar({
               size="compact-md"
               aria-label={closeSidebarLabel}
               leftSection={<Icon c="icon-primary" name="close" />}
-              mr="-1rem"
               onClick={onCancel}
             />
           </Tooltip>

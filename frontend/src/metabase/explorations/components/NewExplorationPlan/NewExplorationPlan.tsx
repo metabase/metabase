@@ -47,6 +47,7 @@ export function NewExplorationPlan({ selection }: NewExplorationPlanProps) {
             component={ForwardRefLink}
             to={Urls.newExploration()}
             variant="subtle"
+            color="neutral"
             leftSection={<Icon name="arrow_left" c="brand" />}
           >
             {t`All projects`}

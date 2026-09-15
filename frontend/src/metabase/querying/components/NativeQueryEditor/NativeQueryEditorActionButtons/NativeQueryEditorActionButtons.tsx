@@ -98,11 +98,7 @@ export const NativeQueryEditorActionButtons = (
             className={S.button}
             aria-label={t`Auto-format`}
             leftSection={
-              <Icon
-                c="icon-primary"
-                name="format_code"
-                size={NATIVE_EDITOR_ICON_SIZE}
-              />
+              <Icon name="format_code" size={NATIVE_EDITOR_ICON_SIZE} />
             }
             onClick={onFormatQuery}
           />

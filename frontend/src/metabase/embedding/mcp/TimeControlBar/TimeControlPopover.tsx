@@ -2,8 +2,6 @@ import { useState } from "react";
 
 import { Button, Popover } from "metabase/ui";
 
-import S from "./TimeControlPopover.module.css";
-
 export function TimeControlPopover({
   label,
   children,
@@ -20,7 +18,6 @@ export function TimeControlPopover({
           px="lg"
           variant="subtle"
           color="neutral"
-          classNames={{ root: S.popoverTargetButton }}
           onClick={() => setIsOpen(!isOpen)}
         >
           {label}

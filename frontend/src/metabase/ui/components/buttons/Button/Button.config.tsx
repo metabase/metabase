@@ -1,8 +1,19 @@
-import { Button, type ButtonProps } from "@mantine/core";
+import { Button, type ButtonProps as MantineButtonProps } from "@mantine/core";
 
 import { color } from "metabase/ui/utils/colors";
 
 import ButtonStyles from "./Button.module.css";
+import type { ButtonColor, ButtonVariant } from "./types";
+
+const BUTTON_VARIANTS = [
+  "default",
+  "filled",
+  "light",
+  "subtle",
+  "transparent",
+  "on-dark-primary",
+  "on-dark-secondary",
+] as const satisfies readonly ButtonVariant[];
 
 const BUTTON_COLORS = [
   "brand",
@@ -11,11 +22,9 @@ const BUTTON_COLORS = [
   "positive",
   "warning",
   "neutral",
-] as const;
+] as const satisfies readonly ButtonColor[];
 
-type ButtonColor = (typeof BUTTON_COLORS)[number];
-
-const DEFAULT_COLORS: Record<string, ButtonColor> = {
+const DEFAULT_COLORS: Partial<Record<ButtonVariant, ButtonColor>> = {
   default: "neutral",
   filled: "brand",
   light: "brand",
@@ -39,7 +48,7 @@ const CELLS = [
   "subtle-negative",
   "subtle-neutral",
   "subtle-positive",
-] as const;
+] as const satisfies readonly `${ButtonVariant}-${ButtonColor}`[];
 
 const DEFAULT_LABEL_HOVER_CELLS = [
   "default-neutral",
@@ -50,10 +59,13 @@ const DEFAULT_LABEL_HOVER_CELLS = [
   "filled-warning",
   "light-neutral",
   "subtle-neutral",
-] as const;
+] as const satisfies readonly Cell[];
 
 type Cell = (typeof CELLS)[number];
 type DefaultLabelHoverCell = (typeof DEFAULT_LABEL_HOVER_CELLS)[number];
+
+const isButtonVariant = (value: unknown): value is ButtonVariant =>
+  BUTTON_VARIANTS.some((item) => item === value);
 
 const isButtonColor = (value: unknown): value is ButtonColor =>
   BUTTON_COLORS.some((item) => item === value);
@@ -64,19 +76,29 @@ const isCell = (value: string): value is Cell =>
 const isDefaultLabelHoverCell = (value: Cell): value is DefaultLabelHoverCell =>
   DEFAULT_LABEL_HOVER_CELLS.some((item) => item === value);
 
+const getCell = (
+  variant: ButtonVariant,
+  buttonColor: MantineButtonProps["color"],
+): Cell | undefined => {
+  const defaultColor = DEFAULT_COLORS[variant];
+  const cellVariant = variant === "transparent" ? "subtle" : variant;
+  const cellColor = isButtonColor(buttonColor) ? buttonColor : defaultColor;
+  const cell = `${cellVariant}-${cellColor}`;
+  if (isCell(cell)) {
+    return cell;
+  }
+  const defaultCell = `${cellVariant}-${defaultColor}`;
+  return isCell(defaultCell) ? defaultCell : undefined;
+};
+
 const getRootVars = ({
   variant,
   color: buttonColor,
-}: ButtonProps): Record<string, string> => {
-  if (!variant) {
-    return {};
-  }
-  const tokenColor = isButtonColor(buttonColor)
-    ? buttonColor
-    : DEFAULT_COLORS[variant];
-  variant = variant === "transparent" ? "subtle" : variant;
-  const cell = `${variant}-${tokenColor}`;
-  if (!isCell(cell)) {
+}: MantineButtonProps): Record<string, string> => {
+  const cell = isButtonVariant(variant)
+    ? getCell(variant, buttonColor)
+    : undefined;
+  if (!cell) {
     return {};
   }
   return {

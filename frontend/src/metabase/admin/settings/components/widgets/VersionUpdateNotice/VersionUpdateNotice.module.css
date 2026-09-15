@@ -2,7 +2,6 @@
   background-color: var(--mb-color-core-summarize);
 }
 
-/* the default variant's translucent hover lets the banner color bleed through */
 .message {
   padding: 1rem;
   color: var(--mb-color-text-primary-inverse);

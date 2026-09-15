@@ -28,7 +28,6 @@ import {
   Flex,
   Group,
   Icon,
-  Loader,
   Select,
   Stack,
   Text,
@@ -497,7 +496,6 @@ const SaveAndDiscardButtons = ({
             <Icon name="check" /> {t`Saved`}
           </Group>
         }
-        activeLabel={<Loader size="1rem" pos="relative" top={1} />}
         variant="filled"
         data-testid="strategy-form-submit-button"
       />

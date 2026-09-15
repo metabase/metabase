@@ -15,21 +15,6 @@
   color: var(--mb-color-text-primary-inverse);
 }
 
-.RemoveButton {
-  &[data-variant="transparent"] {
-    color: var(--mb-color-text-primary-inverse);
-    background-color: transparent;
-    opacity: 0.6;
-    transition: all 100ms;
-
-    &:hover {
-      color: var(--mb-color-text-primary-inverse);
-      background-color: transparent;
-      opacity: 1;
-    }
-  }
-}
-
 .Content {
   display: flex;
   flex: auto;

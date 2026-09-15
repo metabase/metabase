@@ -3,38 +3,18 @@ import {
   type ButtonProps as MantineButtonProps,
   createPolymorphicComponent,
 } from "@mantine/core";
-import { type ButtonHTMLAttributes, forwardRef } from "react";
+import { forwardRef } from "react";
+
+import type { ButtonProps } from "./types";
 
 export type { ButtonGroupProps } from "@mantine/core";
 export { buttonOverrides } from "./Button.config";
-
-export type ButtonSize = "sm" | "md" | "lg" | "compact-sm" | "compact-md";
-
-export type ButtonVariant =
-  | "default"
-  | "filled"
-  | "light"
-  | "subtle"
-  | "transparent"
-  | "on-dark-primary"
-  | "on-dark-secondary";
-
-export type ButtonColor =
-  | "brand"
-  | "filter"
-  | "negative"
-  | "positive"
-  | "warning"
-  | "neutral";
-
-export type ButtonProps = Omit<
-  MantineButtonProps,
-  "size" | "variant" | "color"
-> & {
-  size?: ButtonSize;
-  variant?: ButtonVariant;
-  color?: ButtonColor;
-} & ButtonHTMLAttributes<HTMLButtonElement>;
+export type {
+  ButtonColor,
+  ButtonProps,
+  ButtonSize,
+  ButtonVariant,
+} from "./types";
 
 type SizeVariantProps = Pick<ButtonProps, "size" | "variant">;
 

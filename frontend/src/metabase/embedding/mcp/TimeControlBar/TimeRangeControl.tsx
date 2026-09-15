@@ -26,6 +26,7 @@ export function TimeRangeControl({
               {timeRange.hasActiveFilter ? (
                 <Button
                   variant="transparent"
+                  color="neutral"
                   size="compact-md"
                   onClick={() => {
                     timeRange.onClear();
