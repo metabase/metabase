@@ -29,6 +29,56 @@
   [filename]
   (boolean (and filename (re-find #"(?:^|/)test/" filename))))
 
+(def ^:private value-operators
+  "Operators whose second argument is a value rather than a column."
+  '#{= not= < > <= >= like not-like ilike not-ilike in not-in})
+
+(defn- marked?
+  "Whether `node` is an `[:auto/param v]` marker."
+  [node]
+  (and (hooks/vector-node? node)
+       (= :auto/param (some-> (first (:children node)) hooks/sexpr))))
+
+(defn- value-nodes
+  "The nodes sitting in a value slot of `node`, following the clause shapes a query map uses."
+  [node]
+  (cond
+    ;; A query map -- walk its clause values, not its keys.
+    (hooks/map-node? node)
+    (mapcat value-nodes (take-nth 2 (rest (:children node))))
+
+    (hooks/vector-node? node)
+    (let [[head & args] (:children node)
+          op            (some-> head hooks/sexpr)]
+      (cond
+        (contains? #{:and :or :not} op)
+        (mapcat value-nodes args)
+
+        (and (keyword? op) (contains? value-operators (symbol (name op))))
+        (when (= 2 (count args))
+          [(second args)])
+
+        :else
+        (mapcat value-nodes (:children node))))
+
+    :else nil))
+
+(defn- lint-unmarked-values!
+  "Register a finding for each argument of the enclosing function that reaches a value slot unmarked.
+
+  Only a symbol is reported. A literal cannot carry a request value, and a value built inside the
+  function is out of reach of a check that does not follow it across a call."
+  [node]
+  (doseq [value (mapcat value-nodes (rest (:children node)))
+          :when (and (hooks/token-node? value)
+                     (symbol? (hooks/sexpr value))
+                     (not (marked? value)))]
+    (hooks/reg-finding!
+     (assoc (meta value)
+            :message (format "`%s` reaches a SQL value slot unmarked. Write it as [:auto/param %s] so it is bound as a parameter."
+                             (hooks/sexpr value) (hooks/sexpr value))
+            :type :metabase/unmarked-sql-value))))
+
 (defn lint-query-call
   "Register a `:metabase/t2-query-namespace` finding when a Toucan 2 query call appears outside a `<module>.db`
   namespace."
@@ -42,4 +92,6 @@
               :message (format "Application database query calls like `%s` must live in metabase[-enterprise].<module>.db (or metabase.driver.<driver>.db) namespaces"
                                (hooks/sexpr fn-node))
               :type :metabase/t2-query-namespace))))
+  (when (and ns (db-namespace? (modules/config input) ns) (not (test-file? filename)))
+    (lint-unmarked-values! node))
   input)
