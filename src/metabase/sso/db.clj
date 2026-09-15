@@ -14,8 +14,8 @@
    excluded-group-ids :- [:set ms/PositiveInt]]
   (t2/select-fn-set :group_id :model/PermissionsGroupMembership
                     {:where [:and
-                             [:= :user_id user-id]
-                             [:not-in :group_id excluded-group-ids]]}))
+                             [:= :user_id (long user-id)]
+                             [:not-in :group_id (mapv long excluded-group-ids)]]}))
 
 (mu/defn user-group-ids-among
   "The ids among `group-ids` of the PermissionsGroups the User with `user-id` belongs to, other than
@@ -25,16 +25,16 @@
    excluded-group-ids :- [:set ms/PositiveInt]]
   (t2/select-fn-set :group_id :model/PermissionsGroupMembership
                     {:where [:and
-                             [:= :user_id user-id]
-                             [:in :group_id group-ids]
-                             [:not-in :group_id excluded-group-ids]]}))
+                             [:= :user_id (long user-id)]
+                             [:in :group_id (mapv long group-ids)]
+                             [:not-in :group_id (mapv long excluded-group-ids)]]}))
 
 (mu/defn auth-identity-exists?
   "Whether the User with `user-id` has an AuthIdentity for `provider`."
   [user-id  :- ::lib.schema.id/user
    provider :- :string]
   (t2/exists? :model/AuthIdentity {:where [:and
-                                           [:= :user_id user-id]
+                                           [:= :user_id (long user-id)]
                                            [:= :provider [:auto/param provider]]]}))
 
 (mu/defn insert-auth-identity!
