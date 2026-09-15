@@ -168,7 +168,7 @@
                                                         test-scope
                                                         [{:database db-id
                                                           :table-id table-id
-                                                          :values   {:name "Toucannery"}}]))))))
+                                                          :values   {"name" "Toucannery"}}]))))))
 
 (defn- row-action? [action]
   (= (namespace action) "row"))
@@ -206,10 +206,8 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (mt/with-actions-enabled
       (binding [*current-user-permissions-set* (delay #{"/"})]
-        (let [query-that-returns-more-than-one (assoc (mt/mbql-query checkins {:filter [:>= $id 1]})
-                                                      :update-row {(format-field-name :name) "new-name"})
-              query-that-returns-zero-row      (assoc (mt/mbql-query checkins {:filter [:= $id Integer/MAX_VALUE]})
-                                                      :update-row {(format-field-name :name) "new-name"})
+        (let [query-that-returns-more-than-one (mt/mbql-query checkins {:filter [:>= $id 1]})
+              query-that-returns-zero-row      (mt/mbql-query checkins {:filter [:= $id Integer/MAX_VALUE]})
               result-count                     (count (mt/rows (qp/process-query query-that-returns-more-than-one)))]
           (is (< 1 result-count))
           (is (thrown-with-msg? Exception #"Sorry, this would delete [\d|,]+ rows, but you can only act on 1"

@@ -72,7 +72,9 @@
 (mr/def ::crud.row.common
   [:merge
    ::common
-   [:map [:query ::query]]])
+   [:map
+    [:type {:optional true} [:= :query]]
+    [:query ::query]]])
 
 ;;;; `:model.row/create`
 
