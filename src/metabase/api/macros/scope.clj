@@ -22,6 +22,7 @@
   request is rejected rather than served. Being a keyword, it can never be requested, granted, or named on
   a consent screen."
   (:require
+   [clojure.string :as str]
    [metabase.api-scope.core :as api-scope]
    [metabase.config.core :as config]
    [metabase.util.log :as log]))
@@ -37,6 +38,33 @@
    Supports hierarchical wildcards: `\"agent:*\"` covers `\"agent:query\"`."
   [token-scopes required-scope]
   (api-scope/scope-matches? token-scopes required-scope))
+
+(defn- quoted-string
+  "`s` as a double-quoted auth-param value: `\"` becomes `'`, `\\` becomes `/`, and every character outside
+   printable ASCII becomes `?`."
+  [s]
+  ;; Replaced rather than backslash-escaped: RFC 6750 section 3 excludes `\"` and `\\` from `scope` and
+  ;; `error_description` values outright, so an escaped quote is still invalid there.
+  (str "\""
+       (-> (str s)
+           (str/replace #"[^\x20-\x7E]" "?")
+           (str/replace "\"" "'")
+           (str/replace "\\" "/"))
+       "\""))
+
+(defn- insufficient-scope-response
+  "A 403 JSON response with `error` and `message`, carrying an RFC 6750 `insufficient_scope` `WWW-Authenticate`
+   challenge that names `required-scope` as `scope` when non-nil and uses `message` as `error_description`."
+  [error message required-scope]
+  {:status  403
+   ;; Comma-separated per RFC 7235's `#auth-param`, in the order the MCP transport's challenge uses.
+   :headers {"Content-Type"     "application/json"
+             "WWW-Authenticate" (str "Bearer error=\"insufficient_scope\""
+                                     (when required-scope
+                                       (str ", scope=" (quoted-string required-scope)))
+                                     ", error_description=" (quoted-string message))}
+   :body    {:error   error
+             :message message}})
 
 (defn- oauth-without-token-scopes?
   "True for a request the session middleware authenticated with an OAuth access token that carries no
@@ -84,10 +112,9 @@
                      token-scopes (assoc :token-scopes-checked true))
                    respond raise)
           (do (log/warnf "Scope check failed — required: %s, granted: %s" required-scope token-scopes)
-              (respond {:status  403
-                        :headers {"Content-Type" "application/json"}
-                        :body    {:error   "unsupported_scope"
-                                  :message "Insufficient scope for this operation."}})))))))
+              (respond (insufficient-scope-response "unsupported_scope"
+                                                    "Insufficient scope for this operation."
+                                                    required-scope))))))))
 
 (defn ensure-scopes-checked
   "Security middleware that prevents scoped authorization tokens from accessing endpoints that have not
@@ -110,7 +137,6 @@
                    (contains? token-scopes ::unrestricted)
                    (:token-scopes-checked request)))
         (handler request respond raise)
-        (respond {:status  403
-                  :headers {"Content-Type" "application/json"}
-                  :body    {:error   "scope_not_permitted"
-                            :message "Scoped tokens cannot access this endpoint."}})))))
+        (respond (insufficient-scope-response "scope_not_permitted"
+                                              "Scoped tokens cannot access this endpoint."
+                                              nil))))))

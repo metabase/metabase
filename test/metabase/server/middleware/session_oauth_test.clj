@@ -3,6 +3,7 @@
   access token authenticates a request to the general (`/api/*`) API, and the single place the granted
   OAuth scopes are mapped onto `:token-scopes` for the scope-enforcement middleware."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    ;; Loaded for its load-time side effects: it registers the agent API endpoints, from which the
    ;; OAuth provider derives its scopes-supported (see [[metabase.mcp.core/all-scopes]]). In a full
@@ -190,6 +191,35 @@
                   (is (= (mt/user->id :rasta)
                          (:id (mt/user-http-request :rasta :get 200 "user/current"
                                                     {:request-options {:headers {"authorization" (str "Bearer " token)}}})))))))))))))
+
+(deftest narrow-oauth-token-gets-insufficient-scope-challenge-test
+  (testing "GHY-4542: a narrow OAuth token reaching an agent API endpoint that declares a scope it does not hold gets
+            a 403 carrying the RFC 6750 section 3 `insufficient_scope` challenge, naming the scope that endpoint
+            requires, so the client knows to re-authorize for it"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (oauth-server.tu/with-oauth-client [client-id]
+        (mt/with-model-cleanup [:model/OAuthAccessToken]
+          (let [token    (str (random-uuid))
+                _        (save-access-token! token (mt/user->id :rasta) client-id ["agent:query:execute"] (in-one-hour))
+                response (client/client-full-response :post 403 "agent/v1/search"
+                                                      {:request-options {:headers {"authorization" (str "Bearer " token)}}}
+                                                      {:term_queries ["orders"]})]
+            (is (= (str "Bearer error=\"insufficient_scope\", scope=\"agent:search\", "
+                        "error_description=\"Insufficient scope for this operation.\"")
+                   (get-in response [:headers "WWW-Authenticate"])))
+            (is (= "unsupported_scope" (get-in response [:body :error])))))))))
+
+(deftest bearer-that-does-not-authenticate-gets-invalid-token-challenge-test
+  (testing "GHY-4542: RFC 6750 section 3 requires a 401 for a bearer token that does not authenticate to carry an
+            `invalid_token` challenge. The agent API answers such a request itself, after the session middleware
+            declined the token, so the challenge has to come from there."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (let [response (client/client-full-response :get 401 "agent/v1/ping"
+                                                  {:request-options {:headers {"authorization" (str "Bearer " (random-uuid))}}})]
+        (is (= "Bearer error=\"invalid_token\"" (get-in response [:headers "WWW-Authenticate"])))))
+    (testing "a request with no credentials at all is not told its token is invalid"
+      (let [response (client/client-full-response :get 401 "agent/v1/ping")]
+        (is (not (str/includes? (str (get-in response [:headers "WWW-Authenticate"])) "invalid_token")))))))
 
 (deftest bearer-bridge-expired-token-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]

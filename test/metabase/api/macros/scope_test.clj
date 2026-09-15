@@ -131,6 +131,50 @@
                    (invoke-handler wrapped {:authenticated-via-oauth? true
                                             :token-scopes             #{::scope/unrestricted}})))))))))
 
+(def ^:private rfc-6750-auth-param-value
+  "RFC 6750 section 3: the characters allowed inside the quoted `scope` and `error_description` values."
+  #"[\x20-\x21\x23-\x5B\x5D-\x7E]*")
+
+(defn- challenge-params
+  "The quoted auth-param values of a `Bearer` `WWW-Authenticate` challenge, keyed by name."
+  [challenge]
+  (into {} (map (fn [[_ k v]] [k v])) (re-seq #"([a-z_]+)=\"([^\"]*)\"" challenge)))
+
+(deftest ^:parallel scope-denial-carries-insufficient-scope-challenge-test
+  (testing "GHY-4542: RFC 6750 section 3 requires a resource server to answer a bearer token that does not grant
+            access with a `WWW-Authenticate` challenge. `insufficient_scope` tells an OAuth client to re-authorize
+            for more scope instead of treating the 403 as final; `scope` names what `enforce-scope` requires, and
+            is omitted where the endpoint declares no scope to ask for."
+    (let [ok-handler (fn [_request respond _raise]
+                       (respond {:status 200 :body "ok"}))
+          enforced   ((scope/enforce-scope "agent:reports") ok-handler)
+          unchecked  (scope/ensure-scopes-checked ok-handler)]
+      (doseq [[label wrapped request expected]
+              [["enforce-scope, insufficient scope"
+                enforced {:token-scopes #{"agent:queries"}}
+                (str "Bearer error=\"insufficient_scope\", scope=\"agent:reports\", "
+                     "error_description=\"Insufficient scope for this operation.\"")]
+               ["enforce-scope, OAuth request without token-scopes"
+                enforced {:authenticated-via-oauth? true}
+                (str "Bearer error=\"insufficient_scope\", scope=\"agent:reports\", "
+                     "error_description=\"Insufficient scope for this operation.\"")]
+               ["ensure-scopes-checked, scoped token on an endpoint without a scope"
+                unchecked {:token-scopes #{"agent:reports"}}
+                "Bearer error=\"insufficient_scope\", error_description=\"Scoped tokens cannot access this endpoint.\""]
+               ["ensure-scopes-checked, OAuth request without token-scopes"
+                unchecked {:authenticated-via-oauth? true :token-scopes-checked true}
+                "Bearer error=\"insufficient_scope\", error_description=\"Scoped tokens cannot access this endpoint.\""]]]
+        (testing label
+          (let [response  (invoke-handler wrapped request)
+                challenge (get-in response [:headers "WWW-Authenticate"])]
+            (is (= 403 (:status response)))
+            (is (= expected challenge))
+            (is (every? #(re-matches rfc-6750-auth-param-value %) (vals (challenge-params (str challenge))))
+                "every auth-param value stays within the RFC 6750 character set")
+            (testing "the JSON body is unchanged"
+              (is (= "application/json" (get-in response [:headers "Content-Type"])))
+              (is (contains? #{"unsupported_scope" "scope_not_permitted"} (get-in response [:body :error]))))))))))
+
 (deftest ^:parallel ensure-scopes-checked-test
   (let [ok-handler (fn [_request respond _raise]
                      (respond {:status 200 :body "ok"}))]

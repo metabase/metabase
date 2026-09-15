@@ -1748,7 +1748,8 @@
                                                             token-scopes
                                                             #{::scope/unrestricted}))
                            respond raise)))
-              (respond (error-response (:error result) (:message result))))))))))
+              (respond (assoc-in (error-response (:error result) (:message result))
+                                 [:headers "WWW-Authenticate"] "Bearer error=\"invalid_token\"")))))))))
 
 (def +auth
   "Agent API authentication middleware. Supports both session-based and stateless JWT authentication."
