@@ -502,7 +502,8 @@
   (mb.hawk.parallel/assert-test-is-not-parallel "with-temp-env-var-value!")
   ;; app DB needs to be initialized if we're going to play around with the Settings cache.
   (initialize/initialize-if-needed! :db)
-  (let [value (str value)]
+  ;; a real env var never carries a keyword's leading colon, so `str` would round-trip `:foo` as `::foo`
+  (let [value (if (keyword? value) (name value) (str value))]
     (testing (colorize/blue (format "\nEnv var %s = %s\n" env-var-keyword (pr-str value)))
       (try
         ;; temporarily override the underlying environment variable value
@@ -600,7 +601,8 @@
   "Temporarily set the value of the Setting named by keyword `setting-k` to `value` and execute `f`, then re-establish
   the original value. This works much the same way as [[binding]].
 
-  If an env var value is set for the setting, this acts as a wrapper around [[do-with-temp-env-var-value!]].
+  If an env var value is set for the setting, or the setting is sysadmin-only (settable only through its env var),
+  this acts as a wrapper around [[do-with-temp-env-var-value!]].
 
   If `raw-setting?` is `true`, this works like [[with-temp*]] against the `Setting` table, but it ensures no exception
   is thrown if the `setting-k` already exists.
@@ -619,7 +621,10 @@
                   (catch Exception e
                     (when-not raw-setting?
                       (throw e))))]
-    (if (and (not raw-setting?) (setting/env-var-value setting-k))
+    (if (and (not raw-setting?)
+             ;; a sysadmin-only setting rejects every write, so its env var is the only way to give it a value
+             (or (setting/sysadmin-only? setting-k)
+                 (setting/env-var-value setting-k)))
       (do-with-temp-env-var-value! (setting/setting-env-map-name setting-k) value thunk)
       (let [original-value (if raw-setting?
                              (raw-setting setting-k)
@@ -663,7 +668,8 @@
      (with-temporary-setting-values [google-auth-auto-create-accounts-domain \"metabase.com\"]
        (google-auth-auto-create-accounts-domain)) -> \"metabase.com\"
 
-  If an env var value is set for the setting, this will change the env var rather than the setting stored in the DB.
+  If an env var value is set for the setting, or the setting is sysadmin-only, this will change the env var rather
+  than the setting stored in the DB.
   To temporarily override the value of *read-only* env vars, use [[with-temp-env-var-value!]]."
   [[setting-k value & more :as bindings] & body]
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")

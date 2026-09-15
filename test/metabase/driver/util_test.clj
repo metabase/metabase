@@ -14,6 +14,7 @@
    [metabase.lib.test-util :as lib.tu]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -925,8 +926,23 @@
       (is (= :external-only (driver.settings/warehouse-allowed-networks)))
       (is (=? {:status-code 400}
               (ssrf-error #(driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"}))))))
-  (testing "an unrecognized policy fails closed at the point of use rather than quietly allowing everything"
+  (testing "an unrecognized policy fails closed rather than quietly allowing everything"
     (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "unknown-policy"]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                            #"Unknown network policy"
+                            #"MB_WAREHOUSE_ALLOWED_NETWORKS: \"unknown-policy\" is not a valid value for setting warehouse-allowed-networks"
+                            (driver.settings/warehouse-allowed-networks)))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"is not a valid value"
                             (driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"}))))))
+
+(deftest warehouse-allowed-networks-is-sysadmin-only-test
+  (testing "the network policy defends the host against Metabase admins, so only the environment sets it"
+    (is (setting/sysadmin-only? :warehouse-allowed-networks))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"can only be set by the MB_WAREHOUSE_ALLOWED_NETWORKS environment variable"
+                          (setting/set! :warehouse-allowed-networks :allow-all))))
+  (testing "a value that reached the application database some other way -- an older version's admin API -- is ignored"
+    (mt/with-temporary-raw-setting-values [warehouse-allowed-networks "allow-all"]
+      (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks nil]
+        (mt/with-premium-features #{:hosting}
+          (is (= :external-only (driver.settings/warehouse-allowed-networks))))))))

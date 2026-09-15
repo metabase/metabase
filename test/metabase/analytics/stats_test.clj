@@ -13,6 +13,7 @@
    [metabase.lib.core :as lib]
    [metabase.premium-features.settings :as premium-features.settings]
    [metabase.query-processor.util :as qp.util]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -720,3 +721,15 @@
                      :model/TransformRun _ {:start_time (t/minus (t/offset-date-time) (t/hours 25))
                                             :transform_id (:id transform)}]
         (is (zero? (:transform_runs_last_24h (#'stats/transform-metrics))))))))
+
+(deftest whitelabeling-in-use?-computed-default-test
+  (testing "a whitelabel setting whose :default is computed at read time is not 'in use' while its getter returns it"
+    (with-redefs [setting/registered-settings (atom {:fake-whitelabel-setting {:feature :whitelabel
+                                                                               :default (fn [] :computed)
+                                                                               :getter  (constantly :computed)}})]
+      (is (false? (#'stats/whitelabeling-in-use?)))
+      (testing "and is in use once the getter returns something else"
+        (with-redefs [setting/registered-settings (atom {:fake-whitelabel-setting {:feature :whitelabel
+                                                                                   :default (fn [] :computed)
+                                                                                   :getter  (constantly :custom)}})]
+          (is (true? (#'stats/whitelabeling-in-use?))))))))

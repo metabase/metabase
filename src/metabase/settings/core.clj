@@ -102,6 +102,7 @@
   get-raw-value
   get-raw-value-source
   log-deprecated-env-var-usage!
+  log-ignored-sysadmin-db-values!
   get-value-of-type
   has-advanced-setting-access?
   obfuscate-value
@@ -110,6 +111,7 @@
   registered-settings
   registered?
   resolve-setting
+  sysadmin-only?
   set!
   set-many!
   set-value-of-type!

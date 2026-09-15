@@ -68,6 +68,7 @@
             (false? d)   "false"
             (nil? d)     "null"
             (keyword? d) (name d)
+            (fn? d)      "computed at runtime"
             :else        d)))))
 
 (defn- format-prefix
@@ -174,11 +175,13 @@
 
 (defn- setter-none?
   "Used to remove undocumented settings that lack a setter (`:setter :none`).
-   For example, settings that are derived from other settings."
+   For example, settings that are derived from other settings. A sysadmin-only setting is `:setter :none` too, but
+   its env var is the one way to configure it, so it is always documented."
   [env-var]
   ;; If the `defsetting` has a `:doc` key with a string, we should document it.
   ;; Checking that the `:doc` value is truthy because `:doc false` is a valid value.
-  (when-not (boolean (:doc env-var))
+  (when-not (or (boolean (:doc env-var))
+                (:sysadmin-only? env-var))
     (= :none (:setter env-var))))
 
 (defn- only-local?

@@ -249,6 +249,7 @@
   (database/check-health!)
   (startup/run-startup-logic!)
   (setting/log-deprecated-env-var-usage!)
+  (setting/log-ignored-sysadmin-db-values!)
   (init-status/set-progress! 0.95)
   (task/start-scheduler!)
   (queue/start-listeners!)

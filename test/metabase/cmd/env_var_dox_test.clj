@@ -53,7 +53,8 @@
       (is (= "Default: `some-string`" (#'sut/format-default string-default-var)))
       (is (= "Default: `null`" (#'sut/format-default nil-default-var)))
       (is (= "Default: `false`" (#'sut/format-default false-default-var)))
-      (is (= "Default: `42`" (#'sut/format-default number-default-var))))))
+      (is (= "Default: `42`" (#'sut/format-default number-default-var)))
+      (is (= "Default: `computed at runtime`" (#'sut/format-default {:default (fn [] :depends-on-the-instance)}))))))
 
 (deftest ^:parallel test-env-var-docs
   (testing "Environment docs are formatted as expected."
@@ -127,3 +128,21 @@
       (is (empty? (sut/format-env-var-docs [(assoc setting :can-read-from-env? false)]))))
     (testing "and a setting that reads its environment variable gets one"
       (is (= 1 (count (sut/format-env-var-docs [setting])))))))
+
+(deftest ^:parallel sysadmin-only-settings-are-documented-test
+  (let [setting {:name           :warehouse-allowed-networks
+                 :munged-name    "warehouse-allowed-networks"
+                 :type           :keyword
+                 :default        :allow-all
+                 :description    (constantly "What networks may a warehouse be on?")
+                 :visibility     :internal
+                 :setter         :none
+                 :sysadmin-only? true}]
+    (testing "A sysadmin-only setting is read-only, but its env var is its only configuration path, so it is documented
+             even without a :doc string"
+      (is (= [setting] (sut/remove-env-vars-we-should-not-document [setting])))
+      (is (= 1 (count (sut/format-env-var-docs [setting])))))
+    (testing "whereas an ordinary read-only setting without a :doc is still left out"
+      (is (empty? (sut/remove-env-vars-we-should-not-document [(dissoc setting :sysadmin-only?)]))))
+    (testing "and it stays out of the config file template"
+      (is (false? (sut/settable-in-config-file? setting))))))
