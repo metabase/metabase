@@ -77,8 +77,11 @@
     (is (= 1.5 (#'message/clean 1.5)))
     (is (true? (#'message/clean true)))
     (is (nil? (#'message/clean nil))))
+  (testing "GHY-4544: a keyword is quoted as its name, with its namespace when it has one"
+    (is (= "\"not-found\"" (#'message/clean :not-found)))
+    (is (= "\"model/Card\"" (#'message/clean :model/Card)))
+    (is (= "Status \"not-found\"." (message/render (message/msg ["Status %s."] :not-found)))))
   (testing "anything else is printed and then quoted like a string"
-    (is (= "\":foo\"" (#'message/clean :foo)))
     (is (= "\"{:a \\\"b\\\"}\"" (#'message/clean {:a "b"}))))
   (testing "GHY-4544: a keyword built from untrusted text can't smuggle a raw newline"
     (is (not (str/includes? (#'message/clean (keyword "a\nb")) "\n")))))
@@ -177,7 +180,8 @@
     (is (= "Found \"a\\nb…\"" (message/render (message/truncate (message/msg ["Found %s."] "a\nb\nc\nd") 11)))))
   (testing "server text and raw arguments are cut where the limit falls"
     (is (= "Found…" (message/render (message/truncate (message/msg ["Found %s."] "a") 5))))
-    (is (= "Call brow…" (message/render (message/truncate (message/msg ["Call %s."] (message/raw "browse_data")) 9)))))
+    (is (= "Call brow…"
+           (message/render (message/truncate (message/msg ["Call %s."] (message/raw "browse_data")) 9)))))
   (testing "nested messages are cut inside, keeping everything before the cut"
     (is (= "Failed: No table \"ord…\""
            (message/render (message/truncate (message/msg ["Failed: %s Retry."] (message/msg ["No table %s."] "orders"))
@@ -194,6 +198,53 @@
   (testing "GHY-4544: a quoted value one character over its budget is cut, never kept whole with an ellipsis added"
     (is (= "\"abc…\"" (message/render (message/truncate (message/msg ["%s"] "abcd") 5))))
     (is (= "Found \"abc…\"" (message/render (message/truncate (message/msg ["Found %s."] "abcd") 11))))))
+
+(defn- quotes-closed?
+  "Whether every double-quoted value in `s` is closed, reading a backslash inside quotes as escaping the next
+   character."
+  [s]
+  (loop [[c & more :as cs] (seq s), quoted? false]
+    (cond
+      (empty? cs)              (not quoted?)
+      (and quoted? (= \\ c))   (recur (next more) true)
+      (= \" c)                 (recur more (not quoted?))
+      :else                    (recur more quoted?))))
+
+(deftest ^:parallel truncate-nested-truncation-test
+  (let [inner (message/truncate (message/msg ["Invalid at %s"] (apply str (repeat 100 "a"))) 30)
+        outer (message/msg ["%s %s"] "Pipeline said no." inner)]
+    (testing "GHY-4544: truncating a message that holds a truncated message keeps a cut quoted value's closing quote"
+      (is (= "\"Pipeline said no.\" Invalid at \"aaaaaaa…\""
+             (message/render (message/truncate outer 39)))))
+    (testing "GHY-4544: a truncation truncated again renders the same as truncating once at the smaller limit"
+      (is (= (message/render (message/truncate outer 25))
+             (message/render (message/truncate (message/truncate outer 40) 25)))))
+    (testing "GHY-4544: at every limit, truncating a nested truncation, once or twice, never leaves a quote open"
+      (doseq [x     [outer
+                     (message/msg ["Failed: %s" "%s"] (message/truncate outer 45) (message/raw "server\ntext"))
+                     (message/truncate (message/msg ["%s and %s"] "x\"y" {:a "b\nc"}) 18)]
+              :let  [rendered (message/render x)]
+              limit (range (+ (count rendered) 3))]
+        (let [once  (message/render (message/truncate x limit))
+              twice (message/render (message/truncate (message/truncate x (+ limit 5)) limit))]
+          (testing (pr-str [rendered limit once twice])
+            (is (quotes-closed? once))
+            (is (quotes-closed? twice))
+            (is (<= (count once) (+ limit 2)))
+            (is (<= (count twice) (+ limit 2)))))))))
+
+(deftest ^:parallel string-prefix-test
+  (let [s "a😀b😀😀c"]
+    (testing "GHY-4544: a prefix never ends inside a surrogate pair"
+      (doseq [n (range (+ (count s) 2))]
+        (let [prefix (message/string-prefix s n)]
+          (testing (pr-str [n prefix])
+            (is (str/starts-with? s prefix))
+            (is (<= (dec (min n (count s))) (count prefix) (min n (count s))))
+            (is (not (some-> (last prefix) char Character/isHighSurrogate)))))))
+    (testing "a prefix at or beyond the length is the whole string"
+      (is (= s (message/string-prefix s (count s))))
+      (is (= s (message/string-prefix s 100))))))
 
 (deftest ^:parallel truncate-boundary-sweep-test
   (testing "GHY-4544: at every limit a truncation is no longer than the rendering, at most `limit` + 2 characters,

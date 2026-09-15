@@ -122,7 +122,22 @@
   (testing "GHY-4544: when shortening string arguments can't fit, the rendering is cut, closing a cut value's quote"
     (let [rendered (message/render (common/ellipsize (common/list-message (repeat 50 "abcdefgh")) 30))]
       (is (= "\"abcdefgh\", \"abcdefgh\", \"abcde…\"" rendered))
-      (is (<= (count rendered) 32)))))
+      (is (<= (count rendered) 32))))
+  (testing "GHY-4544: a string is never cut inside a surrogate pair"
+    (is (= "a…" (common/ellipsize "a😀b" 2)))
+    (is (= "a😀…" (common/ellipsize "a😀b" 3)))))
+
+(deftest ^:parallel ellipsize-twice-test
+  (testing "GHY-4544: ellipsizing a cut message again keeps every quoted value's closing quote"
+    (let [detail (message/msg ["%s %s"]
+                              "Pipeline said no."
+                              (common/list-message (map #(str "value-" % "-" (apply str (repeat 30 "a"))) (range 40))))
+          once   (common/ellipsize detail 500)]
+      (doseq [limit (range 0 520 7)]
+        (let [rendered (message/render (common/ellipsize once limit))]
+          (testing (pr-str [limit rendered])
+            (is (even? (count (re-seq #"\"" rendered))))
+            (is (<= (count rendered) (+ limit 2)))))))))
 
 (deftest ^:parallel rewrapped-exception-message-test
   (testing "GHY-4544: an exception rewrapped with new text but the old ex-data surfaces the new text, cleaned"

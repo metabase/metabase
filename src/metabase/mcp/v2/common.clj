@@ -80,13 +80,10 @@
 
 ;;; ------------------------------------------------ Message helpers ----------------------------------------------
 
-(def ^:private Message
-  [:fn {:error/message "a message built by metabase.mcp.v2.message/msg"} message/message?])
-
 (defn- shortened-string
   [s limit]
   (if (> (count s) limit)
-    (str (subs s 0 limit) "…")
+    (str (message/string-prefix s limit) "…")
     s))
 
 (defn- fits?
@@ -97,11 +94,8 @@
   "Message `m` with its `i`th argument, a string, cut to the most characters (and an ellipsis) that let `m` render
    within `limit`, or to just the ellipsis when none do."
   [m i limit]
-  (let [^String s (get-in m [:args i])
-        with-at   (fn [n]
-                    ;; Never keep half of a surrogate pair.
-                    (let [n (cond-> n (and (pos? n) (Character/isHighSurrogate (.charAt s (int (dec n))))) dec)]
-                      (assoc-in m [:args i] (str (subs s 0 n) "…"))))]
+  (let [s       (get-in m [:args i])
+        with-at #(assoc-in m [:args i] (str (message/string-prefix s %) "…"))]
     ;; Rendering never shrinks as characters are kept, so binary search for the most that fit.
     (loop [lo 0, hi (dec (count s))]
       (if (< lo hi)
@@ -125,7 +119,7 @@
           m
           (recur (message-with-shortened-arg m i limit) more))))))
 
-(mu/defn ellipsize :- [:or :string Message]
+(mu/defn ellipsize :- [:or :string ::message/message]
   "`x` shortened to fit `limit`, with `…` marking each cut. A message stays a message, rendering within `limit`
    characters, or `limit` + 2 when a quoted value is cut; anything else becomes its string, cut to `limit` characters
    plus `…`."
@@ -149,7 +143,7 @@
         (join-two (joined-message join-two (subvec parts 0 half))
                   (joined-message join-two (subvec parts half)))))))
 
-(mu/defn list-message :- Message
+(mu/defn list-message :- ::message/message
   "A message of `items` separated by commas, each cleaned unless it is a message."
   [items :- [:sequential :any]]
   (joined-message #(message/msg ["%s, %s"] %1 %2) items))
@@ -189,7 +183,7 @@
   "An `ex-info` whose exception message is the rendering of `msg`, with `data` plus `msg` under `::message` as its
    `ex-data`, and optional `cause`."
   ([msg data] (message-ex-info msg data nil))
-  ([msg   :- Message
+  ([msg   :- ::message/message
     data  :- [:maybe :map]
     cause :- [:maybe (ms/InstanceOfClass Throwable)]]
    (ex-info (message/render msg) (assoc data ::message msg) cause)))
@@ -265,7 +259,7 @@
 (def ^:private internal-error
   (message/msg ["Internal error"]))
 
-(mu/defn exception-message :- [:maybe [:or :string Message]]
+(mu/defn exception-message :- [:maybe [:or :string ::message/message]]
   "The message of exception `e`: the message [[message-ex-info]] stored in its `ex-data` while its exception message
    is still that message's rendering, else its exception message string, or nil when it has neither."
   [e :- (ms/InstanceOfClass Throwable)]
@@ -425,13 +419,13 @@
   [{:keys [param offset limit total total-floor? returned]}]
   (let [offset (or offset 0)]
     (when (and total limit (< (+ offset limit) total))
-      (let [total (total-message total total-floor?)
-            next  (+ offset limit)]
+      (let [total-phrase (total-message total total-floor?)
+            next         (+ offset limit)]
         (if param
           (message/msg ["Returned %d of %s — narrow with `%s`, or continue with `offset: %d`."]
-                       returned total (message/raw (name param)) next)
+                       returned total-phrase (message/raw (name param)) next)
           (message/msg ["Returned %d of %s — continue with `offset: %d`."]
-                       returned total next))))))
+                       returned total-phrase next))))))
 
 (defn- empty-page-line
   "The steering message for a page that returned nothing while `total` says matches exist.
@@ -441,14 +435,14 @@
    unknown or genuinely zero: that envelope already says it."
   [{:keys [offset total total-floor?]}]
   (when (and total (pos? total))
-    (let [total (total-message total total-floor?)]
+    (let [total-phrase (total-message total total-floor?)]
       (if (pos? (or offset 0))
         (message/msg ["No results at offset %d — %s available; page back with a smaller `offset`."]
-                     offset total)
+                     offset total-phrase)
         ;; offset 0 with a positive total: the matches were counted, then dropped downstream
         ;; (a stale index hit, a row gone unreadable). Paging cannot help, so don't suggest it.
         (message/msg ["Returned 0 of %s — the matches found are no longer readable or have been removed."]
-                     total)))))
+                     total-phrase)))))
 
 (defn list-envelope
   "The literal list-response envelope `{:data … :returned … :total?}`. `total` is included

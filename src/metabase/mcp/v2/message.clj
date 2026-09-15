@@ -4,7 +4,8 @@
   (:require
    [clojure.string :as str]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr])
   (:import
    (java.util Locale)
    (java.util.regex Matcher)))
@@ -20,12 +21,20 @@
   [x :- :any]
   (instance? Message x))
 
-(mu/defn msg :- [:fn message?]
+(mr/def ::message
+  "A message built by [[msg]]."
+  [:fn {:error/message "a message built by metabase.mcp.v2.message/msg"} message?])
+
+(mr/def ::raw
+  "Server-controlled text built by [[raw]]."
+  [:fn {:error/message "raw text built by metabase.mcp.v2.message/raw"} #(instance? Raw %)])
+
+(mu/defn msg :- ::message
   "A message of `lines`, format strings joined with newlines, with `args` interpolated by [[render]]."
   [lines :- :any & args]
   (->Message lines (vec args)))
 
-(mu/defn raw :- [:fn #(instance? Raw %)]
+(mu/defn raw :- ::raw
   "Mark `x` as server-controlled text that [[render]] interpolates into a message without cleaning."
   [x :- :any]
   (->Raw x))
@@ -83,14 +92,24 @@
             *print-level*    nil]
     (pr-str x)))
 
+(defn- quoted-text
+  "The string [[clean]] quotes for quoted value `x`: a string itself, a keyword's name with any namespace, or
+   anything else printed."
+  [x]
+  (cond
+    (string? x)  x
+    (keyword? x) (subs (str x) 1)
+    :else        (printed x)))
+
 (mu/defn- clean :- [:maybe [:or :string number? :boolean]]
   "`x` made safe to interpolate into prose. Numbers, booleans, and nil are returned unchanged. A string is quoted and
-   escaped: `pr-str`'s escapes, then `\\uXXXX` for invisible, line-breaking, and double-quote-like characters. Anything
-   else is printed with `pr-str` and then cleaned as that string. Independent of the caller's print bindings."
+   escaped: `pr-str`'s escapes, then `\\uXXXX` for invisible, line-breaking, and double-quote-like characters. A
+   keyword is cleaned as its name, with any namespace; anything else is printed with `pr-str` and then cleaned as that
+   string. Independent of the caller's print bindings."
   [x :- :any]
   (if (unquoted? x)
     x
-    (escape-code-points (printed (if (string? x) x (printed x))))))
+    (escape-code-points (printed (quoted-text x)))))
 
 (declare render)
 
@@ -120,24 +139,19 @@
        (not-any? reshapes-string? (mapcat #(re-seq format-specifier %) lines))))
 
 (defn- unwrap-arg
-  "The value behind a message argument: a raw argument's value, or a nested message's rendering."
-  [arg]
+  "The value behind message argument `arg`: a raw argument's value, a nested message's rendering, or any other
+   argument passed through `plain`."
+  [arg plain]
   (cond
     (instance? Raw arg) (:value arg)
     (message? arg)      (render arg)
-    :else               arg))
-
-(defn- format-arg
-  [arg]
-  (if (or (instance? Raw arg) (message? arg))
-    (unwrap-arg arg)
-    (clean arg)))
+    :else               (plain arg)))
 
 (defn- cleaned-parts
   "Every line and argument of `message`, in the order its fully cleaned rendering joins them."
   [{:keys [lines args]}]
   (concat (if (sequential? lines) lines [lines])
-          (map unwrap-arg args)))
+          (map #(unwrap-arg % identity) args)))
 
 (defn- cleaned-rendering
   "Every line and argument of `message` cleaned and joined with spaces, trusting none of them."
@@ -167,7 +181,7 @@
   [x :- :any]
   (try
     (cond
-      (message? x)      (or (formatted x (map format-arg (:args x)))
+      (message? x)      (or (formatted x (map #(unwrap-arg % clean) (:args x)))
                             (cleaned-rendering x))
       (instance? Raw x) (str (clean (:value x)))
       :else             (str (clean x)))
@@ -220,7 +234,7 @@
   "The pieces of `message`'s [[render]]ing."
   [{:keys [args] :as message}]
   (let [arg-pieces (mapv arg-piece args)
-        marked     (map-indexed (fn [i arg] (if (arg-pieces i) (arg-marker i) (format-arg arg))) args)]
+        marked     (map-indexed (fn [i arg] (if (arg-pieces i) (arg-marker i) (unwrap-arg arg clean))) args)]
     (if-let [template (formatted message marked)]
       (template-pieces template arg-pieces)
       (cleaned-pieces message))))
@@ -233,77 +247,95 @@
     (instance? Raw x) [[:clean (:value x)]]
     :else             [[:clean x]]))
 
-(defn- string-prefix
-  "The first `n` characters of `s`, or one fewer when the `n`th begins a surrogate pair."
-  [^String s n]
-  (subs s 0 (cond-> n
-              (and (< 0 n (.length s)) (Character/isHighSurrogate (.charAt s (int (dec n))))) dec)))
+(mu/defn string-prefix :- :string
+  "The first `n` characters of `s`, or one fewer when the `n`th begins a surrogate pair; all of `s` when `n` reaches
+   its length."
+  [s :- :string
+   n :- nat-int?]
+  (subs s 0 (cond-> (min n (count s))
+              (and (< 0 n (count s)) (Character/isHighSurrogate (.charAt ^String s (int (dec n))))) dec)))
 
-(defn- quoted-excerpt
-  "`s` [[clean]]ed with only its first `n` characters kept, marked with `…` inside the quotes when that cuts it."
-  [^String s n]
-  (clean (if (< n (count s)) (str (string-prefix s n) "…") s)))
+(defn- excerpt
+  "`s` with only its first `n` characters kept, marked with `…` when that cuts it."
+  [s n]
+  (if (< n (count s))
+    (str (string-prefix s n) "…")
+    s))
 
 (defn- quoted-excerpt-width
-  "How many characters of [[quoted-excerpt]] `s` `n` count against a budget: all of them for the whole value, all but
-   the `…` and closing quote for a cut one."
+  "How many characters of [[excerpt]] `s` `n`, [[clean]]ed, count against a budget: all of them for the whole value,
+   all but the `…` and closing quote for a cut one."
   [s n]
-  (cond-> (count (quoted-excerpt s n))
+  (cond-> (count (clean (excerpt s n)))
     (< n (count s)) (- 2)))
 
+;; A truncation is a message of the pieces it keeps, each an argument of the same kind: server text as raw text, a
+;; cleaned value as itself or as its cut excerpt, still cleaned. Truncating that message again cuts every piece as the
+;; kind it is, so a quoted value keeps its closing quote at any depth.
+
 (defn- truncated-quoted
-  "`[text cut?]`: `v` [[clean]]ed whole when it fits in `budget` characters, else the [[quoted-excerpt]] keeping the
-   most of its text that fits, or just `…` when not even an empty excerpt fits."
+  "`[args width cut?]`: `v`, which renders [[clean]]ed, as the argument kept whole when it fits in `budget`
+   characters, else the [[excerpt]] keeping the most of its text that fits, or just `…` when not even an empty
+   excerpt fits."
   [v budget]
-  (let [s     (if (string? v) v (printed v))
-        fits? #(<= (quoted-excerpt-width s %) budget)]
+  (let [s           (quoted-text v)
+        whole-width (quoted-excerpt-width s (count s))
+        fits?       #(<= (quoted-excerpt-width s %) budget)]
     (cond
-      (fits? (count s)) [(quoted-excerpt s (count s)) false]
+      (<= whole-width budget) [[v] whole-width false]
       ;; A cut excerpt never shrinks as characters are kept, so binary search for the most that fit.
-      (fits? 0)         (loop [lo 0, hi (dec (count s))]
-                          (if (< lo hi)
-                            (let [mid (quot (+ lo hi 1) 2)]
-                              (if (fits? mid)
-                                (recur mid hi)
-                                (recur lo (dec mid))))
-                            [(quoted-excerpt s lo) true]))
-      :else             ["…" true])))
+      (fits? 0)               (loop [lo 0, hi (dec (count s))]
+                                (if (< lo hi)
+                                  (let [mid (quot (+ lo hi 1) 2)]
+                                    (if (fits? mid)
+                                      (recur mid hi)
+                                      (recur lo (dec mid))))
+                                  [[(excerpt s lo)] nil true]))
+      :else                   [[(raw "…")] nil true])))
 
 (declare truncated-pieces)
 
 (defn- truncated-piece
-  "`[text cut?]`: `piece` rendered whole when it fits in `budget` characters, else cut short with an ellipsis."
+  "`[args width cut?]`: message arguments rendering as `piece` whole, and that rendering's width, when it fits in
+   `budget` characters, else as `piece` cut short with an ellipsis."
   [[kind v] budget]
   (case kind
-    :message (truncated-pieces (pieces v) budget)
+    :message (let [[args width cut?] (truncated-pieces (pieces v) budget)]
+               (if cut? [args nil true] [[v] width false]))
     :clean   (if (unquoted? v)
                (truncated-piece [:text (str v)] budget)
                (truncated-quoted v budget))
     :text    (if (<= (count v) budget)
-               [v false]
-               [(str (string-prefix v budget) "…") true])))
+               [[(raw v)] (count v) false]
+               [[(raw (str (string-prefix v budget) "…"))] nil true])))
 
 (defn- truncated-pieces
-  "`[text cut?]`: `pieces` rendered in order until one is cut to fit what remains of `budget`."
+  "`[args width cut?]`: message arguments rendering as `pieces` in order until one is cut to fit what remains of
+   `budget`, and the width of their rendering when none is cut."
   [pieces budget]
-  (let [sb (StringBuilder.)]
-    (loop [pieces pieces, budget budget]
-      (if-let [[piece & more] (seq pieces)]
-        (let [[^String text cut?] (truncated-piece piece budget)]
-          (.append sb text)
-          (if cut?
-            [(str sb) true]
-            (recur more (- budget (count text)))))
-        [(str sb) false]))))
+  (loop [pieces pieces, budget budget, args [], width 0]
+    (if-let [[piece & more] (seq pieces)]
+      (let [[piece-args piece-width cut?] (truncated-piece piece budget)
+            args                          (into args piece-args)]
+        (if cut?
+          [args nil true]
+          (recur more (- budget piece-width) args (+ width (long piece-width)))))
+      [args width false])))
 
-(mu/defn truncate :- [:fn message?]
+(defn- concatenation
+  "A message rendering as the renderings of `args` concatenated."
+  [args]
+  (apply msg [(str/join (repeat (count args) "%s"))] args))
+
+(mu/defn truncate :- ::message
   "A message rendering as the start of `x`'s [[render]]ing, at most `limit` characters followed by `…` where it's cut.
-   A quoted value cut short keeps its closing quote after the `…`, so the rendering is at most `limit` + 2 characters."
+   A quoted value cut short keeps its closing quote after the `…`, so the rendering is at most `limit` + 2 characters.
+   Truncating the result again keeps every quoted value's closing quote the same way."
   [x     :- :any
    limit :- :int]
-  (let [[text] (try
+  (let [[args] (try
                  (truncated-pieces (pieces x) limit)
                  (catch Exception e
                    (log/error e "Agent message failed to render for truncation")
-                   (truncated-piece [:text render-failure] limit)))]
-    (msg ["%s"] (raw text))))
+                   (truncated-pieces [[:text render-failure]] limit)))]
+    (concatenation args)))
