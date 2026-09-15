@@ -11,7 +11,7 @@ Two-factor authentication (2FA) adds a second step to signing in. On top of peop
 
 Metabase's native 2FA applies to password logins and LDAP logins. 2FA for Single Sign-on (SSO) via JWT, SAML, or OIDC is managed through your identity provider.
 
-## Enable two-factor authentication
+## Turn on two-factor authentication
 
 To enable two-factor authentication:
 
