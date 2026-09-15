@@ -14,17 +14,19 @@
    [metabase.driver.mongo.operators :refer [$add $addFields $addToSet $and
                                             $avg $concat $cond $dayOfMonth
                                             $dayOfWeek $dayOfYear $divide $eq
-                                            $expr $group $gt $gte $hour $limit
-                                            $literal $lookup $lt $lte $match
-                                            $max $min $minute $mod $month
-                                            $multiply $ne $not $or $project
-                                            $regexMatch $second
-                                            $setWindowFields $size $skip $sort
-                                            $strcasecmp $subtract $sum
+                                            $expr $facet $group $gt $gte $hour
+                                            $limit $literal $lookup $lt $lte
+                                            $match $max $min $minute $mod
+                                            $month $multiply $ne $not $or
+                                            $project $regexMatch $replaceRoot
+                                            $second $setWindowFields $size $skip
+                                            $sort $strcasecmp $subtract $sum
                                             $toBool $toLower $unwind $year]]
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.options :as lib.options]
+   [metabase.lib.pivot :as lib.pivot]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
@@ -34,7 +36,10 @@
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.lib.util :as lib.util]
    [metabase.lib.walk :as lib.walk]
+   [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.pivot.common :as pivot.common]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -137,6 +142,16 @@
                                      ::lib.schema.common/non-blank-string
                                      ::lib.schema.common/non-blank-string]]]])
 
+(mr/def ::$facet-stage
+  [:map-of
+   [:= "$facet"]
+   [:map-of ::lib.schema.common/non-blank-string [:ref ::pipeline]]])
+
+(mr/def ::$replace-root-stage
+  [:map-of
+   [:= "$replaceRoot"]
+   [:map-of [:or :keyword :string] :any]])
+
 (defn- contains-uncompiled-mbql-clause? [x]
   (cond
     (map? x)
@@ -181,7 +196,9 @@
       ["$match"           ::$match-stage]
       ["$limit"           ::$limit-stage]
       ["$skip"            ::$skip-stage]
-      ["$setWindowFields" ::$set-window-fields-stage]]
+      ["$setWindowFields" ::$set-window-fields-stage]
+      ["$facet"           ::$facet-stage]
+      ["$replaceRoot"     ::$replace-root-stage]]
      [:ref ::no-uncompiled-mbql]]]])
 
 (mr/def ::pipeline
@@ -2027,16 +2044,96 @@ function(bin) {
                 (ordered-map/ordered-map "_id" false)
                 projected-fields)}]]))
 
-(mu/defn- handle-breakout+aggregation :- ::compiled-pipeline
-  "Add projections, groupings, sortings, and other things needed to the Query pipeline context (`pipeline-ctx`) for
-  MBQL `aggregations` and `breakout-fields`."
+(def ^:private pivot-facet-rows-field
+  "Intermediate field name for the concatenated pivot rows before `$unwind` + `$replaceRoot`. Prefixed so it can't
+  collide with a user-supplied column alias."
+  "__mb_pivot_rows")
+
+(mu/defn- handle-pivot :- ::compiled-pipeline
+  "Compile the last stage's `:pivot` clause into a `$facet`-based single-pass pipeline. Each grouping combination
+  becomes a facet branch that groups by its kept breakouts and null-pads the dropped ones; facet outputs are
+  concatenated with `$concatArrays`, `$unwind`-ed, and `$replaceRoot`-ed to yield a single-column-layout stream,
+  then sorted by the pivot-grouping bitmask followed by the breakouts."
   [query        :- ::lib.schema/query
    stage-number :- :int
    pipeline-ctx :- ::compiled-pipeline]
-  (if-not (or (seq (lib/breakouts query stage-number))
-              (seq (lib/aggregations query stage-number)))
-    ;; if both aggregations and breakouts are empty, there's nothing to do...
-    pipeline-ctx
+  (let [stage             (lib.util/query-stage query stage-number)
+        pivot             (:pivot stage)
+        breakouts         (vec (lib/breakouts query stage-number))
+        non-remap         (pivot.common/non-remap-positions breakouts)
+        orig->new         (pivot.common/remap-original->new-field-positions breakouts)
+        non-remap-bos     (mapv breakouts non-remap)
+        nr-idx-by-uuid    (into {} (map-indexed (fn [i b] [(lib.options/uuid b) i])) non-remap-bos)
+        rows-idx          (mapv nr-idx-by-uuid (:rows pivot))
+        cols-idx          (mapv nr-idx-by-uuid (:columns pivot))
+        combos            (qp.pivot/breakout-combinations
+                           (count non-remap-bos)
+                           rows-idx
+                           cols-idx
+                           (get pivot :show-row-totals    true)
+                           (get pivot :show-column-totals true))
+        n-breakouts       (count breakouts)
+        full-projections  (vec (breakouts-and-ags->projected-fields query stage-number))
+        breakout-projs    (subvec full-projections 0 n-breakouts)
+        agg-projs         (subvec full-projections n-breakouts)
+        breakout-aliases  (mapv first breakout-projs)
+        compile-branch    (fn [combo]
+                            (let [kept-idx       (vec (pivot.common/expand-grouping-combo combo non-remap orig->new))
+                                  kept-set       (set kept-idx)
+                                  bitmask        (pivot.common/group-bitmask (count non-remap-bos) combo)
+                                  kept-breakouts (mapv breakouts kept-idx)
+                                  branch-query   (lib.util/update-query-stage
+                                                  query stage-number
+                                                  (fn [stg]
+                                                    (-> stg
+                                                        (dissoc :pivot :order-by :limit)
+                                                        (u/assoc-dissoc :breakout (not-empty kept-breakouts)))))
+                                  group-id       (when (seq kept-breakouts)
+                                                   (projection-group-map branch-query stage-number))
+                                  group-stages   (group-and-post-aggregations branch-query stage-number group-id)
+                                  branch-project (into (ordered-map/ordered-map "_id" false)
+                                                       cat
+                                                       [(map-indexed
+                                                         (fn [i [alias src]]
+                                                           [alias (if (kept-set i) src {$literal nil})])
+                                                         breakout-projs)
+                                                        [[lib.pivot/pivot-grouping-column-name {$literal bitmask}]]
+                                                        agg-projs])]
+                              (conj (vec group-stages) {$project branch-project})))
+        facet-branches    (into (ordered-map/ordered-map)
+                                (map-indexed (fn [i combo]
+                                               [(str "combo_" i) (compile-branch combo)]))
+                                combos)
+        outer-sort        (into (ordered-map/ordered-map)
+                                (concat [[lib.pivot/pivot-grouping-column-name 1]]
+                                        (map (fn [alias] [alias 1]) breakout-aliases)))
+        pivot-stages      [{$facet facet-branches}
+                           {$addFields {pivot-facet-rows-field
+                                        {"$concatArrays" (mapv #(str "$" %) (keys facet-branches))}}}
+                           {$unwind {:path (str "$" pivot-facet-rows-field)}}
+                           {$replaceRoot {:newRoot (str "$" pivot-facet-rows-field)}}
+                           {$sort outer-sort}]
+        projections       (into breakout-aliases
+                                cat
+                                [[lib.pivot/pivot-grouping-column-name]
+                                 (map first agg-projs)])]
+    (-> pipeline-ctx
+        (assoc :projections projections)
+        (update :query into pivot-stages))))
+
+(mu/defn- handle-breakout+aggregation :- ::compiled-pipeline
+  "Add projections, groupings, sortings, and other things needed to the Query pipeline context (`pipeline-ctx`) for
+  MBQL `aggregations` and `breakout-fields`. Dispatches to [[handle-pivot]] when the stage carries a `:pivot`
+  clause."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   pipeline-ctx :- ::compiled-pipeline]
+  (cond
+    (:pivot (lib.util/query-stage query stage-number))
+    (handle-pivot query stage-number pipeline-ctx)
+
+    (or (seq (lib/breakouts query stage-number))
+        (seq (lib/aggregations query stage-number)))
     ;; determine the projections we'll need. projected-fields is like [[projected-field-name source]]`
     (let [projected-fields (breakouts-and-ags->projected-fields query stage-number)
           pipeline-stages  (breakouts-and-ags->pipeline-stages query stage-number projected-fields)]
@@ -2044,7 +2141,9 @@ function(bin) {
           ;; add :projections key which is just a sequence of the names of projections from above
           (assoc :projections (mapv first projected-fields))
           ;; now add additional clauses to the end of :query as applicable
-          (update :query into pipeline-stages)))))
+          (update :query into pipeline-stages)))
+
+    :else pipeline-ctx))
 
 ;;; ---------------------------------------------------- order-by ----------------------------------------------------
 
