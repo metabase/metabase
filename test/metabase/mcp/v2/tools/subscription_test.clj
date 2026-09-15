@@ -323,15 +323,23 @@
     (mt/with-temp [:model/Card {card-id :id} {}
                    :model/Dashboard {dash-id :id} {}
                    :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
-      (are [schedule pattern]
-           (re-find pattern
-                    (tool-error (call-tool! :crowberto nil
-                                            (wire {:method       "create"
-                                                   :dashboard_id dash-id
-                                                   :schedule     schedule}))))
-        {:schedule_type "daily"}                                    #"schedule_hour"
-        {:schedule_type "weekly" :schedule_hour 9}                  #"schedule_day"
-        {:schedule_type "monthly" :schedule_hour 9}                 #"schedule_frame"
+      (are [schedule expected]
+           (let [error (tool-error (call-tool! :crowberto nil
+                                               (wire {:method       "create"
+                                                      :dashboard_id dash-id
+                                                      :schedule     schedule})))]
+             (if (string? expected)
+               (= expected error)
+               (re-find expected error)))
+        {:schedule_type "daily"}
+        "A \"daily\" schedule needs schedule_hour — the hour of the day to send, 0-23."
+
+        {:schedule_type "weekly" :schedule_hour 9}
+        "A \"weekly\" schedule needs schedule_day — the day of the week, e.g. \"mon\"."
+
+        {:schedule_type "monthly" :schedule_hour 9}
+        "A \"monthly\" schedule needs schedule_frame — \"first\", \"mid\", or \"last\"."
+
         {:schedule_type "monthly" :schedule_hour 9
          :schedule_frame "mid" :schedule_day "mon"}                 #"schedule_day"))))
 
@@ -845,11 +853,13 @@
                                           :schedule_type :daily :schedule_hour 15}]
       (let [write-only #{"agent:delivery:write"}]
         (testing "create with only the write scope is refused, naming the missing scope"
-          (is (re-find #"agent:query:run"
-                       (tool-error (call-tool! :crowberto write-only
-                                               (wire {:method       "create"
-                                                      :dashboard_id dash-id
-                                                      :schedule     {:schedule_type "hourly"}}))))))
+          (is (= (str "Creating a subscription runs the dashboard's questions and delivers the results, which "
+                      "requires the agent:query:run scope — this token can manage subscriptions but not execute "
+                      "queries.")
+                 (tool-error (call-tool! :crowberto write-only
+                                         (wire {:method       "create"
+                                                :dashboard_id dash-id
+                                                :schedule     {:schedule_type "hourly"}}))))))
         (testing "redirecting delivery with only the write scope is refused"
           (is (re-find #"agent:query:run"
                        (tool-error (call-tool! :crowberto write-only

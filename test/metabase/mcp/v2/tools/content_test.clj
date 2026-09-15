@@ -467,9 +467,9 @@
                      :handlers     []}]
       (mt/with-test-user :crowberto
         (testing "alerts are numeric-only"
-          (is (re-find #"numeric id"
-                       (:error (content-one {:items [{:type "alert"
-                                                      :id   "abcdefghijklmnopqrstu"}]})))))
+          (is (= "Alerts take a numeric id — they have no entity_id."
+                 (:error (content-one {:items [{:type "alert"
+                                                :id   "abcdefghijklmnopqrstu"}]})))))
         (testing "and the alert still reads by its numeric id"
           (is (nil? (:error (content-one {:items [{:type "alert" :id (:id notification)}]})))))
         (testing "a string that is neither a numeric id nor an entity_id"

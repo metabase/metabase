@@ -70,11 +70,10 @@
 (defn- check-parameter-id!
   [target parameter-id params]
   (when-not (some #(= parameter-id (u/qualified-name (:id %))) params)
-    ;; `target` is the literal "dashboard" or "question" the caller passes.
     (common/throw-teaching-error
      (message/msg [(str "This %s has no parameter %s — pass one of its parameter ids "
                         "(get_content returns them under `parameters`). Available: %s.")]
-                  (message/raw target) parameter-id (parameter-catalog params)))))
+                  target parameter-id (parameter-catalog params)))))
 
 (defn- card-parameters
   "A card's parameters, falling back to its native query's template tags viewed as parameters."
@@ -241,7 +240,7 @@
         resolved-params (:resolved-params dash)
         constraints     (update-keys constraints u/qualified-name)
         param           (get resolved-params parameter-id)]
-    (check-parameter-id! "dashboard" parameter-id (vals resolved-params))
+    (check-parameter-id! (message/msg ["dashboard"]) parameter-id (vals resolved-params))
     ;; A static-list or card values source never consults the chain-filter constraints, so applying
     ;; them would silently do nothing — reject rather than hand back a list the caller thinks was
     ;; narrowed.
@@ -273,7 +272,7 @@
   [id-or-eid parameter-id query]
   (let [card   (v2.resolve/resolve-and-read :model/Card id-or-eid)
         params (card-parameters card)]
-    (check-parameter-id! "question" parameter-id params)
+    (check-parameter-id! (message/msg ["question"]) parameter-id params)
     (let [param (some #(when (= parameter-id (u/qualified-name (:id %))) %) params)]
       ;; `card-param-values` answers nil for a valueless parameter, which its own output schema
       ;; rejects — so the tool decides this case rather than calling and catching.

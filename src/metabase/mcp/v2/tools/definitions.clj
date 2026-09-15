@@ -91,7 +91,7 @@
   [{entity-name :name} entity]
   (when (and (some? entity-name) (str/blank? entity-name))
     (common/throw-teaching-error
-     (message/msg ["`name` cannot be blank — pass a short descriptive name for the %s."] (message/raw entity)))))
+     (message/msg ["`name` cannot be blank — pass a short descriptive name for the %s."] entity))))
 
 (defn- check-revision-message!
   "Reject a blank `revision_message` on update. `entity` is the server's own entity name."
@@ -100,7 +100,7 @@
     (common/throw-teaching-error
      (message/msg [(str "`revision_message` is required when method is \"update\" — pass a short "
                         "sentence describing the change; it is recorded in the %s's revision history.")]
-                  (message/raw entity)))))
+                  entity))))
 
 ;;; --------------------------------------------- Definition handling ----------------------------------------------
 
@@ -347,7 +347,7 @@
       :create
       (let [[_ body]   dispatched
             _          (check-method-args! :create body)
-            _          (check-name! body "segment")
+            _          (check-name! body (message/msg ["segment"]))
             table      (resolve-table (:table_id body))
             definition (prepare-definition :segment (:definition body) table)
             _          (check-table-match! table definition)]
@@ -361,8 +361,8 @@
       :update
       (let [[_ id body] dispatched
             _           (check-method-args! :update body)
-            _           (check-name! body "segment")
-            _           (check-revision-message! body "segment")
+            _           (check-name! body (message/msg ["segment"]))
+            _           (check-revision-message! body (message/msg ["segment"]))
             segment     (resolve-existing :model/Segment id)
             body        (m/update-existing body :definition
                                            (fn [definition]
@@ -415,7 +415,7 @@
       :create
       (let [[_ body]   dispatched
             _          (check-method-args! :create body)
-            _          (check-name! body "measure")
+            _          (check-name! body (message/msg ["measure"]))
             table      (resolve-table (:table_id body))
             definition (prepare-definition :measure (:definition body) table)
             _          (check-table-match! table definition)]
@@ -429,8 +429,8 @@
       :update
       (let [[_ id body] dispatched
             _           (check-method-args! :update body)
-            _           (check-name! body "measure")
-            _           (check-revision-message! body "measure")
+            _           (check-name! body (message/msg ["measure"]))
+            _           (check-revision-message! body (message/msg ["measure"]))
             measure     (resolve-existing :model/Measure id)
             body        (m/update-existing body :definition
                                            (fn [definition]

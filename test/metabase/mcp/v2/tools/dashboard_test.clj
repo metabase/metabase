@@ -319,9 +319,9 @@
                                                   :ops [{:op "add_card" :id -1 :card_id 9999999}]}))))))))
 
 (deftest unknown-card-error-text-test
-  (testing "GHY-4544: the unknown-card refusal names the op once, unquoted, and the card id as sent"
+  (testing "GHY-4544: the unknown-card refusal names the op as the caller sent it, quoted, and the card id as sent"
     (mt/with-temp [:model/Dashboard dash {:name "Sales"}]
-      (is (= "op 0 (add_card): no card with id 9999999 that you can read."
+      (is (= "op 0 (\"add_card\"): no card with id 9999999 that you can read."
              (tool-error (call-tool! :crowberto nil "dashboard_write"
                                      (wire {:method "update" :id (:id dash)
                                             :ops [{:op "add_card" :id -1 :card_id 9999999}]}))))))))

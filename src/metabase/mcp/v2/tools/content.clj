@@ -400,11 +400,10 @@
 (defn- fetch-notification
   "Fetch + read-check one notification row of `payload-type` by numeric id. Notifications have
    no entity_id column, so entity_id strings are a teaching error for these types."
-  [tool-type payload-type id-or-eid]
+  [tool-type plural payload-type id-or-eid]
   (when-not (int? id-or-eid)
-    ;; `tool-type` is the literal type name from `type->spec`.
     (common/throw-teaching-error
-     (message/msg ["%ss take a numeric id — they have no entity_id."] (message/raw (str/capitalize tool-type)))))
+     (message/msg ["%s take a numeric id — they have no entity_id."] plural)))
   (let [notification (mcp.db/notification-by-payload-type id-or-eid payload-type)]
     (when-not (and notification (mi/can-read? notification))
       (common/throw-not-found (keyword tool-type) id-or-eid))
@@ -568,7 +567,7 @@
                               "comments" document-comments}}
    "collection"   {:fetch fetch-collection}
    "snippet"      {:fetch fetch-snippet}
-   "alert"        {:fetch #(fetch-notification "alert" :notification/card %)}
+   "alert"        {:fetch #(fetch-notification "alert" (message/msg ["Alerts"]) :notification/card %)}
    "subscription" {:fetch fetch-subscription}
    "transform"    {:fetch fetch-transform
                    :includes {"definition" (definition-include transform-definition)}}})

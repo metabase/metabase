@@ -100,4 +100,7 @@
       [:update (v2.resolve/normalize-id id) (-> (dissoc args :method :id)
                                                 (expand-clear clearable clear))])
 
-    (common/throw-teaching-error (message/msg ["Invalid method %s — use \"create\" or \"update\"."] method))))
+    (common/throw-teaching-error
+     (if (nil? method)
+       (message/msg ["`method` is required — use \"create\" or \"update\"."])
+       (message/msg ["Invalid method %s — use \"create\" or \"update\"."] method)))))

@@ -159,12 +159,21 @@
       (testing "GHY-4155: an incomplete schedule names the field it is missing. schedule_hour is
                 required rather than defaulted, matching subscription_write — the cron util would
                 otherwise fill it with midnight, a send time the caller never chose"
-        (are [schedule pattern] (re-find pattern (schedule-error schedule))
-          {:schedule_type "daily"}                          #"A \"daily\" schedule needs schedule_hour"
-          {:schedule_type "weekly" :schedule_day "mon"}     #"A \"weekly\" schedule needs schedule_hour"
-          {:schedule_type "weekly" :schedule_hour 8}        #"A \"weekly\" schedule needs schedule_day"
-          {:schedule_type "monthly" :schedule_frame "first"} #"A \"monthly\" schedule needs schedule_hour"
-          {:schedule_type "monthly" :schedule_hour 8}       #"A \"monthly\" schedule needs schedule_frame"))
+        (are [schedule text] (= text (schedule-error schedule))
+          {:schedule_type "daily"}
+          "A \"daily\" schedule needs schedule_hour — the hour of the day to send, 0-23."
+
+          {:schedule_type "weekly" :schedule_day "mon"}
+          "A \"weekly\" schedule needs schedule_hour — the hour of the day to send, 0-23."
+
+          {:schedule_type "weekly" :schedule_hour 8}
+          "A \"weekly\" schedule needs schedule_day — the day of the week, e.g. \"mon\"."
+
+          {:schedule_type "monthly" :schedule_frame "first"}
+          "A \"monthly\" schedule needs schedule_hour — the hour of the day to send, 0-23."
+
+          {:schedule_type "monthly" :schedule_hour 8}
+          "A \"monthly\" schedule needs schedule_frame — \"first\", \"mid\", or \"last\"."))
       (testing "GHY-4155: the \"mid\" frame is the 15th, a calendar day, so pairing it with a weekday
                 is a teaching error rather than the underlying util's opaque case mismatch"
         (is (re-find #"cannot also take a schedule_day"
@@ -710,18 +719,21 @@
             with-exec  #{metabot.scope/agent-delivery-write metabot.scope/agent-query-run}
             create-args (wire {:method "create" :card_id card-id :schedule (daily-schedule 9)})]
         (testing "create with only the write scope is refused, naming the missing scope"
-          (is (re-find #"agent:query:run"
-                       (tool-error (call-tool! :crowberto write-only create-args))))
+          (is (= (str "Creating an alert runs its question and delivers the results, which requires the "
+                      "agent:query:run scope — this token can manage alerts but not execute queries.")
+                 (tool-error (call-tool! :crowberto write-only create-args))))
           (is (zero? (t2/count :model/NotificationCard :card_id card-id))))
         (mt/with-model-cleanup [:model/Notification]
           (testing "create with write + query:execute goes through"
             (let [created (tool-result (call-tool! :crowberto with-exec create-args))]
               (is (pos-int? (:id created)))
               (testing "redirecting delivery with only the write scope is refused"
-                (is (re-find #"agent:query:run"
-                             (tool-error (call-tool! :crowberto write-only
-                                                     (wire {:method "update" :id (:id created)
-                                                            :recipients ["someone@example.com"]}))))))
+                (is (= (str "Changing where an alert delivers runs its question and delivers the results, "
+                            "which requires the agent:query:run scope — this token can manage alerts but not "
+                            "execute queries.")
+                       (tool-error (call-tool! :crowberto write-only
+                                               (wire {:method "update" :id (:id created)
+                                                      :recipients ["someone@example.com"]}))))))
               (testing "but pausing with only the write scope still works — the kill switch must
                         never need more scope than the thing it kills (the response is the
                         GHY-4217 ack, so the effect is asserted from the database)"

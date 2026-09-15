@@ -107,7 +107,16 @@
            (op-error-text empty-dash [{:op "add_link" :id -1}])))
     (is (= "op 0 (patch_dashcard): \"nonsense\" is not a patchable property."
            (op-error-text (dash-with [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4}])
-                          [{:op "patch_dashcard" :dashcard_id 7 :patch {:nonsense "x"}}])))))
+                          [{:op "patch_dashcard" :dashcard_id 7 :patch {:nonsense "x"}}]))))
+  (testing "GHY-4544: an op sent without its `op` or a referenced id says so rather than naming null"
+    (is (= "op 0: missing `op` — see the tool description for the supported list."
+           (op-error-text empty-dash [{:id -1}])))
+    (is (= "op 0 (dashcard_id): missing `dashcard_id`."
+           (op-error-text empty-dash [{:op "remove"}])))
+    (is (= "op 0 (tab_id): missing `tab_id`."
+           (op-error-text empty-dash [{:op "remove_tab"}])))
+    (is (= "op 0 (parameter_id): missing `parameter_id`."
+           (op-error-text empty-dash [{:op "remove_parameter"}])))))
 
 (deftest add-text-test
   (testing "GHY-4147: add_text produces a virtual text dashcard with no card_id"

@@ -171,8 +171,10 @@
         (is (= "`id` is required when method is \"update\"."
                (tool-error (call-tool! :crowberto nil tool {:method "update" :revision_message "x"})))))
       (testing "GHY-4137: update without revision_message is the tool's own teaching error, never the bare REST 400"
-        (is (re-find #"`revision_message` is required"
-                     (tool-error (call-tool! :crowberto nil tool {:method "update" :id 13371337 :description "d"})))))
+        (is (= (format (str "`revision_message` is required when method is \"update\" — pass a short sentence "
+                            "describing the change; it is recorded in the %s's revision history.")
+                       (if (= "segment_write" tool) "segment" "measure"))
+               (tool-error (call-tool! :crowberto nil tool {:method "update" :id 13371337 :description "d"})))))
       (testing "GHY-4137: a whitespace-only revision_message is rejected the same way"
         (is (re-find #"`revision_message` is required"
                      (tool-error (call-tool! :crowberto nil tool {:method "update" :id 13371337 :revision_message " "}))))))))
@@ -201,11 +203,12 @@
                                "measure_write" (count-definition (mt/id :venues))}]
       (testing tool
         (testing "create"
-          (is (re-find #"`name` cannot be blank"
-                       (tool-error (call-tool! :crowberto nil tool
-                                               {:method     "create" :table_id (mt/id :venues)
-                                                :name       "   "
-                                                :definition definition})))))
+          (is (= (format "`name` cannot be blank — pass a short descriptive name for the %s."
+                         (if (= "segment_write" tool) "segment" "measure"))
+                 (tool-error (call-tool! :crowberto nil tool
+                                         {:method     "create" :table_id (mt/id :venues)
+                                          :name       "   "
+                                          :definition definition})))))
         (testing "update — refused before the id lookup, so it reads as an argument error"
           (is (re-find #"`name` cannot be blank"
                        (tool-error (call-tool! :crowberto nil tool

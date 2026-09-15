@@ -27,17 +27,16 @@
    presentational), and neither copy path carries `:archived` over — so duplicating a trashed item
    would resurrect it as a live copy in the collection it was trashed from. Runs after the read
    check, so an unreadable source still collapses to not-found rather than admitting it exists."
-  [model item]
+  [noun item]
   (when (:archived item)
-    ;; `model` is a server-declared model keyword.
     (common/throw-teaching-error
-     (message/msg ["%s %s is in the trash — restore it before duplicating."] (message/raw (name model)) (:id item))))
+     (message/msg ["%s %s is in the trash — restore it before duplicating."] noun (:id item))))
   item)
 
 (defn- fetch-question
   [id-or-eid]
   (let [card   (->> (v2.resolve/resolve-and-read :model/Card id-or-eid)
-                    (check-not-archived! :model/Card))]
+                    (check-not-archived! (message/msg ["Card"])))]
     (when (not= :question (:type card))
       (common/throw-teaching-error
        (message/msg ["Card %s has type %s — duplicate_content supports type \"question\" only."]
@@ -81,7 +80,7 @@
 (defn- fetch-dashboard
   [id-or-eid]
   (->> (v2.resolve/resolve-and-read :model/Dashboard id-or-eid)
-       (check-not-archived! :model/Dashboard)))
+       (check-not-archived! (message/msg ["Dashboard"]))))
 
 (defn- copy-dashboard!
   [dashboard collection-id new-name deep-copy?]
@@ -100,7 +99,7 @@
   ;; teaching error below rather than the not-found collapse, which would wrongly imply the caller
   ;; can't see it.
   (->> (v2.resolve/resolve-and-read :model/Document id-or-eid)
-       (check-not-archived! :model/Document)))
+       (check-not-archived! (message/msg ["Document"]))))
 
 (defn- copy-document!
   [document collection-id new-name]

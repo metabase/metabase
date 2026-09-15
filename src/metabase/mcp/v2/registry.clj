@@ -265,7 +265,10 @@
       ;; calling a tool that never existed.
       (or (nil? tool)
           (contains? (disabled-tool-names) tool-name))
-      {:error {:code common/error-code-method-not-found :message (message/msg ["Unknown tool: %s"] tool-name)}}
+      {:error {:code    common/error-code-method-not-found
+               :message (if (nil? tool-name)
+                          (message/msg ["The tool call is missing a tool name."])
+                          (message/msg ["Unknown tool: %s"] tool-name))}}
 
       (not (map? (or arguments {})))
       {:error {:code    common/error-code-invalid-params

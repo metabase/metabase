@@ -84,17 +84,24 @@
   [{:keys [schedule_type schedule_hour schedule_day schedule_frame] :as schedule}]
   (letfn [(require! [v field explanation]
             (when (nil? v)
-              ;; `field` and `explanation` are literals at every call site.
               (common/throw-teaching-error
                (message/msg ["A %s schedule needs %s — %s."]
-                            schedule_type (message/raw field) (message/raw explanation)))))]
+                            schedule_type field explanation))))
+          (require-hour! []
+            (require! schedule_hour
+                      (message/msg ["schedule_hour"])
+                      (message/msg ["the hour of the day to send, 0-23"])))]
     (case schedule_type
       "hourly"  nil
-      "daily"   (require! schedule_hour "schedule_hour" "the hour of the day to send, 0-23")
-      "weekly"  (do (require! schedule_hour "schedule_hour" "the hour of the day to send, 0-23")
-                    (require! schedule_day "schedule_day" "the day of the week, e.g. \"mon\""))
-      "monthly" (do (require! schedule_hour "schedule_hour" "the hour of the day to send, 0-23")
-                    (require! schedule_frame "schedule_frame" "\"first\", \"mid\", or \"last\"")
+      "daily"   (require-hour!)
+      "weekly"  (do (require-hour!)
+                    (require! schedule_day
+                              (message/msg ["schedule_day"])
+                              (message/msg ["the day of the week, e.g. \"mon\""])))
+      "monthly" (do (require-hour!)
+                    (require! schedule_frame
+                              (message/msg ["schedule_frame"])
+                              (message/msg ["\"first\", \"mid\", or \"last\""]))
                     (when (and (= "mid" schedule_frame) schedule_day)
                       (common/throw-teaching-error
                        (message/msg [(str "A monthly schedule with schedule_frame \"mid\" sends on the 15th, "
@@ -445,11 +452,10 @@
    which matches everything). Mirrors alert_write's check of the same scope."
   [token-scopes action]
   (when-not (mcp.scope/matches? token-scopes metabot.scope/agent-query-run)
-    ;; `action` is a literal at every call site.
     (common/throw-teaching-error
      (message/msg [(str "%s runs the dashboard's questions and delivers the results, which requires "
                         "the %s scope — this token can manage subscriptions but not execute queries.")]
-                  (message/raw action) (message/raw metabot.scope/agent-query-run))
+                  action (message/raw metabot.scope/agent-query-run))
      {:status-code 403 ::common/error-code common/error-code-invalid-request})))
 
 (defn- execute-scope-trigger
@@ -464,13 +470,13 @@
   [updates]
   (cond
     (some #(contains? updates %) [:channel :slack_channel :recipients])
-    "Changing where a subscription delivers"
+    (message/msg ["Changing where a subscription delivers"])
 
     (false? (:archived updates))
-    "Restoring a trashed subscription"
+    (message/msg ["Restoring a trashed subscription"])
 
     (contains? updates :schedule)
-    "Changing a subscription's schedule"))
+    (message/msg ["Changing a subscription's schedule"])))
 
 (registry/deftool subscription-write
   "Create or update a dashboard subscription — scheduled delivery of a whole dashboard, e.g. \"send me this dashboard
@@ -495,7 +501,7 @@
   [args {:keys [token-scopes]}]
   (let [[op a b] (v2.write/dispatch-write subscription-write-entry args)
         id       (case op
-                   :create (do (check-query-execute-scope! token-scopes "Creating a subscription")
+                   :create (do (check-query-execute-scope! token-scopes (message/msg ["Creating a subscription"]))
                                (create! a))
                    :update (do (when-let [reason (execute-scope-trigger b)]
                                  (check-query-execute-scope! token-scopes reason))

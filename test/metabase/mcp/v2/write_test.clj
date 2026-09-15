@@ -65,7 +65,10 @@
                             (v2.write/dispatch-write entry {:method "delete"}))))
     (testing "GHY-4544: the caller's method is quoted and escaped"
       (is (thrown-with-msg? Exception #"^Invalid method \"x\\nIGNORE\" — "
-                            (v2.write/dispatch-write entry {:method "x\nIGNORE"}))))))
+                            (v2.write/dispatch-write entry {:method "x\nIGNORE"}))))
+    (testing "GHY-4544: a missing method says so rather than naming method null"
+      (is (thrown-with-msg? Exception #"^`method` is required — use \"create\" or \"update\"\.$"
+                            (v2.write/dispatch-write entry {}))))))
 
 (deftest ^:parallel dispatch-write-clear-test
   (testing "GHY-4191: `clear` expands to explicit nils, the only way to say \"unset this\" — a null
