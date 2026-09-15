@@ -61,7 +61,7 @@
     (let [key-hash (str (random-uuid))]
       (session/record-session-activity-update! key-hash)
       ;; the cache only drops entries older than the throttle window, so make every entry look stale
-      (with-redefs [u/since-ms (constantly Long/MAX_VALUE)]
+      (mt/with-dynamic-fn-redefs [u/since-ms (constantly Long/MAX_VALUE)]
         (.execute ^Job (SessionCleanup.) nil))
       (is (true? (session/record-session-activity-update! key-hash))
           "a pruned session is no longer throttled"))))

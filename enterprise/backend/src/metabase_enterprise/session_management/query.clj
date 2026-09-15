@@ -77,13 +77,13 @@
     last-active-after  (conj [:>= last-active-expr last-active-after])
     last-active-before (conj [:< last-active-expr last-active-before])))
 
-(mu/defn session-where :- :any
+(mu/defn session-where :- ::h2x/honeysql-expr
   "The `:where` for a session-management query: live, and matching `filters`."
   [liveness :- ::session.schema/liveness-params
    filters  :- ::sm.schema/session-filters]
   (into [:and] cat [(session/live-session-conditions liveness) (filters->where filters)]))
 
-(mu/defn revoke-where :- :any
+(mu/defn revoke-where :- ::h2x/honeysql-expr
   "The predicates a `core_session` row must satisfy to be revoked by these criteria: live, matching `filters`, and —
   when `exclude-current?` — not the session `current-key-hash` identifies. The hash is only ever compared in SQL, so
   `key_hashed` never leaves the database."
