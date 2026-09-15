@@ -336,7 +336,7 @@
                        nil
                        (catch Exception e e))]
             (is (= (str "Unsupported Google model " (pr-str model)
-                        ". Only google/* and anthropic/* models are supported.")
+                        ". Only google/*, anthropic/* and endpoints/* models are supported.")
                    (ex-message e)))
             (is (=? {:api-error   true
                      :status-code 400
@@ -353,7 +353,7 @@
       (mt/with-dynamic-fn-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"Unsupported Google model \"mistralai/mistral-large\"\. Only google/\* and anthropic/\* models are supported\."
+             #"Unsupported Google model \"mistralai/mistral-large\"\. Only google/\*, anthropic/\* and endpoints/\* models are supported\."
              (list-models {:model "mistralai/mistral-large"})))))))
 
 (deftest google-raw-anthropic-model-stream-raw-predict-test
@@ -1244,3 +1244,217 @@
                  clojure.lang.ExceptionInfo
                  pattern
                  (list-models {:model "google/gemini-3.5-flash"})))))))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; Model Garden endpoint tests
+;;; ──────────────────────────────────────────────────────────────────
+
+(defn- endpoint-resource
+  "A stubbed Endpoint resource for `endpoint-id`, dedicated when `dns` is given."
+  ([endpoint-id] (endpoint-resource endpoint-id nil))
+  ([endpoint-id dns]
+   (cond-> {:name           (str "projects/my-project/locations/us-central1/endpoints/" endpoint-id)
+            :displayName    "glm-5.2"
+            :deployedModels [{:id "42" :displayName "glm-5.2"}]}
+     dns (assoc :dedicatedEndpointEnabled true :dedicatedEndpointDns dns))))
+
+(defn- stub-endpoint
+  "An `http/request` stub answering the endpoint resource GET with `endpoint` and the chat completions POST with an
+  SSE stream of `events`, recording every request into `calls`."
+  [calls endpoint events]
+  (fn [req]
+    (swap! calls conj req)
+    (if (= :get (:method req))
+      {:status 200 :body endpoint}
+      (sse-response-for events))))
+
+(defn- unique-token
+  "An access token no earlier test has used, so the endpoint host cache it keys starts empty."
+  []
+  (str "ya29." (random-uuid)))
+
+(defn- endpoint-requests!
+  "Run `google-raw` `n` times against a stubbed endpoint in us-central1 and return the requests it issued."
+  [token model endpoint n & {:keys [base-url]}]
+  (let [calls (atom [])]
+    (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  token
+                                       llm.settings/llm-google-service-account-key nil
+                                       llm.settings/llm-google-project-id          "my-project"
+                                       llm.settings/llm-google-location            "us-central1"
+                                       llm.settings/llm-google-api-base-url        base-url]
+      (mt/with-dynamic-fn-redefs [self.core/sse-reducible             identity
+                                  self.core/reducible-with-api-errors (fn [r _ _] r)
+                                  debug/capture-stream                (fn [r _] r)
+                                  http/request                        (stub-endpoint calls endpoint [])]
+        (dotimes [_ n]
+          (google-raw {:model model :input [{:role :user :content "hi"}]}))))
+    @calls))
+
+(deftest google-raw-endpoint-chat-completions-test
+  (testing "an endpoint's resource is read first, then it is served through its chat/completions route on the location's host"
+    (let [token    (unique-token)
+          endpoint "1234567890123456789"
+          [get-req post-req :as calls] (endpoint-requests! token (str "endpoints/" endpoint) (endpoint-resource endpoint) 1)]
+      (is (= 2 (count calls)))
+      (is (=? {:method  :get
+               :url     (str "https://us-central1-aiplatform.googleapis.com/v1/projects/my-project/locations/us-central1"
+                             "/endpoints/" endpoint)
+               :headers {"Authorization" (str "Bearer " token)}}
+              get-req))
+      (is (=? {:method  :post
+               :url     (str "https://us-central1-aiplatform.googleapis.com/v1/projects/my-project/locations/us-central1"
+                             "/endpoints/" endpoint "/chat/completions")
+               :headers {"Authorization" (str "Bearer " token)
+                         "Content-Type"  "application/json"}
+               :as      :stream}
+              post-req))
+      (testing "the body is a Chat Completions request that names no model, since the endpoint serves one"
+        (let [body (json/decode+kw (:body post-req))]
+          (is (=? {:stream         true
+                   :stream_options {:include_usage true}
+                   :messages       [{:role "user" :content "hi"}]
+                   :max_tokens     pos-int?}
+                  body))
+          (is (not (contains? body :model))))))))
+
+(deftest google-raw-dedicated-endpoint-host-test
+  (testing "a dedicated endpoint is served on the DNS name its resource reports, in either spelling Google uses"
+    (let [endpoint "2345678901234567890"
+          host     (str endpoint ".us-central1-123456789.prediction.vertexai.goog")]
+      (doseq [dns [host (str "https://" host)]]
+        (testing (pr-str dns)
+          (let [[get-req post-req] (endpoint-requests! (unique-token) (str "endpoints/" endpoint)
+                                                       (endpoint-resource endpoint dns) 1)]
+            (is (str/starts-with? (:url get-req) "https://us-central1-aiplatform.googleapis.com/")
+                "the resource itself is read from the shared host")
+            (is (= (str "https://" host "/v1/projects/my-project/locations/us-central1/endpoints/" endpoint
+                        "/chat/completions")
+                   (:url post-req)))))))))
+
+(deftest google-raw-endpoint-host-cached-test
+  (testing "repeated requests to an endpoint read its resource once, across the access tokens a service account key mints"
+    (let [endpoint "3456789012345678901"
+          sa-key   (test-service-account-json (str "cache-" (subs (str (random-uuid)) 0 8)))
+          tokens   (atom 0)
+          calls    (atom [])]
+      (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  nil
+                                         llm.settings/llm-google-service-account-key sa-key
+                                         llm.settings/llm-google-project-id          nil
+                                         llm.settings/llm-google-location            "us-central1"]
+        (mt/with-dynamic-fn-redefs [self.core/sse-reducible             identity
+                                    self.core/reducible-with-api-errors (fn [r _ _] r)
+                                    debug/capture-stream                (fn [r _] r)
+                                    google/fresh-bearer-headers         (fn [_]
+                                                                          {"Authorization" (str "Bearer t" (swap! tokens inc))})
+                                    http/request                        (stub-endpoint calls (endpoint-resource endpoint) [])]
+          (dotimes [_ 2]
+            (google-raw {:model (str "endpoints/" endpoint) :input [{:role :user :content "hi"}]}))))
+      (is (= [:get :post :post] (map :method @calls)))
+      (is (< 1 (count (into #{} (map #(get-in % [:headers "Authorization"])) @calls)))
+          "the token did rotate between the requests"))))
+
+(deftest google-raw-endpoint-keeps-an-explicit-base-url-test
+  (testing "a base URL the admin set is kept for a dedicated endpoint too, the way it is for every other route"
+    (let [endpoint "7890123456789012345"
+          proxy    "https://gemini.proxy.example.com"
+          [get-req post-req] (endpoint-requests! (unique-token) (str "endpoints/" endpoint)
+                                                 (endpoint-resource endpoint (str endpoint ".us-central1-123456789.prediction.vertexai.goog"))
+                                                 1 :base-url proxy)]
+      (is (str/starts-with? (:url get-req) (str proxy "/")))
+      (is (= (str proxy "/v1/projects/my-project/locations/us-central1/endpoints/" endpoint "/chat/completions")
+             (:url post-req))))))
+
+(deftest google-endpoint-stream-test
+  (testing "an endpoint's Chat Completions events off the wire are translated by the vLLM chunk translation"
+    (let [endpoint "4567890123456789012"
+          events   [{:id "chatcmpl-1" :model "glm-5.2"
+                     :choices [{:index 0 :delta {:role "assistant" :content "Hel"} :finish_reason nil}]}
+                    {:id "chatcmpl-1" :model "glm-5.2"
+                     :choices [{:index 0 :delta {:content "lo"} :finish_reason nil}]}
+                    {:id "chatcmpl-1" :model "glm-5.2"
+                     :choices [{:index 0 :delta {} :finish_reason "stop"}]}
+                    {:id "chatcmpl-1" :model "glm-5.2" :choices []
+                     :usage {:prompt_tokens 5 :completion_tokens 2}}]]
+      (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  (unique-token)
+                                         llm.settings/llm-google-service-account-key nil
+                                         llm.settings/llm-google-project-id          "my-project"
+                                         llm.settings/llm-google-location            "us-central1"]
+        (mt/with-dynamic-fn-redefs [debug/capture-stream (fn [r _] r)
+                                    http/request         (stub-endpoint (atom []) (endpoint-resource endpoint) events)]
+          (is (=? [{:type :start :id "chatcmpl-1"}
+                   {:type :text :text "Hello"}
+                   {:type  :usage
+                    :model "glm-5.2"
+                    :usage {:promptTokens 5 :completionTokens 2}}]
+                  (into []
+                        (self.core/aisdk-xf)
+                        (google {:model (str "endpoints/" endpoint)
+                                 :input [{:role :user :content "hi"}]})))))))))
+
+(deftest endpoint-model-knowledge-test
+  (testing "what an endpoint serves is not knowable from its name"
+    (is (false? (google/reasoning-model? "endpoints/1234567890123456789")))
+    (is (nil? (google/context-window-tokens "endpoints/1234567890123456789")))))
+
+(deftest list-models-endpoint-probe-test
+  (testing "list-models reads the endpoint's resource, then runs a one-token completion on the host it names, and reports the endpoint as the probed model"
+    (let [token    (unique-token)
+          endpoint "5678901234567890123"
+          host     (str endpoint ".us-central1-123456789.prediction.vertexai.goog")
+          calls    (atom [])]
+      (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  token
+                                         llm.settings/llm-google-service-account-key nil
+                                         llm.settings/llm-google-project-id          "my-project"
+                                         llm.settings/llm-google-location            "us-central1"]
+        (mt/with-dynamic-fn-redefs [http/request (stub-endpoint calls (endpoint-resource endpoint host) [])]
+          (is (= {:models         []
+                  :learned-config {:probed-model (str "endpoints/" endpoint)}}
+                 (list-models {:model (str "endpoints/" endpoint) :probe? true})))
+          (is (=? [{:method  :get
+                    :url     (str "https://us-central1-aiplatform.googleapis.com/v1/projects/my-project"
+                                  "/locations/us-central1/endpoints/" endpoint)
+                    :headers {"Authorization" (str "Bearer " token)}}
+                   {:method  :post
+                    :url     (str "https://" host "/v1/projects/my-project/locations/us-central1/endpoints/" endpoint
+                                  "/chat/completions")
+                    :headers {"Authorization" (str "Bearer " token)}
+                    :body    (json/encode {:messages [{:role "user" :content "hi"}] :max_tokens 1})}]
+                  @calls)))))))
+
+(deftest list-models-endpoint-without-predict-permission-rejected-test
+  (testing "a credential that can read the endpoint but not run it is refused, with Google's 403 message"
+    (let [endpoint "8901234567890123456"]
+      (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  (unique-token)
+                                         llm.settings/llm-google-service-account-key nil
+                                         llm.settings/llm-google-project-id          "my-project"
+                                         llm.settings/llm-google-location            "us-central1"]
+        (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [method]}]
+                                                   (if (= :get method)
+                                                     {:status 200 :body (endpoint-resource endpoint)}
+                                                     (throw (ex-info "clj-http: status 403"
+                                                                     {:status  403
+                                                                      :headers {"content-type" "application/json"}
+                                                                      :body    (json/encode {:error {:code    403
+                                                                                                     :message "Permission 'aiplatform.endpoints.predict' denied on resource"
+                                                                                                     :status  "PERMISSION_DENIED"}})}))))]
+          (let [e (try (list-models {:model (str "endpoints/" endpoint)}) nil (catch Exception e e))]
+            (is (= "Google API credentials have insufficient permissions or the API is not enabled for this project"
+                   (ex-message e)))
+            (is (=? {:api-error true :status 403} (ex-data e)))))))))
+
+(deftest list-models-endpoint-without-a-deployed-model-rejected-test
+  (testing "an endpoint whose model has been undeployed is refused with a 400 the connection form can show"
+    (let [endpoint "6789012345678901234"]
+      (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  (unique-token)
+                                         llm.settings/llm-google-service-account-key nil
+                                         llm.settings/llm-google-project-id          "my-project"
+                                         llm.settings/llm-google-location            "us-central1"]
+        (mt/with-dynamic-fn-redefs [http/request (stub-endpoint (atom [])
+                                                                (assoc (endpoint-resource endpoint) :deployedModels [])
+                                                                [])]
+          (let [e (try (list-models {:model (str "endpoints/" endpoint)}) nil (catch Exception e e))]
+            (is (= (str "Nothing is deployed on Google endpoint \"" endpoint "\"") (ex-message e)))
+            (is (=? {:api-error   true
+                     :status-code 400
+                     :error-code  :endpoint-has-no-model}
+                    (ex-data e)))))))))
