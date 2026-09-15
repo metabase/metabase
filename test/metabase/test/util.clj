@@ -1047,18 +1047,18 @@
     (let [attempts (atom 0)]
       ;; Diehard also consults `:retry-if` on success, with a nil exception — a `(constantly true)` stub would retry
       ;; the successful attempt too. The real predicate returns false for nil.
-      (with-redefs [transient-error/transient-error? (fn [_db-type e] (some? e))
-                    search/reindex!                  (fn [& _]
-                                                       (when (= 1 (swap! attempts inc))
-                                                         (throw (java.sql.SQLException. "Deadlock detected"))))]
+      (dynamic-redefs/with-dynamic-fn-redefs [transient-error/transient-error? (fn [_db-type e] (some? e))
+                                              search/reindex!                  (fn [& _]
+                                                                                 (when (= 1 (swap! attempts inc))
+                                                                                   (throw (java.sql.SQLException. "Deadlock detected"))))]
         (#'reindex-search-index!)
         (is (= 2 @attempts)))))
   (testing "any other failure is not"
     (let [attempts (atom 0)]
-      (with-redefs [transient-error/transient-error? (constantly false)
-                    search/reindex!                  (fn [& _]
-                                                       (swap! attempts inc)
-                                                       (throw (java.sql.SQLException. "Syntax error")))]
+      (dynamic-redefs/with-dynamic-fn-redefs [transient-error/transient-error? (constantly false)
+                                              search/reindex!                  (fn [& _]
+                                                                                 (swap! attempts inc)
+                                                                                 (throw (java.sql.SQLException. "Syntax error")))]
         (is (thrown? java.sql.SQLException (#'reindex-search-index!)))
         (is (= 1 @attempts))))))
 
