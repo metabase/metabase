@@ -276,10 +276,10 @@ function valueAcceptsText(
       return text === "";
     case "text":
       return value.text === text;
-    case "type":
-      return typeAcceptsText(checker, value.type, text);
     case "json":
-      return true;
+      return value.view.kind === "type"
+        ? typeAcceptsText(checker, value.view.type, text)
+        : true;
   }
 }
 
@@ -321,13 +321,17 @@ function pathViolations(
 }
 
 function isArrayValue(checker: ts.TypeChecker, value: SentValue): boolean {
-  if (value.kind === "empty" || value.kind === "json") {
+  if (value.kind === "empty") {
     return false;
   }
+  if (value.itemOf !== undefined) {
+    return true;
+  }
   return (
-    value.itemOf !== undefined ||
-    (value.kind === "type" &&
-      (checker.isArrayType(value.type) || checker.isTupleType(value.type)))
+    value.kind === "json" &&
+    value.view.kind === "type" &&
+    (checker.isArrayType(value.view.type) ||
+      checker.isTupleType(value.view.type))
   );
 }
 
@@ -361,7 +365,12 @@ function modelledFields(
   return {
     fields: type.getProperties().map((property) => ({
       name: property.name,
-      values: [{ kind: "type", type: checker.getTypeOfSymbol(property) }],
+      values: [
+        {
+          kind: "json",
+          view: { kind: "type", type: checker.getTypeOfSymbol(property) },
+        },
+      ],
       optional: (property.flags & ts.SymbolFlags.Optional) !== 0,
     })),
     anyKey: checker.getIndexInfosOfType(type).length > 0,

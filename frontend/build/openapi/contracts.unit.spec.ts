@@ -623,6 +623,7 @@ describe("diagnostic messages", () => {
     });
     expect(messageFor(results, "request.query")).toEqual([
       "$.schema: property required by the backend type is missing from the frontend type",
+      "$.other (endpoint.ts:14): frontend sends a field the backend type does not declare",
     ]);
   });
 
@@ -827,7 +828,7 @@ describe("diagnostic messages", () => {
     ]);
   });
 
-  it("should stop a recursive mismatch where the same types repeat", () => {
+  it("should report a recursive mismatch once, where the types first repeat", () => {
     const results = check({
       frontend:
         "interface Tree { name: string; children: Tree[] } type ErdResponse = Tree;",
@@ -839,7 +840,6 @@ describe("diagnostic messages", () => {
     });
     expect(messageFor(results, "response.2XX")).toEqual([
       "$.name (endpoint.ts:10 Tree.name): backend type number is not assignable to frontend type string",
-      "$.children[]: backend type Branch is not assignable to frontend type Tree, the same types as at $",
     ]);
   });
 
@@ -997,7 +997,7 @@ describe("walks that do not finish", () => {
         }),
     );
     expect(run).toThrow(
-      /^API contract check endpoints:example:response\.2XX stopped: the mismatch walk overflowed the call stack at \$ in type/,
+      /^API contract check endpoints:example:response\.2XX stopped: the field walk overflowed the call stack at \$/,
     );
   });
 
@@ -1008,8 +1008,12 @@ describe("walks that do not finish", () => {
       {},
       (checker) =>
         Object.assign(Object.create(checker), {
-          isTypeAssignableTo: () => {
-            throw new RangeError("Maximum call stack size exceeded");
+          // The response check reads the 2XX type before any walk starts.
+          getTypeOfSymbolAtLocation: (symbol: ts.Symbol, node: ts.Node) => {
+            if (symbol.name === "2XX") {
+              throw new RangeError("Maximum call stack size exceeded");
+            }
+            return checker.getTypeOfSymbolAtLocation(symbol, node);
           },
         }),
     );
@@ -1169,7 +1173,7 @@ describe("request values sent by the API client", () => {
     expect(result?.message.split("\n  ")).toEqual(
       expect.arrayContaining([
         "$.ids (endpoint.ts:11): property is optional in the frontend type but required by the backend type",
-        '$.ids[] (endpoint.ts:11): frontend value "null" is not assignable to backend type number[]',
+        '$.ids[] (endpoint.ts:11): frontend value "null" is not assignable to backend type number',
       ]),
     );
   });
@@ -1535,7 +1539,6 @@ describe("request values sent by the API client", () => {
     expect(resultFor(results, "request.query")).toMatchObject({
       status: "mismatch",
       message: [
-        "$: frontend type { ids: number[]; } sent as { ids?: number[]; } is not assignable to backend type { ids: number[]; }",
         "$.ids (endpoint.ts:11): property is optional in the frontend type but required by the backend type",
         "note: ids (number[]) is not sent when its array is empty (utils.ts:50-53)",
       ].join("\n  "),
@@ -1652,7 +1655,7 @@ describe("request values sent by the API client", () => {
       ),
     });
     expect(resultFor(required, "request.body")?.message).toMatch(
-      /^\$: frontend type \{\} is not assignable to backend type \{ a: string; \}\n {2}\$\.a: property required by the backend type is missing from the frontend type/,
+      /^\$\.a: property required by the backend type is missing from the frontend type/,
     );
   });
 
@@ -1711,7 +1714,7 @@ describe("request values sent by the API client", () => {
       ),
     });
     expect(resultFor(results, "request.body")?.message).toMatch(
-      /\n {2}\$\.a \(endpoint\.ts:11\): property is optional in the frontend type but required by the backend type/,
+      /^\$\.a \(endpoint\.ts:11\): property is optional in the frontend type but required by the backend type/,
     );
   });
 });

@@ -6,7 +6,6 @@ import {
   isTypeReference,
   properties,
   propertyName,
-  propertyType,
   symbolDeclaration,
   typeText,
   unionMembers,
@@ -238,288 +237,637 @@ export function fieldLabel(
   return `${path} (${location})`;
 }
 
-function mismatchDetail(
-  context: CompareContext,
-  direction: Direction,
-  from: ts.Type,
-  to: ts.Type,
-  at: ts.Node,
-  position: Position,
-): string {
-  const { checker, root } = context;
-  const walk = new TypeWalk(context, "mismatch walk");
-  const messages: string[] = [];
-  const ancestors: { from: ts.Type; to: ts.Type; path: string }[] = [];
-  const notAssignable = (label: string, from: ts.Type, to: ts.Type): string =>
-    `${label}: ${direction.from} type ${typeText(checker, from)} is not assignable to ${direction.to} type ${typeText(checker, to)}`;
-  const visit = (
-    from: ts.Type,
-    to: ts.Type,
-    path: string,
-    frontend: ts.Declaration | undefined,
-  ) => {
-    walk.step(from, { path, declaration: frontend }, ancestors.length);
-    if (checker.isTypeAssignableTo(from, to)) {
-      return;
+/** What one side of a comparison holds at a position: a type, or what the client sends there. */
+export type Shape =
+  | { kind: "type"; type: ts.Type }
+  | { kind: "text"; text: string }
+  | { kind: "null"; from: ts.Type }
+  | { kind: "empty"; from: ts.Type }
+  | { kind: "throws"; from: ts.Type; reason: string }
+  | {
+      kind: "object";
+      from: ts.Type | undefined;
+      description: string;
+      fields: ShapeField[];
+      indexes: ShapeIndex[];
     }
-    const label = fieldLabel(path, frontend, root);
-    const repeated = ancestors.find(
-      (ancestor) => ancestor.from === from && ancestor.to === to,
-    );
-    if (repeated) {
-      messages.push(
-        `${notAssignable(label, from, to)}, the same types as at ${repeated.path}`,
-      );
-      return;
-    }
-    ancestors.push({ from, to, path });
-    const before = messages.length;
-    if (from.isUnion()) {
-      unionMembers(checker, from).forEach((type) =>
-        visit(type, to, path, frontend),
-      );
-    } else {
-      const target = checker.getNonNullableType(to);
-      const fromElement =
-        checker.isArrayType(from) &&
-        checker.getIndexTypeOfType(from, ts.IndexKind.Number);
-      const toElement =
-        checker.isArrayType(target) &&
-        checker.getIndexTypeOfType(target, ts.IndexKind.Number);
-      if (fromElement && toElement) {
-        visit(fromElement, toElement, `${path}[]`, undefined);
-      } else if (
-        from.flags & ts.TypeFlags.Object &&
-        target.flags & ts.TypeFlags.Object
-      ) {
-        for (const property of properties(target)) {
-          const actualProperty = from.getProperty(property.name);
-          const field = `${path}.${property.name}`;
-          const frontendProperty = symbolDeclaration(
-            direction.to === "frontend" ? property : actualProperty,
-          );
-          const propertyLabel = fieldLabel(field, frontendProperty, root);
-          if (!(property.flags & ts.SymbolFlags.Optional) && !actualProperty) {
-            messages.push(
-              `${propertyLabel}: property required by the ${direction.to} type is missing from the ${direction.from} type`,
-            );
-          } else if (
-            !(property.flags & ts.SymbolFlags.Optional) &&
-            actualProperty &&
-            actualProperty.flags & ts.SymbolFlags.Optional
-          ) {
-            messages.push(
-              `${propertyLabel}: property is optional in the ${direction.from} type but required by the ${direction.to} type`,
-            );
-          } else {
-            const actual =
-              propertyType(checker, from, property.name, at) ??
-              checker.getUndefinedType();
-            visit(
-              actual,
-              checker.getTypeOfSymbolAtLocation(property, at),
-              field,
-              frontendProperty,
-            );
-          }
-        }
-      }
-    }
-    ancestors.pop();
-    if (messages.length === before) {
-      messages.push(notAssignable(label, from, to));
-    }
-  };
-  walk.run(() => visit(from, to, position.path, position.declaration));
-  return uniqueLines(messages);
+  | { kind: "array"; from: ts.Type; element: Shape }
+  /** A query array, sent as one value per item. */
+  | { kind: "items"; from: ts.Type; item: Shape }
+  | { kind: "union"; members: Shape[] };
+
+export interface ShapeField {
+  name: string;
+  shape: Shape;
+  optional: boolean;
+  declaration: ts.Declaration | undefined;
+}
+
+export interface ShapeIndex {
+  keyType: ts.Type;
+  shape: Shape;
+  declaration: ts.Declaration | undefined;
+}
+
+export function typeShape(type: ts.Type): Shape {
+  return { kind: "type", type };
+}
+
+/** The type that stands for the shape, when it has one. */
+function shapeType(shape: Shape): ts.Type | undefined {
+  switch (shape.kind) {
+    case "type":
+      return shape.type;
+    case "text":
+    case "union":
+      return undefined;
+    default:
+      return shape.from;
+  }
+}
+
+export function describeShape(checker: ts.TypeChecker, shape: Shape): string {
+  switch (shape.kind) {
+    case "type":
+      return typeText(checker, shape.type);
+    case "text":
+      return JSON.stringify(shape.text);
+    case "null":
+      return "null";
+    case "empty":
+      return "{}";
+    case "throws":
+      return typeText(checker, shape.from);
+    case "object":
+      return shape.description;
+    case "array":
+      return `${describeShape(checker, shape.element)}[]`;
+    case "items":
+      return `(${describeShape(checker, shape.item)})[]`;
+    case "union":
+      return shape.members
+        .map((member) => describeShape(checker, member))
+        .join(" | ");
+  }
+}
+
+/** The literal types a query or path text can be decoded as: string, boolean or number. */
+function textReadings(checker: ts.TypeChecker, text: string): ts.Type[] {
+  const readings: ts.Type[] = [checker.getStringLiteralType(text)];
+  if (text === "true") {
+    readings.push(checker.getTrueType());
+  }
+  if (text === "false") {
+    readings.push(checker.getFalseType());
+  }
+  if (text !== "" && String(Number(text)) === text) {
+    readings.push(checker.getNumberLiteralType(Number(text)));
+  }
+  return readings;
+}
+
+/** The members a sent shape is one of, each compared on its own. */
+function sentVariants(checker: ts.TypeChecker, shape: Shape): Shape[] {
+  if (shape.kind === "union") {
+    return shape.members.flatMap((member) => sentVariants(checker, member));
+  }
+  if (shape.kind === "type" && shape.type.isUnion()) {
+    return unionMembers(checker, shape.type).map(typeShape);
+  }
+  return [shape];
 }
 
 /**
- * Every field of `sent` that `declaredBy` does not declare, and in a response also every backend value
- * the frontend type does not accept.
+ * Every disagreement between what one side holds and what the other declares, at every depth.
+ * The receiver's required fields must be present, and every frontend field must be declared by the backend.
+ * A backend union accepts a value that fits any one of its members.
  */
-function fieldCoverageProblems(
+function shapeProblems(
   context: CompareContext,
-  declaredBy: ts.Type,
-  sent: ts.Type,
+  direction: Direction,
+  sent: Shape,
+  target: ts.Type,
   at: ts.Node,
-  kind: "request" | "response",
+  position: Position,
 ): Problem[] {
   const { checker, root } = context;
-  const walk = new TypeWalk(context, "field coverage walk");
+  const walk = new TypeWalk(context, "field walk");
   const problems: Problem[] = [];
-  const ids = new Map<ts.Type, number>();
-  const idOf = (type: ts.Type): number => {
-    const known = ids.get(type);
+  const ids = new Map<object, number>();
+  const idOf = (key: object): number => {
+    const known = ids.get(key);
     if (known !== undefined) {
       return known;
     }
-    ids.set(type, ids.size);
+    ids.set(key, ids.size);
     return ids.size - 1;
   };
-  const pairKey = (variant: ts.Type, candidates: ts.Type[]) =>
-    `${idOf(variant)}:${candidates.map(idOf).sort().join(",")}`;
-  // Each pair of frontend variant and backend candidates is walked once.
-  // A repeat still on the walk is a recursive type, and a finished repeat points back to the first path.
+  // Each pair of sent shape and target type is walked once. A repeat still on the walk is a recursive type,
+  // and a finished repeat points back to the first path.
   const walking = new Set<string>();
   const walked = new Map<string, { path: string; problems: Problem[] }>();
+  const mismatch = (message: string): Problem => ({
+    status: "mismatch",
+    message,
+  });
+  const notAssignable = (label: string, sent: Shape, target: ts.Type) =>
+    mismatch(
+      `${label}: ${direction.from} type ${describeShape(checker, sent)} is not assignable to ${direction.to} type ${typeText(checker, target)}`,
+    );
+  const isFrontend = (side: Side) => side === "frontend";
+  const collect = (run: () => void): Problem[] => {
+    const start = problems.length;
+    run();
+    return problems.splice(start);
+  };
+
+  // `siblings` are the other variants sent at this position, kept when one variant is retried against one member.
   const visit = (
-    backendTypes: ts.Type[],
-    frontend: ts.Type,
+    sent: Shape,
+    target: ts.Type,
     path: string,
     declaration: ts.Declaration | undefined,
     depth: number,
-  ) => {
-    walk.step(frontend, { path, declaration }, depth);
+    siblings?: Shape[],
+  ): void => {
+    walk.step(shapeType(sent) ?? target, { path, declaration }, depth);
     const label = fieldLabel(path, declaration, root);
-    const unassignable =
-      kind === "response"
-        ? backendTypes.filter(
-            (type) => !checker.isTypeAssignableTo(type, frontend),
-          )
-        : [];
-    if (unassignable.length) {
-      problems.push(
-        ...unassignable.map(
-          (type): Problem => ({
-            status: "mismatch",
-            message: `${label}: backend type ${typeText(checker, type)} is not assignable to frontend type ${typeText(checker, frontend)}`,
-          }),
-        ),
+    const variants = sentVariants(checker, sent);
+    const objectTargets = unionMembers(checker, target).filter(isObjectLike);
+    for (const variant of variants) {
+      visitVariant(
+        variant,
+        target,
+        objectTargets,
+        label,
+        path,
+        declaration,
+        depth,
+        siblings ?? variants,
       );
-      return;
     }
-    for (const variant of unionMembers(checker, frontend)) {
-      if (!isObjectLike(variant)) {
-        continue;
-      }
-      const candidates = [
-        ...new Set(backendTypes.flatMap((type) => unionMembers(checker, type))),
-      ].filter((type) =>
-        kind === "response"
-          ? checker.isTypeAssignableTo(type, variant)
-          : checker.isTypeAssignableTo(variant, type),
-      );
-      const key = pairKey(variant, candidates);
-      const first = walked.get(key);
-      if (first) {
-        if (first.problems.length) {
+    // A frontend response variant no backend variant fits cannot have its fields checked.
+    if (isFrontend(direction.to) && objectTargets.length > 1) {
+      const sentTypes = variants.flatMap((variant) => {
+        const type = shapeType(variant);
+        return type ? [type] : [];
+      });
+      objectTargets
+        .filter(
+          (member) =>
+            !sentTypes.some((type) => checker.isTypeAssignableTo(type, member)),
+        )
+        .forEach((member) =>
           problems.push({
-            status: problemStatus(first.problems),
-            message: `${label}: same problems as at ${first.path}`,
-          });
-        }
-        continue;
-      }
-      if (walking.has(key)) {
-        continue;
-      }
-      walking.add(key);
-      const start = problems.length;
-      coverVariant(variant, candidates, path, label, depth);
-      walking.delete(key);
-      walked.set(key, { path, problems: problems.slice(start) });
+            status: "unverified",
+            message: `${label}: cannot establish frontend field coverage for frontend union variant ${typeText(checker, member)}, which no backend type at this position is assignable to.`,
+          }),
+        );
     }
   };
-  const coverVariant = (
-    variant: ts.Type,
-    candidates: ts.Type[],
-    path: string,
+
+  const visitVariant = (
+    sent: Shape,
+    target: ts.Type,
+    objectTargets: ts.Type[],
     label: string,
+    path: string,
+    declaration: ts.Declaration | undefined,
     depth: number,
-  ) => {
-    if (!candidates.length) {
-      if (kind === "request") {
-        // The request direction only reports fields the backend does not declare.
+    siblings: Shape[],
+  ): void => {
+    switch (sent.kind) {
+      case "union":
+        return;
+      case "throws":
+        problems.push(
+          mismatch(`${label}: ${sent.reason}, so the request is never sent`),
+        );
+        return;
+      case "text":
+        if (
+          !textReadings(checker, sent.text).some((reading) =>
+            checker.isTypeAssignableTo(reading, target),
+          )
+        ) {
+          problems.push(
+            mismatch(
+              `${label}: ${direction.from} value ${JSON.stringify(sent.text)} is not assignable to ${direction.to} type ${typeText(checker, target)}`,
+            ),
+          );
+        }
+        return;
+      case "null":
+        if (!checker.isTypeAssignableTo(checker.getNullType(), target)) {
+          problems.push(
+            mismatch(
+              `${label}: ${direction.from} value null, from ${typeText(checker, sent.from)}, is not assignable to ${direction.to} type ${typeText(checker, target)}`,
+            ),
+          );
+        }
+        return;
+      case "empty":
+        if (
+          !objectTargets.some((member) =>
+            properties(member).every(
+              (property) => (property.flags & ts.SymbolFlags.Optional) !== 0,
+            ),
+          )
+        ) {
+          problems.push(
+            mismatch(
+              `${label}: ${direction.from} value {}, from ${typeText(checker, sent.from)}, is not assignable to ${direction.to} type ${typeText(checker, target)}`,
+            ),
+          );
+        }
+        return;
+      case "items": {
+        // Each item is compared with the array element the backend declares.
+        // A backend type without an array still gets the whole array compared, as it would receive repeated keys.
+        const elements = objectTargets.flatMap((member) => {
+          const element =
+            checker.isArrayType(member) &&
+            checker.getIndexTypeOfType(member, ts.IndexKind.Number);
+          return element ? [element] : [];
+        });
+        if (!elements.length) {
+          if (!checker.isTypeAssignableTo(sent.from, target)) {
+            problems.push(notAssignable(label, typeShape(sent.from), target));
+          }
+          visit(sent.item, target, `${path}[]`, declaration, depth + 1);
+          return;
+        }
+        visitAgainstAny(
+          sent.item,
+          elements,
+          target,
+          `${path}[]`,
+          declaration,
+          depth + 1,
+        );
         return;
       }
-      problems.push({
-        status: "unverified",
-        message: `${label}: cannot establish frontend field coverage for frontend union variant ${typeText(checker, variant)}, which no backend type at this position is assignable to.`,
-      });
-      return;
+      case "type":
+        if (!isObjectLike(sent.type)) {
+          if (!checker.isTypeAssignableTo(sent.type, target)) {
+            problems.push(notAssignable(label, sent, target));
+          }
+          return;
+        }
+        break;
+      case "object":
+      case "array":
+        break;
     }
-    if (checker.isArrayType(variant)) {
-      const element = checker.getIndexTypeOfType(variant, ts.IndexKind.Number);
-      const elements = candidates.flatMap((type) => {
-        const value = checker.getIndexTypeOfType(type, ts.IndexKind.Number);
-        return value ? [value] : [];
-      });
-      if (element) {
-        visit(elements, element, `${path}[]`, undefined, depth + 1);
+    if (!objectTargets.length) {
+      const type = shapeType(sent);
+      if (!type || !checker.isTypeAssignableTo(type, target)) {
+        problems.push(notAssignable(label, sent, target));
       }
       return;
     }
-    const tuple = checker.isTupleType(variant);
-    for (const property of properties(variant)) {
-      if (tuple && !/^\d+$/.test(property.name)) {
-        continue;
+    const key = `${idOf(sent.kind === "type" ? sent.type : sent)}|${idOf(target)}`;
+    const first = walked.get(key);
+    if (first) {
+      if (first.problems.length) {
+        problems.push({
+          status: problemStatus(first.problems),
+          message: `${label}: same problems as at ${first.path}`,
+        });
       }
-      // A symbol-keyed or function-valued property is never part of what is sent or received.
+      return;
+    }
+    if (walking.has(key)) {
+      return;
+    }
+    walking.add(key);
+    const found = collect(() => {
+      if (objectTargets.length === 1 && objectTargets[0]) {
+        compareInto(
+          sent,
+          objectTargets[0],
+          target,
+          label,
+          path,
+          declaration,
+          depth,
+          siblings,
+        );
+      } else {
+        visitAgainstAny(
+          sent,
+          objectTargets,
+          target,
+          path,
+          declaration,
+          depth,
+          siblings,
+        );
+      }
+    });
+    walking.delete(key);
+    walked.set(key, { path, problems: found });
+    problems.push(...found);
+  };
+
+  // The value fits when any one member accepts it. The one member its type is assignable to gets
+  // its disagreements listed; with none, or several, the whole is reported as one line.
+  const visitAgainstAny = (
+    sent: Shape,
+    members: ts.Type[],
+    whole: ts.Type,
+    path: string,
+    declaration: ts.Declaration | undefined,
+    depth: number,
+    siblings?: Shape[],
+  ): void => {
+    const label = fieldLabel(path, declaration, root);
+    const type = shapeType(sent);
+    const candidates = type
+      ? members.filter((member) => checker.isTypeAssignableTo(type, member))
+      : members;
+    const [only] = candidates;
+    if (candidates.length === 1 && only) {
+      visit(sent, only, path, declaration, depth, siblings);
+      return;
+    }
+    const accepted = candidates.some(
+      (member) =>
+        collect(() => visit(sent, member, path, declaration, depth, siblings))
+          .length === 0,
+    );
+    if (!accepted) {
+      problems.push(notAssignable(label, sent, whole));
+    }
+  };
+
+  const fieldsOf = (
+    sent: Shape,
+    at: ts.Node,
+  ): { fields: ShapeField[]; indexes: ShapeIndex[] } | undefined => {
+    if (sent.kind === "object") {
+      return { fields: sent.fields, indexes: sent.indexes };
+    }
+    if (sent.kind !== "type") {
+      return undefined;
+    }
+    const tuple = checker.isTupleType(sent.type);
+    return {
+      fields: properties(sent.type)
+        .filter(
+          (property) =>
+            !property.name.startsWith("__@") &&
+            (!tuple || /^\d+$/.test(property.name)) &&
+            // A function-valued property is never part of what the frontend sends.
+            !(
+              isFrontend(direction.from) &&
+              checker.getTypeOfSymbol(property).getCallSignatures().length > 0
+            ),
+        )
+        .map((property) => ({
+          name: property.name,
+          shape: typeShape(checker.getTypeOfSymbolAtLocation(property, at)),
+          optional: (property.flags & ts.SymbolFlags.Optional) !== 0,
+          declaration: symbolDeclaration(property),
+        })),
+      // A tuple's number index signature only restates its numbered members.
+      indexes: tuple
+        ? []
+        : checker.getIndexInfosOfType(sent.type).map((index) => ({
+            keyType: index.keyType,
+            shape: typeShape(index.type),
+            declaration: index.declaration,
+          })),
+    };
+  };
+
+  const elementOf = (sent: Shape): Shape | undefined => {
+    if (sent.kind === "array") {
+      return sent.element;
+    }
+    if (sent.kind === "type" && checker.isArrayType(sent.type)) {
+      const element = checker.getIndexTypeOfType(
+        sent.type,
+        ts.IndexKind.Number,
+      );
+      return element && typeShape(element);
+    }
+    return undefined;
+  };
+
+  const compareInto = (
+    sent: Shape,
+    member: ts.Type,
+    whole: ts.Type,
+    label: string,
+    path: string,
+    declaration: ts.Declaration | undefined,
+    depth: number,
+    siblings: Shape[],
+  ): void => {
+    const sentElement = elementOf(sent);
+    const memberElement =
+      checker.isArrayType(member) &&
+      checker.getIndexTypeOfType(member, ts.IndexKind.Number);
+    if (sentElement && memberElement) {
+      visit(sentElement, memberElement, `${path}[]`, undefined, depth + 1);
+      return;
+    }
+    // A declared type is what TypeScript compares; a shape the client assembled has no whole to compare.
+    const assignable =
+      sent.kind === "type"
+        ? checker.isTypeAssignableTo(sent.type, member)
+        : undefined;
+    const shape = fieldsOf(sent, at);
+    if (!shape || sentElement || checker.isArrayType(member)) {
+      if (assignable !== true) {
+        problems.push(notAssignable(label, sent, whole));
+      }
+      return;
+    }
+    // A frontend response field counts as declared when any backend variant this member accepts declares it.
+    const siblingShapes = isFrontend(direction.to)
+      ? siblings
+          .filter((sibling) => {
+            const siblingType = shapeType(sibling);
+            return (
+              sibling !== sent &&
+              siblingType !== undefined &&
+              checker.isTypeAssignableTo(siblingType, member)
+            );
+          })
+          .flatMap((sibling) => fieldsOf(sibling, at) ?? [])
+      : [];
+    const declaredBySibling = (name: string) =>
+      siblingShapes.some(
+        (sibling) =>
+          sibling.fields.some((field) => field.name === name) ||
+          sibling.indexes.some((index) =>
+            indexAccepts(
+              checker,
+              checker.getStringLiteralType(name),
+              index.keyType,
+            ),
+          ),
+      );
+    const before = problems.length;
+    const tupleMember = checker.isTupleType(member);
+    const targetIndexes = tupleMember
+      ? []
+      : checker.getIndexInfosOfType(member);
+    const targetNames = new Set<string>();
+    for (const property of properties(member)) {
       if (
         property.name.startsWith("__@") ||
-        (kind === "request" &&
-          checker.getTypeOfSymbol(property).getCallSignatures().length > 0)
+        (tupleMember && !/^\d+$/.test(property.name))
       ) {
         continue;
       }
-      const field = tuple
+      targetNames.add(property.name);
+      const field = tupleMember
         ? `${path}[${property.name}]`
         : `${path}.${property.name}`;
-      const values = candidates.flatMap((type) => {
-        const declared = propertyType(checker, type, property.name, at);
-        if (declared) {
-          return [declared];
+      const required = !(property.flags & ts.SymbolFlags.Optional);
+      const found =
+        shape.fields.find((candidate) => candidate.name === property.name) ??
+        shape.indexes
+          .filter((index) =>
+            indexAccepts(
+              checker,
+              checker.getStringLiteralType(property.name),
+              index.keyType,
+            ),
+          )
+          .map(
+            (index): ShapeField => ({
+              name: property.name,
+              shape: index.shape,
+              optional: true,
+              declaration: index.declaration,
+            }),
+          )[0];
+      const frontendDeclaration = isFrontend(direction.to)
+        ? symbolDeclaration(property)
+        : found?.declaration;
+      const fieldLabelText = fieldLabel(field, frontendDeclaration, root);
+      if (!found) {
+        if (required) {
+          problems.push(
+            mismatch(
+              `${fieldLabelText}: property required by the ${direction.to} type is missing from the ${direction.from} type`,
+            ),
+          );
+        } else if (
+          isFrontend(direction.to) &&
+          !declaredBySibling(property.name)
+        ) {
+          problems.push(
+            mismatch(
+              `${fieldLabelText}: frontend field is not declared in the backend schema.`,
+            ),
+          );
         }
-        const key = checker.getStringLiteralType(property.name);
-        return checker
-          .getIndexInfosOfType(type)
-          .filter((index) => indexAccepts(checker, key, index.keyType))
-          .map((index) => index.type);
-      });
-      const propertyDeclaration = symbolDeclaration(property);
-      if (!values.length) {
-        problems.push({
-          status: "mismatch",
-          message:
-            kind === "response"
-              ? `${fieldLabel(field, propertyDeclaration, root)}: frontend field is not declared in the backend schema.`
-              : `${fieldLabel(field, propertyDeclaration, root)}: frontend sends a field the backend type does not declare`,
-        });
         continue;
       }
+      if (required && found.optional) {
+        problems.push(
+          mismatch(
+            `${fieldLabelText}: property is optional in the ${direction.from} type but required by the ${direction.to} type`,
+          ),
+        );
+      }
       visit(
-        values,
+        found.shape,
         checker.getTypeOfSymbolAtLocation(property, at),
         field,
-        propertyDeclaration,
+        frontendDeclaration,
         depth + 1,
       );
     }
-    for (const index of checker.getIndexInfosOfType(variant)) {
-      const values = candidates.flatMap((type) =>
-        checker
-          .getIndexInfosOfType(type)
-          .filter((backendIndex) =>
-            indexAccepts(checker, index.keyType, backendIndex.keyType),
-          )
-          .map((backendIndex) => backendIndex.type),
+    for (const field of shape.fields.filter(
+      ({ name }) => !targetNames.has(name),
+    )) {
+      const index = targetIndexes.find((candidate) =>
+        indexAccepts(
+          checker,
+          checker.getStringLiteralType(field.name),
+          candidate.keyType,
+        ),
       );
-      const field = `${path}[key]`;
-      if (!values.length) {
-        problems.push({
-          status: "mismatch",
-          message:
-            kind === "response"
-              ? `${fieldLabel(field, index.declaration, root)}: frontend index signature is not declared in the backend schema.`
-              : `${fieldLabel(field, index.declaration, root)}: frontend sends keys the backend type does not declare`,
-        });
-        continue;
+      const fieldPath = `${path}.${field.name}`;
+      if (index) {
+        visit(field.shape, index.type, fieldPath, field.declaration, depth + 1);
+      } else if (isFrontend(direction.from)) {
+        problems.push(
+          mismatch(
+            `${fieldLabel(fieldPath, field.declaration, root)}: frontend sends a field the backend type does not declare`,
+          ),
+        );
       }
-      visit(values, index.type, field, index.declaration, depth + 1);
+    }
+    for (const index of shape.indexes) {
+      const accepting = targetIndexes.filter((candidate) =>
+        indexAccepts(checker, index.keyType, candidate.keyType),
+      );
+      const indexPath = `${path}[key]`;
+      if (accepting.length) {
+        visitAgainstAny(
+          index.shape,
+          accepting.map((candidate) => candidate.type),
+          whole,
+          indexPath,
+          index.declaration,
+          depth + 1,
+        );
+      } else if (isFrontend(direction.from)) {
+        problems.push(
+          mismatch(
+            `${fieldLabel(indexPath, index.declaration, root)}: frontend sends keys the backend type does not declare`,
+          ),
+        );
+      }
+    }
+    // A frontend response index signature has to be declared by the backend too.
+    if (isFrontend(direction.to)) {
+      for (const index of targetIndexes) {
+        const indexPath = `${path}[key]`;
+        const sentIndexes = shape.indexes.filter((candidate) =>
+          indexAccepts(checker, index.keyType, candidate.keyType),
+        );
+        if (!sentIndexes.length) {
+          if (
+            siblingShapes.some((sibling) =>
+              sibling.indexes.some((candidate) =>
+                indexAccepts(checker, index.keyType, candidate.keyType),
+              ),
+            )
+          ) {
+            continue;
+          }
+          problems.push(
+            mismatch(
+              `${fieldLabel(indexPath, index.declaration, root)}: frontend index signature is not declared in the backend schema.`,
+            ),
+          );
+          continue;
+        }
+        sentIndexes.forEach((candidate) =>
+          visit(
+            candidate.shape,
+            index.type,
+            indexPath,
+            index.declaration,
+            depth + 1,
+          ),
+        );
+      }
+    }
+    if (problems.length === before && assignable === false) {
+      problems.push(notAssignable(label, sent, whole));
     }
   };
-  walk.run(() => visit([declaredBy], sent, "$", undefined, 0));
+
+  walk.run(() => visit(sent, target, position.path, position.declaration, 0));
   return problems;
 }
 
@@ -565,94 +913,147 @@ function sortedPositions(
     );
 }
 
-// Every `any`, `unknown` or unresolved type, each at the shortest path that reaches it.
+// Every `any`, `unknown` or unresolved type in a shape, each at the shortest path that reaches it.
 // The walk goes one path segment at a time and walks each object type once, at its first, shortest path.
 // Listing every path instead does not finish: the MBQL expression types reach each other in every order.
 function unconstrainedPositions(
   context: CompareContext,
   side: Side,
-  type: ts.Type,
+  root: Shape,
   at: ts.Node,
   position: Position,
 ): UnconstrainedPosition[] {
-  const { checker, root } = context;
+  const { checker, root: rootDirectory } = context;
   const walk = new TypeWalk(context, "unconstrained type walk");
   const found: UnconstrainedPosition[] = [];
   const visited = new Set<ts.Type>();
   let depth = 0;
-  // Union and intersection members sit at the same path as the union, so they join the current level.
+  type Entry = { shape: Shape; position: Position };
+  // Union members and the values a field may hold sit at the same path, so they join the current level.
   const reach = (
-    reached: ts.Type,
+    shape: Shape,
     { path, declaration }: Position,
-    level: { type: ts.Type; position: Position }[],
+    level: Entry[],
   ): void => {
-    walk.step(reached, { path, declaration }, depth);
-    if (reached.flags & LOOSE_TYPE_FLAGS) {
+    const reached = shapeType(shape);
+    walk.step(
+      reached ?? checker.getUnknownType(),
+      { path, declaration },
+      depth,
+    );
+    switch (shape.kind) {
+      case "union":
+        shape.members.forEach((member) =>
+          reach(member, { path, declaration }, level),
+        );
+        return;
+      case "text":
+      case "null":
+      case "empty":
+      case "throws":
+        return;
+      case "object":
+      case "array":
+      case "items":
+        // What the client sends for a type reaches the same declarations as the type itself.
+        if (reached) {
+          if (visited.has(reached)) {
+            return;
+          }
+          visited.add(reached);
+        }
+        level.push({ shape, position: { path, declaration } });
+        return;
+      case "type":
+        break;
+    }
+    const { type } = shape;
+    if (type.flags & LOOSE_TYPE_FLAGS) {
       found.push({
         side,
-        type: typeText(checker, reached),
+        type: typeText(checker, type),
         ...(declaration
-          ? { declaration: declarationLabel(declaration, root) }
+          ? { declaration: declarationLabel(declaration, rootDirectory) }
           : {}),
         paths: [path],
       });
       return;
     }
-    if (reached.isUnion()) {
-      unionMembers(checker, reached).forEach((part) =>
-        reach(part, { path, declaration }, level),
+    if (type.isUnion()) {
+      unionMembers(checker, type).forEach((member) =>
+        reach(typeShape(member), { path, declaration }, level),
       );
       return;
     }
-    if (reached.isIntersection()) {
-      reached.types.forEach((part) =>
-        reach(part, { path, declaration }, level),
+    if (type.isIntersection()) {
+      type.types.forEach((member) =>
+        reach(typeShape(member), { path, declaration }, level),
       );
       return;
     }
-    if (!(reached.flags & ts.TypeFlags.Object) || visited.has(reached)) {
+    if (!(type.flags & ts.TypeFlags.Object) || visited.has(type)) {
       return;
     }
-    visited.add(reached);
-    level.push({ type: reached, position: { path, declaration } });
+    visited.add(type);
+    level.push({ shape, position: { path, declaration } });
   };
-  walk.run(() => {
-    let level: { type: ts.Type; position: Position }[] = [];
-    reach(type, position, level);
-    while (level.length) {
-      depth += 1;
-      const next: typeof level = [];
-      for (const {
-        type: current,
-        position: { path },
-      } of level) {
+  const children = (shape: Shape, path: string, next: Entry[]): void => {
+    switch (shape.kind) {
+      case "object":
+        shape.fields.forEach((field) =>
+          reach(
+            field.shape,
+            { path: `${path}.${field.name}`, declaration: field.declaration },
+            next,
+          ),
+        );
+        shape.indexes.forEach((index) =>
+          reach(
+            index.shape,
+            { path: `${path}[key]`, declaration: index.declaration },
+            next,
+          ),
+        );
+        return;
+      case "array":
+        reach(
+          shape.element,
+          { path: `${path}[]`, declaration: undefined },
+          next,
+        );
+        return;
+      case "items":
+        reach(shape.item, { path: `${path}[]`, declaration: undefined }, next);
+        return;
+      case "type": {
+        const { type } = shape;
         if (
-          isTypeReference(current) &&
-          (checker.isArrayType(current) || checker.isTupleType(current))
+          isTypeReference(type) &&
+          (checker.isArrayType(type) || checker.isTupleType(type))
         ) {
           checker
-            .getTypeArguments(current)
+            .getTypeArguments(type)
             .forEach((element) =>
               reach(
-                element,
+                typeShape(element),
                 { path: `${path}[]`, declaration: undefined },
                 next,
               ),
             );
-          continue;
+          return;
         }
         checker
-          .getIndexInfosOfType(current)
+          .getIndexInfosOfType(type)
           .forEach((index) =>
             reach(
-              index.type,
+              typeShape(index.type),
               { path: `${path}[key]`, declaration: index.declaration },
               next,
             ),
           );
-        properties(current).forEach((property) =>
+        properties(type).forEach((property) =>
           reach(
-            checker.getTypeOfSymbolAtLocation(property, at),
+            typeShape(checker.getTypeOfSymbolAtLocation(property, at)),
             {
               path: `${path}.${property.name}`,
               declaration: symbolDeclaration(property),
@@ -660,6 +1061,23 @@ function unconstrainedPositions(
             next,
           ),
         );
+        return;
+      }
+      default:
+        return;
+    }
+  };
+  walk.run(() => {
+    let level: Entry[] = [];
+    reach(root, position, level);
+    while (level.length) {
+      depth += 1;
+      const next: Entry[] = [];
+      for (const {
+        shape,
+        position: { path },
+      } of level) {
+        children(shape, path, next);
       }
       level = next;
     }
@@ -706,7 +1124,26 @@ export function looseTypeVerdict(
   location: string,
   position: Position = ROOT,
 ): Verdict | undefined {
-  const positions = unconstrainedPositions(context, side, type, at, position);
+  return looseShapeVerdict(
+    context,
+    side,
+    typeShape(type),
+    at,
+    location,
+    position,
+  );
+}
+
+/** An `unverified` verdict for every `any`, `unknown` or unresolved type parameter inside a shape. */
+function looseShapeVerdict(
+  context: CompareContext,
+  side: Side,
+  shape: Shape,
+  at: ts.Node,
+  location: string,
+  position: Position,
+): Verdict | undefined {
+  const positions = unconstrainedPositions(context, side, shape, at, position);
   if (!positions.length) {
     return undefined;
   }
@@ -726,6 +1163,47 @@ export function looseTypeVerdicts(
   return found.length ? combineVerdicts(found, []) : undefined;
 }
 
+/** Compares what one side holds at a position with the type the other side declares there. */
+export function compareShape(
+  context: CompareContext,
+  kind: "request" | "response",
+  location: string,
+  sent: Shape,
+  target: ts.Type,
+  at: ts.Node,
+  position: Position = ROOT,
+): Verdict {
+  const direction: Direction =
+    kind === "response"
+      ? { from: "backend", to: "frontend" }
+      : { from: "frontend", to: "backend" };
+  const gap = looseTypeVerdicts([
+    looseShapeVerdict(context, direction.from, sent, at, location, position),
+    looseTypeVerdict(context, direction.to, target, at, location, {
+      path: position.path,
+      declaration: undefined,
+    }),
+  ]);
+  if (gap) {
+    return gap;
+  }
+  const problems = shapeProblems(
+    context,
+    direction,
+    sent,
+    target,
+    at,
+    position,
+  );
+  if (!problems.length) {
+    return COMPATIBLE;
+  }
+  return {
+    status: problemStatus(problems),
+    message: uniqueLines(problems.map((problem) => problem.message)),
+  };
+}
+
 export function compareTypes(
   context: CompareContext,
   kind: "request" | "response",
@@ -735,41 +1213,15 @@ export function compareTypes(
   at: ts.Node,
   position: Position = ROOT,
 ): Verdict {
-  const { checker } = context;
-  const direction: Direction =
-    kind === "response"
-      ? { from: "backend", to: "frontend" }
-      : { from: "frontend", to: "backend" };
-  const gap = looseTypeVerdicts([
-    looseTypeVerdict(context, direction.from, from, at, location, position),
-    looseTypeVerdict(context, direction.to, to, at, location, {
-      path: position.path,
-      declaration: undefined,
-    }),
-  ]);
-  if (gap) {
-    return gap;
-  }
-  if (!checker.isTypeAssignableTo(from, to)) {
-    return {
-      status: "mismatch",
-      message: mismatchDetail(context, direction, from, to, at, position),
-    };
-  }
-  const problems = fieldCoverageProblems(
+  return compareShape(
     context,
-    kind === "response" ? from : to,
-    kind === "response" ? to : from,
-    at,
     kind,
+    location,
+    typeShape(from),
+    to,
+    at,
+    position,
   );
-  if (!problems.length) {
-    return COMPATIBLE;
-  }
-  return {
-    status: problemStatus(problems),
-    message: uniqueLines(problems.map((problem) => problem.message)),
-  };
 }
 
 /** One verdict for several checks of the same part: unverified wins over mismatch. */

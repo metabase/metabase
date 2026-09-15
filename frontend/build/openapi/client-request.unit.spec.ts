@@ -121,8 +121,10 @@ function model(source: string): {
 
 function values(checker: ts.TypeChecker, sent: SentValue[]): string[] {
   return sent.map((value) =>
-    value.kind === "type"
-      ? checker.typeToString(value.type)
+    value.kind === "json"
+      ? value.view.kind === "type"
+        ? checker.typeToString(value.view.type)
+        : `json ${value.view.kind}`
       : value.kind === "text"
         ? JSON.stringify(value.text)
         : "empty",
@@ -441,7 +443,7 @@ describe("modelClientRequest", () => {
       const endpoint = { query: (params: { limit: number } | void) => ({ url: "/api/list", params }) };
     `);
     expect(objects(checker, request.query.variants)).toEqual([
-      "type { limit: number; }",
+      "fields { limit: number; }",
       "nothing",
     ]);
   });
