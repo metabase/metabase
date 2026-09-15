@@ -82,3 +82,14 @@ jobs:
     uses: ./.github/workflows/loki.yml
     with:
       test-plan-artifact-id: ${{ inputs.scenario != 'no-plan' && needs.plan.outputs.artifact-id || '' }}
+
+  frontend-tests:
+    needs: plan
+    if: ${{ !cancelled() && (needs.plan.result == 'success' || inputs.scenario == 'no-plan') }}
+    uses: ./.github/workflows/frontend.yml
+    secrets: inherit
+    with:
+      skip-lint: true
+      skip-custom-viz: true
+      skip-ci-scripts: true
+      test-plan-artifact-id: ${{ inputs.scenario != 'no-plan' && needs.plan.outputs.artifact-id || '' }}
