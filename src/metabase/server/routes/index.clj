@@ -67,10 +67,12 @@
 (def ^:private ^{:arglists '([])} locale-script-urls (memoize/memo locale-script-urls*))
 
 (defn- locale-scripts
-  "Script tags for the catalogue chunks this request needs, at most one per distinct locale."
-  [locales]
-  (->> locales
-       (map #(format "<script src=\"%s\"></script>" (hiccup.util/escape-html %)))
+  "Script tags for the catalogue chunks this request needs.
+  `defer` keeps them off the parser: deferred scripts run in document order, and these precede
+  the bundle tags, so a catalogue is installed before the code that imports it."
+  [urls]
+  (->> urls
+       (map #(format "<script defer src=\"%s\"></script>" (hiccup.util/escape-html %)))
        (str/join "\n    ")))
 
 (defn- load-inline-js* [resource-name]
@@ -96,8 +98,9 @@
         site-locale                (catalogue-locale (system/site-locale))
         ;; Only the catalogues this document loads. Any other locale the app switches
         ;; to reads the manifest instead, which most sessions never need.
+        ;; A map, so one tag when the user and the instance share a locale.
         locale-urls                (select-keys (or (locale-script-urls) {})
-                                                (distinct [user-locale site-locale]))]
+                                                [user-locale site-locale])]
     {:bootstrapJS            (load-inline-js "index_bootstrap")
      :bootstrapJSON          (escape-script (json/encode public-settings))
      :assetOnErrorJS         (load-inline-js "asset_loading_error")
