@@ -23,9 +23,9 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private visualize-steering
-  (message/msg [(str "Rendering the visualization in the interactive UI. This is the final "
-                     "answer — do not call an execute tool afterwards, and do not tell the "
-                     "user to switch display types or open a Metabase panel or sidebar.")]))
+  (message/raw (str "Rendering the visualization in the interactive UI. This is the final "
+                    "answer — do not call an execute tool afterwards, and do not tell the "
+                    "user to switch display types or open a Metabase panel or sidebar.")))
 
 (defn- resolve-visualizable-handle!
   "Assert `handle` exists and belongs to the caller, throwing a teaching error otherwise.

@@ -147,7 +147,7 @@
                         "this token can write content but not author raw SQL.")]
                   (message/raw metabot.scope/agent-sql-run))
      {:status-code 403 ::common/error-code common/error-code-invalid-request}))
-  (v2.queries/check-execute-sql-enabled! (message/msg ["Saving a native (SQL) query"])))
+  (v2.queries/check-execute-sql-enabled! (message/raw "Saving a native (SQL) query")))
 
 (defn- resolve-query-source
   "Resolve exactly one query source to a `dataset_query` map. `query_handle` re-runs the

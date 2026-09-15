@@ -57,7 +57,7 @@
 ;;; ------------------------------------------------ Parameter lookup ----------------------------------------------
 
 (defn- parameter-catalog
-  "A message listing `params` as `id (name)`, the list a teaching error names when a parameter id doesn't match."
+  "Server text listing `params` as `id (name)`, the list a teaching error names when a parameter id doesn't match."
   [params]
   (if (seq params)
     (common/list-message (map (fn [{param-id :id param-name :name}]
@@ -65,7 +65,7 @@
                                   (message/msg ["%s"] (u/qualified-name param-id))
                                   (message/msg ["%s (%s)"] (u/qualified-name param-id) param-name)))
                               params))
-    (message/msg ["none"])))
+    (message/raw "none")))
 
 (defn- check-parameter-id!
   [target parameter-id params]
@@ -240,7 +240,7 @@
         resolved-params (:resolved-params dash)
         constraints     (update-keys constraints u/qualified-name)
         param           (get resolved-params parameter-id)]
-    (check-parameter-id! (message/msg ["dashboard"]) parameter-id (vals resolved-params))
+    (check-parameter-id! (message/raw "dashboard") parameter-id (vals resolved-params))
     ;; A static-list or card values source never consults the chain-filter constraints, so applying
     ;; them would silently do nothing — reject rather than hand back a list the caller thinks was
     ;; narrowed.
@@ -272,7 +272,7 @@
   [id-or-eid parameter-id query]
   (let [card   (v2.resolve/resolve-and-read :model/Card id-or-eid)
         params (card-parameters card)]
-    (check-parameter-id! (message/msg ["question"]) parameter-id params)
+    (check-parameter-id! (message/raw "question") parameter-id params)
     (let [param (some #(when (= parameter-id (u/qualified-name (:id %))) %) params)]
       ;; `card-param-values` answers nil for a valueless parameter, which its own output schema
       ;; rejects — so the tool decides this case rather than calling and catching.
@@ -305,7 +305,7 @@
 ;;; --------------------------------------------------- Response ---------------------------------------------------
 
 (defn- steering-line
-  "The message appended when the page isn't the whole story, or nil. `total` is what the backend
+  "The server text appended when the page isn't the whole story, or nil. `total` is what the backend
    returned; `more?` marks it as a floor — the source held more than the backend's 1000-row cap.
    `query` is the caller's search, when there was one: an empty result means something different
    with a search in hand, and the recovery it points at is different too."
@@ -316,8 +316,8 @@
                  query)
 
     (zero? total)
-    (message/msg [(str "No values available for this parameter — its source may be empty, "
-                       "filtered to nothing for you, or a free-text filter with no value list.")])
+    (message/raw (str "No values available for this parameter — its source may be empty, "
+                      "filtered to nothing for you, or a free-text filter with no value list."))
 
     (zero? returned)
     (if more?
@@ -375,8 +375,8 @@
                   ;; union could count. Omitted rather than guessed at.
                   distinct-count (assoc :distinct_dates distinct-count))
         line    (when-not (->day lo)
-                  (message/msg [(str "No dates available for this parameter — its column "
-                                     "may be empty, or filtered to nothing for you.")]))]
+                  (message/raw (str "No dates available for this parameter — its column "
+                                    "may be empty, or filtered to nothing for you.")))]
     (common/success-content (if line
                               (message/msg ["%s" "%s"] (message/raw (json/encode payload)) line)
                               payload))))

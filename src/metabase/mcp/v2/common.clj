@@ -132,7 +132,7 @@
                                    (message/truncate x limit))))
 
 (defn- joined-message
-  "One message of `parts`, each cleaned unless it is a message, joined pairwise by `join-two`."
+  "One message of `parts`, each cleaned unless it is raw or a message, joined pairwise by `join-two`."
   [join-two parts]
   (let [parts (vec parts)]
     (case (count parts)
@@ -144,7 +144,7 @@
                   (joined-message join-two (subvec parts half)))))))
 
 (mu/defn list-message :- ::message/message
-  "A message of `items` separated by commas, each cleaned unless it is a message."
+  "A message of `items` separated by commas, each cleaned unless it is raw or a message."
   [items :- [:sequential :any]]
   (joined-message #(message/msg ["%s, %s"] %1 %2) items))
 

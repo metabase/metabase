@@ -123,13 +123,13 @@
   "The sentence every definition-shape teaching error ends with, naming both accepted shapes."
   [kind]
   (case kind
-    :segment (message/msg [(str "`definition` accepts either the bare clause form — the array of filter clauses "
-                                "get_content's \"definition\" include returns for a segment, reassembled onto "
-                                "`table_id` — or a full single-stage query holding only filters.")])
-    :measure (message/msg [(str "`definition` accepts either the bare clause form — the aggregation "
-                                "clause get_content's \"definition\" include returns for a measure, as "
-                                "the one-element array or the bare clause, reassembled onto `table_id` "
-                                "— or a full single-stage query holding exactly one aggregation.")])))
+    :segment (message/raw (str "`definition` accepts either the bare clause form — the array of filter clauses "
+                               "get_content's \"definition\" include returns for a segment, reassembled onto "
+                               "`table_id` — or a full single-stage query holding only filters."))
+    :measure (message/raw (str "`definition` accepts either the bare clause form — the aggregation "
+                               "clause get_content's \"definition\" include returns for a measure, as "
+                               "the one-element array or the bare clause, reassembled onto `table_id` "
+                               "— or a full single-stage query holding exactly one aggregation."))))
 
 (defn- check-normalizable!
   "Probe `definition` against strict MBQL normalization before handing it to the domain layer.
@@ -347,7 +347,7 @@
       :create
       (let [[_ body]   dispatched
             _          (check-method-args! :create body)
-            _          (check-name! body (message/msg ["segment"]))
+            _          (check-name! body (message/raw "segment"))
             table      (resolve-table (:table_id body))
             definition (prepare-definition :segment (:definition body) table)
             _          (check-table-match! table definition)]
@@ -361,8 +361,8 @@
       :update
       (let [[_ id body] dispatched
             _           (check-method-args! :update body)
-            _           (check-name! body (message/msg ["segment"]))
-            _           (check-revision-message! body (message/msg ["segment"]))
+            _           (check-name! body (message/raw "segment"))
+            _           (check-revision-message! body (message/raw "segment"))
             segment     (resolve-existing :model/Segment id)
             body        (m/update-existing body :definition
                                            (fn [definition]
@@ -415,7 +415,7 @@
       :create
       (let [[_ body]   dispatched
             _          (check-method-args! :create body)
-            _          (check-name! body (message/msg ["measure"]))
+            _          (check-name! body (message/raw "measure"))
             table      (resolve-table (:table_id body))
             definition (prepare-definition :measure (:definition body) table)
             _          (check-table-match! table definition)]
@@ -429,8 +429,8 @@
       :update
       (let [[_ id body] dispatched
             _           (check-method-args! :update body)
-            _           (check-name! body (message/msg ["measure"]))
-            _           (check-revision-message! body (message/msg ["measure"]))
+            _           (check-name! body (message/raw "measure"))
+            _           (check-revision-message! body (message/raw "measure"))
             measure     (resolve-existing :model/Measure id)
             body        (m/update-existing body :definition
                                            (fn [definition]

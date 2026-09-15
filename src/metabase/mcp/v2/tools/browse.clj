@@ -731,7 +731,7 @@
   ;; Markers are string values in the JSON tree, so they're rendered here.
   (message/render
    (message/msg ["… %s under %s — browse_collection(id: %s, mode: \"tree\")"]
-                (if more-count (message/msg ["%d more"] more-count) (message/msg ["more"]))
+                (if more-count (message/msg ["%d more"] more-count) (message/raw "more"))
                 parent-name
                 parent-id)))
 

@@ -84,19 +84,19 @@
                             schedule_type field explanation))))
           (require-hour! []
             (require! schedule_hour
-                      (message/msg ["schedule_hour"])
-                      (message/msg ["the hour of the day to send, 0-23"])))]
+                      (message/raw "schedule_hour")
+                      (message/raw "the hour of the day to send, 0-23")))]
     (case schedule_type
       "hourly"  nil
       "daily"   (require-hour!)
       "weekly"  (do (require-hour!)
                     (require! schedule_day
-                              (message/msg ["schedule_day"])
-                              (message/msg ["the day of the week, e.g. \"mon\""])))
+                              (message/raw "schedule_day")
+                              (message/raw "the day of the week, e.g. \"mon\"")))
       "monthly" (do (require-hour!)
                     (require! schedule_frame
-                              (message/msg ["schedule_frame"])
-                              (message/msg ["\"first\", \"mid\", or \"last\""]))
+                              (message/raw "schedule_frame")
+                              (message/raw "\"first\", \"mid\", or \"last\""))
                     (when (and (= "mid" schedule_frame) schedule_day)
                       (common/throw-teaching-error
                        (message/msg [(str "A monthly schedule with schedule_frame \"mid\" sends on the 15th, "
@@ -407,20 +407,20 @@
   [updates]
   (cond
     (some #(contains? updates %) [:channel :slack_channel :recipients])
-    (message/msg ["Changing where an alert delivers"])
+    (message/raw "Changing where an alert delivers")
 
     (true? (:active updates))
-    (message/msg ["Resuming a paused alert"])
+    (message/raw "Resuming a paused alert")
 
     (contains? updates :schedule)
-    (message/msg ["Changing an alert's schedule"])
+    (message/raw "Changing an alert's schedule")
 
     ;; `send_once` archives the alert after its first send, so clearing it turns one scheduled run
     ;; into an unbounded series — the same commitment a new schedule makes. Only an explicit
     ;; `false` counts: nested nulls survive the boundary's stripping, so `send_once: null` is an
     ;; omission.
     (false? (:send_once (:condition updates)))
-    (message/msg ["Removing an alert's send-once limit"])))
+    (message/raw "Removing an alert's send-once limit")))
 
 (def ^:private alert-write-args-schema
   [:map {:closed true}
@@ -469,7 +469,7 @@
      ;; without them the response is the minimal ack, or a no-op update reads the recipients.
      (v2.write/readback token-scopes [metabot.scope/agent-content-read]
                         (case op
-                          :create (do (check-query-execute-scope! token-scopes (message/msg ["Creating an alert"]))
+                          :create (do (check-query-execute-scope! token-scopes (message/raw "Creating an alert"))
                                       (create! a))
                           :update (do (when-let [reason (execute-scope-trigger b)]
                                         (check-query-execute-scope! token-scopes reason))

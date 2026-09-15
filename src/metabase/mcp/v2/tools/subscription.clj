@@ -89,19 +89,19 @@
                             schedule_type field explanation))))
           (require-hour! []
             (require! schedule_hour
-                      (message/msg ["schedule_hour"])
-                      (message/msg ["the hour of the day to send, 0-23"])))]
+                      (message/raw "schedule_hour")
+                      (message/raw "the hour of the day to send, 0-23")))]
     (case schedule_type
       "hourly"  nil
       "daily"   (require-hour!)
       "weekly"  (do (require-hour!)
                     (require! schedule_day
-                              (message/msg ["schedule_day"])
-                              (message/msg ["the day of the week, e.g. \"mon\""])))
+                              (message/raw "schedule_day")
+                              (message/raw "the day of the week, e.g. \"mon\"")))
       "monthly" (do (require-hour!)
                     (require! schedule_frame
-                              (message/msg ["schedule_frame"])
-                              (message/msg ["\"first\", \"mid\", or \"last\""]))
+                              (message/raw "schedule_frame")
+                              (message/raw "\"first\", \"mid\", or \"last\""))
                     (when (and (= "mid" schedule_frame) schedule_day)
                       (common/throw-teaching-error
                        (message/msg [(str "A monthly schedule with schedule_frame \"mid\" sends on the 15th, "
@@ -268,7 +268,7 @@
         (common/throw-teaching-error
          (message/msg ["The dashboard has no parameter %s. Its parameter ids are: %s."]
                       param-id
-                      (if (seq known) (common/list-message (sort known)) (message/msg ["(none)"]))))))
+                      (if (seq known) (common/list-message (sort known)) (message/raw "(none)"))))))
     (mapv #(select-keys % [:id :value]) parameters)))
 
 ;;; -------------------------------------------------- Create ------------------------------------------------------
@@ -470,13 +470,13 @@
   [updates]
   (cond
     (some #(contains? updates %) [:channel :slack_channel :recipients])
-    (message/msg ["Changing where a subscription delivers"])
+    (message/raw "Changing where a subscription delivers")
 
     (false? (:archived updates))
-    (message/msg ["Restoring a trashed subscription"])
+    (message/raw "Restoring a trashed subscription")
 
     (contains? updates :schedule)
-    (message/msg ["Changing a subscription's schedule"])))
+    (message/raw "Changing a subscription's schedule")))
 
 (registry/deftool subscription-write
   "Create or update a dashboard subscription — scheduled delivery of a whole dashboard, e.g. \"send me this dashboard
@@ -501,7 +501,7 @@
   [args {:keys [token-scopes]}]
   (let [[op a b] (v2.write/dispatch-write subscription-write-entry args)
         id       (case op
-                   :create (do (check-query-execute-scope! token-scopes (message/msg ["Creating a subscription"]))
+                   :create (do (check-query-execute-scope! token-scopes (message/raw "Creating a subscription"))
                                (create! a))
                    :update (do (when-let [reason (execute-scope-trigger b)]
                                  (check-query-execute-scope! token-scopes reason))

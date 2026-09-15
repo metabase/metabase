@@ -32,14 +32,14 @@
 
 (def ^:private accepted-shapes
   "The sentence every source-shape teaching error ends with, naming what `definition` accepts."
-  (message/msg [(str "`definition` is a transform source: {\"type\": \"query\", \"query\": …} — "
-                     "exactly what get_content's \"definition\" include returns for a transform. "
-                     "The query inside is either the same numeric-id dialect execute_query takes, "
-                     "or the older name-based dialect, still resolved on input. Alternatively pass "
-                     "a query_handle from execute_query or execute_sql instead of `definition`.")]))
+  (message/raw (str "`definition` is a transform source: {\"type\": \"query\", \"query\": …} — "
+                    "exactly what get_content's \"definition\" include returns for a transform. "
+                    "The query inside is either the same numeric-id dialect execute_query takes, "
+                    "or the older name-based dialect, still resolved on input. Alternatively pass "
+                    "a query_handle from execute_query or execute_sql instead of `definition`.")))
 
 (def ^:private python-note
-  (message/msg ["transform_write authors query transforms only — python transforms are written in Metabase."]))
+  (message/raw "transform_write authors query transforms only — python transforms are written in Metabase."))
 
 ;;; ----------------------------------------------- Source handling ------------------------------------------------
 
@@ -106,7 +106,7 @@
                         "— this token can write content but not author raw SQL.")]
                   (message/raw metabot.scope/agent-sql-run))
      {:status-code 403 ::common/error-code common/error-code-invalid-request}))
-  (v2.queries/check-execute-sql-enabled! (message/msg ["Saving a native (SQL) transform"])))
+  (v2.queries/check-execute-sql-enabled! (message/raw "Saving a native (SQL) transform")))
 
 (defn- resolve-source
   "Resolve the caller's query source to the `source` map the transform stores. Exactly one of

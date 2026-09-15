@@ -178,31 +178,31 @@
   (let [types  (set type)
         target (cond
                  (contains? types "snippet")
-                 (message/msg ["browse_collection(namespace: \"snippets\")"])
+                 (message/raw "browse_collection(namespace: \"snippets\")")
 
                  (contains? types "transform")
-                 (message/msg ["browse_collection(namespace: \"transforms\")"])
+                 (message/raw "browse_collection(namespace: \"transforms\")")
 
                  (collection-scoping? args)
                  (message/msg ["browse_collection(%s)"]
                               (common/list-message
                                (cond-> [(message/msg ["id: %s"] collection_id)
-                                        (message/msg ["mode: \"items\""])]
+                                        (message/raw "mode: \"items\"")]
                                  (seq types) (conj (message/msg ["type: [%s]"] (common/list-message (sort types))))
-                                 created_by  (conj (message/msg ["created_by: \"me\""])))))
+                                 created_by  (conj (message/raw "created_by: \"me\"")))))
 
                  created_by
-                 (message/msg [(str "browse_collection(id: <collection>, mode: \"items\", created_by: \"me\") "
-                                    "— browse lists your content within a collection, not instance-wide")])
+                 (message/raw (str "browse_collection(id: <collection>, mode: \"items\", created_by: \"me\") "
+                                   "— browse lists your content within a collection, not instance-wide"))
 
                  (true? archived)
-                 (message/msg ["browse_collection(id: \"trash\", mode: \"items\")"])
+                 (message/raw "browse_collection(id: \"trash\", mode: \"items\")")
 
                  (and (seq types) (every? data-source-types types))
-                 (message/msg ["browse_data (list_databases, then list_tables)"])
+                 (message/raw "browse_data (list_databases, then list_tables)")
 
                  :else
-                 (message/msg ["browse_collection(id: <collection>, mode: \"items\") for a specific collection"]))]
+                 (message/raw "browse_collection(id: <collection>, mode: \"items\") for a specific collection"))]
     (common/throw-teaching-error
      (message/msg [(str "This is a listing, not a search — it has filters but no "
                         "term_queries or semantic_queries. To browse without a query, use %s.")]

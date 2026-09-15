@@ -318,7 +318,7 @@ Dialect (JSON): tables and columns go by NUMERIC ID — never invent or guess id
    re-checks inside `process-query`) so a refusal short-circuits before any query machinery
    spins up."
   [database-id]
-  (v2.queries/check-execute-sql-enabled! (message/msg ["execute_sql"]))
+  (v2.queries/check-execute-sql-enabled! (message/raw "execute_sql"))
   (when-not (mi/can-read? :model/Database database-id)
     (common/throw-not-found :model/Database database-id))
   (when-not (qp.perms/current-user-has-adhoc-native-query-perms? {:database database-id})
@@ -360,7 +360,7 @@ Dialect (JSON): tables and columns go by NUMERIC ID — never invent or guess id
                                            tag-name
                                            (if-let [names (seq (map :name tags))]
                                              (common/list-message names)
-                                             (message/msg ["none"]))))
+                                             (message/raw "none"))))
 
                              (contains? #{:card :snippet} tag-type)
                              ;; `tag-type` is one of the two reference kinds just matched.
@@ -542,10 +542,10 @@ Dialect (JSON): tables and columns go by NUMERIC ID — never invent or guess id
   [{param-type :type :keys [id slug]} value]
   (let [family   (or (namespace param-type) (name param-type))
         expected (case family
-                   "number"                 (message/msg ["a number"])
-                   "boolean"                (message/msg ["a boolean"])
-                   ("date" "temporal-unit") (message/msg ["a string"])
-                   (message/msg ["a string, number, or boolean"]))]
+                   "number"                 (message/raw "a number")
+                   "boolean"                (message/raw "a boolean")
+                   ("date" "temporal-unit") (message/raw "a string")
+                   (message/raw "a string, number, or boolean"))]
     (doseq [v (if (sequential? value) value [value])]
       (let [ok? (case family
                   "number"                 (or (number? v)

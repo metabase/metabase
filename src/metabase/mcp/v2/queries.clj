@@ -84,7 +84,7 @@
    and return the serialized MBQL 5 query. Resolution only: the pipeline does not execute.
 
    The pipeline's own agent-facing failures become a teaching error about the `definition`
-   argument, ending in `hint` (a message naming the shapes the calling tool accepts); permission
+   argument, ending in `hint` (server text naming the shapes the calling tool accepts); permission
    failures and anything unrecognized pass through."
   [external-query hint]
   (try
@@ -171,7 +171,7 @@
 ;;; ------------------------------------------------ Raw-SQL kill switch -------------------------------------------
 
 (defn check-execute-sql-enabled!
-  "Throw a 403 unless the instance-level `mcp-execute-sql-enabled` kill switch is on. `subject`, a message,
+  "Throw a 403 unless the instance-level `mcp-execute-sql-enabled` kill switch is on. `subject`, server text,
    opens the refusal sentence, naming what the instance refused.
 
    The gate covers every v2 path on which the AGENT AUTHORS the SQL — `execute_sql` itself, and

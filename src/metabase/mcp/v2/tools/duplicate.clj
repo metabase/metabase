@@ -36,7 +36,7 @@
 (defn- fetch-question
   [id-or-eid]
   (let [card   (->> (v2.resolve/resolve-and-read :model/Card id-or-eid)
-                    (check-not-archived! (message/msg ["Card"])))]
+                    (check-not-archived! (message/raw "Card")))]
     (when (not= :question (:type card))
       (common/throw-teaching-error
        (message/msg ["Card %s has type %s — duplicate_content supports type \"question\" only."]
@@ -80,7 +80,7 @@
 (defn- fetch-dashboard
   [id-or-eid]
   (->> (v2.resolve/resolve-and-read :model/Dashboard id-or-eid)
-       (check-not-archived! (message/msg ["Dashboard"]))))
+       (check-not-archived! (message/raw "Dashboard"))))
 
 (defn- copy-dashboard!
   [dashboard collection-id new-name deep-copy?]
@@ -99,7 +99,7 @@
   ;; teaching error below rather than the not-found collapse, which would wrongly imply the caller
   ;; can't see it.
   (->> (v2.resolve/resolve-and-read :model/Document id-or-eid)
-       (check-not-archived! (message/msg ["Document"]))))
+       (check-not-archived! (message/raw "Document"))))
 
 (defn- copy-document!
   [document collection-id new-name]

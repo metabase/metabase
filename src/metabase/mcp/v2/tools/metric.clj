@@ -30,10 +30,10 @@
 
 (def ^:private accepted-shapes
   "The sentence every definition-shape teaching error ends with, naming what `definition` accepts."
-  (message/msg [(str "`definition` accepts a full single-stage query holding exactly one aggregation: MBQL "
-                     "5 with numeric ids — what get_content's \"definition\" include returns for a metric "
-                     "and what execute_query takes — or the older name-based dialect, still resolved on "
-                     "input. Alternatively pass a query_handle from an execute tool instead of `definition`.")]))
+  (message/raw (str "`definition` accepts a full single-stage query holding exactly one aggregation: MBQL "
+                    "5 with numeric ids — what get_content's \"definition\" include returns for a metric "
+                    "and what execute_query takes — or the older name-based dialect, still resolved on "
+                    "input. Alternatively pass a query_handle from an execute tool instead of `definition`.")))
 
 (def ^:private accepted-displays
   "Card display types `display` accepts. Enumerated so an LLM-invented value is an argument error
@@ -47,7 +47,7 @@
 
 (def ^:private shape-rule
   "The metric shape rule, quoted verbatim in every gate error so the caller learns it once."
-  (message/msg ["A metric needs exactly one aggregation and at most one grouping, in a single query stage."]))
+  (message/raw "A metric needs exactly one aggregation and at most one grouping, in a single query stage."))
 
 ;; This tool's write echo is built from the `:metric` projection, which `get_content` reads too, so
 ;; the registration lives in [[metabase.mcp.v2.projections]] — the namespace both require. Owning it

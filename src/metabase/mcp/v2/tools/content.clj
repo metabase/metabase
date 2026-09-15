@@ -567,7 +567,7 @@
                               "comments" document-comments}}
    "collection"   {:fetch fetch-collection}
    "snippet"      {:fetch fetch-snippet}
-   "alert"        {:fetch #(fetch-notification "alert" (message/msg ["Alerts"]) :notification/card %)}
+   "alert"        {:fetch #(fetch-notification "alert" (message/raw "Alerts") :notification/card %)}
    "subscription" {:fetch fetch-subscription}
    "transform"    {:fetch fetch-transform
                    :includes {"definition" (definition-include transform-definition)}}})
