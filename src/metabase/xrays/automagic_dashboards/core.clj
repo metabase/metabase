@@ -199,7 +199,7 @@
    :dashboard-templates-prefix ["table"]})
 
 (mu/defmethod ->root :model/Segment :- ::ads/root
-  [segment :- [:map [:definition ::segments.schema/definition]]]
+  [segment :- [:map [:definition [:maybe ::segments.schema/definition]]]]
   (let [table (->> segment :table_id xrays.db/table)]
     {:entity                     segment
      :full-name                  (tru "{0} in the {1} segment" (:display_name table) (:name segment))
@@ -240,31 +240,26 @@
      :url                        (format "%sfield/%s" public-endpoint (:id field))
      :dashboard-templates-prefix ["field"]}))
 
-(mu/defn- source-card-id [card-or-question :- [:map {:closed true}
-                                               [:dataset_query ::ads/query]]]
+(mu/defn- source-card-id [card-or-question :- ::ads/card-or-question]
   (lib/primary-source-card-id (:dataset_query card-or-question)))
 
 (mu/defn- nested-query?
   "Is this card or question derived from another model or question?"
-  [card-or-question :- [:map {:closed true}
-                        [:dataset_query ::ads/query]]]
+  [card-or-question :- ::ads/card-or-question]
   (some? (source-card-id card-or-question)))
 
 (mu/defn- native-query?
   "Is this card or question native (SQL)?"
-  [{query :dataset_query, :as _card-or-question} :- [:map {:closed true}
-                                                     [:dataset_query ::ads/query]]]
+  [{query :dataset_query, :as _card-or-question} :- ::ads/card-or-question]
   (lib/native-only-query? query))
 
 (mu/defn- source-question :- [:maybe (ms/InstanceOf :model/Card)]
-  [card-or-question :- [:map {:closed true}
-                        [:dataset_query ::ads/query]]]
+  [card-or-question :- ::ads/card-or-question]
   (when-let [source-card-id (source-card-id card-or-question)]
     (xrays.db/card source-card-id)))
 
 (mu/defn- table-like?
-  [{query :dataset_query, :as _card-or-question} :- [:map {:closed true}
-                                                     [:dataset_query ::ads/query]]]
+  [{query :dataset_query, :as _card-or-question} :- ::ads/card-or-question]
   (and
    (empty? (lib/aggregations query))
    (empty? (lib/breakouts query))))
@@ -279,8 +274,7 @@
   ((some-fn :table-id :table_id) card-or-question))
 
 (mu/defn- source
-  [card :- [:map {:closed true}
-            [:dataset_query ::ads/query]]]
+  [card :- ::ads/card-or-question]
   (cond
     ;; This is a model
     (= (:type card) :model) (assoc card :entity_type :entity/GenericTable)
@@ -293,8 +287,7 @@
     :else                   (->> card table-id xrays.db/table)))
 
 (mu/defmethod ->root :model/Card :- ::ads/root
-  [card :- [:map {:closed true}
-            [:dataset_query ::ads/query]]]
+  [card :- :metabase.queries.schema/card]
   (let [source (source card)]
     {:entity                     card
      :source                     source
@@ -763,7 +756,7 @@
   (automagic-dashboard (merge (->root table) opts)))
 
 (mu/defmethod automagic-analysis-method :model/Segment
-  [segment :- [:map [:definition ::segments.schema/definition]]
+  [segment :- [:map [:definition [:maybe ::segments.schema/definition]]]
    opts]
   (automagic-dashboard (merge (->root segment) opts)))
 
@@ -776,8 +769,7 @@
                                                    (ms/InstanceOf :xrays/Metric)
                                                    ::ads/metric]]]
   [root     :- ::ads/root
-   question :- [:map {:closed true}
-                [:dataset_query ::ads/query]]]
+   question :- ::ads/card-or-question]
   (map (mu/fn [aggregation-clause :- ::lib.schema.aggregation/aggregation]
          (if (lib/clause-of-type? aggregation-clause :metric)
            ;; any [:metric ...] MBQL clauses these days are V2 Metrics and Automagic Dashboards do not handle them.
@@ -791,8 +783,7 @@
 
 (mu/defn- collect-breakout-fields :- [:maybe [:sequential (ms/InstanceOf :model/Field)]]
   [root     :- ::ads/root
-   question :- [:map {:closed true}
-                [:dataset_query ::ads/query]]]
+   question :- ::ads/card-or-question]
   (for [breakout     (lib/breakouts (:dataset_query question))
         field-clause (take 1 (magic.util/collect-field-references breakout))
         :let         [field (magic.util/->field root field-clause)]
@@ -802,8 +793,7 @@
 
 (mu/defn- decompose-question
   [root     :- ::ads/root
-   question :- [:map {:closed true}
-                [:dataset_query ::ads/query]]
+   question :- ::ads/card-or-question
    opts     :- ::automagic-analysis.opts]
   (letfn [(analyze [x]
             (try
@@ -825,8 +815,7 @@
 (mu/defn- preserve-entity-element
   "Ensure that elements of an original dataset query are preserved in dashcard queries."
   [dashboard :- ::ads/dashboard
-   entity    :- [:map {:closed true}
-                 [:dataset_query ::ads/query]]
+   entity    :- ::ads/card-or-question
    getter-fn :- ifn?
    setter-fn :- ifn?]
   ;; disable ref validation because X-Rays does stuff in a wacko manner, it adds a bunch of filters and whatever that

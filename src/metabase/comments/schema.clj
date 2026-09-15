@@ -35,7 +35,9 @@
 
 (mu/defn normalize-content :- [:maybe ::comment.content]
   "Normalize a comment's content on its way in from the API or out of the application database."
-  [content :- [:maybe ::comment.content]]
+  [content :- [:maybe [:schema {::mr/deliberately-open true
+                                :description "raw ProseMirror content before normalization stringifies its attrs keys"}
+                       :any]]]
   (some->> content (lib/normalize ::comment.content)))
 
 (mr/def ::comment.highlight

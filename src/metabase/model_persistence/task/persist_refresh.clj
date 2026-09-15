@@ -91,7 +91,7 @@
   [:map {:closed true}
    [:success       :int]
    [:error         :int]
-   [:trigger       :string]
+   [:trigger       [:maybe (ms/InstanceOfClass org.quartz.Trigger)]]
    [:error-details {:optional true} [:sequential [:map {:closed true}
                                                   [:persisted-info-id ms/PositiveInt]
                                                   [:error {:optional true} [:maybe :string]]]]]])

@@ -52,6 +52,11 @@
    [:encryptedContent {:optional true} [:maybe :string]]
    [:itemId           {:optional true} [:maybe :string]]])
 
+(def ^:private MistralProviderMetadata
+  "Mistral-specific data carried on a reasoning part: a think chunk's captured signature."
+  [:map {:closed true}
+   [:signature {:optional true} [:maybe :string]]])
+
 (def ^:private GoogleProviderMetadata
   "Google-specific data carried on a tool-input part: the thought signature Gemini 3.x requires
   when a functionCall is replayed in the current turn."
@@ -63,7 +68,8 @@
   [:map {:closed true}
    [:anthropic {:optional true} [:maybe AnthropicProviderMetadata]]
    [:openai    {:optional true} [:maybe OpenAIProviderMetadata]]
-   [:google    {:optional true} [:maybe GoogleProviderMetadata]]])
+   [:google    {:optional true} [:maybe GoogleProviderMetadata]]
+   [:mistral   {:optional true} [:maybe MistralProviderMetadata]]])
 
 (def ToolEntry
   "A tool definition map with :tool-name, :doc, :schema, :fn, and optionally :decode/:prompt."
@@ -121,12 +127,14 @@
   by `:role` instead."
   [:map {:closed true}
    [:type              {:optional true} [:maybe :keyword]]
-   [:role              {:optional true} [:maybe [:enum :user :system :assistant :tool]]]
+   [:role              {:optional true} [:maybe (ms/enum-keywords-and-strings :user :system :assistant :tool)]]
    [:id                {:optional true} [:maybe :string]]
    [:text              {:optional true} [:maybe :string]]
    [:content           {:optional true} [:maybe :string]]
    [:function          {:optional true} [:maybe :string]]
-   [:arguments         {:optional true} [:maybe (ms/string-keyed-map ::request.schema/json-value)]]
+   [:arguments         {:optional true} [:maybe [:map-of {::mr/deliberately-open true
+                                                          :description "a tool call's arguments, string- or keyword-keyed depending on whether they came over the wire or were built in Clojure"}
+                                                 [:or :string :keyword] ::request.schema/json-value]]]
    [:result            {:optional true} [:maybe ToolResult]]
    [:error             {:optional true} [:maybe [:map {:closed true}
                                                  [:message {:optional true} [:maybe :string]]
@@ -136,8 +144,9 @@
 (def ^:private ApiKeyCredentials
   "The `{:api-key ... :base-url ...}` connection shape shared by most providers."
   [:map {:closed true}
-   [:api-key  {:optional true} [:maybe :string]]
-   [:base-url {:optional true} [:maybe :string]]])
+   [:api-key         {:optional true} [:maybe :string]]
+   [:base-url        {:optional true} [:maybe :string]]
+   [:model-reasoning {:optional true} [:maybe [:or :boolean :string]]]])
 
 (def ^:private BedrockCredentials
   [:map {:closed true}
@@ -151,6 +160,7 @@
    [:service-account-key {:optional true} [:maybe :string]]
    [:oauth-access-token  {:optional true} [:maybe :string]]
    [:project-id          {:optional true} [:maybe :string]]
+   [:location            {:optional true} [:maybe :string]]
    [:base-url            {:optional true} [:maybe :string]]])
 
 (def ^:private LLMCredentials
@@ -179,7 +189,9 @@
   `:properties` keys are the field names the schema itself declares, not ours to enumerate."
   [:map {:closed true}
    [:type                 {:optional true} [:maybe :string]]
-   [:properties           {:optional true} (ms/string-keyed-map JSONSchemaLeaf)]
+   [:properties           {:optional true} [:map-of {::mr/deliberately-open true
+                                                     :description "JSON Schema properties, string- or keyword-keyed depending on whether they came over the wire or were built in Clojure"}
+                                            [:or :string :keyword] JSONSchemaLeaf]]
    [:required             {:optional true} [:vector :string]]
    [:additionalProperties {:optional true} :boolean]])
 

@@ -229,7 +229,7 @@
 
 (def ^:private FileDependencies
   [:map {:closed true}
-   [:namespace simple-symbol?]
+   [:namespace {:optional true} [:maybe simple-symbol?]]
    [:filename  string?] ; filename is relative to [[project-root]]
    [:module    symbol?]
    [:deps      [:sequential

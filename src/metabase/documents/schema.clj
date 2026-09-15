@@ -36,11 +36,15 @@
    [:public_uuid_prefix  [:maybe :string]]
    [:exploration_id      [:maybe ms/PositiveInt]]
    [:creator             {:optional true} [:maybe [:map {:closed true}
-                                                    [:id         {:optional true} ::lib.schema.id/user]
-                                                    [:email      {:optional true} :string]
-                                                    [:first_name {:optional true} [:maybe :string]]
-                                                    [:last_name  {:optional true} [:maybe :string]]]]]
+                                                   [:id         {:optional true} ::lib.schema.id/user]
+                                                   [:email      {:optional true} :string]
+                                                   [:first_name {:optional true} [:maybe :string]]
+                                                   [:last_name  {:optional true} [:maybe :string]]]]]
    [:collection          {:optional true} [:maybe :metabase.collections.schema/collection-or-root]]
+   [:can_write           {:optional true} :boolean]
+   [:can_delete          {:optional true} :boolean]
+   [:can_restore         {:optional true} :boolean]
+   [:is_remote_synced    {:optional true} :boolean]
    [:is_placeholder      :boolean]])
 
 (mr/def ::document.update

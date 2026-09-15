@@ -78,12 +78,14 @@
    #'graph?])
 
 (mr/def ::node
-  "A graph node key: an entity ID, or an `[entity-type entity-id]` pair."
-  [:or
-   pos-int?
-   [:tuple :keyword pos-int?]])
+  "A graph node key: any hashable value the graph implementation chooses to use -- an entity ID, an
+  `[entity-type entity-id]` pair, a plain keyword, etc. Deliberately open since each graph defines its own
+  arbitrary key shape (see the namespace docstring)."
+  [:schema {::mr/deliberately-open true, :description "any hashable graph node key"} :any])
 
-(mr/def ::child-map [:map-of ::node [:set ::node]])
+(mr/def ::child-map
+  "A `{parent #{child}}` map; keyed by the graph's own arbitrary node values, so deliberately open."
+  [:map-of {::mr/deliberately-open true, :description "keyed by arbitrary graph node values"} ::node [:set ::node]])
 
 (mr/def ::stop
   [:= ::stop])

@@ -252,9 +252,10 @@
    new-dashcards :- [:sequential [:merge
                                   ::dashboards.schema/dashboard-card.update
                                   [:map {:closed true}
-                                   [:id     ms/PositiveInt]
-                                   [:series {:optional true} [:maybe [:sequential [:map {:closed true} [:id ms/PositiveInt]]]]]
-                                   [:card   {:optional true} [:maybe ::queries.schema/card]]]]]]
+                                   [:id                         ms/PositiveInt]
+                                   [:series                     {:optional true} [:maybe [:sequential [:map {:closed true} [:id ms/PositiveInt]]]]]
+                                   [:card                       {:optional true} [:maybe ::queries.schema/card]]
+                                   [:collection_authority_level {:optional true} [:maybe [:or :keyword :string]]]]]]]
   (let [old-dashcards    (:dashcards dashboard)
         id->old-dashcard (m/index-by :id old-dashcards)
         old-dashcard-ids (set (keys id->old-dashcard))
@@ -334,14 +335,15 @@
            tabs           :tabs
            :keys          [description] :as dashboard} (i18n/localized-strings->strings dashboard)
           dashboard  (dashboards.db/insert-dashboard!
-                      (-> dashboard
-                          (dissoc :dashcards :tabs :rule :related
-                                  :transient_name :transient_filters :param_fields :more
-                                  :public_uuid :made_public_by_id
-                                  :enable_embedding :embedding_params)
-                          (assoc :description description
-                                 :collection_id parent-collection-id
-                                 :creator_id api/*current-user-id*)))
+                      (->> (-> dashboard
+                               (dissoc :dashcards :tabs :rule :related
+                                       :transient_name :transient_filters :param_fields :more
+                                       :public_uuid :made_public_by_id
+                                       :enable_embedding :embedding_params)
+                               (assoc :description description
+                                      :collection_id parent-collection-id
+                                      :creator_id api/*current-user-id*))
+                           (lib/normalize ::dashboards.schema/dashboard.update)))
           {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! (:id dashboard) nil tabs)
           dashcards-to-add (for [dashcard dashcards]
                              (let [card     (some-> dashcard :card

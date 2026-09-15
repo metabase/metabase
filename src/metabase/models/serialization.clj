@@ -1437,9 +1437,11 @@
 (mu/defn export-parameters
   "Given the :parameter field of a `Card` or `Dashboard`, as a vector of maps, converts
   it to a portable form with the CardIds/FieldIds replaced with `[db schema table field]` references.
-  Parameters are sorted by `:id` for stable serialization output. A `:position` field is added
-  to preserve display order through the sort."
-  [parameters :- [:maybe [:sequential :metabase.parameters.schema/parameter-with-optional-type]]]
+  Parameters are sorted by `:id` for stable serialization output (a nil `:id` sorts first). A `:position` field
+  is added to preserve display order through the sort."
+  [parameters :- [:maybe [:sequential
+                          [:merge :metabase.parameters.schema/parameter-with-optional-type
+                           [:map [:id {:optional true} [:maybe :metabase.lib.schema.parameter/id]]]]]]]
   (->> parameters
        (map-indexed (fn [i p] (assoc p :position i)))
        (sort-by :id)

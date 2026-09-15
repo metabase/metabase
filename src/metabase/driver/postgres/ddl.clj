@@ -1,4 +1,5 @@
 (ns metabase.driver.postgres.ddl
+  (:refer-clojure :exclude [select-keys])
   (:require
    [clojure.java.jdbc :as jdbc]
    [honey.sql :as sql]
@@ -8,7 +9,8 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.ddl :as sql.ddl]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.performance :refer [select-keys]]))
 
 (set! *warn-on-reflection* true)
 
@@ -65,7 +67,7 @@
 
 (defmethod ddl.i/check-can-persist :postgres
   [{driver :engine, :as database}]
-  (let [schema-name (ddl.i/schema-name database (driver-api/site-uuid))
+  (let [schema-name (ddl.i/schema-name (select-keys database [:id]) (driver-api/site-uuid))
         table-name  (format "persistence_check_%s" (rand-int 10000))
         steps       [[:persist.check/create-schema
                       (fn check-schema [conn]

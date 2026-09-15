@@ -68,7 +68,7 @@
 
 (mu/defn upsert-user-settings
   "Record the user-settable Field columns present in `settings` as the user values of `field`."
-  [{:keys [id]} :- ::warehouse-schema.schema/field
+  [{:keys [id]} :- [:select-keys :metabase.warehouse-schema.schema/field [:id]]
    settings     :- ::warehouse-schema.schema/field.update]
   (let [settings (u/select-keys-when settings :present field/field-user-settings)]
     (when (seq settings)
@@ -89,7 +89,7 @@
 
 (mu/defn unset-user-settings!
   "Drop the user values of the Field columns `ks` for `field`."
-  [{:keys [id]} :- ::warehouse-schema.schema/field
+  [{:keys [id]} :- [:select-keys :metabase.warehouse-schema.schema/field [:id]]
    ks           :- [:sequential (into [:enum] warehouse-schema-overlay/user-settable-field-columns)]]
   (when (warehouse-schema.db/field-user-settings-exist? id)
     (warehouse-schema.db/update-field-user-settings!

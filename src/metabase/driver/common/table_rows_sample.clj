@@ -94,7 +94,7 @@
     opts   :- ::table-rows-sample.options]
    (let [database-id (:db_id table)
          mp          (lib-be/application-database-metadata-provider database-id)
-         table       (lib-be/instance->metadata table :metadata/table)
+         table       (lib-be/instance->metadata (dissoc table :db) :metadata/table)
          fields      (map #(lib-be/instance->metadata % :metadata/column) fields)
          query       (table-rows-sample-query mp table fields opts)]
      (qp/process-query query rff))))

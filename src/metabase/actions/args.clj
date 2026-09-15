@@ -147,7 +147,8 @@
   [:merge
    ::common
    [:map [:table-id pos-int?]
-    [:row ::row]]])
+    [:row {:optional true} ::row]
+    [:arg {:optional true} ::row]]])
 
 ;;; The request bodies for the table CRUD actions are all the same. The body of a request to `POST
 ;;; /api/action/:action-namespace/:action-name/:table-id` is just a vector of rows but the API endpoint itself calls

@@ -62,7 +62,7 @@
       nil)))
 
 (mu/defmethod definition :model/Segment
-  [segment :- [:map [:definition ::segments.schema/definition]]]
+  [segment :- [:map [:definition [:maybe ::segments.schema/definition]]]]
   (-> segment :definition :stages first :filters not-empty))
 
 (defmethod definition :model/Field

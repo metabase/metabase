@@ -21,7 +21,7 @@
   The session row and its `login_history` row are written in one transaction: `login_history.session_id` has a foreign
   key to `core_session`, so a concurrent session delete (e.g. a password change, which invalidates the user's sessions)
   must not be able to remove the freshly-created session between the two inserts and break that reference."
-  ([user :- ::users.schema/user
+  ([user :- ::users.schema/login-user
     device-info :- request/DeviceInfo
     provider :- :keyword
     mfa-auth-identity-id :- [:maybe ms/PositiveInt]]
@@ -42,5 +42,5 @@
      (assoc session
             :key session-key
             :type (if (some-> (request/current-request) request/embedded?) :full-app-embed :normal))))
-  ([user :- ::users.schema/user device-info :- request/DeviceInfo provider :- :keyword]
+  ([user :- ::users.schema/login-user device-info :- request/DeviceInfo provider :- :keyword]
    (create-session-with-auth-tracking! user device-info provider nil)))

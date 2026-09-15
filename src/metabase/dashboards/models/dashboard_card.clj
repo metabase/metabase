@@ -223,8 +223,11 @@
   [:merge
    ::dashboards.schema/dashboard-card.update
    [:map {:closed true}
-    [:dashboard_id           ms/PositiveInt]
-    [:series {:optional true} [:maybe [:sequential ms/PositiveInt]]]]])
+    [:dashboard_id                ms/PositiveInt]
+    [:id                          {:optional true} [:maybe :metabase.lib.schema.id/dashcard]]
+    [:card                        {:optional true} [:maybe [:ref ::queries.schema/card]]]
+    [:collection_authority_level  {:optional true} [:maybe [:or :keyword :string]]]
+    [:series                      {:optional true} [:maybe [:sequential ms/PositiveInt]]]]])
 
 (mu/defn create-dashboard-cards!
   "Create a new DashboardCard by inserting it into the database along with all associated pieces of data such as

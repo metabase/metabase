@@ -99,6 +99,9 @@
 
 (def ^:private submit-object
   [:or
+   [:schema {::mr/deliberately-open true
+             :description "an opaque payload forwarded to the batch's processing fn, not read by submit! itself"}
+    :any]
    [:enum :ok :not-found :invalid-format]
    [:map {:closed true}
     [:model [:enum :model/Card :model/Dashboard :model/Table :model/Document]]
@@ -108,10 +111,7 @@
    [:map {:closed true}
     [:user-id      ms/PositiveInt]
     [:dashboard-id ms/PositiveInt]
-    [:parameters   [:sequential [:map {:closed true}
-                                 [:id      [:string {:min 1}]]
-                                 [:value   {:optional true} [:or ms/FieldValue [:sequential ms/FieldValue]]]
-                                 [:default {:optional true} [:or ms/FieldValue [:sequential ms/FieldValue]]]]]]]
+    [:parameters   [:sequential :metabase.parameters.schema/parameter-with-value]]]
    [:map {:closed true}
     [:user-id   ms/PositiveInt]
     [:model     [:enum :model/Card :model/Table :model/Dashboard :model/Collection :model/Document]]

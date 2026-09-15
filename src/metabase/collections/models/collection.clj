@@ -27,6 +27,7 @@
    [metabase.util.i18n :refer [trs tru deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [potemkin :as p]
@@ -442,7 +443,16 @@
    [:moderated_status      {:optional true} [:maybe :string]]
    [:query_type            {:optional true} [:maybe :string]]
    [:table_id              {:optional true} [:maybe ms/PositiveInt]]
-   [:total_count           {:optional true} [:maybe :int]]])
+   [:total_count           {:optional true} [:maybe :int]]
+   [:here                  {:optional true} [:set :keyword]]
+   [:below                 {:optional true} [:set :keyword]]
+   [:is_library_root       {:optional true} :boolean]
+   [:effective_ancestors   {:optional true}
+    [:sequential [:or RootCollection [:map {:closed true}
+                                      [:id                {:optional true} [:maybe ms/PositiveInt]]
+                                      [:name               {:optional true} [:maybe :string]]
+                                      [:personal_owner_id  {:optional true} [:maybe ms/PositiveInt]]
+                                      [:type               {:optional true} [:maybe :string]]]]]]])
 
 (mu/defn shared-tenant-collection?
   "Whether or not a collection is a tenant collection."
@@ -454,7 +464,7 @@
   "Build a 'location path' from a sequence of `collections-or-ids`.
 
      (location-path 10 20) ; -> \"/10/20/\""
-  [& collections-or-ids :- [:* [:or ms/PositiveInt ::collections.schema/collection]]]
+  [& collections-or-ids :- [:* [:or ms/PositiveInt CollectionInstance]]]
   (if-not (seq collections-or-ids)
     "/"
     (str
@@ -703,17 +713,21 @@
   ;; If collection has namespace = "tenant-specific" we know it's in the dedicated tenant namespace
   (= (some-> (:namespace collection) name) "tenant-specific"))
 
+(def ^:private UserOrId
+  "A User ID, or anything with one (e.g. a full User instance) — [[u/the-id]] accepts either."
+  [:or ms/PositiveInt [:map {:closed false, ::mr/deliberately-open true} [:id ms/PositiveInt]]])
+
 (mu/defn user->existing-personal-collection :- [:maybe (ms/InstanceOf :model/Collection)]
   "For a `user-or-id`, return their personal Collection, if it already exists.
   Use [[metabase.collections.models.collection/user->personal-collection]] to fetch their personal Collection *and*
   create it if needed."
-  [user-or-id :- ms/PositiveInt]
+  [user-or-id :- UserOrId]
   (collections.db/personal-collection-of-user (u/the-id user-or-id)))
 
 (mu/defn user->personal-collection :- [:maybe (ms/InstanceOf :model/Collection)]
   "Return the Personal Collection for `user-or-id`, if it already exists; if not, create it and return it.
   Personal collection should be created on user creation, but creates if missing for backwards compatibility"
-  [user-or-id :- ms/PositiveInt]
+  [user-or-id :- UserOrId]
   ;; API key users do not get personal collections
   (when-not (api-key/is-api-key-user? (u/the-id user-or-id))
     (or (user->existing-personal-collection user-or-id)

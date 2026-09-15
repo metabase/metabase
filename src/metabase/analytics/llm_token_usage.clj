@@ -1,6 +1,7 @@
 (ns metabase.analytics.llm-token-usage
   "LLM token usage tracking for Snowplow and Prometheus."
   (:require
+   [malli.util :as mut]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.event :as analytics.event]
    [metabase.analytics.util :as analytics.util]
@@ -84,6 +85,13 @@
       (analytics/inc! :metabase-metabot/llm-cache-read-tokens labels cache-read-tokens))
     (analytics/observe! :metabase-metabot/llm-tokens-per-call labels (+ prompt-tokens completion-tokens))))
 
+(def ^:private TrackTokenUsageArgs
+  "The `:snowplow`/`:prometheus` gate keys plus every key [[track-snowplow!]] or [[track-prometheus!]] can read, all optional."
+  (mut/merge [:map {:closed true}
+              [:snowplow   :boolean]
+              [:prometheus :boolean]]
+             (mut/optional-keys (mut/merge SnowplowArgs PrometheusArgs))))
+
 (mu/defn track-token-usage!
   "Convenience wrapper that fires Snowplow and/or Prometheus token tracking.
 
@@ -91,16 +99,10 @@
     - `:snowplow`   (required boolean) — pass `false` to suppress Snowplow
     - `:prometheus` (required boolean) — pass `false` to suppress Prometheus"
   [{:keys [snowplow prometheus] :as opts}
-   :- [:merge
-       [:map
-        [:snowplow    [:boolean {:default true}]]
-        [:prometheus  [:boolean {:default true}]]]
-       [:multi {:dispatch (juxt :snowplow :prometheus)}
-        [[true  false] SnowplowArgs]
-        [[false true]  PrometheusArgs]
-        [[true  true]  [:merge SnowplowArgs PrometheusArgs]]
-        [[false false] [:fn {:error/message "at least one of :snowplow or :prometheus must be true"}
-                        (constantly false)]]]]]
+   :- [:and
+       TrackTokenUsageArgs
+       [:fn {:error/message "at least one of :snowplow or :prometheus must be true"}
+        (fn [{:keys [snowplow prometheus]}] (or snowplow prometheus))]]]
   (when snowplow
     (track-snowplow! (select-keys opts snowplow-arg-keys)))
   (when prometheus

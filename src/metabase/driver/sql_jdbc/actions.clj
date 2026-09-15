@@ -555,6 +555,7 @@
 
 (mr/def ::table-row-input
   [:map {:closed true}
+   [:database {:optional true} driver-api/schema.id.database]
    [:table-id driver-api/schema.id.table]
    [:row driver-api/schema.actions.args.row]])
 

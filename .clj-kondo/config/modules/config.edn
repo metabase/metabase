@@ -2316,6 +2316,7 @@
            lib.schema
            permissions
            premium-features
+           server
            session
            settings
            users

@@ -183,7 +183,11 @@
   "Checks whether an entity involves native sql.  `entity` can either be a toucan object or a metadata object."
   [entity-type :- ::deps.dependency-types/dependency-types
    entity      :- [:multi {:dispatch (fn [x] (if (:lib/type x) :lib-metadata :row))}
-                   [:lib-metadata ::lib.schema.metadata/card]
+                   [:lib-metadata [:multi {:dispatch :lib/type}
+                                   [:metadata/card                 ::lib.schema.metadata/card]
+                                   [:metadata/transform            ::lib.schema.metadata/transform]
+                                   [:metadata/native-query-snippet ::lib.schema.metadata/native-query-snippet]
+                                   [:metadata/table                ::lib.schema.metadata/table]]]
                    [:row [:or
                           ::queries.schema/card
                           :metabase.warehouse-schema.schema/table

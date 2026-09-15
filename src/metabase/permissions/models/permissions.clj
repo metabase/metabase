@@ -163,7 +163,6 @@
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection.root :as collection.root]
-   [metabase.collections.schema :as collections.schema]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.db :as permissions.db]
@@ -177,6 +176,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -443,11 +443,16 @@
                {:metabase.collections.models.collection.root/is-root? true
                 :namespace                                            nil}))})))
 
+(mr/def ::read-checked-instance
+  "A Collection, or any other content row with a `:collection_id`, whose read access [[can-read-audit-helper]]
+  audits: hydrated views and search hits carry columns from other models, so this stays open."
+  [:map {:closed false, ::mr/deliberately-open true}])
+
 ;;; TODO -- this is a predicate function that returns truthy or falsey, it should end in a `?` -- Cam
 (mu/defn can-read-audit-helper
   "Audit instances should only be readable if audit app is enabled."
   [model    :- [:= :model/Collection]
-   instance :- ::collections.schema/collection]
+   instance :- ::read-checked-instance]
   (if (and (not (premium-features/enable-audit-app?))
            (case model
              :model/Collection (audit/is-collection-id-audit? (:id instance))

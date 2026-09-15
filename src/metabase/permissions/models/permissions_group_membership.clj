@@ -6,10 +6,11 @@
    [metabase.permissions.db :as permissions.db]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.schema :as permissions.schema]
-   [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -118,6 +119,14 @@
     (dissoc membership
             :__test-only-sigil-allowing-direct-insertion-of-permissions-group-memberships)))
 
+(mr/def ::user-or-id
+  "A User ID, or anything with one: a full User row, or the partial selects some auth-sync flows (LDAP/SAML/JWT/
+  OIDC) pass. Deliberately open, since only `:id` is read off it."
+  [:or
+   pos-int?
+   [:map {:closed false, ::mr/deliberately-open true}
+    [:id ms/PositiveInt]]])
+
 (mu/defn add-users-to-groups!
   "Creates permission group memberships from aa sequence of maps of users, groups and is-group-manager?."
   [pgms :- [:sequential
@@ -125,9 +134,7 @@
              [:group [:or
                       pos-int?
                       ::permissions.schema/permissions-group]]
-             [:user [:or
-                     pos-int?
-                     ::users.schema/user]]
+             [:user ::user-or-id]
              [:is-group-manager? {:optional true}
               :boolean]]]]
   (when (seq pgms)

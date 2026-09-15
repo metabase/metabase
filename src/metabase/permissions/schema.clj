@@ -63,12 +63,15 @@
    [:remark     {:optional true} [:maybe :string]]])
 
 (mr/def ::collection-permission-graph-revision.before
-  "The `:before` column of a CollectionPermissionGraphRevision, decoded."
-  [:or ms/OpaqueJSONObject :string])
+  "The `:before` column of a CollectionPermissionGraphRevision, decoded: a permissions-graph snapshot this code
+  stores and echoes back but never reads by key, so its shape (group/namespace/collection ids as keys) is
+  deliberately left open."
+  [:or [:map {:closed false, ::mr/deliberately-open true}] :string])
 
 (mr/def ::collection-permission-graph-revision.after
-  "The `:after` column of a CollectionPermissionGraphRevision, decoded."
-  [:or ms/OpaqueJSONObject :string])
+  "The `:after` column of a CollectionPermissionGraphRevision, decoded: same shape as
+  [[collection-permission-graph-revision.before]]."
+  [:or [:map {:closed false, ::mr/deliberately-open true}] :string])
 
 (mr/def ::collection-permission-graph-revision
   "A CollectionPermissionGraphRevision as selected from the app DB: every column of `:collection_permission_graph_revision`."

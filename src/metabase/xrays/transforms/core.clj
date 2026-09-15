@@ -142,8 +142,10 @@
   [:sequential
    [:and
     (ms/InstanceOf :model/Table)
-    [:map {:closed true}
-     [:domain_entity [:maybe ::domain-entities.specs/instantiated-domain-entity]]]]])
+    [:merge
+     :metabase.warehouse-schema.schema/table
+     [:map {:closed true}
+      [:domain_entity [:maybe ::domain-entities.specs/instantiated-domain-entity]]]]]])
 
 (mu/defn- find-tables-with-domain-entity :- Tableset
   [tableset           :- Tableset

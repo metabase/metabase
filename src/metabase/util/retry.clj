@@ -15,7 +15,8 @@
    [:initial-interval-millis  :int]
    [:multiplier               :float]
    [:jitter-factor            :float]
-   [:max-interval-millis      :int]])
+   [:max-interval-millis      :int]
+   [:delay-ms                 {:optional true} :int]])
 
 (mr/def ::retry-overrides
   (mut/optional-keys [:ref ::retry-config]))

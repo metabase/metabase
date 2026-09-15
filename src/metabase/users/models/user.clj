@@ -2,7 +2,6 @@
   (:require
    [clojure.data :as data]
    [clojure.string :as str]
-   [malli.util :as mut]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
@@ -20,6 +19,7 @@
    [metabase.util.i18n :as i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -370,31 +370,37 @@
 
 (def ^:private CurrentUserRow
   "The shape of the current user (see [[metabase.request.session/find-user]]): a `current-user-columns` row plus
-  `:common_name`, before [[add-attributes]] adds `:attributes`."
+  `:common_name`, before [[add-attributes]] adds `:attributes`. Only `:type` is required: [[add-attributes]] reads
+  just `:type`/`:login_attributes`/`:jwt_attributes` and otherwise passes the row through unchanged, so unit tests
+  exercising just that merge logic pass a bare `{:type ... :login_attributes ... :jwt_attributes ...}` map."
   [:map {:closed true}
-   [:id               ms/PositiveInt]
-   [:email            ms/Email]
-   [:first_name       [:maybe ms/NonBlankString]]
-   [:last_name        [:maybe :string]]
-   [:common_name      [:maybe :string]]
-   [:date_joined      ms/TemporalInstant]
-   [:last_login       [:maybe ms/TemporalInstant]]
-   [:is_superuser     :boolean]
-   [:is_active        :boolean]
-   [:is_qbnewb        :boolean]
-   [:is_data_analyst  :boolean]
-   [:tenant_id        [:maybe ms/PositiveInt]]
-   [:sso_source       [:maybe [:or :keyword :string]]]
-   [:updated_at       ms/TemporalInstant]
-   [:login_attributes [:maybe users.schema/LoginAttributes]]
-   [:jwt_attributes   [:maybe users.schema/LoginAttributes]]
-   [:locale           [:maybe :string]]
+   [:id               {:optional true} ms/PositiveInt]
+   [:email            {:optional true} ms/Email]
+   [:first_name       {:optional true} [:maybe ms/NonBlankString]]
+   [:last_name        {:optional true} [:maybe :string]]
+   [:common_name      {:optional true} [:maybe :string]]
+   [:date_joined      {:optional true} ms/TemporalInstant]
+   [:last_login       {:optional true} [:maybe ms/TemporalInstant]]
+   [:is_superuser     {:optional true} :boolean]
+   [:is_active        {:optional true} :boolean]
+   [:is_qbnewb        {:optional true} :boolean]
+   [:is_data_analyst  {:optional true} :boolean]
+   [:tenant_id        {:optional true} [:maybe ms/PositiveInt]]
+   [:sso_source       {:optional true} [:maybe [:or :keyword :string]]]
+   [:updated_at       {:optional true} ms/TemporalInstant]
+   [:login_attributes {:optional true} [:maybe users.schema/LoginAttributes]]
+   [:jwt_attributes   {:optional true} [:maybe users.schema/LoginAttributes]]
+   [:locale           {:optional true} [:maybe :string]]
    [:type             (into [:enum] allowed-user-types)]])
 
 (def ^:private Invitor
-  "Map with info about the admin creating the user, used in the new user notification code. Callers pass the
-  current user with `:attributes` already added."
-  (mut/assoc CurrentUserRow :attributes users.schema/LoginAttributes))
+  "Info about the admin creating the user, used in the new user notification code: only `:email`/`:first_name` are
+  read, so this accepts either a full current user (with `:attributes` already added) or just a display-name/email
+  pair, whichever a caller has on hand."
+  [:map {:closed false, ::mr/deliberately-open true,
+         :description "invitor: at least an :email, plus optionally :first_name and other current-user fields"}
+   [:email      {:optional true} [:maybe ms/Email]]
+   [:first_name {:optional true} [:maybe ms/NonBlankString]]])
 
 (defn serdes-synthesize-user!
   "Creates a new user with a default password, when deserializing eg. a `:creator_id` field whose email address doesn't

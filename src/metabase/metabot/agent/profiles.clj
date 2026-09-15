@@ -78,6 +78,7 @@
                [:name :keyword]
                [:prompt-template :string]
                [:max-iterations :int]
+               [:temperature {:optional true} [:maybe number?]]
                [:tools [:vector tool-var-schema]]
                [:always-on-skills {:optional true} [:vector :keyword]]
                [:skills? {:optional true} :boolean]

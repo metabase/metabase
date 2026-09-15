@@ -15,7 +15,8 @@
    [:moderated_item_id   ms/PositiveInt]
    [:moderated_item_type [:or :keyword :string]]
    [:moderator_id        ms/PositiveInt]
-   [:most_recent         :boolean]])
+   [:most_recent         :boolean]
+   [:user                {:optional true} [:maybe :metabase.users.schema/user]]])
 
 (mr/def ::moderation-review.update
   "What an update (or insert) of a ModerationReview accepts: every column of `:moderation_review` except `id`, all optional."

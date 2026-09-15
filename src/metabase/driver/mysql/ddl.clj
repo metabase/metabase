@@ -1,5 +1,5 @@
 (ns metabase.driver.mysql.ddl
-  (:refer-clojure :exclude [some])
+  (:refer-clojure :exclude [some select-keys])
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
@@ -13,7 +13,7 @@
    [metabase.driver.sql.ddl :as sql.ddl]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [metabase.util.performance :refer [some]])
+   [metabase.util.performance :refer [select-keys some]])
   (:import
    (java.sql SQLNonTransientConnectionException)))
 
@@ -102,7 +102,7 @@
 
 (defmethod ddl.i/check-can-persist :mysql
   [{driver :engine, :as database}]
-  (let [schema-name (ddl.i/schema-name database (driver-api/site-uuid))
+  (let [schema-name (ddl.i/schema-name (select-keys database [:id]) (driver-api/site-uuid))
         table-name (format "persistence_check_%s" (rand-int 10000))
         db-spec (sql-jdbc.conn/db->pooled-connection-spec database)
         steps [[:persist.check/create-schema

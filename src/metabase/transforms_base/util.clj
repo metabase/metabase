@@ -587,7 +587,8 @@
   [:map {:closed true}
    [:name :string]
    [:type ::lib.schema.common/base-type]
-   [:nullable? {:optional true} :boolean]])
+   [:nullable? {:optional true} :boolean]
+   [:database-type {:optional true} [:maybe :string]]])
 
 (mr/def ::table-definition
   [:map {:closed true}
@@ -798,11 +799,13 @@
   (and (map? v) (nil? (:table_id v))))
 
 (mr/def ::source-table-entry
-  "A source table entry in the array format. Combines alias with table reference."
+  "A source table entry in the array format. Combines alias with table reference. Callers may supply just
+  `:table_id` (looked up to fill in `:database_id`/`:schema`/`:table`) or just
+  `:database_id`/`:schema`/`:table` (looked up to fill in `:table_id`), so only `:alias` is required."
   [:map {:closed true}
    [:alias :string]
-   [:database_id :int]
-   [:schema [:maybe :string]]
+   [:database_id {:optional true} [:maybe :int]]
+   [:schema {:optional true} [:maybe :string]]
    [:table {:optional true} :string]
    [:table_id {:optional true} [:maybe :int]]])
 
@@ -812,7 +815,7 @@
   For entries with only :database_id/:schema/:table, looks up :table_id.
   Throws if an integer table ID references a non-existent table.
   Map refs with non-existent tables get nil table_id (resolved later at execute time)."
-  [source-tables :- [:sequential [:map {:closed true} [:alias :string]]]]
+  [source-tables :- [:sequential ::source-table-entry]]
   (let [;; Entries that have table_id but lack table metadata need lookup
         needs-metadata   (filter (fn [e] (and (:table_id e) (not (:table e)))) source-tables)
         int-id->metadata (when (seq needs-metadata)

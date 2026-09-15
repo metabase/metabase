@@ -68,7 +68,7 @@
   "Get param values for the \"old style\" parameters. This mimic's the api/dashboard version except we don't have
   dashcards to worry about. With `constraints`, values are chain-filtered to the rows those constraints match, the
   same way the dashboard version filters on its other parameter values."
-  [card         :- ::queries.schema/card
+  [card         :- [:maybe ::queries.schema/card]
    param        :- ::parameters.schema/parameter
    query-string :- [:maybe :string]
    constraints  :- [:maybe ::chain-filter/constraints]]

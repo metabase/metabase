@@ -270,7 +270,6 @@
 
 (def ^:private CardInDashboard
   [:map {:closed true}
-   [:card_id          :metabase.lib.schema.id/card]
    [:name             :string]
    [:collection_id    [:maybe :metabase.lib.schema.id/collection]]
    [:description      [:maybe :string]]

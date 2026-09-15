@@ -6,6 +6,7 @@
    [metabase.channel.render.js.renderer :as renderer]
    [metabase.formatter.core :as formatter]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
@@ -15,9 +16,13 @@
   being handed to the JS color picking code. Currently it just needs column names from `:cols`, and the query results
   from `:rows`"
   [:map {:closed true}
-   [:cols [:sequential [:map {:closed true}
+   [:cols [:sequential [:map {:closed false, ::mr/deliberately-open true,
+                              :description "a query result column; only :name is read here"}
                         [:name :string]]]]
-   [:rows [:sequential [:sequential ms/FieldValue]]]])
+   [:rows [:sequential [:sequential
+                        [:or ms/FieldValue
+                         (ms/InstanceOfClass metabase.formatter.impl.NumericWrapper)
+                         (ms/InstanceOfClass metabase.formatter.impl.TextWrapper)]]]]])
 
 (def ^:private Cell
   "One cell to color: its value (possibly a formatter wrapper), its row index (row-highlight rules read the whole row
@@ -61,7 +66,7 @@
   string (hex or `rgba()`) or nil for cells no rule matches. The coloring rules come from `:table.column_formatting`
   in `viz-settings` (row-highlight rules are disabled when `:table.pivot` is set)."
   [{:keys [cols rows]} :- QueryResults
-   viz-settings :- ms/VisualizationSettings
+   viz-settings :- [:maybe ms/VisualizationSettings]
    cells :- [:sequential Cell]]
   (if (or (empty? cells)
           (empty? (or (:table.column_formatting viz-settings)

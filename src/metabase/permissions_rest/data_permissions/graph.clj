@@ -628,7 +628,10 @@
   ([ks        :- [:vector [:or :int :string :keyword]]
     new-value :- [:or
                   ::permissions.schema/data-permission-value
-                  [:map-of ::permissions.schema/data-permission-type ::permissions.schema/data-permission-value]]]
+                  [:map-of ::permissions.schema/data-permission-type ::permissions.schema/data-permission-value]
+                  [:schema {::mr/deliberately-open true
+                            :description "Any other value assoc-in'd at an arbitrary REPL/test path, e.g. :all for a :schemas path."}
+                   :any]]]
    (-> (api-graph)
        :groups
        (assoc-in ks new-value)
@@ -658,7 +661,10 @@
   ([ks        :- [:vector [:or :int :string :keyword]]
     new-value :- [:or
                   ::permissions.schema/data-permission-value
-                  [:map-of ::permissions.schema/data-permission-type ::permissions.schema/data-permission-value]]]
+                  [:map-of ::permissions.schema/data-permission-type ::permissions.schema/data-permission-value]
+                  [:schema {::mr/deliberately-open true
+                            :description "Any other value assoc-in'd at an arbitrary REPL/test path, e.g. :all for a :schemas path."}
+                   :any]]]
    (-> (api-graph)
        (assoc-in (cons :groups ks) new-value)
        update-data-perms-graph!)))

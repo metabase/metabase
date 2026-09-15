@@ -22,8 +22,12 @@
   [:multi
    {:dispatch t2/model}
    [:xrays/Metric [:ref ::metric]]
-   [::mc/default  [:map {:closed true}
-                   [:name {:optional true} :string]]]])
+   [::mc/default  [:schema
+                   {:closed false, ::mr/deliberately-open true,
+                    :description "Any x-rayable entity (Table, Field, Segment, Card, ad-hoc Query, or another
+                    entity-shaped map produced along the way) other than an :xrays/Metric -- too many shapes flow
+                    through here to enumerate as a closed map."}
+                   [:map [:name {:optional true} :string]]]]])
 
 (mr/def ::filter-clause
   [:and
@@ -49,7 +53,13 @@
    [:comparison-name            {:optional true} [:maybe ::string-or-18n-string]]
    [:source                     {:optional true} [:maybe ::source]]
    [:url                        {:optional true} :string]
-   [:dashboard-templates-prefix {:optional true} [:sequential :string]]])
+   [:dashboard-templates-prefix {:optional true} [:sequential :string]]
+   ;; `automagic-dashboard` merges `automagic-analysis`'s `opts` (see `::automagic-analysis.opts`) straight into the
+   ;; root map before passing it along, so root also needs to tolerate these opts keys.
+   [:comparison?                {:optional true} [:maybe :boolean]]
+   [:rules-prefix               {:optional true} [:maybe [:sequential :string]]]
+   [:dashboard-template         {:optional true} [:maybe [:sequential :string]]]
+   [:show                       {:optional true} [:maybe [:or pos-int? [:= :all]]]]])
 
 (mr/def ::source
   [:or
@@ -59,7 +69,8 @@
                    qualified-keyword?
                    [:fn
                     {:error/message ":entity/ keyword"}
-                    #(= (namespace %) "entity")]]]]])
+                    #(= (namespace %) "entity")]]]
+    [:fields {:optional true} [:sequential ::field]]]])
 
 (mr/def ::context
   "The big ball of mud data object from which we generate x-rays"
@@ -72,6 +83,21 @@
 (mr/def ::query
   "Schema for the type of MBQL queries handled by X-Rays."
   [:ref ::lib.schema/query])
+
+(mr/def ::adhoc-question
+  "The ad-hoc \"question\" wrapper automagic-dashboards builds for a raw query that is not backed by a saved Card
+  (see [[metabase.xrays.api.automagic-dashboards/adhoc-query-instance]])."
+  [:map {:closed true}
+   [:dataset_query ::query]
+   [:database-id   {:optional true} ::lib.schema.id/database]
+   [:table-id      {:optional true} [:maybe ::lib.schema.id/table]]])
+
+(mr/def ::card-or-question
+  "Either a Card row, or the [[::adhoc-question]] wrapper for a raw query. Several helpers in
+  [[metabase.xrays.automagic-dashboards.core]] duck-type over both."
+  [:or
+   :metabase.queries.schema/card
+   ::adhoc-question])
 
 (mr/def ::external-op
   [:merge
@@ -148,10 +174,9 @@
    ::filter-value])
 
 (mr/def ::item
-  "A \"thing\" that we bind to, consisting, generally, of at least a name and id"
-  [:map {:closed true}
-   [:id {:optional true} nat-int?]
-   [:name {:optional true} string?]])
+  "A \"thing\" that we bind to: the same shape as [[::field]], a source row merged with the dimension-template and
+  grounding keys that matched it."
+  ::field)
 
 (mr/def ::dim-name->dim-def
   "A map of dimension name to dimension definition."
@@ -215,17 +240,17 @@
     [:card-name     {:optional true} :string]
     [:height        {:optional true} number?]
     [:width         {:optional true} number?]
-    [:title         {:optional true} :string]
+    [:title         {:optional true} [:maybe ::string-or-18n-string]]
     [:visualization {:optional true} [:tuple :string ms/VisualizationSettings]]
     [:metrics       {:optional true} [:sequential :string]]
     [:filters       {:optional true} [:sequential :string]]
-    [:description   {:optional true} :string]
+    [:description   {:optional true} [:maybe ::string-or-18n-string]]
     [:dimensions    {:optional true} [:sequential [:map-of :string [:map {:closed true}
                                                                     [:aggregation {:optional true} :string]]]]]
     ;; HUH??
     [:order_by      {:optional true} [:sequential [:map-of :string [:enum "ascending" "descending"]]]]
     [:limit         {:optional true} pos-int?]
-    [:x_label       {:optional true} :string]
+    [:x_label       {:optional true} [:maybe ::string-or-18n-string]]
     [:metric-definition
      [:merge
       ::grounded-metric.definition
@@ -240,19 +265,45 @@
    [:filter-name :string]])
 
 (mr/def ::field
+  "A field-like value X-Rays binds to a dimension: a real Field (or Table) row, merged with whatever the grounding
+  process annotates it with (:db, :link, :field_type, :score, :named, :max_cardinality, :card-score,
+  :xrays/database-id, ...). As mentioned elsewhere X-Rays does some kind of insane nonsense and creates fields with
+  types like `:type/GenericNumber` when instantiating templates, so there are too many shapes to enumerate as a
+  closed map."
   [:and
-   [:map {:closed true}
-    ;; as mentioned elsewhere X-Rays does some kind of insane nonsense and creates fields with types like
-    ;; `:type/GenericNumber` when instantiating templates
-    [:base_type {:optional true} ::lib.schema.common/base-type]]
+   [:schema {:closed false, ::mr/deliberately-open true} :map]
    [:fn
     {:error/message "Should be a field with snake_case keys"}
     (complement :base-type)]])
 
 (mr/def ::card
+  "A \"card\" as it flows through the dashboard-building pipeline: the keys [[metabase.xrays.automagic-dashboards
+  .populate/add-normal-dashcard]] builds it with, plus the render-stage additions
+  [[metabase.xrays.automagic-dashboards.comparison/dashboard->cards]] assocs onto it."
   [:map {:closed true}
-   [:id            {:optional true} [:or symbol? ::lib.schema.id/card]]
-   [:dataset_query {:optional true} ::query]])
+   [:id                     {:optional true} [:or symbol? ::lib.schema.id/card]]
+   [:dataset_query          {:optional true} ::query]
+   [:creator_id             {:optional true} [:maybe ::lib.schema.id/user]]
+   [:description            {:optional true} [:maybe :string]]
+   [:name                   {:optional true} [:maybe :string]]
+   [:collection_id          {:optional true} [:maybe ::lib.schema.id/collection]]
+   [:display                {:optional true} [:maybe [:or :keyword :string]]]
+   [:visualization_settings {:optional true} ms/VisualizationSettings]
+   [:query_type             {:optional true} [:maybe [:or :keyword :string]]]
+   [:database_id            {:optional true} [:maybe ::lib.schema.id/database]]
+   [:table_id               {:optional true} [:maybe ::lib.schema.id/table]]
+   [:text                   {:optional true} [:maybe :string]]
+   [:series                 {:optional true} [:sequential [:ref ::card]]]
+   [:height                 {:optional true} number?]
+   [:position               {:optional true} number?]])
+
+(mr/def ::parameter-mapping
+  "One entry of a dashcard's `:parameter_mappings`, as
+  [[metabase.xrays.automagic-dashboards.filters/add-filter]] builds it."
+  [:map {:closed true}
+   [:parameter_id :string]
+   [:target       ::lib.schema.common/possibly-unnormalized-clause]
+   [:card_id      {:optional true} [:or symbol? ::lib.schema.id/card]]])
 
 (mr/def ::dashcard
   [:map {:closed true}
@@ -265,7 +316,11 @@
    [:size_y                 {:optional true} pos-int?]
    [:visualization_settings {:optional true} ms/VisualizationSettings]
    [:title                  {:optional true} string?]
-   [:card-score             {:optional true} number?]])
+   [:card-score             {:optional true} number?]
+   [:dashboard_tab_id       {:optional true} [:maybe :int]]
+   [:creator_id             {:optional true} [:maybe ::lib.schema.id/user]]
+   [:series                 {:optional true} [:maybe [:sequential ::card]]]
+   [:parameter_mappings     {:optional true} [:sequential ::parameter-mapping]]])
 
 (mr/def ::dashboard-parameter
   "A filter widget [[metabase.xrays.automagic-dashboards.filters/add-filters]] adds to a dashboard."
@@ -304,7 +359,7 @@
    [:related            {:optional true} ::related]
    [:more               {:optional true} [:maybe :string]]
    [:transient_filters  {:optional true} [:maybe [:sequential ::filter-clause]]]
-   [:param_fields       {:optional true} [:map-of :string [:sequential ::item]]]
+   [:param_fields       {:optional true} [:maybe [:map-of :string [:sequential ::item]]]]
    [:auto_apply_filters {:optional true} :boolean]])
 
 (mr/def ::card-template
@@ -328,7 +383,16 @@
   "This is somewhat different [[metabase.xrays.automagic-dashboards.schema/DashboardTemplate]], I haven't exactly worked
   out what the schema is supposed to be yet."
   [:map {:closed true}
-   [:cards {:optional true} [:maybe [:sequential ::card-template]]]])
+   [:cards           {:optional true} [:maybe [:sequential ::card-template]]]
+   [:title           {:optional true} [:maybe ::string-or-18n-string]]
+   [:transient_title {:optional true} [:maybe ::string-or-18n-string]]
+   [:description     {:optional true} [:maybe ::string-or-18n-string]]
+   [:filters         {:optional true} [:sequential ::item]]
+   [:groups          {:optional true} [:maybe [:map-of :string [:map {:closed true}
+                                                                [:title             {:optional true} ::string-or-18n-string]
+                                                                [:score             {:optional true} :int]
+                                                                [:comparison_title  {:optional true} [:maybe ::string-or-18n-string]]
+                                                                [:description       {:optional true} [:maybe ::string-or-18n-string]]]]]]])
 
 (mr/def ::grounded-values
   [:map

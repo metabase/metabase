@@ -1169,12 +1169,24 @@
     :meta    {:formula-version 1 :format-version 1 :synonym-threshold 0.8 :weights complexity/weights}}
    {:metabase-enterprise.data-complexity-score.complexity/snowplow-published? published?}))
 
+(def ^:private zero-leaf
+  "A minimal, schema-valid `::data-complexity-score.leaf`."
+  {:measurement 0.0 :score 0})
+
+(def ^:private zero-catalog
+  "A minimal, schema-valid `::data-complexity-score.catalog` with all sub-scores zeroed out."
+  {:score 0
+   :components {:size      {:score 0 :components {:entity-count zero-leaf :field-count zero-leaf}}
+                :ambiguity {:score 0 :components {:name-collisions   zero-leaf
+                                                  :synonym-pairs     zero-leaf
+                                                  :repeated-measures zero-leaf}}}})
+
 (defn- labeled-score
   "A full, valid `score-data` map carrying `label` in `:text-variant` so a test can tell rows apart."
   [label]
-  {:library  {:score 0 :components {}}
-   :universe {:score 0 :components {}}
-   :metabot  {:score 0 :components {}}
+  {:library  zero-catalog
+   :universe zero-catalog
+   :metabot  zero-catalog
    :meta     {:formula-version   1
               :format-version    1
               :synonym-threshold 0.8

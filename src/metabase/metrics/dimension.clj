@@ -235,7 +235,7 @@
 (mu/defn dimension-values :- ms/FieldValuesResult
   "Fetch values for a dimension given its UUID.
    Uses the same logic as the field values API."
-  [dimensions         :- [:maybe [:sequential ::lm.schema/metadata-dimension]]
+  [dimensions         :- [:maybe [:sequential ::lm.schema/dimension]]
    dimension-mappings :- [:maybe [:sequential ::lm.schema/dimension-mapping]]
    dimension-id       :- :string]
   (let [field-id (lib-metric/resolve-dimension-to-field-id dimensions dimension-mappings dimension-id)
@@ -244,7 +244,7 @@
 
 (mu/defn dimension-search-values :- [:sequential [:vector :string]]
   "Search for values of a dimension that contain the query string."
-  [dimensions         :- [:maybe [:sequential ::lm.schema/metadata-dimension]]
+  [dimensions         :- [:maybe [:sequential ::lm.schema/dimension]]
    dimension-mappings :- [:maybe [:sequential ::lm.schema/dimension-mapping]]
    dimension-id       :- :string
    query-string       :- ms/NonBlankString]
@@ -254,7 +254,7 @@
 (mu/defn dimension-remapped-value :- [:or [:tuple :any] [:tuple :any :string]]
   "Get the remapped value for a specific dimension value.
    Returns a pair like [value display-name] if remapping exists, or just [value] otherwise."
-  [dimensions         :- [:maybe [:sequential ::lm.schema/metadata-dimension]]
+  [dimensions         :- [:maybe [:sequential ::lm.schema/dimension]]
    dimension-mappings :- [:maybe [:sequential ::lm.schema/dimension-mapping]]
    dimension-id       :- :string
    value              :- :string]

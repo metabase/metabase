@@ -9,7 +9,6 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -42,7 +41,7 @@
     (let [to-insert (remove #(and (nil? (:value %)) (nil? (:default %))) parameters)]
       (t2/with-transaction [_conn]
         (doseq [batch (partition-all 1000 parameters)]
-          (users.db/delete-user-parameter-values! batch))
+          (users.db/delete-user-parameter-values! (map #(select-keys % [:user_id :dashboard_id :parameter_id]) batch)))
         (doseq [batch (partition-all 1000 to-insert)]
           (users.db/insert-user-parameter-values! (map #(select-keys % [:user_id :dashboard_id :parameter_id :value]) batch)))))))
 
@@ -71,11 +70,7 @@
   "Asynchronously delete params with a nil `value` and upsert the rest."
   [user-id         :- pos-int?
    dashboard-id    :- pos-int?
-   parameters      :- [:sequential [:map {:closed true}
-                                    [:id      [:string {:min 1}]]
-                                    ;; TODO -- not sure whether these are optional or not
-                                    [:value   {:optional true} [:or ms/FieldValue [:sequential ms/FieldValue]]]
-                                    [:default {:optional true} [:or ms/FieldValue [:sequential ms/FieldValue]]]]]]
+   parameters      :- [:sequential :metabase.parameters.schema/parameter-with-value]]
   (when (setting/get :dashboards-save-last-used-parameters)
     (grouper/submit! @user-parameter-value-queue {:user-id      user-id
                                                   :dashboard-id dashboard-id

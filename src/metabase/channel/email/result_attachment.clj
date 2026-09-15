@@ -16,12 +16,23 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.performance :as perf])
   (:import
    (java.io File IOException OutputStream)))
 
 (set! *warn-on-reflection* true)
+
+(mr/def ::qp-results
+  "A QP result map, passed through whole to the streaming writer's `begin!`/`finish!` (which may read any of its
+  keys), so only the keys read directly here are declared."
+  [:map {:closed false, ::mr/deliberately-open true, :description "a QP result map, in the :api export shape"}
+   [:database_id ::lib.schema.id/database]
+   [:row_count   {:optional true} [:maybe :int]]
+   [:data        {:optional true} [:maybe [:map {:closed false, ::mr/deliberately-open true,
+                                                 :description "the :data of a QP result"}
+                                           [:rows {:optional true} [:maybe [:sequential [:sequential ms/FieldValue]]]]]]]])
 
 (mu/defn- stream-api-results-to-export-format!
   "For legacy compatibility. Takes QP results in the normal `:api` response format and streams them to a different
@@ -40,8 +51,7 @@
                                                                      [:format-rows?     {:optional true} [:maybe :boolean]]
                                                                      [:pivot?           {:optional true} [:maybe :boolean]]
                                                                      [:csv-include-bom? {:optional true} [:maybe :boolean]]]
-   {{:keys [rows]} :data, database-id :database_id, :as results} :- [:map {:closed true}
-                                                                     [:database_id ::lib.schema.id/database]]]
+   {{:keys [rows]} :data, database-id :database_id, :as results} :- ::qp-results]
   ;; make sure Database/driver info is available for the streaming results writers -- they might need this in order to
   ;; get timezone information when writing results
   (log/debugf "Streaming results to %s with %d rows" export-format (:row_count results))

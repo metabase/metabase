@@ -31,7 +31,8 @@
    :metabase.segments.schema/segment
    ::queries.schema/card
    :metabase.warehouse-schema.schema/field
-   ::queries.schema/query])
+   ::queries.schema/query
+   ::ads/adhoc-question])
 
 (mu/defn- dashboard->cards :- [:sequential ::ads/card]
   [dashboard :- ::ads/dashboard]
@@ -64,12 +65,12 @@
    [:id                     {:optional true} [:or symbol? ::lib.schema.id/card]]
    [:dataset_query          {:optional true} ::ads/query]
    [:description            {:optional true} [:maybe :string]]
-   [:display                {:optional true} [:maybe :keyword]]
-   [:name                   {:optional true} :string]
+   [:display                {:optional true} [:maybe [:or :keyword :string]]]
+   [:name                   {:optional true} [:maybe :string]]
    [:result_metadata        {:optional true} [:maybe ::queries.schema/card.result-metadata]]
    [:visualization_settings {:optional true} ms/VisualizationSettings]
    [:text                   {:optional true} [:maybe :string]]
-   [:series                 {:optional true} [:sequential [:ref ::processed-card]]]
+   [:series                 {:optional true} [:maybe [:sequential [:ref ::processed-card]]]]
    [:height                 {:optional true} number?]
    [:position               {:optional true} number?]
    [:collection_id          {:optional true} [:maybe ::lib.schema.id/collection]]
@@ -82,8 +83,14 @@
   "See [[::processed-card]]."
   ::processed-card)
 
+(def ^:private CardOrProcessed
+  "A card as [[metabase.xrays.automagic-dashboards.populate/dashboard->cards]] renders it, or the narrower
+  [[Card]]/[[::processed-card]] shape [[clone-card]] reduces it to. The functions below run on values from either
+  stage of the pipeline."
+  [:or ::ads/card Card])
+
 (mu/defn- display-type :- [:maybe :keyword]
-  [card :- Card]
+  [card :- CardOrProcessed]
   (keyword (:display card)))
 
 (mu/defn- add-filter-clauses :- ::ads/query
@@ -102,23 +109,20 @@
 (mu/defn- inject-filter
   "Inject filter clause into card."
   [{:keys [query-filter cell-query] :as root} :- ::ads/root
-   card                                       :- [:map {:closed true}
-                                                  [:dataset_query ::ads/query]]]
+   card                                       :- CardOrProcessed]
   (-> card
       (update :dataset_query #(add-filter-clauses % (cons cell-query query-filter)))
       (update :series (partial map (partial inject-filter root)))))
 
 (mu/defn- multiseries?
-  [card :- [:map {:closed true}
-            [:dataset_query {:optional true} ::ads/query]]]
+  [card :- CardOrProcessed]
   (or (-> card :series not-empty)
       (when-let [query (not-empty (:dataset_query card))]
         (or (-> query lib/aggregations count (> 1))
             (-> query lib/breakouts count (> 1))))))
 
 (mu/defn- overlay-comparison?
-  [card :- [:map {:closed true}
-            [:dataset_query {:optional true} ::ads/query]]]
+  [card :- CardOrProcessed]
   (and (-> card display-type (#{:bar :line}))
        (not (multiseries? card))))
 
@@ -212,16 +216,14 @@
     [dashboard (max height-left height-right)]))
 
 (mu/defn- series-labels
-  [card :- [:map {:closed true}
-            [:dataset_query {:optional true} ::ads/query]]]
+  [card :- CardOrProcessed]
   (let [database-id (get-in card [:dataset_query :database])]
     (get-in card [:visualization_settings :graph.series_labels]
             (map (comp capitalize-first (partial names/metric-name database-id))
                  (lib/aggregations (:dataset_query card))))))
 
 (mu/defn- unroll-multiseries
-  [card :- [:map {:closed true}
-            [:dataset_query {:optional true} ::ads/query]]]
+  [card :- CardOrProcessed]
   (if (and (multiseries? card)
            (-> card :display (= :line)))
     (for [[aggregation label] (map vector

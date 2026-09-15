@@ -37,6 +37,7 @@
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
    [steffan-westcott.clj-otel.api.trace.span :as span]
@@ -264,7 +265,13 @@
   (map #(update-keys % u/->kebab-case-en) cols))
 
 (mu/defn- source-cols
-  [card   :- ::queries.schema/card
+  [card   :- [:map {:closed true}
+              [:visualization_settings {:optional true} [:maybe ::queries.schema/card.visualization-settings]]
+              [:dataset_query          {:optional true} [:maybe ::queries.schema/card.dataset-query]]
+              [:result_metadata        {:optional true}
+               [:maybe [:sequential [:map {:closed false, ::mr/deliberately-open true,
+                                           :description "a query result column; only :name is read here"}
+                                     [:name {:optional true} [:maybe :string]]]]]]]
    source :- [:enum ::breakouts ::aggregations]]
   (if-let [names (get-in card [:visualization_settings (case source
                                                          ::breakouts    :graph.dimensions
@@ -278,10 +285,16 @@
                        ::breakouts    :lib/breakout?
                        ::aggregations #(= (:lib/source %) :source/aggregations))))))
 
+(def ^:private source-cols-keys
+  "The keys of a card [[source-cols]] reads."
+  [:visualization_settings :dataset_query :result_metadata])
+
 (defn- area-bar-line-series-are-compatible?
   [first-card second-card]
   (and (#{:area :line :bar} (:display second-card))
-       (let [initial-dimensions (source-cols first-card ::breakouts)
+       (let [first-card         (select-keys first-card source-cols-keys)
+             second-card        (select-keys second-card source-cols-keys)
+             initial-dimensions (source-cols first-card ::breakouts)
              new-dimensions     (source-cols second-card ::breakouts)
              new-metrics        (source-cols second-card ::aggregations)]
          (cond

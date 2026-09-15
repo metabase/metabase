@@ -389,10 +389,10 @@
      :or   {start      :inclusive
             end        :exclusive
             resolution :millisecond}}
-    :- [:map {:closed true}
-        [:start      {:optional true} [:enum :inclusive :exclusive]]
-        [:end        {:optional true} [:enum :inclusive :exclusive]]
-        [:resolution {:optional true} (into [:enum] add-units)]]]
+    :- [:maybe [:map {:closed true}
+                [:start      {:optional true} [:enum :inclusive :exclusive]]
+                [:end        {:optional true} [:enum :inclusive :exclusive]]
+                [:resolution {:optional true} (into [:enum] add-units)]]]]
    (let [t (truncate t unit)]
      {:start (case start
                :inclusive t

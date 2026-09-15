@@ -104,7 +104,8 @@
    [:is_stub                     {:optional true} [:maybe :boolean]]])
 
 (mr/def ::database-or-metadata
-  "A Database as an app DB row or as Lib metadata."
-  [:multi {:dispatch (fn [x] (if (:lib/type x) :lib-metadata :row))}
-   [:lib-metadata :metabase.lib.schema.metadata/database]
-   [:row          ::database]])
+  "A Database as an app DB row, as Lib metadata, or as any other database-shaped map (a partial column projection, a
+  hydrated/decorated API row, a hand-built test fixture, ...). Deliberately open: this is only used by driver-dispatch
+  helpers (see `metabase.driver.util`) that defensively tolerate whatever database representation callers have on
+  hand."
+  [:map {:closed false, ::mr/deliberately-open true}])

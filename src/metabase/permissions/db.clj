@@ -13,6 +13,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
@@ -497,8 +498,9 @@
 
 (def ^:private RevisionBeforeAfter
   "The `:before`/`:after` value of a permissions revision insert: a permission-graph snapshot this code stores and
-  echoes back but never reads by key, or the empty-string placeholder some callers write."
-  [:maybe [:or ms/OpaqueJSONObject :string]])
+  echoes back but never reads by key, or the empty-string placeholder some callers write. Deliberately open: it's
+  the pre-JSON-encoding graph (int/keyword keys), not the string-keyed shape it becomes in storage."
+  [:maybe [:or [:schema {::mr/deliberately-open true} :any] :string]])
 
 (mu/defn insert-collection-permission-graph-revision!
   "Insert `revision` into CollectionPermissionGraphRevision."

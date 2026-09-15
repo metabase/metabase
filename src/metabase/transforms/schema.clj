@@ -33,7 +33,7 @@
            :dispatch         (comp keyword :type)}
    [:query
     [:map {:closed true}
-     [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :query]]
+     [:type {:decode/normalize lib.schema.common/normalize-keyword} [:enum :query "query"]]
      [:query ::lib-be.schema/maybe-legacy-query]
      [:source-incremental-strategy {:optional true} ::source-incremental-strategy]]]
    [:python
@@ -41,7 +41,7 @@
      [:source-database {:optional true} :int]
      ;; NB: if source is checkpoint, only one table allowed
      [:source-tables   [:sequential ::transforms-base.u/source-table-entry]]
-     [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :python]]
+     [:type {:decode/normalize lib.schema.common/normalize-keyword} [:enum :python "python"]]
      [:body :string]
      [:source-incremental-strategy {:optional true} ::source-incremental-strategy]]]])
 
@@ -104,12 +104,9 @@
    [:map {:closed true} [:transform ::lib.schema.id/transform]]])
 
 (def ^:private user-summary-schema
-  "The id, email, and name of a User, as `transforms.db/user-summaries-by-id` selects it."
-  [:map {:closed true}
-   [:id         {:optional true} ::lib.schema.id/user]
-   [:email      {:optional true} :string]
-   [:first_name {:optional true} [:maybe :string]]
-   [:last_name  {:optional true} [:maybe :string]]])
+  "A User as `:creator`/`:owner` may be hydrated onto a Transform: either the id/email/name summary
+  `transforms.db/user-summaries-by-id` selects, or a full `t2/hydrate`d User row."
+  [:or :metabase.users.schema/user :metabase.users.schema/user.update])
 
 (mr/def ::transform
   "A Transform as selected from the app DB: every column of `:transform`, plus `:creator`, `:table`, `:last_run`,
@@ -137,7 +134,11 @@
    [:table                 {:optional true} [:maybe [:ref :metabase.warehouse-schema.schema/table]]]
    [:last_run              {:optional true} [:maybe ::transform-run]]
    [:collection            {:optional true} [:maybe :metabase.collections.schema/collection-or-root]]
-   [:owner                 {:optional true} [:maybe user-summary-schema]]])
+   [:owner                 {:optional true} [:maybe user-summary-schema]]
+   [:can_read              {:optional true} :boolean]
+   [:can_write             {:optional true} :boolean]
+   [:can_execute           {:optional true} :boolean]
+   [:tag_ids               {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
 
 (mr/def ::transform.update
   "What an update (or insert) of a Transform accepts: every column of `:transform` except `id`, all optional, plus `:run_trigger` consumed by the model's hooks."

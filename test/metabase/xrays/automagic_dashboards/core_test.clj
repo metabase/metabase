@@ -1600,7 +1600,7 @@
                                                                                                      (meta/field-metadata :orders :id))]))))}}
                           {:card {:dataset_query (lib/query meta/metadata-provider (meta/table-metadata :reviews))}}
                           {:card {:dataset_query (lib/query meta/metadata-provider (meta/table-metadata :reviews))}}
-                          {:viz_settings nil}]}
+                          {}]}
              {:dataset_query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                                  (lib/join (meta/table-metadata :products)))})
             :dashcards
@@ -1620,7 +1620,7 @@
                                                       (lib/expression "Existing" (lib/- 1 1)))}}
                            {:card {:dataset_query (lib/query meta/metadata-provider (meta/table-metadata :venues))}}
                            {:card {:dataset_query (lib/query meta/metadata-provider (meta/table-metadata :venues))}}
-                           {:viz_settings nil}]}
+                           {}]}
               {:dataset_query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                                   (lib/expression "TestColumn" (lib/+ 1 1)))})
              :dashcards

@@ -11,7 +11,6 @@
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
@@ -215,7 +214,7 @@
 (mu/defn ^:private update-table!*
   "Takes an existing table and the changes, updates in the database and optionally calls `table/update-field-positions!`
   if field positions have changed."
-  [{:keys [id] :as existing-table} :- [:map {:closed true} [:id ::lib.schema.id/table]]
+  [{:keys [id] :as existing-table} :- :metabase.warehouse-schema.schema/table
    body                            :- [:or TableUpdateBodySingle TableUpdateBodyBulk]]
   (when-let [changes (-> body
                          (u/select-keys-when

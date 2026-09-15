@@ -49,7 +49,8 @@
   [field :- i/FieldInstance
    table :- i/TableInstance]
   (sync-util/with-error-handling (format "Error classifying data sensitivity for %s" (sync-util/name-for-logging field))
-    (let [category (analyze/infer-data-sensitivity field {:name (:name table) :entity_type (:entity_type table)})]
+    (let [category (analyze/infer-data-sensitivity (select-keys field [:name :base_type :semantic_type :fingerprint])
+                                                   {:name (:name table) :entity_type (:entity_type table)})]
       (sync.db/update-field-data-sensitivity! (u/the-id field) (or category :PUBLIC))
       category)))
 
@@ -87,7 +88,7 @@
   "Label every unscanned Field in every active table of `database`. `log-fn` is accepted for parity with the other
   analyze steps and not called: the step reports per table through the log, not the progress bar."
   [database :- i/DatabaseInstance
-   _log-fn  :- LogProgressFn
+   _log-fn  :- [:maybe LogProgressFn]
    & {:keys [force? ignore-setting?]} :- [:maybe ScanOptions]]
   (if (skip? ignore-setting?)
     zero-stats

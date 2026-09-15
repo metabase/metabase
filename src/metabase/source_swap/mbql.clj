@@ -34,7 +34,7 @@
 
 (mu/defn- walk-clause-field-refs :- :any
   "Walks a clause and applies a function to all `:field` clauses."
-  [clause :- ::lib.schema.expression/expression
+  [clause :- [:or ::lib.schema.expression/expression :metabase.lib.schema.order-by/order-by]
    f      :- fn?]
   (lib.walk/walk-clause clause
                         (fn [clause]
@@ -67,7 +67,7 @@
   "Upgrade all field refs in a list of clauses to use name-based field refs when possible."
   [query               :- ::lib.schema/query
    stage-number        :- :int
-   clauses             :- [:sequential ::lib.schema.expression/expression]
+   clauses             :- [:sequential [:or ::lib.schema.expression/expression :metabase.lib.schema.order-by/order-by]]
    {:keys [distinct?]} :- [:map {:closed true} [:distinct? :boolean]]]
   (into []
         (cond-> (map (fn [clause]
@@ -232,7 +232,7 @@
   [query               :- ::lib.schema/query
    stage-number        :- :int
    field-id-mapping    :- ::field-id-mapping
-   clauses             :- [:sequential ::lib.schema.expression/expression]
+   clauses             :- [:sequential [:or ::lib.schema.expression/expression :metabase.lib.schema.order-by/order-by]]
    {:keys [distinct?]} :- [:map {:closed true} [:distinct? :boolean]]]
   (into []
         (cond-> (map (fn [clause]

@@ -28,11 +28,7 @@
 
 (mu/defn match-key :- ::match-key
   "The [[::match-key]] for a warehouse index map (see the schema for how each kind is keyed)."
-  [{:keys [kind key-columns] am :access-method nm :name} :- [:map {:closed true}
-                                                             [:kind :keyword]
-                                                             [:key-columns [:sequential [:maybe :string]]]
-                                                             [:access-method {:optional true} [:maybe :string]]
-                                                             [:name {:optional true} [:maybe :string]]]]
+  [{:keys [kind key-columns] am :access-method nm :name} :- ::driver/table-index]
   (cond
     (= kind :distkey)                     {:kind :distkey :style am :key-columns key-columns}
     (contains? unnamed-inline-kinds kind) {:kind kind :key-columns key-columns}
@@ -41,9 +37,7 @@
 (mu/defn index-name :- :string
   "Physical index name for a structured def: a named kind's `:name`, else its `:kind` as a string (one inline key per
   transform)."
-  [structured :- [:map {:closed true}
-                  [:name {:optional true} [:maybe :string]]
-                  [:kind [:or :keyword :string]]]]
+  [structured :- ::indexes.schema/index-structured]
   (or (:name structured) (name (:kind structured))))
 
 (mu/defn managed-match-key :- ::match-key
@@ -140,7 +134,7 @@
   "Physical indexes on `table-name` (`schema`) in `database` via `driver/fetch-table-indexes`.
   Returns `nil` if the driver can't introspect indexes or the warehouse is unreachable, so callers can distinguish
   fetch failure from a successful empty index list."
-  [database   :- :metabase.warehouses.schema/database
+  [database   :- [:map {:closed false, ::mr/deliberately-open true} [:engine [:or :keyword :string]]]
    schema     :- [:maybe :string]
    table-name :- :string]
   (try

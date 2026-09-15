@@ -453,18 +453,18 @@
 
 (deftest ^:parallel upstream-deps-document-placeholder-ids-test
   (testing "nil/zero placeholder ids in smartLink and cardEmbed nodes are not collected as deps"
-    (let [document {:content_type "application/json+vnd.prose-mirror"
-                    :document {:type "doc"
-                               :content [{:type "paragraph"
-                                          :content [{:type "smartLink"
-                                                     :attrs {"entityId" nil "model" "card"}}
-                                                    {:type "smartLink"
-                                                     :attrs {"entityId" 0 "model" "dashboard"}}
-                                                    {:type "smartLink"
-                                                     :attrs {"entityId" 17 "model" "card"}}]}
-                                         {:type "cardEmbed" :attrs {"id" nil}}
-                                         {:type "cardEmbed" :attrs {"id" 0}}
-                                         {:type "cardEmbed" :attrs {"id" 23}}]}}]
+    (mt/with-temp [:model/Document document {:content_type "application/json+vnd.prose-mirror"
+                                             :document {:type "doc"
+                                                        :content [{:type "paragraph"
+                                                                   :content [{:type "smartLink"
+                                                                              :attrs {"entityId" nil "model" "card"}}
+                                                                             {:type "smartLink"
+                                                                              :attrs {"entityId" 0 "model" "dashboard"}}
+                                                                             {:type "smartLink"
+                                                                              :attrs {"entityId" 17 "model" "card"}}]}
+                                                                  {:type "cardEmbed" :attrs {"id" nil}}
+                                                                  {:type "cardEmbed" :attrs {"id" 0}}
+                                                                  {:type "cardEmbed" :attrs {"id" 23}}]}}]
       (is (= {:card #{17 23}}
              (calculation/calculate-deps :document document))))))
 

@@ -89,6 +89,7 @@
    [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [potemkin :as p]))
 
@@ -501,14 +502,14 @@
 
 (def ^:private ModelWithPosition
   "Intended to cover Cards/Dashboards/Pulses, it only asserts collection id and position, allowing extra keys"
-  [:map {:closed true}
+  [:map {:closed false, ::mr/deliberately-open true, :description "a Card, Dashboard, or Pulse"}
    [:collection_id       [:maybe ms/PositiveInt]]
    [:collection_position [:maybe ms/PositiveInt]]])
 
 (def ^:private ModelWithOptionalPosition
   "Intended to cover Cards/Dashboards/Pulses updates. Collection id and position are optional, if they are not
   present, they didn't change. If they are present, they might have changed and we need to compare."
-  [:map {:closed true}
+  [:map {:closed false, ::mr/deliberately-open true, :description "a Card, Dashboard, or Pulse update"}
    [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
    [:collection_position {:optional true} [:maybe ms/PositiveInt]]])
 

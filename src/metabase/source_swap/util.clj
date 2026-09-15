@@ -11,7 +11,7 @@
 
 (mu/defn column-match-key :- :string
   "Gets the column match key from a column. This is used to match columns by name or alias."
-  [column :- [:map {:closed true} [:name :string]]]
+  [column :- ::lib.schema.metadata/column]
   (or (:lib/desired-column-alias column) (:name column)))
 
 (mu/defn source-columns :- [:sequential ::lib.schema.metadata/column]

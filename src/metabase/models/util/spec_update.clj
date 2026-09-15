@@ -33,6 +33,10 @@
                              (contains? row k))]
               [k spec]))))
 
+(mr/def ::generic-row
+  "A row of arbitrary shape, whatever the caller-supplied `spec` describes; not fixed by this namespace."
+  [:maybe [:map {:closed false, ::mr/deliberately-open true, :description "shape depends on the caller-supplied spec"}]])
+
 (mr/def ::Spec
   [:schema {:registry {::spec [:map {:closed true}
                                [:model                         :keyword]
@@ -274,8 +278,8 @@
 (mu/defn do-update!
   "Update data in the database based on the diff between existing and new data.
   `spec` defines the structure of the data and how to compare it."
-  [existing-data :- :metabase.notification.models/FullyHydratedNotification
-   new-data      :- :metabase.notification.api.notification/NotificationApiUpdateInput
+  [existing-data :- ::generic-row
+   new-data      :- ::generic-row
    spec          :- ::Spec]
   (t2/with-transaction []
     (do-update!* existing-data new-data spec ["root"])))

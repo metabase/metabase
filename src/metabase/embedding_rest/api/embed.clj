@@ -37,7 +37,11 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private ResourceId [:or ms/PositiveInt ms/NanoIdString])
+(def ^:private ResourceId
+  "An id or entity_id identifying a Card or Dashboard in a JWT `:resource`. `eid-translation/->id` accepts any
+  string here and 404s on ones it can't resolve, so this doesn't restrict strings to the NanoID shape most
+  entity_ids have."
+  [:or ms/PositiveInt ms/NonBlankString])
 (def ^:private Token [:map {:closed true}
                       [:resource [:map {:closed true}
                                   [:question {:optional true} ResourceId]

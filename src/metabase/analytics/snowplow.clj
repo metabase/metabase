@@ -91,7 +91,7 @@
    [:database     {:optional true} [:or :keyword :string]]
    [:database-id  {:optional true} ms/PositiveInt]
    [:source       {:optional true} [:or :keyword :string]]
-   [:dbms-version {:optional true} :string]
+   [:dbms-version {:optional true} [:maybe :string]]
    [:dbms_version {:optional true} :string]])
 
 (def ^:private simple-event-data
@@ -139,6 +139,7 @@
    [:num-columns       {:optional true} :int]
    [:generated-columns {:optional true} :int]
    [:size-mb           {:optional true} number?]
+   [:upload-seconds    {:optional true} number?]
    [:model-id          {:optional true} ms/PositiveInt]])
 
 (def ^:private token-usage-event-data

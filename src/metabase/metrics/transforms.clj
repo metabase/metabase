@@ -15,7 +15,10 @@
   "Normalize a dimension after JSON parsing. Keys are kebab-case and type values are keywords.
   See [[lib-metric.schema/persisted-dimension]]."
   [dim :- [:map {:closed true}
-           [:id                    ::lib-metric.schema/dimension-id]
+           ;; nil until assigned during reconciliation of a computed dimension; see
+           ;; [[metabase.lib-metric.schema/computed-dimension]]
+           [:id                    [:maybe ::lib-metric.schema/dimension-id]]
+           [:lib/source            {:optional true} [:maybe [:or :keyword :string]]]
            [:name                  {:optional true} [:maybe :string]]
            [:display-name          {:optional true} [:maybe :string]]
            [:description           {:optional true} [:maybe :string]]
@@ -59,6 +62,7 @@
    :out (fn [dims]
           (some->> dims
                    mi/json-out-with-keywordization
+                   (remove nil?)
                    (mapv normalize-dimension)))})
 
 (def transform-dimension-mappings

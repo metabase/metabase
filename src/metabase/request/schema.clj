@@ -1,7 +1,12 @@
 (ns metabase.request.schema
   (:require
+   [metabase.server.streaming-response]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms])
+  (:import
+   (metabase.server.streaming_response StreamingResponse)))
+
+(comment metabase.server.streaming-response/keep-me)
 
 ;;; TODO (Cam 8/13/25) -- should this map be closed, that way we can make sure all the keys we might be using are
 ;;; enumerated here?
@@ -14,7 +19,7 @@
    [:is-group-manager?  {:optional true} :boolean]
    [:permissions-set    {:optional true} [:set :string]]
    [:auth-provider      {:optional true} [:maybe :string]]
-   [:settings           {:optional true} ms/UserSettings]])
+   [:settings           {:optional true} [:maybe [:or ms/UserSettings :string]]]])
 
 (mr/def ::json-value
   "A JSON-shaped value: a scalar, a sequence of JSON values, or a string-keyed JSON object."
@@ -62,7 +67,7 @@
    [:ssl-client-cert         {:optional true} [:maybe (ms/InstanceOfClass java.security.cert.X509Certificate)]]
    [:headers                 {:optional true} [:map-of :string [:maybe :string]]]
    [:body                    {:optional true} [:maybe [:or (ms/InstanceOfClass java.io.InputStream) ms/RingRequestBody]]]
-   [:query-params            {:optional true} [:map-of :string [:or :string [:sequential :string]]]]
+   [:query-params            {:optional true} [:map-of :string [:maybe [:or :string [:sequential :string]]]]]
    [:form-params             {:optional true} [:map-of :string [:or :string [:sequential :string]]]]
    [:multipart-params        {:optional true} [:map-of :string [:or :string ::multipart-file]]]
    [:route-params            {:optional true} ms/RingRequestParams]
@@ -80,7 +85,7 @@
    [:anti-csrf-token         {:optional true} [:maybe :string]]
    [:metabase-user-id        {:optional true} [:maybe :int]]
    [:metabase-request-id     {:optional true} [:maybe :string]]
-   [:request-id              {:optional true} [:maybe :uuid]]
+   [:request-id              {:optional true} [:maybe [:or :uuid :string]]]
    [:browser-id              {:optional true} [:maybe :string]]
    [:static-metabase-api-key {:optional true} [:maybe :string]]
    [:nonce                   {:optional true} [:maybe :string]]
@@ -93,7 +98,22 @@
    [:metabase.server.middleware.offset-paging/limit  {:optional true} [:maybe :int]]
    [:metabase.server.middleware.offset-paging/offset {:optional true} [:maybe :int]]
    [:accept                  {:optional true} [:maybe :string]]
-   [:redirect-strategy       {:optional true} [:maybe :keyword]]])
+   [:redirect-strategy       {:optional true} [:maybe :keyword]]
+   [:method                  {:optional true} [:maybe :keyword]]
+   [:compojure/route         {:optional true} [:maybe [:tuple :keyword :string]]]
+   [:remember                {:optional true} [:maybe :string]]
+   [:slack/validated?        {:optional true} :boolean]
+   [:token-scopes            {:optional true} [:maybe [:set :keyword]]]
+   [:token-scopes-checked    {:optional true} :boolean]
+   [:mcp-ui-session-id       {:optional true} [:maybe :string]]
+   [:mcp-ui-credential       {:optional true} [:maybe
+                                               [:map {:closed true}
+                                                [:v            :int]
+                                                [:uid          :int]
+                                                [:sid          :string]
+                                                [:exp          :int]
+                                                [:scp          {:optional true} [:sequential :string]]
+                                                [:token-scopes {:optional true} [:maybe [:set :keyword]]]]]]])
 
 (mr/def ::response
   "What an endpoint handler can return: JSON-shaped data, a full Ring response map, or a file/stream for downloads."
@@ -109,4 +129,5 @@
                                         (ms/InstanceOfClass java.io.File)
                                         (ms/InstanceOfClass java.io.InputStream)]]]]
    (ms/InstanceOfClass java.io.File)
-   (ms/InstanceOfClass java.io.InputStream)])
+   (ms/InstanceOfClass java.io.InputStream)
+   (ms/InstanceOfClass StreamingResponse)])

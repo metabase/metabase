@@ -254,6 +254,12 @@
 
 ;;; ---------------------------------------------- Other Param Util Fns ----------------------------------------------
 
+(defn- param-id->slug
+  "Build an id->slug lookup from `parameters`, skipping any without a `:slug` — such a parameter can never be
+  looked up by slug, and a nil slug would wreck `set/map-invert`."
+  [parameters]
+  (into {} (comp (filter :slug) (map (juxt :id :slug))) parameters))
+
 (defn- locked-slug->value
   "The `\"locked\"` parameter values carried by the signed JWT. These are supplied by the embedding server rather
   than the client, and are passed to the parameter value lookups as constraints so the values offered for the
@@ -274,11 +280,17 @@
               (map (comp keyword :slug)))
         dashboard-or-card-params))
 
+(mr/def ::has-parameters
+  "A Card or Dashboard row, or any reduced/public projection of one: `enabled-params` only reads and rewrites
+  `:parameters` on it, so every other key is left unconstrained and passed through untouched."
+  [:map {:closed false, ::mr/deliberately-open true}
+   [:parameters {:optional true} [:maybe [:sequential [:map {:closed false} [:slug ms/NonBlankString]]]]]])
+
 (mu/defn- enabled-params
   "Keep only the `:parameters` of `dashboard-or-card` whose slug is listed as `enabled` in the `embedding-params`
   whitelist, so the frontend doesn't display widgets for params (`disabled`, `locked`, or unlisted) the user can't
   set."
-  [dashboard-or-card :- [:or ::dashboards.schema/dashboard :metabase.queries.schema/card]
+  [dashboard-or-card :- ::has-parameters
    embedding-params  :- ms/EmbeddingParams]
   (let [param-slugs-to-keep (enabled-param-slugs (:parameters dashboard-or-card) embedding-params)]
     (update dashboard-or-card :parameters (partial filter #(contains? param-slugs-to-keep (keyword (:slug %)))))))
@@ -394,7 +406,7 @@
 
 (defn- tile-slug->value
   [object-parameters parameter-values]
-  (let [id->slug (into {} (map (juxt :id :slug)) object-parameters)]
+  (let [id->slug (param-id->slug object-parameters)]
     (into {}
           (map (fn [{:keys [id value]}]
                  [(or (get id->slug id)
@@ -522,7 +534,7 @@
   (let [slug-token-params   (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
         parameters          (or (seq (:parameters card))
                                 (queries/card-template-tag-parameters card))
-        id->slug            (into {} (map (juxt :id :slug)) parameters)
+        id->slug            (param-id->slug parameters)
         slug->id            (set/map-invert id->slug)
         searched-param-slug (get id->slug param-key)
         embedding-params    (:embedding_params card)]
@@ -569,7 +581,7 @@
   (let [slug-token-params   (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
         parameters          (or (seq (:parameters card))
                                 (queries/card-template-tag-parameters card))
-        id->slug            (into {} (map (juxt :id :slug)) parameters)
+        id->slug            (param-id->slug parameters)
         slug->id            (set/map-invert id->slug)
         searched-param-slug (get id->slug param-key)
         embedding-params    (:embedding_params card)]
@@ -631,7 +643,7 @@
                                                           published-embedding-params
                                                           (update-keys (get unsigned-token :_embedding_params) name))
                                                          published-embedding-params)
-        id->slug                                       (into {} (map (juxt :id :slug)) parameters)
+        id->slug                                       (param-id->slug parameters)
         slug->id                                       (set/map-invert id->slug)
         searched-param-slug                            (get id->slug searched-param-id)]
     (try
@@ -677,7 +689,7 @@
          _                          (when-not preview (check-embedding-enabled-for-dashboard dashboard))
          slug-token-params          (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
          parameters                 (:parameters dashboard)
-         id->slug                   (into {} (map (juxt :id :slug)) parameters)
+         id->slug                   (param-id->slug parameters)
          slug->id                   (set/map-invert id->slug)
          published-embedding-params (:embedding_params dashboard)
          ;; when previewing an embed, embedding-params should come from the token,

@@ -216,12 +216,14 @@
 (mu/defn format-scalar-number :- (ms/InstanceOfClass NumericWrapper)
   "Format a number `n` and return it as a NumericWrapper; this type is used to do special formatting in other
   `pulse.render` namespaces."
-  ([n :- number?]
-   (map->NumericWrapper {:num-str   (cl-format nil (if (integer? n) "~:d" "~,2f") n)
-                         :num-value n}))
+  ([n :- [:maybe number?]]
+   (map->NumericWrapper (if n
+                          {:num-str   (cl-format nil (if (integer? n) "~:d" "~,2f") n)
+                           :num-value n}
+                          {:num-str "" :num-value nil})))
 
   ([value        :- number?
-    column       :- :metabase.legacy-mbql.schema/legacy-column-metadata
+    column       :- [:or :metabase.legacy-mbql.schema/legacy-column-metadata :metabase.lib.schema.metadata/lib-or-legacy-column]
     viz-settings :- ms/VisualizationSettings]
    (let [fmttr (number-formatter column viz-settings true)]
      (fmttr value))))
@@ -290,11 +292,11 @@
 (mu/defn create-formatter
   "Create a formatter for a column based on its timezone, column metadata, and visualization-settings"
   ([timezone-id            :- [:maybe :string]
-    col                    :- :metabase.legacy-mbql.schema/legacy-column-metadata
+    col                    :- [:maybe [:or :metabase.legacy-mbql.schema/legacy-column-metadata :metabase.lib.schema.metadata/lib-or-legacy-column]]
     visualization-settings :- ms/VisualizationSettings]
    (create-formatter timezone-id col visualization-settings true))
   ([timezone-id            :- [:maybe :string]
-    col                    :- :metabase.legacy-mbql.schema/legacy-column-metadata
+    col                    :- [:maybe [:or :metabase.legacy-mbql.schema/legacy-column-metadata :metabase.lib.schema.metadata/lib-or-legacy-column]]
     visualization-settings :- ms/VisualizationSettings
     apply-formatting?      :- :boolean]
    (cond
@@ -358,7 +360,7 @@
   "Row/col/measure value formatters for a pivot export, keyed by `:row-formatters`/`:col-formatters`/`:val-formatters`.
   Shared by the CSV export and static-viz pivot render paths. `row-indexes`/`col-indexes`/`val-indexes` are column
   indexes into `columns`."
-  [columns      :- [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]
+  [columns      :- [:sequential [:or :metabase.legacy-mbql.schema/legacy-column-metadata :metabase.lib.schema.metadata/lib-or-legacy-column]]
    row-indexes  :- [:maybe [:sequential :int]]
    col-indexes  :- [:maybe [:sequential :int]]
    val-indexes  :- [:maybe [:sequential :int]]

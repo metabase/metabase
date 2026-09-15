@@ -824,7 +824,7 @@
   [user-id   :- ::lib.schema.id/user
    perm-type :- ::permissions.schema/data-permission-type
    & {:keys [exclude-db-ids]} :- [:maybe [:map {:closed true}
-                                          [:exclude-db-ids {:optional true} [:maybe [:set ::lib.schema.id/database]]]]]]
+                                          [:exclude-db-ids {:optional true} [:maybe [:sequential ::lib.schema.id/database]]]]]]
   (or (is-superuser? user-id)
       (and (= perm-type :perms/manage-table-metadata)
            (is-data-analyst? user-id))

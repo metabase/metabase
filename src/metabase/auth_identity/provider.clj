@@ -65,6 +65,7 @@
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -302,10 +303,15 @@
   [[create-session!]]: the raw Ring request keys plus every provider's request/result extension keys."
   [[:accept {:optional true} [:maybe :string]]
    [:auth-identity {:optional true} [:maybe ::auth-identity.schema/auth-identity]]
+   [:authenticated-user {:optional true} [:maybe (ms/InstanceOfClass clojure.lang.IDeref)]]
    [:body {:optional true} [:maybe [:or ms/RingRequestBody (ms/InstanceOfClass java.io.InputStream)]]]
    [:browser-id {:optional true} [:maybe :string]]
    [:character-encoding {:optional true} [:maybe :string]]
-   [:claims {:optional true} [:maybe [:map-of :string [:or :string [:sequential :string]]]]]
+   [:claims {:optional true} [:maybe [:schema {::mr/deliberately-open true
+                                               :description "A provider's decoded JWT/OIDC claims: an arbitrary,
+                                               provider-owned bag of keys, string- or keyword-keyed depending on the
+                                               decoder."}
+                                      :map]]]
    [:code {:optional true} [:maybe :string]]
    [:content-length {:optional true} [:maybe :int]]
    [:content-type {:optional true} [:maybe :string]]
@@ -319,6 +325,7 @@
    [:message {:optional true} [:maybe [:or :string ms/LocalizedString]]]
    [:nonce {:optional true} [:maybe :string]]
    [:oidc-nonce {:optional true} [:maybe :string]]
+   [:oidc-provider {:optional true} [:maybe :keyword]]
    [:oidc-provider-key {:optional true} [:maybe :string]]
    [:params {:optional true} [:maybe ms/RingRequestParams]]
    [:password {:optional true} [:maybe :string]]
@@ -328,16 +335,21 @@
    [:query-params {:optional true} [:maybe [:map-of :string [:or :string [:sequential :string]]]]]
    [:query-string {:optional true} [:maybe :string]]
    [:redirect-strategy {:optional true} [:maybe :keyword]]
+   [:redirect-uri {:optional true} [:maybe :string]]
    [:redirect-url {:optional true} [:maybe :string]]
    [:remote-addr {:optional true} [:maybe :string]]
    [:request-id {:optional true} [:maybe (ms/InstanceOfClass java.util.UUID)]]
    [:request-method {:optional true} [:maybe :keyword]]
    [:route-metadata {:optional true} [:maybe :metabase.api.macros/route-metadata]]
-   [:route-params {:optional true} [:maybe [:map-of :string :string]]]
+   [:route-params {:optional true} [:maybe [:schema {::mr/deliberately-open true
+                                                     :description "Ring/reitit route params: string- or
+                                                      keyword-keyed depending on the router."}
+                                            :map]]]
    [:saml-data {:optional true} [:maybe ms/SAMLAttributes]]
    [:scheme {:optional true} [:maybe :keyword]]
    [:server-name {:optional true} [:maybe :string]]
    [:server-port {:optional true} [:maybe :int]]
+   [:slack-data {:optional true} [:maybe [:map-of :string :string]]]
    [:ssl-client-cert {:optional true} [:maybe (ms/InstanceOfClass java.security.cert.X509Certificate)]]
    [:state {:optional true} [:maybe :string]]
    [:success? {:optional true} [:maybe [:or :boolean [:enum :redirect]]]]

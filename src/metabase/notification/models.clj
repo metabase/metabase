@@ -669,11 +669,11 @@
   `assoc`ed onto the real Toucan row rather than replacing it."
   [:map {:closed true}
    [:object  [:merge
-             ::users.schema/user.full
-             [:map {:closed true}
-              [:is_from_setup {:optional true} [:maybe :boolean]]
-              [:invite_method {:optional true} [:maybe :string]]
-              [:invite_target {:optional true} [:maybe users.schema/InviteTarget]]]]]
+              ::users.schema/user
+              [:map {:closed true}
+               [:is_from_setup {:optional true} [:maybe :boolean]]
+               [:invite_method {:optional true} [:maybe :string]]
+               [:invite_target {:optional true} [:maybe users.schema/InviteTarget]]]]]
    [:details {:optional true}
     [:map {:closed true}
      [:invitor [:map {:closed true}
@@ -778,11 +778,20 @@
   `POST /api/notification` stamps on, plus the event map published under the topic, keyed the way
   [[metabase.events.core/publish-event!]] was handed it. A `:notification/testing` notification's payload is empty."
   (into [:multi {:dispatch :event_topic}]
-        (for [[topic info-schema] event-topic->event-info-schema]
-          [topic [:map {:closed true}
-                  [:event_topic   [:= topic]]
-                  [:disable_links {:optional true} [:maybe :boolean]]
-                  [:event_info    {:optional true} [:maybe info-schema]]]])))
+        (concat
+         (for [[topic info-schema] event-topic->event-info-schema]
+           [topic [:map {:closed true}
+                   [:event_topic   [:= topic]]
+                   [:disable_links {:optional true} [:maybe :boolean]]
+                   [:event_info    {:optional true} [:maybe info-schema]]]])
+         [[::mc/default
+           [:map {:closed true}
+            [:event_topic   [:fn #(= "event" (-> % keyword namespace))]]
+            [:disable_links {:optional true} [:maybe :boolean]]
+            [:event_info    {:optional true}
+             [:schema {::mr/deliberately-open true
+                       :description           "the event_info of a topic without a registered notification info schema, e.g. one a test registers at runtime via events.notification/supported-topics"}
+              :any]]]]])))
 
 (defn hydrated-notification-schema
   "Schema for a notification hydrated with its creator, subscriptions and handlers, where each handler matches
@@ -829,7 +838,8 @@
 (mu/defn hydrate-notification :- [:or ::FullyHydratedNotification [:sequential ::FullyHydratedNotification]]
   "Fully hydrate notifictitons."
   [notification-or-notifications :- [:or ::notification.schema/notification
-                                     [:sequential ::notification.schema/notification]]]
+                                     ::FullyHydratedNotification
+                                     [:sequential [:or ::notification.schema/notification ::FullyHydratedNotification]]]]
   (t2/hydrate notification-or-notifications :creator :payload :subscriptions [:handlers :channel :template [:recipients :recipients-detail]]))
 
 (mu/defn notifications-for-card :- [:sequential ::FullyHydratedNotification]

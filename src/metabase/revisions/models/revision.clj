@@ -1,6 +1,7 @@
 (ns metabase.revisions.models.revision
   (:require
    [clojure.data :as data]
+   [malli.core :as mc]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.queries.core :as queries]
@@ -10,6 +11,7 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]))
@@ -203,15 +205,27 @@
    :model/Transform   :metabase.transforms.schema/transform})
 
 (def ^:private PushRevisionInput
+  "Models outside [[revisioned-model-row-select-schema]] (e.g. a test double registered only via the
+  `serialize-instance`/`revert-to-revision!`/... multimethods) fall through to an open `:object`, since this map
+  can't know their shape. `:object` also stays open beyond its own row schema for every known model: reverting
+  must not error on a revision carrying fields no longer known (see
+  [[metabase.revisions.api-test/revert-ignores-extra-fields]])."
   (into [:multi {:dispatch :entity}]
-        (for [[model schema] revisioned-model-row-select-schema]
-          [model [:map {:closed true}
-                  [:id                            pos-int?]
-                  [:object                        schema]
-                  [:entity                        [:= model]]
-                  [:user-id                       [:maybe pos-int?]]
-                  [:is-creation? {:optional true} [:maybe :boolean]]
-                  [:message      {:optional true} [:maybe :string]]]])))
+        (conj (for [[model schema] revisioned-model-row-select-schema]
+                [model [:map {:closed true}
+                        [:id                            pos-int?]
+                        [:object                        [:merge schema [:map {:closed false, ::mr/deliberately-open true}]]]
+                        [:entity                        [:= model]]
+                        [:user-id                       [:maybe pos-int?]]
+                        [:is-creation? {:optional true} [:maybe :boolean]]
+                        [:message      {:optional true} [:maybe :string]]]])
+              [::mc/default [:map {:closed true}
+                             [:id                            pos-int?]
+                             [:object                        [:map {:closed false, ::mr/deliberately-open true}]]
+                             [:entity                        [:fn toucan-model?]]
+                             [:user-id                       [:maybe pos-int?]]
+                             [:is-creation? {:optional true} [:maybe :boolean]]
+                             [:message      {:optional true} [:maybe :string]]]])))
 
 (mu/defn push-revision!
   "Record a new Revision for `entity` with `id` if it's changed compared to the last revision.

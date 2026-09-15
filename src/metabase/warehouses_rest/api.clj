@@ -500,8 +500,7 @@
        [:include_editable_data_model {:optional true} ms/MaybeBooleanValue]
        [:exclude_uneditable_details {:optional true} ms/MaybeBooleanValue]]]
   (present-database
-   (warehouses/get-database id {:include include
-                                :include-editable-data-model? include_editable_data_model
+   (warehouses/get-database id {:include-editable-data-model? include_editable_data_model
                                 :exclude-uneditable-details? exclude_uneditable_details
                                 :include-destination-databases? true})
    {:include include

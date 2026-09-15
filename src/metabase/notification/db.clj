@@ -676,7 +676,7 @@
 
 (mu/defn card
   "The Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
+  [card-id :- [:maybe ::lib.schema.id/card]]
   (t2/select-one :model/Card card-id))
 
 (mu/defn unarchived-card

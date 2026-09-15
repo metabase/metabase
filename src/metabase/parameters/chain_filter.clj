@@ -103,7 +103,7 @@
   [:map {:closed true}
    [:field-id ::lib.schema.id/field]
    [:op       :keyword] ; name of an MBQL filter clause e.g. `:=` or `:starts-with`
-   [:value    [:or ms/FieldValue [:sequential ms/FieldValue]]]
+   [:value    [:or ms/FieldValue [:sequential ms/FieldValue] [:set ms/FieldValue]]]
    [:options  {:optional true} [:maybe [:merge
                                         ::lib.schema.common/options
                                         [:map {:closed true}
@@ -383,7 +383,7 @@
   two Tables and we generate the appropriate join against the other Table."
   [query           :- ::lib.schema/query
    source-table-id :- ::lib.schema.id/table
-   joins           :- [:sequential ::join-info]]
+   joins           :- [:maybe [:sequential ::join-info]]]
   (let [id->field (u/index-by :id (lib.metadata/bulk-metadata query :metadata/column
                                                               (into #{} (mapcat (juxt #(get-in % [:lhs :field])
                                                                                       #(get-in % [:rhs :field])))

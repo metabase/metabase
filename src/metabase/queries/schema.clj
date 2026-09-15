@@ -52,6 +52,14 @@
     [:collection            {:optional true} [:maybe :metabase.collections.schema/collection-or-root]]
     [:creator               {:optional true} [:maybe [:or :metabase.users.schema/user :metabase.users.schema/user.update]]]
     [:dashboard             {:optional true} [:maybe [:ref :metabase.dashboards.schema/dashboard]]]
+    [:document              {:optional true} [:maybe ::documents.schema/document]]
+    [:last-edit-info        {:optional true} [:maybe
+                                              [:map {:closed true}
+                                               [:timestamp  [:maybe ms/TemporalInstant]]
+                                               [:id         [:maybe ms/PositiveInt]]
+                                               [:first_name [:maybe :string]]
+                                               [:last_name  [:maybe :string]]
+                                               [:email      [:maybe :string]]]]]
     [:moderation_reviews    {:optional true} [:sequential :metabase.content-verification.schema/moderation-review]]
     [:can_delete            {:optional true} :boolean]
     [:can_manage_db         {:optional true} :boolean]
@@ -63,7 +71,28 @@
     [:last_query_start      {:optional true} [:maybe ms/TemporalInstant]]
     [:based_on_upload       {:optional true} [:maybe ::lib.schema.id/table]]
     [:param_fields          {:optional true} [:maybe [:map-of :string [:sequential ::param-field]]]]
-    [:is_remote_synced      {:optional true} :boolean]]])
+    [:is_remote_synced      {:optional true} :boolean]
+    [:authority_level           {:optional true} [:maybe [:or :keyword :string]]]
+    [:collection_name           {:optional true} [:maybe :string]]
+    [:collection_authority_level {:optional true} [:maybe [:or :keyword :string]]]
+    [:dashboard_name            {:optional true} [:maybe :string]]
+    [:entity-coll-id            {:optional true} [:maybe ::lib.schema.id/collection]]
+    [:moderated-status          {:optional true} [:maybe :string]]
+    [:moderated_status          {:optional true} [:maybe :string]]
+    [:location                  {:optional true} [:maybe :string]]
+    [:dashboard_tab_id          {:optional true} [:maybe ms/PositiveInt]]
+    [:in_library                {:optional true} :boolean]
+    [:persisted                 {:optional true} :boolean]
+    [:query_average_duration    {:optional true} [:maybe number?]]
+    [:download_perms            {:optional true} [:maybe [:enum :none :limited :full]]]
+    [:in_dashboards             {:optional true} [:maybe [:sequential
+                                                          [:map {:closed true}
+                                                           [:id                ::lib.schema.id/dashboard]
+                                                           [:name              :string]
+                                                           [:collection_id     [:maybe ::lib.schema.id/collection]]
+                                                           [:description       [:maybe :string]]
+                                                           [:archived          :boolean]
+                                                           [:enable_embedding  :boolean]]]]]]])
 
 (mr/def ::param-field.name-field
   "A Field trimmed to the columns a parameter widget needs, as the `:name_field` hydration attaches it."
@@ -126,7 +155,7 @@
   "What an update (or insert) of a Card accepts: every column of `:report_card` except `id`, all optional, plus `:verified-result-metadata?` consumed by the model's hooks."
   [:map {:closed true}
    [:created_at                                {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at                                {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at                                {:optional true} [:maybe [:or ms/TemporalInstant [:= :updated_at]]]]
    [:name                                      {:optional true} [:maybe :string]]
    [:description                               {:optional true} [:maybe :string]]
    [:display                                   {:optional true} [:maybe [:or :keyword :string]]]

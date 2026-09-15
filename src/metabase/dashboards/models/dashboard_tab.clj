@@ -72,8 +72,8 @@
 
 (mu/defn update-tabs! :- nil?
   "Updates tabs of a dashboard if changed."
-  [current-tabs :- [:sequential [:map {:closed true} [:id ms/PositiveInt]]]
-   new-tabs     :- [:sequential [:map {:closed true} [:id ms/PositiveInt]]]]
+  [current-tabs :- [:sequential [:select-keys :metabase.dashboards.schema/dashboard-tab [:id :name :position]]]
+   new-tabs     :- [:sequential [:select-keys :metabase.dashboards.schema/dashboard-tab [:id :name :position]]]]
   (let [update-ks       [:name :position]
         id->current-tab (m/index-by :id current-tabs)
         to-update-tabs  (filter

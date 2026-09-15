@@ -5,6 +5,12 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
+(mr/def ::retry-error
+  "One entry of a `:retry_errors` list: a retry attempt's error message and when it happened."
+  [:map {:closed true}
+   [:message   :string]
+   [:timestamp ms/TemporalInstant]])
+
 (mr/def ::task-details.channel-send
   [:map {:closed true}
    [:retry_config      {:optional true} [:map {:closed true}
@@ -18,9 +24,9 @@
    [:template_id       {:optional true} [:maybe ms/PositiveInt]]
    [:notification_id   {:optional true} [:maybe ms/PositiveInt]]
    [:notification_type {:optional true} :keyword]
-   [:recipient_ids     {:optional true} [:sequential ms/PositiveInt]]
+   [:recipient_ids     {:optional true} [:sequential [:maybe ms/PositiveInt]]]
    [:attempted_retries {:optional true} :int]
-   [:retry_errors      {:optional true} [:sequential :string]]])
+   [:retry_errors      {:optional true} [:sequential ::retry-error]]])
 
 (mr/def ::task-details.notification-send
   [:map {:closed true}
@@ -114,7 +120,7 @@
    [:original-info {:optional true} [:maybe [:ref ::task-history.task-details]]]
    [:reason              {:optional true} :string]
    [:attempted_retries   {:optional true} :int]
-   [:retry_errors        {:optional true} [:sequential :string]]])
+   [:retry_errors        {:optional true} [:sequential ::retry-error]]])
 
 (mr/def ::task-details.test-or-unknown
   "The `:task_details` of a task not otherwise listed here: the ad-hoc shapes the `with-task-history` unit tests

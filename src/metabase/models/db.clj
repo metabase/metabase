@@ -5,6 +5,7 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]
@@ -105,23 +106,22 @@
         (for [[model schema] model-row-schema]
           [model [:map {:closed true} [:model [:= model]] [:rows [:sequential schema]]]])))
 
-(def ^:private after-select-model-row-schema
-  "[[model-row-schema]] restricted to the models `after-select-via-identity-query` is actually called with."
-  (select-keys model-row-schema [:model/Card :model/Database :model/Dashboard :model/Document
-                                 :model/Segment :model/Measure :model/Transform :model/Exploration]))
+(mr/def ::after-select-row
+  "A model row run through after-select machinery: it may be a fresh selection, an already API-hydrated row, or a
+  historical revision snapshot from an older schema version, so its shape is not fixed here."
+  [:map {:closed false, ::mr/deliberately-open true,
+         :description "shape depends on the model, hydration state, and revision history"}])
 
-(def ^:private AfterSelectRow
-  "Like [[ModelRow]], but the row may also carry `:id`: a real selected row does, unlike the `.update` schemas
-  above, which deliberately omit it."
-  (into [:multi {:dispatch :model}]
-        (for [[model schema] after-select-model-row-schema]
-          [model [:map {:closed true}
-                  [:model [:= model]]
-                  [:row [:merge schema [:map {:closed true} [:id {:optional true} ms/PositiveInt]]]]]])))
+(def ^:private AfterSelectEntity
+  "A `{:model ..., :row ...}` pair naming any model (including test-only ones derived from `:metabase/model`, and
+  ones outside [[model-row-schema]]) and a row of arbitrary shape to run through its after-select machinery."
+  [:map {:closed true}
+   [:model [:or :keyword symbol?]]
+   [:row ::after-select-row]])
 
 (mu/defn after-select-via-identity-query
   "`entity`'s `:row` run through the after-select machinery of `entity`'s `:model`."
-  [entity :- AfterSelectRow]
+  [entity :- AfterSelectEntity]
   (t2/select-one (:model entity) (t2.identity-query/identity-query [(:row entity)])))
 
 (mu/defn entities-reducible

@@ -75,7 +75,7 @@
 
 (defmethod driver/dbms-version ::test-driver
   [_ _]
-  "1.0")
+  {:version "1.0"})
 
 (defmethod driver/describe-database* ::test-driver
   [_ _]

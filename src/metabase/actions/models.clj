@@ -464,7 +464,7 @@
 
    Pass in known-models to save a second Card lookup."
   [known-models :- [:maybe [:sequential ::queries.schema/card]]
-   & options    :- [:* [:or :keyword ms/PositiveInt :string :boolean]]]
+   & options    :- [:* [:or :nil :keyword ms/PositiveInt :string :boolean]]]
   (enrich-actions-with-implicit-params known-models (apply select-actions-without-implicit-params options)))
 
 (mu/defn select-actions-for-ids :- [:maybe [:sequential ::actions.schema/action]]
@@ -496,7 +496,7 @@
 (mu/defn select-action :- [:maybe ::actions.schema/action]
   "Selects an Action and fills in the subtype data and implicit parameters.
    `options` is interpreted by [[select-actions-matching-options]]."
-  [& options :- [:* [:or :keyword ms/PositiveInt :string :boolean]]]
+  [& options :- [:* [:or :nil :keyword ms/PositiveInt :string :boolean]]]
   ;; TODO -- it's dumb that we're selecting all matches rather than a single one above, limiting like this should
   ;; never be done server-side. I don't have time to fix this right now. -- Cam
   (first (apply select-actions nil options)))

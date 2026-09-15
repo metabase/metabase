@@ -7,8 +7,10 @@
    [metabase.util.malli.schema :as ms]))
 
 (mr/def ::pulse.parameter
-  "One entry of the `:parameters` column of a Pulse, decoded."
-  ::parameters.schema/parameter)
+  "One entry of the `:parameters` column of a Pulse, decoded. A dashboard subscription stores only the
+  filter values it overrides (`:id`/`:value`), not the dashboard's own parameter declaration, so `:type`
+  is not always present."
+  ::parameters.schema/parameter-with-optional-type)
 
 (mr/def ::pulse
   "A Pulse as selected from the app DB: every column of `:pulse`."
@@ -77,14 +79,17 @@
    [:pivot_results     {:optional true} [:maybe :boolean]]])
 
 (mr/def ::pulse-channel.details
-  "The `:details` column of a PulseChannel, decoded."
-  [:or
-   [:map {:closed true}]
-   [:map {:closed true}
-    [:emails {:optional true} [:maybe [:sequential :string]]]]
-   [:map {:closed true}
-    [:channel                  :string]
-    [:channel_id {:optional true} :string]]])
+  "The `:details` column of a PulseChannel, decoded. Shape varies by `:channel_type` (email carries
+  `:emails`; slack carries `:channel`/`:channels`/`:channel_id`; both may carry `:include_pdf`/
+  `:attachment_only`), so every key is optional here rather than modeled as a `:channel_type`-dispatched
+  `:multi`."
+  [:map {:closed true}
+   [:channel         {:optional true} [:maybe :string]]
+   [:channels        {:optional true} [:maybe :string]]
+   [:channel_id      {:optional true} [:maybe :string]]
+   [:include_pdf     {:optional true} [:maybe :boolean]]
+   [:attachment_only {:optional true} [:maybe :boolean]]
+   [:emails          {:optional true} [:maybe [:sequential :string]]]])
 
 (mr/def ::pulse-channel
   "A PulseChannel as selected from the app DB: every column of `:pulse_channel`."

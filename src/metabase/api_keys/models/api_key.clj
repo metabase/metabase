@@ -5,6 +5,7 @@
    [clojure.core.memoize :as memoize]
    [java-time.api :as t]
    [malli.error :as me]
+   [malli.util :as mut]
    [metabase.api-keys.core :as-alias api-keys]
    [metabase.api-keys.db :as api-keys.db]
    [metabase.api-keys.schema :as api-keys.schema]
@@ -67,10 +68,17 @@
                  ::api-keys.schema/prefix]]
   (subs (expose k) 0 api-keys.schema/prefix-length))
 
+(def ^:private ApiKeyPipelineRow
+  "The shape `add-prefix`/`add-key` receive: a before-insert or before-update `:model/ApiKey` instance, every column
+  optional at this stage, plus the two internal keys the CRUD hooks thread through."
+  (mut/merge (mut/optional-keys ::api-keys.schema/api-key)
+             [:map {:closed true}
+              [::api-keys/unhashed-key {:optional true} ::api-keys.schema/key.unhashed-or-secret]
+              [::api-keys/group-id     {:optional true} pos-int?]]))
+
 (mu/defn- add-prefix :- [:map
                          [:key_prefix {:optional true} ::api-keys.schema/prefix]]
-  [{unhashed-key ::api-keys/unhashed-key, :as api-key} :- [:map {:closed true}
-                                                           [::api-keys/unhashed-key {:optional true} ::api-keys.schema/key.unhashed-or-secret]]]
+  [{unhashed-key ::api-keys/unhashed-key, :as api-key} :- ApiKeyPipelineRow]
   (cond-> api-key
     (contains? api-key ::api-keys/unhashed-key) (assoc :key_prefix (some-> unhashed-key prefix))))
 
@@ -97,8 +105,7 @@
 
 (mu/defn- add-key
   "Adds the `key` based on the `:metabase.api-keys/unhashed-qkey passed in."
-  [{unhashed-key ::api-keys/unhashed-key, :as api-key} :- [:map {:closed true}
-                                                           [::api-keys/unhashed-key {:optional true} ::api-keys.schema/key.unhashed-or-secret]]]
+  [{unhashed-key ::api-keys/unhashed-key, :as api-key} :- ApiKeyPipelineRow]
   (-> api-key
       (cond-> (contains? api-key ::api-keys/unhashed-key) (assoc :key (some-> unhashed-key hash-bcrypt)))
       (dissoc ::api-keys/unhashed-key)))

@@ -21,7 +21,6 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.query-processor.schema :as qp.schema]
    ;; legacy usage -- don't do things like this going forward
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.request.core :as request]
@@ -66,6 +65,13 @@
 ;;                                 ↓                            ↓
 ;;           {:perms/view-data {table-id :unrestricted}}  source-card-read-perms
 ;;
+
+(mr/def ::query
+  "A query at any stage of QP processing: raw legacy MBQL, MBQL 5, or internal audit shape, not-yet-normalized, or
+  already preprocessed/compiled with QP-, driver-, and sandboxing-internal keys layered on. This namespace only reads
+  a handful of well-known keys and otherwise walks the map structurally, so it deliberately does not fix a schema for
+  the rest."
+  [:map {:closed false, ::mr/deliberately-open true, :description "a query at any stage of QP processing"}])
 
 (defn- merge-source-ids
   "Merge function which takes the union of two sets of IDs, if they are both sets"
@@ -153,13 +159,13 @@
 
      Add the table to the table-ids set. If there's no parent-source-card-id, also add it
      to the table-query-ids set, then continue the match."
-  [query :- ::qp.schema/any-query]
+  [query :- ::query]
   (source-ids* query nil false))
 
 (mu/defn query->source-table-ids
   "Returns a sequence of all :source-table IDs referenced by a query. Convenience wrapper around `query->source-ids` if
   only table ID information is needed. "
-  [query :- ::qp.schema/any-query]
+  [query :- ::query]
   (when (seq query)
     (:table-ids (query->source-ids query))))
 
@@ -221,13 +227,13 @@
   ([[preprocess-without-per-user-lens]]), so the result is identical for every user. THROWS when the
   query cannot be preprocessed — e.g. a card in the source chain has been deleted — so callers
   gating cached reads on it can fail closed instead of treating the query as touching nothing."
-  [query :- ::qp.schema/any-query]
+  [query :- ::query]
   (when (seq query)
     (query->source-ids (preprocess-without-per-user-lens query))))
 
 (mu/defn query->resolved-source-table-ids :- [:maybe [:set ::lib.schema.id/table]]
   "The Table IDs of [[query->resolved-source-ids]]. Throws on an unpreprocessable query, as it does."
-  [query :- ::qp.schema/any-query]
+  [query :- ::query]
   (:table-ids (query->resolved-source-ids query)))
 
 (defn- referenced-card-ids
@@ -383,8 +389,9 @@
     (check-result-metadata-data-perms database-id result-metadata)))
 
 (mr/def ::perm-value
-  "A required (or granted) permission level: either a single level, or a level per Table."
-  [:or :keyword [:map-of ::lib.schema.id/table :keyword]])
+  "A required (or granted) permission level: either a single level, or a level per Table (Table 0 is a sentinel used
+  by [[legacy-mbql-required-perms]] for \"no such Table\" when perms calculation itself fails)."
+  [:or :keyword [:map-of [:or ::lib.schema.id/table [:= 0]] :keyword]])
 
 (mr/def ::required-perms
   "The permissions required to run a query, as returned by [[required-perms-for-query]]."
@@ -397,7 +404,7 @@
 (mu/defn has-perm-for-query? :- :boolean
   "Returns true when the query is accessible for the given perm-type and required-perms for individual tables, or the
   entire DB, false otherwise. Only throws if the permission format is incorrect."
-  [{db-id :database :as _query} :- ::qp.schema/any-query
+  [{db-id :database :as _query} :- ::query
    perm-type                    :- [:enum :perms/view-data :perms/create-queries]
    required-perms               :- ::required-perms]
   (boolean
@@ -452,14 +459,14 @@
   being answered as one: a failure to work out which permissions `query` needs (otherwise logged at
   error and folded into the answer), and any other error the checks raise, such as a missing Card in
   [[check-card-read-perms]]. A denial still returns `false`."
-  ([query :- ::qp.schema/any-query]
+  ([query :- ::query]
    (can-run-query? query false))
 
-  ([query :- ::qp.schema/any-query
+  ([query :- ::query
     already-preprocessed? :- :boolean]
    (can-run-query? query already-preprocessed? false))
 
-  ([{database-id :database :as query} :- ::qp.schema/any-query
+  ([{database-id :database :as query} :- ::query
     already-preprocessed?                :- :boolean
     throw-non-permission-errors?         :- :boolean]
    (try
@@ -502,7 +509,7 @@
 (mu/defn check-run-permissions-for-query
   "Make sure the Current User has the appropriate permissions to run `query`. We don't want Users saving Cards with
   queries they wouldn't be allowed to run!"
-  [query :- ::qp.schema/any-query]
+  [query :- ::query]
   {:pre [(map? query)]}
   (let [query    (dissoc query :query-permissions/perms)
         expanded (try

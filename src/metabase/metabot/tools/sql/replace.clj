@@ -30,7 +30,9 @@
    :- [:map {:closed true}
        [:query-id [:or :string :int]]
        [:sql :string]
-       [:checklist :string]
+       [:checklist {:optional true} [:maybe :string]]
+       [:name {:optional true} [:maybe :string]]
+       [:description {:optional true} [:maybe :string]]
        [:queries-state [:map-of :string ::metabot.schema/query]]]]
   (log/info "Replacing SQL query" {:query-id query-id :sql-length (count sql)})
 

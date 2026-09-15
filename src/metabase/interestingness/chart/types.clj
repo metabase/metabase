@@ -128,7 +128,8 @@
    [:series-b :string]
    [:coefficient number?]
    [:strength ::correlation-strength]
-   [:direction ::correlation-direction]])
+   [:direction ::correlation-direction]
+   [:aligned-sample-size :int]])
 
 (mr/def ::outlier
   "An outlier detected in the data."
@@ -155,6 +156,16 @@
    [:deep? {:optional true} [:maybe :boolean]]
    [:max-correlation-series {:optional true} [:maybe :int]]])
 
+(mr/def ::stats-limits
+  "Notes about data-volume limits applied before computing chart statistics."
+  [:map {:closed true}
+   [:downsampled-series  {:optional true} [:map-of :string [:map {:closed true}
+                                                            [:original-count :int]
+                                                            [:sampled-count :int]]]]
+   [:correlations-capped {:optional true} [:map {:closed true}
+                                           [:total-series :int]
+                                           [:max-correlated :int]]]])
+
 ;;; ---------------------------------------------- Chart Type Stats --------------------------------------------------
 
 (mr/def ::extremum
@@ -171,7 +182,7 @@
    [:data-points :int]
    [:trend ::trend-summary]
    [:is-cumulative :boolean]
-   [:outliers {:optional true} [:maybe [:sequential ::outlier]]]
+   [:outliers {:optional true} [:maybe [:sequential [:or ::outlier ::cumulative-outlier]]]]
    [:volatility {:optional true} [:maybe ::volatility]]
    [:patterns {:optional true} [:maybe [:sequential ::pattern-insight]]]
    [:significant-changes {:optional true} [:maybe [:sequential ::significant-change]]]
@@ -188,7 +199,8 @@
    [:chart-type [:= :time-series]]
    [:series-count :int]
    [:series [:map-of :string ::time-series-series-stats]]
-   [:correlations {:optional true} [:maybe [:sequential ::correlation]]]])
+   [:correlations {:optional true} [:maybe [:sequential ::correlation]]]
+   [:limits {:optional true} ::stats-limits]])
 
 (mr/def ::category-stat
   "Statistics for a single category."
@@ -215,7 +227,8 @@
    [:chart-type [:= :categorical]]
    [:series-count :int]
    [:series [:map-of :string ::categorical-series-stats]]
-   [:correlations {:optional true} [:maybe [:sequential ::correlation]]]])
+   [:correlations {:optional true} [:maybe [:sequential ::correlation]]]
+   [:limits {:optional true} ::stats-limits]])
 
 (mr/def ::regression-stats
   "Linear regression statistics."
@@ -245,7 +258,8 @@
   [:map {:closed true}
    [:chart-type [:= :scatter]]
    [:series-count :int]
-   [:series [:map-of :string ::scatter-series-stats]]])
+   [:series [:map-of :string ::scatter-series-stats]]
+   [:limits {:optional true} ::stats-limits]])
 
 (mr/def ::histogram-summary
   "Weighted summary statistics estimated from binned histogram data."
@@ -269,7 +283,7 @@
 (mr/def ::histogram-structure
   "Structural properties of histogram bin distribution."
   [:map {:closed true}
-   [:mode-bin [:maybe [:tuple number? :int]]]
+   [:mode-bin [:maybe [:tuple number? number?]]]
    [:peak-count :int]
    [:concentration-top3 number?]
    [:gap-count :int]
@@ -293,23 +307,25 @@
   [:map {:closed true}
    [:chart-type [:= :histogram]]
    [:series-count :int]
-   [:series [:map-of :string ::histogram-series-stats]]])
+   [:series [:map-of :string ::histogram-series-stats]]
+   [:limits {:optional true} ::stats-limits]])
 
 (mr/def ::unknown-stats
   "Fallback stats for chart types that don't have dedicated analysis (e.g. scalar)."
   [:map {:closed true}
    [:chart-type [:= :unknown]]
    [:series-count :int]
-   [:message :string]])
+   [:message :string]
+   [:limits {:optional true} ::stats-limits]])
 
 (mr/def ::chart-stats
-  "Union of all chart statistics types."
-  [:or
-   ::time-series-stats
-   ::categorical-stats
-   ::scatter-stats
-   ::histogram-stats
-   ::unknown-stats])
+  "Union of all chart statistics types, dispatched on `:chart-type`."
+  [:multi {:dispatch :chart-type}
+   [:time-series ::time-series-stats]
+   [:categorical ::categorical-stats]
+   [:scatter     ::scatter-stats]
+   [:histogram   ::histogram-stats]
+   [:unknown     ::unknown-stats]])
 
 ;;; ------------------------------------------ Representation Schema ------------------------------------------------
 

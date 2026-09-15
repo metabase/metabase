@@ -190,9 +190,7 @@
    occupied."
   [grid                                  :- ::grid
    [x y]                                 :- [:tuple nat-int? nat-int?]
-   {:keys [width height], :as _dashcard} :- [:map {:closed true}
-                                             [:width nat-int?]
-                                             [:height nat-int?]]]
+   {:keys [width height], :as _dashcard} :- ::ads/card-template]
   (reduce (fn [grid xy]
             (assoc-in grid xy true))
           grid
@@ -206,9 +204,7 @@
    it suffices to check just the first (top) row."
   [grid                   :- ::grid
    [x y]                  :- [:tuple nat-int? nat-int?]
-   {:keys [width height]} :- [:map {:closed true}
-                              [:width nat-int?]
-                              [:height nat-int?]]]
+   {:keys [width height]} :- ::ads/card-template]
   (and (<= (+ x height) (count grid))
        (<= (+ y width) (-> grid first count))
        (every? false? (subvec (grid x) y (+ y width)))))
@@ -221,9 +217,7 @@
    unoccupied area. Mark the area as occupied."
   [grid      :- ::grid
    start-row :- nat-int?
-   dashcard  :- [:map {:closed true}
-                 [:width nat-int?]
-                 [:height nat-int?]]]
+   dashcard  :- ::ads/card-template]
   (reduce (fn [grid xy]
             (if (accommodates? grid xy dashcard)
               (reduced xy)

@@ -71,7 +71,7 @@
   [index-table            :- [:or :keyword :string]
    search-ctx             :- search.config/SearchContext
    search-string          :- [:maybe :string]
-   view-count-percentiles :- [:map-of search.config/SearchableModel [:maybe number?]]]
+   view-count-percentiles :- [:map-of search.config/SearchableModel [:maybe [:or number? :string]]]]
   (t2/query (search.scoring/with-scores search-ctx
               (search.scoring/scorers search-ctx view-count-percentiles)
               (appdb.query/base-filtered-query index-table search-ctx search-string [:legacy_input]))))

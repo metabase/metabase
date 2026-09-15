@@ -26,7 +26,7 @@
 (def ^:private honeysql-registry
   "Registry backing [[HoneySQLExpr]] and [[HoneySQLQuery]]: `::expr` is a column/table keyword, a literal, a
   (possibly nested) operator clause, or a subquery."
-  {::expr  [:or :keyword :string number? :boolean nil?
+  {::expr  [:or :keyword :string number? :boolean nil? (ms/InstanceOfClass java.time.temporal.Temporal)
             [:sequential [:ref ::expr]]
             [:ref ::query]]
    ::query [:map {:closed true}

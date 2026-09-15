@@ -5,12 +5,12 @@
    [metabase-enterprise.dependencies.schema :as deps.schema]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.documents.schema :as documents.schema]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.queries.schema :as queries.schema]
-   [metabase.transforms-base.schema :as transforms-base.schema]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.util :as u]
@@ -74,7 +74,10 @@
   {:table (into #{} (keep :table-id) dimension-mappings)})
 
 (mu/defn- upstream-deps:python-transform :- ::deps.schema/upstream-deps
-  [{{tables :source-tables} :source :as _py-transform} :- ::transforms-base.schema/transform]
+  [{{tables :source-tables} :source} :- [:map {:closed true}
+                                         [:source [:map {:closed true}
+                                                   [:source-tables {:optional true}
+                                                    [:sequential :metabase.transforms-base.util/source-table-entry]]]]]]
   {:table (into #{} (keep :table_id) tables)})
 
 ;; Modified implementation of documents.models.document/document-deps
@@ -100,8 +103,9 @@
 (defmethod calculate-deps* :card
   [_ {query :dataset_query, dimension-mappings :dimension_mappings :as card}]
   {:pre [(some? query)]}
-  (let [base-deps      (merge-with into
-                                   (upstream-deps:query query)
+  (let [query          (lib-be/normalize-query query)
+        base-deps      (merge-with into
+                                   (if (seq query) (upstream-deps:query query) {})
                                    (upstream-deps:dimension-mappings dimension-mappings))
         param-card-ids (keep #(-> % :values_source_config :card_id) (:parameters card))]
     (reduce (fn [deps card-id]
@@ -110,10 +114,15 @@
             param-card-ids)))
 
 (defmethod calculate-deps* :transform
-  [_ {{:keys [query]} :source :as transform}]
+  [_ transform]
   (cond
-    (transforms-base.u/query-transform? transform)  (upstream-deps:query query)
-    (transforms-base.u/python-transform? transform) (upstream-deps:python-transform transform)
+    (transforms-base.u/query-transform? transform)
+    (let [query (lib-be/normalize-query (-> transform :source :query))]
+      (if (seq query) (upstream-deps:query query) {}))
+
+    (transforms-base.u/python-transform? transform)
+    (upstream-deps:python-transform (select-keys transform [:source]))
+
     :else (do (log/warnf "Don't know how to analyze the deps of Transform %d with source type '%s'"
                          (:id transform) (-> transform :source :type))
               {})))

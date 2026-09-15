@@ -1,6 +1,7 @@
 (ns metabase.xrays.api.automagic-dashboards
   (:require
    [buddy.core.codecs :as codecs]
+   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -155,7 +156,10 @@
                                    [:dataset_query ::ads/query]]]
   "Wrap query map into a Query object (mostly to facilitate type dispatch)."
   [query :- (ms/string-keyed-map ::json-value)]
-  (let [query (api.macros/decode-and-validate-params :body ::lib-be.schema/maybe-legacy-query query)]
+  ;; `query` comes straight from `decode-base64-json`, so it's still string-keyed JSON; keywordize it before
+  ;; validating/normalizing it as an MBQL query, which expects keyword keys throughout.
+  (let [query (api.macros/decode-and-validate-params :body ::lib-be.schema/maybe-legacy-query
+                                                     (walk/keywordize-keys query))]
     (mi/instance :model/Query
                  (merge (queries/query->database-and-table-ids query)
                         {:dataset_query query}))))

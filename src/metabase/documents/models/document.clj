@@ -256,7 +256,11 @@
 
   Returns:
   - map of old-card-id -> cloned-card-id"
-  [{:keys [id collection_id] :as document} :- ::documents.schema/document]
+  [{:keys [id collection_id] :as document} :- [:map {:closed true}
+                                               [:id ms/PositiveInt]
+                                               [:collection_id [:maybe :metabase.lib.schema.id/collection]]
+                                               [:document ::documents.schema/document.document]
+                                               [:content_type [:or :keyword :string]]]]
   (let [card-ids (prose-mirror/collect-ast document #(when (and (= prose-mirror/card-embed-type (:type %))
                                                                 (pos-int? (get (:attrs %) "id")))
                                                        (get (:attrs %) "id")))
@@ -268,7 +272,7 @@
                 (assoc accum
                        (:id card)
                        (:id (clone-card! (assoc card :document_id id :collection_id collection_id)
-                                         @api/*current-user*))))
+                                         (select-keys @api/*current-user* [:id])))))
               {}
               to-clone))))
 
@@ -337,7 +341,7 @@
                                                                                           :document document
                                                                                           :content_type prose-mirror/prose-mirror-content-type})
                                                                (when-not (empty? cards)
-                                                                 (create-cards-for-document! cards document-id collection_id @api/*current-user*)))]
+                                                                 (create-cards-for-document! cards document-id collection_id (select-keys @api/*current-user* [:id]))))]
                              (when (seq cards-to-update-in-ast)
                                (documents.db/update-document! document-id
                                                               (update-cards-in-ast
@@ -371,7 +375,7 @@
   and return the updated document. Permission checks (write-check, archived state,
   collection-move) are the caller's job, run before this — the same split the REST
   `PUT /api/document/:id` handler uses."
-  [existing-document :- [:map {:closed true} [:id ms/PositiveInt]]
+  [existing-document :- ::documents.schema/document
    {:keys [name document collection_id collection_position cards] :as body}
    :- [:map {:closed true}
        [:name {:optional true} DocumentName]
@@ -393,9 +397,11 @@
                                                                                                                          :collection_position collection_position}))
       (let [card-id-map (when document
                           (merge
-                           (clone-cards-in-document! (assoc existing-document :document document))
+                           (clone-cards-in-document! (-> existing-document
+                                                         (select-keys [:id :collection_id :content_type])
+                                                         (assoc :document document)))
                            (when-not (empty? cards)
-                             (create-cards-for-document! cards document-id collection_id @api/*current-user*))))
+                             (create-cards-for-document! cards document-id collection_id (select-keys @api/*current-user* [:id])))))
             draft-card-id-map (into {} (filter (comp neg? key) card-id-map))
             pairings (draft-stored-result-pairings document
                                                    (:content_type existing-document)

@@ -259,8 +259,16 @@
   (open-json ::visualization-settings-value "visualization settings value"))
 
 (def HttpRequestBody
-  "The body the test HTTP client sends, as written by the test calling the endpoint."
-  (open-json ::http-request-body "HTTP request body"))
+  "The body the test HTTP client sends, as written by the test calling the endpoint: a JSON-shaped value, or (for a
+  multipart upload, where a key can repeat) a sequence of `[key value]` pairs whose value may be a byte array,
+  `File`, or `InputStream` for a file part."
+  [:or
+   (open-json ::http-request-body "HTTP request body")
+   [:sequential [:tuple [:or :string :keyword]
+                 [:or :string number? :boolean :nil :keyword
+                  bytes?
+                  (InstanceOfClass java.io.File)
+                  (InstanceOfClass java.io.InputStream)]]]])
 
 (def HttpQueryParams
   "The query parameters the test HTTP client sends, as written by the test calling the endpoint."
@@ -405,8 +413,11 @@
 
 (def FieldValue
   "One value of a Field: a JSON scalar as kept in the `field_values.values` and `human_readable_values` columns, or, on
-  the way there, a UUID or `java.time` object as the query returned it."
-  [:maybe [:or :string number? :boolean uuid? (InstanceOfClass java.time.temporal.Temporal)]])
+  the way there, a UUID, a `java.time` object, or a legacy `java.util.Date` (`java.sql.Date`/`Timestamp`) as the
+  query returned it."
+  [:maybe [:or :string number? :boolean uuid?
+           (InstanceOfClass java.time.temporal.Temporal)
+           (InstanceOfClass java.util.Date)]])
 
 (def RemappedFieldValue
   "Has two components:
@@ -438,7 +449,7 @@
   embed author's, so the map is string-keyed on its way in; it is stored as JSON and read back keywordized like every
   other JSON column."
   (mu/with-api-error-message
-   [:maybe (string-keyed-map [:enum "disabled" "enabled" "locked"])]
+   [:maybe (string-keyed-map [:enum "disabled" "enabled" "locked" :disabled :enabled :locked])]
    (deferred-tru "value must be a valid embedding params map.")))
 
 (def ValidLocale

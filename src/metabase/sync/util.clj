@@ -130,7 +130,7 @@
   `database-id`. `f` is executed between the logging of the two events."
   {:style/indent [:form]}
   ;; we can do everyone a favor and infer the name of the individual begin and sync events
-  ([event-name-prefix :- [:enum :sync :analyze :refingerprint :cache-field-values :sync-metadata]
+  ([event-name-prefix :- :keyword
     database-or-id    :- DatabaseOrId
     f                 :- fn?]
    (letfn [(event-keyword [prefix suffix]
@@ -536,8 +536,9 @@
    [:end-time   {:optional true} (ms/InstanceOfClass Temporal)]])
 
 (def ^:private StepStats
-  "Step-specific stats a `sync-fn` may add to its `StepRunMetadata`, across all of the sync/analyze steps."
-  [:map {:closed true}
+  "Step-specific stats a `sync-fn` may add to its `StepRunMetadata`, across all of the sync/analyze steps. A `sync-fn`
+  may add any other ad-hoc key too, so this is deliberately open."
+  [:map {:closed false, ::mr/deliberately-open true, :description "step-specific sync stats; a sync-fn may add any key"}
    [:added-indexes          {:optional true} :int]
    [:created                {:optional true} :int]
    [:deleted                {:optional true} :int]
@@ -556,7 +557,8 @@
    [:removed-indexes        {:optional true} :int]
    [:semantic-version       {:optional true} [:sequential :int]]
    [:tables-classified      {:optional true} :int]
-   [:timezone-id            {:optional true} :string]
+   [:throwable              {:optional true} [:maybe (ms/InstanceOfClass Throwable)]]
+   [:timezone-id            {:optional true} [:maybe :string]]
    [:total-failed           {:optional true} :int]
    [:total-fields           {:optional true} :int]
    [:total-fks              {:optional true} :int]

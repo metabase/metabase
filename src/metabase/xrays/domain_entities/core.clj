@@ -7,18 +7,24 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]
    [metabase.xrays.domain-entities.hierarchy :as domain-entities.hierarchy]
    [metabase.xrays.domain-entities.specs :as domain-entities.specs :refer [*domain-entity-specs* MBQL]]
    [toucan2.core :as t2]))
 
+(def ^:private FieldOrColumn
+  "A field-like value: a real Field row, Lib column metadata, or one of the hybrid QP/result-metadata shapes in
+  between (Card :result_metadata, table :fields, a transform step's expected-cols, ...). Too many shapes flow
+  through here to enumerate as a closed schema."
+  [:schema {:closed false, ::mr/deliberately-open true} :map])
+
 (mu/defn field-type :- [:or
                         ::lib.schema.common/base-type
                         ::lib.schema.common/semantic-or-relation-type]
   "Return the most specific type of a given field."
-  [field :- [:map {:closed true}
-             [:base_type ::lib.schema.common/base-type]]]
+  [field :- FieldOrColumn]
   ((some-fn :semantic_type :base_type) field))
 
 (def SourceName
@@ -70,7 +76,7 @@
   "Instantiate all dimension reference in given (nested) structure"
   [bindings :- Bindings
    source   :- SourceName
-   obj      :- [:or MBQL [:tuple :string MetricOrSegmentEntry]]]
+   obj      :- [:maybe [:or MBQL [:tuple :string MetricOrSegmentEntry]]]]
   (match/replace obj
     [:dimension dimension] (->> dimension
                                 (get-dimension-binding bindings source)
@@ -78,8 +84,7 @@
 
 (mu/defn mbql-reference :- MBQL
   "Return MBQL clause for a given field-like object."
-  [{:keys [id name base_type]} :- [:map {:closed true}
-                                   [:base_type ::lib.schema.common/base-type]]]
+  [{:keys [id name base_type]} :- FieldOrColumn]
   (if id
     [:field id nil]
     [:field name {:base-type base_type}]))

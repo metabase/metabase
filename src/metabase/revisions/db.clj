@@ -2,8 +2,10 @@
   "Application database queries for the revisions module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [malli.core :as mc]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -33,12 +35,17 @@
 
 (def ^:private RevisionedRow
   "A `{:model ..., :row ...}` pair naming one of the models revisions are tracked for, the row typed by that
-  model's own row schema plus `:id` (a revisioned row is always a real, previously-selected row)."
+  model's own row schema plus `:id` (a revisioned row is always a real, previously-selected row). Models outside
+  [[revisioned-model-row-schema]] (e.g. a test double registered only via the `revision/*` multimethods) fall
+  through to an open `:row`, since this map can't know their shape."
   (into [:multi {:dispatch :model}]
-        (for [[model schema] revisioned-model-row-schema]
-          [model [:map {:closed true}
-                  [:model [:= model]]
-                  [:row [:merge schema [:map {:closed true} [:id {:optional true} ms/PositiveInt]]]]]])))
+        (conj (for [[model schema] revisioned-model-row-schema]
+                [model [:map {:closed true}
+                        [:model [:= model]]
+                        [:row [:merge schema [:map {:closed true} [:id {:optional true} ms/PositiveInt]]]]]])
+              [::mc/default [:map {:closed true}
+                             [:model :keyword]
+                             [:row [:map {:closed false, ::mr/deliberately-open true}]]]])))
 
 (mu/defn update-entity!
   "Apply `entity`'s `:row` (a column diff) to `entity`'s `:model` row with `id`, returning the number updated."
@@ -186,19 +193,30 @@
 
 (def ^:private RevisionRow
   "A Revision row, `:object` typed by the row schema of the model named `:model` (a string, e.g. \"Card\"), plus
-  `:id` (a revisioned object is always a real, previously-selected row)."
+  `:id` (a revisioned object is always a real, previously-selected row). `:object` stays open beyond that: reverting
+  must not error on a stored revision carrying fields no longer known (see
+  [[metabase.revisions.api-test/revert-ignores-extra-fields]])."
   (into [:multi {:dispatch :model}]
-        (for [[model schema] revisioned-model-row-schema]
-          [(name model)
-           [:map {:closed true}
-            [:model        [:= (name model)]]
-            [:model_id     ms/PositiveInt]
-            [:user_id      [:maybe ::lib.schema.id/user]]
-            [:object       [:merge schema (into [:map {:closed true} [:id {:optional true} ms/PositiveInt]]
-                                                (get revision-object-extra-keys model))]]
-            [:is_creation  :boolean]
-            [:is_reversion :boolean]
-            [:message      {:optional true} [:maybe :string]]]])))
+        (conj (for [[model schema] revisioned-model-row-schema]
+                [(name model)
+                 [:map {:closed true}
+                  [:model        [:= (name model)]]
+                  [:model_id     ms/PositiveInt]
+                  [:user_id      [:maybe ::lib.schema.id/user]]
+                  [:object       [:merge schema
+                                  (into [:map {:closed false, ::mr/deliberately-open true} [:id {:optional true} ms/PositiveInt]]
+                                        (get revision-object-extra-keys model))]]
+                  [:is_creation  :boolean]
+                  [:is_reversion :boolean]
+                  [:message      {:optional true} [:maybe :string]]]])
+              [::mc/default [:map {:closed true}
+                             [:model        :string]
+                             [:model_id     ms/PositiveInt]
+                             [:user_id      [:maybe ::lib.schema.id/user]]
+                             [:object       [:map {:closed false, ::mr/deliberately-open true}]]
+                             [:is_creation  :boolean]
+                             [:is_reversion :boolean]
+                             [:message      {:optional true} [:maybe :string]]]])))
 
 (mu/defn insert-revision!
   "Insert the Revision `row`, returning the number inserted."

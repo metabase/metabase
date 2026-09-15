@@ -67,9 +67,11 @@
   (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn table-for-transform
-  "The Table owned by the Transform with `transform-id`, or nil."
-  [transform-id :- ::lib.schema.id/transform]
-  (t2/select-one :model/Table :transform_id transform-id {:from [(warehouse-schema-overlay/table-query)]}))
+  "The Table owned by the Transform with `transform-id`, or nil. `transform-id` is nil for a transform
+  that hasn't been saved yet, in which case there is no owned Table either."
+  [transform-id :- [:maybe ::lib.schema.id/transform]]
+  (when transform-id
+    (t2/select-one :model/Table :transform_id transform-id {:from [(warehouse-schema-overlay/table-query)]})))
 
 (mu/defn update-table!
   "Apply `changes` to the Table with `table-id`."

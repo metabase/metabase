@@ -287,8 +287,9 @@
         (= s (u/lower-case-en s)))]]]])
 
 (def ^:private TypeInfo
-  "Type info for a `TypedHoneySQLForm`, before it is normalized by [[normalize-type-info]]."
-  [:map {:closed true}
+  "Type info for a `TypedHoneySQLForm`, before it is normalized by [[normalize-type-info]]. Left open (not closed)
+  because drivers extend it with their own namespaced keys, e.g. `:metabase.driver.postgres/target-timezone`."
+  [:map {:closed false, ::mr/deliberately-open true}
    [:database-type  {:optional true} [:maybe ms/KeywordOrString]]
    [:base-type      {:optional true} [:maybe :keyword]]
    [:effective-type {:optional true} [:maybe :keyword]]])
@@ -401,9 +402,15 @@
 (def ^:private TypedExpression
   [:fn {:error/message "::h2x/typed Honey SQL form"} typed?])
 
+(mr/def ::honeysql-clause-opts
+  "A Honey SQL 2 clause's own options map, e.g. `:over`'s window spec (`:partition-by`/`:order-by`) or a driver's
+  `:cast` options — shape is clause- and driver-specific and owned by the Honey SQL library, not Metabase."
+  [:map {:closed false, ::mr/deliberately-open true}])
+
 (mr/def ::honeysql-expr
   "A Honey SQL 2 expression: a literal value, a column/identifier keyword, a `TypedHoneySQLForm` wrapping another
-  expression, or a clause vector whose args are themselves Honey SQL expressions."
+  expression, or a clause vector whose args are themselves Honey SQL expressions (or a clause options map, e.g.
+  `:over`'s window spec)."
   [:or
    :string
    :keyword
@@ -412,7 +419,7 @@
    nil?
    ms/TemporalInstant
    [:fn {:error/message "::h2x/typed Honey SQL form"} typed?]
-   [:sequential [:ref ::honeysql-expr]]])
+   [:sequential [:or [:ref ::honeysql-expr] ::honeysql-clause-opts]]])
 
 (def ^:private raw-cast-type-name-re
   #"(?i)[a-z][a-z0-9_ ]*(?:\(\d+(?:, ?\d+)?\))?")

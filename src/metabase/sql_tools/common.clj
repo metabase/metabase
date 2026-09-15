@@ -65,7 +65,9 @@
                [:database {:optional true} :string]
                [:schema {:optional true} :string]
                [:table {:optional true} :string]
-               [:table-alias {:optional true} :string]]]
+               [:table-alias {:optional true} :string]
+               [:column {:optional true} :string]
+               [:type {:optional true} :keyword]]]
   (when (:table raw-col)
     (->> [:database :schema :table]
          (keep raw-col)

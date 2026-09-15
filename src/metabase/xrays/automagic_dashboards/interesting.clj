@@ -164,7 +164,7 @@
    :operator (keyword ag-type)
    :args     (mapv (fn [arg]
                      (if (and (vector? arg)
-                              (= (first arg) "dimension"))
+                              (contains? #{:dimension "dimension"} (first arg)))
                        (when-let [field (dimension-name->field (second arg))]
                          (field->metadata field))
                        arg))
@@ -420,7 +420,7 @@
                                    :operator (keyword op)
                                    :args     (mapv (fn [arg]
                                                      (if (and (vector? arg)
-                                                              (= (first arg) "dimension"))
+                                                              (contains? #{:dimension "dimension"} (first arg)))
                                                        (when-let [field (opt (second arg))]
                                                          (field->metadata field))
                                                        arg))

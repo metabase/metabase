@@ -419,7 +419,7 @@
   "Return a map of Parameter ID to the set of Field IDs referenced by parameters in the Cards on the given `dashcards`,
   or `nil` if none are referenced. `dashcards` must be hydrated with :card."
   [dashcards :- [:sequential ::parameters.schema/parameter-mapping-with-dashcard.dashcard]]
-  (transduce (comp (map :card)
+  (transduce (comp (map #(some-> (:card %) (select-keys [:dataset_query])))
                    (map card->template-tag-id->field-ids))
              (partial merge-with set/union)
              (dashcards->param-id->field-ids* dashcards)
@@ -463,14 +463,14 @@
 
   Mostly used for determining Fields referenced by Cards for purposes other than processing queries. Filters out
   `:field` clauses which use names."
-  [card :- [:maybe :metabase.queries.schema/card]]
+  [card :- [:maybe [:select-keys :metabase.queries.schema/card [:dataset_query]]]]
   (some-> card :dataset_query not-empty lib-be/normalize-query lib/all-template-tags-id->field-ids))
 
 (methodical/defmethod t2/simple-hydrate [:model/Card :param_fields]
   "Add a `:param_fields` map (template-tag ID -> vector of Fields) for all of the Fields referenced by the parameters
   of a Card."
   [_model k card]
-  (let [param-fields (or (some-> card card->template-tag-id->field-ids param-field-ids->fields)
+  (let [param-fields (or (some-> card (select-keys [:dataset_query]) card->template-tag-id->field-ids param-field-ids->fields)
                          {})]
     (assoc card k param-fields)))
 
@@ -478,11 +478,11 @@
   "Returns a set of all Field IDs referenced by template tags on this card.
 
   To get these IDs broken out by the Param ID that references them, use [[card->template-tag-param-id->field-ids]]."
-  [card :- [:maybe :metabase.queries.schema/card]]
+  [card :- [:maybe [:select-keys :metabase.queries.schema/card [:dataset_query]]]]
   (some-> card :dataset_query not-empty lib-be/normalize-query lib/all-template-tag-field-ids not-empty))
 
 (def ^:private ParamWithMapping
-  [:map {:closed true}
+  [:map
    [:id ms/NonBlankString]
    [:name ms/NonBlankString]
    [:mappings [:maybe [:set ::parameters.schema/parameter-mapping-with-dashcard]]]])
@@ -499,8 +499,7 @@
                   [:parameters [:maybe [:sequential ::parameters.schema/parameter]]]
                   [:dashcards [:maybe [:sequential [:or
                                                     :metabase.dashboards.schema/dashboard-card
-                                                    [:map {:closed true}
-                                                     [:parameter_mappings [:maybe [:sequential ::parameters.schema/parameter-mapping]]]]]]]]]]]
+                                                    ::parameters.schema/parameter-mapping-with-dashcard.dashcard]]]]]]]
   (let [param-key->mappings (apply
                              merge-with set/union
                              (for [dashcard (:dashcards dashboard)

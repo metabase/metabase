@@ -135,6 +135,13 @@
    [:common_name             {:optional true} [:maybe :string]]
    [:attributes              {:optional true} [:maybe LoginAttributes]]])
 
+(mr/def ::login-user
+  "Whatever a caller has on hand identifying a user for login/session bookkeeping (a full row, a partial projection,
+  a hand-built test fixture, ...); only `:id` and `:last_login` are actually read."
+  [:map {:closed false, ::mr/deliberately-open true}
+   [:id ::lib.schema.id/user]
+   [:last_login [:maybe ms/TemporalInstant]]])
+
 (mr/def ::user-filters
   "Options accepted by `metabase.users.db/filter-clauses` (and, by extension, any db.clj function that filters
   Users on the caller's behalf).

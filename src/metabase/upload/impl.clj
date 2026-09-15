@@ -31,6 +31,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.humanization :as warehouse-schema.humanization]
    [metabase.warehouse-schema.models.table :as table]
@@ -746,13 +747,13 @@
 
 (defn- add-columns! [driver database table field->type & args]
   (when (seq field->type)
-    (apply driver/add-columns! driver (:id database) (table-identifier table)
+    (apply driver/add-columns! driver (:id database) (table-identifier (select-keys table [:schema :name]))
            (field->db-type driver field->type)
            args)))
 
 (defn- alter-columns! [driver database table field->new-type & args]
   (when (seq field->new-type)
-    (apply driver/alter-table-columns! driver (:id database) (table-identifier table)
+    (apply driver/alter-table-columns! driver (:id database) (table-identifier (select-keys table [:schema :name]))
            (field->db-type driver field->new-type)
            args)))
 
@@ -853,8 +854,8 @@
                                     :upload-seconds    (u/since-ms timer)}]
             (try
               (when replace-rows?
-                (driver/truncate! driver (:id database) (table-identifier table)))
-              (driver/insert-into! driver (:id database) (table-identifier table) column-names parsed-rows)
+                (driver/truncate! driver (:id database) (table-identifier (select-keys table [:schema :name]))))
+              (driver/insert-into! driver (:id database) (table-identifier (select-keys table [:schema :name])) column-names parsed-rows)
               (catch Throwable e
                 (throw (ex-info (ex-message e) {:status-code 422}))))
             (when create-auto-pk?
@@ -942,7 +943,7 @@
   [table & {:keys [archive-cards?]}]
   (let [database   (table/database table)
         driver     (driver.u/database->driver database)
-        table-name (table-identifier table)]
+        table-name (table-identifier (select-keys table [:schema :name]))]
     (check-can-delete table database)
     ;; Attempt to delete the underlying data from the customer database.
     ;; We perform this before marking the table as inactive in the app db so that even if it false, the table is still
@@ -1000,16 +1001,22 @@
               (filter #(can-upload-to-table? (:db %) %))
               (map :id)))))
 
+(mr/def ::model-hydrate-based-on-upload-item
+  "A model item to batch-hydrate `:based_on_upload` onto: either a raw Card row or its collection-items
+  presentation form, so besides the fields read here its shape varies by caller."
+  [:map {:closed false, ::mr/deliberately-open true,
+         :description "a Card row, or a collection-items presentation row for one"}
+   ;; query_type and dataset_query can be null in tests, so we make them nullable here.
+   ;; they should never be null in production
+   [:dataset_query [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]
+   [:query_type    [:maybe [:or :string :keyword]]]
+   [:table_id      [:maybe ms/PositiveInt]]
+   ;; is_upload can be provided for an optional optimization
+   [:is_upload {:optional true} [:maybe :boolean]]])
+
 (mu/defn model-hydrate-based-on-upload
   "Batch hydrates `:based_on_upload` for each item of `models`. Assumes each item of `model` represents a model."
-  [models :- [:sequential [:map {:closed true}
-                           ;; query_type and dataset_query can be null in tests, so we make them nullable here.
-                           ;; they should never be null in production
-                           [:dataset_query [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]
-                           [:query_type    [:maybe [:or :string :keyword]]]
-                           [:table_id      [:maybe ms/PositiveInt]]
-                           ;; is_upload can be provided for an optional optimization
-                           [:is_upload {:optional true} [:maybe :boolean]]]]]
+  [models :- [:sequential ::model-hydrate-based-on-upload-item]]
   (let [table-ids             (->> models
                                    ;; as an optimization when listing collection items (GET /api/collection/items),
                                    ;; we might already know that the table is not an upload if is_upload=false. We

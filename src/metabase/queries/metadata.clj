@@ -4,7 +4,6 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
@@ -225,12 +224,8 @@
 (mu/defn batch-fetch-dashboard-metadata
   "Fetch dependent metadata for dashboards."
   [dashboards :- [:sequential
-                  [:map {:closed true, :optional true} [:dashcards
-                                                        [:sequential
-                                                         [:map {:closed true}
-                                                          [:card   {:optional true} [:maybe ::queries.schema/card]]
-                                                          [:series {:optional true} [:maybe [:sequential [:map {:closed true}
-                                                                                                          [:dataset_query ::lib-be.schema/maybe-legacy-or-empty-query]]]]]]]]]]]
+                  [:map {:closed true}
+                   [:dashcards {:optional true} [:maybe [:sequential :metabase.dashboards.schema/dashboard-card]]]]]]
   (let [dashcards (mapcat :dashcards dashboards)
         cards     (for [{:keys [card series]} dashcards
                         :let   [all (conj series card)]

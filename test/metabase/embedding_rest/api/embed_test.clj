@@ -1200,7 +1200,7 @@
 (deftest remove-embedding-params
   (testing "parameters that are not in the `embedding-params` map at all should get removed by `enabled-params`"
     (is (= {:parameters []}
-           (#'api.embed.common/enabled-params {:parameters {:slug "foo"}} {})))))
+           (#'api.embed.common/enabled-params {:parameters [{:slug "foo"}]} {})))))
 
 (deftest make-sure-that-multiline-series-word-as-expected---4768-
   (testing "make sure that multiline series word as expected (#4768)"
@@ -1807,13 +1807,15 @@
 
 (deftest apply-slug->value-test
   (testing "For operator filter types treat a lone value as a one-value sequence (#20438)"
-    (is (= (#'api.embed.common/apply-slug->value [{:type    :string/=
+    (is (= (#'api.embed.common/apply-slug->value [{:id      "NAME"
+                                                   :type    :string/=
                                                    :target  [:dimension [:template-tag "NAME"]]
                                                    :name    "Name"
                                                    :slug    "NAME"
                                                    :default nil}]
                                                  {"NAME" ["Aaron Hand"]})
-           (#'api.embed.common/apply-slug->value [{:type    :string/=
+           (#'api.embed.common/apply-slug->value [{:id      "NAME"
+                                                   :type    :string/=
                                                    :target  [:dimension [:template-tag "NAME"]]
                                                    :name    "Name"
                                                    :slug    "NAME"

@@ -234,7 +234,8 @@
    [:initiated_by            [:maybe ::lib.schema.id/user]]
    [:error_message           [:maybe :string]]
    [:version                 [:maybe :string]]
-   [:conflicts               [:maybe [:sequential :string]]]
+   ;; a vector, or (backward compat) a set of category names
+   [:conflicts               [:maybe [:or [:sequential :string] [:set :string]]]]
    [:outcome                 [:maybe ::remote-sync-task.outcome]]])
 
 (mr/def ::remote-sync-task.update
@@ -249,5 +250,6 @@
    [:initiated_by            {:optional true} [:maybe ::lib.schema.id/user]]
    [:error_message           {:optional true} [:maybe :string]]
    [:version                 {:optional true} [:maybe :string]]
-   [:conflicts               {:optional true} [:maybe [:sequential :string]]]
+   ;; a vector, or (backward compat) a set of category names
+   [:conflicts               {:optional true} [:maybe [:or [:sequential :string] [:set :string]]]]
    [:outcome                 {:optional true} [:maybe ::remote-sync-task.outcome]]])

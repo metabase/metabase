@@ -272,7 +272,7 @@
   "Given the types of the existing columns (if there are any), and rows to be added, infer the best supporting types."
   [settings       :- [:map {:closed true}
                       [:number-separators [:enum "." ".," ",." ", " ".’"]]]
-   existing-types :- [:sequential [:maybe (into [:enum] column-types)]]
+   existing-types :- [:maybe [:sequential [:maybe (into [:enum] column-types)]]]
    rows           :- [:sequential [:sequential [:maybe :string]]]]
   (let [current-types (mapv #(column-type->abstract % %) existing-types)]
     (->> (reduce (type-relaxer settings) current-types rows)

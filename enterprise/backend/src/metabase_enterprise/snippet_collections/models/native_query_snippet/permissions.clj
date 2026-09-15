@@ -11,9 +11,10 @@
    [metabase.util.malli :as mu]))
 
 (mu/defn- has-parent-collection-perms?
-  [snippet       :- [:or
-                     ::snippets.schema/native-query-snippet
-                     ::snippets.schema/native-query-snippet.update]
+  "Whether the current user has `read-or-write` permissions on `snippet`'s parent collection, or nil `snippet`."
+  [snippet       :- [:maybe [:or
+                             ::snippets.schema/native-query-snippet
+                             ::snippets.schema/native-query-snippet.update]]
    read-or-write :- [:enum :read :write]]
   (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection "snippets" (:collection_id snippet) read-or-write)))
 

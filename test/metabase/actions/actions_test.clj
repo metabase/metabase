@@ -86,7 +86,7 @@
         (is (= {:rows-updated 1}
                (actions/perform-action! :model.row/update
                                         (assoc (mt/mbql-query categories {:filter [:= $id 50]})
-                                               :update_row {(format-field-name :name) "updated_row"})))
+                                               :update-row {(format-field-name :name) "updated_row"})))
             "Update should return the right shape")
         (is (= "updated_row"
                (-> (mt/rows (mt/run-mbql-query categories {:filter [:= $id 50]})) last last))
@@ -120,14 +120,14 @@
                                 result)))}
    {:action       :model.row/update
     :request-body (assoc (mt/mbql-query categories {:filter [:= $id 1]})
-                         :update_row {(format-field-name :name) "updated_row"})
+                         :update-row {(format-field-name :name) "updated_row"})
     :expected     {:rows-updated 1}}
    {:action       :model.row/delete
     :request-body (mt/mbql-query categories {:filter [:= $id 1]})
     :expected     {:rows-deleted 1}}
    {:action       :model.row/update
     :request-body (assoc (mt/mbql-query categories {:filter [:= $id 10]})
-                         :update_row {(format-field-name :name) "new-category-name"})
+                         :update-row {(format-field-name :name) "new-category-name"})
     :expected     {:rows-updated 1}}])
 
 (deftest feature-flags-test
@@ -190,9 +190,9 @@
     (mt/with-actions-enabled
       (binding [*current-user-permissions-set* (delay #{"/"})]
         (let [query-that-returns-more-than-one (assoc (mt/mbql-query users {:filter [:>= $id 1]})
-                                                      :update_row {(format-field-name :name) "new-name"})
+                                                      :update-row {(format-field-name :name) "new-name"})
               query-that-returns-zero-row      (assoc (mt/mbql-query users {:filter [:= $id Integer/MAX_VALUE]})
-                                                      :update_row {(format-field-name :name) "new-name"})
+                                                      :update-row {(format-field-name :name) "new-name"})
               result-count                     (count (mt/rows (qp/process-query query-that-returns-more-than-one)))]
           (is (< 1 result-count))
           (is (thrown-with-msg? Exception #"Sorry, this would update [\d|,]+ rows, but you can only act on 1"
@@ -207,9 +207,9 @@
     (mt/with-actions-enabled
       (binding [*current-user-permissions-set* (delay #{"/"})]
         (let [query-that-returns-more-than-one (assoc (mt/mbql-query checkins {:filter [:>= $id 1]})
-                                                      :update_row {(format-field-name :name) "new-name"})
+                                                      :update-row {(format-field-name :name) "new-name"})
               query-that-returns-zero-row      (assoc (mt/mbql-query checkins {:filter [:= $id Integer/MAX_VALUE]})
-                                                      :update_row {(format-field-name :name) "new-name"})
+                                                      :update-row {(format-field-name :name) "new-name"})
               result-count                     (count (mt/rows (qp/process-query query-that-returns-more-than-one)))]
           (is (< 1 result-count))
           (is (thrown-with-msg? Exception #"Sorry, this would delete [\d|,]+ rows, but you can only act on 1"
@@ -702,7 +702,7 @@
                (actions/perform-action!
                 :model.row/update
                 (assoc (mt/mbql-query ants {:filter [:= $id "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]})
-                       :update_row {(format-field-name :name) "updated_row"})))
+                       :update-row {(format-field-name :name) "updated_row"})))
             "Update should return the right shape")
         (is (= "updated_row"
                (-> (mt/rows (mt/run-mbql-query ants

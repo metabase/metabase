@@ -37,6 +37,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
@@ -591,7 +592,7 @@
               ;; internal-only: stamped in `post-process-card-row` for the permission check
               :document_id)
       (update :dashboard #(when % (select-keys % [:id :name :moderation_status])))
-      (assoc :fully_parameterized (queries/fully-parameterized? row))))
+      (assoc :fully_parameterized (queries/fully-parameterized? (select-keys row [:dataset_query])))))
 
 (defn- post-process-card-like
   [{:keys [hydrate-based-on-upload]} rows]
@@ -890,7 +891,7 @@
            [:last_edit_last_name  {:optional true} [:maybe :string]]
            [:last_edit_first_name {:optional true} [:maybe :string]]
            [:last_edit_email      {:optional true} [:maybe :string]]
-           [:last_edit_timestamp  {:optional true} [:maybe :string]]]]
+           [:last_edit_timestamp  {:optional true} [:maybe ms/TemporalInstant]]]]
   (letfn [(select-as [original k->k']
             (reduce (fn [m [k k']] (assoc m k' (get original k)))
                     {}

@@ -20,6 +20,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -87,16 +88,34 @@
                     {:field-ref field-ref
                      :valid-clauses [:field :expression]}))))
 
+(mr/def ::raw-or-normalized-field-ref
+  "A legacy field/expression ref: either normalized (keyword tag), or fresh from JSON decoding (string tag) as e.g.
+  a Card's `result_metadata` carries it -- [[fetch-values]] normalizes it before use. Deliberately open: the
+  not-yet-normalized shape is whatever JSON decoding of a legacy MBQL clause produces."
+  [:or
+   ::mbql.s/FieldOrExpressionRef
+   [:schema {::mr/deliberately-open true}
+    [:and
+     [:sequential :any]
+     [:fn {:error/message "must start with a field/expression tag"} (comp #{"field" "expression" :field :expression} first)]]]])
+
 (mr/def ::model-index
   [:map {:closed true}
-   [:model_id  ::lib.schema.id/card]
-   [:value_ref ::mbql.s/FieldOrExpressionRef]
-   [:pk_ref    ::mbql.s/FieldOrExpressionRef]])
+   [:model_id   ::lib.schema.id/card]
+   [:value_ref  ::raw-or-normalized-field-ref]
+   [:pk_ref     ::raw-or-normalized-field-ref]
+   [:id         {:optional true} ms/PositiveInt]
+   [:schedule   {:optional true} :string]
+   [:state      {:optional true} :string]
+   [:indexed_at {:optional true} [:maybe ms/TemporalInstant]]
+   [:error      {:optional true} [:maybe :string]]
+   [:created_at {:optional true} ms/TemporalInstant]
+   [:creator_id {:optional true} [:maybe ::lib.schema.id/user]]])
 
 (mu/defn ^:private fetch-values
   [model-index :- ::model-index]
   (let [model     (indexed-entities.db/card (:model_id model-index))
-        fix       (mu/fn [field-ref :- ::mbql.s/FieldOrExpressionRef
+        fix       (mu/fn [field-ref :- ::raw-or-normalized-field-ref
                           base-type :- ::lib.schema.common/base-type]
                     ;; stored value/pk refs are legacy MBQL; normalize as legacy before use
                     (-> field-ref #_{:clj-kondo/ignore [:deprecated-var]} mbql.normalize/normalize-field-ref (fix-expression-refs base-type)))

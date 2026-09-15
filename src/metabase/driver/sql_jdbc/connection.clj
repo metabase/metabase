@@ -310,7 +310,7 @@
   "Computes a hash value for the JDBC connection spec based on the effective connection details, for the purpose of
   determining if details changed and therefore the existing connection pool needs to be invalidated.
   Uses [[driver.conn/effective-details]] to select the appropriate details for the current connection context."
-  [{driver :engine, :as database} :- [:maybe driver-api/schema.metadata.database]]
+  [{driver :engine, :as database} :- [:maybe :metabase.warehouses.schema/database-or-metadata]]
   (when (some? database)
     (hash (connection-details->spec driver (driver.conn/effective-details database)))))
 

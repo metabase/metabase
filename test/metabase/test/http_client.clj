@@ -288,12 +288,14 @@
 (def ^:private RequestOptions
   "The clj-http request options this test client actually uses."
   [:map {:closed true}
-   [:headers            {:optional true} [:map-of :string :string]]
+   [:headers            {:optional true} [:map-of :string [:maybe :string]]]
    [:as                 {:optional true} :keyword]
    [:content-type       {:optional true} [:or :string :keyword]]
    [:cookie-store       {:optional true} (ms/InstanceOfClass org.apache.http.client.CookieStore)]
    [:cookies            {:optional true} [:map-of :string ::request.schema/cookie-attrs]]
-   [:redirect-strategy  {:optional true} :keyword]])
+   [:redirect-strategy  {:optional true} :keyword]
+   [:decompress-body    {:optional true} :boolean]
+   [:form-params        {:optional true} [:map {:closed false, ::mr/deliberately-open true}]]])
 
 (def ^:private ClientParamsMap
   [:map {:closed true}

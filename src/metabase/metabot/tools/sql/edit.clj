@@ -55,7 +55,7 @@
                              [:old_string :string]
                              [:new_string :string]
                              [:replace_all {:optional true} [:maybe :boolean]]]]]
-       [:checklist :string]
+       [:checklist {:optional true} [:maybe :string]]
        [:queries-state [:map-of :string ::metabot.schema/query]]]]
   (log/info "Editing SQL query" {:query-id query-id :edit-count (count edits)})
 

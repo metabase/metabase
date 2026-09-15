@@ -37,11 +37,29 @@
    [:created_at          {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at          {:optional true} [:maybe ms/TemporalInstant]]])
 
+(mr/def ::exploration-block.metric.explore-filter
+  "One entry of a block metric selection's `:explore_filters` vector, decoded."
+  [:multi {:dispatch :operator}
+   ["=" [:map {:closed true}
+         [:operator       [:= "="]]
+         [:field_ref      [:ref :metabase.lib.schema.parameter/dimension.target]]
+         [:value          [:maybe [:or :string number? :boolean]]]
+         [:display_value  ms/NonBlankString]
+         [:dimension_name {:optional true} [:maybe :string]]]]
+   ["between" [:map {:closed true}
+               [:operator       [:= "between"]]
+               [:field_ref      [:ref :metabase.lib.schema.parameter/dimension.target]]
+               [:values         [:tuple [:maybe [:or :string number? :boolean]]
+                                 [:maybe [:or :string number? :boolean]]]]
+               [:display_value  ms/NonBlankString]
+               [:dimension_name {:optional true} [:maybe :string]]]]])
+
 (mr/def ::exploration-block.metric
   "One entry of the `:metrics` column of a ExplorationBlock, decoded."
   [:map {:closed true}
    [:card_id ms/PositiveInt]
-   [:dimension_mappings {:optional true} [:maybe [:sequential ::metrics/dimension-mapping]]]])
+   [:dimension_mappings {:optional true} [:maybe [:sequential ::metrics/dimension-mapping]]]
+   [:explore_filters    {:optional true} [:maybe [:sequential ::exploration-block.metric.explore-filter]]]])
 
 (mr/def ::exploration-block.dimension
   "One entry of the `:dimensions` column of a ExplorationBlock, decoded."

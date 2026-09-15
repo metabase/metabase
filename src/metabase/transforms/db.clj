@@ -402,9 +402,11 @@
                         :where  [:= :rn [:inline 1]]}))
 
 (mu/defn active-run-for-transform
-  "The active TransformRun of the Transform with `transform-id`, or nil."
-  [transform-id :- ::lib.schema.id/transform]
-  (t2/select-one :model/TransformRun :transform_id transform-id :is_active true))
+  "The active TransformRun of the Transform with `transform-id`, or nil. `transform-id` is nil for a
+  transform that hasn't been saved yet, in which case there is no run either."
+  [transform-id :- [:maybe ::lib.schema.id/transform]]
+  (when transform-id
+    (t2/select-one :model/TransformRun :transform_id transform-id :is_active true)))
 
 (mu/defn active-run-ids-of-parent
   "The IDs of the active TransformRuns whose `parent-column` is `parent-run-id`."

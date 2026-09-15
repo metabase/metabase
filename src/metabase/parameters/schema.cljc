@@ -216,7 +216,11 @@
    [:inline_parameters      {:optional true} [:maybe [:sequential :string]]]
    [:collection_authority_level {:optional true} [:maybe [:or :keyword :string]]]
    [:card                   {:optional true} [:maybe :metabase.queries.schema/card]]
-   [:series                 {:optional true} [:maybe [:sequential :metabase.queries.schema/card]]]])
+   [:series                 {:optional true} [:maybe [:sequential :metabase.queries.schema/card]]]
+   [:action                 {:optional true} [:maybe [:merge
+                                                      :metabase.actions.schema/action
+                                                      [:map {:closed true}
+                                                       [:database_enabled_actions {:optional true} :boolean]]]]]])
 
 (mr/def ::parameter-mapping-with-dashcard
   "A `::parameter-mapping` resolved against the DashboardCard that carries it. The `:dashcard` is attached server-side

@@ -83,8 +83,7 @@
 (mu/defn question-description
   "Generate a description for the question."
   [root     :- ::ads/root
-   question :- [:map {:closed true}
-                [:dataset_query ::ads/query]]]
+   question :- ::ads/card-or-question]
   (let [aggregations (->> (lib/aggregations (:dataset_query question))
                           (metric->description root))
         field-ids    (into

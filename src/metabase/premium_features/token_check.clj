@@ -47,11 +47,6 @@
   "Similar to RemoteCheckedToken, but starts with 'airgap_'."
   #"airgap_.+")
 
-(def ^:private TokenStr
-  [:or
-   [:re RemoteCheckedToken]
-   [:re AirgapToken]])
-
 (def ^String token-check-url
   "Base URL to use for token checks. Hardcoded by default but for development purposes you can use a local server.
   Specify the env var `METASTORE_DEV_SERVER_URL`. If no server is defined, it uses the staging token check url."
@@ -178,7 +173,8 @@
    [:company       {:optional true} [:string {:min 1}]]
    [:store-users   {:optional true} [:maybe [:sequential [:map {:closed true}
                                                           [:email :string]]]]]
-   [:meters        {:optional true} ms/OpaqueJSONObject]
+   [:meters        {:optional true} [:map {:closed false, ::mr/deliberately-open true
+                                           :description "meters, keyed by whichever meter names the license server defines"}]]
    [:quotas        {:optional true} [:sequential [:map {:closed true}
                                                   [:hosting-feature {:optional true} :string]
                                                   [:soft-limit      {:optional true} number?]
@@ -271,7 +267,7 @@
 (mu/defn- decode-token* :- TokenStatus
   "Decode a token. If you get a positive response about the token, even if it is not valid, return that. Errors will
   be caught further up with appropriate fall backs, retry strategies, and grace periods for features."
-  [token :- TokenStr]
+  [token :- :string]
   ;; NB that we fetch any settings from this thread, not inside on of the futures in the inner fetch calls.  We
   ;; will have taken a lock to call through to here, and could create a deadlock with the future's thread.  See
   ;; https://github.com/metabase/metabase/pull/38029/

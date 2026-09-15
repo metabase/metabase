@@ -74,11 +74,19 @@
 
 ;;; --------------------------------------------------- Formatting ---------------------------------------------------
 
+(mr/def ::render-column
+  "A query-result column as the render pipeline threads it: normally a legacy column-metadata map, but
+  `table-data/visible-columns` may annotate it with pipeline-internal keys (`:source-idx`, `:remapped_to_column`),
+  and test/synthetic data may omit optional display fields, so extra and missing decorative keys are tolerated."
+  [:map {:closed false, ::mr/deliberately-open true,
+         :description "a legacy column-metadata map, possibly annotated with pipeline-internal keys"}
+   [:name :string]])
+
 (mu/defn- format-scalar-value
   [timezone-id            :- [:maybe :string]
    value                  :- ms/FieldValue
-   col                    :- :metabase.legacy-mbql.schema/legacy-column-metadata
-   visualization-settings :- ms/VisualizationSettings]
+   col                    :- [:maybe ::render-column]
+   visualization-settings :- [:maybe ms/VisualizationSettings]]
   (cond
     ;; legacy usage -- do not use going forward
     #_{:clj-kondo/ignore [:deprecated-var]}
@@ -134,9 +142,9 @@
 (mu/defn- query-results->row-seq
   "Returns a seq of stringified formatted rows that can be rendered into HTML"
   [timezone-id  :- [:maybe :string]
-   visible-cols :- [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]
+   visible-cols :- [:sequential ::render-column]
    rows         :- [:sequential [:sequential ms/FieldValue]]
-   viz-settings :- ms/VisualizationSettings]
+   viz-settings :- [:maybe ms/VisualizationSettings]]
   (let [formatters (mapv #(formatter/create-formatter timezone-id % viz-settings) visible-cols)]
     (for [row rows]
       {:row (mapv (fn [col fmt-fn]
@@ -167,16 +175,23 @@
 (mr/def ::QPResultData
   "The `:data` of a QP result, as the render pipeline reads it."
   [:map {:closed true}
-   [:cols             {:optional true} [:maybe [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]]]
+   [:cols             {:optional true} [:maybe [:sequential ::render-column]]]
    [:rows             {:optional true} [:maybe [:sequential [:sequential ms/FieldValue]]]]
    [:viz-settings     {:optional true} [:maybe ms/VisualizationSettings]]
    [:results_metadata {:optional true} [:maybe [:map {:closed true}
-                                                [:columns [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]]]]]
+                                                [:columns [:sequential ::render-column]]]]]
    [:results_timezone {:optional true} [:maybe :string]]
    [:format-rows?     {:optional true} [:maybe :boolean]]
    [:native_form      {:optional true} [:maybe ::qp.compile/compiled]]
    [:insights         {:optional true} [:maybe [:sequential Insight]]]
-   [:rows_truncated   {:optional true} [:maybe :int]]])
+   [:rows_truncated   {:optional true} [:maybe :int]]
+   [:csv-include-bom? {:optional true} [:maybe :boolean]]
+   [:pivot-export-options {:optional true} [:maybe [:map {:closed true}
+                                                    [:pivot-rows         {:optional true} [:maybe [:sequential :int]]]
+                                                    [:pivot-cols         {:optional true} [:maybe [:sequential :int]]]
+                                                    [:pivot-measures     {:optional true} [:maybe [:sequential :int]]]
+                                                    [:show-row-totals    {:optional true} :boolean]
+                                                    [:show-column-totals {:optional true} :boolean]]]]])
 
 (mr/def ::QPResult
   "A QP result map (`{:data ..., :error ...}`), as the render pipeline receives it."
@@ -186,13 +201,15 @@
    [:row_count               {:optional true} [:maybe :int]]
    [:status                  {:optional true} [:maybe [:enum :completed :failed]]]
    [:database_id             {:optional true} [:maybe ::lib.schema.id/database]]
-   [:started_at              {:optional true} [:maybe :string]]
+   [:started_at              {:optional true} [:maybe [:or :string (ms/InstanceOfClass java.time.temporal.Temporal)]]]
    [:running_time            {:optional true} [:maybe :int]]
    [:json_query              {:optional true} [:maybe [:or ::lib.schema/query :metabase.legacy-mbql.schema/Query]]]
    [:average_execution_time  {:optional true} [:maybe :int]]
    [:context                 {:optional true} [:maybe :keyword]]
    [:card_id                 {:optional true} [:maybe ::lib.schema.id/card]]
-   [:card-error              {:optional true} [:maybe :boolean]]])
+   [:card-error              {:optional true} [:maybe :boolean]]
+   [:cached                  {:optional true} [:maybe :string]]
+   [:tenant_id               {:optional true} [:maybe :int]]])
 
 (mu/defn- prep-for-html-rendering
   "Convert the query results (`cols` and `rows`) into a formatted seq of rows (list of strings) that can be rendered as
@@ -250,15 +267,20 @@
   [:or :metabase.queries.schema/card ::adhoc-card])
 
 (mr/def ::dashcard
-  "A DashboardCard as `render`ed for a Dashboard Subscription, plus the `:series-results` key
-  `notification.payload.execute` attaches for multi-series cards."
-  [:merge
-   :metabase.dashboards.schema/dashboard-card
-   [:map {:closed true}
-    [:series-results {:optional true} [:maybe [:sequential
-                                               [:map {:closed true}
-                                                [:card   {:optional true} [:maybe [:ref :metabase.queries.schema/card]]]
-                                                [:result {:optional true} [:maybe ::QPResult]]]]]]]])
+  "A DashboardCard as `render`ed for a Dashboard Subscription: usually a full DashboardCard row, but some paths
+  (dashboard-link generation, tests) render from a minimal or synthetic map, so only the keys the render pipeline
+  reads are declared and the rest passes through, plus the `:series-results` key `notification.payload.execute`
+  attaches for multi-series cards."
+  [:map {:closed false, ::mr/deliberately-open true,
+         :description "a DashboardCard row, or a minimal/synthetic stand-in for one"}
+   [:id                     {:optional true} [:maybe ::lib.schema.id/dashcard]]
+   [:dashboard_id           {:optional true} [:maybe ::lib.schema.id/dashboard]]
+   [:card_id                {:optional true} [:maybe ::lib.schema.id/card]]
+   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
+   [:series-results         {:optional true} [:maybe [:sequential
+                                                      [:map {:closed true}
+                                                       [:card   {:optional true} [:maybe [:ref :metabase.queries.schema/card]]]
+                                                       [:result {:optional true} [:maybe ::QPResult]]]]]]])
 
 (mr/def ::render-type
   [:enum :inline :attachment])
@@ -281,7 +303,7 @@
   "Schema used for functions that operate on pulse card contents and their attachments"
   [:map {:closed true}
    [:attachments {:optional true} [:maybe [:map-of :string (ms/InstanceOfClass URL)]]]
-   [:content                      [:sequential ::hiccup]]
+   [:content                      ::hiccup]
    [:render/text {:optional true} [:maybe :string]]])
 
 (defmulti render

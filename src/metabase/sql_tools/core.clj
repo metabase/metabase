@@ -160,7 +160,7 @@
 (mu/defn referenced-tables-raw :- [:sequential ::table-spec]
   "Given a driver and sql string, returns a sequence of {:schema <name> :table <name>} maps."
   [driver :- :keyword
-   sql-str :- :string]
+   sql-str :- [:maybe :string]]
   (let [parser (sql-tools.settings/current-parser-backend)]
     (metrics/with-operation-timing [parser "referenced-tables-raw"]
       (interface/referenced-tables-raw-impl parser driver sql-str))))

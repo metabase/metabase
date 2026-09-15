@@ -299,10 +299,11 @@
    [:fields                  {:optional true} [:maybe [:sequential ::field]]]
    [:transform               {:optional true} [:maybe [:ref :metabase.transforms.schema/transform]]]
    [:owner                   {:optional true} [:maybe [:map {:closed true}
-                                                        [:id         {:optional true} ::lib.schema.id/user]
-                                                        [:email      {:optional true} :string]
-                                                        [:first_name {:optional true} [:maybe :string]]
-                                                        [:last_name  {:optional true} [:maybe :string]]]]]])
+                                                       [:id          {:optional true} ::lib.schema.id/user]
+                                                       [:email       {:optional true} :string]
+                                                       [:first_name  {:optional true} [:maybe :string]]
+                                                       [:last_name   {:optional true} [:maybe :string]]
+                                                       [:common_name {:optional true} [:maybe :string]]]]]])
 
 (mr/def ::table.update
   "What an update (or insert) of a Table accepts: every column of `:metabase_table` except `id`, all optional."

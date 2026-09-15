@@ -13,7 +13,7 @@
    [metabase.metabot.tools.recovery-hints :as recovery-hints]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -26,7 +26,9 @@
   `source-card:`, so the schema deliberately omits `:source_entity` and `:referenced_entities`."
   [:map {:closed true}
    [:reasoning :string]
-   [:query ms/OpaqueJSONObject]
+   [:query [:schema {::mr/deliberately-open true
+                     :description "An LLM-authored MBQL 5 query, structurally unvalidated here; real validation happens at the entry-point boundaries."}
+            :map]]
    [:title {:optional true} [:maybe :string]]
    [:display {:optional true
               :description "Visualization type for displaying the query results in Slack. Required in practice whenever the user asks for a chart or graph, and it must match any requested chart type. Valid values: 'table', 'bar', 'line', 'pie', 'area', 'row', 'scatter', 'funnel'. Use requested chart types like 'line', 'bar', 'area', 'pie', 'scatter', 'funnel', 'row', or 'table' when they fit the query. Omitting this field falls back to Metabase's default table display, so do not omit it for chart or graph requests. Only omit it when you intentionally want a plain table and the user did not request a chart type."}

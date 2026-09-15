@@ -65,13 +65,17 @@
 
 (mr/def ::values-from-card-query.options
   [:map {:closed true}
-   [:query-string {:optional true} [:maybe ms/NonBlankString]]
+   ;; a string to search text columns by substring, or any other Field value to match a non-text column exactly
+   ;; (e.g. searching a numeric aggregation column)
+   [:query-string {:optional true} [:maybe ms/FieldValue]]
    ;; when present, the matching column is added as a second breakout so that each row becomes a
    ;; [value label] pair used for remapping
    [:label-field {:optional true} [:maybe [:or :mbql.clause/field :mbql.clause/expression]]]
    ;; when present, restrict the values to an exact match on the value column (used to fetch the
    ;; remapped label for a single selected value)
-   [:exact-value {:optional true} [:maybe [:or ms/FieldValue [:sequential ms/FieldValue]]]]])
+   [:exact-value {:optional true} [:maybe [:or ms/FieldValue [:sequential ms/FieldValue]]]]
+   ;; which stage of a multi-stage query to search the columns of; defaults to the last stage
+   [:stage-number {:optional true} [:maybe :int]]])
 
 (mu/defn- card-query :- [:maybe ::lib.schema/query]
   "Build the lib query for the value-source Card identified by `card-id`. `query` is the Card's own `:dataset_query`,
@@ -167,7 +171,7 @@
   ([card      :- :metabase.queries.schema/card
     field-ref :- [:or :mbql.clause/field :mbql.clause/expression]
     opts      :- [:maybe ::values-from-card-query.options]]
-   (values-from-card* (card-query (:id card) (not-empty (:dataset_query card))) field-ref opts)))
+   (values-from-card* (card-query (:id card) (lib-be/normalize-query (:dataset_query card))) field-ref opts)))
 
 (defn- can-get-card-values?
   "Whether the prebuilt value-source `query` exposes the `value-field` column."
@@ -207,7 +211,7 @@
                    (when-not (mi/can-read? card)
                      (throw (ex-info "You don't have permissions to do that." {:status-code 403})))
                    (or (when-not (:archived card)
-                         (when-let [query (card-query (:id card) (not-empty (:dataset_query card)))]
+                         (when-let [query (card-query (:id card) (lib-be/normalize-query (:dataset_query card)))]
                            (when (can-get-card-values? query (:value_field config))
                              (card-values query config query-string))))
                        (default-case-thunk)))
@@ -256,7 +260,7 @@
   (when-let [label-field (:label_field config)]
     (when-let [card (parameters.db/card (:card_id config))]
       (when (and (not (:archived card)) (mi/can-read? card))
-        (when-let [query (card-query (:id card) (not-empty (:dataset_query card)))]
+        (when-let [query (card-query (:id card) (lib-be/normalize-query (:dataset_query card)))]
           (when (can-get-card-values? query (:value_field config))
             (first (:values (values-from-card* query
                                                (lib/->mbql5 (:value_field config))
