@@ -1456,6 +1456,7 @@
   {:team "Graphy"
    :api  #{metabase.measures.api metabase.measures.schema}
    :uses #{api
+           collections
            events
            lib
            lib.be
@@ -2550,6 +2551,7 @@
    :module-exports #{segments.rest}
    :api  #{metabase.segments.schema}
    :uses #{api
+           collections
            lib
            lib.be
            lib.schema
