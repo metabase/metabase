@@ -161,3 +161,14 @@ export function registerSiteLocalization(
   addLocale(translationsObject.headers.language, translationsObject);
   window.MetabaseSiteLocalization = translationsObject;
 }
+
+/**
+ * Makes a catalogue the active one. `withInstanceLanguage` restores it after
+ * running in the instance language, and custom visualizations read its name.
+ */
+export function applyUserLocalization(
+  translationsObject: LocaleDataWithLanguage,
+): void {
+  window.MetabaseUserLocalization = translationsObject;
+  setLocalization(translationsObject);
+}
