@@ -80,7 +80,12 @@
                        metabase.mcp.v2.tools.browse/paged-list-content]]
         (testing fn-sym
           (is (= 'hooks.metabase.agent-message/lint-list-content
-                 (get-in config [:hooks :analyze-call fn-sym]))))))))
+                 (get-in config [:hooks :analyze-call fn-sym]))))))
+    (testing (str "GHY-4544: `check-execute-sql-enabled!` isn't checked, since it interpolates its subject into "
+                  "its own `msg` and a plain string is the intended way to name the tool")
+      (is (nil? (get-in config [:hooks
+                                :analyze-call
+                                (symbol "metabase.mcp.v2.queries" "check-execute-sql-enabled!")]))))))
 
 (deftest ^:parallel scope-test
   (testing "GHY-4544: the hooks leave scoping to config, reporting in any namespace where their linter is enabled"
@@ -220,8 +225,7 @@
 (def ^:private helper-cases
   "`[hook fn-name form-fn]`: a message-taking helper's hook, the name its finding cites, and a function of a message
   returning a call that passes it to the helper."
-  [[agent-message/lint-teaching-exit "check-execute-sql-enabled!" #(list 'v2.queries/check-execute-sql-enabled! %)]
-   [agent-message/lint-op-error "op-error!" #(list 'dashboard-ops/op-error! 'idx "add_link" %)]
+  [[agent-message/lint-op-error "op-error!" #(list 'dashboard-ops/op-error! 'idx "add_link" %)]
    [agent-message/lint-ellipsize "ellipsize" #(list 'common/ellipsize % 300)]
    [agent-message/lint-list-content "list-content" #(list 'common/list-content 'rows 0 {:offset 0 :empty-hint %})]
    [agent-message/lint-list-content "paged-list-content"
