@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.session.core :as session]
+   [metabase.test :as mt]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -22,7 +23,7 @@
     (testing "a second update within the throttle window is throttled"
       (is (false? (session/record-session-activity-update! key-hash))))
     (testing "an update after the throttle window has elapsed is allowed through again"
-      (with-redefs [u/since-ms past-throttle-window]
+      (mt/with-dynamic-fn-redefs [u/since-ms past-throttle-window]
         (is (true? (session/record-session-activity-update! key-hash)))))
     (testing "sessions are throttled independently of one another"
       (is (true? (session/record-session-activity-update! (str (random-uuid))))))))
@@ -35,6 +36,6 @@
       (session/prune-session-activity-cache!)
       (is (contains? (activity-cache) key-hash)))
     (testing "entries older than the throttle window are dropped"
-      (with-redefs [u/since-ms past-throttle-window]
+      (mt/with-dynamic-fn-redefs [u/since-ms past-throttle-window]
         (session/prune-session-activity-cache!))
       (is (not (contains? (activity-cache) key-hash))))))
