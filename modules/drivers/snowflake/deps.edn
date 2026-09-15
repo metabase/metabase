@@ -14,19 +14,19 @@
                                                    ;; Azure-backed Snowflake stages, which Metabase never does
                                                    ;; (read-only SQL driver). Excluding the Netty transport removes
                                                    ;; the entire reactor-netty + transitive Netty 4.1.x chain.
-                                                   com.azure/azure-core-http-netty]}
+                                                   com.azure/azure-core-http-netty
+                                                   ;; pinned in and resolved from /deps.edn
+                                                   com.fasterxml.jackson.core/jackson-core
+                                                   com.fasterxml.jackson.core/jackson-databind
+                                                   io.opentelemetry/opentelemetry-api
+                                                   org.bouncycastle/bcpkix-jdk18on
+                                                   org.bouncycastle/bcprov-jdk18on
+                                                   org.jsoup/jsoup]}
   ;; drop when snowflake update driver to the one without the vulnerabilities
   io.grpc/grpc-netty-shaded         {:mvn/version "1.77.0"}
-  io.opentelemetry/opentelemetry-api {:mvn/version "1.62.0"}             ; pinned: pulls vulnerable opentelemetry-api (W3CBaggagePropagator DoS vuln)
-  ;; pinned: snowflake-jdbc-thin 4.0.1 pulls jsoup 1.15.3
-  org.jsoup/jsoup                   {:mvn/version "1.23.2"}
-  ;; pin Bouncy Castle explicitly so the bundled driver JAR uses the patched version
-  org.bouncycastle/bcpkix-jdk18on   {:mvn/version "1.85"}
-  org.bouncycastle/bcprov-jdk18on   {:mvn/version "1.85.2"}
-  ;; pinned: snowflake-jdbc-thin 4.1.0 pulls jackson-core 2.18.4.1 which has resource exhaustion vulns
-  ;; and jackson-databind 2.18.4 which has a deserialization vuln
-  com.fasterxml.jackson.core/jackson-core {:mvn/version "2.21.6"}
-  com.fasterxml.jackson.core/jackson-databind {:mvn/version "2.21.6"}
+  ;; pinned: snowflake-jdbc-thin 4.0.2 pulls zstd-jni 1.5.6-5, which has out-of-bounds
+  ;; read vulns in ZstdDictCompress/ZstdDictDecompress (CVE-2026-87795 et al.), fixed in 1.5.7-14
+  com.github.luben/zstd-jni         {:mvn/version "1.5.7-16"}
   ;; pinned: azure-core 1.57.0 (transitive via snowflake-jdbc-thin) pulls reactor-core 3.7.11
   io.projectreactor/reactor-core          {:mvn/version "3.8.7"}
   ;; pinned: AWS SDK (transitive via snowflake-jdbc-thin) pulls netty 4.1.126.Final
