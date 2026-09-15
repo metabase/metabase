@@ -290,6 +290,70 @@
                :body    body}))))
       {:status 404 :body {:error "not_found"}}))
 
+(def ^:private invalid-authorization-request-description "The authorization request is invalid.")
+
+(defn- authorization-error-code
+  "The RFC 6749 section 4.1.2.1 or RFC 8707 error code for the ex-data of an exception thrown while validating an
+   authorization request."
+  [{:keys [oauth-error error] :as data}]
+  (or oauth-error
+      ;; oidc-provider names a code only for its PKCE and resource-indicator errors; its response_type and scope
+      ;; errors are told apart by the data they carry, and malformed parameters carry neither.
+      error
+      (cond
+        (contains? data :response-type) "unsupported_response_type"
+        (contains? data :requested)     "invalid_scope"
+        :else                           "invalid_request")))
+
+(defn- authorization-consent-response
+  "Validate the authorization request `query-params` from `client` and return the consent page response, which sets
+   the CSRF cookie. Throws `ex-info` when the request is invalid; its data may carry `:oauth-error` and
+   `:error-description`."
+  [provider client query-params request]
+  (let [;; A blank scope is dropped so the provider validates the rest of the request first; the missing scope is
+        ;; then reported as `invalid_scope` below.
+        parsed       (oidc/parse-authorization-request provider
+                                                       (cond-> query-params
+                                                         (str/blank? (:scope query-params)) (dissoc :scope)))
+        ;; A scope-less request would otherwise mint a token with no scopes.
+        _            (when (str/blank? (:scope parsed))
+                       (throw (ex-info "no scope was requested"
+                                       {:oauth-error       "invalid_scope"
+                                        :error-description (oauth-server/missing-scope-description)})))
+        ;; Checked on the raw request, before narrowing: narrowing would silently drop an
+        ;; unregistered scope when `resource` is sent and keep it when it is not.
+        _            (when-not (oauth-server/all-scopes-registered? (:scope parsed))
+                       (throw (ex-info "requested scope is not a registered scope"
+                                       {:oauth-error       "invalid_scope"
+                                        :error-description (oauth-server/unsupported-scopes-description)})))
+        ;; Narrow before signing: the signature then binds the narrowed scope through the
+        ;; consent form round-trip, so the decision endpoint grants exactly what was shown.
+        narrowed     (oauth-server/narrow-scope-to-resource (:resource parsed) (:scope parsed))
+        ;; Nothing surviving means the client asked exclusively for scopes this resource does not
+        ;; accept: dropping the parameter there renders a consent screen listing nothing and mints a
+        ;; zero-scope token, which looks like success and leaves an empty `tools/list` with no
+        ;; in-product way to widen the grant. RFC 6749 section 4.1.2.1 has an error for it.
+        _            (when-not narrowed
+                       (throw (ex-info "no requested scope is accepted by the named resource"
+                                       {:oauth-error       "invalid_scope"
+                                        :error-description (str "The requested scopes are not accepted by "
+                                                                "the requested resource.")
+                                        :resource          (:resource parsed)})))
+        parsed       (assoc parsed :scope narrowed)
+        csrf-token   (generate-csrf-token)
+        oauth-params (select-keys parsed oauth-param-keys)
+        params-sig   (sign-oauth-params csrf-token oauth-params)]
+    (-> {:status  200
+         :headers {"Content-Type" "text/html; charset=utf-8"}
+         :body    (consent-page/render-consent-page
+                   {:client-name  (some-> (:client-name client) (truncate 64))
+                    :nonce        (:nonce request)
+                    :csrf-token   csrf-token
+                    :params-sig   params-sig
+                    :scopes       (requested-scope-descriptions (:scope oauth-params))
+                    :oauth-params oauth-params})}
+        (response/set-cookie csrf-cookie-name csrf-token (csrf-cookie-opts 600)))))
+
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/authorize"
   :- [:map [:status [:enum 200 302 400 404]] [:body [:or :string :map]]]
@@ -312,59 +376,30 @@
      :headers {"Location" (login-redirect-url request)}
      :body    ""}
     (or (when-let [provider (oauth-server/get-provider)]
-          (try
-            (let [;; A blank scope is dropped so the provider validates the client and redirect URI first;
-                  ;; the missing scope is then reported as `invalid_scope` below.
-                  parsed       (oidc/parse-authorization-request provider
-                                                                 (cond-> query-params
-                                                                   (str/blank? (:scope query-params)) (dissoc :scope)))
-                  ;; A scope-less request would otherwise mint a token with no scopes.
-                  _            (when (str/blank? (:scope parsed))
-                                 (throw (ex-info "no scope was requested"
-                                                 {:oauth-error       "invalid_scope"
-                                                  :error-description (oauth-server/missing-scope-description)})))
-                  ;; Checked on the raw request, before narrowing: narrowing would silently drop an
-                  ;; unregistered scope when `resource` is sent and keep it when it is not.
-                  _            (when-not (oauth-server/all-scopes-registered? (:scope parsed))
-                                 (throw (ex-info "requested scope is not a registered scope"
-                                                 {:oauth-error       "invalid_scope"
-                                                  :error-description (oauth-server/unsupported-scopes-description)})))
-                  ;; Narrow before signing: the signature then binds the narrowed scope through the
-                  ;; consent form round-trip, so the decision endpoint grants exactly what was shown.
-                  narrowed     (oauth-server/narrow-scope-to-resource (:resource parsed) (:scope parsed))
-                  ;; Nothing surviving means the client asked exclusively for scopes this resource does not
-                  ;; accept: dropping the parameter there renders a consent screen listing nothing and mints a
-                  ;; zero-scope token, which looks like success and leaves an empty `tools/list` with no
-                  ;; in-product way to widen the grant. RFC 6749 section 4.1.2.1 has an error for it.
-                  _            (when-not narrowed
-                                 (throw (ex-info "no requested scope is accepted by the named resource"
-                                                 {:oauth-error       "invalid_scope"
-                                                  :error-description (str "The requested scopes are not accepted by "
-                                                                          "the requested resource.")
-                                                  :resource          (:resource parsed)})))
-                  parsed       (assoc parsed :scope narrowed)
-                  client       (proto/get-client (:client-store provider) (:client_id parsed))
-                  csrf-token   (generate-csrf-token)
-                  oauth-params (select-keys parsed oauth-param-keys)
-                  params-sig   (sign-oauth-params csrf-token oauth-params)]
-              (-> {:status  200
-                   :headers {"Content-Type" "text/html; charset=utf-8"}
-                   :body    (consent-page/render-consent-page
-                             {:client-name  (some-> (:client-name client) (truncate 64))
-                              :nonce        (:nonce request)
-                              :csrf-token   csrf-token
-                              :params-sig   params-sig
-                              :scopes       (requested-scope-descriptions (:scope oauth-params))
-                              :oauth-params oauth-params})}
-                  (response/set-cookie csrf-cookie-name csrf-token (csrf-cookie-opts 600))))
-            (catch ExceptionInfo e
-              (log/warnf "OAuth authorize request failed: %s" (ex-message e))
-              (let [{:keys [oauth-error error-description]} (ex-data e)]
+          (let [client-id    (:client_id query-params)
+                redirect-uri (:redirect_uri query-params)
+                client       (when (string? client-id)
+                               (proto/get-client (:client-store provider) client-id))]
+            ;; RFC 6749 section 4.1.2.1: never redirect an error until the client and its redirect_uri are validated.
+            (if-not (and client (some #{redirect-uri} (:redirect-uris client)))
+              (do
+                (log/warn "OAuth authorize request has an unknown client or unregistered redirect_uri")
                 {:status  400
                  :headers {"Content-Type" "application/json"}
-                 :body    {:error             (or oauth-error "invalid_request")
-                           :error_description (or error-description
-                                                  "The authorization request is invalid.")}}))))
+                 :body    {:error             "invalid_request"
+                           :error_description invalid-authorization-request-description}})
+              (try
+                (authorization-consent-response provider client query-params request)
+                (catch ExceptionInfo e
+                  (log/warnf "OAuth authorize request failed: %s" (ex-message e))
+                  (let [data (ex-data e)]
+                    {:status  302
+                     :headers {"Location" (oidc/deny-authorization
+                                           provider
+                                           {:redirect_uri redirect-uri, :state (:state query-params)}
+                                           (authorization-error-code data)
+                                           (or (:error-description data) invalid-authorization-request-description))}
+                     :body    ""}))))))
         {:status 404 :body {:error "not_found"}})))
 
 (api.macros/defendpoint :post "/authorize/decision"

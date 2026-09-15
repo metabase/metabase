@@ -8,6 +8,7 @@
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [oidc-provider.util :as oidc-util]
+   [ring.util.codec :as codec]
    [toucan2.core :as t2])
   (:import
    (java.net URLEncoder)
@@ -368,28 +369,116 @@
           (is (str/includes? body "test-state"))
           (is (str/includes? body "/oauth/authorize/decision")))))))
 
+(defn- authorize-request!
+  "GET /oauth/authorize as crowberto with the query `params` key-value pairs, expecting `expected-status`. Returns the
+   full response."
+  [expected-status & params]
+  (apply mt/user-http-request-full-response :crowberto :get expected-status "oauth/authorize" params))
+
+(defn- error-redirect
+  "The `Location` of a redirect `response`, split into `:target` (everything before the query) and `:params` (the
+   decoded query parameters, keyed by name)."
+  [response]
+  (let [[target query] (str/split (get-in response [:headers "Location"]) #"\?" 2)]
+    {:target target
+     :params (codec/form-decode query)}))
+
+(def ^:private invalid-request-description "The authorization request is invalid.")
+
 (deftest authorize-invalid-client-id-test
-  (testing "GET /oauth/authorize with missing/invalid client_id returns 400"
+  (testing "GHY-4542: RFC 6749 section 4.1.2.1 forbids redirecting when the client identifier is missing or invalid,
+            because no registered redirect URI can be trusted. The error is shown in the browser as a 400 instead,
+            even when the request also carries an error that would otherwise be redirected."
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-      (let [response (mt/user-http-request :crowberto :get 400
-                                           "oauth/authorize"
-                                           :client_id     "nonexistent-client"
-                                           :redirect_uri  "https://example.com/callback"
-                                           :response_type "code")]
-        (is (= "invalid_request" (:error response)))))))
+      (doseq [client-params [[:client_id "nonexistent-client"] [:client_id ""] []]]
+        (testing (pr-str client-params)
+          (let [response (apply authorize-request! 400
+                                :redirect_uri  "https://example.com/callback"
+                                :response_type "code"
+                                :scope         "*"
+                                :state         "test-state"
+                                client-params)]
+            (is (= "invalid_request" (get-in response [:body :error])))
+            (is (nil? (get-in response [:headers "Location"])))))))))
 
 (deftest authorize-mismatched-redirect-uri-test
-  (testing "GET /oauth/authorize with mismatched redirect_uri returns 400"
+  (testing "GHY-4542: RFC 6749 section 4.1.2.1 forbids redirecting to a missing, invalid, or mismatching redirect URI.
+            An error redirect goes only to a URI registered for the requesting client, matched exactly, so
+            /authorize cannot be used as an open redirect. Anything else is shown in the browser as a 400."
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (t2/with-transaction [_conn nil {:rollback-only true}]
-        (let [client    (create-test-client!)
-              client-id (:client_id client)
-              response  (mt/user-http-request :crowberto :get 400
-                                              "oauth/authorize"
-                                              :client_id     client-id
-                                              :redirect_uri  "https://evil.com/callback"
-                                              :response_type "code")]
-          (is (= "invalid_request" (:error response))))))))
+        (let [client-id (:client_id (create-test-client!))]
+          (create-test-client! {:redirect_uris ["https://other.example.com/callback"]})
+          (doseq [redirect-params [[:redirect_uri "https://evil.com/callback"]
+                                   [:redirect_uri "https://example.com/callback/"]
+                                   [:redirect_uri "https://example.com/callback?next=https://evil.com"]
+                                   ;; registered, but for a different client
+                                   [:redirect_uri "https://other.example.com/callback"]
+                                   [:redirect_uri ""]
+                                   []]]
+            (testing (pr-str redirect-params)
+              (let [response (apply authorize-request! 400
+                                    :client_id     client-id
+                                    :response_type "code"
+                                    :scope         "*"
+                                    :state         "test-state"
+                                    redirect-params)]
+                (is (= "invalid_request" (get-in response [:body :error])))
+                (is (nil? (get-in response [:headers "Location"])))))))))))
+
+(deftest authorize-redirects-request-errors-to-client-test
+  (testing "GHY-4542: once the client and redirect URI are valid, RFC 6749 section 4.1.2.1 reports every other error
+            to the client by redirecting to that redirect URI with `error`, `error_description`, and `state`, plus
+            RFC 9207 `iss`. Answering with a 400 JSON body strands the user on a raw error in their browser tab and
+            leaves the client waiting for a callback that never comes."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client-id        (:client_id (create-test-client!))
+              public-client-id (:client_id (create-test-client! {:client_type "public"}))]
+          (doseq [[description error params]
+                  [["an unsupported response_type"
+                    "unsupported_response_type" [:client_id client-id :response_type "token"]]
+                   ["a missing response_type"
+                    "invalid_request" [:client_id client-id]]
+                   ["a public client without PKCE"
+                    "invalid_request" [:client_id public-client-id :response_type "code"]]
+                   ["code_challenge_method without code_challenge"
+                    "invalid_request" [:client_id client-id :response_type "code" :code_challenge_method "S256"]]
+                   ["an unsupported code_challenge_method"
+                    "invalid_request" [:client_id client-id :response_type "code"
+                                       :code_challenge "abc" :code_challenge_method "plain"]]
+                   ["a relative resource indicator"
+                    "invalid_target" [:client_id client-id :response_type "code" :resource "not-absolute"]]
+                   ["a resource indicator with a fragment"
+                    "invalid_target" [:client_id client-id :response_type "code"
+                                      :resource "http://localhost:3000/api/mcp#fragment"]]]]
+            (testing description
+              (let [response (apply authorize-request! 302
+                                    :redirect_uri "https://example.com/callback"
+                                    :scope        "agent:content:read"
+                                    :state        "test-state"
+                                    params)]
+                (is (= {:target "https://example.com/callback"
+                        :params {"error"             error
+                                 "error_description" invalid-request-description
+                                 "state"             "test-state"
+                                 "iss"               "http://localhost:3000"}}
+                       (error-redirect response)))))))))))
+
+(deftest authorize-error-redirect-without-state-test
+  (testing "GHY-4542: the error redirect echoes `state` only when the request carried one"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [response (authorize-request! 302
+                                           :client_id     (:client_id (create-test-client!))
+                                           :redirect_uri  "https://example.com/callback"
+                                           :response_type "token"
+                                           :scope         "agent:content:read")]
+          (is (= {:target "https://example.com/callback"
+                  :params {"error"             "unsupported_response_type"
+                           "error_description" invalid-request-description
+                           "iss"               "http://localhost:3000"}}
+                 (error-redirect response))))))))
 
 (deftest authorize-unauthenticated-test
   (testing "GET /oauth/authorize without session redirects to login page"
@@ -1298,7 +1387,8 @@
                 "snapshot. Because `/oauth/authorize` validates before narrowing, a user forced to re-authorize was "
                 "answered a 400 `invalid_request` JSON body rendered raw in their browser tab - the manual recovery "
                 "path was broken too. `WidenDynamicOAuthClientScopesForMcpV2` unions the six v2 scopes into every "
-                "dynamically registered client's snapshot so the request validates and reaches consent.")
+                "dynamically registered client's snapshot so the request validates and reaches consent. GHY-4542: "
+                "the refusal is now an RFC 6749 section 4.1.2.1 `invalid_scope` redirect to the client.")
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [legacy-scopes   ["agent:question:create" "agent:sql:construct" "agent:viz:mcp-ui:query"]
@@ -1317,7 +1407,12 @@
                                  :scope         requested
                                  :state         "test-state"))]
           (testing "before widening, the six v2 scopes are refused against the legacy snapshot"
-            (is (= "invalid_request" (:error (:body (authorize! 400))))))
+            (is (= {:target "https://example.com/callback"
+                    :params {"error"             "invalid_scope"
+                             "error_description" invalid-request-description
+                             "state"             "test-state"
+                             "iss"               "http://localhost:3000"}}
+                   (error-redirect (authorize! 302)))))
           ;; Apply what the migration applies. The change class itself is exercised against the changelog in
           ;; `metabase.app-db.custom-migrations-test`; what this test owns is the authorize consequence.
           (t2/update! :model/OAuthClient {:client_id client-id}
@@ -1340,16 +1435,21 @@
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [client-id (:client_id (create-test-client!
                                      {:scopes ["agent:question:create" "agent:sql:execute"]}))
-              response  (mt/user-http-request-full-response
-                         :crowberto :get 400 "oauth/authorize"
-                         :client_id     client-id
-                         ;; both are v1-only: the v2 resource accepts neither
-                         :scope         "agent:question:create agent:sql:execute"
-                         :redirect_uri  "https://example.com/callback"
-                         :response_type "code"
-                         :resource      (str "http://localhost:3000" (mcp/mcp-canonical-path))
-                         :state         "test-state")]
-          (is (= "invalid_scope" (get-in response [:body :error]))))))))
+              response  (authorize-request! 302
+                                            :client_id     client-id
+                                            ;; both are v1-only: the v2 resource accepts neither
+                                            :scope         "agent:question:create agent:sql:execute"
+                                            :redirect_uri  "https://example.com/callback"
+                                            :response_type "code"
+                                            :resource      (str "http://localhost:3000" (mcp/mcp-canonical-path))
+                                            :state         "test-state")]
+          (testing "GHY-4542: delivered to the client as an RFC 6749 section 4.1.2.1 error redirect"
+            (is (= {:target "https://example.com/callback"
+                    :params {"error"             "invalid_scope"
+                             "error_description" "The requested scopes are not accepted by the requested resource."
+                             "state"             "test-state"
+                             "iss"               "http://localhost:3000"}}
+                   (error-redirect response)))))))))
 
 (deftest authorize-rejects-unregistered-scopes-test
   (testing "GHY-4542: a client that registered a wildcard such as `*` before registration validated scopes
@@ -1357,7 +1457,8 @@
             rejects any requested scope that is not a registered scope, and tells the client where the
             supported scopes are listed without echoing what it sent. The check runs on the raw requested
             scope, before resource narrowing: after it, a client omitting `resource` would get through and
-            one sending it would have `*` silently dropped instead of rejected."
+            one sending it would have `*` silently dropped instead of rejected. The rejection is an RFC 6749
+            section 4.1.2.1 error redirect to the client's registered redirect URI."
     (doseq [site-url ["http://localhost:3000" "http://localhost:3000/metabase"]]
       (testing (str "site-url " site-url)
         (mt/with-temporary-setting-values [site-url site-url]
@@ -1371,18 +1472,23 @@
                     resource [nil (str site-url (mcp/mcp-canonical-path))]]
               (testing (pr-str {:requested requested :resource resource})
                 (let [client-id   (:client_id (create-test-client! {:scopes registered}))
-                      response    (apply mt/user-http-request-full-response
-                                         :crowberto :get 400 "oauth/authorize"
+                      response    (apply authorize-request! 302
                                          :client_id     client-id
                                          :redirect_uri  "https://example.com/callback"
                                          :response_type "code"
                                          :scope         requested
                                          :state         "test-state"
                                          (when resource [:resource resource]))
-                      description (str (get-in response [:body :error_description]))]
-                  (is (= "invalid_scope" (get-in response [:body :error])))
-                  (is (str/includes? description
-                                     (str "scopes_supported at " site-url "/.well-known/oauth-authorization-server"))
+                      redirect    (error-redirect response)
+                      description (str (get-in redirect [:params "error_description"]))]
+                  (is (= {:target "https://example.com/callback"
+                          :params {"error"             "invalid_scope"
+                                   "error_description" (str "The request contained unsupported scopes. Request only "
+                                                            "scopes listed in scopes_supported at " site-url
+                                                            "/.well-known/oauth-authorization-server")
+                                   "state"             "test-state"
+                                   "iss"               site-url}}
+                         redirect)
                       "the description points at the metadata document, including the site-url subpath")
                   (is (not (str/includes? description rejected))
                       "the description does not echo the rejected scope")
@@ -1393,26 +1499,29 @@
   (testing "GHY-4542: a request with no scope used to render a consent screen listing no permissions and
             mint a token with no scopes. Nothing downstream should have to tell a scope-less OAuth token
             apart from scope-unaware auth, so /authorize answers `invalid_scope` instead, whether `scope`
-            is absent, empty, or whitespace, and with or without a `resource` indicator."
+            is absent, empty, or whitespace, and with or without a `resource` indicator, as an RFC 6749 section
+            4.1.2.1 error redirect to the client."
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [client-id (:client_id (create-test-client! {:scopes ["agent:content:read"]}))]
           (doseq [scope-params [[] [:scope ""] [:scope "   "]]
                   resource     [nil (str "http://localhost:3000" (mcp/mcp-canonical-path))]]
             (testing (pr-str {:scope-params scope-params :resource resource})
-              (let [response    (apply mt/user-http-request-full-response
-                                       :crowberto :get 400 "oauth/authorize"
-                                       :client_id     client-id
-                                       :redirect_uri  "https://example.com/callback"
-                                       :response_type "code"
-                                       :state         "test-state"
-                                       (concat scope-params
-                                               (when resource [:resource resource])))
-                    description (str (get-in response [:body :error_description]))]
-                (is (= "invalid_scope" (get-in response [:body :error])))
-                (is (= (str "The request must include a scope. Request only scopes listed in scopes_supported at "
-                            "http://localhost:3000/.well-known/oauth-authorization-server")
-                       description))))))))))
+              (let [response (apply authorize-request! 302
+                                    :client_id     client-id
+                                    :redirect_uri  "https://example.com/callback"
+                                    :response_type "code"
+                                    :state         "test-state"
+                                    (concat scope-params
+                                            (when resource [:resource resource])))]
+                (is (= {:target "https://example.com/callback"
+                        :params {"error"             "invalid_scope"
+                                 "error_description" (str "The request must include a scope. Request only scopes "
+                                                          "listed in scopes_supported at "
+                                                          "http://localhost:3000/.well-known/oauth-authorization-server")
+                                 "state"             "test-state"
+                                 "iss"               "http://localhost:3000"}}
+                       (error-redirect response)))))))))))
 
 (deftest mb-full-client-can-still-authorize-test
   (testing "removing `mb:full` from the advertised sets must not break a first-party client that
