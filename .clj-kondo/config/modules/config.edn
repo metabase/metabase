@@ -2780,6 +2780,16 @@
            util
            util.config}}
 
+  transform-testing
+  {:team "Graphy"
+   :api  #{metabase.transform-testing.api}
+   :uses #{api
+           lib
+           lib.schema
+           models
+           util}
+   :model-imports #{:model/Transform :model/User}}
+
   transforms
   {:team "Graphy"
    :module-exports #{transforms.base
