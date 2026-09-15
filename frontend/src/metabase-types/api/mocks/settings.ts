@@ -149,6 +149,7 @@ export const createMockTokenFeatures = (
   library: false,
   library_retrieval: false,
   "support-users": false,
+  "session-management": false,
   tenants: false,
   writable_connection: false,
   admin_security_center: false,

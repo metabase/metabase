@@ -192,6 +192,10 @@
   "Should we enable configuring session timeouts?"
   :session-timeout-config)
 
+(define-premium-feature ^{:added "0.64.0"} enable-session-management?
+  "Should we enable listing and revoking users' sessions?"
+  :session-management)
+
 (define-premium-feature can-disable-password-login?
   "Can we disable login by password?"
   :disable-password-login)
@@ -425,6 +429,7 @@
    :scim                           (enable-scim?)
    :semantic_search                (enable-semantic-search?)
    :serialization                  (enable-serialization?)
+   :session-management             (enable-session-management?)
    :session_timeout_config         (enable-session-timeout-config?)
    :snippet_collections            (enable-snippet-collections?)
    :sso_google                     (enable-sso-google?)
