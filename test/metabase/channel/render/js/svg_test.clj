@@ -110,6 +110,37 @@
                         (.encodeToString (Base64/getEncoder) (solid-png-bytes Color/GREEN)))]
       (is (= [0 255 0] (render-center-pixel (image-svg data-uri)))))))
 
+(defn- data-uri-svg
+  "An svg embedding `data-uri` as a 10x10 `<image>`, via the `xlink:href` or plain `href` attribute."
+  [data-uri attr]
+  (str "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" width=\"10\" height=\"10\">"
+       "<image " attr "=\"" data-uri "\" x=\"0\" y=\"0\" width=\"10\" height=\"10\"/></svg>"))
+
+(defn- png-data-uri
+  "A `data:` URI for a `side` x `side` all-black 1-bit PNG: tiny compressed, `side`^2 pixels decoded."
+  [side]
+  (let [image (BufferedImage. side side BufferedImage/TYPE_BYTE_BINARY)]
+    (with-open [os (ByteArrayOutputStream.)]
+      (ImageIO/write image "png" os)
+      (str "data:image/png;base64," (.encodeToString (Base64/getEncoder) (.toByteArray os))))))
+
+(deftest svg-string->bytes-bounds-embedded-image-size-test
+  (binding [js.svg/*chart-size* {:width 20 :height 20}]
+    (testing "an embedded image that would decode past the pixel budget is refused before Batik decodes it (a
+              compressed image inside the result-string cap can otherwise demand hundreds of MB of host heap)"
+      (doseq [attr ["xlink:href" "href"]]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Embedded images would decode to"
+                              (js.svg/svg-string->bytes (data-uri-svg (png-data-uri 8000) attr)))
+            attr)))
+    (testing "an embedded data: URI that isn't a sizeable raster (e.g. a nested svg) is refused"
+      (let [nested (str "data:image/svg+xml;base64,"
+                        (.encodeToString (Base64/getEncoder)
+                                         (.getBytes "<svg xmlns=\"http://www.w3.org/2000/svg\"/>" "UTF-8")))]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not in a supported raster format"
+                              (js.svg/svg-string->bytes (data-uri-svg nested "xlink:href"))))))
+    (testing "a small embedded image within the budget still renders"
+      (is (bytes? (js.svg/svg-string->bytes (data-uri-svg (png-data-uri 64) "xlink:href")))))))
+
 (deftest svg-string->bytes-clamps-aspect-ratio-height-test
   (testing "when the raster height follows the svg's aspect ratio (email/Slack: no explicit chart size), it is
             capped — an untrusted custom-viz svg with an extreme aspect ratio must not size a host-heap raster"

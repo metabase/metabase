@@ -17,10 +17,12 @@
   (:import
    (java.io ByteArrayInputStream ByteArrayOutputStream)
    (java.nio.charset StandardCharsets)
+   (java.util Base64)
+   (javax.imageio ImageIO ImageReader)
    (org.apache.batik.anim.dom SAXSVGDocumentFactory SVGOMDocument)
    (org.apache.batik.transcoder TranscoderInput TranscoderOutput)
    (org.apache.batik.transcoder.image PNGTranscoder)
-   (org.w3c.dom Element Node)))
+   (org.w3c.dom Element Node NodeList)))
 
 (set! *warn-on-reflection* true)
 
@@ -144,9 +146,69 @@
         (reset! acquired img)
         img))))
 
+(def ^:private max-embedded-image-pixels
+  "Budget for the decoded size of the raster images an svg embeds as `data:` URIs, summed across the document.
+  Batik decodes an embedded image at its intrinsic dimensions before scaling it into place, so the output-size
+  caps don't bound it: a 17 KB all-black 12000x12000 PNG costs ~550 MB of host heap to decode. Chart images are
+  small; 25 megapixels (~100 MB ARGB) leaves room for a few inlined photos."
+  25000000)
+
+(defn- data-uri-bytes
+  "The decoded payload of a `data:<mime>;base64,<data>` URI, or nil when `href` is not one."
+  ^bytes [^String href]
+  (when (str/starts-with? href "data:")
+    (let [[header data] (str/split href #"," 2)]
+      (when (and data (str/ends-with? header ";base64"))
+        (.decode (Base64/getMimeDecoder) ^String data)))))
+
+(defn- image-dimensions
+  "`[width height]` of the raster image encoded in `bytes`, read from its header without decoding pixels, or nil
+  when no ImageIO reader recognizes the format."
+  [^bytes bytes]
+  (with-open [iis (ImageIO/createImageInputStream (ByteArrayInputStream. bytes))]
+    (let [readers (ImageIO/getImageReaders iis)]
+      (when (.hasNext readers)
+        (let [^ImageReader reader (.next readers)]
+          (try
+            (.setInput reader iis)
+            [(.getWidth reader 0) (.getHeight reader 0)]
+            (finally
+              (.dispose reader))))))))
+
+(defn- element-href
+  ^String [^Element el]
+  (let [xlink (.getAttributeNS el "http://www.w3.org/1999/xlink" "href")]
+    (if (str/blank? xlink) (.getAttribute el "href") xlink)))
+
+(defn- check-embedded-images!
+  "Fail the render if the raster images the document embeds would decode to more than
+  [[max-embedded-image-pixels]] in total, or if an embedded `data:` URI isn't a raster format ImageIO can size
+  (so e.g. a nested svg can't smuggle further images past the check). Non-`data:` hrefs are left to Batik, which
+  refuses them (the document has no base URI)."
+  [^SVGOMDocument svg-document]
+  (let [elements (for [tag ["image" "feImage"]
+                       :let [^NodeList nodes (.getElementsByTagNameNS svg-document "*" tag)]
+                       i (range (.getLength nodes))]
+                   (.item nodes i))
+        total    (reduce (fn [total ^Element el]
+                           (if-let [bytes (some-> (element-href el) data-uri-bytes)]
+                             (let [[w h] (image-dimensions bytes)]
+                               (when-not w
+                                 (throw (ex-info (i18n/tru "Embedded image is not in a supported raster format")
+                                                 {:type ::embedded-image-refused})))
+                               (+ total (* (long w) (long h))))
+                             total))
+                         0
+                         elements)]
+    (when (> total (long max-embedded-image-pixels))
+      (throw (ex-info (i18n/tru "Embedded images would decode to {0} pixels, more than the {1} allowed"
+                                total max-embedded-image-pixels)
+                      {:type ::embedded-image-refused, :pixels total})))))
+
 (defn- render-svg
   ^bytes [^SVGOMDocument svg-document]
   (style/register-fonts-if-needed!)
+  (check-embedded-images! svg-document)
   (with-open [os (ByteArrayOutputStream.)]
     (let [^SVGOMDocument fixed-svg-doc (post-process svg-document fix-fill clear-style-node)
           in                           (TranscoderInput. fixed-svg-doc)
