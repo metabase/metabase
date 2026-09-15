@@ -1476,7 +1476,7 @@
   :hierarchy #'hierarchy)
 
 (defmulti compile-rows-query
-  "Compiles a `{:query :params}` query returning `rows` with the `columns` of `{:name :base_type}`."
+  "Compiles a `{:query :params}` query returning `rows` with the `columns` of `{:name :database_type}`."
   {:added "0.64.0", :arglists '([driver columns rows])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

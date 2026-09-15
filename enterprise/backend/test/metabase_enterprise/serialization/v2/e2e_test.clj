@@ -1043,3 +1043,50 @@
         (is (=? {:table_id (:id table) :name field-name :active false}             field))
         (is (= (:id table) (lib/primary-source-table-id imported)))
         (is (=? [[:field {} (:id field)]] (lib/fields imported)))))))
+
+(deftest transform-test-round-trip-test
+  (testing "A transform test is exported under its transform's path and imported with its transform"
+    (mt/with-premium-features #{:transforms-basic}
+      (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+        (ts/with-dbs [source-db dest-db]
+          (ts/with-db source-db
+            (let [db        (ts/create! :model/Database :name "my-db")
+                  coll      (ts/create! :model/Collection :name "ETL" :namespace :transforms)
+                  creator   (ts/create! :model/User :email "creator@example.com")
+                  transform (ts/create! :model/Transform
+                                        :name          "Orders Summary"
+                                        :collection_id (:id coll)
+                                        :creator_id    (:id creator)
+                                        :source        {:type  "query"
+                                                        :query {:database (:id db) :type "native" :native {:query "SELECT 1 AS ID"}}}
+                                        :target        {:database (:id db) :type "table" :schema "PUBLIC" :name "orders_summary"})]
+              (ts/create! :model/TransformTest
+                          :transform_id (:id transform)
+                          :creator_id   (:id creator)
+                          :name         "My test"
+                          :inputs       [{:table   {:schema "PUBLIC" :name "ORDERS"}
+                                          :format  :rows
+                                          :columns [{:name "ID" :database_type "INTEGER"}]
+                                          :rows    [{"ID" 1}]}]
+                          :expectations [{:type :equals :name "one row" :format :sql :sql "SELECT 1 AS ID"}
+                                         {:type :empty :name "no nulls" :sql "SELECT * FROM PUBLIC.orders_summary WHERE ID IS NULL"}])
+              (storage/store! (seq (serdes/with-cache (into [] (extract/extract {})))) (storage.files/file-writer dump-dir))))
+          (testing "the file sits under the transform's path, with keywords written as strings"
+            (is (=? {:transform_id string?
+                     :creator_id   "creator@example.com"
+                     :inputs       [{:format "rows" :columns [{:database_type "INTEGER"}]}]
+                     :expectations [{:type "equals" :format "sql"} {:type "empty"}]}
+                    (yaml/parse-string
+                     (slurp (io/file dump-dir "collections" "transforms" "etl" "orders_summary" "my_test.yaml"))))))
+          (ts/with-db dest-db
+            (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))))
+            (is (=? {:name         "My test"
+                     :transform_id (t2/select-one-pk :model/Transform :name "Orders Summary")
+                     :creator_id   (t2/select-one-pk :model/User :email "creator@example.com")
+                     :inputs       [{:table   {:schema "PUBLIC" :name "ORDERS"}
+                                     :format  :rows
+                                     :columns [{:name "ID" :database_type "INTEGER"}]
+                                     :rows    [{"ID" 1}]}]
+                     :expectations [{:type :equals :name "one row" :format :sql :sql "SELECT 1 AS ID"}
+                                    {:type :empty :name "no nulls" :sql "SELECT * FROM PUBLIC.orders_summary WHERE ID IS NULL"}]}
+                    (t2/select-one :model/TransformTest :name "My test")))))))))

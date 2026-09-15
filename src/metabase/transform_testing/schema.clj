@@ -12,10 +12,10 @@
    [:name   ::lib.schema.common/non-blank-string]])
 
 (mr/def ::column
-  "A column of inline test data."
+  "A column of inline test data, with its database native type."
   [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
    [:name      ::lib.schema.common/non-blank-string]
-   [:base_type ::lib.schema.common/base-type]])
+   [:database_type ::lib.schema.common/non-blank-string]])
 
 (mr/def ::row
   "A row of inline test data, keyed by column name."

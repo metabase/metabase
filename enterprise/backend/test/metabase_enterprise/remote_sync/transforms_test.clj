@@ -1059,6 +1059,35 @@ serdes/meta:
                 (is (t2/exists? :model/TransformTag :entity_id remote-tag-entity-id)
                     "Remote transform tag should be imported")))))))))
 
+(defn- transform-test-rso [test-id]
+  (t2/select-one :model/RemoteSyncObject :model_type "TransformTest" :model_id test-id))
+
+(deftest transform-test-events-track-sync-object-test
+  (testing "Creating, updating and deleting a transform test tracks it when remote-sync-transforms is enabled"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [remote-sync-transforms true
+                                         remote-sync-enabled true]
+        (mt/with-temp [:model/Transform     {transform-id :id} {:name "Orders Summary"}
+                       :model/TransformTest {test-id :id}      {:transform_id transform-id :name "My test"}]
+          (is (= "create" (:status (transform-test-rso test-id))))
+          (t2/update! :model/RemoteSyncObject (:id (transform-test-rso test-id))
+                      {:status "synced" :status_changed_at (t/offset-date-time)})
+          (t2/update! :model/TransformTest test-id {:name "Renamed test"})
+          (is (=? {:status "update" :model_name "Renamed test"} (transform-test-rso test-id)))
+          (t2/update! :model/RemoteSyncObject (:id (transform-test-rso test-id))
+                      {:status "synced" :status_changed_at (t/offset-date-time)})
+          (t2/delete! :model/TransformTest test-id)
+          (is (= "delete" (:status (transform-test-rso test-id)))))))))
+
+(deftest transform-test-events-ignored-when-setting-disabled-test
+  (testing "Transform tests aren't tracked when remote-sync-transforms is disabled"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [remote-sync-transforms false
+                                         remote-sync-enabled true]
+        (mt/with-temp [:model/Transform     {transform-id :id} {:name "Orders Summary"}
+                       :model/TransformTest {test-id :id}      {:transform_id transform-id :name "My test"}]
+          (is (nil? (transform-test-rso test-id))))))))
+
 (defn- new-export-task! []
   (t2/delete! :model/RemoteSyncTask)
   (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)}))
