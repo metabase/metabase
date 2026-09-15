@@ -7,6 +7,7 @@
    [metabase.driver.athena :as athena]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
@@ -288,6 +289,90 @@
                                                                       {:page {:page  3
                                                                               :items 5}}))
                (update 0 #(str/split-lines (driver/prettify-native-form :athena %))))))))
+
+(deftest ^:parallel describe-fields-sql-athena-test
+  (testing "describe-fields-sql for Athena: one information_schema query with the required contract"
+    (let [[sql] (sql-jdbc.sync/describe-fields-sql :athena {:details {}})]
+      (is (str/includes? (str/lower-case sql) "from information_schema.columns"))
+      (is (str/includes? (str/lower-case sql) "table_schema <> 'information_schema'")
+          "must not sync information_schema itself")
+      (is (str/includes? (str/lower-case sql) "order by table_schema asc, table_name asc, ordinal_position asc")
+          "ordering contract for the streaming consumer")
+      (is (re-find #"(?i)ordinal_position - 1" sql)
+          "0-based database-position, matching the legacy map-indexed positions")))
+  (testing "dbname restricts the synced Glue database"
+    (let [[sql] (sql-jdbc.sync/describe-fields-sql :athena {:details {:dbname "mydb"}})]
+      (is (str/includes? (str/lower-case sql) "table_schema = 'mydb'"))))
+  (testing "schema-names and table-names filters render as IN clauses"
+    (let [[sql] (sql-jdbc.sync/describe-fields-sql :athena
+                                                   {:schema-names ["db1" "db2"], :table-names ["t1"], :details {}})]
+      (is (str/includes? (str/lower-case sql) "table_schema in ('db1', 'db2')"))
+      (is (str/includes? (str/lower-case sql) "table_name in ('t1')"))))
+  (testing "nil schema-names must not render IN (NULL) (cf. GDGT-2144)"
+    (let [[sql] (sql-jdbc.sync/describe-fields-sql :athena
+                                                   {:schema-names [nil "db1"], :table-names ["t1"], :details {}})]
+      (is (not (re-find #"(?i)in \(null\)" sql)))
+      (is (str/includes? (str/lower-case sql) "table_schema in ('db1')")))))
+
+(deftest ^:parallel describe-fields-support-test
+  (testing "Athena declares fast-sync support so sync-metadata takes the describe-fields path"
+    (is (true? (driver/database-supports? :athena :describe-fields nil)))))
+
+(deftest ^:parallel describe-fields-pre-process-xf-athena-test
+  (testing "container types normalize to the legacy bare database-types (no DESCRIBE needed)"
+    (let [rows [{:table-schema "s", :table-name "t1", :name "id",  :database-type "int",               :database-position 0}
+                {:table-schema "s", :table-name "t2", :name "data", :database-type "struct<name:string>", :database-position 0}
+                {:table-schema "s", :table-name "t3", :name "arr",  :database-type "array<int>",        :database-position 0}
+                {:table-schema "s", :table-name "t3", :name "mp",   :database-type "map<string,int>",   :database-position 1}]
+          out (into [] (sql-jdbc.sync/describe-fields-pre-process-xf :athena nil) rows)]
+      (testing "plain types pass through untouched"
+        (is (= {:table-schema "s", :table-name "t1", :name "id", :database-type "int", :database-position 0}
+               (first out))))
+      (testing "struct/array/map lose their parameterization so database-type->base-type maps like the legacy path"
+        (is (= "struct" (:database-type (nth out 1))))
+        (is (= "array" (:database-type (nth out 2))))
+        (is (= "map" (:database-type (nth out 3)))))))
+  (testing "duplicate column names within a table trigger the per-table DESCRIBE fallback"
+    (let [rows [{:table-schema "s", :table-name "t1", :name "id",  :database-type "int",    :database-position 0}
+                {:table-schema "s", :table-name "t2", :name "dup", :database-type "int",    :database-position 0}
+                {:table-schema "s", :table-name "t2", :name "dup", :database-type "string", :database-position 1}
+                {:table-schema "s", :table-name "t3", :name "ok",  :database-type "int",    :database-position 0}]
+          called (atom [])
+          out    (mt/with-dynamic-fn-redefs [athena/*describe-table-fields
+                                             (fn [_database schema table-name]
+                                               (swap! called conj [schema table-name])
+                                               [{:name "dup", :database-type "int", :database-position 0}])]
+                   (into [] (sql-jdbc.sync/describe-fields-pre-process-xf :athena nil) rows))]
+      (is (= [["s" "t2"]] @called)
+          "fallback invoked only for the anomalous table")
+      (is (= 3 (count out))
+          "t2's two duplicate rows replaced by one DESCRIBE row; order preserved")
+      (is (= "int" (:database-type (second out))))
+      (is (= "t2" (:table-name (second out)))
+          "t2 rows replaced by DESCRIBE output carrying table coordinates")
+      (is (= "t3" (:table-name (nth out 2)))
+          "subsequent tables unaffected"))))
+
+(deftest ^:synchronized fast-sync-matches-legacy-describe-table-test
+  ;; e24s03 integration: requires MB_ATHENA_TEST_* credentials — errors offline by design
+  (mt/test-driver :athena
+    (testing "information_schema fast path returns the same columns as legacy describe-table"
+      (let [db        (mt/db)
+            dbname    (some-> db :details :dbname not-empty)
+            tables    (t2/select :model/Table :db_id (u/the-id db) :active true)
+            fast-rows (->> (driver/describe-fields :athena db)
+                           (into [] (map #(select-keys % [:table-schema :table-name :name :database-type]))))]
+        (doseq [{:keys [schema name]} tables
+                :let [legacy-fields (set (map (juxt :name :database-type)
+                                              (:fields (driver/describe-table :athena db
+                                                                              (t2/select-one :model/Table :db_id (u/the-id db), :name name)))))
+                      schema'       (or schema dbname)
+                      fast-fields   (set (map (juxt :name :database-type)
+                                              (filter #(and (= name (:table-name %))
+                                                            (= schema' (:table-schema %)))
+                                                      fast-rows)))]]
+          (is (= legacy-fields fast-fields)
+              (str "columns for " schema' "." name " must match between fast and legacy paths")))))))
 
 (defn- query->native! [query]
   (let [check-sql-fn (fn [_driver _conn sql _params _canceled-chan]
