@@ -64,15 +64,8 @@
 
 ;;; ------------------------------------------------- Network policy ---------------------------------------------
 
-(def ^:private network-policies
-  "The `llm-allowed-networks` policies, loosest last."
-  [:external-only :allow-private :allow-all])
-
 (def ^:private network-policy-rank
-  (zipmap network-policies (range)))
-
-(defonce ^:private warned-network-policy-values
-  (atom #{}))
+  (zipmap u.http/configurable-network-policies (range)))
 
 (defsetting llm-allowed-networks
   (deferred-tru (str "Controls which networks Metabase may connect to for LLM provider base URLs. "
@@ -98,17 +91,9 @@
                    "its outbound connections. Proxy-only DNS is supported. Metabase enforces destination addresses "
                    "at connection time for direct requests.")
   :getter     (fn []
-                (let [value (some-> (setting/env-var-value :llm-allowed-networks) keyword)]
-                  (cond
-                    (nil? value)                          :external-only
-                    (contains? network-policy-rank value) value
-                    ;; fail closed on a typo, and say so once rather than on every request
-                    :else
-                    (do (when-not (contains? @warned-network-policy-values value)
-                          (swap! warned-network-policy-values conj value)
-                          (log/warnf "Ignoring MB_LLM_ALLOWED_NETWORKS=%s: expected one of %s; using external-only"
-                                     (name value) (str/join ", " (map name network-policies))))
-                        :external-only)))))
+                (let [[env-var-name raw-value] (setting/env-var-source :llm-allowed-networks)]
+                  (or (u.http/env-network-policy env-var-name raw-value)
+                      :external-only))))
 
 (defn network-policy
   "The network policy for an LLM request.
