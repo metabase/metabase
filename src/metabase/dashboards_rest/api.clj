@@ -26,11 +26,11 @@
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema :as lib-be.schema]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.models.interface :as mi]
    [metabase.parameters.chain-filter :as chain-filter]
-   [metabase.parameters.core :as parameters]
    [metabase.parameters.dashboard :as parameters.dashboard]
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
@@ -798,7 +798,7 @@
   [dashboard-id dashcards]
   (let [dashcard-id->existing-mappings (existing-parameter-mappings dashboard-id)
         existing-mapping?              (fn [dashcard-id mapping]
-                                         (let [mapping (parameters/normalize-parameter-mapping mapping)
+                                         (let [mapping (lib/normalize ::parameters.schema/parameter-mapping mapping)
                                                existing-mappings (get dashcard-id->existing-mappings dashcard-id)]
                                            (contains? existing-mappings (select-keys mapping [:target :parameter_id]))))
         new-mappings                   (for [{mappings :parameter_mappings, dashcard-id :id} dashcards

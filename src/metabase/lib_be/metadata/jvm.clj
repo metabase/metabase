@@ -19,6 +19,7 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.memoize :as u.memo]
    [metabase.util.performance :as perf :refer [get-in]]
    [metabase.util.snake-hating-map :as u.snake-hating-map]
@@ -46,6 +47,56 @@
   get a nice performance boost."
   (u.memo/fast-memo u/->kebab-case-en))
 
+(def ^:private database-columns
+  [:id :engine :name :dbms_version :settings :is_audit :is_attached_dwh :details :write_data_details :admin_details :timezone
+   :router_database_id])
+
+(def ^:private table-columns
+  [:id :db_id :name :display_name :schema :active :visibility_type :database_require_filter])
+
+(def ^:private native-query-snippet-columns
+  [:id :name :description :content :archived :collection_id :template_tags])
+
+(def ^:private transform-columns
+  [:id :name :source :target])
+
+(mr/def ::metadata-database-row
+  "A Database row as the `:metadata/database` select returns it."
+  [:select-keys :metabase.warehouses.schema/database (conj database-columns :features)])
+
+(mr/def ::metadata-table-row
+  "A Table row as the `:metadata/table` select returns it."
+  [:select-keys :metabase.warehouse-schema.schema/table table-columns])
+
+(mr/def ::metadata-native-query-snippet-row
+  "A NativeQuerySnippet row as the `:metadata/native-query-snippet` select returns it."
+  [:select-keys :metabase.native-query-snippets.schema/native-query-snippet native-query-snippet-columns])
+
+(mr/def ::metadata-transform-row
+  "A Transform row as the `:metadata/transform` select returns it."
+  [:select-keys :metabase.transforms.schema/transform transform-columns])
+
+(mr/def ::instance
+  "A Toucan 2 instance [[instance->metadata]] converts, by its model."
+  [:multi {:dispatch t2/model, :lazy-refs true}
+   [:metadata/database             ::metadata-database-row]
+   [:metadata/table                ::metadata-table-row]
+   [:metadata/native-query-snippet ::metadata-native-query-snippet-row]
+   [:metadata/transform            ::metadata-transform-row]
+   [:metadata/column               :metabase.warehouse-schema.schema/field]
+   [:metadata/card                 :metabase.queries.schema/card]
+   [:metadata/metric               :metabase.queries.schema/card]
+   [:metadata/segment              :metabase.segments.schema/segment]
+   [:metadata/measure              :metabase.measures.schema/measure]
+   [:model/Database                :metabase.warehouses.schema/database]
+   [:model/Table                   :metabase.warehouse-schema.schema/table]
+   [:model/Field                   :metabase.warehouse-schema.schema/field]
+   [:model/Card                    :metabase.queries.schema/card]
+   [:model/Segment                 :metabase.segments.schema/segment]
+   [:model/Measure                 :metabase.measures.schema/measure]
+   [:model/NativeQuerySnippet      :metabase.native-query-snippets.schema/native-query-snippet]
+   [:model/Transform               :metabase.transforms.schema/transform]])
+
 (def ^:private metadata-type->schema
   {:metadata/card   ::lib.schema.metadata/card
    :metadata/column ::lib.schema.metadata/column})
@@ -59,15 +110,7 @@
 (mu/defn instance->metadata
   "Convert a (presumably) Toucan 2 instance of an application database model with `snake_case` keys to a Lib style
   metadata instance with `:lib/type` and `kebab-case` keys."
-  [instance      :- [:or
-                     :metabase.warehouses.schema/database
-                     :metabase.warehouse-schema.schema/table
-                     :metabase.warehouse-schema.schema/field
-                     :metabase.queries.schema/card
-                     :metabase.segments.schema/segment
-                     :metabase.measures.schema/measure
-                     :metabase.native-query-snippets.schema/native-query-snippet
-                     :metabase.transforms.schema/transform]
+  [instance      :- ::instance
    metadata-type :- :keyword]
   (let [normalize (if-let [schema (get metadata-type->schema metadata-type)]
                     (fn [instance]
@@ -96,7 +139,7 @@
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
   (merge (next-method query-type model parsed-args honeysql)
-         {:select [:id :engine :name :dbms_version :settings :is_audit :is_attached_dwh :details :write_data_details :admin_details :timezone :router_database_id]}))
+         {:select database-columns}))
 
 (t2/define-after-select :metadata/database
   [database]
@@ -122,7 +165,7 @@
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
   (merge (next-method query-type model parsed-args honeysql)
-         {:select [:id :db_id :name :display_name :schema :active :visibility_type :database_require_filter]
+         {:select table-columns
           :from   [(warehouse-schema-overlay/table-query)]}))
 
 (t2/define-after-select :metadata/table
@@ -408,7 +451,7 @@
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
   (merge (next-method query-type model parsed-args honeysql)
-         {:select [:id :name :description :content :archived :collection_id :template_tags]}))
+         {:select native-query-snippet-columns}))
 
 (t2/define-after-select :metadata/native-query-snippet
   [snippet]
@@ -430,7 +473,7 @@
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
   (merge (next-method query-type model parsed-args honeysql)
-         {:select [:id :name :source :target]}))
+         {:select transform-columns}))
 
 (t2/define-after-select :metadata/transform
   [snippet]

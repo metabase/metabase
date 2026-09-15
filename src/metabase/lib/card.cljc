@@ -315,7 +315,7 @@
   [query         :- ::lib.schema/query
    _stage-number :- :int
    card          :- ::lib.schema.metadata/card
-   options       :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
+   options       :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
   (lib.computed/with-cache-sticky* query
     [::returned-columns (:id card) (lib.metadata.calculation/cacheable-options options)]
     (fn []

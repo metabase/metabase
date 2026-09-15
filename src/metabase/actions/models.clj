@@ -63,8 +63,8 @@
 (def ^:private transform-action-parameters
   "Like `parameters/transform-parameters`, but normalizes against `::actions.schema/action.parameters`: an implicit
   action's parameters carry the annotations [[implicit-action-parameters]] computes them with."
-  {:in  (comp mi/json-in actions.schema/normalize-parameters)
-   :out (comp (mi/catch-normalization-exceptions actions.schema/normalize-parameters)
+  {:in  (comp mi/json-in #(lib/normalize ::actions.schema/action.parameters %))
+   :out (comp (mi/catch-normalization-exceptions #(lib/normalize ::actions.schema/action.parameters %))
               mi/json-out-with-keywordization)})
 
 (t2/deftransforms :model/Action
@@ -83,9 +83,9 @@
 (def ^:private transform-json-with-nested-parameters
   {:in  (comp mi/json-in
               (fn [template]
-                (u/update-if-exists template :parameters parameters/normalize-parameters)))
+                (u/update-if-exists template :parameters #(lib/normalize ::parameters.schema/parameters %))))
    :out (comp (fn [template]
-                (u/update-if-exists template :parameters (mi/catch-normalization-exceptions parameters/normalize-parameters)))
+                (u/update-if-exists template :parameters (mi/catch-normalization-exceptions #(lib/normalize ::parameters.schema/parameters %))))
               mi/json-out-with-keywordization)})
 
 (t2/deftransforms :model/HTTPAction
@@ -174,7 +174,7 @@
    [:model_id               {:optional true} ::lib.schema.id/card]
    [:archived               {:optional true} :boolean]
    [:description            {:optional true} [:maybe :string]]
-   [:parameters             {:optional true} [:maybe [:sequential ::actions.schema/action.parameter.pre-normalize]]]
+   [:parameters             {:optional true} [:maybe ::actions.schema/action.parameters]]
    [:database_id            {:optional true} [:maybe ::lib.schema.id/database]]
    [:parameter_mappings     {:optional true} [:maybe ::parameters.schema/parameter-mappings]]
    [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]

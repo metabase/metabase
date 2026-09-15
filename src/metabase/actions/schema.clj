@@ -3,7 +3,6 @@
    [metabase.actions.http-action :as http-action]
    [metabase.actions.types :as actions.types]
    [metabase.lib-be.schema :as lib-be.schema]
-   [metabase.lib.core :as lib]
    [metabase.lib.schema.actions :as lib.schema.actions]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -153,21 +152,6 @@
 
 (mr/def ::action.parameters
   [:sequential [:ref ::action.parameter]])
-
-(mr/def ::action.parameter.pre-normalize
-  [:merge
-   ::parameters.schema/parameter-with-optional-type
-   [:map
-    [:is-auto-increment                {:optional true} [:maybe :boolean]]
-    [:metabase.actions.models/field-id {:optional true} [:maybe ::lib.schema.id/field]]
-    [:metabase.actions.models/pk?      {:optional true} [:maybe :boolean]]]])
-
-(mu/defn normalize-parameters :- ::action.parameters
-  "Normalize an Action's `:parameters` coming out of the application database or in via an API request. Like
-  [[metabase.parameters.schema/normalize-parameters]], but keeps the annotations an implicit action's parameters
-  carry."
-  [parameters :- [:maybe [:sequential [:or :metabase.lib.schema.common/parameter.unnormalized ::action.parameter.pre-normalize]]]]
-  (lib/normalize ::action.parameters parameters))
 
 (mu/defn- action-schema [schema-type :- [:enum :select :update :insert]]
   ;; `required-for-insert` = you have to specify this when you insert a row

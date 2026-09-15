@@ -79,7 +79,7 @@
    ::lib.schema.metadata/segment
    ::lib.schema/query
    ::lib.schema/stage
-   ::lib.schema.join/join
+   [:ref :metabase.lib.join.util/join-with-optional-alias]
    ::lib.schema.join/strategy.option
    :metabase.lib.column-group/column-group
    ::lib.schema.temporal-bucketing/option])
@@ -611,7 +611,7 @@
   ([query          :- ::lib.schema/query
     stage-number   :- :int
     x              :- ::returned-columns-arg
-    options        :- [:maybe ::returned-columns.options]]
+    options        :- [:maybe [:ref ::visible-columns.options]]]
    (binding [*propagate-binning-and-bucketing* true]
      ;; minor optimization for caching purposes: only keep the options keys that are actually relevant for
      ;; `returned-columns` purposes. As a bonus, this means undocumented options keys that aren't part of the schema
@@ -708,7 +708,7 @@
   [query                                  :- ::lib.schema/query
    stage-number                           :- :int
    source-cols                            :- [:maybe [:sequential ::lib.schema.metadata/column]]
-   {:keys [include-remaps?] :as _options} :- [:maybe ::returned-columns.options]]
+   {:keys [include-remaps?] :as _options} :- [:maybe [:ref ::visible-columns.options]]]
   (when (and include-remaps?
              (lib.util/first-stage? query stage-number))
     (let [existing-ids (into #{} (keep :id) source-cols)]

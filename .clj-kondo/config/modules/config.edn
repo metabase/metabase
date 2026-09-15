@@ -798,6 +798,7 @@
            dashboards
            embedding
            events
+           lib
            lib.be
            lib.schema
            models
@@ -3168,6 +3169,7 @@
            app-db
            audit-app
            driver
+           lib.be
            lib.schema
            models
            permissions

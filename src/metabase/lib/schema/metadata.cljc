@@ -868,6 +868,8 @@
    [:archived               {:optional true} [:maybe :boolean]]
    [:source-card-id         {:optional true} [:maybe ::lib.schema.id/card]]
    [:dashboard-id           {:optional true} [:maybe pos-int?]]
+   [:dimensions             {:optional true} [:maybe [:sequential [:ref ::persisted-dimension]]]]
+   [:dimension-mappings     {:optional true} [:maybe [:sequential [:ref ::dimension-mapping]]]]
    ;;
    ;; PERSISTED INFO: This comes from the [[metabase.model-persistence.models.persisted-info]] model.
    ;;

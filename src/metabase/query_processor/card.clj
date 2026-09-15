@@ -418,7 +418,7 @@
                       (assoc :skip-result-metadata-persistence? true))
         card-id     (:id card)
         dashcard-id (:id dashcard)
-        parameters  (some-> parameters parameters.schema/normalize-parameters-without-adding-default-types)
+        parameters  (some->> parameters (lib/normalize ::parameters.schema/parameters-with-optional-types))
         parameters  (enrich-parameters-from-card parameters (combined-parameters-and-template-tags card))
         dash-viz    (when (and (not= context :question) dashcard)
                       (:visualization_settings dashcard))

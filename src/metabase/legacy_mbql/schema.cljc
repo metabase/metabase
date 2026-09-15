@@ -262,6 +262,8 @@
    [:database_type {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:base_type     {:optional true} [:maybe ::lib.schema.common/base-type]]
    [:semantic_type {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
+   [:effective_type {:optional true} [:maybe ::lib.schema.common/base-type]]
+   [:coercion_strategy {:optional true} [:maybe ::lib.schema.common/coercion-strategy]]
    [:unit          {:optional true} [:maybe ::DateTimeUnit]]
    [:name          {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
@@ -1731,7 +1733,11 @@
    [:map
     [:template-tags {:optional true} [:ref ::TemplateTagMap]]
     ;; collection (table) this query should run against. Needed for MongoDB
-    [:collection    {:optional true} [:maybe ::lib.schema.common/non-blank-string]]]
+    [:collection    {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+    [:params        {:optional true} [:maybe [:sequential [:ref ::lib.schema.literal/param-value]]]]
+    [:projections   {:optional true} [:maybe [:sequential :string]]]
+    [:mbql?         {:optional true} [:maybe :boolean]]
+    [:qp/table-name {:optional true} [:maybe :string]]]
    (lib.schema.common/disallowed-keys
     {:lib/type     "Legacy MBQL inner queries must not have :lib/type"
      :type         "An inner query must not include :type, this will cause us to mix it up with an outer query"

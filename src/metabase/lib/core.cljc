@@ -1346,7 +1346,7 @@
   ([a-query      :- ::lib.schema/query
     stage-number :- :int
     x            :- ::lib.metadata.calculation/returned-columns-arg
-    options      :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
+    options      :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
    (lib.metadata.calculation/returned-columns a-query stage-number x options)))
 
 (mu/defn visible-columns :- ::lib.metadata.calculation/visible-columns

@@ -39,7 +39,7 @@
    [:mbql/query         :metabase.lib.schema/query]
    [:mbql.stage/mbql    :metabase.lib.schema/stage.mbql]
    [:mbql.stage/native  :metabase.lib.schema/stage.native]
-   [:mbql/join          :metabase.lib.schema.join/join]
+   [:mbql/join          [:ref :metabase.lib.join.util/join-with-optional-alias]]
    [::legacy-query      :metabase.legacy-mbql.schema/Query]
    [::clause            ::clause]])
 

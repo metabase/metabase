@@ -113,23 +113,9 @@
    :metabase.lib.schema.literal/literal
    [:cat [:or :keyword :string] [:* ::clause-arg]]])
 
-(mr/def ::clause-tag-candidate.value
-  [:or
-   :metabase.lib.schema.literal/literal
-   :keyword
-   :string
-   [:ref :metabase.lib.schema.metadata/column]
-   [:ref :metabase.lib.options/options]
-   [:map-of :string [:ref ::clause-tag-candidate.value]]
-   [:sequential [:ref ::clause-tag-candidate.value]]])
-
 (mr/def ::clause-tag-candidate
-  "A value an MBQL clause position can hold, before it is known to be a clause: a (possibly not-yet-normalized)
-  clause, another vector, a literal, or column metadata."
-  [:or
-   [:sequential [:ref ::clause-tag-candidate.value]]
-   :metabase.lib.schema.literal/literal
-   [:ref :metabase.lib.schema.metadata/column]])
+  "Any value a `:multi` schema dispatches on with [[mbql-clause-tag]], which may or may not be an MBQL clause."
+  [:schema {::mr/deliberately-open true, :description "a value that may be an MBQL clause"} :any])
 
 (mu/defn mbql-clause-tag :- [:maybe :keyword]
   "If `x` is a (possibly not-yet-normalized) MBQL clause, return its `tag`."
@@ -180,14 +166,6 @@
 (mr/def ::exception-data
   "The `ex-data` of an exception; the `.cljc` equivalent of [[metabase.util.malli.schema/ExceptionData]]."
   [:map {:closed false, ::mr/deliberately-open true, :description "exception data"}])
-
-(mr/def ::parameter.unnormalized
-  "A parameter as read from JSON, before normalization."
-  [:map {:closed false, ::mr/deliberately-open true, :description "unnormalized parameter"}])
-
-(mr/def ::parameter-mapping.unnormalized
-  "A parameter mapping as read from JSON, before normalization."
-  [:map {:closed false, ::mr/deliberately-open true, :description "unnormalized parameter mapping"}])
 
 (mr/def ::field-value
   "One value of a Field; the `.cljc` equivalent of [[metabase.util.malli.schema/FieldValue]]."

@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.dashboards.db :as dashboards.db]
+   [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.parameters.core :as parameters]
@@ -107,7 +108,7 @@
   [dashboard-card]
   (t2/instance :model/DashboardCard
                (-> dashboard-card
-                   (m/update-existing :parameter_mappings parameters/normalize-parameter-mappings)
+                   (m/update-existing :parameter_mappings #(some->> % (lib/normalize ::parameters.schema/parameter-mappings)))
                    (m/update-existing :visualization_settings mi/normalize-visualization-settings))))
 
 (defn virtual-card-settings

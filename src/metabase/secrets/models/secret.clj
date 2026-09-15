@@ -369,7 +369,7 @@
   (if-let [details (get database details-key)]
     (let [original-details (get (t2/original database) details-key)
           updated-details  (reduce-over-details-secret-values
-                            (driver.u/database->driver database)
+                            (keyword (:engine database))
                             details
                             (fn [db-details conn-prop-nm conn-prop]
                               (let [kws             (->possible-secret-property-names conn-prop-nm)

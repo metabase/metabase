@@ -38,9 +38,9 @@
    {:description "a malli schema form"}
    #(or (keyword? %) (mc/schema? %) (and (vector? %) (keyword? (first %))))])
 
-(defn- mbql-clause-tag
+(mu/defn- mbql-clause-tag :- [:maybe :keyword]
   "If `x` is a (possibly not-yet-normalized) MBQL clause, return its `tag`."
-  [x]
+  [x :- ::common/clause-tag-candidate]
   (when (and (sequential? x)
              ((some-fn keyword? string?) (first x)))
     (keyword (first x))))

@@ -305,7 +305,7 @@
   [query                       :- ::lib.schema/query
    _stage-number               :- :int
    {:keys [stages], :as _join} :- ::lib.schema.join/join
-   options                     :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
+   options                     :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
   (let [join-query (assoc query :stages stages)]
     (lib.metadata.calculation/returned-columns join-query -1 -1 options)))
 
@@ -331,7 +331,7 @@
   ([query                         :- ::lib.schema/query
     stage-number                  :- :int
     {join-alias :alias, :as join} :- ::lib.schema.join/join
-    options                       :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
+    options                       :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
    (into []
          (comp
           (map lib.field.util/update-keys-for-col-from-previous-stage)
@@ -347,7 +347,7 @@
   [query                                                                    :- ::lib.schema/query
    stage-number                                                             :- :int
    {:keys [fields stages], join-alias :alias, :or {fields :none}, :as join} :- ::lib.schema.join/join
-   options                                                                  :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
+   options                                                                  :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
   (when-not (= fields :none)
     (let [cols  (join-returned-columns-relative-to-parent-stage query stage-number join options)
           cols' (if (= fields :all)
@@ -404,7 +404,7 @@
   [query                         :- ::lib.schema/query
    stage-number                  :- :int
    {join-alias :alias, :as join} :- ::lib.schema.join/join
-   options                       :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
+   options                       :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
   (into []
         (comp (map lib.field.util/update-keys-for-col-from-previous-stage)
               (map #(column-from-join query stage-number % join-alias)))
@@ -414,7 +414,7 @@
   "Convenience for calling [[join-visible-columns-relative-to-parent-stage]] on all of the joins in a query stage."
   [query          :- ::lib.schema/query
    stage-number   :- :int
-   options        :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
+   options        :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
   (into []
         (mapcat (fn [join]
                   (join-visible-columns-relative-to-parent-stage query stage-number join options)))
@@ -424,7 +424,7 @@
   "Convenience for calling [[join-fields-to-add-to-parent-stage]] on all the joins in a query stage."
   [query        :- ::lib.schema/query
    stage-number :- :int
-   options      :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
+   options      :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
   (into []
         (mapcat (fn [join]
                   (join-fields-to-add-to-parent-stage query stage-number join options)))

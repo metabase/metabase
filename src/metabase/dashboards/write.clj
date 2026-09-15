@@ -17,10 +17,10 @@
    [metabase.embedding.validation :as embedding.validation]
    [metabase.events.core :as events]
    [metabase.lib-be.schema :as lib-be.schema]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.parameters.core :as parameters]
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.pulse.broken-subscriptions :as pulse.broken-subscriptions]
@@ -168,7 +168,7 @@
   [dashboard-id dashcards]
   (let [dashcard-id->existing-mappings (existing-parameter-mappings dashboard-id)
         existing-mapping?              (fn [dashcard-id mapping]
-                                         (let [mapping (parameters/normalize-parameter-mapping mapping)
+                                         (let [mapping (lib/normalize ::parameters.schema/parameter-mapping mapping)
                                                existing-mappings (get dashcard-id->existing-mappings dashcard-id)]
                                            (contains? existing-mappings (select-keys mapping [:target :parameter_id]))))
         new-mappings                   (for [{mappings :parameter_mappings, dashcard-id :id} dashcards

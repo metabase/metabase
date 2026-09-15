@@ -258,7 +258,7 @@
     [:series-results {:optional true} [:maybe [:sequential
                                                [:map {:closed true}
                                                 [:card   {:optional true} [:maybe [:ref :metabase.queries.schema/card]]]
-                                                [:result {:optional true} [:maybe [:map {:closed false, ::mr/deliberately-open true}]]]]]]]]])
+                                                [:result {:optional true} [:maybe ::QPResult]]]]]]]])
 
 (mr/def ::render-type
   [:enum :inline :attachment])
