@@ -81,19 +81,21 @@
             (when (nil? v)
               (common/throw-teaching-error
                (message/msg ["A %s schedule needs %s — %s."]
-                            schedule_type field explanation))))
-          (require-hour! []
-            (require! schedule_hour
-                      (message/raw "schedule_hour")
-                      (message/raw "the hour of the day to send, 0-23")))]
+                            schedule_type field explanation))))]
     (case schedule_type
       "hourly"  nil
-      "daily"   (require-hour!)
-      "weekly"  (do (require-hour!)
+      "daily"   (require! schedule_hour
+                          (message/raw "schedule_hour")
+                          (message/raw "the hour of the day to send, 0-23"))
+      "weekly"  (do (require! schedule_hour
+                              (message/raw "schedule_hour")
+                              (message/raw "the hour of the day to send, 0-23"))
                     (require! schedule_day
                               (message/raw "schedule_day")
                               (message/raw "the day of the week, e.g. \"mon\"")))
-      "monthly" (do (require-hour!)
+      "monthly" (do (require! schedule_hour
+                              (message/raw "schedule_hour")
+                              (message/raw "the hour of the day to send, 0-23"))
                     (require! schedule_frame
                               (message/raw "schedule_frame")
                               (message/raw "\"first\", \"mid\", or \"last\""))

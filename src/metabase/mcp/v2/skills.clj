@@ -74,18 +74,16 @@
   []
   (mapv :name packs))
 
-(defn- catalog-line
-  [{pack-name :name :keys [description references]}]
-  (str "- " pack-name " — " description
-       (when (seq references)
-         (str " [references: " (str/join ", " references) "]"))))
-
 (defn catalog-text
   "The `learn()` response message: one line per pack — name, description, reference names."
   []
   ;; Every part is the server's own catalog text.
   (message/msg ["Topics — fetch one with learn(topic); a reference with learn(topic, reference):" "" "%s"]
-               (message/raw (str/join "\n" (map catalog-line packs)))))
+               (message/raw (str/join "\n"
+                                      (for [{pack-name :name :keys [description references]} packs]
+                                        (str "- " pack-name " — " description
+                                             (when (seq references)
+                                               (str " [references: " (str/join ", " references) "]"))))))))
 
 (defn skill-text
   "`topic`'s whole SKILL.md as a message, with a footer naming its references, or nil for an unknown topic."
