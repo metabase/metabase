@@ -9,13 +9,14 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- do-with-untrusted-context
+(defn- do-with-untrusted-context!
   "Run `f` with an UNTRUSTED isolate context on its own throwaway engine, closing both afterwards."
   [f]
   (let [^Engine engine (#'graal/new-untrusted-engine)]
     (try
       (let [^Context context (graal/untrusted-context engine "30s")]
         (try
+          (#'graal/install-guard! context)
           (f context)
           (finally
             (.close context true))))
@@ -24,12 +25,12 @@
 
 (deftest untrusted-context-evaluates-js-test
   (testing "can evaluate javascript in the UNTRUSTED isolate"
-    (do-with-untrusted-context
+    (do-with-untrusted-context!
      (fn [^Context context]
        (graal/load-js-string context "function plus (x, y) { return x + y }" "plus test")
        (is (= 3 (.asLong (graal/execute-fn-name context "plus" 1 2)))))))
   (testing "can invoke closures returned from that javascript"
-    (do-with-untrusted-context
+    (do-with-untrusted-context!
      (fn [^Context context]
        (graal/load-js-string context "function curry_plus (x) { return function (y) { return x + y}}"
                              "curried function test")
@@ -38,7 +39,7 @@
 
 (deftest untrusted-context-denies-host-access-test
   (testing "the SandboxPolicy/UNTRUSTED isolate runs untrusted plugin JS with no host interop"
-    (do-with-untrusted-context
+    (do-with-untrusted-context!
      (fn [^Context context]
        (testing "ordinary JS still evaluates, so the sandbox isn't just broken"
          (is (= "3" (.asString ^Value (graal/load-js-string context "'' + (1 + 2)" "ok.js")))))
@@ -52,7 +53,7 @@
   (testing "load-resource evals into the UNTRUSTED isolate (regression: a URL-backed Source fails to marshal
             across the native-isolate boundary from a jar: URL — SourceCopyMarshaller ShouldNotReachHere — so
             load-resource must build a literal Source from the resource content)"
-    (do-with-untrusted-context
+    (do-with-untrusted-context!
      (fn [^Context context]
        ;; a tiny JS resource on the test classpath; the point is that load-resource (not load-js-string)
        ;; succeeds against the isolate, which is what breaks when the Source is URL-backed.
@@ -64,7 +65,7 @@
     (.getThreadAllocatedBytes mx (.getId (Thread/currentThread)))))
 
 (deftest guest-call-bounds-transfers-test
-  (do-with-untrusted-context
+  (do-with-untrusted-context!
    (fn [^Context context]
      (graal/load-js-string context
                            (str "globalThis.MetabaseStaticViz = {"
@@ -103,7 +104,7 @@
            (is (< (- (thread-allocated-bytes) before) (* 4 1024 1024)) fn-name)))))))
 
 (deftest eval-untrusted!-bounds-transfers-test
-  (do-with-untrusted-context
+  (do-with-untrusted-context!
    (fn [^Context context]
      (testing "the script runs for its side effects, with top-level declarations global as for a classic script"
        (is (nil? (#'graal/eval-untrusted! context "var fromPlugin = 41; globalThis.plus1 = (x) => x + 1" "plugin.js")))
@@ -123,9 +124,34 @@
                             (#'graal/eval-untrusted! context "(function inner() { throw new Error(new Error('x').stack) })()" "custom-viz-demo.js")))]
          (is (re-find #"custom-viz-demo\.js" (ex-message e))))))))
 
+(deftest guard-survives-plugin-tampering-test
+  (testing "a plugin that replaces the built-ins the guard relies on, or throws from a getter, still can't get an
+            unbounded string past it"
+    (do-with-untrusted-context!
+     (fn [^Context context]
+       (graal/load-js-string context
+                             (str "const huge = 'x'.repeat(17 * 1024 * 1024);"
+                                  "String.prototype.slice = function () { return this + '' };"
+                                  "globalThis.String = () => huge;"
+                                  "globalThis.Error = function () { return {message: huge} };"
+                                  "globalThis.eval = () => huge;"
+                                  "globalThis.MetabaseStaticViz = { get render() { throw huge } };"
+                                  "try { delete globalThis." @#'graal/guard-global "; } catch (_) {}"
+                                  "try { globalThis." @#'graal/guard-global " = {call: () => huge, evalScript: () => huge}; } catch (_) {}")
+                             "tamper.js")
+       (doseq [[label thunk] [["getter throwing"  #(#'graal/call-string context "render")]
+                              ["void call"        #(#'graal/call-void context "render")]
+                              ["script throwing"  #(#'graal/eval-untrusted! context "throw huge" "boom.js")]
+                              ["script completion" #(#'graal/eval-untrusted! context "huge" "big.js")]]]
+         (let [before (thread-allocated-bytes)
+               result (try (thunk) (catch PolyglotException e e))]
+           (when (instance? PolyglotException result)
+             (is (<= (count (ex-message result)) 2100) label))
+           (is (< (- (thread-allocated-bytes) before) (* 4 1024 1024)) label)))))))
+
 (deftest untrusted-context-enforces-heap-limit-test
   (testing "sandbox.MaxHeapMemory terminates a plugin that exhausts the isolate heap"
-    (do-with-untrusted-context
+    (do-with-untrusted-context!
      (fn [^Context context]
        ;; Retain a steadily growing list of materialized arrays until the per-context heap cap
        ;; (`sandbox.MaxHeapMemory`) is hit. A single huge allocation can slip past the sampling-based limit, but

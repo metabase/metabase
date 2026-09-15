@@ -69,77 +69,90 @@
   (* 16 1024 1024))
 
 (def ^:private max-error-chars
-  "Ceiling on the length of a guest error message rethrown to the host by [[guest-call-js]] — a thrown value crosses
-  to the host like any other."
+  "Ceiling on the length of a guest error message rethrown to the host by the guard (see [[guard-install-js]]) — a
+  thrown value crosses to the host like any other."
   2000)
 
-(def ^:private ^String guest-call-js
-  "Source of a guest-side wrapper `(name, max, ...args)` that resolves `MetabaseStaticViz[name]`, checks it is a
-  function, calls it, and returns the result only if it is a string of at most `max` characters — or, with a `max`
-  of `-1`, discards the result and returns `undefined`. A guest error is rethrown with its message truncated.
+(def ^:private ^String guard-global
+  "Name of the global the guard is published under (see [[guard-install-js]])."
+  "__metabaseStaticVizGuard")
 
-  Everything happens in the guest because a string `Value` is copied to the host heap the moment the guest returns
-  it: that goes for the render result, for a property lookup a plugin has replaced with a string, for the discarded
-  result of a `void` call, and for a thrown message. `typeof`, a string primitive's own `length` and `slice` don't
-  consult anything guest code — a plugin's included — can patch."
-  (str "(name, max, ...args) => {"
-       "  const fn = globalThis.MetabaseStaticViz?.[name];"
-       "  if (typeof fn !== 'function') throw new Error(`MetabaseStaticViz.${name} is not a function`);"
-       "  let s;"
-       "  try {"
-       "    s = fn(...args);"
-       "  } catch (e) {"
+(def ^:private ^String guard-install-js
+  "Source of a script that installs the *guard*: the only code through which the host calls into, or evaluates
+  untrusted code in, a context. It is installed by [[install-guard!]] right after our bundle loads and before any
+  plugin runs, and closes over the built-ins it needs (`Error`, `String`, `String.prototype.slice`, `eval`) so a
+  plugin that later replaces them can't reach the copies it uses. It is published as a frozen object on a
+  non-writable, non-configurable global, which a plugin can neither replace nor redefine.
+
+  `call(name, max, ...args)` resolves `MetabaseStaticViz[name]`, checks it is a function, calls it, and returns the
+  result only if it is a string of at most `max` characters — or, with a negative `max`, discards the result and
+  returns `undefined`. `evalScript(source)` evaluates `source` as a classic script (indirect `eval`, so top-level
+  declarations land on the global object) and discards its completion value. Anything either throws — a getter,
+  the callee, a validation failure — is rethrown as a fresh error whose message is truncated to
+  [[max-error-chars]], so no unbounded string ever crosses to the host. `typeof` and a string primitive's own
+  `length` don't consult anything guest code can patch."
+  (str "(() => {"
+       "  const ErrorCtor = Error, StringCtor = String, evalFn = eval;"
+       "  const slice = Function.prototype.call.bind(String.prototype.slice);"
+       "  const bounded = (e) => {"
        "    let message = 'guest error';"
-       "    try { message = String(e?.message ?? e); } catch (_) {}"
-       "    throw new Error(message.slice(0, " max-error-chars "));"
-       "  }"
-       "  if (max < 0) return undefined;"
-       "  if (typeof s !== 'string') throw new Error(`MetabaseStaticViz.${name} did not return a string`);"
-       "  if (s.length > max) throw new Error(`MetabaseStaticViz.${name} returned ${s.length} characters, more than the ${max} allowed`);"
-       "  return s;"
-       "}"))
+       "    try { message = StringCtor(e?.message ?? e); } catch (_) {}"
+       "    return new ErrorCtor(slice(message, 0, " max-error-chars "));"
+       "  };"
+       "  const call = (name, max, ...args) => {"
+       "    let s;"
+       "    try {"
+       "      const fn = globalThis.MetabaseStaticViz?.[name];"
+       "      if (typeof fn !== 'function') throw new ErrorCtor(`MetabaseStaticViz.${name} is not a function`);"
+       "      s = fn(...args);"
+       "      if (max < 0) return undefined;"
+       "      if (typeof s !== 'string') throw new ErrorCtor(`MetabaseStaticViz.${name} did not return a string`);"
+       "      if (s.length > max) throw new ErrorCtor(`MetabaseStaticViz.${name} returned ${s.length} characters, more than the ${max} allowed`);"
+       "    } catch (e) {"
+       "      throw bounded(e);"
+       "    }"
+       "    return s;"
+       "  };"
+       "  const evalScript = (source) => {"
+       "    try { evalFn(source); } catch (e) { throw bounded(e); }"
+       "  };"
+       "  Object.defineProperty(globalThis, '" guard-global "', {"
+       "    value: Object.freeze({ call, evalScript }), writable: false, configurable: false, enumerable: false"
+       "  });"
+       "})()"))
 
-(defn- guest-call
-  ^Value [^Context context ^String fn-name max & args]
-  (let [wrapper (.eval context "js" guest-call-js)]
-    (.execute wrapper (into-array Object (list* fn-name max args)))))
-
-(defn- call-string
-  "Call `MetabaseStaticViz.<fn-name>` in `context` with `args` and return its string result, refusing — before it
-  is copied to the host — a result that isn't a string or exceeds [[max-result-chars]] (see [[guest-call-js]]). A
-  refusal surfaces as a `PolyglotException` carrying the wrapper's message."
-  ^String [^Context context ^String fn-name & args]
-  (.asString ^Value (apply guest-call context fn-name max-result-chars args)))
-
-(defn- call-void
-  "Call `MetabaseStaticViz.<fn-name>` in `context` with `args` for its side effects; the result never crosses to the
-  host (see [[guest-call-js]])."
-  [^Context context ^String fn-name & args]
-  (apply guest-call context fn-name -1 args)
+(defn- install-guard!
+  "Install the guard (see [[guard-install-js]]) into `context`. Must run before any untrusted code does."
+  [^Context context]
+  (.eval context "js" guard-install-js)
   nil)
 
-(def ^:private ^String guest-eval-js
-  "Source of a guest-side wrapper `(source) => ...` that evaluates `source` as a classic script (indirect `eval`,
-  so top-level declarations land on the global object as they would for a script) and discards its completion
-  value; a thrown value is rethrown with its message truncated, as in [[guest-call-js]]. Untrusted plugin bundles
-  go through this rather than a host `Context.eval`, whose completion value and thrown message would cross to the
-  host unchecked."
-  (str "(source) => {"
-       "  try {"
-       "    (0, eval)(source);"
-       "  } catch (e) {"
-       "    let message = 'guest error';"
-       "    try { message = String(e?.message ?? e); } catch (_) {}"
-       "    throw new Error(message.slice(0, " max-error-chars "));"
-       "  }"
-       "}"))
+(defn- guard-fn
+  "The guard's `fn-name` function in `context`, read off the non-writable global it was published on."
+  ^Value [^Context context ^String fn-name]
+  (let [guard (.getMember (.getBindings context "js") guard-global)]
+    (assert (and guard (.hasMember guard fn-name)) (str "guard not installed in this context"))
+    (.getMember guard fn-name)))
+
+(defn- call-string
+  "Call `MetabaseStaticViz.<fn-name>` in `context` with `args` through the guard and return its string result,
+  refusing — before it is copied to the host — a result that isn't a string or exceeds [[max-result-chars]]. A
+  refusal surfaces as a `PolyglotException` carrying the guard's message."
+  ^String [^Context context ^String fn-name & args]
+  (.asString ^Value (.execute (guard-fn context "call") (into-array Object (list* fn-name max-result-chars args)))))
+
+(defn- call-void
+  "Call `MetabaseStaticViz.<fn-name>` in `context` with `args` through the guard for its side effects; the result
+  never crosses to the host."
+  [^Context context ^String fn-name & args]
+  (.execute (guard-fn context "call") (into-array Object (list* fn-name -1 args)))
+  nil)
 
 (defn- eval-untrusted!
-  "Evaluate untrusted `source` in `context` for its side effects, with nothing but a bounded error ever crossing to
-  the host (see [[guest-eval-js]]). `src-name` names the code in guest stack traces via a `sourceURL` comment."
+  "Evaluate untrusted `source` in `context` through the guard for its side effects, with nothing but a bounded
+  error ever crossing to the host. `src-name` names the code in guest stack traces via a `sourceURL` comment."
   [^Context context ^String source ^String src-name]
-  (.execute (.eval context "js" guest-eval-js)
-            (object-array [(str source "\n//# sourceURL=" src-name)]))
+  (.execute (guard-fn context "evalScript") (object-array [(str source "\n//# sourceURL=" src-name)]))
   nil)
 
 (defn execute-fn
@@ -286,6 +299,7 @@
       (let [context (untrusted-context engine max-cpu-time)]
         (try
           (load-resource context bundle-path)
+          (install-guard! context)
           (log/infof "static-viz: generated untrusted isolate context (cold-parsed %s) in %.0fms"
                      bundle-path (u/since-ms timer))
           context
