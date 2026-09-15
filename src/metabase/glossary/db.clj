@@ -13,6 +13,9 @@
   "The Glossary entries whose term or definition contains `search` case-insensitively, or every
   entry when `search` is nil, in term order."
   [search :- [:maybe :string]]
+  ;; `search` needs no marker: `like-substring` escapes it into a string, and HoneySQL binds the
+  ;; pattern it builds. Marking the pattern instead would bind the whole `[:escape ...]` form as one
+  ;; value and lose the `ESCAPE` clause.
   (t2/select :model/Glossary
              (cond-> {:order-by [[:term :asc]]}
                search (assoc :where (let [pattern (h2x/like-substring search)]
@@ -35,7 +38,10 @@
   [id         :- ms/PositiveInt
    term       :- :string
    definition :- :string]
-  (t2/update! :model/Glossary id {:term term :definition definition}))
+  ;; `term` and `definition` come from a request body, so they are bound as parameters rather than
+  ;; compiled into the statement.
+  (t2/update! :model/Glossary id {:term       [:auto/param term]
+                                  :definition [:auto/param definition]}))
 
 (mu/defn delete-glossary-entry!
   "Delete the Glossary entry with `id`."
@@ -50,4 +56,5 @@
 (mu/defn glossary-entry-by-term
   "The Glossary entry for `term`, or nil."
   [term :- :string]
-  (t2/select-one :model/Glossary :term term))
+  ;; `term` comes from a request, so it is bound as a parameter rather than compiled into the query.
+  (t2/select-one :model/Glossary {:where [:= :term [:auto/param term]]}))
