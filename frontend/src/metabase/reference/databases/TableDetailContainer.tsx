@@ -2,7 +2,6 @@ import cx from "classnames";
 import { useEffect } from "react";
 import { usePrevious } from "react-use";
 
-import { useGetDatabaseMetadataQuery } from "metabase/api";
 import CS from "metabase/css/core/index.css";
 import { connect, useSelector } from "metabase/redux";
 import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
@@ -13,13 +12,13 @@ import { useLocation, useParams } from "metabase/router";
 import type { ClearStateProps } from "../reference";
 import {
   type ReferenceRouteParams,
-  getDatabase,
   getDatabaseId,
   getIsEditing,
-  getTable,
+  getTableId,
 } from "../selectors";
 
 import TableSidebar from "./TableSidebar";
+import { useReferenceTable } from "./use-reference-database";
 
 const mapDispatchToProps = {
   ...actions,
@@ -32,15 +31,13 @@ function TableDetailContainer(props: TableDetailContainerProps) {
   const previousPathname = usePrevious(pathname);
   const params = useParams<ReferenceRouteParams>();
 
-  const database = useSelector((state) => getDatabase(state, { params }));
-  const table = useSelector((state) => getTable(state, { params }));
   const databaseId = useSelector((state) => getDatabaseId(state, { params }));
+  const tableId = useSelector((state) => getTableId(state, { params }));
   const isEditing = useSelector(getIsEditing);
-
-  const { isFetching, error } = useGetDatabaseMetadataQuery({
-    id: databaseId,
-    skip_fields: true,
-  });
+  const { database, tables, table, isLoading, error } = useReferenceTable(
+    databaseId,
+    tableId,
+  );
 
   useEffect(() => {
     const pathnameChanged =
@@ -54,9 +51,21 @@ function TableDetailContainer(props: TableDetailContainerProps) {
     <SidebarLayout
       className={cx(CS.flexFull, CS.relative)}
       style={isEditing ? { paddingTop: "43px" } : {}}
-      sidebar={<TableSidebar database={database} table={table} />}
+      sidebar={
+        <TableSidebar
+          databaseId={databaseId}
+          databaseName={database?.name}
+          tableId={tableId}
+          tableName={table?.name}
+        />
+      }
     >
-      <TableDetail params={params} loading={isFetching} loadingError={error} />
+      <TableDetail
+        table={table}
+        tables={tables}
+        loading={isLoading}
+        loadingError={error}
+      />
     </SidebarLayout>
   );
 }

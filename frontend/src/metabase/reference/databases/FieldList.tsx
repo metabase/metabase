@@ -1,6 +1,6 @@
 import cx from "classnames";
 import { useFormik } from "formik";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
@@ -17,24 +17,16 @@ import * as actions from "metabase/reference/reference";
 import { updateField } from "metabase/reference/update-actions";
 import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
 import type {
+  Field as ApiField,
   FieldId,
   IconName,
-  NormalizedField,
+  Table,
   User,
 } from "metabase-types/api";
 
-import type { ReferenceRouteProps, StateWithReference } from "../selectors";
-import {
-  getFieldsByTable,
-  getIsEditing,
-  getTable,
-  getUser,
-} from "../selectors";
-import type {
-  FieldFormFieldsValues,
-  ReferenceLoadingProps,
-  StubbedTable,
-} from "../types";
+import type { StateWithReference } from "../selectors";
+import { getIsEditing, getUser } from "../selectors";
+import type { FieldFormFieldsValues, ReferenceLoadingProps } from "../types";
 
 type FieldListFormFields = Record<string, FieldFormFieldsValues>;
 
@@ -45,14 +37,8 @@ const emptyStateData = {
   icon: "fields" as const,
 };
 
-const mapStateToProps = (
-  state: StateWithReference,
-  props: ReferenceRouteProps,
-) => {
-  const data = getFieldsByTable(state, props);
+const mapStateToProps = (state: StateWithReference) => {
   return {
-    table: getTable(state, props),
-    entities: data,
     user: getUser(state),
     isEditing: getIsEditing(state),
   };
@@ -67,17 +53,17 @@ const mapDispatchToProps = {
 interface FieldListProps {
   style: React.CSSProperties;
 
-  entities: Record<string, NormalizedField>;
+  fields: ApiField[];
   isEditing?: boolean;
   startEditing: () => void;
   endEditing: () => void;
   user: User | null;
-  table: StubbedTable;
+  table: Table | undefined;
   loading?: boolean;
   loadingError?: unknown;
   // The action handler in reference.ts types its own props parameter.
   onSubmit: (
-    entities: Record<string, NormalizedField>,
+    entities: Record<string, ApiField>,
     fields: FieldListFormFields,
     props: any,
   ) => void;
@@ -87,7 +73,7 @@ interface FieldListProps {
 const FieldList = (props: FieldListProps) => {
   const {
     style,
-    entities,
+    fields,
     table,
     loadingError,
     loading,
@@ -100,6 +86,12 @@ const FieldList = (props: FieldListProps) => {
 
   const [saveError, setSaveError] = useState<unknown>(null);
 
+  // `rUpdateFields` looks each edited field up by id.
+  const entitiesById = useMemo(
+    () => Object.fromEntries(fields.map((field) => [String(field.id), field])),
+    [fields],
+  );
+
   const {
     isSubmitting,
     getFieldProps,
@@ -111,7 +103,10 @@ const FieldList = (props: FieldListProps) => {
     onSubmit: async (fields): Promise<void> => {
       setSaveError(null);
       try {
-        await onSubmit(entities, fields, { ...props, resetForm: handleReset });
+        await onSubmit(entitiesById, fields, {
+          ...props,
+          resetForm: handleReset,
+        });
       } catch (error) {
         console.error(error);
         setSaveError(error);
@@ -150,7 +145,7 @@ const FieldList = (props: FieldListProps) => {
       )}
       <EditableReferenceHeader
         headerIcon="table2"
-        name={t`Fields in ${table.display_name}`}
+        name={t`Fields in ${table?.display_name}`}
         user={user}
         isEditing={isEditing}
         startEditing={startEditing}
@@ -160,7 +155,7 @@ const FieldList = (props: FieldListProps) => {
         error={saveError ?? loadingError}
       >
         {() =>
-          Object.keys(entities).length > 0 ? (
+          table != null && fields.length > 0 ? (
             <div className={CS.wrapper}>
               <div
                 className={cx(
@@ -186,17 +181,15 @@ const FieldList = (props: FieldListProps) => {
                   </div>
                 </div>
                 <ul>
-                  {Object.values(entities)
+                  {fields
                     // respect the column sort order
-                    .sort((a, b) => a.position - b.position)
+                    .toSorted((a, b) => a.position - b.position)
                     .map(
                       (entity) =>
-                        entity &&
-                        entity.id &&
-                        entity.name && (
+                        entity.id != null && (
                           <li key={String(entity.id)}>
                             <Field
-                              databaseId={table.db_id!}
+                              databaseId={table.db_id}
                               field={entity}
                               url={`/reference/databases/${table.db_id}/tables/${table.id}/fields/${entity.id}`}
                               // Unjustified type cast. FIXME
@@ -234,6 +227,6 @@ export default connect(
   // props, because the `actions` spread in `mapDispatchToProps` is untyped.
   // The cast restores the props a caller actually passes.
   FieldList as unknown as React.ComponentType<
-    ReferenceRouteProps & ReferenceLoadingProps
+    ReferenceLoadingProps & Pick<FieldListProps, "table" | "fields">
   >,
 );

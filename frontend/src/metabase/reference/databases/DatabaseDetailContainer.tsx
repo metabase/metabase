@@ -2,7 +2,6 @@ import cx from "classnames";
 import { useEffect } from "react";
 import { usePrevious } from "react-use";
 
-import { useGetDatabaseMetadataQuery } from "metabase/api";
 import CS from "metabase/css/core/index.css";
 import { connect, useSelector } from "metabase/redux";
 import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
@@ -13,12 +12,12 @@ import { useLocation, useParams } from "metabase/router";
 import type { ClearStateProps } from "../reference";
 import {
   type ReferenceRouteParams,
-  getDatabase,
   getDatabaseId,
   getIsEditing,
 } from "../selectors";
 
 import DatabaseSidebar from "./DatabaseSidebar";
+import { useReferenceDatabase } from "./use-reference-database";
 
 const mapDispatchToProps = {
   ...actions,
@@ -31,14 +30,9 @@ function DatabaseDetailContainer(props: DatabaseDetailContainerProps) {
   const previousPathname = usePrevious(pathname);
   const params = useParams<ReferenceRouteParams>();
 
-  const database = useSelector((state) => getDatabase(state, { params }));
   const databaseId = useSelector((state) => getDatabaseId(state, { params }));
   const isEditing = useSelector(getIsEditing);
-
-  const { isFetching, error } = useGetDatabaseMetadataQuery({
-    id: databaseId,
-    skip_fields: true,
-  });
+  const { database, isLoading, error } = useReferenceDatabase(databaseId);
 
   useEffect(() => {
     const pathnameChanged =
@@ -52,11 +46,16 @@ function DatabaseDetailContainer(props: DatabaseDetailContainerProps) {
     <SidebarLayout
       className={cx(CS.flexFull, CS.relative)}
       style={isEditing ? { paddingTop: "43px" } : {}}
-      sidebar={<DatabaseSidebar database={database} />}
+      sidebar={
+        <DatabaseSidebar
+          databaseId={databaseId}
+          databaseName={database?.name}
+        />
+      }
     >
       <DatabaseDetail
-        params={params}
-        loading={isFetching}
+        database={database}
+        loading={isLoading}
         loadingError={error}
       />
     </SidebarLayout>
