@@ -31,6 +31,11 @@
     (is (empty? (lint-query-call '(t2/select-one :model/Card :id 1) 'metabase-enterprise.sandbox.db))))
   (testing "metabase.driver.<driver>.db is allowed for driver modules"
     (is (empty? (lint-query-call '(t2/select-one :model/Database :id 1) 'metabase.driver.bigquery-cloud-sdk.db))))
+  (testing "metabase.<module>.queries is allowed -- the HugSQL equivalent of .db"
+    (is (empty? (lint-query-call '(t2/select-one :model/Card :id 1) 'metabase.queries.queries))))
+  (testing "a nested queries namespace is not a module data-access namespace"
+    (is (=? [{:type :metabase/t2-query-namespace}]
+            (lint-query-call '(t2/query {:select [:*]}) 'metabase.queries.models.queries))))
   (testing "a nested db namespace is not a module db namespace"
     (is (=? [{:type :metabase/t2-query-namespace}]
             (lint-query-call '(t2/query {:select [:*]}) 'metabase.queries.models.db))))
@@ -96,6 +101,14 @@
   (testing "a test source tree is exempt"
     (is (empty? (lint-query-call '(t2/select :model/X {:where [:= :locale locale]})
                                  'metabase.foo.db "test/metabase/foo/db_test.clj")))))
+
+(deftest ^:parallel unmarked-value-in-a-queries-namespace-test
+  (testing "a .queries namespace is held to the marker rule too, so a partially ported module's
+            surviving Toucan writes are still checked"
+    (is (=? [{:type    :metabase/unmarked-sql-value
+              :message #".*`provider`.*"}]
+            (lint-query-call '(t2/select-one :model/AuthIdentity {:where [:= :provider provider]})
+                             'metabase.sso.queries)))))
 
 (deftest ^:parallel unmarked-kv-arg-value-test
   (testing "a symbol passed as a kv-arg value is flagged"

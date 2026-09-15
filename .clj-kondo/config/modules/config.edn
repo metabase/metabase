@@ -355,6 +355,7 @@
   {:team "UX West"
    :api  #{metabase.app-db.cluster-lock ; TODO FIXME
            metabase.app-db.core
+           metabase.app-db.hugsql
            metabase.app-db.init
            metabase.app-db.setting
            metabase.app-db.setup
@@ -2388,6 +2389,7 @@
               metabase.sso.init
               metabase.sso.settings}
    :uses    #{api
+              app-db
               auth-identity
               config
               lib
