@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.server.middleware.body-limit :as mw.body-limit]
-   [metabase.server.test-handler :as server.test-handler]
+   [metabase.test.server.handler :as test.server.handler]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures])
@@ -149,7 +149,7 @@
   [headers body-bytes & {:keys [declare-length? uri], :or {uri "/api/card"}}]
   (let [counter  (atom 0)
         response (promise)]
-    ((server.test-handler/test-handler)
+    ((test.server.handler/test-handler)
      (cond-> {:request-method :post
               :uri            uri
               :headers        headers

@@ -1,16 +1,15 @@
-(ns metabase.server.test-handler
+(ns metabase.test.server.handler
   (:require
+   [metabase.api-routes.core :as api-routes]
    [metabase.api.macros :as api.macros]
    [metabase.server.core :as server]
+   [metabase.sso.auth-wrapper :as auth-wrapper]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (mu/defn- make-test-handler :- ::api.macros/handler
   []
-  ;; late-bound: a static require here would drag the whole API route tree into the server module
-  (let [api-routes    #_{:clj-kondo/ignore [:metabase/modules]} (requiring-resolve 'metabase.api-routes.core/routes)
-        auth-routes   #_{:clj-kondo/ignore [:metabase/modules]} (requiring-resolve 'metabase.sso.auth-wrapper/routes)
-        server-routes (server/make-routes auth-routes api-routes)
+  (let [server-routes (server/make-routes auth-wrapper/routes #'api-routes/routes)
         handler       (server/make-handler server-routes)]
     (fn [request respond raise]
       (letfn [(raise' [e]
