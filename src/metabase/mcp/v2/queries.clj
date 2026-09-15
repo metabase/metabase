@@ -26,29 +26,32 @@
   500)
 
 (defn- with-schema-detail
-  "`e` rewrapped by [[common/message-ex-info]] with its humanized schema explanation folded into its message, keeping
-   its data and cause, or unchanged when it carries none."
+  "`e` rewrapped by [[common/message-ex-info]] with its humanized schema explanation after its message, keeping its
+   data and with `e` as the cause, or unchanged when it carries none."
   [^clojure.lang.ExceptionInfo e]
   ;; The pipeline files the explanation under `:humanized` but states only the bare verdict, which leaves an agent
   ;; nothing to edit. Only structural validation failures carry the key, so the dialect steering is always apt.
   (if-let [humanized (:humanized (ex-data e))]
-    (common/message-ex-info
-     (message/msg [(str "%s Invalid at %s. Fix the named paths, or call "
-                        "`learn` with \"query-dialect\" for the clause shapes.")]
-                  (common/exception-message e)
-                  (common/ellipsize (common/humanize-detail humanized) max-schema-detail-length))
-     (ex-data e)
-     (ex-cause e))
+    (let [detail (message/msg [(str "Invalid at %s. Fix the named paths, or call "
+                                    "`learn` with \"query-dialect\" for the clause shapes.")]
+                              (common/ellipsize (common/humanize-detail humanized) max-schema-detail-length))]
+      (common/message-ex-info (if-let [text (common/exception-message e)]
+                                (message/msg ["%s %s"] text detail)
+                                detail)
+                              (ex-data e)
+                              e))
     e))
 
 (defn- with-recovery-hint
   "`e` rewrapped by [[common/message-ex-info]] with v2's recovery message for its `ex-data` on a line after its
-   message, keeping its data and cause, or unchanged when there is none."
+   message, keeping its data and with `e` as the cause, or unchanged when there is none."
   [^clojure.lang.ExceptionInfo e]
   (if-let [hint (v2.recovery-hints/recovery-hint (ex-data e))]
-    (common/message-ex-info (message/msg ["%s" "%s"] (common/exception-message e) hint)
+    (common/message-ex-info (if-let [text (common/exception-message e)]
+                              (message/msg ["%s" "%s"] text hint)
+                              hint)
                             (ex-data e)
-                            (ex-cause e))
+                            e)
     e))
 
 (defn execute-representations-query
@@ -93,9 +96,9 @@
     (catch clojure.lang.ExceptionInfo e
       (if (:agent-error? (ex-data e))
         (common/throw-teaching-error
-         (message/msg ["`definition` could not be resolved: %s %s"]
-                      (common/ellipsize (common/exception-message e) 300)
-                      hint))
+         (if-let [text (common/exception-message e)]
+           (message/msg ["`definition` could not be resolved: %s %s"] (common/ellipsize text 300) hint)
+           (message/msg ["`definition` could not be resolved. %s"] hint)))
         (throw e)))))
 
 ;;; ------------------------------------------------ Query handles -------------------------------------------------

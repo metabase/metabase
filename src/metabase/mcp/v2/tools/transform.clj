@@ -53,8 +53,9 @@
     (lib-be/normalize-query nil query {:strict? true})
     (catch Exception e
       (common/throw-teaching-error
-       (message/msg ["The transform's query is not valid MBQL: %s %s"]
-                    (common/ellipsize (common/exception-message e) 300) accepted-shapes)))))
+       (if-let [text (common/exception-message e)]
+         (message/msg ["The transform's query is not valid MBQL: %s %s"] (common/ellipsize text 300) accepted-shapes)
+         (message/msg ["The transform's query is not valid MBQL. %s"] accepted-shapes))))))
 
 (defn- definition->query
   "The query inside a caller-supplied `definition`, resolved to canonical MBQL 5. Source kinds this

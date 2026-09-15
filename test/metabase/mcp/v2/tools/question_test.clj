@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros.scope :as scope]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.message :as message]
@@ -53,6 +54,16 @@
       (let [q (#'v2.question/resolve-query-source
                {:native {:database_id (mt/id) :sql "SELECT 1"}} nil nil)]
         (is (=? {:stages [{:lib/type :mbql.stage/native :native "SELECT 1"}]} q))))))
+
+(deftest resolve-query-source-inline-error-without-message-test
+  (testing "GHY-4544: a normalizer exception with no message contributes no text, rather than `null`"
+    (mt/with-current-user (mt/user->id :rasta)
+      (mt/with-dynamic-fn-redefs [lib-be/normalize-query (fn [& _] (throw (ex-info nil {})))]
+        (is (= "Invalid inline query — see learn(\"query-dialect\")."
+               (try
+                 (#'v2.question/resolve-query-source {:query {:database (mt/id) :stages [{}]}} nil nil)
+                 nil
+                 (catch clojure.lang.ExceptionInfo e (ex-message e)))))))))
 
 (defn- tag-by-name
   "Template tags are stored on the pMBQL stage as a vector (not a map keyed by name — see

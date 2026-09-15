@@ -182,8 +182,9 @@
                        (lib-be/normalize-query nil (ensure-pmbql-type query) {:strict? true})
                        (catch clojure.lang.ExceptionInfo e
                          (common/throw-teaching-error
-                          (message/msg ["Invalid inline query — see learn(\"query-dialect\"). %s"]
-                                       (common/exception-message e)))))]
+                          (if-let [text (common/exception-message e)]
+                            (message/msg ["Invalid inline query — see learn(\"query-dialect\"). %s"] text)
+                            (message/msg ["Invalid inline query — see learn(\"query-dialect\")."])))))]
         ;; `native` on the source arg is not the same thing as native in the resolved query: an inline
         ;; `query` can carry a native stage (`ensure-pmbql-type` stamps `:mbql.stage/native` on any stage
         ;; with `:native`), and that stored card is raw SQL a later run_saved_question executes. Gate on

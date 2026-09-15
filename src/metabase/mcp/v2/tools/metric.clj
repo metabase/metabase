@@ -65,8 +65,10 @@
                      (lib-be/normalize-query nil definition {:strict? true})
                      (catch Exception e
                        (common/throw-teaching-error
-                        (message/msg ["`definition` is not a valid MBQL query: %s %s"]
-                                     (common/ellipsize (common/exception-message e) 300) accepted-shapes))))]
+                        (if-let [text (common/exception-message e)]
+                          (message/msg ["`definition` is not a valid MBQL query: %s %s"]
+                                       (common/ellipsize text 300) accepted-shapes)
+                          (message/msg ["`definition` is not a valid MBQL query. %s"] accepted-shapes)))))]
     ;; normalize-query short-circuits an empty query to `{}` before its strict validation runs, so
     ;; an empty `definition` arrives here unvalidated instead of throwing above.
     (when (empty? normalized)

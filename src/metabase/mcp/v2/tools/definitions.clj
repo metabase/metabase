@@ -141,8 +141,10 @@
     (lib-be/normalize-query nil definition {:strict? true})
     (catch Exception e
       (common/throw-teaching-error
-       (message/msg ["`definition` is not a valid MBQL query: %s %s"]
-                    (common/ellipsize (common/exception-message e) 300) (accepted-shapes kind))))))
+       (if-let [text (common/exception-message e)]
+         (message/msg ["`definition` is not a valid MBQL query: %s %s"]
+                      (common/ellipsize text 300) (accepted-shapes kind))
+         (message/msg ["`definition` is not a valid MBQL query. %s"] (accepted-shapes kind)))))))
 
 ;; measure_write is deliberately MBQL-5-only, stricter than POST /api/measure — that endpoint's
 ;; schema still decodes legacy MBQL, but that is a back-compatibility affordance, not an agent path
@@ -260,7 +262,10 @@
           (or (contains? data :cycle-path)
               (contains? data :segment-id)
               (contains? data :measure-id))
-          (common/throw-teaching-error (message/msg ["%s"] (common/exception-message e)))
+          (common/throw-teaching-error
+           (if-let [text (common/exception-message e)]
+             (message/msg ["%s"] text)
+             (message/msg ["`definition` references a segment or measure that is missing or forms a cycle."])))
 
           :else
           (throw e))))))
