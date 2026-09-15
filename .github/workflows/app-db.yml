@@ -233,9 +233,6 @@ jobs:
             test-args: >-
               :only '"enterprise/backend/test"'
             exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
-          # The two App DB runners split `test` between them, running two JVMs each; see
-          # run-backend-test-jvms.sh. `runner-index` is a string on purpose: GitHub expressions coerce
-          # both `0` and a missing value to 0, so a numeric index can't be told apart from none.
           - name: EE App DB Tests (Part 1)
             build-static-viz: true
             test-args: >-
@@ -248,6 +245,12 @@ jobs:
               :only '"test"'
             exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
             runner-index: '1'
+          - name: EE App DB Tests (Part 3)
+            build-static-viz: true
+            test-args: >-
+              :only '"test"'
+            exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
+            runner-index: '2'
 
     services:
       mysql:
