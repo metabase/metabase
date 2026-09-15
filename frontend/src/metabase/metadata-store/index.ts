@@ -5,13 +5,20 @@ export {
   getMetadataWithHiddenTables,
   getRemappedFieldValue,
   getShallowDatabases,
+  getShallowDatabaseSchemas,
+  getShallowDatabaseTables,
+  getShallowFieldById,
+  getShallowFieldName,
   getShallowFields,
+  getShallowQuestions,
+  getShallowSchemaTables,
+  getShallowSchemas,
+  getShallowTableFields,
+  getShallowTableSchema,
   getShallowSegments,
-  getShallowTableFieldIds,
-  getShallowTableForeignKeys,
   getShallowTables,
 } from "./selectors";
-export type { MetadataSelectorOpts, ShallowForeignKey } from "./selectors";
+export type { MetadataSelectorOpts } from "./selectors";
 
 export {
   selectMetadataProvider,
