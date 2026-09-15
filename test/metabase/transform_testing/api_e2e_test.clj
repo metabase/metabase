@@ -31,6 +31,74 @@
                              :database (mt/id)}}]
       (f schema table transform-id))))
 
+(defn- outcomes
+  "The identifying keys of each expectation result, in reported order."
+  [run-result]
+  (mapv #(select-keys % [:name :type :status]) (:expectations run-result)))
+
+(deftest transform-test-lifecycle-test
+  (testing "author, read, run, edit, re-run and delete a transform test over the API"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+      (with-transforms-enabled #{:transforms-basic}
+        (with-people-transform
+          (fn [schema table transform-id]
+            (let [input   {:table  {:schema schema :name table}
+                           :format "sql"
+                           :sql    "SELECT 1 AS id, 'abc' AS name"}
+                  passing {:type "empty"
+                           :name "no null ids"
+                           :sql  (str "SELECT * FROM " schema ".people_summary WHERE id IS NULL")}
+                  ;; The output row is (1, 'abc'), so this one differs in a single cell.
+                  failing {:type    "equals"
+                           :name    "output"
+                           :format  "rows"
+                           :columns [{:name "id" :database_type "INTEGER"}
+                                     {:name "name" :database_type "VARCHAR"}]
+                           :rows    [{"id" 1 "name" "xyz"}]}
+                  created (mt/user-http-request :crowberto :post 200 "transform-test"
+                                                {:transform_id transform-id
+                                                 :name         "End to end"
+                                                 :inputs       [input]
+                                                 :expectations [passing]})
+                  path    (str "transform-test/" (:id created))]
+              (try
+                (testing "POST stores the test against the transform, owned by the caller"
+                  (is (=? {:id           pos-int?
+                           :transform_id transform-id
+                           :creator_id   (mt/user->id :crowberto)
+                           :name         "End to end"}
+                          created)))
+                (testing "GET returns what POST created"
+                  (is (= created (mt/user-http-request :crowberto :get 200 path))))
+                (testing "running a passing test"
+                  (let [result (mt/user-http-request :crowberto :post 200 (str path "/run"))]
+                    (is (= #{:status :expectations :tables} (set (keys result))))
+                    (is (= "passed" (:status result)))
+                    (is (= [{:name "no null ids" :type "empty" :status "passed"}]
+                           (outcomes result)))))
+                (testing "PUT replaces the expectations"
+                  (is (=? {:expectations [{:name "no null ids"} {:name "output"}]}
+                          (mt/user-http-request :crowberto :put 200 path
+                                                {:expectations [passing failing]}))))
+                (testing "every expectation reports, and one failure fails the run"
+                  (let [result      (mt/user-http-request :crowberto :post 200 (str path "/run"))
+                        [pass fail] (:expectations result)]
+                    (is (= "failed" (:status result)))
+                    (is (= [{:name "no null ids" :type "empty"  :status "passed"}
+                            {:name "output"      :type "equals" :status "failed"}]
+                           (outcomes result)))
+                    (testing "the failing one carries its own detail"
+                      (is (= [{:column "name" :expected "xyz" :actual "abc"}]
+                             (:cell-mismatches fail))))
+                    (testing "the passing one carries none"
+                      (is (nil? (:cell-mismatches pass))))))
+                (testing "DELETE removes the test"
+                  (mt/user-http-request :crowberto :delete 204 path)
+                  (is (not (t2/exists? :model/TransformTest (:id created))))
+                  (mt/user-http-request :crowberto :get 404 path))
+                (finally
+                  (t2/delete! :model/TransformTest :id (:id created)))))))))))
+
 (deftest run-refusal-test
   (testing "a non-200 from the run endpoint means nothing ran"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)

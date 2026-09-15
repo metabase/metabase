@@ -111,10 +111,30 @@
    [:expectations {:optional true} ::expectations]])
 
 (mr/def ::status
-  "The outcome of a transform test run or of one of its expectations."
-  [:enum {:decode/normalize lib.schema.common/normalize-keyword} :passed :failed])
+  "The outcome of a transform test run or of one of its expectations.
+
+  `:error` is an expectation outcome only: its own query could not be run. The run itself
+  completed, so the other expectations still reported — which is why this is not a refusal."
+  [:enum {:decode/normalize lib.schema.common/normalize-keyword} :passed :failed :error])
+
+(mr/def ::expectation-result
+  "What one expectation found. `:status` and the identifying keys are always present; the rest is
+  whatever that expectation type has to say about a failure, so a new type adds its own keys
+  without touching this schema."
+  [:map
+   [:name   :string]
+   [:type   :keyword]
+   [:status ::status]
+   [:error  {:optional true} [:map
+                              [:type    :keyword]
+                              [:message :string]]]])
 
 (mr/def ::run-result
-  "The outcome of a transform test run."
+  "The outcome of a transform test run.
+
+  `:tables` maps each generated temp-table name to the table the author wrote, so a message that
+  escaped rewriting can still be read."
   [:map {:closed true}
-   [:status ::status]])
+   [:status       ::status]
+   [:expectations [:sequential ::expectation-result]]
+   [:tables       [:map-of :string :string]]])

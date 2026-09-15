@@ -5,6 +5,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.transform-testing.db :as transform-testing.db]
+   [metabase.transform-testing.expectations :as transform-testing.expectations]
    [metabase.transform-testing.schema :as transform-testing.schema]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
@@ -28,9 +29,23 @@
   [_original-model _k]
   :model/Transform)
 
+(def ^:private expectations-column
+  "Expectations as records, through the same door in both directions.
+
+  Building them here rather than at the API layer means every reader gets validated values, whoever
+  did the writing — an import through serdes goes through Toucan, not through an endpoint.
+
+  Writing goes through the constructor too, and not merely through the schema, because some of what
+  makes a set of expectations valid is not expressible as one: names must be unique across the
+  vector, and a `database_type` must be safe to splice into a cast. A schema-only write would store
+  a value that every later read refuses. Records JSON-encode as plain maps, so what lands in the
+  column is the same either way."
+  {:in  (comp mi/json-in transform-testing.expectations/expectations)
+   :out (comp transform-testing.expectations/expectations mi/json-out-with-keywordization)})
+
 (t2/deftransforms :model/TransformTest
   {:inputs       (json-column ::transform-testing.schema/inputs)
-   :expectations (json-column ::transform-testing.schema/expectations)})
+   :expectations expectations-column})
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 

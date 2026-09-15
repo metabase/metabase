@@ -58,11 +58,18 @@
 (api.macros/defendpoint :post "/:id/run" :- ::transform-testing.schema/run-result
   "Run a transform test.
 
-  A 200 means the run happened and `:status` says whether it passed. Any other status means the run
-  was refused and nothing meaningful ran; the body then carries an `:error-code` naming which
-  refusal it was, drawn from `metabase.transform-testing.errors/all`."
+  A 200 means the run happened: `:status` is then `passed` or `failed`, and every expectation
+  reports what it found — including one that could not be evaluated, which comes back as that
+  expectation's own `:error` rather than discarding the answers of the others.
+
+  Any other status means the run was refused and nothing meaningful ran. The body then carries an
+  `:error-code` naming which refusal it was, drawn from
+  `metabase.transform-testing.errors/all`."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
+  ;; The app-db read is inside the `try` on purpose: reading a transform test constructs its
+  ;; expectations, so a stored test that no longer satisfies its own constructor throws HERE, and
+  ;; outside the `try` that escaped untyped and surfaced as a 500.
   (try
     (-> (transform-testing.db/transform-test id)
         api/write-check

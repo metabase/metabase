@@ -86,13 +86,17 @@
                       (mt/user-http-request :crowberto :post expected-status (format "transform-test/%d/run" test-id))))
               input {:table {:schema "PUBLIC" :name "PEOPLE"} :format :sql :sql "SELECT 1 AS ID, 'abc' AS NAME"}]
           (testing "returns passed when every expectation passes"
-            (is (= {:status "passed"}
-                   (run 200 {:inputs       [input]
-                             :expectations [{:type :empty :name "one id" :sql "SELECT * FROM PUBLIC.PEOPLE_SUMMARY WHERE ID <> 1"}]}))))
+            (let [result (run 200 {:inputs       [input]
+                                   :expectations [{:type :empty :name "one id" :sql "SELECT * FROM PUBLIC.PEOPLE_SUMMARY WHERE ID <> 1"}]})]
+              (is (= "passed" (:status result)))
+              (is (= [{:name "one id" :type "empty" :status "passed"}]
+                     (:expectations result)))))
           (testing "returns failed when an expectation fails"
-            (is (= {:status "failed"}
-                   (run 200 {:inputs       [input]
-                             :expectations [{:type :empty :name "no abc" :sql "SELECT * FROM PUBLIC.PEOPLE_SUMMARY WHERE NAME = 'abc'"}]}))))
+            (let [result (run 200 {:inputs       [input]
+                                   :expectations [{:type :empty :name "no abc" :sql "SELECT * FROM PUBLIC.PEOPLE_SUMMARY WHERE NAME = 'abc'"}]})]
+              (is (= "failed" (:status result)))
+              (is (= ["no abc"] (mapv :name (:expectations result))))
+              (is (= [["abc"]] (mapv #(vec (rest (first (:sample %)))) (:expectations result))))))
           (testing "rejects a test that doesn't replace every table the transform reads"
             (run 400 {:inputs [] :expectations []})))))))
 

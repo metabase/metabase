@@ -20,7 +20,9 @@
   Everything before the connection is pure; a bad test is rejected before any temp table exists.
 
   The runner also owns the taxonomy of outcomes. A refusal — nothing ran, or the run could not
-  finish — is a typed throw from `errors`, which the API layer turns into a status code."
+  finish — is a typed throw from `errors`, which the API layer turns into a status code. A failing
+  expectation is not a refusal: it is a result, and it rides back on the expectation that produced
+  it, so one bad expectation does not discard the answers of the others."
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
@@ -63,6 +65,30 @@
             (if cause (str message " " cause) message)
             {:cause cause}
             e))))
+
+(defn- run-probes!
+  "Run one expectation's probes on `conn`, returning `{probe-id rows}`."
+  [driver conn probes]
+  (update-vals probes
+               (fn [{:keys [query params max-rows]}]
+                 (transform-testing.executor/run-query driver conn [query (vec params)] max-rows))))
+
+(defn- check-expectation
+  "The result map for one expectation. An expectation whose own query fails is reported as an error
+  on that expectation rather than failing the whole run."
+  [driver conn context expectation names]
+  (try
+    (->> (transform-testing.expectations/probes expectation context)
+         (run-probes! driver conn)
+         (transform-testing.expectations/interpret expectation))
+    (catch Exception e
+      {:name   (:name expectation)
+       :type   (:type expectation)
+       :status :error
+       :error  {:type    (or (:error-type (ex-data e))
+                             ::transform-testing.errors/expectation-failed)
+                :message (or (warehouse-said e names)
+                             (tru "The expectation could not be run, and the database gave no reason."))}})))
 
 (mu/defn run-transform-test! :- ::transform-testing.schema/run-result
   "Run the transform test `transform-test` against temp tables and report what each expectation found."
@@ -141,7 +167,8 @@
                       (transform-testing.compile/dangling-qualifiers driver (:query compiled-transform)))
         _            (api/check-400 (empty? surviving)
                                     (tru "The transform test could not fully remap the source to test tables; these reference(s) remain: {0}. Alias each source table and qualify its columns by the alias (e.g. `FROM my_table t ... t.col`), not by the table name."
-                                         (str/join ", " surviving)))]
+                                         (str/join ", " surviving)))
+        context      {:driver driver :output-table output-table :replacements replacements}]
     ;; --- execute (I/O): one connection; temp tables live and die here ---
     (driver/do-with-test-connection
      driver database
@@ -162,10 +189,15 @@
              (rethrow-remapped e ::transform-testing.errors/transform-failed
                                (tru "The transform under test failed to run:")
                                names)))
-         ;; --- check (pure-ish): expectations against the output temp table ---
-         (let [context  {:driver driver :conn conn :output-table output-table :replacements replacements}
-               statuses (mapv #(transform-testing.expectations/check-expectation context %) expectations)]
-           {:status (if (every? #{:passed} statuses) :passed :failed)})
+         ;; --- check: every expectation reports, passing ones included ---
+         (let [output-columns (transform-testing.executor/table-columns driver conn output-table)
+               context        (assoc context :output-columns output-columns)
+               results        (mapv (fn [expectation]
+                                      (check-expectation driver conn context expectation names))
+                                    expectations)]
+           {:status       (if (every? #(= :passed (:status %)) results) :passed :failed)
+            :expectations results
+            :tables       names})
          (finally
            (doseq [table temp-tables]
              (transform-testing.executor/drop-temp-table! driver conn table))))))))

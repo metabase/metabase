@@ -16,17 +16,43 @@
   (let [{:keys [schema name]} (lib.metadata/table (mt/metadata-provider) (mt/id table-key))]
     {:schema schema :name name}))
 
+(defn- with-people-transform
+  "Call `f` with the id of a transform selecting `id, name` from the people table, whose target is
+  `people_summary` in the same schema."
+  [f]
+  (let [mp                            (mt/metadata-provider)
+        {schema :schema, table :name} (lib.metadata/table mp (mt/id :people))]
+    (mt/with-temp [:model/Transform {transform-id :id}
+                   {:source {:type  "query"
+                             :query (lib/native-query mp (str "SELECT id, name FROM " schema "." table))}
+                    :target {:type     "table"
+                             :schema   schema
+                             :name     "people_summary"
+                             :database (mt/id)}}]
+      (f schema table transform-id))))
+
+(defn- run-test!
+  "Run a transform test over `transform-id` with one SQL input standing in for `schema`.`table`."
+  [schema table transform-id input-sql expectations]
+  (mt/with-temp [:model/TransformTest transform-test
+                 {:transform_id transform-id
+                  :inputs       [{:table  {:schema schema :name table}
+                                  :format :sql
+                                  :sql    input-sql}]
+                  :expectations expectations}]
+    (transform-testing.runner/run-transform-test! transform-test)))
+
+(def ^:private one-row "SELECT 1 AS id, 'abc' AS name")
+
+(def ^:private id+name
+  ;; `database_type` is raw SQL, so these have to be spellings every tested engine accepts.
+  [{:name "id" :database_type "INTEGER"}
+   {:name "name" :database_type "VARCHAR"}])
+
 (deftest run-transform-test-empty-expectation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
-    (let [mp                            (mt/metadata-provider)
-          {schema :schema, table :name} (lib.metadata/table mp (mt/id :people))]
-      (mt/with-temp [:model/Transform {transform-id :id}
-                     {:source {:type  "query"
-                               :query (lib/native-query mp (str "SELECT id, name FROM " schema "." table))}
-                      :target {:type     "table"
-                               :schema   schema
-                               :name     "people_summary"
-                               :database (mt/id)}}]
+    (with-people-transform
+      (fn [schema table transform-id]
         (doseq [[desc where expected] [["passes when the query returns no rows"
                                         "name IS NULL"
                                         :passed]
@@ -37,16 +63,69 @@
                                         "name = 'abc'"
                                         :failed]]]
           (testing desc
-            (mt/with-temp [:model/TransformTest transform-test
-                           {:transform_id transform-id
-                            :inputs       [{:table  {:schema schema :name table}
-                                            :format :sql
-                                            :sql    "SELECT 1 AS id, 'abc' AS name"}]
-                            :expectations [{:type :empty
-                                            :name desc
-                                            :sql  (str "SELECT * FROM " schema ".people_summary WHERE " where)}]}]
-              (is (= {:status expected}
-                     (transform-testing.runner/run-transform-test! transform-test))))))))))
+            (let [result (run-test! schema table transform-id one-row
+                                    [{:type :empty
+                                      :name desc
+                                      :sql  (str "SELECT * FROM " schema ".people_summary WHERE " where)}])]
+              (is (= expected (:status result)))
+              (is (= [{:name desc :type :empty :status expected}]
+                     (mapv #(select-keys % [:name :type :status]) (:expectations result)))))))))))
+
+(deftest run-transform-test-equals-passes-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+    (with-people-transform
+      (fn [schema table transform-id]
+        (testing "passes when the output matches the expected rows"
+          (let [result (run-test! schema table transform-id one-row
+                                  [{:type :equals :name "output" :format :rows
+                                    :columns id+name
+                                    :rows    [{"id" 1 "name" "abc"}]}])]
+            (is (= :passed (:status result)))
+            (is (= [:passed] (mapv :status (:expectations result))))))))))
+
+(deftest run-transform-test-equals-cell-mismatch-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+    (with-people-transform
+      (fn [schema table transform-id]
+        (testing "a single differing cell is reported by column name"
+          (let [result   (run-test! schema table transform-id one-row
+                                    [{:type :equals :name "output" :format :rows
+                                      :columns id+name
+                                      :rows    [{"id" 1 "name" "xyz"}]}])
+                [expect] (:expectations result)]
+            (is (= :failed (:status result)))
+            (is (= :failed (:status expect)))
+            (is (= {:actual 1 :expected 1} (:row-counts expect)))
+            (is (= [{:column "name" :expected "xyz" :actual "abc"}]
+                   (:cell-mismatches expect)))))))))
+
+(deftest run-transform-test-equals-ignores-undeclared-columns-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+    (with-people-transform
+      (fn [schema table transform-id]
+        (testing "a column the expectation does not declare is not compared"
+          (let [result (run-test! schema table transform-id one-row
+                                  [{:type :equals :name "id only" :format :rows
+                                    :columns [{:name "id" :database_type "INTEGER"}]
+                                    :rows    [{"id" 1}]}])]
+            (is (= :passed (:status result)))))))))
+
+(deftest run-transform-test-equals-is-multiset-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+    (with-people-transform
+      (fn [schema table transform-id]
+        (testing "a duplicated output row fails against a single expected row"
+          ;; Set difference (a plain EXCEPT) passes here; multiset difference must not.
+          (let [result   (run-test! schema table transform-id
+                                    (str one-row " UNION ALL SELECT 1 AS id, 'abc' AS name")
+                                    [{:type :equals :name "output" :format :rows
+                                      :columns id+name
+                                      :rows    [{"id" 1 "name" "abc"}]}])
+                [expect] (:expectations result)]
+            (is (= :failed (:status result)))
+            (is (= {:actual 2 :expected 1} (:row-counts expect)))
+            (is (= [{"id" 1 "name" "abc"}] (:extra-rows expect)))
+            (is (= [] (:missing-rows expect)))))))))
 
 (deftest run-transform-test-rejects-undeclared-input-test
   (testing "Guard A: a transform reading a table with no declared input is refused,"

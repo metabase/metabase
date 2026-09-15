@@ -22,6 +22,7 @@
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.generate :as test-gen]
+   [metabase.transform-testing.expectations.protocol :as expectations.protocol]
    [metabase.util.yaml :as yaml]
    [metabase.warehouses.models.database :as models.database]
    [reifyhealth.specmonstah.core :as rs]
@@ -1090,3 +1091,69 @@
                      :expectations [{:type :equals :name "one row" :format :sql :sql "SELECT 1 AS ID"}
                                     {:type :empty :name "no nulls" :sql "SELECT * FROM PUBLIC.orders_summary WHERE ID IS NULL"}]}
                     (t2/select-one :model/TransformTest :name "My test")))))))))
+
+;;; ---------------------------------- Transform test expectations round trip ----------------------------------
+;;; Companion to transform-test-round-trip-test above, which covers the `equals`/`sql` and `empty` shapes. This
+;;; one covers the `equals`/`rows` payload -- the only one carrying author-named columns and row maps -- and the
+;;; claim that import builds expectation records rather than plain maps.
+
+(def ^:private round-trip-expectations
+  "An `equals` whose column names are the hazardous ones -- `2024` would come back a number from YAML and a keyword
+  from a JSON column, `order-id` a kebab-case keyword -- plus an `empty`."
+  [{:type    :equals
+    :name    "rows match"
+    :format  :rows
+    :columns [{:name "2024" :database_type "INTEGER"}
+              {:name "order-id" :database_type "VARCHAR"}]
+    :rows    [{"2024" 7 "order-id" "A-1"}
+              {"2024" nil "order-id" "B-2"}]}
+   {:type :empty
+    :name "no nulls"
+    :sql  "SELECT * FROM PUBLIC.revenue WHERE \"order-id\" IS NULL"}])
+
+(deftest transform-test-expectations-round-trip-test
+  (testing "A transform test's expectations come back from an import as validated records, payload intact"
+    (mt/with-premium-features #{:transforms-basic}
+      (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+        (ts/with-dbs [source-db dest-db]
+          (let [transform-eid
+                (ts/with-db source-db
+                  (let [db        (ts/create! :model/Database :name "my-db")
+                        coll      (ts/create! :model/Collection :name "ETL" :namespace :transforms)
+                        creator   (ts/create! :model/User :email "creator@example.com")
+                        transform (ts/create! :model/Transform
+                                              :name          "Revenue Report"
+                                              :collection_id (:id coll)
+                                              :creator_id    (:id creator)
+                                              :source        {:type  "query"
+                                                              :query {:database (:id db) :type "native" :native {:query "SELECT 1 AS ID"}}}
+                                              :target        {:database (:id db) :type "table" :schema "PUBLIC" :name "revenue"})]
+                    (ts/create! :model/TransformTest
+                                :transform_id (:id transform)
+                                :creator_id   (:id creator)
+                                :name         "Revenue by year"
+                                :inputs       []
+                                :expectations round-trip-expectations)
+                    (storage/store! (seq (serdes/with-cache (into [] (extract/extract {})))) (storage.files/file-writer dump-dir))
+                    (:entity_id transform)))
+                ;; Pins the storage path: a transform test is stored under its transform's serdes path.
+                exported (yaml/parse-string
+                          (slurp (io/file dump-dir "collections" "transforms" "etl" "revenue_report" "revenue_by_year.yaml")))]
+            (testing "the transform is referenced by entity id, not by primary key"
+              (is (= transform-eid (:transform_id exported))))
+            (testing "row keys are written as YAML strings -- `2024:` unquoted would read back as a number"
+              (is (= [#{(keyword "2024") :order-id} #{(keyword "2024") :order-id}]
+                     (mapv (comp set keys) (get-in exported [:expectations 0 :rows])))))
+            (ts/with-db dest-db
+              (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))))
+              (let [imported     (t2/select-one :model/TransformTest :name "Revenue by year")
+                    expectations (:expectations imported)]
+                (testing "the transform reference resolves"
+                  (is (= (t2/select-one-pk :model/Transform :name "Revenue Report")
+                         (:transform_id imported))))
+                (testing "every expectation is a record: serdes import gets the same validation as a POST"
+                  (is (every? #(satisfies? expectations.protocol/Expectation %) expectations))
+                  (testing "and the equivalent plain map is not one, so the check above means something"
+                    (is (not-any? #(satisfies? expectations.protocol/Expectation (into {} %)) expectations))))
+                (testing "the payload is unchanged, row keys still strings"
+                  (is (= round-trip-expectations (mapv #(into {} %) expectations))))))))))))

@@ -289,5 +289,5 @@
                         :expectations [{:type :empty
                                         :name "the output holds only the fixture row"
                                         :sql  (str "SELECT * FROM " schema "." target " WHERE id <> -1")}]}]
-          (is (= {:status :passed} (transform-testing.runner/run-transform-test! transform-test)))
+          (is (= :passed (:status (transform-testing.runner/run-transform-test! transform-test))))
           (is (not (driver/table-exists? driver/*driver* (mt/db) {:schema schema :name target}))))))))
