@@ -9,7 +9,7 @@
   "A DatabaseRouter as selected from the app DB: every column of `:db_router`."
   [:merge
    ::database-router.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/database_routing/schema.clj:12"}
     [:id             ms/PositiveInt]]])
 
 (mr/def ::database-router.update

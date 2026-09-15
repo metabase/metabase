@@ -369,7 +369,7 @@
   "A Slack Block Kit block, element, or legacy `attachments` entry -- self-similar and recursive (blocks nest
   elements, elements nest elements, and `:text`/`:accessory` nest another block-shaped object).
   See https://api.slack.com/block-kit."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/channel/slack.clj:372"}
    [:type        {:optional true} [:maybe :string]]
    [:text        {:optional true} [:maybe [:or :string [:ref ::slack-block]]]]
    [:fields      {:optional true} [:maybe [:sequential [:ref ::slack-block]]]]

@@ -16,7 +16,7 @@
   "A Pulse as selected from the app DB: every column of `:pulse`."
   [:merge
    ::pulse.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/pulse/schema.clj:19"}
     [:id                  ::lib.schema.id/pulse]]])
 
 (mr/def ::pulse.update
@@ -42,7 +42,7 @@
   "A PulseCard as selected from the app DB: every column of `:pulse_card`."
   [:merge
    ::pulse-card.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/pulse/schema.clj:45"}
     [:id                ms/PositiveInt]]])
 
 (mr/def ::pulse-card.update
@@ -63,7 +63,7 @@
   `:emails`; slack carries `:channel`/`:channels`/`:channel_id`; both may carry `:include_pdf`/
   `:attachment_only`), so every key is optional here rather than modeled as a `:channel_type`-dispatched
   `:multi`."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/pulse/schema.clj:66"}
    [:channel         {:optional true} [:maybe :string]]
    [:channels        {:optional true} [:maybe :string]]
    [:channel_id      {:optional true} [:maybe :string]]
@@ -75,7 +75,7 @@
   "A PulseChannel as selected from the app DB: every column of `:pulse_channel`."
   [:merge
    ::pulse-channel.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/pulse/schema.clj:78"}
     [:id             ms/PositiveInt]]])
 
 (mr/def ::pulse-channel.update
@@ -98,7 +98,7 @@
   "A PulseChannelRecipient as selected from the app DB: every column of `:pulse_channel_recipient`."
   [:merge
    ::pulse-channel-recipient.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/pulse/schema.clj:101"}
     [:id               ms/PositiveInt]]])
 
 (mr/def ::pulse-channel-recipient.update

@@ -52,13 +52,13 @@
   see [[metabase.lib.options/ensure-uuid]]."
   [:merge
    ::lib.schema.common/options
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/lib/fe_util.cljc:55"}
     [:lib/uuid {:optional true} ::lib.schema.common/uuid]]])
 
 (def ^:private ExpressionParts
   [:schema
    {:registry {::expression-parts
-               [:map {:closed true}
+               [:map {:closed true, :probe/id "src/metabase/lib/fe_util.cljc:61"}
                 [:lib/type [:= :mbql/expression-parts]]
                 [:operator [:or :keyword :string]]
                 [:options ExpressionOptions]

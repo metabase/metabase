@@ -8,7 +8,7 @@
   "A PythonLibrary as selected from the app DB: every column of `:python_library`."
   [:merge
    ::python-library.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/transforms_python/schema.clj:11"}
     [:id         ms/PositiveInt]]])
 
 (mr/def ::python-library.update

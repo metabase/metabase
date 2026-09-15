@@ -27,7 +27,7 @@
   and `:consumed_at` (initially nil)."
   [token :- :string
    & {:keys [expires-in-ms]
-      :or {expires-in-ms (* 48 60 60 1000)}} :- [:maybe [:map {:closed true}
+      :or {expires-in-ms (* 48 60 60 1000)}} :- [:maybe [:map {:closed true, :probe/id "src/metabase/auth_identity/providers/emailed_secret.clj:30"}
                                                          [:expires-in-ms {:optional true} [:maybe :int]]]]]
   {:token_hash (u.password/hash-bcrypt token)
    :expires_at (t/plus (t/instant) (t/millis expires-in-ms))
@@ -40,7 +40,7 @@
   request context information. Returns a map with `:email`, `:ip_address`, and `:request_context` (containing
   `:user_agent` and `:timestamp`)."
   [email :- [:maybe ms/Email]
-   & {:keys [ip-address user-agent]} :- [:maybe [:map {:closed true}
+   & {:keys [ip-address user-agent]} :- [:maybe [:map {:closed true, :probe/id "src/metabase/auth_identity/providers/emailed_secret.clj:43"}
                                                  [:ip-address {:optional true} [:maybe :string]]
                                                  [:user-agent {:optional true} [:maybe :string]]]]]
   {:email email

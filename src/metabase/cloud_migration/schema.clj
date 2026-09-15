@@ -8,7 +8,7 @@
   "A CloudMigration as selected from the app DB: every column of `:cloud_migration`."
   [:merge
    ::cloud-migration.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/cloud_migration/schema.clj:11"}
     [:id          ms/PositiveInt]]])
 
 (mr/def ::cloud-migration.update

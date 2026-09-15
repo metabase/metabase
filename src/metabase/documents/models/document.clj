@@ -205,7 +205,7 @@
                                  [:content_type :string]]
   "Rewrite the card FK (`[:attrs \"id\"]`) of every cardEmbed node found in `card-id-map`.
   Touches nothing else on the node — in particular a node's `:_id` never changes here."
-  [document :- [:map {:closed true}
+  [document :- [:map {:closed true, :probe/id "src/metabase/documents/models/document.clj:208"}
                 [:document ::documents.schema/document.document]
                 [:content_type :string]]
    card-id-map :- [:maybe [:map-of :int ms/PositiveInt]]]
@@ -316,7 +316,7 @@
   (`api/create-check`) are the caller's job, run before this — the same split the REST
   `POST /api/document/` handler uses."
   [{:keys [name document collection_id collection_position cards]}
-   :- [:map {:closed true}
+   :- [:map {:closed true, :probe/id "src/metabase/documents/models/document.clj:319"}
        [:name DocumentName]
        [:document ::documents.schema/document.document]
        [:collection_id {:optional true} [:maybe ms/PositiveInt]]
@@ -373,7 +373,7 @@
   `PUT /api/document/:id` handler uses."
   [existing-document :- ::documents.schema/document
    {:keys [name document collection_id collection_position cards] :as body}
-   :- [:map {:closed true}
+   :- [:map {:closed true, :probe/id "src/metabase/documents/models/document.clj:376"}
        [:name {:optional true} DocumentName]
        [:document {:optional true} ::documents.schema/document.document]
        [:collection_id {:optional true} [:maybe ms/PositiveInt]]

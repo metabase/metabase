@@ -6,17 +6,17 @@
 
 (mr/def ::custom-viz-plugin.manifest
   "The `:manifest` column of a CustomVizPlugin, decoded."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/custom_viz_plugin/schema.clj:9"}
    [:name     {:optional true} [:maybe :string]]
    [:icon     {:optional true} [:maybe :string]]
-   [:metabase {:optional true} [:maybe [:map {:closed true} [:version {:optional true} [:maybe :string]]]]]
-   [:sdk      {:optional true} [:maybe [:map {:closed true} [:version {:optional true} [:maybe :string]]]]]])
+   [:metabase {:optional true} [:maybe [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/custom_viz_plugin/schema.clj:12"} [:version {:optional true} [:maybe :string]]]]]
+   [:sdk      {:optional true} [:maybe [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/custom_viz_plugin/schema.clj:13"} [:version {:optional true} [:maybe :string]]]]]])
 
 (mr/def ::custom-viz-plugin
   "A CustomVizPlugin as selected from the app DB: every column of `:custom_viz_plugin`."
   [:merge
    ::custom-viz-plugin.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/custom_viz_plugin/schema.clj:19"}
     [:id               ms/PositiveInt]]])
 
 (mr/def ::custom-viz-plugin.update

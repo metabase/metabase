@@ -147,17 +147,17 @@
                         [:created_at    {:optional true} ms/TemporalInstant]
                         [:updated_at    {:optional true} ms/TemporalInstant]
                         [:credentials   {:optional true}
-                         [:maybe [:map {:closed true}
+                         [:maybe [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/support_access_grants/db.clj:150"}
                                   [:token_hash     :string]
                                   [:expires_at     ms/TemporalInstant]
                                   [:grant_ends_at  ms/TemporalInstant]
                                   [:consumed_at    [:maybe ms/TemporalInstant]]]]]
                         [:metadata      {:optional true}
-                         [:maybe [:map {:closed true}
+                         [:maybe [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/support_access_grants/db.clj:156"}
                                   [:email           ms/Email]
                                   [:ip_address       {:optional true} [:maybe :string]]
                                   [:request_context  {:optional true}
-                                   [:map {:closed true}
+                                   [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/support_access_grants/db.clj:160"}
                                     [:user_agent {:optional true} [:maybe :string]]
                                     [:timestamp  {:optional true} [:or ms/TemporalInstant :string]]]]]]]]]
   (t2/update! :model/AuthIdentity auth-identity-id changes))

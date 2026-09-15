@@ -102,7 +102,7 @@
   "A Collection as selected from the app DB: every column of `:collection`."
   [:merge
    ::collection.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/collections/schema.clj:105"}
     [:id                   ::lib.schema.id/collection]
     [:can_write            {:optional true} :boolean]
     [:is_personal          {:optional true} [:maybe :boolean]]

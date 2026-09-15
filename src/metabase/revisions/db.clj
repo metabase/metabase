@@ -38,9 +38,9 @@
 
 (doseq [[model schema] revisioned-model-row-schema]
   (mr/register! (revision-schema-key "revisioned-row" model)
-                [:map {:closed true}
+                [:map {:closed true, :probe/id "src/metabase/revisions/db.clj:41"}
                  [:model [:= model]]
-                 [:row [:merge schema [:map {:closed true} [:id {:optional true} ms/PositiveInt]]]]]))
+                 [:row [:merge schema [:map {:closed true, :probe/id "src/metabase/revisions/db.clj:43"} [:id {:optional true} ms/PositiveInt]]]]]))
 
 (def ^:private RevisionedRow
   "A `{:model ..., :row ...}` pair naming one of the models revisions are tracked for, the row typed by that
@@ -187,11 +187,11 @@
   "Extra keys [[metabase.revisions.impl.dashboard/serialize-instance]] and friends add to some models' revision
   `:object` beyond their own row schema."
   {:model/Dashboard [[:cards {:optional true} [:sequential [:merge :metabase.dashboards.schema/dashboard-card.update
-                                                            [:map {:closed true}
+                                                            [:map {:closed true, :probe/id "src/metabase/revisions/db.clj:190"}
                                                              [:id     {:optional true} ::lib.schema.id/dashcard]
                                                              [:series {:optional true} [:sequential ::lib.schema.id/card]]]]]]
                      [:tabs  {:optional true} [:sequential [:merge :metabase.dashboards.schema/dashboard-tab.update
-                                                            [:map {:closed true} [:id {:optional true} ms/PositiveInt]]]]]]})
+                                                            [:map {:closed true, :probe/id "src/metabase/revisions/db.clj:194"} [:id {:optional true} ms/PositiveInt]]]]]]})
 
 (def revisioned-model-select-schema
   "The literal registry keyword of the row schema (as selected, hydrated keys included) of each model revisions are
@@ -214,12 +214,12 @@
 
 (doseq [[model schema] revisioned-model-select-schema]
   (mr/register! (revision-schema-key "revision-row" model)
-                [:map {:closed true}
+                [:map {:closed true, :probe/id "src/metabase/revisions/db.clj:217"}
                  [:model        [:= (name model)]]
                  [:model_id     ms/PositiveInt]
                  [:user_id      [:maybe ::lib.schema.id/user]]
                  [:object       [:merge schema
-                                 (into [:map {:closed true} [:id {:optional true} ms/PositiveInt]]
+                                 (into [:map {:closed true, :probe/id "src/metabase/revisions/db.clj:222"} [:id {:optional true} ms/PositiveInt]]
                                        (get revision-object-extra-keys model))]]
                  [:is_creation  :boolean]
                  [:is_reversion :boolean]
@@ -231,7 +231,7 @@
   (conj (into [:multi {:dispatch :model, :lazy-refs true}]
               (map (fn [model] [(name model) (revision-schema-key "revision-row" model)]))
               (keys revisioned-model-row-schema))
-        [::mc/default [:map {:closed true}
+        [::mc/default [:map {:closed true, :probe/id "src/metabase/revisions/db.clj:234"}
                        [:model        :string]
                        [:model_id     ms/PositiveInt]
                        [:user_id      [:maybe ::lib.schema.id/user]]

@@ -9,7 +9,7 @@
   "A ModerationReview as selected from the app DB: every column of `:moderation_review`."
   [:merge
    ::moderation-review.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/content_verification/schema.clj:12"}
     [:id                  ms/PositiveInt]
     [:user                {:optional true} [:maybe :metabase.users.schema/user]]]])
 

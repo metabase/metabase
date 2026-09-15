@@ -109,7 +109,7 @@
 
 (def UserInfo
   "The user-id to use in the visibility query and their superuser status."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/permissions/models/data_permissions/sql.clj:112"}
    [:user-id          pos-int?]
    [:is-superuser?    :boolean]
    [:is-data-analyst? {:optional true} :boolean]])
@@ -127,11 +127,11 @@
   [:or :keyword [:vector :keyword]])
 
 (def ^:private VisibleTableFilterSelectOptions
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/permissions/models/data_permissions/sql.clj:130"}
    [:active-only? {:optional true} :boolean]])
 
 (def ^:private VisibleTableFilterWithCteOptions
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/permissions/models/data_permissions/sql.clj:134"}
    [:active-only? {:optional true} :boolean]
    [:include-published-via-collection? {:optional true} :boolean]])
 

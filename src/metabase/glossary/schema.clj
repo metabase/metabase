@@ -9,7 +9,7 @@
   "A Glossary as selected from the app DB: every column of `:glossary`."
   [:merge
    ::glossary.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/glossary/schema.clj:12"}
     [:id         ms/PositiveInt]]])
 
 (mr/def ::glossary.update

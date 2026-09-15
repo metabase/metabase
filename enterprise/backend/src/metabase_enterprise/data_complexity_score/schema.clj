@@ -7,48 +7,48 @@
 (mr/def ::data-complexity-score.leaf
   "A `component-score` leaf: a computed `:measurement`/`:score` pair, or an `:error` when computing it failed."
   [:or
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/data_complexity_score/schema.clj:10"}
     [:measurement :double]
     [:score number?]]
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/data_complexity_score/schema.clj:13"}
     [:error :string]]])
 
 (mr/def ::data-complexity-score.catalog
   "One catalog's `score-catalog` result: a `:size`/`:ambiguity` rollup of `::data-complexity-score.leaf`s. A cached
   snapshot re-published without recomputing may carry an empty `:components`."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/data_complexity_score/schema.clj:19"}
    [:score [:maybe number?]]
    [:components
-    [:map {:closed true}
-     [:size {:optional true} [:map {:closed true}
+    [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/data_complexity_score/schema.clj:22"}
+     [:size {:optional true} [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/data_complexity_score/schema.clj:23"}
                               [:score [:maybe number?]]
-                              [:components [:map {:closed true}
+                              [:components [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/data_complexity_score/schema.clj:25"}
                                             [:entity-count ::data-complexity-score.leaf]
                                             [:field-count ::data-complexity-score.leaf]]]]]
-     [:ambiguity {:optional true} [:map {:closed true}
+     [:ambiguity {:optional true} [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/data_complexity_score/schema.clj:28"}
                                    [:score [:maybe number?]]
-                                   [:components [:map {:closed true}
+                                   [:components [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/data_complexity_score/schema.clj:30"}
                                                  [:name-collisions ::data-complexity-score.leaf]
                                                  [:synonym-pairs ::data-complexity-score.leaf]
                                                  [:repeated-measures ::data-complexity-score.leaf]]]]]]]])
 
 (mr/def ::data-complexity-score.score-data
   "The `:score_data` column of a DataComplexityScore, decoded."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/data_complexity_score/schema.clj:37"}
    [:library ::data-complexity-score.catalog]
    [:universe ::data-complexity-score.catalog]
    [:metabot ::data-complexity-score.catalog]
-   [:meta [:map {:closed true}
+   [:meta [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/data_complexity_score/schema.clj:41"}
            [:formula-version :int]
            [:format-version :int]
            [:synonym-threshold number?]
-           [:weights [:map {:closed true}
+           [:weights [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/data_complexity_score/schema.clj:45"}
                       [:entity :int]
                       [:name-collision :int]
                       [:synonym-pair :int]
                       [:field :int]
                       [:repeated-measure :int]]]
-           [:embedding-model {:optional true} [:maybe [:map {:closed true}
+           [:embedding-model {:optional true} [:maybe [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/data_complexity_score/schema.clj:51"}
                                                        [:provider [:maybe [:or :string :keyword]]]
                                                        [:model-name [:maybe :string]]
                                                        [:model-dimensions [:maybe :int]]]]]
@@ -59,7 +59,7 @@
   "A DataComplexityScore as selected from the app DB: every column of `:data_complexity_score`."
   [:merge
    ::data-complexity-score.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/data_complexity_score/schema.clj:62"}
     [:id          ms/PositiveInt]]])
 
 (mr/def ::data-complexity-score.update

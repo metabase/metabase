@@ -12,7 +12,7 @@
   `:collection` some callers hydrate onto it."
   [:merge
    ::native-query-snippet.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/native_query_snippets/schema.clj:15"}
     [:id            ::lib.schema.id/native-query-snippet]
     [:creator       {:optional true} [:maybe :metabase.users.schema/user]]
     [:collection    {:optional true} [:maybe :metabase.collections.schema/collection]]]])

@@ -75,7 +75,7 @@
       (:remapped_to v)   (update :remapped_to name)
       (:remapped_from v) (update :remapped_from name))))
 
-(mu/defn- format-results [{:keys [results metadata]} :- [:map {:closed true}
+(mu/defn- format-results [{:keys [results metadata]} :- [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/audit_app/query_processor/middleware/handle_audit_queries.clj:78"}
                                                          [:results  [:sequential [:map-of :string ms/FieldValue]]]
                                                          [:metadata audit.i/ResultsMetadata]]]
   (check-results-and-metadata-keys-match results metadata)
@@ -88,7 +88,7 @@
   "Schema for a valid `internal` type query."
   (into [:multi {:dispatch :fn}]
         (cond-> [["metabase-enterprise.audit-app.pages.queries/bad-table"
-                  [:map {:closed true}
+                  [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/audit_app/query_processor/middleware/handle_audit_queries.clj:91"}
                    [:fn     [:= "metabase-enterprise.audit-app.pages.queries/bad-table"]]
                    [:type   [:enum :internal "internal"]]
                    [:args   {:optional true}
@@ -107,7 +107,7 @@
                    [:middleware {:optional true} [:maybe :metabase.lib.schema.middleware-options/middleware-options]]]]]
           config/is-test?
           (conj [::mc/default
-                 [:map {:closed true}
+                 [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/audit_app/query_processor/middleware/handle_audit_queries.clj:110"}
                   [:fn         :string]
                   [:type       [:enum :internal "internal"]]
                   [:args       {:optional true} [:maybe [:sequential [:maybe [:or :string number? :boolean]]]]]

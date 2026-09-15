@@ -10,6 +10,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli.closed-schemas :as mu.closed-schemas]
    [metabase.util.malli.humanize :as mu.humanize]
+   [metabase.util.malli.probe :as mu.probe]
    [metabase.util.malli.registry :as mr]
    [net.cgrand.macrovich :as macros]))
 
@@ -206,7 +207,9 @@
 
 (defn- validate [error-context schema value error-type]
   (when *enforce*
-    (when-let [error (mr/explain schema value)]
+    (when-let [error (let [e (mr/explain schema value)]
+                       (when-not (and e (or (mu.probe/only-extra-keys? e (pr-str (:fn-name error-context))) (mu.probe/log-error! e (pr-str (:fn-name error-context)))))
+                         e))]
       (let [humanized (me/humanize error {:wrap (core/fn humanize-include-value
                                                   [{:keys [value message]}]
                                                   (str message ", got: " (pr-str value)))})

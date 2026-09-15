@@ -110,7 +110,7 @@
    [:masked_key           {:optional true} :string]])
 
 (defn- insert-schema [map-schema]
-  (into [:map {:closed true}]
+  (into [:map {:closed true, :probe/id "src/metabase/api_keys/schema.clj:113"}]
         (map (fn [[k properties schema]]
                (if properties
                  [k
@@ -124,7 +124,7 @@
   (insert-schema ::api-key))
 
 (defn- update-schema [map-schema]
-  (into [:map {:closed true}]
+  (into [:map {:closed true, :probe/id "src/metabase/api_keys/schema.clj:127"}]
         (map (fn [[k properties schema]]
                [k
                 (assoc properties :optional true)

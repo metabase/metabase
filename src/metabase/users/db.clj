@@ -169,7 +169,7 @@
 
 (mu/defn delete-user-parameter-values!
   "Delete the UserParameterValues identified by the `:user_id`, `:dashboard_id`, and `:parameter_id` of `parameters`."
-  [parameters :- [:sequential [:map {:closed true}
+  [parameters :- [:sequential [:map {:closed true, :probe/id "src/metabase/users/db.clj:172"}
                                [:user_id      ::lib.schema.id/user]
                                [:dashboard_id ::lib.schema.id/dashboard]
                                [:parameter_id :string]]]]

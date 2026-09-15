@@ -117,7 +117,7 @@
   "A SourceDimensionDaily as selected from the app DB: every column of `:source_dimension_daily`."
   [:merge
    ::source-dimension-daily.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/usage_metadata/schema.clj:120"}
     [:id             ms/PositiveInt]]])
 
 (mr/def ::source-dimension-daily.update
@@ -136,7 +136,7 @@
   "A SourceDimensionProfileDaily as selected from the app DB: every column of `:source_dimension_profile_daily`."
   [:merge
    ::source-dimension-profile-daily.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/usage_metadata/schema.clj:139"}
     [:id                ms/PositiveInt]]])
 
 (mr/def ::source-dimension-profile-daily.update
@@ -155,7 +155,7 @@
   "A SourceMetricDaily as selected from the app DB: every column of `:source_metric_daily`."
   [:merge
    ::source-metric-daily.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/usage_metadata/schema.clj:158"}
     [:id                ms/PositiveInt]]])
 
 (mr/def ::source-metric-daily.update
@@ -175,7 +175,7 @@
   "A SourceSegmentCompositeDaily as selected from the app DB: every column of `:source_segment_composite_daily`."
   [:merge
    ::source-segment-composite-daily.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/usage_metadata/schema.clj:178"}
     [:id                ms/PositiveInt]]])
 
 (mr/def ::source-segment-composite-daily.update
@@ -194,7 +194,7 @@
   "A SourceSegmentDaily as selected from the app DB: every column of `:source_segment_daily`."
   [:merge
    ::source-segment-daily.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/usage_metadata/schema.clj:197"}
     [:id             ms/PositiveInt]]])
 
 (mr/def ::source-segment-daily.update

@@ -177,14 +177,14 @@
       (handle-effects!* event-type sans-effects payloads))))
 
 (def ^:private RowDiff
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/actions/actions.clj:180"}
    [:table-id ::lib.schema.id/table]
    [:db-id    ::lib.schema.id/database]
    [:before   [:maybe ::lib.schema.actions/row]]
    [:after    [:maybe ::lib.schema.actions/row]]])
 
 (def ^:private ActionContext
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/actions/actions.clj:187"}
    [:user-id          {:optional true} [:maybe ms/PositiveInt]]
    [:scope            {:optional true} [:maybe ::actions.types/scope.hydrated]]
    [:driver           {:optional true} [:maybe :keyword]]
@@ -272,7 +272,7 @@
       (qp.perms/check-query-action-permissions* query))))
 
 (def ^:private PerformActionOpts
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/actions/actions.clj:275"}
    [:policy           {:optional true} [:maybe [:enum :model-action :ad-hoc-invocation :data-editing]]]
    [:existing-context {:optional true} [:maybe ActionContext]]
    [:user-id          {:optional true} [:maybe ms/PositiveInt]]

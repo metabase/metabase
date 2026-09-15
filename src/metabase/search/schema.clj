@@ -8,7 +8,7 @@
   "A SearchIndexMetadata as selected from the app DB: every column of `:search_index_metadata`."
   [:merge
    ::search-index-metadata.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/search/schema.clj:11"}
     [:id         ms/PositiveInt]]])
 
 (mr/def ::search-index-metadata.update

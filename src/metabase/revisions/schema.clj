@@ -13,7 +13,7 @@
   "A Revision as selected from the app DB: every column of `:revision`."
   [:merge
    ::revision.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/revisions/schema.clj:16"}
     [:id               ms/PositiveInt]]])
 
 (mr/def ::revision.update

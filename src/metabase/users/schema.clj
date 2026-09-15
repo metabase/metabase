@@ -25,7 +25,7 @@
 
 (def NewUser
   "Required/optionals parameters needed to create a new user (for any backend)"
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/users/schema.clj:28"}
    [:first_name       {:optional true} [:maybe ms/NonBlankString]]
    [:last_name        {:optional true} [:maybe ms/NonBlankString]]
    [:email                             ms/Email]
@@ -63,11 +63,11 @@
   "A User as selected from the app DB: every column of `:core_user` that the model selects by default, plus `:common_name` added by the model's after-select hook."
   [:merge
    ::user.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/users/schema.clj:66"}
     [:id              ::lib.schema.id/user]
     [:common_name     {:optional true} [:maybe :string]]
     [:attributes      {:optional true} [:maybe UserAttributes]]
-    [:user_group_memberships {:optional true} [:sequential [:map {:closed true} [:name :string] [:entity_id :string]]]]]])
+    [:user_group_memberships {:optional true} [:sequential [:map {:closed true, :probe/id "src/metabase/users/schema.clj:70"} [:name :string] [:entity_id :string]]]]]])
 
 (mr/def ::user.full
   "A User as selected from the app DB with every column of `:core_user`, not only the default ones, plus `:common_name` added by the model's after-select hook."
@@ -167,7 +167,7 @@
   "A UserParameterValue as selected from the app DB: every column of `:user_parameter_value`."
   [:merge
    ::user-parameter-value.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/users/schema.clj:170"}
     [:id           ms/PositiveInt]]])
 
 (mr/def ::user-parameter-value.update

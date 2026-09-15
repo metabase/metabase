@@ -27,7 +27,7 @@
   `:id` and the keys some callers hydrate onto it."
   [:merge
    ::dashboard.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/dashboards/schema.clj:30"}
     [:id                         ::lib.schema.id/dashboard]
     [:moderation_status          {:optional true} [:maybe [:or :keyword :string]]]
     [:resolved-params            {:optional true} [:maybe [:map-of ms/NonBlankString ::parameters.schema/resolved-parameter]]]
@@ -45,7 +45,7 @@
     [:last_used_param_values     {:optional true} [:maybe [:map-of :string [:maybe :metabase.users.schema/user-parameter-value.value]]]]
     [:creator                    {:optional true} [:maybe :metabase.users.schema/user]]
     [:last-edit-info             {:optional true} [:maybe
-                                                   [:map {:closed true}
+                                                   [:map {:closed true, :probe/id "src/metabase/dashboards/schema.clj:48"}
                                                     [:timestamp  [:maybe ms/TemporalInstant]]
                                                     [:id         [:maybe ms/PositiveInt]]
                                                     [:first_name [:maybe :string]]
@@ -96,14 +96,14 @@
   hydrate onto it."
   [:merge
    ::dashboard-card.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/dashboards/schema.clj:99"}
     [:id                     ::lib.schema.id/dashcard]
     [:collection_authority_level {:optional true} [:maybe [:or :keyword :string]]]
     [:card                   {:optional true} [:maybe [:ref ::queries.schema/card]]]
     [:series                 {:optional true} [:maybe [:sequential [:ref ::queries.schema/card]]]]
     [:action                 {:optional true} [:maybe [:merge
                                                        :metabase.actions.schema/action
-                                                       [:map {:closed true}
+                                                       [:map {:closed true, :probe/id "src/metabase/dashboards/schema.clj:106"}
                                                         [:database_enabled_actions {:optional true} :boolean]]]]]]])
 
 (mr/def ::dashboard-card.update
@@ -128,7 +128,7 @@
   "A DashboardCardSeries as selected from the app DB: every column of `:dashboardcard_series`."
   [:merge
    ::dashboard-card-series.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/dashboards/schema.clj:131"}
     [:id               ms/PositiveInt]]])
 
 (mr/def ::dashboard-card-series.update
@@ -142,7 +142,7 @@
   "A DashboardTab as selected from the app DB: every column of `:dashboard_tab`."
   [:merge
    ::dashboard-tab.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/dashboards/schema.clj:145"}
     [:id           ms/PositiveInt]]])
 
 (mr/def ::dashboard-tab.update

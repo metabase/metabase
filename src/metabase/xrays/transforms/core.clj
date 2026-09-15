@@ -144,7 +144,7 @@
     (ms/InstanceOf :model/Table)
     [:merge
      :metabase.warehouse-schema.schema/table
-     [:map {:closed true}
+     [:map {:closed true, :probe/id "src/metabase/xrays/transforms/core.clj:147"}
       [:domain_entity [:maybe ::domain-entities.specs/instantiated-domain-entity]]]]]])
 
 (mu/defn- find-tables-with-domain-entity :- Tableset

@@ -199,14 +199,14 @@
 (def ^:private PushRevisionInput
   (into [:multi {:dispatch :entity}]
         (conj (vec (for [[model schema] revisions.db/revisioned-model-select-schema]
-                     [model [:map {:closed true}
+                     [model [:map {:closed true, :probe/id "src/metabase/revisions/models/revision.clj:202"}
                              [:id                            pos-int?]
                              [:object                        schema]
                              [:entity                        [:= model]]
                              [:user-id                       [:maybe pos-int?]]
                              [:is-creation? {:optional true} [:maybe :boolean]]
                              [:message      {:optional true} [:maybe :string]]]]))
-              [::mc/default [:map {:closed true}
+              [::mc/default [:map {:closed true, :probe/id "src/metabase/revisions/models/revision.clj:209"}
                              [:id                            pos-int?]
                              [:object                        ::revisions.db/unregistered-model-object]
                              [:entity                        [:fn toucan-model?]]

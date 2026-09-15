@@ -99,7 +99,7 @@
    (describe-temporal-interval n unit nil))
   ([n    :- TemporalIntervalAmount
     unit :- [:maybe :keyword]
-    opts :- [:maybe [:map {:closed true} [:include-current {:optional true} :boolean]]]]
+    opts :- [:maybe [:map {:closed true, :probe/id "src/metabase/lib/temporal_bucket.cljc:102"} [:include-current {:optional true} :boolean]]]]
    (let [n                (interval-n->int n)
          unit             (or unit :day)
          include-current? (:include-current opts)]

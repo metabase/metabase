@@ -173,7 +173,7 @@
   "A RemoteSyncObject as selected from the app DB: every column of `:remote_sync_object`."
   [:merge
    ::remote-sync-object.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/remote_sync/schema.clj:176"}
     [:id                  ms/PositiveInt]]])
 
 (mr/def ::remote-sync-object.update
@@ -194,19 +194,19 @@
 (mr/def ::remote-sync-task.outcome
   "The `:outcome` column of a RemoteSyncTask, decoded."
   [:multi {:dispatch :kind}
-   ["pulled"       [:map {:closed true}
+   ["pulled"       [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/remote_sync/schema.clj:197"}
                     [:kind   [:= "pulled"]]
                     [:count  :int]
                     [:branch [:maybe :string]]]]
-   ["pull-skipped" [:map {:closed true}
+   ["pull-skipped" [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/remote_sync/schema.clj:201"}
                     [:kind [:= "pull-skipped"]]]]
-   ["pushed"       [:map {:closed true}
+   ["pushed"       [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/remote_sync/schema.clj:203"}
                     [:kind   [:= "pushed"]]
                     [:count  :int]
                     [:branch [:maybe :string]]]]
-   ["push-skipped" [:map {:closed true}
+   ["push-skipped" [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/remote_sync/schema.clj:207"}
                     [:kind [:= "push-skipped"]]]]
-   ["merged"       [:map {:closed true}
+   ["merged"       [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/remote_sync/schema.clj:209"}
                     [:kind   [:= "merged"]]
                     [:pulled :int]
                     [:pushed :int]
@@ -216,7 +216,7 @@
   "A RemoteSyncTask as selected from the app DB: every column of `:remote_sync_task`."
   [:merge
    ::remote-sync-task.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/remote_sync/schema.clj:219"}
     [:id                      ms/PositiveInt]]])
 
 (mr/def ::remote-sync-task.update

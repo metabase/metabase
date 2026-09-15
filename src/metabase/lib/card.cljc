@@ -118,7 +118,7 @@
   ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
     cols                  :- [:maybe [:or
                                       [:sequential ::lib.schema.metadata/lib-or-legacy-column]
-                                      [:map {:closed true}
+                                      [:map {:closed true, :probe/id "src/metabase/lib/card.cljc:121"}
                                        [:columns [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]]]]
    (->card-metadata-columns metadata-providerable nil cols))
 
@@ -126,7 +126,7 @@
     card-or-id-or-nil     :- [:maybe [:or ::lib.schema.id/card ::lib.schema.metadata/card]]
     cols                  :- [:maybe [:or
                                       [:sequential ::lib.schema.metadata/lib-or-legacy-column]
-                                      [:map {:closed true}
+                                      [:map {:closed true, :probe/id "src/metabase/lib/card.cljc:129"}
                                        [:columns [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]]]]
    ;; Card `result-metadata` SHOULD be a sequence of column infos, but just to be safe handle a map that
    ;; contains` :columns` as well.
@@ -237,7 +237,7 @@
   ([result-cols :- [:maybe [:sequential ::lib.schema.metadata/column]]
     model-cols  :- [:maybe [:sequential ::lib.schema.metadata/column]]
     {:keys [native-model? own-model-query?]
-     :or   {native-model? false, own-model-query? false}} :- [:map {:closed true}
+     :or   {native-model? false, own-model-query? false}} :- [:map {:closed true, :probe/id "src/metabase/lib/card.cljc:240"}
                                                               [:native-model?    {:optional true} :boolean]
                                                               [:own-model-query? {:optional true} :boolean]]]
    (cond

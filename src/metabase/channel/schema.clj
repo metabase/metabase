@@ -23,7 +23,7 @@
 
 (mr/def ::email-details
   "The connection `:details` of a `:channel/email` channel: an optional SMTP host and port, as email is otherwise configured by settings."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/channel/schema.clj:26"}
    [:host {:optional true} [:maybe :string]]
    [:port {:optional true} [:maybe :int]]])
 
@@ -147,7 +147,7 @@
   "A ChannelTemplate as selected from the app DB: every column of `:channel_template`."
   [:merge
    ::channel-template.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/channel/schema.clj:150"}
     [:id           ms/PositiveInt]]])
 
 (mr/def ::channel-template.update

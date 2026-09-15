@@ -66,7 +66,7 @@
            source
            tenant-id
            invite-target]
-    :as   attributes} :- [:map {:closed true}
+    :as   attributes} :- [:map {:closed true, :probe/id "src/metabase/users/util.clj:69"}
                           [:first-name              {:optional true} [:maybe ms/NonBlankString]]
                           [:last-name               {:optional true} [:maybe ms/NonBlankString]]
                           [:email                   ms/Email]

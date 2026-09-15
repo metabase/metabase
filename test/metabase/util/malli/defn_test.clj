@@ -24,9 +24,9 @@
   (are [fn-tail expected] (= expected
                              (#'mu.defn/annotated-docstring (mc/parse mx/SchematizedParams fn-tail)))
     '(bar
-      [x :- [:map {:closed true} [:x int?] [:y int?]]]
+      [x :- [:map {:closed true, :probe/id "test/metabase/util/malli/defn_test.clj:27"} [:x int?] [:y int?]]]
       (str x))
-    (str "Inputs: [x :- [:map {:closed true} [:x int?] [:y int?]]]\n"
+    (str "Inputs: [x :- [:map {:closed true, :probe/id "test/metabase/util/malli/defn_test.clj:29"} [:x int?] [:y int?]]]\n"
          "  Return: :any")
 
     '(bar
@@ -39,7 +39,7 @@
          "           [x :- :int y :- :int])\n"
          "  Return: :int")))
 
-(mu/defn bar [x :- [:map {:closed true} [:x int?] [:y int?]]] (str x))
+(mu/defn bar [x :- [:map {:closed true, :probe/id "test/metabase/util/malli/defn_test.clj:42"} [:x int?] [:y int?]]] (str x))
 
 (mu/defn baz :- [:map [:x int?] [:y int?]] [] {:x "3"})
 

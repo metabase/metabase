@@ -27,7 +27,7 @@
   - :query-content - The new SQL content
   - :database - Database ID"
   [{:keys [query-id sql queries-state]}
-   :- [:map {:closed true}
+   :- [:map {:closed true, :probe/id "src/metabase/metabot/tools/sql/replace.clj:30"}
        [:query-id [:or :string :int]]
        [:sql :string]
        [:checklist {:optional true} [:maybe :string]]

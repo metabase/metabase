@@ -33,7 +33,7 @@
 
 (mr/def ::internal-query.column
   "A column of an internal (audit app) query's results, as the query's function declares it."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/query_processor/schema.clj:36"}
    [:name          :string]
    [:display_name  :string]
    [:base_type     ::lib.schema.common/base-type]
@@ -51,7 +51,7 @@
 
 (mr/def ::insight
   "One entry of the `:insights` calculated for a query's results."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/query_processor/schema.clj:54"}
    [:last-value     {:optional true} [:maybe number?]]
    [:previous-value {:optional true} [:maybe number?]]
    [:last-change    {:optional true} [:maybe number?]]
@@ -66,7 +66,7 @@
   as it passes through QP middleware, and is eventually merged into the final result's `:data` key. See
   [[metabase.query-processor.postprocess/middleware]] and [[metabase.query-processor.execute/middleware]] for the
   middleware that add to it."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/query_processor/schema.clj:69"}
    [:cols                    {:optional true} [:sequential [:or
                                                             ::result-metadata.column
                                                             ::mbql.s/driver-column
@@ -81,7 +81,7 @@
    [:requested_timezone      {:optional true} [:maybe :string]]
    [:cache-version           {:optional true} :int]
    [:last-ran                {:optional true} (lib.schema.common/instance-of-class java.time.temporal.Temporal)]
-   [:pivot-export-options    {:optional true} [:map {:closed true}
+   [:pivot-export-options    {:optional true} [:map {:closed true, :probe/id "src/metabase/query_processor/schema.clj:84"}
                                                [:pivot-rows         {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
                                                [:pivot-cols         {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
                                                [:pivot-measures     {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
@@ -93,7 +93,7 @@
    [:pivot?                  {:optional true} :boolean]
    [:is_sandboxed            {:optional true} :boolean]
    [:download_perms          {:optional true} [:or :keyword :string]]
-   [:results_metadata        {:optional true} [:map {:closed true}
+   [:results_metadata        {:optional true} [:map {:closed true, :probe/id "src/metabase/query_processor/schema.clj:96"}
                                                [:columns ::result-metadata.columns]]]
    [:insights                {:optional true} [:maybe [:sequential ::insight]]]
    [:rows_truncated          {:optional true} :int]

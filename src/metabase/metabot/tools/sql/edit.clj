@@ -49,9 +49,9 @@
 
   Returns an `operation-result` map. For details see its docstring."
   [{:keys [query-id edits queries-state]}
-   :- [:map {:closed true}
+   :- [:map {:closed true, :probe/id "src/metabase/metabot/tools/sql/edit.clj:52"}
        [:query-id [:or :string :int]]
-       [:edits [:sequential [:map {:closed true}
+       [:edits [:sequential [:map {:closed true, :probe/id "src/metabase/metabot/tools/sql/edit.clj:54"}
                              [:old_string :string]
                              [:new_string :string]
                              [:replace_all {:optional true} [:maybe :boolean]]]]]

@@ -13,7 +13,7 @@
   "A Tenant as selected from the app DB: every column of `:tenant`."
   [:merge
    ::tenant.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/tenants/schema.clj:16"}
     [:id                   ms/PositiveInt]]])
 
 (mr/def ::tenant.update

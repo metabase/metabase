@@ -9,7 +9,7 @@
   "A AgentApiCallLog as selected from the app DB: every column of `:agent_api_call_log`."
   [:merge
    ::agent-api-call-log.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/agent_api/schema.clj:12"}
     [:id            ms/PositiveInt]]])
 
 (mr/def ::agent-api-call-log.update

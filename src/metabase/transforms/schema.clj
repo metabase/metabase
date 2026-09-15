@@ -30,7 +30,7 @@
 
 (mr/def ::orphaned-query
   "The MBQL 5 query of a transform whose source database was deleted, kept as a breadcrumb with its `:database` nulled."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/transforms/schema.clj:33"}
    [:lib/type [:= {:decode/normalize lib.schema.common/normalize-keyword} :mbql/query]]
    [:database :nil]
    [:stages   [:ref :metabase.lib.schema/stages]]
@@ -110,21 +110,21 @@
 (mr/def ::transform.table-dependency
   "One entry of the `:table_dependencies` column of a Transform, decoded."
   [:or
-   [:map {:closed true} [:table ::lib.schema.id/table]]
-   [:map {:closed true} [:transform ::lib.schema.id/transform]]])
+   [:map {:closed true, :probe/id "src/metabase/transforms/schema.clj:113"} [:table ::lib.schema.id/table]]
+   [:map {:closed true, :probe/id "src/metabase/transforms/schema.clj:114"} [:transform ::lib.schema.id/transform]]])
 
 (mr/def ::transform.owner
   "The `:owner` hydrated onto a Transform: its owning User, or just the `:email` of an owner outside Metabase."
   [:or
    :metabase.users.schema/user
-   [:map {:closed true} [:email :string]]])
+   [:map {:closed true, :probe/id "src/metabase/transforms/schema.clj:120"} [:email :string]]])
 
 (mr/def ::transform
   "A Transform as selected from the app DB: every column of `:transform`, plus `:creator`, `:table`, `:last_run`,
   `:collection`, and `:owner` some callers hydrate onto it."
   [:merge
    ::transform.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/transforms/schema.clj:127"}
     [:id                    ::lib.schema.id/transform]
     [:creator               {:optional true} [:maybe :metabase.users.schema/user]]
     [:table                 {:optional true} [:maybe [:ref :metabase.warehouse-schema.schema/table]]]
@@ -162,7 +162,7 @@
   "A TransformDagRun as selected from the app DB: every column of `:transform_dag_run`."
   [:merge
    ::transform-dag-run.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/transforms/schema.clj:165"}
     [:id                         ms/PositiveInt]]])
 
 (mr/def ::transform-dag-run.update
@@ -187,7 +187,7 @@
   "A TransformJob as selected from the app DB: every column of `:transform_job`."
   [:merge
    ::transform-job.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/transforms/schema.clj:190"}
     [:id              ms/PositiveInt]]])
 
 (mr/def ::transform-job.update
@@ -207,7 +207,7 @@
   "A TransformJobRun as selected from the app DB: every column of `:transform_job_run`."
   [:merge
    ::transform-job-run.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/transforms/schema.clj:210"}
     [:id             ms/PositiveInt]]])
 
 (mr/def ::transform-job-run.update
@@ -230,7 +230,7 @@
   "A TransformJobTransformTag as selected from the app DB: every column of `:transform_job_transform_tag`."
   [:merge
    ::transform-job-transform-tag.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/transforms/schema.clj:233"}
     [:id        ms/PositiveInt]]])
 
 (mr/def ::transform-job-transform-tag.update
@@ -245,7 +245,7 @@
   "A TransformRun as selected from the app DB: every column of `:transform_run`."
   [:merge
    ::transform-run.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/transforms/schema.clj:248"}
     [:id                         ms/PositiveInt]]])
 
 (mr/def ::transform-run.update
@@ -273,7 +273,7 @@
   "A TransformRunCancelation as selected from the app DB: every column of `:transform_run_cancelation`."
   [:merge
    ::transform-run-cancelation.update
-   [:map {:closed true}]])
+   [:map {:closed true, :probe/id "src/metabase/transforms/schema.clj:276"}]])
 
 (mr/def ::transform-run-cancelation.update
   "What an update (or insert) of a TransformRunCancelation accepts: every column of `:transform_run_cancelation` except `id`, all optional."
@@ -285,7 +285,7 @@
   "A TransformTag as selected from the app DB: every column of `:transform_tag`."
   [:merge
    ::transform-tag.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/transforms/schema.clj:288"}
     [:id            ms/PositiveInt]]])
 
 (mr/def ::transform-tag.update
@@ -301,7 +301,7 @@
   "A TransformTransformTag as selected from the app DB: every column of `:transform_transform_tag`."
   [:merge
    ::transform-transform-tag.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/transforms/schema.clj:304"}
     [:id           ms/PositiveInt]]])
 
 (mr/def ::transform-transform-tag.update

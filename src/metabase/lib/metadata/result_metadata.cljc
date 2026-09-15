@@ -70,7 +70,7 @@
 
 (mr/def ::driver-col
   "A [[mbql.s/driver-column]] with its keys kebab-cased."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib/metadata/result_metadata.cljc:73"}
    [:name           {:optional true} :string]
    [:base-type      {:optional true} [:maybe ::lib.schema.common/base-type]]
    [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]

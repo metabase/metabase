@@ -9,7 +9,7 @@
   "A ConnectionImpersonation as selected from the app DB: every column of `:connection_impersonations`."
   [:merge
    ::connection-impersonation.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/impersonation/schema.clj:12"}
     [:id        ms/PositiveInt]]])
 
 (mr/def ::connection-impersonation.update

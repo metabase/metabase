@@ -8,16 +8,16 @@
 
 (deftest ^:parallel findings-without-any-test
   (are [schema kinds] (= kinds (mapv :kind (mu.closed-schemas/findings schema {:any? false})))
-    [:map {:closed true} [:a :any]]          []
+    [:map {:closed true, :probe/id "test/metabase/util/malli/closed_schemas_test.clj:11"} [:a :any]]          []
     [:map-of :string :any]                   []
     [:map [:a :int]]                         [:open-map]
     [:maybe map?]                            [:open-map]
     [:map-of :keyword :int]                  [:keyword-keyed-map-of]
-    [:map {:closed true} [:a [:map [:b :int]]]] [:open-map]))
+    [:map {:closed true, :probe/id "test/metabase/util/malli/closed_schemas_test.clj:16"} [:a [:map [:b :int]]]] [:open-map]))
 
 (deftest check-args-test
   (binding [mu.closed-schemas/*enabled* true]
-    (is (nil? (mu.closed-schemas/check-args! `f [[:cat :int [:map {:closed true} [:a :int]]]])))
+    (is (nil? (mu.closed-schemas/check-args! `f [[:cat :int [:map {:closed true, :probe/id "test/metabase/util/malli/closed_schemas_test.clj:20"} [:a :int]]]])))
     (is (thrown-with-msg? clojure.lang.ExceptionInfo
                           #"The arguments of metabase.util.malli.closed-schemas-test/f reach schemas that do not declare their shape"
                           (mu.closed-schemas/check-args! `f [[:cat :int] [:cat [:map [:a :int]]]])))))
@@ -45,5 +45,5 @@
                    (str (eval-error-message `(mu/defn ~'any-arg [~'x :- :any] ~'x))))))
     (testing "a return schema is not checked"
       (is (nil? (eval-error-message `(mu/defn ~'open-return :- :any
-                                       [~'m :- [:map {:closed true} [:a :int]]]
+                                       [~'m :- [:map {:closed true, :probe/id "test/metabase/util/malli/closed_schemas_test.clj:48"} [:a :int]]]
                                        ~'m)))))))

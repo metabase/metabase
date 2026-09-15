@@ -64,7 +64,7 @@
   1000)
 
 (mr/def ::values-from-card-query.options
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/parameters/custom_values.clj:67"}
    [:query-string {:optional true} [:maybe ms/FieldValue]]
    ;; when present, the matching column is added as a second breakout so that each row becomes a
    ;; [value label] pair used for remapping
@@ -198,7 +198,7 @@
   - :values_source_type = nil."
   [parameter          :- ::parameters.schema/resolved-parameter
    query-string       :- [:maybe ms/NonBlankString]
-   default-case-thunk :- [:=> [:cat :any] [:map {:closed true}
+   default-case-thunk :- [:=> [:cat :any] [:map {:closed true, :probe/id "src/metabase/parameters/custom_values.clj:201"}
                                            [:has_more_values :boolean]
                                            [:values ms/FieldValuesList]]]]
   (case (:values_source_type parameter)

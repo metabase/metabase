@@ -41,7 +41,7 @@
         (keyword subprotocol)))))
 
 (def ^:private EnvVars
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/app_db/env.clj:44"}
    [:mb-db-type                             {:optional true} [:maybe :keyword]]
    [:mb-db-in-memory                        {:optional true} [:maybe :boolean]]
    [:mb-db-file                             {:optional true} [:maybe :string]]

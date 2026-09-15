@@ -46,7 +46,7 @@
 (mr/def ::string-filter-options
   "String filter operator options. Only set for `:contains`, `:does-not-contain`, `:starts-with`, `:ends-with`
   operators."
-  [:map {:closed true} [:case-sensitive {:optional true} :boolean]]) ; default true
+  [:map {:closed true, :probe/id "src/metabase/lib/schema/filter.cljc:49"} [:case-sensitive {:optional true} :boolean]]) ; default true
 
 (mr/def ::number-filter-operator
   "Numeric filter operators supported by the FE."
@@ -79,7 +79,7 @@
 
 (mr/def ::time-interval-options
   "Options for `:time-interval` operator. Note that `:relative-time-interval` does not support these options."
-  [:map {:closed true} [:include-current {:optional true} :boolean]]) ; default false
+  [:map {:closed true, :probe/id "src/metabase/lib/schema/filter.cljc:82"} [:include-current {:optional true} :boolean]]) ; default false
 
 (doseq [op [:and :or]]
   (mbql-clause/define-catn-mbql-clause op :- :type/Boolean
@@ -192,7 +192,7 @@
     [false ::id/segment]]])
 
 (mr/def ::operator
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib/schema/filter.cljc:195"}
    [:lib/type [:= :operator/filter]]
    [:short [:enum
             := :!= :inside :between :< :> :<= :>= :is-null :not-null :is-empty :not-empty

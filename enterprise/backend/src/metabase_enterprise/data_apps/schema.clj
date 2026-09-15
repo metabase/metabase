@@ -8,7 +8,7 @@
   "A DataApp as selected from the app DB: every column of `:data_app`."
   [:merge
    ::data-app.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/data_apps/schema.clj:11"}
     [:id              ms/PositiveInt]]])
 
 (mr/def ::data-app.update

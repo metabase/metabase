@@ -124,12 +124,12 @@
 (def ^:private LibraryCollectionRef
   "References a collection by numeric or entity id."
   [:or
-   [:map {:closed true} [:id :int]]
-   [:map {:closed true} [:entity-id ms/NonBlankString]]])
+   [:map {:closed true, :probe/id "src/metabase/typed_schemas/scope.clj:127"} [:id :int]]
+   [:map {:closed true, :probe/id "src/metabase/typed_schemas/scope.clj:128"} [:entity-id ms/NonBlankString]]])
 
 (def LibraryScopeOptions
   "Options accepted by [[library-scope]]."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/typed_schemas/scope.clj:132"}
    [:library-collection-refs {:optional true} [:maybe [:sequential LibraryCollectionRef]]]
    [:include-data-library? {:optional true} [:maybe :boolean]]
    [:include-metric-library? {:optional true} [:maybe :boolean]]])

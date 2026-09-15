@@ -8,7 +8,7 @@
   "A SsoRelayState as selected from the app DB: every column of `:sso_relay_state`."
   [:merge
    ::sso-relay-state.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/sso/schema.clj:11"}
     [:id           :string]]])
 
 (mr/def ::sso-relay-state.update

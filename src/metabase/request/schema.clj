@@ -11,7 +11,7 @@
 ;;; TODO (Cam 8/13/25) -- should this map be closed, that way we can make sure all the keys we might be using are
 ;;; enumerated here?
 (mr/def ::current-user-info
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/request/schema.clj:14"}
    [:metabase-user-id   {:optional true} pos-int?]
    [:is-superuser?      {:optional true} :boolean]
    [:is-data-analyst?   {:optional true} :boolean]
@@ -36,7 +36,7 @@
 
 (mr/def ::multipart-file
   "One `:multipart-params` entry for an uploaded file, as `ring.middleware.multipart-params` builds it."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/request/schema.clj:39"}
    [:filename     :string]
    [:content-type :string]
    [:tempfile     (ms/InstanceOfClass java.io.File)]
@@ -44,7 +44,7 @@
 
 (mr/def ::cookie-attrs
   "One `:cookies` entry of a request or response: a cookie's value and its attributes."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/request/schema.clj:47"}
    [:value     {:optional true} :string]
    [:path      {:optional true} :string]
    [:domain    {:optional true} :string]
@@ -56,7 +56,7 @@
 
 (mr/def ::request
   "A Ring request map, including the keys Metabase's own middleware stack adds."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/request/schema.clj:59"}
    [:server-port             {:optional true} :int]
    [:server-name             {:optional true} :string]
    [:remote-addr             {:optional true} :string]
@@ -109,7 +109,7 @@
    [:token-scopes-checked    {:optional true} :boolean]
    [:mcp-ui-session-id       {:optional true} [:maybe :string]]
    [:mcp-ui-credential       {:optional true} [:maybe
-                                               [:map {:closed true}
+                                               [:map {:closed true, :probe/id "src/metabase/request/schema.clj:112"}
                                                 [:v            :int]
                                                 [:uid          :int]
                                                 [:sid          :string]
@@ -122,9 +122,9 @@
   "What an endpoint handler can return: JSON-shaped data, a full Ring response map, or a file/stream for downloads."
   [:or
    ms/RingResponseBody
-   [:map {:closed true} [:id :string]]
-   [:map {:closed true} [:success :boolean] [:session_id :string]]
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/request/schema.clj:125"} [:id :string]]
+   [:map {:closed true, :probe/id "src/metabase/request/schema.clj:126"} [:success :boolean] [:session_id :string]]
+   [:map {:closed true, :probe/id "src/metabase/request/schema.clj:127"}
     [:status  {:optional true} :int]
     [:headers {:optional true} [:map-of :string :string]]
     [:cookies {:optional true} [:map-of :string ::cookie-attrs]]

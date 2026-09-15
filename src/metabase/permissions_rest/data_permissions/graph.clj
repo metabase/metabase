@@ -24,7 +24,7 @@
 (set! *warn-on-reflection* true)
 
 (mr/def ::opts
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/permissions_rest/data_permissions/graph.clj:27"}
    [:group-id  {:optional true} [:maybe pos-int?]]
    [:group-ids {:optional true} [:maybe [:sequential pos-int?]]]
    [:db-id     {:optional true} [:maybe pos-int?]]

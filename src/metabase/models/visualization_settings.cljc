@@ -43,7 +43,7 @@
 ;; aggregation) or to a fully qualified field name (in the context of serialization); we won't attempt to interpret it
 ;; here, only report that it's a string and set it in the ref map appropriately
 (def ^:private column-ref-schema
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/models/visualization_settings.cljc:46"}
    [::field-id {:optional true} ::lib.schema.id/field]
    [::column-name {:optional true} string?]
    [::field-str {:optional true} string?]
@@ -64,7 +64,7 @@
 (def ^:private parameter-mapping-schema [:maybe ::lib.schema.common/visualization-settings])
 
 (def ^:private click-behavior-schema
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/models/visualization_settings.cljc:67"}
    [::click-behavior-type {:optional true} keyword?]
    [::link-type {:optional true} [:or [:= ::card] [:= ::dashboard] [:= ::url]]]
    [::parameter-mapping {:optional true} parameter-mapping-schema]

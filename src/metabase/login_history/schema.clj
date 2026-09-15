@@ -9,7 +9,7 @@
   "A LoginHistory as selected from the app DB: every column of `:login_history`, plus `:active` added by the model's after-select hook."
   [:merge
    ::login-history.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/login_history/schema.clj:12"}
     [:id                 ms/PositiveInt]
     [:active             {:optional true} :boolean]]])
 

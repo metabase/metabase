@@ -198,7 +198,7 @@
   "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables)."
   [card-type :- ::queries.schema/card.type
    & {:keys [collection-scope xform], :or {xform identity}}
-   :- [:maybe [:map {:closed true}
+   :- [:maybe [:map {:closed true, :probe/id "src/metabase/warehouses_rest/api.clj:201"}
                [:collection-scope {:optional true}
                 [:maybe [:or [:= :root] [:set ::lib.schema.id/collection] [:sequential ::lib.schema.id/collection]]]]
                [:xform {:optional true} [:maybe [:fn ifn?]]]]]]
@@ -223,14 +223,14 @@
    Builder.)"
   [card-type :- ::queries.schema/card.type
    & {:keys [include-fields?]}
-   :- [:maybe [:map {:closed true} [:include-fields? {:optional true} [:maybe :boolean]]]]]
+   :- [:maybe [:map {:closed true, :probe/id "src/metabase/warehouses_rest/api.clj:226"} [:include-fields? {:optional true} [:maybe :boolean]]]]]
   (schema.table/cards->virtual-tables (source-query-cards card-type)
                                       :include-fields? include-fields?))
 
 (mu/defn- saved-cards-virtual-db-metadata
   [card-type :- ::queries.schema/card.type
    & {:keys [include-tables? include-fields?]}
-   :- [:maybe [:map {:closed true}
+   :- [:maybe [:map {:closed true, :probe/id "src/metabase/warehouses_rest/api.clj:233"}
                [:include-tables? {:optional true} [:maybe :boolean]]
                [:include-fields? {:optional true} [:maybe :boolean]]]]]
   (when (lib-be/enable-nested-queries)
@@ -446,7 +446,7 @@
   ([id :- ms/PositiveInt] (check-database-exists id {}))
   ([id :- ms/PositiveInt
     {:keys [include-destination-databases?]}
-    :- [:map {:closed true}
+    :- [:map {:closed true, :probe/id "src/metabase/warehouses_rest/api.clj:449"}
         [:include-destination-databases? {:optional true :default false} ms/MaybeBooleanValue]]]
    (api/check-404 (if (and include-destination-databases? api/*is-superuser?*)
                     (warehouses-rest.db/database-exists? id)

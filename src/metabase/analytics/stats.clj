@@ -541,7 +541,7 @@
         [:interactive_embed :internal :public_link :sdk_embed :simple_embed :static_embed]))
 
 (def ^:private QueryExecutionCounts
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/analytics/stats.clj:544"}
    [:sdk_embed :int]
    [:interactive_embed :int]
    [:static_embed :int]
@@ -559,8 +559,8 @@
            query-executions
            query-executions-24h]
     :as _snowplow-grouped-metric-info}
-   :- [:map {:closed true}
-       [:eid-translations-24h [:map {:closed true}
+   :- [:map {:closed true, :probe/id "src/metabase/analytics/stats.clj:562"}
+       [:eid-translations-24h [:map {:closed true, :probe/id "src/metabase/analytics/stats.clj:563"}
                                [:ok :int] [:not-found :int] [:invalid-format :int] [:total :int]]]
        [:query-executions     QueryExecutionCounts]
        [:query-executions-24h QueryExecutionCounts]]]
@@ -602,7 +602,7 @@
 
 (def ^:private optional-count-map
   "Non-negative integer counts keyed by whatever subset of these metric names a given call site fills in."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/analytics/stats.clj:605"}
    [:total {:optional true} :int]
    [:native {:optional true} :int]
    [:gui {:optional true} :int]
@@ -621,7 +621,7 @@
 (def ^:private LegacyAnonymousUsageStats
   "The shape returned by [[legacy-anonymous-usage-stats]]: instance metadata plus a `:stats` map of per-domain
   metric groups."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/analytics/stats.clj:624"}
    [:version :string]
    [:running_on :keyword]
    [:startup_time_millis :int]
@@ -659,17 +659,17 @@
    [:uuid :string]
    [:timestamp (ms/InstanceOfClass java.time.OffsetDateTime)]
    [:stats
-    [:map {:closed true}
-     [:cache [:map {:closed true}
+    [:map {:closed true, :probe/id "src/metabase/analytics/stats.clj:662"}
+     [:cache [:map {:closed true, :probe/id "src/metabase/analytics/stats.clj:663"}
               [:average_entry_size :int]
               [:num_queries_cached :string]
               [:num_queries_cached_unbinned :int]]]
-     [:collection [:map {:closed true}
+     [:collection [:map {:closed true, :probe/id "src/metabase/analytics/stats.clj:667"}
                    [:collections :int]
                    [:cards_in_collections :int]
                    [:cards_not_in_collections :int]
                    [:num_cards_per_collection string-keyed-int-histogram]]]
-     [:dashboard [:map {:closed true}
+     [:dashboard [:map {:closed true, :probe/id "src/metabase/analytics/stats.clj:672"}
                   [:dashboards :int]
                   [:with_params :int]
                   [:num_dashs_per_user string-keyed-int-histogram]
@@ -677,22 +677,22 @@
                   [:num_dashs_per_card string-keyed-int-histogram]
                   [:public optional-count-map]
                   [:embedded optional-count-map]]]
-     [:database [:map {:closed true}
+     [:database [:map {:closed true, :probe/id "src/metabase/analytics/stats.clj:680"}
                  [:databases optional-count-map]
                  [:dbms_versions string-keyed-int-histogram]]]
-     [:execution [:map {:closed true}
+     [:execution [:map {:closed true, :probe/id "src/metabase/analytics/stats.clj:683"}
                   [:executions :int]
                   [:by_status string-keyed-int-histogram]
                   [:num_per_user string-keyed-int-histogram]
                   [:num_by_latency string-keyed-int-histogram]]]
-     [:field [:map {:closed true}
+     [:field [:map {:closed true, :probe/id "src/metabase/analytics/stats.clj:688"}
               [:fields :int]
               [:num_per_table string-keyed-int-histogram]]]
-     [:group [:map {:closed true}
+     [:group [:map {:closed true, :probe/id "src/metabase/analytics/stats.clj:691"}
               [:groups :int]]]
-     [:metric [:map {:closed true}
+     [:metric [:map {:closed true, :probe/id "src/metabase/analytics/stats.clj:693"}
                [:metrics :int]]]
-     [:pulse [:map {:closed true}
+     [:pulse [:map {:closed true, :probe/id "src/metabase/analytics/stats.clj:695"}
               [:pulses :int]
               [:with_table_cards :int]
               [:pulse_types string-keyed-int-histogram]
@@ -700,7 +700,7 @@
               [:num_pulses_per_user string-keyed-int-histogram]
               [:num_pulses_per_card string-keyed-int-histogram]
               [:num_cards_per_pulses string-keyed-int-histogram]]]
-     [:alert [:map {:closed true}
+     [:alert [:map {:closed true, :probe/id "src/metabase/analytics/stats.clj:703"}
               [:alerts :int]
               [:with_table_cards :int]
               [:first_time_only :int]
@@ -709,13 +709,13 @@
               [:num_alerts_per_user string-keyed-int-histogram]
               [:num_alerts_per_card string-keyed-int-histogram]
               [:num_cards_per_alerts string-keyed-int-histogram]]]
-     [:question [:map {:closed true}
+     [:question [:map {:closed true, :probe/id "src/metabase/analytics/stats.clj:712"}
                  [:questions optional-count-map]
                  [:public optional-count-map]
                  [:embedded optional-count-map]]]
-     [:segment [:map {:closed true}
+     [:segment [:map {:closed true, :probe/id "src/metabase/analytics/stats.clj:716"}
                 [:segments :int]]]
-     [:system [:map {:closed true}
+     [:system [:map {:closed true, :probe/id "src/metabase/analytics/stats.clj:718"}
                [:max_memory :int]
                [:processors :int]
                [:java_version [:maybe :string]]
@@ -727,21 +727,21 @@
                [:file_encoding [:maybe :string]]
                [:os_name [:maybe :string]]
                [:os_version [:maybe :string]]]]
-     [:table [:map {:closed true}
+     [:table [:map {:closed true, :probe/id "src/metabase/analytics/stats.clj:730"}
               [:tables :int]
               [:num_per_database string-keyed-int-histogram]
               [:num_per_schema string-keyed-int-histogram]]]
-     [:user [:map {:closed true}
+     [:user [:map {:closed true, :probe/id "src/metabase/analytics/stats.clj:734"}
              [:users optional-count-map]]]
-     [:document [:map {:closed true}
+     [:document [:map {:closed true, :probe/id "src/metabase/analytics/stats.clj:736"}
                  [:documents optional-count-map]]]
-     [:library [:map {:closed true}
+     [:library [:map {:closed true, :probe/id "src/metabase/analytics/stats.clj:738"}
                 [:library_data :int]
                 [:library_metrics :int]]]]]])
 
 (mu/defn- snowplow-metrics
   [stats :- LegacyAnonymousUsageStats
-   metric-info :- [:map {:closed true}
+   metric-info :- [:map {:closed true, :probe/id "src/metabase/analytics/stats.clj:744"}
                    [:models :int]
                    [:new_embedded_dashboards :int]
                    [:new_users_last_24h :int]

@@ -84,7 +84,7 @@
          ~@body))))
 
 (mu/defn- with-cluster-lock-fn
-  [m :- [:map {:closed true}
+  [m :- [:map {:closed true, :probe/id "src/metabase/permissions/models/data_permissions.clj:87"}
          [:db-id ms/PositiveInt]
          [:perm-type :string]]
    f :- fn?]
@@ -825,7 +825,7 @@
   instance has. Note that permission rows for inactive tables do not count."
   [user-id   :- ::lib.schema.id/user
    perm-type :- ::permissions.schema/data-permission-type
-   & {:keys [exclude-db-ids]} :- [:maybe [:map {:closed true}
+   & {:keys [exclude-db-ids]} :- [:maybe [:map {:closed true, :probe/id "src/metabase/permissions/models/data_permissions.clj:828"}
                                           [:exclude-db-ids {:optional true} [:maybe [:sequential ::lib.schema.id/database]]]]]]
   (or (is-superuser? user-id)
       (and (= perm-type :perms/manage-table-metadata)
@@ -917,7 +917,7 @@
   This is intended to be used for logging and debugging purposes, to see what a user's real permissions are at a glance. Enforcement
   should happen via `database-permission-for-user` and `table-permission-for-user`."
   [user-id :- ::lib.schema.id/user
-   & {:keys [db-id perm-type]} :- [:maybe [:map {:closed true}
+   & {:keys [db-id perm-type]} :- [:maybe [:map {:closed true, :probe/id "src/metabase/permissions/models/data_permissions.clj:920"}
                                            [:db-id     {:optional true} [:maybe ::lib.schema.id/database]]
                                            [:perm-type {:optional true} [:maybe ::permissions.schema/data-permission-type]]]]]
   (if (is-superuser? user-id)

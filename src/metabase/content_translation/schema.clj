@@ -8,7 +8,7 @@
   "A ContentTranslation as selected from the app DB: every column of `:content_translation`."
   [:merge
    ::content-translation.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/content_translation/schema.clj:11"}
     [:id     ms/PositiveInt]]])
 
 (mr/def ::content-translation.update

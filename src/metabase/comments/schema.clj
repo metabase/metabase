@@ -40,7 +40,7 @@
 
 (mr/def ::prose-mirror-node.json
   "A ProseMirror node as decoded JSON, before normalization stringifies the keys of its `attrs`."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/comments/schema.clj:43"}
    [:type                     :string]
    [:attrs   {:optional true} [:maybe [:ref ::prose-mirror-node.json-attrs]]]
    [:content {:optional true} [:sequential [:ref ::prose-mirror-node.json]]]
@@ -56,16 +56,16 @@
   "The chart point a comment is anchored to. Identity only — which column, and which dimension values
   pick out the point — so the client can re-find it in a result set it is separately authorized to
   read."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/comments/schema.clj:59"}
    [:columnName {:optional true} [:maybe :string]]
    [:dimensions {:optional true}
-    [:maybe [:sequential [:map {:closed true}
+    [:maybe [:sequential [:map {:closed true, :probe/id "src/metabase/comments/schema.clj:62"}
                           [:columnName {:optional true} [:maybe :string]]
                           [:value      {:optional true} [:ref ::lib.schema.literal/literal]]]]]]])
 
 (mr/def ::comment.context
   "The `:context` column of a Comment, decoded."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/comments/schema.clj:68"}
    [:timeline_id           {:optional true} [:maybe ms/PositiveInt]]
    [:exploration_query_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]
    [:highlighted           {:optional true} [:maybe ::comment.highlight]]
@@ -75,7 +75,7 @@
   "A Comment as selected from the app DB: every column of `:comment`."
   [:merge
    ::comment.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/comments/schema.clj:78"}
     [:id                ms/PositiveInt]]])
 
 (mr/def ::comment.update
@@ -98,7 +98,7 @@
   "A CommentReaction as selected from the app DB: every column of `:comment_reaction`."
   [:merge
    ::comment-reaction.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/comments/schema.clj:101"}
     [:id         ms/PositiveInt]]])
 
 (mr/def ::comment-reaction.update

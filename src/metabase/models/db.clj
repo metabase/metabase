@@ -99,9 +99,9 @@
 
 (doseq [[model schema] model-row-schema]
   (mr/register! (model-schema-key "model-row" model)
-                [:map {:closed true} [:model [:= model]] [:row schema]])
+                [:map {:closed true, :probe/id "src/metabase/models/db.clj:102"} [:model [:= model]] [:row schema]])
   (mr/register! (model-schema-key "model-rows" model)
-                [:map {:closed true} [:model [:= model]] [:rows [:sequential schema]]]))
+                [:map {:closed true, :probe/id "src/metabase/models/db.clj:104"} [:model [:= model]] [:rows [:sequential schema]]]))
 
 (mr/def ::unregistered-model-row
   "A row of a model not listed in [[model-row-schema]], such as the test-double models `metabase.models.util.spec-update`
@@ -114,14 +114,14 @@
   (conj (into [:multi {:dispatch :model, :lazy-refs true}]
               (for [model (keys model-row-schema)]
                 [model (model-schema-key "model-row" model)]))
-        [::mc/default [:map {:closed true} [:model :keyword] [:row ::unregistered-model-row]]]))
+        [::mc/default [:map {:closed true, :probe/id "src/metabase/models/db.clj:117"} [:model :keyword] [:row ::unregistered-model-row]]]))
 
 (mr/def ::model-rows
   "Like `::model-row`, but for a batch of rows of the same model."
   (conj (into [:multi {:dispatch :model, :lazy-refs true}]
               (for [model (keys model-row-schema)]
                 [model (model-schema-key "model-rows" model)]))
-        [::mc/default [:map {:closed true} [:model :keyword] [:rows [:sequential ::unregistered-model-row]]]]))
+        [::mc/default [:map {:closed true, :probe/id "src/metabase/models/db.clj:124"} [:model :keyword] [:rows [:sequential ::unregistered-model-row]]]]))
 
 (mr/def ::after-select-row
   "A row not yet run through its model's after-select, e.g. a stored revision snapshot whose keys older Metabase versions own."
@@ -131,7 +131,7 @@
 (def ^:private AfterSelectEntity
   "A `{:model ..., :row ...}` pair naming any model (including test-only ones derived from `:metabase/model`, and
   ones outside [[model-row-schema]]) and a row of arbitrary shape to run through its after-select machinery."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/models/db.clj:134"}
    [:model [:or :keyword symbol?]]
    [:row ::after-select-row]])
 

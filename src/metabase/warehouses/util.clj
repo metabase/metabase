@@ -17,7 +17,7 @@
     {:keys [include-editable-data-model?
             exclude-uneditable-details?
             include-destination-databases?]}
-    :- [:map {:closed true}
+    :- [:map {:closed true, :probe/id "src/metabase/warehouses/util.clj:20"}
         [:include-editable-data-model? {:optional true :default false} ms/MaybeBooleanValue]
         [:exclude-uneditable-details? {:optional true :default false} ms/MaybeBooleanValue]
         [:include-destination-databases? {:optional true :default false} ms/MaybeBooleanValue]]]

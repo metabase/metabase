@@ -14,7 +14,7 @@
   "A PersistedInfo as selected from the app DB: every column of `:persisted_info`."
   [:merge
    ::persisted-info.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/model_persistence/schema.clj:17"}
     [:id              ms/PositiveInt]]])
 
 (mr/def ::persisted-info.update

@@ -64,21 +64,21 @@
 
 (def ^:private no-payload-event-data
   "Shape for `SnowplowSchema` values with no caller in this codebase today."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/analytics/snowplow.clj:67"}
    [:event {:optional true} :keyword]])
 
 (def ^:private account-event-data
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/analytics/snowplow.clj:71"}
    [:event {:optional true} :keyword]])
 
 (def ^:private invite-event-data
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/analytics/snowplow.clj:75"}
    [:event           {:optional true} :keyword]
    [:invited-user-id {:optional true} ms/PositiveInt]
    [:source          {:optional true} [:or :keyword :string]]])
 
 (def ^:private dashboard-event-data
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/analytics/snowplow.clj:81"}
    [:event          {:optional true} :keyword]
    [:dashboard-id   {:optional true} ms/PositiveInt]
    [:question-id    {:optional true} ms/PositiveInt]
@@ -86,7 +86,7 @@
    [:total-num-tabs {:optional true} :int]])
 
 (def ^:private database-event-data
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/analytics/snowplow.clj:89"}
    [:event        {:optional true} :keyword]
    [:database     {:optional true} [:or :keyword :string]]
    [:database-id  {:optional true} ms/PositiveInt]
@@ -95,7 +95,7 @@
    [:dbms_version {:optional true} :string]])
 
 (def ^:private simple-event-data
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/analytics/snowplow.clj:98"}
    [:event          {:optional true} [:or :string :keyword]]
    [:event_detail   {:optional true} [:maybe :string]]
    [:event-detail   {:optional true} [:maybe :string]]
@@ -105,7 +105,7 @@
    [:triggered_from {:optional true} :string]])
 
 (def ^:private timeline-event-data
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/analytics/snowplow.clj:108"}
    [:event         {:optional true} :keyword]
    [:time_matters  {:optional true} [:maybe :boolean]]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
@@ -113,7 +113,7 @@
    [:question_id   {:optional true} ms/PositiveInt]])
 
 (def ^:private action-event-data
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/analytics/snowplow.clj:116"}
    [:event          {:optional true} :keyword]
    [:source         {:optional true} :keyword]
    [:type           {:optional true} :keyword]
@@ -121,19 +121,19 @@
    [:num_parameters {:optional true} :int]])
 
 (def ^:private embed-share-event-data
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/analytics/snowplow.clj:124"}
    [:event                      {:optional true} :keyword]
    [:embedding-app-origin-set   {:optional true} :boolean]
    [:number-embedded-questions  {:optional true} :int]
    [:number-embedded-dashboards {:optional true} :int]])
 
 (def ^:private model-event-data
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/analytics/snowplow.clj:131"}
    [:event    {:optional true} :keyword]
    [:model-id {:optional true} ms/PositiveInt]])
 
 (def ^:private csvupload-event-data
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/analytics/snowplow.clj:136"}
    [:event             {:optional true} :keyword]
    [:num-rows          {:optional true} :int]
    [:num-columns       {:optional true} :int]
@@ -143,7 +143,7 @@
    [:model-id          {:optional true} ms/PositiveInt]])
 
 (def ^:private token-usage-event-data
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/analytics/snowplow.clj:146"}
    [:request-id                    {:optional true} [:maybe :string]]
    [:model-id                      {:optional true} [:maybe :string]]
    [:total-tokens                  {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
@@ -161,7 +161,7 @@
    [:hashed-metabase-license-token {:optional true} [:maybe :string]]])
 
 (def ^:private serialization-event-data
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/analytics/snowplow.clj:164"}
    [:event           {:optional true} :keyword]
    [:direction       {:optional true} :string]
    [:source          {:optional true} :string]
@@ -179,19 +179,19 @@
    [:secrets         {:optional true} :boolean]])
 
 (def ^:private cleanup-event-data
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/analytics/snowplow.clj:182"}
    [:event                   {:optional true} :keyword]
    [:collection_id           {:optional true} [:maybe ms/PositiveInt]]
    [:total_stale_items_found {:optional true} :int]
    [:cutoff_date             {:optional true} :string]])
 
 (def ^:private data-complexity-event-data
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/analytics/snowplow.clj:189"}
    [:event           {:optional true} :keyword]
    [:batch_id        {:optional true} :string]
    [:formula_version {:optional true} :int]
    [:parameters      {:optional true}
-    [:map {:closed true}
+    [:map {:closed true, :probe/id "src/metabase/analytics/snowplow.clj:194"}
      ["synonym_threshold" {:optional true} [:maybe number?]]
      ["weights"           {:optional true} [:maybe ms/OpaqueJSONObject]]
      ["embedding_model"   {:optional true} [:maybe ms/OpaqueJSONObject]]
@@ -203,7 +203,7 @@
    [:error       {:optional true} :string]])
 
 (def ^:private ai-service-event-data
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/analytics/snowplow.clj:206"}
    [:hashed-metabase-license-token {:optional true} [:maybe :string]]
    [:request-id                    {:optional true} [:maybe :string]]
    [:source                        {:optional true} [:maybe :string]]
@@ -214,7 +214,7 @@
    [:duration-ms                   {:optional true} [:maybe :int]]
    [:result                        {:optional true} :string]
    [:event-details                 {:optional true}
-    [:map {:closed true}
+    [:map {:closed true, :probe/id "src/metabase/analytics/snowplow.clj:217"}
      ["tool_name" {:optional true} [:maybe :string]]
      ["step"      {:optional true} :int]]]])
 

@@ -19,7 +19,7 @@
 
 (mr/def ::analysis-finding-error
   "Schema for an AnalysisFindingError record."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/dependencies/models/analysis_finding_error.clj:22"}
    [:id                    ms/PositiveInt]
    [:analyzed_entity_type  ::deps.dependency-types/dependency-types]
    [:analyzed_entity_id    ms/PositiveInt]
@@ -35,7 +35,7 @@
 
 (mr/def ::error-input
   "Schema for error input maps passed to replace-errors-for-entity!"
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/dependencies/models/analysis_finding_error.clj:38"}
    [:error-type         ::lib.schema.validate/validate-error-type]
    [:error-detail       {:optional true} [:maybe :string]]
    [:source-entity-type {:optional true} [:maybe ::lib.schema.validate/source-entity-type]]

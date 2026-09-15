@@ -8,7 +8,7 @@
   "A MetabotGroupLimit as selected from the app DB: every column of `:metabot_group_limit`."
   [:merge
    ::metabot-group-limit.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/metabot/schema.clj:11"}
     [:id        ms/PositiveInt]]])
 
 (mr/def ::metabot-group-limit.update
@@ -21,7 +21,7 @@
   "A MetabotInstanceLimit as selected from the app DB: every column of `:metabot_instance_limit`."
   [:merge
    ::metabot-instance-limit.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/metabot/schema.clj:24"}
     [:id        ms/PositiveInt]]])
 
 (mr/def ::metabot-instance-limit.update
@@ -34,7 +34,7 @@
   "A MetabotPermissions as selected from the app DB: every column of `:metabot_permissions`."
   [:merge
    ::metabot-permissions.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/metabot/schema.clj:37"}
     [:id         ms/PositiveInt]]])
 
 (mr/def ::metabot-permissions.update

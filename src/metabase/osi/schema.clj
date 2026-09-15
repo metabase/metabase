@@ -16,7 +16,7 @@
 
 (mr/def ::osi-ai-context.ai-context
   "The `:ai_context` column of a OsiAiContext, decoded."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/osi/schema.clj:19"}
    [:instructions {:optional true} [:maybe [:string {:max entity-retrieval/max-instructions-len}]]]
    [:synonyms     {:optional true} [:sequential {:max max-list-len} [:string {:max max-item-len}]]]
    [:examples     {:optional true} [:sequential {:max max-list-len} [:string {:max max-item-len}]]]])
@@ -25,7 +25,7 @@
   "A OsiAiContext as selected from the app DB: every column of `:osi_ai_context`."
   [:merge
    ::osi-ai-context.update
-   [:map {:closed true}]])
+   [:map {:closed true, :probe/id "src/metabase/osi/schema.clj:28"}]])
 
 (mr/def ::osi-ai-context.update
   "What an update (or insert) of a OsiAiContext accepts: every column of `:osi_ai_context` except `id`, all optional."

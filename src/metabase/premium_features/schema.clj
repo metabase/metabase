@@ -8,7 +8,7 @@
   "A PremiumFeaturesCache as selected from the app DB: every column of `:premium_features_token_cache`."
   [:merge
    ::premium-features-cache.update
-   [:map {:closed true}]])
+   [:map {:closed true, :probe/id "src/metabase/premium_features/schema.clj:11"}]])
 
 (mr/def ::premium-features-cache.update
   "What an update (or insert) of a PremiumFeaturesCache accepts: every column of `:premium_features_token_cache` except `id`, all optional."

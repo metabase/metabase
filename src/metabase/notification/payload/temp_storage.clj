@@ -182,7 +182,7 @@
   "Shared mutable budget threaded across all of a notification's cards (created once per notification by
   [[make-resident-budget]]). `:resident` is an atom tracking the cells currently held in memory across cards;
   the rest are the cell limits used to decide when a query spills to disk. See [[should-spill?]]."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/notification/payload/temp_storage.clj:185"}
    [:resident       [:fn #(instance? clojure.lang.IAtom %)]]
    [:per-card     pos-int?]    ; spill a single query once it alone holds this many cells in memory
    [:resident-cap pos-int?]    ; once resident cells exceed this across cards, squeeze remaining queries down to `:floor`
@@ -190,7 +190,7 @@
 
 (def ^:private NotificationRffOptions
   "Options controlling how [[notification-rff]] decides when to spill to disk."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/notification/payload/temp_storage.clj:193"}
    ;; shared across a notification's cards so they can't collectively exhaust memory. A standalone query just passes its
    ;; own freshly-made budget.
    [:budget ResidentBudget]])
@@ -198,7 +198,7 @@
 (def ^:private FileContext
   "A debugging label for the data [[notification-rff]] is storing: only ever `pr-str`'d into a log line or frozen
   into a spill file's preamble, never read back by key."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/notification/payload/temp_storage.clj:201"}
    [:dashboard_id {:optional true} [:maybe pos-int?]]
    [:card_id      {:optional true} [:maybe pos-int?]]
    [:dashcard_id  {:optional true} [:maybe pos-int?]]

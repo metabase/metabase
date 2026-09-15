@@ -617,7 +617,7 @@
   - `schema-name`: the name of the schema to create the table in (optional).
   - `table-prefix`: the prefix to use for the table name (optional)."
   [{:keys [collection-id filename ^File file db-id schema-name table-prefix]}
-   :- [:map {:closed true}
+   :- [:map {:closed true, :probe/id "src/metabase/upload/impl.clj:620"}
        [:collection-id [:maybe ms/PositiveInt]]
        [:filename :string]
        [:file (ms/InstanceOfClass File)]
@@ -975,7 +975,7 @@
   This will create an auto-incrementing primary key (auto-pk) column in the table for drivers that supported uploads
   before auto-pk columns were introduced by metabase#36249, if it does not already exist."
   [{:keys [filename ^File file table-id action]}
-   :- [:map {:closed true}
+   :- [:map {:closed true, :probe/id "src/metabase/upload/impl.clj:978"}
        [:table-id ms/PositiveInt]
        [:filename :string]
        [:file (ms/InstanceOfClass File)]
@@ -1001,7 +1001,7 @@
 
 (mr/def ::based-on-upload-input
   "The columns of a model Card that decide its `:based_on_upload`."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/upload/impl.clj:1004"}
    [:id            ms/PositiveInt]
    ;; query_type and dataset_query can be null in tests, so we make them nullable here.
    ;; they should never be null in production

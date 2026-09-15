@@ -31,7 +31,7 @@
   {:fields-scanned 0 :fields-labeled 0 :fields-failed 0})
 
 (def ^:private ScanOptions
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/sync/analyze/data_sensitivity.clj:34"}
    [:force?          {:optional true} [:maybe :boolean]]
    [:ignore-setting? {:optional true} [:maybe :boolean]]])
 
@@ -115,7 +115,7 @@
   "Scan `database-or-table` for data sensitivity regardless of the setting; `:force?` rescans `:PUBLIC` Fields and
   `:reset?` clears the classifier's labels first."
   [database-or-table :- [:or i/DatabaseInstance i/TableInstance]
-   & {:keys [force? reset?]} :- [:maybe [:map {:closed true}
+   & {:keys [force? reset?]} :- [:maybe [:map {:closed true, :probe/id "src/metabase/sync/analyze/data_sensitivity.clj:118"}
                                          [:force? {:optional true} [:maybe :boolean]]
                                          [:reset? {:optional true} [:maybe :boolean]]]]]
   (let [reset (when reset? (reset-data-sensitivity! database-or-table))

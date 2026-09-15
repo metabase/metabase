@@ -251,9 +251,9 @@
   [dashboard     :- ::dashboards.schema/dashboard
    new-dashcards :- [:sequential [:merge
                                   ::dashboards.schema/dashboard-card.update
-                                  [:map {:closed true}
+                                  [:map {:closed true, :probe/id "src/metabase/dashboards/models/dashboard.clj:254"}
                                    [:id                         ms/PositiveInt]
-                                   [:series                     {:optional true} [:maybe [:sequential [:map {:closed true} [:id ms/PositiveInt]]]]]
+                                   [:series                     {:optional true} [:maybe [:sequential [:map {:closed true, :probe/id "src/metabase/dashboards/models/dashboard.clj:256"} [:id ms/PositiveInt]]]]]
                                    [:card                       {:optional true} [:maybe ::queries.schema/card]]
                                    [:collection_authority_level {:optional true} [:maybe [:or :keyword :string]]]]]]]
   (let [old-dashcards    (:dashcards dashboard)

@@ -46,7 +46,7 @@
 
 (mr/def ::json-schema-doc
   "A hand-authored JSON Schema document: only ever echoed to an LLM or OpenAPI consumer, never read by key."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/util/malli.cljc:49"}
    [:type        {:optional true} :string]
    [:const       {:optional true} :string]
    [:description {:optional true} :string]
@@ -58,7 +58,7 @@
 
 (def ^:private SchemaProperties
   "The malli schema properties [[with]] is actually asked to attach."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/util/malli.cljc:61"}
    [:description          {:optional true} [:or :string localized-string-schema]]
    [:decode/api           {:optional true} ifn?]
    [:json-schema          {:optional true} ::json-schema-doc]

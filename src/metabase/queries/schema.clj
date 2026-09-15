@@ -40,7 +40,7 @@
 (mr/def ::card.result-metadata.model-override
   "A model's result metadata column as serialization exports it: only the keys a user can override, which the Card's
   hooks merge onto the metadata computed from its query."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/queries/schema.clj:43"}
    [:name                    :string]
    [:id                      {:optional true} [:maybe ::lib.schema.id/field]]
    [:description             {:optional true} [:maybe :string]]
@@ -57,7 +57,7 @@
   Card before passing it here."
   [:merge
    ::card.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/queries/schema.clj:60"}
     [:id                    {:optional true} [:maybe ::lib.schema.id/card]]
     [:persisted/active      {:optional true} [:maybe :boolean]]
     [:persisted/definition  {:optional true} [:maybe :string]]
@@ -70,7 +70,7 @@
     [:dashboard             {:optional true} [:maybe [:ref :metabase.dashboards.schema/dashboard]]]
     [:document              {:optional true} [:maybe ::documents.schema/document]]
     [:last-edit-info        {:optional true} [:maybe
-                                              [:map {:closed true}
+                                              [:map {:closed true, :probe/id "src/metabase/queries/schema.clj:73"}
                                                [:timestamp  [:maybe ms/TemporalInstant]]
                                                [:id         [:maybe ms/PositiveInt]]
                                                [:first_name [:maybe :string]]
@@ -103,7 +103,7 @@
     [:query_average_duration    {:optional true} [:maybe number?]]
     [:download_perms            {:optional true} [:maybe [:enum :none :limited :full]]]
     [:in_dashboards             {:optional true} [:maybe [:sequential
-                                                          [:map {:closed true}
+                                                          [:map {:closed true, :probe/id "src/metabase/queries/schema.clj:106"}
                                                            [:id                ::lib.schema.id/dashboard]
                                                            [:name              :string]
                                                            [:collection_id     [:maybe ::lib.schema.id/collection]]
@@ -113,7 +113,7 @@
 
 (mr/def ::param-field.name-field
   "A Field trimmed to the columns a parameter widget needs, as the `:name_field` hydration attaches it."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/queries/schema.clj:116"}
    [:id                 ::lib.schema.id/field]
    [:table_id           [:maybe ::lib.schema.id/table]]
    [:display_name       [:maybe :string]]
@@ -129,7 +129,7 @@
   "A `::param-field.name-field` further hydrated with its own `:name_field`, as the `:target` hydration attaches it."
   [:merge
    ::param-field.name-field
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/queries/schema.clj:132"}
     [:name_field {:optional true} [:maybe ::param-field.name-field]]]])
 
 (mr/def ::param-field
@@ -137,11 +137,11 @@
   Dashboard."
   [:merge
    ::param-field.target
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/queries/schema.clj:140"}
     [:target     {:optional true} [:maybe ::param-field.target]]
     [:dimensions {:optional true} [:sequential [:merge
                                                 :metabase.warehouse-schema.schema/dimension
-                                                [:map {:closed true}
+                                                [:map {:closed true, :probe/id "src/metabase/queries/schema.clj:144"}
                                                  [:human_readable_field {:optional true} [:maybe ::param-field.name-field]]]]]]]])
 
 (mr/def ::card.dataset-query
@@ -222,7 +222,7 @@
   "A ParameterCard as selected from the app DB: every column of `:parameter_card`."
   [:merge
    ::parameter-card.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/queries/schema.clj:225"}
     [:id                        ms/PositiveInt]]])
 
 (mr/def ::parameter-card.update
@@ -243,7 +243,7 @@
   "A Query as selected from the app DB: every column of `:query`."
   [:merge
    ::query.update
-   [:map {:closed true}]])
+   [:map {:closed true, :probe/id "src/metabase/queries/schema.clj:246"}]])
 
 (mr/def ::query.update
   "What an update (or insert) of a Query accepts: every column of `:query` except `id`, all optional."
@@ -254,14 +254,14 @@
 
 (mr/def ::query-execution.lens-params
   "The `:lens_params` column of a QueryExecution, decoded."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/queries/schema.clj:257"}
    [:join_step {:optional true} [:maybe :int]]])
 
 (mr/def ::query-execution
   "A QueryExecution as selected from the app DB: every column of `:query_execution`, plus `:row_count` added by the model's after-select hook."
   [:merge
    ::query-execution.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/queries/schema.clj:264"}
     [:id                          ms/PositiveInt]
     [:row_count                   {:optional true} :int]]])
 
@@ -308,7 +308,7 @@
   "A QueryTable as selected from the app DB: every column of `:query_table`."
   [:merge
    ::query-table.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/queries/schema.clj:311"}
     [:id       ms/PositiveInt]]])
 
 (mr/def ::query-table.update
@@ -331,7 +331,7 @@
   "A StoredResult as selected from the app DB: every column of `:stored_result`."
   [:merge
    ::stored-result.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/queries/schema.clj:334"}
     [:id                ms/PositiveInt]]])
 
 (mr/def ::stored-result.update
@@ -350,7 +350,7 @@
   "A StoredResultUse as selected from the app DB: every column of `:stored_result_use`."
   [:merge
    ::stored-result-use.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/queries/schema.clj:353"}
     [:id               ms/PositiveInt]]])
 
 (mr/def ::stored-result-use.update

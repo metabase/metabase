@@ -331,7 +331,7 @@
          auxiliary-sync-steps     :never
          csv-file-prefix          "example csv file"}
     :as options}
-   :- [:map {:closed true}
+   :- [:map {:closed true, :probe/id "test/metabase/upload/impl_test.clj:334"}
        [:table-prefix          {:optional true} [:maybe :string]]
        [:collection-id         {:optional true} [:maybe ::lib.schema.id/collection]]
        [:grant-permission?     {:optional true} [:maybe :boolean]]

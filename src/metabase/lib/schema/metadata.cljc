@@ -713,17 +713,17 @@
 
 (mr/def ::persisted-info.definition
   "Definition spec for a cached table."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib/schema/metadata.cljc:716"}
    [:table-name        ::lib.schema.common/non-blank-string]
    [:field-definitions [:maybe [:sequential
-                                [:map {:closed true}
+                                [:map {:closed true, :probe/id "src/metabase/lib/schema/metadata.cljc:719"}
                                  [:field-name ::lib.schema.common/non-blank-string]
                                  ;; TODO check (isa? :type/Integer :type/*)
                                  [:base-type  ::lib.schema.common/base-type]]]]]])
 
 (mr/def ::persisted-info
   "Persisted Info = Cached Table (?). See [[metabase.model-persistence.models.persisted-info]]"
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib/schema/metadata.cljc:726"}
    [:active     :boolean]
    [:state      ::lib.schema.common/non-blank-string]
    [:table-name ::lib.schema.common/non-blank-string]
@@ -842,7 +842,7 @@
 
   See [[metabase.lib.card/card-metadata-columns]] that converts these as needed."
   [:map
-   {:closed true, :decode/normalize normalize-card
+   {:closed true, :probe/id "src/metabase/lib/schema/metadata.cljc:845", :decode/normalize normalize-card
     :decode/mock      mock-card
     :error/message    "Valid Card metadata"}
    [:lib/type    [:= :metadata/card]]
@@ -899,7 +899,7 @@
 (mr/def ::segment
   "More or less the same as a [[metabase.segments.models.segment]], but with kebab-case keys."
   [:map
-   {:closed true, :error/message "Valid Segment metadata"
+   {:closed true, :probe/id "src/metabase/lib/schema/metadata.cljc:902", :error/message "Valid Segment metadata"
     :decode/mock   mock-segment}
    [:lib/type   [:= :metadata/segment]]
    [:id         ::lib.schema.id/segment]
@@ -938,7 +938,7 @@
 
 (mr/def ::dimension-group
   "Group descriptor for a dimension, indicating which table it belongs to."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib/schema/metadata.cljc:941"}
    [:id :string]
    [:type [:enum "main" "connection"]]
    [:display-name :string]])
@@ -947,7 +947,7 @@
   [:enum :field])
 
 (mr/def ::dimension-source
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib/schema/metadata.cljc:950"}
    [:type     ::dimension-source.type]
    [:field-id {:optional true} [:maybe ::lib.schema.id/field]]
    [:binning  {:optional true} [:maybe :boolean]]])
@@ -962,7 +962,7 @@
 
 (mr/def ::dimension-mapping
   "Schema for a dimension mapping."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib/schema/metadata.cljc:965"}
    [:type         ::dimension-mapping.type]
    [:table-id     {:optional true} [:maybe ::lib.schema.id/table]]
    [:dimension-id ::dimension-id]
@@ -979,7 +979,7 @@
    Persisted dimensions include additional metadata about their status
    and any issues that prevent them from being used.
    Note: target field references are stored in dimension-mappings, not here."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib/schema/metadata.cljc:982"}
    [:id               ::dimension-id]
    [:name             {:optional true} [:maybe :string]]
    [:display-name     {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
@@ -999,7 +999,7 @@
 (mr/def ::measure
   "More or less the same as a [[metabase.measures.models.measure]], but with kebab-case keys."
   [:map
-   {:closed true, :error/message "Valid Measure metadata"
+   {:closed true, :probe/id "src/metabase/lib/schema/metadata.cljc:1002", :error/message "Valid Measure metadata"
     :decode/mock   mock-measure}
    [:lib/type   [:= :metadata/measure]]
    [:id         ::lib.schema.id/measure]
@@ -1026,7 +1026,7 @@
     [:aggregation-position {:optional true} [:maybe [:int {:min 0}]]]]])
 
 (mr/def ::native-query-snippet
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib/schema/metadata.cljc:1029"}
    [:lib/type      [:= :metadata/native-query-snippet]]
    [:id            ::lib.schema.id/native-query-snippet]
    [:name          {:optional true} [:maybe :string]]
@@ -1040,7 +1040,7 @@
   "Schema for metadata about a specific [[metabase.warehouse-schema.models.table]]. More or less the same but with
   kebab-case keys."
   [:map
-   {:closed true, :error/message "Valid Table metadata"}
+   {:closed true, :probe/id "src/metabase/lib/schema/metadata.cljc:1043", :error/message "Valid Table metadata"}
    [:lib/type [:= :metadata/table]]
    [:id       ::lib.schema.id/table]
    [:name     ::lib.schema.common/non-blank-string]
@@ -1084,12 +1084,12 @@
   "Malli schema for the DatabaseMetadata as returned by `GET /api/database/:id/metadata` -- what should be available to
   the frontend Query Builder."
   [:map
-   {:closed true, :error/message "Valid Database metadata"}
+   {:closed true, :probe/id "src/metabase/lib/schema/metadata.cljc:1087", :error/message "Valid Database metadata"}
    [:lib/type [:= :metadata/database]]
    [:id ::lib.schema.id/database]
    ;; TODO -- this should validate against the driver features list in [[metabase.driver/features]] if we're in
    ;; Clj mode
-   [:dbms-version    {:optional true} [:maybe [:map {:closed true}
+   [:dbms-version    {:optional true} [:maybe [:map {:closed true, :probe/id "src/metabase/lib/schema/metadata.cljc:1092"}
                                                [:flavor           {:optional true} [:maybe :string]]
                                                [:version          {:optional true} [:maybe :string]]
                                                [:semantic-version {:optional true} [:maybe [:sequential :int]]]]]]
@@ -1175,24 +1175,24 @@
 
 (mr/def ::transform.source-incremental-strategy
   "Incremental strategy of a Transform source, as stored in the app DB."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib/schema/metadata.cljc:1178"}
    [:type                       [:or :keyword :string]]
    [:checkpoint-filter-field-id {:optional true} [:maybe ::lib.schema.id/field]]
-   [:lookback                   {:optional true} [:maybe [:map {:closed true}
+   [:lookback                   {:optional true} [:maybe [:map {:closed true, :probe/id "src/metabase/lib/schema/metadata.cljc:1181"}
                                                           [:value pos-int?]
                                                           [:unit  :string]]]]])
 
 (mr/def ::transform.target-incremental-strategy
   "Incremental strategy of a Transform target, as stored in the app DB."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib/schema/metadata.cljc:1187"}
    [:type       [:or :keyword :string]]
-   [:unique-key {:optional true} [:sequential [:map {:closed true}
+   [:unique-key {:optional true} [:sequential [:map {:closed true, :probe/id "src/metabase/lib/schema/metadata.cljc:1189"}
                                                [:name     {:optional true} :string]
                                                [:field-id {:optional true} [:maybe ::lib.schema.id/field]]]]]])
 
 (mr/def ::transform.source-table
   "One source table entry of a Python Transform source, as stored in the app DB."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib/schema/metadata.cljc:1195"}
    [:alias       :string]
    [:database_id {:optional true} [:maybe :int]]
    [:schema      {:optional true} [:maybe :string]]
@@ -1201,7 +1201,7 @@
 
 (mr/def ::transform.source
   "The `:source` of a Transform: a query or a Python script."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib/schema/metadata.cljc:1204"}
    [:type                        {:optional true} [:or :keyword :string]]
    [:query                       {:optional true} [:ref ::card.query]]
    [:source-incremental-strategy {:optional true} [:maybe [:ref ::transform.source-incremental-strategy]]]
@@ -1211,7 +1211,7 @@
 
 (mr/def ::transform.target
   "The `:target` table of a Transform."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib/schema/metadata.cljc:1214"}
    [:type                        {:optional true} [:or :keyword :string]]
    [:database                    {:optional true} [:maybe ::lib.schema.id/database]]
    [:schema                      {:optional true} [:maybe :string]]
@@ -1220,7 +1220,7 @@
 
 (mr/def ::transform
   "TODO (Cam 10/1/25) -- I'm putting this here as a placeholder until you guys go fill it out a little more."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib/schema/metadata.cljc:1223"}
    [:lib/type [:= :metadata/transform]]
    [:id     ::lib.schema.id/transform]
    [:name        {:optional true} :string]

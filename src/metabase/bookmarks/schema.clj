@@ -9,7 +9,7 @@
   "A BookmarkOrdering as selected from the app DB: every column of `:bookmark_ordering`."
   [:merge
    ::bookmark-ordering.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/bookmarks/schema.clj:12"}
     [:id       ms/PositiveInt]]])
 
 (mr/def ::bookmark-ordering.update
@@ -24,7 +24,7 @@
   "A CardBookmark as selected from the app DB: every column of `:card_bookmark`."
   [:merge
    ::card-bookmark.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/bookmarks/schema.clj:27"}
     [:id         ms/PositiveInt]]])
 
 (mr/def ::card-bookmark.update
@@ -38,7 +38,7 @@
   "A CollectionBookmark as selected from the app DB: every column of `:collection_bookmark`."
   [:merge
    ::collection-bookmark.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/bookmarks/schema.clj:41"}
     [:id            ms/PositiveInt]]])
 
 (mr/def ::collection-bookmark.update
@@ -52,7 +52,7 @@
   "A DashboardBookmark as selected from the app DB: every column of `:dashboard_bookmark`."
   [:merge
    ::dashboard-bookmark.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/bookmarks/schema.clj:55"}
     [:id           ms/PositiveInt]]])
 
 (mr/def ::dashboard-bookmark.update
@@ -66,7 +66,7 @@
   "A DocumentBookmark as selected from the app DB: every column of `:document_bookmark`."
   [:merge
    ::document-bookmark.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/bookmarks/schema.clj:69"}
     [:id          ms/PositiveInt]]])
 
 (mr/def ::document-bookmark.update
@@ -80,7 +80,7 @@
   "A ExplorationBookmark as selected from the app DB: every column of `:exploration_bookmark`."
   [:merge
    ::exploration-bookmark.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/bookmarks/schema.clj:83"}
     [:id             ms/PositiveInt]]])
 
 (mr/def ::exploration-bookmark.update

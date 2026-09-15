@@ -20,7 +20,7 @@
   "A AnalysisFinding as selected from the app DB: every column of `:analysis_finding`."
   [:merge
    ::analysis-finding.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/dependencies/schema.clj:23"}
     [:id                   ms/PositiveInt]]])
 
 (mr/def ::analysis-finding.update
@@ -37,7 +37,7 @@
   "A AnalysisFindingError as selected from the app DB: every column of `:analysis_finding_error`."
   [:merge
    ::analysis-finding-error.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/dependencies/schema.clj:40"}
     [:id                   ms/PositiveInt]]])
 
 (mr/def ::analysis-finding-error.update
@@ -54,7 +54,7 @@
   "A Dependency as selected from the app DB: every column of `:dependency`."
   [:merge
    ::dependency.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/dependencies/schema.clj:57"}
     [:id               ms/PositiveInt]]])
 
 (mr/def ::dependency.update
@@ -69,7 +69,7 @@
   "A DependencyStatus as selected from the app DB: every column of `:dependency_status`."
   [:merge
    ::dependency-status.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/dependencies/schema.clj:72"}
     [:id                          ms/PositiveInt]]])
 
 (mr/def ::dependency-status.update

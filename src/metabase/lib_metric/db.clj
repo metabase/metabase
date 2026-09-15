@@ -40,7 +40,7 @@
 
 (mu/defn metrics
   "The metric Cards (`:metadata/metric`) picked out by `metadata-spec`."
-  [metadata-spec :- [:map {:closed true}
+  [metadata-spec :- [:map {:closed true, :probe/id "src/metabase/lib_metric/db.clj:43"}
                      [:lib/type  {:optional true} [:= :metadata/metric]]
                      [:id        {:optional true} [:maybe [:set ms/PositiveInt]]]
                      [:name      {:optional true} [:maybe [:set :string]]]
@@ -62,7 +62,7 @@
 
 (mu/defn measures
   "The `:metadata/measure` rows picked out by `metadata-spec`."
-  [metadata-spec :- [:map {:closed true}
+  [metadata-spec :- [:map {:closed true, :probe/id "src/metabase/lib_metric/db.clj:65"}
                      [:lib/type  {:optional true} [:= :metadata/measure]]
                      [:id        {:optional true} [:maybe [:set ms/PositiveInt]]]
                      [:name      {:optional true} [:maybe [:set :string]]]

@@ -308,7 +308,7 @@
    (fields metadata-provider table-id nil))
   ([metadata-provider :- ::metadata-provider
     table-id          :- ::lib.schema.id/table
-    opts              :- [:maybe [:map {:closed true} [:include-sensitive? {:optional true} :boolean]]]]
+    opts              :- [:maybe [:map {:closed true, :probe/id "src/metabase/lib/metadata/protocols.cljc:311"} [:include-sensitive? {:optional true} :boolean]]]]
    ;; only include `:include-sensitive?` when truthy, so that this shares cached-provider cache entries with other
    ;; ways of fetching the fields for a table, e.g. [[metadatas-for-tables]]
    (metadatas metadata-provider (cond-> {:lib/type :metadata/column, :table-ids #{table-id}}

@@ -245,7 +245,7 @@
 
 (def ^:private TableContext
   [:maybe
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/analyze/classifiers/data_sensitivity.clj:248"}
     [:name        {:optional true} [:maybe :string]]
     [:entity_type {:optional true} [:maybe :keyword]]]])
 

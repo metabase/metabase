@@ -47,7 +47,7 @@
 (def ConnectionOptions
   "Malli schema for the options passed to [[do-with-connection-with-options]]."
   [:maybe
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/driver/sql_jdbc/execute.clj:50"}
     ;; a string like 'US/Pacific' or something like that.
     [:session-timezone {:optional true} [:maybe [:ref driver-api/schema.expression.temporal.timezone-id]]]
     ;; whether this Connection should NOT be read-only, e.g. for DDL stuff or inserting data or whatever.

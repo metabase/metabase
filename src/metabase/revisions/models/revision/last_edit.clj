@@ -77,7 +77,7 @@
    [:dashboard {:optional true} [:map-of :int LastEditInfo]]])
 
 (def ^:private FetchLastEditedInfoArgs
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/revisions/models/revision/last_edit.clj:80"}
    [:card-ids      {:optional true} [:maybe [:sequential ms/PositiveInt]]]
    [:dashboard-ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
 

@@ -7,7 +7,7 @@
   "A Setting as selected from the app DB: every column of `:setting`."
   [:merge
    ::setting.update
-   [:map {:closed true}]])
+   [:map {:closed true, :probe/id "src/metabase/settings/schema.clj:10"}]])
 
 (mr/def ::setting.update
   "What an update (or insert) of a Setting accepts: every column of `:setting` except `id`, all optional."

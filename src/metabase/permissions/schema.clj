@@ -37,7 +37,7 @@
 
 (mr/def ::application-permissions-graph.groups
   "Application permissions by group, or the part of them a change touches: group id -> permission type -> level."
-  [:map-of ms/PositiveInt [:map {:closed true}
+  [:map-of ms/PositiveInt [:map {:closed true, :probe/id "src/metabase/permissions/schema.clj:40"}
                            [:setting      {:optional true} [:enum :yes :no]]
                            [:monitoring   {:optional true} [:enum :yes :no]]
                            [:subscription {:optional true} [:enum :yes :no]]]])
@@ -54,7 +54,7 @@
   "A ApplicationPermissionsRevision as selected from the app DB: every column of `:application_permissions_revision`."
   [:merge
    ::application-permissions-revision.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/permissions/schema.clj:57"}
     [:id         ms/PositiveInt]]])
 
 (mr/def ::application-permissions-revision.update
@@ -74,7 +74,7 @@
   "The `:before` column of a CollectionPermissionGraphRevision, decoded."
   [:or
    [:= ""]
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/permissions/schema.clj:77"}
     [:revision  {:optional true} [:maybe :int]]
     [:namespace {:optional true} [:maybe [:or :keyword :string]]]
     [:groups    {:optional true} ::collection-permission-graph.groups]]])
@@ -87,7 +87,7 @@
   "A CollectionPermissionGraphRevision as selected from the app DB: every column of `:collection_permission_graph_revision`."
   [:merge
    ::collection-permission-graph-revision.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/permissions/schema.clj:90"}
     [:id         ms/PositiveInt]]])
 
 (mr/def ::collection-permission-graph-revision.update
@@ -103,7 +103,7 @@
   "A DataPermissions as selected from the app DB: every column of `:data_permissions`."
   [:merge
    ::data-permissions.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/permissions/schema.clj:106"}
     [:id                  ms/PositiveInt]
     [:unique_perms_helper {:optional true} [:maybe :int]]]])
 
@@ -121,7 +121,7 @@
   "A Permissions as selected from the app DB: every column of `:permissions`."
   [:merge
    ::permissions.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/permissions/schema.clj:124"}
     [:id            ms/PositiveInt]]])
 
 (mr/def ::permissions.update
@@ -147,9 +147,9 @@
   callers hydrate onto it."
   [:merge
    ::permissions-group.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/permissions/schema.clj:150"}
     [:id                ms/PositiveInt]
-    [:members           {:optional true} [:sequential [:map {:closed true} [:email :string] [:entity_id :string]]]]]])
+    [:members           {:optional true} [:sequential [:map {:closed true, :probe/id "src/metabase/permissions/schema.clj:152"} [:email :string] [:entity_id :string]]]]]])
 
 (mr/def ::permissions-group.member
   "A member of a PermissionsGroup as `metabase.permissions.db/group-members` selects it: the User columns the group
@@ -180,7 +180,7 @@
   "A PermissionsGroupMembership as selected from the app DB: every column of `:permissions_group_membership`."
   [:merge
    ::permissions-group-membership.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/permissions/schema.clj:183"}
     [:id               ms/PositiveInt]]])
 
 (mr/def ::permissions-group-membership.update
@@ -198,19 +198,19 @@
                      :keyword
                      [:map-of ms/PositiveInt [:or
                                               :keyword
-                                              [:map {:closed true}
+                                              [:map {:closed true, :probe/id "src/metabase/permissions/schema.clj:201"}
                                                [:read  {:optional true} :keyword]
                                                [:query {:optional true} :keyword]]]]]]])
 
 (mr/def ::data-permissions-graph.native-and-schemas
   "An API-style data permission split into its native-query level and its per-schema levels."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/permissions/schema.clj:207"}
    [:native  {:optional true} [:maybe :keyword]]
    [:schemas {:optional true} ::data-permissions-graph.schemas]])
 
 (mr/def ::data-permissions-graph.groups
   "API-style data permissions by group, or the part of them a change touches: group id -> database id -> permissions."
-  [:map-of ms/PositiveInt [:maybe [:map-of ms/PositiveInt [:map {:closed true}
+  [:map-of ms/PositiveInt [:maybe [:map-of ms/PositiveInt [:map {:closed true, :probe/id "src/metabase/permissions/schema.clj:213"}
                                                            [:view-data      {:optional true} ::data-permissions-graph.schemas]
                                                            [:create-queries {:optional true} ::data-permissions-graph.schemas]
                                                            [:data           {:optional true} ::data-permissions-graph.native-and-schemas]
@@ -231,7 +231,7 @@
   "A PermissionsRevision as selected from the app DB: every column of `:permissions_revision`."
   [:merge
    ::permissions-revision.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/permissions/schema.clj:234"}
     [:id         ms/PositiveInt]]])
 
 (mr/def ::permissions-revision.update

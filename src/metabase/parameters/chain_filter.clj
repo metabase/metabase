@@ -100,13 +100,13 @@
 
 (mr/def ::constraint
   "Schema for a constraint on a field."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/parameters/chain_filter.clj:103"}
    [:field-id ::lib.schema.id/field]
    [:op       :keyword] ; name of an MBQL filter clause e.g. `:=` or `:starts-with`
    [:value    [:or ms/FieldValue [:sequential ms/FieldValue] [:set ms/FieldValue]]]
    [:options  {:optional true} [:maybe [:merge
                                         ::lib.schema.common/options
-                                        [:map {:closed true}
+                                        [:map {:closed true, :probe/id "src/metabase/parameters/chain_filter.clj:109"}
                                          [:lib/uuid {:optional true} ::lib.schema.common/uuid]]]]]])
 
 (mr/def ::constraints
@@ -114,13 +114,13 @@
   [:sequential ::constraint])
 
 (mr/def ::table-field-endpoint
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/parameters/chain_filter.clj:117"}
    [:table ::lib.schema.id/table]
    [:field ::lib.schema.id/field]])
 
 (mr/def ::join-info
   "Schema for one FK relationship join between a `:lhs` and `:rhs` Table/Field pair."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/parameters/chain_filter.clj:123"}
    [:lhs ::table-field-endpoint]
    [:rhs ::table-field-endpoint]])
 

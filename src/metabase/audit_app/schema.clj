@@ -13,7 +13,7 @@
   "A AuditLog as selected from the app DB: every column of `:audit_log`."
   [:merge
    ::audit-log.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/audit_app/schema.clj:16"}
     [:id            ms/PositiveInt]]])
 
 (mr/def ::audit-log.update

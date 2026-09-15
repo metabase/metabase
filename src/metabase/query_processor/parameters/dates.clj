@@ -278,7 +278,7 @@
   (into [:enum] u.date/add-units))
 
 (mu/defn- range->filter :- :mbql.clause/between
-  [{:keys [start end]} :- [:map {:closed true}
+  [{:keys [start end]} :- [:map {:closed true, :probe/id "src/metabase/query_processor/parameters/dates.clj:281"}
                            [:start (lib.schema.common/instance-of-class Temporal)]
                            [:end   (lib.schema.common/instance-of-class Temporal)]
                            [:unit  {:optional true} ::temporal-unit]]
@@ -405,7 +405,7 @@
   "Returns the first successfully decoded value, run through both parser and a range/filter decoder depending on
   `decoder-type`. This generates an *inclusive* range by default. The range is adjusted to be exclusive as needed: see
   dox for [[date-string->range]] for more details."
-  [decoders      :- [:sequential [:map {:closed true}
+  [decoders      :- [:sequential [:map {:closed true, :probe/id "src/metabase/query_processor/parameters/dates.clj:408"}
                                   [:parser fn?]
                                   [:range  {:optional true} fn?]
                                   [:filter {:optional true} fn?]]]
@@ -418,13 +418,13 @@
         decoders))
 
 (mr/def ::temporal-range
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/query_processor/parameters/dates.clj:421"}
    [:start {:optional true} (lib.schema.common/instance-of-class Temporal)]
    [:end   {:optional true} (lib.schema.common/instance-of-class Temporal)]
    [:unit                   ::temporal-unit]])
 
 (mr/def ::inclusive-options
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/query_processor/parameters/dates.clj:427"}
    [:inclusive-start? {:optional true} [:maybe :boolean]]
    [:inclusive-end?   {:optional true} [:maybe :boolean]]])
 

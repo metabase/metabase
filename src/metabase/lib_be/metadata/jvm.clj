@@ -52,7 +52,7 @@
   "A Field row as the `:metadata/column` select returns it, with the columns of its Dimension and FieldValues."
   [:merge
    :metabase.warehouse-schema.schema/field
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/lib_be/metadata/jvm.clj:55"}
     [:dimension/human_readable_field_id [:maybe ::lib.schema.id/field]]
     [:dimension/id                      [:maybe pos-int?]]
     [:dimension/name                    [:maybe :string]]

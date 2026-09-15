@@ -435,7 +435,7 @@
   [context :- ::ads/context
    {:keys [dimension-specs
            metric-specs
-           filter-specs]} :- [:map {:closed true}
+           filter-specs]} :- [:map {:closed true, :probe/id "src/metabase/xrays/automagic_dashboards/interesting.clj:438"}
                               [:dimension-specs [:maybe [:sequential ::ads/dimension-template]]]
                               [:metric-specs    [:maybe [:sequential ::ads/metric-template]]]
                               [:filter-specs    [:maybe [:sequential ::ads/filter-template]]]]]

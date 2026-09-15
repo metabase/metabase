@@ -61,12 +61,12 @@
     (list `handler-with-open-api-spec handler spec-fn)))
 
 (mr/def ::spec.info.license
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/api/open_api.clj:64"}
    [:name :string]
    [:url  {:optional true} :string]])
 
 (mr/def ::spec.info
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/api/open_api.clj:69"}
    [:title   [:= "Metabase API"]]
    [:version :string]
    [:license {:optional true} ::spec.info.license]])
@@ -85,7 +85,7 @@
 
 (mr/def ::parameter.schema
   "A JSON Schema node as [[metabase.api.macros.defendpoint.open-api]] builds it: any combination of JSON Schema keywords."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/api/open_api.clj:88"}
    [:type                 {:optional true} ::parameter.type]
    [:$ref                 {:optional true} [:re
                                             {:description "string starting with '#/components/schemas/'"}
@@ -126,7 +126,7 @@
 
 (mr/def ::parameter
   "https://swagger.io/specification/#parameter-object"
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/api/open_api.clj:129"}
    [:name        string?]
    [:in          ::parameter.in]
    [:description {:optional true} :string]
@@ -134,26 +134,26 @@
    [:schema      ::parameter.schema]])
 
 (mr/def ::path-item.request-body
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/api/open_api.clj:137"}
    [:content [:map-of
               [:enum "application/json" "multipart/form-data"]
-              [:map {:closed true}
+              [:map {:closed true, :probe/id "src/metabase/api/open_api.clj:140"}
                [:schema ::parameter.schema]]]]])
 
 (mr/def ::path-item.responses
   [:map-of
    ;; can be exact status codes: "200" status code ranges: "5XX" and or "default"
    :string
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/api/open_api.clj:147"}
     [:description :string]
     [:content     {:optional true} [:map-of
                                     [:enum "application/json" "multipart/form-data"]
-                                    [:map {:closed true} [:schema ::parameter.schema]]]]
+                                    [:map {:closed true, :probe/id "src/metabase/api/open_api.clj:151"} [:schema ::parameter.schema]]]]
     ;; TODO -- headers, links, etc.
     ]])
 
 (mr/def ::path-item
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/api/open_api.clj:156"}
    [:operationId :string]
    [:summary     :string]
    [:description :string]
@@ -164,14 +164,14 @@
    [:responses   ::path-item.responses]])
 
 (mr/def ::security-scheme
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/api/open_api.clj:167"}
    [:type :string]
    [:in {:optional true} :string]
    [:name {:optional true} :string]
    [:description {:optional true} :string]])
 
 (mr/def ::components
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/api/open_api.clj:174"}
    [:schemas [:map-of :string ::parameter.schema]]
    [:securitySchemes {:optional true} [:map-of :string ::security-scheme]]])
 
@@ -180,7 +180,7 @@
 
 (mr/def ::spec
   "Based on https://swagger.io/specification/."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/api/open_api.clj:183"}
    [:openapi    {:optional true} :string]
    [:info       {:optional true} ::spec.info]
    [:paths      [:map-of ::path [:map-of ::method ::path-item]]]

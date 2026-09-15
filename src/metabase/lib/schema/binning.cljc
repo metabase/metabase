@@ -74,7 +74,7 @@
     [:metadata-fn {:optional true} ifn?]]])
 
 (mr/def ::binning-option
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib/schema/binning.cljc:77"}
    [:lib/type [:= :option/binning]]
    [:display-name :string]
    [:mbql [:maybe ::binning]]

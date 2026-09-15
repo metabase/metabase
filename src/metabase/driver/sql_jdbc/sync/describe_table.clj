@@ -466,7 +466,7 @@
                 [:cat
                  (lib.schema.common/instance-of-class Connection)
                  [:map
-                  {:closed true, :description "Table"}
+                  {:closed true, :probe/id "src/metabase/driver/sql_jdbc/sync/describe_table.clj:469", :description "Table"}
                   [:schema {:optional true} [:maybe :string]]
                   [:name   :string]]]
                 ::driver/describe-fks.result]]

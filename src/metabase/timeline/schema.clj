@@ -9,7 +9,7 @@
   "A Timeline as selected from the app DB: every column of `:timeline`."
   [:merge
    ::timeline.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/timeline/schema.clj:12"}
     [:id            ms/PositiveInt]]])
 
 (mr/def ::timeline.update
@@ -30,7 +30,7 @@
   "A TimelineEvent as selected from the app DB: every column of `:timeline_event`."
   [:merge
    ::timeline-event.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/timeline/schema.clj:33"}
     [:id           ms/PositiveInt]]])
 
 (mr/def ::timeline-event.update

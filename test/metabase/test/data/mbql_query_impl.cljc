@@ -71,7 +71,7 @@
 (mu/defn- field-ref
   [id-or-name :- [:or :int :string seq? symbol?]
    ;; options should already be a map.
-   options    :- [:maybe [:map {:closed true}
+   options    :- [:maybe [:map {:closed true, :probe/id "test/metabase/test/data/mbql_query_impl.cljc:74"}
                           [:base-type     {:optional true} FieldRefOptionValue]
                           [:source-field  {:optional true} FieldRefOptionValue]
                           [:join-alias    {:optional true} FieldRefOptionValue]

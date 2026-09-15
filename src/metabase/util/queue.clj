@@ -114,7 +114,7 @@
      (take-batch* queue max-batch-messages max-next-ms [(if (instance? DelayQueue queue) (:value fst) fst)]))))
 
 (mr/def ::listener-options
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/util/queue.clj:117"}
    [:success-handler    {:optional true} fn?]
    [:err-handler        {:optional true} fn?]
    [:pool-size          {:optional true} number?]

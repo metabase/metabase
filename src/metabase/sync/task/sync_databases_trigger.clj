@@ -29,7 +29,7 @@
 
 (def TaskInfo
   "One-off schema for information about the various sync tasks we run for a DB."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/sync/task/sync_databases_trigger.clj:32"}
    [:key                :keyword]
    [:db-schedule-column :keyword]
    [:name               :string]])

@@ -68,7 +68,7 @@
   [query               :- ::lib.schema/query
    stage-number        :- :int
    clauses             :- [:sequential [:or ::lib.schema.expression/expression :metabase.lib.schema.order-by/order-by]]
-   {:keys [distinct?]} :- [:map {:closed true} [:distinct? :boolean]]]
+   {:keys [distinct?]} :- [:map {:closed true, :probe/id "src/metabase/source_swap/mbql.clj:71"} [:distinct? :boolean]]]
   (into []
         (cond-> (map (fn [clause]
                        (walk-clause-field-refs clause #(upgrade-field-ref query stage-number %))))
@@ -233,7 +233,7 @@
    stage-number        :- :int
    field-id-mapping    :- ::field-id-mapping
    clauses             :- [:sequential [:or ::lib.schema.expression/expression :metabase.lib.schema.order-by/order-by]]
-   {:keys [distinct?]} :- [:map {:closed true} [:distinct? :boolean]]]
+   {:keys [distinct?]} :- [:map {:closed true, :probe/id "src/metabase/source_swap/mbql.clj:236"} [:distinct? :boolean]]]
   (into []
         (cond-> (map (fn [clause]
                        (walk-clause-field-refs clause #(swap-field-ref query stage-number field-id-mapping %))))

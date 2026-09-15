@@ -9,7 +9,7 @@
   "A RecentViews as selected from the app DB: every column of `:recent_views`."
   [:merge
    ::recent-views.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/activity_feed/schema.clj:12"}
     [:id        ms/PositiveInt]]])
 
 (mr/def ::recent-views.update

@@ -106,7 +106,7 @@
 (defn- test-case-schema
   "A closed test case map schema in which the optional entries named by `required-keys` are required."
   [& required-keys]
-  (into [:map {:closed true}]
+  (into [:map {:closed true, :probe/id "test/metabase/lib/drill_thru/test_util.cljc:109"}]
         (map (fn [[k :as entry]]
                (if (some #{k} required-keys)
                  [k (peek entry)]
@@ -313,7 +313,7 @@
      :row row}))
 
 (mu/defn test-case-context :- ::lib.schema.drill-thru/context
-  [{:keys [mbql row]} :- [:map {:closed true}
+  [{:keys [mbql row]} :- [:map {:closed true, :probe/id "test/metabase/lib/drill_thru/test_util.cljc:316"}
                           [:mbql   ::lib.schema/query]
                           [:native {:optional true} [:maybe ::lib.schema/query]]
                           [:row    Row]]

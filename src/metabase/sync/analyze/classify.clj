@@ -70,7 +70,7 @@
       true)))
 
 (def ^:private ClassifyOpts
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/sync/analyze/classify.clj:73"}
    [:fields-failed :int]
    [:exists-name :boolean]])
 

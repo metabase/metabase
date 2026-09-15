@@ -27,7 +27,7 @@
 (mr/def ::table-rows-sample.options
   "Schema for `table-rows-sample` options"
   [:maybe
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/driver/common/table_rows_sample.clj:30"}
     [:truncation-size {:optional true} :int]
     [:limit           {:optional true} :int]
     [:order-by        {:optional true} [:maybe [:sequential [:or ::lib.schema.order-by/order-by ::lib.ref/referenceable]]]]

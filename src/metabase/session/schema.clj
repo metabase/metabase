@@ -16,7 +16,7 @@
   "A Session as selected from the app DB: every column of `:core_session`."
   [:merge
    ::session.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/session/schema.clj:19"}
     [:id                   :string]
     [:key                  {:optional true} :string]
     [:type                 {:optional true} [:enum :normal :full-app-embed]]

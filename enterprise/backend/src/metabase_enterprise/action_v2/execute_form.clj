@@ -61,7 +61,7 @@
   "A single input row after `apply-mapping-nested`: either mapped to the target table, or, absent a mapping, the raw
   parameter values it was given."
   [:or
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/action_v2/execute_form.clj:64"}
     [:table-id {:optional true} ::lib.schema.id/table]
     [:row      {:optional true} [:maybe [:map-of :string [:ref ::lib.schema.parameter/parameter.value]]]]]
    [:map-of :string [:ref ::lib.schema.parameter/parameter.value]]])

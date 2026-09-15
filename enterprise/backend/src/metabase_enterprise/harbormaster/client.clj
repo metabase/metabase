@@ -110,9 +110,9 @@
   Returns a tuple of [:ok response] if the request was successful, or [:error response] if it failed."
   [method :- [:enum :get :head :post :put :delete :options :copy :move :patch]
    url :- :string
-   & [body] :- [:* [:map {:closed true}
+   & [body] :- [:* [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/harbormaster/client.clj:113"}
                     [:type   :string]
-                    [:secret [:map {:closed true}
+                    [:secret [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/harbormaster/client.clj:115"}
                               [:resources [:sequential :string]]]]]]]
   (let [{:keys [store-api-url
                 api-key]} (->config)

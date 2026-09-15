@@ -226,7 +226,7 @@
            (lib.filter/filter query stage-number (lib.filter/between temporal-column start end))))))))
 
 (mr/def ::lat-lon.bounds
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib/filter/update.cljc:229"}
    [:north number?]
    [:east  number?]
    [:south number?]

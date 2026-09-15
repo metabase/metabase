@@ -65,7 +65,7 @@
   "A ReplacementRun as selected from the app DB: every column of `:source_replacement_run`."
   [:merge
    ::replacement-run.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/replacement/schema.clj:68"}
     [:id                 ms/PositiveInt]]])
 
 (mr/def ::replacement-run.update

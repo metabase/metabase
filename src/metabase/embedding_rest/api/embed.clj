@@ -44,7 +44,7 @@
 (def ^:private Token
   "An embedding JWT payload naming its `:resource` and `:params`, whose other claims (`exp`, `iat`, ...) belong to the embedding application."
   [:map {:closed false, ::mr/deliberately-open true, :description "embedding JWT claims"}
-   [:resource [:map {:closed true}
+   [:resource [:map {:closed true, :probe/id "src/metabase/embedding_rest/api/embed.clj:47"}
                [:question {:optional true} ResourceId]
                [:dashboard {:optional true} ResourceId]]]
    [:params api.embed.common/SlugValueMap]])

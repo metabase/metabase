@@ -28,7 +28,7 @@
 
 (def ^:private InternalTemplate
   "An action descriptor `:template` -- identifies the action, never its content."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/actions/audit.clj:31"}
    [:type       [:= :internal]]
    [:action     [:or :string :keyword]]
    [:database   {:optional true} [:maybe pos-int?]]

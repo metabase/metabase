@@ -31,7 +31,7 @@
           (= (namespace k) "drill-thru")))])
 
 (mr/def ::drill-thru.common
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib/schema/drill_thru.cljc:34"}
    [:type     ::drill-thru.type]
    [:lib/type [:= :metabase.lib.drill-thru/drill-thru]]])
 
@@ -50,7 +50,7 @@
 ;;; https://metaboat.slack.com/archives/C04CYTEL9N2/p1701803047600169 for more information. -- Cam
 
 (mr/def ::drill-thru.object-details.dimension
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib/schema/drill_thru.cljc:53"}
    [:column [:ref ::lib.schema.metadata/column]]
    ;; we should ignore NULL values for PKs and FKs -- do not add filters on them.
    [:value  [:and
@@ -93,7 +93,7 @@
     [:many-pks? [:= false]]]])
 
 (mr/def ::drill-thru.quick-filter.operator
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib/schema/drill_thru.cljc:96"}
    [:name   ::lib.schema.common/non-blank-string]
    [:filter [:ref ::lib.schema.expression/boolean]]])
 
@@ -196,7 +196,7 @@
 (mr/def ::drill-thru.automatic-insights
   [:merge
    ::drill-thru.common
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/lib/schema/drill_thru.cljc:199"}
     [:type       [:= :drill-thru/automatic-insights]]
     [:lib/type   [:= :metabase.lib.drill-thru/drill-thru]]
     [:column-ref [:maybe [:ref ::lib.schema.ref/ref]]]
@@ -249,10 +249,10 @@
     [:display-name :string]
     [:column    ::drill-thru.zoom-in.geographic.column.county-state-city]
     [:value     ::lib.schema.literal/param-value]
-    [:latitude  [:map {:closed true}
+    [:latitude  [:map {:closed true, :probe/id "src/metabase/lib/schema/drill_thru.cljc:252"}
                  [:column    [:ref ::drill-thru.zoom-in.geographic.column.latitude]]
                  [:bin-width [:ref ::lib.schema.binning/bin-width]]]]
-    [:longitude [:map {:closed true}
+    [:longitude [:map {:closed true, :probe/id "src/metabase/lib/schema/drill_thru.cljc:255"}
                  [:column    [:ref ::drill-thru.zoom-in.geographic.column.longitude]]
                  [:bin-width [:ref ::lib.schema.binning/bin-width]]]]]])
 
@@ -263,12 +263,12 @@
     [:type      [:= :drill-thru/zoom-in.geographic]]
     [:subtype   [:= :drill-thru.zoom-in.geographic/binned-lat-lon->binned-lat-lon]]
     [:display-name :string]
-    [:latitude  [:map {:closed true}
+    [:latitude  [:map {:closed true, :probe/id "src/metabase/lib/schema/drill_thru.cljc:266"}
                  [:column    [:ref ::drill-thru.zoom-in.geographic.column.latitude]]
                  [:bin-width [:ref ::lib.schema.binning/bin-width]]
                  [:min       number?]
                  [:max       number?]]]
-    [:longitude [:map {:closed true}
+    [:longitude [:map {:closed true, :probe/id "src/metabase/lib/schema/drill_thru.cljc:271"}
                  [:column    [:ref ::drill-thru.zoom-in.geographic.column.longitude]]
                  [:bin-width [:ref ::lib.schema.binning/bin-width]]
                  [:min       number?]
@@ -345,7 +345,7 @@
 ;;;    | Pivot "Agg" Cell    |        |       | ✔   | ✔          |
 
 (mr/def ::context.row.value
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib/schema/drill_thru.cljc:348"}
    [:column     [:ref ::lib.schema.metadata/column]]
    [:column-ref [:ref ::lib.schema.ref/ref]]
    [:value      [:fn
@@ -359,7 +359,7 @@
   [:sequential [:ref ::context.row.value]])
 
 (mr/def ::context
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib/schema/drill_thru.cljc:362"}
    [:column     [:maybe [:ref ::lib.schema.metadata/column]]]
    [:column-ref [:maybe [:ref ::lib.schema.ref/ref]]]
    [:value      [:maybe [:or

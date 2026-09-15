@@ -37,13 +37,13 @@
   "Mirrors `metabase.actions.types/scope.normalized`. Duplicated (rather than referenced) so this namespace does not
   have to depend on the `actions` module."
   [:or
-   [:map {:closed true} [:type :keyword] [:dashboard-id ms/PositiveInt]]
-   [:map {:closed true} [:type :keyword] [:dashcard-id ms/PositiveInt]]
-   [:map {:closed true} [:type :keyword] [:card-id ms/PositiveInt]]
-   [:map {:closed true} [:type :keyword] [:model-id ms/PositiveInt]]
-   [:map {:closed true} [:type :keyword] [:table-id ms/PositiveInt]]
-   [:map {:closed true} [:type :keyword] [:webhook-id ms/PositiveInt]]
-   [:map {:closed true} [:type :keyword] [:unknown [:enum :model-action]]]])
+   [:map {:closed true, :probe/id "src/metabase/lib_be/schema.clj:40"} [:type :keyword] [:dashboard-id ms/PositiveInt]]
+   [:map {:closed true, :probe/id "src/metabase/lib_be/schema.clj:41"} [:type :keyword] [:dashcard-id ms/PositiveInt]]
+   [:map {:closed true, :probe/id "src/metabase/lib_be/schema.clj:42"} [:type :keyword] [:card-id ms/PositiveInt]]
+   [:map {:closed true, :probe/id "src/metabase/lib_be/schema.clj:43"} [:type :keyword] [:model-id ms/PositiveInt]]
+   [:map {:closed true, :probe/id "src/metabase/lib_be/schema.clj:44"} [:type :keyword] [:table-id ms/PositiveInt]]
+   [:map {:closed true, :probe/id "src/metabase/lib_be/schema.clj:45"} [:type :keyword] [:webhook-id ms/PositiveInt]]
+   [:map {:closed true, :probe/id "src/metabase/lib_be/schema.clj:46"} [:type :keyword] [:unknown [:enum :model-action]]]])
 
 (mr/def ::internal-query
   "An internal (audit) query: either the QP's own `:fn`/`:args` invocation shape, or the action-descriptor shape

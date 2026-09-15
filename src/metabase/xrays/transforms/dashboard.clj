@@ -18,11 +18,11 @@
 
 (def ^:private SourceTableCard
   "The shape [[card-for-source-table]] builds for a source-table pseudo-card."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/xrays/transforms/dashboard.clj:21"}
    [:creator_id             [:maybe ::lib.schema.id/user]]
-   [:dataset_query          [:map {:closed true}
+   [:dataset_query          [:map {:closed true, :probe/id "src/metabase/xrays/transforms/dashboard.clj:23"}
                              [:type     [:= :query]]
-                             [:query    [:map {:closed true} [:source-table ::lib.schema.id/table]]]
+                             [:query    [:map {:closed true, :probe/id "src/metabase/xrays/transforms/dashboard.clj:25"} [:source-table ::lib.schema.id/table]]]
                              [:database ::lib.schema.id/database]]]
    [:name                   [:maybe :string]]
    [:collection_id          :nil]

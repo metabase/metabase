@@ -9,7 +9,7 @@
   "A OAuthAccessToken as selected from the app DB: every column of `:oauth_access_token`."
   [:merge
    ::oauth-access-token.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/oauth_server/schema.clj:12"}
     [:id         ms/PositiveInt]]])
 
 (mr/def ::oauth-access-token.update
@@ -28,7 +28,7 @@
   "A OAuthAuthorizationCode as selected from the app DB: every column of `:oauth_authorization_code`."
   [:merge
    ::oauth-authorization-code.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/oauth_server/schema.clj:31"}
     [:id                    ms/PositiveInt]]])
 
 (mr/def ::oauth-authorization-code.update
@@ -50,7 +50,7 @@
   "A OAuthClient as selected from the app DB: every column of `:oauth_client`."
   [:merge
    ::oauth-client.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/oauth_server/schema.clj:53"}
     [:id                             ms/PositiveInt]]])
 
 (mr/def ::oauth-client.update
@@ -78,7 +78,7 @@
   "A OAuthClientEvent as selected from the app DB: every column of `:oauth_client_event`."
   [:merge
    ::oauth-client-event.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/oauth_server/schema.clj:81"}
     [:id              ms/PositiveInt]]])
 
 (mr/def ::oauth-client-event.update
@@ -93,7 +93,7 @@
   "A OAuthRefreshToken as selected from the app DB: every column of `:oauth_refresh_token`."
   [:merge
    ::oauth-refresh-token.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/oauth_server/schema.clj:96"}
     [:id         ms/PositiveInt]]])
 
 (mr/def ::oauth-refresh-token.update

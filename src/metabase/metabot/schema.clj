@@ -40,14 +40,14 @@
 (mr/def ::todo
   "One todo item of persisted turn state; only `:id` is guaranteed, since state can hold a partial item
   between the turn that creates it and the turn that fills in its details."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/schema.clj:43"}
    [:id :string]
    [:content  {:optional true} [:maybe :string]]
    [:status   {:optional true} [:maybe [:enum "pending" "in_progress" "completed" "cancelled"]]]
    [:priority {:optional true} [:maybe [:enum "high" "medium" "low"]]]])
 
 (mr/def ::chart-timeline-event
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/schema.clj:50"}
    [:name :string]
    [:description {:optional true} [:maybe :string]]
    [:timestamp :string]])
@@ -55,7 +55,7 @@
 (mr/def ::column-info
   "A chart column's name and inferred type, as sent for chart analysis. Mirrors
   `metabase.metabot.context/ColumnInfoSchema`."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/schema.clj:58"}
    [:name :string]
    [:type {:optional true} [:maybe (into [:enum] #{"number" "string" "date" "datetime" "time" "boolean" "null"})]]])
 
@@ -68,14 +68,14 @@
 (mr/def ::chart-data
   "One pre-materialized table of raw chart data (columns + rows). Mirrors
   `metabase.metabot.context/ChartDataSchema`."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/schema.clj:71"}
    [:columns [:sequential ::column-info]]
    [:rows [:sequential [:sequential [:or :string number?]]]]])
 
 (mr/def ::series-config
   "One series of a chart, pre-materialized by the frontend for `analyze_chart`. Mirrors
   `metabase.metabot.context/SeriesConfigSchema`."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/schema.clj:78"}
    [:x ::column-info]
    [:y {:optional true} [:maybe ::column-info]]
    [:x_values {:optional true} [:maybe [:sequential ::row-value]]]
@@ -87,7 +87,7 @@
 (mr/def ::chart-config
   "A `chart_configs` entry: a chart's title, pre-materialized series data, and the query that produced it.
   Mirrors `metabase.metabot.context/ChartConfigSchema`."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/schema.clj:90"}
    [:title {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]
    [:data {:optional true} [:maybe [:sequential ::chart-data]]]
@@ -97,18 +97,18 @@
    [:display_type {:optional true} [:maybe [:or :string :keyword]]]])
 
 (mr/def ::chart
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/schema.clj:100"}
    [:chart_id {:optional true} [:maybe :string]]
    [:query_id {:optional true} [:maybe :string]]
    [:queries {:optional true} [:maybe [:sequential [:maybe ::query]]]]
    [:visualization_settings {:optional true}
-    [:maybe [:map {:closed true}
+    [:maybe [:map {:closed true, :probe/id "src/metabase/metabot/schema.clj:105"}
              [:chart_type {:optional true} [:maybe [:or :string :keyword]]]]]]
    [:timeline_events {:optional true} [:maybe [:sequential ::chart-timeline-event]]]
    [:chart_config {:optional true} [:maybe ::chart-config]]])
 
 (mr/def ::transform.target
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/schema.clj:111"}
    [:type [:or [:= :table] [:= "table"]]]
    [:name {:optional true} [:maybe :string]]
    [:database {:optional true} [:maybe :int]]
@@ -117,7 +117,7 @@
 (mr/def ::transform.source-table
   "One entry of a Python transform's `source-tables`. Mirrors
   `metabase.metabot.context/TransformSourceTableSchema`."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/schema.clj:120"}
    [:alias :string]
    [:table_id {:optional true} [:maybe :int]]
    [:schema {:optional true} [:maybe :string]]
@@ -125,17 +125,17 @@
 
 (mr/def ::transform.source
   [:multi {:dispatch (comp keyword :type)}
-   [:query [:map {:closed true}
+   [:query [:map {:closed true, :probe/id "src/metabase/metabot/schema.clj:128"}
             [:type [:or [:= :query] [:= "query"]]]
             [:query {:optional true} [:maybe ::query]]]]
-   [:python [:map {:closed true}
+   [:python [:map {:closed true, :probe/id "src/metabase/metabot/schema.clj:131"}
              [:type [:or [:= :python] [:= "python"]]]
              [:body {:optional true} [:maybe :string]]
              [:source-database {:optional true} [:maybe :int]]
              [:source-tables {:optional true} [:maybe [:sequential ::transform.source-table]]]]]])
 
 (mr/def ::transform
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/schema.clj:138"}
    [:id {:optional true} [:maybe :string]]
    [:name {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]
@@ -143,7 +143,7 @@
    [:source {:optional true} [:maybe ::transform.source]]])
 
 (mr/def ::state
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/schema.clj:146"}
    [:queries {:optional true} [:map-of ::state-map-key ::query]]
    [:charts {:optional true} [:map-of ::state-map-key ::chart]]
    [:chart-configs {:optional true} [:map-of ::state-map-key ::chart-config]]
@@ -221,7 +221,7 @@
   "A AiUsageLog as selected from the app DB: every column of `:ai_usage_log`."
   [:merge
    ::ai-usage-log.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/metabot/schema.clj:224"}
     [:id                    ms/PositiveInt]]])
 
 (mr/def ::ai-usage-log.update
@@ -246,7 +246,7 @@
   "A Metabot as selected from the app DB: every column of `:metabot`."
   [:merge
    ::metabot.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/metabot/schema.clj:249"}
     [:id                   ms/PositiveInt]]])
 
 (mr/def ::metabot.update
@@ -264,7 +264,7 @@
   "A MetabotConversation as selected from the app DB: every column of `:metabot_conversation`."
   [:merge
    ::metabot-conversation.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/metabot/schema.clj:267"}
     [:id                          :string]]])
 
 (mr/def ::metabot-conversation.update
@@ -287,7 +287,7 @@
   "A MetabotFeedback as selected from the app DB: every column of `:metabot_feedback`."
   [:merge
    ::metabot-feedback.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/metabot/schema.clj:290"}
     [:id                ms/PositiveInt]]])
 
 (mr/def ::metabot-feedback.update
@@ -307,7 +307,7 @@
 
 (mr/def ::metabot-message.usage
   "The `:usage` column of a MetabotMessage, decoded."
-  (ms/string-keyed-map [:map {:closed true}
+  (ms/string-keyed-map [:map {:closed true, :probe/id "src/metabase/metabot/schema.clj:310"}
                         [:prompt :int]
                         [:completion :int]]))
 
@@ -324,7 +324,7 @@
   "A MetabotMessage as selected from the app DB: every column of `:metabot_message`."
   [:merge
    ::metabot-message.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/metabot/schema.clj:327"}
     [:id                     ms/PositiveInt]]])
 
 (mr/def ::metabot-message.update
@@ -355,7 +355,7 @@
   "A MetabotPrompt as selected from the app DB: every column of `:metabot_prompt`."
   [:merge
    ::metabot-prompt.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/metabot/schema.clj:358"}
     [:id         ms/PositiveInt]]])
 
 (mr/def ::metabot-prompt.update
@@ -373,7 +373,7 @@
   "A MetabotSourceFeedback as selected from the app DB: every column of `:metabot_source_feedback`."
   [:merge
    ::metabot-source-feedback.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/metabot/schema.clj:376"}
     [:id          ms/PositiveInt]]])
 
 (mr/def ::metabot-source-feedback.update
@@ -391,7 +391,7 @@
   "A MetabotUsedTable as selected from the app DB: every column of `:metabot_used_table`."
   [:merge
    ::metabot-used-table.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/metabot/schema.clj:394"}
     [:id         ms/PositiveInt]]])
 
 (mr/def ::metabot-used-table.update

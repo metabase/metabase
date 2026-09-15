@@ -86,7 +86,7 @@
 
 (mu/defn- combine :- CombinedAttributes
   "Combines user, tenant, and system attributes. User can override "
-  [attributes :- [:map {:closed true}
+  [attributes :- [:map {:closed true, :probe/id "src/metabase/users_rest/api.clj:89"}
                   [:jwt    {:optional true} [:maybe SimpleAttributes]]
                   [:tenant {:optional true} [:maybe SimpleAttributes]]
                   [:user   {:optional true} [:maybe SimpleAttributes]]]

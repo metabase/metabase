@@ -120,7 +120,7 @@
 (mu/defn add-users-to-groups!
   "Creates permission group memberships from aa sequence of maps of users, groups and is-group-manager?."
   [pgms :- [:sequential
-            [:map {:closed true}
+            [:map {:closed true, :probe/id "src/metabase/permissions/models/permissions_group_membership.clj:123"}
              [:group [:or
                       pos-int?
                       ::permissions.schema/permissions-group]]

@@ -432,7 +432,7 @@
   reading attributes stored on the user row."
   [{:keys [login_attributes jwt_attributes] :as user} :- [:merge
                                                           ::users.schema/user
-                                                          [:map {:closed true}
+                                                          [:map {:closed true, :probe/id "src/metabase/users/models/user.clj:435"}
                                                            [:type (into [:enum] allowed-user-types)]]]]
   (assoc user :attributes (if (= (:type user) :personal)
                             (merge {} (tenants/login-attributes user) jwt_attributes login_attributes)

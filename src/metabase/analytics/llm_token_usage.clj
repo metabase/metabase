@@ -16,7 +16,7 @@
    :hashed-metabase-license-token])
 
 (def ^:private SnowplowArgs
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/analytics/llm_token_usage.clj:19"}
    [:request-id                                     :string]
    [:model-id                                       :string]
    [:total-tokens                                   ms/IntGreaterThanOrEqualToZero]
@@ -63,7 +63,7 @@
   [:model-id :tag :prompt-tokens :completion-tokens :cache-creation-tokens :cache-read-tokens])
 
 (def ^:private PrometheusArgs
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/analytics/llm_token_usage.clj:66"}
    [:model-id                              :string]
    [:tag                                   :string]
    [:prompt-tokens                         ms/IntGreaterThanOrEqualToZero]
@@ -87,14 +87,14 @@
 
 (def ^:private TrackTokenUsageGates
   "The `:snowplow`/`:prometheus` gate keys of [[track-token-usage!]]."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/analytics/llm_token_usage.clj:90"}
    [:snowplow   :boolean]
    [:prometheus :boolean]])
 
 (def ^:private UntrackedSnowplowArgs
   "The Snowplow-only keys a Prometheus-only [[track-token-usage!]] call may still carry, possibly nil."
   (mut/merge (mut/optional-keys SnowplowArgs)
-             [:map {:closed true}
+             [:map {:closed true, :probe/id "src/metabase/analytics/llm_token_usage.clj:97"}
               [:request-id          {:optional true} [:maybe :string]]
               [:total-tokens        {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
               [:estimated-costs-usd {:optional true} [:maybe number?]]]))

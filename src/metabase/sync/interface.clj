@@ -26,7 +26,7 @@
   [:ref ::DatabaseMetadataTable])
 
 (mr/def ::DatabaseMetadata
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/sync/interface.clj:29"}
    [:tables [:fn {:error/message "a set, sequential, or reducible collection of tables"}
              (fn [x] (or (set? x) (sequential? x) (instance? clojure.lang.IReduceInit x)))]]
    [:version {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
@@ -37,7 +37,7 @@
   [:ref ::DatabaseMetadata])
 
 (mr/def ::TableMetadataField
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/sync/interface.clj:40"}
    [:name              ::lib.schema.common/non-blank-string]
    [:database-type     [:maybe ::lib.schema.common/non-blank-string]] ; blank if the Field is all NULL & untyped, i.e. in Mongo
    [:base-type         ::lib.schema.common/base-type]
@@ -121,7 +121,7 @@
   [:ref ::TableFKMetadataEntry])
 
 (mr/def ::FKMetadataEntry
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/sync/interface.clj:124"}
    [:fk-table-name   ::lib.schema.common/non-blank-string]
    [:fk-table-schema [:maybe ::lib.schema.common/non-blank-string]]
    [:fk-column-name  ::lib.schema.common/non-blank-string]

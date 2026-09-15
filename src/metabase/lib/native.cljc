@@ -36,7 +36,7 @@
   "An unfinished template tag; must be completed by [[finish-tag]]."
   [:or
    [:ref ::lib.schema.template-tag/template-tag]
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/lib/native.cljc:39"}
     [:type         ::lib.schema.template-tag/type]
     [:name         ::lib.schema.template-tag/name]
     [:id           {:optional true} [:ref ::lib.schema.template-tag/id]]
@@ -219,7 +219,7 @@
   #{:collection})
 
 (mr/def ::native-extras
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib/native.cljc:222"}
    [:collection {:optional true} ::common/non-blank-string]])
 
 (mu/defn required-native-extras :- set?

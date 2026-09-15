@@ -51,7 +51,7 @@
 (mr/def ::column-metadata-edits
   "Edits `card-metadata-edits` reports: the keys are QP-results-cased (plain keys snake_case, `:lib/...` keys stay
   kebab-case), since values are looked up straight out of `qp-results-cased-col` maps."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/dependencies/metadata_update.clj:54"}
    [:id                       {:optional true} [:maybe ::lib.schema.id/field]]
    [:description              {:optional true} [:maybe :string]]
    [:display_name             {:optional true} [:maybe :string]]

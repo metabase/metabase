@@ -95,7 +95,7 @@
   [search-results :- [:sequential [:map {:closed true}
                                    [:id [:or :string ms/PositiveInt]]
                                    [:model :string]]]
-   search-ctx     :- [:map {:closed true}
+   search-ctx     :- [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/semantic_search/db.clj:98"}
                       [:current-user-id {:optional true} [:maybe ms/PositiveInt]]
                       [:context         {:optional true} [:maybe :keyword]]
                       [:weights         {:optional true} [:maybe ::search.config/weights]]

@@ -39,7 +39,7 @@
   hydrate onto it."
   [:merge
    ::measure.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/measures/schema.clj:42"}
     [:id                 ms/PositiveInt]
     [:creator            {:optional true} [:maybe :metabase.users.schema/user]]
     [:table              {:optional true} [:maybe :metabase.warehouse-schema.schema/table]]]])

@@ -121,7 +121,7 @@
     `(def ~(vary-meta fn-name merge attr-map)
        ~(if instrument?
           (macros/case
-            :clj  (let [error-context {:fn-name (list 'quote fn-name)}]
+            :clj  (let [error-context {:fn-name (list 'quote (symbol (str *ns*) (str fn-name)))}]
                     (mu.fn/instrumented-fn-form error-context :clj parsed cosmetic-name
                                                 (symbol (str *ns*) (str fn-name))))
             :cljs (mu.fn/deparameterized-fn-form :cljs parsed cosmetic-name))

@@ -41,7 +41,7 @@
   "A Sandbox as selected from the app DB: every column of `:sandboxes`, plus `:table` some callers hydrate onto it."
   [:merge
    ::sandbox.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/sandbox/schema.clj:44"}
     [:id                   ms/PositiveInt]
     [:table                {:optional true} [:maybe :metabase.warehouse-schema.schema/table]]]])
 

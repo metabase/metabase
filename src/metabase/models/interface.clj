@@ -893,9 +893,9 @@
    hydration-key                  :- :keyword
    instance-key->hydrated-data-fn :- fn?
    instance-key                   :- :keyword
-   & [{:keys [default] :as _options}] :- [:* [:map {:closed true}
+   & [{:keys [default] :as _options}] :- [:* [:map {:closed true, :probe/id "src/metabase/models/interface.clj:896"}
                                               [:default {:optional true}
-                                               [:maybe [:or :boolean number? [:map {:closed true}] [:= []]]]]]]]
+                                               [:maybe [:or :boolean number? [:map {:closed true, :probe/id "src/metabase/models/interface.clj:898"}] [:= []]]]]]]]
   (when (seq instances)
     (let [key->hydrated-items (instance-key->hydrated-data-fn)]
       (for [item instances]

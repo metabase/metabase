@@ -111,7 +111,7 @@
   ([user-id  :- ms/PositiveInt
     password :- ms/NonBlankString
     opts     :- [:maybe
-                 [:map {:closed true}
+                 [:map {:closed true, :probe/id "src/metabase/auth_identity/models/auth_identity.clj:114"}
                   [:expires-at {:optional true} [:maybe (ms/InstanceOfClass java.time.temporal.Temporal)]]]]]
    ;; always write :expires_at (nil unless an expiry was requested) so setting a password clears any stale expiry a
    ;; prior support-access grant left behind — otherwise `authenticate` would reject the new password as expired

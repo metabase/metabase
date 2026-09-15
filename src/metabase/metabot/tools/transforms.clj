@@ -137,7 +137,7 @@
     [:maybe :int]]
    [:edit_action
     {:description "You MUST set this param. Use new_content and edits according to mode you choose."}
-    [:map {:closed true}
+    [:map {:closed true, :probe/id "src/metabase/metabot/tools/transforms.clj:140"}
      [:mode
       {:description (str "Use 'edit' mode for targeted string replacements. "
                          "Use 'replace' mode to replace entire content.")}
@@ -145,7 +145,7 @@
      [:edits
       {:optional true
        :description "List of targeted string replacements to apply sequentially"}
-      [:maybe [:sequential [:map {:closed true}
+      [:maybe [:sequential [:map {:closed true, :probe/id "src/metabase/metabot/tools/transforms.clj:148"}
                             [:old_string :string]
                             [:new_string :string]
                             [:replace_all {:optional true} [:maybe :boolean]]]]]]
@@ -214,7 +214,7 @@
     [:maybe :int]]
    [:edit_action
     {:description "You MUST set this param. Use new_content and edits according to mode you choose."}
-    [:map {:closed true}
+    [:map {:closed true, :probe/id "src/metabase/metabot/tools/transforms.clj:217"}
      [:mode
       {:description (str "Use 'edit' mode for targeted string replacements. "
                          "Use 'replace' mode to replace entire content.")}
@@ -222,7 +222,7 @@
      [:edits
       {:optional true
        :description "List of targeted string replacements to apply sequentially"}
-      [:maybe [:sequential [:map {:closed true}
+      [:maybe [:sequential [:map {:closed true, :probe/id "src/metabase/metabot/tools/transforms.clj:225"}
                             [:old_string :string]
                             [:new_string :string]
                             [:replace_all {:optional true} [:maybe :boolean]]]]]]

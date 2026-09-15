@@ -17,13 +17,13 @@
 
 (mr/def ::column-metadata
   "Metadata about a column in the chart data."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/interestingness/chart/types.clj:20"}
    [:name :string]
    [:type ::column-type]])
 
 (mr/def ::series-config
   "Configuration for a single series in a chart."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/interestingness/chart/types.clj:26"}
    [:x ::column-metadata]
    [:y ::column-metadata]
    [:x_values [:sequential ::axis-value]]
@@ -34,7 +34,7 @@
 
 (mr/def ::timeline-event
   "A timeline event that may be relevant to the chart."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/interestingness/chart/types.clj:37"}
    [:name :string]
    [:timestamp :string]
    [:description {:optional true} [:maybe :string]]
@@ -42,7 +42,7 @@
 
 (mr/def ::chart-config
   "Full chart configuration received from ai-service."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/interestingness/chart/types.clj:45"}
    [:series [:map-of :string ::series-config]]
    [:timeline_events {:optional true} [:maybe [:sequential ::timeline-event]]]
    [:query {:optional true} [:maybe ::lib-be.schema/maybe-legacy-query]]
@@ -53,7 +53,7 @@
 
 (mr/def ::series-summary
   "Basic statistical summary of a series."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/interestingness/chart/types.clj:56"}
    [:min number?]
    [:max number?]
    [:mean number?]
@@ -63,7 +63,7 @@
 
 (mr/def ::time-range
   "Time range covered by the chart data."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/interestingness/chart/types.clj:66"}
    [:start ::axis-value]
    [:end ::axis-value]
    [:span-description :string]])
@@ -74,7 +74,7 @@
 
 (mr/def ::trend-summary
   "Summary of trend in time series data."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/interestingness/chart/types.clj:77"}
    [:direction ::trend-direction]
    [:overall-change-pct number?]
    [:start-value number?]
@@ -86,14 +86,14 @@
 
 (mr/def ::volatility
   "Volatility metrics for time series data."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/interestingness/chart/types.clj:89"}
    [:level ::volatility-level]
    [:coefficient-of-variation number?]
    [:max-period-change-pct number?]])
 
 (mr/def ::significant-change
   "A significant change detected in the data."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/interestingness/chart/types.clj:96"}
    [:from-date ::axis-value]
    [:to-date ::axis-value]
    [:from-value number?]
@@ -107,7 +107,7 @@
 
 (mr/def ::pattern-insight
   "A pattern detected in the data."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/interestingness/chart/types.clj:110"}
    [:type ::pattern-type]
    [:description :string]
    [:from-date {:optional true} [:maybe ::axis-value]]
@@ -123,7 +123,7 @@
 
 (mr/def ::correlation
   "Correlation between two series."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/interestingness/chart/types.clj:126"}
    [:series-a :string]
    [:series-b :string]
    [:coefficient number?]
@@ -133,7 +133,7 @@
 
 (mr/def ::outlier
   "An outlier detected in the data."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/interestingness/chart/types.clj:136"}
    [:index :int]
    [:label ::axis-value]
    [:value number?]
@@ -141,7 +141,7 @@
 
 (mr/def ::cumulative-outlier
   "An outlier detected in cumulative data (via period-over-period diffs)."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/interestingness/chart/types.clj:144"}
    [:index :int]
    [:label ::axis-value]
    [:value number?]
@@ -152,17 +152,17 @@
 
 (mr/def ::options
   "Options map for chart statistics computation."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/interestingness/chart/types.clj:155"}
    [:deep? {:optional true} [:maybe :boolean]]
    [:max-correlation-series {:optional true} [:maybe :int]]])
 
 (mr/def ::stats-limits
   "Notes about data-volume limits applied before computing chart statistics."
-  [:map {:closed true}
-   [:downsampled-series  {:optional true} [:map-of :string [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/interestingness/chart/types.clj:161"}
+   [:downsampled-series  {:optional true} [:map-of :string [:map {:closed true, :probe/id "src/metabase/interestingness/chart/types.clj:162"}
                                                             [:original-count :int]
                                                             [:sampled-count :int]]]]
-   [:correlations-capped {:optional true} [:map {:closed true}
+   [:correlations-capped {:optional true} [:map {:closed true, :probe/id "src/metabase/interestingness/chart/types.clj:165"}
                                            [:total-series :int]
                                            [:max-correlated :int]]]])
 
@@ -170,13 +170,13 @@
 
 (mr/def ::extremum
   "An extreme point (peak or trough) in a series, paired with its x-coordinate."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/interestingness/chart/types.clj:173"}
    [:x ::axis-value]
    [:y number?]])
 
 (mr/def ::time-series-series-stats
   "Statistics for a single time series."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/interestingness/chart/types.clj:179"}
    [:summary ::series-summary]
    [:time-range ::time-range]
    [:data-points :int]
@@ -195,7 +195,7 @@
 
 (mr/def ::time-series-stats
   "Statistics for time series charts."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/interestingness/chart/types.clj:198"}
    [:chart-type [:= :time-series]]
    [:series-count :int]
    [:series [:map-of :string ::time-series-series-stats]]
@@ -204,14 +204,14 @@
 
 (mr/def ::category-stat
   "Statistics for a single category."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/interestingness/chart/types.clj:207"}
    [:name :string]
    [:value number?]
    [:percentage {:optional true} number?]])
 
 (mr/def ::categorical-series-stats
   "Statistics for a single categorical series."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/interestingness/chart/types.clj:214"}
    [:summary [:maybe ::series-summary]]
    [:data-points :int]
    [:category-count :int]
@@ -223,7 +223,7 @@
 
 (mr/def ::categorical-stats
   "Statistics for categorical charts (bar, pie, etc.)."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/interestingness/chart/types.clj:226"}
    [:chart-type [:= :categorical]]
    [:series-count :int]
    [:series [:map-of :string ::categorical-series-stats]]
@@ -232,19 +232,19 @@
 
 (mr/def ::regression-stats
   "Linear regression statistics."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/interestingness/chart/types.clj:235"}
    [:slope number?]
    [:intercept number?]
    [:r-squared number?]])
 
 (mr/def ::scatter-series-stats
   "Statistics for a single scatter series."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/interestingness/chart/types.clj:242"}
    [:x-summary [:maybe ::series-summary]]
    [:y-summary [:maybe ::series-summary]]
    [:data-points :int]
    [:sampled-points {:optional true} [:maybe [:sequential [:sequential number?]]]]
-   [:correlation {:optional true} [:maybe [:map {:closed true}
+   [:correlation {:optional true} [:maybe [:map {:closed true, :probe/id "src/metabase/interestingness/chart/types.clj:247"}
                                            [:coefficient number?]
                                            [:strength ::correlation-strength]
                                            [:direction ::correlation-direction]]]]
@@ -255,7 +255,7 @@
 
 (mr/def ::scatter-stats
   "Statistics for scatter plots."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/interestingness/chart/types.clj:258"}
    [:chart-type [:= :scatter]]
    [:series-count :int]
    [:series [:map-of :string ::scatter-series-stats]]
@@ -263,16 +263,16 @@
 
 (mr/def ::histogram-summary
   "Weighted summary statistics estimated from binned histogram data."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/interestingness/chart/types.clj:266"}
    [:weighted-mean number?]
    [:weighted-std-dev number?]
    [:data-range number?]])
 
 (mr/def ::estimated-distribution-stats
   "Distribution statistics estimated from binned histogram data using weighted approximations."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/interestingness/chart/types.clj:273"}
    [:estimated-percentiles [:map-of :int number?]]
-   [:estimated-quartiles [:map {:closed true}
+   [:estimated-quartiles [:map {:closed true, :probe/id "src/metabase/interestingness/chart/types.clj:275"}
                           [:q1 number?]
                           [:median number?]
                           [:q3 number?]
@@ -282,7 +282,7 @@
 
 (mr/def ::histogram-structure
   "Structural properties of histogram bin distribution."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/interestingness/chart/types.clj:285"}
    [:mode-bin [:maybe [:tuple number? number?]]]
    [:peak-count :int]
    [:concentration-top3 number?]
@@ -292,7 +292,7 @@
 
 (mr/def ::histogram-series-stats
   "Statistics for a single histogram series."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/interestingness/chart/types.clj:295"}
    [:estimated-summary ::histogram-summary]
    [:total-count :int]
    [:data-points :int]
@@ -304,7 +304,7 @@
 
 (mr/def ::histogram-stats
   "Statistics for histogram charts."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/interestingness/chart/types.clj:307"}
    [:chart-type [:= :histogram]]
    [:series-count :int]
    [:series [:map-of :string ::histogram-series-stats]]
@@ -312,7 +312,7 @@
 
 (mr/def ::unknown-stats
   "Fallback stats for chart types that don't have dedicated analysis (e.g. scalar)."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/interestingness/chart/types.clj:315"}
    [:chart-type [:= :unknown]]
    [:series-count :int]
    [:message :string]
@@ -331,7 +331,7 @@
 
 (mr/def ::generate-repr-context
   "Context map for generating chart statistics representation."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/interestingness/chart/types.clj:334"}
    [:stats ::chart-stats]
    [:title {:optional true} [:maybe :string]]
    [:display-type {:optional true} [:maybe :string]]

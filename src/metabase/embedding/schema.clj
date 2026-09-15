@@ -12,7 +12,7 @@
   "A EmbeddingTheme as selected from the app DB: every column of `:embedding_theme`."
   [:merge
    ::embedding-theme.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/embedding/schema.clj:15"}
     [:id         ms/PositiveInt]]])
 
 (mr/def ::embedding-theme.update

@@ -182,28 +182,28 @@
 (mr/def ::init-step
   "One step under `init:` in a plugin manifest."
   [:multi {:dispatch :step}
-   ["load-namespace"       [:map {:closed true} [:step [:= "load-namespace"]] [:namespace :string]]]
-   ["register-jdbc-driver" [:map {:closed true} [:step [:= "register-jdbc-driver"]] [:class :string]]]])
+   ["load-namespace"       [:map {:closed true, :probe/id "src/metabase/plugins/initialize.clj:185"} [:step [:= "load-namespace"]] [:namespace :string]]]
+   ["register-jdbc-driver" [:map {:closed true, :probe/id "src/metabase/plugins/initialize.clj:186"} [:step [:= "register-jdbc-driver"]] [:class :string]]]])
 
 (mr/def ::dependency
   "One entry under `dependencies:` in a plugin manifest."
   [:or
-   [:map {:closed true} [:class :string] [:message {:optional true} :string]]
-   [:map {:closed true} [:plugin :string]]
-   [:map {:closed true} [:env-var :string]]])
+   [:map {:closed true, :probe/id "src/metabase/plugins/initialize.clj:191"} [:class :string] [:message {:optional true} :string]]
+   [:map {:closed true, :probe/id "src/metabase/plugins/initialize.clj:192"} [:plugin :string]]
+   [:map {:closed true, :probe/id "src/metabase/plugins/initialize.clj:193"} [:env-var :string]]])
 
 (mr/def ::connection-property
   "One entry under `driver: connection-properties:` in a plugin manifest: a preset name, a full property map, a
   `merge:` override list, or a `group:` of properties."
   [:or
    :string
-   [:map {:closed true}
-    [:group [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/plugins/initialize.clj:200"}
+    [:group [:map {:closed true, :probe/id "src/metabase/plugins/initialize.clj:201"}
              [:container-style {:optional true} [:sequential :string]]
              [:fields [:sequential [:ref ::connection-property]]]]]]
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/plugins/initialize.clj:204"}
     [:merge [:sequential [:ref ::connection-property]]]]
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/plugins/initialize.clj:206"}
     [:name                 {:optional true} :string]
     [:display-name         {:optional true} :string]
     [:helper-text          {:optional true} :string]
@@ -218,7 +218,7 @@
 
 (mr/def ::driver-info
   "The `driver:` section of a plugin manifest."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/plugins/initialize.clj:221"}
    [:name                                         :string]
    [:display-name                                 {:optional true} :string]
    [:lazy-load                                    {:optional true} :boolean]
@@ -229,14 +229,14 @@
 
 (mr/def ::extra-info
   "The `extra:` section of a plugin manifest."
-  [:map {:closed true}
-   [:db-routing-info {:optional true} [:map {:closed true} [:text :string]]]])
+  [:map {:closed true, :probe/id "src/metabase/plugins/initialize.clj:232"}
+   [:db-routing-info {:optional true} [:map {:closed true, :probe/id "src/metabase/plugins/initialize.clj:233"} [:text :string]]]])
 
 (mr/def ::manifest
   "A parsed `metabase-plugin.yaml` manifest, as handed to [[register-plugin-with-info!]]."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/plugins/initialize.clj:237"}
    [:metabase-plugin-api-version {:optional true} :int]
-   [:info [:map {:closed true}
+   [:info [:map {:closed true, :probe/id "src/metabase/plugins/initialize.clj:239"}
            [:name        :string]
            [:version     :string]
            [:description {:optional true} :string]]]

@@ -121,12 +121,12 @@
        :ip_address           (request.current/ip-address request)})))
 
 (def ^:private sdk-info-row
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/analytics/sdk.clj:124"}
    [:user_id                     {:optional true} [:maybe :int]]
    [:model                       {:optional true} [:maybe [:or :keyword :string]]]
    [:model_id                    {:optional true} [:maybe :int]]
    [:timestamp                   {:optional true} [:maybe [:or ms/TemporalInstant :keyword]]]
-   [:metadata                    {:optional true} [:maybe [:map {:closed true}]]]
+   [:metadata                    {:optional true} [:maybe [:map {:closed true, :probe/id "src/metabase/analytics/sdk.clj:129"}]]]
    [:has_access                  {:optional true} [:maybe :boolean]]
    [:hash                        {:optional true} [:maybe [:or bytes? :string]]]
    [:started_at                  {:optional true} [:maybe ms/TemporalInstant]]
@@ -149,7 +149,7 @@
    [:parameterized               {:optional true} [:maybe :boolean]]
    [:transform_id                {:optional true} [:maybe :int]]
    [:lens_id                     {:optional true} [:maybe :string]]
-   [:lens_params                 {:optional true} [:maybe [:map {:closed true} [:join_step {:optional true} [:maybe :int]]]]]
+   [:lens_params                 {:optional true} [:maybe [:map {:closed true, :probe/id "src/metabase/analytics/sdk.clj:152"} [:join_step {:optional true} [:maybe :int]]]]]
    [:auth_method                 {:optional true} [:maybe [:or :keyword :string]]]
    [:tenant_id                   {:optional true} [:maybe :int]]
    [:is_impersonated             {:optional true} [:maybe :boolean]]

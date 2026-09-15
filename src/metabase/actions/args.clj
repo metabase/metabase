@@ -52,7 +52,7 @@
 ;;; Anything else required depends on the action type.
 
 (mr/def ::common
-  [:map {:closed true} [:database ::lib.schema.id/database]])
+  [:map {:closed true, :probe/id "src/metabase/actions/args.clj:55"} [:database ::lib.schema.id/database]])
 
 (mr/def ::row
   [:map-of :string [:ref ::lib.schema.parameter/parameter.value]])
@@ -62,10 +62,10 @@
 ;;;    {:database <id>, :query {:source-table <id>}}
 
 (mr/def ::query
-  [:map {:closed true} [:source-table ::lib.schema.id/table]])
+  [:map {:closed true, :probe/id "src/metabase/actions/args.clj:65"} [:source-table ::lib.schema.id/table]])
 
 (mr/def ::query.filtered
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/actions/args.clj:68"}
    [:source-table ::lib.schema.id/table]
    [:filter :metabase.legacy-mbql.schema/Filter]])
 
@@ -182,7 +182,7 @@
    :row      (update-keys (or row row-arg) u/qualified-name)})
 
 (mr/def ::implicit
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/actions/args.clj:185"}
    [:database   ::lib.schema.id/database]
    [:type       [:= :query]]
    [:query      [:or ::query ::query.filtered]]
@@ -190,14 +190,14 @@
    [:update-row {:optional true} ::row]])
 
 (mr/def ::table.insert
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/actions/args.clj:193"}
    [:database ::lib.schema.id/database]
    [:table-id ::lib.schema.id/table]
    [:values   ::row]])
 
 (mr/def ::data-grid.row.input
   "A data-grid row action input before its normalization resolves the database."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/actions/args.clj:200"}
    [:table-id ::lib.schema.id/table]
    [:row      ::row]])
 

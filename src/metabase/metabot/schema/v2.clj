@@ -63,25 +63,25 @@
 (mr/def ::anthropic-provider-metadata
   "Anthropic-specific data carried on a reasoning part: a redacted-thinking block's opaque
   payload, or a signed-thinking block's signature."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/schema/v2.clj:66"}
    [:redactedData {:optional true} [:maybe :string]]
    [:signature    {:optional true} [:maybe :string]]])
 
 (mr/def ::openai-provider-metadata
   "OpenAI-specific data carried on a reasoning part, needed to replay it across tool-call
   round-trips despite `store:false`."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/schema/v2.clj:73"}
    [:encryptedContent {:optional true} [:maybe :string]]
    [:itemId           {:optional true} [:maybe :string]]])
 
 (mr/def ::google-provider-metadata
   "Google-specific data carried on a tool-input part: the thought signature Gemini 3.x requires
   when a functionCall is replayed in the current turn."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/schema/v2.clj:80"}
    [:thoughtSignature {:optional true} [:maybe :string]]])
 
 (mr/def ::provider-metadata
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/schema/v2.clj:84"}
    [:anthropic {:optional true} [:maybe ::anthropic-provider-metadata]]
    [:openai    {:optional true} [:maybe ::openai-provider-metadata]]
    [:google    {:optional true} [:maybe ::google-provider-metadata]]])
@@ -94,7 +94,7 @@
 (mr/def ::tool-payload
   "A metabot tool's `:structured-output`/`:structured_output`, `:resources`, or `:data-parts` data: a
   closed bag of the field names metabot tools actually set."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/schema/v2.clj:97"}
    [:result-type    {:optional true} [:maybe [:or :string :keyword]]]
    [:type           {:optional true} [:maybe [:or :string :keyword]]]
    [:list-type      {:optional true} [:maybe [:or :string :keyword]]]
@@ -167,7 +167,7 @@
   "The `persisted-structured-output-keys` subset of a tool's `:structured-output`/
   `:structured_output`, as stored on a v2 tool part's `:output`
   (see `metabase.metabot.persistence/tool-result->storable-output`)."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/metabot/schema/v2.clj:170"}
    [:query-id      {:optional true} [:maybe :string]]
    [:query-content {:optional true} [:maybe :string]]
    [:query         {:optional true} [:maybe :metabase.metabot.schema/query]]
@@ -184,7 +184,7 @@
    number?
    :boolean
    :nil
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/metabot/schema/v2.clj:187"}
     [:output            {:optional true} [:maybe :string]]
     [:structured_output {:optional true} [:maybe ::structured-output]]]])
 
@@ -321,7 +321,7 @@
 
 (mr/def ::tool-ui-part
   [:multi {:dispatch :state}
-   ["input-streaming"    [:map {:closed true}
+   ["input-streaming"    [:map {:closed true, :probe/id "src/metabase/metabot/schema/v2.clj:324"}
                           [:type [:fn tool-type?]]
                           [:toolCallId :string]
                           [:state [:= "input-streaming"]]
@@ -330,7 +330,7 @@
                           [:output {:optional true} ::never]
                           [:errorText {:optional true} ::never]
                           [:approval {:optional true} ::never]]]
-   ["input-available"    [:map {:closed true}
+   ["input-available"    [:map {:closed true, :probe/id "src/metabase/metabot/schema/v2.clj:333"}
                           [:type [:fn tool-type?]]
                           [:toolCallId :string]
                           [:state [:= "input-available"]]
@@ -340,7 +340,7 @@
                           [:errorText {:optional true} ::never]
                           [:callProviderMetadata {:optional true} ::provider-metadata]
                           [:approval {:optional true} ::never]]]
-   ["approval-requested" [:map {:closed true}
+   ["approval-requested" [:map {:closed true, :probe/id "src/metabase/metabot/schema/v2.clj:343"}
                           [:type [:fn tool-type?]]
                           [:toolCallId :string]
                           [:state [:= "approval-requested"]]
@@ -349,11 +349,11 @@
                           [:output {:optional true} ::never]
                           [:errorText {:optional true} ::never]
                           [:callProviderMetadata {:optional true} ::provider-metadata]
-                          [:approval [:map {:closed true}
+                          [:approval [:map {:closed true, :probe/id "src/metabase/metabot/schema/v2.clj:352"}
                                       [:id :string]
                                       [:approved {:optional true} ::never]
                                       [:reason {:optional true} ::never]]]]]
-   ["approval-responded" [:map {:closed true}
+   ["approval-responded" [:map {:closed true, :probe/id "src/metabase/metabot/schema/v2.clj:356"}
                           [:type [:fn tool-type?]]
                           [:toolCallId :string]
                           [:state [:= "approval-responded"]]
@@ -362,11 +362,11 @@
                           [:output {:optional true} ::never]
                           [:errorText {:optional true} ::never]
                           [:callProviderMetadata {:optional true} ::provider-metadata]
-                          [:approval [:map {:closed true}
+                          [:approval [:map {:closed true, :probe/id "src/metabase/metabot/schema/v2.clj:365"}
                                       [:id :string]
                                       [:approved :boolean]
                                       [:reason {:optional true} :string]]]]]
-   ["output-available"   [:map {:closed true}
+   ["output-available"   [:map {:closed true, :probe/id "src/metabase/metabot/schema/v2.clj:369"}
                           [:type [:fn tool-type?]]
                           [:toolCallId :string]
                           [:state [:= "output-available"]]
@@ -376,11 +376,11 @@
                           [:errorText {:optional true} ::never]
                           [:callProviderMetadata {:optional true} ::provider-metadata]
                           [:preliminary {:optional true} :boolean]
-                          [:approval {:optional true} [:map {:closed true}
+                          [:approval {:optional true} [:map {:closed true, :probe/id "src/metabase/metabot/schema/v2.clj:379"}
                                                        [:id :string]
                                                        [:approved [:= true]]
                                                        [:reason {:optional true} :string]]]]]
-   ["output-error"       [:map {:closed true}
+   ["output-error"       [:map {:closed true, :probe/id "src/metabase/metabot/schema/v2.clj:383"}
                           [:type [:fn tool-type?]]
                           [:toolCallId :string]
                           [:state [:= "output-error"]]
@@ -390,11 +390,11 @@
                           [:output {:optional true} ::never]
                           [:errorText :string]
                           [:callProviderMetadata {:optional true} ::provider-metadata]
-                          [:approval {:optional true} [:map {:closed true}
+                          [:approval {:optional true} [:map {:closed true, :probe/id "src/metabase/metabot/schema/v2.clj:393"}
                                                        [:id :string]
                                                        [:approved [:= true]]
                                                        [:reason {:optional true} :string]]]]]
-   ["output-denied"      [:map {:closed true}
+   ["output-denied"      [:map {:closed true, :probe/id "src/metabase/metabot/schema/v2.clj:397"}
                           [:type [:fn tool-type?]]
                           [:toolCallId :string]
                           [:state [:= "output-denied"]]
@@ -403,14 +403,14 @@
                           [:output {:optional true} ::never]
                           [:errorText {:optional true} ::never]
                           [:callProviderMetadata {:optional true} ::provider-metadata]
-                          [:approval [:map {:closed true}
+                          [:approval [:map {:closed true, :probe/id "src/metabase/metabot/schema/v2.clj:406"}
                                       [:id :string]
                                       [:approved [:= false]]
                                       [:reason {:optional true} :string]]]]]])
 
 (mr/def ::dynamic-tool-ui-part
   [:multi {:dispatch :state}
-   ["input-streaming"    [:map {:closed true}
+   ["input-streaming"    [:map {:closed true, :probe/id "src/metabase/metabot/schema/v2.clj:413"}
                           [:type [:= "dynamic-tool"]]
                           [:toolName :string]
                           [:toolCallId :string]
@@ -420,7 +420,7 @@
                           [:output {:optional true} ::never]
                           [:errorText {:optional true} ::never]
                           [:approval {:optional true} ::never]]]
-   ["input-available"    [:map {:closed true}
+   ["input-available"    [:map {:closed true, :probe/id "src/metabase/metabot/schema/v2.clj:423"}
                           [:type [:= "dynamic-tool"]]
                           [:toolName :string]
                           [:toolCallId :string]
@@ -431,7 +431,7 @@
                           [:errorText {:optional true} ::never]
                           [:callProviderMetadata {:optional true} ::provider-metadata]
                           [:approval {:optional true} ::never]]]
-   ["approval-requested" [:map {:closed true}
+   ["approval-requested" [:map {:closed true, :probe/id "src/metabase/metabot/schema/v2.clj:434"}
                           [:type [:= "dynamic-tool"]]
                           [:toolName :string]
                           [:toolCallId :string]
@@ -441,11 +441,11 @@
                           [:output {:optional true} ::never]
                           [:errorText {:optional true} ::never]
                           [:callProviderMetadata {:optional true} ::provider-metadata]
-                          [:approval [:map {:closed true}
+                          [:approval [:map {:closed true, :probe/id "src/metabase/metabot/schema/v2.clj:444"}
                                       [:id :string]
                                       [:approved {:optional true} ::never]
                                       [:reason {:optional true} ::never]]]]]
-   ["approval-responded" [:map {:closed true}
+   ["approval-responded" [:map {:closed true, :probe/id "src/metabase/metabot/schema/v2.clj:448"}
                           [:type [:= "dynamic-tool"]]
                           [:toolName :string]
                           [:toolCallId :string]
@@ -455,11 +455,11 @@
                           [:output {:optional true} ::never]
                           [:errorText {:optional true} ::never]
                           [:callProviderMetadata {:optional true} ::provider-metadata]
-                          [:approval [:map {:closed true}
+                          [:approval [:map {:closed true, :probe/id "src/metabase/metabot/schema/v2.clj:458"}
                                       [:id :string]
                                       [:approved :boolean]
                                       [:reason {:optional true} :string]]]]]
-   ["output-available"   [:map {:closed true}
+   ["output-available"   [:map {:closed true, :probe/id "src/metabase/metabot/schema/v2.clj:462"}
                           [:type [:= "dynamic-tool"]]
                           [:toolName :string]
                           [:toolCallId :string]
@@ -470,11 +470,11 @@
                           [:errorText {:optional true} ::never]
                           [:callProviderMetadata {:optional true} ::provider-metadata]
                           [:preliminary {:optional true} :boolean]
-                          [:approval {:optional true} [:map {:closed true}
+                          [:approval {:optional true} [:map {:closed true, :probe/id "src/metabase/metabot/schema/v2.clj:473"}
                                                        [:id :string]
                                                        [:approved [:= true]]
                                                        [:reason {:optional true} :string]]]]]
-   ["output-error"       [:map {:closed true}
+   ["output-error"       [:map {:closed true, :probe/id "src/metabase/metabot/schema/v2.clj:477"}
                           [:type [:= "dynamic-tool"]]
                           [:toolName :string]
                           [:toolCallId :string]
@@ -485,11 +485,11 @@
                           [:output {:optional true} ::never]
                           [:errorText :string]
                           [:callProviderMetadata {:optional true} ::provider-metadata]
-                          [:approval {:optional true} [:map {:closed true}
+                          [:approval {:optional true} [:map {:closed true, :probe/id "src/metabase/metabot/schema/v2.clj:488"}
                                                        [:id :string]
                                                        [:approved [:= true]]
                                                        [:reason {:optional true} :string]]]]]
-   ["output-denied"      [:map {:closed true}
+   ["output-denied"      [:map {:closed true, :probe/id "src/metabase/metabot/schema/v2.clj:492"}
                           [:type [:= "dynamic-tool"]]
                           [:toolName :string]
                           [:toolCallId :string]
@@ -499,7 +499,7 @@
                           [:output {:optional true} ::never]
                           [:errorText {:optional true} ::never]
                           [:callProviderMetadata {:optional true} ::provider-metadata]
-                          [:approval [:map {:closed true}
+                          [:approval [:map {:closed true, :probe/id "src/metabase/metabot/schema/v2.clj:502"}
                                       [:id :string]
                                       [:approved [:= false]]
                                       [:reason {:optional true} :string]]]]]])
@@ -512,40 +512,40 @@
                            (tool-type? t)       ::tool
                            (data-type? t)       ::data
                            :else                t)))}
-   ["text"            [:map {:closed true}
+   ["text"            [:map {:closed true, :probe/id "src/metabase/metabot/schema/v2.clj:515"}
                        [:type [:= "text"]]
                        [:text :string]
                        [:state {:optional true} [:enum "streaming" "done"]]
                        [:providerMetadata {:optional true} ::provider-metadata]]]
-   ["reasoning"       [:map {:closed true}
+   ["reasoning"       [:map {:closed true, :probe/id "src/metabase/metabot/schema/v2.clj:520"}
                        [:type [:= "reasoning"]]
                        [:text :string]
                        [:state {:optional true} [:enum "streaming" "done"]]
                        [:providerMetadata {:optional true} ::provider-metadata]]]
-   ["source-url"      [:map {:closed true}
+   ["source-url"      [:map {:closed true, :probe/id "src/metabase/metabot/schema/v2.clj:525"}
                        [:type [:= "source-url"]]
                        [:sourceId :string]
                        [:url :string]
                        [:title {:optional true} :string]
                        [:providerMetadata {:optional true} ::provider-metadata]]]
-   ["source-document" [:map {:closed true}
+   ["source-document" [:map {:closed true, :probe/id "src/metabase/metabot/schema/v2.clj:531"}
                        [:type [:= "source-document"]]
                        [:sourceId :string]
                        [:mediaType :string]
                        [:title :string]
                        [:filename {:optional true} :string]
                        [:providerMetadata {:optional true} ::provider-metadata]]]
-   ["file"            [:map {:closed true}
+   ["file"            [:map {:closed true, :probe/id "src/metabase/metabot/schema/v2.clj:538"}
                        [:type [:= "file"]]
                        [:mediaType :string]
                        [:filename {:optional true} :string]
                        [:url :string]
                        [:providerMetadata {:optional true} ::provider-metadata]]]
-   ["step-start"      [:map {:closed true}
+   ["step-start"      [:map {:closed true, :probe/id "src/metabase/metabot/schema/v2.clj:544"}
                        [:type [:= "step-start"]]]]
    ["dynamic-tool"    ::dynamic-tool-ui-part]
    [::tool            ::tool-ui-part]
-   [::data            [:map {:closed true}
+   [::data            [:map {:closed true, :probe/id "src/metabase/metabot/schema/v2.clj:548"}
                        [:type [:fn data-type?]]
                        [:id {:optional true} :string]
                        [:data {:optional true} [:maybe ::tool-io]]]]])

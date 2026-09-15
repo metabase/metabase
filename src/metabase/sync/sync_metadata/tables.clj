@@ -95,7 +95,7 @@
   "The table map `create-table!`/`create-or-reactivate-table!`/`cruft-dependent-cols` accept: a
   `DatabaseMetadataTable`-ish shape (`:schema` optional, unlike [[i/DatabaseMetadataTable]], since callers can build
   one with just a `:name`), plus the extra keys `create-table!` reads off it before insertion."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/sync/sync_metadata/tables.clj:98"}
    [:name                                     ::lib.schema.common/non-blank-string]
    [:schema                   {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:is_writable              {:optional true} [:maybe :boolean]]

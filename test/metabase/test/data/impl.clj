@@ -217,7 +217,7 @@
 
 (mu/defn database-source-dataset-name :- :string
   "Get the name of the test dataset this Database was created from, e.g. `test-data`."
-  [database :- [:map {:closed true} [:settings [:map {:closed true} [:database-source-dataset-name :string]]]]]
+  [database :- [:map {:closed true, :probe/id "test/metabase/test/data/impl.clj:220"} [:settings [:map {:closed true, :probe/id "test/metabase/test/data/impl.clj:220#1"} [:database-source-dataset-name :string]]]]]
   (get-in database [:settings :database-source-dataset-name]))
 
 (mu/defn the-table-id :- ::lib.schema.id/table

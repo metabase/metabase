@@ -47,7 +47,7 @@
   *  A vector of maps like the one above (for multiple values)
 
   * Alias is optional and added by #61118 (not sure what it does, look at PR for more info)"
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib/parameters/parse/types.cljc:50"}
    [:lib/type [:= ::field-filter]]
    [:field    ::lib.schema.metadata/column]
    [:value    ::field-filter.value]
@@ -75,7 +75,7 @@
   [:or ::no-value :string])
 
 (mr/def ::temporal-unit
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib/parameters/parse/types.cljc:78"}
    [:lib/type [:= ::temporal-unit]]
    [:field    ::lib.schema.metadata/column]
    [:value    ::temporal-unit.value]
@@ -107,7 +107,7 @@
 
   `parameters` are positional parameters for a parameterized native query e.g. the JDBC parameters corresponding to
   `?` placeholders"
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib/parameters/parse/types.cljc:110"}
    [:lib/type   [:= ::referenced-card-query]]
    [:card-id    ::lib.schema.id/card]
    [:query      :string]
@@ -137,7 +137,7 @@
    * `:field-id` - the ID of the field to filter on
    * `:op`       - the comparison operator, one of :>, :>=, :<, :<=, :=, :!=
    * `:value`    - the value to compare against"
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib/parameters/parse/types.cljc:140"}
    [:field-id ::lib.schema.id/field]
    [:op       [:enum :> :>= :< :<= := :!=]]
    [:value    ::lib.schema.parameter/parameter.value]])
@@ -157,7 +157,7 @@
   \"table\" AS \"alias\" or (SELECT ...) AS \"alias\".
 
   Resolved from the template tag's `:emit-alias` boolean and `:name` during parsing."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib/parameters/parse/types.cljc:160"}
    [:lib/type       [:= ::referenced-table-query]]
    [:table-id       ::lib.schema.id/table]
    [:source-filters {:optional true} [:maybe [:sequential ::referenced-table-query.source-filter]]]
@@ -190,7 +190,7 @@
   `snippet-id` is the integer ID of the row in the application DB from where the snippet content is loaded.
 
   `content` is the raw query snippet which will be replaced, verbatim, for this template tag."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib/parameters/parse/types.cljc:193"}
    [:lib/type   [:= ::referenced-query-snippet]]
    [:snippet-id ::lib.schema.id/snippet]
    [:content    :string]])
@@ -216,7 +216,7 @@
 ;; TODO (Cam 2026-05-14) -- rename to `::datetime`
 (mr/def ::date
   "As in a literal date, defined by date-string `s`."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib/parameters/parse/types.cljc:219"}
    [:lib/type [:= ::date]]
    [:s        ::date.value]])
 
@@ -231,7 +231,7 @@
   (= (:lib/type x) ::date))
 
 (mr/def ::date-range
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib/parameters/parse/types.cljc:234"}
    [:lib/type [:= ::date-range]]
    [:start    [:maybe ::lib.schema.common/non-blank-string]]
    [:end      [:maybe ::lib.schema.common/non-blank-string]]])
@@ -248,7 +248,7 @@
   (= (:lib/type x) ::date-range))
 
 (mr/def ::date-time-range
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib/parameters/parse/types.cljc:251"}
    [:lib/type [:= ::date-time-range]]
    [:start    [:maybe ::lib.schema.common/non-blank-string]]
    [:end      [:maybe ::lib.schema.common/non-blank-string]]])
@@ -265,7 +265,7 @@
   (= (:lib/type x) ::date-time-range))
 
 (mr/def ::param
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib/parameters/parse/types.cljc:268"}
    [:lib/type [:= ::param]]
    [:k        :string]])
 
@@ -281,14 +281,14 @@
   (= (:lib/type x) ::param))
 
 (mr/def ::function-param
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib/parameters/parse/types.cljc:284"}
    [:lib/type      [:= ::function-param]]
    [:function-name :string]
    [:args          [:sequential [:ref :metabase.lib.parameters.parse/parsed-token]]]])
 
 (mu/defn function-param :- ::function-param
   "Create a new parsed `function-param` from map `m`."
-  [m :- [:map {:closed true}
+  [m :- [:map {:closed true, :probe/id "src/metabase/lib/parameters/parse/types.cljc:291"}
          [:function-name :string]
          [:args          [:sequential [:ref :metabase.lib.parameters.parse/parsed-token]]]]]
   (assoc m :lib/type ::function-param))
@@ -299,7 +299,7 @@
   (= (:lib/type x) ::function-param))
 
 (mr/def ::optional
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib/parameters/parse/types.cljc:302"}
    [:lib/type [:= ::optional]]
    [:args     [:sequential [:ref :metabase.lib.parameters.parse/parsed-token]]]])
 

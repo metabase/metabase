@@ -21,7 +21,7 @@
   "A Undo as selected from the app DB: every column of `:data_edit_undo_chain`."
   [:merge
    ::undo.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/action_v2/schema.clj:24"}
     [:id         ms/PositiveInt]]])
 
 (mr/def ::action-mapping
@@ -37,9 +37,9 @@
   ;; - action expressions (e.g., unsaved data app actions. might not need these with auto save)
   ;; - dashboard buttons (unless we deprecate them instead)
   [:or
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/action_v2/schema.clj:40"}
     [:model-action-id ms/PositiveInt]]
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/action_v2/schema.clj:42"}
     [:action-kw :keyword]
     [:mapping [:maybe ::action-mapping]]]])
 

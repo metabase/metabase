@@ -668,24 +668,24 @@
   "The `:event_info` of an `:event/user-invited` system event: the invited User instance, plus the extra keys
   `create-and-invite-user!` stamps on it. `:object` is typed by instance, not by shape, since the extra keys are
   `assoc`ed onto the real Toucan row rather than replacing it."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/notification/models.clj:671"}
    [:object  [:merge
               ::users.schema/user
-              [:map {:closed true}
+              [:map {:closed true, :probe/id "src/metabase/notification/models.clj:674"}
                [:is_from_setup {:optional true} [:maybe :boolean]]
                [:invite_method {:optional true} [:maybe :string]]
                [:invite_target {:optional true} [:maybe users.schema/InviteTarget]]
                [:sso_source    {:optional true} [:maybe [:or :keyword :string]]]]]]
    [:details {:optional true}
-    [:map {:closed true}
-     [:invitor [:map {:closed true}
+    [:map {:closed true, :probe/id "src/metabase/notification/models.clj:680"}
+     [:invitor [:map {:closed true, :probe/id "src/metabase/notification/models.clj:681"}
                 [:email                       ms/Email]
                 [:first_name {:optional true} [:maybe :string]]]]]]])
 
 (mr/def ::event-info.security-advisory-match
   "The `:event_info` of an `:event/security-advisory-match` system event."
-  [:map {:closed true}
-   [:object [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/notification/models.clj:687"}
+   [:object [:map {:closed true, :probe/id "src/metabase/notification/models.clj:688"}
              [:advisory_id       [:string {:min 1}]]
              [:severity          [:or :keyword :string]]
              [:title             :string]
@@ -693,19 +693,19 @@
              [:match_status      [:or :keyword :string]]
              [:advisory_url      [:maybe :string]]
              [:remediation       :string]
-             [:affected_versions [:sequential [:map {:closed true}
+             [:affected_versions [:sequential [:map {:closed true, :probe/id "src/metabase/notification/models.clj:696"}
                                                [:min   [:re #"^\d+(?:\.\d+)*$"]]
                                                [:fixed [:re #"^\d+(?:\.\d+)*$"]]]]]]]])
 
 (mr/def ::event-info.notification-create
   "The `:event_info` of an `:event/notification-create` system event."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/notification/models.clj:702"}
    [:object  [:ref ::FullyHydratedNotification]]
    [:user-id [:maybe ms/PositiveInt]]])
 
 (mr/def ::event-info.comment-created
   "The `:event_info` of an `:event/comment-created` system event."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/notification/models.clj:708"}
    [:entity_type    :string]
    [:entity_title   [:maybe :string]]
    [:comment_href   :string]
@@ -715,7 +715,7 @@
    [:comment        [:maybe :string]]
    [:parent_author  [:maybe :string]]
    [:parent_comment [:maybe :string]]
-   [:style          [:map {:closed true}
+   [:style          [:map {:closed true, :probe/id "src/metabase/notification/models.clj:718"}
                      [:color_text_dark   :string]
                      [:color_text_light  :string]
                      [:color_text_medium :string]]]
@@ -723,7 +723,7 @@
 
 (mr/def ::event-info.support-access-grant-created
   "The `:event_info` of an `:event/support-access-grant-created` system event."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/notification/models.clj:726"}
    [:support_email      [:maybe ms/Email]]
    [:ticket_number      [:maybe :string]]
    [:duration_minutes   :int]
@@ -733,23 +733,23 @@
 
 (mr/def ::event-info.transform-failed
   "The `:event_info` of an `:event/transform-failed` system event."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/notification/models.clj:736"}
    [:email         ms/Email]
    [:job_name      [:maybe :string]]
    [:job_href      :string]
    [:failure_count :int]
    [:skipped_count :int]
-   [:failures      [:sequential [:map {:closed true}
+   [:failures      [:sequential [:map {:closed true, :probe/id "src/metabase/notification/models.clj:742"}
                                  [:transform_name [:maybe :string]]
                                  [:transform_href :string]
                                  [:message        [:maybe :string]]]]]])
 
 (mr/def ::event-info.transform-failure-digest
   "The `:event_info` of an `:event/transform-failure-digest` system event."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/notification/models.clj:749"}
    [:job_count     :int]
    [:failure_count :int]
-   [:jobs          [:sequential [:map {:closed true}
+   [:jobs          [:sequential [:map {:closed true, :probe/id "src/metabase/notification/models.clj:752"}
                                  [:job_name      [:maybe :string]]
                                  [:job_href      :string]
                                  [:failure_count :int]
@@ -761,7 +761,7 @@
   to avoid a dependency cycle with the module that publishes each event)."
   {:event/user-invited                 ::event-info.user-invited
    :event/notification-create          ::event-info.notification-create
-   :event/slack-token-invalid          [:map {:closed true}]
+   :event/slack-token-invalid          [:map {:closed true, :probe/id "src/metabase/notification/models.clj:764"}]
    :event/comment-created              ::event-info.comment-created
    :event/support-access-grant-created ::event-info.support-access-grant-created
    :event/transform-failed             ::event-info.transform-failed
@@ -782,15 +782,15 @@
   (into [:multi {:dispatch :event_topic}]
         (concat
          (for [[topic info-schema] event-topic->event-info-schema]
-           [topic [:map {:closed true}
+           [topic [:map {:closed true, :probe/id "src/metabase/notification/models.clj:785"}
                    [:event_topic   [:= topic]]
                    [:disable_links {:optional true} [:maybe :boolean]]
                    [:event_info    {:optional true} [:maybe info-schema]]]])
          [[::mc/default
-           [:map {:closed true}
+           [:map {:closed true, :probe/id "src/metabase/notification/models.clj:790"}
             [:event_topic   [:fn #(= "event" (-> % keyword namespace))]]
             [:disable_links {:optional true} [:maybe :boolean]]
-            [:event_info    {:optional true} [:maybe [:map {:closed true}]]]]]])))
+            [:event_info    {:optional true} [:maybe [:map {:closed true, :probe/id "src/metabase/notification/models.clj:793"}]]]]]])))
 
 (defn hydrated-notification-schema
   "Schema for a notification hydrated with its creator, subscriptions and handlers, where each handler matches
@@ -841,7 +841,7 @@
   `metabase.notification.events.notification` assocs on, or the `:triggering_subscription`
   `metabase.notification.task.send` assocs on."
   (mut/merge ::notification.schema/notification
-             [:map {:closed true}
+             [:map {:closed true, :probe/id "src/metabase/notification/models.clj:844"}
               [:payload                 {:optional true} [:maybe ::SystemEventPayload]]
               [:triggering_subscription {:optional true} [:maybe ::notification.schema/notification-subscription]]]))
 
@@ -851,7 +851,7 @@
   (hydrated-notification-schema
    [:merge
     ::CreateNotificationHandlerParams
-    [:map {:closed true}
+    [:map {:closed true, :probe/id "src/metabase/notification/models.clj:854"}
      [:template   {:optional true} [:maybe ::models.channel/ChannelTemplateUserProvided]]
      [:channel    {:optional true} [:maybe ::models.channel/Channel]]
      [:recipients {:optional true} [:sequential ::CreateNotificationRecipientParams]]]]

@@ -10,7 +10,7 @@
   "A Dimension as selected from the app DB: every column of `:dimension`."
   [:merge
    ::dimension.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/warehouse_schema/schema.clj:13"}
     [:id                      ms/PositiveInt]
     [:human_readable_field    {:optional true} [:maybe [:ref ::field]]]]])
 
@@ -33,7 +33,7 @@
   "A Field as selected from the app DB: every column of `:metabase_field`."
   [:merge
    ::field.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/warehouse_schema/schema.clj:36"}
     [:id                         ::lib.schema.id/field]
     [:unique_field_helper        {:optional true} [:maybe :int]]
     [:dimensions                 {:optional true} [:maybe [:sequential [:ref ::dimension]]]]
@@ -91,7 +91,7 @@
   "A FieldUserSettings as selected from the app DB: every column of `:metabase_field_user_settings`."
   [:merge
    ::field-user-settings.update
-   [:map {:closed true}]])
+   [:map {:closed true, :probe/id "src/metabase/warehouse_schema/schema.clj:94"}]])
 
 (mr/def ::field-user-settings.update
   "What an update (or insert) of a FieldUserSettings accepts: every column of `:metabase_field_user_settings` except `id`, all optional."
@@ -122,7 +122,7 @@
   "A FieldValues as selected from the app DB: every column of `:metabase_fieldvalues`."
   [:merge
    ::field-values.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/warehouse_schema/schema.clj:125"}
     [:id                    ms/PositiveInt]]])
 
 (mr/def ::field-values.update
@@ -142,7 +142,7 @@
   "A TableUserSettings as selected from the app DB: every column of `:metabase_table_user_settings`."
   [:merge
    ::table-user-settings.update
-   [:map {:closed true}]])
+   [:map {:closed true, :probe/id "src/metabase/warehouse_schema/schema.clj:145"}]])
 
 (mr/def ::table-user-settings.update
   "What an update (or insert) of a TableUserSettings accepts: every column of
@@ -177,13 +177,13 @@
   "A Table as selected from the app DB: every column of `:metabase_table`."
   [:merge
    ::table.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/warehouse_schema/schema.clj:180"}
     [:id                      ::lib.schema.id/table]
     [:unique_table_helper     {:optional true} [:maybe :string]]
     [:db                      {:optional true} [:maybe [:ref :metabase.warehouses.schema/database]]]
     [:fields                  {:optional true} [:maybe [:sequential ::field]]]
     [:transform               {:optional true} [:maybe [:ref :metabase.transforms.schema/transform]]]
-    [:owner                   {:optional true} [:maybe [:map {:closed true}
+    [:owner                   {:optional true} [:maybe [:map {:closed true, :probe/id "src/metabase/warehouse_schema/schema.clj:186"}
                                                         [:id          {:optional true} ::lib.schema.id/user]
                                                         [:email       {:optional true} :string]
                                                         [:first_name  {:optional true} [:maybe :string]]

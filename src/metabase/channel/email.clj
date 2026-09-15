@@ -123,7 +123,7 @@
 
 (def ^:private EmailAttachment
   "A postal attachment: an inline HTML body part, an inline image/logo attachment, or a CSV/XLS result attachment."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/channel/email.clj:126"}
    [:type         {:optional true} [:maybe [:or :string :keyword]]]
    [:content      {:optional true} [:maybe [:or :string (ms/InstanceOfClass java.net.URL) (ms/InstanceOfClass java.io.File)]]]
    [:content-id   {:optional true} [:maybe :string]]

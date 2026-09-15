@@ -120,7 +120,7 @@
 
 (def ^:private TableRef
   "A table reference: table, name, schema, and owning database, keyed for lookups."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/transforms_inspector/context.clj:123"}
    [:table-id ::lib.schema.id/table]
    [:table-name :string]
    [:schema [:maybe :string]]
@@ -222,7 +222,7 @@
   [:or [:tuple h2x/Identifier] [:tuple h2x/Identifier :keyword]])
 
 (mr/def ::join-structure-entry
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/transforms_inspector/context.clj:225"}
    [:strategy       {:optional true} [:maybe [:or :keyword :string]]]
    [:alias          {:optional true} [:maybe :string]]
    [:source-table   {:optional true} [:maybe ::lib.schema.id/table]]
@@ -234,13 +234,13 @@
                                                [:sequential [:or [:= :and] [:ref ::honeysql-condition]]]]]]]])
 
 (def ^:private QueryInfo
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/transforms_inspector/context.clj:237"}
    [:preprocessed-query {:optional true} [:maybe ::lib.schema/query]]
    [:driver             {:optional true} [:maybe :keyword]]
    [:from-table-id      {:optional true} [:maybe ::lib.schema.id/table]]
    [:from-table         {:optional true} [:maybe ::honeysql-table-ref]]
    [:join-structure     {:optional true} [:maybe [:sequential ::join-structure-entry]]]
-   [:visited-fields     {:optional true} [:maybe [:map {:closed true} [:all {:optional true} [:maybe [:set ::lib.schema.id/field]]]]]]])
+   [:visited-fields     {:optional true} [:maybe [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/transforms_inspector/context.clj:243"} [:all {:optional true} [:maybe [:set ::lib.schema.id/field]]]]]]])
 
 (mu/defn- match-columns :- [:maybe [:sequential ::column-match]]
   "Find columns that relate between input and output tables.

@@ -17,7 +17,7 @@
   "A ModelIndex as selected from the app DB: every column of `:model_index`."
   [:merge
    ::model-index.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/indexed_entities/schema.clj:20"}
     [:id         ms/PositiveInt]]])
 
 (mr/def ::model-index.update
@@ -37,7 +37,7 @@
   "A ModelIndexValue as selected from the app DB: every column of `:model_index_value`."
   [:merge
    ::model-index-value.update
-   [:map {:closed true}]])
+   [:map {:closed true, :probe/id "src/metabase/indexed_entities/schema.clj:40"}]])
 
 (mr/def ::model-index-value.update
   "What an update (or insert) of a ModelIndexValue accepts: every column of `:model_index_value` except `id`, all optional."

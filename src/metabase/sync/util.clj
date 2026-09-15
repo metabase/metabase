@@ -531,13 +531,13 @@
 
 (def ^:private TimedSyncMetadata
   "Metadata common to both sync steps and an entire sync/analyze operation run"
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/sync/util.clj:534"}
    [:start-time                  (ms/InstanceOfClass Temporal)]
    [:end-time   {:optional true} (ms/InstanceOfClass Temporal)]])
 
 (def ^:private StepStats
   "Step-specific stats a `sync-fn` may add to its `StepRunMetadata`, across all of the sync/analyze steps."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/sync/util.clj:540"}
    [:added-indexes          {:optional true} :int]
    [:created                {:optional true} :int]
    [:deleted                {:optional true} :int]
@@ -608,7 +608,7 @@
   "Defines a step. `:sync-fn` runs the step, returns a map that contains step specific metadata. `log-summary-fn`
   takes that metadata and turns it into a string for logging. `:essential?` marks a step whose failure leaves the
   database unusable (e.g. field sync), so initial sync should be reported as failed rather than complete."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/sync/util.clj:611"}
    [:sync-fn        [:=> [:cat StepRunMetadata] i/DatabaseInstance]]
    [:step-name      :string]
    [:log-summary-fn [:maybe LogSummaryFunction]]

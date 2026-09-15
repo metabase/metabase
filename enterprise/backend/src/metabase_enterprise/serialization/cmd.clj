@@ -32,7 +32,7 @@
 
   `opts` are passed to [[v2.load/load-metabase]]."
   [path :- :string
-   opts :- [:map {:closed true}
+   opts :- [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/serialization/cmd.clj:35"}
             [:continue-on-error {:optional true} [:maybe :boolean]]
             [:reindex? {:optional true} [:maybe :boolean]]]
    ;; Deliberately separate from the opts so it can't be set from the CLI.
@@ -40,7 +40,7 @@
              require-initialized-db?]
       :or   {token-check? true
              require-initialized-db? true}}
-   :- [:maybe [:map {:closed true}
+   :- [:maybe [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/serialization/cmd.clj:43"}
                [:token-check?            {:optional true} [:maybe :boolean]]
                [:require-initialized-db? {:optional true} [:maybe :boolean]]]]]
   (plugins/load-plugins!)
@@ -62,7 +62,7 @@
 
    opts are passed to load-metabase"
   [path :- :string
-   opts :- [:map {:closed true}
+   opts :- [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/serialization/cmd.clj:65"}
             [:continue-on-error {:optional true} [:maybe :boolean]]
             [:full-stacktrace {:optional true} [:maybe :boolean]]]]
   (let [timer    (u/start-timer)

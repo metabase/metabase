@@ -9,7 +9,7 @@
   "A McpFeedback as selected from the app DB: every column of `:mcp_feedback`."
   [:merge
    ::mcp-feedback.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/mcp/schema.clj:12"}
     [:id                ms/PositiveInt]]])
 
 (mr/def ::mcp-feedback.update
@@ -27,7 +27,7 @@
   "A McpQueryHandle as selected from the app DB: every column of `:mcp_query_handle`."
   [:merge
    ::mcp-query-handle.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/mcp/schema.clj:30"}
     [:id              :string]]])
 
 (mr/def ::mcp-query-handle.update
@@ -43,7 +43,7 @@
   "A McpSessionLog as selected from the app DB: every column of `:mcp_session_log`."
   [:merge
    ::mcp-session-log.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/mcp/schema.clj:46"}
     [:id             :string]]])
 
 (mr/def ::mcp-session-log.update
@@ -62,7 +62,7 @@
   "A McpToolCallLog as selected from the app DB: every column of `:mcp_tool_call_log`."
   [:merge
    ::mcp-tool-call-log.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/mcp/schema.clj:65"}
     [:id                   ms/PositiveInt]]])
 
 (mr/def ::mcp-tool-call-log.update

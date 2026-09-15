@@ -157,7 +157,7 @@
 
 (def ^:private Insight
   "One entry of the `:insights` computed by `metabase.analyze.fingerprint.insights/insights`."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/channel/render/body.clj:160"}
    [:last-value     {:optional true} [:maybe number?]]
    [:previous-value {:optional true} [:maybe number?]]
    [:last-change    {:optional true} [:maybe number?]]
@@ -169,11 +169,11 @@
 
 (mr/def ::QPResultData
   "The `:data` of a QP result, as the render pipeline reads it."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/channel/render/body.clj:172"}
    [:cols             {:optional true} [:maybe [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]]]
    [:rows             {:optional true} [:maybe [:sequential [:sequential [:or ms/FieldValue [:sequential ms/FieldValue]]]]]]
    [:viz-settings     {:optional true} [:maybe ms/VisualizationSettings]]
-   [:results_metadata {:optional true} [:maybe [:map {:closed true}
+   [:results_metadata {:optional true} [:maybe [:map {:closed true, :probe/id "src/metabase/channel/render/body.clj:176"}
                                                 [:columns [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]]]]]
    [:results_timezone {:optional true} [:maybe :string]]
    [:format-rows?     {:optional true} [:maybe :boolean]]
@@ -184,7 +184,7 @@
    [:rows-file-size   {:optional true} [:maybe :int]]
    [:model            {:optional true} [:maybe :boolean]]
    [:dataset          {:optional true} [:maybe :boolean]]
-   [:pivot-export-options {:optional true} [:maybe [:map {:closed true}
+   [:pivot-export-options {:optional true} [:maybe [:map {:closed true, :probe/id "src/metabase/channel/render/body.clj:187"}
                                                     [:pivot-rows         {:optional true} [:maybe [:sequential :int]]]
                                                     [:pivot-cols         {:optional true} [:maybe [:sequential :int]]]
                                                     [:pivot-measures     {:optional true} [:maybe [:sequential :int]]]
@@ -194,7 +194,7 @@
 
 (mr/def ::QPResult
   "A QP result map (`{:data ..., :error ...}`), as the render pipeline receives it."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/channel/render/body.clj:197"}
    [:data                    {:optional true} [:maybe ::QPResultData]]
    [:error                   {:optional true} [:maybe :string]]
    [:row_count               {:optional true} [:maybe :int]]
@@ -262,7 +262,7 @@
 
 (mr/def ::adhoc-card
   "Schema for an ad-hoc (unsaved) card."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/channel/render/body.clj:265"}
    [:display :keyword]
    [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
    [:name {:optional true} [:maybe :string]]])
@@ -272,7 +272,7 @@
   [:or
    [:merge
     :metabase.queries.schema/card
-    [:map {:closed true}
+    [:map {:closed true, :probe/id "src/metabase/channel/render/body.clj:275"}
      [:include_csv   {:optional true} [:maybe :boolean]]
      [:include_xls   {:optional true} [:maybe :boolean]]
      [:format_rows   {:optional true} [:maybe :boolean]]
@@ -284,9 +284,9 @@
   `notification.payload.execute` attaches for multi-series cards."
   [:merge
    :metabase.dashboards.schema/dashboard-card
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/channel/render/body.clj:287"}
     [:series-results {:optional true} [:maybe [:sequential
-                                               [:map {:closed true}
+                                               [:map {:closed true, :probe/id "src/metabase/channel/render/body.clj:289"}
                                                 [:type     {:optional true} [:= :card]]
                                                 [:card     {:optional true} [:maybe [:ref :metabase.queries.schema/card]]]
                                                 [:dashcard {:optional true} [:maybe [:ref :metabase.dashboards.schema/dashboard-card]]]
@@ -299,7 +299,7 @@
 ;;; we can keep this as an internal namespace you don't need to know about outside of the module.
 (mr/def ::options
   "Options for Pulse (i.e. Alert/Dashboard Subscription) rendering."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/channel/render/body.clj:302"}
    [:channel.render/include-buttons?           {:description "default: false", :optional true} :boolean]
    [:channel.render/include-title?             {:description "default: false", :optional true} :boolean]
    [:channel.render/include-description?       {:description "default: false", :optional true} :boolean]
@@ -311,7 +311,7 @@
 
 (mr/def ::RenderedPartCard
   "Schema used for functions that operate on pulse card contents and their attachments"
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/channel/render/body.clj:314"}
    [:attachments {:optional true} [:maybe [:map-of :string (ms/InstanceOfClass URL)]]]
    [:content                      ::hiccup]
    [:render/text {:optional true} [:maybe :string]]])

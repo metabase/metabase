@@ -119,7 +119,7 @@
 
 (def ^:private autogen-dashboard-schema
   [:map {:closed true}
-   [:source [:map {:closed true}
+   [:source [:map {:closed true, :probe/id "src/metabase/metabot/tools/autogen_dashboard.clj:122"}
              [:table_id {:optional true} [:maybe :int]]
              [:model_id {:optional true} [:maybe :int]]
              [:metric_id {:optional true} [:maybe :int]]

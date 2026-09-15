@@ -7,14 +7,14 @@
 
 (mr/def ::auth-identity.credentials.password
   "Credentials of the `password` provider."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/auth_identity/schema.clj:10"}
    [:plaintext_password {:optional true} [:maybe :string]]
    [:password_hash      {:optional true} [:maybe :string]]
    [:password_salt      {:optional true} [:maybe :string]]])
 
 (mr/def ::auth-identity.credentials.token
   "Credentials of a hashed-token provider (password reset, support access grant)."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/auth_identity/schema.clj:17"}
    [:token_hash    {:optional true} [:maybe :string]]
    [:expires_at    {:optional true} [:maybe ms/TemporalInstant]]
    [:consumed_at   {:optional true} [:maybe ms/TemporalInstant]]
@@ -22,14 +22,14 @@
 
 (mr/def ::auth-identity.credentials.totp
   "Credentials of the `totp` (MFA) provider."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/auth_identity/schema.clj:25"}
    [:secret          {:optional true} :string]
    [:last_used_step  {:optional true} :int]
-   [:used_jtis       {:optional true} [:sequential [:map {:closed true}
+   [:used_jtis       {:optional true} [:sequential [:map {:closed true, :probe/id "src/metabase/auth_identity/schema.clj:28"}
                                                     [:jti :string]
                                                     [:exp :int]]]]
    [:recovery_codes  {:optional true} [:sequential :string]]
-   [:email_otp       {:optional true} [:map {:closed true}
+   [:email_otp       {:optional true} [:map {:closed true, :probe/id "src/metabase/auth_identity/schema.clj:32"}
                                        [:hash :string]
                                        [:exp  :int]]]])
 
@@ -39,16 +39,16 @@
 
 (mr/def ::auth-identity.metadata.emailed-secret
   "Metadata of an emailed-secret token."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/auth_identity/schema.clj:42"}
    [:email           {:optional true} [:maybe ms/Email]]
    [:ip_address      {:optional true} [:maybe :string]]
-   [:request_context {:optional true} [:maybe [:map {:closed true}
+   [:request_context {:optional true} [:maybe [:map {:closed true, :probe/id "src/metabase/auth_identity/schema.clj:45"}
                                                [:user_agent {:optional true} [:maybe :string]]
                                                [:timestamp  {:optional true} [:maybe [:or ms/TemporalInstant :string]]]]]]])
 
 (mr/def ::auth-identity.metadata.slack-connect
   "Metadata of the `slack-connect` provider."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/auth_identity/schema.clj:51"}
    [:signing_secret_version {:optional true} [:maybe :int]]])
 
 (mr/def ::auth-identity.metadata
@@ -59,7 +59,7 @@
   "A AuthIdentity as selected from the app DB: every column of `:auth_identity`."
   [:merge
    ::auth-identity.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/auth_identity/schema.clj:62"}
     [:id           ms/PositiveInt]]])
 
 (mr/def ::auth-identity.update

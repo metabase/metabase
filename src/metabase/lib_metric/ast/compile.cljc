@@ -14,7 +14,7 @@
 
 (def ^:private Options
   "Options accepted by [[compile-to-mbql]] and [[compile-to-values-query]]."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/lib_metric/ast/compile.cljc:17"}
    [:limit {:optional true} [:maybe pos-int?]]])
 
 ;;; -------------------- Resolution --------------------

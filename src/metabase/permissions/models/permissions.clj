@@ -446,7 +446,7 @@
 (mu/defn can-read-audit-helper
   "Audit instances should only be readable if audit app is enabled."
   [model    :- [:= :model/Collection]
-   instance :- [:map {:closed true}
+   instance :- [:map {:closed true, :probe/id "src/metabase/permissions/models/permissions.clj:449"}
                 [:id        ms/PositiveInt]
                 [:namespace {:optional true} [:maybe [:or :keyword :string]]]]]
   (if (and (not (premium-features/enable-audit-app?))

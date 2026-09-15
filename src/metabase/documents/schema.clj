@@ -19,7 +19,7 @@
   callers hydrate onto it."
   [:merge
    ::document.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/documents/schema.clj:22"}
     [:id                  ms/PositiveInt]
     [:creator             {:optional true} [:maybe :metabase.users.schema/user]]
     [:collection          {:optional true} [:maybe :metabase.collections.schema/collection-or-root]]

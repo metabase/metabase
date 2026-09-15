@@ -37,7 +37,7 @@
 
 (def ^:private Path
   "A `{:db_name :schema :table_name :field_name}` path used to locate a Table or Field."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/remote_sync/db.clj:40"}
    [:db_name    :string]
    [:schema     {:optional true} [:maybe :string]]
    [:table_name :string]

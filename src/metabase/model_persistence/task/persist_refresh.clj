@@ -88,11 +88,11 @@
   (some-> results :error-details seq))
 
 (def ^:private TaskDetails
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/model_persistence/task/persist_refresh.clj:91"}
    [:success       :int]
    [:error         :int]
    [:trigger       [:maybe (ms/InstanceOfClass org.quartz.Trigger)]]
-   [:error-details {:optional true} [:sequential [:map {:closed true}
+   [:error-details {:optional true} [:sequential [:map {:closed true, :probe/id "src/metabase/model_persistence/task/persist_refresh.clj:95"}
                                                   [:persisted-info-id ms/PositiveInt]
                                                   [:error {:optional true} [:maybe :string]]]]]])
 

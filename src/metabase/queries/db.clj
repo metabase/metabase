@@ -490,7 +490,7 @@
 
 (mu/defn insert-queries!
   "Insert the Query `rows`, returning the number inserted."
-  [rows :- [:sequential [:map {:closed true}
+  [rows :- [:sequential [:map {:closed true, :probe/id "src/metabase/queries/db.clj:493"}
                          [:query                  [:or
                                                    ::lib-be.schema/empty-query
                                                    :metabase.query-processor.schema/any-query]]

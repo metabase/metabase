@@ -611,7 +611,7 @@
 
   ([stages                                                 :- [:sequential ::lib.util/query-like]
     {:keys [top-level?], :or {top-level? true}, :as _opts} :- [:maybe
-                                                               [:map {:closed true}
+                                                               [:map {:closed true, :probe/id "src/metabase/lib/convert.cljc:614"}
                                                                 [:top-level? [:maybe :boolean]]]]]
    ;; :source-metadata aka :lib/stage-metadata is handled differently in the two formats.
    ;; In legacy, an inner query might have both :source-query, and :source-metadata giving the metadata for that nested

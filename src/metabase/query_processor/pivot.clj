@@ -64,7 +64,7 @@
 (mr/def ::column-sort-order [:map-of [:maybe ::pivot.common/index] [:maybe :keyword]])
 
 (mr/def ::pivot-opts [:maybe
-                      [:map {:closed true}
+                      [:map {:closed true, :probe/id "src/metabase/query_processor/pivot.clj:67"}
                        [:pivot-rows         {:optional true} [:maybe ::pivot-rows]]
                        [:pivot-cols         {:optional true} [:maybe ::pivot-cols]]
                        [:pivot-measures     {:optional true} [:maybe ::pivot-measures]]

@@ -61,7 +61,7 @@
 (mr/def ::processed-card
   "A processed \"card\" map as it flows through this namespace: the [[clone-card]] keys, plus the render-stage
   additions [[dashboard->cards]] assocs onto it."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/xrays/automagic_dashboards/comparison.clj:64"}
    [:id                     {:optional true} [:or symbol? ::lib.schema.id/card]]
    [:dataset_query          {:optional true} ::ads/query]
    [:description            {:optional true} [:maybe :string]]
@@ -290,10 +290,10 @@
   [dashboard :- ::ads/dashboard
    left      :- ComparisonEntityInstance
    right     :- ComparisonEntityInstance
-   opts      :- [:map {:closed true}
-                 [:left  {:optional true} [:map {:closed true}
+   opts      :- [:map {:closed true, :probe/id "src/metabase/xrays/automagic_dashboards/comparison.clj:293"}
+                 [:left  {:optional true} [:map {:closed true, :probe/id "src/metabase/xrays/automagic_dashboards/comparison.clj:294"}
                                            [:cell-query {:optional true} ::ads/root.cell-query-input]]]
-                 [:right {:optional true} [:map {:closed true}
+                 [:right {:optional true} [:map {:closed true, :probe/id "src/metabase/xrays/automagic_dashboards/comparison.clj:296"}
                                            [:cell-query {:optional true} ::ads/root.cell-query-input]]]]]
   ;; disable ref validation because X-Rays does stuff in a wacko manner, it adds a bunch of filters and whatever that
   ;; use columns from joins before adding the joins themselves (same with expressions), which is technically invalid

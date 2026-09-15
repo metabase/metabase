@@ -68,7 +68,7 @@
 (def ^:private to-cleanup (atom #{}))
 
 (def ^:private DatabaseDefinitionOptions
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "modules/drivers/bigquery-cloud-sdk/test/metabase/test/data/bigquery_cloud_sdk.clj:71"}
    [:native-ddl        {:optional true} [:sequential ::tx/native-ddl-form]]
    [:disable-fk-checks {:optional true} :boolean]
    [:static            {:optional true} :boolean]])
@@ -76,7 +76,7 @@
 (mu/defn test-dataset-id :- ::dataset-id
   "Prepend `database-name` with the hash of the db-def so we don't stomp on any other jobs running at the same
   time."
-  [{:keys [database-name options] :as db-def} :- [:map {:closed true}
+  [{:keys [database-name options] :as db-def} :- [:map {:closed true, :probe/id "modules/drivers/bigquery-cloud-sdk/test/metabase/test/data/bigquery_cloud_sdk.clj:79"}
                                                   [:database-name     :string]
                                                   [:table-definitions [:sequential (ms/InstanceOfClass metabase.test.data.interface.TableDefinition)]]
                                                   [:options           DatabaseDefinitionOptions]]]

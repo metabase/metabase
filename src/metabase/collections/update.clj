@@ -28,7 +28,7 @@
   are left alone; `:archived` and `:parent_id` are acted on only when present, so a caller that
   wants the REST endpoint's \"omitted means unarchived\" semantics has to supply that default
   itself."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/collections/update.clj:31"}
    [:name            {:optional true} [:maybe ms/NonBlankString]]
    [:description     {:optional true} [:maybe ms/NonBlankString]]
    [:archived        {:optional true} [:maybe :boolean]]

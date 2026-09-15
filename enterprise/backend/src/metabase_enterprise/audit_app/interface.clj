@@ -10,7 +10,7 @@
    {:min 1}
    [:tuple
     ms/KeywordOrString
-    [:map {:closed true}
+    [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/audit_app/interface.clj:13"}
      [:base_type      ms/FieldType]
      [:display_name   ms/NonBlankString]
      [:remapped_to    {:optional true} :keyword]

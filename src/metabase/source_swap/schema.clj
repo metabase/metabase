@@ -23,7 +23,7 @@
    :foreign-key-mismatch])
 
 (mr/def ::column-mapping
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/source_swap/schema.clj:26"}
    [:source {:optional true} ::lib.schema.metadata/column]
    [:target {:optional true} ::lib.schema.metadata/column]
    [:errors {:optional true} [:sequential ::column-error]]])

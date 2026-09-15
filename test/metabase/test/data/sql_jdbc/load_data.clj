@@ -179,7 +179,7 @@
    ^java.sql.Connection conn :- (lib.schema.common/instance-of-class java.sql.Connection)
    table-identifier          :- ::h2x/expr
    rows                      :- [:sequential [:map-of :string ::tx/dataset-value]]
-   {:keys [transaction?] :or {transaction? true}} :- [:maybe [:map {:closed true}
+   {:keys [transaction?] :or {transaction? true}} :- [:maybe [:map {:closed true, :probe/id "test/metabase/test/data/sql_jdbc/load_data.clj:182"}
                                                               [:transaction? {:optional true} [:maybe :boolean]]]]]
   (let [statements (ddl/insert-rows-dml-statements driver table-identifier rows)]
     ;; `set-parameters` might try to look at DB timezone; we don't want to do that while loading the data because the

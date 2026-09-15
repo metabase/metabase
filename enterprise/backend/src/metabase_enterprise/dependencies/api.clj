@@ -68,7 +68,7 @@
   [[normalize-finding-error]] produces for an entity's own errors (`node-errors`), or the raw AnalysisFindingError row
   `node-downstream-errors` keeps so callers can tell which downstream entity each error belongs to."
   [:or
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/dependencies/api.clj:71"}
     [:type ::lib.schema.validate/validate-error-type]
     [:detail {:optional true} [:maybe :string]]]
    ::analysis-finding-error/analysis-finding-error])

@@ -92,12 +92,12 @@
   [:schema
    {:registry
     {::field-definition
-     [:map {:closed true}
+     [:map {:closed true, :probe/id "test/metabase/test/data/interface.clj:95"}
       [:field-name                          ms/NonBlankString]
       [:base-type                           [:or
-                                             [:map {:closed true}
+                                             [:map {:closed true, :probe/id "test/metabase/test/data/interface.clj:98"}
                                               [:natives [:map-of :string ms/NonBlankString]]]
-                                             [:map {:closed true}
+                                             [:map {:closed true, :probe/id "test/metabase/test/data/interface.clj:100"}
                                               [:native ms/NonBlankString]]
                                              ms/FieldType]]
       ;; this was added pretty recently (in the 44 cycle) so it might not be supported everywhere. It should work for
@@ -127,7 +127,7 @@
 
 (def TableDefinitionSchema
   "Schema for a table definition, either a `TableDefinition` record or a plain map of the same shape."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "test/metabase/test/data/interface.clj:130"}
    [:table-name                     ms/NonBlankString]
    [:field-definitions              [:sequential FieldDefinitionSchema]]
    [:rows                           [:sequential [:sequential ::dataset-value]]]
@@ -138,10 +138,10 @@
 
 (def DatabaseDefinitionSchema
   "Schema for a database definition, either a `DatabaseDefinition` record or a plain map of the same shape."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "test/metabase/test/data/interface.clj:141"}
    [:database-name ms/NonBlankString] ; this must be unique
    [:table-definitions [:sequential TableDefinitionSchema]]
-   [:options [:maybe [:map {:closed true}
+   [:options [:maybe [:map {:closed true, :probe/id "test/metabase/test/data/interface.clj:144"}
                       [:native-ddl {:optional true} [:sequential ::native-ddl-form]]
                       ;; When true, drivers that support it (e.g., MySQL) will disable FK checks during data loading.
                       ;; Useful for datasets with self-referencing FKs that need to be inserted in a single batch.
@@ -900,7 +900,7 @@
    (dataset-definition database-name table-definitions {}))
   ([database-name :- ms/NonBlankString
     table-definitions :- [:sequential DatasetTableDefinition]
-    options :- [:map {:closed true}
+    options :- [:map {:closed true, :probe/id "test/metabase/test/data/interface.clj:903"}
                 [:native-ddl {:optional true} [:sequential ::native-ddl-form]]
                 [:disable-fk-checks {:optional true} :boolean]
                 [:static {:optional true} :boolean]]]
@@ -989,7 +989,7 @@
   "Define a new test dataset using the definition in an EDN file in the `test/metabase/test/data/dataset_definitions/`
   directory. (Filename should be `dataset-name` + `.edn`.)"
   [dataset-name :- ms/NonBlankString
-   options      :- [:map {:closed true}
+   options      :- [:map {:closed true, :probe/id "test/metabase/test/data/interface.clj:992"}
                     [:native-ddl        {:optional true} [:sequential ::native-ddl-form]]
                     [:disable-fk-checks {:optional true} :boolean]
                     [:static            {:optional true} :boolean]]]

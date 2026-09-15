@@ -9,7 +9,7 @@
   "A UserKeyValue as selected from the app DB: every column of `:user_key_value`."
   [:merge
    ::user-key-value.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/user_key_value/schema.clj:12"}
     [:id         ms/PositiveInt]]])
 
 (mr/def ::user-key-value.update

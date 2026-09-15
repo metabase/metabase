@@ -40,18 +40,18 @@
   so it's not a full `::warehouse-schema.schema/field`."
   [:merge
    ::warehouse-schema.schema/field.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/sandbox/api/column_filter.clj:43"}
     [:id {:optional true} ms/PositiveInt]]])
 
 (def ^:private Field
   [:or
    [:merge
     ::warehouse-schema.schema/field
-    [:map {:closed true}
+    [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/sandbox/api/column_filter.clj:50"}
      [:target     {:optional true} [:maybe PartialField]]
      [:dimensions {:optional true} [:sequential ::warehouse-schema.schema/dimension]]
      [:name_field {:optional true} [:maybe PartialField]]]]
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/sandbox/api/column_filter.clj:54"}
     [:id   {:optional true} ms/PositiveInt]
     [:name {:optional true} :string]]])
 

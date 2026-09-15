@@ -66,7 +66,7 @@
    seq?])
 
 (mr/def ::route
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/api/macros.clj:69"}
    [:path string?]
    [:regexes {:optional true} [:map-of :string ::route-regex-value]]])
 
@@ -76,7 +76,7 @@
 (mr/def ::params
   [:map-of
    ::param-type
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/api/macros.clj:79"}
     [:binding ::binding-form]
     [:schema {:optional true} ::schema-form-or-instance]]])
 
@@ -100,7 +100,7 @@
    coll?])
 
 (mr/def ::parsed-args
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/api/macros.clj:103"}
    [:method          ::method]
    [:route           ::route]
    [:params          ::params]
@@ -110,7 +110,7 @@
    [:metadata        {:optional true} [:maybe {:description "Metadata map like you'd use with `defn`"} ::route-metadata]]])
 
 (mr/def ::conformed-schema-specifier
-  [:maybe [:map {:closed true}
+  [:maybe [:map {:closed true, :probe/id "src/metabase/api/macros.clj:113"}
            [:horn [:= :-]]
            [:schema ::schema-form-or-instance]]])
 
@@ -125,18 +125,18 @@
      [:map-of symbol? ::defendpoint-arg]]]])
 
 (mr/def ::conformed-param
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/api/macros.clj:128"}
    [:binding ::binding-form]
    [:schema {:optional true} ::conformed-schema-specifier]])
 
 (mr/def ::conformed-params
   "Shape of `(:params (s/conform ::defendpoint args))`, before [[parse-params]] flattens it into [[::params]]."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/api/macros.clj:134"}
    [:route         {:optional true} ::conformed-param]
    [:query         {:optional true} ::conformed-param]
    [:body          {:optional true} ::conformed-param]
    [:request       {:optional true} ::conformed-param]
-   [:respond-raise {:optional true} [:map {:closed true}
+   [:respond-raise {:optional true} [:map {:closed true, :probe/id "src/metabase/api/macros.clj:139"}
                                      [:respond symbol?]
                                      [:raise   symbol?]]]])
 
@@ -145,9 +145,9 @@
   [:multi {:dispatch first}
    [:path   [:tuple [:= :path] :string]]
    [:vector [:tuple [:= :vector]
-             [:map {:closed true}
+             [:map {:closed true, :probe/id "src/metabase/api/macros.clj:148"}
               [:path    :string]
-              [:regexes [:sequential [:map {:closed true}
+              [:regexes [:sequential [:map {:closed true, :probe/id "src/metabase/api/macros.clj:150"}
                                       [:key   :keyword]
                                       [:regex ::route-regex-value]]]]]]]])
 
@@ -155,7 +155,7 @@
   "Shape of [[parse-args]]'s in-progress `conformed` value by the time it reaches [[parse-route]] and
   [[inferred-route-regexes]]: `(s/conform ::defendpoint args)`, with `:params` already turned into [[::params]] by
   [[parse-params]] (which runs first), but `:route` and `:response-schema` not yet transformed."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/api/macros.clj:158"}
    [:method          ::method]
    [:route           ::conformed-route]
    [:response-schema {:optional true} ::conformed-schema-specifier]
@@ -222,7 +222,7 @@
 
 (mr/def ::info
   "The info about an individual endpoint that gets stored in the namespace metadata."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/api/macros.clj:225"}
    [:core-fn ::core-fn]
    [:handler ::handler]
    [:form    ::parsed-args]])
@@ -436,7 +436,8 @@
   [schema   :- ::schema-form-or-instance
    response :- ::request.schema/response]
   (when *enable-response-validation*
-    (when-not (mr/validate schema response)
+    (when-not (or (mr/validate schema response)
+                  (metabase.util.malli.probe/only-extra-keys? (mr/explain schema response) "response"))
       (throw (ex-info "Invalid response" ; TODO -- better error message?
                       {:status-code 400
                        :error       (-> schema
@@ -794,7 +795,7 @@
   {:style/indent [:form]}
   [middleware       :- [:maybe [:sequential ::middleware]]
    core-fn          :- ::core-fn
-   {:keys [async?]} :- [:map {:closed true}
+   {:keys [async?]} :- [:map {:closed true, :probe/id "src/metabase/api/macros.clj:797"}
                         [:async? :boolean]]]
   (let [handler (if async?
                   (fn async-handler [request respond raise]
@@ -831,17 +832,17 @@
 
 (mr/def ::route-metadata
   "Metadata declared on a route via defendpoint, e.g. `{:scope \"agent:query\"}`."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/api/macros.clj:834"}
    [:scope       {:optional true} ::metadata-value-or-form]
-   [:multipart   {:optional true} [:or :boolean [:map {:closed true}
+   [:multipart   {:optional true} [:or :boolean [:map {:closed true, :probe/id "src/metabase/api/macros.clj:836"}
                                                  [:max-file-size  {:optional true} [:or :int symbol? seq?]]
                                                  [:max-file-count {:optional true} [:or :int symbol? seq?]]]]]
    [:deprecated  {:optional true} [:or :boolean :string]]
-   [:tool        {:optional true} [:map {:closed true}
+   [:tool        {:optional true} [:map {:closed true, :probe/id "src/metabase/api/macros.clj:840"}
                                    [:name         :string]
                                    [:title        {:optional true} :string]
                                    [:description  {:optional true} ::metadata-value-or-form]
-                                   [:annotations  {:optional true} [:map {:closed true}
+                                   [:annotations  {:optional true} [:map {:closed true, :probe/id "src/metabase/api/macros.clj:844"}
                                                                     [:read-only?  {:optional true} :boolean]
                                                                     [:idempotent? {:optional true} :boolean]]]
                                    [:task-support {:optional true} :keyword]]]])

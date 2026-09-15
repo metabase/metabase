@@ -8,7 +8,7 @@
   "A SemanticSearchTokenTracking as selected from the app DB: every column of `:semantic_search_token_tracking`."
   [:merge
    ::semantic-search-token-tracking.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "enterprise/backend/src/metabase_enterprise/semantic_search/schema.clj:11"}
     [:id           ms/PositiveInt]]])
 
 (mr/def ::semantic-search-token-tracking.update

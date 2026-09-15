@@ -330,7 +330,7 @@
 
 (def ^:private CCOpts
   "Dialect hooks for [[request-body]] that are not request options."
-  [:maybe [:map {:closed true}
+  [:maybe [:map {:closed true, :probe/id "src/metabase/metabot/self/openai/chat_completions.clj:333"}
            [:reasoning-part->message {:optional true} [:maybe [:fn fn?]]]]])
 
 (mu/defn request-body

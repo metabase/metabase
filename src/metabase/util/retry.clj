@@ -10,7 +10,7 @@
 (set! *warn-on-reflection* true)
 
 (mr/def ::retry-config
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/util/retry.clj:13"}
    [:max-retries              :int]
    [:initial-interval-millis  :int]
    [:multiplier               :float]

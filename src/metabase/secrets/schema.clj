@@ -9,7 +9,7 @@
   "A Secret as selected from the app DB: every column of `:secret`."
   [:merge
    ::secret.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/secrets/schema.clj:12"}
     [:id         ms/PositiveInt]]])
 
 (mr/def ::secret.update

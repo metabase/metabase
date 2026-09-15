@@ -805,7 +805,7 @@
   the FE filter stuff, so we will instead return `:list`; the distinction is not important to it anyway."
   [{:keys [has-field-values], :as field} :- [:or
                                              ::lib.schema.metadata/column
-                                             [:map {:closed true}
+                                             [:map {:closed true, :probe/id "src/metabase/lib/field.cljc:808"}
                                               [:base-type        {:optional true} [:maybe ::lib.schema.common/base-type]]
                                               [:effective-type   {:optional true} [:maybe ::lib.schema.common/base-type]]
                                               [:has-field-values {:optional true} [:maybe ::lib.schema.metadata/column.has-field-values]]]]]

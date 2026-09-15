@@ -37,7 +37,7 @@
   hydrate onto it."
   [:merge
    ::segment.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/segments/schema.clj:40"}
     [:id                      ms/PositiveInt]
     [:creator                 {:optional true} [:maybe :metabase.users.schema/user]]
     [:table                   {:optional true} [:maybe :metabase.warehouse-schema.schema/table]]]])

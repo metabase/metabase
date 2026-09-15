@@ -110,7 +110,7 @@
   "A TableIndex as selected from the app DB: every column of `:metabase_table_indexes`."
   [:merge
    ::table-index.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/indexes/schema.clj:113"}
     [:id               ms/PositiveInt]]])
 
 (mr/def ::table-index.update

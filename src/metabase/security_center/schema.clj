@@ -19,7 +19,7 @@
 
 (mr/def ::version-range
   "A single affected version range with inclusive min and exclusive fixed."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/security_center/schema.clj:22"}
    [:min   ::semver]
    [:fixed ::semver]])
 
@@ -28,7 +28,7 @@
 
 (mr/def ::download-jar-url
   "A downloadable JAR for a given fixed version."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/security_center/schema.clj:31"}
    [:version ::semver]
    [:url     :string]])
 
@@ -42,7 +42,7 @@
 
 (mr/def ::honeysql-query
   "A HoneySQL 2 query map, as EDN keyed by its top-level clause keywords."
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/security_center/schema.clj:45"}
    [:with        {:optional true} [:sequential [:tuple :keyword [:ref ::honeysql-query]]]]
    [:select      {:optional true} [:sequential ::h2x/expr]]
    [:delete-from {:optional true} ::h2x/expr]
@@ -58,7 +58,7 @@
 (mr/def ::matching-query
   "HoneySQL query keyed by dialect. nil means affects all instances.
    Stored as EDN to preserve keywords that HoneySQL requires for identifiers/operators."
-  [:maybe [:map {:closed true}
+  [:maybe [:map {:closed true, :probe/id "src/metabase/security_center/schema.clj:61"}
            [:default  {:optional true} ::honeysql-query]
            [:h2       {:optional true} ::honeysql-query]
            [:mysql    {:optional true} ::honeysql-query]
@@ -72,7 +72,7 @@
   "A SecurityAdvisory as selected from the app DB: every column of `:security_advisory`."
   [:merge
    ::security-advisory.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/security_center/schema.clj:75"}
     [:id                ms/PositiveInt]]])
 
 (mr/def ::security-advisory.update

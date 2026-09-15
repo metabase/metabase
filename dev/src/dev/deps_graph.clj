@@ -211,7 +211,7 @@
   '{metabase.config.core #{metabase-enterprise.core.dummy-namespace metabase.test.dummy-namespace}})
 
 (def ^:private ModuleConfig
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "dev/src/dev/deps_graph.clj:214"}
    [:team           {:optional true} :string]
    [:ns-prefix      {:optional true} :string]
    [:api            {:optional true} [:or [:= :any] [:set :symbol]]]
@@ -228,12 +228,12 @@
   [:map-of :string :symbol])
 
 (def ^:private FileDependencies
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "dev/src/dev/deps_graph.clj:231"}
    [:namespace {:optional true} [:maybe simple-symbol?]]
    [:filename  string?] ; filename is relative to [[project-root]]
    [:module    symbol?]
    [:deps      [:sequential
-                [:map {:closed true}
+                [:map {:closed true, :probe/id "dev/src/dev/deps_graph.clj:236"}
                  [:namespace simple-symbol?]
                  [:module    symbol?]
                  [:dynamic {:optional true} :keyword]]]]])

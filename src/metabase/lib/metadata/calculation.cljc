@@ -573,7 +573,7 @@
 (mr/def ::returned-columns.options
   "Schema for options passed to [[returned-columns]] and [[returned-columns-method]]."
   [:and
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/lib/metadata/calculation.cljc:576"}
     [:include-remaps?           {:optional true, :default false} :boolean]
     [:include-sensitive-fields? {:optional true, :default false} :boolean]]
    [:fn

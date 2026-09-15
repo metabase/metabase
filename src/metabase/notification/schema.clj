@@ -9,7 +9,7 @@
   "A Notification as selected from the app DB: every column of `:notification`."
   [:merge
    ::notification.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/notification/schema.clj:12"}
     [:id           ms/PositiveInt]]])
 
 (mr/def ::notification.update
@@ -27,7 +27,7 @@
   "A NotificationCard as selected from the app DB: every column of `:notification_card`."
   [:merge
    ::notification-card.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/notification/schema.clj:30"}
     [:id             ms/PositiveInt]]])
 
 (mr/def ::notification-card.update
@@ -44,7 +44,7 @@
   "A NotificationHandler as selected from the app DB: every column of `:notification_handler`."
   [:merge
    ::notification-handler.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/notification/schema.clj:47"}
     [:id              ms/PositiveInt]]])
 
 (mr/def ::notification-handler.update
@@ -61,11 +61,11 @@
 (mr/def ::notification-recipient.details
   "The `:details` column of a NotificationRecipient, decoded."
   [:or
-   [:map {:closed true}]
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/notification/schema.clj:64"}]
+   [:map {:closed true, :probe/id "src/metabase/notification/schema.clj:65"}
     [:value                    :string]
     [:channel_id {:optional true} [:maybe :string]]]
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/notification/schema.clj:68"}
     [:pattern                  :string]
     [:is_optional {:optional true} :boolean]]])
 
@@ -73,7 +73,7 @@
   "A NotificationRecipient as selected from the app DB: every column of `:notification_recipient`."
   [:merge
    ::notification-recipient.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/notification/schema.clj:76"}
     [:id                      ms/PositiveInt]]])
 
 (mr/def ::notification-recipient.update
@@ -91,7 +91,7 @@
   "A NotificationSubscription as selected from the app DB: every column of `:notification_subscription`."
   [:merge
    ::notification-subscription.update
-   [:map {:closed true}
+   [:map {:closed true, :probe/id "src/metabase/notification/schema.clj:94"}
     [:id              ms/PositiveInt]]])
 
 (mr/def ::notification-subscription.update

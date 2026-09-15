@@ -269,7 +269,7 @@
      all-cards-in-collection)))
 
 (def ^:private CardInDashboard
-  [:map {:closed true}
+  [:map {:closed true, :probe/id "src/metabase/collections_rest/api.clj:272"}
    [:name             :string]
    [:collection_id    [:maybe :metabase.lib.schema.id/collection]]
    [:description      [:maybe :string]]
@@ -279,13 +279,13 @@
 
 (mu/defn- present-dashboard-question-candidate
   [{:keys [in_dashboards] :as card}
-   :- [:merge ::queries.schema/card [:map {:closed true} [:in_dashboards [:sequential CardInDashboard]]]]]
+   :- [:merge ::queries.schema/card [:map {:closed true, :probe/id "src/metabase/collections_rest/api.clj:282"} [:in_dashboards [:sequential CardInDashboard]]]]]
   (-> card
       (select-keys [:id :name :description])
       (assoc :sole_dashboard_info (-> in_dashboards first (select-keys [:id :name :description])))))
 
 (mu/defn- present-dashboard-question-candidates
-  [cards :- [:sequential [:merge ::queries.schema/card [:map {:closed true} [:in_dashboards [:sequential CardInDashboard]]]]]]
+  [cards :- [:sequential [:merge ::queries.schema/card [:map {:closed true, :probe/id "src/metabase/collections_rest/api.clj:288"} [:in_dashboards [:sequential CardInDashboard]]]]]]
   ;; we're paginating in Clojure rather than in the query itself because the criteria here is quite complicated to
   ;; express in SQL: we need to join to `report_dashboardcard` AND `dashboardcard_series`, and find cards that have
   ;; exactly one matching dashboard across both of those joins. I'm sure it's doable, but for now we can just do this
