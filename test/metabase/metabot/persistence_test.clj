@@ -1516,7 +1516,7 @@
             msg-id (seed-turn! conversation-id "hi"
                                [{:type :text :text "reply"}]
                                :turn-state {:queries {"q2" {:database 2}}})]
-        (is (= {:queries {:q2 {:database 2}}}
+        (is (= {:queries {"q2" {:database 2}}}
                (t2/select-one-fn :state :model/MetabotMessage msg-id)))
         (is (nil? (t2/select-one-fn :state :model/MetabotConversation :id conversation-id)))))))
 

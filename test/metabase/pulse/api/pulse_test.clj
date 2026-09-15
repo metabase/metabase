@@ -113,7 +113,10 @@
    {:cards (str "one or more value must be a map with the following keys "
                 "`(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)`, "
                 "or value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`., "
-                "or value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`.")}})
+                "or value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`., "
+                "or Schema for an instance of a `:model/Card`: every real column of `:report_card` (see `::card.update`) plus `:id`,\n"
+                "  the `:persisted/*` columns some queries join in from `persisted_info`, and the keys some callers hydrate onto a\n"
+                "  Card before passing it here.")}})
 
 (deftest create-pulse-validation-test
   (doseq [[input expected-error]
@@ -448,7 +451,10 @@
    {:cards (str "nullable one or more value must be a map with the following keys "
                 "`(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)`, "
                 "or value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`., "
-                "or value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`.")}})
+                "or value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`., "
+                "or Schema for an instance of a `:model/Card`: every real column of `:report_card` (see `::card.update`) plus `:id`,\n"
+                "  the `:persisted/*` columns some queries join in from `persisted_info`, and the keys some callers hydrate onto a\n"
+                "  Card before passing it here.")}})
 
 (deftest update-pulse-validation-test
   (testing "PUT /api/pulse/:id"

@@ -2519,10 +2519,10 @@
                           :collection-id (:id coll)
                           :card-id       (:id metric)
                           :database-id   (mt/id)
-                          :dimension-id  "price"
+                          :dimension-id  (duid "price")
                           :metrics       [{:card_id (:id metric)
-                                           :dimension_mappings (venues-dimension-mappings)}]
-                          :dimensions    [{:dimension_id "price" :display_name "Price"}]})
+                                           :dimension_mappings (stored-venues-dimension-mappings)}]
+                          :dimensions    [{:dimension-id (duid "price") :display-name "Price"}]})
             filter-spec {:operator      "between"
                          :field_ref     ["field" (mt/id :venues :price) nil]
                          :values        [1 3]

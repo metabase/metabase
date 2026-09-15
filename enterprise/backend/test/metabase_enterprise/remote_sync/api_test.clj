@@ -1189,15 +1189,16 @@
             (is (= "Uses content that is not remote synced." (:error response)))
             (testing "the structured failure survives the endpoint's rewrap, keyed by error_code"
               (is (=? {:error_code "unsynced-dependencies"
-                       :errors     {:collections [{:collection   {:id remote-synced-coll-id :name "Remote Synced"}
-                                                   :dependencies [{:model      "card"
-                                                                   :id         source-card-id
-                                                                   :name       "Source Card"
-                                                                   :collection {:id regular-coll-id :name "Regular"}
-                                                                   :remedy     {:type       "collection"
-                                                                                :collection {:id       regular-coll-id
-                                                                                             :name     "Regular"
-                                                                                             :personal false}}}]}]}}
+                       :errors     {:required [{:remedy       {:type       "collection"
+                                                               :collection {:id       regular-coll-id
+                                                                            :name     "Regular"
+                                                                            :personal false}}
+                                                :syncable     true
+                                                :blocks       [{:id remote-synced-coll-id :name "Remote Synced"}]
+                                                :dependencies [{:model      "card"
+                                                                :id         source-card-id
+                                                                :name       "Source Card"
+                                                                :collection {:id regular-coll-id :name "Regular"}}]}]}}
                       response)))
             (testing "the body is the ex-data itself, not a stacktrace dump"
               (is (nil? (:trace response)))

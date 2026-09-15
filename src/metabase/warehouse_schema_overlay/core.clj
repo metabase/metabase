@@ -72,7 +72,7 @@
 
   ([{:keys [alias user-settings?]
      :or   {alias          (t2/table-name :model/Field)
-            user-settings? true}} :- [:maybe [:map
+            user-settings? true}} :- [:maybe [:map {:closed true}
                                               [:alias          {:optional true} :keyword]
                                               [:user-settings? {:optional true} :boolean]]]]
    [(if user-settings?
@@ -153,7 +153,7 @@
 
   ([{:keys [alias user-settings?]
      :or   {alias          (t2/table-name :model/Table)
-            user-settings? true}} :- [:maybe [:map
+            user-settings? true}} :- [:maybe [:map {:closed true}
                                               [:alias          {:optional true} :keyword]
                                               [:user-settings? {:optional true} :boolean]]]]
    [(if user-settings?

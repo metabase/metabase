@@ -130,7 +130,7 @@
                                        session-id api/*current-user-id* query_handle)
                                       :query
                                       normalize-transform-query))]
-    {:type "query" :query query}))
+    {:type :query :query query}))
 
 ;;; ----------------------------------------------- Target handling ------------------------------------------------
 

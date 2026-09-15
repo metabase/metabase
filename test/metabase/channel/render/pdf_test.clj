@@ -824,10 +824,10 @@
         assembled {:card     {:display                :pivot
                               :visualization_settings {:pivot_table.column_split {:rows ["R"] :columns ["C"] :values ["m"]}}}
                    :dashcard nil
-                   :result   {:data {:cols                 [{:name "R" :base_type :type/Text}
-                                                            {:name "C" :base_type :type/Text}
-                                                            {:name "pivot-grouping" :base_type :type/Integer}
-                                                            {:name "m" :base_type :type/Integer}]
+                   :result   {:data {:cols                 [{:name "R" :display_name "R" :base_type :type/Text}
+                                                            {:name "C" :display_name "C" :base_type :type/Text}
+                                                            {:name "pivot-grouping" :display_name "pivot-grouping" :base_type :type/Integer}
+                                                            {:name "m" :display_name "m" :base_type :type/Integer}]
                                      :rows                 [["a" "x" 0 10]
                                                             ["a" "y" 0 20]
                                                             ["b" "x" 0 30]

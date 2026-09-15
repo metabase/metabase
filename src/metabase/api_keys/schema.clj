@@ -110,7 +110,7 @@
    [:masked_key           {:optional true} :string]])
 
 (defn- insert-schema [map-schema]
-  (into [:map]
+  (into [:map {:closed true}]
         (map (fn [[k properties schema]]
                (if properties
                  [k
@@ -124,7 +124,7 @@
   (insert-schema ::api-key))
 
 (defn- update-schema [map-schema]
-  (into [:map]
+  (into [:map {:closed true}]
         (map (fn [[k properties schema]]
                [k
                 (assoc properties :optional true)

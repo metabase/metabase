@@ -15,7 +15,8 @@
    [metabase.util.malli :as mu]
    [weavejester.dependency :as dep])
   (:import
-   (clojure.lang ExceptionInfo)))
+   (clojure.lang ExceptionInfo)
+   (weavejester.dependency MapDependencyGraph)))
 
 (mu/defn- resolve-referenced-card-resources*
   "Done for side effects; warm the MetadataProvider."
@@ -46,7 +47,7 @@
 
 (mu/defn- subquery-graph
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   graph :- :map
+   graph :- (lib.schema.common/instance-of-class MapDependencyGraph)
    init-query :- ::lib.schema/query]
   (letfn [(card-subquery-graph [mp graph card-id]
             (let [card-query  (fetch-card-query mp card-id)

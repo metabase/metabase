@@ -375,7 +375,7 @@
 
 (mu/defn- upgrade-viewing-queries
   "Update queries of items in viewing context vector. Handles following item types: adhoc, question, model, metric"
-  [viewing :- [:vector :map]]
+  [viewing :- [:vector metabot.context/ViewingItemSchema]]
   (letfn [(update-items-query [item] (m/update-existing item :query legacy->modern-query))
           (maybe-update-item [item] (cond-> item
                                       (contains? upgradable-item-types (:type item))

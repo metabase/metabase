@@ -301,7 +301,7 @@
   (testing "the simple-select-probe-query used by have-select-privilege? should be qualified with the Database name. Ignore blank keys."
     (mt/test-driver :snowflake
       (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
-                                        {:database (assoc (mt/db)
+                                        {:database (assoc (lib.metadata/database (mt/metadata-provider))
                                                           :details {:db     " "
                                                                     :dbname "dbname"})})
         (is (= ["SELECT TRUE AS \"_\" FROM \"PUBLIC\".\"table\" WHERE 1 <> 1 LIMIT 0"]

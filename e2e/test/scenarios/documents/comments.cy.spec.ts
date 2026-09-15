@@ -299,7 +299,11 @@ describe("document comments", () => {
 
     H.popover().findByText("Edit").click();
     cy.log("editor should be autofocused when editing");
-    cy.realType("My ");
+    Comments.getCommentByText("Reply 1")
+      .findByRole("textbox")
+      .should("have.attr", "contenteditable", "true")
+      .and("be.focused")
+      .realType("My ");
     cy.realPress([META_KEY, "Enter"]);
 
     Comments.getSidebar().within(() => {
@@ -736,6 +740,12 @@ describe("document comments", () => {
     });
 
     it("supports mentions and can mention yourself", () => {
+      cy.intercept({
+        method: "GET",
+        pathname: "/api/search",
+        query: { q: "tAbLes" },
+      }).as("searchTables");
+
       startNewCommentIn1ParagraphDocument();
 
       cy.realType("@");
@@ -754,6 +764,7 @@ describe("document comments", () => {
       });
 
       cy.realType("s");
+      cy.wait("@searchTables").its("response.statusCode").should("eq", 200);
       H.documentMentionDialog().within(() => {
         cy.findByText("Bobby Tables").should("be.visible");
         cy.findByText("Bobby Tables's Personal Collection").should(

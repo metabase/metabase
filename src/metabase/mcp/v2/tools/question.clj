@@ -402,7 +402,7 @@
    the dashboard whenever `:dashboard_id` is present, independent of `:archived`."
   [card-before card-updates]
   (cond-> card-updates
-    (and (api/column-will-change? :dashboard_id card-before card-updates)
+    (and (api/column-will-change? (:dashboard_id card-before) (get card-updates :dashboard_id ::api/not-provided))
          (:dashboard_id card-updates))
     (as-> updates
           (do

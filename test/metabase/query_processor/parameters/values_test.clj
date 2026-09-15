@@ -362,7 +362,7 @@
                nil))))))
 
 (mu/defn- query->params-map
-  ([inner-query]
+  ([inner-query :- ::mbql.s/SourceQuery]
    (query->params-map meta/metadata-provider inner-query))
   ([metadata-provider :- ::lib.schema.metadata/metadata-provider
     inner-query       :- ::mbql.s/SourceQuery]
@@ -388,7 +388,7 @@
             mp         (lib.tu/metadata-provider-with-cards-for-queries
                         meta/metadata-provider
                         [{:database (meta/id)
-                          :type     "native"
+                          :type     :native
                           :native   {:query test-query}}])]
         (is (=? {:card-id 1, :query test-query, :parameters nil}
                 (value-for-tag
@@ -404,8 +404,7 @@
     (testing "Card query template tag generates native query for MBQL query"
       (driver/with-driver :h2
         (let [mbql-query   (lib.tu.macros/mbql-query venues
-                             {:database (meta/id)
-                              :filter   [:< [:field $price nil] 3]})
+                             {:filter [:< $price 3]})
               expected-sql (str "SELECT "
                                 "\"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", "
                                 "\"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\", "
@@ -508,7 +507,7 @@
                              :template-tags {"#1" {:id           "#1"
                                                    :name         "#1"
                                                    :display-name "#1"
-                                                   :type         "card"
+                                                   :type         :card
                                                    :card-id      1}}}
                   :database (meta/id)}])
             tag      {:name         "card-template-tag-test"

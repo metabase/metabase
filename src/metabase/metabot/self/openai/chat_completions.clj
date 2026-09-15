@@ -328,15 +328,20 @@
 
 ;;; Request body
 
+(def ^:private CCOpts
+  "Dialect hooks for [[request-body]] that are not request options."
+  [:maybe [:map {:closed true}
+           [:reasoning-part->message {:optional true} [:maybe [:fn fn?]]]]])
+
 (mu/defn request-body
   "Build the Chat Completions request body for an LLM request.
 
   The optional `cc-opts` map holds dialect hooks that are not request options —
   today only `:reasoning-part->message`, threaded to [[parts->cc-messages]]. A
   fn-valued hook stays out of the traced and logged `LLMRequestOpts` on purpose."
-  ([opts] (request-body opts nil))
+  ([opts :- core/LLMRequestOpts] (request-body opts nil))
   ([{:keys [model system input tools temperature max-tokens tool_choice schema]} :- core/LLMRequestOpts
-    cc-opts]
+    cc-opts :- CCOpts]
    (let [messages  (cond-> (parts->cc-messages input cc-opts)
                      system (as-> msgs (into [{:role "system" :content system}] msgs)))
          all-tools (or (when schema

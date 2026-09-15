@@ -261,6 +261,10 @@ jobs:
       skip: >-
         ${{ needs.should-run.outputs.verdict != 'force-run' &&
         needs.files-changed.outputs.backend_all != 'true' }}
+      smoke-only: >-
+        ${{ needs.should-run.outputs.verdict != 'force-run' &&
+         !contains(github.event.pull_request.labels.*.name, 'ci:run-semantic-search-tests')
+        }}
 
   app-db-tests:
     if: |

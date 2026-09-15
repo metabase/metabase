@@ -56,6 +56,16 @@ jobs:
 
             core.setOutput('artifact-count', result.artifactCount);
 
+      - uses: ./.github/actions/prepare-node-bun
+
+      - name: Upload e2e test timings to Stats
+        if: ${{ github.repository == 'metabase/metabase' }}
+        env:
+          TIMINGS_PATH: e2e/support/timings.json
+          ENG_STATS_URL: ${{ secrets.ENG_STATS_URL }}
+          API_KEY: ${{ secrets.ENG_STATS_API_KEY }}
+        run: bun .github/scripts/upload-e2e-test-timings.ts
+
       - name: Configure git and commit changes
         id: commit
         run: |
@@ -110,7 +120,7 @@ jobs:
             --body "$BODY" \
             --label ".CI & Tests" \
             --label "no-backport" \
-            --reviewer metabase/devexp)
+            --reviewer metabase/devex)
 
           PR_NUMBER=${URL##*/}
 

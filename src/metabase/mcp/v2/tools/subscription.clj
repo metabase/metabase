@@ -284,7 +284,10 @@
                     :when (int? (:id card))]
                 (-> (api/read-check card)
                     (select-keys [:id :name :collection_id :description :display :parameter_mappings])
-                    (assoc :dashboard_card_id dashcard-id :dashboard_id (:id dashboard))))]
+                    (assoc :dashboard_card_id dashcard-id
+                           :dashboard_id      (:id dashboard)
+                           :include_csv       false
+                           :include_xls       false)))]
     (when (empty? cards)
       (common/throw-teaching-error
        (message/msg [(str "This dashboard has no cards to send — a subscription needs at "
