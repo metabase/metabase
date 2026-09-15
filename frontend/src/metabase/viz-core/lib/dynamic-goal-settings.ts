@@ -20,6 +20,7 @@ export const GOAL_SETTINGS: Record<GoalSettingKey, GoalSettingKind> = {
 const DYNAMIC_GOAL_SETTINGS_BY_DISPLAY: Partial<
   Record<VisualizationDisplay, GoalSettingKey[]>
 > = {
+  bar: ["graph.goal_value"],
   gauge: ["gauge.segments"],
   line: ["graph.goal_value"],
   scalar: ["scalar.segments"],

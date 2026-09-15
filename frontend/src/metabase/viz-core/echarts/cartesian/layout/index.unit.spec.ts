@@ -1,10 +1,10 @@
+import { createMockChartContext } from "__support__/echarts";
+import type { VisualizationSettings } from "metabase-types/api";
 import {
   createMockColumn,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 
-import { DEFAULT_VISUALIZATION_THEME } from "../../../shared/utils/theme";
-import type { RenderingContext } from "../../../types";
 import { CHART_STYLE } from "../constants/style";
 import type { XAxisModel, YAxisModel } from "../model/types";
 
@@ -62,23 +62,16 @@ const currencySettings = createMockVisualizationSettings({
   column: () => ({ number_style: "currency" }),
 });
 
-const getChartContext = (): RenderingContext => {
-  const measureText = jest.fn((text: string) => {
-    if (text === "$720.00") {
-      return WIDEST_MEASURED_TICK_WIDTH;
-    }
+const getChartContext = () =>
+  createMockChartContext({
+    measureText: jest.fn((text: string) => {
+      if (text === "$720.00") {
+        return WIDEST_MEASURED_TICK_WIDTH;
+      }
 
-    return 20;
+      return 20;
+    }),
   });
-
-  return {
-    getColor: (name) => name,
-    measureText,
-    measureTextHeight: () => 0,
-    fontFamily: "",
-    theme: DEFAULT_VISUALIZATION_THEME,
-  };
-};
 
 describe("getChartLayout", () => {
   it("measures actual y-axis tick labels for a zero-pinned axis (#74568)", () => {
@@ -105,5 +98,41 @@ describe("getChartLayout", () => {
         CHART_STYLE.axisTicksMarginY +
         CHART_STYLE.padding.x,
     );
+  });
+
+  it("does not widen the y-axis gutter for a goal on a normalized stack (metabase#82424)", () => {
+    const formatPercent = (value: unknown) =>
+      `${Math.round(Number(value) * 100)}%`;
+    const normalizedInput: ChartLayoutInput = {
+      ...input,
+      leftAxisModel: {
+        ...yAxisModel,
+        extent: [0, 1],
+        isNormalized: true,
+        formatter: formatPercent,
+        formatGoal: formatPercent,
+      },
+    };
+    const getLeftTicksWidth = (goalSettings: VisualizationSettings) =>
+      getChartLayout(
+        normalizedInput,
+        createMockVisualizationSettings({ ...settings, ...goalSettings }),
+        false,
+        480,
+        274,
+        createMockChartContext({ measureText: (text) => text.length * 8 }),
+      ).ticksDimensions.yTicksWidthLeft;
+
+    const withoutGoal = getLeftTicksWidth({ "graph.show_goal": false });
+    const withGoal = (goalValue: number) =>
+      getLeftTicksWidth({
+        "graph.show_goal": true,
+        "graph.goal_value": goalValue,
+      });
+
+    // the user enters 100 for 100%, which is no wider than the widest tick
+    expect(withGoal(100)).toBe(withoutGoal);
+    // while 1000% is one character wider than 100%
+    expect(withGoal(1000)).toBe(withoutGoal + 8);
   });
 });
