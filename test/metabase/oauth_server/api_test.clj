@@ -259,6 +259,36 @@
               (is (= before (t2/count :model/OAuthClient))
                   "no client is stored"))))))))
 
+(deftest dynamic-register-rejects-empty-scope-test
+  (testing "GHY-4542: a client that sends `scope` but leaves it empty would register with no scopes and could
+            never authorize, since /oauth/authorize requires a scope. That is rejected rather than silently
+            replaced with the default ceiling, which is reserved for a client that omits `scope` entirely
+            (pinned in `dynamic-register-accepts-registered-scopes-test`)."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        ;; `nil` is encoded as JSON null. Were the key dropped in decoding, the client would get the default
+        ;; ceiling and a 201.
+        (doseq [body [{:redirect_uris ["https://example.com/callback"] :scope nil}
+                      {:redirect_uris ["https://example.com/callback"] :scope ""}
+                      {:redirect_uris ["https://example.com/callback"] :scope "   "}]]
+          (testing (pr-str body)
+            (let [before   (t2/count :model/OAuthClient)
+                  response (register-client! body :expected-status 400)]
+              (is (= {:error             "invalid_client_metadata"
+                      :error_description (str "The scope must not be empty. Omit scope, or include only scopes "
+                                              "listed in scopes_supported at "
+                                              "http://localhost:3000/.well-known/oauth-authorization-server")}
+                     response))
+              (is (= before (t2/count :model/OAuthClient))
+                  "no client is stored"))))
+        (testing "`scope` is a space-delimited string, so an empty JSON array fails the body schema"
+          (let [before (t2/count :model/OAuthClient)]
+            (register-client! {:redirect_uris ["https://example.com/callback"] :scope []}
+                              :expected-status 400)
+            (is (= before (t2/count :model/OAuthClient))
+                "no client is stored")))))))
+
 (deftest dynamic-register-accepts-registered-scopes-test
   (testing "GHY-4542: rejecting unregistered scopes must not reject registered ones"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"

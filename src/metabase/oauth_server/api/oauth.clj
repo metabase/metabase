@@ -218,6 +218,14 @@
                :body    {"error"             "invalid_client_metadata"
                          "error_description" "Invalid or missing JSON body"}}
 
+              ;; Only an omitted `scope` gets the default below; an empty one would register a client that
+              ;; can never authorize.
+              (and (contains? body :scope) (str/blank? (:scope body)))
+              {:status  400
+               :headers {"Content-Type" "application/json"}
+               :body    {"error"             "invalid_client_metadata"
+                         "error_description" (oauth-server/empty-scope-description)}}
+
               ;; A client's registered scopes are the ceiling /authorize checks requests against, so a
               ;; self-nominated wildcard such as `*` would later be granted as one.
               (not (oauth-server/all-scopes-registered? (:scope body)))
