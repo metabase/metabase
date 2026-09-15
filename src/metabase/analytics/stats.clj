@@ -18,7 +18,6 @@
    [metabase.eid-translation.core :as eid-translation]
    [metabase.internal-stats.core :as internal-stats]
    [metabase.lib-be.core :as lib-be]
-   [metabase.models.humanization :as humanization]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.session.settings :as session.settings]
    [metabase.settings.core :as setting]
@@ -28,6 +27,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.version.core :as version]))
 
 (set! *warn-on-reflection* true)
@@ -124,7 +124,7 @@
    :check_for_updates                    (version/check-for-updates)
    :report_timezone                      (driver/report-timezone)
    ;; We deprecated advanced humanization but have this here anyways
-   :friendly_names                       (= (humanization/humanization-strategy) "advanced")
+   :friendly_names                       (= (setting/get :humanization-strategy) "advanced")
    :email_configured                     (setting/get :email-configured?)
    :slack_configured                     (setting/get :slack-configured?)
    :sso_configured                       (setting/get :google-auth-enabled)
@@ -540,6 +540,15 @@
           {:group (str qe-group) :value (get executions qe-group)})
         [:interactive_embed :internal :public_link :sdk_embed :simple_embed :static_embed]))
 
+(def ^:private QueryExecutionCounts
+  [:map {:closed true}
+   [:sdk_embed :int]
+   [:interactive_embed :int]
+   [:static_embed :int]
+   [:public_link :int]
+   [:simple_embed :int]
+   [:internal :int]])
+
 (mu/defn- snowplow-grouped-metrics
   :- [:sequential
       [:map
@@ -549,7 +558,12 @@
   [{:keys [eid-translations-24h
            query-executions
            query-executions-24h]
-    :as _snowplow-grouped-metric-info}]
+    :as _snowplow-grouped-metric-info}
+   :- [:map {:closed true}
+       [:eid-translations-24h [:map {:closed true}
+                               [:ok :int] [:not-found :int] [:invalid-format :int] [:total :int]]]
+       [:query-executions     QueryExecutionCounts]
+       [:query-executions-24h QueryExecutionCounts]]]
   (deep-string-keywords
    [{:name :query_executions_by_source
      :values (get-query-exeuction-counts query-executions)
@@ -583,16 +597,159 @@
       :scim_users_last_24h             (analytics.db/new-scim-user-count-since one-day-ago)}
      (transform-metrics))))
 
+(def ^:private string-keyed-int-histogram
+  [:map-of :string :int])
+
+(def ^:private optional-count-map
+  "Non-negative integer counts keyed by whatever subset of these metric names a given call site fills in."
+  [:map {:closed true}
+   [:total {:optional true} :int]
+   [:native {:optional true} :int]
+   [:gui {:optional true} :int]
+   [:is_dashboard_question {:optional true} :int]
+   [:with_params {:optional true} :int]
+   [:with_enabled_params {:optional true} :int]
+   [:with_locked_params {:optional true} :int]
+   [:with_disabled_params {:optional true} :int]
+   [:active {:optional true} :int]
+   [:admin {:optional true} :int]
+   [:logged_in {:optional true} :int]
+   [:sso {:optional true} :int]
+   [:archived {:optional true} :int]
+   [:analyzed {:optional true} :int]])
+
+(def ^:private LegacyAnonymousUsageStats
+  "The shape returned by [[legacy-anonymous-usage-stats]]: instance metadata plus a `:stats` map of per-domain
+  metric groups."
+  [:map {:closed true}
+   [:version :string]
+   [:running_on :keyword]
+   [:startup_time_millis :int]
+   [:application_database [:maybe :string]]
+   [:check_for_updates :boolean]
+   [:report_timezone [:maybe :string]]
+   [:friendly_names :boolean]
+   [:email_configured :boolean]
+   [:slack_configured :boolean]
+   [:sso_configured :boolean]
+   [:instance_started :string]
+   [:has_sample_data :boolean]
+   [:enable_embedding :boolean]
+   [:enable_embedding_sdk :boolean]
+   [:enable_embedding_simple :boolean]
+   [:enable_embedding_interactive :boolean]
+   [:enable_embedding_static :boolean]
+   [:enable_embedding_modular :boolean]
+   [:embedding_app_origin_set :boolean]
+   [:embedding_app_origin_sdk_set :boolean]
+   [:embedding_app_origin_interactive_set [:maybe :string]]
+   [:appearance_site_name :boolean]
+   [:appearance_help_link :keyword]
+   [:appearance_logo :boolean]
+   [:appearance_favicon :boolean]
+   [:appearance_loading_message :boolean]
+   [:appearance_metabot_greeting :boolean]
+   [:appearance_login_page_illustration :string]
+   [:appearance_landing_page_illustration :string]
+   [:appearance_no_data_illustration :string]
+   [:appearance_no_object_illustration :string]
+   [:appearance_ui_colors :boolean]
+   [:appearance_chart_colors :boolean]
+   [:appearance_show_mb_links :boolean]
+   [:uuid :string]
+   [:timestamp (ms/InstanceOfClass java.time.OffsetDateTime)]
+   [:stats
+    [:map {:closed true}
+     [:cache [:map {:closed true}
+              [:average_entry_size :int]
+              [:num_queries_cached :string]
+              [:num_queries_cached_unbinned :int]]]
+     [:collection [:map {:closed true}
+                   [:collections :int]
+                   [:cards_in_collections :int]
+                   [:cards_not_in_collections :int]
+                   [:num_cards_per_collection string-keyed-int-histogram]]]
+     [:dashboard [:map {:closed true}
+                  [:dashboards :int]
+                  [:with_params :int]
+                  [:num_dashs_per_user string-keyed-int-histogram]
+                  [:num_cards_per_dash string-keyed-int-histogram]
+                  [:num_dashs_per_card string-keyed-int-histogram]
+                  [:public optional-count-map]
+                  [:embedded optional-count-map]]]
+     [:database [:map {:closed true}
+                 [:databases optional-count-map]
+                 [:dbms_versions string-keyed-int-histogram]]]
+     [:execution [:map {:closed true}
+                  [:executions :int]
+                  [:by_status string-keyed-int-histogram]
+                  [:num_per_user string-keyed-int-histogram]
+                  [:num_by_latency string-keyed-int-histogram]]]
+     [:field [:map {:closed true}
+              [:fields :int]
+              [:num_per_table string-keyed-int-histogram]]]
+     [:group [:map {:closed true}
+              [:groups :int]]]
+     [:metric [:map {:closed true}
+               [:metrics :int]]]
+     [:pulse [:map {:closed true}
+              [:pulses :int]
+              [:with_table_cards :int]
+              [:pulse_types string-keyed-int-histogram]
+              [:pulse_schedules string-keyed-int-histogram]
+              [:num_pulses_per_user string-keyed-int-histogram]
+              [:num_pulses_per_card string-keyed-int-histogram]
+              [:num_cards_per_pulses string-keyed-int-histogram]]]
+     [:alert [:map {:closed true}
+              [:alerts :int]
+              [:with_table_cards :int]
+              [:first_time_only :int]
+              [:above_goal :int]
+              [:alert_types string-keyed-int-histogram]
+              [:num_alerts_per_user string-keyed-int-histogram]
+              [:num_alerts_per_card string-keyed-int-histogram]
+              [:num_cards_per_alerts string-keyed-int-histogram]]]
+     [:question [:map {:closed true}
+                 [:questions optional-count-map]
+                 [:public optional-count-map]
+                 [:embedded optional-count-map]]]
+     [:segment [:map {:closed true}
+                [:segments :int]]]
+     [:system [:map {:closed true}
+               [:max_memory :int]
+               [:processors :int]
+               [:java_version [:maybe :string]]
+               [:java_vm_specification_version [:maybe :string]]
+               [:java_runtime_name [:maybe :string]]
+               [:user_timezone [:maybe :string]]
+               [:user_language [:maybe :string]]
+               [:user_country [:maybe :string]]
+               [:file_encoding [:maybe :string]]
+               [:os_name [:maybe :string]]
+               [:os_version [:maybe :string]]]]
+     [:table [:map {:closed true}
+              [:tables :int]
+              [:num_per_database string-keyed-int-histogram]
+              [:num_per_schema string-keyed-int-histogram]]]
+     [:user [:map {:closed true}
+             [:users optional-count-map]]]
+     [:document [:map {:closed true}
+                 [:documents optional-count-map]]]
+     [:library [:map {:closed true}
+                [:library_data :int]
+                [:library_metrics :int]]]]]])
+
 (mu/defn- snowplow-metrics
-  [stats metric-info :- [:map
-                         [:models :int]
-                         [:new_embedded_dashboards :int]
-                         [:new_users_last_24h :int]
-                         [:pivot_tables :int]
-                         [:query_executions_last_24h :int]
-                         [:entity_id_translations_last_24h :int]
-                         [:transforms :int]
-                         [:transform_runs_last_24h :int]]]
+  [stats :- LegacyAnonymousUsageStats
+   metric-info :- [:map {:closed true}
+                   [:models :int]
+                   [:new_embedded_dashboards :int]
+                   [:new_users_last_24h :int]
+                   [:pivot_tables :int]
+                   [:query_executions_last_24h :int]
+                   [:entity_id_translations_last_24h :int]
+                   [:transforms :int]
+                   [:transform_runs_last_24h :int]]]
   (mapv
    (fn [[k v tags]]
      (assert (every? string? tags) "Tags must be strings in snowplow metrics.")

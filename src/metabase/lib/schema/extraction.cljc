@@ -4,7 +4,7 @@
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::extraction
-  [:map
+  [:map {:closed true}
    [:lib/type     [:= :metabase.lib.extraction/extraction]]
    [:tag          [:enum
                    :domain :subdomain :host :path

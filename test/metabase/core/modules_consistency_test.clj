@@ -24,6 +24,12 @@
                      nil)))
                ["./bin/bb" "bb"])))
 
+(def ^:private bb-env
+  "The environment Babashka runs under: a writable classpath cache, wherever the runner's home directory is."
+  (delay (assoc (into {} (System/getenv))
+                "CLJ_CACHE" (str (java.nio.file.Files/createTempDirectory
+                                  "bb-cpcache" (into-array java.nio.file.attribute.FileAttribute []))))))
+
 (defn- bb-eval
   "Evaluate `form` with `mage.modules` loaded in Babashka."
   [form]
@@ -32,13 +38,28 @@
                  (throw (ex-info "No working babashka at ./bin/bb or on PATH. Run any ./bin/mage task once to install it."
                                  {})))
         expr (pr-str `(do (require 'mage.modules) (~'prn ~form)))
-        {:keys [exit out err]} (shell/sh bb "-e" expr)]
+        {:keys [exit out err]} (shell/sh bb "-e" expr :env @bb-env)]
     (when-not (zero? exit)
       (throw (ex-info "babashka evaluation failed" {:exit exit, :stderr err, :expr expr})))
     (edn/read-string out)))
 
 (defn- mage-test-paths [modules-config module]
   (bb-eval `(#'mage.modules/module->test-paths '~modules-config '~module)))
+
+(defn- warm-babashka-classpath!
+  "Build Babashka's classpath cache once, serially, before any test runs.
+
+  Every deftest below is `^:parallel` and each one shells out to its own `bb` process. On a machine with a
+  cold cache -- a fresh CI runner -- they all start at the same moment and race to create
+  `~/.config/clojure/.cpcache`. The losers die with `Error building classpath. Can't create directory`,
+  which then surfaces as a confusing missing-dependency error from the first `:deps` entry Mage requires.
+  One serial run first means the cache already exists by the time the parallel tests start."
+  []
+  (bb-eval nil))
+
+(use-fixtures :once (fn [thunk]
+                      (warm-babashka-classpath!)
+                      (thunk)))
 
 (deftest ^:parallel mage-file-resolution-test
   (testing "Mage and the linter resolve equivalent files and namespaces to the same module"
@@ -154,12 +175,12 @@
                    {"metabase.lib.schema" 'lib.schema}
                    ["test/metabase/lib/schema_test.cljc"])))))))
 
-(deftest ^:parallel log-team-attribution-agrees-with-deps-graph-test
-  (testing "logging and dev tooling assign the same team to every module"
+(deftest ^:parallel log-team-attribution-agrees-with-hook-test
+  (testing "logging and the shared resolver assign the same team to every module"
     (let [config (dev.deps-graph/kondo-config)]
       (is (< 100 (count config)) "expected the full module config")
       (doseq [module (sort (keys config))
               :let   [ns-symb (symbol (modules/module-ns-prefix config module))]]
         (testing (str "\n" ns-symb)
-          (is (= (dev.deps-graph/module-team config module)
+          (is (= (modules/module-team config module)
                  (log/ns->team* ns-symb))))))))

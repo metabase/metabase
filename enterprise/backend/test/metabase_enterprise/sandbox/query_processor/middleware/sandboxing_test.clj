@@ -63,7 +63,8 @@
      (qp.store/with-metadata-provider (mt/id)
        (sql.qp/->honeysql
         (or driver/*driver* :h2)
-        [:field {::add/source-table (mt/id table-key)
+        [:field {:lib/uuid          (str (random-uuid))
+                 ::add/source-table (mt/id table-key)
                  ::add/source-alias field-name
                  ::add/desired-alias field-name}
          field-id])))))
@@ -137,7 +138,7 @@
                         [:raw "{{user}}"]]
                 :order-by [[(identifier :checkins :id) :asc]]})
 
-              :template_tags
+              :template-tags
               {"user" {:name "user"
                        :display-name "User ID"
                        :type :number
@@ -1882,7 +1883,7 @@
     ;; To guard against a fix that simply disables the filter, the sandbox query below also joins in a column from
     ;; another table (`orders.total`) — that one *must* still be filtered out.
     (let [mp            (lib.tu/mock-metadata-provider
-                         {:database {:id 1 :name "db" :dialect :h2 :engine :h2}
+                         {:database {:id 1 :name "db" :engine :h2}
                           :tables   [{:id 100 :name "customers" :db-id 1}
                                      {:id 200 :name "orders" :db-id 1}]
                           :fields   [{:id 1001 :name "id" :base-type :type/Integer :table-id 100

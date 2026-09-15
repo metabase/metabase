@@ -12,7 +12,7 @@
 (deftest batch-upsert-test
   (with-redefs [t2/query identity]
     (let [query (specialization/batch-upsert! :some-table
-                                              [{:a :b}
-                                               {:b :c}])]
-      (is (= [{:a :b} {:b :c}] (:values query)))
-      (is (= {:a :excluded.a :b :excluded.b} (:do-update-set query))))))
+                                              [{:display_data :a}
+                                               {:legacy_input :b}])]
+      (is (= [{:display_data :a} {:legacy_input :b}] (:values query)))
+      (is (= {:display_data :excluded.display_data :legacy_input :excluded.legacy_input} (:do-update-set query))))))

@@ -7,18 +7,10 @@
 
 (mr/def ::timeline
   "A Timeline as selected from the app DB: every column of `:timeline`."
-  [:map {:closed true}
-   [:id            ms/PositiveInt]
-   [:name          :string]
-   [:description   [:maybe :string]]
-   [:icon          :string]
-   [:collection_id [:maybe ::lib.schema.id/collection]]
-   [:archived      :boolean]
-   [:creator_id    ::lib.schema.id/user]
-   [:created_at    ms/TemporalInstant]
-   [:updated_at    ms/TemporalInstant]
-   [:default       :boolean]
-   [:entity_id     :string]])
+  [:merge
+   ::timeline.update
+   [:map {:closed true}
+    [:id            ms/PositiveInt]]])
 
 (mr/def ::timeline.update
   "What an update (or insert) of a Timeline accepts: every column of `:timeline` except `id`, all optional."
@@ -36,19 +28,10 @@
 
 (mr/def ::timeline-event
   "A TimelineEvent as selected from the app DB: every column of `:timeline_event`."
-  [:map {:closed true}
-   [:id           ms/PositiveInt]
-   [:timeline_id  ms/PositiveInt]
-   [:name         :string]
-   [:description  [:maybe :string]]
-   [:timestamp    ms/TemporalInstant]
-   [:time_matters :boolean]
-   [:timezone     :string]
-   [:icon         :string]
-   [:archived     :boolean]
-   [:creator_id   ::lib.schema.id/user]
-   [:created_at   ms/TemporalInstant]
-   [:updated_at   ms/TemporalInstant]])
+  [:merge
+   ::timeline-event.update
+   [:map {:closed true}
+    [:id           ms/PositiveInt]]])
 
 (mr/def ::timeline-event.update
   "What an update (or insert) of a TimelineEvent accepts: every column of `:timeline_event` except `id`, all optional."

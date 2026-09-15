@@ -2,6 +2,7 @@
   "Application database queries for the auth identity module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [metabase.auth-identity.schema :as auth-identity.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
@@ -14,8 +15,8 @@
   [:map {:closed true}
    [:user_id      {:optional true} [:maybe ::lib.schema.id/user]]
    [:provider     {:optional true} [:maybe [:or :keyword :string]]]
-   [:credentials  {:optional true} [:maybe :map]]
-   [:metadata     {:optional true} [:maybe :map]]
+   [:credentials  {:optional true} [:maybe ::auth-identity.schema/auth-identity.credentials]]
+   [:metadata     {:optional true} [:maybe ::auth-identity.schema/auth-identity.metadata]]
    [:provider_id  {:optional true} [:maybe :string]]
    [:last_used_at {:optional true} [:maybe ms/TemporalInstant]]
    [:expires_at   {:optional true} [:maybe ms/TemporalInstant]]

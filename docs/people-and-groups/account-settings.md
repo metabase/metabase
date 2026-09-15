@@ -45,6 +45,8 @@ If your admin has turned on [two-factor authentication](./two-factor-authenticat
 6. Enter the six-digit code from the app.
 7. Save your recovery codes. Metabase shows these ten codes only once, so copy them and store them somewhere safe. Each recovery code only works once. If you [regenerate recovery codes](#regenerate-recovery-codes), the old codes will no longer work.
 
+If your admin requires 2FA, Metabase prompts you to set up 2FA the next time you log in.
+
 ### Logging in with two-factor authentication
 
 Once you set up two-factor authentication, Metabase will ask for a code every time you log in. After you enter your email and password:
@@ -60,6 +62,8 @@ Recovery codes are single-use, so it's worth generating a fresh set if you're ru
 ### Turn off two-factor authentication
 
 In your account settings, on the **Authentication** tab, click **Disable**. Your account will be protected by your password only, and your recovery codes will stop working.
+
+If your admin requires 2FA, you can't disable it.
 
 ## Account login history
 

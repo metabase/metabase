@@ -114,8 +114,12 @@
            settings
            users
            util
+           warehouse-schema-overlay
            warehouses}
-   :model-exports #{:model/Action}
+   :model-exports #{:model/Action
+                    :model/HTTPAction
+                    :model/ImplicitAction
+                    :model/QueryAction}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -156,7 +160,8 @@
            models
            permissions
            util
-           util.config}
+           util.config
+           warehouse-schema-overlay}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -199,7 +204,8 @@
            system
            task
            util
-           util.config}
+           util.config
+           warehouse-schema-overlay}
    :model-imports #{:model/CacheConfig
                     :model/Card
                     :model/Collection
@@ -209,7 +215,6 @@
                     :model/Database
                     :model/DatabaseRouter
                     :model/Document
-                    :model/Field
                     :model/ModerationReview
                     :model/PermissionsGroup
                     :model/Pulse
@@ -260,6 +265,7 @@
            events
            lib.schema
            models
+           request
            settings
            util
            util.config}
@@ -378,7 +384,8 @@
            task
            task.history
            tracing
-           util}
+           util
+           warehouse-schema-overlay}
    :model-exports #{:model/AuditLog}
    :model-imports #{:model/ApiKey
                     :model/Card
@@ -434,8 +441,15 @@
    :api  #{metabase.batch-processing.core
            metabase.batch-processing.init}
    :uses #{app-db
+           parameters
+           query-processor.cache-backend
            settings
-           util}}
+           util}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Document
+                    :model/Table}}
 
   bookmarks
   {:team "UX West"
@@ -502,6 +516,7 @@
            metabase.channel.init
            metabase.channel.models.channel
            metabase.channel.render.core
+           metabase.channel.schema
            metabase.channel.settings
            metabase.channel.slack
            metabase.channel.template.core
@@ -599,7 +614,8 @@
            transforms
            upload
            util
-           util.config}
+           util.config
+           warehouse-schema-overlay}
    :model-exports #{:model/Collection}
    :model-imports #{:model/Card
                     :model/CollectionBookmark
@@ -613,6 +629,7 @@
                     :model/Permissions
                     :model/Pulse
                     :model/Table
+                    :model/TableUserSettings
                     :model/Timeline
                     :model/Transform
                     :model/User}}
@@ -632,7 +649,8 @@
            premium-features
            queries
            request
-           util}
+           util
+           warehouse-schema-overlay}
    :model-imports #{:model/Card :model/Collection}}
 
   comments
@@ -666,11 +684,11 @@
 
   content-verification
   {:team "UX West"
-   :api  #{metabase.content-verification.core
-           metabase.content-verification.init}
+   :api  #{metabase.content-verification.core metabase.content-verification.init metabase.content-verification.schema}
    :uses #{app-db
            lib.schema
            models
+           users
            util}
    :model-exports #{:model/ModerationReview}
    :model-imports #{:model/Card :model/Dashboard :model/User}}
@@ -730,14 +748,17 @@
            metabase.dashboards.schema
            metabase.dashboards.settings
            metabase.dashboards.write}
-   :uses #{analytics
+   :uses #{actions
+           analytics
            api
            app-db
            audit-app
            collections
+           content-verification
            embedding
            events
            lib
+           lib.be
            lib.schema
            models
            parameters
@@ -782,6 +803,7 @@
            dashboards
            embedding
            events
+           lib
            lib.be
            lib.schema
            models
@@ -822,6 +844,7 @@
            request
            sync
            util
+           warehouse-schema-overlay
            warehouses.schema}
    :model-imports #{:model/Database
                     :model/Dimension
@@ -859,7 +882,8 @@
            query-processor
            revisions
            search
-           util}
+           util
+           warehouse-schema-overlay}
    :model-exports #{:model/Document}
    :model-imports #{:model/Card
                     :model/Collection
@@ -881,7 +905,7 @@
            metabase.driver.settings
            metabase.driver.sql
            metabase.driver.sql-jdbc
-           metabase.driver.sql-jdbc.connection
+           metabase.driver.sql-jdbc.connection.pool-lock
            metabase.driver.sql-jdbc.execute
            metabase.driver.sql-jdbc.execute.diagnostic
            metabase.driver.sql-jdbc.sync
@@ -912,6 +936,7 @@
            util
            util.classloader
            util.config
+           warehouse-schema-overlay
            warehouses
            warehouses.schema}
    :model-imports #{:model/Database :model/Field :model/Table}}
@@ -943,7 +968,8 @@
            metabot
            permissions
            premium-features
-           util.config}
+           util.config
+           warehouse-schema-overlay}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/ConnectionImpersonation
@@ -996,7 +1022,7 @@
 
   explorations
   {:team "UX West"
-   :api #{metabase.explorations.core metabase.explorations.init}
+   :api #{metabase.explorations.core metabase.explorations.init metabase.explorations.schema}
    :uses #{analytics
            analytics.interface
            api
@@ -1118,8 +1144,8 @@
 
   interestingness
   {:team "UX West"
-   :api  #{metabase.interestingness.core}
-   :uses #{util}}
+   :api  #{metabase.interestingness.chart.types metabase.interestingness.core}
+   :uses #{lib.be util}}
 
   lib
   {:team "Querying Platform"
@@ -1140,6 +1166,7 @@
            metabase.lib.normalize
            metabase.lib.options
            metabase.lib.pivot
+           metabase.lib.ref
            metabase.lib.types.isa
            metabase.lib.util
            metabase.lib.walk}
@@ -1172,7 +1199,8 @@
            lib.schema
            models
            settings
-           util}
+           util
+           warehouse-schema-overlay}
    :model-imports #{:model/Card
                     :model/Database
                     :model/Dimension
@@ -1221,7 +1249,8 @@
            lib.schema
            lib.types
            settings
-           util}
+           util
+           warehouse-schema-overlay}
    :model-imports #{:model/Card :model/Field :model/Table}}
 
   lib.schema
@@ -1338,6 +1367,7 @@
            users
            util
            util.config
+           warehouse-schema-overlay
            warehouses.schema}
    :model-imports #{:model/Card
                     :model/Collection
@@ -1384,13 +1414,17 @@
            events
            lib
            lib.be
+           lib.metric
            lib.schema
            metrics
            models
            permissions
            remote-sync
            search
-           util}
+           users
+           util
+           warehouse-schema-overlay
+           warehouses.schema}
    :model-exports #{:model/Measure}
    :model-imports #{:model/Collection :model/Table :model/User}}
 
@@ -1461,13 +1495,15 @@
               transforms.base
               util
               util.config
+              warehouse-schema-overlay
               warehouses
               warehouses.schema}
    :model-exports #{:model/AiUsageLog
                     :model/Metabot
                     :model/MetabotConversation
                     :model/MetabotFeedback
-                    :model/MetabotMessage}
+                    :model/MetabotMessage
+                    :model/MetabotPrompt}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -1551,6 +1587,7 @@
            sync
            util
            util.config
+           warehouse-schema-overlay
            warehouses.schema}
    :model-imports #{:model/Card
                     :model/Database
@@ -1605,7 +1642,8 @@
            query-processor
            request
            server
-           util}
+           util
+           warehouse-schema-overlay}
    :model-imports #{:model/Card :model/Field :model/Measure}}
 
   mfa
@@ -1644,7 +1682,6 @@
   models
   {:team "DevEx"
    :api  #{metabase.models.db
-           metabase.models.humanization
            metabase.models.init
            metabase.models.interface
            metabase.models.resolution
@@ -1659,20 +1696,53 @@
            lib.legacy-mbql
            lib.metadata
            lib.schema
-           settings
+           parameters
            util
-           util.classloader}
-   :model-imports #{:model/Card
+           util.classloader
+           warehouse-schema-overlay}
+   :model-imports #{:model/Action
+                    :model/Card
+                    :model/Channel
+                    :model/ChannelTemplate
                     :model/Collection
+                    :model/CustomVizPlugin
                     :model/Dashboard
+                    :model/DashboardCard
+                    :model/DashboardCardSeries
                     :model/DashboardTab
                     :model/Database
+                    :model/Dimension
                     :model/Document
+                    :model/EmbeddingTheme
+                    :model/Exploration
                     :model/Field
+                    :model/FieldUserSettings
+                    :model/FieldValues
+                    :model/Glossary
+                    :model/HTTPAction
+                    :model/ImplicitAction
                     :model/Measure
+                    :model/Metabot
+                    :model/MetabotPrompt
                     :model/NativeQuerySnippet
+                    :model/Notification
+                    :model/NotificationCard
+                    :model/NotificationHandler
+                    :model/NotificationRecipient
+                    :model/NotificationSubscription
+                    :model/OsiAiContext
+                    :model/PythonLibrary
+                    :model/QueryAction
                     :model/Segment
                     :model/Table
+                    :model/TableIndex
+                    :model/Timeline
+                    :model/TimelineEvent
+                    :model/Transform
+                    :model/TransformJob
+                    :model/TransformJobTransformTag
+                    :model/TransformTag
+                    :model/TransformTransformTag
                     :model/User}}
 
   mq
@@ -1688,8 +1758,7 @@
 
   native-query-snippets
   {:team "Graphy"
-   :api  #{metabase.native-query-snippets.api
-           metabase.native-query-snippets.core}
+   :api  #{metabase.native-query-snippets.api metabase.native-query-snippets.core metabase.native-query-snippets.schema}
    :uses #{api
            collections
            events
@@ -1699,6 +1768,7 @@
            permissions
            premium-features
            remote-sync
+           users
            util}
    :model-exports #{:model/NativeQuerySnippet}
    :model-imports #{:model/Collection :model/User}}
@@ -1741,8 +1811,10 @@
            util
            util.config}
    :model-exports #{:model/Notification
+                    :model/NotificationCard
                     :model/NotificationHandler
-                    :model/NotificationRecipient}
+                    :model/NotificationRecipient
+                    :model/NotificationSubscription}
    :model-imports #{:model/Card
                     :model/Channel
                     :model/ChannelTemplate
@@ -1783,6 +1855,7 @@
            metabase.parameters.shared}
    :uses #{api
            app-db
+           dashboards
            lib
            lib.be
            lib.metadata
@@ -1791,6 +1864,7 @@
            query-processor
            util
            util.classloader
+           warehouse-schema-overlay
            warehouses.schema}
    :model-imports #{:model/Card
                     :model/Dashboard
@@ -1803,6 +1877,7 @@
    :api  #{metabase.permissions.core
            metabase.permissions.init
            metabase.permissions.metric
+           metabase.permissions.path
            metabase.permissions.schema}
    :uses #{api
            app-db
@@ -1819,6 +1894,9 @@
            users
            util
            util.config
+           warehouse-schema-overlay
+           warehouses
+           warehouses.schema
            enterprise/permissions}
    :model-exports #{:model/ApplicationPermissionsRevision
                     :model/CollectionPermissionGraphRevision
@@ -1845,7 +1923,8 @@
            premium-features
            request
            settings
-           util}
+           util
+           warehouse-schema-overlay}
    :model-imports #{:model/Card
                     :model/Dashboard
                     :model/DataPermissions
@@ -1865,6 +1944,7 @@
   {:team "UX West"
    :api  #{metabase.premium-features.api
            metabase.premium-features.core
+           metabase.premium-features.defenterprise
            metabase.premium-features.init}
    :uses #{analytics.interface
            analytics.internal-stats
@@ -2025,6 +2105,7 @@
            util
            util.config
            util.graph
+           warehouse-schema-overlay
            warehouses.schema}
    :model-exports #{:model/Card
                     :model/ParameterCard
@@ -2069,7 +2150,8 @@
            request
            revisions
            search
-           util}
+           util
+           warehouse-schema-overlay}
    :model-imports #{:model/Card
                     :model/CardBookmark
                     :model/Collection
@@ -2092,7 +2174,8 @@
            permissions
            query-processor
            request
-           util}
+           util
+           warehouse-schema-overlay}
    :model-imports #{:model/Card :model/Field :model/Table}}
 
   query-processor
@@ -2168,7 +2251,8 @@
            tracing
            users
            util
-           util.config}
+           util.config
+           warehouse-schema-overlay}
    :model-imports #{:model/Card
                     :model/DashboardCardSeries
                     :model/Database
@@ -2244,6 +2328,7 @@
            lib.schema
            permissions
            premium-features
+           server
            session
            settings
            users
@@ -2260,13 +2345,17 @@
            collections
            dashboards
            events
+           explorations
            lib
            lib.be
            lib.schema
+           measures
            models
            parameters
            queries
            query-permissions
+           segments
+           transforms
            util
            util.config}
    :model-exports #{:model/Revision}
@@ -2344,7 +2433,8 @@
            tracing
            transforms
            util
-           util.config}
+           util.config
+           warehouse-schema-overlay}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -2383,7 +2473,10 @@
            permissions
            remote-sync
            search
+           users
            util
+           warehouse-schema-overlay
+           warehouses.schema
            xrays}
    :model-exports #{:model/Segment}
    :model-imports #{:model/Collection :model/Table :model/User}}
@@ -2431,6 +2524,7 @@
    :api  #{metabase.session.api
            metabase.session.core
            metabase.session.init
+           metabase.session.schema
            metabase.session.settings}      ; TODO -- shouldn't be exposed as an API namespace
    :uses #{api
            app-db
@@ -2529,7 +2623,8 @@
            lib.schema
            settings
            sql-tools.parsing
-           util}
+           util
+           warehouse-schema-overlay}
    :model-imports #{:model/Table}}
 
   sql-tools.parsing
@@ -2581,7 +2676,8 @@
 
   staleness
   {:team "UX West"
-   :api  #{metabase.staleness.core}}
+   :api  #{metabase.staleness.core}
+   :uses #{util}}
 
   startup
   {:team "DevEx"
@@ -2602,7 +2698,7 @@
            metabase.sync.field-values
            metabase.sync.init
            metabase.sync.schedules
-           metabase.sync.task.sync-databases
+           metabase.sync.task.sync-databases-trigger
            metabase.sync.util}
    :uses #{analytics.interface
            api
@@ -2625,6 +2721,7 @@
            tracing
            util
            util.config
+           warehouse-schema-overlay
            warehouses
            warehouses.schema}
    :model-imports #{:model/Database
@@ -2741,7 +2838,7 @@
            lib.schema
            models
            util}
-   :model-exports #{:model/Timeline}
+   :model-exports #{:model/Timeline :model/TimelineEvent}
    :model-imports #{:model/Collection :model/User}}
 
   tracing
@@ -2792,14 +2889,16 @@
            tracing
            transforms.base
            transforms.indexes
-           util}
+           util
+           warehouse-schema-overlay}
    :model-exports #{:model/Transform
                     :model/TransformDagRun
                     :model/TransformJob
                     :model/TransformJobRun
                     :model/TransformJobTransformTag
                     :model/TransformRun
-                    :model/TransformTag}
+                    :model/TransformTag
+                    :model/TransformTransformTag}
    :model-imports #{:model/Collection
                     :model/Database
                     :model/Field
@@ -2835,16 +2934,18 @@
            query-processor
            sync
            transforms.indexes
-           util}}
+           util
+           warehouse-schema-overlay}}
 
   transforms.indexes
   {:team "Gadget"
    :ns-prefix "metabase.indexes"
-   :api #{metabase.indexes.models.table-index metabase.indexes.reconcile}
+   :api #{metabase.indexes.models.table-index metabase.indexes.reconcile metabase.indexes.schema}
    :uses #{driver
            lib.schema
            models
-           util}
+           util
+           warehouses}
    :model-exports #{:model/TableIndex}}
 
   transforms.indexes.rest
@@ -2899,7 +3000,8 @@
            models
            permissions
            system
-           util}
+           util
+           warehouse-schema-overlay}
    :model-imports #{:model/Action
                     :model/Card
                     :model/Collection
@@ -2936,6 +3038,7 @@
            settings
            sync
            util
+           warehouse-schema-overlay
            warehouses.schema}
    :model-imports #{:model/Card
                     :model/Database
@@ -2958,7 +3061,8 @@
            models
            settings
            task
-           util}}
+           util
+           warehouse-schema-overlay}}
 
   user-key-value
   {:team "UX West"
@@ -3064,6 +3168,15 @@
    :api #{metabase.graph.core}
    :uses #{util}}
 
+  warehouse-schema-overlay
+  {:team "UX West"
+   :api  #{metabase.warehouse-schema-overlay.core}
+   :uses #{util}
+   :model-imports #{:model/Field
+                    :model/FieldUserSettings
+                    :model/Table
+                    :model/TableUserSettings}}
+
   warehouses
   {:team "UX West"
    :module-exports #{warehouses.schema
@@ -3085,6 +3198,7 @@
            settings
            sync
            util
+           warehouse-schema-overlay
            warehouses.secrets}
    :model-exports #{:model/Database}
    :model-imports #{:model/Card
@@ -3119,6 +3233,7 @@
            util
            util.classloader
            util.config
+           warehouse-schema-overlay
            warehouses
            warehouses.schema
            warehouses.secrets
@@ -3132,14 +3247,18 @@
   warehouses.schema
   {:team "UX West"
    :ns-prefix "metabase.warehouse-schema"
-   :api #{metabase.warehouse-schema.field
+   :api #{metabase.warehouse-schema.core
+          metabase.warehouse-schema.field
           metabase.warehouse-schema.field-values.distinct-batch
+          metabase.warehouse-schema.humanization
+          metabase.warehouse-schema.init
           metabase.warehouse-schema.metadata-from-qp
           metabase.warehouse-schema.metadata-queries
           metabase.warehouse-schema.models.field
           metabase.warehouse-schema.models.field-user-settings
           metabase.warehouse-schema.models.field-values
           metabase.warehouse-schema.models.table
+          metabase.warehouse-schema.models.table-user-settings
           metabase.warehouse-schema.schema
           metabase.warehouse-schema.table}
    :uses #{api
@@ -3158,17 +3277,20 @@
            query-processor
            remote-sync
            search
+           settings
            sync.analyze
            util
            util.classloader
            util.config
+           warehouse-schema-overlay
            warehouses
            enterprise/permissions}
    :model-exports #{:model/Dimension
                     :model/Field
                     :model/FieldUserSettings
                     :model/FieldValues
-                    :model/Table}
+                    :model/Table
+                    :model/TableUserSettings}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Database
@@ -3201,6 +3323,7 @@
            sync
            upload
            util
+           warehouse-schema-overlay
            warehouses.schema
            xrays}
    :model-imports #{:model/Collection
@@ -3246,6 +3369,7 @@
            settings
            sync.analyze
            util
+           warehouse-schema-overlay
            warehouses.schema}
    :model-imports #{:model/Card
                     :model/Collection
@@ -3275,7 +3399,8 @@
            models
            query-processor
            sync
-           util}
+           util
+           warehouse-schema-overlay}
    :model-imports #{:model/Database
                     :model/Field
                     :model/FieldValues
@@ -3361,6 +3486,7 @@
            util
            util.classloader
            util.config
+           warehouse-schema-overlay
            warehouses
            warehouses.schema
            enterprise/serialization}
@@ -3532,7 +3658,8 @@
            premium-features
            request
            settings
-           util}
+           util
+           warehouse-schema-overlay}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/DataPermissions
@@ -3552,11 +3679,12 @@
            models
            permissions
            premium-features
-           util}
+           util
+           warehouse-schema-overlay
+           warehouses.schema}
    :model-imports #{:model/AuditLog
                     :model/Collection
                     :model/Dimension
-                    :model/Field
                     :model/Table
                     :model/User}}
 
@@ -3596,26 +3724,32 @@
            lib
            lib.be
            lib.metadata
+           lib.metric
            lib.schema
+           measures
            models
+           native-query-snippets
            permissions
            premium-features
            queries
            query-processor
            request
            revisions
+           segments
            settings
            sql-tools
            task
            transforms
            transforms.base
            util
-           util.graph}
+           util.graph
+           warehouse-schema-overlay
+           enterprise/permissions.sandbox}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
                     :model/Document
-                    :model/Field
+                    :model/FieldUserSettings
                     :model/Measure
                     :model/NativeQuerySnippet
                     :model/Sandbox
@@ -3640,11 +3774,13 @@
            measures
            model-persistence
            models
+           parameters
            queries
            segments
            task
            transforms
            util
+           warehouse-schema-overlay
            warehouses.schema
            enterprise/dependencies}
    :model-imports #{:model/Card
@@ -3675,6 +3811,7 @@
    :uses #{lib.schema
            premium-features
            util
+           warehouse-schema-overlay
            enterprise/sso}
    :model-imports #{:model/Card
                     :model/Collection
@@ -3693,7 +3830,8 @@
            collections
            lib.schema
            premium-features
-           util}
+           util
+           warehouse-schema-overlay}
    :model-imports #{:model/Card :model/Collection :model/Table}}
 
   enterprise/mcp
@@ -3800,6 +3938,7 @@
            task
            util
            util.config
+           warehouse-schema-overlay
            enterprise/search.embeddings
            enterprise/search.semantic}
    :model-imports #{:model/Card
@@ -3857,6 +3996,7 @@
            query-processor
            remote-sync
            util
+           warehouse-schema-overlay
            warehouses
            enterprise/permissions.impersonation}
    :model-imports #{:model/ApplicationPermissionsRevision
@@ -3877,7 +4017,8 @@
            models
            permissions
            query-processor
-           util}
+           util
+           warehouse-schema-overlay}
    :model-imports #{:model/Card :model/User}}
 
   enterprise/permissions.impersonation
@@ -3901,7 +4042,7 @@
   enterprise/permissions.sandbox
   {:team "UX West"
    :ns-prefix "metabase-enterprise.sandbox"
-   :api #{metabase-enterprise.sandbox.api.routes metabase-enterprise.sandbox.api.util}
+   :api #{metabase-enterprise.sandbox.api.routes metabase-enterprise.sandbox.api.util metabase-enterprise.sandbox.schema}
    :uses #{api
            app-db
            audit-app
@@ -3921,6 +4062,7 @@
            users
            users.tenants
            util
+           warehouse-schema-overlay
            warehouses
            warehouses.schema
            enterprise/api}
@@ -3963,6 +4105,7 @@
            task
            task.history
            util
+           warehouse-schema-overlay
            enterprise/data-apps
            enterprise/serialization
            enterprise/transforms.python}
@@ -3978,6 +4121,7 @@
                     :model/PythonLibrary
                     :model/Segment
                     :model/Table
+                    :model/TableUserSettings
                     :model/Timeline
                     :model/Transform
                     :model/TransformTag
@@ -4018,6 +4162,7 @@
            search.entity-retrieval
            task
            util
+           warehouse-schema-overlay
            enterprise/search.semantic}
    :model-imports #{:model/Card
                     :model/Measure
@@ -4058,7 +4203,8 @@
            task
            tracing
            util
-           util.config}
+           util.config
+           warehouse-schema-overlay}
    :model-imports #{:model/Collection :model/Dashboard :model/Table}}
 
   enterprise/security-center
@@ -4242,7 +4388,8 @@
            tracing
            transforms
            transforms.base
-           util}
+           util
+           warehouse-schema-overlay}
    :model-imports #{:model/Database
                     :model/Field
                     :model/Table
@@ -4271,7 +4418,8 @@
            transforms
            transforms.base
            util
-           util.config}
+           util.config
+           warehouse-schema-overlay}
    :model-exports #{:model/PythonLibrary}
    :model-imports #{:model/Database
                     :model/Field
@@ -4288,7 +4436,8 @@
            permissions
            premium-features
            upload
-           util}
+           util
+           warehouse-schema-overlay}
    :model-imports #{:model/Database :model/Table}}
 
   enterprise/warehouses
@@ -4300,6 +4449,7 @@
            models
            permissions
            util
+           warehouse-schema-overlay
            warehouses.schema}
    :model-imports #{:model/Database :model/Field :model/Table}}}
 

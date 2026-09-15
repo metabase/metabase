@@ -9,7 +9,6 @@
   (:require
    [medley.core :as m]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.humanization :as humanization]
    [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.fields.common :as common]
@@ -18,7 +17,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.humanization :as warehouse-schema.humanization]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         CREATING / REACTIVATING FIELDS                                         |
@@ -89,7 +89,7 @@
                                      base-type)))
          {:table_id                   (u/the-id table)
           :name                       field-name
-          :display_name               (humanization/name->human-readable-name field-name)
+          :display_name               (warehouse-schema.humanization/name->human-readable-name field-name)
           :database_type              (or database-type "NULL") ; placeholder for Fields w/ no type info (e.g. Mongo) & all NULL
           :base_type                  base-type
           ;; todo test this?

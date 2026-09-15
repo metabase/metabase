@@ -99,6 +99,10 @@ export function monitorAiAuditingUsage(opts?: { groupId?: GroupId }) {
   return opts?.groupId == null ? path : `${path}?group=${opts.groupId}`;
 }
 
+export function monitorAiAuditingUsageMetric(metric: string) {
+  return `${monitorAiAuditingUsage()}/${metric}`;
+}
+
 export function monitorAiAuditingConversations() {
   return `${monitorAiAuditing()}/conversations`;
 }

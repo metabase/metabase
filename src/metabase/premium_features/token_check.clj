@@ -47,11 +47,6 @@
   "Similar to RemoteCheckedToken, but starts with 'airgap_'."
   #"airgap_.+")
 
-(def ^:private TokenStr
-  [:or
-   [:re RemoteCheckedToken]
-   [:re AirgapToken]])
-
 (def ^String token-check-url
   "Base URL to use for token checks. Hardcoded by default but for development purposes you can use a local server.
   Specify the env var `METASTORE_DEV_SERVER_URL`. If no server is defined, it uses the staging token check url."
@@ -73,7 +68,7 @@
 (let [f    (fn []
              {:post [(integer? %)]}
              (log/debug (u/colorize :yellow "GETTING ACTIVE USER COUNT!"))
-             (assert ((requiring-resolve 'metabase.app-db.core/db-is-set-up?)) "Metabase DB is not yet set up")
+             (assert (app-db/db-is-set-up?) "Metabase DB is not yet set up")
              ;; force this to use a new Connection, it seems to be getting called in situations where the Connection
              ;; is from a different thread and is invalid by the time we get to use it
              (let [result (binding [t2.conn/*current-connectable* nil]
@@ -90,7 +85,7 @@
 (defn -active-users-count
   "Getter for the [[metabase.premium-features.settings/active-users-count]] Setting."
   []
-  (if-not ((requiring-resolve 'metabase.app-db.core/db-is-set-up?))
+  (if-not (app-db/db-is-set-up?)
     0
     (locking-active-user-count)))
 
@@ -163,9 +158,14 @@
   (when (seq token)
     (format "%s/api/%s/v2/status" base-url token)))
 
+(def ^:private Meters
+  "The `:meters` of a token status response, keyed by the meter names the license server defines, each meter's fields
+  also being the license server's."
+  [:map {:closed false, ::mr/deliberately-open true, :description "license-server meters"}])
+
 (def TokenStatus
   "Schema for a response from the token status API."
-  [:map
+  [:map {:closed true}
    [:valid                          :boolean]
    [:status                         [:string {:min 1}]]
    [:error-details {:optional true} [:maybe [:string {:min 1}]]]
@@ -176,10 +176,13 @@
    [:valid-thru    {:optional true} [:string {:min 1}]]
    [:max-users     {:optional true} pos-int?]
    [:company       {:optional true} [:string {:min 1}]]
-   [:store-users   {:optional true} [:maybe [:sequential [:map
+   [:store-users   {:optional true} [:maybe [:sequential [:map {:closed true}
                                                           [:email :string]]]]]
-   [:meters        {:optional true} :map]
-   [:quotas        {:optional true} [:sequential [:map]]]])
+   [:meters        {:optional true} Meters]
+   [:quotas        {:optional true} [:sequential [:map {:closed true}
+                                                  [:hosting-feature {:optional true} :string]
+                                                  [:soft-limit      {:optional true} number?]
+                                                  [:usage           {:optional true} number?]]]]])
 
 (defn- http-fetch
   [base-url token site-uuid]
@@ -268,7 +271,7 @@
 (mu/defn- decode-token* :- TokenStatus
   "Decode a token. If you get a positive response about the token, even if it is not valid, return that. Errors will
   be caught further up with appropriate fall backs, retry strategies, and grace periods for features."
-  [token :- TokenStr]
+  [token :- :string]
   ;; NB that we fetch any settings from this thread, not inside on of the futures in the inner fetch calls.  We
   ;; will have taken a lock to call through to here, and could create a deadlock with the future's thread.  See
   ;; https://github.com/metabase/metabase/pull/38029/
@@ -319,7 +322,7 @@
                           {:pass-thru true})))
         ;; important to not count these errors against the circuit breaker. These are not the types of errors we need
         ;; to circuit break. (#65294)
-        (when-not ((requiring-resolve 'metabase.app-db.core/db-is-set-up?))
+        (when-not (app-db/db-is-set-up?)
           (throw (ex-info "Metabase DB is not yet set up"
                           {:cause :token-check/app-db-not-ready})))
         (locking lock

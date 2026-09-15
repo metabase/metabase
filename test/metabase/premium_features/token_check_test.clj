@@ -732,10 +732,10 @@
                          {:soft-ttl (t/minutes 1) :hard-ttl (t/minutes 2)})
           token         (tu/random-token)
           bomb          (fn [& _] (throw (ex-info "DB should not be touched" {})))]
-      (with-redefs [mdb/db-is-set-up? (constantly false)
-                    token-check/read-cache-from-db bomb
-                    token-check/write-cache-to-db! bomb
-                    token-check/clear-db-cache! bomb]
+      (mt/with-dynamic-fn-redefs [mdb/db-is-set-up? (constantly false)
+                                  token-check/read-cache-from-db bomb
+                                  token-check/write-cache-to-db! bomb
+                                  token-check/clear-db-cache! bomb]
         (is (= good-response (token-check/-check-token checker token)))
         (is (= 1 @call-count) "inner checker was called exactly once")
         ;; clear-cache! should also skip DB without error

@@ -2,7 +2,7 @@
   (:require
    [medley.core :as m]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
+   [metabase.permissions.path :as permissions.path]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -37,8 +37,8 @@
            (not (premium-features/enable-snippet-collections?)))
     #{}
     #{((case read-or-write
-         :read  perms/collection-read-path
-         :write perms/collection-readwrite-path) collection)}))
+         :read  permissions.path/collection-read-path
+         :write permissions.path/collection-readwrite-path) collection)}))
 
 (def ^RootCollection root-collection
   "Special placeholder object representing the Root Collection, which isn't really a real Collection."

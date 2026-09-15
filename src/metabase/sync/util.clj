@@ -67,6 +67,9 @@
     {:error/message "Sync event deriving from :metabase.sync.util/event"}
     #(events/isa? % ::event)]])
 
+(def ^:private DatabaseOrId
+  [:or ::lib.schema.id/database :metabase.warehouses.schema/database-or-metadata])
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          SYNC OPERATION "MIDDLEWARE"                                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -127,7 +130,9 @@
   `database-id`. `f` is executed between the logging of the two events."
   {:style/indent [:form]}
   ;; we can do everyone a favor and infer the name of the individual begin and sync events
-  ([event-name-prefix database-or-id f]
+  ([event-name-prefix :- :keyword
+    database-or-id    :- DatabaseOrId
+    f                 :- fn?]
    (letfn [(event-keyword [prefix suffix]
              (keyword (or (namespace event-name-prefix) "event")
                       (str (name prefix) suffix)))]
@@ -139,8 +144,8 @@
 
   ([begin-event-name :- Topic
     end-event-name   :- Topic
-    database-or-id
-    f]
+    database-or-id   :- DatabaseOrId
+    f                :- fn?]
    (fn []
      (let [start-time    (System/nanoTime)
            tracking-hash (str (random-uuid))]
@@ -461,11 +466,8 @@
   "Returns a reducible of all the Tables that should go through the sync processes for `database-or-id`.
 
   Returns tables ordered by `[schema name]` so results match the order expected by [[metabase.driver/describe-fks]]."
-  [database-or-id                       :- [:or
-                                            ::lib.schema.id/database
-                                            [:map
-                                             [:id ::lib.schema.id/database]]]
-   & {:keys [schema-names table-names]} :- ::driver/describe-fks.options]
+  [database-or-id                       :- DatabaseOrId
+   & {:keys [schema-names table-names]} :- [:maybe ::driver/describe-fks.options]]
   (eduction (map t2.realize/realize)
             (sync.db/sync-tables-reducible (u/the-id database-or-id) schema-names table-names)))
 
@@ -529,13 +531,52 @@
 
 (def ^:private TimedSyncMetadata
   "Metadata common to both sync steps and an entire sync/analyze operation run"
-  [:map
+  [:map {:closed true}
    [:start-time                  (ms/InstanceOfClass Temporal)]
    [:end-time   {:optional true} (ms/InstanceOfClass Temporal)]])
+
+(def ^:private StepStats
+  "Step-specific stats a `sync-fn` may add to its `StepRunMetadata`, across all of the sync/analyze steps."
+  [:map {:closed true}
+   [:added-indexes          {:optional true} :int]
+   [:cloud                  {:optional true} :boolean]
+   [:created                {:optional true} :int]
+   [:deleted                {:optional true} :int]
+   [:errors                 {:optional true} :int]
+   [:failed-fingerprints    {:optional true} :int]
+   [:fields-classified      {:optional true} :int]
+   [:fields-failed          {:optional true} :int]
+   [:fields-labeled         {:optional true} :int]
+   [:fields-scanned         {:optional true} :int]
+   [:fields-scored          {:optional true} :int]
+   [:fingerprints-attempted {:optional true} :int]
+   [:flavor                 {:optional true} :string]
+   [:no-data-fingerprints   {:optional true} :int]
+   [:probed                 {:optional true} :int]
+   [:queries                {:optional true} :int]
+   [:removed-indexes        {:optional true} :int]
+   [:semantic-version       {:optional true} [:or
+                                              [:sequential :int]
+                                              [:map {:closed true} [:major :int] [:minor :int]]]]
+   [:tables-classified      {:optional true} :int]
+   [:throwable              {:optional true} [:maybe (ms/InstanceOfClass Throwable)]]
+   [:timezone-id            {:optional true} [:maybe :string]]
+   [:total-failed           {:optional true} :int]
+   [:total-fields           {:optional true} :int]
+   [:total-fks              {:optional true} :int]
+   [:total-indexes          {:optional true} :int]
+   [:total-tables           {:optional true} :int]
+   [:updated                {:optional true} :int]
+   [:updated-fields         {:optional true} :int]
+   [:updated-fingerprints   {:optional true} :int]
+   [:updated-fks            {:optional true} :int]
+   [:updated-tables         {:optional true} :int]
+   [:version                {:optional true} :string]])
 
 (mr/def ::StepRunMetadata
   [:merge
    TimedSyncMetadata
+   StepStats
    [:map
     [:log-summary-fn [:maybe [:=> [:cat [:ref ::StepRunMetadata]] :string]]]]])
 
@@ -570,7 +611,7 @@
   "Defines a step. `:sync-fn` runs the step, returns a map that contains step specific metadata. `log-summary-fn`
   takes that metadata and turns it into a string for logging. `:essential?` marks a step whose failure leaves the
   database unusable (e.g. field sync), so initial sync should be reported as failed rather than complete."
-  [:map
+  [:map {:closed true}
    [:sync-fn        [:=> [:cat StepRunMetadata] i/DatabaseInstance]]
    [:step-name      :string]
    [:log-summary-fn [:maybe LogSummaryFunction]]
