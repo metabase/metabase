@@ -1,16 +1,25 @@
 (ns metabase.transform-testing.runner
-  "Orchestrates a transform test run over the module's separated concerns:
+  "Orchestrates a transform test run over the module's separated concerns. The runner is the only
+  namespace that resolves from the app db or owns the connection lifecycle; it hands ordinary
+  arguments to each concern (no marshaled plan object) and owns the HTTP decisions.
 
-    db          — app-db reads (transform, database)
-    validator   — pure: every read table has a declared input (else reject)
-    compile     — pure: inputs and the transform become queries over temp tables
-    executor    — the one place warehouse I/O lives: create/drop temp tables, run read-backs
-    expectations— pure-ish: check each expectation against the output temp table
+    db           — app-db reads (transform, database)
+    compile      — pure: source → SQL + referenced tables (once), then rewrites to temp tables
+    validator    — pure: those referenced tables are all faked, else reject (Guard A)
+    executor     — the one place warehouse I/O lives: create/drop temp tables, run read-backs
+    expectations — check each expectation against the output temp table (via executor)
 
-  The runner owns resolution and the connection lifecycle; it hands ordinary arguments to each
-  concern (no marshaled plan object). Warehouse contact is confined to `executor` calls inside the
-  single test connection; app-db contact to `db`."
+  Flow — compile the source once, then thread that one result so the guard and the rewrite agree:
+
+    resolve (app-db)
+      → compile-source (pure)           : the transform's SQL + the tables it reads
+      → validate referenced-tables       : reject (400) any read with no declared input   [pure]
+      → build temp names + replacements   : compile the inputs and rewrite the source      [pure]
+      → open ONE connection (executor)    : create temp inputs + output, check, drop on exit
+
+  Everything before the connection is pure; a bad test is rejected before any temp table exists."
   (:require
+   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -43,8 +52,8 @@
         missing   (transform-testing.validator/missing-inputs
                    driver inputs (:referenced-tables compiled-source))
         _         (api/check-400 (empty? missing)
-                                 (tru "The transform reads table(s) with no declared test input: {0}"
-                                      (pr-str missing)))
+                                 (tru "The transform reads table(s) with no declared test input: {0}. Add an input for each."
+                                      (str/join ", " (map transform-testing.validator/table-label missing))))
         ;; --- compile (pure): temp names + queries over them ---
         input-tables (mapv (fn [_] (driver/temp-table-name driver)) inputs)
         output-table (driver/temp-table-name driver)

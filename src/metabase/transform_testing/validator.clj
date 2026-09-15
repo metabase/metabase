@@ -30,6 +30,12 @@
                       (and (nil? ref-schema) (= d-schema default-schema)))))
            declared))))
 
+(mu/defn table-label :- :string
+  "A human/agent-facing name for a table ref: `schema.name`, or just `name` when the schema is
+  unknown. For error messages — never surface the raw `{:schema :name}` map."
+  [{:keys [schema name]} :- [:map [:schema [:maybe :string]] [:name :string]]]
+  (if schema (str schema \. name) name))
+
 (mu/defn missing-inputs :- [:sequential [:map [:schema [:maybe :string]] [:name :string]]]
   "The tables in `referenced-tables` with no covering declared input in `inputs` — the run's
   uncovered reads. Empty means the transform test is complete. `::unused-input` (a declared input the

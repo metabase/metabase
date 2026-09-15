@@ -41,6 +41,11 @@
            (validator/missing-inputs
             :h2 [(sql-input "PUBLIC" "PEOPLE")] #{{:schema "ANALYTICS" :name "PEOPLE"}})))))
 
+(deftest table-label-test
+  (testing "table-label renders schema.name, or bare name when schema unknown — never a raw map"
+    (is (= "PEOPLE" (validator/table-label {:schema nil :name "PEOPLE"})))
+    (is (= "PUBLIC.PEOPLE" (validator/table-label {:schema "PUBLIC" :name "PEOPLE"})))))
+
 (deftest missing-inputs-name-mismatch-test
   (testing "same schema, different name is not a match"
     (is (= [{:schema "PUBLIC" :name "ORDERS"}]
