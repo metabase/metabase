@@ -251,11 +251,8 @@
               (is (= ::transform-testing.errors/unparseable-source (:error-type (ex-data e))))
               (is (re-find #"could not be parsed" (ex-message e))))))))))
 
-(deftest run-transform-test-dangling-column-qualifier-test
-  (testing "Guard B: a source-table column qualifier that survives the rewrite is rejected with a 400."
-    ;; `SELECT people.id FROM people` rewrites the FROM to the temp table but leaves the `people.id`
-    ;; qualifier dangling — a reference to the real table. Guard B (GHY-4559) catches it before
-    ;; execution and tells the author to qualify by alias, instead of the raw CTAS error it used to be.
+(deftest run-transform-test-table-qualified-columns-test
+  (testing "column qualifiers naming a replaced table are rewritten along with the table, so the transform reads the input"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
       (let [mp                            (mt/metadata-provider)
             {schema :schema, table :name} (lib.metadata/table mp (mt/id :people))]
@@ -267,11 +264,7 @@
                        {:transform_id transform-id
                         :inputs       [{:table (table-ref :people) :format :sql
                                         :sql "SELECT 1 AS id, 'x' AS name"}]
-                        :expectations [{:type :empty :name "all" :sql (str "SELECT * FROM " schema ".people_qualified")}]}]
-          (let [ex (try (transform-testing.runner/run-transform-test! transform-test)
-                        nil
-                        (catch ExceptionInfo e e))]
-            (testing "refuses before the warehouse is touched, naming the un-remapped table"
-              (is (some? ex))
-              (is (= ::transform-testing.errors/unremapped-reference (:error-type (ex-data ex))))
-              (is (re-find (re-pattern (str "(?i)" table)) (ex-message ex))))))))))
+                        :expectations [{:type :empty :name "only the input row"
+                                        :sql (str "SELECT * FROM " schema ".people_qualified WHERE id <> 1")}]}]
+          (is (=? {:status :passed}
+                  (transform-testing.runner/run-transform-test! transform-test))))))))
