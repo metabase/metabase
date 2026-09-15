@@ -4,7 +4,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.events.core :as events]
-   [metabase.glossary.db :as glossary.db]
+   [metabase.glossary.queries :as glossary.queries]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -16,7 +16,7 @@
   "Fetch all glossary entries, optionally filtered by search term."
   [_route-params
    {:keys [search]} :- [:maybe [:map {:closed true} [:search {:optional true} [:maybe ms/NonBlankString]]]]]
-  {:data (t2/hydrate (glossary.db/glossary-entries search) :creator)})
+  {:data (t2/hydrate (glossary.queries/glossary-entries search) :creator)})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -30,7 +30,7 @@
                                  [:term ms/NonBlankString]
                                  [:definition ms/NonBlankString]]]
   (api/check-data-analyst)
-  (let [glossary (glossary.db/insert-glossary-entry!
+  (let [glossary (glossary.queries/insert-glossary-entry!
                   {:term       term
                    :definition definition
                    :creator_id api/*current-user-id*})]
@@ -51,9 +51,9 @@
                                  [:term ms/NonBlankString]
                                  [:definition ms/NonBlankString]]]
   (api/check-data-analyst)
-  (let [previous-glossary (api/check-404 (glossary.db/glossary-entry id))]
-    (glossary.db/update-glossary-entry! id term definition)
-    (let [glossary (glossary.db/glossary-entry id)]
+  (let [previous-glossary (api/check-404 (glossary.queries/glossary-entry id))]
+    (glossary.queries/update-glossary-entry! id term definition)
+    (let [glossary (glossary.queries/glossary-entry id)]
       (events/publish-event! :event/glossary-update
                              {:object glossary
                               :previous-object previous-glossary
@@ -68,8 +68,8 @@
   "Delete a glossary entry."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/check-data-analyst)
-  (let [glossary (api/check-404 (glossary.db/glossary-entry id))]
-    (glossary.db/delete-glossary-entry! id)
+  (let [glossary (api/check-404 (glossary.queries/glossary-entry id))]
+    (glossary.queries/delete-glossary-entry! id)
     (events/publish-event! :event/glossary-delete
                            {:object glossary
                             :user-id api/*current-user-id*}))
