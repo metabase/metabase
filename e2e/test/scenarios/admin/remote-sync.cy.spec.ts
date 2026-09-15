@@ -1,3 +1,5 @@
+import yaml from "js-yaml";
+
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
@@ -1136,6 +1138,129 @@ describe("Remote Sync", () => {
 
       cy.findByRole("treegrid").within(() => {
         cy.findByText("Batman's Existing Transform").should("be.visible");
+      });
+    });
+  });
+
+  describe("glossary", () => {
+    const GLOSSARY_TERM = "ARR";
+    const GLOSSARY_DEFINITION = "Annual recurring revenue";
+
+    const visitDataStudioGlossary = () => {
+      H.DataModel.visitDataStudio();
+      glossaryTab().click();
+      cy.findByRole("heading", { name: "Glossary" }).should("be.visible");
+    };
+
+    const glossaryTab = () => H.DataStudio.nav().findByLabelText("Glossary");
+
+    describe("read-write mode", () => {
+      beforeEach(() => {
+        setup();
+      });
+
+      it("flags a new term on the Glossary tab and pushes it to the repository", () => {
+        // Glossary entries ride with the Library, so sync the Library rather than a plain collection.
+        H.createLibrary().then(({ body: library }) => {
+          H.configureGit("read-write", LOCAL_GIT_URL, { [library.id]: true });
+        });
+
+        visitDataStudioGlossary();
+        cy.findByRole("button", { name: /new term/i }).click();
+        cy.findByPlaceholderText(/boat/i).type(GLOSSARY_TERM);
+        cy.findByPlaceholderText(/a small vessel.*/i).type(GLOSSARY_DEFINITION);
+        cy.findByLabelText("Save").click();
+        cy.get("table").findByText(GLOSSARY_TERM).should("be.visible");
+
+        cy.log("The Glossary tab shows unsynced changes");
+        glossaryTab().findByTestId("remote-sync-status").should("be.visible");
+
+        H.clickPushOption();
+        H.modal()
+          .button(/Push changes/)
+          .click();
+        H.waitForTask({ taskName: "export" });
+
+        cy.log("The badge clears once the term is pushed");
+        glossaryTab().findByTestId("remote-sync-status").should("not.exist");
+
+        cy.log("The term is serialized under glossary/ in the repository");
+        H.wrapSyncedCollectionFiles();
+        cy.get("@syncedCollectionFiles").then((files) => {
+          // Unjustified type cast. FIXME
+          const glossaryFile = (files as unknown as string[]).find((file) =>
+            file.includes("glossary/"),
+          );
+          expect(glossaryFile).to.match(/glossary\/arr\.yaml$/);
+
+          cy.readFile(`${H.LOCAL_GIT_PATH}/${glossaryFile}`).then((str) => {
+            // Unjustified type cast. FIXME
+            const doc = yaml.load(str) as Record<string, unknown>;
+            expect(doc.term).to.equal(GLOSSARY_TERM);
+            expect(doc.definition).to.equal(GLOSSARY_DEFINITION);
+            expect(doc.entity_id).to.be.a("string").with.lengthOf(21);
+          });
+        });
+      });
+    });
+
+    describe("read-only mode", () => {
+      beforeEach(() => {
+        setup();
+        // The fixture carries the Library (matching the ids createLibrary assigns) with is_remote_synced set,
+        // so the pull both loads the term and locks the glossary.
+        H.createLibrary();
+        H.copySyncedLibraryFixture();
+        H.commitToRepo();
+        H.configureGitAndPullChanges("read-only");
+      });
+
+      it("lists pulled terms and locks editing", () => {
+        visitDataStudioGlossary();
+
+        cy.get("table").within(() => {
+          cy.findByText(GLOSSARY_TERM).should("be.visible");
+          cy.findByText(GLOSSARY_DEFINITION).should("be.visible");
+          cy.findByLabelText("Delete").should("not.exist");
+        });
+        cy.findByRole("button", { name: /new term/i }).should("not.exist");
+
+        cy.log("Clicking a term does not open the inline editor");
+        cy.get("table").findByText(GLOSSARY_TERM).click();
+        cy.findByPlaceholderText(/boat/i).should("not.exist");
+
+        cy.log(
+          "The API reports the glossary as not writable and rejects writes",
+        );
+        cy.request("GET", "/api/glossary").then(({ body }) => {
+          expect(body.can_write).to.equal(false);
+          const [entry] = body.data;
+          expect(entry.term).to.equal(GLOSSARY_TERM);
+
+          cy.request({
+            method: "POST",
+            url: "/api/glossary",
+            body: { term: "MRR", definition: "Monthly recurring revenue" },
+            failOnStatusCode: false,
+          })
+            .its("status")
+            .should("eq", 403);
+          cy.request({
+            method: "PUT",
+            url: `/api/glossary/${entry.id}`,
+            body: { term: GLOSSARY_TERM, definition: "changed" },
+            failOnStatusCode: false,
+          })
+            .its("status")
+            .should("eq", 403);
+          cy.request({
+            method: "DELETE",
+            url: `/api/glossary/${entry.id}`,
+            failOnStatusCode: false,
+          })
+            .its("status")
+            .should("eq", 403);
+        });
       });
     });
   });

@@ -9,6 +9,7 @@
   "A Glossary as selected from the app DB: every column of `:glossary`."
   [:map {:closed true}
    [:id         ms/PositiveInt]
+   [:entity_id  ms/NonBlankString]
    [:term       :string]
    [:definition :string]
    [:created_at ms/TemporalInstant]
@@ -18,6 +19,7 @@
 (mr/def ::glossary.update
   "What an update (or insert) of a Glossary accepts: every column of `:glossary` except `id`, all optional."
   [:map {:closed true}
+   [:entity_id  {:optional true} [:maybe ms/NonBlankString]]
    [:term       {:optional true} [:maybe :string]]
    [:definition {:optional true} [:maybe :string]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]

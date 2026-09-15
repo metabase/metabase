@@ -22,7 +22,9 @@ import S from "./GlossaryPage.module.css";
 
 export function GlossaryPage() {
   usePageTitle(t`Glossary`);
-  const { data: glossary = [] } = useListGlossaryQuery();
+  const { data } = useListGlossaryQuery();
+  const glossary = data?.data ?? [];
+  const canWrite = data?.can_write ?? false;
   const [createGlossary] = useCreateGlossaryMutation();
   const [updateGlossary] = useUpdateGlossaryMutation();
   const [deleteGlossary] = useDeleteGlossaryMutation();
@@ -38,6 +40,7 @@ export function GlossaryPage() {
         <Card px="xl" pb="sm" withBorder shadow="none">
           <GlossaryTable
             glossary={glossary}
+            readOnly={!canWrite}
             onCreate={async (term, definition) => {
               const { data } = await createGlossary({ term, definition });
               if (data?.id) {
