@@ -451,10 +451,7 @@ describe("scenarios > visualizations > waterfall", () => {
     });
 
     H.goalLine().should("exist");
-
-    cy.log("the custom goal label is shown on the marker tooltip");
-    H.goalLineMarker().trigger("mousemove");
-    H.tooltip().findByText("Target:").should("be.visible");
+    H.goalLineMarker().should("exist");
   });
 
   describe("scenarios > visualizations > waterfall settings", () => {

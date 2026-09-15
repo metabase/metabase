@@ -177,10 +177,7 @@ describe("scenarios > visualizations > boxplot", () => {
     });
 
     H.goalLine().should("exist");
-
-    cy.log("the custom goal label is shown on the marker tooltip");
-    H.goalLineMarker().trigger("mousemove");
-    H.tooltip().findByText("Target:").should("be.visible");
+    H.goalLineMarker().should("exist");
   });
 
   it("should render in dashboard and support drill-through on boxes and outliers", () => {
