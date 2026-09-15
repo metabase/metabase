@@ -119,8 +119,11 @@ export const PublicOrEmbeddedQuestion = () => {
       return;
     }
 
-    // Both endpoints return the parameters with the template tags folded in,
-    // and blank the query, so there are no template tags left to derive.
+    // This page loads its card from `GET /api/public/card/:uuid` or from
+    // `GET /api/embed/card/:token`. Both fold the native query's template tags
+    // into `parameters`, then blank the `dataset_query` they return. So
+    // `parameters` is always the complete set, and deriving it from the query
+    // would find nothing left to read.
     const parameters = card.parameters ?? [];
     const question = selectQuestionFromCard(store.getState(), card);
 
