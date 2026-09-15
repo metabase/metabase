@@ -31,6 +31,7 @@
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouses.db :as warehouses.db]
    [metabase.warehouses.provider-detection :as provider-detection]
+   [metabase.warehouses.schema]
    [metabase.warehouses.settings :as warehouses.settings]
    [methodical.core :as methodical]
    [toucan2.core :as t2]

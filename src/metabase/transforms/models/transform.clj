@@ -18,6 +18,7 @@
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.models.transform-run :as transform-run]
+   [metabase.transforms.schema]
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [metabase.util.log :as log]

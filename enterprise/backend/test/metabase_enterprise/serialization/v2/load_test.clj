@@ -2648,7 +2648,7 @@
           (ts/with-db source-db
             (ts/create! :model/Channel :name "Test Email Channel"
                         :type :channel/email
-                        :details {:host "smtp.example.com" :port 587}
+                        :details {}
                         :description "A test email channel")
             (reset! serialized (into [] (serdes.extract/extract {})))
             (is (some (fn [{[{:keys [model id]}] :serdes/meta}]
@@ -2701,7 +2701,7 @@
         (ts/with-db source-db
           (ts/create! :model/Channel :name "Minimal Channel"
                       :type :channel/email
-                      :details {:host "smtp.example.com" :port 587}
+                      :details {}
                       :description "Some description")
           (reset! serialized (into [] (serdes.extract/extract {}))))
         (let [minimal (mapv (fn [entity]

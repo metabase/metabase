@@ -28,13 +28,21 @@
            :dispatch         :type}
    ["checkpoint" ::checkpoint-strategy]])
 
+(mr/def ::orphaned-query
+  "The MBQL 5 query of a transform whose source database was deleted, kept as a breadcrumb with its `:database` nulled."
+  [:map {:closed true}
+   [:lib/type [:= :mbql/query]]
+   [:database :nil]
+   [:stages   [:ref :metabase.lib.schema/stages]]
+   [:lib/metadata {:optional true} [:ref :metabase.lib.schema.metadata/metadata-provider]]])
+
 (mr/def ::transform-source
   [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
            :dispatch         (comp keyword :type)}
    [:query
     [:map {:closed true}
      [:type {:decode/normalize lib.schema.common/normalize-keyword} [:enum :query "query"]]
-     [:query ::lib-be.schema/maybe-legacy-query]
+     [:query [:or ::lib-be.schema/maybe-legacy-query ::orphaned-query]]
      [:source-incremental-strategy {:optional true} ::source-incremental-strategy]]]
    [:python
     [:map {:closed true}
@@ -68,14 +76,14 @@
 
 (mr/def ::table-target
   [:map {:closed true}
-   [:database {:optional true} :int]
+   [:database {:optional true} [:maybe :int]]
    [:type [:= "table"]]
    [:schema {:optional true} [:maybe ms/NonBlankString]]
    [:name :string]])
 
 (mr/def ::table-incremental-target
   [:map {:closed true}
-   [:database {:optional true} :int]
+   [:database {:optional true} [:maybe :int]]
    [:type [:= "table-incremental"]]
    [:schema {:optional true} [:maybe ms/NonBlankString]]
    [:name :string]

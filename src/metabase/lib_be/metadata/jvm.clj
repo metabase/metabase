@@ -59,6 +59,12 @@
    :display_name :effective_type :fingerprint :fk_target_field_id :id :name :nfc_path :parent_id :position
    :semantic_type :settings :table_id :visibility_type])
 
+(def ^:private segment-columns
+  [:id :table_id :name :description :archived :definition])
+
+(def ^:private measure-columns
+  [:id :table_id :name :description :archived :definition :dimensions :dimension_mappings])
+
 (def ^:private native-query-snippet-columns
   [:id :name :description :content :archived :collection_id :template_tags])
 
@@ -85,6 +91,14 @@
     [:values/human_readable_values      [:maybe :string]]
     [:values/values                     [:maybe :string]]]])
 
+(mr/def ::metadata-segment-row
+  "A Segment row as the `:metadata/segment` select returns it."
+  [:select-keys :metabase.segments.schema/segment segment-columns])
+
+(mr/def ::metadata-measure-row
+  "A Measure row as the `:metadata/measure` select returns it."
+  [:select-keys :metabase.measures.schema/measure measure-columns])
+
 (mr/def ::metadata-native-query-snippet-row
   "A NativeQuerySnippet row as the `:metadata/native-query-snippet` select returns it."
   [:select-keys :metabase.native-query-snippets.schema/native-query-snippet native-query-snippet-columns])
@@ -108,8 +122,8 @@
    [:metadata/column               ::metadata-column-row]
    [:metadata/card                 :metabase.queries.schema/card]
    [:metadata/metric               :metabase.queries.schema/card]
-   [:metadata/segment              :metabase.segments.schema/segment]
-   [:metadata/measure              :metabase.measures.schema/measure]
+   [:metadata/segment              ::metadata-segment-row]
+   [:metadata/measure              ::metadata-measure-row]
    [:model/Database                :metabase.warehouses.schema/database]
    [:model/Table                   :metabase.warehouse-schema.schema/table]
    [:model/Field                   :metabase.warehouse-schema.schema/field]
@@ -381,12 +395,7 @@
   [query-type model parsed-args honeysql]
   (merge
    (next-method query-type model parsed-args honeysql)
-   {:select    [:segment/id
-                :segment/table_id
-                :segment/name
-                :segment/description
-                :segment/archived
-                :segment/definition]
+   {:select    (perf/mapv #(keyword "segment" (name %)) segment-columns)
     :from      [[(t2/table-name :model/Segment) :segment]]
     :left-join [[(t2/table-name :model/Table) :table]
                 [:= :segment/table_id :table/id]]}))
@@ -422,14 +431,7 @@
   [query-type model parsed-args honeysql]
   (merge
    (next-method query-type model parsed-args honeysql)
-   {:select    [:measure/id
-                :measure/table_id
-                :measure/name
-                :measure/description
-                :measure/archived
-                :measure/definition
-                :measure/dimensions
-                :measure/dimension_mappings]
+   {:select    (perf/mapv #(keyword "measure" (name %)) measure-columns)
     :from      [[(t2/table-name :model/Measure) :measure]]
     :left-join [[(t2/table-name :model/Table) :table]
                 [:= :measure/table_id :table/id]]}))

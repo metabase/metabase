@@ -35,6 +35,20 @@
                              nil)))}
     :any]])
 
+(mr/def ::card.result-metadata.model-override
+  "A model's result metadata column as serialization exports it: only the keys a user can override, which the Card's
+  hooks merge onto the metadata computed from its query."
+  [:map {:closed true}
+   [:name                    :string]
+   [:id                      {:optional true} [:maybe ::lib.schema.id/field]]
+   [:description             {:optional true} [:maybe :string]]
+   [:display_name            {:optional true} [:maybe :string]]
+   [:semantic_type           {:optional true} [:maybe ms/FieldSemanticOrRelationType]]
+   [:fk_target_field_id      {:optional true} [:maybe ::lib.schema.id/field]]
+   [:settings                {:optional true} [:maybe ms/VisualizationSettings]]
+   [:visibility_type         {:optional true} [:maybe [:or :keyword :string]]]
+   [:lib/source_display_name {:optional true} [:maybe :string]]])
+
 (mr/def ::card
   "Schema for an instance of a `:model/Card`: every real column of `:report_card` (see `::card.update`) plus `:id`,
   the `:persisted/*` columns some queries join in from `persisted_info`, and the keys some callers hydrate onto a
@@ -173,7 +187,9 @@
    [:enable_embedding                          {:optional true} [:maybe :boolean]]
    [:embedding_params                          {:optional true} [:maybe ms/EmbeddingParams]]
    [:cache_ttl                                 {:optional true} [:maybe :int]]
-   [:result_metadata                           {:optional true} [:maybe ::card.result-metadata]]
+   [:result_metadata                           {:optional true} [:maybe [:or
+                                                                         ::card.result-metadata
+                                                                         [:sequential ::card.result-metadata.model-override]]]]
    [:collection_position                       {:optional true} [:maybe :int]]
    [:entity_id                                 {:optional true} [:maybe :string]]
    [:parameters                                {:optional true} [:maybe [:sequential ::card.parameter]]]
