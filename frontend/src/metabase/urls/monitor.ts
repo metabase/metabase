@@ -130,3 +130,15 @@ export function monitorAiAuditingCliUsage() {
 export function monitorAiAuditingCliCalls() {
   return `${monitorAiAuditingCli()}/calls`;
 }
+
+export function monitorApiKeyUsage() {
+  return `${ROOT_URL}/api-key-usage`;
+}
+
+export function monitorApiKeyUsageOverview() {
+  return `${monitorApiKeyUsage()}/usage`;
+}
+
+export function monitorApiKeyUsageEvents() {
+  return `${monitorApiKeyUsage()}/events`;
+}
