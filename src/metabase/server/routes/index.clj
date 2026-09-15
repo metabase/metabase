@@ -96,9 +96,8 @@
         user-locale                (catalogue-locale (or (when should-load-locale-params? (:locale params))
                                                          (i18n/user-locale-string)))
         site-locale                (catalogue-locale (system/site-locale))
-        ;; Only the catalogues this document loads. Any other locale the app switches
-        ;; to reads the manifest instead, which most sessions never need.
-        ;; A map, so one tag when the user and the instance share a locale.
+        ;; A map, so one tag when the user and the instance share a locale. English
+        ;; has no catalogue and so no entry, which is why this can be empty.
         locale-urls                (select-keys (or (locale-script-urls) {})
                                                 [user-locale site-locale])]
     {:bootstrapJS            (load-inline-js "index_bootstrap")

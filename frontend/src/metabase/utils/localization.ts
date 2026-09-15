@@ -3,6 +3,19 @@ import {
   setLocalization,
 } from "metabase/utils/i18n";
 
+// English is the msgid source, so the translation step builds no catalogue for
+// it. This stands in for one and falls back to the literals.
+const ENGLISH_CATALOG: LocaleDataWithLanguage = {
+  headers: {
+    language: "en",
+    "plural-forms": "nplurals=2; plural=(n != 1);",
+  },
+  translations: {
+    // eslint-disable-next-line metabase/no-literal-metabase-strings -- Not a user facing string
+    "": { Metabase: { msgid: "Metabase", msgstr: ["Metabase"] } },
+  },
+};
+
 /**
  * Loads a locale's catalogue from our own bundle.
  *
@@ -14,6 +27,10 @@ import {
 export function loadLocaleCatalog(
   locale: string,
 ): Promise<LocaleDataWithLanguage> {
+  if (locale === "en") {
+    return Promise.resolve(ENGLISH_CATALOG);
+  }
+
   return import(
     /* webpackChunkName: "locale-[request]" */
     `locales/${locale.replace(/-/g, "_")}.json`
@@ -24,21 +41,10 @@ export function loadLocaleCatalog(
 export async function loadLocalization(
   locale: string,
 ): Promise<LocaleDataWithLanguage> {
+  // English resolves without awaiting, which callers that render straight after
+  // this rely on.
   const translationsObject: LocaleDataWithLanguage =
-    locale !== "en"
-      ? await loadLocaleCatalog(locale)
-      : // English is the msgid source, so no catalogue is built for it. This
-        // stands in for one and falls back to the literals.
-        {
-          headers: {
-            language: "en",
-            "plural-forms": "nplurals=2; plural=(n != 1);",
-          },
-          translations: {
-            // eslint-disable-next-line metabase/no-literal-metabase-strings -- Not a user facing string
-            "": { Metabase: { msgid: "Metabase", msgstr: ["Metabase"] } },
-          },
-        };
+    locale === "en" ? ENGLISH_CATALOG : await loadLocaleCatalog(locale);
   setLocalization(translationsObject);
 
   return translationsObject;
