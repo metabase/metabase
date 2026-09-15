@@ -48,3 +48,14 @@
   "The Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/Database :id database-id))
+
+(mu/defn transform-storage-summary :- [:maybe [:map {:closed true}
+                                               [:name                 :string]
+                                               [:entity_id            :string]
+                                               [:collection_entity_id [:maybe :string]]]]
+  "The name, entity ID, and Collection entity ID of the Transform with `entity-id`, or nil."
+  [entity-id :- :string]
+  (t2/query-one {:select    [:transform.name :transform.entity_id [:collection.entity_id :collection_entity_id]]
+                 :from      [:transform]
+                 :left-join [:collection [:= :collection.id :transform.collection_id]]
+                 :where     [:= :transform.entity_id entity-id]}))

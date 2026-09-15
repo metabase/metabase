@@ -60,5 +60,12 @@
   [{:keys [transform_id]}]
   #{[{:model "Transform" :id transform_id}]})
 
-(defmethod serdes/storage-path "TransformTest" [transform-test _ctx]
-  [{:label "transforms"} {:label "tests"} {:label (:name transform-test) :key (:entity_id transform-test)}])
+(defmethod serdes/storage-path "TransformTest" [transform-test ctx]
+  (let [{:keys [name entity_id collection_entity_id]} (transform-testing.db/transform-storage-summary
+                                                       (:transform_id transform-test))]
+    (conj (serdes/storage-path {:serdes/meta   [{:model "Transform" :id entity_id}]
+                                :name          name
+                                :entity_id     entity_id
+                                :collection_id collection_entity_id}
+                               ctx)
+          {:label (:name transform-test) :key (:entity_id transform-test)})))
