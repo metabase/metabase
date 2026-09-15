@@ -1,19 +1,10 @@
 name: Library
-description: null
 entity_id: librarylibrarylibrary
 slug: library
 created_at: '2026-09-11T00:00:00Z'
-archived: false
 type: library
-parent_id: null
-personal_owner_id: null
-namespace: null
-authority_level: null
 serdes/meta:
 - id: librarylibrarylibrary
   label: library
   model: Collection
-archive_operation_id: null
-archived_directly: null
-is_sample: false
 is_remote_synced: true
