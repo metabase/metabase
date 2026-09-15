@@ -21,6 +21,12 @@ const editSnippetPage = () => cy.findByTestId("edit-snippet-page");
 export const DataStudio = {
   nav: () => cy.findByTestId("data-studio-nav"),
   breadcrumbs: () => cy.findByTestId("data-studio-breadcrumbs"),
+  visit: () => {
+    cy.visit("/data-studio");
+    // The target is only known once the `hasSeenGuide` request comes back.
+    cy.location("pathname").should("match", /^\/data-studio\/.+/);
+    DataStudio.nav().should("be.visible");
+  },
   Transforms: {
     // The transform page shows a loader until the transform, databases and the
     // lazy editor chunk have loaded, which can take longer than the default 4s
