@@ -139,7 +139,7 @@
   [notification read-or-write]
   (if (is-alert? notification)
     (mi/perms-objects-set (alert->card notification) read-or-write)
-    (perms/perms-objects-set-for-parent-collection notification read-or-write)))
+    (perms/perms-objects-set-for-parent-collection (:collection_id notification) read-or-write)))
 
 (defn- current-user-is-creator?
   [notification]

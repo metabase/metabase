@@ -240,7 +240,7 @@
                              {:ignore-cache false
                               :constraints  (qp.constraints/default-query-constraints)
                               :context      :dashboard}
-                             (dissoc options :dashboard :card)
+                             (dissoc options :dashboard :card :export-format)
                              {:parameters   resolved-params
                               :dashboard-id dashboard-id})]
         (log/tracef "Running Query for Dashboard %d, Card %d, Dashcard %d"

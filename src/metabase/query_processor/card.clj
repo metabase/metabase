@@ -97,7 +97,9 @@
    parameters  :- [:maybe ::parameters.schema/parameters]
    constraints :- [:maybe ::lib.schema.constraints/constraints]
    middleware  :- [:maybe ::lib.schema.middleware-options/middleware-options]
-   & [ids] :- [:* [:map {:closed true} [:dashboard-id {:optional true} [:maybe ::lib.schema.id/dashboard]]]]]
+   & [ids] :- [:* [:map {:closed true}
+                  [:dashboard-id {:optional true} [:maybe ::lib.schema.id/dashboard]]
+                  [:dashcard-id  {:optional true} [:maybe ::lib.schema.id/dashcard]]]]]
   (when (seq dataset-query)
     (let [stage-numbers           (explict-stage-references parameters)
           explicit-stage-numbers? (boolean (seq stage-numbers))
@@ -386,6 +388,7 @@
                       (or qp process-query-for-card-default-qp))
         runner      (make-run qp export-format)
         query       (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
+                        api/check-404
                         (assoc :viz-settings merged-viz)
                         (update :middleware (fn [middleware]
                                               (merge

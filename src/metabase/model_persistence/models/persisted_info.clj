@@ -57,18 +57,9 @@
   {:field-name field-name
    :base-type (or effective_type base_type)})
 
-(def ^:private Metadata
-  "Spec for metadata. Just asserting we have base types and names, not the full metadata of the qp."
-  [:maybe
-   [:sequential
-    [:map {:closed true}
-     [:name      :string]
-     [:base_type ::lib.schema.common/base-type]
-     [:effective_type {:optional true} ::lib.schema.common/base-type]]]])
-
 (mu/defn metadata->definition :- ::lib.schema.metadata/persisted-info.definition
   "Returns a ddl definition datastructure. A :table-name and :field-deifinitions vector of field-name and base-type."
-  [metadata   :- Metadata
+  [metadata   :- [:maybe ::lib.schema.metadata/card.result-metadata]
    table-name :- ::lib.schema.common/non-blank-string]
   {:table-name        table-name
    :field-definitions (mapv field-metadata->field-defintion metadata)})

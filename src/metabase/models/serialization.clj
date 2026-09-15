@@ -900,7 +900,7 @@
   Throws if the corresponding entity cannot be found.
 
   Unusual parameter order means this can be used as `(update x :some_id import-fk 'SomeModel)`."
-  [eid   :- [:or :string [:sequential :string]]
+  [eid   :- [:maybe [:or :string [:sequential :string]]]
    model :- ::model-keyword-or-symbol]
   (resolve/import-fk (import-resolver) eid model))
 
@@ -1505,7 +1505,7 @@
   it to a portable form with the CardIds/FieldIds replaced with `[db schema table field]` references.
   Parameters are sorted by `:id` for stable serialization output. A `:position` field is added
   to preserve display order through the sort."
-  [parameters :- [:maybe [:sequential :metabase.parameters.schema/parameter]]]
+  [parameters :- [:maybe [:sequential :metabase.parameters.schema/parameter-with-optional-type]]]
   (->> parameters
        (map-indexed (fn [i p] (assoc p :position i)))
        (sort-by :id)

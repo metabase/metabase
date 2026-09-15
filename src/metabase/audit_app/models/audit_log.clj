@@ -5,6 +5,7 @@
   (:require
    [clojure.data :as data]
    [clojure.set :as set]
+   [clojure.walk :as walk]
    [metabase.api.common :as api]
    [metabase.audit-app.db :as audit-app.db]
    [metabase.models.interface :as mi]
@@ -175,6 +176,11 @@
     {:previous (select-keys previous-object shared-updated-keys)
      :new (select-keys object shared-updated-keys)}))
 
+(defn- stringify-keys
+  "Recursively turns the keyword keys of maps nested inside `x` into strings, keeping their namespaces."
+  [x]
+  (walk/postwalk #(cond-> % (map? %) (update-keys (fn [k] (cond-> k (keyword? k) u/qualified-name)))) x))
+
 (def ^:private AuditedInstance
   "A Toucan instance of any model: `:object`/`:previous-object` are audited generically via `model-details`, which
   dispatches on the instance's own model and falls back to `:default` for models it doesn't know about."
@@ -210,11 +216,12 @@
       :user-id           (or (:user-id params) current-user-id)
       :model-name        (model-name (or (:model params) object))
       :model-id          (or (:model-id params) (u/id object))
-      :details           (merge {}
-                                (:details params)
-                                (if (not-empty previous-object)
-                                  (prepare-update-event-data object-details previous-details)
-                                  object-details))})))
+      :details           (stringify-keys
+                          (merge {}
+                                 (:details params)
+                                 (if (not-empty previous-object)
+                                   (prepare-update-event-data object-details previous-details)
+                                   object-details)))})))
 
 (mu/defn record-event!
   "Records an event in the Audit Log.

@@ -20,9 +20,22 @@
    [:consumed_at   {:optional true} [:maybe ms/TemporalInstant]]
    [:grant_ends_at {:optional true} [:maybe ms/TemporalInstant]]])
 
+(mr/def ::auth-identity.credentials.totp
+  "Credentials of the `totp` (MFA) provider."
+  [:map {:closed true}
+   [:secret          {:optional true} :string]
+   [:last_used_step  {:optional true} :int]
+   [:used_jtis       {:optional true} [:sequential [:map {:closed true}
+                                                     [:jti :string]
+                                                     [:exp :int]]]]
+   [:recovery_codes  {:optional true} [:sequential :string]]
+   [:email_otp       {:optional true} [:map {:closed true}
+                                        [:hash :string]
+                                        [:exp  :int]]]])
+
 (mr/def ::auth-identity.credentials
   "The `:credentials` column of a AuthIdentity, decoded."
-  [:or ::auth-identity.credentials.password ::auth-identity.credentials.token])
+  [:or ::auth-identity.credentials.password ::auth-identity.credentials.token ::auth-identity.credentials.totp])
 
 (mr/def ::auth-identity.metadata.emailed-secret
   "Metadata of an emailed-secret token."
@@ -31,7 +44,7 @@
    [:ip_address      {:optional true} [:maybe :string]]
    [:request_context {:optional true} [:maybe [:map {:closed true}
                                                [:user_agent {:optional true} [:maybe :string]]
-                                               [:timestamp  {:optional true} [:maybe ms/TemporalInstant]]]]]])
+                                               [:timestamp  {:optional true} [:maybe [:or ms/TemporalInstant :string]]]]]]])
 
 (mr/def ::auth-identity.metadata.slack-connect
   "Metadata of the `slack-connect` provider."

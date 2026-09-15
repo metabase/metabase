@@ -66,6 +66,8 @@
                              (fn [_query _path-type _path stage-or-join]
                                (apply dissoc stage-or-join qp-owned-stage-keys))))
             (update-stages [stages]
+              (if (empty? stages)
+                stages
               (let [stages        (fix-mongodb-first-stage stages)
                     stages        (for [stage stages]
                                     ;; This is for detecting circular refs below, and is later used as part of
@@ -85,7 +87,7 @@
                                                       (qp.persisted/persisted-info-native-query
                                                        (:database-id card)
                                                        persisted-info)))]
-                (conj (vec (butlast stages)) last-stage)))
+                (conj (vec (butlast stages)) last-stage))))
             (update-query [query]
               (-> (lib/query metadata-providerable query)
                   ;; Now that cards' queries can come out of the AppDB already in MBQL 5, complete with `:lib/uuid`s,

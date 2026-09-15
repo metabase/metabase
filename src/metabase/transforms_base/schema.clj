@@ -37,7 +37,11 @@
   "A transform map as expected by execute-base! implementations."
   [:map {:closed true}
    [:id {:optional true} pos-int?]
-   [:source [:map {:closed true} [:type [:or :string :keyword]]]]
+   [:source [:map {:closed true}
+             [:type            [:or :string :keyword]]
+             [:query           {:optional true} :metabase.lib.schema/query]
+             [:body            {:optional true} :string]
+             [:source-tables   {:optional true} [:sequential :metabase.transforms-base.util/source-table-entry]]]]
    [:target ::transform-target]
    [:name {:optional true} :string]
    [:description {:optional true} [:maybe :string]]])

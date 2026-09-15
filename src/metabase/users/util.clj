@@ -16,6 +16,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (defn check-self-or-superuser
@@ -66,7 +67,15 @@
            tenant-id
            invite-target]
     :as   attributes} :- [:map {:closed true}
-                          [:source {:optional true, :default :admin} [:enum :setup :admin]]]]
+                          [:first-name              {:optional true} [:maybe ms/NonBlankString]]
+                          [:last-name               {:optional true} [:maybe ms/NonBlankString]]
+                          [:email                   ms/Email]
+                          [:password                {:optional true} [:maybe ms/NonBlankString]]
+                          [:user-group-memberships  {:optional true} [:maybe [:sequential ::users.schema/user-group-membership]]]
+                          [:login-attributes        {:optional true} [:maybe users.schema/LoginAttributes]]
+                          [:source                  {:optional true, :default :admin} [:enum :setup :admin]]
+                          [:tenant-id               {:optional true} [:maybe ms/PositiveInt]]
+                          [:invite-target           {:optional true} [:maybe users.schema/InviteTarget]]]]
   (api/check-superuser)
   (api/check-400 (not (users.db/user-email-exists? (u/lower-case-en email)))
                  {:errors     {:email (tru "Email address already in use.")}

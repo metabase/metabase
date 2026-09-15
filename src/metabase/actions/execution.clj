@@ -14,7 +14,6 @@
    [metabase.driver.connection :as driver.conn]
    ;; legacy usage, do not use this in new code
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.model-persistence.core :as model-persistence]
@@ -46,9 +45,7 @@
   endpoint of shape `{<parameter-id> <value>}`.
 
   `action` should already be hydrated with its `:card`. `opts` carries the audit attribution from the endpoint."
-  [{query :dataset_query, model-id :model_id, :as action} :- [:map {:closed true}
-                                                              [:model_id      ::lib.schema.id/card]
-                                                              [:dataset_query ::lib.schema/native-only-query]]
+  [{query :dataset_query, model-id :model_id, :as action} :- ::actions.schema/action
    request-parameters :- RequestParameters
    opts                :- [:maybe ExecuteActionOpts]]
   (log/tracef "Executing action for model %d" model-id)

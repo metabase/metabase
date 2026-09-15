@@ -297,14 +297,41 @@
          (dissoc query :type :query)))
 
 (mr/def ::legacy-query
+  "A legacy MBQL query, still carrying the QP-internal bookkeeping keys middleware layers onto the top-level query
+  map while it's mid-pipeline (before [[pipeline]] converts it to MBQL 5). Sub-schemas for the legacy-only keys are
+  referenced by literal keyword (rather than a require) because `metabase.legacy-mbql.schema` depends on this
+  namespace via `metabase.lib.normalize`."
   [:map
    {:closed true, :error/message "legacy query"}
-   [:type [:enum :native :query]]])
+   [:type       [:enum :native :query]]
+   [:database   {:optional true} [:maybe ::lib.schema.id/database]]
+   [:native     {:optional true} [:maybe :metabase.legacy-mbql.schema/TopLevelNativeInnerQuery]]
+   [:query      {:optional true} [:maybe :metabase.legacy-mbql.schema/MBQLInnerQuery]]
+   [:parameters {:optional true} [:maybe :metabase.lib.schema.parameter/parameters]]
+   [:settings   {:optional true} [:maybe :metabase.lib.schema.settings/settings]]
+   [:constraints {:optional true} [:maybe :metabase.lib.schema.constraints/constraints]]
+   [:middleware {:optional true} [:maybe :metabase.lib.schema.middleware-options/middleware-options]]
+   [:info       {:optional true} [:maybe :metabase.lib.schema.info/info]]
+   [:create-row {:optional true} [:maybe :metabase.lib.schema.actions/row]]
+   [:update-row {:optional true} [:maybe :metabase.lib.schema.actions/row]]
+   [:cache-strategy {:optional true} [:maybe ::lib.schema/cache-strategy]]
+   [:lib/metadata   {:optional true} ::lib.schema.metadata/metadata-provider]
+   [:lib.convert/converted?               {:optional true} :boolean]
+   [:qp/compiled                          {:optional true} [:maybe ::lib.schema/compiled-native-query]]
+   [:qp/compiled-inline                   {:optional true} [:maybe ::lib.schema/compiled-native-query]]
+   [:qp/skip-result-metadata-persistence  {:optional true} :boolean]
+   [:qp/source-card-id                    {:optional true} [:maybe ::lib.schema.id/card]]
+   [:query-permissions/referenced-card-ids {:optional true} [:maybe [:set ::lib.schema.id/card]]]
+   [:impersonation/role                   {:optional true} :string]
+   [:impersonation/admin?                 {:optional true} :boolean]
+   [:user-parameters                      {:optional true} [:maybe :metabase.lib.schema.parameter/parameters]]
+   [:metabase.query-processor.middleware.add-remaps/external-remaps
+    {:optional true} [:maybe ::lib.schema/external-remappings]]
+   [:metabase-enterprise.sandbox.query-processor.middleware.sandboxing/original-metadata
+    {:optional true} [:maybe ::lib.schema/sandboxing.original-metadata]]])
 
 (mr/def ::mbql5-query
-  [:map
-   {:closed true, :error/message "MBQL 5 query"}
-   [:lib/type [:= :mbql/query]]])
+  ::lib.schema/query)
 
 (mr/def ::legacy-or-mbql5-query
   "Schema for a map that is either a legacy query OR a MBQL 5 query."
@@ -325,11 +352,12 @@
 (mu/defn canonical-stage-index :- [:int {:min 0}]
   "If `stage-number` index is a negative number e.g. `-1` convert it to a positive index so we can use `nth` on
   `stages`. `-1` = the last stage, `-2` = the penultimate stage, etc."
-  [{:keys [stages], :as _query} :- ::lib.schema/query
-   stage-number                 :- :int]
-  (let [stage-number' (if (neg? stage-number)
-                        (+ (count stages) stage-number)
-                        stage-number)]
+  [query        :- ::legacy-or-mbql5-query
+   stage-number :- :int]
+  (let [{:keys [stages]} (pipeline query)
+        stage-number'    (if (neg? stage-number)
+                           (+ (count stages) stage-number)
+                           stage-number)]
     (when (or (>= stage-number' (count stages))
               (neg? stage-number'))
       (throw (ex-info (i18n/tru "Stage {0} does not exist" stage-number)
@@ -338,7 +366,7 @@
 
 (mu/defn previous-stage-number :- [:maybe [:int {:min 0}]]
   "The index of the previous stage, if there is one. `nil` if there is no previous stage."
-  [query        :- ::lib.schema/query
+  [query        :- ::legacy-or-mbql5-query
    stage-number :- :int]
   (let [stage-number (canonical-stage-index query stage-number)]
     (when (pos? stage-number)
@@ -351,11 +379,12 @@
 
 (mu/defn next-stage-number :- [:maybe :int]
   "The index of the next stage, if there is one. `nil` if there is no next stage."
-  [{:keys [stages], :as _query} :- ::lib.schema/query
-   stage-number                 :- :int]
-  (let [stage-number (if (neg? stage-number)
-                       (+ (count stages) stage-number)
-                       stage-number)]
+  [query        :- ::legacy-or-mbql5-query
+   stage-number :- :int]
+  (let [{:keys [stages]} (pipeline query)
+        stage-number     (if (neg? stage-number)
+                           (+ (count stages) stage-number)
+                           stage-number)]
     (when (< (inc stage-number) (count stages))
       (inc stage-number))))
 
@@ -368,14 +397,14 @@
 (mu/defn query-stage :- [:maybe ::lib.schema/stage]
   "Fetch a specific `stage` of a query. This handles negative indices as well, e.g. `-1` will return the last stage of
   the query."
-  [query        :- ::mbql5-query
+  [query        :- ::legacy-or-mbql5-query
    stage-number :- :int]
-  (let [{:keys [stages], :as query} query]
+  (let [{:keys [stages], :as query} (pipeline query)]
     (get (vec stages) (canonical-stage-index query stage-number))))
 
 (mu/defn previous-stage :- [:maybe ::lib.schema/stage]
   "Return the previous stage of the query, if there is one; otherwise return `nil`."
-  [query        :- ::lib.schema/query
+  [query        :- ::legacy-or-mbql5-query
    stage-number :- :int]
   (when-let [stage-num (previous-stage-number query stage-number)]
     (query-stage query stage-num)))
@@ -532,8 +561,15 @@
                                              {:aggregation &match})))])))
 
 (mu/defn normalized-query-type :- [:maybe [:enum #_MBQL5 :mbql/query #_legacy :query :native #_audit :internal]]
-  "Get the `:lib/type` or `:type` from `query`, even if it is not-yet normalized."
-  [query :- :metabase.query-processor.schema/any-query]
+  "Get the `:lib/type` or `:type` from `query`, even if it is not-yet normalized. `query` can also be any of the other
+  Lib metadata shapes or stages that [[metabase.lib.query/query]] can build a query from, since its dispatch checks
+  every map that comes through it this way before falling back to [[metabase.lib.dispatch/dispatch-value]]."
+  [query :- [:or
+             :metabase.query-processor.schema/any-query
+             ::lib.schema.metadata/table
+             ::lib.schema.metadata/card
+             ::lib.schema.metadata/metric
+             ::lib.schema/stage]]
   (when-let [query-type (some-> (some #(get query %)
                                       [:lib/type :type "lib/type" "type"])
                                 keyword)]
@@ -542,7 +578,12 @@
 
 (mu/defn normalized-mbql-version :- [:maybe [:enum :mbql-version/mbql5 :mbql-version/legacy]]
   "Version of MBQL a `query` map is using, either `:mbql-version/mbql-5` or `:mbql-version/legacy`."
-  [query :- :metabase.query-processor.schema/any-query]
+  [query :- [:or
+             :metabase.query-processor.schema/any-query
+             ::lib.schema.metadata/table
+             ::lib.schema.metadata/card
+             ::lib.schema.metadata/metric
+             ::lib.schema/stage]]
   (case (normalized-query-type query)
     :mbql/query      :mbql-version/mbql5
     (:query :native) :mbql-version/legacy

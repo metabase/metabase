@@ -386,10 +386,14 @@
   "Return map of Dashboard parameter key -> param with resolved `:mappings` (see the `:resolved-params` hydration
   below for an example). Callers that only need the mappings (e.g. the QP) can pass slim dashcards instead of paying
   for the full hydration."
-  [dashboard :- [:map {:closed true}
-                 [:parameters [:maybe [:sequential ::parameters.schema/parameter]]]
-                 [:dashcards [:maybe [:sequential [:map {:closed true}
-                                                   [:parameter_mappings [:maybe [:sequential ::parameters.schema/parameter-mapping]]]]]]]]]
+  [dashboard :- [:or
+                 (ms/InstanceOf :model/Dashboard)
+                 [:map {:closed true}
+                  [:parameters [:maybe [:sequential ::parameters.schema/parameter]]]
+                  [:dashcards [:maybe [:sequential [:or
+                                                    (ms/InstanceOf :model/DashboardCard)
+                                                    [:map {:closed true}
+                                                     [:parameter_mappings [:maybe [:sequential ::parameters.schema/parameter-mapping]]]]]]]]]]]
   (let [param-key->mappings (apply
                              merge-with set/union
                              (for [dashcard (:dashcards dashboard)

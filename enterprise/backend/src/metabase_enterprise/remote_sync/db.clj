@@ -32,7 +32,7 @@
   "A `:model_id`: the primary key of the referenced entity, or the `-1` sentinel
   (`metabase-enterprise.remote-sync.settings/transforms-root-id`) standing in for the virtual Transforms root
   Collection."
-  [:or ms/PositiveInt [:= -1]])
+  [:maybe [:or ms/PositiveInt [:= -1]]])
 
 (def ^:private Path
   "A `{:db_name :schema :table_name :field_name}` path used to locate a Table or Field."

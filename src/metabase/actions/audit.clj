@@ -14,6 +14,7 @@
    [metabase.analytics.settings :as analytics.settings]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.permissions.core :as perms]
@@ -58,7 +59,7 @@
    [:context      [:enum :action-execute :public-action-execute]]
    [:native?      :boolean]
    ;; hashed, and stored in `query` -- the SQL template or an action descriptor, never the input values
-   [:template     [:or ::lib.schema/query InternalTemplate]]
+   [:template     [:or ::lib.schema/query ::lib-be.schema/maybe-legacy-or-empty-query InternalTemplate]]
    ;; the input values that were actually supplied: PII-gated into `parameters`
    [:inputs       Inputs]])
 

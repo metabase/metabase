@@ -230,6 +230,14 @@
                                  :user-id api/*current-user-id*})
          inserted-sandbox)))))
 
+(defn- normalize-sandbox-attribute-remappings
+  "Normalize `:attribute_remappings` on a Sandbox map, if present. `before-insert`/`before-update` hooks see this
+  column in whatever raw, not-yet-normalized shape the caller supplied it in."
+  [sandbox-like]
+  (cond-> sandbox-like
+    (contains? sandbox-like :attribute_remappings)
+    (update :attribute_remappings sandbox.schema/normalize-attribute-remappings)))
+
 (t2/define-before-insert :model/Sandbox
   [{:keys [table_id group_id], :as gtap}]
   (let [db-id (database/table-id->database-id table_id)]
@@ -237,7 +245,7 @@
     (when (= (perms/table-permission-for-groups #{group_id} :perms/create-queries db-id table_id) :query-builder-and-native)
       (perms/set-database-permission! group_id db-id :perms/create-queries :query-builder)))
   (u/prog1 gtap
-    (check-columns-match-table gtap)))
+    (check-columns-match-table (normalize-sandbox-attribute-remappings gtap))))
 
 (t2/define-before-update :model/Sandbox
   [{:keys [id], :as updates}]
@@ -249,4 +257,4 @@
                         {:id          id
                          :status-code 400})))
       (when (:card_id updates)
-        (check-columns-match-table updated)))))
+        (check-columns-match-table (normalize-sandbox-attribute-remappings updated))))))

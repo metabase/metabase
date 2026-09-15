@@ -48,9 +48,7 @@
   ;; we can 'ban' stuff like `:source-alias` and `:source` within Lib itself. See #59772 for some experimental work
   ;; there. (See QUE2-361)
   [:and
-   [:map {:closed true}
-    [::source    {:optional true} ::lib.schema.metadata/column.legacy-source]
-    [::field-ref {:optional true} ::mbql.s/Reference]]
+   ::lib.schema.metadata/column
    (lib.schema.common/disallowed-keys
     {:source       "Use ::source instead of :source"
      :field-ref    "Use ::field-ref instead of :field-ref"

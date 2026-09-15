@@ -93,10 +93,7 @@
   [search-results :- [:sequential [:map {:closed true}
                                    [:id [:or :string ms/PositiveInt]]
                                    [:model :string]]]
-   search-ctx     :- [:map {:closed true}
-                      [:current-user-id {:optional true} [:maybe ms/PositiveInt]]
-                      [:context {:optional true} [:maybe :keyword]]
-                      [:weights {:optional true} [:maybe [:map-of (into [:enum] search.config/known-rankers) number?]]]]]
+   search-ctx     :- search.config/SearchContext]
   (let [scorers (appdb-scoring/appdb-scorers search-ctx)]
     (t2/query (cond-> (search.scoring/with-scores search-ctx scorers (search-index-select search-results))
                 (:bookmarked scorers) (search.scoring/join-bookmarks (:current-user-id search-ctx))))))

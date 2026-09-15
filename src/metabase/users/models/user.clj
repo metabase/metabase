@@ -2,6 +2,7 @@
   (:require
    [clojure.data :as data]
    [clojure.string :as str]
+   [malli.util :as mut]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
@@ -367,11 +368,33 @@
 
 (declare form-password-reset-url)
 
-(def ^:private Invitor
-  "Map with info about the admin creating the user, used in the new user notification code"
+(def ^:private CurrentUserRow
+  "The shape of the current user (see [[metabase.request.session/find-user]]): a `current-user-columns` row plus
+  `:common_name`, before [[add-attributes]] adds `:attributes`."
   [:map {:closed true}
-   [:email      ms/Email]
-   [:first_name [:maybe ms/NonBlankString]]])
+   [:id               ms/PositiveInt]
+   [:email            ms/Email]
+   [:first_name       [:maybe ms/NonBlankString]]
+   [:last_name        [:maybe :string]]
+   [:common_name      [:maybe :string]]
+   [:date_joined      ms/TemporalInstant]
+   [:last_login       [:maybe ms/TemporalInstant]]
+   [:is_superuser     :boolean]
+   [:is_active        :boolean]
+   [:is_qbnewb        :boolean]
+   [:is_data_analyst  :boolean]
+   [:tenant_id        [:maybe ms/PositiveInt]]
+   [:sso_source       [:maybe [:or :keyword :string]]]
+   [:updated_at       ms/TemporalInstant]
+   [:login_attributes [:maybe users.schema/LoginAttributes]]
+   [:jwt_attributes   [:maybe users.schema/LoginAttributes]]
+   [:locale           [:maybe :string]]
+   [:type             (into [:enum] allowed-user-types)]])
+
+(def ^:private Invitor
+  "Map with info about the admin creating the user, used in the new user notification code. Callers pass the
+  current user with `:attributes` already added."
+  (mut/assoc CurrentUserRow :attributes users.schema/LoginAttributes))
 
 (defn serdes-synthesize-user!
   "Creates a new user with a default password, when deserializing eg. a `:creator_id` field whose email address doesn't
@@ -437,7 +460,7 @@
   "Adds the `:attributes` key to a user. Only personal users carry attributes; for other user types (API-key, internal)
   this is always `{}`, so e.g. sandboxed queries made with an API key report a missing user attribute instead of
   reading attributes stored on the user row."
-  [{:keys [login_attributes jwt_attributes] :as user} :- [:map {:closed true} [:type (into [:enum] allowed-user-types)]]]
+  [{:keys [login_attributes jwt_attributes] :as user} :- CurrentUserRow]
   (assoc user :attributes (if (= (:type user) :personal)
                             (merge {} (tenants/login-attributes user) jwt_attributes login_attributes)
                             {})))

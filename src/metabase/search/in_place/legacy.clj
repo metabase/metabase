@@ -28,15 +28,16 @@
             [:sequential [:ref ::expr]]
             [:ref ::query]]
    ::query [:map {:closed true}
-            [:select    {:optional true} [:sequential [:ref ::expr]]]
-            [:from      {:optional true} [:sequential [:ref ::expr]]]
-            [:where     {:optional true} [:ref ::expr]]
-            [:with      {:optional true} [:sequential [:ref ::expr]]]
-            [:join      {:optional true} [:sequential [:ref ::expr]]]
-            [:left-join {:optional true} [:sequential [:ref ::expr]]]
-            [:union-all {:optional true} [:sequential [:ref ::expr]]]
-            [:order-by  {:optional true} [:sequential [:ref ::expr]]]
-            [:limit     {:optional true} [:ref ::expr]]]})
+            [:select     {:optional true} [:or [:ref ::expr] [:sequential [:ref ::expr]]]]
+            [:from       {:optional true} [:or [:ref ::expr] [:sequential [:ref ::expr]]]]
+            [:where      {:optional true} [:ref ::expr]]
+            [:with       {:optional true} [:or [:ref ::expr] [:sequential [:ref ::expr]]]]
+            [:join       {:optional true} [:or [:ref ::expr] [:sequential [:ref ::expr]]]]
+            [:left-join  {:optional true} [:or [:ref ::expr] [:sequential [:ref ::expr]]]]
+            [:inner-join {:optional true} [:or [:ref ::expr] [:sequential [:ref ::expr]]]]
+            [:union-all  {:optional true} [:or [:ref ::expr] [:sequential [:ref ::expr]]]]
+            [:order-by   {:optional true} [:or [:ref ::expr] [:sequential [:ref ::expr]]]]
+            [:limit      {:optional true} [:ref ::expr]]]})
 
 (def ^:private HoneySQLExpr
   [:schema {:registry honeysql-registry} [:ref ::expr]])
@@ -438,10 +439,8 @@
         [:collection.type :collection_type]
         [:collection.location :collection_location]
         [:collection.authority_level :collection_authority_level]
-        [:dashboard.name :dashboard_name]
         :dashboard_id
         bookmark-col dashboardcard-count-col
-        :result_metadata
         [:display :display_type]))
 
 (defmethod columns-for-model "document"

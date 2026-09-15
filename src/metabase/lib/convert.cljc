@@ -605,11 +605,48 @@
   (mapv lib.convert.metadata-to-legacy/lib-metadata-column->legacy-metadata-column
         (:columns stage-metadata)))
 
+(mr/def ::chain-stages-input
+  "A disqualified MBQL 5 query or join (i.e. one that has had `:lib/type` stripped by [[disqualify]]), still
+  carrying whichever query- or join-level QP annotation keys it had, that [[chain-stages]] is called with."
+  [:map {:closed true}
+   [:stages [:sequential ::lib.schema/stage]]
+   [:conditions {:optional true} :metabase.lib.schema.join/conditions]
+   [:alias {:optional true} :metabase.lib.schema.join/alias]
+   [:fields {:optional true} :metabase.lib.schema.join/fields]
+   [:strategy {:optional true} :metabase.lib.schema.join/strategy]
+   [:fk-field-id {:optional true} [:maybe :metabase.lib.schema.id/field]]
+   [:fk-field-name {:optional true} [:maybe :string]]
+   [:fk-join-alias {:optional true} [:maybe :metabase.lib.schema.join/alias]]
+   [:qp/is-implicit-join {:optional true} :boolean]
+   [:qp/keep-default-join-alias {:optional true} :boolean]
+   [:metabase.query-processor.middleware.add-implicit-joins/original-position {:optional true} [:int {:min 0}]]
+   [:metabase.query-processor.util.add-alias-info/alias {:optional true} :metabase.lib.schema.join/alias]
+   [:metabase.query-processor.util.add-alias-info/original-alias {:optional true} :metabase.lib.schema.join/alias]
+   [:metabase.lib.join/replace-alias {:optional true} :boolean]
+   [:lib/metadata {:optional true} :metabase.lib.schema.metadata/metadata-provider]
+   [:database {:optional true} [:maybe :int]]
+   [:parameters {:optional true} :metabase.lib.schema.parameter/parameters]
+   [:settings {:optional true} :metabase.lib.schema.settings/settings]
+   [:constraints {:optional true} :metabase.lib.schema.constraints/constraints]
+   [:middleware {:optional true} :metabase.lib.schema.middleware-options/middleware-options]
+   [:info {:optional true} :metabase.lib.schema.info/info]
+   [:cache-strategy {:optional true} [:maybe ::lib.schema/cache-strategy]]
+   [:lib.convert/converted? {:optional true} :boolean]
+   [:qp/compiled {:optional true} [:maybe ::lib.schema/compiled-native-query]]
+   [:qp/compiled-inline {:optional true} [:maybe ::lib.schema/compiled-native-query]]
+   [:qp/source-card-id {:optional true} [:maybe :metabase.lib.schema.id/card]]
+   [:query-permissions/referenced-card-ids {:optional true} [:maybe [:set :metabase.lib.schema.id/card]]]
+   [:impersonation/role {:optional true} :string]
+   [:impersonation/admin? {:optional true} :boolean]
+   [:metabase.query-processor.middleware.add-remaps/external-remaps {:optional true} [:maybe ::lib.schema/external-remappings]]
+   [:metabase-enterprise.sandbox.query-processor.middleware.sandboxing/original-metadata
+    {:optional true} [:maybe ::lib.schema/sandboxing.original-metadata]]])
+
 (mu/defn- chain-stages
-  ([m :- [:map {:closed true} [:stages [:sequential ::lib.schema/stage]]]]
+  ([m :- ::chain-stages-input]
    (chain-stages m nil))
 
-  ([{:keys [stages]}                                       :- [:map {:closed true} [:stages [:sequential ::lib.schema/stage]]]
+  ([{:keys [stages]}                                       :- ::chain-stages-input
     {:keys [top-level?], :or {top-level? true}, :as _opts} :- [:maybe
                                                                [:map {:closed true}
                                                                 [:top-level? [:maybe :boolean]]]]]

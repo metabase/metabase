@@ -159,7 +159,7 @@
                                   [:request_context  {:optional true}
                                    [:map {:closed true}
                                     [:user_agent {:optional true} [:maybe :string]]
-                                    [:timestamp  {:optional true} ms/TemporalInstant]]]]]]]]
+                                    [:timestamp  {:optional true} [:or ms/TemporalInstant :string]]]]]]]]]
   (t2/update! :model/AuthIdentity auth-identity-id changes))
 
 (mu/defn expire-auth-identities!

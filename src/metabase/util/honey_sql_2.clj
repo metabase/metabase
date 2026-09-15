@@ -162,6 +162,8 @@
    number?
    :boolean
    nil?
+   ms/TemporalInstant
+   [:fn {:error/message "::h2x/typed Honey SQL form"} (fn [x] (and (vector? x) (= (first x) ::typed)))]
    [:sequential [:ref ::expr]]])
 
 (defn identifier?
@@ -400,14 +402,16 @@
   [:fn {:error/message "::h2x/typed Honey SQL form"} typed?])
 
 (mr/def ::honeysql-expr
-  "A Honey SQL 2 expression: a literal value, a column/identifier keyword, or a clause vector whose args are
-  themselves Honey SQL expressions."
+  "A Honey SQL 2 expression: a literal value, a column/identifier keyword, a `TypedHoneySQLForm` wrapping another
+  expression, or a clause vector whose args are themselves Honey SQL expressions."
   [:or
    :string
    :keyword
    number?
    :boolean
    nil?
+   ms/TemporalInstant
+   [:fn {:error/message "::h2x/typed Honey SQL form"} typed?]
    [:sequential [:ref ::honeysql-expr]]])
 
 (def ^:private raw-cast-type-name-re

@@ -174,6 +174,16 @@
    revision-id :- ms/PositiveInt]
   (t2/select-one-fn :object :model/Revision :model model-name :model_id model-id :id revision-id))
 
+(def ^:private revision-object-extra-keys
+  "Extra keys [[metabase.revisions.impl.dashboard/serialize-instance]] and friends add to some models' revision
+  `:object` beyond their own row schema."
+  {:model/Dashboard [[:cards {:optional true} [:sequential [:merge :metabase.dashboards.schema/dashboard-card.update
+                                                            [:map {:closed true}
+                                                             [:id     {:optional true} ::lib.schema.id/dashcard]
+                                                             [:series {:optional true} [:sequential ::lib.schema.id/card]]]]]]
+                     [:tabs  {:optional true} [:sequential [:merge :metabase.dashboards.schema/dashboard-tab.update
+                                                            [:map {:closed true} [:id {:optional true} ms/PositiveInt]]]]]]})
+
 (def ^:private RevisionRow
   "A Revision row, `:object` typed by the row schema of the model named `:model` (a string, e.g. \"Card\"), plus
   `:id` (a revisioned object is always a real, previously-selected row)."
@@ -183,8 +193,9 @@
            [:map {:closed true}
             [:model        [:= (name model)]]
             [:model_id     ms/PositiveInt]
-            [:user_id      ::lib.schema.id/user]
-            [:object       [:merge schema [:map {:closed true} [:id {:optional true} ms/PositiveInt]]]]
+            [:user_id      [:maybe ::lib.schema.id/user]]
+            [:object       [:merge schema (into [:map {:closed true} [:id {:optional true} ms/PositiveInt]]
+                                                 (get revision-object-extra-keys model))]]
             [:is_creation  :boolean]
             [:is_reversion :boolean]
             [:message      {:optional true} [:maybe :string]]]])))

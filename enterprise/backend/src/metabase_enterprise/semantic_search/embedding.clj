@@ -488,7 +488,8 @@
        [:extra-body     {:optional true} [:maybe [:map {:closed true}
                                                   [:dimensions {:optional true} pos-int?]]]]
        [:network-policy-floor {:optional true} [:maybe [:enum :external-only :allow-private :allow-all]]]
-       [:instance-token?      {:optional true} [:maybe :boolean]]]]
+       [:instance-token?      {:optional true} [:maybe :boolean]]
+       [:type                 {:optional true} [:maybe [:enum :query :index]]]]]
   ;; Outside the try: a malformed endpoint is neither a service failure nor something to log per batch.
   (let [policy-opts (llm.settings/llm-request-opts network-policy-floor endpoint)]
     (try

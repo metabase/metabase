@@ -18,7 +18,9 @@
   [:map
    {:closed true, :description ":model/User"}
    [:id pos-int?]
-   [:last_login {:optional true} [:maybe ms/TemporalInstant]]])
+   [:last_login {:optional true} [:maybe ms/TemporalInstant]]
+   [:is_active  {:optional true} :boolean]
+   [:tenant_id  {:optional true} [:maybe pos-int?]]])
 
 (mu/defn create-session-with-auth-tracking!
   "Create a new Session for a User and update the last_used_at timestamp on the corresponding AuthIdentity.

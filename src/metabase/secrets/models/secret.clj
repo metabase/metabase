@@ -355,7 +355,7 @@
   "Ensures that all possible secret property values are removed from `:details`, `:write_data_details`, and
    `:admin_details`. This is a transformation on `:model/Database` `results-transform`."
   [database]
-  (let [clean #(clean-secret-properties-from-details % (driver.u/database->driver database))]
+  (let [clean #(clean-secret-properties-from-details % (keyword (:engine database)))]
     ;; Very low-level operation here, so not using driver.conn/* utils:
     (-> database
         (m/update-existing :details clean)

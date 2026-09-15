@@ -35,7 +35,7 @@
   :feature :library
   [table]
   (when (:is_published table)
-    (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection table :read))))
+    (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection (:collection_id table) :read))))
 
 (defenterprise published-table-visible-clause
   "Returns a HoneySQL clause matching published tables that are readable via collection permissions."

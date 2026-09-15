@@ -88,8 +88,7 @@
 
 (mu/defn- add-extra-metadata!
   "Add extra metadata like Field base-type, etc."
-  [{:keys [table-definitions], :as _database-definition} :- [:map {:closed true}
-                                                             [:table-definitions {:optional true} [:maybe [:sequential (ms/InstanceOfClass metabase.test.data.interface.TableDefinition)]]]]
+  [{:keys [table-definitions], :as _database-definition} :- tx/ValidDatabaseDefinition
    db                                                    :- (ms/InstanceOf :model/Database)]
   (doseq [{:keys [table-name], :as table-definition} table-definitions]
     (let [table (delay (or (tx/metabase-instance table-definition db)
@@ -423,7 +422,7 @@
 (mu/defn- create-and-sync-Database!
   "Add DB object to Metabase DB. Return an instance of `:model/Database`."
   [driver                                           :- :keyword
-   {:keys [database-name], :as database-definition} :- [:map {:closed true} [:database-name :string]]]
+   {:keys [database-name], :as database-definition} :- tx/ValidDatabaseDefinition]
   (let [connection-details (tx/dbdef->connection-details driver :db database-definition)
         db                 (first (t2/insert-returning-instances! :model/Database
                                                                   (merge

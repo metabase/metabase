@@ -165,7 +165,7 @@
   "Normalize an Action's `:parameters` coming out of the application database or in via an API request. Like
   [[metabase.parameters.schema/normalize-parameters]], but keeps the annotations an implicit action's parameters
   carry."
-  [parameters :- [:maybe [:sequential ::action.parameter.pre-normalize]]]
+  [parameters :- [:maybe [:or ms/RawJSON [:sequential ::action.parameter.pre-normalize]]]]
   (lib/normalize ::action.parameters parameters))
 
 (mu/defn- action-schema [schema-type :- [:enum :select :update :insert]]

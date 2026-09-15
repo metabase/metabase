@@ -12,7 +12,9 @@
    [:is-data-analyst?   {:optional true} :boolean]
    [:user-locale        {:optional true} [:maybe string?]]
    [:is-group-manager?  {:optional true} :boolean]
-   [:permissions-set    {:optional true} [:set :string]]])
+   [:permissions-set    {:optional true} [:set :string]]
+   [:auth-provider      {:optional true} [:maybe :string]]
+   [:settings           {:optional true} ms/UserSettings]])
 
 (mr/def ::json-value
   "A JSON-shaped value: a scalar, a sequence of JSON values, or a string-keyed JSON object."
@@ -58,8 +60,8 @@
    [:request-method          {:optional true} :keyword]
    [:protocol                {:optional true} :string]
    [:ssl-client-cert         {:optional true} [:maybe (ms/InstanceOfClass java.security.cert.X509Certificate)]]
-   [:headers                 {:optional true} [:map-of :string :string]]
-   [:body                    {:optional true} [:maybe [:or (ms/InstanceOfClass java.io.InputStream) ::json-value]]]
+   [:headers                 {:optional true} [:map-of :string [:maybe :string]]]
+   [:body                    {:optional true} [:maybe [:or (ms/InstanceOfClass java.io.InputStream) ms/RawJSON]]]
    [:query-params            {:optional true} [:map-of :string [:or :string [:sequential :string]]]]
    [:form-params             {:optional true} [:map-of :string [:or :string [:sequential :string]]]]
    [:multipart-params        {:optional true} [:map-of :string [:or :string ::multipart-file]]]
@@ -67,25 +69,43 @@
    [:cookies                 {:optional true} [:map-of :string ::cookie-attrs]]
    [:route-metadata          {:optional true} [:maybe :metabase.api.macros/route-metadata]]
    [:compojure/path          {:optional true} :string]
+   [:compojure/route-context {:optional true} [:maybe :string]]
+   [:context                 {:optional true} [:maybe :string]]
+   [:character-encoding      {:optional true} [:maybe :string]]
+   [:content-type            {:optional true} [:maybe :string]]
+   [:content-length          {:optional true} [:maybe :int]]
+   [:params                  {:optional true} ms/RawJSON]
    [:metabase-session-key    {:optional true} [:maybe :string]]
    [:metabase-session-type   {:optional true} [:maybe :keyword]]
    [:anti-csrf-token         {:optional true} [:maybe :string]]
    [:metabase-user-id        {:optional true} [:maybe :int]]
    [:metabase-request-id     {:optional true} [:maybe :string]]
-   [:request-id              {:optional true} [:maybe :string]]
+   [:request-id              {:optional true} [:maybe :uuid]]
    [:browser-id              {:optional true} [:maybe :string]]
    [:static-metabase-api-key {:optional true} [:maybe :string]]
-   [:nonce                   {:optional true} [:maybe :string]]])
+   [:nonce                   {:optional true} [:maybe :string]]
+   [:is-superuser?           {:optional true} :boolean]
+   [:is-data-analyst?        {:optional true} :boolean]
+   [:is-group-manager?       {:optional true} :boolean]
+   [:user-locale             {:optional true} [:maybe :string]]
+   [:embedding/auth-method   {:optional true} [:maybe :string]]
+   [:token-exchange?         {:optional true} :boolean]
+   [:metabase.server.middleware.offset-paging/limit  {:optional true} [:maybe :int]]
+   [:metabase.server.middleware.offset-paging/offset {:optional true} [:maybe :int]]
+   [:accept                  {:optional true} [:maybe :string]]
+   [:redirect-strategy       {:optional true} [:maybe :keyword]]])
 
 (mr/def ::response
   "What an endpoint handler can return: JSON-shaped data, a full Ring response map, or a file/stream for downloads."
   [:or
-   ::json-value
+   ms/RawJSON
+   [:map {:closed true} [:id :string]]
+   [:map {:closed true} [:success :boolean] [:session_id :string]]
    [:map {:closed true}
     [:status  {:optional true} :int]
     [:headers {:optional true} [:map-of :string :string]]
     [:cookies {:optional true} [:map-of :string ::cookie-attrs]]
-    [:body    {:optional true} [:maybe [:or ::json-value
+    [:body    {:optional true} [:maybe [:or ms/RawJSON
                                         (ms/InstanceOfClass java.io.File)
                                         (ms/InstanceOfClass java.io.InputStream)]]]]
    (ms/InstanceOfClass java.io.File)

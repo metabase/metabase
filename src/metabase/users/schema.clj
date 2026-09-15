@@ -31,7 +31,8 @@
    [:sso_source       {:optional true} [:maybe ms/NonBlankString]]
    [:locale           {:optional true} [:maybe ms/KeywordOrString]]
    [:type             {:optional true} [:maybe ms/KeywordOrString]]
-   [:tenant_id        {:optional true} [:maybe ms/PositiveInt]]])
+   [:tenant_id        {:optional true} [:maybe ms/PositiveInt]]
+   [:is_active        {:optional true} [:maybe :boolean]]])
 
 (mr/def ::user-group-membership
   "Group Membership info of a User.

@@ -30,8 +30,7 @@
 
 (mu/defn inherited-column? :- :boolean
   "Is the `column` coming directly from a card, a native query, or a previous query stage?"
-  [column :- [:map {:closed true}
-              [:lib/source {:optional true} [:maybe ::lib.schema.metadata/column.source]]]]
+  [column :- ::lib.schema.metadata/column]
   (some? (#{:source/card :source/native :source/previous-stage} (:lib/source column))))
 
 (mu/defn inherited-column-name :- [:maybe :string]
@@ -125,8 +124,7 @@
   stage' to the equivalent keys that mean 'this happened at some stage in the past' e.g.
   `:lib/join-alias` and `:lib/expression-name` become `:lib/original-join-alias` and
   `:lib/original-expression-name` respectively."
-  [col :- [:map {:closed true}
-           [:lib/type [:= :metadata/column]]]]
+  [col :- ::lib.schema.metadata/column]
   (-> col
       (set/rename-keys {:fk-field-id                      :lib/original-fk-field-id
                         :fk-field-name                    :lib/original-fk-field-name

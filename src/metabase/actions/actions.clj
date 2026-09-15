@@ -260,7 +260,7 @@
 (mu/defn- check-permissions
   [policy   :- :keyword
    arg-maps :- [:sequential [:or
-                             ::actions.args/common
+                             ::actions.args/any-arg-map
                              [:= {:description "empty map"} {}]]]]
   (when (#{:model-action :ad-hoc-invocation} policy)
     (doseq [arg-map arg-maps

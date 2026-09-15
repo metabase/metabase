@@ -4,6 +4,8 @@
   easy to cache things like `visible-columns`."
   (:refer-clojure :exclude [not-empty])
   (:require
+   [malli.core :as mc]
+   [malli.util :as mut]
    [medley.core :as m]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -30,6 +32,15 @@
      [:metabase.lib.metadata.calculation/propagate-binning-and-bucketing {:optional true} :boolean]
      [:metabase.lib.metadata.calculation/ref-style                       {:optional true} :keyword]]]])
 
+(defn- query-with-hashed-metadata-schema
+  "`::lib.schema/query`'s shape, but with `:lib/metadata` replaced by its `hash` (an int) instead of an actual
+  metadata provider, as produced by `prepare-map` in [[cache-key-for-other]] and [[cache-key-for-table-or-card]]."
+  []
+  (let [query-map-schema (first (mc/children (mr/resolve-schema ::lib.schema/query)))]
+    (mut/merge query-map-schema [:map {:closed true} [:lib/metadata {:optional true} [:maybe :int]]])))
+
+(mr/def ::query-with-hashed-metadata (query-with-hashed-metadata-schema))
+
 (mr/def ::element
   "A single element of a [[cache-key]]: any of the pieces of data [[cache-key-for-table-or-card]]
   and [[cache-key-for-other]] combine to build one."
@@ -40,6 +51,7 @@
    :boolean
    :nil
    ::lib.schema/query
+   ::query-with-hashed-metadata
    :metabase.lib.metadata.calculation/displayable
    ::options])
 
@@ -105,8 +117,7 @@
    [unique-key x])
 
   ([unique-key   :- qualified-keyword?
-    query        :- [:map {:closed true}
-                     [:lib/type [:= :mbql/query]]]
+    query        :- ::lib.schema/query
     stage-number :- :int
     x            :- [:maybe :metabase.lib.metadata.calculation/displayable]
     options      :- ::options]

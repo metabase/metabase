@@ -111,12 +111,6 @@
   "Namespace for shared tenant collections"
   :shared-tenant-collection)
 
-(mu/defn shared-tenant-collection?
-  "Whether or not a collection is a tenant collection."
-  [{:keys [namespace]} :- [:or RootCollection [:map {:closed true} [:namespace {:optional true} [:maybe [:or :keyword :string]]]]]]
-  (= (some-> namespace name)
-     (name shared-tenant-ns)))
-
 (defn trash-collection-id
   "The ID representing the Trash collection."
   [] (u/the-id (trash-collection)))
@@ -393,6 +387,69 @@
   "Schema for a directory-style 'path' to the location of a Collection."
   [:fn #'valid-location-path?])
 
+(def ^:private CollectionInstance
+  "Schema for a Collection as it flows through this namespace: a raw `:model/Collection` Toucan instance, one
+  hydrated with any of the computed keys this namespace or [[metabase.collections.children]] adds, or a
+  null-padded row from the collection-items union query. Every key is optional because different call sites
+  select or hydrate different subsets."
+  [:map {:closed true}
+   [:id                    {:optional true} ms/PositiveInt]
+   [:name                  {:optional true} :string]
+   [:description           {:optional true} [:maybe :string]]
+   [:archived              {:optional true} :boolean]
+   [:archived_directly     {:optional true} [:maybe :boolean]]
+   [:archive_operation_id  {:optional true} [:maybe :string]]
+   [:location              {:optional true} LocationPath]
+   [:personal_owner_id     {:optional true} [:maybe ms/PositiveInt]]
+   [:slug                  {:optional true} :string]
+   [:namespace             {:optional true} [:maybe [:or :keyword :string]]]
+   [:authority_level       {:optional true} [:maybe [:or :keyword :string]]]
+   [:entity_id             {:optional true} :string]
+   [:created_at            {:optional true} ms/TemporalInstant]
+   [:type                  {:optional true} [:maybe [:or :keyword :string]]]
+   [:is_sample             {:optional true} :boolean]
+   [:is_remote_synced      {:optional true} [:maybe :boolean]]
+   [:is_personal           {:optional true} :boolean]
+   [:is_upload             {:optional true} [:maybe :boolean]]
+   [:parent_id             {:optional true} [:maybe ms/PositiveInt]]
+   [:can_write             {:optional true} :boolean]
+   [:can_restore           {:optional true} :boolean]
+   [:can_delete            {:optional true} :boolean]
+   [:effective_location    {:optional true} :string]
+   [:effective_children    {:optional true}
+    [:maybe [:set [:map {:closed true}
+                   [:id          ms/PositiveInt]
+                   [:name        :string]
+                   [:description [:maybe :string]]
+                   [:type        [:maybe :string]]]]]]
+   [:collection_id         {:optional true} [:maybe ms/PositiveInt]]
+   [:collection_position   {:optional true} [:maybe ms/PositiveInt]]
+   [:collection_preview    {:optional true} [:maybe :boolean]]
+   [:collection_type       {:optional true} [:maybe :string]]
+   [:dashboard_id          {:optional true} [:maybe ms/PositiveInt]]
+   [:database_id           {:optional true} [:maybe ms/PositiveInt]]
+   [:dataset_query         {:optional true} :nil]
+   [:display               {:optional true} [:maybe :string]]
+   [:icon                  {:optional true} [:maybe :string]]
+   [:last_edit_email       {:optional true} [:maybe :string]]
+   [:last_edit_first_name  {:optional true} [:maybe :string]]
+   [:last_edit_last_name   {:optional true} [:maybe :string]]
+   [:last_edit_timestamp   {:optional true} [:maybe :string]]
+   [:last_edit_user        {:optional true} [:maybe :int]]
+   [:last_used_at          {:optional true} [:maybe ms/TemporalInstant]]
+   [:model                 {:optional true} [:maybe :string]]
+   [:model_ranking         {:optional true} [:maybe :int]]
+   [:moderated_status      {:optional true} [:maybe :string]]
+   [:query_type            {:optional true} [:maybe :string]]
+   [:table_id              {:optional true} [:maybe ms/PositiveInt]]
+   [:total_count           {:optional true} [:maybe :int]]])
+
+(mu/defn shared-tenant-collection?
+  "Whether or not a collection is a tenant collection."
+  [{:keys [namespace]} :- [:or RootCollection CollectionInstance]]
+  (= (some-> namespace name)
+     (name shared-tenant-ns)))
+
 (mu/defn location-path :- LocationPath
   "Build a 'location path' from a sequence of `collections-or-ids`.
 
@@ -503,17 +560,14 @@
 (def ^:private CollectionWithLocationOrRoot
   [:or
    RootCollection
-   [:map {:closed true}
-    [:location LocationPath]]])
+   CollectionInstance])
 
 (def CollectionWithLocationAndIDOrRoot
   "Schema for a valid `CollectionInstance` that has valid `:location` and `:id` properties, or the special
   `root-collection` placeholder object."
   [:or
    RootCollection
-   [:map {:closed true}
-    [:location LocationPath]
-    [:id       ms/PositiveInt]]])
+   CollectionInstance])
 
 (mu/defn- parent :- CollectionWithLocationAndIDOrRoot
   "Fetch the parent Collection of `collection`, or the Root Collection special placeholder object if this is a
@@ -624,9 +678,7 @@
 (def ^:private CollectionWithLocationAndPersonalOwnerID
   "Schema for a Collection instance that has a valid `:location`, and a `:personal_owner_id` key *present* (but not
   necessarily non-nil)."
-  [:map {:closed true}
-   [:location          LocationPath]
-   [:personal_owner_id [:maybe ms/PositiveInt]]])
+  CollectionInstance)
 
 (mu/defn is-personal-collection-or-descendant-of-one? :- :boolean
   "Is `collection` a Personal Collection, or a descendant of one?"
@@ -643,8 +695,7 @@
 (def ^:private CollectionWithNamespace
   "Schema for a Collection instance that has a valid `:location`, and a `:namespace` key *present* (but not
   necessarily non-nil)."
-  [:map {:closed true}
-   [:namespace [:maybe [:or :keyword :string]]]])
+  CollectionInstance)
 
 (mu/defn is-dedicated-tenant-collection-or-descendant? :- :boolean
   "Is `collection` a Tenant Collection, or a descendant of one?"
@@ -1646,7 +1697,9 @@
   [collection :- CollectionWithLocationAndIDOrRoot
    ;; `updates` is a map *possibly* containing `parent_id`. This allows us to distinguish
    ;; between specifying a `nil` parent_id (move to the root) and not specifying a parent_id.
-   updates :- [:map {:closed true} [:parent_id {:optional true} [:maybe ms/PositiveInt]]]]
+   updates :- [:map {:closed true}
+               [:parent_id {:optional true} [:maybe ms/PositiveInt]]
+               [:archived  {:optional true} :boolean]]]
   (assert (:archive_operation_id collection))
   (let [archive-operation-id    (:archive_operation_id collection)
         current-parent-id       (:parent_id (t2/hydrate collection :parent_id))
@@ -1701,8 +1754,9 @@
   [collection :- CollectionWithLocationAndIDOrRoot
    ;; `updates` is a map *possibly* containing `parent_id`. This allows us to distinguish
    ;; between specifying a `nil` parent_id (move to the root) and not specifying a parent_id.
-   updates :- [:map {:closed true} [:parent_id {:optional true} [:maybe ms/PositiveInt]
-                     :archived :boolean]]]
+   updates :- [:map {:closed true}
+               [:parent_id {:optional true} [:maybe ms/PositiveInt]]
+               [:archived  {:optional true} :boolean]]]
   (if (:archived updates)
     (archive-collection! collection)
     (unarchive-collection! collection updates)))

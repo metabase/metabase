@@ -116,7 +116,7 @@
 
 (mu/defn table
   "The Table with `id`, or nil."
-  [id :- ::lib.schema.id/table]
+  [id :- [:maybe ::lib.schema.id/table]]
   (t2/select-one :model/Table :id id))
 
 (mu/defn collection

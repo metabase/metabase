@@ -19,7 +19,7 @@
   This schema is not very strict because we need to handle different types of queries (legacy MBQL, MBQL 5,
   super-legacy MBQL, internal audit app queries, etc.) and it might not be normalized yet."
   [:or
-   ::mbql.s/Query
+   :metabase.lib.util/legacy-query
    ::lib.schema/query
    ::lib-be.schema/internal-query])
 

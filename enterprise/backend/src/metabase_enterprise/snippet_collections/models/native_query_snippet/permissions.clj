@@ -4,6 +4,7 @@
    [metabase-enterprise.snippet-collections.db :as snippet-collections.db]
    [metabase.models.interface :as mi]
    [metabase.native-query-snippets.core :as snippets]
+   [metabase.native-query-snippets.schema :as snippets.schema]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
@@ -11,9 +12,13 @@
    [metabase.util.malli.schema :as ms]))
 
 (mu/defn- has-parent-collection-perms?
-  [snippet       :- [:map {:closed true} [:collection_id [:maybe ms/PositiveInt]]]
+  [snippet       :- [:or
+                     [:merge
+                      ::snippets.schema/native-query-snippet
+                      [:map {:closed true} [:collection {:optional true} (ms/InstanceOf :model/Collection)]]]
+                     ::snippets.schema/native-query-snippet.update]
    read-or-write :- [:enum :read :write]]
-  (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection "snippets" snippet read-or-write)))
+  (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection "snippets" (:collection_id snippet) read-or-write)))
 
 (defenterprise can-read?
   "Can the current User read this `snippet`?"

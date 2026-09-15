@@ -2030,7 +2030,11 @@
      {:optional true
       :description "Metadata about the source query being used, if pulled in from a Card via the
   `:source-table \"card__id\"` syntax. added automatically by the `resolve-card-id-source-tables` middleware."}
-     [:maybe [:sequential [:ref ::legacy-column-metadata]]]]]
+     [:maybe [:sequential [:ref ::legacy-column-metadata]]]]
+    [:qp/is-implicit-join
+     {:optional true
+      :description "Set by the `add-implicit-joins` middleware to mark a join it generated."}
+     :boolean]]
    ;; additional constraints
    [:fn
     {:error/message "Joins must have either a `source-table` or `source-query`, but not both."}
@@ -2130,7 +2134,11 @@
      {:optional    true
       :description "Info about the columns of the source query. Added in automatically by middleware. This metadata is
   primarily used to let power things like binning when used with Field Literals instead of normal Fields."}
-     [:maybe [:sequential [:ref ::legacy-column-metadata]]]]]
+     [:maybe [:sequential [:ref ::legacy-column-metadata]]]]
+    [:qp/added-implicit-fields? {:optional true} :boolean]
+    [:query-permissions/sandboxed-table {:optional true} [:ref ::lib.schema.id/table]]
+    [:metabase-enterprise.sandbox.query-processor.middleware.sandboxing/sandbox? {:optional true} :boolean]
+    [:metabase.query-processor.middleware.add-implicit-joins/reused-join-aliases {:optional true} [:set :string]]]
    ;; remove empty query keys; this is done AFTER the map schema above because normalizing things like
    ;; `::Aggregations` will remove things like the `ROWS` aggregation which was removed in MBQL 4.
    ;; e.g. the schema above will normalize
@@ -2280,6 +2288,16 @@
       :description "Used when recording info about this run in the QueryExecution log; things like context query was
   ran in and User who ran it."}
      [:maybe [:ref ::lib.schema.info/info]]]
+    [:cache-strategy {:optional true} [:maybe :metabase.lib.schema/cache-strategy]]
+    [:impersonation/role         {:optional true} ::lib.schema.common/non-blank-string]
+    [:impersonation/admin?       {:optional true} :boolean]
+    [:impersonation/allow-write? {:optional true} :boolean]
+    [:qp/compiled        {:optional true} :metabase.lib.schema/compiled-native-query]
+    [:qp/compiled-inline {:optional true} :metabase.lib.schema/compiled-native-query]
+    [:metabase.query-processor.middleware.add-remaps/external-remaps {:optional true} :metabase.lib.schema/external-remappings]
+    [:metabase-enterprise.sandbox.query-processor.middleware.sandboxing/original-metadata
+     {:optional true}
+     :metabase.lib.schema/sandboxing.original-metadata]
     ;;
     ;; ACTIONS
     ;;

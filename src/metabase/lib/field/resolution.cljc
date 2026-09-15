@@ -350,14 +350,6 @@
             (log/debug "Unable to resolve in previous stage =(")
             nil))))))
 
-(mr/def ::source-field-info
-  "The subset of field ref options that identify which implicit join a ref refers to: `:source-field` (the FK field ID,
-  required), and optionally `:source-field-name` and `:source-field-join-alias` for disambiguation."
-  [:map {:closed true}
-   [:source-field            ::lib.schema.id/field]
-   [:source-field-name       {:optional true} :string]
-   [:source-field-join-alias {:optional true} :string]])
-
 (mu/defn- resolve-in-implicit-join-previous-stage :- [:maybe ::lib.metadata.calculation/visible-column]
   "First, try to resolve the implicit join from the previous stage columns -- the join might have already been
   performed there and `:source-field` was specified incorrectly. (You're only supposed to specify this in the stage
@@ -368,7 +360,7 @@
   renaming."
   [query             :- ::lib.schema/query
    stage-number      :- :int
-   source-field-info :- ::source-field-info
+   source-field-info :- ::lib.schema.ref/field.options
    id-or-name        :- ::id-or-name]
   (when-some [previous-stage-number (lib.util/previous-stage-number query stage-number)]
     (let [{:keys [source-field source-field-name source-field-join-alias]} source-field-info
@@ -475,7 +467,7 @@
 (mu/defn- resolve-in-implicit-join :- [:maybe ::lib.metadata.calculation/visible-column]
   [query             :- ::lib.schema/query
    stage-number      :- :int
-   source-field-info :- ::source-field-info
+   source-field-info :- ::lib.schema.ref/field.options
    id-or-name        :- ::id-or-name]
   (let [source-field-id (:source-field source-field-info)]
     (log/debugf "Resolving implicitly joined %s (source Field ID = %s) in stage %s"

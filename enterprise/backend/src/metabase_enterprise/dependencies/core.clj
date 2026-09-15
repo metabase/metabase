@@ -23,8 +23,11 @@
   [:enum :card :transform :snippet :table])
 
 (mr/def ::updates-map
-  ;; TODO: Make this more specific.
-  [:map-of ::entity-type [:sequential [:map {:closed true} [:id {:optional true} :int]]]])
+  [:map {:closed true}
+   [:card      {:optional true} [:sequential ::lib.schema.metadata/card]]
+   [:transform {:optional true} [:sequential ::lib.schema.metadata/transform]]
+   [:snippet   {:optional true} [:sequential ::lib.schema.metadata/native-query-snippet]]
+   [:table     {:optional true} [:sequential ::lib.schema.metadata/table]]])
 
 (defn- transitive-dependents
   [& {:keys [graph updated-entities include-native?]}]

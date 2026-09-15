@@ -233,6 +233,11 @@
                                  {dependency-type 1})))
                         (apply merge-with +))))))
 
+(defn- normalize-finding-error
+  [{:keys [error_type error_detail]}]
+  (cond-> {:type error_type}
+    error_detail (assoc :detail error_detail)))
+
 (defn- node-downstream-errors
   "Fetches errors caused by the given source entities (what downstream entities they're breaking).
    Filters out errors where the analyzed entity is not visible to the current user.
@@ -244,7 +249,7 @@
               (let [finding-errors (dependencies.db/finding-errors-from-sources
                                     source-type ids (current-user-visibility nil))]
                 (u/group-by (juxt :source_entity_type :source_entity_id)
-                            identity conj #{} finding-errors))))]
+                            normalize-finding-error conj #{} finding-errors))))]
     (->> nodes-by-type
          (into {} (mapcat errors-by-source-type-and-id))
          not-empty)))
@@ -254,11 +259,7 @@
    Filters out errors where the source entity is not visible to the current user.
    Returns {[entity-type entity-id] #{error-maps...}}, or nil if none."
   [nodes-by-type]
-  (letfn [(normalize-finding-error
-            [{:keys [error_type error_detail]}]
-            (cond-> {:type error_type}
-              error_detail (assoc :detail error_detail)))
-          (errors-by-entity-type-and-id [[type ids]]
+  (letfn [(errors-by-entity-type-and-id [[type ids]]
             (when (seq ids)
               (let [finding-errors (dependencies.db/finding-errors-for-entities-with-visible-sources
                                     type ids (current-user-visibility nil))]

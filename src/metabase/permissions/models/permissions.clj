@@ -269,19 +269,17 @@
   "Implementation of `perms-objects-set` for models with a `collection_id`, such as Card, Dashboard, or Pulse.
   This simply returns the `perms-objects-set` of the parent Collection (based on `collection_id`) or for the Root
   Collection if `collection_id` is `nil`."
-  ([this          :- [:map {:closed true} [:collection_id [:maybe ms/PositiveInt]]]
+  ([collection-id :- [:maybe ms/PositiveInt]
     read-or-write :- [:enum :read :write]]
-   (perms-objects-set-for-parent-collection nil this read-or-write))
+   (perms-objects-set-for-parent-collection nil collection-id read-or-write))
 
   ([collection-namespace :- [:maybe ms/KeywordOrString]
-    this                 :- [:map {:closed true}
-                             [:collection_id [:maybe ms/PositiveInt]]]
+    collection-id        :- [:maybe ms/PositiveInt]
     read-or-write        :- [:enum :read :write]]
    ;; based on value of read-or-write determine the appropriate function used to calculate the perms path
    (let [path-fn (case read-or-write
                    :read  permissions.path/collection-read-path
-                   :write permissions.path/collection-readwrite-path)
-         collection-id (:collection_id this)]
+                   :write permissions.path/collection-readwrite-path)]
      ;; now pass that function our collection_id if we have one, or if not, pass it an object representing the Root
      ;; Collection
      #{(path-fn (or collection-id
@@ -310,7 +308,7 @@
   [instance read-or-write]
   (if (or (= read-or-write :read)
           (remote-sync/collection-editable? (or (:collection instance) (:collection_id instance))))
-    (perms-objects-set-for-parent-collection instance read-or-write)
+    (perms-objects-set-for-parent-collection (:collection_id instance) read-or-write)
     ;; We need to return a dummy permissions string that cannot possibly belong to a user in
     ;; the case where an instance is not syncable due to remote-sync being in ':production' mode
     #{"___no-remote-sync-access"}))
@@ -455,7 +453,7 @@
     false
     (case model
       :model/Collection (mi/current-user-has-full-permissions? :read instance)
-      (mi/current-user-has-full-permissions? (perms-objects-set-for-parent-collection instance :read)))))
+      (mi/current-user-has-full-permissions? (perms-objects-set-for-parent-collection (:collection_id instance) :read)))))
 
 ;;; ---- Collection-based visibility registration ----
 

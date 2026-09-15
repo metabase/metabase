@@ -57,8 +57,7 @@
   {:table (into #{} (keep :table-id) dimension-mappings)})
 
 (mu/defn- upstream-deps:python-transform :- ::deps.schema/upstream-deps
-  [{{tables :source-tables} :source :as _py-transform}
-   :- [:map {:closed true} [:source-tables {:optional true} [:sequential ::transforms-base.u/source-table-entry]]]]
+  [{{tables :source-tables} :source :as _py-transform} :- (ms/InstanceOf :model/Transform)]
   {:table (into #{} (keep :table_id) tables)})
 
 ;; Modified implementation of documents.models.document/document-deps

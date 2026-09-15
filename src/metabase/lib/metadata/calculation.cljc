@@ -81,6 +81,7 @@
    ::lib.schema/stage
    ::lib.schema.join/join
    ::lib.schema.join/strategy.option
+   :metabase.lib.column-group/column-group
    ::lib.schema.temporal-bucketing/option])
 
 (mu/defn ^:export display-name :- :string

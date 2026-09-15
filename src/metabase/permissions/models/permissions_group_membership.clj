@@ -8,6 +8,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -122,10 +123,10 @@
             [:map {:closed true}
              [:group [:or
                       pos-int?
-                      [:map {:closed true} [:id pos-int?]]]]
+                      (ms/InstanceOf :model/PermissionsGroup)]]
              [:user [:or
                      pos-int?
-                     [:map {:closed true} [:id pos-int?]]]]
+                     (ms/InstanceOf :model/User)]]
              [:is-group-manager? {:optional true}
               :boolean]]]]
   (when (seq pgms)

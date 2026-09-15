@@ -38,20 +38,33 @@
     :any]])
 
 (mr/def ::card
-  "Schema for an instance of a `:model/Card` (everything is optional to support updates)."
-  [:map {:closed true}
-   [:id                 {:optional true} [:maybe ::lib.schema.id/card]]
-   [:collection_id      {:optional true} [:maybe ::lib.schema.id/collection]]
-   [:dashboard_id       {:optional true} [:maybe ::lib.schema.id/dashboard]]
-   [:database_id        {:optional true} [:maybe ::lib.schema.id/database]]
-   [:document_id        {:optional true} [:maybe ::documents.schema/document.id]]
-   [:dataset_query      {:optional true} [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]
-   [:description        {:optional true} [:maybe :string]]
-   [:name               {:optional true} [:maybe :string]]
-   [:parameters         {:optional true} [:maybe [:ref ::parameters.schema/parameters]]]
-   [:parameter_mappings {:optional true} [:maybe [:ref ::parameters.schema/parameter-mappings]]]
-   [:type               {:optional true} [:maybe ::card.type]]
-   [:result_metadata    {:optional true} [:maybe [:ref ::card.result-metadata]]]])
+  "Schema for an instance of a `:model/Card`: every real column of `:report_card` (see `::card.update`) plus `:id`,
+  the `:persisted/*` columns some queries join in from `persisted_info`, and the keys some callers hydrate onto a
+  Card before passing it here."
+  [:merge
+   ::card.update
+   [:map {:closed true}
+    [:id                    {:optional true} [:maybe ::lib.schema.id/card]]
+    [:persisted/active      {:optional true} [:maybe :boolean]]
+    [:persisted/definition  {:optional true} [:maybe :string]]
+    [:persisted/query_hash  {:optional true} [:maybe :string]]
+    [:persisted/state       {:optional true} [:maybe :string]]
+    [:persisted/table_name  {:optional true} [:maybe :string]]
+    [:collection            {:optional true} [:maybe [:merge
+                                                       :metabase.collections.schema/collection
+                                                       [:map {:closed true}
+                                                        [:is_personal {:optional true} [:maybe :boolean]]]]]]
+    [:creator               {:optional true} [:maybe :metabase.users.schema/user]]
+    [:dashboard             {:optional true} [:maybe :metabase.dashboards.schema/dashboard]]
+    [:moderation_reviews    {:optional true} [:sequential :metabase.content-verification.schema/moderation-review]]
+    [:can_delete            {:optional true} :boolean]
+    [:can_manage_db         {:optional true} :boolean]
+    [:can_restore           {:optional true} :boolean]
+    [:can_write             {:optional true} :boolean]
+    [:dashboard_count       {:optional true} :int]
+    [:parameter_usage_count {:optional true} :int]
+    [:average_query_time    {:optional true} [:maybe number?]]
+    [:last_query_start      {:optional true} [:maybe ms/TemporalInstant]]]])
 
 (mu/defn normalize-card :- [:maybe ::card]
   "Normalize a `card` so it satisfies the `::card` schema."
@@ -59,7 +72,7 @@
             [:or
              (ms/InstanceOf :model/Card)
              [:merge
-              ::card.update
+              ::card
               [:map {:closed true}
                [:result_metadata {:optional true} [:maybe :metabase.request.schema/json-value]]]]]]]
   (lib/normalize ::card card))

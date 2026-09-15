@@ -10,7 +10,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.debug :as qp.debug]
    [metabase.query-processor.middleware.annotate.legacy-helper-fns]
    [metabase.query-processor.reducible :as qp.reducible]
@@ -23,9 +22,7 @@
 (comment metabase.query-processor.middleware.annotate.legacy-helper-fns/keep-me)
 
 (mr/def ::col
-  [:map {:closed true}
-   [:source    {:optional true} ::lib.schema.metadata/column.legacy-source]
-   [:field_ref {:optional true} ::mbql.s/Reference]])
+  ::mbql.s/legacy-column-metadata)
 
 (mr/def ::qp-results-cased-col
   "Map where all simple keywords are snake_case, but lib keywords can stay in kebab-case."
@@ -42,8 +39,7 @@
   [:maybe [:sequential ::col]])
 
 (mr/def ::metadata
-  [:map {:closed true}
-   [:cols {:optional true} ::cols]])
+  ::qp.schema/metadata)
 
 (mu/defn expected-cols :- [:sequential ::qp-results-cased-col]
   "Return metadata for columns returned by a MBQL 5 `query`.

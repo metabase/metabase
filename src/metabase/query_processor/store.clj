@@ -51,7 +51,8 @@
   result column), or a card's persisted result metadata."
   [:or
    [:sequential :boolean]
-   [:sequential ::lib.schema.metadata/lib-or-legacy-column]])
+   [:sequential ::lib.schema.metadata/lib-or-legacy-column]
+   ::lib.schema.metadata/metadata-provider])
 
 (def ^:dynamic *DANGER-allow-replacing-metadata-provider*
   "This is (almost) only for tests! When enabled, [[with-metadata-provider]] can completely replace the current metadata

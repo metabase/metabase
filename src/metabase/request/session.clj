@@ -26,13 +26,13 @@
   ::none)
 
 (mu/defn- current-user-info->permissions-set :- [:maybe [:set :string]]
-  [{:keys [permissions-set metabase-user-id]} :- ::request.schema/current-user-info]
+  [{:keys [permissions-set metabase-user-id]} :- [:or ::request.schema/current-user-info ::request.schema/request]]
   (or permissions-set
       (some-> metabase-user-id perms/user-permissions-set)))
 
 (mu/defn do-with-current-user
   "Impl for [[with-current-user]] and [[metabase.server.middleware.session/with-current-user-for-request]]"
-  [{:keys [metabase-user-id is-superuser? is-data-analyst? user-locale settings is-group-manager?], :as current-user-info} :- [:maybe ::request.schema/current-user-info]
+  [{:keys [metabase-user-id is-superuser? is-data-analyst? user-locale settings is-group-manager?], :as current-user-info} :- [:maybe [:or ::request.schema/current-user-info ::request.schema/request]]
    thunk :- ifn?]
   (binding [*current-user-id*              metabase-user-id
             i18n/*user-locale*             user-locale

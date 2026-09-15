@@ -28,7 +28,7 @@
 
 (mr/def ::grant-response
   "Schema for a support access grant object in API responses."
-  [:map
+  [:map {:closed true}
    [:id ms/PositiveInt]
    [:user_id ms/PositiveInt]
    [:user_name [:maybe :string]]

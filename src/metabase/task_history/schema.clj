@@ -7,24 +7,24 @@
 
 (mr/def ::task-details.channel-send
   [:map {:closed true}
-   [:retry_config      [:map {:closed true}
-                        [:max-retries             :int]
-                        [:initial-interval-millis :int]
-                        [:multiplier              number?]
-                        [:jitter-factor           number?]
-                        [:max-interval-millis     :int]]]
-   [:channel_id        [:maybe ms/PositiveInt]]
-   [:channel_type      :keyword]
-   [:template_id       [:maybe ms/PositiveInt]]
-   [:notification_id   ms/PositiveInt]
-   [:notification_type :keyword]
-   [:recipient_ids     [:sequential ms/PositiveInt]]
+   [:retry_config      {:optional true} [:map {:closed true}
+                                         [:max-retries             :int]
+                                         [:initial-interval-millis :int]
+                                         [:multiplier              number?]
+                                         [:jitter-factor           number?]
+                                         [:max-interval-millis     :int]]]
+   [:channel_id        {:optional true} [:maybe ms/PositiveInt]]
+   [:channel_type      {:optional true} :keyword]
+   [:template_id       {:optional true} [:maybe ms/PositiveInt]]
+   [:notification_id   {:optional true} [:maybe ms/PositiveInt]]
+   [:notification_type {:optional true} :keyword]
+   [:recipient_ids     {:optional true} [:sequential ms/PositiveInt]]
    [:attempted_retries {:optional true} :int]
    [:retry_errors      {:optional true} [:sequential :string]]])
 
 (mr/def ::task-details.notification-send
   [:map {:closed true}
-   [:notification_id       ms/PositiveInt]
+   [:notification_id       [:maybe ms/PositiveInt]]
    [:notification_handlers [:sequential [:map {:closed true}
                                          [:id           {:optional true} [:maybe ms/PositiveInt]]
                                          [:channel_type {:optional true} [:maybe :keyword]]
@@ -58,7 +58,8 @@
   [:map {:closed true}
    [:success       :int]
    [:error         :int]
-   [:trigger       :string]
+   [:skipped       {:optional true} :int]
+   [:trigger       {:optional true} :string]
    [:error-details {:optional true} [:sequential [:map {:closed true}
                                                    [:persisted-info-id ms/PositiveInt]
                                                    [:error {:optional true} [:maybe :string]]]]]])
@@ -94,7 +95,9 @@
    [:deleted                {:optional true} :int]
    [:errors                 {:optional true} :int]
    [:probed                 {:optional true} :int]
-   [:queries                {:optional true} :int]])
+   [:queries                {:optional true} :int]
+   [:flavor                 {:optional true} [:maybe :string]]
+   [:semantic-version       {:optional true} [:sequential :int]]])
 
 (mr/def ::task-details.empty
   [:map {:closed true}])

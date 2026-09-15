@@ -1165,8 +1165,21 @@
   [published?]
   (with-meta
    {:library {:score 0 :components {}} :universe {:score 0 :components {}}
-    :metabot {:score 0 :components {}} :meta {}}
+    :metabot {:score 0 :components {}}
+    :meta    {:formula-version 1 :format-version 1 :synonym-threshold 0.8 :weights complexity/weights}}
    {:metabase-enterprise.data-complexity-score.complexity/snowplow-published? published?}))
+
+(defn- labeled-score
+  "A full, valid `score-data` map carrying `label` in `:text-variant` so a test can tell rows apart."
+  [label]
+  {:library  {:score 0 :components {}}
+   :universe {:score 0 :components {}}
+   :metabot  {:score 0 :components {}}
+   :meta     {:formula-version   1
+              :format-version    1
+              :synonym-threshold 0.8
+              :weights           complexity/weights
+              :text-variant      (keyword label)}})
 
 (deftest ^:synchronized latest-score-filters-by-fingerprint-test
   (testing "the overview cache only returns scores matching the current scoring fingerprint"
@@ -1175,11 +1188,11 @@
           fingerprint       "latest-score-test/current"]
       (try
         (t2/delete! :model/DataComplexityScore :fingerprint [:in [other-fingerprint fingerprint]])
-        (data-complexity-score/record-score! other-fingerprint "appdb" {:meta {:label "other"}})
-        (data-complexity-score/record-score! fingerprint "appdb" {:meta {:label "older"}})
-        (data-complexity-score/record-score! fingerprint "appdb" {:meta {:label "newer"}})
+        (data-complexity-score/record-score! other-fingerprint "appdb" (labeled-score "other"))
+        (data-complexity-score/record-score! fingerprint "appdb" (labeled-score "older"))
+        (data-complexity-score/record-score! fingerprint "appdb" (labeled-score "newer"))
         (let [score (data-complexity-score/latest-score fingerprint)]
-          (is (= "newer" (get-in score [:meta :label])))
+          (is (= :newer (get-in score [:meta :text-variant])))
           (is (some? (get-in score [:meta :calculated-at]))))
         (finally
           (t2/delete! :model/DataComplexityScore :fingerprint [:in [other-fingerprint fingerprint]]))))))
@@ -1195,13 +1208,13 @@
     (let [fingerprint "latest-score-source-test/shared"]
       (try
         (t2/delete! :model/DataComplexityScore :fingerprint fingerprint)
-        (data-complexity-score/record-score! fingerprint "appdb"                {:meta {:label "appdb-row"}})
-        (data-complexity-score/record-score! fingerprint "representation:abcd"  {:meta {:label "representation-row"}})
-        (is (= "appdb-row"
-               (get-in (data-complexity-score/latest-score fingerprint) [:meta :label]))
+        (data-complexity-score/record-score! fingerprint "appdb"                (labeled-score "appdb-row"))
+        (data-complexity-score/record-score! fingerprint "representation:abcd"  (labeled-score "representation-row"))
+        (is (= :appdb-row
+               (get-in (data-complexity-score/latest-score fingerprint) [:meta :text-variant]))
             "default source=\"appdb\" skips past the newer representation-tagged row")
-        (is (= "representation-row"
-               (get-in (data-complexity-score/latest-score fingerprint "representation:abcd") [:meta :label]))
+        (is (= :representation-row
+               (get-in (data-complexity-score/latest-score fingerprint "representation:abcd") [:meta :text-variant]))
             "an explicit representation source still resolves its own row")
         (finally
           (t2/delete! :model/DataComplexityScore :fingerprint fingerprint))))))
@@ -1534,7 +1547,7 @@
       (let [score {:library  {:score 0 :components {}}
                    :universe {:score 0 :components {}}
                    :metabot  {:score 0 :components {}}
-                   :meta     {:formula-version 1 :synonym-threshold 0.8 :weights {}}}]
+                   :meta     {:formula-version 1 :format-version 1 :synonym-threshold 0.8 :weights complexity/weights}}]
         (testing "publish succeeds → tagged true"
           (snowplow-test/with-fake-snowplow-collector
             (is (true? (::complexity/snowplow-published? (meta (complexity/republish-score! score)))))))
@@ -1555,8 +1568,9 @@
                        :universe {:score 2 :components {}}
                        :metabot  {:score 3 :components {}}
                        :meta     {:formula-version   1
+                                  :format-version    1
                                   :synonym-threshold 0.8
-                                  :weights           {}
+                                  :weights           complexity/weights
                                   :text-variant      :names-split
                                   :embedding-model   {:provider :ai-service :model-name "minilm" :model-dimensions 384}}}]
       (try

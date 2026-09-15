@@ -62,7 +62,8 @@
      [:case-sensitive  {:optional true} :boolean]
      [:include-current {:optional true} :boolean]
      [:default         {:optional true} [:ref :metabase.lib.schema.expression/expression]]
-     [:join-alias      {:optional true} [:ref ::lib.schema.join/alias]]]
+     [:join-alias      {:optional true} [:ref ::lib.schema.join/alias]]
+     [:source-field    {:optional true} ::lib.schema.id/field]]
     [:fn
      {:error/message "options map without namespaced keys and base-type/effective-type"}
      (complement (some-fn :base-type :effective-type :lib/uuid))]]
@@ -120,7 +121,9 @@
                              [:tuple
                               [:= :field]
                               [:map {:closed true}
-                               [::new-field-dimension-id ::lib.schema.id/dimension]]
+                               [::new-field-dimension-id ::lib.schema.id/dimension]
+                               [:lib/uuid      {:optional true} ::lib.schema.common/uuid]
+                               [:source-field  {:optional true} ::lib.schema.id/field]]
                               ::lib.schema.id/field]]]
     [:dimension             ::external-remapping]]
    [:fn
@@ -610,8 +613,7 @@
 (mu/defn- add-remapped-to-and-from-metadata
   "Add remapping info `:remapped_from` and `:remapped_to` to each existing column in the results metadata, and add
   entries for each newly added column to the end of `:cols`."
-  [metadata                                             :- [:map {:closed true}
-                                                            [:cols [:maybe ::qp.schema/result-metadata.columns]]]
+  [metadata                                             :- ::qp.schema/metadata
    remapping-dimensions                                 :- [:maybe [:sequential ::external-remapping]]
    {:keys [internal-only-cols], :as internal-cols-info} :- [:maybe ::internal-columns-info]]
   (update metadata :cols (fn [cols]

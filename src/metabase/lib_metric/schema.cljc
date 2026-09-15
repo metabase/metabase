@@ -55,24 +55,16 @@
 ;;; -----------------------------------------------------------------------------------------------------------------
 
 (mr/def ::dimension-id
-  "UUID string identifying a dimension."
-  ::lib.schema.common/uuid)
+  ::lib.schema.metadata/dimension-id)
 
 (mr/def ::dimension-group
-  "Group descriptor for a dimension, indicating which table it belongs to."
-  [:map {:closed true}
-   [:id :string]
-   [:type [:enum "main" "connection"]]
-   [:display-name :string]])
+  ::lib.schema.metadata/dimension-group)
 
 (mr/def ::dimension-source.type
-  [:enum :field])
+  ::lib.schema.metadata/dimension-source.type)
 
 (mr/def ::dimension-source
-  [:map {:closed true}
-   [:type     ::dimension-source.type]
-   [:field-id {:optional true} [:maybe ::lib.schema.id/field]]
-   [:binning  {:optional true} [:maybe :boolean]]])
+  ::lib.schema.metadata/dimension-source)
 
 (mr/def ::dimension
   "Schema for a dimension definition, plus what the metrics module annotates a dimension with before handing it to a
@@ -95,20 +87,13 @@
    [:description               {:optional true} [:maybe :string]]])
 
 (mr/def ::dimension-mapping.type
-  "Type of dimension mapping."
-  [:enum :table])
+  ::lib.schema.metadata/dimension-mapping.type)
 
 (mr/def ::dimension-mapping.target
-  "Target field reference for a dimension mapping, e.g. [:field {:source-field 1} 2]."
-  [:ref :mbql.clause/field])
+  ::lib.schema.metadata/dimension-mapping.target)
 
 (mr/def ::dimension-mapping
-  "Schema for a dimension mapping."
-  [:map {:closed true}
-   [:type         ::dimension-mapping.type]
-   [:table-id     {:optional true} [:maybe ::lib.schema.id/table]]
-   [:dimension-id ::dimension-id]
-   [:target       ::dimension-mapping.target]])
+  ::lib.schema.metadata/dimension-mapping)
 
 (mr/def ::dimension-reference.options
   "Options map for dimension references."
@@ -339,31 +324,10 @@
 ;;; These schemas are used for storage format in the database.
 
 (mr/def ::dimension-status
-  "Status of a dimension indicating whether it's active or has issues.
-   - :status/active   - Column exists, dimension is usable
-   - :status/orphaned - Column was removed from schema, dimension preserved for reference"
-  [:enum :status/active :status/orphaned])
+  ::lib.schema.metadata/dimension-status)
 
 (mr/def ::persisted-dimension
-  "Schema for a persisted dimension definition with status tracking.
-   Persisted dimensions include additional metadata about their status
-   and any issues that prevent them from being used.
-   Note: target field references are stored in dimension-mappings, not here."
-  [:map {:closed true}
-   [:id               ::dimension-id]
-   [:name             {:optional true} [:maybe :string]]
-   [:display-name     {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
-   [:description      {:optional true} [:maybe :string]]
-   [:effective-type   {:optional true} [:maybe ::lib.schema.common/base-type]]
-   [:semantic-type    {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
-   [:has-field-values {:optional true} [:maybe [:enum :list :search :none]]]
-   [:status           {:optional true} [:maybe ::dimension-status]]
-   [:status-message   {:optional true} [:maybe :string]]
-   [:sources          {:optional true} [:maybe [:sequential ::dimension-source]]]
-   [:group            {:optional true} [:maybe ::dimension-group]]
-   [:default-temporal-unit {:optional true} ::lib.schema.temporal-bucketing/unit]
-   ;; At most one dimension per entity may be the default.
-   [:default          {:optional true} [:maybe :boolean]]])
+  ::lib.schema.metadata/persisted-dimension)
 
 (mr/def ::persisted-dimensions
   "Schema for a sequence of persisted dimensions."

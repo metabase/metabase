@@ -32,7 +32,7 @@
    [:tables {:optional true}
     [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/table :metadata/table)]]]
    [:fields {:optional true}
-    [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/column :metadata/column)]]]
+    [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/column.map :metadata/column)]]]
    [:cards {:optional true}
     [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/card :metadata/card)]]]
    [:segments {:optional true}

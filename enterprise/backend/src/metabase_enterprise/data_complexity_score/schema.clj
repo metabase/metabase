@@ -41,6 +41,12 @@
            [:formula-version :int]
            [:format-version :int]
            [:synonym-threshold number?]
+           [:weights [:map {:closed true}
+                      [:entity :int]
+                      [:name-collision :int]
+                      [:synonym-pair :int]
+                      [:field :int]
+                      [:repeated-measure :int]]]
            [:embedding-model {:optional true} [:maybe [:map {:closed true}
                                                         [:provider [:maybe :string]]
                                                         [:model-name [:maybe :string]]

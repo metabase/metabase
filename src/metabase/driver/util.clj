@@ -14,6 +14,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.error-type :as qp.error-type]
    ;; the legacy QP pipeline still conveys the metadata provider via the ambient store; no MBQL 5 path yet
@@ -297,10 +298,10 @@
   over the duration of a single API request or sync operation.)"
   [database-or-id :- [:or
                       {:error/message "Database or ID"}
-                      [:map {:closed true}
-                       [:engine [:or :keyword :string]]]
-                      [:map {:closed true}
-                       [:id ::lib.schema.id/database]]
+                      (ms/InstanceOf :model/Database)
+                      :metabase.warehouses.schema/database
+                      :metabase.warehouses.schema/database.update
+                      ::lib.schema.metadata/database
                       ::lib.schema.id/database]]
   (if-let [driver (:engine database-or-id)]
     ;; ensure we get the driver as a keyword (sometimes it's a String)
@@ -350,13 +351,11 @@
                     [driver feature (mdb/unique-identifier) (:id database) (:updated-at database)])))))
 
 ;;; this can get called in post-select which doesn't always have ID
-(mu/defn ensure-lib-database :- [:map {:closed true}
-                                 [:lib/type [:= :metadata/database]]]
+(mu/defn ensure-lib-database :- ::lib.schema.metadata/database
   "Ensures the database is in Lib metadata format (SnakeHatingMap with kebab-case keys).
    If passed a Toucan2 instance, converts it. If already Lib metadata, returns as-is."
   [database :- [:or
-                [:map {:closed true}
-                 [:lib/type [:= :metadata/database]]]
+                ::lib.schema.metadata/database
                 (ms/InstanceOf :model/Database)]]
   (if-not (:lib/type database)
     (lib-be/instance->metadata database :metadata/database)
@@ -376,8 +375,7 @@
    database :- [:maybe
                 [:or
                  ;; this can get called with an incomplete object in post-select
-                 [:map {:closed true}
-                  [:lib/type [:= :metadata/database]]]
+                 ::lib.schema.metadata/database
                  (ms/InstanceOf :model/Database)]]]
   (let [database (some-> database ensure-lib-database)
         f        (if *memoize-supports?* memoized-supports?* supports?*)]
@@ -429,8 +427,7 @@
   [driver   :- :keyword
    database :- [:or
                 ;; this can get called in post-select which doesn't always have ID
-                [:map {:closed true}
-                 [:lib/type [:= :metadata/database]]]
+                ::lib.schema.metadata/database
                 (ms/InstanceOf :model/Database)]]
   (let [database (ensure-lib-database database)]
     (if *memoize-supports?*
@@ -483,13 +480,13 @@
      (-> {:name (str prop-name "-value")
           :type "textFile"
           :treat-before-posting "base64"
-          :visible-if {(keyword (str prop-name "-options")) "uploaded"}}
+          :visible-if {(str prop-name "-options") "uploaded"}}
          (dissoc :secret-kind))
      {:name (str prop-name "-path")
       :type "string"
       :display-name (trs "File path")
       :placeholder (:placeholder conn-prop)
-      :visible-if {(keyword (str prop-name "-options")) "local"}}]))
+      :visible-if {(str prop-name "-options") "local"}}]))
 
 (defn- ->str
   "Turns `x` into a String. If `x` a keyword, then `name` is used. Otherwise, `str` is called on it."
@@ -560,14 +557,14 @@
       :type "text"
       :placeholder placeholder
       :description (trs "Comma separated names of {0} that should appear in Metabase" (u/lower-case-en disp-name))
-      :visible-if  {(keyword type-prop-nm) "inclusion"}
+      :visible-if  {type-prop-nm "inclusion"}
       :helper-text (trs "You can use patterns like \"auth*\" to match multiple {0}" (u/lower-case-en disp-name))
       :required true}
      {:name (str prop-name "-patterns")
       :type "text"
       :placeholder placeholder
       :description (trs "Comma separated names of {0} that should NOT appear in Metabase" (u/lower-case-en disp-name))
-      :visible-if  {(keyword type-prop-nm) "exclusion"}
+      :visible-if  {type-prop-nm "exclusion"}
       :helper-text (trs "You can use patterns like \"auth*\" to match multiple {0}" (u/lower-case-en disp-name))
       :required true}]))
 

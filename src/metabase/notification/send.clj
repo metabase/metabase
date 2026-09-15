@@ -14,7 +14,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [metabase.util.retry :as retry]
    [toucan2.core :as t2])
   (:import
@@ -485,7 +484,8 @@
 
 (mu/defn send-notification!
   "The function to send a notification. Defaults to `notification.send/send-notification-async!`."
-  [notification :- (ms/InstanceOf :model/Notification)
+  [notification :- [:fn {:error/message "a Notification (a Toucan instance or a hydrated Notification map)"}
+                    (fn [x] (and (map? x) (pos-int? (:id x)) (some? (:payload_type x))))]
    & {:keys [] :as options} :- [:maybe Options]]
   (let [options (merge *default-options* options)
         sync?   (:notification/sync? options)]

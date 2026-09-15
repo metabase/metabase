@@ -70,8 +70,8 @@
 (def ^:private DatabaseOrId
   [:or
    ::lib.schema.id/database
-   [:map {:closed true}
-    [:id ::lib.schema.id/database]]])
+   :metabase.warehouses.schema/database
+   :metabase.lib.schema.metadata/database])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          SYNC OPERATION "MIDDLEWARE"                                           |
@@ -538,9 +538,44 @@
    [:start-time                  (ms/InstanceOfClass Temporal)]
    [:end-time   {:optional true} (ms/InstanceOfClass Temporal)]])
 
+(def ^:private StepStats
+  "Step-specific stats a `sync-fn` may add to its `StepRunMetadata`, across all of the sync/analyze steps."
+  [:map {:closed true}
+   [:added-indexes          {:optional true} :int]
+   [:created                {:optional true} :int]
+   [:deleted                {:optional true} :int]
+   [:errors                 {:optional true} :int]
+   [:failed-fingerprints    {:optional true} :int]
+   [:fields-classified      {:optional true} :int]
+   [:fields-failed          {:optional true} :int]
+   [:fields-labeled         {:optional true} :int]
+   [:fields-scanned         {:optional true} :int]
+   [:fields-scored          {:optional true} :int]
+   [:fingerprints-attempted {:optional true} :int]
+   [:flavor                 {:optional true} :string]
+   [:no-data-fingerprints   {:optional true} :int]
+   [:probed                 {:optional true} :int]
+   [:queries                {:optional true} :int]
+   [:removed-indexes        {:optional true} :int]
+   [:semantic-version       {:optional true} [:sequential :int]]
+   [:tables-classified      {:optional true} :int]
+   [:timezone-id            {:optional true} :string]
+   [:total-failed           {:optional true} :int]
+   [:total-fields           {:optional true} :int]
+   [:total-fks              {:optional true} :int]
+   [:total-indexes          {:optional true} :int]
+   [:total-tables           {:optional true} :int]
+   [:updated                {:optional true} :int]
+   [:updated-fields         {:optional true} :int]
+   [:updated-fingerprints   {:optional true} :int]
+   [:updated-fks            {:optional true} :int]
+   [:updated-tables         {:optional true} :int]
+   [:version                {:optional true} :string]])
+
 (mr/def ::StepRunMetadata
   [:merge
    TimedSyncMetadata
+   StepStats
    [:map
     [:log-summary-fn [:maybe [:=> [:cat [:ref ::StepRunMetadata]] :string]]]]])
 

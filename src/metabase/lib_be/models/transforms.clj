@@ -11,7 +11,6 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util :as lib.util]
    [metabase.models.interface :as mi]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [empty?]]))
@@ -20,7 +19,7 @@
 
 (defn- normalize-mbql
   [query]
-  (case (when (map? query) (u/ignore-exceptions (lib/normalized-query-type query)))
+  (case (when (map? query) (lib/normalized-query-type query))
     :mbql/query      (lib.schema.common/normalize-map-no-kebab-case query)
     (:query :native) (mbql.normalize/normalize query)
     (lib.schema.common/normalize-map-no-kebab-case query)))

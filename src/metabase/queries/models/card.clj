@@ -718,28 +718,32 @@
       (assoc card :dimensions dimensions :dimension_mappings dimension-mappings))
     card))
 
+(defn- plausible-card-select?
+  "Whether `card` looks like it was SELECTed as a real Card row (as opposed to some sort of odd query, like an
+  aggregation over cards, that happens to run through the same after-select hook)."
+  [card]
+  (boolean (and (:id card)
+                (or (:dataset_query card)
+                    (:result_metadata card)
+                    (:database_id card)
+                    (:type card)))))
+
 (mu/defn- upgrade-card-schema-to-latest :- ::queries.schema/card
+  "Run the schema upgrades over a plausible Card row and normalize it. Only call this
+  when [[plausible-card-select?]] is true; other queries against `:report_card` should be returned as-is."
   [card :- ::queries.schema/card]
-  (-> (if (and (:id card)
-               (or (:dataset_query card)
-                   (:result_metadata card)
-                   (:database_id card)
-                   (:type card)))
-        ;; A plausible select to run the after-select logic on.
-        (if-not (:card_schema card)
-          ;; Plausible but no :card_schema - error.
-          (throw (ex-info "Cannot SELECT a Card without including :card_schema"
-                          {:card-id (:id card)}))
-          ;; Plausible and has the schema, so run the upgrades over it.
-          (loop [card card]
-            ;; Use >= to allow for downgrades.
-            (if (>= (:card_schema card) current-schema-version)
-              card
-              (let [new-version (inc (:card_schema card))]
-                (recur (assoc (upgrade-card-schema-to card new-version)
-                              :card_schema new-version))))))
-        ;; Some sort of odd query like an aggregation over cards. Just return it as-is.
-        card)
+  (-> (if-not (:card_schema card)
+        ;; Plausible but no :card_schema - error.
+        (throw (ex-info "Cannot SELECT a Card without including :card_schema"
+                        {:card-id (:id card)}))
+        ;; Plausible and has the schema, so run the upgrades over it.
+        (loop [card card]
+          ;; Use >= to allow for downgrades.
+          (if (>= (:card_schema card) current-schema-version)
+            card
+            (let [new-version (inc (:card_schema card))]
+              (recur (assoc (upgrade-card-schema-to card new-version)
+                            :card_schema new-version))))))
       queries.schema/normalize-card))
 
 (defonce ^:private unique-cards-with-blank-dataset-query
@@ -796,8 +800,9 @@
       (m/assoc-some :source_card_id (-> card :dataset_query source-card-id))
       public-sharing/remove-public-uuid-if-public-sharing-is-disabled
       add-query-description-to-metric-card
-      ;; At this point, the card should be at schema version 20 or higher.
-      upgrade-card-schema-to-latest
+      ;; At this point, the card should be at schema version 20 or higher. Some sort of odd query like an
+      ;; aggregation over cards doesn't look like a real Card row; leave those as-is.
+      (cond-> (plausible-card-select? card) upgrade-card-schema-to-latest)
       monitor-blank-dataset-query))
 
 (t2/define-before-insert :model/Card

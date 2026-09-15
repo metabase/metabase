@@ -42,7 +42,11 @@
     [:updated_at              {:optional true} RowTimestamp]
     [:subscriptions           {:optional true} [:sequential ::models.notification/NotificationSubscription]]
     ;;  the subscription that triggered this notification
-    [:triggering_subscription {:optional true} ::models.notification/NotificationSubscription]]
+    [:triggering_subscription {:optional true} ::models.notification/NotificationSubscription]
+    ;; the following are only present once the notification has been hydrated for sending
+    [:creator                 {:optional true} [:maybe :metabase.users.schema/user]]
+    [:handlers                {:optional true} [:maybe [:sequential ::models.notification/NotificationHandler]]]
+    [:payload_id              {:optional true} [:maybe ms/PositiveInt]]]
    [:multi {:dispatch :payload_type}
     ;; system event is a bit special in that part of the payload comes from the event itself
     [:notification/system-event
@@ -58,15 +62,19 @@
       ;; replacement of pulse
       [:dashboard_subscription #_{:optional true}
        [:map {:closed true}
+        [:id             {:optional true} [:maybe ms/PositiveInt]]
         [:dashboard_id ms/PositiveInt]
+        [:disable_links  {:optional true} :boolean]
+        [:skip_if_empty  {:optional true} :boolean]
         [:parameters {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]
         [:dashboard_subscription_dashcards {:optional true}
          [:sequential [:map {:closed true}
-                       [:card_id                        [:maybe ms/PositiveInt]]
-                       [:include_csv   {:optional true} [:maybe ms/BooleanValue]]
-                       [:include_xls   {:optional true} [:maybe ms/BooleanValue]]
-                       [:format_rows   {:optional true} [:maybe ms/BooleanValue]]
-                       [:pivot_results {:optional true} [:maybe ms/BooleanValue]]]]]]]]]
+                       [:card_id                            [:maybe ms/PositiveInt]]
+                       [:dashboard_card_id {:optional true} [:maybe ms/PositiveInt]]
+                       [:include_csv       {:optional true} [:maybe ms/BooleanValue]]
+                       [:include_xls       {:optional true} [:maybe ms/BooleanValue]]
+                       [:format_rows       {:optional true} [:maybe ms/BooleanValue]]
+                       [:pivot_results     {:optional true} [:maybe ms/BooleanValue]]]]]]]]]
     ;; for testing only
     [:notification/testing :map]]])
 

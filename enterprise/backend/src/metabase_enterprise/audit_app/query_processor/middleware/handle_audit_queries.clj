@@ -99,16 +99,20 @@
                                        "last_run_at" "total_runs" "num_dashboards" "user_id" "user_name"
                                        "updated_at"]]
                               [:maybe [:enum "asc" "desc"]]]]]]
-                   [:limit  {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
-                   [:offset {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]]]]
+                   [:limit      {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
+                   [:offset     {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
+                   [:info       {:optional true} [:maybe :metabase.lib.schema.info/info]]
+                   [:middleware {:optional true} [:maybe :metabase.lib.schema.middleware-options/middleware-options]]]]]
           config/is-test?
           (conj [::mc/default
                  [:map {:closed true}
-                  [:fn     :string]
-                  [:type   [:enum :internal "internal"]]
-                  [:args   {:optional true} [:maybe [:sequential [:maybe [:or :string number? :boolean]]]]]
-                  [:limit  {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
-                  [:offset {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]]]))))
+                  [:fn         :string]
+                  [:type       [:enum :internal "internal"]]
+                  [:args       {:optional true} [:maybe [:sequential [:maybe [:or :string number? :boolean]]]]]
+                  [:limit      {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
+                  [:offset     {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
+                  [:info       {:optional true} [:maybe :metabase.lib.schema.info/info]]
+                  [:middleware {:optional true} [:maybe :metabase.lib.schema.middleware-options/middleware-options]]]]))))
 
 (defn- validate-internal-query
   [query]
@@ -133,7 +137,8 @@
     (qp.pipeline/*reduce* rff* {:cols cols} reducible-rows)))
 
 (defn- reduce-legacy-results [rff results]
-  (let [{:keys [cols rows]} (format-results results)]
+  (let [results (update results :results (partial map #(update-keys % name)))
+        {:keys [cols rows]} (format-results results)]
     (assert (some? cols))
     (assert (some? rows))
     (qp.pipeline/*reduce* rff {:cols cols} rows)))

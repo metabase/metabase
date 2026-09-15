@@ -81,7 +81,7 @@
   [:or
    [:map {:closed true}]
    [:map {:closed true}
-    [:emails {:optional true} [:sequential :string]]]
+    [:emails {:optional true} [:maybe [:sequential :string]]]]
    [:map {:closed true}
     [:channel                  :string]
     [:channel_id {:optional true} :string]]])

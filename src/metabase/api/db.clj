@@ -20,7 +20,7 @@
 
 (mu/defn entity-by-id
   "The `entity` row with `id` also matching the key-value `conditions`, or nil."
-  [entity :- :keyword id :- [:or ms/PositiveInt :string] & conditions :- [:* [:maybe ::condition-value]]]
+  [entity :- :keyword id :- [:maybe [:or ms/PositiveInt :string]] & conditions :- [:* [:maybe ::condition-value]]]
   (apply t2/select-one entity :id id conditions))
 
 (defn- shift-positions-after!

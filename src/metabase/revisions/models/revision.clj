@@ -199,7 +199,7 @@
                   [:id                            pos-int?]
                   [:object                        (ms/InstanceOf model)]
                   [:entity                        [:= model]]
-                  [:user-id                       pos-int?]
+                  [:user-id                       [:maybe pos-int?]]
                   [:is-creation? {:optional true} [:maybe :boolean]]
                   [:message      {:optional true} [:maybe :string]]]])))
 

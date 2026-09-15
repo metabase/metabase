@@ -94,17 +94,7 @@
            [:id           {:optional true} ms/PositiveInt]
            [:user_id      {:optional true} [:maybe ::lib.schema.id/user]]
            [:provider     {:optional true} [:maybe [:or :keyword :string]]]
-           [:credentials  {:optional true}
-            [:maybe [:map {:closed true}
-                     [:secret          {:optional true} :string]
-                     [:last_used_step  {:optional true} :int]
-                     [:used_jtis       {:optional true} [:sequential [:map {:closed true}
-                                                                       [:jti :string]
-                                                                       [:exp :int]]]]
-                     [:recovery_codes  {:optional true} [:sequential :string]]
-                     [:email_otp       {:optional true} [:map {:closed true}
-                                                          [:hash :string]
-                                                          [:exp  :int]]]]]]
+           [:credentials  {:optional true} [:maybe ::auth-identity.schema/auth-identity.credentials.totp]]
            [:metadata     {:optional true} [:maybe [:map {:closed true}]]]
            [:provider_id  {:optional true} [:maybe :string]]
            [:last_used_at {:optional true} [:maybe ms/TemporalInstant]]

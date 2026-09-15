@@ -190,8 +190,8 @@
   "Implementation for [[query]]."
   {:arglists '([metadata-providerable x])}
   (fn [_metadata-providerable x]
-    (or (when (map? x)
-          (u/ignore-exceptions (lib.util/normalized-query-type x)))
+    (or (when (and (map? x) (some #(contains? x %) [:lib/type :type "lib/type" "type"]))
+          (lib.util/normalized-query-type x))
         (lib.dispatch/dispatch-value x)))
   :hierarchy lib.hierarchy/hierarchy)
 
@@ -307,7 +307,7 @@
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    x                     :- [:or
                              ::lib.schema/query
-                             :metabase.legacy-mbql.schema/Query
+                             ::lib.util/legacy-query
                              ::lib.schema/stage
                              ::lib.schema.metadata/table
                              ::lib.schema.metadata/card
@@ -322,7 +322,7 @@
   it in separately -- metadata is needed for most query manipulation operations."
   [x                     :- [:or
                              ::lib.schema/query
-                             :metabase.legacy-mbql.schema/Query
+                             ::lib.util/legacy-query
                              ::lib.schema/stage
                              ::lib.schema.metadata/table
                              ::lib.schema.metadata/card

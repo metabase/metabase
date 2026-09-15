@@ -89,20 +89,12 @@
   `:truncation-size`: [optional] size to truncate text fields if the driver supports expressions.
   `:rff`: [optional] a reducing function function (a function that given initial results metadata returns a reducing
   function) to reduce over the result set in the the query-processor rather than realizing the whole collection"
-  ([table  :- [:and
-               (ms/InstanceOf :model/Table)
-               [:map {:closed true}
-                [:id    ::lib.schema.id/table]
-                [:db_id ::lib.schema.id/database]]]
+  ([table  :- (ms/InstanceOf :model/Table)
     fields :- [:sequential (ms/InstanceOf :model/Field)]
     rff    :- ::qp.schema/rff]
    (table-rows-sample table fields rff nil))
 
-  ([table  :- [:and
-               (ms/InstanceOf :model/Table)
-               [:map {:closed true}
-                [:id    ::lib.schema.id/table]
-                [:db_id ::lib.schema.id/database]]]
+  ([table  :- (ms/InstanceOf :model/Table)
     fields :- [:sequential (ms/InstanceOf :model/Field)]
     rff    :- ::qp.schema/rff
     opts   :- ::table-rows-sample.options]

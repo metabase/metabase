@@ -62,7 +62,7 @@
 
   Returns the plaintext token string that should be sent to the user via email."
   [user-id :- ms/PositiveInt
-   grant :- [:maybe [:map {:closed true} [:grant_end_timestamp ::schema/timestamp]]]]
+   grant :- [:maybe [:or ::schema/support-access-grant-log ::schema/grant-response]]]
   (when-not grant
     (throw (ex-info "Cannot create support access reset token: no grant provided"
                     {:status-code 400})))

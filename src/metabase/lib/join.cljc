@@ -156,17 +156,11 @@
         (with-join-alias-update-join-fields new-alias)
         (with-join-alias-update-join-conditions old-alias new-alias))))
 
-(mu/defn with-join-alias :- [:or
-                             [:map {:closed true}
-                              [:lib/type [:enum :metadata/column :mbql/join]]]
-                             [:ref :mbql.clause/field]]
+(mu/defn with-join-alias :- ::lib.join.util/column-or-field-ref-or-partial-join
   "Add OR REMOVE a specific `join-alias` to `field-or-join`, which is either a `:field`/Field metadata, or a join map.
   Does not recursively update other references (yet; we can add this in the future)."
   {:style/indent [:form]}
-  [field-or-join :- [:or
-                     [:map {:closed true}
-                      [:lib/type [:enum :metadata/column :mbql/join]]]
-                     [:ref :mbql.clause/field]]
+  [field-or-join :- ::lib.join.util/column-or-field-ref-or-partial-join
    join-alias    :- [:maybe ::lib.schema.common/non-blank-string]]
   (case (lib.dispatch/dispatch-value field-or-join)
     :field
@@ -253,13 +247,11 @@
   (throw (ex-info "You can't calculate a metadata map for a join! Use lib.metadata.calculation/returned-columns-method instead."
                   {})))
 
-(mu/defn column-from-join :- [:map {:closed true}
-                              [:lib/type [:= :metadata/column]]]
+(mu/defn column-from-join :- ::lib.schema.metadata/column
   "For a column that comes from a join, add or update metadata as needed, e.g. include join name in the display name."
   [query        :- ::lib.schema/query
    stage-number :- :int
-   col          :- [:map {:closed true}
-                    [:lib/type [:= :metadata/column]]]
+   col          :- ::lib.schema.metadata/column
    join-alias   :- ::lib.schema.join/alias]
   (-> col
       (assoc

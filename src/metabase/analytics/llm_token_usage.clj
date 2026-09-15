@@ -9,6 +9,11 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private snowplow-arg-keys
+  [:request-id :model-id :total-tokens :prompt-tokens :completion-tokens :estimated-costs-usd
+   :cache-creation-tokens :cache-read-tokens :user-id :duration-ms :source :tag :session-id :profile
+   :hashed-metabase-license-token])
+
 (def ^:private SnowplowArgs
   [:map {:closed true}
    [:request-id                                     :string]
@@ -53,6 +58,9 @@
                                  :profile                       profile}
                                 user-id))
 
+(def ^:private prometheus-arg-keys
+  [:model-id :tag :prompt-tokens :completion-tokens :cache-creation-tokens :cache-read-tokens])
+
 (def ^:private PrometheusArgs
   [:map {:closed true}
    [:model-id                              :string]
@@ -94,6 +102,6 @@
         [[false false] [:fn {:error/message "at least one of :snowplow or :prometheus must be true"}
                         (constantly false)]]]]]
   (when snowplow
-    (track-snowplow! opts))
+    (track-snowplow! (select-keys opts snowplow-arg-keys)))
   (when prometheus
-    (track-prometheus! opts)))
+    (track-prometheus! (select-keys opts prometheus-arg-keys))))

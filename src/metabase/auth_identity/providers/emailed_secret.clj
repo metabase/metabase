@@ -39,7 +39,7 @@
   The `email` parameter is the user's email address. Optional keyword arguments `ip-address` and `user-agent` capture
   request context information. Returns a map with `:email`, `:ip_address`, and `:request_context` (containing
   `:user_agent` and `:timestamp`)."
-  [email :- ms/Email
+  [email :- [:maybe ms/Email]
    & {:keys [ip-address user-agent]} :- [:maybe [:map {:closed true}
                                                  [:ip-address {:optional true} [:maybe :string]]
                                                  [:user-agent {:optional true} [:maybe :string]]]]]
@@ -57,10 +57,7 @@
   - `:consumed` if the token has already been used
   - `:invalid` if the token doesn't match the stored hash"
   [token :- :string
-   credentials :- [:map {:closed true}
-                   [:token_hash :string]
-                   [:expires_at inst?]
-                   [:consumed_at [:maybe inst?]]]]
+   credentials :- ::auth-identity.schema/auth-identity.credentials.token]
   (cond
     (:consumed_at credentials)
     :consumed
@@ -71,7 +68,7 @@
     :else
     :invalid))
 
-(mu/defn mark-token-consumed :- [:map {:closed true} [:credentials :map]]
+(mu/defn mark-token-consumed :- ::auth-identity.schema/auth-identity
   "Marks a token as consumed by setting the `:consumed_at` timestamp in the auth-identity's credentials.
 
   Takes an `auth-identity` map and returns an updated version with the current instant set as the `:consumed_at`

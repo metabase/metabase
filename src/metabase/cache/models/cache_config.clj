@@ -53,7 +53,7 @@
      ("dashboard" "question")
      (mi/current-user-has-full-permissions?
       (perms/perms-objects-set-for-parent-collection
-       {:collection_id (target-collection-id instance)}
+       (target-collection-id instance)
        :write))))
   ([_model pk]
    (mi/can-write? (cache.db/cache-config pk))))

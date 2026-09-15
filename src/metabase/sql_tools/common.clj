@@ -64,7 +64,8 @@
   [raw-col :- [:map {:closed true}
                [:database {:optional true} :string]
                [:schema {:optional true} :string]
-               [:table {:optional true} :string]]]
+               [:table {:optional true} :string]
+               [:table-alias {:optional true} :string]]]
   (when (:table raw-col)
     (->> [:database :schema :table]
          (keep raw-col)

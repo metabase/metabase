@@ -43,7 +43,7 @@
 
 (mu/defn table
   "The Table with `table-id`, or nil."
-  [table-id :- ::lib.schema.id/table]
+  [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select-one :model/Table :id table-id))
 
 (mu/defn table-perms-columns

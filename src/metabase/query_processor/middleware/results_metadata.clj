@@ -15,6 +15,7 @@
    [metabase.query-processor.db :as query-processor.db]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.queries.schema :as queries.schema]
    ;; still passes state via the store's miscellaneous-value slot; general-cached-value migration pending
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
@@ -157,9 +158,7 @@
 
 (mu/defn store-previous-result-metadata!
   "Store the previous value of a card's result metadata in the qp.store"
-  [card :- [:maybe
-            [:map {:closed true}
-             [:result_metadata {:optional true} [:maybe [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]]]]
+  [card :- [:maybe ::queries.schema/card]]
   (when-let [result-metadata (:result_metadata card)]
     (if-let [error (me/humanize (mr/explain [:sequential ::lib.schema.metadata/lib-or-legacy-column] result-metadata))]
       (log/errorf "Invalid card result metadata, ignoring  it: %s" (pr-str error))

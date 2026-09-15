@@ -494,10 +494,11 @@
 
 (mr/def ::decode-params-input
   "What [[decode-and-validate-params]] is handed before decoding: the whole request itself, for a `:request`
-  binding, or a string-keyed bag of route/query/body/form/multipart values for the others."
+  binding, or the raw route/query/body/form/multipart values for the others, before the endpoint's own schema
+  decodes and validates them."
   [:maybe [:or
            ::request.schema/request
-           (ms/string-keyed-map [:or ::request.schema/json-value ::request.schema/multipart-file])]])
+           ms/RawJSON]])
 
 (mu/defn decode-and-validate-params
   "Impl for [[defendpoint]]."
@@ -700,7 +701,7 @@
   `(endpoint-core-fn-with-optimized-schemas
     (endpoint-core-fn* ~parsed-args)))
 
-(mu/defn- params :- [:maybe [:map-of :string ::request.schema/json-value]]
+(mu/defn- params :- [:maybe ms/RawJSON]
   "Fetch `:route` or `:query` parameters from a `request`, string-keyed like they arrive off the wire -- the decode
   transformer renames them to whatever keys the endpoint's own schema declares."
   [request     :- ::request
@@ -709,7 +710,7 @@
     :route (not-empty (:route-params request))
     :query (not-empty (:query-params request))))
 
-(mu/defn- request-body :- [:maybe (ms/string-keyed-map [:or ::request.schema/json-value ::request.schema/multipart-file])]
+(mu/defn- request-body :- [:maybe ms/RawJSON]
   "The body params of `request`: the parts of a multipart request, the form params of a form request, or the parsed
   JSON body. An unparsed body (an `InputStream`) is not a param map."
   [request :- ::request]

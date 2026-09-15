@@ -582,7 +582,7 @@
 (mu/defn table-permission-for-user :- ::permissions.schema/data-permission-value
   "Returns the effective permission value for a given user, permission type, and database ID, and table ID. If the user
   has multiple permissions for the given type in different groups, they are coalesced into a single value."
-  [user-id     :- ::lib.schema.id/user
+  [user-id     :- [:maybe ::lib.schema.id/user]
    perm-type   :- ::permissions.schema/data-permission-type
    database-id :- ::lib.schema.id/database
    table-id    :- ms/IntGreaterThanOrEqualToZero]
@@ -618,7 +618,7 @@
 (mu/defn user-has-permission-for-table? :- :boolean
   "Returns a Boolean indicating whether the user has the specified permission value for the given database ID and table ID,
    or a more permissive value."
-  [user-id     :- ::lib.schema.id/user
+  [user-id     :- [:maybe ::lib.schema.id/user]
    perm-type   :- ::permissions.schema/data-permission-type
    perm-value  :- ::permissions.schema/data-permission-value
    database-id :- ::lib.schema.id/database
@@ -785,11 +785,11 @@
 
   Called without a `database-id`, answers the same question across every database at once -- for asking about the
   user's access to the instance as a whole. That takes one query, where walking the databases would take one each."
-  ([user-id   :- ::lib.schema.id/user
+  ([user-id   :- [:maybe ::lib.schema.id/user]
     perm-type :- ::permissions.schema/data-permission-type]
    (most-permissive-database-permission-for-user user-id perm-type nil))
 
-  ([user-id     :- ::lib.schema.id/user
+  ([user-id     :- [:maybe ::lib.schema.id/user]
     perm-type   :- ::permissions.schema/data-permission-type
     database-id :- [:maybe ::lib.schema.id/database]]
    (when (not= :model/Table (model-by-perm-type perm-type))
@@ -999,7 +999,7 @@
 
 (def ^:private TheIdable
   "An ID, or something with an ID."
-  [:or pos-int? [:map {:closed true} [:id pos-int?]]])
+  [:or pos-int? (ms/InstanceOf [:model/PermissionsGroup :model/Database :model/Table])])
 
 (def ^:private PermsIndex
   "An in-memory index of DataPermissions rows, as built by [[index-database-permissions]]: `{[group-id db-id

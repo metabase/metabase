@@ -29,7 +29,8 @@
   [:map {:closed true}
    [:tables [:fn {:error/message "a set, sequential, or reducible collection of tables"}
              (fn [x] (or (set? x) (sequential? x) (instance? clojure.lang.IReduceInit x)))]]
-   [:version {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
+   [:version {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:metabase-metadata-tables {:optional true} (ms/InstanceOfClass clojure.lang.Volatile)]])
 
 (def DatabaseMetadata
   "Schema for the expected output of `describe-database`."
@@ -59,7 +60,11 @@
    ;; nullable for databases that don't support field partition
    [:database-partitioned       {:optional true} [:maybe :boolean]]
    [:database-required          {:optional true} :boolean]
-   [:visibility-type            {:optional true} [:maybe :keyword]]])
+   [:visibility-type            {:optional true} [:maybe :keyword]]
+   [:jdbc-type                  {:optional true} [:maybe :int]]
+   [:preview-display            {:optional true} :boolean]
+   [:table-name                 {:optional true} ::lib.schema.common/non-blank-string]
+   [:table-schema               {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
 (def TableMetadataField
   "Schema for a given Field as provided in [[metabase.driver/describe-table]]."

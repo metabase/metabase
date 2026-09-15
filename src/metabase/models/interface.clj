@@ -271,7 +271,7 @@
 (mu/defn assert-namespaced
   "Assert that a value is a namespaced keyword under `qualified-ns`."
   [qualified-ns :- string?
-   value        :- :keyword]
+   value        :- [:or :keyword :string]]
   (when-not (= qualified-ns (-> value keyword namespace))
     (throw (ex-info (format "Must be a namespaced keyword under :%s, got: %s" qualified-ns value) {:status-code 400
                                                                                                    :value       value}))))
@@ -777,7 +777,8 @@
 
   ([fn-symb       :- qualified-symbol?
     read-or-write :- [:enum :read :write]
-    object        :- [:maybe [:fn {:error/message "a Toucan instance"} #(instance? Instance %)]]]
+    object        :- [:maybe [:fn {:error/message "a Toucan instance or model-like record"}
+                              #(some? (t2.protocols/model %))]]]
    (and object
         (check-perms-with-fn fn-symb (perms-objects-set object read-or-write))))
 

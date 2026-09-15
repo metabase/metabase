@@ -124,7 +124,7 @@
   with [[lib.field.util/update-keys-for-col-from-previous-stage]]."
   [query        :- ::lib.schema/query
    stage-number :- :int
-   options      :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
+   options      :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
   (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
     (not-empty
      (into []
@@ -139,7 +139,7 @@
   [query          :- ::lib.schema/query
    stage-number   :- :int
    card-id        :- [:maybe ::lib.schema.id/card]
-   options        :- ::lib.metadata.calculation/returned-columns.options]
+   options        :- ::lib.metadata.calculation/visible-columns.options]
   (when card-id
     (when-let [card (lib.metadata/card query card-id)]
       (not-empty

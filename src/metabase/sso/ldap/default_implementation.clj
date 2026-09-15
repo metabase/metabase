@@ -87,7 +87,7 @@
 (mu/defn ldap-search-result->user-info :- [:maybe UserInfo]
   "Convert the result "
   [ldap-connection               :- (ms/InstanceOfClass LDAPConnectionPool)
-   {:strs [dn uid], :as result}  :- (ms/string-keyed-map [:or :string [:sequential :string]])
+   {:strs [dn uid], :as result}  :- (ms/string-keyed-map [:or :string [:sequential :string] [:set :string]])
    {:keys [first-name-attribute
            last-name-attribute
            email-attribute
@@ -122,7 +122,7 @@
 (mu/defn ldap-groups->mb-group-ids :- [:set ms/PositiveInt]
   "Translate a set of a user's group DNs to a set of MB group IDs using the configured mappings."
   [ldap-groups              :- [:maybe [:sequential ms/NonBlankString]]
-   {:keys [group-mappings]} :- [:select-keys LDAPSettings [:group-mappings]]]
+   {:keys [group-mappings]} :- LDAPSettings]
   (-> group-mappings
       (select-keys (map #(DN. (str %)) ldap-groups))
       vals
@@ -131,7 +131,7 @@
 
 (mu/defn all-mapped-group-ids :- [:set ms/PositiveInt]
   "Returns the set of all MB group IDs that have configured mappings."
-  [{:keys [group-mappings]} :- [:select-keys LDAPSettings [:group-mappings]]]
+  [{:keys [group-mappings]} :- LDAPSettings]
   (-> group-mappings
       vals
       flatten

@@ -113,17 +113,36 @@
    :metabase.lib.schema.literal/literal
    [:cat [:or :keyword :string] [:* ::clause-arg]]])
 
+(mr/def ::clause-tag-candidate.value
+  [:or
+   :metabase.lib.schema.literal/literal
+   :keyword
+   :string
+   [:ref :metabase.lib.schema.metadata/column]
+   [:ref :metabase.lib.options/options]
+   [:map-of :string [:ref ::clause-tag-candidate.value]]
+   [:sequential [:ref ::clause-tag-candidate.value]]])
+
+(mr/def ::clause-tag-candidate
+  "A value an MBQL clause position can hold, before it is known to be a clause: a (possibly not-yet-normalized)
+  clause, another vector, a literal, or column metadata."
+  [:or
+   [:sequential [:ref ::clause-tag-candidate.value]]
+   :metabase.lib.schema.literal/literal
+   [:ref :metabase.lib.schema.metadata/column]])
+
 (mu/defn mbql-clause-tag :- [:maybe :keyword]
   "If `x` is a (possibly not-yet-normalized) MBQL clause, return its `tag`."
-  [x :- ::possibly-unnormalized-clause]
+  [x :- ::clause-tag-candidate]
   (when (and (vector? x)
              ((some-fn keyword? string?) (first x)))
     (keyword (first x))))
 
 ;;; TODO (Cam 9/8/25) -- overlapping functionality with [[metabase.lib.util/clause-of-type?]]
-(mu/defn is-clause?
+(mu/defn is-clause? :- :boolean
   "Whether `x` is a (possibly not-yet-normalized) MBQL clause with `tag`. Does not check that the clause is valid."
-  [tag :- :keyword x :- ::possibly-unnormalized-clause]
+  [tag :- :keyword
+   x   :- ::clause-tag-candidate]
   (= (mbql-clause-tag x) tag))
 
 (mr/def ::non-blank-string
@@ -406,7 +425,12 @@
     [:metabase.driver.sql.parameters.substitution/compiling-field-filter? {:optional true} :boolean]
     [:metabase.driver.sqlserver/optimized-bucketing? {:optional true} :boolean]
     [:metabase.driver.mongo.query-processor/join-local {:optional true} [:ref :metabase.lib.schema.join/alias]]
-    [:metabase.mcp.v2.query/keyset {:optional true} :boolean]]
+    [:metabase.mcp.v2.query/keyset {:optional true} :boolean]
+    [:temporal-unit                      {:optional true} [:ref :metabase.lib.schema.temporal-bucketing/unit]]
+    [:inherited-temporal-unit            {:optional true} [:ref :metabase.lib.schema.temporal-bucketing/unit]]
+    [:lib/original-effective-type        {:optional true} [:maybe ::base-type]]
+    [:lib/transformation-added-base-type {:optional true} [:maybe :boolean]]
+    [:source-field                       {:optional true} [:ref :metabase.lib.schema.id/field]]]
    (disallowed-keys
     {:ident ":ident is deprecated and should not be included in options maps"})])
 

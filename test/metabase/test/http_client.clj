@@ -301,8 +301,8 @@
    [:method                            (into [:enum] (keys method->request-fn))]
    [:expected-status  {:optional true} [:maybe ms/PositiveInt]]
    [:url                               ms/NonBlankString]
-   [:http-body        {:optional true} [:maybe [:or (ms/string-keyed-map ::request.schema/json-value) [:sequential ::request.schema/json-value]]]]
-   [:query-parameters {:optional true} [:maybe (ms/string-keyed-map ::request.schema/json-value)]]
+   [:http-body        {:optional true} [:maybe ms/RawJSON]]
+   [:query-parameters {:optional true} [:maybe ms/RawJSON]]
    [:request-options  {:optional true} [:maybe RequestOptions]]])
 
 (mu/defn- -client
@@ -392,17 +392,17 @@
                            (str "/"))
         content-type     (get-in request-options [:headers "content-type"] "application/json")]
     (m/deep-merge
-     {:accept         "json"
-      :headers        {"content-type"                        content-type
-                       @#'mw.session/metabase-session-header (when credentials
-                                                               (if (map? credentials)
-                                                                 (authenticate credentials)
-                                                                 credentials))}
+     {:headers        (u/assoc-dissoc {"content-type" content-type}
+                                       @#'mw.session/metabase-session-header
+                                       (when credentials
+                                         (if (map? credentials)
+                                           (authenticate credentials)
+                                           credentials)))
       :query-string   (build-query-string query-parameters)
       :remote-addr    "127.0.0.1"
       :request-method method
       :uri            (str *url-prefix* url)}
-     request-options
+     (select-keys request-options [:headers :cookies])
      (build-body-params http-body content-type))))
 
 (mu/defn- -mock-client

@@ -18,20 +18,7 @@
    [metabase.util.performance :refer [empty?]]))
 
 (mr/def ::native-query-document-value
-  "A value inside a driver's compiled native query document: a scalar, or a nested document/array of them. Covers
-  every native query shape drivers in this codebase actually produce -- SQL text (a bare `:string`) as well as
-  document-pipeline languages like Mongo's (a `:map-of`/`:sequential` tree)."
-  [:schema
-   {:registry
-    {::value [:or
-              :nil
-              :boolean
-              :string
-              :keyword
-              number?
-              [:sequential [:ref ::value]]
-              [:map-of :string [:ref ::value]]]}}
-   ::value])
+  :metabase.lib.schema/native-query-document-value)
 
 (mr/def ::compiled
   "Compiled query and parameters (SQL or whatever native query language)."
@@ -60,7 +47,9 @@
   [query :- ::lib.schema/query]
   (assert (not (:qp/compiled query)) "This query has already been compiled!")
   (if (lib/native-only-query? query)
-    (set/rename-keys (lib/query-stage query -1) {:native :query})
+    (-> (lib/query-stage query -1)
+        (set/rename-keys {:native :query})
+        (select-keys [:query :params]))
     (driver/mbql->native driver/*driver* query)))
 
 (mu/defn compile-preprocessed :- ::compiled

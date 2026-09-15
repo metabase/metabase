@@ -136,7 +136,7 @@
     (= driver :mysql)))
 
 (mu/defn- database-flavor :- [:maybe :string]
-  ^String [database :- [:maybe [:or driver-api/schema.metadata.database ::warehouses.schema/database]]]
+  ^String [database :- [:maybe [:or driver-api/schema.metadata.database ::warehouses.schema/database ::warehouses.schema/database.update]]]
   ;; avoid trying `:dbms_version` if `:dbms-version` is present but `nil`; this will cause snake-hating-map warnings
   (when-let [k (some #(when (contains? database %)
                         %)

@@ -224,9 +224,9 @@
    :string :number :boolean :keyword :nil
    [:sequential [:ref ::mbql-node]]])
 
-(mu/defn- mbql-clause-tag :- [:maybe [:enum :field :dimension :metric :segment :measure]]
+(defn- mbql-clause-tag
   "Is given form an MBQL entity reference?"
-  [form :- [:ref ::mbql-node]]
+  [form]
   (when (and (vector? form)
              (#{:field :dimension :metric :segment :measure} (keyword (first form))))
     (keyword (first form))))

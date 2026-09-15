@@ -56,6 +56,7 @@
    [java-time.api :as t]
    [metabase.auth-identity.db :as auth-identity.db]
    [metabase.auth-identity.hierarchy :as auth-identity.hierarchy]
+   [metabase.auth-identity.schema :as auth-identity.schema]
    [metabase.auth-identity.session :as auth-session]
    [metabase.events.core :as events]
    [metabase.notification.core :as notification]
@@ -254,15 +255,110 @@
     provider)
   :hierarchy #'auth-identity.hierarchy/hierarchy)
 
+(def ^:private PipelineUser
+  "The subset of User columns the login pipeline threads through `:user`: what
+  [[metabase.auth-identity.db/user-login-columns]], `-by-email`, or `-status` select."
+  [:map {:closed true}
+   [:id ms/PositiveInt]
+   [:is_active :boolean]
+   [:last_login [:maybe ms/TemporalInstant]]
+   [:tenant_id {:optional true} [:maybe ms/PositiveInt]]])
+
+(def ^:private DeviceInfo
+  "Device information for session tracking, as attached to a login request."
+  [:map {:closed true}
+   [:device_id {:optional true} [:maybe ms/NonBlankString]]
+   [:device_description {:optional true} [:maybe ms/NonBlankString]]
+   [:ip_address {:optional true} [:maybe ms/NonBlankString]]
+   [:embedded {:optional true} :boolean]
+   [:token_exchange {:optional true} :boolean]])
+
+(def ^:private UserData
+  "SSO provider-produced data used to create or update a User during login."
+  [:map {:closed true}
+   [:email :string]
+   [:first_name {:optional true} [:maybe :string]]
+   [:last_name {:optional true} [:maybe :string]]
+   [:sso_source {:optional true} :keyword]
+   [:is_active {:optional true} :boolean]
+   [:jwt_attributes {:optional true} [:maybe [:map-of :string [:maybe :string]]]]
+   [:login_attributes {:optional true} [:maybe [:map-of :string [:maybe :string]]]]
+   [:provider-id {:optional true} [:maybe :string]]
+   [:tenant_id {:optional true} [:maybe ms/PositiveInt]]
+   [:groups {:optional true} [:maybe [:sequential :string]]]])
+
+(def ^:private CookieAttrs
+  "One `:cookies` entry of a Ring request: a cookie's value and its attributes."
+  [:map {:closed true}
+   [:value {:optional true} :string]
+   [:path {:optional true} :string]
+   [:domain {:optional true} :string]
+   [:max-age {:optional true} :int]
+   [:secure {:optional true} :boolean]
+   [:http-only {:optional true} :boolean]])
+
+(def ^:private login-pipeline-entries
+  "Malli map entries shared by the login pipeline map threaded through [[apply-inactive-check]] and
+  [[create-session!]]: the raw Ring request keys plus every provider's request/result extension keys."
+  [[:accept {:optional true} [:maybe :string]]
+   [:auth-identity {:optional true} [:maybe ::auth-identity.schema/auth-identity]]
+   [:body {:optional true} [:maybe [:or ms/RawJSON (ms/InstanceOfClass java.io.InputStream)]]]
+   [:browser-id {:optional true} [:maybe :string]]
+   [:character-encoding {:optional true} [:maybe :string]]
+   [:claims {:optional true} [:maybe [:map-of :string [:or :string [:sequential :string]]]]]
+   [:code {:optional true} [:maybe :string]]
+   [:content-length {:optional true} [:maybe :int]]
+   [:content-type {:optional true} [:maybe :string]]
+   [:cookies {:optional true} [:maybe [:map-of :string CookieAttrs]]]
+   [:device-info {:optional true} [:maybe DeviceInfo]]
+   [:email {:optional true} [:maybe :string]]
+   [:error {:optional true} [:maybe :keyword]]
+   [:form-params {:optional true} [:maybe [:map-of :string [:or :string [:sequential :string]]]]]
+   [:headers {:optional true} [:maybe [:map-of :string :string]]]
+   [:jwt-data {:optional true} [:maybe ms/RawJSON]]
+   [:message {:optional true} [:maybe [:or :string ms/LocalizedString]]]
+   [:nonce {:optional true} [:maybe :string]]
+   [:oidc-nonce {:optional true} [:maybe :string]]
+   [:oidc-provider-key {:optional true} [:maybe :string]]
+   [:params {:optional true} [:maybe ms/RawJSON]]
+   [:password {:optional true} [:maybe :string]]
+   [:path-info {:optional true} [:maybe :string]]
+   [:protocol {:optional true} [:maybe :string]]
+   [:provider-id {:optional true} [:maybe :string]]
+   [:query-params {:optional true} [:maybe [:map-of :string [:or :string [:sequential :string]]]]]
+   [:query-string {:optional true} [:maybe :string]]
+   [:redirect-strategy {:optional true} [:maybe :keyword]]
+   [:redirect-url {:optional true} [:maybe :string]]
+   [:remote-addr {:optional true} [:maybe :string]]
+   [:request-id {:optional true} [:maybe (ms/InstanceOfClass java.util.UUID)]]
+   [:request-method {:optional true} [:maybe :keyword]]
+   [:route-metadata {:optional true} [:maybe :metabase.api.macros/route-metadata]]
+   [:route-params {:optional true} [:maybe [:map-of :string :string]]]
+   [:saml-data {:optional true} [:maybe ms/RawJSON]]
+   [:scheme {:optional true} [:maybe :keyword]]
+   [:server-name {:optional true} [:maybe :string]]
+   [:server-port {:optional true} [:maybe :int]]
+   [:ssl-client-cert {:optional true} [:maybe (ms/InstanceOfClass java.security.cert.X509Certificate)]]
+   [:state {:optional true} [:maybe :string]]
+   [:success? {:optional true} [:maybe [:or :boolean [:enum :redirect]]]]
+   [:tenant-attributes {:optional true} [:maybe ms/RawJSON]]
+   [:tenant-slug {:optional true} [:maybe :string]]
+   [:token {:optional true} [:maybe :string]]
+   [:token-exchange? {:optional true} :boolean]
+   [:uri {:optional true} [:maybe :string]]
+   [:user-data {:optional true} [:maybe UserData]]
+   [:user-id {:optional true} [:maybe :int]]
+   [:user-provisioning-enabled? {:optional true} [:maybe :boolean]]
+   [:username {:optional true} [:maybe :string]]])
+
 (mu/defn- apply-inactive-check
   "Checks if the provided `request` is an attempt to log in an active user, or an inactive one.
 
   If the user does not have `:is_active true`, the response is not successful and an error message is returned. A
   request that resolved no user at all is left alone: link-only flows legitimately finish without one."
-  [request :- [:map {:closed true}
-               [:user {:optional true} [:maybe [:map {:closed true}
-                                                [:id ms/PositiveInt]
-                                                [:is_active :boolean]]]]]]
+  [request :- (into [:map {:closed true}
+                      [:user {:optional true} [:maybe PipelineUser]]]
+                     login-pipeline-entries)]
   (cond-> request
     (and (nil? (:error request))
          (:user request)
@@ -273,14 +369,9 @@
 (mu/defn- create-session!
   "Create a new session for a user with the given provider.
    Updates the last_used_at timestamp on the corresponding AuthIdentity."
-  [request :- [:map {:closed true}
-               [:user [:map {:closed true}
-                       [:id ms/PositiveInt]
-                       [:is_active :boolean]]]
-               [:device-info {:optional true} [:maybe [:map {:closed true}
-                                                       [:device_id {:optional true} [:maybe ms/NonBlankString]]
-                                                       [:device_description {:optional true} [:maybe ms/NonBlankString]]
-                                                       [:ip_address {:optional true} [:maybe ms/NonBlankString]]]]]]
+  [request :- (into [:map {:closed true}
+                      [:user PipelineUser]]
+                     login-pipeline-entries)
    provider :- :keyword]
   (if-not (get-in request [:user :is_active])
     (assoc request :success? false
@@ -364,17 +455,9 @@
 
 (mu/defn update-user!
   "Updates a user from user-data in the request"
-  [{user-id :id} :- [:map {:closed true} [:id ms/PositiveInt]]
-   user-data :- [:map {:closed true}
-                 [:email :string]
-                 [:first_name {:optional true} [:maybe :string]]
-                 [:last_name {:optional true} [:maybe :string]]
-                 [:sso_source {:optional true} :keyword]
-                 [:is_active {:optional true} :boolean]
-                 [:jwt_attributes {:optional true} [:maybe [:map-of :string [:maybe :string]]]]
-                 [:login_attributes {:optional true} [:maybe [:map-of :string [:maybe :string]]]]
-                 [:provider-id {:optional true} [:maybe :string]]]
-   provider :- :keyword]
+  [{user-id :id} :- PipelineUser
+   user-data     :- UserData
+   provider      :- :keyword]
   (t2/with-transaction [_]
     (let [reactivating? (and (:is_active user-data)
                              (not (auth-identity.db/user-active? user-id)))]
@@ -388,16 +471,8 @@
 
 (mu/defn- create-user!
   "Create a user from user-data in the request "
-  [user-data :- [:map {:closed true}
-                 [:email :string]
-                 [:first_name {:optional true} [:maybe :string]]
-                 [:last_name {:optional true} [:maybe :string]]
-                 [:sso_source {:optional true} :keyword]
-                 [:jwt_attributes {:optional true} [:maybe [:map-of :string [:maybe :string]]]]
-                 [:login_attributes {:optional true} [:maybe [:map-of :string [:maybe :string]]]]
-                 [:provider-id {:optional true} [:maybe :string]]
-                 [:tenant_id {:optional true} [:maybe ms/PositiveInt]]]
-   provider :- :keyword]
+  [user-data :- UserData
+   provider  :- :keyword]
   (let [insert-fields (sso-user-fields)]
     ;; The tenant flow upstream validated the tenant claim and stamped :tenant_id into user-data. If
     ;; the field list would strip it here (e.g. a premium-feature check flapped mid-request, or the

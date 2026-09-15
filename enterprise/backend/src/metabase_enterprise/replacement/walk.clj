@@ -49,14 +49,14 @@
 
 (mu/defn parameter-mapping-card-ids :- [:set ::lib.schema.id/card]
   "Get all card IDs referenced by the parameter mappings."
-  [parameter-mappings :- [:sequential ::parameters.schema/parameter-mapping]]
+  [parameter-mappings :- [:maybe [:sequential ::parameters.schema/parameter-mapping]]]
   (into #{} (keep :card_id) parameter-mappings))
 
 (mu/defn walk-parameter-mapping-targets :- [:sequential :map]
   "Walk the parameter mappings and update the targets using the provided function.
 
   `target-fn` will be called with a parameter target and a card ID and should return a new parameter target."
-  [parameter-mappings :- [:sequential ::parameters.schema/parameter-mapping]
+  [parameter-mappings :- [:maybe [:sequential ::parameters.schema/parameter-mapping]]
    target-fn          :- fn?]
   (mapv (fn [mapping]
           (or (when-some [card-id (:card_id mapping)]
