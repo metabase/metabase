@@ -701,16 +701,16 @@
   (testing "a dynamically-registered client can discover and call document_write. Registration is
             not enough on its own: the tool's scope also has to reach the DCR default grant, or the
             client lists a tool every call then 403s on."
-    (let [grant (set (registry/registered-scopes))
-          named (fn [scopes] (some #(= "document_write" (:name %)) (registry/list-tools scopes)))]
+    (let [grant (set (registry/registered-scopes))]
       (testing "its scope is in the default grant"
         (is (contains? grant "agent:content:write")))
-      (testing "so a default-grant client sees it"
-        (is (named grant)))
-      (testing "and it is hidden from a token holding only the read scope"
-        (is (not (named #{"agent:content:read"}))))
+      (testing "GHY-4543: it is listed whatever the token's scopes"
+        (is (some #(= "document_write" (:name %)) (registry/list-tools))))
+      (testing "a token holding only the read scope is refused at call time"
+        (is (str/starts-with? (-> (registry/call-tool #{"agent:content:read"} nil "document_write" {}) :error :message)
+                              "Insufficient scope to call tool: document_write.")))
       (testing "the manifest carries a description and an input schema that advertises `clear`"
-        (let [tool (first (filter #(= "document_write" (:name %)) (registry/list-tools grant)))]
+        (let [tool (first (filter #(= "document_write" (:name %)) (registry/list-tools)))]
           (is (seq (:description tool)))
           (is (str/includes? (:description tool) "No Markdown tables - embed a table-display question instead."))
           (is (get-in tool [:inputSchema :properties :clear])))))))

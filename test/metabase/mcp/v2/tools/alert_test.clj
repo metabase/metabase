@@ -855,7 +855,9 @@
     (is (set/subset? #{"agent:delivery:write"} (registry/registered-scopes)))))
 
 (deftest ^:parallel tools-list-visibility-test
-  (testing "GHY-4155: the tool is visible exactly to tokens carrying its write scope"
-    (is (some #(= "alert_write" (:name %)) (registry/list-tools #{"agent:delivery:write"})))
-    (is (not (some #(= "alert_write" (:name %)) (registry/list-tools #{"agent:alert:create"}))))
-    (is (not (some #(= "alert_write" (:name %)) (registry/list-tools #{"agent:content:read"}))))))
+  (testing "GHY-4543: the tool is listed to every token, whatever its scopes"
+    (is (some #(= "alert_write" (:name %)) (registry/list-tools))))
+  (testing "GHY-4155: only a token carrying its write scope can call it"
+    (doseq [token-scopes [#{"agent:alert:create"} #{"agent:content:read"}]]
+      (is (str/starts-with? (-> (registry/call-tool token-scopes nil "alert_write" {}) :error :message)
+                            "Insufficient scope to call tool: alert_write.")))))

@@ -442,7 +442,7 @@
 
 (defn- tool-manifest-entry
   []
-  (some #(when (= "get_parameter_values" (:name %)) %) (registry/list-tools nil)))
+  (some #(when (= "get_parameter_values" (:name %)) %) (registry/list-tools)))
 
 (defn- tool-description
   []

@@ -10,6 +10,7 @@
    [metabase.system.core :as system]
    [metabase.util :as u]
    [oidc-provider.core :as oidc]
+   [oidc-provider.protocol :as oidc.proto]
    [oidc-provider.store :as oidc.store]))
 
 (set! *warn-on-reflection* true)
@@ -37,10 +38,10 @@
   (vec (into (sorted-set) (mcp/all-scopes))))
 
 (defn mcp-resource-scopes
-  "The scopes advertised for the MCP resource at `path`. RFC 9728 metadata answers \"what does *this* resource
-  accept\", and every path in [[metabase.mcp.paths/endpoint-paths]] now reaches the same v2 surface, so they
-  all accept the same set: the scopes the v2 tool registry gates on plus the resource scopes its UI tools
-  render through.
+  "The scopes the MCP resource at `path` accepts, which [[narrow-scope-to-resource]] trims a grant to. Every path in
+  [[metabase.mcp.paths/endpoint-paths]] now reaches the same v2 surface, so they all accept the same set: the scopes
+  the v2 tool registry gates on plus the resource scopes its UI tools render through. What the resource *advertises*
+  is the narrower [[mcp-resource-advertised-scopes]].
 
   This branched while v1 was still served. v1's tools gated on the per-entity agent-API scopes
   (`agent:question:create`, `agent:sql:execute`, …), so the aliases that reached v1 had to advertise those or
@@ -50,6 +51,13 @@
   signature because RFC 9728 metadata is per-resource and a future surface may diverge again."
   [_path]
   (vec (into (sorted-set) (mcp/v2-scopes))))
+
+(defn mcp-resource-advertised-scopes
+  "The RFC 9728 `scopes_supported` for the MCP resource at `path`: the baseline a client requests on first connect, a
+  subset of [[mcp-resource-scopes]]."
+  ;; Narrower than what the resource accepts: a client reaches the rest by a 403 `insufficient_scope` step-up.
+  [_path]
+  (vec (mcp/v2-baseline-scopes)))
 
 (defn default-grant-scopes
   "The scope set a dynamically-registered client is registered with when it sends no `scope` of its own (RFC 7591 makes
@@ -66,6 +74,35 @@
   []
   ;; sorted so the `scope` echoed back in the registration response is stable across restarts
   (into (sorted-set) (supported-scopes)))
+
+(defn- widen-to-grant-ceiling
+  "`client` with every scope in `ceiling` appended to its `:scopes`, when it is dynamically registered and
+   `registration-enabled?`. Any other `client`, nil included, is returned unchanged."
+  [client registration-enabled? ceiling]
+  (cond-> client
+    (and registration-enabled? (= "dynamic" (:registration-type client)))
+    (update :scopes #(into (vec %) (remove (set %)) ceiling))))
+
+(defn- with-default-grant-ceiling
+  "Wrap `client-store` so that reading a client applies [[widen-to-grant-ceiling]] with [[default-grant-scopes]] and
+   the dynamic-registration setting. Writes pass through unchanged."
+  [client-store]
+  ;; A registration `scope` can only widen what a client may later request, never narrow it: MCP clients register with
+  ;; the narrow scope they start from and then step up on the same `client_id`, which a per-client snapshot would
+  ;; refuse. Applied on read, so a client registered before a scope existed can still request it. Every read sees the
+  ;; widened `:scopes`, including the RFC 7592 client read (`GET /oauth/register/:client-id`).
+  ;;
+  ;; Only while dynamic registration is enabled, which also requires MCP to be enabled: an admin who turned it off
+  ;; leaves existing dynamic clients with exactly what they registered for.
+  (reify oidc.proto/ClientStore
+    (get-client [_ client-id]
+      (widen-to-grant-ceiling (oidc.proto/get-client client-store client-id)
+                              (oauth-settings/oauth-server-dynamic-registration-enabled)
+                              (default-grant-scopes)))
+    (register-client [_ client-config]
+      (oidc.proto/register-client client-store client-config))
+    (update-client [_ client-id updated-config]
+      (oidc.proto/update-client client-store client-id updated-config))))
 
 (def ^:private scheme-default-port
   {"http" 80, "https" 443})
@@ -160,7 +197,7 @@
      :access-token-ttl-seconds       (oauth-settings/oauth-server-access-token-ttl)
      :authorization-code-ttl-seconds (oauth-settings/oauth-server-authorization-code-ttl)
      :refresh-token-ttl-seconds      (oauth-settings/oauth-server-refresh-token-ttl)
-     :client-store                   (store/create-client-store)
+     :client-store                   (with-default-grant-ceiling (store/create-client-store))
      :code-store                     (store/create-authorization-code-store)
      :token-store                    (store/create-token-store)
      ;; OIDC provider requires a vector.

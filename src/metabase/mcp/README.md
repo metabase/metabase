@@ -62,18 +62,34 @@ Access tokens are scoped to limit what tools a client can use:
 
 Wildcard patterns (e.g. `agent:*`) match any scope with that prefix.
 
+Clients start with a baseline. The protected-resource metadata's `scopes_supported` and the `scope` of the 401
+challenge both list only `agent:content:read agent:query:run agent:resource:read`: a fresh connection can read,
+query, and chart. Writes (`agent:content:write`), raw SQL (`agent:sql:run`), and alerts and subscriptions
+(`agent:delivery:write`) need a step-up. The surface still accepts every scope in the table, and the authorization
+server metadata still advertises all of them.
+
+`agent:query:run` is in the baseline so that charts never need a step-up. Claude Desktop retries a tool after a
+step-up over a session that doesn't declare MCP Apps support, so a stepped-up `visualize_query` is refused and its
+chart never embeds.
+
+A tool call or data resource read the token lacks a scope for is refused with HTTP 403 and a
+`WWW-Authenticate: Bearer error="insufficient_scope"` challenge whose `scope` lists the v2 scopes the token already
+holds plus the one required, so a client can step up. Each tool also declares its scope in `securitySchemes`. Inside
+a JSON-RPC batch the refusal is an in-band `-32600` error instead. UI shell reads are never challenged: see
+[Resources](#resources).
+
 OAuth protected resource metadata is available at:
 
 ```
 /.well-known/oauth-protected-resource/api/metabase-mcp
 ```
 
-By default our consent screen grants access to all scopes without the opportunity to customize.
+The consent screen grants every scope the client requested, without the opportunity to customize.
 
 ## Available tools
 
-Generated from the v2 registry (`deftool`); every tool is gated by the single scope named here, and a
-token missing it neither sees the tool in `tools/list` nor may call it.
+Generated from the v2 registry (`deftool`); every tool is gated by the single scope named here. `tools/list`
+shows every tool whatever the token holds, and a token missing the scope may not call it.
 
 | Tool | Scope | Description |
 | ---- | ----- | ----------- |
@@ -85,7 +101,7 @@ token missing it neither sees the tool in `tools/list` nor may call it.
 | `dashboard_write` | `agent:content:write` | Create or update a dashboard and edit its layout with ordered ops. |
 | `document_write` | `agent:content:write` | Create or update a document. |
 | `duplicate_content` | `agent:content:write` | Copy a question, dashboard, or document into a collection — cheaper and safer than reading the original and re-creating it, and it preserves everything the read projections leave out. |
-| `execute_query` | `agent:query:run` | The default way to answer a question from data: validate and execute a structured (MBQL) query over a table, model, metric, or saved question, returning rows plus a query_handle. |
+| `execute_query` | `agent:query:run` | The default way to answer a question from data: validate and execute a structured (MBQL) query, returning rows plus a query_handle. |
 | `execute_sql` | `agent:sql:run` | Escape hatch: execute a raw SQL string against a database, returning rows plus a query_handle. |
 | `get_content` | `agent:content:read` | Fetch content by {type, id} — the typed read for anything found via search or browse_collection. |
 | `get_parameter_values` | `agent:content:read` | Fetch the valid values for one filter on a dashboard or saved question, so you filter with real values instead of guessing. |
@@ -113,10 +129,19 @@ page comes back complete with no cursor and pagination ends by itself.
 The server exposes MCP [resources](https://modelcontextprotocol.io/specification/2025-03-26/server/resources) so
 clients can fetch supplementary content by URI without inflating tool descriptions.
 
-| Resource URI | Description |
-| ------------ | ----------- |
-| `ui://metabase/visualize-query.html` | The MCP Apps iframe shell `visualize_query` points a capable client at. |
-| `ui://metabase/render-drill-through.html` | The shell `render_drill_through` points at. |
+| Resource URI | Scope | Description |
+| ------------ | ----- | ----------- |
+| `ui://metabase/visualize-query.html` | `agent:query:run` (UI credential only) | The MCP Apps iframe shell `visualize_query` points a capable client at. |
+| `ui://metabase/render-drill-through.html` | `agent:query:run` (UI credential only) | The shell `render_drill_through` points at. |
+| `catalog://metabase/fields` | `agent:resource:read` | The dot-paths each content type accepts in `fields` arguments. |
+
+Every resource is listed whatever the token's scopes. A data resource, such as the fields catalog, is read only by a
+token holding its scope; otherwise the read gets the 403 `insufficient_scope` challenge described under
+[Scopes](#scopes). A UI shell is read by any token, because an MCP Apps host reads a tool's shell
+alongside the tool call, and if that read were refused, the host would not step up after the tool call's 403. The
+shells carry no data. A shell read by a token without the shell's scope never mints a UI credential. The chart data is
+gated by the tool call and by `refresh_ui_credential` (both `agent:query:run`), which the iframe needs before it can
+query anything. An unknown URI is a `-32602` "Resource not found" error.
 
 Skill packs are delivered through the `learn` tool rather than as resources.
 
@@ -129,10 +154,10 @@ resources above exist only so a client that can render an iframe has something t
 | --------------------------- | ---------------------------------------------------------------------------- |
 | `initialize`                | Initialize the MCP connection. Returns server capabilities and a session ID. |
 | `notifications/initialized` | Client notification that initialization is complete.                         |
-| `tools/list`                | List available tools (filtered by the token's scopes).                       |
+| `tools/list`                | List available tools, whatever the token's scopes.                           |
 | `tools/call`                | Call a tool with arguments.                                                  |
-| `resources/list`            | List available resources (filtered by the token's scopes).                   |
-| `resources/read`            | Read a resource by URI. Requires an initialized session.                     |
+| `resources/list`            | List available resources, whatever the token's scopes.                       |
+| `resources/read`            | Read a resource by URI; a data resource needs its scope. Requires a session. |
 | `ping`                      | Keepalive ping.                                                              |
 
 Requests can be sent individually or as a JSON-RPC batch. The server responds with JSON or SSE depending on the

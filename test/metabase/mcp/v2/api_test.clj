@@ -19,6 +19,7 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
+   [metabase.util.json :as json]
    [oidc-provider.util :as oidc.util]
    [toucan2.core :as t2]))
 
@@ -109,6 +110,109 @@
                (get-in response [:body :result :capabilities]))))
       (testing "the handshake carries the skills instructions — the one pre-tool-call channel"
         (is (re-find #"learn\(\)" (get-in response [:body :result :instructions])))))))
+
+(deftest initialize-instructions-explain-scope-failures-test
+  (testing "GHY-4543: clients replace a scope denial with their own text (Claude Code: \"requires re-authorization
+            (token expired)\", Codex: \"Insufficient scope\", mcp-remote: \"Tool execution failed\"), so the model
+            tells the user their login expired. The instructions are the one channel that reaches the model first,
+            so they must say what that failure really means and how the user fixes it."
+    (let [[_ response]  (initialize!)
+          instructions (get-in response [:body :result :instructions])]
+      (testing "the client-side failure texts are recognized"
+        (doseq [re [#"(?i)re-authoriz" #"(?i)expired" #"(?i)insufficient scope" #"Unauthorized"
+                    #"(?i)tool execution failed"]]
+          (is (re-find re instructions) (str re))))
+      (testing "the cause is a missing permission, not an expired login"
+        (is (re-find #"(?i)missing permission" instructions))
+        (is (re-find #"(?i)not an expired login" instructions)))
+      (testing "a resource read is refused the same way as a tool call, so the guidance covers both"
+        (is (re-find #"(?i)tool call or resource read" instructions)))
+      (testing "the model names the tool and the permission, as the consent screen names it"
+        (is (re-find #"(?i)which tool" instructions))
+        (is (re-find #"(?i)which permission" instructions))
+        (is (re-find #"(?i)consent screen" instructions))
+        (testing "and finds that name where the description puts it: first, ahead of any client truncation"
+          (is (re-find #"(?i)sentence that starts the tool's description" instructions))
+          (is (not (re-find #"(?i)ends the tool's description" instructions)))))
+      (testing "the user reconnects, with steps for common clients"
+        (is (re-find #"(?i)re-?authenticate|reconnect" instructions))
+        (is (str/includes? instructions "/mcp"))
+        (is (str/includes? instructions "codex mcp login")))
+      (testing "no retry until the user has reconnected"
+        (is (re-find #"(?i)(don't|do not) retry" instructions)))
+      (testing "the consent screen is all-or-nothing, so the model must not invent a step to tick a permission"
+        (is (re-find #"(?i)no per-permission" instructions)))
+      (testing "the skills guidance is kept"
+        (is (re-find #"learn\(\)" instructions))))))
+
+(defn- do-with-tools-listed-by-grant!
+  "Call `f` with `{grant tools}`: the `tools/list` result for a cookie session (`\"cookie session\"`) and for Bearer
+   tokens holding various scope grants."
+  [f]
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    (oauth-server.tu/with-oauth-client [client-id]
+      (mt/with-model-cleanup [:model/OAuthAccessToken]
+        (let [bearer-tools (fn [scopes]
+                             (let [token   (str (random-uuid))
+                                   headers {"authorization" (str "Bearer " token)}]
+                               (t2/insert! :model/OAuthAccessToken
+                                           {:token     (oidc.util/hash-token token)
+                                            :user_id   (mt/user->id :crowberto)
+                                            :client_id client-id
+                                            :scope     scopes
+                                            :expiry    (+ (System/currentTimeMillis) 3600000)})
+                               (let [session-id (-> (client/client-full-response
+                                                     :post 200 endpoint
+                                                     {:request-options {:headers headers}}
+                                                     (jsonrpc-request "initialize" {:capabilities {}}))
+                                                    (get-in [:headers "Mcp-Session-Id"]))]
+                                 (-> (client/client-full-response
+                                      :post 200 endpoint
+                                      {:request-options {:headers (assoc headers "mcp-session-id" session-id)}}
+                                      (jsonrpc-request "tools/list"))
+                                     (get-in [:body :result :tools])))))
+              cookie-tools (let [[session-id _] (initialize!)]
+                             (-> (mcp-request (jsonrpc-request "tools/list") {"mcp-session-id" session-id})
+                                 (get-in [:body :result :tools])))]
+          (f {"cookie session" cookie-tools
+              "content:read"   (bearer-tools ["agent:content:read"])
+              "query:run"      (bearer-tools ["agent:query:run"])
+              "all v2 scopes"  (bearer-tools (vec mcp.paths/v2-surface-scopes))}))))))
+
+(deftest tools-list-descriptions-are-token-independent-test
+  (testing "GHY-4543: a tool's description is byte-identical whatever the caller's token holds. Claude Code keeps the
+            first description it loads for the whole session, so text that varied with the grant (\"not available on
+            this connection\") would outlive a successful re-auth and the model would refuse a tool that now works."
+    (do-with-tools-listed-by-grant!
+     (fn [by-grant]
+       (let [descriptions (update-vals by-grant #(into {} (map (juxt :name :description)) %))
+             unrestricted (descriptions "cookie session")]
+         (doseq [[grant listed]            (dissoc descriptions "cookie session")
+                 [tool-name description] listed]
+           (testing (str grant " " tool-name)
+             (is (= (get unrestricted tool-name) description))))
+         (testing "the comparison has teeth: callers with different grants see the same leading permission text"
+           (doseq [grant ["cookie session" "query:run" "all v2 scopes"]]
+             (is (re-find #"\ARequires the \"[^\"]+\" permission \(agent:query:run\)\.\n\n"
+                          (get-in descriptions [grant "execute_query"]))))))))))
+
+(deftest tools-list-security-schemes-are-token-independent-test
+  (testing "GHY-4543: every tool descriptor declares the OAuth scope it needs in `securitySchemes`, which ChatGPT reads
+            to decide what to step up for. Clients cache descriptors for the session, so the JSON is byte-identical
+            whatever the caller's token holds."
+    (do-with-tools-listed-by-grant!
+     (fn [by-grant]
+       (let [schemes-json (update-vals by-grant #(into {} (map (juxt :name (comp json/encode :securitySchemes))) %))
+             unrestricted (schemes-json "cookie session")]
+         (testing "each tool declares its own scope"
+           (is (= "[{\"type\":\"oauth2\",\"scopes\":[\"agent:content:read\"]}]" (get unrestricted "test_echo")))
+           (is (= "[{\"type\":\"oauth2\",\"scopes\":[\"agent:sql:run\"]}]" (get unrestricted "execute_sql")))
+           (is (= "[{\"type\":\"oauth2\",\"scopes\":[\"agent:query:run\"]}]" (get unrestricted "execute_query"))))
+         (doseq [[grant listed]        schemes-json
+                 [tool-name schemes] listed]
+           (testing (str grant " " tool-name)
+             (is (not= "null" schemes))
+             (is (= (get unrestricted tool-name) schemes)))))))))
 
 (deftest tools-list-test
   (let [[session-id _] (initialize!)
@@ -212,7 +316,7 @@
 (deftest credential-is-minted-only-where-it-is-embedded-test
   (testing "GHY-4157: `resources/read` minted a UI credential before it knew what had been asked for, so every
             read paid for one and handed it to the render — including data resources whose render-fn ignores it,
-            and reads that turn out to be unknown or scope-denied. A credential is a live 5-minute authenticator
+            and reads that turn out to be unknown. A credential is a live 5-minute authenticator
             for the /api/dataset surface; it should exist only where something actually embeds it, so that a
             resource added later cannot start leaking one by accident."
     (mcp.ui-resource/with-fallback-template
@@ -256,16 +360,19 @@
            mcp.paths/v2-surface-scopes))))
 
 (deftest ^:parallel challenge-scopes-are-grantable-test
-  (testing "GHY-4226: the 401 challenge tells an uninstructed client what to ask for, and DCR snapshots the
-            default grant into each newly registered client, which is what the OAuth server validates a
-            requested scope against. A challenge naming scopes that set does not contain is not merely
-            over-broad — a fresh client asks for exactly what it was told, is answered \"Invalid scope\", and the
-            connect fails outright. The surface becomes unreachable over OAuth."
+  (testing "GHY-4226: the 401 challenge tells an uninstructed client what to ask for, and a dynamic client's
+            ceiling always includes the default grant, which is what the OAuth server validates a requested scope
+            against. A challenge naming scopes that set does not contain is not merely over-broad — a fresh client
+            asks for exactly what it was told, is answered \"Invalid scope\", and the connect fails outright. The
+            surface becomes unreachable over OAuth."
     (let [grantable (set ((requiring-resolve 'metabase.oauth-server.core/default-grant-scopes)))]
       (doseq [scope @#'v2.api/default-ask-scopes]
         (testing scope
           (is (contains? grantable scope)
-              "a scope the v2 challenge asks for must be one the OAuth server will actually grant"))))))
+              "a scope the v2 challenge asks for must be one the OAuth server will actually grant")))))
+  (testing "GHY-4543: the challenge asks for the baseline, a subset of what the surface accepts, in surface order"
+    (is (= ["agent:content:read" "agent:query:run" "agent:resource:read"] @#'v2.api/default-ask-scopes))
+    (is (= @#'v2.api/default-ask-scopes (filterv (set @#'v2.api/default-ask-scopes) mcp.paths/v2-surface-scopes)))))
 
 (def ^:private mcp-app-ui-capabilities
   "The `initialize` capabilities an MCP Apps host advertises. Tools gated on `:mcp-app-ui` are hidden from — and
@@ -277,6 +384,40 @@
   []
   (-> (mcp-request (jsonrpc-request "initialize" mcp-app-ui-capabilities))
       (get-in [:headers "Mcp-Session-Id"])))
+
+(deftest tools-list-permission-sentence-survives-client-truncation-test
+  (testing "GHY-4543: Claude Code (2.1.271) truncates each tool description at 2048 characters. After a scope denial
+            the model names the missing permission from the \"Requires the … permission\" sentence, so for every
+            tool `tools/list` sends, that sentence must lie entirely within the first 2048 characters."
+    (let [session-id (initialize-ui-client!)
+          tools      (-> (mcp-request (jsonrpc-request "tools/list") {"mcp-session-id" session-id})
+                         (get-in [:body :result :tools]))
+          names      (set (map :name tools))]
+      (testing "the check covers the descriptions long enough to lose an appended sentence"
+        (is (contains? names "document_write"))
+        (is (contains? names "execute_query")))
+      (doseq [{tool-name :name :keys [description]} tools]
+        (testing tool-name
+          (let [sentence (re-find #"Requires the (?:\"[^\"]+\" permission \([^)\s]+\)|\S+ permission)\." description)
+                end      (some->> sentence (str/index-of description) (+ (count sentence)))]
+            (is (some? sentence))
+            (is (and end (<= end 2048))
+                (str "the permission sentence ends at character " end))))))))
+
+(deftest tools-list-descriptions-fit-client-truncation-test
+  (testing "GHY-4543: Claude Code (2.1.271) truncates each tool description at 2048 characters, silently dropping
+            whatever guidance comes after. Every description `tools/list` sends, MCP Apps tools included and the
+            leading permission sentence counted, must fit within that limit."
+    (let [session-id (initialize-ui-client!)
+          tools      (-> (mcp-request (jsonrpc-request "tools/list") {"mcp-session-id" session-id})
+                         (get-in [:body :result :tools]))
+          names      (set (map :name tools))]
+      (testing "the check covers the longest descriptions and the MCP Apps tools"
+        (is (every? names ["document_write" "execute_query" "get_content" "refresh_ui_credential"])))
+      (doseq [{tool-name :name :keys [description]} tools]
+        (testing tool-name
+          (is (<= (count description) 2048)
+              (str "the description is " (count description) " characters")))))))
 
 (deftest refresh-ui-credential-test
   (testing "GHY-4157: #81041 moved MCP Apps credential delivery out of the rendered shell and into a server
@@ -302,9 +443,9 @@
           (is (contains? claims :scp))))
       (testing "it is hidden from clients that cannot render an iframe, like the shells it serves"
         (is (not (some #(= "refresh_ui_credential" (:name %))
-                       (registry/list-tools nil {:supports-mcp-ui? false}))))
+                       (registry/list-tools {:supports-mcp-ui? false}))))
         (is (some #(= "refresh_ui_credential" (:name %))
-                  (registry/list-tools nil {:supports-mcp-ui? true}))))
+                  (registry/list-tools {:supports-mcp-ui? true}))))
       (testing "and refused to them over the wire — hiding is not enforcement; a text-only model must never be
                 handed a live /api/dataset authenticator by calling the tool by name"
         (let [plain-session (-> (mcp-request (jsonrpc-request "initialize" {:capabilities {}}))
@@ -406,14 +547,28 @@
         (is (= 401 (:status response)))
         (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "")
                            "/.well-known/oauth-protected-resource/api/metabase-mcp"))))
-    (testing "the challenge names every scope the surface accepts, which a client that reads it prefers
-              over the resource metadata's `scopes_supported`. Asking for less would hide the write
-              tools from `tools/list` with no in-product way for the user to ask for them."
-      (let [response (client/client-full-response :post 401 endpoint
-                                                  {:request-options {:headers {}}}
-                                                  (jsonrpc-request "initialize"))]
-        (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "")
-                           ", scope=\"agent:content:read agent:content:write agent:query:run agent:sql:run agent:delivery:write agent:resource:read\""))))
+    (testing "GHY-4543: the challenge asks for the baseline, not everything the surface accepts. ChatGPT takes its
+              login scope from this parameter; every tool is still listed, and a call needing more is answered with
+              a 403 `insufficient_scope` step-up. The baseline includes agent:query:run, so charts never step up."
+      (doseq [path ["metabase-mcp" "mcp"]]
+        (testing path
+          (let [response (client/client-full-response :post 401 path
+                                                      {:request-options {:headers {}}}
+                                                      (jsonrpc-request "initialize"))]
+            (is (str/ends-with? (get-in response [:headers "WWW-Authenticate"] "")
+                                ", scope=\"agent:content:read agent:query:run agent:resource:read\""))))))
+    (testing "GHY-4543: an invalid bearer token's challenge asks for the same baseline"
+      (doseq [path ["metabase-mcp" "mcp"]]
+        (testing path
+          (let [response (client/client-full-response :post 401 path
+                                                      {:request-options
+                                                       {:headers {"authorization" "Bearer totally-bogus-token"}}}
+                                                      (jsonrpc-request "initialize"))]
+            (is (= (str "Bearer realm=\"mcp\", "
+                        "resource_metadata=\"http://localhost:3000/.well-known/oauth-protected-resource/api/" path "\", "
+                        "scope=\"agent:content:read agent:query:run agent:resource:read\", "
+                        "error=\"invalid_token\"")
+                   (get-in response [:headers "WWW-Authenticate"])))))))
     (testing "auth-params are comma-delimited per RFC 7235, the form every spec and vendor example
               uses and the only one a strict parser accepts"
       (let [response (client/client-full-response :post 401 endpoint
@@ -422,7 +577,7 @@
         (is (= (str "Bearer realm=\"mcp\", "
                     "resource_metadata=\"http://localhost:3000/.well-known/oauth-protected-resource"
                     "/api/metabase-mcp\", "
-                    "scope=\"agent:content:read agent:content:write agent:query:run agent:sql:run agent:delivery:write agent:resource:read\"")
+                    "scope=\"agent:content:read agent:query:run agent:resource:read\"")
                (get-in response [:headers "WWW-Authenticate"])))))))
 
 ;;; ------------------------------------------------ Auth methods --------------------------------------------------
@@ -495,6 +650,11 @@
                        :expiry    (+ (System/currentTimeMillis) 3600000)})
           (f {"authorization" (str "Bearer " token)}))))))
 
+(defn- embedded-credential
+  "The UI credential the fallback template embedded in shell `html`, or nil when it embedded none."
+  [html]
+  (second (re-find #"uiCredential:\s*\"([^\"]+)\"" html)))
+
 (defn- ui-credential-for
   "Drive the full MCP Apps handshake as a client holding `scopes`: initialize, read the
   visualize-query shell, and pull the credential back out of the rendered HTML — the same path a
@@ -511,13 +671,14 @@
                        (get-in [:body :result :contents])
                        first
                        :text)]
-    (second (re-find #"uiCredential:\s*\"([^\"]+)\"" html))))
+    (embedded-credential html)))
 
 (deftest ui-credential-cannot-outrun-its-scopes-test
-  (testing "GHY-4318: the iframe credential is delivered to the CLIENT inside the resource HTML, so a client
-            holding only `agent:query:run` can lift it out and POST straight to /api/dataset. The credential is
-            stamped unrestricted for the endpoint scope middleware, so the only thing standing between it and raw
-            SQL is `check-mcp-ui-native-query!` — which must actually be wired into the query endpoints, not just
+  (testing "GHY-4318: the iframe credential is delivered to the CLIENT (by `refresh_ui_credential`; here, by the
+            fallback template's shell HTML), so a client holding only `agent:query:run` can POST it straight to
+            /api/dataset. The credential carries the token's own scopes, and the UI surface charges the whole
+            /api/dataset tree a single `agent:query:run`, so the only thing standing between it and raw SQL is
+            `check-mcp-ui-native-query!` — which must actually be wired into the query endpoints, not just
             unit-tested. Without the wiring, `agent:query:run` silently becomes `agent:sql:run`."
     (mcp.ui-resource/with-fallback-template
       ;; Both payloads are hand-rolled legacy MBQL rather than built with Lib, deliberately and
@@ -556,41 +717,6 @@
                                     {:request-options {:headers {"x-metabase-mcp-ui-auth" credential}}}
                                     native-query))))))))))))
 
-(deftest resource-scope-gate-is-enforced-over-http-test
-  (testing "GHY-4157: every v2 resource carries a required scope, but `resources-list-and-read-test` above drives a
-            cookie session — which is stamped unrestricted, so it never exercises the gate at all. Over a real
-            bearer token the gate is the only thing between a read-only client and the iframe shell, and reading
-            that shell is what mints a UI credential. That has to be asserted on the wire, not just in the
-            registry."
-    (mcp.ui-resource/with-fallback-template
-      (do-with-bearer-token!
-       #{"agent:content:read"}
-       (fn [headers]
-         (let [session-id (-> (client/client-full-response :post 200 endpoint
-                                                           {:request-options {:headers headers}}
-                                                           (jsonrpc-request "initialize" {:capabilities {}}))
-                              (get-in [:headers "Mcp-Session-Id"]))
-               session!   (fn [body]
-                            (client/client-full-response
-                             :post 200 endpoint
-                             {:request-options {:headers (assoc headers "mcp-session-id" session-id)}}
-                             body))
-               read!      #(session! (jsonrpc-request "resources/read" {:uri %}))]
-           (testing "the UI shell is refused — it gates on agent:query:run, which this token does not carry"
-             (let [response (read! v2.resources/visualize-query-uri)]
-               (is (= -32602 (get-in response [:body :error :code])))
-               (testing "with the same message an unknown URI gets, so a scope denial is not an existence oracle"
-                 (is (= "Resource not found" (get-in response [:body :error :message])))
-                 (is (= (get-in (read! "ui://metabase/does-not-exist.html") [:body :error :message])
-                        (get-in response [:body :error :message]))))
-               (testing "and no credential is minted into the response"
-                 (is (not (str/includes? (str (:body response)) "uiCredential"))))))
-           (testing "the fields catalog is refused too — agent:resource:read, also absent from this token"
-             (is (= -32602 (get-in (read! v2.resources/fields-catalog-uri) [:body :error :code]))))
-           (testing "and nothing is advertised to this token in the first place"
-             (is (empty? (-> (session! (jsonrpc-request "resources/list"))
-                             (get-in [:body :result :resources])))))))))))
-
 (deftest bearer-token-dispatches-with-its-own-scopes-test
   (testing "GHY-4287: the session middleware resolves an OAuth bearer token itself, so a bearer request reaches the
             transport on the same authenticated branch a cookie session does. It must still dispatch with the
@@ -598,7 +724,7 @@
             narrow token every tool."
     ;; Register a throwaway tool on a DIFFERENT scope (`agent:content:write`, which the token below does not carry)
     ;; so the negative half of the scope contract has teeth independent of which real write tools are registered:
-    ;; this test fails if `list-tools`' scope filter is removed.
+    ;; this test fails if the bearer request dispatches unrestricted.
     (do-with-temp-tool!
      {:name        "scope_probe_write"
       :scope       metabot.scope/agent-content-write
@@ -625,15 +751,394 @@
                                                                  {:request-options {:headers headers}}
                                                                  (jsonrpc-request "initialize" {:capabilities {}}))
                                     (get-in [:headers "Mcp-Session-Id"]))
-                     tool-names (-> (client/client-full-response
-                                     :post 200 endpoint
-                                     {:request-options {:headers (assoc headers "mcp-session-id" session-id)}}
-                                     (jsonrpc-request "tools/list"))
+                     session!   (fn [body]
+                                  (client/client-full-response
+                                   :post 200 endpoint
+                                   {:request-options {:headers (assoc headers "mcp-session-id" session-id)}}
+                                   body))
+                     call!      (fn [tool-name]
+                                  (session! (jsonrpc-request "tools/call" {:name tool-name :arguments {}})))
+                     tool-names (-> (session! (jsonrpc-request "tools/list"))
                                     (get-in [:body :result :tools])
                                     (->> (map :name) set))]
                  (is (some? session-id))
+                 (testing "GHY-4543: tools/list lists tools on both sides of the token's scopes"
+                   (is (contains? tool-names "test_echo"))
+                   (is (contains? tool-names "scope_probe_write")
+                       "a client can only step up for a tool it can see"))
                  (testing "a tool inside the granted scope (agent:content:read) is served"
-                   (is (contains? tool-names "test_echo")))
-                 (testing "a tool gated on a scope the token lacks (agent:content:write) is filtered out"
-                   (is (not (contains? tool-names "scope_probe_write"))
-                       "scope filtering must hide a write-scoped tool from a read-only token")))))))))))
+                   (is (not (get-in (call! "test_echo") [:body :result :isError]))))
+                 (testing "a tool gated on a scope the token lacks (agent:content:write) is refused at call time"
+                   (let [response (client/client-full-response
+                                   :post 403 endpoint
+                                   {:request-options {:headers (assoc headers "mcp-session-id" session-id)}}
+                                   (jsonrpc-request "tools/call" {:name "scope_probe_write" :arguments {}}))]
+                     (is (str/starts-with? (get-in response [:body :error :message])
+                                           "Insufficient scope to call tool: scope_probe_write.")))))))))))))
+
+;;; ------------------------------------------- Insufficient-scope step-up -----------------------------------------
+
+(deftest ^:parallel step-up-scopes-test
+  (let [step-up-scopes #'v2.api/step-up-scopes
+        surface        ["s:a" "s:b" "s:c" "s:d"]]
+    (testing "GHY-4543: the challenge asks for the surface scopes the token holds plus the required one, in surface
+              order, so a client that replaces its scope with the challenged one keeps what it had"
+      (is (= ["s:a" "s:c" "s:d"] (step-up-scopes surface #{"s:d" "s:a"} "s:c"))))
+    (testing "held scopes outside the surface, and the unrestricted sentinel, are not echoed back"
+      (is (= ["s:b"] (step-up-scopes surface #{"agent:question:create" :metabase.api.macros.scope/unrestricted}
+                                     "s:b"))))
+    (testing "a required scope the token already holds is not repeated"
+      (is (= ["s:a" "s:b"] (step-up-scopes surface #{"s:a" "s:b"} "s:b"))))
+    (testing "a required scope outside the surface still reaches the challenge, after the surface scopes"
+      (is (= ["s:a" "x:y"] (step-up-scopes surface #{"s:a"} "x:y"))))
+    (testing "no token scopes at all yields just the required one"
+      (is (= ["s:c"] (step-up-scopes surface nil "s:c"))))
+    (testing "GHY-4543: a held wildcard keeps every surface scope it covers, though none is held literally, so a client
+              that replaces its grant with the challenged scope loses no coverage"
+      (is (= ["agent:content:read" "agent:content:write" "agent:sql:run"]
+             (step-up-scopes ["agent:content:read" "agent:content:write" "agent:query:run" "agent:sql:run"]
+                             #{"agent:content:*"}
+                             "agent:sql:run")))
+      (testing "and a bare `*` covers the whole surface"
+        (is (= surface (step-up-scopes surface #{"*"} "s:b")))))))
+
+(defn- bearer-session-post!
+  "Handshake with bearer `headers` and return a fn `(post! expected-status body & {:keys [path extra-headers]})` that
+  POSTs within that session."
+  [headers]
+  (let [session-id (-> (client/client-full-response :post 200 endpoint
+                                                    {:request-options {:headers headers}}
+                                                    (jsonrpc-request "initialize" {:capabilities {}}))
+                       (get-in [:headers "Mcp-Session-Id"]))]
+    (fn [expected-status body & {:keys [path extra-headers] :or {path endpoint}}]
+      (client/client-full-response :post expected-status path
+                                   {:request-options {:headers (merge headers
+                                                                      {"mcp-session-id" session-id}
+                                                                      extra-headers)}}
+                                   body))))
+
+(def ^:private metadata-url
+  "http://localhost:3000/.well-known/oauth-protected-resource")
+
+(deftest scope-denial-is-a-403-insufficient-scope-challenge-test
+  (testing "GHY-4543: a scope denial must be a real HTTP 403 carrying an `insufficient_scope` WWW-Authenticate
+            challenge (MCP authorization spec, runtime insufficient scope). Claude Code only records a step-up
+            scope, and mcp-remote only starts a step-up, on that response; an in-body error over HTTP 200 does
+            neither."
+    (do-with-bearer-token!
+     #{"agent:content:read" "agent:question:create"}
+     (fn [headers]
+       (let [post! (bearer-session-post! headers)
+             denied (jsonrpc-request "tools/call" {:name "execute_sql" :arguments {}})]
+         (testing "a registry-gated tool the token lacks the scope for"
+           (let [response (post! 403 denied)]
+             (is (= 403 (:status response)))
+             (is (= (str "Bearer error=\"insufficient_scope\", "
+                         "scope=\"agent:content:read agent:sql:run\", "
+                         "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
+                         "error_description=\"execute_sql requires agent:sql:run "
+                         "(" (registry/english-scope-label "agent:sql:run") ")\"")
+                    (get-in response [:headers "WWW-Authenticate"]))
+                 "scope is the held v2 scopes plus the required one; the legacy non-v2 scope is not echoed")
+             (testing "the body is still the JSON-RPC error, for clients that read it"
+               (is (= "application/json" (get-in response [:headers "Content-Type"])))
+               (is (= #{:jsonrpc :id :error} (set (keys (:body response))))
+                   "no transport-internal marker leaks into the body")
+               (is (= 1 (get-in response [:body :id])))
+               (is (= -32600 (get-in response [:body :error :code])))
+               (is (str/starts-with? (get-in response [:body :error :message])
+                                     "Insufficient scope to call tool: execute_sql.")))))
+         (testing "resource_metadata names the alias the client connected through, as the 401 challenge does"
+           (is (str/includes? (get-in (post! 403 denied :path "mcp") [:headers "WWW-Authenticate"] "")
+                              (str "resource_metadata=\"" metadata-url "/api/mcp\""))))
+         (testing "a client that accepts SSE gets the same 403 challenge"
+           (let [response (post! 403 denied :extra-headers {"accept" "application/json, text/event-stream"})]
+             (is (= 403 (:status response)))
+             (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "") "error=\"insufficient_scope\""))))
+         (testing "an allowed call is still a plain 200"
+           (let [response (post! 200 (jsonrpc-request "tools/call" {:name "test_echo" :arguments {}}))]
+             (is (= 200 (:status response)))
+             (is (nil? (get-in response [:headers "WWW-Authenticate"])))
+             (is (= {:ok true :message "pong"} (get-in response [:body :result :structuredContent])))))
+         (testing "a denied call sent as a notification gets no reply, so it is a bare 202 with no challenge"
+           (let [response (post! 202 (dissoc denied :id))]
+             (is (= 202 (:status response)))
+             (is (nil? (get-in response [:headers "WWW-Authenticate"])))))
+         (testing "a batch keeps HTTP 200 with the denial in band, since one status cannot describe mixed results"
+           (doseq [[label batch] {"denied call and a ping"     [denied (assoc (jsonrpc-request "ping") :id 2)]
+                                  "a batch of one denied call" [denied]}]
+             (testing label
+               (let [response (post! 200 batch)]
+                 (is (= 200 (:status response)))
+                 (is (nil? (get-in response [:headers "WWW-Authenticate"])))
+                 (is (sequential? (:body response)))
+                 (is (= -32600 (:code (:error (first (filter #(= 1 (:id %)) (:body response)))))))
+                 (is (every? #(= #{:jsonrpc :id} (disj (set (keys %)) :error :result)) (:body response))
+                     "no transport-internal marker leaks into a batch element"))))))))))
+
+(deftest in-handler-scope-denial-is-a-403-insufficient-scope-challenge-test
+  (testing "GHY-4543: the scope checks inside tool handlers (here alert_write's deferred agent:query:run check) answer
+            with the same 403 challenge as the registry gate, naming their own required scope"
+    (mt/with-temp [:model/Card {card-id :id} {}]
+      (do-with-bearer-token!
+       #{"agent:content:read" "agent:delivery:write"}
+       (fn [headers]
+         (let [post!    (bearer-session-post! headers)
+               response (post! 403 (jsonrpc-request "tools/call"
+                                                    {:name      "alert_write"
+                                                     :arguments {:method   "create"
+                                                                 :card_id  card-id
+                                                                 :schedule {:schedule_type "daily" :schedule_hour 9}}}))]
+           (is (= 403 (:status response)))
+           (is (= (str "Bearer error=\"insufficient_scope\", "
+                       "scope=\"agent:content:read agent:query:run agent:delivery:write\", "
+                       "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
+                       "error_description=\"alert_write requires agent:query:run "
+                       "(" (registry/english-scope-label "agent:query:run") ")\"")
+                  (get-in response [:headers "WWW-Authenticate"])))
+           (is (= -32600 (get-in response [:body :error :code])))
+           (is (re-find #"requires the agent:query:run scope" (get-in response [:body :error :message])))
+           (is (zero? (t2/count :model/NotificationCard :card_id card-id))
+               "and nothing was created")))))))
+
+(deftest baseline-token-steps-up-from-a-write-tool-test
+  (testing "GHY-4543: a client that connected with only the advertised baseline is challenged, on a write, for the
+            baseline plus the scope that write needs, so its step-up keeps what it already holds"
+    (do-with-bearer-token!
+     (set mcp.paths/v2-baseline-scopes)
+     (fn [headers]
+       (let [post!    (bearer-session-post! headers)
+             response (post! 403 (jsonrpc-request "tools/call"
+                                                  {:name      "collection_write"
+                                                   :arguments {:method "create" :name "Step-up probe"}}))]
+         (is (str/starts-with? (get-in response [:headers "WWW-Authenticate"] "")
+                               (str "Bearer error=\"insufficient_scope\", "
+                                    "scope=\"agent:content:read agent:content:write agent:query:run "
+                                    "agent:resource:read\", "
+                                    "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "))))))))
+
+(defn- orders-query
+  "A portable MBQL 5 query over the test data Orders table."
+  []
+  (let [table (t2/select-one :model/Table (mt/id :orders))]
+    {:lib/type "mbql/query"
+     :stages   [{:lib/type     "mbql.stage/mbql"
+                 :source-table [(:name (mt/db)) (:schema table) (:name table)]
+                 :limit        1}]}))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest baseline-token-runs-queries-without-stepping-up-test
+  (testing "GHY-4543: Claude Desktop retries a tool after step-up over a session that does not declare MCP Apps, so the
+            first chart after a step-up could never embed. The baseline therefore carries agent:query:run: a freshly
+            connected client queries and charts without a 403."
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (do-with-bearer-token!
+       (set mcp.paths/v2-baseline-scopes)
+       (fn [headers]
+         (let [session-id (-> (client/client-full-response :post 200 endpoint
+                                                           {:request-options {:headers headers}}
+                                                           (jsonrpc-request "initialize" mcp-app-ui-capabilities))
+                              (get-in [:headers "Mcp-Session-Id"]))
+               call!      (fn [expected-status tool-name arguments]
+                            (client/client-full-response
+                             :post expected-status endpoint
+                             {:request-options {:headers (assoc headers "mcp-session-id" session-id)}}
+                             (jsonrpc-request "tools/call" {:name tool-name :arguments arguments})))]
+           (doseq [[tool-name arguments] [["execute_query" {:query (orders-query)}]
+                                          ["visualize_query" {:query (orders-query)}]
+                                          ["refresh_ui_credential" {}]]]
+             (testing tool-name
+               (let [response (call! 200 tool-name arguments)]
+                 (is (nil? (get-in response [:headers "WWW-Authenticate"])))
+                 (is (nil? (get-in response [:body :error])))
+                 (is (false? (boolean (get-in response [:body :result :isError])))
+                     (pr-str (get-in response [:body :result]))))))
+           (testing "raw SQL still steps up, naming agent:sql:run on top of the baseline"
+             (let [response (call! 403 "execute_sql" {})]
+               (is (= (str "Bearer error=\"insufficient_scope\", "
+                           "scope=\"agent:content:read agent:query:run agent:sql:run agent:resource:read\", "
+                           "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
+                           "error_description=\"execute_sql requires agent:sql:run "
+                           "(" (registry/english-scope-label "agent:sql:run") ")\"")
+                      (get-in response [:headers "WWW-Authenticate"])))))))))))
+
+(deftest data-resource-read-without-its-scope-is-a-403-insufficient-scope-challenge-test
+  (testing "GHY-4543: a data resource read the token lacks the scope for answers with the same 403 challenge as
+            `tools/call`, so a client learns which scope to step up to. Driven over a bearer token because a cookie
+            session is unrestricted and never exercises scopes at all."
+    (mcp.ui-resource/with-fallback-template
+      (do-with-bearer-token!
+       #{"agent:content:read"}
+       (fn [headers]
+         (let [post!   (bearer-session-post! headers)
+               read-of (fn [uri] (jsonrpc-request "resources/read" {:uri uri}))
+               denied  (read-of v2.resources/fields-catalog-uri)]
+           (testing "the fields catalog without agent:resource:read"
+             (let [response (post! 403 denied)]
+               (is (= 403 (:status response)))
+               (is (= (str "Bearer error=\"insufficient_scope\", "
+                           "scope=\"agent:content:read agent:resource:read\", "
+                           "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
+                           "error_description=\"catalog://metabase/fields requires agent:resource:read "
+                           "(" (registry/english-scope-label "agent:resource:read") ")\"")
+                      (get-in response [:headers "WWW-Authenticate"])))
+               (testing "the body is the JSON-RPC error, with no transport-internal marker"
+                 (is (= #{:jsonrpc :id :error} (set (keys (:body response)))))
+                 (is (= {:code    -32600
+                         :message (str "Insufficient scope to read resource: catalog://metabase/fields. "
+                                       "Requires agent:resource:read; your token holds agent:content:read.")}
+                        (get-in response [:body :error]))))))
+           (testing "resource_metadata names the alias the client connected through"
+             (is (str/includes? (get-in (post! 403 denied :path "mcp") [:headers "WWW-Authenticate"] "")
+                                (str "resource_metadata=\"" metadata-url "/api/mcp\""))))
+           (testing "an unknown URI is still not found over 200, with no challenge"
+             (let [response (post! 200 (read-of "ui://metabase/does-not-exist.html"))]
+               (is (nil? (get-in response [:headers "WWW-Authenticate"])))
+               (is (= {:code -32602 :message "Resource not found"} (get-in response [:body :error])))))
+           (testing "a batch keeps HTTP 200 with the denial in band"
+             (doseq [[label batch] {"denied read and a ping"     [denied (assoc (jsonrpc-request "ping") :id 2)]
+                                    "a batch of one denied read" [denied]}]
+               (testing label
+                 (let [response (post! 200 batch)]
+                   (is (= 200 (:status response)))
+                   (is (nil? (get-in response [:headers "WWW-Authenticate"])))
+                   (is (= -32600 (:code (:error (first (filter #(= 1 (:id %)) (:body response)))))))
+                   (is (every? #(= #{:jsonrpc :id} (disj (set (keys %)) :error :result)) (:body response))
+                       "no transport-internal marker leaks into a batch element")))))))))))
+
+(deftest baseline-token-reads-the-fields-catalog-test
+  (testing "GHY-4543: the advertised baseline carries agent:resource:read, so a freshly connected client reads the
+            fields catalog without stepping up"
+    (do-with-bearer-token!
+     (set mcp.paths/v2-baseline-scopes)
+     (fn [headers]
+       (let [response ((bearer-session-post! headers)
+                       200
+                       (jsonrpc-request "resources/read" {:uri v2.resources/fields-catalog-uri}))
+             content  (first (get-in response [:body :result :contents]))]
+         (is (nil? (get-in response [:headers "WWW-Authenticate"])))
+         (is (nil? (get-in response [:body :error])))
+         (is (= v2.resources/fields-catalog-uri (:uri content)))
+         (is (map? (json/decode (:text content)))))))))
+
+(deftest ui-shells-read-regardless-of-token-scopes-test
+  (testing "GHY-4543: Claude Desktop reads an MCP Apps shell concurrently with the tool call, and a 403 on that read
+            stopped it stepping up after the tool call's own 403. The shell carries no data and, for a token without
+            its scope, no credential, so it is served to any token; the data stays gated by the tool call and
+            `refresh_ui_credential`."
+    (mcp.ui-resource/with-fallback-template
+      (do-with-bearer-token!
+       #{"agent:content:read"}
+       (fn [headers]
+         (let [post!   (bearer-session-post! headers)
+               read-of (fn [uri] (jsonrpc-request "resources/read" {:uri uri}))]
+           (testing "resources/list still shows every resource, including the one this token cannot read"
+             (is (= #{v2.resources/visualize-query-uri v2.resources/render-drill-through-uri
+                      v2.resources/fields-catalog-uri}
+                    (set (map :uri (get-in (post! 200 (jsonrpc-request "resources/list"))
+                                           [:body :result :resources]))))))
+           (testing "each shell reads over 200 with no challenge, without agent:query:run"
+             (doseq [uri [v2.resources/visualize-query-uri v2.resources/render-drill-through-uri]]
+               (testing uri
+                 (let [response (post! 200 (read-of uri))]
+                   (is (nil? (get-in response [:headers "WWW-Authenticate"])))
+                   (is (nil? (get-in response [:body :error])))
+                   (is (= [uri] (map :uri (get-in response [:body :result :contents]))))))))
+           (testing "a batch serves the shell in band as well"
+             (let [response (post! 200 [(read-of v2.resources/visualize-query-uri)
+                                        (assoc (jsonrpc-request "ping") :id 2)])
+                   by-id    (into {} (map (juxt :id identity)) (:body response))]
+               (is (nil? (get-in response [:headers "WWW-Authenticate"])))
+               (is (nil? (get-in by-id [1 :error])))
+               (is (= v2.resources/visualize-query-uri (-> by-id (get-in [1 :result :contents]) first :uri)))))))))))
+
+(deftest shell-credential-is-minted-only-for-a-token-holding-the-shell-scope-test
+  (testing "GHY-4543: a shell read no longer requires the shell's scope, so the UI credential must not come with it. The
+            credential authenticates the iframe's /api/dataset surface; a token without agent:query:run must never
+            get one from a shell read, even through a template that embeds whatever it is given."
+    (mcp.ui-resource/with-fallback-template
+      (let [minted     (atom 0)
+            shell-text (fn [scopes]
+                         ;; An atom because `do-with-bearer-token!` does not return `f`'s value.
+                         (let [text (atom nil)]
+                           (do-with-bearer-token!
+                            scopes
+                            (fn [headers]
+                              (let [response ((bearer-session-post! headers)
+                                              200
+                                              (jsonrpc-request "resources/read" {:uri v2.resources/visualize-query-uri}))]
+                                (is (nil? (get-in response [:headers "WWW-Authenticate"])))
+                                (reset! text (-> response (get-in [:body :result :contents]) first :text)))))
+                           @text))]
+        ;; Delegation captures the original through `mt/original-fn`, as in
+        ;; `credential-is-minted-only-where-it-is-embedded-test`.
+        (mt/with-dynamic-fn-redefs [mcp.session/issue-ui-credential
+                                    (fn [& args]
+                                      (swap! minted inc)
+                                      (apply (mt/original-fn #'mcp.session/issue-ui-credential) args))]
+          (let [without-query-run (shell-text #{"agent:content:read" "agent:resource:read"})]
+            (testing "a token without agent:query:run reads the shell, but the credential slot renders empty and none is
+                      minted"
+              (is (str/includes? without-query-run "metabaseConfig"))
+              (is (re-find #"uiCredential:\s*\}" without-query-run))
+              (is (nil? (embedded-credential without-query-run)))
+              (is (zero? @minted)))
+            (testing "a token without even agent:resource:read reads the shell too, and still mints none"
+              (is (nil? (embedded-credential (shell-text #{"agent:content:read"}))))
+              (is (zero? @minted)))
+            (testing "a token holding every scope a read could need reads the fields catalog, and mints none: only
+                      a shell embeds a credential"
+              (do-with-bearer-token!
+               #{"agent:content:read" "agent:query:run" "agent:resource:read"}
+               (fn [headers]
+                 (let [response ((bearer-session-post! headers)
+                                 200
+                                 (jsonrpc-request "resources/read" {:uri v2.resources/fields-catalog-uri}))]
+                   (is (nil? (get-in response [:body :error])))
+                   (is (= [v2.resources/fields-catalog-uri]
+                          (map :uri (get-in response [:body :result :contents])))))))
+              (is (zero? @minted)))
+            (testing "a token holding agent:query:run still gets one embedded, minted once"
+              (let [query-run (shell-text #{"agent:content:read" "agent:query:run"})]
+                (is (string? (embedded-credential query-run)))
+                (is (= 1 @minted))
+                (testing "and the two shells differ in nothing but that credential"
+                  (is (= without-query-run (str/replace query-run #"uiCredential:\s*\"[^\"]*\"" "uiCredential: "))))))))))))
+
+(deftest refresh-ui-credential-without-query-run-is-a-403-challenge-test
+  (testing "GHY-4543: with shell reads open to every token, `refresh_ui_credential` is how the iframe gets a credential.
+            A capable client without agent:query:run is challenged for it, and handed nothing."
+    (do-with-bearer-token!
+     #{"agent:content:read" "agent:resource:read"}
+     (fn [headers]
+       (let [session-id (-> (client/client-full-response :post 200 endpoint
+                                                         {:request-options {:headers headers}}
+                                                         (jsonrpc-request "initialize" mcp-app-ui-capabilities))
+                            (get-in [:headers "Mcp-Session-Id"]))
+             response   (client/client-full-response
+                         :post 403 endpoint
+                         {:request-options {:headers (assoc headers "mcp-session-id" session-id)}}
+                         (jsonrpc-request "tools/call" {:name "refresh_ui_credential" :arguments {}}))]
+         (is (= 403 (:status response)))
+         (is (str/starts-with? (get-in response [:headers "WWW-Authenticate"] "")
+                               (str "Bearer error=\"insufficient_scope\", "
+                                    "scope=\"agent:content:read agent:query:run agent:resource:read\", ")))
+         (is (= #{:jsonrpc :id :error} (set (keys (:body response)))))
+         (is (= -32600 (get-in response [:body :error :code]))))))))
+
+(deftest unscoped-callers-never-get-an-insufficient-scope-challenge-test
+  (testing "GHY-4543: a cookie session is stamped unrestricted, so a tool gated on any scope is served over 200"
+    (do-with-temp-tool!
+     {:name        "scope_probe_sql"
+      :scope       metabot.scope/agent-sql-run
+      :description "test-only tool gated on agent:sql:run"
+      :annotations {:readOnlyHint true}
+      :args        [:map]
+      :handler     (fn [_ _] {:content [{:type "text" :text "served"}]})}
+     (fn []
+       (let [[session-id] (initialize!)
+             response     (mcp-request (jsonrpc-request "tools/call" {:name "scope_probe_sql" :arguments {}})
+                                       {"mcp-session-id" session-id})]
+         (is (= 200 (:status response)))
+         (is (nil? (get-in response [:headers "WWW-Authenticate"])))
+         (is (= "served" (-> response :body :result :content first :text))))))))

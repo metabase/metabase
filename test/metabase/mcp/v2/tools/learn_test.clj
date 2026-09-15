@@ -79,11 +79,11 @@
 (defn- tool-descriptions
   "Every registered tool's description. `nil` token-scopes sees the whole surface."
   []
-  (keep :description (registry/list-tools nil)))
+  (keep :description (registry/list-tools)))
 
 (defn- learn-description
   []
-  (->> (registry/list-tools nil)
+  (->> (registry/list-tools)
        (filter #(= "learn" (:name %)))
        first
        :description))

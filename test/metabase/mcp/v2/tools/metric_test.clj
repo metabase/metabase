@@ -552,9 +552,10 @@
     (is (contains? (registry/registered-scopes) "agent:content:write"))))
 
 (deftest ^:parallel tools-list-visibility-test
-  (testing "GHY-4146: the tool is visible exactly to tokens carrying its write scope"
-    (is (some #(= "metric_write" (:name %)) (registry/list-tools write-scope)))
-    (is (not (some #(= "metric_write" (:name %)) (registry/list-tools #{"agent:content:read"}))))))
+  (testing "GHY-4543: the tool is listed to every token, but only a token carrying its write scope can call it"
+    (is (some #(= "metric_write" (:name %)) (registry/list-tools)))
+    (is (str/starts-with? (-> (registry/call-tool #{"agent:content:read"} nil "metric_write" {}) :error :message)
+                          "Insufficient scope to call tool: metric_write."))))
 
 ;;; ------------------------------------------------ Round-2 review ------------------------------------------------
 
@@ -563,14 +564,14 @@
             matching collection_write, whose archived:true has the same effect"
     (is (true? (:destructiveHint
                 (:annotations (first (filter #(= "metric_write" (:name %))
-                                             (registry/list-tools write-scope)))))))))
+                                             (registry/list-tools)))))))))
 
 ;; not ^:parallel: creates a row through the tool; with-model-cleanup's id watermark is not parallel-safe
 (deftest text-only-response-test
   (testing "round-2 review: metric_write has no outputSchema and no concrete structuredContent
             consumer, so it follows the stack's text-only convention like collection_write"
     (is (nil? (:outputSchema (first (filter #(= "metric_write" (:name %))
-                                            (registry/list-tools write-scope))))))
+                                            (registry/list-tools))))))
     (mt/with-model-cleanup [:model/Card]
       (let [response (call-tool! :crowberto write-scope "metric_write"
                                  {:method "create" :name "metric-test text-only"

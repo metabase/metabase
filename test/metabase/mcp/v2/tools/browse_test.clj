@@ -1107,10 +1107,8 @@
       nil)))
 
 (deftest ^:parallel browse-data-tools-list-visibility-test
-  (testing "GHY-4138: tools/list visibility follows the same scope the call-time gate checks"
-    (is (some #(= "browse_data" (:name %)) (registry/list-tools content-read)))
-    (is (not (some #(= "browse_data" (:name %))
-                   (registry/list-tools #{metabot.scope/agent-query-run}))))))
+  (testing "GHY-4543: tools/list shows the tool whatever the token's scopes; the gate is at call time (above)"
+    (is (some #(= "browse_data" (:name %)) (registry/list-tools)))))
 
 (deftest ^:parallel browse-data-closed-schema-test
   (testing "GHY-4138: malformed arguments come back as a teaching message from the closed args schema, never as an internal error"
