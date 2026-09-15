@@ -1,4 +1,7 @@
-import { registerSiteLocalization, setLocalization } from "metabase/utils/i18n";
+import {
+  applyUserLocalization,
+  registerSiteLocalization,
+} from "metabase/utils/i18n";
 import { loadLocaleCatalog } from "metabase/utils/localization";
 
 /**
@@ -17,8 +20,7 @@ export async function applyDocumentLocales(): Promise<void> {
     ]);
 
     registerSiteLocalization(siteCatalog ?? userCatalog);
-    window.MetabaseUserLocalization = userCatalog;
-    setLocalization(userCatalog);
+    applyUserLocalization(userCatalog);
   } catch (error) {
     // A missing catalogue leaves the app in English, which is the msgid source.
     // Failing to boot over it would be worse than an untranslated page.

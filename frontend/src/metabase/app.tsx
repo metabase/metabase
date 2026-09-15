@@ -85,11 +85,15 @@ function isLocationChangeAction(
   return isAction(action) && action.type === LOCATION_CHANGE;
 }
 
-function _init(
+async function _init(
   reducers: Parameters<typeof getStore>[0],
   getRoutes: (store: Store) => RouteObject[],
   callback?: (store: Store) => void,
 ) {
+  // The catalogues are already in the page as installed chunks, so this resolves
+  // without a request. Rendering before it would paint the app in English.
+  await applyDocumentLocales();
+
   // Initialize distributed tracing if enabled via MB_TRACING_ENABLED.
   // Uses bootstrap data so it's available before the first API call.
   const extraMiddlewares: Middleware[] = [];
@@ -172,14 +176,10 @@ function _init(
 }
 
 export function init(...args: Parameters<typeof _init>) {
-  // The catalogues are already in the page as installed chunks, so this resolves
-  // without a request. Rendering before it would paint the app in English.
-  const start = () => applyDocumentLocales().then(() => _init(...args));
-
   if (document.readyState !== "loading") {
-    start();
+    _init(...args);
   } else {
-    document.addEventListener("DOMContentLoaded", start);
+    document.addEventListener("DOMContentLoaded", () => _init(...args));
   }
 }
 
