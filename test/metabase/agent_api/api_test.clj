@@ -83,6 +83,24 @@
                    (client/client :get 401 "agent/v1/ping"
                                   {:request-options {:headers {"x-metabase-session" session-key}}})))))))))
 
+(deftest agent-api-401-without-bearer-token-carries-plain-challenge-test
+  (testing "GHY-4542: RFC 7235 requires every 401 to carry a `WWW-Authenticate` challenge, and RFC 6750 section 3.1
+            says one answering a request with no bearer token SHOULD NOT include an error code. So both 401s the
+            agent API gives before it has a token to judge carry a plain `Bearer` challenge, with unchanged bodies."
+    (testing "no credentials at all"
+      (let [response (client/client-full-response :get 401 "agent/v1/ping")]
+        (is (= "Bearer" (get-in response [:headers "WWW-Authenticate"])))
+        (is (= {:error   "missing_authorization"
+                :message "Authentication required. Use X-Metabase-Session header or Authorization: Bearer <jwt>."}
+               (:body response)))))
+    (testing "an Authorization header that does not use the Bearer scheme"
+      (let [response (client/client-full-response :get 401 "agent/v1/ping"
+                                                  {:request-options {:headers {"authorization" "Basic dXNlcjpwYXNz"}}})]
+        (is (= "Bearer" (get-in response [:headers "WWW-Authenticate"])))
+        (is (= {:error   "invalid_authorization_format"
+                :message "Authorization header must use Bearer scheme: Authorization: Bearer <jwt>"}
+               (:body response)))))))
+
 (deftest enforce-authentication-does-not-widen-oauth-request-without-scopes-test
   (testing "GHY-4542: the agent API defaults nil `:token-scopes` on an authenticated request to unrestricted, which
             is right for a session but would hand an OAuth-authenticated request with no scopes full access and

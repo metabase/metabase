@@ -1726,14 +1726,17 @@
             bearer-token (extract-bearer-token auth-header)]
         (cond
           ;; No authorization header and no session
+          ;; RFC 6750 section 3.1: a challenge to a request with no bearer token carries no error code.
           (nil? auth-header)
-          (respond (error-response "missing_authorization"
-                                   "Authentication required. Use X-Metabase-Session header or Authorization: Bearer <jwt>."))
+          (respond (assoc-in (error-response "missing_authorization"
+                                             "Authentication required. Use X-Metabase-Session header or Authorization: Bearer <jwt>.")
+                             [:headers "WWW-Authenticate"] "Bearer"))
 
           ;; Authorization header present but not Bearer format
           (nil? bearer-token)
-          (respond (error-response "invalid_authorization_format"
-                                   "Authorization header must use Bearer scheme: Authorization: Bearer <jwt>"))
+          (respond (assoc-in (error-response "invalid_authorization_format"
+                                             "Authorization header must use Bearer scheme: Authorization: Bearer <jwt>")
+                             [:headers "WWW-Authenticate"] "Bearer"))
 
           ;; Validate JWT
           :else
