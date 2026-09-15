@@ -39,6 +39,11 @@ export function typeShape(type: ts.Type): Shape {
   return { kind: "type", type };
 }
 
+export function unionShape(members: Shape[]): Shape {
+  const [only] = members;
+  return only && members.length === 1 ? only : { kind: "union", members };
+}
+
 export function describeShape(checker: ts.TypeChecker, view: Shape): string {
   let remaining = 200;
   const describe = (view: Shape): string => {

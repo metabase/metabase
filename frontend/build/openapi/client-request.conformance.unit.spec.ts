@@ -4,13 +4,9 @@ import ts from "typescript";
 
 import { baseQuery } from "metabase/api/api";
 
-import {
-  type ClientRequest,
-  type SentValue,
-  modelClientRequest,
-} from "./client-request";
+import { type ClientRequest, modelClientRequest } from "./client-request";
 import { resolveRtkRequest } from "./rtk-request";
-import { describeShape } from "./shape";
+import { type Shape, describeShape } from "./shape";
 import {
   ENDPOINT_PRELUDE,
   cleanupFixtures,
@@ -182,22 +178,22 @@ function projected(overrides: Partial<Projection>): Projection {
   };
 }
 
-function valuesProjection(
-  checker: ts.TypeChecker,
-  values: SentValue[],
-): string[] {
+function valuesProjection(checker: ts.TypeChecker, values: Shape[]): string[] {
   return values
-    .map((value) => {
-      if (value.kind === "empty") {
-        return "empty";
+    .flatMap((value): string[] => {
+      if (value.kind === "union") {
+        return valuesProjection(checker, value.members);
       }
-      const text =
-        value.kind === "text"
-          ? JSON.stringify(value.text)
-          : value.view.kind === "throws" || value.view.kind === "unverified"
-            ? value.view.kind
-            : describeShape(checker, value.view);
-      return value.itemOf ? `each ${text}` : text;
+      if (value.kind === "items") {
+        return valuesProjection(checker, [value.item]).map(
+          (text) => `each ${text}`,
+        );
+      }
+      return [
+        value.kind === "throws" || value.kind === "unverified"
+          ? value.kind
+          : describeShape(checker, value),
+      ];
     })
     .sort();
 }
@@ -210,20 +206,22 @@ function partProjection(
     return "unverified";
   }
   return part.variants.map((variant) => {
-    if (variant.kind === "nothing") {
-      return "nothing";
-    }
     if (variant.kind === "type") {
-      return checker.typeToString(variant.type);
+      return variant.type.flags & ts.TypeFlags.Undefined
+        ? "nothing"
+        : checker.typeToString(variant.type);
+    }
+    if (variant.kind !== "object") {
+      throw new Error(`Unexpected payload shape ${variant.kind}`);
     }
     return Object.fromEntries([
       ...variant.fields.map((field) => [
         `${field.name}${field.optional ? "?" : ""}`,
-        valuesProjection(checker, field.values),
+        valuesProjection(checker, [field.shape]),
       ]),
       ...variant.indexes.map((index) => [
         `[${checker.typeToString(index.keyType)}]`,
-        valuesProjection(checker, index.values),
+        valuesProjection(checker, [index.shape]),
       ]),
     ]);
   });
@@ -659,7 +657,7 @@ describe("modelClientRequest against the real API client", () => {
       sentRequest({ path: "/api/x//query" }),
       projected({
         path: "/api/x/{param}/query",
-        parameters: [["empty", "number"]],
+        parameters: [['""', "number"]],
       }),
     ],
     [

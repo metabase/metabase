@@ -1,7 +1,13 @@
 import ts from "typescript";
 
 import type { RtkRequest, TagSlot, UrlSlot } from "./rtk-request";
-import { type Shape, describeShape } from "./shape";
+import {
+  type Shape,
+  type ShapeField,
+  describeShape,
+  typeShape,
+  unionShape,
+} from "./shape";
 import {
   isObjectLike,
   isTypeReference,
@@ -30,42 +36,8 @@ const REQUEST_FIELDS = ["url", "method", "params", "body"];
 const NULLISH = ts.TypeFlags.Null | ts.TypeFlags.Undefined | ts.TypeFlags.Void;
 const UNDEFINED = ts.TypeFlags.Undefined | ts.TypeFlags.Void;
 
-/**
- * One value a field may hold: what `JSON.stringify` writes for a type, or a known text.
- * `itemOf` is the array type when the value is sent once for each of its items.
- */
-export type SentValue =
-  | { kind: "json"; view: Shape; itemOf?: ts.Type }
-  | { kind: "text"; text: string; itemOf?: ts.Type }
-  | { kind: "empty" };
-
-interface SentField {
-  name: string;
-  values: SentValue[];
-  optional: boolean;
-  declaration: ts.Declaration | undefined;
-}
-
-interface SentIndex {
-  keyType: ts.Type;
-  values: SentValue[];
-  declaration: ts.Declaration | undefined;
-}
-
-export type SentPayload =
-  | { kind: "nothing" }
-  | { kind: "type"; type: ts.Type }
-  | {
-      kind: "fields";
-      description: string;
-      /** The frontend type the fields were read from, if they weren't assembled by the model. */
-      declared: ts.Type | undefined;
-      fields: SentField[];
-      indexes: SentIndex[];
-    };
-
 export interface SentPart {
-  variants: SentPayload[];
+  variants: Shape[];
   notes: string[];
   unverified: string | undefined;
   /** The client sends this part whatever the value, even when what it holds is unverified. */
@@ -74,7 +46,7 @@ export interface SentPart {
 
 interface SentPathParameter {
   source: string;
-  values: SentValue[];
+  values: Shape[];
   notes: string[];
   unverified: string | undefined;
 }
@@ -90,18 +62,8 @@ export interface ClientRequest {
 }
 
 type Payload =
-  | { kind: "nothing" }
-  // Its keys are known only at runtime.
-  | { kind: "type"; type: ts.Type }
-  | FieldsPayload;
-
-interface FieldsPayload {
-  kind: "fields";
-  fields: SentField[];
-  indexes: SentIndex[];
-  /** The frontend type the fields were read from, if they weren't assembled by the model. */
-  declared: ts.Type | undefined;
-}
+  | Extract<Shape, { kind: "type" | "object" }>
+  | { kind: "nothing" };
 
 interface PayloadPair {
   params: Payload;
@@ -155,14 +117,14 @@ export function modelClientRequest(
     queryUnverified ??= reason;
   };
   const inlinePayload: Payload = {
-    kind: "fields",
+    kind: "object",
     fields: inline.fields,
     indexes: [],
-    declared: undefined,
+    from: undefined,
   };
 
-  const queryVariants: SentPayload[] = [];
-  const bodyVariants: SentPayload[] = [];
+  const queryVariants: Shape[] = [];
+  const bodyVariants: Shape[] = [];
   for (const pair of pairs) {
     let sentQuery = sendAsQuery(context, pair.params, queryNotes, onUnverified);
     if (foldsBody) {
@@ -171,7 +133,7 @@ export function modelClientRequest(
         sendAsQuery(context, pair.body, queryNotes, onUnverified),
         onUnverified,
       );
-      bodyVariants.push({ kind: "nothing" });
+      bodyVariants.push(typeShape(checker.getUndefinedType()));
     } else {
       bodyVariants.push(
         finishPayload(
@@ -216,96 +178,12 @@ export function modelClientRequest(
   };
 }
 
-function unique<T>(items: T[], key: (item: T) => string): T[] {
-  const seen = new Set<string>();
-  return items.filter((item) => {
-    const itemKey = key(item);
-    if (seen.has(itemKey)) {
-      return false;
-    }
-    seen.add(itemKey);
-    return true;
-  });
+function plainType(value: Shape): ts.Type | undefined {
+  return value.kind === "type" ? value.type : undefined;
 }
 
-function typeValue(type: ts.Type, itemOf?: ts.Type): SentValue {
-  return {
-    kind: "json",
-    view: { kind: "type", type },
-    ...(itemOf ? { itemOf } : {}),
-  };
-}
-
-/** The type a value still has, when `JSON.stringify` writes it unchanged. */
-function plainType(value: SentValue): ts.Type | undefined {
-  return value.kind === "json" && value.view.kind === "type"
-    ? value.view.type
-    : undefined;
-}
-
-function valueTypes(values: SentValue[]): ts.Type[] {
-  return values.flatMap((value) => {
-    if (value.kind !== "json") {
-      return [];
-    }
-    const { view } = value;
-    if (view.kind === "type") {
-      return [view.type];
-    }
-    return "from" in view && view.from ? [view.from] : [];
-  });
-}
-
-function isItem(value: SentValue): boolean {
-  return value.kind !== "empty" && value.itemOf !== undefined;
-}
-
-function valueKey(checker: ts.TypeChecker, value: SentValue): string {
-  if (value.kind === "empty") {
-    return "empty";
-  }
-  const item = value.itemOf
-    ? `item of ${typeText(checker, value.itemOf)}:`
-    : "";
-  return value.kind === "json"
-    ? `${item}json:${describeShape(checker, value.view)}`
-    : `${item}text:${value.text}`;
-}
-
-function describeValue(checker: ts.TypeChecker, value: SentValue): string {
-  switch (value.kind) {
-    case "json":
-      return describeShape(checker, value.view);
-    case "text":
-      return JSON.stringify(value.text);
-    case "empty":
-      return '""';
-  }
-}
-
-function describeValues(checker: ts.TypeChecker, values: SentValue[]): string {
-  const items = values.filter(isItem);
-  return [
-    ...values
-      .filter((value) => !isItem(value))
-      .map((value) => describeValue(checker, value)),
-    ...(items.length
-      ? [
-          `(${items.map((value) => describeValue(checker, value)).join(" | ")})[]`,
-        ]
-      : []),
-  ].join(" | ");
-}
-
-function describeFields(checker: ts.TypeChecker, fields: SentField[]): string {
-  if (!fields.length) {
-    return "{}";
-  }
-  const members = fields.map(
-    (field) =>
-      `${field.name}${field.optional ? "?" : ""}: ${describeValues(checker, field.values)};`,
-  );
-  return `{ ${members.join(" ")} }`;
+function describeValues(checker: ts.TypeChecker, values: Shape[]): string {
+  return describeShape(checker, unionShape(values));
 }
 
 function isObjectRest(checker: ts.TypeChecker, expression: ts.Expression) {
@@ -400,19 +278,19 @@ function typePayload(
   }
   return {
     payload: {
-      kind: "fields",
+      kind: "object",
       fields: own.map((property) => ({
         name: property.name,
-        values: [typeValue(checker.getTypeOfSymbolAtLocation(property, at))],
+        shape: typeShape(checker.getTypeOfSymbolAtLocation(property, at)),
         optional: (property.flags & ts.SymbolFlags.Optional) !== 0,
         declaration: symbolDeclaration(property),
       })),
       indexes: indexes.map((index) => ({
         keyType: index.keyType,
-        values: [typeValue(index.type)],
+        shape: typeShape(index.type),
         declaration: index.declaration,
       })),
-      declared: type,
+      from: type,
     },
     notes: dropped.map(
       (property) =>
@@ -425,7 +303,7 @@ function typePayload(
 function isEmpty(payload: Payload): boolean {
   return (
     payload.kind === "nothing" ||
-    (payload.kind === "fields" &&
+    (payload.kind === "object" &&
       !payload.fields.length &&
       !payload.indexes.length)
   );
@@ -514,10 +392,10 @@ function bodyPayloads(
         payloads.push(NOTHING);
       } else {
         payloads.push({
-          kind: "fields",
+          kind: "object",
           fields: [],
           indexes: [],
-          declared: undefined,
+          from: undefined,
         });
         notes.push(
           "a null body is sent as the JSON object {} (ApiClient._resolveOptions and _prepareRequest)",
@@ -552,7 +430,7 @@ function withoutCacheKey(
   notes: string[],
 ): Payload {
   if (
-    payload.kind !== "fields" ||
+    payload.kind !== "object" ||
     !payload.fields.some((field) => field.name === RTK_CACHE_KEY)
   ) {
     return payload;
@@ -568,10 +446,10 @@ function withoutCacheKey(
 
 function withoutTypeFlags(
   checker: ts.TypeChecker,
-  values: SentValue[],
+  values: Shape[],
   removed: ts.TypeFlags,
-): SentValue[] {
-  return values.flatMap((value): SentValue[] => {
+): Shape[] {
+  return values.flatMap((value): Shape[] => {
     const type = plainType(value);
     if (!type) {
       return [value];
@@ -589,8 +467,8 @@ function withoutTypeFlags(
         (!(type.flags & ts.TypeFlags.Null) || removed & ts.TypeFlags.Null),
     );
     return removesSameMembers && kept.length
-      ? [typeValue(checker.getNonNullableType(type))]
-      : kept.map((member) => typeValue(member));
+      ? [typeShape(checker.getNonNullableType(type))]
+      : kept.map((member) => typeShape(member));
   });
 }
 
@@ -610,7 +488,7 @@ function mayBeEmptyArray(checker: ts.TypeChecker, type: ts.Type): boolean {
 }
 
 interface Stringified {
-  values: SentValue[];
+  values: Shape[];
   notes: string[];
   /** Why the text sent cannot be compared: a value whose text is known only at runtime. */
   unverified: string | undefined;
@@ -635,63 +513,52 @@ function elementTypes(
 function stringifiedValues(
   checker: ts.TypeChecker,
   source: string,
-  found: SentValue[],
+  found: Shape[],
   reason: string,
   items: boolean,
 ): Stringified {
   let unverified: string | undefined;
-  const partValue = (
-    part: StringPart,
-    itemOf: ts.Type | undefined,
-  ): SentValue => {
+  const partValue = (part: StringPart): Shape => {
     if (part.kind === "text") {
-      return { kind: "text", text: part.text, ...(itemOf ? { itemOf } : {}) };
+      return { kind: "text", text: part.text };
     }
     if (part.unmodelled) {
       unverified ??= `${source} (${typeText(checker, part.type)}) is sent as text, and ${part.unmodelled} (${reason})`;
     }
-    return typeValue(part.type, itemOf);
+    return typeShape(part.type);
   };
-  const converted = found.flatMap((value): SentValue[] => {
+  const values = found.flatMap((value): Shape[] => {
     const type = plainType(value);
-    if (!type || value.kind === "empty" || value.itemOf) {
+    if (!type) {
       return [value];
     }
     const parts = unionMembers(checker, type);
-    const results = parts.map((part): SentValue[] => {
+    const results = parts.map((part): Shape => {
       if (items && (checker.isArrayType(part) || checker.isTupleType(part))) {
         const itemParts = elementTypes(checker, part).flatMap((element) =>
           stringParts(checker, element),
         );
         return keepsType(itemParts)
-          ? [typeValue(part)]
-          : itemParts.map((itemPart) => partValue(itemPart, part));
+          ? typeShape(part)
+          : {
+              kind: "items",
+              from: part,
+              item: unionShape(itemParts.map(partValue)),
+            };
       }
-      const [only, ...more] = stringParts(checker, part);
-      return only && !more.length ? [partValue(only, undefined)] : [];
+      return unionShape(stringParts(checker, part).map(partValue));
     });
-    const unchanged = results.every((result, index) => {
-      const [only] = result;
-      return (
-        result.length === 1 &&
-        only !== undefined &&
-        only.kind !== "empty" &&
-        !only.itemOf &&
-        plainType(only) === parts[index]
-      );
-    });
-    return unchanged ? [value] : results.flat();
+    return results.every((result, index) => plainType(result) === parts[index])
+      ? [value]
+      : results;
   });
-  const values = unique(converted, (value) => valueKey(checker, value));
-  const defined = (candidates: SentValue[]) =>
-    candidates.filter((value) => value.kind !== "empty");
+  const before = describeValues(checker, found);
+  const after = describeValues(checker, values);
   return {
     values,
     notes:
-      valueKeys(checker, values) !== valueKeys(checker, found)
-        ? [
-            `${source} (${describeValues(checker, defined(found))}) is sent as ${describeValues(checker, defined(values))} (${reason})`,
-          ]
+      before !== after
+        ? [`${source} (${before}) is sent as ${after} (${reason})`]
         : [],
     unverified,
   };
@@ -699,10 +566,10 @@ function stringifiedValues(
 
 function mapFields(
   payload: Payload,
-  mapField: (field: SentField) => SentField | undefined,
-  mapIndexValues: (values: SentValue[]) => SentValue[],
+  mapField: (field: ShapeField) => ShapeField | undefined,
+  mapIndexValues: (values: Shape[]) => Shape[],
 ): Payload {
-  if (payload.kind !== "fields") {
+  if (payload.kind !== "object") {
     return payload;
   }
   const fields = payload.fields.flatMap((field) => {
@@ -711,7 +578,7 @@ function mapFields(
   });
   const indexes = payload.indexes.map((index) => ({
     ...index,
-    values: mapIndexValues(index.values),
+    shape: unionShape(mapIndexValues([index.shape])),
   }));
   return { ...payload, fields, indexes };
 }
@@ -727,13 +594,14 @@ function sendAsQuery(
   return mapFields(
     payload,
     (field) => {
-      const types = valueTypes(field.values).flatMap((type) =>
-        unionMembers(checker, type),
-      );
+      const type = plainType(field.shape);
+      if (!type) {
+        return field;
+      }
+      const types = unionMembers(checker, type);
       const kept = types.filter((type) => !(type.flags & NULLISH));
-      const other = field.values.filter((value) => !plainType(value));
-      const described = `${field.name} (${describeValues(checker, field.values)})`;
-      if (!kept.length && !other.length) {
+      const described = `${field.name} (${describeShape(checker, field.shape)})`;
+      if (!kept.length) {
         notes.push(
           `${described} is null or undefined, so it is not sent (appendQueryParameters)`,
         );
@@ -753,7 +621,7 @@ function sendAsQuery(
         );
       }
       const optional = field.optional || nullish || emptyArray;
-      const present = withoutTypeFlags(checker, field.values, NULLISH);
+      const present = withoutTypeFlags(checker, [field.shape], NULLISH);
       const sent = stringifiedValues(
         checker,
         field.name,
@@ -765,7 +633,7 @@ function sendAsQuery(
       if (sent.unverified) {
         onUnverified(sent.unverified);
       }
-      return { ...field, values: sent.values, optional };
+      return { ...field, shape: unionShape(sent.values), optional };
     },
     (values) => {
       const present = values.flatMap((value) => {
@@ -773,7 +641,7 @@ function sendAsQuery(
         return type
           ? unionMembers(checker, type)
               .filter((member) => !(member.flags & NULLISH))
-              .map((member) => typeValue(member))
+              .map((member) => typeShape(member))
           : [value];
       });
       const sent = stringifiedValues(
@@ -792,15 +660,11 @@ function sendAsQuery(
   );
 }
 
-function valueKeys(checker: ts.TypeChecker, values: SentValue[]): string {
-  return values.map((value) => valueKey(checker, value)).join("|");
-}
-
 function jsonValues(
   { checker }: ModelContext,
-  values: SentValue[],
+  values: Shape[],
   notes: string[],
-): SentValue[] {
+): Shape[] {
   return values.map((value) => {
     const type = plainType(value);
     if (!type) {
@@ -813,7 +677,7 @@ function jsonValues(
     notes.push(
       "body fields are compared after JSON.stringify conversion (JSON.stringify)",
     );
-    return { kind: "json", view };
+    return view;
   });
 }
 
@@ -827,10 +691,12 @@ function sendAsJson(
   return mapFields(
     payload,
     (field) => {
-      const described = `${field.name} (${describeValues(checker, field.values)})`;
-      const types = valueTypes(field.values).flatMap((type) =>
-        unionMembers(checker, type),
-      );
+      const described = `${field.name} (${describeShape(checker, field.shape)})`;
+      const type = plainType(field.shape);
+      if (!type) {
+        return field;
+      }
+      const types = unionMembers(checker, type);
       const kept = types.filter(
         (type) =>
           !(type.flags & (UNDEFINED | ts.TypeFlags.ESSymbolLike)) &&
@@ -845,7 +711,7 @@ function sendAsJson(
       if (kept.length === types.length) {
         return {
           ...field,
-          values: jsonValues(context, field.values, notes),
+          shape: unionShape(jsonValues(context, [field.shape], notes)),
         };
       }
       notes.push(
@@ -853,11 +719,7 @@ function sendAsJson(
       );
       return {
         ...field,
-        values: jsonValues(
-          context,
-          kept.map((type) => typeValue(type)),
-          notes,
-        ),
+        shape: unionShape(jsonValues(context, kept.map(typeShape), notes)),
         optional: true,
       };
     },
@@ -886,24 +748,21 @@ function finishPayload(
   checker: ts.TypeChecker,
   payload: Payload,
   channel: "query" | "body",
-): SentPayload {
-  if (payload.kind !== "fields") {
-    return payload;
+): Shape {
+  if (payload.kind === "nothing" || (channel === "query" && isEmpty(payload))) {
+    return typeShape(checker.getUndefinedType());
   }
-  if (channel === "query" && isEmpty(payload)) {
-    return { kind: "nothing" };
+  if (payload.kind === "type") {
+    return typeShape(payload.type);
   }
-  const fields = describeFields(checker, payload.fields);
-  const declared = payload.declared && typeText(checker, payload.declared);
+  const fields = payload.fields.length ? describeShape(checker, payload) : "{}";
+  const declared = payload.from && typeText(checker, payload.from);
   return {
-    kind: "fields",
+    ...payload,
     description:
       declared && declared !== fields
         ? `${declared} sent as ${fields}`
         : fields,
-    declared: payload.declared,
-    fields: payload.fields,
-    indexes: payload.indexes,
   };
 }
 
@@ -947,7 +806,7 @@ function encodedArgument(
 
 function knownTexts(
   checker: ts.TypeChecker,
-  values: SentValue[],
+  values: Shape[],
 ): string[] | undefined {
   const texts = values.flatMap((value) => {
     if (value.kind === "text") {
@@ -967,7 +826,7 @@ function knownTexts(
 function pathTextUnverified(
   checker: ts.TypeChecker,
   source: string,
-  values: SentValue[],
+  values: Shape[],
   encoded: boolean,
 ): string | undefined {
   const text = (knownTexts(checker, values) ?? []).find(
@@ -993,7 +852,7 @@ function spanValues(
     ...stringifiedValues(
       checker,
       `\${${unwrap(expression).getText()}}`,
-      [typeValue(checker.getTypeAtLocation(argument ?? unwrap(expression)))],
+      [typeShape(checker.getTypeAtLocation(argument ?? unwrap(expression)))],
       `${conversion} applies String`,
       false,
     ),
@@ -1007,23 +866,22 @@ function substituteTag(
   { params, body }: PayloadPair,
 ): Omit<SentPathParameter, "source"> & PayloadPair {
   const field =
-    params.kind === "fields"
+    params.kind === "object"
       ? params.fields.find((field) => field.name === name)
       : undefined;
   const values = field
-    ? withoutTypeFlags(checker, field.values, UNDEFINED)
+    ? withoutTypeFlags(checker, [field.shape], UNDEFINED)
     : [];
   const mayBeMissing =
     !field ||
     field.optional ||
-    valueTypes(field.values).some((type) =>
-      unionMembers(checker, type).some(
+    (field.shape.kind === "type" &&
+      unionMembers(checker, field.shape.type).some(
         (part) => (part.flags & UNDEFINED) !== 0,
-      ),
-    );
+      ));
   const unknownKeys =
     params.kind === "type" ||
-    (params.kind === "fields" &&
+    (params.kind === "object" &&
       !field &&
       params.indexes.some((index) =>
         checker.isTypeAssignableTo(
@@ -1041,13 +899,16 @@ function substituteTag(
     };
   }
   return {
-    values: [...values, ...(mayBeMissing ? [{ kind: "empty" } as const] : [])],
+    values: [
+      ...values,
+      ...(mayBeMissing ? [{ kind: "text", text: "" } as const] : []),
+    ],
     notes: [
       `:${name} is filled from params.${name}, or becomes an empty string when it has no defined value (substituteUrlTags)`,
     ],
     unverified: undefined,
     params:
-      params.kind === "fields"
+      params.kind === "object"
         ? {
             ...params,
             fields: params.fields.filter((field) => field.name !== name),
@@ -1065,7 +926,7 @@ function substituteTags(
 ): { parameters: SentPathParameter[]; unverified: string | undefined } {
   let unsupported: string | undefined;
   const parameters = tags.map((slot) => {
-    const values: SentValue[] = [];
+    const values: Shape[] = [];
     const notes: string[] = [];
     let unverified: string | undefined;
     for (const pair of pairs) {
@@ -1080,7 +941,7 @@ function substituteTags(
     const sent = stringifiedValues(
       checker,
       `:${slot.name}`,
-      unique(values, (value) => valueKey(checker, value)),
+      values,
       "substituteUrlTags",
       false,
     );
@@ -1144,7 +1005,7 @@ function pathParameters(
 }
 
 function inlineQuery(query: UrlSlot[]): {
-  fields: SentField[];
+  fields: ShapeField[];
   notes: string[];
   unverified: string | undefined;
 } {
@@ -1160,7 +1021,7 @@ function inlineQuery(query: UrlSlot[]): {
     .map((slot) => (slot.kind === "text" ? slot.text : ""))
     .join("");
   const search = text.split("#")[0] ?? "";
-  const fields: SentField[] = [];
+  const fields: ShapeField[] = [];
   const names = new Set<string>();
   for (const [name, value] of new URLSearchParams(search)) {
     if (names.has(name)) {
@@ -1173,7 +1034,7 @@ function inlineQuery(query: UrlSlot[]): {
     names.add(name);
     fields.push({
       name,
-      values: [{ kind: "text", text: value }],
+      shape: { kind: "text", text: value },
       optional: false,
       declaration: undefined,
     });

@@ -3,12 +3,9 @@ import ts from "typescript";
 import {
   type ClientRequest,
   type SentPart,
-  type SentPayload,
-  type SentValue,
   modelClientRequest,
 } from "./client-request";
 import { type RtkRequest, resolveRtkRequest } from "./rtk-request";
-import { type Shape, typeShape } from "./shape";
 import {
   type CompareContext,
   LINE_BREAK,
@@ -551,87 +548,11 @@ function comparePart(
     );
   }
   return combineVerdicts(
-    part.variants.map((object) =>
-      comparePayload(context, location, object, expected, at),
+    part.variants.map((shape) =>
+      compareShape(context, "request", location, shape, expected, at),
     ),
     part.notes,
   );
-}
-
-function comparePayload(
-  context: CheckContext,
-  location: string,
-  payload: SentPayload,
-  expected: ts.Type,
-  at: ts.Node,
-): Verdict {
-  return compareShape(
-    context,
-    "request",
-    location,
-    payloadShape(context.checker, payload),
-    expected,
-    at,
-  );
-}
-
-function payloadShape(checker: ts.TypeChecker, payload: SentPayload): Shape {
-  switch (payload.kind) {
-    case "nothing":
-      return typeShape(checker.getUndefinedType());
-    case "type":
-      return typeShape(payload.type);
-    case "fields":
-      return {
-        kind: "object",
-        from: payload.declared,
-        description: payload.description,
-        fields: payload.fields.map((field) => ({
-          name: field.name,
-          shape: valuesShape(field.values),
-          optional: field.optional,
-          declaration: field.declaration,
-        })),
-        indexes: payload.indexes.map((index) => ({
-          keyType: index.keyType,
-          shape: valuesShape(index.values),
-          declaration: index.declaration,
-        })),
-      };
-  }
-}
-
-/** One shape for the values a field may hold; items of the same array are sent one key per item. */
-function valuesShape(values: SentValue[]): Shape {
-  const arrays = new Map<ts.Type, Shape[]>();
-  const members: Shape[] = [];
-  for (const value of values) {
-    const itemOf = value.kind === "empty" ? undefined : value.itemOf;
-    if (itemOf) {
-      arrays.set(itemOf, [...(arrays.get(itemOf) ?? []), valueShape(value)]);
-    } else {
-      members.push(valueShape(value));
-    }
-  }
-  for (const [from, items] of arrays) {
-    members.push({ kind: "items", from, item: unionShape(items) });
-  }
-  return unionShape(members);
-}
-
-function unionShape(members: Shape[]): Shape {
-  const [only] = members;
-  return only && members.length === 1 ? only : { kind: "union", members };
-}
-
-function valueShape(value: SentValue): Shape {
-  switch (value.kind) {
-    case "json":
-      return value.view;
-    case "text":
-    case "empty":
-      return { kind: "text", text: value.kind === "text" ? value.text : "" };
-  }
 }
 
 function checkPathParameters(
@@ -692,19 +613,12 @@ function pathParameterVerdict(
   const verdicts: Verdict[] = parameter.unverified
     ? [{ status: "unverified", message: parameter.unverified }]
     : parameter.values.map((value) =>
-        value.kind === "empty"
+        value.kind === "text" && value.text === ""
           ? {
               status: "mismatch",
               message: `$: ${parameter.source} may be replaced with an empty string, which removes the path segment`,
             }
-          : compareShape(
-              context,
-              "request",
-              location,
-              valueShape(value),
-              expected,
-              node,
-            ),
+          : compareShape(context, "request", location, value, expected, node),
       );
   return combineVerdicts(verdicts, parameter.notes);
 }
