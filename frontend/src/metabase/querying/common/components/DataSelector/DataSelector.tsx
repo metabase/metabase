@@ -141,7 +141,7 @@ export interface DataSelectorOwnProps {
 
 interface DataSelectorStateProps {
   availableModels: SearchModel[];
-  lookups: EntityLookups;
+  entityLookups: EntityLookups;
   databases: DataSelectorDatabase[];
   hasLoadedDatabasesWithTablesSaved: boolean;
   hasLoadedDatabasesWithSaved: boolean;
@@ -336,7 +336,7 @@ export class UnconnectedDataSelector extends Component<
   }
 
   // computes selected entities (`selectedDatabase`, etc) and options
-  // (`databases`, etc) from props (`lookups`, `databases`, etc) and state
+  // (`databases`, etc) from props (`entityLookups`, `databases`, etc) and state
   // (`selectedDatabaseId`, etc)
   //
   // NOTE: this is complicated because we allow you to:
@@ -352,7 +352,7 @@ export class UnconnectedDataSelector extends Component<
     props: DataSelectorProps,
     state: SelectedIdsState,
   ): ComputedDataSelectorState {
-    const { lookups, tableFilter, fieldFilter } = props;
+    const { entityLookups, tableFilter, fieldFilter } = props;
     const {
       selectedDatabaseId,
       selectedSchemaId,
@@ -367,32 +367,32 @@ export class UnconnectedDataSelector extends Component<
     let selectedField: DataSelectorField | null = null;
 
     const getDatabase = (id: DatabaseId) =>
-      _.findWhere(databases, { id }) || lookups.database(id);
+      _.findWhere(databases, { id }) || entityLookups.database(id);
     const getSchema = (id: SchemaId) =>
-      _.findWhere(schemas ?? [], { id }) || lookups.schema(id);
+      _.findWhere(schemas ?? [], { id }) || entityLookups.schema(id);
     const getTable = (id: TableId) =>
-      _.findWhere(tables ?? [], { id }) || lookups.table(id);
+      _.findWhere(tables ?? [], { id }) || entityLookups.table(id);
     const getField = (id: FieldId | FieldReference) =>
-      _.findWhere(fields ?? [], { id }) || lookups.field(id);
+      _.findWhere(fields ?? [], { id }) || entityLookups.field(id);
 
     const deriveFromDatabase = (database: DataSelectorDatabase | null) => {
       if (!schemas && database) {
-        schemas = lookups.databaseSchemas(database.id);
+        schemas = entityLookups.databaseSchemas(database.id);
       }
       if (!tables && Array.isArray(schemas) && schemas.length === 1) {
-        tables = lookups.schemaTables(schemas[0].id);
+        tables = entityLookups.schemaTables(schemas[0].id);
       }
     };
 
     const deriveFromSchema = (schema: DataSelectorSchema | null) => {
       if (!tables && schema) {
-        tables = lookups.schemaTables(schema.id);
+        tables = entityLookups.schemaTables(schema.id);
       }
     };
 
     const deriveFromTable = (table: DataSelectorTable | null) => {
       if (!fields && table) {
-        fields = lookups.tableFields(table.id);
+        fields = entityLookups.tableFields(table.id);
       }
     };
 
@@ -413,15 +413,16 @@ export class UnconnectedDataSelector extends Component<
     }
     // now do it in in reverse to propagate it back up
     if (!selectedTable && selectedField) {
-      selectedTable = lookups.table(selectedField.table_id) ?? null;
+      selectedTable = entityLookups.table(selectedField.table_id) ?? null;
       deriveFromTable(selectedTable);
     }
     if (!selectedSchema && selectedTable) {
-      selectedSchema = lookups.tableSchema(selectedTable.id) ?? null;
+      selectedSchema = entityLookups.tableSchema(selectedTable.id) ?? null;
       deriveFromSchema(selectedSchema);
     }
     if (!selectedDatabase && selectedSchema) {
-      selectedDatabase = lookups.database(selectedSchema.database) ?? null;
+      selectedDatabase =
+        entityLookups.database(selectedSchema.database) ?? null;
       deriveFromDatabase(selectedDatabase);
     }
 
@@ -491,7 +492,7 @@ export class UnconnectedDataSelector extends Component<
     }
     if (Object.keys(newState).length > 0) {
       this.setStateWithComputedState(newState, nextProps);
-    } else if (nextProps.lookups !== this.props.lookups) {
+    } else if (nextProps.entityLookups !== this.props.entityLookups) {
       this.setStateWithComputedState({}, nextProps);
     }
   }
@@ -548,9 +549,9 @@ export class UnconnectedDataSelector extends Component<
       schemas,
     } = this.state;
 
-    const { lookups } = this.props;
+    const { entityLookups } = this.props;
     const selectedSchemaDatabase = selectedSchema
-      ? lookups.database(selectedSchema.database)
+      ? entityLookups.database(selectedSchema.database)
       : undefined;
 
     const invalidSchema =
@@ -571,7 +572,7 @@ export class UnconnectedDataSelector extends Component<
       selectedSchema &&
       selectedTable &&
       !isVirtualCardId(selectedTable.id) &&
-      lookups.tableSchema(selectedTable.id)?.id !== selectedSchema.id;
+      entityLookups.tableSchema(selectedTable.id)?.id !== selectedSchema.id;
 
     const invalidField =
       selectedTable &&
@@ -1033,7 +1034,7 @@ export class UnconnectedDataSelector extends Component<
       selectedField != null &&
       selectedDatabase != null &&
       _.uniq(
-        this.props.lookups.databaseTables(selectedDatabase.id),
+        this.props.entityLookups.databaseTables(selectedDatabase.id),
         (table) => table.schema_name,
       ).length > 1;
 
@@ -1111,8 +1112,8 @@ export class UnconnectedDataSelector extends Component<
       hasInitialFocus: true,
       databaseIsDisabled: this.props.databaseIsDisabled,
       databaseDisabledTooltip: this.props.databaseDisabledTooltip,
-      getDatabaseSchemas: this.props.lookups.databaseSchemas,
-      getFieldDisplayName: this.props.lookups.fieldName,
+      getDatabaseSchemas: this.props.entityLookups.databaseSchemas,
+      getFieldDisplayName: this.props.entityLookups.fieldName,
     };
 
     switch (this.state.activeStep) {
@@ -1163,7 +1164,7 @@ export class UnconnectedDataSelector extends Component<
   handleSavedEntitySelect = async (tableOrCardId: string) => {
     await this.props.fetchFields(tableOrCardId);
     if (this.props.setSourceTableFn) {
-      const table = this.props.lookups.table(tableOrCardId);
+      const table = this.props.entityLookups.table(tableOrCardId);
       this.props.setSourceTableFn(tableOrCardId, table?.db_id);
     }
     this.togglePopoverOpen();
@@ -1370,17 +1371,17 @@ const mapStateToProps = (
   };
   const queriedDatabases =
     databaseApi.endpoints.listDatabases.select(databaseQuery)(state).data?.data;
-  const lookups = getEntityLookups(state);
+  const entityLookups = getEntityLookups(state);
   const selectedCardId = getQuestionIdFromVirtualTableId(
     ownProps.selectedTableId,
   );
   return {
     availableModels: ownProps.availableModelsResult?.available_models ?? [],
-    lookups,
+    entityLookups,
     databases:
       ownProps.databases ||
       queriedDatabases
-        ?.map(({ id }) => lookups.database(id))
+        ?.map(({ id }) => entityLookups.database(id))
         .filter((database) => database != null) ||
       [],
     hasLoadedDatabasesWithTablesSaved: isListDatabasesQuerySuccess(state, {
