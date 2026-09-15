@@ -1992,8 +1992,8 @@
                  (is (= "Not found."
                         (client/client :get 404 (dashcard-url dash card dashcard)))))))))))))
 
-(def ^:private error-leak-sql-canary "SEC_1210_SQL_CANARY")
-(def ^:private error-leak-card-name-canary "SEC-1210 CARD NAME CANARY")
+(def ^:private error-leak-sql-canary "ERROR_LEAK_SQL_CANARY")
+(def ^:private error-leak-card-name-canary "ERROR LEAK CARD NAME CANARY")
 
 (defn- date-param-native-card
   "A healthy native Card with a date field filter, so a caller-supplied parameter value can drive it to an error without
@@ -2021,7 +2021,7 @@
   (json/encode [{:id     "d"
                  :type   "date/all-options"
                  :target ["dimension" ["template-tag" "d"]]
-                 :value  "SEC-1210-NOT-A-DATE"}]))
+                 :value  "NOT-A-DATE"}]))
 
 (defn- assert-generic-query-error
   "Assert that `response` (from [[client/client-full-response]]) is the generic public-endpoint failure body and that
@@ -2043,7 +2043,7 @@
 
 (deftest public-pivot-card-error-does-not-leak-query-test
   (testing "GET /api/public/pivot/card/:uuid/query"
-    (testing "an error raised while building the pivot sub-queries must not leak the Card's query or a stacktrace (SEC-1210)"
+    (testing "an error raised while building the pivot sub-queries must not leak the Card's query or a stacktrace"
       (mt/dataset test-data
         (mt/with-temporary-setting-values [enable-public-sharing true]
           (with-temp-public-card [{uuid :public_uuid} (date-param-native-card :pivot)]
@@ -2055,7 +2055,7 @@
 
 (deftest public-card-with-pivot-display-error-does-not-leak-query-test
   (testing "GET /api/public/card/:uuid/query"
-    (testing "a Card with :display :pivot takes the pivot path on its ordinary public link too (SEC-1210)"
+    (testing "a Card with :display :pivot takes the pivot path on its ordinary public link too"
       (mt/dataset test-data
         (mt/with-temporary-setting-values [enable-public-sharing true]
           (with-temp-public-card [{uuid :public_uuid} (date-param-native-card :pivot)]
@@ -2065,14 +2065,14 @@
 
 (deftest public-pivot-dashcard-error-does-not-leak-query-test
   (testing "GET /api/public/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
-    (testing "an error raised before the QP runs must not leak the query of a Card that is not itself public (SEC-1210)"
+    (testing "an error raised before the QP runs must not leak the query of a Card that is not itself public"
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (with-temp-public-dashboard [dash]
           (mt/with-temp [:model/Card card {:name          error-leak-card-name-canary
                                            :display       :pivot
                                            :dataset_query {:database (mt/id)
                                                            :type     :native
-                                                           :native   {:query (str "SELECT * FROM sec_1210_no_such_table -- "
+                                                           :native   {:query (str "SELECT * FROM no_such_table -- "
                                                                                   error-leak-sql-canary)}}}]
             (let [dashcard (add-card-to-dashboard! card dash)]
               (is (nil? (:public_uuid card)))

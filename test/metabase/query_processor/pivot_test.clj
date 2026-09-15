@@ -155,7 +155,7 @@
               clojure.lang.ExceptionInfo
               #"Error generating pivot queries"
               (qp.pivot/run-pivot-query query))))
-       (testing "is returned in the usual formatted error shape for a userland query, like any other QP error (SEC-1210)"
+       (testing "is returned in the usual formatted error shape for a userland query, like any other QP error"
          (doseq [userland-query [(qp.core/userland-query query)
                                  (assoc query :info {:context :ad-hoc})]]
            (is (=? {:status     :failed

@@ -18,6 +18,7 @@
    [metabase.parameters.custom-values :as custom-values]
    [metabase.public-sharing-rest.api-test :as public-test]
    [metabase.queries-rest.api.card-test :as api.card-test]
+   [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.query-processor.pivot.test-util :as api.pivots]
@@ -1659,6 +1660,38 @@
             (with-temp-card [card (merge {:enable_embedding true} (api.pivots/pivot-card))]
               (is (= "Message seems corrupt or manipulated"
                      (client/client :get 400 (with-new-secret-key! (pivot-card-query-url card ""))))))))))))
+
+(deftest embed-pivot-card-error-does-not-leak-query-test
+  (testing "GET /api/embed/pivot/card/:token/query"
+    (testing "an error raised while building the pivot sub-queries must not leak the Card's query or a stacktrace"
+      (with-embedding-enabled-and-new-secret-key!
+        (with-temp-card [card {:enable_embedding true
+                               :name             "EMBED ERROR LEAK CARD NAME CANARY"
+                               :display          :pivot
+                               :dataset_query    {:database (mt/id)
+                                                  :type     :native
+                                                  :native   {:query "SELECT * FROM no_such_table -- EMBED_ERROR_LEAK_SQL_CANARY"}}}]
+          (let [{:keys [status body]} (client/client-full-response :get (pivot-card-query-url card ""))
+                body-str              (pr-str body)]
+            (is (= 500 status))
+            (is (= {:status "failed", :error "An error occurred while running the query.", :error_type "qp"}
+                   body))
+            (is (not (str/includes? body-str "CANARY")))
+            (is (not (str/includes? body-str ":trace")))))))))
+
+(deftest embed-card-query-exception-outside-qp-does-not-leak-test
+  (testing "GET /api/embed/card/:token/query"
+    (testing "an exception that escapes the QP entirely is still reduced to the generic embedding error"
+      (with-embedding-enabled-and-new-secret-key!
+        (with-temp-card [card {:enable_embedding true, :name "EMBED ERROR LEAK CARD NAME CANARY"}]
+          (mt/with-dynamic-fn-redefs [qp.card/process-query-for-card-default-qp
+                                      (fn [query _rff]
+                                        (throw (ex-info "Boom EMBED_ERROR_LEAK_SQL_CANARY" {:query query})))]
+            (let [{:keys [status body]} (client/client-full-response :get (card-query-url card ""))]
+              (is (= 500 status))
+              (is (= {:status "failed", :error "An error occurred while running the query."}
+                     body))
+              (is (not (str/includes? (pr-str body) "CANARY"))))))))))
 
 (defn- pivot-dashcard-url
   ([dashcard] (pivot-dashcard-url dashcard (:dashboard_id dashcard)))

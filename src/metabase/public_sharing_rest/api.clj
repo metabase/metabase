@@ -31,7 +31,6 @@
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.middleware.catch-exceptions :as qp.catch-exceptions]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -158,14 +157,24 @@
     [:json_query :parameters]
     :status]))
 
-(defmethod transform-qp-result :failed
-  [{error-type :error_type, :as results}]
-  ;; if the query failed instead, unless the error type is specified and is EXPLICITLY allowed to be shown for embeds,
-  ;; instead of returning anything about the query just return a generic error message
+(defn error-response
+  "Reduce a query `error` -- the QP's formatted error response, or the `Throwable->map` of an exception that escaped
+  it -- to what public and embedded endpoints are allowed to return: the status and error type, and a generic message
+  in place of the original unless the error type is EXPLICITLY allowed to be shown in embeds. Nothing about the query
+  itself gets through.
+
+  [[metabase.api-routes.routes]] applies this to every error written by a streaming response under the public and
+  embedding routes."
+  [{error-type :error_type, :as error}]
   (merge
-   (select-keys results [:status :error :error_type])
+   {:status :failed}
+   (select-keys error [:status :error :error_type])
    (when-not (qp.error-type/show-in-embeds? error-type)
      {:error (tru "An error occurred while running the query.")})))
+
+(defmethod transform-qp-result :failed
+  [results]
+  (error-response results))
 
 (defn- process-query-for-card-with-id-run-fn
   "Create the `:make-run` function used for [[process-query-for-card-with-id]] and [[process-query-for-dashcard]]."
@@ -174,13 +183,7 @@
     (qp.streaming/streaming-response [rff export-format (qp.streaming/safe-filename-prefix (:card-name info))]
       (binding [qp.pipeline/*result* (comp qp.pipeline/*result* transform-qp-result)]
         (request/as-admin
-          (try
-            (qp (update query :info merge info) rff)
-            (catch Throwable e
-              ;; The QP normally catches errors itself and hands a formatted result to `*result*` above, where
-              ;; `transform-qp-result` strips everything but a generic message. An exception that escapes `qp` would
-              ;; bypass that and be written to the client verbatim. Format it and route it through the same sanitization.
-              (qp.pipeline/*result* (qp.catch-exceptions/exception-response e)))))))))
+          (qp (update query :info merge info) rff))))))
 
 (mu/defn- export-format->context :- ::lib.schema.info/context
   [export-format :- [:maybe :keyword]]
