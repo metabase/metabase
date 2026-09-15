@@ -4,6 +4,7 @@
    [java-time.api :as t]
    [metabase.config.core :as config]
    [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -326,11 +327,13 @@
   :default    :external-only
   :export?    false
   :deprecated-name :http-channel-host-strategy
-  :setter     (fn [new-value]
-                (when (some? new-value)
-                  (assert (#{:external-only :allow-private :allow-all} (keyword new-value))
-                          (tru "Invalid http-channel-allowed-networks! Only values of external-only, allow-private, and allow-all are allowed.")))
-                (setting/set-value-of-type! :keyword :http-channel-allowed-networks new-value)))
+  :setter     :none
+  :doc        (str "Set this when a notification webhook must reach a host on your private network "
+                   "(`allow-private`) or on this machine (`allow-all`). Default is `external-only`")
+  :getter     (fn []
+                (let [[env-var-name raw-value] (setting/env-var-source :http-channel-allowed-networks)]
+                  (or (u.http/env-network-policy env-var-name raw-value)
+                      :external-only))))
 
 (defsetting slack-configured?
   "Is Slack integration configured?"

@@ -45,3 +45,23 @@
       (doseq [k [:ldap-attribute-email :ldap-attribute-firstname :ldap-attribute-lastname]]
         (testing k
           (is (nil? (setting/user-facing-value k))))))))
+
+(deftest oidc-allowed-networks-is-environment-only-test
+  (testing "the policy is read from the environment only: a value that reached the setting table -- an older
+           version's admin API, a serialization import, a direct write -- is ignored, not trusted"
+    (mt/with-temp-env-var-value! [mb-oidc-allowed-networks nil]
+      (mt/with-temporary-raw-setting-values [oidc-allowed-networks "external-only"]
+        (is (= :allow-all (sso.settings/oidc-allowed-networks))))))
+  (testing "and the environment still wins over a stored value"
+    (mt/with-temp-env-var-value! [mb-oidc-allowed-networks "external-only"]
+      (mt/with-temporary-raw-setting-values [oidc-allowed-networks "allow-all"]
+        (is (= :external-only (sso.settings/oidc-allowed-networks))))))
+  (testing "an unrecognized policy is refused outright"
+    (mt/with-temp-env-var-value! [mb-oidc-allowed-networks "allow-everything"]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Invalid MB_OIDC_ALLOWED_NETWORKS"
+                            (sso.settings/oidc-allowed-networks)))))
+  (testing "nothing can write it: it is a read-only Setting"
+    (is (thrown-with-msg? UnsupportedOperationException
+                          #"read-only setting"
+                          (setting/set! :oidc-allowed-networks :allow-all)))))

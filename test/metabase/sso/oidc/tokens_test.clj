@@ -340,7 +340,7 @@ h0ccjghRm1/Az8L/HL+gdQmtY0NdB4Ml2mZHCVsPYf5WzIirTpjY0EzKDA==
 
 (deftest get-jwks-ssrf-protection-test
   (testing "Respects oidc-allowed-networks if set — blocked requests return nil (no HTTP request made)"
-    (mt/with-temporary-setting-values [oidc-allowed-networks :external-only]
+    (mt/with-temp-env-var-value! [mb-oidc-allowed-networks "external-only"]
       (testing "Rejects internal addresses (localhost)"
         (oidc.tokens/clear-jwks-cache!)
         (is (nil? (oidc.tokens/get-jwks "http://localhost/jwks"))))

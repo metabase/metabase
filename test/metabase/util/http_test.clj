@@ -386,3 +386,30 @@
     (is (= 5 (count (#'http/read-bounded (ByteArrayInputStream. (.getBytes "12345")) 5)))))
   (testing "returns nil when the stream exceeds the cap"
     (is (nil? (#'http/read-bounded (ByteArrayInputStream. (.getBytes "0123456789")) 5)))))
+
+(deftest ^:parallel env-network-policy-test
+  (testing "an unset environment variable names no policy, so the caller supplies its own default"
+    (doseq [raw [nil "" "   "]]
+      (is (nil? (http/env-network-policy "MB_TEST_ALLOWED_NETWORKS" raw)) (pr-str raw))))
+  (testing "a known policy is read as written"
+    (doseq [[raw expected] {"external-only"  :external-only
+                            "allow-private"  :allow-private
+                            "allow-all"      :allow-all
+                            "ALLOW-PRIVATE"  :allow-private
+                            "  allow-all  "  :allow-all}]
+      (is (= expected (http/env-network-policy "MB_TEST_ALLOWED_NETWORKS" raw)) raw)))
+  (testing "a value that is not a policy throws, naming the variable and what it accepts: nothing else validates
+           what is in the environment, and running on a policy nobody chose is not an option"
+    (doseq [raw ["allow-everything" "externl-only" "true" ":allow-all" "allow_all"
+                 ;; a policy of the address checker, but not one a deployment may ask for
+                 "loopback-and-private"]]
+      (is (thrown-with-msg? ExceptionInfo
+                            #"Invalid MB_TEST_ALLOWED_NETWORKS: .* Expected one of external-only, allow-private, allow-all\."
+                            (http/env-network-policy "MB_TEST_ALLOWED_NETWORKS" raw))
+          raw)))
+  (testing "the thrown data names the variable, the value and what was expected"
+    (is (= {:env-var  "MB_TEST_ALLOWED_NETWORKS"
+            :value    "allow-everything"
+            :expected [:external-only :allow-private :allow-all]}
+           (try (http/env-network-policy "MB_TEST_ALLOWED_NETWORKS" "allow-everything")
+                (catch ExceptionInfo e (ex-data e)))))))

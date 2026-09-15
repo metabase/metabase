@@ -215,9 +215,12 @@
         (is (= :allow-all (llm.settings/llm-allowed-networks))))
       (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-private"]
         (is (= :allow-private (llm.settings/llm-allowed-networks)))))
-    (testing "a value that is not one of the policies fails closed"
+    (testing "a value that is not one of the policies is refused outright: startup reads this Setting, so the
+             instance does not come up on a policy nobody chose"
       (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow_all"]
-        (is (= :external-only (llm.settings/llm-allowed-networks)))))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Invalid MB_LLM_ALLOWED_NETWORKS"
+                              (llm.settings/llm-allowed-networks)))))
     (testing "it is not settable: nobody loosens it through the API"
       (is (thrown? Exception (setting/set! :llm-allowed-networks :allow-all)))))
   (testing "a value that reached the application database some other way is ignored"

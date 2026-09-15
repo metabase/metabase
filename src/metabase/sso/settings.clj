@@ -5,6 +5,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting define-multi-setting define-multi-setting-impl]]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
    [metabase.util.string :as u.str])
@@ -268,12 +269,16 @@
 (defsetting oidc-allowed-networks
   (deferred-tru "What networks are OIDC requests allowed to? Possible values: ''allow-all'' (default), ''allow-private'', or ''external-only''.")
   :type :keyword
+  :visibility :internal
   :default :allow-all
   :export? false
-  :setter (fn [new-value]
-            (when (some? new-value)
-              (assert (#{:allow-all :allow-private :external-only} (keyword new-value))))
-            (setting/set-value-of-type! :keyword :oidc-allowed-networks new-value)))
+  :setter :none
+  :doc (str "Set this to tighten which networks OIDC discovery and token requests may reach; it defaults to "
+            "allow-all. Other values: external-only and allow-private")
+  :getter (fn []
+            (let [[env-var-name raw-value] (setting/env-var-source :oidc-allowed-networks)]
+              (or (u.http/env-network-policy env-var-name raw-value)
+                  :allow-all))))
 
 (defn- ee-sso-configured? []
   (when config/ee-available?

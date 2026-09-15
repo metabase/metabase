@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.premium-features.test-util :as premium-features.tu]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.tiles.settings :as tiles.settings]))
 
@@ -36,13 +37,13 @@
   (testing "the default policy depends on where we are running: on Cloud a tile server on an internal
            address is somebody reaching for our infrastructure, but self-hosted it is ordinary"
     ;; nil = nothing stored, so the getter falls through to the where-are-we-running default
-    (mt/with-temporary-setting-values [map-tile-server-allowed-networks nil]
+    (mt/with-temp-env-var-value! [mb-map-tile-server-allowed-networks nil]
       (premium-features.tu/with-premium-features #{:hosting}
         (is (= :external-only (tiles.settings/map-tile-server-allowed-networks))))
       (premium-features.tu/with-premium-features #{}
         (is (= :allow-private (tiles.settings/map-tile-server-allowed-networks)))))
     (testing "an explicit value wins either way"
-      (mt/with-temporary-setting-values [map-tile-server-allowed-networks :allow-all]
+      (mt/with-temp-env-var-value! [mb-map-tile-server-allowed-networks "allow-all"]
         (premium-features.tu/with-premium-features #{:hosting}
           (is (= :allow-all (tiles.settings/map-tile-server-allowed-networks))))))))
 
@@ -51,19 +52,19 @@
            configuration: this setting is consumed by the browser, so an on-prem instance with no internet
            egress can only show maps at all by pointing at an internal host"
     (premium-features.tu/with-premium-features #{}
-      (mt/with-temporary-setting-values [map-tile-server-url              osm-template
-                                         map-tile-server-allowed-networks nil]
-        (doseq [template ["http://10.0.0.1/{z}/{x}/{y}.png"
-                          "http://192.168.0.1:8080/{z}/{x}/{y}.png"
-                          "http://172.16.4.20/{z}/{x}/{y}.png"]]
-          (testing template
-            (is (= template (set-tile-url! template))))))))
+      (mt/with-temp-env-var-value! [mb-map-tile-server-allowed-networks nil]
+        (mt/with-temporary-setting-values [map-tile-server-url osm-template]
+          (doseq [template ["http://10.0.0.1/{z}/{x}/{y}.png"
+                            "http://192.168.0.1:8080/{z}/{x}/{y}.png"
+                            "http://172.16.4.20/{z}/{x}/{y}.png"]]
+            (testing template
+              (is (= template (set-tile-url! template)))))))))
   (testing "on Cloud the same URLs are refused"
     (premium-features.tu/with-premium-features #{:hosting}
-      (mt/with-temporary-setting-values [map-tile-server-url              osm-template
-                                         map-tile-server-allowed-networks nil]
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid map tile server URL"
-                              (tiles.settings/map-tile-server-url! "http://10.0.0.1/{z}/{x}/{y}.png")))))))
+      (mt/with-temp-env-var-value! [mb-map-tile-server-allowed-networks nil]
+        (mt/with-temporary-setting-values [map-tile-server-url osm-template]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid map tile server URL"
+                                (tiles.settings/map-tile-server-url! "http://10.0.0.1/{z}/{x}/{y}.png"))))))))
 
 (deftest map-tile-server-url-accepts-valid-templates-test
   (testing "the setter still accepts the templates admins legitimately configure"
@@ -81,12 +82,12 @@
 (deftest map-tile-server-allowed-networks-test
   (mt/with-temporary-setting-values [map-tile-server-url osm-template]
     (testing "external-only tightens the default, rejecting private networks"
-      (mt/with-temporary-setting-values [map-tile-server-allowed-networks :external-only]
+      (mt/with-temp-env-var-value! [mb-map-tile-server-allowed-networks "external-only"]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid map tile server URL"
                               (tiles.settings/map-tile-server-url! "http://10.0.0.1/{z}/{x}/{y}.png")))
         (is (= osm-template (set-tile-url! osm-template)))))
     (testing "allow-all imposes no host restriction, for a tile server Metabase itself cannot resolve"
-      (mt/with-temporary-setting-values [map-tile-server-allowed-networks :allow-all]
+      (mt/with-temp-env-var-value! [mb-map-tile-server-allowed-networks "allow-all"]
         (doseq [template ["http://127.0.0.1:8899/{z}/{x}/{y}.png"
                           "https://tiles.invalid/{z}/{x}/{y}.png"]]
           (testing template
@@ -94,6 +95,24 @@
         (testing "the scheme is still checked"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid map tile server URL"
                                 (tiles.settings/map-tile-server-url! "file:///etc/passwd"))))))
-    (testing "only the three known values are accepted"
-      (is (thrown-with-msg? java.lang.AssertionError #"Invalid map-tile-server-allowed-networks"
-                            (tiles.settings/map-tile-server-allowed-networks! :allow-everything))))))
+    (testing "an unrecognized policy is refused outright"
+      (mt/with-temp-env-var-value! [mb-map-tile-server-allowed-networks "allow-everything"]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Invalid MB_MAP_TILE_SERVER_ALLOWED_NETWORKS"
+                              (tiles.settings/map-tile-server-allowed-networks)))))))
+
+(deftest map-tile-server-allowed-networks-is-environment-only-test
+  (testing "the policy is read from the environment only: a value that reached the setting table -- an older
+           version's admin API, a serialization import, a direct write -- is ignored, not trusted"
+    (mt/with-temp-env-var-value! [mb-map-tile-server-allowed-networks nil]
+      (premium-features.tu/with-premium-features #{:hosting}
+        (mt/with-temporary-raw-setting-values [map-tile-server-allowed-networks "allow-all"]
+          (is (= :external-only (tiles.settings/map-tile-server-allowed-networks)))))))
+  (testing "and the environment still wins over a stored value"
+    (mt/with-temp-env-var-value! [mb-map-tile-server-allowed-networks "allow-all"]
+      (mt/with-temporary-raw-setting-values [map-tile-server-allowed-networks "external-only"]
+        (is (= :allow-all (tiles.settings/map-tile-server-allowed-networks))))))
+  (testing "nothing can write it: it is a read-only Setting"
+    (is (thrown-with-msg? UnsupportedOperationException
+                          #"read-only setting"
+                          (setting/set! :map-tile-server-allowed-networks :allow-all)))))
