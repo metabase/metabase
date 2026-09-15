@@ -138,8 +138,12 @@
         (is (str/includes? instructions "codex mcp login")))
       (testing "no retry until the user has reconnected"
         (is (re-find #"(?i)(don't|do not) retry" instructions)))
-      (testing "the consent screen is all-or-nothing, so the model must not invent a step to tick a permission"
-        (is (re-find #"(?i)no per-permission" instructions)))
+      (testing "GHY-4555: the consent screen shows a newly requested permission unticked, so the model tells the user
+                to tick it, and asks rather than sending them through consent unprompted"
+        (is (not (re-find #"(?i)no per-permission" instructions)))
+        (is (re-find #"(?i)unticked" instructions))
+        (is (re-find #"(?i)tell them to tick it" instructions))
+        (is (re-find #"(?i)ask whether they want to grant it" instructions)))
       (testing "the skills guidance is kept"
         (is (re-find #"learn\(\)" instructions))))))
 
@@ -810,6 +814,20 @@
 (def ^:private metadata-url
   "http://localhost:3000/.well-known/oauth-protected-resource")
 
+(def ^:private unticked-note
+  "What every `insufficient_scope` `error_description` ends with."
+  ". On the consent screen this permission starts unticked; the user must tick it.")
+
+(deftest ^:parallel step-up-description-test
+  (testing "GHY-4555: a step-up opens a consent screen where the missing permission is unticked, so a client that shows
+            the error_description tells the user to tick it; the text stays inside RFC 6750's error_description
+            characters (printable ASCII without quote or backslash)"
+    (is (= (str "execute_sql requires agent:sql:run (Write and run its own raw SQL on your connected databases)"
+                unticked-note)
+           (#'v2.api/step-up-description
+            "execute_sql requires agent:sql:run (Write and run its own raw SQL on your connected databases)")))
+    (is (re-matches #"[\x20\x21\x23-\x5B\x5D-\x7E]+" unticked-note))))
+
 (deftest scope-denial-is-a-403-insufficient-scope-challenge-test
   (testing "GHY-4543: a scope denial must be a real HTTP 403 carrying an `insufficient_scope` WWW-Authenticate
             challenge (MCP authorization spec, runtime insufficient scope). Claude Code only records a step-up
@@ -827,7 +845,7 @@
                          "scope=\"agent:content:read agent:sql:run\", "
                          "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
                          "error_description=\"execute_sql requires agent:sql:run "
-                         "(Write and run its own raw SQL on your connected databases)\"")
+                         "(Write and run its own raw SQL on your connected databases)" unticked-note "\"")
                     (get-in response [:headers "WWW-Authenticate"]))
                  "scope is the held v2 scopes plus the required one; the legacy non-v2 scope is not echoed")
              (testing "the body is still the JSON-RPC error, for clients that read it"
@@ -880,7 +898,7 @@
                        "scope=\"agent:content:read agent:query:run agent:delivery:write\", "
                        "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
                        "error_description=\"alert_write requires agent:query:run "
-                       "(Run queries against your connected databases and see the results)\"")
+                       "(Run queries against your connected databases and see the results)" unticked-note "\"")
                   (get-in response [:headers "WWW-Authenticate"])))
            (is (= -32600 (get-in response [:body :error :code])))
            (is (re-find #"requires the agent:query:run scope" (get-in response [:body :error :message])))
@@ -945,7 +963,7 @@
                            "scope=\"agent:content:read agent:query:run agent:sql:run agent:resource:read\", "
                            "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
                            "error_description=\"execute_sql requires agent:sql:run "
-                           "(Write and run its own raw SQL on your connected databases)\"")
+                           "(Write and run its own raw SQL on your connected databases)" unticked-note "\"")
                       (get-in response [:headers "WWW-Authenticate"])))))))))))
 
 (deftest data-resource-read-without-its-scope-is-a-403-insufficient-scope-challenge-test
@@ -966,7 +984,7 @@
                            "scope=\"agent:content:read agent:resource:read\", "
                            "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
                            "error_description=\"catalog://metabase/fields requires agent:resource:read "
-                           "(View resources)\"")
+                           "(Read MCP resources)" unticked-note "\"")
                       (get-in response [:headers "WWW-Authenticate"])))
                (testing "the body is the JSON-RPC error, with no transport-internal marker"
                  (is (= #{:jsonrpc :id :error} (set (keys (:body response)))))
@@ -1116,3 +1134,86 @@
          (is (= 200 (:status response)))
          (is (nil? (get-in response [:headers "WWW-Authenticate"])))
          (is (= "served" (-> response :body :result :content first :text))))))))
+
+(defn- bearer-instructions!
+  "The `initialize` result's `instructions` for a Bearer token holding `scopes`."
+  [scopes]
+  ;; An atom because `do-with-bearer-token!` does not return `f`'s value.
+  (let [instructions (atom nil)]
+    (do-with-bearer-token!
+     scopes
+     (fn [headers]
+       (reset! instructions (-> (client/client-full-response :post 200 endpoint
+                                                             {:request-options {:headers headers}}
+                                                             (jsonrpc-request "initialize" {:capabilities {}}))
+                                (get-in [:body :result :instructions])))))
+    @instructions))
+
+(def ^:private baseline-connection-sentence
+  (str "This connection has: \"See your Metabase content and data structure\" (agent:content:read); "
+       "\"Run queries against your connected databases and see the results\" (agent:query:run); "
+       "\"Read MCP resources\" (agent:resource:read). "
+       "It does not have: \"Create, edit and trash Metabase content\" (agent:content:write); "
+       "\"Write and run its own raw SQL on your connected databases\" (agent:sql:run); "
+       "\"Set up scheduled delivery of your data to email addresses and Slack channels it chooses\" "
+       "(agent:delivery:write)."))
+
+(def ^:private scope-failure-paragraph
+  (str "Your client may hide that error: a failure mentioning re-authorization, an expired token, "
+       "\"insufficient scope\", \"Unauthorized\", or \"tool execution failed\" usually means a missing permission on "
+       "this connection, not an expired login. Tell the user which tool failed and which permission it needs (from the "
+       "\"Requires the … permission\" sentence that starts the tool's description, which is how the consent screen "
+       "names it), and ask whether they want to grant it. To grant it they reconnect: in Claude Code, /mcp, select "
+       "this server, Re-authenticate; in Codex, `codex mcp login <server>`, then a new session. That permission is "
+       "unticked on the consent screen, so tell them to tick it. Don't retry until they say they have reconnected."))
+
+(deftest initialize-instructions-say-each-thing-once-test
+  (testing "GHY-4555: every connection pays for the instructions in tokens, so the scope-failure guidance is stated once
+            and the per-connection paragraph carries only the facts the general one lacks"
+    (let [baseline (bearer-instructions! (set mcp.paths/v2-baseline-scopes))]
+      (is (str/ends-with? baseline
+                          (str "\n" scope-failure-paragraph "\n" baseline-connection-sentence
+                               " A missing permission was either not requested yet or left unticked by the user; "
+                               "don't assume which. This list reflects the connection when it started; if a call "
+                               "succeeds, trust that over this list."))
+          baseline)
+      (doseq [[phrase most] [["ask whether they want to grant it" 1] ["retry" 1] ["the usual cause is" 0] ["e.g." 0]]]
+        (testing phrase
+          (is (>= most (count (re-seq (re-pattern (java.util.regex.Pattern/quote phrase)) baseline)))))))))
+
+(deftest initialize-instructions-list-the-connection-permissions-test
+  (testing "GHY-4555: the consent screen lets the user leave a requested permission unticked, and Claude Code and Codex
+            drop the 403's error_description, so the instructions tell the model which of the surface's permissions
+            this connection holds, named as the consent screen names them"
+    (let [baseline (bearer-instructions! (set mcp.paths/v2-baseline-scopes))]
+      (testing "a baseline token lists what it has and what it lacks, in surface order"
+        (is (str/includes? baseline baseline-connection-sentence) baseline))
+      (testing "a missing permission is not assumed to be declined, and a successful call outranks the list"
+        (is (re-find #"(?i)not requested yet or left unticked by the user" baseline))
+        (is (re-find #"(?i)don't assume which" baseline))
+        (is (re-find #"(?i)if a call succeeds, trust that over this list" baseline)))
+      (testing "the general guidance is kept"
+        (is (re-find #"learn\(\)" baseline))
+        (is (re-find #"(?i)not an expired login" baseline)))
+      (testing "a token holding every surface scope lists nothing missing"
+        (let [all-six (bearer-instructions! (set mcp.paths/v2-surface-scopes))]
+          (is (str/includes? all-six "This connection has: \"See your Metabase content and data structure\""))
+          (doseq [scope mcp.paths/v2-surface-scopes]
+            (is (str/includes? all-six (str "(" scope ")")) scope))
+          (is (str/ends-with? all-six "\"Read MCP resources\" (agent:resource:read)."))
+          (is (not (str/includes? all-six "does not have")))
+          (is (not (str/includes? all-six "don't assume which")))
+          (testing "and one token's list is never served to another"
+            (is (not= baseline all-six))
+            (is (= baseline (bearer-instructions! (set mcp.paths/v2-baseline-scopes)))))))
+      (testing "a token holding none of the surface scopes says so"
+        (let [none (bearer-instructions! #{"agent:question:create"})]
+          (is (str/includes? none "This connection has: none. It does not have: \"See your Metabase content"))))
+      (testing "an unrestricted cookie session gets no list"
+        (let [[_ response] (initialize!)
+              cookie       (get-in response [:body :result :instructions])]
+          (is (re-find #"learn\(\)" cookie))
+          (is (not (str/includes? cookie "This connection has")))
+          (is (not (str/includes? cookie "does not have")))
+          (testing "and a cookie session after a scoped token still gets none"
+            (is (not= baseline cookie))))))))

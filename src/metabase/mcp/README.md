@@ -84,7 +84,16 @@ OAuth protected resource metadata is available at:
 /.well-known/oauth-protected-resource/api/metabase-mcp
 ```
 
-The consent screen grants every scope the client requested, without the opportunity to customize.
+On the consent screen, the baseline scopes are ticked and locked, and every other scope the client requested starts
+unticked. Only the scopes the user ticks are granted. A scope left unticked isn't remembered, so the next 403 steps up
+for it again. Each challenge's `error_description` ends with a note that the permission starts unticked and the user
+must tick it.
+
+Several clients replace the 403's `error_description` with their own text, so the `initialize` result's
+`instructions` explain scope failures to the model too. For an OAuth token, they also list which v2 scopes the
+connection holds and which it lacks, by consent-screen label, so the model can ask the user before a tool needs a
+missing one. The instructions are built per `initialize` from the calling token's scopes and never cached. A cookie
+session gets no list.
 
 ## Available tools
 

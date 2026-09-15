@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase.config.core :as config]
    [metabase.mcp.core :as mcp]
    [metabase.oauth-server.api.oauth :as api.oauth]
    [metabase.oauth-server.core :as oauth-server]
@@ -403,6 +404,7 @@
                              :redirect_uri  "https://example.com/callback"
                              :response_type "code"
                              :scope         "profile"
+                             :granted_scope "profile"
                              :state         "test-state"}
                             302
                             :csrf-cookie csrf-cookie)
@@ -499,6 +501,7 @@
                               :redirect_uri  "https://example.com/callback"
                               :response_type "code"
                               :scope         "profile"
+                              :granted_scope "profile"
                               :state         "test-state"}
                              302
                              :csrf-cookie csrf-cookie)
@@ -537,6 +540,7 @@
       :redirect_uri  "https://example.com/callback"
       :response_type "code"
       :scope         "profile"
+      :granted_scope "profile"
       :state         "test-state"}
      302
      :csrf-cookie (extract-csrf-cookie consent-resp))))
@@ -714,6 +718,7 @@
                        :redirect_uri  "https://example.com/callback"
                        :response_type "code"
                        :scope         "profile"
+                       :granted_scope "profile"
                        :state         "test-state"}
                       302
                       :csrf-cookie csrf-cookie)
@@ -924,6 +929,7 @@
                               :redirect_uri  "https://example.com/callback"
                               :response_type "code"
                               :scope         "profile"
+                              :granted_scope "profile"
                               :state         "test-state"}
                              extra-params)
                       302
@@ -1127,6 +1133,7 @@
                            :redirect_uri  "https://example.com/callback"
                            :response_type "code"
                            :scope         "profile"
+                           :granted_scope "profile"
                            :state         state}
                           302
                           :csrf-cookie csrf-cookie)
@@ -1322,52 +1329,86 @@
   #{"agent:content:read" "agent:content:write" "agent:query:run"
     "agent:sql:run" "agent:delivery:write" "agent:resource:read"})
 
+(defn- mcp-resource-uri []
+  (str "http://localhost:3000" (mcp/mcp-canonical-path)))
+
+(defn- register-mcp-client!
+  "Register a confidential DCR client with `registration` merged into the body. Returns the registration response."
+  [registration]
+  (register-client! (merge {:redirect_uris              ["https://example.com/callback"]
+                            :client_name                "Step-up Client"
+                            :token_endpoint_auth_method "client_secret_basic"}
+                           registration)))
+
+(defn- get-mcp-consent-page!
+  "GET `/oauth/authorize` as crowberto for `scope` against the canonical MCP resource. Returns the full response,
+  whatever its status."
+  [client-id scope]
+  ;; `/oauth/authorize` answers a stale session with a login 302, which the test client does not
+  ;; retry the way it retries a 401. A session cached from an earlier rolled-back transaction would
+  ;; turn every authorize below into that redirect, so revalidate it here first.
+  (mt/user-http-request :crowberto :get 200 "api/user/current")
+  (mt/user-http-request-full-response
+   :crowberto :get "oauth/authorize"
+   :client_id     client-id
+   :redirect_uri  "https://example.com/callback"
+   :response_type "code"
+   :scope         scope
+   :resource      (mcp-resource-uri)
+   :state         "test-state"))
+
+(defn- offered-scopes
+  "The offered scopes signed into the consent page in `consent-resp`, in order."
+  [consent-resp]
+  (some-> (extract-hidden-field "scope" (:body consent-resp)) (str/split #" ")))
+
+(defn- post-mcp-decision!
+  "Approve the MCP consent page in `consent-resp`, echoing its signed fields back with `granted` (a seq of scope
+  strings, or nil to send no choice) as the user's choice. Returns the full decision response."
+  [client-id consent-resp granted expected-status]
+  (let [body (:body consent-resp)]
+    (form-post-decision!
+     :crowberto
+     (cond-> {:approved      "true"
+              :csrf_token    (extract-csrf-token-from-consent body)
+              :params_sig    (extract-params-sig-from-consent body)
+              :client_id     client-id
+              :redirect_uri  "https://example.com/callback"
+              :response_type "code"
+              :scope         (extract-hidden-field "scope" body)
+              :resource      (mcp-resource-uri)
+              :state         "test-state"}
+       (seq granted) (assoc :granted_scope (vec granted)))
+     expected-status
+     :csrf-cookie (extract-csrf-cookie consent-resp))))
+
+(defn- exchange-code!
+  "Exchange the authorization code in `decision`'s redirect for tokens. Returns the token response body."
+  [{:keys [client_id client_secret]} decision]
+  (token-request! {:grant_type   "authorization_code"
+                   :code         (extract-query-param (get-in decision [:headers "Location"]) "code")
+                   :redirect_uri "https://example.com/callback"
+                   :resource     (mcp-resource-uri)}
+                  :authorization (basic-auth-header client_id client_secret)))
+
 (defn- register-then-authorize-mcp!
   "Register a confidential DCR client with `registration` merged into the body, then run the whole
-  authorization-code flow as crowberto for `scope` against the canonical MCP resource. Returns
-  `{:authorize <consent-page response>, :token <token response or nil>}`; `:token` is nil when the
+  authorization-code flow as crowberto for `scope` against the canonical MCP resource, ticking every offered scope.
+  Returns `{:authorize <consent-page response>, :token <token response or nil>}`; `:token` is nil when the
   authorize request did not reach the consent page."
   [registration scope]
-  (let [mcp-uri      (str "http://localhost:3000" (mcp/mcp-canonical-path))
-        {:keys [client_id client_secret]}
-        (register-client! (merge {:redirect_uris              ["https://example.com/callback"]
-                                  :client_name                "Step-up Client"
-                                  :token_endpoint_auth_method "client_secret_basic"}
-                                 registration))
-        ;; `/oauth/authorize` answers a stale session with a login 302, which the test client does not
-        ;; retry the way it retries a 401. A session cached from an earlier rolled-back transaction would
-        ;; turn every authorize below into that redirect, so revalidate it here first.
-        _            (mt/user-http-request :crowberto :get 200 "api/user/current")
-        consent-resp (mt/user-http-request-full-response
-                      :crowberto :get "oauth/authorize"
-                      :client_id     client_id
-                      :redirect_uri  "https://example.com/callback"
-                      :response_type "code"
-                      :scope         scope
-                      :resource      mcp-uri
-                      :state         "test-state")
-        body         (:body consent-resp)]
+  (let [client       (register-mcp-client! registration)
+        consent-resp (get-mcp-consent-page! (:client_id client) scope)]
     {:authorize consent-resp
      :token     (when (= 200 (:status consent-resp))
-                  (let [decision (form-post-decision!
-                                  :crowberto
-                                  {:approved      "true"
-                                   :csrf_token    (extract-csrf-token-from-consent body)
-                                   :params_sig    (extract-params-sig-from-consent body)
-                                   :client_id     client_id
-                                   :redirect_uri  "https://example.com/callback"
-                                   :response_type "code"
-                                   :scope         (extract-hidden-field "scope" body)
-                                   :resource      mcp-uri
-                                   :state         "test-state"}
-                                  302
-                                  :csrf-cookie (extract-csrf-cookie consent-resp))
-                        code     (extract-query-param (get-in decision [:headers "Location"]) "code")]
-                    (token-request! {:grant_type   "authorization_code"
-                                     :code         code
-                                     :redirect_uri "https://example.com/callback"
-                                     :resource     mcp-uri}
-                                    :authorization (basic-auth-header client_id client_secret))))}))
+                  (exchange-code! client (post-mcp-decision! (:client_id client) consent-resp
+                                                             (offered-scopes consent-resp) 302)))}))
+
+(defn- token-scope-set [token-response]
+  (some-> (:scope token-response) (str/split #" ") set))
+
+(def ^:private v2-baseline-scope-set
+  #{"agent:content:read" "agent:query:run" "agent:resource:read"})
 
 (deftest registration-scope-does-not-narrow-step-up-test
   (testing (str "GHY-4543: Claude Code registers with the scope it read from the protected-resource metadata, then "
@@ -1467,3 +1508,176 @@
                         {:scope oauth-server/full-access-scope}
                         (str oauth-server/full-access-scope " agent:content:read"))]
           (is (= 200 (:status response)) (pr-str (:body response))))))))
+
+;;; ---------------------------------------------- Per-scope consent -----------------------------------------------
+
+(def ^:private all-v2-scopes
+  (str/join " " (sort v2-scope-set)))
+
+(deftest decision-mints-only-chosen-scopes-test
+  (testing (str "GHY-4555: a client requests all six v2 scopes and the user ticks only `agent:content:write`. The "
+                "token carries that plus the always-granted baseline, and neither the token response nor the stored "
+                "token holds the scopes the user left unticked.")
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client       (register-mcp-client! {})
+              consent-resp (get-mcp-consent-page! (:client_id client) all-v2-scopes)
+              expected     (conj v2-baseline-scope-set "agent:content:write")]
+          (is (= v2-scope-set (set (offered-scopes consent-resp))) "the page offers all six")
+          (let [token  (exchange-code! client (post-mcp-decision! (:client_id client) consent-resp
+                                                                  ["agent:content:write"] 302))
+                stored (:scopes (oauth-server/resolve-access-token (:access_token token)))]
+            (testing "the token response `scope` names exactly the granted scopes (RFC 6749 section 3.3)"
+              (is (= expected (token-scope-set token))))
+            (testing "the stored token carries the same scopes"
+              (is (= expected stored))
+              (is (not-any? #{"agent:sql:run" "agent:delivery:write"} stored)))))))))
+
+(deftest decision-rejects-choice-outside-offered-scopes-test
+  (testing (str "GHY-4555: the signed `scope` is what was offered and the user's choice travels in an unsigned field, "
+                "so a choice naming anything outside the offered set is rejected as tampering instead of widening "
+                "the grant.")
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client       (register-mcp-client! {})
+              consent-resp (get-mcp-consent-page!
+                            (:client_id client)
+                            "agent:content:read agent:query:run agent:resource:read agent:content:write")]
+          (doseq [granted [["agent:sql:run"]
+                           ["agent:content:write" "agent:delivery:write"]
+                           [oauth-server/full-access-scope]
+                           ["agent:content:write agent:sql:run"]
+                           [""]]]
+            (testing (pr-str granted)
+              (let [response (post-mcp-decision! (:client_id client) consent-resp granted 403)]
+                (is (= "params_tampered" (get-in response [:body :error])))
+                (is (nil? (get-in response [:headers "Location"])) "no code is issued")))))))))
+
+(deftest decision-rejects-empty-grant-test
+  (testing (str "GHY-4555: approving with nothing chosen when no baseline scope was offered would mint a token with "
+                "no scope. The page disables Authorize in that case, and the server refuses it too.")
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (testing "a non-MCP scope"
+          (let [client-id    (:client_id (create-test-client!))
+                consent-resp (get-consent-page! :crowberto client-id)
+                consent-body (:body consent-resp)
+                response     (form-post-decision!
+                              :crowberto
+                              {:approved      "true"
+                               :csrf_token    (extract-csrf-token-from-consent consent-body)
+                               :params_sig    (extract-params-sig-from-consent consent-body)
+                               :client_id     client-id
+                               :redirect_uri  "https://example.com/callback"
+                               :response_type "code"
+                               :scope         "profile"
+                               :state         "test-state"}
+                              400
+                              :csrf-cookie (extract-csrf-cookie consent-resp))]
+            (is (= "invalid_request" (get-in response [:body :error])))
+            (is (nil? (get-in response [:headers "Location"])) "no code is issued")))
+        (testing "MCP scopes outside the baseline"
+          (let [client       (register-mcp-client! {})
+                consent-resp (get-mcp-consent-page! (:client_id client) "agent:content:write agent:sql:run")
+                response     (post-mcp-decision! (:client_id client) consent-resp nil 400)]
+            (is (= "invalid_request" (get-in response [:body :error])))))))))
+
+(deftest decision-always-grants-offered-baseline-test
+  (testing (str "GHY-4555: the baseline scopes are ticked and locked on the page, and a disabled checkbox is not "
+                "submitted, so the server grants every offered baseline scope whatever the form sends.")
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (testing "all six offered, nothing chosen: the token carries the baseline"
+          (let [client       (register-mcp-client! {})
+                consent-resp (get-mcp-consent-page! (:client_id client) all-v2-scopes)
+                token        (exchange-code! client (post-mcp-decision! (:client_id client) consent-resp nil 302))]
+            (is (= v2-baseline-scope-set (token-scope-set token)))))
+        (testing "only the baseline scopes that were offered are granted"
+          (let [client       (register-mcp-client! {})
+                consent-resp (get-mcp-consent-page! (:client_id client) "agent:query:run agent:content:write")
+                token        (exchange-code! client (post-mcp-decision! (:client_id client) consent-resp nil 302))]
+            (is (= #{"agent:query:run"} (token-scope-set token)))))))))
+
+(deftest reauthorize-offers-declined-scope-again-test
+  (testing (str "GHY-4555: a declined scope is not remembered. Re-authorizing the same client offers it again, and "
+                "ticking it this time grants it.")
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client  (register-mcp-client! {})
+              initial (get-mcp-consent-page! (:client_id client) all-v2-scopes)
+              token   (exchange-code! client (post-mcp-decision! (:client_id client) initial
+                                                                 ["agent:content:write"] 302))]
+          (is (not (contains? (token-scope-set token) "agent:sql:run")))
+          (let [again (get-mcp-consent-page! (:client_id client) all-v2-scopes)]
+            (is (= v2-scope-set (set (offered-scopes again))) "the declined scopes are offered again")
+            (let [token (exchange-code! client (post-mcp-decision! (:client_id client) again
+                                                                   ["agent:sql:run"] 302))]
+              (is (= (conj v2-baseline-scope-set "agent:sql:run") (token-scope-set token))))))))))
+
+(defn- consent-checkboxes
+  "The `{:scope <value> :checked? :disabled?}` of each scope checkbox on the consent page `body`, in page order."
+  [body]
+  (for [tag (re-seq #"<input[^>]*type=\"checkbox\"[^>]*>" body)]
+    {:scope     (second (re-find #"value=\"([^\"]*)\"" tag))
+     :checked?  (boolean (re-find #"\schecked[\s=/>]" tag))
+     :disabled? (boolean (re-find #"\sdisabled[\s=/>]" tag))}))
+
+(deftest consent-page-scope-order-test
+  (testing (str "GHY-4555: the six v2 scopes are listed least to most harmful whatever order they were requested in, "
+                "and any other requested scope follows in request order")
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [requested ["zeta:other" "agent:delivery:write" "agent:sql:run" oauth-server/full-access-scope
+                         "agent:content:write" "agent:query:run" "agent:content:read" "agent:resource:read"]
+              client-id (:client_id (create-test-client! {:scopes requested}))
+              body      (:body (mt/user-http-request-full-response
+                                :crowberto :get 200 "oauth/authorize"
+                                :client_id     client-id
+                                :redirect_uri  "https://example.com/callback"
+                                :response_type "code"
+                                :scope         (str/join " " requested)
+                                :state         "test-state"))]
+          (is (= ["agent:resource:read" "agent:content:read" "agent:query:run"
+                  "agent:content:write" "agent:sql:run" "agent:delivery:write"
+                  "zeta:other" oauth-server/full-access-scope]
+                 (map :scope (consent-checkboxes body))))
+          (testing "the baseline is ticked and locked; everything else, `mb:full` included, starts unticked"
+            (is (= {"agent:resource:read"          [true true]
+                    "agent:content:read"           [true true]
+                    "agent:query:run"              [true true]
+                    "agent:content:write"          [false false]
+                    "agent:sql:run"                [false false]
+                    "agent:delivery:write"         [false false]
+                    "zeta:other"                   [false false]
+                    oauth-server/full-access-scope [false false]}
+                   (into {} (map (juxt :scope (juxt :checked? :disabled?))) (consent-checkboxes body))))))))))
+
+(deftest consent-scope-order-covers-v2-scopes-test
+  (testing "GHY-4555: the consent order ranks exactly the v2 scopes, so a new v2 scope is not silently listed last"
+    (is (= (set (mcp/v2-scopes)) (set @#'api.oauth/consent-scope-order)))
+    (is (= (count (mcp/v2-scopes)) (count @#'api.oauth/consent-scope-order)))))
+
+(deftest consent-page-opts-into-script-nonce-test
+  (testing (str "GHY-4568: the consent page's inline script needs a `script-src` nonce. Dev mode allows "
+                "'unsafe-inline' and adds no nonce, so a response that forgot to opt in would work locally and have "
+                "its script blocked in production. Outside dev mode, the CSP header's nonce must be the one on the "
+                "page's script tag.")
+    (with-redefs [config/is-dev? false]
+      (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+        (t2/with-transaction [_conn nil {:rollback-only true}]
+          (let [client-id    (:client_id (create-test-client!))
+                response     (get-consent-page! :crowberto client-id)
+                header-nonce (some->> (get-in response [:headers "Content-Security-Policy"])
+                                      (re-find #"script-src[^;]*'nonce-([^']+)'")
+                                      second)
+                body-nonce   (some->> (:body response)
+                                      (re-find #"<script nonce=\"([^\"]+)\">")
+                                      second)]
+            (is (seq header-nonce) "the CSP header's script-src carries a nonce")
+            (is (seq body-nonce) "the page has a nonce'd script tag")
+            (is (= header-nonce body-nonce))))))))
