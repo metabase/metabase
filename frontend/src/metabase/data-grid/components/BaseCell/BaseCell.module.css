@@ -15,12 +15,12 @@
 }
 
 .leftAligned {
-  text-align: left;
+  text-align: start;
   justify-content: flex-start;
 }
 
 .rightAligned {
-  text-align: right;
+  text-align: end;
   justify-content: flex-end;
 }
 

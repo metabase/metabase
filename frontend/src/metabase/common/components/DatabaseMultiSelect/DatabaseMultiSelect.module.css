@@ -31,5 +31,5 @@
 .disabledInfoIcon {
   color: var(--mb-color-text-secondary);
   flex-shrink: 0;
-  margin-left: auto;
+  margin-inline-start: auto;
 }

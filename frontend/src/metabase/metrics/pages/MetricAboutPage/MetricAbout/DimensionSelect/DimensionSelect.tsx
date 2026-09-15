@@ -53,7 +53,7 @@ export function DimensionSelect({
           onClick={() => combobox.toggleDropdown()}
         >
           <span className={S.label}>{label}</span>
-          <Icon flex="0 0 0.75rem" ml="sm" name="chevrondown" size={12} />
+          <Icon flex="0 0 0.75rem" ms="sm" name="chevrondown" size={12} />
         </UnstyledButton>
       </Combobox.Target>
       <Combobox.Dropdown className={S.dropdown}>

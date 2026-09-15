@@ -43,7 +43,7 @@ export function EnableTransformsCard({
   return (
     <Card withBorder maw="60rem" p={0} w="100%" style={{ overflow: "auto" }}>
       <Flex w="100%" p={{ xs: "2.5rem", xl: "3rem" }}>
-        <Stack gap="xl" align="start" pt="xxl" pl="xl" flex="1 1 auto">
+        <Stack gap="xl" align="start" pt="xxl" ps="xl" flex="1 1 auto">
           {leftContent ?? (
             <>
               <Title order={2}>{t`Customize and clean up your data`}</Title>
@@ -92,7 +92,7 @@ export function EnableTransformsCard({
             </>
           )}
         </Stack>
-        <Stack flex="0 0 30%" ml="4rem">
+        <Stack flex="0 0 30%" ms="4rem">
           <SimpleCard
             icon="sql"
             title={t`Custom tables`}

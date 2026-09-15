@@ -58,7 +58,7 @@ const BillingInfoValue = ({
         <Text fw="bold" color="currentColor">
           {formattedValue}
         </Text>
-        <Icon ml="sm" size="16" name="external" />
+        <Icon ms="sm" size="16" name="external" />
       </ExternalLink>
     );
   }

@@ -74,7 +74,7 @@ export const RightClickPopover = ({
         <Flex direction="column">
           {runQuery && (
             <a className={RightClickPopoverS.Anchor} onClick={runQuery}>
-              <Icon mr="sm" name="play" size={16} />
+              <Icon me="sm" name="play" size={16} />
               <h4>{t`Run selection`}</h4>
             </a>
           )}
@@ -83,7 +83,7 @@ export const RightClickPopover = ({
               className={RightClickPopoverS.Anchor}
               onClick={openSnippetModalWithSelectedText}
             >
-              <Icon mr="sm" name="snippet" size={16} />
+              <Icon me="sm" name="snippet" size={16} />
               <h4>{t`Save as snippet`}</h4>
             </a>
           )}

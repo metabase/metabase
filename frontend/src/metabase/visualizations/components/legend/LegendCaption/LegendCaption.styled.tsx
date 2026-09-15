@@ -28,7 +28,7 @@ export const LegendLabel = styled(BaseLegendLabel)`
 
 export const LegendLabelIcon = styled(Icon)`
   flex-shrink: 0;
-  margin-right: 0.25rem;
+  margin-inline-end: 0.25rem;
 `;
 
 export const LegendDescriptionIcon = styled(
@@ -54,6 +54,6 @@ export const LegendDescriptionIcon = styled(
 export const LegendRightContent = styled.div`
   display: flex;
   justify-content: flex-end;
-  margin-left: auto;
+  margin-inline-start: auto;
   align-items: center;
 `;

@@ -18,7 +18,7 @@ export const UsageConditionsInfoIcon = ({
         name="info"
         size={14}
         c="text-secondary"
-        ml="sm"
+        ms="sm"
         style={{ verticalAlign: "middle" }}
       />
     </HoverCard.Target>

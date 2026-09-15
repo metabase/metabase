@@ -218,7 +218,7 @@ export const SdkQuestionDefaultView = ({
               <DefaultViewTitle title={title} />
             </Stack>
           </RenderIfHasContent>
-          {showSaveButton && <SaveButton onClick={openSaveModal} ml="auto" />}
+          {showSaveButton && <SaveButton onClick={openSaveModal} ms="auto" />}
         </RenderIfHasContent>
         {queryResults && (
           <RenderIfHasContent
@@ -231,7 +231,7 @@ export const SdkQuestionDefaultView = ({
                   onClick={toggleEditor}
                   c="core-brand"
                   fz="md"
-                  ml="sm"
+                  ms="sm"
                 >
                   {t`Back to visualization`}
                 </PopoverBackButton>
@@ -266,7 +266,7 @@ export const SdkQuestionDefaultView = ({
                 </>
               )}
             </RenderIfHasContent>
-            <RenderIfHasContent component={Group} gap="sm" ml="auto">
+            <RenderIfHasContent component={Group} gap="sm" ms="auto">
               {!isEditorOpen && !isMobile && (
                 <>
                   <DownloadWidgetDropdown />

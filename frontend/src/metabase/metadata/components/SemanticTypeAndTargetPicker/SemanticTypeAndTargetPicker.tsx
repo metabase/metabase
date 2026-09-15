@@ -77,7 +77,7 @@ export const SemanticTypeAndTargetPicker = ({
 
       {showCurrencyTypeSelect && (
         <>
-          <Flex ml={rem(12)}>
+          <Flex ms={rem(12)}>
             <SubInputIllustration />
           </Flex>
 
@@ -91,7 +91,7 @@ export const SemanticTypeAndTargetPicker = ({
 
       {showFKTargetSelect && (
         <>
-          <Flex ml={rem(12)}>
+          <Flex ms={rem(12)}>
             <SubInputIllustration />
           </Flex>
 

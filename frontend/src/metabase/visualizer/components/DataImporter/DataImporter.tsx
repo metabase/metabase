@@ -89,7 +89,7 @@ export const DataImporter = ({
         <Button
           size="xs"
           variant="transparent"
-          ml="auto"
+          ms="auto"
           onClick={() => {
             if (showDatasets) {
               trackVisualizerShowColumnsClicked();

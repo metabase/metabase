@@ -69,7 +69,7 @@ export function Sidesheet({
       >
         <Modal.Header bg="background_page-secondary" px="xxl">
           {title && (
-            <Modal.Title py="lg" pr="sm" id={titleId}>
+            <Modal.Title py="lg" pe="sm" id={titleId}>
               {title}
             </Modal.Title>
           )}

@@ -42,7 +42,7 @@ const SimpleWithTitleTemplate = (args: ModalProps) => {
         onClose={handleClose}
       >
         <Flex direction="row" justify="flex-end" mt="lg">
-          <Button type="submit" variant="filled" ml="sm">
+          <Button type="submit" variant="filled" ms="sm">
             Add
           </Button>
         </Flex>
@@ -71,14 +71,14 @@ const ConfirmationTemplate = (args: ModalProps) => {
           longer work.
         </Text>
         <Flex direction="row" justify="flex-end" mt="lg">
-          <Button type="submit" ml="sm">
+          <Button type="submit" ms="sm">
             Cancel
           </Button>
           <Button
             type="submit"
             variant="filled"
             color="feedback-negative"
-            ml="sm"
+            ms="sm"
           >
             Delete
           </Button>
@@ -105,7 +105,7 @@ const SingleButtonTemplate = (args: ModalProps) => {
       >
         <Text>Sometimes all you need is one option.</Text>
         <Flex direction="row" justify="flex-end" mt="lg">
-          <Button type="submit" variant="filled" ml="sm">
+          <Button type="submit" variant="filled" ms="sm">
             Add
           </Button>
         </Flex>
@@ -144,7 +144,7 @@ const NoBodyTextTemplate = (args: ModalProps) => {
       >
         <Flex direction="row" justify="flex-end" mt="lg">
           <Button onClick={handleClose}>Not now</Button>
-          <Button type="submit" variant="filled" ml="sm">
+          <Button type="submit" variant="filled" ms="sm">
             Add
           </Button>
         </Flex>

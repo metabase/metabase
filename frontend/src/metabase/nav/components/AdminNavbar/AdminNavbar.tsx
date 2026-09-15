@@ -84,7 +84,7 @@ export const AdminNavbar = ({
         <Box
           visibleFrom="lg"
           fw={700}
-          ml="1rem"
+          ms="1rem"
           // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings
         >{t`Metabase Admin`}</Box>
       </Flex>

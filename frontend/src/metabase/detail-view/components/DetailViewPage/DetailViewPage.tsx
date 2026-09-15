@@ -66,13 +66,13 @@ export function DetailViewPage({
         <Box
           bg="background_page-primary"
           className={S.header}
-          pl={rem(paddingLeft)}
-          pr="xxl"
+          ps={rem(paddingLeft)}
+          pe="xxl"
           py={rem(64)}
         >
           <Box
             // intentionally misalign the header to create an "optical alignment effect" (due to rounded avatar)
-            ml={rem(-8)}
+            ms={rem(-8)}
           >
             <Header columns={columns} icon={icon} row={row} />
           </Box>
@@ -92,7 +92,7 @@ export function DetailViewPage({
           bg="background_page-primary"
           flex="1"
           p="xxl"
-          pl={rem(paddingLeft)}
+          ps={rem(paddingLeft)}
           w={isMediumBreakpoint ? "100%" : undefined}
         >
           <Stack gap={rem(64)} h="100%" maw={rem(900)} w="100%">
@@ -110,8 +110,8 @@ export function DetailViewPage({
         {hasPk && tableForeignKeys && tableForeignKeys.length > 0 && (
           <Box
             flex={isMediumBreakpoint ? undefined : "0 0 auto"}
-            pl={rem(isMediumBreakpoint ? paddingLeft : 40)}
-            pr={rem(40)}
+            ps={rem(isMediumBreakpoint ? paddingLeft : 40)}
+            pe={rem(40)}
             py="xxl"
             w={isMediumBreakpoint ? "100%" : rem(440)}
           >

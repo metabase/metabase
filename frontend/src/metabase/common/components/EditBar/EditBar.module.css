@@ -43,7 +43,7 @@
   );
   border: none;
   font-size: 1em;
-  margin-left: 0.75em;
+  margin-inline-start: 0.75em;
 }
 
 .buttonsContainer :global(button[data-variant="filled"]) {

@@ -26,7 +26,7 @@ export const ClickActionsViewSection = ({
       direction={contentDirection}
       gap="sm"
       mb={isSortRow ? "sm" : undefined}
-      ml={isSortRow ? "-sm" : undefined}
+      ms={isSortRow ? "-sm" : undefined}
     >
       {children}
     </Flex>

@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import type { NumberValue } from "d3-scale";
 
-import { render, screen } from "__support__/ui";
+import { cleanup, render, screen } from "__support__/ui";
 import { measureTextWidth } from "metabase/utils/measure-text";
 
 import type { ChartFont } from "../../types/style";
@@ -75,11 +75,25 @@ const setup = (props?: Partial<RowChartProps<TestDatum>>) => {
       ?.getElementsByTagName("tspan") || [], // eslint-disable-line testing-library/no-node-access
   ).map((tspan) => tspan.textContent);
 
-  const yTicks = Array.from(
-    container // eslint-disable-line testing-library/no-container
-      .getElementsByClassName("visx-axis-left")[0] // eslint-disable-line testing-library/no-node-access
-      ?.getElementsByTagName("tspan") || [], // eslint-disable-line testing-library/no-node-access
-  ).map((tspan) => tspan.textContent);
+  const getAxisTicks = (className: string) =>
+    Array.from(
+      container // eslint-disable-line testing-library/no-container
+        .getElementsByClassName(className)[0] // eslint-disable-line testing-library/no-node-access
+        ?.getElementsByTagName("tspan") || [], // eslint-disable-line testing-library/no-node-access
+    ).map((tspan) => tspan.textContent);
+
+  const yTicks = getAxisTicks("visx-axis-left");
+  const yTicksRight = getAxisTicks("visx-axis-right");
+
+  // jsdom has no layout, so read the horizontal offset visx wrote into the
+  // category axis group's transform.
+  const axisGroup =
+    container.getElementsByClassName("visx-axis-right")[0] ?? // eslint-disable-line testing-library/no-container, testing-library/no-node-access
+    container.getElementsByClassName("visx-axis-left")[0]; // eslint-disable-line testing-library/no-container, testing-library/no-node-access
+  const translate = axisGroup
+    ?.getAttribute("transform")
+    ?.match(/translate\(([-\d.]+)/);
+  const axisOffset = translate ? Number(translate[1]) : null;
 
   return {
     bars,
@@ -87,6 +101,8 @@ const setup = (props?: Partial<RowChartProps<TestDatum>>) => {
     goalLine,
     xTicks,
     yTicks,
+    yTicksRight,
+    axisOffset,
   };
 };
 
@@ -246,6 +262,80 @@ describe("RowChart", () => {
         "series 2_400",
         "series 2_600",
       ]);
+    });
+  });
+
+  describe("rtl", () => {
+    const barGeometry = (bar: HTMLElement) => ({
+      x: Number(bar.getAttribute("x")),
+      width: Number(bar.getAttribute("width")),
+    });
+
+    it("should render the category axis on the left by default", () => {
+      const { yTicks, yTicksRight } = setup({ series: [series1] });
+
+      expect(yTicks).toStrictEqual(["foo", "bar", "baz"]);
+      expect(yTicksRight).toStrictEqual([]);
+    });
+
+    it("should move the category axis to the right", () => {
+      const { yTicks, yTicksRight } = setup({ series: [series1], isRtl: true });
+
+      expect(yTicksRight).toStrictEqual(["foo", "bar", "baz"]);
+      expect(yTicks).toStrictEqual([]);
+    });
+
+    it("should place the category axis inside the chart, at the plot's right edge", () => {
+      const { axisOffset } = setup({ series: [series1], isRtl: true });
+
+      // Guards against sourcing the offset from anything other than the
+      // `innerWidth` prop — `window.innerWidth` would put the axis off-canvas.
+      expect(axisOffset).not.toBeNull();
+      expect(axisOffset).toBeGreaterThan(defaultProps.width / 2);
+      expect(axisOffset).toBeLessThan(defaultProps.width);
+    });
+
+    it("should grow bars leftwards from a shared right-hand baseline", () => {
+      const { bars } = setup({ series: [series1], isRtl: true });
+      const geometry = bars.map(barGeometry);
+
+      // Bars share their right edge (the zero baseline) and the longest value
+      // reaches furthest left.
+      geometry.forEach(({ x, width }) => {
+        expect(x + width).toBeCloseTo(geometry[0].x + geometry[0].width, 6);
+      });
+      expect(geometry[0].width).toBeLessThan(geometry[2].width);
+      expect(geometry[0].x).toBeGreaterThan(geometry[2].x);
+    });
+
+    it("should keep bars growing rightwards in ltr", () => {
+      const { bars } = setup({ series: [series1] });
+      const geometry = bars.map(barGeometry);
+
+      expect(new Set(geometry.map(({ x }) => x)).size).toBe(1);
+      expect(geometry[0].width).toBeLessThan(geometry[2].width);
+    });
+
+    it("should leave the value scale itself unchanged", () => {
+      const ltr = setup({ series: [series1] }).bars.map(barGeometry);
+      cleanup();
+      const rtl = setup({ series: [series1], isRtl: true }).bars.map(
+        barGeometry,
+      );
+
+      // Only the *direction* is mirrored: bar lengths are identical, and every
+      // bar is reflected about the same axis, so value → pixel distance is
+      // untouched.
+      rtl.forEach((bar, index) => {
+        expect(bar.width).toBeCloseTo(ltr[index].width, 6);
+      });
+
+      const reflections = rtl.map(
+        (bar, index) => bar.x + bar.width + ltr[index].x,
+      );
+      reflections.forEach((reflection) => {
+        expect(reflection).toBeCloseTo(reflections[0], 6);
+      });
     });
   });
 

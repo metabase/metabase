@@ -51,13 +51,13 @@ export const EntityLink = ({ entity }: EntityLinkProps) => {
         <Icon
           name={entityIcon.name}
           size={16}
-          mr="sm"
+          me="sm"
           c="text-secondary"
           className={S.icon}
         />
         {entity.name}
       </Anchor>
-      <Icon name={statusIcon} size={16} c={statusColor} ml="auto" />
+      <Icon name={statusIcon} size={16} c={statusColor} ms="auto" />
     </Group>
   );
 };

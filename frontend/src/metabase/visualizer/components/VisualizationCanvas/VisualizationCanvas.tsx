@@ -117,7 +117,7 @@ export function VisualizationCanvas({ className }: VisualizationCanvasProps) {
         <Flex
           align="center"
           justify="left"
-          pl="7px"
+          ps="7px"
           style={{ gridArea: "bottom-left" }}
         >
           <Tooltip withinPortal={false} label={t`View as table`}>

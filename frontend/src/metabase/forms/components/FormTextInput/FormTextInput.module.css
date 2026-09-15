@@ -2,13 +2,13 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  right: 0;
+  inset-inline-end: 0;
   display: flex;
   align-items: center;
   padding: var(--mantine-spacing-sm);
-  border-left: 1px solid var(--mb-color-border-neutral);
-  border-top-right-radius: var(--mantine-radius-xxs);
-  border-bottom-right-radius: var(--mantine-radius-xxs);
+  border-inline-start: 1px solid var(--mb-color-border-neutral);
+  border-start-end-radius: var(--mantine-radius-xxs);
+  border-end-end-radius: var(--mantine-radius-xxs);
   color: var(--mb-color-core-brand);
   outline: none;
 

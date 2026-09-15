@@ -202,7 +202,7 @@ const SkeletonSuggestedPromptRow = () => (
       <Skeleton h="1rem" natural />
     </td>
     <Flex h="3.5rem" component="td" align="center" justify="flex-end">
-      <Skeleton w="1.25rem" h="1rem" mr=".25rem" />
+      <Skeleton w="1.25rem" h="1rem" me=".25rem" />
     </Flex>
   </Box>
 );

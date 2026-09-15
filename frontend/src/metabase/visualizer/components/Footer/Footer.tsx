@@ -41,7 +41,7 @@ export function Footer({ className }: { className?: string }) {
       )}
       {hasDatasets && (
         <Button
-          ml="auto"
+          ms="auto"
           data-testid="visualizer-settings-button"
           aria-pressed={isVizSettingsSidebarOpen}
           onClick={() => {
