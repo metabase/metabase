@@ -37,6 +37,7 @@
   quotas
   TokenStatus
   clear-cache!
+  clear-local-cache!
   token-check-url
   transform-metered-as
   transform-stats]
