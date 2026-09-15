@@ -139,8 +139,14 @@ export function jsonField(
 ):
   | {
       field: ShapeField;
+      /**
+       * The declared field type still describes its JSON shape.
+       * An optional field can omit undefined and still preserve its type.
+       */
       preservesType: boolean;
+      /** Some declared values cause JSON.stringify to omit the field. */
       omitsValues: boolean;
+      /** Values that remain need a different type or shape after JSON conversion. */
       convertsValues: boolean;
     }
   | undefined {
@@ -164,7 +170,6 @@ export function jsonField(
   const convertsValues = views.some(
     (view, index) => view.kind !== "type" || view.type !== values[index],
   );
-  // Dropping undefined preserves a property's declared type only when it was optional already.
   const preservesType =
     !convertsValues &&
     (!omitsValues ||
