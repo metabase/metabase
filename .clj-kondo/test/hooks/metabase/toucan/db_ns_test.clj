@@ -111,3 +111,20 @@
   (testing "each unmarked pair is reported"
     (is (= 2 (count (lint-query-call '(t2/select :model/X :locale locale :msgid msgid)
                                      'metabase.foo.db))))))
+
+(deftest ^:parallel kv-arg-offset-test
+  (testing "a fn with an argument before the model still pairs its kv-args correctly"
+    (is (=? [{:message #"`k`.*"}]
+            (lint-query-call '(t2/select-one-fn :value :model/Setting :key k) 'metabase.foo.db)))
+    (is (=? [{:message #"`uid`.*"}]
+            (lint-query-call '(t2/select-fn-set :group_id :model/X :user_id uid) 'metabase.foo.db)))))
+
+(deftest ^:parallel write-calls-are-not-linted-for-values-test
+  (testing "an insert's values are written, not filtered on, so they are not flagged"
+    (are [form] (empty? (filter #(= :metabase/unmarked-sql-value (:type %))
+                                (lint-query-call form 'metabase.foo.db)))
+      '(t2/insert! :model/X :key k :value v)
+      '(t2/insert-returning-instances! :model/X :key k :value v)))
+  (testing "a select's values are still flagged"
+    (is (=? [{:type :metabase/unmarked-sql-value}]
+            (lint-query-call '(t2/select :model/X :key k) 'metabase.foo.db)))))

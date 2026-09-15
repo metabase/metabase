@@ -63,17 +63,37 @@
 
     :else nil))
 
+(def ^:private write-fns
+  "Calls whose values are written rather than filtered on. A value here is not a where-clause value
+  an attacker can turn into SQL structure, and a `define-before-insert` hook may read it before the
+  query compiles, so a marker would break it rather than protect anything."
+  '#{insert! insert-returning-instance! insert-returning-instances! insert-returning-pk!
+     insert-returning-pks! save!})
+
+(defn- read-call?
+  "Whether `node` is a query call whose values are filtered on rather than written."
+  [node]
+  (let [f (some-> (first (:children node)) hooks/sexpr)]
+    (not (contains? write-fns (symbol (name f))))))
+
 (defn- kv-arg-values
   "The value nodes of the `:column value` pairs a query call takes after its model.
 
   `(t2/select :model/X :locale locale :archived false)` -- the pairs run to the end of the call, or
   to a trailing query map."
   [args]
-  (->> args
-       (partition 2 2 nil)
-       (keep (fn [[k v]]
-               (when (and v (hooks/keyword-node? k))
-                 v)))))
+  ;; Several of these fns take an argument before the model -- `(t2/select-one-fn :value :model/X
+  ;; :key k)` -- so the pairs do not start at a fixed offset. They start after the model, which is
+  ;; the `:model/...` keyword.
+  (let [after-model (->> args
+                         (drop-while #(not (and (hooks/keyword-node? %)
+                                                (= "model" (namespace (hooks/sexpr %))))))
+                         rest)]
+    (->> after-model
+         (partition 2 2 nil)
+         (keep (fn [[k v]]
+                 (when (and v (hooks/keyword-node? k))
+                   v))))))
 
 (defn- lint-unmarked-values!
   "Register a finding for each argument of the enclosing function that reaches a value slot unmarked.
@@ -85,7 +105,7 @@
                   (concat (mapcat value-nodes args)
                           ;; `:column value` pairs after the model, which Toucan builds into the
                           ;; where clause.
-                          (kv-arg-values (rest args))))
+                          (kv-arg-values args)))
           :when (and (hooks/token-node? value)
                      (symbol? (hooks/sexpr value))
                      (not (marked? value)))]
@@ -109,6 +129,9 @@
                                (hooks/sexpr fn-node))
               :type :metabase/t2-query-namespace))))
   ((requiring-resolve 'hooks.metabase.warehouse-schema-overlay.table-or-field-query/lint-read) input)
-  (when (and ns (db-namespace? (modules/config input) ns) (not (test-file? filename)))
+  (when (and ns
+             (db-namespace? (modules/config input) ns)
+             (not (test-file? filename))
+             (read-call? node))
     (lint-unmarked-values! node))
   input)
