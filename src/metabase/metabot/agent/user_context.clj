@@ -253,8 +253,8 @@
   database and query the tables it references. The database refusal is audited for the same
   reason the query's card ids get the audited store: the id is the caller's own."
   [query]
-  (when-let [[gated mp] (shared.content-store/query-for-export query true)]
-    (llm-shape/export-query-for-llm gated mp shared.content-store/audited-store)))
+  (when-let [{checked :query mp :mp} (shared.content-store/query-for-export query true)]
+    (llm-shape/export-gated-query-for-llm checked mp shared.content-store/audited-store)))
 
 ;; Format adhoc query (notebook editor) viewing context.
 (defmethod format-entity "adhoc"

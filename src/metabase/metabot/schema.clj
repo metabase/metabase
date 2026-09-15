@@ -40,7 +40,12 @@
    [:chart-configs {:optional true} [:map-of ::state-map-key :map]]
    [:todos {:optional true} [:sequential :map]]
    [:transforms {:optional true} [:map-of ::state-map-key :map]]
-   [:link-registry {:optional true} [:map-of ::state-map-key :string]]])
+   [:link-registry {:optional true} [:map-of ::state-map-key :string]]
+   ;; JSON has no sets, so a state read back out of metabot_message arrives as a vector here and
+   ;; is validated before [[normalize-state]] gets a chance to turn it back into one
+   [:client-ids {:optional true} [:or {:decode/normalize set}
+                                  [:set ::state-map-key]
+                                  [:sequential ::state-map-key]]]])
 
 (defn normalize-state
   "Normalize dynamic state-map keys to strings according to [[::state]]."

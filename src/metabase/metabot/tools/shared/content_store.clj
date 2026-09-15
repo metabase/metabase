@@ -185,16 +185,21 @@
   refuses them without a trail. Measure / segment refs are not checked here; the stores gate
   those with the caller's audit polarity.
 
-  Nil when they may not. Normalizing is the first thing the check does, so the result comes back
-  rather than leaving the export to repeat it."
+  Nil when they may not, and `::unchecked` when the check could not be made at all - a query that
+  will not normalize, permissions that will not calculate. That is not a denial, so the caller
+  still renders the query, just without resolving anything in it. Normalizing is the first thing
+  the check does, so the result comes back rather than leaving the export to repeat it."
   [audited? resolved]
   (try
-    (let [normalized                 (lib-be/normalize-query resolved)
+    ;; strict, or a query that will not parse degrades to {} and reads as a denial instead of
+    ;; reaching the catch below (it also logs at ERROR on the way past)
+    (let [normalized                 (lib-be/normalize-query nil resolved {:strict? true})
           database-id                (:database normalized)
           {:keys [table card field]} (exported-entity-ids normalized)]
       (when (and (pos-int? database-id)
                  (every? #(readable? audited? :model/Card %) card)
-                 ;; throw on a calculation failure so only a denial reads as false
+                 ;; throw on a calculation failure, so it lands in the catch below as a check we
+                 ;; could not make rather than reading as a denial
                  (query-perms/can-run-query? normalized false true))
         (let [field-table (metabot.perms/field-id->table-id field)
               table-ids   (into (set table) (vals field-table))]
@@ -202,8 +207,9 @@
                      (sandbox-visible-fields? field-table))
             normalized))))
     (catch Exception e
-      (log/debugf "Omitting a query that could not be permission-checked: %s" (ex-message e))
-      nil)))
+      (log/debugf "Rendering a query unresolved, since it could not be permission-checked: %s"
+                  (ex-message e))
+      ::unchecked)))
 
 (defn- cached-pass
   "Memoize an allowed gate result on the agent's memory for the rest of the turn: the check
@@ -220,22 +226,37 @@
     (f)))
 
 (defn query-for-export
-  "`[query mp]` for [[metabase.metabot.tools.shared.llm-shape/export-query-for-llm]] when the
-  current user may run `query`, else nil. The query comes back normalized with a provider over
-  its database; one carrying no `:database` passes through untouched and without a provider,
-  since it only ever pprints. With `audited?` the saved-question refusals are audited; for
-  client-supplied queries, where the ids are the caller's own. Run permission is the whole rule:
-  reading the database is not enough, and a saved question the user can read authorizes a query
-  over a database they cannot. A database that no longer exists passes, since there is no
-  metadata behind it to leak; one we can't resolve does not."
+  "How the caller should render `query`, or nil when the current user may not see it at all.
+  Run permission is the whole rule: reading the database is not enough, and a saved question the
+  user can read authorizes a query over a database they cannot. With `audited?` the saved-question
+  refusals are audited, for client-supplied queries where the ids are the caller's own.
+
+  Three shapes come back, because a check that was never needed and a check that could not be made
+  are not the same thing:
+
+    `{:query q :mp mp}`       cleared. `q` is normalized and exports through `mp`, resolving its
+                              ids to names.
+    `{:query q}`              there was nothing to check. The query carries no `:database`, or its
+                              database is gone and the metadata with it, so rendering it in full
+                              reveals nothing. This is what master did.
+    `{:query q :unchecked? true}`
+                              the database is there but the check could not be made at all: a
+                              query that will not parse, permissions that will not calculate. Not
+                              a refusal, so the query still reaches the model, but nothing in it
+                              may be resolved to a name."
   [query audited?]
   (if-not (and (map? query) (:database query))
-    [query nil]
+    {:query query}
     (cached-pass
      [query audited?]
      (fn []
-       (when-let [resolved (resolve-effective-database query)]
+       (if-let [resolved (resolve-effective-database query)]
          (if (metabot.db/database-exists? (:database resolved))
-           (when-let [normalized (runnable-normalized-query audited? resolved)]
-             [normalized (lib-be/application-database-metadata-provider (:database normalized))])
-           [resolved nil]))))))
+           (let [normalized (runnable-normalized-query audited? resolved)]
+             (cond
+               (= ::unchecked normalized) {:query resolved :unchecked? true}
+               (some? normalized)         {:query normalized
+                                           :mp    (lib-be/application-database-metadata-provider
+                                                   (:database normalized))}))
+           {:query resolved})
+         {:query query})))))
