@@ -1193,7 +1193,7 @@
 
 (defmethod driver/temp-table-name :sqlserver
   [_driver]
-  (str "#mb_test_" (str/replace (str (random-uuid)) "-" "")))
+  (str "##mb_test_" (str/replace (str (random-uuid)) "-" "")))
 
 (defmethod driver/compile-create-temp-table :sqlserver
   [driver {:keys [table query]}]
