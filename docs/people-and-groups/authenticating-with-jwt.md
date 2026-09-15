@@ -48,7 +48,7 @@ await fetch(`${METABASE_URL}/auth/sso?return_to=/question/1-superb-question`, {
 
 ## Set up JWT authentication
 
-Navigate to the **Admin**>**Settings** section of the Admin area, then click on the **Authentication > JWT** tab.
+Navigate to the **Admin**>**Settings** section of the Admin area, then click on the **Authentication > JWT** tab. If you're setting up JWT for embedding, you'll find the same form at **Embedding hub** > **Authentication**.
 
 ![JWT form](images/JWT-auth-form.png)
 

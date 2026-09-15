@@ -15,12 +15,11 @@ To restrict data in guest embeds for specific people or groups, use [locked para
 
 ## Turning on guest embedding in Metabase
 
-The path to embedding settings depends on your Metabase version:
+1. Click the **grid** icon in the upper right and select **Embedding hub**.
+2. Go to **Security**.
+3. Toggle on **Enable embedding**. On Pro and Enterprise plans, the toggle is called **Modular embedding and SDK for React**.
 
-- **OSS**: **Admin > Embedding**
-- **Starter/Pro/Enterprise**: **Admin > Embedding > Guest embeds**
-
-Toggle **Enable guest embeds**.
+This one toggle turns on guest embeds, modular embedding, and the SDK for React. There's no separate toggle for guest embeds.
 
 ## Creating a guest embed
 
@@ -28,7 +27,7 @@ Toggle **Enable guest embeds**.
 
 To create a guest embed:
 
-1. Go to the item that you want to embed in your website. You can also open a command palette with Ctrl/Cmd+K and type "New embed".
+1. Go to the item that you want to embed in your website. You can also open a command palette with Ctrl/Cmd+K and type "New embed", or click **New embed** in the Embedding hub sidebar.
 2. Click the **Share** icon.
 3. Select **Embed**.
 4. Under **Authentication**, select **Guest**.
@@ -466,7 +465,7 @@ function paramsFor(user, customContext) {
 4. Select **Guest embedding**
 5. Click **Unpublish**.
 
-Admins can find a list of embedded items in **Admin > Embedding** (on Pro and Enterprise plans, check the **Guest embeds** tab).
+Admins can find a list of embedded items in **Embedding hub > Security** under **Published guest embeds**. The list only shows up once you've published at least one embed.
 
 ## Removing the "Powered by Metabase" banner
 
@@ -478,8 +477,8 @@ Metabase adds the banner to guest embeds (both charts and dashboards) on the OSS
 
 Your embedding secret key is used to sign JWTs for all of your embeds.
 
-1. Go to **Admin > Embedding**. On Pro and Enterprise plans, check the **Guest embeds** tab.
-2. Under **Regenerate secret key**, click **Regenerate key**.
+1. Go to **Embedding hub > Security**.
+2. Under **Secret key for guest embeds**, click **Regenerate key**.
 
 This key is shared across all guest embeds. Whoever has access to this key could get access to all embedded artifacts, so keep this key secure. If you regenerate this key, you'll need to update your server code with the new key.
 

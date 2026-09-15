@@ -51,7 +51,7 @@ Both the web component and `MetabotQuestion` let you [set where the chart appear
 
 You can use the in-app wizard to generate the code:
 
-1. Open the command palette with Ctrl/Cmd+K and type **New embed**.
+1. Open the command palette with Ctrl/Cmd+K and type **New embed**. Or click **New embed** in the Embedding hub sidebar.
 2. For the experience, select **Metabot**.
 3. Pick a [layout](#set-where-the-chart-appears) and decide whether people can [save questions](#let-people-save-questions-metabot-creates).
 4. Click **Get code** and paste the snippet into your app.

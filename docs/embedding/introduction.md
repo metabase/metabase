@@ -102,6 +102,20 @@ If you'd like to share your data with the good people of the internet, admins ca
 
 **When to use public links and embeds**: one-off charts and dashboards. Admins can use public links when you just need to show someone a chart or dashboard without giving people access to your Metabase. And you don't care who sees the data; you want to make the item available to everyone.
 
+## Embedding hub
+
+Embedding settings live in the Embedding hub. To open it, click the **grid** icon in the upper right and select **Embedding hub**. Only admins can see it. The hub has:
+
+- **Get started**: a checklist that walks you through your first embed.
+- **Security**: toggles for each embedding method, CORS origins, the SameSite cookie setting, and the secret key for guest embeds.
+- **Authentication**: JWT settings for [SSO](./authentication.md).
+- **Permissions**: the same permissions editor as **Admin > Permissions**. It's just another way to get to the same permissions.
+- **Tenancy**: [tenants](./tenants.md), tenant groups, and tenant users.
+- **Appearance**: [themes](./appearance.md) for your embeds.
+- **Localization**: [translation dictionaries](./translations.md) for embedded content.
+
+The **New embed** button at the bottom of the sidebar opens the embed wizard.
+
 ## Resources for AI agents
 
 If you're using an AI agent to help you embed Metabase in your app, check out [AI agent resources](./ai-agent-resources.md).

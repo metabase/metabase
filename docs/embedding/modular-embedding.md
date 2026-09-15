@@ -17,15 +17,16 @@ If you're using React, check out the [Modular embedding SDK](./sdk/introduction.
 
 ## Enable modular embedding
 
-1. In Metabase, go to **Admin > Embedding**.
-2. Toggle on **Enable modular embedding**.
+1. In Metabase, click the **grid** icon in the upper right and select **Embedding hub**.
+2. Go to **Security**.
+3. Toggle on **Modular embedding and SDK for React**. On OSS and Starter plans, the toggle is called **Enable embedding**.
 
 **For guest embeds**: You're done! Skip to [Create a new embed](#create-a-new-embed) or see the [Guest embedding guide](./guest-embedding.md) for detailed setup instructions.
 
 **For authenticated embeds** (Pro/Enterprise only), some more steps:
 
-3. Under **Cross-Origin Resource Sharing (CORS)**, add the URLs of the websites where you want to embed Metabase (such as `https://*.example.com`). For testing embeds, you can use `localhost` which is always included in CORS policy.
-4. If embedding on a different domain, see [Embedding Metabase in a different domain](./authentication.md#embedding-metabase-in-a-different-domain).
+4. Under **Cross-Origin Resource Sharing (CORS)**, add the URLs of the websites where you want to embed Metabase (such as `https://*.example.com`). For testing embeds, you can use `localhost` which is always included in CORS policy.
+5. If embedding on a different domain, see [Embedding Metabase in a different domain](./authentication.md#embedding-metabase-in-a-different-domain).
 
 ## Create a new embed
 
@@ -43,9 +44,7 @@ In your Metabase:
 
 You can also open a command palette with Ctrl/Cmd+K, type "New embed". You'll get a wizard to help you set up your embed.
 
-You can also go to **Admin > Embedding > Modular embedding** and click **New embed**.
-
-![New modular embed from the admin settings](./images/new-modular-embed-from-admin-settings.png)
+You can also click **New embed** at the bottom of the Embedding hub sidebar.
 
 ### 2. Pick how to authenticate the embed
 
@@ -65,7 +64,7 @@ If you're on Metabase OSS/Starter plans, you can select light or dark themes for
 
 On Metabase Pro/Enterprise, you can also:
 
-- Pick a [saved theme](./appearance.md#embedding-themes) you've created in **Admin settings > Embedding > Themes**.
+- Pick a [saved theme](./appearance.md#embedding-themes) you've created in **Embedding hub > Appearance**.
 - Pick specific colors for brand, text, and background in the embed wizard.
 - Add more [advanced theme options](./appearance.md#advanced-theming) by editing the generated snippet later.
 
@@ -162,7 +161,7 @@ In addition to this, we consider shared accounts to be unfair usage. Fair usage 
 
 The exact customization options you see will depend on which type of entity you're embedding. These are the settings for authenticated embeds available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans. For guest embeds (OSS and paid), see [guest embedding options](./guest-embedding.md#component-attributes).
 
-When you're creating a new embed using **Admin > Embedding > Setup guide > Embed in your code**, you'll see some or all of the following customization options in the interactive creation flow. These options correspond to attributes on the component you're embedding. For each attribute, see the [dashboard](./dashboard-reference.md) and [question](./question-reference.md) component references.
+When you create a new embed with the embed wizard (click **New embed** in the Embedding hub, or **Share > Embed** on an item), you'll see some or all of the following customization options in the interactive creation flow. These options correspond to attributes on the component you're embedding. For each attribute, see the [dashboard](./dashboard-reference.md) and [question](./question-reference.md) component references.
 
 - **Allow people to drill through on data points**: determines whether people can interact with the chart (or charts on a dashboard). Interactivity includes [drilling down](../questions/visualizations/drill-through.md) to individual records from aggregated questions, filtering on click, zooming in, etc. Disabling drill-through for an embedded _question_ also disables people's ability to add filters and summaries.
 

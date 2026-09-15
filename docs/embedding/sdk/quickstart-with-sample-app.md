@@ -123,11 +123,11 @@ To enable SSO with JWT when self-hosting, you'll need to [activate your license]
 
 ## Enable embedding in Metabase
 
-From any Metabase page, click the **grid** icon in the upper right and select **Admin** > **Embedding**.
+From any Metabase page, click the **grid** icon in the upper right and select **Embedding hub**. Go to **Security**.
 
 Turn on:
 
-- Modular embedding SDK
+- Modular embedding and SDK for React
 
 Otherwise, this whole thing is hopeless.
 
@@ -135,9 +135,7 @@ Otherwise, this whole thing is hopeless.
 
 We'll also need to update our JWT Provider URI in Metabase. By default, this URI is where the SDK will redirect login requests.
 
-From any Metabase page, click the **grid** icon in the upper right and select **Admin** > **Settings** > **Authentication**.
-
-On the card that says **JWT**, click the **Setup** button.
+From any Metabase page, click the **grid** icon in the upper right, select **Embedding hub**, and go to **Authentication**. You'll see the JWT form. It's the same form as **Admin** > **Settings** > **Authentication** > **JWT**.
 
 ### JWT Identity provider URI
 

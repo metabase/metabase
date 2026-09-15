@@ -55,8 +55,9 @@ The dictionary must be a CSV with these columns:
 
 To add a translation dictionary:
 
-1. Go to **Admin > Embedding**.
-2. Under **Translate embedded dashboards and question**, click **Upload translation dictionary**.
+1. Click the **grid** icon in the upper right and select **Embedding hub**.
+2. Go to **Localization**.
+3. Under **Translate embedded dashboards and questions**, click **Upload translation dictionary**.
 
 Uploading a new dictionary will replace the existing dictionary.
 

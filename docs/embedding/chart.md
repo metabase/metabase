@@ -111,7 +111,7 @@ On your app's server, set the value for the locked parameter in the token. Whoev
 const jwt = require("jsonwebtoken");
 
 // Get your key from your Metabase at
-// /admin/embedding/guest -> Embedding secret key
+// Embedding hub > Security -> Secret key for guest embeds
 const METABASE_SECRET_KEY = "YOUR_SECRET_KEY";
 
 // Here we lock a customer_id parameter to 13

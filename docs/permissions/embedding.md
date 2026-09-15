@@ -7,6 +7,8 @@ summary: Learn about which permissions tooling you should use depending on wheth
 
 You can use a single Metabase to manage permissions for all of your customers. Which Metabase permissions tool you use depends on how you store your customer data.
 
+You can open the permissions editor from **Admin > Permissions** or from **Embedding hub > Permissions**. They're the same permissions; the Embedding hub just gives you another way to get to them.
+
 - [One database for all customers (commingled setups)](#one-database-for-all-customers-commingled-setups)
 - [One database per customer](#one-database-per-customer)
 - [One schema per customer](#multiple-schemas-one-schema-per-customer)
@@ -121,7 +123,7 @@ Say you have a single database with ten different tables, each corresponding to 
 
 1. **Create a group** for your first customer in **Admin** > **People**. If you need different permission levels within a company (some employees can ask questions, others can only view), create multiple groups like **Company A (Self-service)** and **Company A (View only)**.
 
-2. **Grant table access** by going to **Permissions** > **Data** > **Databases** and granting your new group access to the customer's table. If you want customers to create questions and dashboards within their table, set **Create query** permissions to **Query builder**.
+2. **Grant table access** by going to **Admin** > **Permissions** > **Data** > **Databases** (or the same tab in **Embedding hub** > **Permissions**) and granting your new group access to the customer's table. If you want customers to create questions and dashboards within their table, set **Create query** permissions to **Query builder**.
 
    For employees who should only view data and create collections to house those specific questions and dashboards, see [collection permissions](./collections.md).
 

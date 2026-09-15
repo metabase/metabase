@@ -37,9 +37,10 @@ If you have your app running locally, and you're using the Pro Cloud version, or
 
 ## Enabling full app embedding in Metabase
 
-1. Go to **Admin > Embedding**.
-2. Click **Enable Full app embedding**.
-3. Under **Authorized origins**, add the URL of the website or web app where you want to embed Metabase (such as `https://*.example.com`).
+1. Click the **grid** icon in the upper right and select **Embedding hub**.
+2. Go to **Security**.
+3. Toggle on **Full-app embedding**.
+4. Under **Authorized origins for full-app embedding**, add the URL of the website or web app where you want to embed Metabase (such as `https://*.example.com`). This section shows up once you've turned on full-app embedding.
 
 ## Setting up embedding on your website
 
@@ -129,7 +130,7 @@ Note that your full app embed must be compatible with Safari to run on _any_ bro
 
 If you want to embed Metabase in another domain (say, if Metabase is hosted at `metabase.yourcompany.com`, but you want to embed Metabase at `yourcompany.github.io`), you can tell Metabase to set the session cookie's SameSite value to "none".
 
-You can set session cookie's SameSite value in **Admin** > **Embedding** > **Security** > **SameSite cookie setting**.
+You can set session cookie's SameSite value in **Embedding hub** > **Security** > **SameSite cookie setting**.
 
 SameSite values include:
 

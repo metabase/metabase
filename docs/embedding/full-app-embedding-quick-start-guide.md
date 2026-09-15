@@ -33,9 +33,9 @@ You could also use the dashboard's [Entity ID](../installation-and-operation/ser
 
 ### Enable full app embedding
 
-In Metabase, click the **grid** icon in the upper right and go to **Admin > Embedding** and toggle on **Enable full app embedding**.
+In Metabase, click the **grid** icon in the upper right, select **Embedding hub**, and go to **Security**. Toggle on **Full-app embedding**.
 
-Under **Authorized origins**, add the URL of the website or web app where you want to embed Metabase. If you're running your app locally, you can add localhost and specify the port number, e.g. `http://localhost:8080`.
+Under **Authorized origins for full-app embedding**, add the URL of the website or web app where you want to embed Metabase. If you're running your app locally, you can add localhost and specify the port number, e.g. `http://localhost:8080`.
 
 #### SameSite configuration
 
@@ -45,11 +45,9 @@ If you're embedding Metabase in a different domain, you may need to [set the ses
 
 #### Enable authentication with JWT
 
-While still in the **Embedding settings** section, scroll down and click on **Authentication** under **Related settings**.
+In the Embedding hub sidebar, click **Authentication**. You'll see the JWT settings form. It's the same form as **Admin > Settings > Authentication > JWT**.
 
-On the card that says **JWT**, click the **Setup** button (you may have to scroll down to view the JWT card).
-
-![Admin settings: Authentication > JWT setup.](./images/jwt-setup.png)
+![JWT setup form.](./images/jwt-setup.png)
 
 #### Set JWT Identity provider URI
 
@@ -173,7 +171,7 @@ In Metabase, click the **grid** icon and go to **Admin** > **People** > **Groups
 
 You'll map this string in the `groups` key to a Metabase group, so that when the person signs in via SSO, Metabase automatically assigns them to the appropriate Metabase group.
 
-In Metabase's admin section, go to **Authentication > JWT** and click **Edit**.
+Go to **Embedding hub > Authentication** (or **Admin > Settings > Authentication > JWT**).
 
 In the **Group schema** section, toggle on **Synchronize group memberships**. If the names of groups in the `groups` array match Metabase group names exactly (e.g. both are `"Customer Acme"`), then the groups will be mapped automatically.
 
@@ -199,7 +197,7 @@ Now to apply permissions to that group so that people only see data specific to 
 
 Metabase ships with two initial groups: "Admins" and "All Users". By default, Metabase gives the "All Users" group access to connected data sources. And since Metabase grants people the privileges of their most permissive group, you'll want to restrict what the "All Users" groups can see before you add them to groups with limited or no access to data sources and collections.
 
-To reset permissions for the All users group, click the **grid** icon and go to **Admin** > **Permissions**. Under the **Data** tab, go to **Groups** and select **All Users**. For the **Sample Database** in the **View data** column, select "Blocked". Click **Save changes** and a modal will pop up summarizing what you're changing. Click **Yes**.
+To reset permissions for the All users group, click the **grid** icon and go to **Admin** > **Permissions** (or **Embedding hub** > **Permissions**; it's the same permissions editor). Under the **Data** tab, go to **Groups** and select **All Users**. For the **Sample Database** in the **View data** column, select "Blocked". Click **Save changes** and a modal will pop up summarizing what you're changing. Click **Yes**.
 
 ![Resetting permissions of the All Users group to](./images/all-users.png)
 
