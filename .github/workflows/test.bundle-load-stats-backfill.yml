@@ -6,7 +6,8 @@ name: Bundle Load Stats Backfill
 #
 # Uberjars are kept for 30 days. A listed commit older than that is built first,
 # EE only, since that is all the benchmark boots. It only measures: each result
-# is kept as an artifact, and nothing is written to Stats.
+# is kept as an artifact, and the rows are merged into the table by hand, since
+# the importer only appends and the table can only be truncated whole.
 #
 # It runs on a push to its own branch, so it never needs to merge.
 
@@ -96,8 +97,6 @@ jobs:
       SITE: http://localhost:4000
       RUNS: "8"
       GH_TOKEN: ${{ github.token }}
-      ENG_STATS_URL: ${{ secrets.ENG_STATS_URL }}
-      API_KEY: ${{ secrets.ENG_STATS_API_KEY }}
     steps:
       - name: Check out the code
         uses: actions/checkout@v6
@@ -162,19 +161,7 @@ jobs:
             kill "$java_pid"
             wait "$java_pid" 2>/dev/null || true
             pkill -f "remote-debugging-port" 2>/dev/null || true
-            [ $status -ne 0 ] && return $status
-
-            # The upload reports a rejection as a warning and exits 0, so read
-            # its output rather than its exit code.
-            ROWS="artifacts/${sha}.json" HEAD_SHA="$sha" \
-              COMMIT_MESSAGE="$2" COMMIT_TIMESTAMP="$3" \
-              bun .github/scripts/upload-bundle-load-stats.ts > "artifacts/${sha}.upload.log" 2>&1
-            if ! grep -q "uploaded successfully" "artifacts/${sha}.upload.log"; then
-              echo "::warning::Upload rejected for ${sha}"
-              tail -3 "artifacts/${sha}.upload.log"
-              return 1
-            fi
-            return 0
+            return $status
           }
 
           while IFS=$'\t' read -r sha date subject; do
