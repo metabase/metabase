@@ -237,20 +237,23 @@ jobs:
             build-static-viz: true
             test-args: >-
               :only '"test"'
+              :partition/total 3
+              :partition/index 0
             exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
-            runner-index: '0'
           - name: EE App DB Tests (Part 2)
             build-static-viz: true
             test-args: >-
               :only '"test"'
+              :partition/total 3
+              :partition/index 1
             exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
-            runner-index: '1'
           - name: EE App DB Tests (Part 3)
             build-static-viz: true
             test-args: >-
               :only '"test"'
+              :partition/total 3
+              :partition/index 2
             exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
-            runner-index: '2'
 
     services:
       mysql:
@@ -264,9 +267,6 @@ jobs:
           MYSQL_ALLOW_EMPTY_PASSWORD: true
           MYSQL_DATABASE: mb_test
     env:
-      # App DB Tests only; Enterprise Tests runs as a single JVM.
-      APP_DB_RUNNER_COUNT: 2
-      APP_DB_JVMS_PER_RUNNER: 2
       # __ADDITIONAL_EXCLUDED_TAG__: ${{ !inputs.force-run && ':mb/old-migrations-test' || '' }}
       # GDGT-3126: re-enable and properly fix old migrations tests
       __ADDITIONAL_EXCLUDED_TAG__: ':mb/old-migrations-test'
@@ -307,28 +307,6 @@ jobs:
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     steps:
       - uses: actions/checkout@v6
-      # run-backend-test-jvms.sh points each JVM at its own `mb_test_p<partition>` so they don't share
-      # an app DB. Every runner creates all of them, since which partitions it gets depends on its index.
-      # Retried because nothing waits for the service to accept connections (and its entrypoint restarts
-      # mysqld once after initializing).
-      - name: Create per-JVM application databases
-        if: ${{ matrix.job.runner-index != '' }}
-        env:
-          MYSQL_CONTAINER: ${{ job.services.mysql.id }}
-        run: |
-          sql=""
-          for ((i = 0; i < APP_DB_RUNNER_COUNT * APP_DB_JVMS_PER_RUNNER; i++)); do
-            sql+="CREATE DATABASE IF NOT EXISTS ${MB_DB_DBNAME}_p$i; "
-          done
-          for _ in $(seq 60); do
-            if docker exec "$MYSQL_CONTAINER" mysql -uroot -e "$sql"; then
-              docker exec "$MYSQL_CONTAINER" mysql -uroot -e "SHOW DATABASES LIKE '${MB_DB_DBNAME}_p%'"
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "::error::Could not create the per-JVM application databases"
-          exit 1
       - name: Test ${{ matrix.version.name }}
         id: test-driver
         uses: ./.github/actions/test-driver
@@ -339,10 +317,6 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
-          runner-index: ${{ matrix.job.runner-index }}
-          runner-count: ${{ env.APP_DB_RUNNER_COUNT }}
-          jvms-per-runner: ${{ env.APP_DB_JVMS_PER_RUNNER }}
-          heap-per-jvm: '4g'
 
   be-tests-postgres:
     needs: app-db-matrix
