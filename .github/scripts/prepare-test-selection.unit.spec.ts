@@ -24,6 +24,18 @@ type Step = {
 
 const WORKFLOWS = ["frontend.yml", "loki.yml"];
 
+function loadWorkflow(file: string) {
+  // js-yaml returns an untyped value, and these repository workflows define jobs with steps.
+  return load(
+    readFileSync(resolve(__dirname, "../workflows", file), "utf8"),
+  ) as {
+    jobs: Record<
+      string,
+      { if?: string; outputs?: Record<string, string>; steps?: Step[] }
+    >;
+  };
+}
+
 describe.each(Object.entries(SUITES))(
   "%s test selection",
   (suiteName, suite) => {
@@ -73,7 +85,7 @@ describe.each(Object.entries(SUITES))(
         writePlan(plan(files));
         prepareTestSelection(suiteName, env);
         expect(output()).toBe(
-          `paths-file=${join(dir, suite.pathsFile)}\ncount=${files.length}\n`,
+          `paths-file=${join(dir, suite.pathsFile)}\nselection=${files.length > 0 ? "narrowed" : "empty"}\n`,
         );
         expect(
           JSON.parse(readFileSync(join(dir, suite.pathsFile), "utf8")),
@@ -91,14 +103,14 @@ describe.each(Object.entries(SUITES))(
       expect(result.status === 0 ? "" : result.stderr).toBe("");
       expect(result.status).toBe(0);
       expect(output()).toBe(
-        `paths-file=${join(dir, suite.pathsFile)}\ncount=1\n`,
+        `paths-file=${join(dir, suite.pathsFile)}\nselection=narrowed\n`,
       );
     });
 
     it("writes no paths file for a full selection", () => {
       writePlan(plan(["one.spec.cjs", "two.spec.cjs"]));
       prepareTestSelection(suiteName, env);
-      expect(output()).toBe("");
+      expect(output()).toBe("selection=full\n");
     });
 
     it.each([
@@ -126,7 +138,7 @@ describe.each(Object.entries(SUITES))(
       });
       prepareTestSelection(suiteName, env);
       expect(console.warn).not.toHaveBeenCalled();
-      expect(output()).toBe("");
+      expect(output()).toBe("selection=full\n");
     });
 
     it.each(["missing", "truncated", "download failed"])(
@@ -162,15 +174,23 @@ describe("prepareTestSelection", () => {
   });
 
   const selectionSteps = WORKFLOWS.flatMap((file) => {
-    // js-yaml returns an untyped value, and these repository workflows define jobs with steps.
-    const workflow = load(
-      readFileSync(resolve(__dirname, "../workflows", file), "utf8"),
-    ) as { jobs: Record<string, { steps?: Step[] }> };
+    const workflow = loadWorkflow(file);
     return Object.entries(workflow.jobs).flatMap(([job, { steps = [] }]) =>
       steps
         .filter((step) => step.run?.includes("prepare-test-selection.ts"))
         .map((step) => ({ name: `${file} ${job}`, step, steps })),
     );
+  });
+
+  it("skips Loki visual tests only for an empty story selection", () => {
+    const { jobs } = loadWorkflow("loki.yml");
+    expect(jobs["story-selection"].outputs?.selection).toBe(
+      "${{ steps.selection.outputs.selection }}",
+    );
+    expect(jobs["visual-test"].if).toContain(
+      "needs.story-selection.outputs.selection != 'empty'",
+    );
+    expect(jobs["visual-test"].if).not.toMatch(/outputs\.[\w-]+ *[!=]= *'\d+'/);
   });
 
   it.each(selectionSteps)(

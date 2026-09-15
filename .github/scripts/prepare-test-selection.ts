@@ -87,6 +87,7 @@ export function prepareTestSelection(
 
   // Full selections use each runner's normal discovery, without a paths file.
   if (files === null) {
+    appendFileSync(GITHUB_OUTPUT, "selection=full\n");
     return;
   }
 
@@ -94,7 +95,7 @@ export function prepareTestSelection(
   writeFileSync(pathsFile, JSON.stringify(files));
   appendFileSync(
     GITHUB_OUTPUT,
-    `paths-file=${pathsFile}\ncount=${files.length}\n`,
+    `paths-file=${pathsFile}\nselection=${files.length === 0 ? "empty" : "narrowed"}\n`,
   );
 }
 

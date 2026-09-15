@@ -21,7 +21,7 @@ jobs:
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
-      count: ${{ steps.selection.outputs.count }}
+      selection: ${{ steps.selection.outputs.selection }}
       test-plan-artifact-id: ${{ steps.selection.outputs.paths-file && inputs.test-plan-artifact-id || '' }}
     steps:
       - uses: actions/checkout@v6
@@ -48,7 +48,9 @@ jobs:
 
   visual-test:
     needs: story-selection
-    if: ${{ !cancelled() && !inputs.skip && needs.story-selection.outputs.count != '0' }}
+    # A missing job output compares equal to '0' in GitHub expressions,
+    # so an empty selection is marked with a non-numeric value.
+    if: ${{ !cancelled() && !inputs.skip && needs.story-selection.outputs.selection != 'empty' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     services:
