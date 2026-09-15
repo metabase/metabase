@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.api-scope.core :as api-scope]
    [metabase.mcp.core :as mcp]
    [metabase.oauth-server.db :as oauth-server.db]
    [metabase.oauth-server.scopes :as scopes]
@@ -31,10 +32,16 @@
 
   `mb:full` is deliberately absent. Advertising it here puts a full-access grant in front of every client that reads
   discovery metadata, so keeping it out means no client is led toward it. Note this is not a gate: dynamic
-  registration is unauthenticated and passes a client-supplied `scope` through unchecked, so a client that names
-  `mb:full` itself still registers with it. Keeping it off this list narrows who finds it, not who may ask."
+  registration is unauthenticated and accepts any registered scope, so a client that names `mb:full` itself still
+  registers with it. Keeping it off this list narrows who finds it, not who may ask."
   []
   (vec (into (sorted-set) (mcp/all-scopes))))
+
+(defn unregistered-scopes
+  "The distinct scopes in the space-delimited `scope` string that are not registered via
+  [[metabase.api-scope.core/defscope]], as a sorted set; nil when every scope is registered or `scope` is blank."
+  [scope]
+  (not-empty (into (sorted-set) (remove api-scope/registered-scope?) (api-scope/parse-scopes scope))))
 
 (defn mcp-resource-scopes
   "The scopes advertised for the MCP resource at `path`. RFC 9728 metadata answers \"what does *this* resource

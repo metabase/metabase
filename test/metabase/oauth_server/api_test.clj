@@ -227,6 +227,54 @@
                                        :expected-status 403)]
         (is (= "registration_not_supported" (:error response)))))))
 
+(deftest dynamic-register-rejects-unregistered-scopes-test
+  (testing "GHY-4542: registration is unauthenticated, and a client's registered scopes are the ceiling
+            `/oauth/authorize` checks requests against. Storing a self-nominated `*` or `agent:*` lets the
+            client request it later and receive a token `scope-matches?` treats as a wildcard grant, so
+            any scope that is not a registered scope is rejected before anything is stored."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (doseq [[scope rejected] [["*" ["*"]]
+                                  ["agent:*" ["agent:*"]]
+                                  ["bogus" ["bogus"]]
+                                  ["agent:content:read *" ["*"]]]]
+          (testing (pr-str scope)
+            (let [before   (t2/count :model/OAuthClient)
+                  response (register-client! {:redirect_uris ["https://example.com/callback"]
+                                              :scope         scope}
+                                             :expected-status 400)]
+              (is (=? {:error             "invalid_client_metadata"
+                       :error_description string?}
+                      response))
+              (doseq [s rejected]
+                (is (str/includes? (:error_description response) s)
+                    "the description names the rejected scope"))
+              (is (not (str/includes? (:error_description response) "agent:content:read"))
+                  "a registered scope in the same request is not named as rejected")
+              (is (= before (t2/count :model/OAuthClient))
+                  "no client is stored"))))))))
+
+(deftest dynamic-register-accepts-registered-scopes-test
+  (testing "GHY-4542: rejecting unregistered scopes must not reject registered ones"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (testing "an explicit set of registered scopes is stored as sent"
+          (let [response (register-client! {:redirect_uris ["https://example.com/callback"]
+                                            :scope         "agent:content:read agent:query:run"})]
+            (is (= #{"agent:content:read" "agent:query:run"}
+                   (set (:scopes (t2/select-one :model/OAuthClient :client_id (:client_id response))))))))
+        (testing "`mb:full` is registered, and the Metabase CLI registers with it explicitly"
+          (let [response (register-client! {:redirect_uris ["https://example.com/callback"]
+                                            :scope         oauth-server/full-access-scope})]
+            (is (= #{oauth-server/full-access-scope}
+                   (set (:scopes (t2/select-one :model/OAuthClient :client_id (:client_id response))))))))
+        (testing "omitting `scope` still registers the client with the default ceiling"
+          (let [response (register-client! {:redirect_uris ["https://example.com/callback"]})]
+            (is (= (set (oauth-server/default-grant-scopes))
+                   (set (:scopes (t2/select-one :model/OAuthClient :client_id (:client_id response))))))))))))
+
 (deftest discovery-registration-endpoint-disabled-test
   (testing "Discovery document omits registration_endpoint when DCR is disabled"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"

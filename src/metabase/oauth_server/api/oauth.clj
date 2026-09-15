@@ -211,11 +211,23 @@
      :body    {"error" "registration_not_supported"}}
     (with-throttling-429 [registration-throttler (request/ip-address request)]
       (or (when-let [provider (oauth-server/get-provider)]
-            (if (nil? body)
+            (cond
+              (nil? body)
               {:status  400
                :headers {"Content-Type" "application/json"}
                :body    {"error"             "invalid_client_metadata"
                          "error_description" "Invalid or missing JSON body"}}
+
+              ;; A client's registered scopes are the ceiling /authorize checks requests against, so a
+              ;; self-nominated wildcard such as `*` would later be granted as one.
+              (oauth-server/unregistered-scopes (:scope body))
+              {:status  400
+               :headers {"Content-Type" "application/json"}
+               :body    {"error"             "invalid_client_metadata"
+                         "error_description" (str "Unsupported scope: "
+                                                  (str/join " " (oauth-server/unregistered-scopes (:scope body))))}}
+
+              :else
               (try
                 ;; MCP clients frequently omit application_type, scope, and may request
                 ;; unsupported grant types. We are required to support poorly-configured
