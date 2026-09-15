@@ -2314,6 +2314,11 @@
     [(first (format-honeysql driver [:raw ["CREATE TEMPORARY TABLE " [:inline (keyword table)] " AS " sql-query]]))
      sql-params]))
 
+(defmethod driver/compile-drop-temp-table :sql
+  [driver table]
+  [(first (format-honeysql driver [:raw ["DROP TABLE IF EXISTS " [:inline (keyword table)]]]))
+   []])
+
 (defmethod driver/compile-drop-table :sql
   [driver table]
   (format-honeysql driver {:drop-table [:if-exists (keyword table)]}))

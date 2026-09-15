@@ -100,6 +100,7 @@
                               :metadata/table-existence-check         true
                               :transforms/python                      true
                               :transforms/table                       true
+                              :transforms/testing                     true
                               :transforms/index-ddl                   true
                               :describe-default-expr                  true
                               :describe-is-nullable                   true
@@ -1445,6 +1446,11 @@
          (not-empty schema) table])
        (partition-by :index_name)
        (mapv mysql-index-rows->index)))
+
+(defmethod driver/compile-drop-temp-table :mysql
+  [driver table]
+  [(first (sql.qp/format-honeysql driver [:raw ["DROP TEMPORARY TABLE IF EXISTS " [:inline (keyword table)]]]))
+   []])
 
 (defmethod driver/llm-sql-dialect-resource :mysql [_]
   "metabot/prompts/dialects/mysql.md")

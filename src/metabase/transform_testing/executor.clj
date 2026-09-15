@@ -27,8 +27,7 @@
    conn   :- :some
    table  :- :string]
   (try
-    (let [[sql & params] (driver/compile-drop-table driver table)]
-      (driver/execute-on-connection! driver conn [sql params]))
+    (driver/execute-on-connection! driver conn (driver/compile-drop-temp-table driver table))
     (catch Exception e
       (log/warnf "Failed to drop transform test temp table %s: %s" table (ex-message e)))))
 
