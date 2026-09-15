@@ -1,8 +1,8 @@
 (ns metabase.metabot.self.openai
   (:require
    [clojure.string :as str]
+   [metabase.metabot.self.adapter :as adapter]
    [metabase.metabot.self.core :as core]
-   [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.schema :as schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -233,22 +233,17 @@
   [tool]
   (assoc (schema/tool-function tool) :type "function"))
 
-(defn- ai-proxy-unsupported-ex []
-  (ex-info (tru "AI proxy is not supported for OpenAI")
-           {:api-error  true
-            :error-code :proxy-unsupported}))
+(def ^:private default-model "gpt-5.4")
 
-(defn- openai-error-msg
-  "Canonical, status-specific OpenAI error message."
-  [res]
-  (let [status (long (:status res 0))]
-    (case status
-      401 (tru "OpenAI API key expired or invalid")
-      403 (tru "OpenAI API key has insufficient permissions")
-      404 (tru "OpenAI API endpoint or model listing is unavailable")
-      429 (tru "OpenAI API has rate limited us")
-      500 (tru "OpenAI API is not working but not saying why")
-      (tru "OpenAI API error (HTTP {0})" status))))
+(def ^:private provider
+  (adapter/provider
+   {:slug         "openai"
+    :display-name "OpenAI"
+    :errors       {401 #(tru "OpenAI API key expired or invalid")
+                   403 #(tru "OpenAI API key has insufficient permissions")
+                   404 #(tru "OpenAI API endpoint or model listing is unavailable")
+                   429 #(tru "OpenAI API has rate limited us")
+                   500 #(tru "OpenAI API is not working but not saying why")}}))
 
 (def supported-models
   "OpenAI chat models offered in the Metabot model picker, keyed by model id.
@@ -267,43 +262,16 @@
   [model]
   (get-in supported-models [model :context-window]))
 
-(defn- supported-model?
-  "Whether a `/v1/models` catalog entry is one of the [[supported-models]]."
-  [{:keys [id]}]
-  (contains? supported-models id))
-
-(defn- list-all-models
-  "Fetch the full OpenAI model catalog (`GET /v1/models`).
-  `:ai-proxy?` is not supported for OpenAI and throws when true."
-  [{:keys [credentials ai-proxy?]}]
-  (when ai-proxy?
-    (throw (ai-proxy-unsupported-ex)))
-  (try
-    (let [auth (core/resolve-auth "openai" "OpenAI"
-                                  (when-let [k (not-empty (:api-key credentials))]
-                                    {:url     (:base-url credentials)
-                                     :headers {"Authorization" (str "Bearer " k)}})
-                                  ai-proxy?)
-          res  (core/request auth {:method  :get
-                                   :url     "/v1/models"
-                                   :as      :json
-                                   :headers {"Content-Type" "application/json"}})]
-      (get-in res [:body :data]))
-    (catch Exception e
-      (core/rethrow-api-error! "openai" openai-error-msg e))))
-
 (defn list-models
-  "List the OpenAI chat models supported by this adapter (see [[supported-models]]).
+  "List the OpenAI chat models supported by this adapter, by intersecting [[supported-models]] with the
+  account's `/v1/models` catalog.
   Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request,
-  and throws when they are missing. Also supports `:ai-proxy?`.
+  and throws when they are missing.
   `:ai-proxy?` is not supported for OpenAI and throws when true."
   ([] (list-models {}))
   ([opts]
-   {:models (->> (list-all-models opts)
-                 (filter supported-model?)
-                 (sort-by :id)
-                 (mapv (fn [{:keys [id]}]
-                         {:id id :display_name (get-in supported-models [id :display-name])})))}))
+   (adapter/model-listing supported-models
+                    (adapter/fetch-catalog provider opts "/v1/models"))))
 
 (defn- strip-vendor-prefix
   "`model` lowercased and without an optional vendor prefix (e.g. Bedrock's `openai.`).
@@ -327,10 +295,15 @@
   [model]
   (not (model-supports-temperature? model)))
 
+(defn streams-reasoning?
+  "Registry capability. OpenAI answers from the model name."
+  [{:keys [model]}]
+  (reasoning-model? model))
+
 (mu/defn openai-request-body
   "Build the OpenAI Responses API request body for an LLM request."
   [{:keys [model system input tools schema tool_choice temperature max-tokens reasoning?]
-    :or   {model "gpt-5.4" reasoning? true}} :- core/LLMRequestOpts]
+    :or   {model default-model reasoning? true}} :- core/LLMRequestOpts]
   (let [input     (cond->> input
                     (not reasoning?) (remove #(= :reasoning (:type %))))
         all-tools (or (when schema
@@ -366,35 +339,12 @@
   Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request, and
   throws when they are missing.
   `:ai-proxy?` is not supported for OpenAI and throws when true."
-  [{:keys [model credentials ai-proxy?] :as opts
-    :or   {model "gpt-5.4"}} :- core/LLMRequestOpts]
-  (when ai-proxy?
-    (throw (ai-proxy-unsupported-ex)))
-  (let [req (openai-request-body opts)]
-    (try
-      (let [api-key  (not-empty (:api-key credentials))
-            auth     (core/resolve-auth "openai" "OpenAI"
-                                        (when api-key
-                                          {:url     (:base-url credentials)
-                                           :headers {"Authorization" (str "Bearer " api-key)}})
-                                        ai-proxy?)
-            response (core/request auth
-                                   {:method  :post
-                                    :url     "/v1/responses"
-                                    :as      :stream
-                                    :headers {"Content-Type" "application/json"}
-                                    :body    (json/encode req)})]
-        ;; The SSE body is consumed lazily, after this `try` has exited — wrap
-        ;; the reducible so mid-stream IO/timeout failures get the same
-        ;; provider-friendly translation as request-time errors.
-        (-> (core/sse-reducible (:body response))
-            (debug/capture-stream {:provider "openai"
-                                   :model    model
-                                   :url      "/v1/responses"
-                                   :request  req})
-            (core/reducible-with-api-errors "openai" openai-error-msg)))
-      (catch Exception e
-        (core/rethrow-api-error! "openai" openai-error-msg e)))))
+  [{:keys [model] :as opts
+    :or   {model default-model}} :- core/LLMRequestOpts]
+  (let [opts (assoc opts :model model)]
+    (adapter/stream! provider opts
+                     {:path "/v1/responses"
+                      :body (openai-request-body opts)})))
 
 (defn openai
   "Call OpenAI API, return AISDK stream."

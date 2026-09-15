@@ -664,7 +664,7 @@
     (mt/with-dynamic-fn-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"AI proxy is not supported for the Google provider"
+           #"AI proxy is not supported for Google"
            (google-raw {:model     "google/gemini-3.5-flash"
                         :input     [{:role :user :content "hi"}]
                         :ai-proxy? true}))))))
@@ -1071,7 +1071,7 @@
     (mt/with-dynamic-fn-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"AI proxy is not supported for the Google provider"
+           #"AI proxy is not supported for Google"
            (list-models {:model "google/gemini-3.5-flash" :ai-proxy? true}))))))
 
 (def ^:private ^String html-404-body

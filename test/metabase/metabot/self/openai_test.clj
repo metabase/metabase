@@ -394,13 +394,13 @@
 ;;; list-models filtering tests
 ;;; ──────────────────────────────────────────────────────────────────
 
-(deftest ^:parallel supported-model?-test
+(deftest ^:parallel supported-models-test
   (testing "whitelisted models are supported"
     (doseq [id ["gpt-5.6-sol" "gpt-5.6-terra" "gpt-5.6-luna" "gpt-5.5" "gpt-5.4-mini"]]
-      (is (true? (#'openai/supported-model? {:id id})) id)))
+      (is (contains? openai/supported-models id) id)))
   (testing "non-white-listed models are not supported"
     (doseq [id ["gpt-5" "gpt-4.1" "gpt-4.1-mini" "gpt-4o" "o3" "text-embedding-3-small"]]
-      (is (false? (#'openai/supported-model? {:id id})) id))))
+      (is (not (contains? openai/supported-models id)) id))))
 
 (deftest list-models-filters-catalog-to-whitelist-test
   (testing "list-models keeps only whitelisted models sorted by id"

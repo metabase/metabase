@@ -5,40 +5,29 @@
 
   https://platform.kimi.ai/docs"
   (:require
+   [metabase.metabot.self.adapter :as adapter]
    [metabase.metabot.self.core :as core]
-   [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.o11y :refer [with-span]]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private default-model "kimi-k3")
 
-(defn- ai-proxy-unsupported-ex []
-  (ex-info (tru "AI proxy is not supported for Moonshot")
-           {:api-error  true
-            :error-code :proxy-unsupported}))
-
-(defn- moonshot-error-msg
-  "Canonical, status-specific Moonshot error message.
-
-  Mapping 400 only improves the message text: `metabase.metabot.api`'s `provider-client-error?` renders any 4xx
+(def ^:private provider
+  "Mapping 400 only improves the message text: `metabase.metabot.api`'s `provider-client-error?` renders any 4xx
   `:api-error` under the admin API-key field, so a generic message sends admins hunting a key problem that does not
   exist. 429 covers rate limiting *and* an exhausted account balance, which Moonshot reports with the same status."
-  [res]
-  (let [status (long (:status res 0))]
-    (case status
-      400 (tru "Moonshot rejected the request — check the model and request parameters")
-      401 (tru "Moonshot API key expired or invalid")
-      403 (tru "Moonshot denied access — check the API key''s permissions")
-      404 (tru "Moonshot API endpoint or model was not found — check the base URL and model")
-      429 (tru "Moonshot has rate limited us, or the account balance is exhausted")
-      500 (tru "Moonshot returned an internal server error")
-      (tru "Moonshot API error (HTTP {0})" status))))
+  (adapter/provider
+   {:slug         "moonshot"
+    :display-name "Moonshot"
+    :errors       {400 #(tru "Moonshot rejected the request — check the model and request parameters")
+                   401 #(tru "Moonshot API key expired or invalid")
+                   403 #(tru "Moonshot denied access — check the API key''s permissions")
+                   404 #(tru "Moonshot API endpoint or model was not found — check the base URL and model")
+                   429 #(tru "Moonshot has rate limited us, or the account balance is exhausted")
+                   500 #(tru "Moonshot returned an internal server error")}}))
 
 (def supported-models
   "Moonshot models offered in the Metabot model picker, keyed by model id.
@@ -75,48 +64,21 @@
   [model]
   (contains? reasoning-models (str model)))
 
-(defn- supported-model?
-  "Whether a `/models` catalog entry is one of the [[supported-models]]."
-  [{:keys [id]}]
-  (contains? supported-models id))
-
-(defn- list-all-models
-  "Fetch the full Moonshot model catalog (`GET /models`).
-
-  The endpoint doubles as the credential round-trip behind the admin Connect button — it 401s on a bad key.
-  A 2xx whose body isn't a recognizable catalog throws rather than yielding an empty picker — see
-  [[chat-completions/models-catalog]].
-  `:ai-proxy?` is not supported for Moonshot and throws when true."
-  [{:keys [credentials ai-proxy?]}]
-  (when ai-proxy?
-    (throw (ai-proxy-unsupported-ex)))
-  (try
-    (let [auth (core/resolve-auth "moonshot" "Moonshot"
-                                  (when-let [k (not-empty (:api-key credentials))]
-                                    {:url     (:base-url credentials)
-                                     :headers {"Authorization" (str "Bearer " k)}})
-                                  ai-proxy?)
-          res  (core/request auth {:method  :get
-                                   :url     "/models"
-                                   :as      :json
-                                   :headers {"Content-Type" "application/json"}})]
-      (chat-completions/models-catalog "Moonshot" res))
-    (catch Exception e
-      (core/rethrow-api-error! "moonshot" moonshot-error-msg e))))
+(defn streams-reasoning?
+  "Registry capability. Moonshot answers from the model name."
+  [{:keys [model]}]
+  (reasoning-model? model))
 
 (defn list-models
   "List the Moonshot models supported by this adapter (see [[supported-models]]).
 
-  Display names come from [[supported-models]] rather than the catalog: Moonshot catalog entries carry no `:name`
-  (and no `:aliases`, so there is no Mistral-style alias resolution to do either).
+  The `/models` catalog it intersects doubles as the credential round-trip behind the admin Connect button —
+  it 401s on a bad key. Display names come from [[supported-models]] rather than the catalog: Moonshot catalog
+  entries carry no `:name` (and no `:aliases`, so there is no Mistral-style alias resolution to do either).
   `:ai-proxy?` is not supported for Moonshot and throws when true."
   ([] (list-models {}))
   ([opts]
-   {:models (->> (list-all-models opts)
-                 (filter supported-model?)
-                 (sort-by :id)
-                 (mapv (fn [{:keys [id]}]
-                         {:id id :display_name (get-in supported-models [id :display-name])})))}))
+   (adapter/model-listing supported-models (adapter/fetch-catalog provider opts))))
 
 (def ^:private forced-tool-call-token-floor
   "Smallest `max_tokens` a forced tool call on a thinking-only model may be capped at.
@@ -210,36 +172,12 @@
   Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request, and
   throws when they are missing.
   `:ai-proxy?` is not supported for Moonshot and throws when true."
-  [{:keys [model tools credentials ai-proxy?] :as opts
+  [{:keys [model] :as opts
     :or   {model default-model}} :- core/LLMRequestOpts]
-  (when ai-proxy?
-    (throw (ai-proxy-unsupported-ex)))
-  (let [req (moonshot-request-body (assoc opts :model model))]
-    (log/debug "Moonshot request" {:model model :msg-count (count (:messages req)) :tools (count (or tools []))})
-    (with-span :info {:name       :metabot.moonshot/request
-                      :model      model
-                      :msg-count  (count (:messages req))
-                      :tool-count (count (or tools []))}
-      (try
-        (let [api-key  (not-empty (:api-key credentials))
-              auth     (core/resolve-auth "moonshot" "Moonshot"
-                                          (when api-key
-                                            {:url     (:base-url credentials)
-                                             :headers {"Authorization" (str "Bearer " api-key)}})
-                                          ai-proxy?)
-              response (core/request auth
-                                     {:method  :post
-                                      :url     "/chat/completions"
-                                      :as      :stream
-                                      :headers {"Content-Type" "application/json"}
-                                      :body    (json/encode req)})]
-          (-> (core/sse-reducible (:body response))
-              (debug/capture-stream {:provider "moonshot"
-                                     :model    model
-                                     :url      "/chat/completions"
-                                     :request  req})))
-        (catch Exception e
-          (core/rethrow-api-error! "moonshot" moonshot-error-msg e))))))
+  (let [opts (assoc opts :model model)]
+    (adapter/stream! provider opts
+                     {:path "/chat/completions"
+                      :body (moonshot-request-body opts)})))
 
 (defn moonshot->aisdk-chunks-xf
   "Translates Moonshot Chat Completions streaming chunks into AI SDK v5 protocol chunks.

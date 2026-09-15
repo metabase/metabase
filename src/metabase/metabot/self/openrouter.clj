@@ -9,37 +9,32 @@
   adapter converts those directly to Chat Completions messages."
   (:require
    [clojure.string :as str]
+   [metabase.metabot.self.adapter :as adapter]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
-   [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.o11y :refer [with-span]]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
-(defn- ai-proxy-unsupported-ex []
-  (ex-info (tru "AI proxy is not supported for OpenRouter")
-           {:api-error  true
-            :error-code :proxy-unsupported}))
+(def ^:private default-model "anthropic/claude-haiku-4.5")
 
-(defn- openrouter-error-msg
-  "Canonical, status-specific OpenRouter error message."
-  [res]
-  (let [status (long (:status res 0))]
-    (case status
-      401 (tru "OpenRouter API key expired or invalid")
-      402 (tru "OpenRouter has insufficient credits")
-      403 (tru "OpenRouter API key has insufficient permissions")
-      404 (tru "OpenRouter model listing endpoint is unavailable")
-      429 (tru "OpenRouter has rate limited us")
-      500 (tru "OpenRouter returned an internal server error")
-      502 (tru "OpenRouter upstream provider returned an error")
-      503 (tru "OpenRouter service is unavailable")
-      (tru "OpenRouter API error (HTTP {0})" status))))
+(def ^:private provider
+  (adapter/provider
+   {:slug         "openrouter"
+    :display-name "OpenRouter"
+    ;; attribution headers OpenRouter shows on the account's activity page
+    :headers      {"HTTP-Referer" "https://metabase.com"
+                   "X-Title"      "Metabase"}
+    :errors       {401 #(tru "OpenRouter API key expired or invalid")
+                   402 #(tru "OpenRouter has insufficient credits")
+                   403 #(tru "OpenRouter API key has insufficient permissions")
+                   404 #(tru "OpenRouter model listing endpoint is unavailable")
+                   429 #(tru "OpenRouter has rate limited us")
+                   500 #(tru "OpenRouter returned an internal server error")
+                   502 #(tru "OpenRouter upstream provider returned an error")
+                   503 #(tru "OpenRouter service is unavailable")}}))
 
 (def supported-models
   "OpenRouter models offered in the Metabot model picker, keyed by model id.
@@ -120,6 +115,11 @@
   [model]
   (contains? #{:renderable :renderable-default} (reasoning-class model)))
 
+(defn streams-reasoning?
+  "Registry capability. OpenRouter answers from the model name."
+  [{:keys [model]}]
+  (reasoning-model? model))
+
 (defn- reasoning-mandatory?
   "Whether OpenRouter rejects `reasoning {:enabled false}` for `model` with a 400.
 
@@ -128,45 +128,16 @@
   [model]
   (boolean (get-in supported-models [(str model) :reasoning-mandatory?])))
 
-(defn- supported-model?
-  "Whether a `/v1/models` catalog entry is one of the [[supported-models]]."
-  [{:keys [id]}]
-  (contains? supported-models id))
-
-(defn- list-all-models
-  "Fetch the full OpenRouter model catalog (`GET /v1/models`).
-  `:ai-proxy?` is not supported for OpenRouter and throws when true."
-  [{:keys [credentials ai-proxy?]}]
-  (when ai-proxy?
-    (throw (ai-proxy-unsupported-ex)))
-  (try
-    (let [auth (core/resolve-auth "openrouter" "OpenRouter"
-                                  (when-let [k (not-empty (:api-key credentials))]
-                                    {:url     (:base-url credentials)
-                                     :headers {"Authorization" (str "Bearer " k)}})
-                                  ai-proxy?)
-          res  (core/request auth {:method  :get
-                                   :url     "/v1/models"
-                                   :as      :json
-                                   :headers {"Content-Type" "application/json"
-                                             "HTTP-Referer" "https://metabase.com"
-                                             "X-Title"      "Metabase"}})]
-      (get-in res [:body :data]))
-    (catch Exception e
-      (core/rethrow-api-error! "openrouter" openrouter-error-msg e))))
-
 (defn list-models
   "List the OpenRouter models supported by this adapter (see [[supported-models]]).
   Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request,
-  and throws when they are missing. Also supports `:ai-proxy?`.
+  and throws when they are missing.
   `:ai-proxy?` is not supported for OpenRouter and throws when true."
   ([] (list-models {}))
   ([opts]
-   {:models (->> (list-all-models opts)
-                 (filter supported-model?)
-                 (sort-by :id)
-                 (mapv (fn [{:keys [id] :as model}]
-                         {:id id :display_name (or (:name model) (get-in supported-models [id :display-name]))})))}))
+   (adapter/model-listing supported-models
+                    (adapter/fetch-catalog provider opts "/v1/models")
+                    :name)))
 
 ;;; Streaming response → AISDK v5 chunks
 
@@ -300,7 +271,7 @@
   builder instead would apply these OpenRouter-specific rules to every Chat Completions adapter, including vLLM,
   whose model names are customer-chosen free text."
   [{:keys [model system] :as opts
-    :or   {model "anthropic/claude-haiku-4.5"}} :- core/LLMRequestOpts]
+    :or   {model default-model}} :- core/LLMRequestOpts]
   (-> (cond-> (chat-completions/request-body (assoc opts :model model))
         (and system (anthropic-model? model))
         (update-in [:messages 0 :content] claude/system->cached-content-blocks)
@@ -320,42 +291,12 @@
   Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request, and
   throws when they are missing.
   `:ai-proxy?` is not supported for OpenRouter and throws when true."
-  [{:keys [model tools credentials ai-proxy?] :as opts
-    :or   {model "anthropic/claude-haiku-4.5"}} :- core/LLMRequestOpts]
-  (when ai-proxy?
-    (throw (ai-proxy-unsupported-ex)))
-  (let [req (openrouter-request-body opts)]
-    (log/debug "OpenRouter request" {:model model :msg-count (count (:messages req)) :tools (count (or tools []))})
-    (with-span :info {:name       :metabot.openrouter/request
-                      :model      model
-                      :msg-count  (count (:messages req))
-                      :tool-count (count (or tools []))}
-      (try
-        (let [api-key  (not-empty (:api-key credentials))
-              auth     (core/resolve-auth "openrouter" "OpenRouter"
-                                          (when api-key
-                                            {:url     (:base-url credentials)
-                                             :headers {"Authorization" (str "Bearer " api-key)}})
-                                          ai-proxy?)
-              response (core/request auth
-                                     {:method  :post
-                                      :url     "/v1/chat/completions"
-                                      :as      :stream
-                                      :headers {"Content-Type" "application/json"
-                                                "HTTP-Referer" "https://metabase.com"
-                                                "X-Title"      "Metabase"}
-                                      :body    (json/encode req)})]
-          ;; The SSE body is consumed lazily, after this `try` has exited — wrap
-          ;; the reducible so mid-stream IO/timeout failures get the same
-          ;; provider-friendly translation as request-time errors.
-          (-> (core/sse-reducible (:body response))
-              (debug/capture-stream {:provider "openrouter"
-                                     :model    model
-                                     :url      "/v1/chat/completions"
-                                     :request  req})
-              (core/reducible-with-api-errors "openrouter" openrouter-error-msg)))
-        (catch Exception e
-          (core/rethrow-api-error! "openrouter" openrouter-error-msg e))))))
+  [{:keys [model] :as opts
+    :or   {model default-model}} :- core/LLMRequestOpts]
+  (let [opts (assoc opts :model model)]
+    (adapter/stream! provider opts
+                     {:path "/v1/chat/completions"
+                      :body (openrouter-request-body opts)})))
 
 (defn openrouter
   "Call OpenRouter Chat Completions API, return AISDK stream."

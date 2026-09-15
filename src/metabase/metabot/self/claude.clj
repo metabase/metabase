@@ -1,17 +1,23 @@
 (ns metabase.metabot.self.claude
   (:require
    [clojure.string :as str]
+   [metabase.metabot.self.adapter :as adapter]
    [metabase.metabot.self.core :as core]
-   [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.schema :as schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.o11y :refer [with-span]]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
+
+(def ^:private default-model "claude-haiku-4-5")
+
+(def ^:private anthropic-version "2023-06-01")
+
+(def ^:private fast-mode-beta
+  "The beta header opting a request into Anthropic fast mode."
+  "fast-mode-2026-02-01")
 
 (defn- claude-usage->aisdk-usage
   "Convert an Anthropic `usage` block into the AISDK `:usage` shape.
@@ -310,19 +316,32 @@
        {:type "text"
         :text suffix}])))
 
-(defn- anthropic-error-msg
-  "Canonical, status-specific Anthropic error message."
-  [res]
-  (let [status (long (:status res 0))]
-    (case status
-      401 (tru "Anthropic API key expired or invalid")
-      403 (tru "Anthropic API key has insufficient permissions")
-      404 (tru "Anthropic API endpoint is unavailable or the model was not found")
-      413 (tru "Anthropic API rejected our request because it was too large")
-      429 (tru "Anthropic API has rate limited us")
-      500 (tru "Anthropic API is not working but not saying why")
-      529 (tru "Anthropic API is overloaded and is asking us to wait")
-      (tru "Anthropic API error (HTTP {0})" status))))
+(defn- anthropic-auth
+  "Anthropic's `:auth`. Identical to [[adapter/bearer-auth]] except that the key travels bare in
+  `x-api-key` rather than as a bearer token."
+  [{:keys [slug display-name]} {:keys [credentials ai-proxy?]}]
+  (core/resolve-auth slug display-name
+                     (when-let [k (not-empty (:api-key credentials))]
+                       {:url     (:base-url credentials)
+                        :headers {"x-api-key" k}})
+                     ai-proxy?))
+
+(def ^:private provider
+  "Anthropic is the one provider the Metabase Cloud AI proxy can serve, so `:supports-ai-proxy?` is true
+  here and a proxied request goes through rather than being rejected."
+  (adapter/provider
+   {:slug               "anthropic"
+    :display-name       "Anthropic"
+    :supports-ai-proxy? true
+    :auth               anthropic-auth
+    :headers            {"anthropic-version" anthropic-version}
+    :errors             {401 #(tru "Anthropic API key expired or invalid")
+                         403 #(tru "Anthropic API key has insufficient permissions")
+                         404 #(tru "Anthropic API endpoint is unavailable or the model was not found")
+                         413 #(tru "Anthropic API rejected our request because it was too large")
+                         429 #(tru "Anthropic API has rate limited us")
+                         500 #(tru "Anthropic API is not working but not saying why")
+                         529 #(tru "Anthropic API is overloaded and is asking us to wait")}}))
 
 (def supported-models
   "Anthropic chat models offered in the Metabot model picker, keyed by model id.
@@ -343,40 +362,16 @@
   "`max_tokens` for an unresolved model — low enough to be safe on any of them."
   64000)
 
-(defn- supported-model?
-  "Whether a `/v1/models` catalog entry is one of the [[supported-models]]."
-  [{:keys [id]}]
-  (contains? supported-models id))
-
-(defn- list-all-models
-  "Fetch the full Anthropic model catalog (`GET /v1/models`).
-  Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request,
-  and throws when they are missing. Also supports `:ai-proxy?`."
-  [{:keys [credentials ai-proxy?]}]
-  (try
-    (let [auth (core/resolve-auth "anthropic" "Anthropic"
-                                  (when-let [k (not-empty (:api-key credentials))]
-                                    {:url     (:base-url credentials)
-                                     :headers {"x-api-key" k}})
-                                  ai-proxy?)
-          res  (core/request auth {:method  :get
-                                   :url     "/v1/models"
-                                   :headers {"anthropic-version" "2023-06-01"}})]
-      (:data (json/decode+kw (:body res))))
-    (catch Exception e
-      (core/rethrow-api-error! "anthropic" anthropic-error-msg e))))
-
 (defn list-models
-  "List the Anthropic chat models supported by this adapter (see [[supported-models]]).
+  "List the Anthropic chat models supported by this adapter, by intersecting [[supported-models]] with the
+  account's `/v1/models` catalog.
   Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request,
   and throws when they are missing. Also supports `:ai-proxy?`."
   ([] (list-models {}))
   ([opts]
-   {:models (->> (list-all-models opts)
-                 (filter supported-model?)
-                 (sort-by :id)
-                 (mapv (fn [{:keys [id display_name]}]
-                         {:id id :display_name (or display_name (get-in supported-models [id :display-name]))})))}))
+   (adapter/model-listing supported-models
+                    (adapter/fetch-catalog provider opts "/v1/models")
+                    :display_name)))
 
 (defn- strip-vendor-prefix
   "`model` lowercased and without an optional vendor prefix (e.g. Bedrock's `anthropic.`).
@@ -435,6 +430,11 @@
   [model]
   (some? (model-thinking-config model)))
 
+(defn streams-reasoning?
+  "Registry capability. Anthropic answers from the model name: thinking is requested in the request body."
+  [{:keys [model]}]
+  (reasoning-model? model))
+
 (def ^:private fast-mode-models
   "The models Anthropic documents fast mode for: https://code.claude.com/docs/en/fast-mode"
   #{"claude-opus-4-8" "claude-opus-5"})
@@ -446,6 +446,11 @@
   (and (not ai-proxy?)
        (contains? fast-mode-models (strip-vendor-prefix model))))
 
+(defn supports-fast-mode?
+  "Registry capability. Fast mode depends on the model and on whether the call is proxied."
+  [{:keys [model ai-proxy?]}]
+  (fast-mode-model? model ai-proxy?))
+
 (mu/defn claude-request-body
   "Build the Anthropic Messages API request body for an LLM request.
 
@@ -453,7 +458,7 @@
   adapter re-hosting a non-Claude model here knows its own provider's thinking shape and
   restrictions, which the model-id-derived config and the suppression rules below cannot describe."
   [{:keys [model system input tools schema tool_choice temperature max-tokens reasoning? reasoning-config fast? ai-proxy?]
-    :or   {model "claude-haiku-4-5" reasoning? true}} :- core/LLMRequestOpts]
+    :or   {model default-model reasoning? true}} :- core/LLMRequestOpts]
   (let [;; forced tool choice (structured output, or "required") is incompatible
         ;; with thinking — suppress it there.
         thinking  (or reasoning-config
@@ -516,62 +521,44 @@
   []
   (< (System/currentTimeMillis) @fast-mode-cooldown-until))
 
+(defn- fast-mode-retry-or-throw!
+  "The `:on-error` handler for [[claude-raw]]. Retries the request at standard speed when Anthropic
+  rejected fast mode itself, and otherwise rethrows through the usual translation.
+
+  Decoding the error body also closes the streamed response, so the connection is not leaked when the
+  exception is swallowed by the retry. Fast mode has its own rate-limit pool, so a 429 here doesn't
+  imply standard speed is limited; a 400 needs its message checked to keep unrelated malformed requests
+  failing fast. A 529 means the API itself is overloaded, so it gets no immediate retry: surface it and
+  let the caller's retry loop pace the next attempt, which the armed cooldown keeps at standard speed."
+  [req retry! ^Throwable e]
+  (let [status    (:status (ex-data e))
+        res       (when (and (:speed req) (contains? #{400 429 529} status))
+                    (core/decode-error-body e))
+        rejected? (and res (or (not= 400 status) (fast-mode-rejection? res)))]
+    (when rejected?
+      (reset! fast-mode-cooldown-until (+ (System/currentTimeMillis) fast-mode-cooldown-ms))
+      (log/warn "Anthropic rejected the fast-mode request; falling back to standard speed" {:status status}))
+    (if (and rejected? (not= 529 status))
+      (retry!)
+      (adapter/rethrow! provider (if res (ex-info (str (ex-message e)) res e) e)))))
+
 (mu/defn claude-raw
   "Perform a streaming request to Claude API.
   Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request, and
   throws when they are missing."
-  [{:keys [model input tools credentials ai-proxy?] :as opts
-    :or   {model "claude-haiku-4-5"}} :- core/LLMRequestOpts]
-  (let [opts (cond-> opts (fast-mode-cooling-down?) (assoc :fast? false))
+  [{:keys [model] :as opts
+    :or   {model default-model}} :- core/LLMRequestOpts]
+  (let [opts (cond-> (assoc opts :model model)
+               (fast-mode-cooling-down?) (assoc :fast? false))
         req  (claude-request-body opts)]
-    (with-span :info {:name       :metabot.claude/request
-                      :model      model
-                      :msg-count  (count input)
-                      :tool-count (count tools)}
-      (try
-        (let [api-key  (not-empty (:api-key credentials))
-              auth     (core/resolve-auth "anthropic" "Anthropic"
-                                          (when api-key
-                                            {:url     (:base-url credentials)
-                                             :headers {"x-api-key" api-key}})
-                                          ai-proxy?)
-              response (core/request auth
-                                     {:method  :post
-                                      :url     "/v1/messages"
-                                      :as      :stream
-                                      :headers (cond-> {"anthropic-version" "2023-06-01"
-                                                        "content-type"      "application/json"}
-                                                 (:speed req) (assoc "anthropic-beta" "fast-mode-2026-02-01"))
-                                      :body    (json/encode req)})]
-          ;; The SSE body is consumed lazily, after this `try` has exited — wrap
-          ;; the reducible so mid-stream IO/timeout failures get the same
-          ;; provider-friendly translation as request-time errors.
-          (-> (core/sse-reducible (:body response))
-              (debug/capture-stream {:provider "anthropic"
-                                     :model    model
-                                     :url      "/v1/messages"
-                                     :request  req})
-              (core/reducible-with-api-errors "anthropic" anthropic-error-msg)))
-        (catch Exception e
-          ;; decoding the error body also closes the streamed response, so the connection is
-          ;; not leaked when the exception is swallowed by the retry below. Fast mode has its
-          ;; own rate-limit pool, so a 429 here doesn't imply standard speed is limited;
-          ;; a 400 needs its message checked to keep unrelated malformed requests failing fast.
-          (let [status    (:status (ex-data e))
-                res       (when (and (:speed req) (contains? #{400 429 529} status))
-                            (core/decode-error-body e))
-                rejected? (and res (or (not= 400 status) (fast-mode-rejection? res)))]
-            (when rejected?
-              (reset! fast-mode-cooldown-until (+ (System/currentTimeMillis) fast-mode-cooldown-ms))
-              (log/warn "Anthropic rejected the fast-mode request; falling back to standard speed"
-                        {:status status}))
-            ;; 529 means the API itself is overloaded, so no immediate retry: surface it and
-            ;; let the caller's retry loop pace the next attempt, which the armed cooldown
-            ;; keeps at standard speed.
-            (if (and rejected? (not= 529 status))
-              (claude-raw (assoc opts :fast? false))
-              (core/rethrow-api-error! "anthropic" anthropic-error-msg
-                                       (if res (ex-info (str (ex-message e)) res e) e)))))))))
+    (adapter/stream! provider opts
+                     {:path             "/v1/messages"
+                      :body             req
+                      :headers          (when (:speed req) {"anthropic-beta" fast-mode-beta})
+                      :on-request-error #(fast-mode-retry-or-throw!
+                                          req
+                                          (fn [] (claude-raw (assoc opts :fast? false)))
+                                          %)})))
 
 (defn claude
   "Call Claude API, return AISDK stream"

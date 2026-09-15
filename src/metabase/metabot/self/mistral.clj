@@ -5,34 +5,24 @@
 
   https://docs.mistral.ai/api/"
   (:require
+   [metabase.metabot.self.adapter :as adapter]
    [metabase.metabot.self.core :as core]
-   [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.o11y :refer [with-span]]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private default-model "mistral-medium-3-5")
 
-(defn- ai-proxy-unsupported-ex []
-  (ex-info (tru "AI proxy is not supported for Mistral")
-           {:api-error  true
-            :error-code :proxy-unsupported}))
-
-(defn- mistral-error-msg
-  "Canonical, status-specific Mistral error message."
-  [res]
-  (let [status (long (:status res 0))]
-    (case status
-      401 (tru "Mistral API key expired or invalid")
-      404 (tru "Mistral API endpoint was not found — check the base URL")
-      429 (tru "Mistral has rate limited us")
-      500 (tru "Mistral returned an internal server error")
-      (tru "Mistral API error (HTTP {0})" status))))
+(def ^:private provider
+  (adapter/provider
+   {:slug         "mistral"
+    :display-name "Mistral"
+    :errors       {401 #(tru "Mistral API key expired or invalid")
+                   404 #(tru "Mistral API endpoint was not found — check the base URL")
+                   429 #(tru "Mistral has rate limited us")
+                   500 #(tru "Mistral returned an internal server error")}}))
 
 (def supported-models
   "Mistral models offered in the Metabot model picker, keyed by model id.
@@ -55,6 +45,11 @@
   [model]
   (contains? supported-models (str model)))
 
+(defn streams-reasoning?
+  "Registry capability. Mistral answers from the model name."
+  [{:keys [model]}]
+  (reasoning-model? model))
+
 (defn- whitelisted-id
   "The [[supported-models]] id a `/models` catalog entry resolves to, or nil when unsupported.
   Mistral models have a generic `:id` like `mistral-medium-latest` but `:aliases` contains version specific aliases
@@ -64,34 +59,15 @@
   (some #(when (contains? supported-models %) %)
         (cons id aliases)))
 
-(defn- list-all-models
-  "Fetch the full Mistral model catalog (`GET /models`).
-  A 2xx whose body isn't a recognizable catalog throws rather than yielding an empty picker — see
-  [[chat-completions/models-catalog]].
-  `:ai-proxy?` is not supported for Mistral and throws when true."
-  [{:keys [credentials ai-proxy?]}]
-  (when ai-proxy?
-    (throw (ai-proxy-unsupported-ex)))
-  (try
-    (let [auth (core/resolve-auth "mistral" "Mistral"
-                                  (when-let [k (not-empty (:api-key credentials))]
-                                    {:url     (:base-url credentials)
-                                     :headers {"Authorization" (str "Bearer " k)}})
-                                  ai-proxy?)
-          res  (core/request auth {:method  :get
-                                   :url     "/models"
-                                   :as      :json
-                                   :headers {"Content-Type" "application/json"}})]
-      (chat-completions/models-catalog "Mistral" res))
-    (catch Exception e
-      (core/rethrow-api-error! "mistral" mistral-error-msg e))))
-
 (defn list-models
   "List the Mistral models supported by this adapter (see [[supported-models]]).
+
+  Resolves catalog aliases rather than intersecting ids directly (see [[whitelisted-id]]), so this does not use
+  the shared [[adapter/model-listing]].
   `:ai-proxy?` is not supported for Mistral and throws when true."
   ([] (list-models {}))
   ([opts]
-   {:models (->> (list-all-models opts)
+   {:models (->> (adapter/fetch-catalog provider opts)
                  (keep whitelisted-id)
                  distinct
                  sort
@@ -151,36 +127,12 @@
   Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request, and
   throws when they are missing.
   `:ai-proxy?` is not supported for Mistral and throws when true."
-  [{:keys [model tools credentials ai-proxy?] :as opts
+  [{:keys [model] :as opts
     :or   {model default-model}} :- core/LLMRequestOpts]
-  (when ai-proxy?
-    (throw (ai-proxy-unsupported-ex)))
-  (let [req (mistral-request-body (assoc opts :model model))]
-    (log/debug "Mistral request" {:model model :msg-count (count (:messages req)) :tools (count (or tools []))})
-    (with-span :info {:name       :metabot.mistral/request
-                      :model      model
-                      :msg-count  (count (:messages req))
-                      :tool-count (count (or tools []))}
-      (try
-        (let [api-key  (not-empty (:api-key credentials))
-              auth     (core/resolve-auth "mistral" "Mistral"
-                                          (when api-key
-                                            {:url     (:base-url credentials)
-                                             :headers {"Authorization" (str "Bearer " api-key)}})
-                                          ai-proxy?)
-              response (core/request auth
-                                     {:method  :post
-                                      :url     "/chat/completions"
-                                      :as      :stream
-                                      :headers {"Content-Type" "application/json"}
-                                      :body    (json/encode req)})]
-          (-> (core/sse-reducible (:body response))
-              (debug/capture-stream {:provider "mistral"
-                                     :model    model
-                                     :url      "/chat/completions"
-                                     :request  req})))
-        (catch Exception e
-          (core/rethrow-api-error! "mistral" mistral-error-msg e))))))
+  (let [opts (assoc opts :model model)]
+    (adapter/stream! provider opts
+                     {:path "/chat/completions"
+                      :body (mistral-request-body opts)})))
 
 (def ^:private stop-reasons
   "Mistral adds `model_length` — the model's own context limit, a truncation just like `length` — and reports a
