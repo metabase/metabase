@@ -4,10 +4,11 @@
   Contains the `ui://` iframe shells behind the MCP Apps tools (`visualize_query`, `render_drill_through`)
   and the fields-catalog data resource. Documentation/skill resources land with the skills work.
 
-  Every resource is listed and read whatever the token's scopes, so a resource must carry nothing a scope should
-  guard. A UI resource's `:scope` is the scope of the tool that renders it and the scope a token must hold for the
-  shell's render to receive a UI credential; the data behind the shell stays gated by that tool,
-  `refresh_ui_credential`, and [[metabase.mcp.ui-surface/request-surface]].
+  Every resource carries a `:scope`, matched with [[metabase.mcp.scope/matches?]], and is listed whatever the token's
+  scopes. A data resource is read only by a token holding its scope. A UI shell is read by any token, so it must carry
+  no data: its `:scope` is the scope of the tool that renders it, and only a token holding it gets a UI credential
+  in the render. The data behind the shell stays gated by that tool, `refresh_ui_credential`, and
+  [[metabase.mcp.ui-surface/request-surface]].
 
    Rendering and the `_meta.ui` sandbox block come from [[metabase.mcp.ui-resource]]."
   (:require
@@ -35,6 +36,7 @@
                 [:name :string]
                 [:description :string]
                 [:mimeType :string]
+                [:scope :string]
                 [:render-fn fn?]]]
   (swap! resources* assoc (:uri resource) resource)
   (:uri resource))
@@ -53,13 +55,13 @@
   (:uri resource))
 
 (defn resource-scope
-  "The `:scope` of the UI resource at `uri`, or nil when none is registered. UI tools read this so a
+  "The `:scope` of the resource at `uri`, or nil when none is registered. UI tools read this so a
    tool and the resource it renders can never drift onto different scopes."
   [uri]
   (get-in @resources* [uri :scope]))
 
 (defn resource-scopes
-  "The distinct `:scope` strings across the registered v2 UI resources."
+  "The distinct `:scope` strings across all registered v2 resources."
   []
   (into (sorted-set) (keep :scope) (vals @resources*)))
 
@@ -73,20 +75,23 @@
                     (vals @resources*))})
 
 (defn read-resource
-  "Read a registered resource by URI, whatever `token-scopes` holds. Returns `{:status :ok :contents [...]}` or
-   `{:status :not-found}`.
+  "Read a registered resource by URI. Returns `{:status :ok :contents [...]}`, `{:status :not-found}`, or, for a data
+   resource whose `:scope` `token-scopes` does not match, `{:status :scope-denied :required-scope scope}` without
+   rendering it. A UI shell is always `:ok`.
 
-   `opts` is threaded to the `:render-fn` — see [[metabase.mcp.ui-resource/embed-render-fn]] — except that its
-   `:ui-credential` is dropped unless `token-scopes` matches the resource's `:scope`, so a read can never hand a
+   `opts` is threaded to the `:render-fn` — see [[metabase.mcp.ui-resource/embed-render-fn]] — except that a UI
+   shell's `:ui-credential` is dropped unless `token-scopes` matches its `:scope`, so a read can never hand a
    credential to a token that lacks that scope."
   [uri token-scopes opts]
-  (if-let [{:keys [render-fn scope] :as resource} (get @resources* uri)]
-    {:status   :ok
-     :contents [(cond-> (-> (select-keys resource [:uri :mimeType])
-                            (assoc :text (render-fn (cond-> opts
-                                                      (not (mcp.scope/matches? token-scopes scope))
-                                                      (dissoc :ui-credential)))))
-                  (:ui? resource) (assoc :_meta (mcp.ui-resource/ui-meta resource)))]}
+  (if-let [{:keys [render-fn scope ui?] :as resource} (get @resources* uri)]
+    (let [permitted? (mcp.scope/matches? token-scopes scope)]
+      (if (or permitted? ui?)
+        {:status   :ok
+         :contents [(cond-> (-> (select-keys resource [:uri :mimeType])
+                                (assoc :text (render-fn (cond-> opts
+                                                          (not permitted?) (dissoc :ui-credential)))))
+                      ui? (assoc :_meta (mcp.ui-resource/ui-meta resource)))]}
+        {:status :scope-denied :required-scope scope}))
     {:status :not-found}))
 
 ;;; ------------------------------------------------ Registrations -------------------------------------------------
@@ -125,4 +130,5 @@
     :name        "Fields Catalog"
     :description "The dot-paths each content type supports in `fields` arguments (e.g. get_content), keyed by type."
     :mimeType    "application/json"
+    :scope       metabot.scope/agent-resource-read
     :render-fn   (fn [_opts] (json/encode (projections/all-catalogs)))}))

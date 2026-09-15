@@ -886,34 +886,88 @@
                                     "scope=\"agent:content:read agent:content:write agent:resource:read\", "
                                     "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "))))))))
 
-(deftest every-resource-reads-regardless-of-token-scopes-test
-  (testing "GHY-4543: `resources/read` serves every registered resource whatever the token's scopes. Claude Desktop
-            reads an MCP Apps shell concurrently with the tool call, and a 403 on that read stopped it stepping up
-            after the tool call's own 403. The shell carries no data and, for a token without its scope, no
-            credential, so the data stays gated by the tool call and `refresh_ui_credential`. Driven over a bearer
-            token because a cookie session is unrestricted and never exercises scopes at all."
+(deftest data-resource-read-without-its-scope-is-a-403-insufficient-scope-challenge-test
+  (testing "GHY-4543: a data resource read the token lacks the scope for answers with the same 403 challenge as
+            `tools/call`, so a client learns which scope to step up to. Driven over a bearer token because a cookie
+            session is unrestricted and never exercises scopes at all."
     (mcp.ui-resource/with-fallback-template
       (do-with-bearer-token!
        #{"agent:content:read"}
        (fn [headers]
          (let [post!   (bearer-session-post! headers)
                read-of (fn [uri] (jsonrpc-request "resources/read" {:uri uri}))
-               listed  (map :uri (get-in (post! 200 (jsonrpc-request "resources/list")) [:body :result :resources]))]
-           (is (= #{v2.resources/visualize-query-uri v2.resources/render-drill-through-uri
-                    v2.resources/fields-catalog-uri}
-                  (set listed)))
-           (testing "every listed resource reads over 200 with no challenge — the UI shells without agent:query:run,
-                     the fields catalog without agent:resource:read"
-             (doseq [uri listed]
+               denied  (read-of v2.resources/fields-catalog-uri)]
+           (testing "the fields catalog without agent:resource:read"
+             (let [response (post! 403 denied)]
+               (is (= 403 (:status response)))
+               (is (= (str "Bearer error=\"insufficient_scope\", "
+                           "scope=\"agent:content:read agent:resource:read\", "
+                           "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
+                           "error_description=\"catalog://metabase/fields requires agent:resource:read "
+                           "(View resources)\"")
+                      (get-in response [:headers "WWW-Authenticate"])))
+               (testing "the body is the JSON-RPC error, with no transport-internal marker"
+                 (is (= #{:jsonrpc :id :error} (set (keys (:body response)))))
+                 (is (= {:code    -32600
+                         :message (str "Insufficient scope to read resource: catalog://metabase/fields. "
+                                       "Requires agent:resource:read; your token holds agent:content:read.")}
+                        (get-in response [:body :error]))))))
+           (testing "resource_metadata names the alias the client connected through"
+             (is (str/includes? (get-in (post! 403 denied :path "mcp") [:headers "WWW-Authenticate"] "")
+                                (str "resource_metadata=\"" metadata-url "/api/mcp\""))))
+           (testing "an unknown URI is still not found over 200, with no challenge"
+             (let [response (post! 200 (read-of "ui://metabase/does-not-exist.html"))]
+               (is (nil? (get-in response [:headers "WWW-Authenticate"])))
+               (is (= {:code -32602 :message "Resource not found"} (get-in response [:body :error])))))
+           (testing "a batch keeps HTTP 200 with the denial in band"
+             (doseq [[label batch] {"denied read and a ping"     [denied (assoc (jsonrpc-request "ping") :id 2)]
+                                    "a batch of one denied read" [denied]}]
+               (testing label
+                 (let [response (post! 200 batch)]
+                   (is (= 200 (:status response)))
+                   (is (nil? (get-in response [:headers "WWW-Authenticate"])))
+                   (is (= -32600 (:code (:error (first (filter #(= 1 (:id %)) (:body response)))))))
+                   (is (every? #(= #{:jsonrpc :id} (disj (set (keys %)) :error :result)) (:body response))
+                       "no transport-internal marker leaks into a batch element")))))))))))
+
+(deftest baseline-token-reads-the-fields-catalog-test
+  (testing "GHY-4543: the advertised baseline carries agent:resource:read, so a freshly connected client reads the
+            fields catalog without stepping up"
+    (do-with-bearer-token!
+     #{"agent:content:read" "agent:resource:read"}
+     (fn [headers]
+       (let [response ((bearer-session-post! headers)
+                       200
+                       (jsonrpc-request "resources/read" {:uri v2.resources/fields-catalog-uri}))
+             content  (first (get-in response [:body :result :contents]))]
+         (is (nil? (get-in response [:headers "WWW-Authenticate"])))
+         (is (nil? (get-in response [:body :error])))
+         (is (= v2.resources/fields-catalog-uri (:uri content)))
+         (is (map? (json/decode (:text content)))))))))
+
+(deftest ui-shells-read-regardless-of-token-scopes-test
+  (testing "GHY-4543: Claude Desktop reads an MCP Apps shell concurrently with the tool call, and a 403 on that read
+            stopped it stepping up after the tool call's own 403. The shell carries no data and, for a token without
+            its scope, no credential, so it is served to any token; the data stays gated by the tool call and
+            `refresh_ui_credential`."
+    (mcp.ui-resource/with-fallback-template
+      (do-with-bearer-token!
+       #{"agent:content:read"}
+       (fn [headers]
+         (let [post!   (bearer-session-post! headers)
+               read-of (fn [uri] (jsonrpc-request "resources/read" {:uri uri}))]
+           (testing "resources/list still shows every resource, including the one this token cannot read"
+             (is (= #{v2.resources/visualize-query-uri v2.resources/render-drill-through-uri
+                      v2.resources/fields-catalog-uri}
+                    (set (map :uri (get-in (post! 200 (jsonrpc-request "resources/list"))
+                                           [:body :result :resources]))))))
+           (testing "each shell reads over 200 with no challenge, without agent:query:run"
+             (doseq [uri [v2.resources/visualize-query-uri v2.resources/render-drill-through-uri]]
                (testing uri
                  (let [response (post! 200 (read-of uri))]
                    (is (nil? (get-in response [:headers "WWW-Authenticate"])))
                    (is (nil? (get-in response [:body :error])))
                    (is (= [uri] (map :uri (get-in response [:body :result :contents]))))))))
-           (testing "an unknown URI is still not found over 200, with no challenge"
-             (let [response (post! 200 (read-of "ui://metabase/does-not-exist.html"))]
-               (is (nil? (get-in response [:headers "WWW-Authenticate"])))
-               (is (= {:code -32602 :message "Resource not found"} (get-in response [:body :error])))))
            (testing "a batch serves the shell in band as well"
              (let [response (post! 200 [(read-of v2.resources/visualize-query-uri)
                                         (assoc (jsonrpc-request "ping") :id 2)])
@@ -951,6 +1005,9 @@
               (is (str/includes? baseline "metabaseConfig"))
               (is (re-find #"uiCredential:\s*\}" baseline))
               (is (nil? (embedded-credential baseline)))
+              (is (zero? @minted)))
+            (testing "a token without even agent:resource:read reads the shell too, and still mints none"
+              (is (nil? (embedded-credential (shell-text #{"agent:content:read"}))))
               (is (zero? @minted)))
             (testing "a token holding agent:query:run still gets one embedded, minted once"
               (let [query-run (shell-text #{"agent:content:read" "agent:query:run"})]

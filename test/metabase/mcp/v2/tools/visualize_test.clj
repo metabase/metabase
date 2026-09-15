@@ -318,8 +318,11 @@
 ;;; ------------------------------------------------- Resources ----------------------------------------------------
 
 (deftest resource-scopes-are-advertised-test
-  (testing "GHY-4157: every v2 resource scope is in the OAuth grant — one a client can't request is a shell it could never read"
+  (testing "GHY-4157: every v2 resource scope is in the OAuth grant — one a client can't request is a data resource it
+            could never read, or a shell that never gets a credential"
     (let [advertised (set (mcp.core/all-scopes))]
+      (testing "GHY-4543: data resources count, not just UI shells"
+        (is (contains? (v2.resources/resource-scopes) "agent:resource:read")))
       (doseq [scope (v2.resources/resource-scopes)]
         (is (contains? advertised scope) scope)))))
 
@@ -350,8 +353,12 @@
         (let [{:keys [text minted?]} (read-with v2.resources/visualize-query-uri viz-scopes)]
           (is (str/includes? text "test-ui-credential"))
           (is (true? minted?))))
-      (testing "GHY-4543: the fields catalog reads without agent:resource:read"
-        (is (= :ok (:status (read-with v2.resources/fields-catalog-uri #{"agent:content:read"})))))
+      (testing "GHY-4543: a data resource is denied without its scope, naming the scope so the transport can
+                challenge for it"
+        (is (= {:status :scope-denied :required-scope "agent:resource:read"}
+               (v2.resources/read-resource v2.resources/fields-catalog-uri #{"agent:content:read"} {}))))
+      (testing "the fields catalog reads with agent:resource:read"
+        (is (= :ok (:status (read-with v2.resources/fields-catalog-uri #{"agent:resource:read"})))))
       (testing "GHY-4157: an unknown URI is not found"
         (is (= :not-found (:status (read-with "ui://metabase/nope.html" viz-scopes))))))))
 
