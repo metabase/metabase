@@ -63,21 +63,44 @@
   (let [^com.sun.management.ThreadMXBean mx (java.lang.management.ManagementFactory/getThreadMXBean)]
     (.getThreadAllocatedBytes mx (.getId (Thread/currentThread)))))
 
-(deftest call-bounded-caps-result-length-test
+(deftest guest-call-bounds-transfers-test
   (do-with-untrusted-context
    (fn [^Context context]
-     (graal/load-js-string context "function big(n) { return 'x'.repeat(n) }; function obj() { return {length: 1} }" "fns.js")
+     (graal/load-js-string context
+                           (str "globalThis.MetabaseStaticViz = {"
+                                "  big(n) { return 'x'.repeat(n) },"
+                                "  obj() { return {length: 1} },"
+                                "  huge: 'x'.repeat(17 * 1024 * 1024),"
+                                "  boom() { throw new Error('e'.repeat(17 * 1024 * 1024)) },"
+                                "  boomObject() { throw {toString() { throw 'x'.repeat(17 * 1024 * 1024) }} }"
+                                "}")
+                           "fns.js")
      (testing "a string result within the cap passes through"
-       (is (= (* 1024 1024) (count (#'graal/call-bounded context "big" (* 1024 1024))))))
+       (is (= (* 1024 1024) (count (#'graal/call-string context "big" (* 1024 1024))))))
      (testing "an oversized result is refused in the guest, before it is copied to the host"
        (let [before (thread-allocated-bytes)]
          (is (thrown-with-msg? PolyglotException #"more than the .* allowed"
-                               (#'graal/call-bounded context "big" (* 17 1024 1024))))
+                               (#'graal/call-string context "big" (* 17 1024 1024))))
          (is (< (- (thread-allocated-bytes) before) (* 4 1024 1024))
              "refusing a 17M-char string must not allocate it (~34 MB, more with marshalling) on the host heap")))
      (testing "a non-string result is refused"
        (is (thrown-with-msg? PolyglotException #"did not return a string"
-                             (#'graal/call-bounded context "obj")))))))
+                             (#'graal/call-string context "obj"))))
+     (testing "a property a plugin replaced with a string is refused without the lookup copying it to the host"
+       (let [before (thread-allocated-bytes)]
+         (is (thrown-with-msg? PolyglotException #"is not a function"
+                               (#'graal/call-string context "huge")))
+         (is (< (- (thread-allocated-bytes) before) (* 4 1024 1024)))))
+     (testing "a void call never transfers the result"
+       (let [before (thread-allocated-bytes)]
+         (is (nil? (#'graal/call-void context "big" (* 17 1024 1024))))
+         (is (< (- (thread-allocated-bytes) before) (* 4 1024 1024)))))
+     (testing "a guest error's message is truncated before it crosses to the host"
+       (doseq [fn-name ["boom" "boomObject"]]
+         (let [before (thread-allocated-bytes)
+               e      (is (thrown? PolyglotException (#'graal/call-string context fn-name)))]
+           (is (<= (count (ex-message e)) 2100) fn-name)
+           (is (< (- (thread-allocated-bytes) before) (* 4 1024 1024)) fn-name)))))))
 
 (deftest untrusted-context-enforces-heap-limit-test
   (testing "sandbox.MaxHeapMemory terminates a plugin that exhausts the isolate heap"

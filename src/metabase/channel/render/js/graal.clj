@@ -53,7 +53,8 @@
 
 (defn execute-fn-name
   "Execute the global js function named `js-fn-name` in `context` with `args`. Not thread-safe on its own
-  — a context is held exclusively per render by the pool (see [[call-js]])."
+  — a context is held exclusively per render by the pool (see [[call-js]]). Both the lookup and the result cross to
+  the host unchecked, so renders go through [[call-string]] / [[call-void]] instead; this is for trusted js."
   ^Value [^Context context js-fn-name & args]
   (let [fn-ref (.eval context "js" js-fn-name)]
     (assert (.canExecute fn-ref) (str "cannot execute " js-fn-name))
@@ -66,26 +67,55 @@
   headroom is for plugins that inline `data:` images."
   (* 16 1024 1024))
 
-(def ^:private ^String bounded-call-js
-  "Guest-side wrapper that calls `fn` and returns its result only if it is a string of at most `max` characters,
-  so an oversized result is refused *before* it crosses to the host. `typeof` and a string primitive's own `length`
-  don't consult anything guest code — a plugin's included — can patch."
-  (str "(fn, max, ...args) => {"
-       "  const s = fn(...args);"
-       "  if (typeof s !== 'string') throw new Error('Static-viz render did not return a string');"
-       "  if (s.length > max) throw new Error(`Static-viz render returned ${s.length} characters, more than the ${max} allowed`);"
+(def ^:private max-error-chars
+  "Ceiling on the length of a guest error message rethrown to the host by [[guest-call-js]] — a thrown value crosses
+  to the host like any other."
+  2000)
+
+(def ^:private ^String guest-call-js
+  "Source of a guest-side wrapper `(name, max, ...args)` that resolves `MetabaseStaticViz[name]`, checks it is a
+  function, calls it, and returns the result only if it is a string of at most `max` characters — or, with a `max`
+  of `-1`, discards the result and returns `undefined`. A guest error is rethrown with its message truncated.
+
+  Everything happens in the guest because a string `Value` is copied to the host heap the moment the guest returns
+  it: that goes for the render result, for a property lookup a plugin has replaced with a string, for the discarded
+  result of a `void` call, and for a thrown message. `typeof`, a string primitive's own `length` and `slice` don't
+  consult anything guest code — a plugin's included — can patch."
+  (str "(name, max, ...args) => {"
+       "  const fn = globalThis.MetabaseStaticViz?.[name];"
+       "  if (typeof fn !== 'function') throw new Error(`MetabaseStaticViz.${name} is not a function`);"
+       "  let s;"
+       "  try {"
+       "    s = fn(...args);"
+       "  } catch (e) {"
+       "    let message = 'guest error';"
+       "    try { message = String(e?.message ?? e); } catch (_) {}"
+       "    throw new Error(message.slice(0, " max-error-chars "));"
+       "  }"
+       "  if (max < 0) return undefined;"
+       "  if (typeof s !== 'string') throw new Error(`MetabaseStaticViz.${name} did not return a string`);"
+       "  if (s.length > max) throw new Error(`MetabaseStaticViz.${name} returned ${s.length} characters, more than the ${max} allowed`);"
        "  return s;"
        "}"))
 
-(defn- call-bounded
-  "Call the global js function `fn-name` in `context` with `args` and return its string result, refusing results
-  that aren't strings or exceed [[max-result-chars]] before they are copied to the host (see [[bounded-call-js]]).
-  A refused result surfaces as a `PolyglotException` carrying the wrapper's message."
+(defn- guest-call
+  ^Value [^Context context ^String fn-name max & args]
+  (let [wrapper (.eval context "js" guest-call-js)]
+    (.execute wrapper (into-array Object (list* fn-name max args)))))
+
+(defn- call-string
+  "Call `MetabaseStaticViz.<fn-name>` in `context` with `args` and return its string result, refusing — before it
+  is copied to the host — a result that isn't a string or exceeds [[max-result-chars]] (see [[guest-call-js]]). A
+  refusal surfaces as a `PolyglotException` carrying the wrapper's message."
   ^String [^Context context ^String fn-name & args]
-  (let [fn-ref  (.eval context "js" fn-name)
-        wrapper (.eval context "js" bounded-call-js)]
-    (assert (.canExecute fn-ref) (str "cannot execute " fn-name))
-    (.asString ^Value (.execute wrapper (into-array Object (list* fn-ref max-result-chars args))))))
+  (.asString ^Value (apply guest-call context fn-name max-result-chars args)))
+
+(defn- call-void
+  "Call `MetabaseStaticViz.<fn-name>` in `context` with `args` for its side effects; the result never crosses to the
+  host (see [[guest-call-js]])."
+  [^Context context ^String fn-name & args]
+  (apply guest-call context fn-name -1 args)
+  nil)
 
 (defn execute-fn
   "fn-ref should be an executable org.graalvm.polyglot.Value returned from a js engine. Invoke it with args."
@@ -368,7 +398,7 @@
    args    :- [:sequential :string]]
   (do-with-untrusted-builtin-context
    (fn [^Context context]
-     (apply call-bounded context (str "MetabaseStaticViz." fn-name) args))))
+     (apply call-string context fn-name args))))
 
 (defn- chart-with-custom-viz*
   "Render `input` on a pooled plugin isolate context (slim custom-viz bundle already loaded by the pool)
@@ -384,11 +414,11 @@
         input-json   (json/encode input)
         result       (do-with-untrusted-plugin-context
                       (^:once fn* [^Context context]
-                        (execute-fn-name context "MetabaseStaticViz.initializeContextJSON" options-json)
+                        (call-void context "initializeContextJSON" options-json)
                         (doseq [{:keys [identifier plugin-id source]} bundles]
                           (load-js-string context source (str "custom-viz-" identifier ".js"))
-                          (execute-fn-name context "MetabaseStaticViz.registerCustomVizPlugin" identifier plugin-id))
-                        (call-bounded context "MetabaseStaticViz.renderChartJSON" input-json)))]
+                          (call-void context "registerCustomVizPlugin" identifier plugin-id))
+                        (call-string context "renderChartJSON" input-json)))]
     (log/infof "custom-viz: static-rendered %s in %.0fms (incl. context acquire/generation)"
                (mapv :identifier bundles) (u/since-ms timer))
     result))
