@@ -11,7 +11,9 @@ import {
  * the `.br` and `.gz` siblings, and resolves the URL at runtime. A hashed chunk
  * is cacheable, which a fetch of `app/locales/<locale>.json` never qualified for.
  */
-function loadLocaleCatalog(locale: string): Promise<LocaleDataWithLanguage> {
+export function loadLocaleCatalog(
+  locale: string,
+): Promise<LocaleDataWithLanguage> {
   return import(
     /* webpackChunkName: "locale-[request]" */
     `locales/${locale.replace(/-/g, "_")}.json`
