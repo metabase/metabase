@@ -6,6 +6,7 @@
   (:require
    [clojure.string :as str]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.transform-testing.errors :as transform-testing.errors]
    [metabase.transform-testing.expectations.empty :as expectations.empty]
    [metabase.transform-testing.expectations.equals :as expectations.equals]
@@ -24,19 +25,44 @@
 (mr/def ::context
   "What compiling an expectation's probes needs. Pure: no connection.
 
-  `:output-columns` are the output temp table's own column names, read once the table exists —
-  every type that names a column resolves against them rather than against what the author typed."
+  `:output-columns` are the output temp table's own columns, read once the table exists — every
+  type that names a column resolves against them rather than against what the author typed."
   [:map {:closed true}
    [:driver         :keyword]
    [:output-table   :string]
-   [:output-columns [:sequential :string]]
+   [:output-columns [:sequential ::transform-testing.schema/result-column]]
    [:replacements   :map]])
 
-(def ^:private builders
-  "The constructor each expectation type owns. Its key set is also the list of known types, so the
-  two cannot drift."
-  {:equals expectations.equals/build
-   :empty  expectations.empty/build})
+(def ^:private types
+  "Every expectation type, and everything the front door needs from it: the constructor it owns,
+  the schema of what a client sends, and the schema of what a run reports. Its key set is also the
+  list of known types, so none of the three can drift from the others."
+  {:equals {:build  expectations.equals/build
+            :schema ::expectations.equals/expectation
+            :result ::expectations.equals/result}
+   :empty  {:build  expectations.empty/build
+            :schema ::expectations.empty/expectation
+            :result ::expectations.empty/result}})
+
+(defn- dispatching-on-type
+  "A `:multi` over [[types]] taking each type's branch from `k`."
+  [properties k]
+  (into [:multi properties]
+        (map (fn [[type spec]] [type (get spec k)]))
+        types))
+
+;;; Registered under the keys `transform-testing.schema` publishes: `::transform-test` and
+;;; `::run-result` reference them there, and that namespace stays a leaf.
+
+(mr/def ::transform-testing.schema/expectation
+  "A check on the output of the transform under test."
+  (dispatching-on-type {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+                        :dispatch         (comp keyword :type)}
+                       :schema))
+
+(mr/def ::transform-testing.schema/expectation-result
+  "What one expectation found. Which keys it carries beyond the shared ones is fixed by its `:type`."
+  (dispatching-on-type {:dispatch :type} :result))
 
 (defn- check-known-type!
   "Throw unless `type` names an expectation this version knows how to build."
@@ -53,11 +79,11 @@
     ;; mistake. Both are schema refusals, and the check below is what should speak to them.
     (when (and (map? normalized)
                (some? type)
-               (not (contains? builders (keyword type))))
+               (not (contains? types (keyword type))))
       (throw (transform-testing.errors/ex
               ::transform-testing.errors/unknown-expectation-type
               (tru "Unknown expectation type {0}. Known types: {1}."
-                   (pr-str type) (str/join ", " (sort (map name (keys builders)))))
+                   (pr-str type) (str/join ", " (sort (map name (keys types)))))
               {:type type :expectation raw})))))
 
 (defn- expectation
@@ -77,13 +103,10 @@
                    (mu/explain ::transform-testing.schema/expectation
                                (if (map? normalized) normalized raw)))
               {:expectation raw})))
-    ((builders (:type normalized)) normalized)))
+    ((get-in types [(:type normalized) :build]) normalized)))
 
 (defn- check-unique-names!
-  "Throw when two expectations share a name.
-
-  Explicit rather than a schema constraint: `mu/defn` schemas are compiled away outside dev and
-  test, and the name is what every failure message leads with."
+  "Throw when two expectations share a name."
   [records]
   (let [dupes (->> (map :name records) frequencies (keep (fn [[n c]] (when (< 1 c) n))) sort)]
     (when (seq dupes)
@@ -97,7 +120,7 @@
   "The expectation records for a test's `:expectations` column, in declared order.
 
   Normalizes the wire form, checks it against its schema, dispatches to the type that owns it, and
-  rejects a duplicate name — so holding a record is proof that all of that happened.
+  rejects a duplicate name.
 
   Throws a typed refusal from [[metabase.transform-testing.errors]] — `unknown-expectation-type`,
   `invalid-expectation` or `duplicate-expectation-name`."

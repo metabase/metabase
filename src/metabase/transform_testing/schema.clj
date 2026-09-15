@@ -17,6 +17,12 @@
    [:name      ::lib.schema.common/non-blank-string]
    [:database_type ::lib.schema.common/non-blank-string]])
 
+(mr/def ::result-column
+  "A column reported by a test run, with its database native type."
+  [:map {:closed true}
+   [:name          ::lib.schema.common/non-blank-string]
+   [:database_type ::lib.schema.common/non-blank-string]])
+
 (mr/def ::row
   "A row of inline test data, keyed by column name."
   (ms/string-keyed-map [:maybe [:or :boolean number? :string]]))
@@ -41,42 +47,14 @@
    [:sql  [:merge [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case} [:table ::table]] ::sql-data]]
    [:rows [:merge [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case} [:table ::table]] ::rows-data]]])
 
-(mr/def ::expectation.equals
-  "An expectation that the transform output equals test data."
-  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
-           :dispatch         (comp keyword :format)}
-   [:sql  [:merge
-           [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
-            [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :equals]]
-            [:name ::lib.schema.common/non-blank-string]]
-           ::sql-data]]
-   [:rows [:merge
-           [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
-            [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :equals]]
-            [:name ::lib.schema.common/non-blank-string]]
-           ::rows-data]]])
-
-(mr/def ::expectation.empty
-  "An expectation that a SQL query over the transform output returns no rows."
-  [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
-   [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :empty]]
-   [:name ::lib.schema.common/non-blank-string]
-   [:sql  ::lib.schema.common/non-blank-string]])
-
-(mr/def ::expectation
-  "A check on the output of the transform under test."
-  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
-           :dispatch         (comp keyword :type)}
-   [:equals ::expectation.equals]
-   [:empty  ::expectation.empty]])
-
 (mr/def ::inputs
   "Test data for the tables the transform reads. Every table it reads needs one, and an input for
   a table it does not read is refused."
   [:sequential ::input])
 
 (mr/def ::expectations
-  "The checks run against the transform's output. Names must be unique within a test."
+  "The checks run against the transform's output. Names must be unique within a test,
+  case-sensitively."
   [:sequential ::expectation])
 
 (mr/def ::transform-test
@@ -119,16 +97,17 @@
   the rest of the run completed and still reported."
   [:enum {:decode/normalize lib.schema.common/normalize-keyword} :passed :failed :error])
 
-(mr/def ::expectation-result
-  "What one expectation found. `:status` and the identifying keys are always present; the rest is
-  whatever that expectation type has to say about a failure, so a new type adds its own keys
-  without touching this schema."
-  [:map
+(mr/def ::expectation-result.base
+  "What every expectation result carries: which expectation this is, and how it came out.
+
+  A `:status` of `error` means this one expectation could not be evaluated while the rest of the
+  run still reported; `:error` then says why, and nothing else is reported for it."
+  [:map {:closed true}
    [:name    :string]
    [:type    :keyword]
    [:status  ::status]
-   [:columns {:optional true} [:sequential ::column]]
-   [:error   {:optional true} [:map
+   [:columns {:optional true} [:sequential ::result-column]]
+   [:error   {:optional true} [:map {:closed true}
                                [:type    :keyword]
                                [:message :string]]]])
 

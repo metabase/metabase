@@ -4,11 +4,48 @@
   The query is the author's own SQL, rewritten so the tables it names resolve to the run's temp
   tables rather than to the real ones."
   (:require
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.transform-testing.compile :as transform-testing.compile]
    [metabase.transform-testing.expectations.protocol :as expectations.protocol]
-   [metabase.transform-testing.expectations.report :as expectations.report]))
+   [metabase.transform-testing.expectations.report :as expectations.report]
+   [metabase.transform-testing.schema :as transform-testing.schema]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
+
+;;; ---------------------------------------------- Schemas -----------------------------------------------
+
+(mr/def ::expectation
+  "An expectation that a SQL query over the transform output returns no rows."
+  [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
+   [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :empty]]
+   [:name ::lib.schema.common/non-blank-string]
+   [:sql  ::lib.schema.common/non-blank-string]])
+
+(def ^:private base
+  "The shared result keys, pinned to this type."
+  [:merge
+   ::transform-testing.schema/expectation-result.base
+   [:map [:type [:= :empty]]]])
+
+(def ^:private findings
+  [:merge
+   base
+   [:map {:description "The rows the query returned, and the columns describing them."}
+    [:columns   [:sequential ::transform-testing.schema/result-column]]
+    [:sample    [:sequential ::transform-testing.schema/row]]
+    [:truncated :int]]])
+
+(mr/def ::result
+  "What an `empty` expectation found.
+
+  A pass carries nothing beyond the shared keys. A failure adds the rows the query returned as
+  `:sample`, with `:columns` describing them; the sample is capped, and `:truncated` is how many
+  rows that cap dropped."
+  [:multi {:dispatch :status}
+   [:error  base]
+   [:passed base]
+   [:failed findings]])
 
 (defrecord Empty [type name sql]
   expectations.protocol/Expectation

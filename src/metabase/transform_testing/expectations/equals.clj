@@ -7,15 +7,73 @@
   output has and the expectation does not."
   (:require
    [clojure.string :as str]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.transform-testing.compile :as transform-testing.compile]
    [metabase.transform-testing.errors :as transform-testing.errors]
    [metabase.transform-testing.expectations.protocol :as expectations.protocol]
    [metabase.transform-testing.expectations.report :as expectations.report]
    [metabase.transform-testing.schema :as transform-testing.schema]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
+
+;;; ---------------------------------------------- Schemas -----------------------------------------------
+
+(mr/def ::expectation
+  "An expectation that the transform output equals test data."
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         (comp keyword :format)}
+   [:sql  [:merge
+           [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
+            [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :equals]]
+            [:name ::lib.schema.common/non-blank-string]]
+           ::transform-testing.schema/sql-data]]
+   [:rows [:merge
+           [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
+            [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :equals]]
+            [:name ::lib.schema.common/non-blank-string]]
+           ::transform-testing.schema/rows-data]]])
+
+(def ^:private cell
+  "A value as a failure report carries it: a string, a number, a boolean, or null."
+  [:maybe [:or :boolean number? :string]])
+
+(def ^:private base
+  "The shared result keys, pinned to this type."
+  [:merge
+   ::transform-testing.schema/expectation-result.base
+   [:map [:type [:= :equals]]]])
+
+(def ^:private findings
+  [:merge
+   base
+   [:map {:description "The comparison's findings, reported in full on a pass as well as a failure."}
+    [:columns         [:sequential ::transform-testing.schema/result-column]]
+    [:row-counts      [:map {:closed true}
+                       [:actual   :int]
+                       [:expected :int]]]
+    [:extra-rows      [:sequential ::transform-testing.schema/row]]
+    [:missing-rows    [:sequential ::transform-testing.schema/row]]
+    [:cell-mismatches [:sequential [:map {:closed true}
+                                    [:column   :string]
+                                    [:expected cell]
+                                    [:actual   cell]]]]
+    [:truncated       :int]]])
+
+(mr/def ::result
+  "What an `equals` expectation found.
+
+  Unless `:status` is `error`, every key is present on a pass as well as a failure:
+  `:extra-rows`, `:missing-rows` and `:cell-mismatches` come back empty rather than missing.
+  `:row-counts` sets the output's row count against the number of rows the expectation declared.
+  `:cell-mismatches` is filled only when exactly one row is missing and exactly one is extra.
+  `:extra-rows` and `:missing-rows` are capped; `:truncated` is how many rows that cap dropped."
+  [:multi {:dispatch :status}
+   [:error  base]
+   [:passed findings]
+   [:failed findings]])
 
 ;;; ------------------------------------------- Comparison SQL -------------------------------------------
 

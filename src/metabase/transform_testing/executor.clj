@@ -33,7 +33,7 @@
     (catch Exception e
       (log/warnf "Failed to drop transform test temp table %s: %s" table (ex-message e)))))
 
-(mu/defn table-columns :- [:sequential ::transform-testing.schema/column]
+(mu/defn table-columns :- [:sequential ::transform-testing.schema/result-column]
   "The columns of the temp table `table` on `conn`, in order, fetching no rows."
   [driver :- :keyword
    conn   :- ::transform-testing.schema/connection

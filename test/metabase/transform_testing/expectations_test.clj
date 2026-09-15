@@ -1,16 +1,19 @@
 (ns metabase.transform-testing.expectations-test
-  "The front door: `expectations` is the only sanctioned way to build an expectation, and holding a
-  record is supposed to be proof that normalization, schema validation, type dispatch and the
-  unique-name check all ran. These tests pin that claim and mark where it leaks. Pure — no
-  warehouse, no app DB."
+  "The front door: `expectations` is the only sanctioned way to build an expectation. These tests
+  pin what it normalizes, checks and refuses, the ways a record loses its type afterwards, and the
+  checks it defers to run time. Pure — no warehouse, no app DB."
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
+   [malli.core :as mc]
    [metabase.lib.core :as lib]
    [metabase.transform-testing.errors :as transform-testing.errors]
    [metabase.transform-testing.expectations :as expectations]
+   [metabase.transform-testing.expectations.empty :as expectations.empty]
+   [metabase.transform-testing.expectations.equals :as expectations.equals]
    [metabase.transform-testing.expectations.protocol :as expectations.protocol]
-   [metabase.transform-testing.schema :as transform-testing.schema]))
+   [metabase.transform-testing.schema :as transform-testing.schema]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -227,7 +230,7 @@
       (is (= {:name "n" :type :empty :status :passed}
              (expectations/interpret r {:rows []}))))))
 
-;;; ------------------------------- Where the proof-of-validation claim leaks -------------------------------
+;;; ----------------------------------- Checks deferred to run time -----------------------------------
 
 (deftest equals-sql-is-accepted-but-cannot-run-test
   ;; A record is built, satisfies the protocol, and throws the moment anyone asks it for probes.
@@ -250,3 +253,37 @@
                                          [{"name" column-name "database_type" "INTEGER"}]
                                          [{column-name 1}])])))
           column-name))))
+
+;;; ---------------------------------- Every type owns both of its schemas ----------------------------------
+
+(def ^:private expected-types
+  "The schemas every expectation type must own. Exhaustive over the front door's registry by
+  assertion below, so a type added with no result schema fails here rather than reaching a client
+  as an undescribed result map."
+  {:equals {:schema ::expectations.equals/expectation
+            :result ::expectations.equals/result}
+   :empty  {:schema ::expectations.empty/expectation
+            :result ::expectations.empty/result}})
+
+(defn- branches
+  "The dispatch values the `:multi` registered as `schema` has branches for."
+  [schema]
+  (set (map first (mc/children (mr/schema schema)))))
+
+(deftest registry-is-exhaustive-over-all-types-test
+  (let [registry (var-get #'expectations/types)]
+    (testing "the registry names exactly the types expected here, and no stale entry lingers"
+      (is (= (set (keys expected-types)) (set (keys registry)))))
+    (doseq [[type {:keys [schema result]}] expected-types]
+      (testing (str type)
+        (is (= schema (get-in registry [type :schema])))
+        (is (= result (get-in registry [type :result])))
+        (is (some? (mr/registered-schema schema)))
+        (is (some? (mr/registered-schema result)))))))
+
+(deftest aggregates-are-exhaustive-over-the-registry-test
+  (let [types (set (keys (var-get #'expectations/types)))]
+    (testing "the aggregate a client sends has a branch per known type"
+      (is (= types (branches ::transform-testing.schema/expectation))))
+    (testing "the aggregate a run reports too — a type with no result schema cannot ship"
+      (is (= types (branches ::transform-testing.schema/expectation-result))))))
