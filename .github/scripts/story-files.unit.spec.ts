@@ -58,12 +58,12 @@ describe("getStories", () => {
     ]);
   });
 
-  it("keeps an empty plan empty even when the CSV filter is set", () => {
+  it("rejects an empty plan even when the CSV filter is set", () => {
     writeFileSync(pathsFile, "[]");
 
-    expect(
+    expect(() =>
       getStories({ pathsFile, filter: "frontend/src/Unselected.stories.tsx" }),
-    ).toEqual([]);
+    ).toThrow("No stories selected");
   });
 
   it("preserves the stress test's CSV filter", () => {

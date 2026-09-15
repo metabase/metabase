@@ -14,6 +14,9 @@ function getStories({ pathsFile, filter } = {}) {
     ) {
       throw new Error("Story paths must be a JSON array of strings");
     }
+    if (files.length === 0) {
+      throw new Error("No stories selected");
+    }
     return files.map((file) => `../${file}`);
   }
 
