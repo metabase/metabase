@@ -194,7 +194,7 @@
   "Whether `node` is a string literal or a call that builds a string."
   [node]
   (or (hooks/string-node? node)
-      (calls-core? node #{"str" "format" "pr-str"})
+      (calls-core? node #{"str" "format" "pr-str" "ex-message"})
       (calls-i18n? node)
       (calls? node string-ns "join")
       (calls-json-encode? node)))
@@ -231,12 +231,26 @@
       (calls-core? node #{"case"})                 (clause-results (rest args))
       (calls-core? node #{"condp"})                (condp-results (drop 2 args)))))
 
+(defn- step-call
+  "Threading step `node` as the call it stands for: a list as is, anything else as a call with no written arguments."
+  [node]
+  (if (hooks/list-node? node) node (hooks/list-node [node])))
+
+(defn- threading-results
+  "The nodes whose text-ness decides what threading form `node` evaluates to, or nil when it isn't one."
+  [node]
+  (let [[init & steps] (rest (:children node))]
+    (cond
+      (calls-core? node #{"->" "->>" "some->" "some->>"}) [(if steps (step-call (last steps)) init)]
+      (calls-core? node #{"cond->" "cond->>"})           (cons init (map step-call (take-nth 2 (rest steps))))
+      (calls-core? node #{"as->"})                       [(or (last (rest steps)) init)]
+      (calls-core? node #{"doto"})                       [init])))
+
 (defn- tail-result
-  "The node threading or body form `node` evaluates to, or nil when it isn't one."
+  "The node body form `node` evaluates to, or nil when it isn't one."
   [node]
   (let [args (rest (:children node))]
     (cond
-      (calls-core? node #{"->" "->>" "cond->" "cond->>"})      (first args)
       (calls-core? node #{"when" "when-not" "when-let" "let"}) (when (next args) (last args))
       (calls-core? node #{"do"})                               (last args))))
 
@@ -247,6 +261,7 @@
   (boolean
    (or (builds-string? node)
        (some stringy? (branch-results node))
+       (some stringy? (threading-results node))
        (some-> (tail-result node) stringy?))))
 
 (defn- lint-exit-text!
@@ -301,10 +316,12 @@
           (partition 2 (:children node)))))
 
 (defn lint-list-content
-  "Flag a `list-content` whose literal options map has an `:empty-hint` that is text rather than a `msg`."
+  "Flag a `list-content`, or a wrapper taking its options map as the third argument too, whose literal options map
+  has an `:empty-hint` that is text rather than a `msg`."
   [{:keys [node] :as input}]
   (when (exit-enabled? input)
-    (lint-exit-text! (map-value (nth (:children node) 3 nil) :empty-hint) "`list-content`'s `:empty-hint`"))
+    (lint-exit-text! (map-value (nth (:children node) 3 nil) :empty-hint)
+                     (str "`" (name (call-name node)) "`'s `:empty-hint`")))
   input)
 
 (defn lint-success-content

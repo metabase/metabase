@@ -74,7 +74,13 @@
                                   "metabase.mcp.v2.tools.browse-test" false
                                   "metabase.queries.models.card"      false}]
         (testing ns-name
-          (is (= enabled? (linter-enabled-in-ns? config :metabase/agent-message-exit ns-name))))))))
+          (is (= enabled? (linter-enabled-in-ns? config :metabase/agent-message-exit ns-name))))))
+    (testing "GHY-4544: `:empty-hint` is checked on `list-content` and on wrappers passing their options map to it"
+      (doseq [fn-sym '[metabase.mcp.v2.common/list-content
+                       metabase.mcp.v2.tools.browse/paged-list-content]]
+        (testing fn-sym
+          (is (= 'hooks.metabase.agent-message/lint-list-content
+                 (get-in config [:hooks :analyze-call fn-sym]))))))))
 
 (deftest ^:parallel scope-test
   (testing "GHY-4544: the hooks leave scoping to config, reporting in any namespace where their linter is enabled"
@@ -163,7 +169,17 @@
    '(condp = x :a (str "a" y) (msg ["b"]))
    '(condp = x :a (msg ["a"]) "b")
    '(case x :a (msg ["a"]) "b")
-   '(case x :a "a" :b (msg ["b"]))])
+   '(case x :a "a" :b (msg ["b"]))
+   '(->> bad (map name) (str/join ", "))
+   '(-> x (str " suffix"))
+   '(-> x name str)
+   '(some-> e ex-message)
+   '(some->> xs (map name) (clojure.string/join ", "))
+   '(cond->> xs x (map name) y (str/join ", "))
+   '(cond-> "x" y (subs 1))
+   '(as-> x v (assoc v :a 1) (json/encode v))
+   '(doto (str "a" b) println)
+   '(let [s x] (-> s (format y)))])
 
 (def ^:private message-texts
   "Message arguments that aren't syntactically text."
@@ -174,7 +190,15 @@
    '(cond (str x) (msg ["a"]) :else (msg ["b"]))
    '(condp = x "a" (msg ["a"]) (msg ["b"]))
    '(condp get x "a" :>> render-error (msg ["b"]))
-   '(case x "a" (msg ["a"]) ("b" "c") (msg ["b"]))])
+   '(case x "a" (msg ["a"]) ("b" "c") (msg ["b"]))
+   '(-> "x" count)
+   '(->> "x" (map str) set)
+   '(some-> (str "x") render-error)
+   '(-> x)
+   '(-> e :message)
+   '(cond-> {:a 1} x (assoc :b "c"))
+   '(as-> "x" v (count v))
+   '(doto x (println "a"))])
 
 (deftest ^:parallel teaching-exit-test
   (doseq [fn-name ["throw-teaching-error" "error-content"]]
@@ -199,7 +223,9 @@
   [[agent-message/lint-teaching-exit "check-execute-sql-enabled!" #(list 'v2.queries/check-execute-sql-enabled! %)]
    [agent-message/lint-op-error "op-error!" #(list 'dashboard-ops/op-error! 'idx "add_link" %)]
    [agent-message/lint-ellipsize "ellipsize" #(list 'common/ellipsize % 300)]
-   [agent-message/lint-list-content "list-content" #(list 'common/list-content 'rows 0 {:offset 0 :empty-hint %})]])
+   [agent-message/lint-list-content "list-content" #(list 'common/list-content 'rows 0 {:offset 0 :empty-hint %})]
+   [agent-message/lint-list-content "paged-list-content"
+    #(list 'paged-list-content 'args 'rows {:empty-hint %} 'identity)]])
 
 (deftest ^:parallel message-helper-test
   (doseq [[hook fn-name form-fn] helper-cases]

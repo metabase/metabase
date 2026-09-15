@@ -696,6 +696,7 @@
    metabase.mcp.v2.dashboard-ops/op-error!                                                                                   hooks.metabase.agent-message/lint-op-error
    metabase.mcp.v2.message/msg                                                                                               hooks.metabase.agent-message/lint-msg
    metabase.mcp.v2.queries/check-execute-sql-enabled!                                                                        hooks.metabase.agent-message/lint-teaching-exit
+   metabase.mcp.v2.tools.browse/paged-list-content                                                                           hooks.metabase.agent-message/lint-list-content
    metabase.mcp.v2.tools.parameters-test/with-fixtures                                                                       hooks.common/with-one-binding
    metabase.metrics.api-dimension-test/with-seeded-metric                                                                    hooks.common/with-one-binding
    metabase.model-persistence.api-test/with-persistence-setup!                                                               hooks.common/with-one-top-level-binding
