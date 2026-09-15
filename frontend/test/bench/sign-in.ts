@@ -17,10 +17,10 @@ const url = process.argv[2] || "http://localhost:4000";
 const EMAIL = "bench@example.com";
 // The setup endpoint rejects a password that is short or common.
 const PASSWORD = "Benchmark-Passw0rd!";
-// A translated site, so the document carries a translation catalogue and a
-// change to how locales load shows up in the numbers. The user sets no locale
-// of their own, so it falls back to this one.
-const SITE_LOCALE = "de";
+// English, to pair with the German rows already in the table. `en` gets a tiny
+// fallback catalogue rather than a real one, so the difference between the two
+// rows for a commit is what the translation costs.
+const SITE_LOCALE = "en";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
