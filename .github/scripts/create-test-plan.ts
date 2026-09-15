@@ -23,7 +23,7 @@ const UNIT_GLOBS = [
   "!**/*.leak.unit.spec.{js,jsx,ts,tsx}", // run only by jest.memory.conf.js
 ];
 
-const STORY_ROOTS = ["frontend", "enterprise/frontend"];
+const FRONTEND_ROOTS = ["frontend", "enterprise/frontend"];
 
 // `git ls-files -- frontend enterprise/frontend` already prints just over a
 // megabyte of paths, and node's default maxBuffer is exactly 1 MiB: past that
@@ -117,7 +117,7 @@ const testPlan = createTestPlan({
   loadFileDependencies,
   testFilesBySuite: {
     unit: listFiles(UNIT_ROOTS, UNIT_GLOBS),
-    loki: listFiles(STORY_ROOTS, MAIN_APP_STORY_GLOBS),
+    loki: listFiles(FRONTEND_ROOTS, MAIN_APP_STORY_GLOBS),
     e2e: listSpecFiles(),
   },
   e2eSpecFiles: readE2eSpecFiles(),
@@ -127,7 +127,7 @@ const testPlan = createTestPlan({
   sharedSourcesTouched: process.env.SHARED_SOURCES_TOUCHED === "true",
   feFilesChanged: csvToList(process.env.FE_CHANGED_FILES).length,
   beFilesChanged: csvToList(process.env.BE_CHANGED_FILES).length,
-  feFilesTotal: listFiles(["frontend", "enterprise/frontend"], ["**"]).length,
+  feFilesTotal: listFiles(FRONTEND_ROOTS, ["**"]).length,
   beFilesTotal: listFiles(["src", "enterprise/backend"], ["**"]).length,
 });
 
