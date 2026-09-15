@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.actions.core :as actions]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.typed-schemas.schema.common :as schema.common]
    [metabase.typed-schemas.schema.model :as schema.model]))
@@ -20,11 +21,11 @@
              :name "Orders model"})))))
 
 (deftest model-schema-supports-persisted-mbql5-template-tags-test
-  (let [action-query (lib/native-query (mt/metadata-provider)
-                                       "UPDATE birds SET name = {{name}}")]
+  (let [mp           (mt/metadata-provider)
+        action-query (lib/native-query mp "UPDATE birds SET name = {{name}}")]
     (mt/with-actions [model {:name          "Bird model"
                              :type          :model
-                             :dataset_query (mt/mbql-query categories)}
+                             :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :categories)))}
                       {action-id :action-id} {:name          "Update bird"
                                               :database_id   (mt/id)
                                               :dataset_query action-query
