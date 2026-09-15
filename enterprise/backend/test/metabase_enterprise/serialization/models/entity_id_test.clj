@@ -43,6 +43,7 @@
     :model/AnalysisFinding
     :model/AnalysisFindingError
     :model/ApiKey
+    :model/ApiKeyUsageLog
     :model/AuthIdentity
     :model/HTTPAction
     :model/ImplicitAction

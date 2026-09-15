@@ -11,4 +11,8 @@
    [:is-data-analyst?   {:optional true} :boolean]
    [:user-locale        {:optional true} [:maybe string?]]
    [:is-group-manager?  {:optional true} :boolean]
-   [:permissions-set    {:optional true} [:set :string]]])
+   [:permissions-set    {:optional true} [:set :string]]
+   ;; only API-key auth resolves these two: `:api-key-id` identifies the key itself (for per-key usage analytics) and
+   ;; `:tenant-id` is the authenticated user's tenant, read off the same auth query rather than looked up again later.
+   [:api-key-id         {:optional true} pos-int?]
+   [:tenant-id          {:optional true} [:maybe pos-int?]]])

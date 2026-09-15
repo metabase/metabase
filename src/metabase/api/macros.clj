@@ -739,32 +739,64 @@
   [:map-of ::method [:sequential [:tuple
                                   (ms/InstanceOfClass clout.core.CompiledRoute)
                                   ::handler
-                                  [:maybe ::route-metadata]]]])
+                                  [:maybe ::route-metadata]
+                                  #_route-path :string]]])
 
 (mu/defn- ns-handler-map :- ::handler-map
-  "Build a map of method => [[clout-route handler metadata]+] used to power the combined ns handler built
-  by [[build-ns-handler]]."
+  "Build a map of method => [[clout-route handler metadata route-path]+] used to power the combined ns handler built
+  by [[build-ns-handler]].
+
+  `route-path` is the raw (uncompiled) Clout pattern the endpoint declared, e.g. `\"/:id\"`. Route-param regexes are
+  compiled into the [[clout.core.CompiledRoute]] but deliberately kept out of `route-path`, so it holds placeholder
+  names only — that is what [[route-template]] needs."
   [endpoints :- ::ns-endpoints]
   (->> endpoints
        vals
        (group-by #(get-in % [:form :method]))
        (m/map-vals (fn [routes]
                      (mapv (fn [route]
-                             [(clout/route-compile (get-in route [:form :route :path])
-                                                   (get-in route [:form :route :regexes] {}))
-                              (:handler route)
-                              (get-in route [:form :metadata])])
+                             (let [path (get-in route [:form :route :path])]
+                               [(clout/route-compile path (get-in route [:form :route :regexes] {}))
+                                (:handler route)
+                                (get-in route [:form :metadata])
+                                path]))
                            routes)))))
 
 (defn- decode-route-params [route-params]
   (update-vals route-params ring.util.codec/url-decode))
+
+(defn- request-route-prefix
+  "Route prefix accumulated for `request` so far: the [[metabase.api.util.handlers/route-map-handler]] levels it
+  descended through, or — for an ns handler mounted straight under a `compojure.core/context` with no route map in
+  between — the context patterns alone."
+  [request]
+  (or (:route-prefix request)
+      (:compojure/route-context request)))
+
+(mu/defn- route-template :- :string
+  "Reconstruct the full route template for a matched endpoint, e.g. `\"/api/card/:id\"`.
+
+  `route-prefix` is the prefix accumulated by [[metabase.api.util.handlers/route-map-handler]] as routing descended
+  (seeded with the enclosing `compojure.core/context` patterns, so `/api` is included); `route-path` is the
+  ns-relative Clout pattern the endpoint declared.
+
+  This is built purely from declared route structure. It never contains request values — no query string, no
+  `:query-params`, and no concrete path-param values — which is what makes it safe to store for analytics."
+  [route-prefix :- [:maybe :string]
+   route-path   :- :string]
+  (let [prefix (or route-prefix "")]
+    ;; A `\"/\"` endpoint is the prefix itself (`GET /api/card` matches the `\"/\"` route of `metabase.queries-rest.api`
+    ;; because each route-map level leaves `\"/\"` behind), so don't tack on a meaningless trailing slash.
+    (if (= route-path "/")
+      (if (str/blank? prefix) "/" prefix)
+      (str prefix route-path))))
 
 (mu/defn- find-matching-handler :- [:maybe [:tuple ::request ::handler]]
   "Find the appropriate handler from `handler-map` to handle `request`. Returns a tuple of
 
     [request' handler]
 
-  (Request is updated to include parsed Clout parameters and route metadata.)"
+  (Request is updated to include parsed Clout parameters, route metadata, and the reconstructed `:route-template`.)"
   [handler-map :- ::handler-map
    request      :- ::request]
   (let [request-method (:request-method request)
@@ -773,13 +805,29 @@
         request        (cond-> request
                          path (assoc :path-info path))]
     ;; TODO -- we could probably make this a little faster by unrolling this loop
-    (some (fn [[route handler metadata]]
+    (some (fn [[route handler metadata route-path]]
             (when-let [route-params (clout/route-matches route request)]
               [(-> request
                    (assoc :route-params (decode-route-params route-params))
-                   (assoc :route-metadata metadata))
+                   (assoc :route-metadata metadata)
+                   (assoc :route-template (route-template (request-route-prefix request) route-path)))
                handler]))
           handlers)))
+
+(def route-template-carrier-key
+  "Request key under which middleware running *above* the routing tree can put a `volatile!` in order to learn which
+  route template ended up matching.
+
+  `:route-template` is added to a request that routing builds for the matched endpoint alone
+  (see [[find-matching-handler]]); it never travels back up, and neither does anything else reliable. Response
+  metadata would cover successful responses, but an endpoint that throws — which is how most 4xx/5xx are produced —
+  has its response built from the exception by `metabase.server.middleware.exceptions/catch-api-exceptions`, losing
+  any metadata the endpoint's response would have carried. A carrier owned by the outer middleware covers both, the
+  same way `log-api-call` already collects DB call counts from deep inside a request.
+
+  The carrier is optional: nothing installs one unless it needs the value, so routing pays a single map lookup. See
+  `metabase.server.middleware.log/log-api-call`, which installs one for API-key-authenticated requests only."
+  ::route-template-carrier)
 
 (mu/defn- build-ns-handler :- ::handler
   "Build a combined Ring handler for all `endpoints` that routes requests to the matching handler (if any)."
@@ -788,7 +836,9 @@
     (open-api/handler-with-open-api-spec
      (fn ns-handler* [request respond raise]
        (if-let [[request* handler] (find-matching-handler handler-map request)]
-         (handler request* respond raise)
+         (do
+           (some-> (get request route-template-carrier-key) (vreset! (:route-template request*)))
+           (handler request* respond raise))
          (respond nil)))
      (fn [prefix]
        (metabase.api.macros.defendpoint.open-api/open-api-spec endpoints prefix)))))

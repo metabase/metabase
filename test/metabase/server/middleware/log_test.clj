@@ -1,6 +1,8 @@
 (ns metabase.server.middleware.log-test
   (:require
    [clojure.test :refer :all]
+   [metabase.api-keys.usage :as api-keys.usage]
+   [metabase.api.macros :as api.macros]
    [metabase.server.middleware.log :as mw.log]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
@@ -32,6 +34,116 @@
       (is (not (#'mw.log/should-log-request? {:uri "/api/health"})))
       (is (not (#'mw.log/should-log-request? {:uri "/livez"})))
       (is (not (#'mw.log/should-log-request? {:uri "/readyz"}))))))
+
+;;; ------------------------------------------- API key usage analytics -------------------------------------------
+
+(def ^:private api-key-request
+  {:request-method        :get
+   :uri                   "/api/card/1"
+   :headers               {"user-agent" "metabase-cli/1.2.3", "x-metabase-client" "embedding-sdk-react"
+                           "x-metabase-embed-referrer" "https://example.com/app"}
+   :remote-addr           "203.0.113.7"
+   :embedding/auth-method "api-key"
+   :api-key-id            7
+   :metabase-user-id      3
+   :tenant-id             9})
+
+(defn- run-log-api-call!
+  "Send `request` through [[mw.log/log-api-call]] with a downstream handler that stands in for routing — recording
+  `route-template` into the carrier the middleware installed, the way `metabase.api.macros` does — and then responds
+  with `response`. Returns what the API-key usage recorder was called with (`::not-called` if it wasn't) plus the
+  final response."
+  [request route-template response]
+  (let [recorded       (atom ::not-called)
+        final-response (atom ::no-response)
+        handler        (fn [request respond _raise]
+                         (some-> (get request api.macros/route-template-carrier-key)
+                                 (vreset! route-template))
+                         (respond response))]
+    (with-redefs [api-keys.usage/record-api-key-usage! #(reset! recorded %)]
+      ((mw.log/log-api-call handler)
+       request
+       #(reset! final-response %)
+       identity))
+    {:recorded @recorded, :response @final-response}))
+
+(deftest log-api-call-records-api-key-usage-test
+  (testing "an API-key-authenticated request records one usage event"
+    (let [{:keys [recorded]}
+          (run-log-api-call! api-key-request "/api/card/:id" {:status 200, :body "ok"})]
+      (is (=? {:api-key-id       7
+               :user-id          3
+               :tenant-id        9
+               :route-template   "/api/card/:id"
+               :http-method      "GET"
+               :status           200
+               :user-agent       "metabase-cli/1.2.3"
+               :ip-address       "203.0.113.7"
+               :embedding-client "embedding-sdk-react"
+               :embedding-hostname "example.com"}
+              recorded))
+      (testing "duration is measured, and nothing from the URI or query string is recorded"
+        (is (int? (:duration-ms recorded)))
+        (is (instance? java.time.OffsetDateTime (:occurred-at recorded)))
+        (is (= #{:api-key-id :user-id :tenant-id :route-template :http-method :status :duration-ms
+                 :occurred-at :user-agent :ip-address :embedding-client :embedding-hostname}
+               (set (keys recorded))))))))
+
+(deftest log-api-call-embedding-client-absent-test
+  (testing "embedding-client is nil when the header is absent — the common case for API-key traffic"
+    (let [{:keys [recorded]}
+          (run-log-api-call! (update api-key-request :headers dissoc "x-metabase-client")
+                             "/api/card/:id" {:status 200, :body "ok"})]
+      (is (nil? (:embedding-client recorded))))))
+
+(deftest log-api-call-embedding-hostname-absent-test
+  (testing "embedding-hostname is nil when the referrer header is absent"
+    (let [{:keys [recorded]}
+          (run-log-api-call! (update api-key-request :headers dissoc "x-metabase-embed-referrer")
+                             "/api/card/:id" {:status 200, :body "ok"})]
+      (is (nil? (:embedding-hostname recorded))))))
+
+(deftest log-api-call-records-nothing-for-other-auth-methods-test
+  (testing "session-authenticated requests are untouched"
+    (let [{:keys [recorded]}
+          (run-log-api-call! (assoc api-key-request :embedding/auth-method "session")
+                             "/api/card/:id" {:status 200, :body "ok"})]
+      (is (= ::not-called recorded))))
+  (testing "so are unauthenticated ones"
+    (let [{:keys [recorded]}
+          (run-log-api-call! (dissoc api-key-request :embedding/auth-method)
+                             nil {:status 401, :body "Unauthenticated"})]
+      (is (= ::not-called recorded)))))
+
+(deftest log-api-call-does-not-install-a-carrier-for-other-auth-methods-test
+  (testing "nothing but an API-key request pays for route-template tracking"
+    (let [carrier (atom ::not-installed)]
+      ((mw.log/log-api-call (fn [request respond _raise]
+                              (reset! carrier (get request api.macros/route-template-carrier-key))
+                              (respond {:status 200, :body "ok"})))
+       (assoc api-key-request :embedding/auth-method "session")
+       identity
+       identity)
+      (is (nil? @carrier)))))
+
+(deftest log-api-call-records-api-key-usage-without-a-route-template-test
+  (testing "a request that matched no endpoint still records the event, with a nil route-template. Whether the
+           usage-log row gets dropped downstream because route_template is NOT NULL, and whether last_used_at
+           still gets stamped regardless, are decisions the recorder makes — see
+           metabase-enterprise.api-keys.usage-test."
+    (let [{:keys [recorded]}
+          (run-log-api-call! api-key-request nil {:status 404, :body "Not found."})]
+      (is (=? {:api-key-id 7, :route-template nil, :status 404} recorded)))))
+
+(deftest log-api-call-api-key-usage-is-best-effort-test
+  (testing "a recorder that throws never breaks the response"
+    (with-redefs [api-keys.usage/record-api-key-usage! (fn [& _] (throw (ex-info "boom" {})))]
+      (let [response (atom ::no-response)]
+        ((mw.log/log-api-call (fn [_request respond _raise] (respond {:status 200, :body "ok"})))
+         api-key-request
+         #(reset! response %)
+         identity)
+        (is (= {:status 200, :body "ok"} @response))))))
 
 (deftest log-api-call-captures-user-id-from-response-metadata-test
   (testing "log-api-call reads :metabase-user-id from response metadata (#74017)"
