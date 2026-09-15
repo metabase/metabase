@@ -84,9 +84,8 @@
     (is (= #{::errors/unsupported-format}
            (types-with-status 501))))
   (testing "nothing is declared 500"
-    ;; Deliberate, and load-bearing rather than tidy: `api-exception-response` structures a body
-    ;; only for a non-500 status carrying `:error-code`, so a type declared 500 would lose its code
-    ;; on the wire. A genuine bug arrives untyped and picks up 500 from the fallback instead.
+    ;; `api-exception-response` structures a body only for a non-500 status carrying `:error-code`,
+    ;; so a type declared 500 would lose its code on the wire.
     (is (= #{} (types-with-status 500)))))
 
 (deftest status-code-falls-back-to-500-test

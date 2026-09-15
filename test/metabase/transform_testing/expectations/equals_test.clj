@@ -138,8 +138,6 @@
 
 (deftest interpret-cell-rendering-test
   (testing "a BigDecimal keeps its scale"
-    ;; When scale is the whole difference between expected and actual, normalizing it away makes
-    ;; the report deny what it is reporting.
     (let [expectation (equals-rows [{:name "amount" :database_type "DECIMAL(10,2)"}] [{"amount" 1.5}])
           result      (expectations/interpret expectation
                                               {:comparison [[1.50M 1] [1.5M -1]] :actual-count [[1]]})]
@@ -191,7 +189,7 @@
       (is (re-find #"matches more than one output column: id, ID" (ex-message e))))))
 
 (deftest resolve-columns-unsafe-identifier-test
-  ;; The backstop is on the RESOLVED name — what actually reaches the SQL as an identifier. A dot
+  ;; The backstop is on the resolved name — what actually reaches the SQL as an identifier. A dot
   ;; would compile to a table qualifier, so `a.b` would silently compare some other table's column.
   (testing "a resolved name that cannot be written as one identifier is refused"
     (let [e (caught #(resolve-cols [{:name "a.b" :database_type "INTEGER"}] ["a.b"]))]

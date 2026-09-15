@@ -26,9 +26,7 @@
                :truncated dropped)))))
 
 (defn build
-  "The record for an already-normalized, already-validated `empty` expectation.
-
-  Not the front door: `metabase.transform-testing.expectations/expectations` is."
+  "The record for an already-normalized, already-validated `empty` expectation."
   [m]
   ;; The linter forbids this constructor everywhere, so that nothing builds an expectation without
   ;; going through the front door. This is the one place it is the right call.

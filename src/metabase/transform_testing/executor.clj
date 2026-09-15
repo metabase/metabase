@@ -32,10 +32,7 @@
       (log/warnf "Failed to drop transform test temp table %s: %s" table (ex-message e)))))
 
 (mu/defn table-columns :- [:sequential :string]
-  "The column names of the temp table `table` on `conn`, in order, fetching no rows.
-
-  The comparison an expectation compiles has to name columns the way the table actually spells
-  them, and only the materialized table knows how the engine folded each identifier."
+  "The column names of the temp table `table` on `conn`, in order, fetching no rows."
   [driver :- :keyword
    conn   :- :some
    table  :- :string]

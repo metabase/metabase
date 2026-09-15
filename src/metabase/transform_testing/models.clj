@@ -30,16 +30,11 @@
   :model/Transform)
 
 (def ^:private expectations-column
-  "Expectations as records, through the same door in both directions.
+  "The `:expectations` column, as records. [[metabase.transform-testing.expectations/expectations]]
+  checks them on write and rebuilds them on read.
 
-  Building them here rather than at the API layer means every reader gets validated values, whoever
-  did the writing — an import through serdes goes through Toucan, not through an endpoint.
-
-  Writing goes through the constructor too, and not merely through the schema, because some of what
-  makes a set of expectations valid is not expressible as one: names must be unique across the
-  vector, and a `database_type` must be safe to splice into a cast. A schema-only write would store
-  a value that every later read refuses. Records JSON-encode as plain maps, so what lands in the
-  column is the same either way."
+  The constructor catches what the schema does not: names must be unique across the vector, and a
+  `database_type` must be safe to splice into a cast."
   {:in  (comp mi/json-in transform-testing.expectations/expectations)
    :out (comp transform-testing.expectations/expectations mi/json-out-with-keywordization)})
 

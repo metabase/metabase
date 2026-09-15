@@ -63,12 +63,11 @@
   expectation's own `:error` rather than discarding the answers of the others.
 
   Any other status means the run was refused and nothing meaningful ran. The body then carries an
-  `:error-code` naming which refusal it was, drawn from
-  `metabase.transform-testing.errors/all`."
+  `:error-code` naming which refusal it was."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   ;; The app-db read is inside the `try` on purpose: reading a transform test constructs its
-  ;; expectations, so a stored test that no longer satisfies its own constructor throws HERE, and
+  ;; expectations, so a stored test that no longer satisfies its own constructor throws at the read, and
   ;; outside the `try` that escaped untyped and surfaced as a 500.
   (try
     (-> (transform-testing.db/transform-test id)
@@ -76,10 +75,8 @@
         transform-testing.runner/run-transform-test!)
     (catch clojure.lang.ExceptionInfo e
       (if-let [error-type (:error-type (ex-data e))]
-        ;; `:error-code`, not a spelling of our own: `api-exception-response` returns a structured
-        ;; body only for a non-500 status carrying that exact key. Anything else falls through to
-        ;; the branch that attaches a stacktrace — or, where an administrator has turned
-        ;; stacktraces off, to a bare "Something went wrong" with the type silently dropped.
+        ;; `api-exception-response` structures a body only for a non-500 status carrying
+        ;; `:error-code`; anything else gets a stacktrace or nothing.
         (throw (ex-info (ex-message e)
                         (assoc (dissoc (ex-data e) :error-type)
                                :status-code (transform-testing.errors/status-code error-type)

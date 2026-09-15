@@ -2,19 +2,7 @@
   "The public face of a transform test's expectations: how one is built, and how the runner asks it
   what to run and what the answer means.
 
-  [[expectations]] is the only way to build one. It normalizes the wire form, checks it against its
-  schema, dispatches to the type that owns it, and rejects a duplicate name — so holding a record is
-  proof that all of that happened. The generated `->Record` and `map->Record` constructors are
-  forbidden by the linter; a record that skipped the front door would be a value nothing had
-  checked.
-
-  [[probes]] and [[interpret]] are re-exported from
-  `metabase.transform-testing.expectations.protocol` so a caller needs one namespace and never has
-  to know which type it is holding.
-
-  One trap the linter cannot catch: `lib/normalize` returns a plain map, so normalizing an
-  expectation after construction silently strips its type. Normalization happens before the
-  constructor, here, and nowhere else."
+  [[expectations]] is the only way to build one."
   (:require
    [clojure.string :as str]
    [metabase.lib.core :as lib]
@@ -51,13 +39,12 @@
    :empty  expectations.empty/build})
 
 (defn- check-known-type!
-  "Throw unless `type` names an expectation this version knows how to build.
-
-  Ahead of the schema rather than inside it: `::expectation` dispatches on `:type` with no default
-  branch, so malli's answer to an unrecognized type is that the whole expectation is invalid, and
-  the author gets an explain blob describing every branch it failed to match. Naming the type and
-  listing the ones that exist is the answer they can act on."
+  "Throw unless `type` names an expectation this version knows how to build."
   [normalized raw]
+  ;; Ahead of the schema rather than inside it: `::expectation` dispatches on `:type` with no
+  ;; default branch, so malli's answer to an unrecognized type is that the whole expectation is
+  ;; invalid, and the author gets an explain blob describing every branch it failed to match.
+  ;; Naming the type and listing the ones that exist is the answer they can act on.
   (let [type (:type normalized)]
     ;; Two ways this must not fire. Normalizing a non-map yields nothing, so there is no type to
     ;; name. And when an inner branch fails to match — an `equals` with an unrecognized `:format`,
@@ -107,7 +94,13 @@
               {:duplicate-names (vec dupes)})))))
 
 (defn expectations
-  "The expectation records for a test's `:expectations` column, in declared order."
+  "The expectation records for a test's `:expectations` column, in declared order.
+
+  Normalizes the wire form, checks it against its schema, dispatches to the type that owns it, and
+  rejects a duplicate name — so holding a record is proof that all of that happened.
+
+  Throws a typed refusal from [[metabase.transform-testing.errors]] — `unknown-expectation-type`,
+  `invalid-expectation` or `duplicate-expectation-name`."
   [raw-expectations]
   (let [records (mapv expectation raw-expectations)]
     (check-unique-names! records)

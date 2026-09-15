@@ -12,20 +12,9 @@
 (def ^:private error-types
   "Every `:error-type` a transform test run can throw, and the HTTP status it carries.
 
-  One definition rather than two: [[all]] is derived from it, so a type cannot be declared without
-  choosing its status, and the two can never drift apart. The grouping IS the status, because a
-  second taxonomy alongside it only invites the two to disagree.
-
   400 — the test is wrong, and its author can fix it.
   422 — the test is fine; the transform or its database prevents a run here.
-  501 — the test asks for something not built yet.
-
-  Nothing maps to 500, deliberately. A declared refusal is always attributable to the test or its
-  environment; a genuine bug arrives untyped and [[status-code]] gives it 500 on the way past. The
-  distinction is load-bearing rather than tidy: `api-exception-response` returns a structured body
-  only for a non-500 status carrying `:error-code`, so anything declared 500 here would lose its
-  type on the wire and come back as a stacktrace, or as nothing at all where an administrator has
-  turned stacktraces off."
+  501 — the test asks for something not built yet."
   {;; 400 — authoring
    ::duplicate-expectation-name 400  ; Two expectations in one test share a name.
    ::unknown-expectation-type   400  ; The `:type` names no known expectation.
@@ -82,13 +71,8 @@
 (defn remap-message
   "`message` with every temp-table name in `temp->logical` replaced by the name the author wrote.
 
-  Every identifier in a driver's error message is one this module minted — `mb_test_` followed by
-  32 hex characters — and the author has never seen it. The names are generated, unique and
-  high-entropy, so this is a substitution over a known token set rather than an attempt to read
-  SQL. Matching ignores case because Snowflake and H2 upper-case them.
-
-  A nil message stays nil: coercing it to \"\" would be indistinguishable from a driver that
-  really said nothing, and the caller is better placed to decide what to show instead."
+  Matching ignores case because Snowflake and H2 upper-case the generated names. A nil message
+  stays nil."
   [message temp->logical]
   (when message
     (reduce (fn [^String msg [temp logical]]

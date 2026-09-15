@@ -2,12 +2,8 @@
   "The `equals` expectation: the transform output holds exactly the declared rows, over exactly the
   declared columns.
 
-  The comparison runs in the warehouse. Canonicalizing both sides in Clojure means reimplementing
-  each engine's notion of equality in Java types; comparing in SQL uses the engine's own.
-
   Only the declared columns are compared, so a column the expectation does not name — a `NOW()`
-  timestamp, say — never enters the query. That positive list is the whole ignore mechanism; there
-  is no second list to keep in step with it. It also means `equals` says nothing about a column the
+  timestamp, say — never enters the query. It also means `equals` says nothing about a column the
   output has and the expectation does not."
   (:require
    [clojure.string :as str]
@@ -30,12 +26,8 @@
 (mu/defn comparison-query :- ::transform-testing.compile/compiled-query
   "The query comparing `output-table` against the literal `rows` over `columns`.
 
-  Multiset difference, expressed with only `UNION ALL`, `GROUP BY` and `HAVING`. `EXCEPT`
-  deduplicates, so it passes when the output holds a row twice and the expectation holds it once;
-  `EXCEPT ALL`, which would not, is missing on SQL Server and Redshift. Each side contributes its
-  rows tagged +1 or -1, a group whose tags fail to cancel is a difference, and the surviving sum is
-  how many rows too many or too few. `GROUP BY` folds NULLs together, so NULL = NULL needs no
-  unportable `IS NOT DISTINCT FROM`.
+  The comparison runs in the warehouse. Canonicalizing both sides in Clojure means reimplementing
+  each engine's notion of equality in Java types; comparing in SQL uses the engine's own.
 
   Cell values are bound parameters throughout. The only text reaching the SQL is `sql-names`, the
   output table's own column names as [[resolve-columns]] found them — never an author-supplied
@@ -152,7 +144,7 @@
                          [(long (last row))
                           (zipmap column-names (map expectations.report/cell (butlast row)))])
           expand       (fn [keep?]
-                         ;; Take THROUGH the expansion, not after it. A single comparison row can
+                         ;; Take inside the expansion, not after it. A single comparison row can
                          ;; carry a multiplicity of millions, and realizing that many copies just to
                          ;; drop all but `row-cap` of them turns a failed assertion into a memory
                          ;; event. The transducer short-circuits, so `repeat` is never realized past
@@ -202,9 +194,7 @@
 ;;; --------------------------------------------- Building ----------------------------------------------
 
 (defn build
-  "The record for an already-normalized, already-validated `equals` expectation.
-
-  Not the front door: `metabase.transform-testing.expectations/expectations` is."
+  "The record for an already-normalized, already-validated `equals` expectation."
   [{:keys [format] :as m}]
   ;; The linter forbids these constructors everywhere, so that nothing builds an expectation without
   ;; going through the front door. This is the one place they are the right call.

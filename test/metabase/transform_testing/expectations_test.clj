@@ -74,7 +74,7 @@
       (is (= [{:name "2024" :database_type "INTEGER"}
               {:name "order-id" :database_type "VARCHAR(255)"}]
              (:columns r))))
-    (testing "row keys stay STRINGS — a warehouse column can be named 2024 or order-id, and
+    (testing "row keys stay strings, never keywords — a warehouse column can be named 2024 or order-id, and
               keywordizing them would corrupt the data being compared"
       (is (= [{"2024" 1 "order-id" "abc"}
               {"2024" 2 "order-id" nil}]
@@ -108,17 +108,17 @@
 
 (deftest record-type-loss-test
   ;; Known behavior, pinned rather than endorsed. `lib/normalize` strips the type the same way,
-  ;; which is why normalization runs BEFORE construction and nowhere after it.
+  ;; which is why normalization runs before construction and nowhere after it.
   (let [[r] (expectations/expectations [(equals-rows "n")])]
     (testing "(into {} rec) yields a plain map"
       (is (not (record? (into {} r))))
       (is (not (satisfies? expectations.protocol/Expectation (into {} r)))))
     (testing "select-keys yields a plain map"
       (is (not (satisfies? expectations.protocol/Expectation (select-keys r [:type :name])))))
-    (testing "dissoc of a DECLARED field yields a plain map"
+    (testing "dissoc of a declared field yields a plain map"
       (is (not (record? (dissoc r :rows))))
       (is (not (satisfies? expectations.protocol/Expectation (dissoc r :rows)))))
-    (testing "assoc of an UNDECLARED key keeps the record"
+    (testing "assoc of an undeclared key keeps the record"
       (is (record? (assoc r :something-else 1)))
       (is (satisfies? expectations.protocol/Expectation (assoc r :something-else 1))))
     (testing "assoc over a declared field also keeps it"
@@ -151,9 +151,6 @@
       (is (not (str/includes? message "solo-a"))))))
 
 (deftest unknown-type-test
-  ;; The type is checked ahead of the schema. Left to malli, an unrecognized :type fails the
-  ;; multi-schema — which has no default branch — and the author gets an explain blob describing
-  ;; every branch it did not match, rather than the one fact that helps.
   (testing "an unknown :type is named, and the known ones are listed"
     (let [{:keys [error-type message]} (refusal [{"type" "bogus" "name" "n" "sql" "SELECT 1"}])]
       (is (= ::transform-testing.errors/unknown-expectation-type error-type))
@@ -189,12 +186,8 @@
       (is (= "SELECT 1" (:expectation data))))))
 
 (deftest database-type-is-not-checked-at-construction-test
-  ;; A cast target cannot be a bound parameter, so `database_type` is the one piece of author text
-  ;; that reaches the SQL as text — but it is checked where it becomes SQL, in
-  ;; `compile/rows-relation`, not here. Two reasons, and the second is why this test exists rather
-  ;; than the opposite one: a check at the splice cannot be bypassed by a future caller, and
-  ;; reading a stored test IS construction, so refusing here would make an already-saved test
-  ;; unreadable rather than merely unrunnable.
+  ;; `database_type` is checked where it becomes SQL, in `compile/rows-relation`, not at
+  ;; construction.
   (testing "a type that could escape its cast still builds; the refusal comes later"
     (doseq [db-type ["INT) FROM x; --" "INTEGER; DROP TABLE t" "INT\"" "INT/*x*/"]]
       (is (record? (first (expectations/expectations
@@ -248,7 +241,7 @@
                   (catch clojure.lang.ExceptionInfo e (:error-type (ex-data e)))))))))
 
 (deftest column-name-guard-is-deferred-test
-  ;; Unlike database_type, a declared COLUMN NAME is not checked when the record is built — the
+  ;; Unlike database_type, a declared column name is not checked when the record is built — the
   ;; identifier check happens in `resolve-columns` at probe time, against the output table.
   (testing "a column name SQL could not carry as one identifier is accepted at construction"
     (doseq [column-name ["a.b" "x\"y" "p;q"]]

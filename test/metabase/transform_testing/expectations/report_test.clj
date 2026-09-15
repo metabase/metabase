@@ -28,8 +28,6 @@
     (is (false? (expectations.report/cell false)))))
 
 (deftest cell-bigdecimal-keeps-scale-test
-  ;; When scale is the very difference between expected and actual, normalizing it away makes the
-  ;; report contradict itself: it would show the two rows the comparison called different as equal.
   (testing "a BigDecimal renders as its plain string with its scale intact"
     (is (= "1.50" (expectations.report/cell (BigDecimal. "1.50"))))
     (is (= "1.5" (expectations.report/cell (BigDecimal. "1.5"))))

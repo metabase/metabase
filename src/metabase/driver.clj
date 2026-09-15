@@ -1504,10 +1504,8 @@
 (defmulti columns-on-connection
   "The column labels of the `[sql params]` `query`, in order, without fetching any rows.
 
-  A transform test compares against the columns the transform actually produced, so the names have
-  to come from the materialized table rather than from what the author typed: engines differ on
-  whether an unquoted identifier is folded to upper or lower case, and only the table itself knows
-  which happened."
+  The labels are the engine's own, after whatever folding it applies to unquoted identifiers — not
+  the spellings in the query text."
   {:added "0.64.0", :arglists '([driver conn query])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

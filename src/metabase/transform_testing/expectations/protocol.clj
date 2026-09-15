@@ -1,13 +1,8 @@
 (ns metabase.transform-testing.expectations.protocol
   "The protocol every expectation type implements.
 
-  Its own namespace because each implementation has to require it, so it cannot live alongside the
-  front door that requires the implementations.
-
-  Both methods are pure. The runner executes what [[probes]] asks for and hands the rows to
-  [[interpret]], which keeps warehouse I/O in `executor` instead of scattering it across the
-  expectation types. A type needing more than one round is not precluded, but every round has to
-  run inside the test connection, while the temp tables still exist.")
+  A type needing more than one round of probes is not precluded, but every round has to run inside
+  the test connection, while the temp tables still exist.")
 
 (set! *warn-on-reflection* true)
 

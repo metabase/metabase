@@ -15,14 +15,9 @@
       → compile-source (pure)           : the transform's SQL + the tables it reads
       → validate referenced-tables       : reject (400) any read with no declared input   [pure]
       → build temp names + replacements   : compile the inputs and rewrite the source      [pure]
-      → open ONE connection (executor)    : create temp inputs + output, check, drop on exit
+      → open one connection (executor)    : create temp inputs + output, check, drop on exit
 
-  Everything before the connection is pure; a bad test is rejected before any temp table exists.
-
-  The runner also owns the taxonomy of outcomes. A refusal — nothing ran, or the run could not
-  finish — is a typed throw from `errors`, which the API layer turns into a status code. A failing
-  expectation is not a refusal: it is a result, and it rides back on the expectation that produced
-  it, so one bad expectation does not discard the answers of the others."
+  Everything before the connection is pure; a bad test is rejected before any temp table exists."
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
@@ -91,7 +86,10 @@
                              (tru "The expectation could not be run, and the database gave no reason."))}})))
 
 (mu/defn run-transform-test! :- ::transform-testing.schema/run-result
-  "Run the transform test `transform-test` against temp tables and report what each expectation found."
+  "Run the transform test `transform-test` against temp tables and report what each expectation found.
+
+  Throws a typed refusal from [[metabase.transform-testing.errors]] when the run cannot happen. A
+  failing expectation is not a refusal: it rides back as that expectation's own result."
   [{:keys [transform_id inputs expectations]} :- ::transform-testing.schema/transform-test]
   ;; --- resolve (app-db) ---
   (let [transform (api/check-404 (transform-testing.db/transform transform_id))

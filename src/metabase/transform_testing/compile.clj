@@ -204,20 +204,7 @@
 
   A cast target cannot be a bound parameter — there is no `CAST(? AS ?)` — so a declared type is
   the one piece of author-supplied text that reaches the SQL as text, sitting inside
-  `CAST(? AS «here»)`.
-
-  What that position actually permits is narrow, and the check is narrow to match. To reach
-  anything outside its own cast, the text has to close that parenthesis early; short of that it
-  stays inside the call and the engine answers with a syntax error. So the rule is that
-  parentheses must balance, plus a few characters that no type name contains and that would let
-  text escape by another route: a semicolon, a string literal, a comment marker, or an unpaired
-  double quote that would swallow the closing parenthesis.
-
-  Deliberately NOT a list of what a type may look like. Type names vary far more than they first
-  appear — `INT[]`, `public.my_enum`, `VARCHAR(MAX)`, `ARRAY<INT64>`,
-  `INTERVAL DAY(2) TO SECOND(6)` — and an allowlist written from memory rejects real ones, which is
-  a worse failure than admitting text that cannot do anything. This does still admit nonsense like
-  `INT UNION SELECT x`; that is not an escape, it is a syntax error with extra steps."
+  `CAST(? AS «here»)`."
   [database-type :- :string]
   (cond
     (str/blank? database-type)                                  "it is blank"
@@ -237,13 +224,7 @@
     {:query query :params (vec params)}))
 
 (defn- cast-target
-  "`database-type` as a cast target, refusing it if it could escape the cast.
-
-  Here rather than at any one caller: this is where the text stops being data and becomes SQL, so
-  it is the only place a check cannot be forgotten. An expectation reaches it through
-  [[rows-relation]] below; a `:rows` input will reach the same function through
-  `driver/compile-rows-query`, and its author should not have to know to call a guard kept
-  somewhere else."
+  "`database-type` as a cast target, refusing it if it could escape the cast."
   [database-type]
   (when-let [reason (unsafe-database-type-reason database-type)]
     (throw (transform-testing.errors/ex

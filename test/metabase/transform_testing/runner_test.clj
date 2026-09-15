@@ -127,6 +127,20 @@
             (is (= [{"id" 1 "name" "abc"}] (:extra-rows expect)))
             (is (= [] (:missing-rows expect)))))))))
 
+(deftest run-transform-test-equals-matches-null-cells-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+    (with-people-transform
+      (fn [schema table transform-id]
+        (testing "a NULL cell in the output cancels against a nil in the expectation"
+          ;; `GROUP BY` folds NULLs together. An equality-based difference leaves the row
+          ;; uncancelled, reporting it as both missing and extra.
+          (let [result (run-test! schema table transform-id
+                                  "SELECT 1 AS id, CAST(NULL AS VARCHAR) AS name"
+                                  [{:type :equals :name "output" :format :rows
+                                    :columns id+name
+                                    :rows    [{"id" 1 "name" nil}]}])]
+            (is (= :passed (:status result)))))))))
+
 (deftest run-transform-test-rejects-undeclared-input-test
   (testing "Guard A: a transform reading a table with no declared input is refused,"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
@@ -148,8 +162,6 @@
             (testing "throws"
               (is (some? ex)))
             (testing "with a typed refusal that names the undeclared table"
-              ;; The runner is agnostic to HTTP; that a type maps to a status is settled once,
-              ;; exhaustively, in errors-test.
               (is (= ::transform-testing.errors/missing-inputs (:error-type (ex-data ex))))
               (is (re-find (re-pattern (str "(?i)" table)) (ex-message ex))))))))))
 
@@ -174,8 +186,6 @@
           (let [ex (try (transform-testing.runner/run-transform-test! transform-test)
                         nil
                         (catch ExceptionInfo e e))]
-            ;; The runner is agnostic to HTTP; that a type maps to a status is settled once,
-            ;; exhaustively, in errors-test.
             (is (= ::transform-testing.errors/missing-inputs (:error-type (ex-data ex))))
             (testing "names the undeclared people, not the declared orders"
               (is (re-find (re-pattern (str "(?i)" people)) (ex-message ex)))
@@ -202,8 +212,6 @@
           (let [ex (try (transform-testing.runner/run-transform-test! transform-test)
                         nil
                         (catch ExceptionInfo e e))]
-            ;; The runner is agnostic to HTTP; that a type maps to a status is settled once,
-            ;; exhaustively, in errors-test.
             (is (= ::transform-testing.errors/unused-inputs (:error-type (ex-data ex))))
             (testing "names the unused orders, not the read people"
               (is (re-find (re-pattern (str "(?i)" orders)) (ex-message ex)))
@@ -228,8 +236,6 @@
           (let [ex (try (transform-testing.runner/run-transform-test! transform-test)
                         nil
                         (catch ExceptionInfo e e))]
-            ;; The runner is agnostic to HTTP; that a type maps to a status is settled once,
-            ;; exhaustively, in errors-test.
             (is (= ::transform-testing.errors/duplicate-input-table (:error-type (ex-data ex))))
             (is (re-find #"(?i)duplicate" (ex-message ex)))))))))
 
@@ -246,8 +252,6 @@
                          {:transform_id transform-id :inputs [] :expectations []}]
             (let [e (try (transform-testing.runner/run-transform-test! transform-test)
                          (catch ExceptionInfo e e))]
-              ;; The runner is agnostic to HTTP; that a type maps to a status is settled once,
-              ;; exhaustively, in errors-test.
               (is (= ::transform-testing.errors/unparseable-source (:error-type (ex-data e))))
               (is (re-find #"could not be parsed" (ex-message e))))))))))
 
