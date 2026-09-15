@@ -128,6 +128,7 @@ export function setup({
         <SegmentDetailPage
           // Unjustified type cast. FIXME
           segment={segment}
+          table={table}
           tabUrls={tabUrls}
           breadcrumbs={
             <DataModelSegmentBreadcrumbs table={table} segment={segment} />

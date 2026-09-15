@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { useTokenRefreshUntil } from "metabase/api/utils/use-token-refresh";
 import { MetabotLogo } from "metabase/common/components/MetabotLogo";
+import { useTokenRefreshUntil } from "metabase/settings";
 import {
   Box,
   Button,

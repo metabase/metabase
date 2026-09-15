@@ -1,6 +1,6 @@
 (ns metabase.auth-provider.impl
   (:require
-   [metabase.premium-features.core :refer [defenterprise]]))
+   [metabase.premium-features.defenterprise :refer [defenterprise]]))
 
 (def azure-auth-token-renew-slack-seconds
   "How many seconds before expiry we should prefer renewal.

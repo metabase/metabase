@@ -279,7 +279,7 @@ jobs:
     with:
       edition: oss
       commit: ${{ inputs.commit }}
-      repo: ${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_REPO }}
+      repo: ${{ vars.DOCKERHUB_REPO }}
       tag: ${{ needs.check-version.outputs.oss }}
       release: true
 
@@ -290,7 +290,7 @@ jobs:
     with:
       edition: ee
       commit: ${{ inputs.commit }}
-      repo: ${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_REPO }}-enterprise
+      repo: ${{ vars.DOCKERHUB_REPO }}-enterprise
       tag: ${{ needs.check-version.outputs.ee }}
       release: true
 
@@ -330,6 +330,7 @@ jobs:
   get-extra-tags:
     needs: [ check-version ]
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 10
     outputs:
       extra_tags: ${{ steps.taglist.outputs.extra_tags }}
     steps:

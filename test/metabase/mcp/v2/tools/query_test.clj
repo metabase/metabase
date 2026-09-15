@@ -250,6 +250,42 @@
             (is (apply < ids))))))))
 
 ;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest limited-query-ends-its-own-cursor-chain-test
+  ;; The shape "the first N rows of X, by id" should run as: a PK-only projection ordered
+  ;; ascending with a stage limit, at a page size that divides it evenly. Every page but the
+  ;; last is truncated with a cursor and steers at both affordances — follow `cursor`, or bound
+  ;; with `limit` — and the last page fills exactly yet arrives complete, with no cursor and no
+  ;; steering, because the limit spent down across the chain leaves nothing for the probe row.
+  ;; An agent that paged the same query unbounded would still hold a live cursor at row N.
+  (mt/with-current-user (mt/user->id :rasta)
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [sid       (str (random-uuid))
+            page-size 5
+            query     (orders-query {:fields   [(field-name-ref :orders :id)]
+                                     :order-by [["asc" {} (field-name-ref :orders :id)]]
+                                     :limit    (* 3 page-size)})
+            page1     (call! sid {:query query :row_limit page-size})
+            page2     (call! sid {:cursor (:next_cursor (payload page1)) :row_limit page-size})
+            page3     (call! sid {:cursor (:next_cursor (payload page2)) :row_limit page-size})]
+        (testing "pages before the limit are truncated, carry a cursor, and steer at both `cursor` and `limit`"
+          (doseq [page [page1 page2]
+                  :let [body (payload page)]]
+            (is (= page-size (:returned body)))
+            (is (true? (:truncated body)))
+            (is (string? (:next_cursor body)))
+            (is (str/includes? (steering-line page) "continue with `cursor`"))
+            (is (str/includes? (steering-line page) "`limit: N`"))))
+        (testing "the page that exhausts the limit fills exactly and is complete: no cursor, no steering"
+          (let [body (payload page3)]
+            (is (= page-size (:returned body)))
+            (is (false? (:truncated body)))
+            (is (nil? (:next_cursor body)))
+            (is (nil? (steering-line page3)))))
+        (testing "the chain served exactly the first N ids, in order"
+          (is (= (vec (range 1 (inc (* 3 page-size))))
+                 (into [] (mapcat (comp row-ids payload)) [page1 page2 page3]))))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
 (deftest exact-fill-is-not-truncated-test
   ;; Companion to query-limit-bounds-the-cursor-chain-test, which pins the same property when the
   ;; query's own :limit is what runs out. Here nothing but the result set itself is exhausted:
