@@ -132,6 +132,11 @@
                limit
                (assoc :limit limit))))
 
+(mu/defn dashboard
+  "The Dashboard with `dashboard-id`, or nil."
+  [dashboard-id :- ::lib.schema.id/dashboard]
+  (t2/select-one :model/Dashboard :id dashboard-id))
+
 (mu/defn dashboard-collection-id
   "The Collection id of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
