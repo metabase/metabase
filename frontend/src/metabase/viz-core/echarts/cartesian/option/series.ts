@@ -57,6 +57,7 @@ import type {
 } from "../model/types";
 import { getBarSeriesDataLabelKey } from "../model/util";
 
+import { getXAxisDataKey } from "./dashboard-x-axis";
 import { getPadding } from "./ticks";
 import type { EChartsSeriesOption } from "./types";
 import { getSeriesYAxisIndex } from "./utils";
@@ -334,6 +335,11 @@ export const computeContinuousScaleBarWidth = (
     return 1;
   }
 
+  if (chartLayout?.dashboardXAxis) {
+    const width = chartLayout.dashboardXAxis.step * CHART_STYLE.series.barWidth;
+    return stackedOrSingleSeries ? width : width / barSeriesCount;
+  }
+
   const intervalPadding = isTimeSeriesAxis(xAxisModel)
     ? getPadding(xAxisModel.intervalsCount)
     : 0.5;
@@ -377,6 +383,14 @@ export const computeBarWidth = (
       xAxisScale,
       chartLayout,
     );
+  }
+
+  if (chartLayout?.dashboardXAxis) {
+    const ratio = xAxisModel.isHistogram
+      ? CHART_STYLE.series.histogramBarWidth
+      : CHART_STYLE.series.barWidth;
+    const width = chartLayout.dashboardXAxis.step * ratio;
+    return stackedOrSingleSeries ? width : width / barSeriesCount;
   }
 
   let barWidth: string | number | undefined = undefined;
@@ -1153,7 +1167,7 @@ export const buildEChartsSeries = (
   // ECharts extends time/value axis min/max when bar series are present
   // (adjustScaleForOverflow). Panels with only line/area series don't get this,
   // causing x-position misalignment. Hidden bar series force the same adjustment.
-  if (isSplitPanels && hasAnyBarSeries) {
+  if (isSplitPanels && hasAnyBarSeries && !chartLayout.dashboardXAxis) {
     visibleSeries.forEach((seriesModel, panelIndex) => {
       if (seriesSettingsByDataKey[seriesModel.dataKey]?.display !== "bar") {
         series.push({
@@ -1188,5 +1202,12 @@ export const buildEChartsSeries = (
     );
   }
 
-  return series;
+  const xDataKey = getXAxisDataKey(chartModel.xAxisModel, chartLayout);
+  if (xDataKey === X_AXIS_DATA_KEY) {
+    return series;
+  }
+  return series.map((option) => ({
+    ...option,
+    encode: { ...option.encode, x: xDataKey },
+  }));
 };

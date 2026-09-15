@@ -39,6 +39,7 @@ import { getAxisTransforms } from "./transforms";
 import { getTrendLines } from "./trend-line";
 import type { CartesianChartModel } from "./types";
 import { getLabelValueFormatting } from "./util";
+import { appendXAxisPositions, getXAxisPositions } from "./x-axis-position";
 
 // HACK: when multiple cards (datasets) are combined on a single dashboard card
 // the settings prop of the visualization contains only one set of metrics and dimensions
@@ -106,6 +107,7 @@ export const getCartesianChartModel = (
   renderingContext: RenderingContext,
   showWarning?: ShowWarning,
   gridSize?: VisualizationGridSize,
+  isDashboardCard = gridSize != null,
 ): CartesianChartModel => {
   // rawSeries has more than one element when two or more cards are combined on a dashboard
   const hasMultipleCards = rawSeries.length > 1;
@@ -155,13 +157,16 @@ export const getCartesianChartModel = (
     );
   }
 
-  const xAxisModel = getXAxisModel(
-    dimensionModel,
-    rawSeries,
-    scaledDataset,
-    settings,
-    showWarning,
-  );
+  const xAxisModel = {
+    ...getXAxisModel(
+      dimensionModel,
+      rawSeries,
+      scaledDataset,
+      settings,
+      showWarning,
+    ),
+    isDashboard: isDashboardCard,
+  };
   const yAxisScaleTransforms = getAxisTransforms(
     settings["graph.y_axis.scale"],
   );
@@ -225,16 +230,27 @@ export const getCartesianChartModel = (
     renderingContext,
   );
 
+  const positions = getXAxisPositions(transformedDataset, xAxisModel);
+  if (trendLinesModel && positions) {
+    trendLinesModel.dataset = appendXAxisPositions(
+      trendLinesModel.dataset,
+      positions,
+    );
+  }
+
   return {
     stackModels,
     dataset: scaledDataset,
-    transformedDataset,
+    transformedDataset: appendXAxisPositions(transformedDataset, positions),
     seriesModels,
     yAxisScaleTransforms,
     cardsColumns,
     columnByDataKey,
     dimensionModel,
-    xAxisModel,
+    xAxisModel:
+      xAxisModel.axisType === "category"
+        ? { ...xAxisModel, positions }
+        : xAxisModel,
     leftAxisModel,
     rightAxisModel,
     splitPanelYAxisModels,

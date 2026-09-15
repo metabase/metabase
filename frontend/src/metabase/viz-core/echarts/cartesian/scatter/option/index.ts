@@ -19,6 +19,7 @@ import {
 } from "../../option";
 import { buildAxes, buildDimensionAxis } from "../../option/axis";
 import { applyDashboardYAxisTicks } from "../../option/dashboard-axis";
+import { getXAxisDataKey } from "../../option/dashboard-x-axis";
 import type { EChartsSeriesOption } from "../../option/types";
 import { getSeriesYAxisIndex } from "../../option/utils";
 import type { TimelineEventsModel } from "../../timeline-events/types";
@@ -42,10 +43,15 @@ export function getScatterPlotOption(
     (series) => series.visible,
   );
   const panelCount = visibleSeries.length;
+  const xDataKey = getXAxisDataKey(chartModel.xAxisModel, chartLayout);
+  const xDimensions =
+    xDataKey === X_AXIS_DATA_KEY
+      ? [X_AXIS_DATA_KEY]
+      : [X_AXIS_DATA_KEY, xDataKey];
 
   const dataSeriesOptions: EChartsSeriesOption[] = visibleSeries.map(
-    (seriesModel, index) =>
-      buildEChartsScatterSeries(
+    (seriesModel, index) => {
+      const series = buildEChartsScatterSeries(
         seriesModel,
         chartModel.bubbleSizeDomain,
         isSplitPanels
@@ -53,7 +59,12 @@ export function getScatterPlotOption(
           : getSeriesYAxisIndex(seriesModel.dataKey, chartModel),
         renderingContext,
         isSplitPanels ? index : undefined,
-      ),
+      );
+      return {
+        ...series,
+        encode: { ...series.encode, x: xDataKey },
+      };
+    },
   );
 
   const { grid, seriesOption, splitPanelOverrides } = buildGridAndSeriesOption(
@@ -67,7 +78,7 @@ export function getScatterPlotOption(
   );
 
   const dimensions = [
-    X_AXIS_DATA_KEY,
+    ...xDimensions,
     ...chartModel.seriesModels.map((seriesModel) => seriesModel.dataKey),
   ];
 
@@ -87,7 +98,7 @@ export function getScatterPlotOption(
       // Unjustified type cast. FIXME
       source: chartModel.trendLinesModel?.dataset as OptionSourceData,
       dimensions: [
-        X_AXIS_DATA_KEY,
+        ...xDimensions,
         ...(chartModel.trendLinesModel?.seriesModels.map(
           (series) => series.dataKey,
         ) ?? []),

@@ -41,6 +41,13 @@ export const getLabelLayoutMode = (categoryWidth: number): LabelLayoutMode => {
   return gap >= SIDE_LABELS_MIN_GAP_RATIO * boxWidth ? "side" : "vertical";
 };
 
+export function getBoxPlotNativeLayout(bandWidth: number, seriesCount: number) {
+  const availableWidth = bandWidth * 0.8 - 2;
+  const boxGap = (availableWidth / seriesCount) * 0.3;
+  const boxWidth = (availableWidth - boxGap * (seriesCount - 1)) / seriesCount;
+  return { availableWidth, boxGap, boxWidth };
+}
+
 /**
  * Computes pixel offset from category center for a series in a multi-series boxplot.
  * This matches ECharts boxplot layout algorithm exactly (from boxplotLayout.js):
@@ -57,10 +64,11 @@ export const computeSeriesXOffsetPixels = (
   if (seriesCount <= 1) {
     return 0;
   }
-  const availableWidth = categoryWidth * 0.8 - 2;
-  const boxGap = (availableWidth / seriesCount) * 0.3;
-  const seriesBoxWidth =
-    (availableWidth - boxGap * (seriesCount - 1)) / seriesCount;
+  const {
+    availableWidth,
+    boxGap,
+    boxWidth: seriesBoxWidth,
+  } = getBoxPlotNativeLayout(categoryWidth, seriesCount);
   const step = boxGap + seriesBoxWidth;
   const base = seriesBoxWidth / 2 - availableWidth / 2;
   return base + seriesIndex * step;

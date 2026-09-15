@@ -25,6 +25,10 @@ import {
 import { getAxisTransforms } from "../../model/transforms";
 import type { WaterfallChartModel } from "../../model/types";
 import { getLabelValueFormatting } from "../../model/util";
+import {
+  appendXAxisPositions,
+  getXAxisPositions,
+} from "../../model/x-axis-position";
 import { WATERFALL_END_KEY, WATERFALL_TOTAL_KEY } from "../constants";
 
 import { getWaterfallXAxisModel } from "./axis";
@@ -40,6 +44,7 @@ export const getWaterfallChartModel = (
   renderingContext: RenderingContext,
   showWarning?: ShowWarning,
   gridSize?: VisualizationGridSize,
+  isDashboardCard = gridSize != null,
 ): WaterfallChartModel => {
   // Waterfall chart support one card only
   const [singleRawSeries] = rawSeries;
@@ -69,13 +74,16 @@ export const getWaterfallChartModel = (
   );
   let scaledDataset = scaleDataset(dataset, [seriesModel], settings);
 
-  const xAxisModel = getWaterfallXAxisModel(
-    dimensionModel,
-    rawSeries,
-    scaledDataset,
-    settings,
-    showWarning,
-  );
+  const xAxisModel = {
+    ...getWaterfallXAxisModel(
+      dimensionModel,
+      rawSeries,
+      scaledDataset,
+      settings,
+      showWarning,
+    ),
+    isDashboard: isDashboardCard,
+  };
   if (
     xAxisModel.axisType === "value" ||
     xAxisModel.axisType === "time" ||
@@ -142,16 +150,21 @@ export const getWaterfallChartModel = (
     settings,
   );
 
+  const positions = getXAxisPositions(transformedDataset, xAxisModel);
+
   return {
     stackModels: [],
     dataset: originalDatasetWithTotal,
-    transformedDataset,
+    transformedDataset: appendXAxisPositions(transformedDataset, positions),
     seriesModels: [seriesModel],
     yAxisScaleTransforms,
     cardsColumns,
     columnByDataKey,
     dimensionModel,
-    xAxisModel,
+    xAxisModel:
+      xAxisModel.axisType === "category"
+        ? { ...xAxisModel, positions }
+        : xAxisModel,
     leftAxisModel,
     rightAxisModel: null,
     seriesIdToDataKey: {

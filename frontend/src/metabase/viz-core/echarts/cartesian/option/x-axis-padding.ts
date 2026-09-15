@@ -1,11 +1,13 @@
 import type { XAXisOption } from "echarts/types/dist/shared";
 
 import { PLOT_WIDTH_BREAKPOINTS } from "../../../shared/constants/layout";
+import type { Extent } from "../../../types";
 import { HORIZONTAL_TICKS_GAP } from "../constants/style";
 import type { ChartLayout } from "../layout/types";
 import type { NumericXAxisModel } from "../model/types";
 
 import { getPaddedAxisLabel } from "./utils";
+import { getXAxisExtentWithPadding, getXAxisInsets } from "./x-axis-extent";
 
 const MAX_LABEL_PADDING_RATIO = 0.25;
 const MAX_REJECTED_LABEL_SAMPLES = 50;
@@ -26,6 +28,79 @@ export function getXAxisLabelPadding(axisWidth: number): number {
     return 16;
   }
   return 8;
+}
+
+export function getDashboardXAxisLayout(
+  extent: Extent,
+  chartLayout: ChartLayout,
+  firstLabel: string,
+  lastLabel: string,
+  intervalsCount: number,
+) {
+  if (
+    chartLayout.axisEnabledSetting !== true &&
+    chartLayout.axisEnabledSetting !== "compact"
+  ) {
+    return undefined;
+  }
+
+  const axisWidth = getXAxisWidth(chartLayout);
+  const padding = getXAxisLabelPadding(axisWidth);
+  const { getXTickWidth } = chartLayout.ticksDimensions;
+  const centerLabels =
+    chartLayout.xAxisMarkWidthRatio !== undefined ||
+    chartLayout.getXAxisMarkWidth !== undefined ||
+    chartLayout.xAxisEndMarkWidths !== undefined;
+  const firstWidth = Math.max(
+    getXTickWidth(firstLabel),
+    chartLayout.xAxisEndMarkWidths?.first ?? 0,
+  );
+  const lastWidth = Math.max(
+    getXTickWidth(lastLabel),
+    chartLayout.xAxisEndMarkWidths?.last ?? 0,
+  );
+  const maxWidth = Math.max(firstWidth, lastWidth);
+  const insets = getXAxisInsets(
+    axisWidth,
+    padding,
+    centerLabels ? firstWidth : maxWidth,
+    centerLabels ? lastWidth : maxWidth,
+    intervalsCount,
+    chartLayout.xAxisMarkWidthRatio ?? 0,
+    chartLayout.getXAxisMarkWidth,
+  );
+  if (!insets) {
+    return undefined;
+  }
+
+  const paddedExtent = getXAxisExtentWithPadding(
+    extent,
+    axisWidth,
+    insets.insetLeft,
+    insets.insetRight,
+  );
+  if (!paddedExtent) {
+    return undefined;
+  }
+
+  const axisLabel: Pick<
+    NonNullable<XAXisOption["axisLabel"]>,
+    "alignMinLabel" | "alignMaxLabel" | "padding"
+  > = centerLabels
+    ? { alignMinLabel: "center", alignMaxLabel: "center", padding: 0 }
+    : {
+        alignMinLabel: "left",
+        alignMaxLabel: "right",
+        padding: [0, padding - insets.insetLeft],
+      };
+  return {
+    ...insets,
+    centerLabels,
+    axisLabel,
+    padding,
+    axisWidth,
+    extent: paddedExtent,
+  };
 }
 
 export function canFitNumericAxisTicks(

@@ -12,6 +12,11 @@ import type {
   RenderingContext,
   VisualizationGridSize,
 } from "../../../types";
+import {
+  INDEX_KEY,
+  X_AXIS_DATA_KEY,
+  X_AXIS_POSITION_KEY,
+} from "../constants/dataset";
 import { getScatterPlotModel } from "../scatter/model";
 import { getWaterfallChartModel } from "../waterfall/model";
 
@@ -92,6 +97,80 @@ describe.each([
 
     expect(model.leftAxisModel?.formatter(1000)).toBe("1,000");
   });
+
+  it("adds render positions while preserving category values and original rows", () => {
+    const model = buildModel("auto", { width: 8, height: 6 });
+
+    expect(model.xAxisModel).toMatchObject({
+      axisType: "category",
+      positions: { values: [1, 2] },
+    });
+    expect(
+      model.transformedDataset.map((datum) => [
+        datum[X_AXIS_DATA_KEY],
+        datum[X_AXIS_POSITION_KEY],
+        datum[INDEX_KEY],
+      ]),
+    ).toEqual([
+      [1, 0, 0],
+      [2, 1, 1],
+    ]);
+    expect(
+      model.dataset.every((datum) => !(X_AXIS_POSITION_KEY in datum)),
+    ).toBe(true);
+  });
+
+  it("keeps render positions out of question datasets", () => {
+    const model = buildModel("auto");
+
+    expect(
+      model.transformedDataset.every(
+        (datum) => !(X_AXIS_POSITION_KEY in datum),
+      ),
+    ).toBe(true);
+  });
+
+  if (display === "bar") {
+    it("assigns positions after adding histogram boundary rows", () => {
+      const model = buildModel("auto", { width: 8, height: 6 }, false, {
+        "graph.x_axis.scale": "histogram",
+      });
+
+      expect(model.xAxisModel).toMatchObject({
+        positions: { values: [0, 1, 2, 3] },
+      });
+      expect(
+        model.transformedDataset.map((datum) => [
+          datum[X_AXIS_DATA_KEY],
+          datum[X_AXIS_POSITION_KEY],
+          datum[INDEX_KEY],
+        ]),
+      ).toEqual([
+        [0, 0, undefined],
+        [1, 1, 0],
+        [2, 2, 1],
+        [3, 3, undefined],
+      ]);
+    });
+  }
+
+  if (display === "waterfall") {
+    it("assigns the total its own position after the final data category", () => {
+      const model = buildModel("auto", { width: 8, height: 6 }, false, {
+        "waterfall.show_total": true,
+      });
+
+      expect(model.xAxisModel).toMatchObject({
+        positions: { values: [1, 2, "Total"] },
+      });
+      expect(model.transformedDataset[2]).toMatchObject({
+        [X_AXIS_DATA_KEY]: "Total",
+        [X_AXIS_POSITION_KEY]: 2,
+        [INDEX_KEY]: 2,
+      });
+      expect(model.dataset[2]).not.toHaveProperty(X_AXIS_POSITION_KEY);
+    });
+  }
 
   it.each([false, true])(
     "preserves automatic formatting outside dashboards with show values set to %s",

@@ -21,9 +21,11 @@ import type { NumericXAxisModel, TimeSeriesXAxisModel } from "../model/types";
 
 import {
   buildCategoricalDimensionAxis,
+  buildDimensionAxis,
   buildNumericDimensionAxis,
   buildTimeSeriesDimensionAxis,
 } from "./axis";
+import { getDashboardXAxis } from "./dashboard-x-axis";
 import {
   getCategoricalAxisLabelPadding,
   getContinuousAxisPadding,
@@ -209,6 +211,119 @@ describe("getCategoricalAxisLabelPadding", () => {
 });
 
 describe("rendered X-axis labels", () => {
+  it("places dashboard quarter labels exactly 24px from a wide axis and moves the data with them (UXW-5182)", () => {
+    const width = 965;
+    const dates = Array.from({ length: 7 }, (_, index) =>
+      dayjs.utc("2025-04-01").add(index * 3, "month"),
+    );
+    const firstDate = dates[0];
+    const lastDate = dates[dates.length - 1];
+    const formatter: TimeSeriesXAxisModel["formatter"] = (value) => {
+      const date = dayjs.utc(String(value));
+      return `Q${date.quarter()} ${date.year()}`;
+    };
+    const getXTickWidth = (text: string) => measureTextWidth(text, 12, 400);
+    const context: RenderingContext = {
+      ...renderingContext,
+      fontFamily: "Lato",
+      theme: {
+        ...DEFAULT_VISUALIZATION_THEME,
+        cartesian: {
+          ...DEFAULT_VISUALIZATION_THEME.cartesian,
+          ticks: { fontSize: 12, marginX: 8, marginY: 12 },
+        },
+      },
+    };
+    const model: TimeSeriesXAxisModel = {
+      axisType: "time",
+      isDashboard: true,
+      range: [firstDate, lastDate],
+      interval: { unit: "quarter", count: 1 },
+      intervalsCount: 6,
+      toEChartsAxisValue: (value) => String(value),
+      fromEChartsAxisValue: (value) => dayjs.utc(value),
+      formatter,
+    };
+    const layout = createMockChartLayout({
+      outerWidth: width,
+      boundaryWidth: width,
+      ticksDimensions: {
+        firstXTickWidth: getXTickWidth(formatter(firstDate.toISOString())),
+        lastXTickWidth: getXTickWidth(formatter(lastDate.toISOString())),
+        getXTickWidth,
+      },
+    });
+    const axis = buildDimensionAxis(
+      createMockCartesianChartModel({ xAxisModel: model }),
+      createMockVisualizationSettings({ "graph.x_axis.axis_enabled": true }),
+      { ...layout, dashboardXAxis: getDashboardXAxis(model, layout) },
+      false,
+      context,
+    );
+    const previousMeasureText = platformApi.measureText;
+    expect(axis.min).toBeLessThan(firstDate.valueOf());
+    expect(axis.max).toBeGreaterThan(lastDate.valueOf());
+    echarts.setPlatformAPI({ measureText: measureTextEChartsAdapter });
+    const chart = echarts.init(null, undefined, {
+      renderer: "svg",
+      ssr: true,
+      width,
+      height: 200,
+    });
+
+    try {
+      chart.setOption({
+        animation: false,
+        useUTC: true,
+        grid: {
+          left: 0,
+          right: 0,
+          top: 0,
+          bottom: 30,
+          outerBoundsMode: "none",
+        },
+        xAxis: axis,
+        yAxis: { show: false },
+        series: [
+          { type: "line", data: dates.map((date) => [date.valueOf(), 1]) },
+        ],
+      });
+      expect(chart.renderToSVGString()).toContain("Q2 2025");
+      const labels = chart
+        .getZr()
+        .storage.getDisplayList(true)
+        .filter((element) => {
+          const text: unknown = element.style.text;
+          return (
+            element.type === "tspan" && typeof text === "string" && text.trim()
+          );
+        })
+        .map((label) => {
+          const bounds = label.getBoundingRect().clone();
+          if (label.transform) {
+            bounds.applyTransform(label.transform);
+          }
+          return bounds;
+        })
+        .sort((left, right) => left.x - right.x);
+
+      expect(labels).toHaveLength(7);
+      expect(labels[0].x).toBeCloseTo(24, 3);
+      expect(
+        width - labels[labels.length - 1].x - labels[labels.length - 1].width,
+      ).toBeCloseTo(24, 3);
+      expect(
+        chart.convertToPixel({ xAxisIndex: 0 }, firstDate.valueOf()),
+      ).toBeCloseTo(24 + labels[0].width / 2, 3);
+      expect(
+        chart.convertToPixel({ xAxisIndex: 0 }, lastDate.valueOf()),
+      ).toBeCloseTo(width - 24 - labels[labels.length - 1].width / 2, 3);
+    } finally {
+      chart.dispose();
+      echarts.setPlatformAPI({ measureText: previousMeasureText });
+    }
+  });
+
   it.each([
     {
       name: "long endpoint",

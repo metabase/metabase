@@ -7,9 +7,11 @@ import type {
 import { CHART_STYLE } from "../../cartesian/constants/style";
 import type { ChartLayout } from "../../cartesian/layout/types";
 import type { DataKey } from "../../cartesian/model/types";
+import { getDashboardXAxis } from "../../cartesian/option/dashboard-x-axis";
 import {
   BOXPLOT_DATA_LABEL_STYLE,
   BOXPLOT_LABEL_PADDING,
+  BOXPLOT_MIN_BOX_WIDTH,
   LABEL_DISTANCE,
   MEAN_SYMBOL_SIZE_OFFSET,
 } from "../constants";
@@ -18,6 +20,7 @@ import type { LabelLayoutMode } from "../utils";
 import {
   computeSeriesXOffsetPixels,
   getBoxPlotBoxWidth,
+  getBoxPlotNativeLayout,
   getBoxPlotSymbolSize,
   getLabelLayoutMode,
 } from "../utils";
@@ -50,6 +53,26 @@ type DataExtremesResult = {
   minIsOutlier: boolean;
   maxIsOutlier: boolean;
 } | null;
+
+function getBoxPlotGroupWidth(
+  step: number,
+  seriesCount: number,
+  visibleSeriesCount: number,
+): number {
+  if (visibleSeriesCount === 0) {
+    return 0;
+  }
+  const { availableWidth, boxWidth: nativeBoxWidth } = getBoxPlotNativeLayout(
+    Math.max(step, 1),
+    visibleSeriesCount,
+  );
+  const maximumBoxWidth = getBoxPlotBoxWidth(step / Math.max(seriesCount, 1));
+  const boxWidth = Math.min(
+    Math.max(nativeBoxWidth, BOXPLOT_MIN_BOX_WIDTH),
+    maximumBoxWidth,
+  );
+  return Math.abs(availableWidth - nativeBoxWidth) + boxWidth;
+}
 
 const getAllBoxPlotValues = (datum: BoxPlotDatum): number[] => [
   datum.min,
@@ -171,6 +194,7 @@ const getTransformedAxisBound = (
 const computeSideLabelOverflow = (
   chartModel: BoxPlotChartModel,
   xValueWidth: number,
+  spaceFromCenterToEdge: Pick<BoxPlotPadding, "left" | "right">,
   labelLayoutMode: LabelLayoutMode,
   labelOffset: number,
   seriesCount: number,
@@ -197,7 +221,6 @@ const computeSideLabelOverflow = (
     family: renderingContext.fontFamily,
   };
 
-  const spaceFromCenterToEdge = xValueWidth / 2;
   const firstXValue = xValues[0];
   const lastXValue = xValues[xValues.length - 1];
 
@@ -239,7 +262,7 @@ const computeSideLabelOverflow = (
           const extension = labelOffset + maxLabelWidth + negativeXOffset;
           leftOverflow = Math.max(
             leftOverflow,
-            extension - spaceFromCenterToEdge,
+            extension - spaceFromCenterToEdge.left,
           );
         }
       }
@@ -253,7 +276,7 @@ const computeSideLabelOverflow = (
           const extension = labelOffset + maxLabelWidth + positiveXOffset;
           rightOverflow = Math.max(
             rightOverflow,
-            extension - spaceFromCenterToEdge,
+            extension - spaceFromCenterToEdge.right,
           );
         }
       }
@@ -265,7 +288,7 @@ const computeSideLabelOverflow = (
         );
         leftOverflow = Math.max(
           leftOverflow,
-          maxLabelWidth / 2 + negativeXOffset - spaceFromCenterToEdge,
+          maxLabelWidth / 2 + negativeXOffset - spaceFromCenterToEdge.left,
         );
       }
 
@@ -276,7 +299,7 @@ const computeSideLabelOverflow = (
         );
         rightOverflow = Math.max(
           rightOverflow,
-          maxLabelWidth / 2 + positiveXOffset - spaceFromCenterToEdge,
+          maxLabelWidth / 2 + positiveXOffset - spaceFromCenterToEdge.right,
         );
       }
     }
@@ -414,9 +437,9 @@ const computeLabelOverflow = (
 const computeOverflows = (
   chartModel: BoxPlotChartModel,
   settings: ComputedVisualizationSettings,
-  boundsWidth: number,
+  xValueWidth: number,
+  spaceFromCenterToEdge: Pick<BoxPlotPadding, "left" | "right">,
   boundsHeight: number,
-  xValuesCount: number,
   seriesCount: number,
   initialSubcategoryWidth: number,
   renderingContext: RenderingContext,
@@ -428,7 +451,6 @@ const computeOverflows = (
   const symbolSize = getBoxPlotSymbolSize(initialSubcategoryWidth);
   const labelOffset =
     getBoxPlotBoxWidth(initialSubcategoryWidth) / 2 + BOXPLOT_LABEL_PADDING;
-  const xValueWidth = boundsWidth / Math.max(xValuesCount, 1);
 
   return {
     labelOverflow: computeLabelOverflow(
@@ -441,6 +463,7 @@ const computeOverflows = (
     sideLabelOverflow: computeSideLabelOverflow(
       chartModel,
       xValueWidth,
+      spaceFromCenterToEdge,
       labelLayoutMode,
       labelOffset,
       seriesCount,
@@ -460,23 +483,48 @@ export const getBoxPlotLayoutModel = (
     renderingContext,
   } = params;
 
-  const { bounds, padding: basePadding } = cartesianLayout;
-  const boundsWidth = bounds.right - bounds.left;
-  const boundsHeight = bounds.bottom - bounds.top;
-
   const { xValues, seriesModels } = chartModel;
   const seriesCount = seriesModels.length;
   const xValuesCount = xValues.length;
+  const visibleSeriesModels = seriesModels.filter((series) => series.visible);
+  const visibleSeriesCount = visibleSeriesModels.length;
+  const baseLayout = {
+    ...cartesianLayout,
+    xAxisMarkWidthRatio: CHART_STYLE.series.barWidth,
+    getXAxisMarkWidth: (step: number) =>
+      getBoxPlotGroupWidth(step, seriesCount, visibleSeriesCount),
+  };
+  const initialDashboardXAxis = getDashboardXAxis(
+    chartModel.xAxisModel,
+    baseLayout,
+    chartModel.dimensionModel.column,
+  );
+  const { bounds, padding: basePadding } = baseLayout;
+  const boundsWidth = bounds.right - bounds.left;
+  const boundsHeight = bounds.bottom - bounds.top;
 
-  const initialSubcategoryWidth =
-    boundsWidth / Math.max(xValuesCount, 1) / Math.max(seriesCount, 1);
+  const initialXValueWidth =
+    initialDashboardXAxis?.step ?? boundsWidth / Math.max(xValuesCount, 1);
+  const initialSubcategoryWidth = initialXValueWidth / Math.max(seriesCount, 1);
+  const min = initialDashboardXAxis?.options.min;
+  const max = initialDashboardXAxis?.options.max;
+  const initialInset = {
+    left:
+      typeof min === "number"
+        ? -min * initialXValueWidth
+        : initialXValueWidth / 2,
+    right:
+      typeof max === "number"
+        ? (max - (xValuesCount - 1)) * initialXValueWidth
+        : initialXValueWidth / 2,
+  };
 
   const { labelOverflow, sideLabelOverflow } = computeOverflows(
     chartModel,
     settings,
-    boundsWidth,
+    initialXValueWidth,
+    initialInset,
     boundsHeight,
-    xValuesCount,
     seriesCount,
     initialSubcategoryWidth,
     renderingContext,
@@ -489,9 +537,19 @@ export const getBoxPlotLayoutModel = (
     right: basePadding.right + sideLabelOverflow.right,
   };
 
+  const adjustedLayout = { ...baseLayout, padding: adjustedPadding };
+  const dashboardXAxis =
+    sideLabelOverflow.left === 0 && sideLabelOverflow.right === 0
+      ? initialDashboardXAxis
+      : getDashboardXAxis(
+          chartModel.xAxisModel,
+          adjustedLayout,
+          chartModel.dimensionModel.column,
+        );
   const xValueWidth =
+    dashboardXAxis?.step ??
     (chartWidth - adjustedPadding.left - adjustedPadding.right) /
-    Math.max(xValuesCount, 1);
+      Math.max(xValuesCount, 1);
   const subcategoryWidth = xValueWidth / Math.max(seriesCount, 1);
 
   const labelLayoutMode = getLabelLayoutMode(subcategoryWidth);
@@ -501,8 +559,6 @@ export const getBoxPlotLayoutModel = (
   const meanSymbolSize = symbolSize + MEAN_SYMBOL_SIZE_OFFSET;
   const labelOffset = boxHalfWidth + BOXPLOT_LABEL_PADDING;
 
-  const visibleSeriesModels = seriesModels.filter((s) => s.visible);
-  const visibleSeriesCount = visibleSeriesModels.length;
   const visibleSeriesOffsets = new Map(
     visibleSeriesModels.map((s, index) => [
       s.dataKey,
@@ -514,6 +570,9 @@ export const getBoxPlotLayoutModel = (
 
   return {
     ...cartesianLayout,
+    dashboardXAxis,
+    xAxisMarkWidthRatio: baseLayout.xAxisMarkWidthRatio,
+    getXAxisMarkWidth: baseLayout.getXAxisMarkWidth,
     xValuesCount,
     xValueWidth,
     labelLayoutMode,

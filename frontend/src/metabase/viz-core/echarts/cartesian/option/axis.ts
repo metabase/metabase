@@ -203,6 +203,20 @@ export const buildDimensionAxis = (
 ): XAXisOption => {
   const xAxisModel = chartModel.xAxisModel;
 
+  if (chartLayout.dashboardXAxis) {
+    return {
+      ...getCommonDimensionAxisOptions(chartLayout, settings, renderingContext),
+      ...chartLayout.dashboardXAxis.options,
+      axisLabel: {
+        ...getDimensionTicksDefaultOption(settings, renderingContext),
+        margin: hasTimelineEvents
+          ? CHART_STYLE.timelineEvents.height
+          : renderingContext.theme.cartesian.ticks.marginX,
+        ...chartLayout.dashboardXAxis.options.axisLabel,
+      },
+    };
+  }
+
   if (isNumericAxis(xAxisModel)) {
     return buildNumericDimensionAxis(
       xAxisModel,
@@ -355,6 +369,18 @@ export const buildCategoricalDimensionAxis = (
     }
     return getPaddedAxisLabel(formatter(value));
   };
+
+  if (chartLayout.dashboardXAxis) {
+    return {
+      ...getCommonDimensionAxisOptions(chartLayout, settings, renderingContext),
+      ...chartLayout.dashboardXAxis.options,
+      axisLabel: {
+        ...getDimensionTicksDefaultOption(settings, renderingContext),
+        margin: renderingContext.theme.cartesian.ticks.marginX,
+        ...chartLayout.dashboardXAxis.options.axisLabel,
+      },
+    };
+  }
 
   return {
     ...getCommonDimensionAxisOptions(chartLayout, settings, renderingContext),

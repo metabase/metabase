@@ -142,5 +142,7 @@ export const getTicksOptions = (
     maxInterval,
     canRender,
     xDomainPadded,
+    xDomain,
+    largestInterval,
   };
 };

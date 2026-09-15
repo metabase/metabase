@@ -6,7 +6,10 @@ import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "../../../types";
-import { X_AXIS_DATA_KEY } from "../../cartesian/constants/dataset";
+import {
+  X_AXIS_DATA_KEY,
+  X_AXIS_POSITION_KEY,
+} from "../../cartesian/constants/dataset";
 import { getSharedEChartsOptions } from "../../cartesian/option";
 import {
   buildCategoricalDimensionAxis,
@@ -167,6 +170,7 @@ export const getBoxPlotOption = (
 
   const boxDimensions = [
     X_AXIS_DATA_KEY,
+    ...(xAxisModel.positions ? [X_AXIS_POSITION_KEY] : []),
     ...chartModel.seriesModels.flatMap((seriesModel) =>
       BOXPLOT_STATS.map((stat) => getBoxPlotStatKey(seriesModel.dataKey, stat)),
     ),
@@ -174,6 +178,7 @@ export const getBoxPlotOption = (
 
   const pointsDimensions = [
     X_AXIS_DATA_KEY,
+    ...(xAxisModel.positions ? [X_AXIS_POSITION_KEY] : []),
     ...chartModel.seriesModels.map((seriesModel) => seriesModel.dataKey),
   ];
 

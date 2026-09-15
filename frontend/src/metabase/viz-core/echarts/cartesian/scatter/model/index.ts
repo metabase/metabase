@@ -27,7 +27,12 @@ import type {
   SeriesModel,
 } from "../../model/types";
 import { getLabelValueFormatting } from "../../model/util";
+import {
+  appendXAxisPositions,
+  getXAxisPositions,
+} from "../../model/x-axis-position";
 
+import { getScatterXAxisEndMarkWidths } from "./bubble-size";
 import { getScatterPlotDataset } from "./dataset";
 
 const getBubbleSizeDomain = (
@@ -62,6 +67,7 @@ export function getScatterPlotModel(
   renderingContext: RenderingContext,
   showWarning?: ShowWarning,
   gridSize?: VisualizationGridSize,
+  isDashboardCard = gridSize != null,
 ): ScatterPlotModel {
   // rawSeries has more than one element when two or more cards are combined on a dashboard
   const hasMultipleCards = rawSeries.length > 1;
@@ -88,13 +94,16 @@ export function getScatterPlotModel(
   );
   const scaledDataset = scaleDataset(dataset, seriesModels, settings);
 
-  const xAxisModel = getXAxisModel(
-    dimensionModel,
-    rawSeries,
-    scaledDataset,
-    settings,
-    showWarning,
-  );
+  const xAxisModel = {
+    ...getXAxisModel(
+      dimensionModel,
+      rawSeries,
+      scaledDataset,
+      settings,
+      showWarning,
+    ),
+    isDashboard: isDashboardCard,
+  };
   const yAxisScaleTransforms = getAxisTransforms(
     settings["graph.y_axis.scale"],
   );
@@ -137,21 +146,43 @@ export function getScatterPlotModel(
     renderingContext,
   );
 
+  const positions = getXAxisPositions(transformedDataset, xAxisModel);
+  const positionedXAxisModel =
+    xAxisModel.axisType === "category"
+      ? { ...xAxisModel, positions }
+      : xAxisModel;
+  const bubbleSizeDomain = getBubbleSizeDomain(
+    seriesModels,
+    transformedDataset,
+  );
+  const endMarkWidths = getScatterXAxisEndMarkWidths(
+    transformedDataset,
+    seriesModels,
+    bubbleSizeDomain,
+    positionedXAxisModel,
+  );
+  if (trendLinesModel && positions) {
+    trendLinesModel.dataset = appendXAxisPositions(
+      trendLinesModel.dataset,
+      positions,
+    );
+  }
+
   return {
     stackModels: [],
     dataset: scaledDataset,
-    transformedDataset,
+    transformedDataset: appendXAxisPositions(transformedDataset, positions),
     seriesModels,
     yAxisScaleTransforms,
     cardsColumns,
     columnByDataKey,
     dimensionModel,
-    xAxisModel,
+    xAxisModel: { ...positionedXAxisModel, endMarkWidths },
     leftAxisModel,
     rightAxisModel,
     splitPanelYAxisModels,
     trendLinesModel,
-    bubbleSizeDomain: getBubbleSizeDomain(seriesModels, transformedDataset),
+    bubbleSizeDomain,
     seriesLabelsFormatters: {},
   };
 }

@@ -19,6 +19,7 @@ import {
 import type {
   AxisFormatter,
   ChartDataset,
+  DimensionModel,
   NumericAxisScaleTransforms,
   SeriesFormatters,
   SeriesModel,
@@ -26,11 +27,13 @@ import type {
   XAxisModel,
   YAxisModel,
 } from "../model/types";
+import { getDashboardXAxis } from "../option/dashboard-x-axis";
 import { getPaddedAxisLabel } from "../option/utils";
 
 import type { ChartBoundsCoords, ChartLayout, TicksDimensions } from "./types";
 
 export interface ChartLayoutInput {
+  dimensionModel?: DimensionModel;
   xAxisModel: XAxisModel;
   leftAxisModel: YAxisModel | null;
   rightAxisModel: YAxisModel | null;
@@ -48,6 +51,31 @@ export interface ChartLayoutInput {
 const getDataset = (input: ChartLayoutInput): ChartDataset => {
   return input.transformedDataset ?? input.dataset ?? [];
 };
+
+function getXAxisMarkWidthRatio(
+  input: ChartLayoutInput,
+  settings: ComputedVisualizationSettings,
+) {
+  const hasBars = input.seriesModels?.some((series) => {
+    const display = settings.series?.(
+      series.legacySeriesSettingsObjectKey,
+    )?.display;
+    return (
+      series.visible &&
+      (display === "bar" || display === "waterfall" || display === "boxplot")
+    );
+  });
+  if (!hasBars) {
+    return undefined;
+  }
+  if (
+    settings["graph.x_axis.scale"] === "log" ||
+    settings["graph.x_axis.scale"] === "pow"
+  ) {
+    return 0;
+  }
+  return CHART_STYLE.series.barWidth;
+}
 
 const getEvenlySpacedIndices = (
   length: number,
@@ -655,6 +683,7 @@ export const getCartesianChartPadding = (
   axisEnabledSetting: ComputedVisualizationSettings["graph.x_axis.axis_enabled"],
   chartWidth: number,
   renderingContext: RenderingContext,
+  includeTickOverflow = true,
 ): Padding => {
   const { leftAxisModel, rightAxisModel } = input;
   const { fontSize } = renderingContext.theme.cartesian.label;
@@ -700,6 +729,10 @@ export const getCartesianChartPadding = (
   padding.right += ticksDimensions.yTicksWidthRight;
   if (rightAxisModel?.label) {
     padding.right += yAxisNameTotalWidth;
+  }
+
+  if (!includeTickOverflow) {
+    return padding;
   }
 
   const { firstTickOverflow, lastTickOverflow } = getTicksOverflow(
@@ -877,6 +910,66 @@ const getStackedBarTicksRotation = (
     : "vertical";
 };
 
+function getBaseChartLayout(
+  input: ChartLayoutInput,
+  settings: ComputedVisualizationSettings,
+  ticksDimensions: TicksDimensions,
+  axisEnabledSetting: ChartLayout["axisEnabledSetting"],
+  width: number,
+  height: number,
+  renderingContext: RenderingContext,
+): ChartLayout {
+  const padding = getCartesianChartPadding(
+    input,
+    settings,
+    ticksDimensions,
+    axisEnabledSetting,
+    width,
+    renderingContext,
+    false,
+  );
+  const getBoundaryWidth = () =>
+    width -
+    padding.left -
+    padding.right -
+    ticksDimensions.yTicksWidthLeft -
+    ticksDimensions.yTicksWidthRight;
+  const layout: ChartLayout = {
+    ticksDimensions,
+    padding,
+    bounds: getChartBounds(width, height, padding, ticksDimensions),
+    boundaryWidth: getBoundaryWidth(),
+    outerHeight: height,
+    outerWidth: width,
+    axisEnabledSetting,
+    panelGap: 0,
+    xAxisMarkWidthRatio: getXAxisMarkWidthRatio(input, settings),
+    xAxisEndMarkWidths: input.xAxisModel.endMarkWidths,
+  };
+  layout.dashboardXAxis = getDashboardXAxis(
+    input.xAxisModel,
+    layout,
+    input.dimensionModel?.column,
+  );
+  if (!layout.dashboardXAxis) {
+    const { firstTickOverflow, lastTickOverflow } = getTicksOverflow(
+      input,
+      settings,
+      ticksDimensions,
+      axisEnabledSetting,
+      width,
+      padding,
+    );
+    if (firstTickOverflow !== 0 || lastTickOverflow !== 0) {
+      padding.left += firstTickOverflow;
+      padding.right += lastTickOverflow;
+      layout.bounds = getChartBounds(width, height, padding, ticksDimensions);
+      layout.boundaryWidth = getBoundaryWidth();
+    }
+  }
+  return layout;
+}
+
 export const getChartLayout = (
   input: ChartLayoutInput,
   settings: ComputedVisualizationSettings,
@@ -889,7 +982,6 @@ export const getChartLayout = (
     input.seriesModels?.filter((series) => series.visible) ?? [];
   const isSplitPanels =
     settings["graph.split_panels"] === true && visibleSeries.length > 1;
-
   if (isSplitPanels) {
     return computeSplitPanelLayout(
       input,
@@ -900,7 +992,6 @@ export const getChartLayout = (
       renderingContext,
     );
   }
-
   const { ticksDimensions, axisEnabledSetting } = getTicksDimensions(
     input,
     width,
@@ -909,39 +1000,22 @@ export const getChartLayout = (
     hasTimelineEvents,
     renderingContext,
   );
-  const padding = getCartesianChartPadding(
+  const layout = getBaseChartLayout(
     input,
     settings,
     ticksDimensions,
     axisEnabledSetting,
     width,
+    height,
     renderingContext,
   );
-  const bounds = getChartBounds(width, height, padding, ticksDimensions);
-
-  const boundaryWidth =
-    width -
-    padding.left -
-    padding.right -
-    ticksDimensions.yTicksWidthLeft -
-    ticksDimensions.yTicksWidthRight;
-
-  const stackedBarTicksRotation = getStackedBarTicksRotation(
-    input,
-    boundaryWidth,
-    renderingContext,
-  );
-
   return {
-    ticksDimensions,
-    padding,
-    bounds,
-    boundaryWidth,
-    outerHeight: height,
-    outerWidth: width,
-    axisEnabledSetting,
-    stackedBarTicksRotation,
-    panelGap: 0,
+    ...layout,
+    stackedBarTicksRotation: getStackedBarTicksRotation(
+      input,
+      layout.boundaryWidth,
+      renderingContext,
+    ),
   };
 };
 
@@ -992,23 +1066,16 @@ const computeSplitPanelLayout = (
     getXTickWidth: computedTicks.getXTickWidth,
   };
 
-  const padding = getCartesianChartPadding(
+  const layout = getBaseChartLayout(
     singleAxisInput,
     settings,
     ticksDimensions,
     axisEnabledSetting,
     width,
+    height,
     renderingContext,
   );
-
-  const bounds = getChartBounds(width, height, padding, ticksDimensions);
-
-  const boundaryWidth =
-    width -
-    padding.left -
-    padding.right -
-    ticksDimensions.yTicksWidthLeft -
-    ticksDimensions.yTicksWidthRight;
+  const { padding } = layout;
 
   const { gapRatio, maxGap } = CHART_STYLE.splitPanel;
   const availableHeight = height - padding.top - padding.bottom;
@@ -1023,13 +1090,7 @@ const computeSplitPanelLayout = (
   }
 
   return {
-    ticksDimensions,
-    padding,
-    bounds,
-    boundaryWidth,
-    outerHeight: height,
-    outerWidth: width,
-    axisEnabledSetting,
+    ...layout,
     panelHeight,
     panelGap,
   };

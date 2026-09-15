@@ -1,4 +1,18 @@
+import type { ValueAxisBaseOption } from "echarts/types/src/coord/axisCommonTypes";
+
 import type { ComputedVisualizationSettings, Padding } from "../../../types";
+import type { XAxisModel } from "../model/types";
+
+export interface DashboardXAxis {
+  options: Pick<
+    ValueAxisBaseOption,
+    "min" | "max" | "scale" | "containShape"
+  > & {
+    type: "value" | "time";
+    axisLabel: NonNullable<ValueAxisBaseOption["axisLabel"]>;
+  };
+  step: number;
+}
 
 export interface TicksDimensions {
   yTicksWidthLeft: number;
@@ -30,4 +44,8 @@ export interface ChartLayout {
   stackedBarTicksRotation?: TicksRotation;
   panelHeight?: number;
   panelGap: number;
+  xAxisMarkWidthRatio?: number;
+  xAxisEndMarkWidths?: XAxisModel["endMarkWidths"];
+  getXAxisMarkWidth?: (step: number) => number;
+  dashboardXAxis?: DashboardXAxis;
 }
