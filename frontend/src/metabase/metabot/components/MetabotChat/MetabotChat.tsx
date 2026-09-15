@@ -181,7 +181,7 @@ export const MetabotChat = ({
                 onRetryMessage={
                   config.preventRetryMessage ? undefined : metabot.retryMessage
                 }
-                onContinueMessage={metabot.submitInput}
+                onContinueMessage={metabot.continueResponse}
                 onRefreshConversation={() => {
                   metabot.setPrompt("");
                   metabot.reloadConversation();

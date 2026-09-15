@@ -14,11 +14,13 @@ import {
   type MetabotAgentTurnError,
   type MetabotDataPart,
   type MetabotDebugToolCallMessage,
-  type MetabotIncompleteFinishReason,
+  type MetabotIncompleteMessageStatus,
   type MetabotMessage,
   type MetabotMessagePart,
   type MetabotMessageStatus,
   forkConversation,
+  getIncompleteTurnMessage,
+  getIncompleteTurnReason,
   isChainOfThoughtMessage,
   isTextPart,
 } from "metabase/metabot/state";
@@ -252,7 +254,7 @@ interface AgentMessageProps extends Omit<FlexProps, "onCopy"> {
   readonly: boolean;
   conversationId: string;
   onRetry?: () => void;
-  onContinue?: (resumePrompt: string) => void;
+  onContinue?: () => void;
   onRefreshConversation?: () => void;
   setFeedbackMessage?: (data: { messageId: string; positive: boolean }) => void;
   submittedFeedback: "positive" | "negative" | undefined;
@@ -567,7 +569,7 @@ const MessageStatus = ({
   status: MetabotMessageStatus;
   debug: boolean;
   onRetry?: () => void;
-  onContinue?: (resumePrompt: string) => void;
+  onContinue?: () => void;
   onRefreshConversation?: () => void;
 }) =>
   match(status)
@@ -584,12 +586,8 @@ const MessageStatus = ({
     .with({ type: "aborted" }, () => (
       <AbortedTurnAlert debug={debug} onRetry={onRetry} />
     ))
-    .with({ type: "incomplete" }, (o) => (
-      <IncompleteTurnAlert
-        finishReason={o.finishReason}
-        contextWindowFull={o.contextWindowFull}
-        onContinue={onContinue}
-      />
+    .with({ type: "incomplete" }, (status) => (
+      <IncompleteTurnAlert status={status} onContinue={onContinue} />
     ))
     .with({ type: "in_progress" }, () => (
       <Loader
@@ -630,57 +628,29 @@ const AbortedTurnAlert = ({
   );
 };
 
-const getIncompleteTurnConfig = (
-  finishReason: MetabotIncompleteFinishReason,
-  metabotName: string,
-): { message: string; resumePrompt?: string } =>
-  match(finishReason)
-    .with("length", () => ({
-      message: t`Response from ${metabotName} was cut off because it hit the maximum length`,
-      resumePrompt: t`Your last response was cut off. Pick up exactly where you left off. Don't repeat anything you already wrote.`,
-    }))
-    .with("content-filter", () => ({
-      message: t`Response from ${metabotName} was stopped by a content filter. Try rephrasing your question.`,
-    }))
-    .with("tool-calls", () => ({
-      message: t`${metabotName} paused after reaching its step limit for this response`,
-      resumePrompt: t`Continue working on my last request.`,
-    }))
-    .with("other", () => ({
-      message: t`Response from ${metabotName} stopped before it finished`,
-    }))
-    .exhaustive();
-
 const IncompleteTurnAlert = ({
-  finishReason,
-  contextWindowFull,
+  status,
   onContinue,
 }: {
-  finishReason: MetabotIncompleteFinishReason;
-  contextWindowFull?: boolean;
-  onContinue?: (resumePrompt: string) => void;
+  status: MetabotIncompleteMessageStatus;
+  onContinue?: () => void;
 }) => {
   const metabotName = useSetting("metabot-name");
-  // "length" is overloaded, occurs when context window has been met (unrecoverable)
-  // or when the max_tokens has been met (recoverable)
-  const { message, resumePrompt } =
-    finishReason === "length" && contextWindowFull
-      ? {
-          message: t`This conversation has reached its maximum length and can't continue. Please start a new chat.`,
-          resumePrompt: undefined,
-        }
-      : getIncompleteTurnConfig(finishReason, metabotName);
+  const message = getIncompleteTurnMessage(
+    getIncompleteTurnReason(status),
+    metabotName,
+  );
   return (
     <AgentTurnAlert
       variant="info"
       message={message}
       cta={
-        resumePrompt && onContinue ? (
+        onContinue ? (
           <Button
             variant="default"
             size="compact-xs"
             fz="xs"
-            onClick={() => onContinue(resumePrompt)}
+            onClick={onContinue}
             data-testid="metabot-chat-message-continue"
           >
             {t`Continue`}
@@ -709,7 +679,7 @@ export const Messages = ({
 }: {
   messages: MetabotMessage[];
   onRetryMessage?: (messageId: string) => void;
-  onContinueMessage?: (resumePrompt: string) => void;
+  onContinueMessage?: () => void;
   onRefreshConversation?: () => void;
   isDoingScience: boolean;
   supportsReasoning?: boolean;
