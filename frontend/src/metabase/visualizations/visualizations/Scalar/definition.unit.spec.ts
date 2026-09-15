@@ -64,6 +64,22 @@ describe("SCALAR_CHART_DEFINITION", () => {
       ).not.toThrow();
     });
 
+    it("refuses to render a self-column range on an empty result", () => {
+      expect(() =>
+        checkRenderable(createSeries({ rows: [] }), {
+          "scalar.segments": [{ min: "count", max: null, color: "red" }],
+        }),
+      ).toThrow("Couldn't load a value one of this chart's ranges depends on.");
+    });
+
+    it("refuses to render a self-column range when the bound's cell is null", () => {
+      expect(() =>
+        checkRenderable(createSeries({ rows: [[null]] }), {
+          "scalar.segments": [{ min: "count", max: null, color: "red" }],
+        }),
+      ).toThrow("Couldn't load a value one of this chart's ranges depends on.");
+    });
+
     it("refuses to render when a range's bound will never resolve", () => {
       const series = createSeries({
         referenced_entities: {
