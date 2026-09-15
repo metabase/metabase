@@ -145,6 +145,25 @@
            (mt/rows (qp.pivot/run-pivot-query (set/rename-keys (test-query)
                                                                {:pivot-rows :pivot_rows, :pivot-cols :pivot_cols})))))))
 
+(deftest ^:parallel error-generating-pivot-queries-test
+  (testing "An error thrown while generating the pivot sub-queries, i.e. before the QP proper (and its error-handling middleware) runs"
+    ;; the native path silently drops out-of-range pivot indexes rather than throwing, so parity would disagree here
+    (qp.pivot.test-util/without-pivot-parity-check
+     (let [query (assoc (test-query) :pivot-rows [0 1 2 3])]
+       (testing "is thrown as-is for a non-userland query"
+         (is (thrown-with-msg?
+              clojure.lang.ExceptionInfo
+              #"Error generating pivot queries"
+              (qp.pivot/run-pivot-query query))))
+       (testing "is returned in the usual formatted error shape for a userland query, like any other QP error (SEC-1210)"
+         (doseq [userland-query [(qp.core/userland-query query)
+                                 (assoc query :info {:context :ad-hoc})]]
+           (is (=? {:status     :failed
+                    :error      #"Invalid pivot-rows: specified breakout at index 3, but we only have 3 breakouts"
+                    :error_type :invalid-query
+                    :json_query map?}
+                   (qp.pivot/run-pivot-query userland-query)))))))))
+
 (deftest ^:parallel generate-queries-test
   (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
     (let [metadata-provider (mt/metadata-provider)

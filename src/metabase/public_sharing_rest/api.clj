@@ -31,6 +31,7 @@
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.catch-exceptions :as qp.catch-exceptions]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -173,7 +174,13 @@
     (qp.streaming/streaming-response [rff export-format (qp.streaming/safe-filename-prefix (:card-name info))]
       (binding [qp.pipeline/*result* (comp qp.pipeline/*result* transform-qp-result)]
         (request/as-admin
-          (qp (update query :info merge info) rff))))))
+          (try
+            (qp (update query :info merge info) rff)
+            (catch Throwable e
+              ;; The QP normally catches errors itself and hands a formatted result to `*result*` above, where
+              ;; `transform-qp-result` strips everything but a generic message. An exception that escapes `qp` would
+              ;; bypass that and be written to the client verbatim. Format it and route it through the same sanitization.
+              (qp.pipeline/*result* (qp.catch-exceptions/exception-response e)))))))))
 
 (mu/defn- export-format->context :- ::lib.schema.info/context
   [export-format :- [:maybe :keyword]]

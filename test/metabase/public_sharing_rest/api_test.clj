@@ -21,6 +21,7 @@
    [metabase.public-sharing-rest.api :as api.public]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.queries-rest.api.card-test :as api.card-test]
+   [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.query-processor.pivot.test-util :as api.pivots]
@@ -1990,6 +1991,104 @@
                  (t2/update! :model/Card (u/the-id card) {:archived true})
                  (is (= "Not found."
                         (client/client :get 404 (dashcard-url dash card dashcard)))))))))))))
+
+(def ^:private error-leak-sql-canary "SEC_1210_SQL_CANARY")
+(def ^:private error-leak-card-name-canary "SEC-1210 CARD NAME CANARY")
+
+(defn- date-param-native-card
+  "A healthy native Card with a date field filter, so a caller-supplied parameter value can drive it to an error without
+  the Card itself being broken."
+  [display]
+  {:name          error-leak-card-name-canary
+   :display       display
+   :dataset_query {:database (mt/id)
+                   :type     :native
+                   :native   {:query         (str "SELECT COUNT(*) AS N FROM ORDERS WHERE {{d}} -- " error-leak-sql-canary)
+                              :template-tags {"d" {:id           "d"
+                                                   :name         "d"
+                                                   :display-name "D"
+                                                   :type         :dimension
+                                                   :widget-type  :date/all-options
+                                                   :dimension    [:field (mt/id :orders :created_at) nil]}}}}
+   :parameters    [{:id     "d"
+                    :type   :date/all-options
+                    :name   "D"
+                    :slug   "d"
+                    :target [:dimension [:template-tag "d"]]}]})
+
+(def ^:private unparseable-date-param
+  "A parameter value that passes endpoint validation but blows up while the query is being built."
+  (json/encode [{:id     "d"
+                 :type   "date/all-options"
+                 :target ["dimension" ["template-tag" "d"]]
+                 :value  "SEC-1210-NOT-A-DATE"}]))
+
+(defn- assert-generic-query-error
+  "Assert that `response` (from [[client/client-full-response]]) is the generic public-endpoint failure body and that
+  nothing about the Card leaked into it."
+  [{:keys [status body]}]
+  (let [body-str (pr-str body)]
+    (testing "the query genuinely failed"
+      (is (contains? #{400 500} status)))
+    (testing "the body is the generic failed-query shape"
+      (is (=? {:status "failed"
+               :error  string?}
+              body))
+      (is (set/subset? (set (keys body)) #{:status :error :error_type})))
+    (testing "the Card's SQL, name, and a stacktrace must not reach an unauthenticated caller"
+      (is (not (str/includes? body-str error-leak-sql-canary)))
+      (is (not (str/includes? body-str error-leak-card-name-canary)))
+      (is (not (str/includes? body-str ":trace")))
+      (is (not (str/includes? body-str ":via"))))))
+
+(deftest public-pivot-card-error-does-not-leak-query-test
+  (testing "GET /api/public/pivot/card/:uuid/query"
+    (testing "an error raised while building the pivot sub-queries must not leak the Card's query or a stacktrace (SEC-1210)"
+      (mt/dataset test-data
+        (mt/with-temporary-setting-values [enable-public-sharing true]
+          (with-temp-public-card [{uuid :public_uuid} (date-param-native-card :pivot)]
+            (let [url (format "public/pivot/card/%s/query" uuid)]
+              (testing "sanity check: the Card is healthy without the bad parameter"
+                (is (= 202 (:status (client/client-full-response :get url)))))
+              (assert-generic-query-error
+               (client/client-full-response :get url :parameters unparseable-date-param)))))))))
+
+(deftest public-card-with-pivot-display-error-does-not-leak-query-test
+  (testing "GET /api/public/card/:uuid/query"
+    (testing "a Card with :display :pivot takes the pivot path on its ordinary public link too (SEC-1210)"
+      (mt/dataset test-data
+        (mt/with-temporary-setting-values [enable-public-sharing true]
+          (with-temp-public-card [{uuid :public_uuid} (date-param-native-card :pivot)]
+            (assert-generic-query-error
+             (client/client-full-response :get (format "public/card/%s/query" uuid)
+                                          :parameters unparseable-date-param))))))))
+
+(deftest public-pivot-dashcard-error-does-not-leak-query-test
+  (testing "GET /api/public/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
+    (testing "an error raised before the QP runs must not leak the query of a Card that is not itself public (SEC-1210)"
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (with-temp-public-dashboard [dash]
+          (mt/with-temp [:model/Card card {:name          error-leak-card-name-canary
+                                           :display       :pivot
+                                           :dataset_query {:database (mt/id)
+                                                           :type     :native
+                                                           :native   {:query (str "SELECT * FROM sec_1210_no_such_table -- "
+                                                                                  error-leak-sql-canary)}}}]
+            (let [dashcard (add-card-to-dashboard! card dash)]
+              (is (nil? (:public_uuid card)))
+              (assert-generic-query-error
+               (client/client-full-response :get (pivot-dashcard-url dash card dashcard))))))))))
+
+(deftest public-card-query-exception-outside-qp-does-not-leak-test
+  (testing "GET /api/public/card/:uuid/query"
+    (testing "an exception that escapes the QP entirely (thrown outside its error-handling middleware) is still sanitized"
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (with-temp-public-card [{uuid :public_uuid} {:name error-leak-card-name-canary}]
+          (mt/with-dynamic-fn-redefs [qp.card/process-query-for-card-default-qp
+                                      (fn [query _rff]
+                                        (throw (ex-info (str "Boom " error-leak-sql-canary) {:query query})))]
+            (assert-generic-query-error
+             (client/client-full-response :get (format "public/card/%s/query" uuid)))))))))
 
 ;;; ------------------------- POST /api/public/dashboard/:dashboard-uuid/dashcard/:uuid/execute ------------------------------
 
