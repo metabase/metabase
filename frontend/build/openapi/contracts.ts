@@ -526,6 +526,21 @@ function comparePart(
   at: ts.Node,
 ): Verdict {
   if (part.unverified) {
+    // Whatever the unverified value holds, a part the client always sends cannot fit a backend that declares none.
+    if (
+      part.alwaysSent &&
+      expected.flags & (ts.TypeFlags.Undefined | ts.TypeFlags.Never)
+    ) {
+      return combineVerdicts(
+        [
+          {
+            status: "mismatch",
+            message: `$: the client always sends this part, and the backend declares none (${part.unverified})`,
+          },
+        ],
+        part.notes,
+      );
+    }
     const gap = looseTypeVerdict(context, "backend", expected, at, location);
     return combineVerdicts(
       [

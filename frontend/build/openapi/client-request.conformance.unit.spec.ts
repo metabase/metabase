@@ -50,10 +50,29 @@ afterEach(() => {
   }
 });
 
+// The request shape RTK hands to baseQuery (frontend/src/metabase/api/api.ts:59-65).
+// `defineEndpoint` types the fixture's query function the way RTK's builder does,
+// so a fixture cannot build a request a real endpoint cannot.
+const BASE_QUERY_ARGS = `
+  type BaseQueryArgs = string | {
+    method?: "GET" | "POST" | "PUT" | "DELETE";
+    url: string | null;
+    params?: Record<string, unknown> | null | void;
+    body?: unknown;
+  };
+  function defineEndpoint<Argument>(endpoint: {
+    query: (argument: Argument) => BaseQueryArgs;
+    extraOptions?: unknown;
+  }) {
+    return endpoint;
+  }
+`;
+
 function fixtureSource({ declarations = "", endpoint, argument }: Fixture) {
   return `
+    ${BASE_QUERY_ARGS}
     ${declarations}
-    const endpoint = ${endpoint};
+    const endpoint = defineEndpoint(${endpoint});
     const argument: Parameters<typeof endpoint.query>[0] = ${argument};
   `;
 }
@@ -92,9 +111,11 @@ function model(fixture: Fixture): Modelled {
       ts.isIdentifier(node.name) &&
       node.name.text === "endpoint" &&
       node.initializer &&
-      ts.isObjectLiteralExpression(node.initializer)
+      ts.isCallExpression(node.initializer) &&
+      node.initializer.arguments[0] &&
+      ts.isObjectLiteralExpression(node.initializer.arguments[0])
     ) {
-      config = node.initializer;
+      config = node.initializer.arguments[0];
     }
     ts.forEachChild(node, visit);
   };
@@ -593,19 +614,6 @@ describe("modelClientRequest against the real API client", () => {
     );
   });
 
-  it("should throw for a method the client does not support", async () => {
-    const { request } = await expectConformance(
-      {
-        endpoint:
-          '{ query: (_: void) => ({ method: "PATCH", url: "/api/x" }) }',
-        argument: "undefined",
-      },
-      { kind: "thrown" },
-      sentRequest({ method: "PATCH" }),
-    );
-    expect(request.failure).toMatch(/Invalid HTTP method/);
-  });
-
   it("should send a JSON body for a non-GET request", async () => {
     await expectConformance(
       {
@@ -945,8 +953,8 @@ describe("modelClientRequest against the real API client", () => {
     );
   });
 
-  it("should send an inline query span as the text String gives", async () => {
-    await expectConformance(
+  it("should leave the query unverified when an inline query span is not one known text", async () => {
+    const { request } = await expectConformance(
       {
         endpoint:
           "{ query: (flag: boolean) => ({ url: `/api/x?a=${flag}&b=${encodeURIComponent(flag)}` }) }",
@@ -958,12 +966,9 @@ describe("modelClientRequest against the real API client", () => {
           ["b", "true"],
         ],
       }),
-      sentRequest({
-        query: [
-          ["a", "1"],
-          ["b", "true"],
-        ],
-      }),
+    );
+    expect(request.query.unverified).toMatch(
+      /^\$\{flag\} is put into the URL template's query string/,
     );
   });
 
@@ -1106,49 +1111,22 @@ describe("modelClientRequest against the real API client", () => {
     );
   });
 
-  it("should send a Date body as an empty JSON object", async () => {
-    await expectConformance(
-      {
-        endpoint:
-          '{ query: (body: Date) => ({ method: "POST", url: "/api/x", body }) }',
-        argument: "new Date(0)",
-      },
-      sentRequest({ method: "POST", body: { kind: "json", value: {} } }),
-      sentRequest({
-        method: "POST",
-        body: { kind: "json", value: "1970-01-01T00:00:00.000Z" },
-      }),
-    );
-  });
-
-  it("should send a number body as an empty JSON object", async () => {
-    await expectConformance(
-      {
-        endpoint:
-          '{ query: (body: number) => ({ method: "POST", url: "/api/x", body }) }',
-        argument: "7",
-      },
-      sentRequest({ method: "POST", body: { kind: "json", value: {} } }),
-      sentRequest({ method: "POST", body: { kind: "json", value: 7 } }),
-    );
-  });
-
-  it("should copy tuple params into numbered query keys", async () => {
-    await expectConformance(
-      {
-        endpoint:
-          '{ query: (params: [number, "a"]) => ({ url: "/api/x", params }) }',
-        argument: '[7, "a"]',
-      },
-      sentRequest({
-        query: [
-          ["0", "7"],
-          ["1", "a"],
-        ],
-      }),
-      sentRequest({ query: [["0", "7"]] }),
-    );
-  });
+  it.each([
+    ["a lib object", "Date", "new Date(0)"],
+    ["a primitive", "number", "7"],
+  ])(
+    "should leave a body that is %s unverified",
+    async (_name, type, argument) => {
+      const { request } = await expectConformance(
+        {
+          endpoint: `{ query: (body: ${type}) => ({ method: "POST", url: "/api/x", body }) }`,
+          argument,
+        },
+        sentRequest({ method: "POST", body: { kind: "json", value: {} } }),
+      );
+      expect(request.body.unverified).toMatch(/copied with \{ \.\.\.value \}/);
+    },
+  );
 
   it("should send a Date body field as the text its toJSON gives", async () => {
     await expectConformance(

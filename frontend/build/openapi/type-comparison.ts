@@ -157,14 +157,6 @@ interface Direction {
   to: Side;
 }
 
-interface CoverageVisit {
-  group: ts.Type[];
-  path: string;
-  // Unset until the first visit finishes, so a recursive repeat waits for its problems.
-  problems: Problem[] | undefined;
-  repeats: string[];
-}
-
 export const LINE_BREAK = "\n  ";
 
 export const COMPATIBLE: Verdict = {
@@ -356,22 +348,21 @@ function fieldCoverageProblems(
   const { checker, root } = context;
   const walk = new TypeWalk(context, "field coverage walk");
   const problems: Problem[] = [];
-  const seen = new Map<ts.Type, CoverageVisit[]>();
-  const reportRepeats = (visit: CoverageVisit) => {
-    const found = visit.problems ?? [];
-    if (!found.length) {
-      return;
+  const ids = new Map<ts.Type, number>();
+  const idOf = (type: ts.Type): number => {
+    const known = ids.get(type);
+    if (known !== undefined) {
+      return known;
     }
-    const status = problemStatus(found);
-    problems.push(
-      ...visit.repeats.splice(0).map(
-        (label): Problem => ({
-          status,
-          message: `${label}: same problems as at ${visit.path}`,
-        }),
-      ),
-    );
+    ids.set(type, ids.size);
+    return ids.size - 1;
   };
+  const pairKey = (variant: ts.Type, candidates: ts.Type[]) =>
+    `${idOf(variant)}:${candidates.map(idOf).sort().join(",")}`;
+  // Each pair of frontend variant and backend candidates is walked once.
+  // A repeat still on the walk is a recursive type, and a finished repeat points back to the first path.
+  const walking = new Set<string>();
+  const walked = new Map<string, { path: string; problems: Problem[] }>();
   const visit = (
     backendTypes: ts.Type[],
     frontend: ts.Type,
@@ -409,30 +400,25 @@ function fieldCoverageProblems(
           ? checker.isTypeAssignableTo(type, variant)
           : checker.isTypeAssignableTo(variant, type),
       );
-      const previous = seen.get(variant) ?? [];
-      const repeated = previous.find(
-        ({ group }) =>
-          group.length === candidates.length &&
-          group.every((type) => candidates.includes(type)),
-      );
-      if (repeated) {
-        repeated.repeats.push(label);
-        if (repeated.problems) {
-          reportRepeats(repeated);
+      const key = pairKey(variant, candidates);
+      const first = walked.get(key);
+      if (first) {
+        if (first.problems.length) {
+          problems.push({
+            status: problemStatus(first.problems),
+            message: `${label}: same problems as at ${first.path}`,
+          });
         }
         continue;
       }
-      const record: CoverageVisit = {
-        group: candidates,
-        path,
-        problems: undefined,
-        repeats: [],
-      };
-      seen.set(variant, [...previous, record]);
+      if (walking.has(key)) {
+        continue;
+      }
+      walking.add(key);
       const start = problems.length;
       coverVariant(variant, candidates, path, label, depth);
-      record.problems = problems.slice(start);
-      reportRepeats(record);
+      walking.delete(key);
+      walked.set(key, { path, problems: problems.slice(start) });
     }
   };
   const coverVariant = (
@@ -579,9 +565,9 @@ function sortedPositions(
     );
 }
 
-// Walks one path segment at a time, so every route to a path is known before that path is walked.
-// An object type is not walked at a path that any route reached through the same type:
-// that is where a recursive type repeats, so paths are counted up to that point.
+// Every `any`, `unknown` or unresolved type, each at the shortest path that reaches it.
+// The walk goes one path segment at a time and walks each object type once, at its first, shortest path.
+// Listing every path instead does not finish: the MBQL expression types reach each other in every order.
 function unconstrainedPositions(
   context: CompareContext,
   side: Side,
@@ -592,13 +578,13 @@ function unconstrainedPositions(
   const { checker, root } = context;
   const walk = new TypeWalk(context, "unconstrained type walk");
   const found: UnconstrainedPosition[] = [];
-  // For each object type and path, the object types that any route to it went through.
-  type Level = Map<ts.Type, Map<string, ReadonlySet<ts.Type>>>;
+  const visited = new Set<ts.Type>();
+  let depth = 0;
+  // Union and intersection members sit at the same path as the union, so they join the current level.
   const reach = (
-    level: Level,
     reached: ts.Type,
     { path, declaration }: Position,
-    through: ReadonlySet<ts.Type>,
+    level: { type: ts.Type; position: Position }[],
   ): void => {
     walk.step(reached, { path, declaration }, depth);
     if (reached.flags & LOOSE_TYPE_FLAGS) {
@@ -614,82 +600,66 @@ function unconstrainedPositions(
     }
     if (reached.isUnion()) {
       unionMembers(checker, reached).forEach((part) =>
-        reach(level, part, { path, declaration }, through),
+        reach(part, { path, declaration }, level),
       );
       return;
     }
     if (reached.isIntersection()) {
       reached.types.forEach((part) =>
-        reach(level, part, { path, declaration }, through),
+        reach(part, { path, declaration }, level),
       );
       return;
     }
-    if (!(reached.flags & ts.TypeFlags.Object)) {
+    if (!(reached.flags & ts.TypeFlags.Object) || visited.has(reached)) {
       return;
     }
-    const byPath =
-      level.get(reached) ?? new Map<string, ReadonlySet<ts.Type>>();
-    const previous = byPath.get(path);
-    if (previous) {
-      const merged = new Set(previous);
-      through.forEach((ancestor) => merged.add(ancestor));
-      byPath.set(path, merged);
-    } else {
-      byPath.set(path, through);
-    }
-    level.set(reached, byPath);
+    visited.add(reached);
+    level.push({ type: reached, position: { path, declaration } });
   };
-  let level: Level = new Map();
-  let depth = 0;
   walk.run(() => {
-    reach(level, type, position, new Set());
-    while (level.size) {
+    let level: { type: ts.Type; position: Position }[] = [];
+    reach(type, position, level);
+    while (level.length) {
       depth += 1;
-      const next: Level = new Map();
-      for (const [current, byPath] of level) {
-        for (const [path, through] of byPath) {
-          if (through.has(current)) {
-            continue;
-          }
-          const childThrough = new Set([...through, current]);
-          if (
-            isTypeReference(current) &&
-            (checker.isArrayType(current) || checker.isTupleType(current))
-          ) {
-            checker
-              .getTypeArguments(current)
-              .forEach((element) =>
-                reach(
-                  next,
-                  element,
-                  { path: `${path}[]`, declaration: undefined },
-                  childThrough,
-                ),
-              );
-            continue;
-          }
+      const next: typeof level = [];
+      for (const {
+        type: current,
+        position: { path },
+      } of level) {
+        if (
+          isTypeReference(current) &&
+          (checker.isArrayType(current) || checker.isTupleType(current))
+        ) {
           checker
-            .getIndexInfosOfType(current)
-            .forEach((index) =>
+            .getTypeArguments(current)
+            .forEach((element) =>
               reach(
+                element,
+                { path: `${path}[]`, declaration: undefined },
                 next,
-                index.type,
-                { path: `${path}[key]`, declaration: index.declaration },
-                childThrough,
               ),
             );
-          properties(current).forEach((property) =>
+          continue;
+        }
+        checker
+          .getIndexInfosOfType(current)
+          .forEach((index) =>
             reach(
+              index.type,
+              { path: `${path}[key]`, declaration: index.declaration },
               next,
-              checker.getTypeOfSymbolAtLocation(property, at),
-              {
-                path: `${path}.${property.name}`,
-                declaration: symbolDeclaration(property),
-              },
-              childThrough,
             ),
           );
-        }
+        properties(current).forEach((property) =>
+          reach(
+            checker.getTypeOfSymbolAtLocation(property, at),
+            {
+              path: `${path}.${property.name}`,
+              declaration: symbolDeclaration(property),
+            },
+            next,
+          ),
+        );
       }
       level = next;
     }

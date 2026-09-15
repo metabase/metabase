@@ -7,13 +7,6 @@ import {
   unionMembers,
 } from "./typescript-utils";
 
-/** How a spread copy (`{ ...value }`) of a value turns out (client.ts:74-75). */
-export type SpreadCopy =
-  | { kind: "fields"; entries: { name: string; type: ts.Type }[] }
-  /** No own enumerable properties, so the copy is `{}`. */
-  | { kind: "empty"; reason: string }
-  | { kind: "unknown"; reason: string };
-
 /** A property the runtime value does not own, so a spread copy and `JSON.stringify` both leave it out. */
 export function isPrototypeMember(
   checker: ts.TypeChecker,
@@ -36,7 +29,7 @@ export function isPrototypeMember(
 }
 
 /** Whether the type is declared by the TypeScript lib, whose objects keep their data behind prototype accessors. */
-function isLibType(type: ts.Type): boolean {
+export function isLibType(type: ts.Type): boolean {
   const declaration = (type.aliasSymbol ?? type.getSymbol())?.declarations?.[0];
   return (
     isLibDeclaration(declaration) &&
@@ -44,78 +37,6 @@ function isLibType(type: ts.Type): boolean {
     (ts.isInterfaceDeclaration(declaration) ||
       ts.isClassDeclaration(declaration))
   );
-}
-
-/** What `{ ...value }` copies out of one non-union type. */
-export function spreadCopy(checker: ts.TypeChecker, type: ts.Type): SpreadCopy {
-  if (
-    type.flags &
-    (ts.TypeFlags.Null | ts.TypeFlags.Undefined | ts.TypeFlags.Void)
-  ) {
-    return { kind: "empty", reason: "it is null or undefined" };
-  }
-  if (type.isStringLiteral()) {
-    return {
-      kind: "fields",
-      entries: [...type.value].map((character, index) => ({
-        name: String(index),
-        type: checker.getStringLiteralType(character),
-      })),
-    };
-  }
-  if (type.flags & ts.TypeFlags.StringLike) {
-    return {
-      kind: "unknown",
-      reason: "a string is copied one character key at a time",
-    };
-  }
-  if (
-    type.flags &
-    (ts.TypeFlags.Any |
-      ts.TypeFlags.Unknown |
-      ts.TypeFlags.NonPrimitive |
-      ts.TypeFlags.TypeParameter)
-  ) {
-    return {
-      kind: "unknown",
-      reason: `a ${typeText(checker, type)} value's own keys are known only at runtime`,
-    };
-  }
-  if (!(type.flags & ts.TypeFlags.Object) && !type.isIntersection()) {
-    return {
-      kind: "empty",
-      reason: `a ${typeText(checker, type)} has no own properties`,
-    };
-  }
-  if (checker.isTupleType(type) && isTypeReference(type)) {
-    return {
-      kind: "fields",
-      entries: checker
-        .getTypeArguments(type)
-        .map((element, index) => ({ name: String(index), type: element })),
-    };
-  }
-  if (checker.isArrayType(type)) {
-    return {
-      kind: "unknown",
-      reason: "an array is copied one numbered key at a time",
-    };
-  }
-  if (!type.isIntersection() && isLibType(type)) {
-    return {
-      kind: "empty",
-      reason: `a ${typeText(checker, type)} keeps its data behind prototype accessors`,
-    };
-  }
-  return {
-    kind: "fields",
-    entries: properties(type)
-      .filter((property) => !isPrototypeMember(checker, property))
-      .map((property) => ({
-        name: property.name,
-        type: checker.getTypeOfSymbol(property),
-      })),
-  };
 }
 
 /** The JavaScript operation that turns a value into text on its way to the URL. */

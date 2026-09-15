@@ -17,12 +17,12 @@ import {
   type StringPart,
   describeJsonView,
   isLibDeclaration,
+  isLibType,
   isPrototypeMember,
   jsonConversionNotes,
   jsonConversions,
   jsonView,
   keepsType,
-  spreadCopy,
   stringParts,
 } from "./value-conversion";
 
@@ -30,8 +30,6 @@ import {
 const RTK_CACHE_KEY = "__rtkCacheKey";
 // `frontend/src/metabase/api/client/utils.ts:148`
 const URL_TAG = /:\w+/g;
-// `frontend/src/metabase/api/client/method.ts:1-8`
-const CLIENT_METHODS = new Set(["GET", "POST", "PUT", "DELETE"]);
 const PATH_PARAMETER = "{param}";
 const REQUEST_FIELDS = ["url", "method", "params", "body"];
 
@@ -72,6 +70,8 @@ export interface SentPart {
   variants: SentPayload[];
   notes: string[];
   unverified: string | undefined;
+  /** The client sends this part whatever the value, even when what it holds is unverified. */
+  alwaysSent: boolean;
 }
 
 interface SentPathParameter {
@@ -140,9 +140,6 @@ export function modelClientRequest(
   // `baseQuery` sends GET unless the request names a method (api.ts:86-87).
   const method = rtk.method ?? "GET";
   const foldsBody = method === "GET" && rtk.body !== undefined;
-  const failure = CLIENT_METHODS.has(method)
-    ? undefined
-    : `the client throws "Invalid HTTP method" for ${method} (client.ts:99-101)`;
 
   const params = paramsPayloads(context, rtk.params);
   const body = bodyPayloads(context, rtk.body, method);
@@ -238,13 +235,16 @@ export function modelClientRequest(
       ),
       notes: [...new Set(queryNotes)],
       unverified: queryUnverified,
+      // A query with no keys is always possible, so nothing about it is certain.
+      alwaysSent: false,
     },
     body: {
       variants: unique(bodyVariants, (payload) => payloadKey(checker, payload)),
       notes: [...new Set(bodyNotes)],
       unverified: foldsBody ? undefined : body.unverified,
+      alwaysSent: !foldsBody && body.alwaysSent,
     },
-    failure: failure ?? body.failure,
+    failure: body.failure,
     unverified: extraOptionsUnverified(rtk),
   };
 }
@@ -368,52 +368,36 @@ function typePayload(
   channel: "params" | "body",
 ): CopiedPayload {
   const exact = ts.isObjectLiteralExpression(expression);
-  const enumerable =
-    isObjectLike(type) &&
-    !checker.isArrayType(type) &&
-    !checker.isTupleType(type);
-  const copy = spreadCopy(checker, type);
-  if (copy.kind === "unknown") {
-    return {
-      payload: { kind: "type", type },
-      notes: [],
-      unverified: `the ${channel} is copied with { ...value } before it is sent, and ${copy.reason} (client.ts:74-75)`,
-    };
+  const unverified = (reason: string): CopiedPayload => ({
+    payload: { kind: "type", type },
+    notes: [],
+    unverified: `the ${channel} is copied with { ...value } before it is sent, and ${reason} (client.ts:74-75)`,
+  });
+  if (
+    type.flags &
+    (ts.TypeFlags.Any |
+      ts.TypeFlags.Unknown |
+      ts.TypeFlags.NonPrimitive |
+      ts.TypeFlags.TypeParameter)
+  ) {
+    return unverified(
+      `its own keys are known only at runtime, because it is ${typeText(checker, type)}`,
+    );
   }
-  if (copy.kind === "empty") {
-    return {
-      payload: {
-        kind: "fields",
-        fields: [],
-        indexes: [],
-        declared: undefined,
-        changed: true,
-      },
-      notes: [
-        `the ${channel} ${typeText(checker, type)} is copied with { ...value } as {}, because ${copy.reason} (client.ts:74-75)`,
-      ],
-      unverified: undefined,
-    };
+  // RTK types params as an object, null or void (api.ts:63), so only a body reaches these.
+  if (
+    !isObjectLike(type) ||
+    checker.isArrayType(type) ||
+    checker.isTupleType(type)
+  ) {
+    return unverified(
+      `the checker does not model the copy of a ${typeText(checker, type)}`,
+    );
   }
-  if (!enumerable) {
-    return {
-      payload: {
-        kind: "fields",
-        fields: copy.entries.map((entry) => ({
-          name: entry.name,
-          values: [typeValue(entry.type)],
-          optional: false,
-          declaration: undefined,
-        })),
-        indexes: [],
-        declared: undefined,
-        changed: true,
-      },
-      notes: [
-        `the ${channel} ${typeText(checker, type)} is copied with { ...value } into numbered keys (client.ts:74-75)`,
-      ],
-      unverified: undefined,
-    };
+  if (!type.isIntersection() && isLibType(type)) {
+    return unverified(
+      `a ${typeText(checker, type)} keeps its data behind prototype accessors`,
+    );
   }
   const own = properties(type).filter(
     (property) => !isPrototypeMember(checker, property),
@@ -517,14 +501,23 @@ function bodyPayloads(
   notes: string[];
   unverified: string | undefined;
   failure: string | undefined;
+  alwaysSent: boolean;
 } {
   const { checker } = context;
   const payloads: Payload[] = [];
   const notes: string[] = [];
   let unverified: string | undefined;
   let failure: string | undefined;
+  // A non-GET body that is not undefined is always sent, as JSON or as-is (client.ts:242-250).
+  let alwaysSent = method !== "GET";
   if (!expression) {
-    return { payloads: [NOTHING], notes, unverified, failure };
+    return {
+      payloads: [NOTHING],
+      notes,
+      unverified,
+      failure,
+      alwaysSent: false,
+    };
   }
   const type = checker.getTypeAtLocation(expression);
   const rawBodyTypes = ["FormData", "URLSearchParams"].flatMap((name) => {
@@ -537,6 +530,7 @@ function bodyPayloads(
     );
     if (member.flags & UNDEFINED) {
       payloads.push(NOTHING);
+      alwaysSent = false;
     } else if (member.flags & ts.TypeFlags.Null) {
       if (method === "GET") {
         payloads.push(NOTHING);
@@ -571,7 +565,7 @@ function bodyPayloads(
       unverified ??= copied.unverified;
     }
   }
-  return { payloads, notes, unverified, failure };
+  return { payloads, notes, unverified, failure, alwaysSent };
 }
 
 function withoutCacheKey(
@@ -609,7 +603,7 @@ function withoutTypeFlags(
     if (kept.length === all.length) {
       return [value];
     }
-    // `getNonNullableType` keeps a declared name such as `boolean`,
+    // `getNonNullableType` keeps a declared name such as `boolean` or `TaskRunType`,
     // but it also removes null, so it only fits when null is being removed or absent.
     const removesSameMembers = all.every(
       (type) =>
@@ -1363,19 +1357,20 @@ function pathParameters(
   return { text, parameters };
 }
 
-type QueryPiece =
-  | { kind: "text"; text: string; encoded: boolean }
-  | { kind: "values"; values: SentValue[]; encoded: boolean; source: string };
+interface QueryPiece {
+  text: string;
+  encoded: boolean;
+}
 
+/** The one text a URL slot in the query string is known to have, or why it isn't known. */
 function queryPiece(
   context: ModelContext,
   slot: UrlSlot,
   tags: Map<string, SentPathParameter>,
   notes: string[],
-  unverified: string[],
-): QueryPiece {
+): { piece: QueryPiece } | { unverified: string } {
   if (slot.kind === "text") {
-    return { kind: "text", text: slot.text, encoded: false };
+    return { piece: { text: slot.text, encoded: false } };
   }
   const found =
     slot.kind === "tag"
@@ -1392,179 +1387,50 @@ function queryPiece(
         };
   notes.push(...found.notes);
   if (found.unverified) {
-    unverified.push(found.unverified);
+    return { unverified: found.unverified };
   }
   const [only, ...more] = knownTexts(context.checker, found.values) ?? [];
   return only !== undefined && !more.length
-    ? { kind: "text", text: only, encoded: found.encoded }
+    ? { piece: { text: only, encoded: found.encoded } }
     : {
-        kind: "values",
-        values: found.values,
-        encoded: found.encoded,
-        source: found.source,
+        unverified: `${found.source} is put into the URL template's query string, and the checker only reads a query string whose every value is one known text (client.ts:38)`,
       };
 }
 
-// `new URL` parses the inline query string the way `URLSearchParams` does: "&" splits, "+" is a space,
-// and "%" starts an escape, so each value is read back after that decoding (client.ts:38).
-function decodeQueryComponent(text: string): string {
-  return new URLSearchParams(`k=${text.replace(/&/g, "%26")}`).get("k") ?? "";
-}
-
+// `new URL` keeps the template's query string and parses it the way `URLSearchParams` does (client.ts:38).
 function inlineQuery(
   context: ModelContext,
   query: UrlSlot[],
   tags: Map<string, SentPathParameter>,
 ): { fields: SentField[]; notes: string[]; unverified: string | undefined } {
-  const { checker } = context;
   const notes: string[] = [];
-  const unverified: string[] = [];
-  const pieces = query.map((slot) =>
-    queryPiece(context, slot, tags, notes, unverified),
-  );
-  if (pieces.every((piece) => piece.kind === "text")) {
-    const text = pieces
-      .map((piece) =>
-        piece.encoded ? encodeURIComponent(piece.text) : piece.text,
-      )
-      .join("");
-    const [search, fragment] = [text.split("#")[0] ?? "", text.includes("#")];
-    if (fragment) {
-      notes.push(
-        "the URL template's query string ends at #, and fetch does not send the fragment after it (client.ts:38)",
-      );
+  const pieces: QueryPiece[] = [];
+  for (const slot of query) {
+    const result = queryPiece(context, slot, tags, notes);
+    if ("unverified" in result) {
+      return { fields: [], notes, unverified: result.unverified };
     }
-    return {
-      fields: [...new URLSearchParams(search)].map(([name, value]) => ({
-        name,
-        values: [{ kind: "text", text: value }],
-        optional: false,
-        declaration: undefined,
-      })),
-      notes,
-      unverified: undefined,
-    };
+    pieces.push(result.piece);
   }
-  const structural = pieces.find(
-    (piece) =>
-      piece.kind === "text" &&
-      !piece.encoded &&
-      /[&#]/.test(piece.text) &&
-      query[pieces.indexOf(piece)]?.kind !== "text",
-  );
-  if (structural?.kind === "text") {
-    return {
-      fields: [],
-      notes,
-      unverified: `a URL template value ${JSON.stringify(structural.text)} changes the query string's structure next to a value the checker cannot read (client.ts:38)`,
-    };
-  }
-  const pairs: QueryPiece[][] = [[]];
-  for (const piece of pieces) {
-    if (piece.kind !== "text" || piece.encoded) {
-      pairs.at(-1)?.push(piece);
-      continue;
-    }
-    piece.text
-      .split("#")[0]
-      ?.split("&")
-      .forEach((part, index) => {
-        if (index > 0) {
-          pairs.push([]);
-        }
-        if (part) {
-          pairs.at(-1)?.push({ kind: "text", text: part, encoded: false });
-        }
-      });
-  }
-  const fields: SentField[] = [];
-  for (const pair of pairs.filter((candidate) => candidate.length)) {
-    const equals = pair.findIndex(
-      (piece) =>
-        piece.kind === "text" && !piece.encoded && piece.text.includes("="),
+  const text = pieces
+    .map((piece) =>
+      piece.encoded ? encodeURIComponent(piece.text) : piece.text,
+    )
+    .join("");
+  const [search, fragment] = [text.split("#")[0] ?? "", text.includes("#")];
+  if (fragment) {
+    notes.push(
+      "the URL template's query string ends at #, and fetch does not send the fragment after it (client.ts:38)",
     );
-    const at = equals === -1 ? undefined : pair[equals];
-    const keyText =
-      at?.kind === "text" ? at.text.slice(0, at.text.indexOf("=")) : "";
-    const keyPieces: QueryPiece[] = [
-      ...(equals === -1 ? pair : pair.slice(0, equals)),
-      ...(keyText
-        ? [{ kind: "text", text: keyText, encoded: false } as const]
-        : []),
-    ];
-    if (keyPieces.some((piece) => piece.kind !== "text")) {
-      return {
-        fields,
-        notes,
-        unverified:
-          "a query string key in the URL template is built at runtime",
-      };
-    }
-    const name = decodeQueryComponent(
-      keyPieces
-        .map((piece) =>
-          piece.kind === "text" && piece.encoded
-            ? encodeURIComponent(piece.text)
-            : piece.kind === "text"
-              ? piece.text
-              : "",
-        )
-        .join(""),
-    );
-    const valueText =
-      at?.kind === "text" ? at.text.slice(at.text.indexOf("=") + 1) : "";
-    const valuePieces: QueryPiece[] = [
-      ...(valueText
-        ? [{ kind: "text", text: valueText, encoded: false } as const]
-        : []),
-      ...(equals === -1 ? [] : pair.slice(equals + 1)),
-    ];
-    fields.push({
+  }
+  return {
+    fields: [...new URLSearchParams(search)].map(([name, value]) => ({
       name,
-      values: inlineValues(checker, valuePieces, notes),
+      values: [{ kind: "text", text: value }],
       optional: false,
       declaration: undefined,
-    });
-  }
-  return { fields, notes, unverified: unverified[0] };
-}
-
-function inlineValues(
-  checker: ts.TypeChecker,
-  pieces: QueryPiece[],
-  notes: string[],
-): SentValue[] {
-  const [only, ...rest] = pieces;
-  if (!only) {
-    return [{ kind: "text", text: "" }];
-  }
-  for (const piece of pieces) {
-    if (
-      piece.kind === "values" &&
-      !piece.encoded &&
-      piece.values.some(
-        (value) =>
-          value.kind === "type" &&
-          unionMembers(checker, value.type).some(
-            (part) => part.flags & ts.TypeFlags.StringLike,
-          ),
-      )
-    ) {
-      notes.push(
-        `${piece.source} is put into the query string without encoding, so an "&", "#", "+" or "%" in its text would change what is sent, which the checker does not model (client.ts:38)`,
-      );
-    }
-  }
-  if (rest.length) {
-    return [typeValue(checker.getStringType())];
-  }
-  if (only.kind === "text") {
-    return [
-      {
-        kind: "text",
-        text: only.encoded ? only.text : decodeQueryComponent(only.text),
-      },
-    ];
-  }
-  return only.values;
+    })),
+    notes,
+    unverified: undefined,
+  };
 }

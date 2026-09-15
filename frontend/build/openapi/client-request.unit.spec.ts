@@ -20,6 +20,57 @@ afterEach(() => {
   }
 });
 
+// The request shape RTK hands to baseQuery (frontend/src/metabase/api/api.ts:59-65).
+// `defineEndpoint` types the fixture's query function the way RTK's builder does,
+// so a fixture cannot build a request a real endpoint cannot.
+const BASE_QUERY_ARGS = `
+  type BaseQueryArgs = string | {
+    method?: "GET" | "POST" | "PUT" | "DELETE";
+    url: string | null;
+    params?: Record<string, unknown> | null | void;
+    body?: unknown;
+  };
+  declare function defineEndpoint<Argument>(endpoint: {
+    query: (argument: Argument) => BaseQueryArgs;
+    extraOptions?: unknown;
+  }): { query: (argument: Argument) => BaseQueryArgs; extraOptions?: unknown };
+`;
+
+function endpointDeclaration(
+  sourceFile: ts.SourceFile,
+): ts.VariableDeclaration | undefined {
+  let found: ts.VariableDeclaration | undefined;
+  const visit = (node: ts.Node) => {
+    if (
+      ts.isVariableDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      node.name.text === "endpoint" &&
+      node.initializer
+    ) {
+      found = node;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return found;
+}
+
+/** The fixture with its `const endpoint = { ... }` object passed through `defineEndpoint`. */
+function typedFixture(source: string): string {
+  const parsed = ts.createSourceFile(
+    "fixture.ts",
+    source,
+    ts.ScriptTarget.ESNext,
+  );
+  const initializer = endpointDeclaration(parsed)?.initializer;
+  if (!initializer || !ts.isObjectLiteralExpression(initializer)) {
+    throw new Error("The fixture needs a `const endpoint = { ... }` object.");
+  }
+  const start = initializer.getStart(parsed);
+  const end = initializer.getEnd();
+  return `${BASE_QUERY_ARGS}${source.slice(0, start)}defineEndpoint(${source.slice(start, end)})${source.slice(end)}`;
+}
+
 function model(source: string): {
   request: ClientRequest;
   checker: ts.TypeChecker;
@@ -27,7 +78,7 @@ function model(source: string): {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "client-request-"));
   directories.push(root);
   const file = path.join(root, "request.ts");
-  fs.writeFileSync(file, source);
+  fs.writeFileSync(file, typedFixture(source));
   const program = ts.createProgram([file], {
     strict: true,
     noEmit: true,
@@ -37,22 +88,27 @@ function model(source: string): {
   });
   const checker = program.getTypeChecker();
   const sourceFile = program.getSourceFile(file);
-  let config: ts.ObjectLiteralExpression | undefined;
-  const visit = (node: ts.Node) => {
-    if (
-      ts.isVariableDeclaration(node) &&
-      ts.isIdentifier(node.name) &&
-      node.name.text === "endpoint" &&
-      node.initializer &&
-      ts.isObjectLiteralExpression(node.initializer)
-    ) {
-      config = node.initializer;
-    }
-    ts.forEachChild(node, visit);
-  };
-  if (sourceFile) {
-    visit(sourceFile);
+  if (!sourceFile) {
+    throw new Error("The fixture was not compiled.");
   }
+  const diagnostics = program.getSemanticDiagnostics(sourceFile);
+  if (diagnostics.length) {
+    throw new Error(
+      diagnostics
+        .map((diagnostic) =>
+          ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"),
+        )
+        .join("\n"),
+    );
+  }
+  const initializer = endpointDeclaration(sourceFile)?.initializer;
+  const config =
+    initializer &&
+    ts.isCallExpression(initializer) &&
+    initializer.arguments[0] &&
+    ts.isObjectLiteralExpression(initializer.arguments[0])
+      ? initializer.arguments[0]
+      : undefined;
   if (!config) {
     throw new Error("The fixture needs a `const endpoint = { ... }` object.");
   }
@@ -259,18 +315,13 @@ describe("modelClientRequest", () => {
     ]);
   });
 
-  it("should read inline query spans after String, encoding and query string parsing", () => {
-    const { request, checker } = model(`
-      const endpoint = { query: ({ flag, id }: { flag: boolean; id: number }) => ({ url: \`/api/x?a=\${flag}&b=\${encodeURIComponent(flag)}&c=\${id}\` }) };
+  it("should leave the query unverified when an inline query value is not one known text", () => {
+    const { request } = model(`
+      const endpoint = { query: ({ flag, id }: { flag: boolean; id: number }) => ({ url: \`/api/x?a=\${flag}&c=\${id}\` }) };
     `);
-    expect(objects(checker, request.query.variants)).toEqual([
-      'fields { a: "false" | "true"; b: "false" | "true"; c: number; }',
-    ]);
-    expect(request.query.notes).toEqual([
-      '${flag} (boolean) is sent as "false" | "true" (the template literal applies String)',
-      '${encodeURIComponent(flag)} (boolean) is sent as "false" | "true" (encodeURIComponent applies String)',
-      "the URL template's inline query string is kept by new URL (client.ts:38)",
-    ]);
+    expect(request.query.unverified).toBe(
+      "${flag} is put into the URL template's query string, and the checker only reads a query string whose every value is one known text (client.ts:38)",
+    );
   });
 
   it("should parse known inline query text the way URLSearchParams does", () => {
@@ -282,15 +333,6 @@ describe("modelClientRequest", () => {
     ]);
     expect(request.query.notes).toContain(
       "the URL template's query string ends at #, and fetch does not send the fragment after it (client.ts:38)",
-    );
-  });
-
-  it("should note an unencoded string span in the query whose text is unknown", () => {
-    const { request } = model(`
-      const endpoint = { query: (name: string) => ({ url: \`/api/x?name=\${name}\` }) };
-    `);
-    expect(request.query.notes).toContain(
-      '${name} is put into the query string without encoding, so an "&", "#", "+" or "%" in its text would change what is sent, which the checker does not model (client.ts:38)',
     );
   });
 
@@ -314,64 +356,42 @@ describe("modelClientRequest", () => {
     );
   });
 
-  it("should leave a template span of a symbol unverified", () => {
-    const { request } = model(`
-      const endpoint = { query: (value: symbol) => ({ url: \`/api/x/\${String(value).length}/\${value as unknown as symbol}\` }) };
-    `);
-    expect(
-      request.pathParameters.map((parameter) => parameter.unverified),
-    ).toEqual([
-      undefined,
-      "${value} (symbol) is sent as text, and its text is known only at runtime (the template literal applies String)",
-    ]);
-  });
-
   it("should model the spread copy the client makes of params and body", () => {
     const { request, checker } = model(`
       class Point { x = 1; get sum() { return 2; } toText() { return "p"; } }
-      const endpoint = { query: ({ point, when }: { point: Point; when: Date }) => ({ method: "POST", url: "/api/x", params: when, body: point }) };
+      const endpoint = { query: (point: Point) => ({ method: "POST", url: "/api/x", body: point }) };
     `);
-    expect(objects(checker, request.query.variants)).toEqual(["nothing"]);
     expect(objects(checker, request.body.variants)).toEqual([
       "fields Point sent as { x: number; }",
     ]);
-    expect(request.query.notes).toContain(
-      "the params Date is copied with { ...value } as {}, because a Date keeps its data behind prototype accessors (client.ts:74-75)",
-    );
     expect(request.body.notes).toEqual([
       "sum is a method or accessor, which { ...value } and JSON.stringify both leave out (client.ts:74-75)",
       "toText is a method or accessor, which { ...value } and JSON.stringify both leave out (client.ts:74-75)",
     ]);
   });
 
-  it("should copy a tuple of params into numbered keys and leave an array unverified", () => {
-    const { request, checker } = model(`
-      const endpoint = { query: (params: [number, "a"]) => ({ url: "/api/x", params }) };
-    `);
-    expect(objects(checker, request.query.variants)).toEqual([
-      'fields { 0: number; 1: "a"; }',
-    ]);
-    const { request: unknownKeys } = model(`
-      const endpoint = { query: (params: number[]) => ({ url: "/api/x", params }) };
-    `);
-    expect(unknownKeys.query.unverified).toBe(
-      "the params is copied with { ...value } before it is sent, and an array is copied one numbered key at a time (client.ts:74-75)",
-    );
-  });
-
-  it("should send a primitive body as {} and leave a string body unverified", () => {
-    const { request, checker } = model(`
-      const endpoint = { query: (body: number) => ({ method: "POST", url: "/api/x", body }) };
-    `);
-    expect(objects(checker, request.body.variants)).toEqual(["fields {}"]);
-    expect(request.body.notes).toEqual([
-      "the body number is copied with { ...value } as {}, because a number has no own properties (client.ts:74-75)",
-    ]);
-    const { request: text } = model(`
-      const endpoint = { query: (body: string) => ({ method: "POST", url: "/api/x", body }) };
-    `);
-    expect(text.body.unverified).toBe(
-      "the body is copied with { ...value } before it is sent, and a string is copied one character key at a time (client.ts:74-75)",
+  it.each([
+    [
+      "a lib object",
+      "Date",
+      "a Date keeps its data behind prototype accessors",
+    ],
+    [
+      "a primitive",
+      "number",
+      "the checker does not model the copy of a number",
+    ],
+    [
+      "an unknown value",
+      "unknown",
+      "its own keys are known only at runtime, because it is unknown",
+    ],
+  ])("should leave a body that is %s unverified", (_name, type, reason) => {
+    const { request } = model(`
+        const endpoint = { query: (body: ${type}) => ({ method: "POST", url: "/api/x", body }) };
+      `);
+    expect(request.body.unverified).toBe(
+      `the body is copied with { ...value } before it is sent, and ${reason} (client.ts:74-75)`,
     );
   });
 
@@ -496,7 +516,7 @@ describe("modelClientRequest", () => {
     ]);
   });
 
-  it("should report that the client throws for an array body or an unsupported method", () => {
+  it("should report that the client throws for an array body", () => {
     expect(
       model(`
         const endpoint = { query: (ids: number[]) => ({ method: "POST", url: "/api/thing", body: ids }) };
@@ -504,18 +524,11 @@ describe("modelClientRequest", () => {
     ).toBe(
       "the client throws before sending an array body (client.ts:200-202)",
     );
-    expect(
-      model(`
-        const endpoint = { query: () => ({ method: "PATCH", url: "/api/thing" }) };
-      `).request.failure,
-    ).toBe(
-      'the client throws "Invalid HTTP method" for PATCH (client.ts:99-101)',
-    );
   });
 
-  it("should read literal and template values from an inline query string", () => {
+  it("should read an inline query string whose values are all known text", () => {
     const { request, checker } = model(`
-      const endpoint = { query: (id: number) => ({ method: "PUT", url: \`/api/graph?skip-graph=true&id=\${id}\` }) };
+      const endpoint = { query: (id: 7) => ({ method: "PUT", url: \`/api/graph?skip-graph=true&id=\${id}\` }) };
     `);
     expect(request.path).toBe("/api/graph");
     const [query] = request.query.variants;
@@ -527,7 +540,7 @@ describe("modelClientRequest", () => {
         ]),
     ).toEqual([
       ["skip-graph", ['"true"']],
-      ["id", ["number"]],
+      ["id", ['"7"']],
     ]);
   });
 
@@ -537,7 +550,7 @@ describe("modelClientRequest", () => {
       const endpoint = { query: () => ({ url: \`/api/activity?\${search}\` }) };
     `);
     expect(request.query.unverified).toBe(
-      "a query string key in the URL template is built at runtime",
+      "${search} is put into the URL template's query string, and the checker only reads a query string whose every value is one known text (client.ts:38)",
     );
   });
 
