@@ -27,6 +27,8 @@
   {:inputs       (json-column ::transform-testing.schema/inputs)
    :expectations (json-column ::transform-testing.schema/expectations)})
 
+;;; ------------------------------------------------- Permissions --------------------------------------------------
+
 (defmethod mi/can-read? :model/TransformTestSuite
   ([instance]
    (mi/can-read? :model/Transform (:transform_id instance)))
