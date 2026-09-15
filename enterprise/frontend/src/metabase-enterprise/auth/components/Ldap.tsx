@@ -5,14 +5,16 @@ import {
   getExtraFormFieldProps,
 } from "metabase/admin/settings/utils";
 import { FormTextInput } from "metabase/forms";
+import type { LdapUserProvisioningProps } from "metabase/plugins";
 import { useAdminSetting } from "metabase/settings";
 import { UserProvisioningSection } from "metabase-enterprise/auth/components/UserProvisioningSection";
 
-export function LdapUserProvisioning() {
+export function LdapUserProvisioning({ disabled }: LdapUserProvisioningProps) {
   return (
     <UserProvisioningSection
       settingKey="ldap-user-provisioning-enabled?"
       providerName="LDAP"
+      disabled={disabled}
     />
   );
 }

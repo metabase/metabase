@@ -99,8 +99,9 @@ export function MappingEditorRow({
               c="text-secondary"
               className={S.editorArrow}
             />
+            {/* the picker shares the line equally with the name field, and only its pills need more room */}
             <MultiSelect
-              flex={2}
+              flex={1}
               miw="14rem"
               classNames={{ inputField: S.groupsSearchField }}
               aria-label={t`${applicationName} groups`}

@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { t } from "ttag";
 
 import type { MappingsType } from "metabase/admin/types";
@@ -45,48 +44,43 @@ export function useGroupMappings({
 }): GroupMappingsState {
   const dispatch = useDispatch();
   const [sendToast] = useToast();
-  const [updateSettings] = useUpdateSettingsMutation();
+  // the mutation's own loading flag is the busy state, so no extra bookkeeping around the write
+  const [updateSettings, { isLoading: isSaving }] = useUpdateSettingsMutation();
   const mappings = useSetting(settingKey) ?? EMPTY_MAPPINGS;
-  const [isSaving, setIsSaving] = useState(false);
 
   const saveMappings = async (
     nextMappings: MappingsType,
     { successMessage, showErrorToast = true }: SaveOptions = {},
   ): Promise<GroupMappingsSaveResult> => {
-    setIsSaving(true);
-    try {
-      const response = await updateSettings({ [settingKey]: nextMappings });
-      if (response.error) {
-        const error = getErrorMessage(
-          response.error,
-          t`Error saving group mapping`,
-        );
-        if (showErrorToast) {
-          sendToast({
-            message: error,
-            icon: "warning",
-            toastColor: "feedback-negative",
-          });
-        }
-        return { ok: false, error };
-      }
-      // show the saved state right away instead of waiting for the settings refetch
-      dispatch(
-        settingsApi.util.updateQueryData(
-          "getSessionProperties",
-          undefined,
-          (draft) => {
-            draft[settingKey] = nextMappings;
-          },
-        ),
+    const response = await updateSettings({ [settingKey]: nextMappings });
+    if (response.error) {
+      const error = getErrorMessage(
+        response.error,
+        t`Error saving group mapping`,
       );
-      if (successMessage != null) {
-        sendToast({ message: successMessage, icon: "check_filled" });
+      if (showErrorToast) {
+        sendToast({
+          message: error,
+          icon: "warning",
+          toastColor: "feedback-negative",
+        });
       }
-      return { ok: true };
-    } finally {
-      setIsSaving(false);
+      return { ok: false, error };
     }
+    // show the saved state right away instead of waiting for the settings refetch
+    dispatch(
+      settingsApi.util.updateQueryData(
+        "getSessionProperties",
+        undefined,
+        (draft) => {
+          draft[settingKey] = nextMappings;
+        },
+      ),
+    );
+    if (successMessage != null) {
+      sendToast({ message: successMessage, icon: "check_filled" });
+    }
+    return { ok: true };
   };
 
   return { mappings, isSaving, saveMappings };

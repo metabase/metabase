@@ -58,7 +58,12 @@ const getLdapSchema = (isGroupMappingOn: boolean) =>
       : Yup.string().nullable(),
   });
 
-export type LdapFormValues = Pick<
+// an empty port means the default, so the form allows null where the setting does not
+export type LdapFormValues = Omit<LdapSettingValues, "ldap-port"> & {
+  "ldap-port": number | null;
+};
+
+type LdapSettingValues = Pick<
   EnterpriseSettings,
   | "ldap-host"
   | "ldap-port"
@@ -75,6 +80,9 @@ export type LdapFormValues = Pick<
 >;
 
 type LdapTextKey = Exclude<keyof LdapFormValues, "ldap-port" | "ldap-security">;
+
+// the connection test needs a port spelled out, so an empty field falls back to the backend default
+const FALLBACK_LDAP_PORT = 389;
 
 const LDAP_ATTRIBUTE_KEYS = [
   "ldap-attribute-email",
@@ -105,21 +113,25 @@ export const SettingsLdapForm = () => {
   const [updateLdapSettings] = useUpdateLdapMutation();
   const applicationName = useSelector(getApplicationName);
   const isEnabled = settingValues?.["ldap-enabled"];
+  // the cards that save on their own wait until the host and user search base are saved, as on the JWT page
+  const isConfigured = settingValues?.["ldap-configured?"] ?? false;
   const isGroupMappingOn = settingValues?.["ldap-group-sync"] ?? false;
   const schema = useMemo(
     () => getLdapSchema(isGroupMappingOn),
     [isGroupMappingOn],
   );
+  const defaultPort =
+    settingDetails?.["ldap-port"]?.default ?? FALLBACK_LDAP_PORT;
 
   const handleSubmit = useCallback(
     (values: LdapFormValues) => {
       return updateLdapSettings({
         ...values,
-        "ldap-port": Number(values["ldap-port"]),
+        "ldap-port": Number(values["ldap-port"] ?? defaultPort),
         "ldap-enabled": true,
       }).unwrap();
     },
-    [updateLdapSettings],
+    [updateLdapSettings, defaultPort],
   );
 
   if (isLoadingDetails || isLoadingValues) {
@@ -166,9 +178,9 @@ export const SettingsLdapForm = () => {
                   <FormTextInput
                     name="ldap-port"
                     label={t`LDAP port`}
-                    placeholder="389"
-                    required
+                    placeholder={String(defaultPort)}
                     type="number"
+                    nullable
                     {...getExtraFormFieldProps(settingDetails["ldap-port"])}
                   />
                   <FormRadioGroup
@@ -204,7 +216,9 @@ export const SettingsLdapForm = () => {
                 </Stack>
               </SettingsSection>
               {/* the card saves on its own, so it stays out of the form's values */}
-              <PLUGIN_LDAP_FORM_FIELDS.LdapUserProvisioning />
+              <PLUGIN_LDAP_FORM_FIELDS.LdapUserProvisioning
+                disabled={!isConfigured}
+              />
               <SettingsSection
                 title={t`User schema`}
                 titleProps={SETTINGS_CARD_TITLE_PROPS}
@@ -267,7 +281,10 @@ export const SettingsLdapForm = () => {
                 </Stack>
               </CollapsibleSettingsSection>
               {/* the switch and the mappings save on their own, only the group fields belong to the form */}
-              <LdapGroupMappingSection data-testid="ldap-group-mapping-section">
+              <LdapGroupMappingSection
+                data-testid="ldap-group-mapping-section"
+                disabled={!isConfigured}
+              >
                 <FormTextInput
                   name="ldap-group-base"
                   label={t`Group search base`}
@@ -311,10 +328,12 @@ export const getFormValues = (
     return setting?.value ?? null;
   };
 
+  const portSetting = settingDetails["ldap-port"];
   const values: LdapFormValues = {
     "ldap-host": storedValue("ldap-host"),
-    // the connection test needs a port, so the field always shows the one in effect
-    "ldap-port": settingValues["ldap-port"],
+    "ldap-port": portSetting?.is_env_setting
+      ? settingValues["ldap-port"]
+      : (portSetting?.value ?? null),
     "ldap-security": settingValues["ldap-security"] ?? "none",
     "ldap-bind-dn": storedValue("ldap-bind-dn"),
     "ldap-password": storedValue("ldap-password"),

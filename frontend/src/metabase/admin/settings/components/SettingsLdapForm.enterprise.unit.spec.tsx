@@ -63,8 +63,21 @@ describe("SettingsLdapForm (EE)", () => {
       ]);
     });
 
-    it("stays editable before the LDAP host is saved", async () => {
-      await setup({ "ldap-host": null });
+    it("stays disabled until LDAP is configured", async () => {
+      await setup({ "ldap-host": null, "ldap-configured?": false });
+
+      const toggle = screen.getByRole("switch", { name: "User provisioning" });
+      expect(toggle).toBeDisabled();
+      expect(
+        screen.getByRole("switch", { name: "Group mapping" }),
+      ).toBeDisabled();
+    });
+
+    it("comes alive once the host and user search base are saved", async () => {
+      await setup({
+        "ldap-host": "ldap.example.test",
+        "ldap-configured?": true,
+      });
 
       const toggle = screen.getByRole("switch", { name: "User provisioning" });
       await waitFor(() => expect(toggle).toBeEnabled());
@@ -74,6 +87,7 @@ describe("SettingsLdapForm (EE)", () => {
       await setup(
         {
           "ldap-host": "ldap.example.test",
+          "ldap-configured?": true,
           "ldap-user-provisioning-enabled?": true,
         },
         {
@@ -99,6 +113,7 @@ describe("SettingsLdapForm (EE)", () => {
       await setup({
         "ldap-enabled": true,
         "ldap-host": "ldap.example.test",
+        "ldap-configured?": true,
         "ldap-user-provisioning-enabled?": true,
       });
       const toggle = screen.getByRole("switch", { name: "User provisioning" });
@@ -124,7 +139,7 @@ describe("SettingsLdapForm (EE)", () => {
   describe("group membership filter", () => {
     it("shows the default as the placeholder while group mapping is on", async () => {
       await setup(
-        { "ldap-group-sync": true },
+        { "ldap-configured?": true, "ldap-group-sync": true },
         {
           settingDefinitions: [
             { key: "ldap-group-membership-filter", default: "(member={dn})" },
@@ -142,7 +157,11 @@ describe("SettingsLdapForm (EE)", () => {
     it("is saved with the page form", async () => {
       // the required server fields have to be filled for the browser to let the form submit
       await setup(
-        { "ldap-enabled": true, "ldap-group-sync": true },
+        {
+          "ldap-enabled": true,
+          "ldap-configured?": true,
+          "ldap-group-sync": true,
+        },
         {
           settingDefinitions: [
             { key: "ldap-host", value: "ldap.example.test" },

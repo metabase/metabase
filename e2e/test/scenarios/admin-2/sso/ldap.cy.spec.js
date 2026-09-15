@@ -145,6 +145,8 @@ describe(
         cy.intercept("PUT", "/api/permissions/membership/*/clear").as(
           "clearGroup",
         );
+        // the card stays disabled until LDAP is configured
+        H.setupLdap();
         cy.visit("/admin/settings/authentication/ldap");
       });
 
@@ -236,9 +238,11 @@ describe(
       H.setupLdap();
       cy.visit("/admin/settings/authentication/ldap");
 
-      cy.findByRole("switch", { name: "User provisioning" })
-        .should("be.checked")
-        .click({ force: true });
+      cy.findByRole("switch", { name: "User provisioning" }).should(
+        "be.checked",
+      );
+      // the card title is a label wired to the hidden switch input
+      cy.contains("label", "User provisioning").click();
 
       H.undoToast().findByText("Changes saved").should("be.visible");
       cy.findByRole("switch", { name: "User provisioning" }).should(
@@ -317,9 +321,14 @@ const newMappingButton = () =>
 
 const groupsPicker = () => cy.findByLabelText("Metabase groups");
 
+// Mantine hides the switch's input, so the card title, a label wired to it, takes the click
+const clickGroupMappingSwitch = () =>
+  groupMappingSection().contains("label", "Group mapping").click();
+
 // the switch saves on its own, so wait for that write before adding mappings
 const turnGroupMappingOn = () => {
-  groupMappingSwitch().should("not.be.checked").click({ force: true });
+  groupMappingSwitch().should("not.be.checked");
+  clickGroupMappingSwitch();
   cy.wait("@updateSetting")
     .its("request.body")
     .should("deep.equal", { value: true });
