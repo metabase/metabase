@@ -63,7 +63,6 @@ const SAML_FORM_SCHEMA = Yup.object({
   "saml-attribute-group": Yup.string().nullable().default(null),
 });
 
-// fields whose label says it all show only the env-var notice under them
 const getEnvNoticeProps = (setting: SettingDefinition | undefined) =>
   setting?.is_env_setting ? getExtraFormFieldProps(setting) : {};
 
@@ -75,6 +74,7 @@ export function SettingsSAMLForm() {
   const [updateSamlSettings] = useUpdateSamlMutation();
 
   const isEnabled = Boolean(settingValues?.["saml-enabled"]);
+  const isConfigured = settingValues?.["saml-configured"] ?? false;
 
   const handleSubmit = useCallback(
     (values: SAMLFormSettings) => {
@@ -237,6 +237,7 @@ export function SettingsSAMLForm() {
               <UserProvisioningSection
                 settingKey="saml-user-provisioning-enabled?"
                 providerName="SAML"
+                disabled={!isConfigured}
                 lockedNote={scimNote}
               />
 
@@ -277,8 +278,10 @@ export function SettingsSAMLForm() {
                 </Stack>
               </CollapsibleSettingsSection>
 
-              {/* the switch and the mappings save on their own, only the group attribute belongs to the form */}
-              <SamlGroupMappingSection data-testid="saml-group-mapping-section">
+              <SamlGroupMappingSection
+                data-testid="saml-group-mapping-section"
+                disabled={!isConfigured}
+              >
                 <FormTextInput
                   name="saml-attribute-group"
                   label={t`Group attribute name`}
@@ -330,7 +333,7 @@ const getFormValues = (
     samlSettings,
     (val) => val ?? null,
   ) as SAMLFormSettings;
-  // an untouched application name stays empty so its default can show as the placeholder, while an env var shows what it sets
+  // read from the admin list, so an untouched application name shows its default as the placeholder
   const applicationNameSetting = settingDetails["saml-application-name"];
   if (!applicationNameSetting?.is_env_setting) {
     values["saml-application-name"] = applicationNameSetting?.value ?? null;

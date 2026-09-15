@@ -1,6 +1,5 @@
-import { useDebouncedCallback } from "@mantine/hooks";
 import cx from "classnames";
-import { useEffect, useId, useRef, useState } from "react";
+import { useId } from "react";
 import { t } from "ttag";
 
 import {
@@ -10,9 +9,9 @@ import {
   useMappingDeletion,
   useMappingEditor,
 } from "metabase/admin/settings/auth/components/GroupMappings";
-import { useSelector } from "metabase/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { useAdminSetting } from "metabase/settings";
+import { settingsApi, useAdminSetting } from "metabase/settings";
 import {
   SETTINGS_CARD_DESCRIPTION_PROPS,
   SETTINGS_CARD_STACK_PROPS,
@@ -33,80 +32,52 @@ import {
 
 import S from "./SamlGroupMappingSection.module.css";
 
-// a burst of clicks ends in a single write for the last value
-export const GROUP_SYNC_WRITE_DEBOUNCE_MS = 300;
-
-// sentAt is set once the debounced write goes out, so only refetches after that can settle it
-type PendingWrite = { id: number; value: boolean; sentAt: number | null };
-
 type SamlGroupMappingSectionProps = {
-  // the group fields of the page form, shown only while group mapping is on
   children: React.ReactNode;
+  disabled?: boolean;
 } & BoxProps;
 
-/** The group mapping card, with a switch that saves on its own and the mappings under it */
 export function SamlGroupMappingSection({
   children,
+  disabled = false,
   ...boxProps
 }: SamlGroupMappingSectionProps) {
   const inputId = useId();
   const descriptionId = useId();
+  const dispatch = useDispatch();
   const applicationName = useSelector(getApplicationName);
   const {
     value,
     settingDetails,
     updateSetting,
+    updateSettingResult,
     isLoading,
-    isFetching,
-    startedTimeStamp,
   } = useAdminSetting("saml-group-sync");
-  // the last chosen value, shown until a refetch that started after its write lands
-  const [pendingWrite, setPendingWrite] = useState<PendingWrite | null>(null);
-  const lastWriteId = useRef(0);
   const envName = settingDetails?.is_env_setting
     ? settingDetails.env_name
     : undefined;
-  // the lock is only known once the settings list has loaded
-  const isDisabled = envName != null || isLoading;
-  const isChecked = pendingWrite?.value ?? value ?? false;
+  // the env lock is only known once the settings list has loaded
+  const isDisabled =
+    disabled || envName != null || isLoading || updateSettingResult.isLoading;
+  const isChecked = value ?? false;
 
-  useEffect(() => {
-    // a refetch that started before the write can still answer with the previous value
-    if (
-      pendingWrite?.sentAt != null &&
-      !isFetching &&
-      startedTimeStamp != null &&
-      startedTimeStamp >= pendingWrite.sentAt
-    ) {
-      setPendingWrite(null);
+  const handleChange = async (enabled: boolean) => {
+    const patch = dispatch(
+      settingsApi.util.updateQueryData(
+        "getSessionProperties",
+        undefined,
+        (draft) => {
+          draft["saml-group-sync"] = enabled;
+        },
+      ),
+    );
+    const { error } = await updateSetting({
+      key: "saml-group-sync",
+      value: enabled,
+    });
+    if (error) {
+      patch.undo();
     }
-  }, [pendingWrite, isFetching, startedTimeStamp]);
-
-  // leaving the page flushes a write that is still waiting on the debounce
-  const saveGroupSync = useDebouncedCallback(
-    async (pending: PendingWrite) => {
-      const sentAt = Date.now();
-      setPendingWrite((current) =>
-        current?.id === pending.id ? { ...current, sentAt } : current,
-      );
-      const { error } = await updateSetting({
-        key: "saml-group-sync",
-        value: pending.value,
-      });
-      if (error) {
-        setPendingWrite((current) =>
-          current?.id === pending.id ? null : current,
-        );
-      }
-    },
-    { delay: GROUP_SYNC_WRITE_DEBOUNCE_MS, flushOnUnmount: true },
-  );
-
-  const handleChange = (enabled: boolean) => {
-    lastWriteId.current += 1;
-    const pending = { id: lastWriteId.current, value: enabled, sentAt: null };
-    setPendingWrite(pending);
-    saveGroupSync(pending);
   };
 
   // the card sits inside the page form, so Enter must not reach its submit button
@@ -117,11 +88,14 @@ export function SamlGroupMappingSection({
   };
 
   return (
-    <SettingsSection stackProps={SETTINGS_CARD_STACK_PROPS} {...boxProps}>
+    <SettingsSection
+      stackProps={SETTINGS_CARD_STACK_PROPS}
+      disabled={disabled}
+      {...boxProps}
+    >
       <Flex justify="space-between" align="flex-start" gap="lg">
         <Box>
           <Title {...SETTINGS_CARD_TITLE_PROPS}>
-            {/* the title doubles as the switch's label, so clicking it toggles too */}
             <Text
               component="label"
               htmlFor={inputId}
@@ -150,7 +124,7 @@ export function SamlGroupMappingSection({
           onKeyDown={handleKeyDown}
         />
       </Flex>
-      {isChecked && (
+      {isChecked && !disabled && (
         <Stack gap="lg">
           <SamlGroupMappings />
           {children}
