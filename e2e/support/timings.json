@@ -1013,10 +1013,6 @@
       "duration": 24167
     },
     {
-      "spec": "../test/scenarios/metabot/transforms-codegen.cy.spec.ts",
-      "duration": 35428
-    },
-    {
       "spec": "../test/scenarios/metrics/browse.cy.spec.ts",
       "duration": 35277
     },

@@ -177,18 +177,3 @@
   "Delete the AiUsageLogs created before `cutoff`, returning the number deleted."
   [cutoff :- ms/TemporalInstant]
   (t2/delete! :model/AiUsageLog {:where [:< :created_at cutoff]}))
-
-(mu/defn transform
-  "The Transform with `transform-id`, or nil."
-  [transform-id :- ::lib.schema.id/transform]
-  (t2/select-one :model/Transform :id transform-id))
-
-(mu/defn transforms
-  "The Transforms with `transform-ids`."
-  [transform-ids :- [:sequential ::lib.schema.id/transform]]
-  (t2/select :model/Transform :id [:in transform-ids]))
-
-(mu/defn cards
-  "The Cards with `card-ids`."
-  [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select :model/Card :id [:in card-ids]))
