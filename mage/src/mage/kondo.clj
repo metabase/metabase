@@ -117,6 +117,10 @@
       (println "  " filename))
     ;; Reuse a finished warm pass so this stays fast. A cache without the marker may be partial, from an editor or
     ;; an interrupted run, and would leave cache-reading hooks silent.
+    ;;
+    ;; The marker says a pass finished, not that the cache still matches the sources. Analysis from an earlier
+    ;; revision is accepted here in exchange for speed: [[kondo]] clears the cache and warms it again on every run,
+    ;; and that is the entry point CI uses.
     (when-not (.exists warm-cache-marker)
       (warm-cache!))
     (let [{:keys [exit], :or {exit -1}} (apply shell/sh* "clojure" "-M:kondo" "--lint" updated-files)]
