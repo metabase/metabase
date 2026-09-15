@@ -193,6 +193,10 @@
         "341"                      "day-of-year"
         #?(:clj "50" :cljs "50th") "week-of-year"))))
 
+(deftest ^:parallel format-numeric-week-of-year-at-year-boundary-test
+  (is (= #?(:clj "1" :cljs "1st")
+         (format-datetime-with-unit 1 {:unit "week-of-year"}))))
+
 (deftest ^:parallel format-datetime-with-unit-test-2b
   (testing "general dates"
     (testing "default formats for each date style"

@@ -150,7 +150,7 @@
    (name offset-unit)))
 
 (defmethod common/to-range :default [^dayjs value {:keys [n unit] :or {n 1} :as options}]
-  (if (= unit :week)
+  (if (= (keyword unit) :week)
     (let [^dayjs start (truncate-to-week options value)
           ^dayjs end   (.add start n "week")]
       [start (.subtract end 1 "millisecond")])
@@ -458,8 +458,11 @@
         input))
 
     (number? input)
-    (if (= unit :hour-of-day)
-      (str (cond (zero? input) "12" (<= input 12) input :else (- input 12)) " " (if (<= input 11) "AM" "PM"))
+    (case (keyword unit)
+      :hour-of-day  (str (cond (zero? input) "12" (<= input 12) input :else (- input 12))
+                         " "
+                         (if (<= input 11) "AM" "PM"))
+      :week-of-year (str input)
       (or
        (format-extraction-unit time-config
                                (common/number->timestamp input (assoc time-config :unit unit))
@@ -714,7 +717,8 @@
   "ClojureScript implementation of [[metabase.util.time/truncate]]; supports both Day.js instances and ISO-8601
   strings."
   [time-config t unit]
-  (let [time-config (require-time-config time-config)]
+  (let [time-config (require-time-config time-config)
+        unit        (keyword unit)]
     (with-string-preservation t (fn [^dayjs parsed]
                                   (if (= unit :week)
                                     (truncate-to-week time-config parsed)
