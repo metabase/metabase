@@ -27,7 +27,7 @@
     (subs (name display-type) (count "custom:"))))
 
 (defn custom-viz-static-support?
-  "True when `display-type` is a custom visualization whose enabled plugin can be rendered statically —
+  "True when `display-type` is a custom visualization whose active, enabled plugin can be rendered statically —
    i.e. it has an uploaded bundle (a `bundle_hash`) or a dev bundle URL. A cheap structural check only:
    bundle content is resolved once at render time, which falls back to a table render when resolution
    fails."

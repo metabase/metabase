@@ -6,7 +6,7 @@
    [metabase.premium-features.core :refer [defenterprise]]))
 
 (defenterprise enabled-plugin
-  "Enterprise implementation: the enabled plugin with `identifier`, without its bundle blob."
+  "Enterprise implementation: the active, enabled plugin with `identifier`, without its bundle blob."
   :feature :custom-viz
   [identifier]
   (custom-viz-plugin.db/enabled-non-blob-plugin-by-identifier identifier))

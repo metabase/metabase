@@ -117,6 +117,24 @@
 
 ;;; ------------------------------------------------ javascript_visualization rendering ------------------------------------------------
 
+(deftest inactive-custom-viz-falls-back-to-table-test
+  (mt/with-premium-features #{:custom-viz}
+    (doseq [status [:error :pending]]
+      (testing (str "an enabled plugin with status " status " cannot render statically")
+        (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "inactive-chart"
+                                                 :display_name "Inactive Chart"
+                                                 :status       status
+                                                 :enabled      true
+                                                 :bundle_hash  "abc"}]
+          (let [card {:display :custom:inactive-chart}
+                data {:cols [{:name "x"} {:name "y"}] :rows [[1 2]]}]
+            (is (= :table (card/detect-pulse-chart-type card nil data)))
+            (mt/with-dynamic-fn-redefs [custom-viz-plugin/resolve-bundle
+                                        (fn [_]
+                                          (is false "Inactive plugins must not resolve their bundles")
+                                          {:content "function(){}" :hash "abc"})]
+              (is (nil? (body/custom-viz-bundles card))))))))))
+
 (deftest custom-viz-empty-content-falls-back-to-table-test
   (mt/with-premium-features #{:custom-viz}
     (testing "when custom viz returns empty content, falls back to table rendering"
