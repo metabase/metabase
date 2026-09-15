@@ -1029,6 +1029,15 @@
             (recur (conj rows (mapv #(.getObject rs (int %)) (range 1 (inc column-count)))))
             rows))))))
 
+(defmethod driver/columns-on-connection :sql-jdbc
+  [driver conn [sql params]]
+  (with-open [stmt (statement-or-prepared-statement driver conn sql params (driver-api/canceled-chan))]
+    (with-open [^ResultSet rs (if (instance? PreparedStatement stmt)
+                                (.executeQuery ^PreparedStatement stmt)
+                                (.executeQuery stmt ^String sql))]
+      (let [md (.getMetaData rs)]
+        (mapv #(.getColumnLabel md (int %)) (range 1 (inc (.getColumnCount md))))))))
+
 (defmethod driver/execute-raw-queries! :sql-jdbc
   [driver conn-spec queries]
   (try

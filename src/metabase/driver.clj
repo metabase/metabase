@@ -1501,6 +1501,17 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti columns-on-connection
+  "The column labels of the `[sql params]` `query`, in order, without fetching any rows.
+
+  A transform test compares against the columns the transform actually produced, so the names have
+  to come from the materialized table rather than from what the author typed: engines differ on
+  whether an unquoted identifier is folded to upper or lower case, and only the table itself knows
+  which happened."
+  {:added "0.64.0", :arglists '([driver conn query])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
 (defmulti compile-drop-table
   "Compiles the sql for a drop table statement for a given table."
   {:added "0.57.0", :arglists '([driver table])}
