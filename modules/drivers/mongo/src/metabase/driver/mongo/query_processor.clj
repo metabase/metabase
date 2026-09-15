@@ -2053,7 +2053,10 @@ function(bin) {
   "Compile the last stage's `:pivot` clause into a `$facet`-based single-pass pipeline. Each grouping combination
   becomes a facet branch that groups by its kept breakouts and null-pads the dropped ones; facet outputs are
   concatenated with `$concatArrays`, `$unwind`-ed, and `$replaceRoot`-ed to yield a single-column-layout stream,
-  then sorted by the pivot-grouping bitmask followed by the breakouts."
+  then sorted by the pivot-grouping bitmask followed by the breakouts.
+
+  Bounded by the 16 MB BSON limit on the `$facet` output document — a pivot whose branch arrays together
+  exceed 16 MB raises MongoDB error 10334 (translated in [[metabase.driver.mongo.execute]])."
   [query        :- ::lib.schema/query
    stage-number :- :int
    pipeline-ctx :- ::compiled-pipeline]

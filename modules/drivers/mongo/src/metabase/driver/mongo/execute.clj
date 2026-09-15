@@ -16,6 +16,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [every? mapv]])
   (:import
+   (com.mongodb MongoCommandException)
    (com.mongodb.client
     AggregateIterable
     ClientSession
@@ -207,6 +208,39 @@
                []
                (reducible-rows cursor first-row (post-process-row row-col-names))))))
 
+;; https://www.mongodb.com/docs/manual/reference/error-codes/
+(def ^:private bson-object-too-large-code 10334)
+
+(defn- pivot-pipeline?
+  "True iff `pipeline` contains a `$facet` stage."
+  [pipeline]
+  (boolean (some #(contains? % "$facet") pipeline)))
+
+(defn- translate-cursor-error
+  "Wrap a Throwable raised while opening the aggregation cursor into a QP-friendly `ex-info`. Pivot
+  queries that overflow the 16 MB BSON document limit get a message that names the two remediations;
+  everything else gets the generic wrapping."
+  [e native-query]
+  (let [oversize-on-pivot? (and (instance? MongoCommandException e)
+                                (= bson-object-too-large-code
+                                   (.getErrorCode ^MongoCommandException e))
+                                (pivot-pipeline? (:query native-query)))]
+    (if oversize-on-pivot?
+      (ex-info (tru (str "Pivot result exceeded MongoDB''s 16 MB document limit. Reduce the pivot''s "
+                         "cardinality by adding filters or dropping breakouts with many distinct values, "
+                         "or turn off the ''use-native-pivot-tables'' Instance setting to fall back to the "
+                         "multi-query pivot path."))
+               {:driver     :mongo
+                :native     native-query
+                :type       driver-api/qp.error-type.invalid-query
+                :error-code bson-object-too-large-code}
+               e)
+      (ex-info (tru "Error executing query: {0}" (ex-message e))
+               {:driver :mongo
+                :native native-query
+                :type   driver-api/qp.error-type.invalid-query}
+               e))))
+
 (defn execute-reducible-query
   "Process and run a native MongoDB query. This function expects initialized [[mongo.connection/*mongo-client*]]."
   [{{query :query collection-name :collection :as native-query} :native} respond]
@@ -228,9 +262,5 @@
                                                       driver.settings/*query-timeout-ms*)]
         (with-open [^MongoCursor cursor (try (.cursor aggregate)
                                              (catch Throwable e
-                                               (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
-                                                               {:driver :mongo
-                                                                :native native-query
-                                                                :type   driver-api/qp.error-type.invalid-query}
-                                                               e))))]
+                                               (throw (translate-cursor-error e native-query))))]
           (reduce-results native-query query cursor respond))))))
