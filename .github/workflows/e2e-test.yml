@@ -117,6 +117,14 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
 
+      # Overlap backend startup with Cypress preparation and the CLJS download.
+      # The runner exits once the detached Java process passes its health check.
+      - name: Start Metabase in background
+        id: metabase-start
+        background: true
+        timeout-minutes: 6
+        run: node e2e/runner/run_cypress_ci.js start
+
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
@@ -158,9 +166,6 @@ jobs:
         if: steps.prebuilt-cljs.outcome != 'success'
         run: bun run build-pure:cljs
 
-      - name: Run Metabase
-        run: node e2e/runner/run_cypress_ci.js start
-
       # Export this job's numeric GitHub job id as $JOB_ID for the Cypress runs
       # below (ci-conductor failed-tests reporting reads it in after:spec).
       # Snapshot generation is itself a Cypress run that fires after:spec, so
@@ -169,6 +174,9 @@ jobs:
       # more reliably the lookup resolves. JOB_ID exported here persists to the
       # steps below. DEV-1999.
       - uses: ./.github/actions/resolve-job-id
+
+      - name: Wait for Metabase
+        wait: metabase-start
 
       - name: Generate database snapshots
         env:
@@ -243,7 +251,7 @@ jobs:
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v7
         if: |
-          !cancelled() && (steps.split-e2e.outcome == 'failure' || steps.tagged-e2e.outcome == 'failure')
+          !cancelled() && (steps.metabase-start.outcome == 'failure' || steps.split-e2e.outcome == 'failure' || steps.tagged-e2e.outcome == 'failure')
         with:
           name: cypress-recording-${{ inputs.name }}-${{ inputs.edition }}-attempt-${{ github.run_attempt }}
           path: |
