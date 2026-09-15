@@ -2704,7 +2704,7 @@
           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
           (perms/revoke-collection-permissions! (perms/all-users-group) timeline-coll-id)
           (let [result      (mt/user-http-request :rasta :post 200 (format "document/%d/copy" doc-id)
-                                                   {:collection_id coll-id})
+                                                  {:collection_id coll-id})
                 cloned-card (t2/select-one :model/Card :document_id (:id result))]
             (testing "the document-owned card is cloned"
               (is (some? cloned-card))
