@@ -918,6 +918,9 @@
   metabase.content-translation.db
   {:linters {:metabase/unmarked-sql-value {:level :warning}}}
 
+  metabase.glossary.db
+  {:linters {:metabase/unmarked-sql-value {:level :warning}}}
+
   ;; .cljc tests run in both Clojure and ClojureScript — `with-dynamic-fn-redefs` is JVM-only,
   ;; so leave these alone.
   metabase.lib.aggregation-test
