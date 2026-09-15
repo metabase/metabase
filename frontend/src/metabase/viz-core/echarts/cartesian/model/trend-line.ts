@@ -1,5 +1,6 @@
 import Color from "color";
 
+import { deriveChartShadeColor } from "metabase/ui/colors/accents";
 import { checkNumber, isNotNull } from "metabase/utils/types";
 import type { RawSeries } from "metabase-types/api";
 
@@ -33,6 +34,51 @@ import type {
 type TrendFn = (days: number) => number;
 
 const getTrendKeyForSeries = (dataKey: DataKey) => `${dataKey}_trend`;
+
+const getTrendLineColor = (
+  seriesModel: SeriesModel,
+  customColor: string | undefined,
+  renderingContext: RenderingContext,
+) => {
+  if (customColor != null) {
+    return renderingContext.getColor(customColor);
+  }
+
+  return deriveChartShadeColor(
+    Color(renderingContext.getColor(seriesModel.color)).hex(),
+  );
+};
+
+/**
+ * With a single series, trend lines are customized with the global settings in
+ * the Display tab; with multiple series, per series in the series settings
+ * popover. The global color is read from the stored settings because the
+ * computed one always has a series-based default.
+ */
+const getTrendLineCustomization = (
+  rawSeries: RawSeries,
+  seriesModel: SeriesModel,
+  hasMultipleSeries: boolean,
+  settings: ComputedVisualizationSettings,
+) => {
+  const globalStyle = settings["graph.trendline_style"] ?? "solid";
+
+  if (!hasMultipleSeries) {
+    return {
+      customColor:
+        rawSeries[0].card.visualization_settings?.["graph.trendline_color"],
+      style: globalStyle,
+    };
+  }
+
+  const seriesSettings = settings.series?.(
+    seriesModel.legacySeriesSettingsObjectKey,
+  );
+  return {
+    customColor: seriesSettings?.["trendline.color"],
+    style: seriesSettings?.["trendline.style"] ?? globalStyle,
+  };
+};
 
 const getSeriesModelsWithTrends = (
   rawSeries: RawSeries,
@@ -166,18 +212,28 @@ export const getTrendLines = (
     return trendDatum;
   });
 
+  const hasMultipleSeries = seriesModels.length > 1;
+
   const trendSeriesModels: TrendLineSeriesModel[] = seriesModelsWithTrends.map(
-    ([seriesModel]) => ({
-      dataKey: getTrendKeyForSeries(seriesModel.dataKey),
-      sourceDataKey: seriesModel.dataKey,
-      name: `${seriesModel.name}; trend line`, // not used in UI
-      color: Color(renderingContext.getColor(seriesModel.color))
-        .lighten(0.25)
-        .hex(),
-      visible: true,
-      column: seriesModel.column,
-      columnIndex: seriesModel.columnIndex,
-    }),
+    ([seriesModel]) => {
+      const { customColor, style } = getTrendLineCustomization(
+        rawSeries,
+        seriesModel,
+        hasMultipleSeries,
+        settings,
+      );
+
+      return {
+        dataKey: getTrendKeyForSeries(seriesModel.dataKey),
+        sourceDataKey: seriesModel.dataKey,
+        name: `${seriesModel.name}; trend line`, // not used in UI
+        color: getTrendLineColor(seriesModel, customColor, renderingContext),
+        style,
+        visible: true,
+        column: seriesModel.column,
+        columnIndex: seriesModel.columnIndex,
+      };
+    },
   );
   const dataKeys = trendSeriesModels.map((seriesModel) => seriesModel.dataKey);
 

@@ -21,13 +21,16 @@ function getSeries(
   return {
     card: createMockCard({
       display,
-      visualization_settings: changeSeriesName
-        ? {
-            series_settings: {
-              [`Test ${index}`]: { title: `Test ${index} updated` },
-            },
-          }
-        : {},
+      visualization_settings: {
+        "graph.show_values": true,
+        ...(changeSeriesName
+          ? {
+              series_settings: {
+                [`Test ${index}`]: { title: `Test ${index} updated` },
+              },
+            }
+          : {}),
+      },
       name: `Test ${index}`,
     }),
     ...createMockDataset({

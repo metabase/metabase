@@ -75,10 +75,10 @@ describe("scenarios > visualizations > line chart", () => {
 
       // For bar chart
       cy.icon("bar").click();
-      cy.findByText("Line shape").should("not.be.visible");
-      cy.findByText("Line style").should("not.be.visible");
-      cy.findByText("Line size").should("not.be.visible");
-      cy.findByText("Show dots on lines").should("not.be.visible");
+      cy.findByText("Line shape").should("not.exist");
+      cy.findByText("Line style").should("not.exist");
+      cy.findByText("Line size").should("not.exist");
+      cy.findByText("Show dots on lines").should("not.exist");
     });
   });
 

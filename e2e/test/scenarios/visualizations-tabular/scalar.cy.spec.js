@@ -69,8 +69,8 @@ describe("scenarios > visualizations > scalar", () => {
     H.openVizSettingsSidebar();
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Show the time").should("be.hidden");
+    cy.findByText("Show the time").should("not.exist");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Time style").should("be.hidden");
+    cy.findByText("Time style").should("not.exist");
   });
 });

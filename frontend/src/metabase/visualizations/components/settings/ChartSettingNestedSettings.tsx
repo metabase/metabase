@@ -145,14 +145,16 @@ export const chartSettingNestedSettings = <T,>(
         extra,
       );
 
-      return widgets.map((widget) => ({
-        ...widget,
-        style: {
-          ...widget.style,
-          marginLeft: 0,
-          marginRight: 0,
-        },
-      }));
+      return widgets
+        .filter((widget) => !widget.hidden)
+        .map((widget) => ({
+          ...widget,
+          style: {
+            ...widget.style,
+            marginLeft: 0,
+            marginRight: 0,
+          },
+        }));
     };
 
     render() {
