@@ -173,6 +173,8 @@ describe("modelClientRequest", () => {
       'options ({ a: number; }) is sent as "[object Object]" (utils.ts:50-56)',
       "ids ((number | null)[]) is not sent when its array is empty (utils.ts:50-53)",
       'ids ((number | null)[]) is sent as (number | "null")[] (utils.ts:50-56)',
+      "stamp (Stamp) is sent as the text from its own toString, Symbol.toPrimitive or Symbol.toStringTag, which the checker does not model (utils.ts:50-56)",
+      "date (Date) is sent as the text from its own toString, Symbol.toPrimitive or Symbol.toStringTag, which the checker does not model (utils.ts:50-56)",
     ]);
   });
 
@@ -194,7 +196,7 @@ describe("modelClientRequest", () => {
     expect(request.pathParameters.map((parameter) => parameter.notes)).toEqual([
       [
         ":flag is filled from params.flag (utils.ts:165-168)",
-        ':flag (false | true) is sent as "false" | "true" (utils.ts:180)',
+        ':flag (boolean) is sent as "false" | "true" (utils.ts:180)',
       ],
       [
         ":options is filled from params.options (utils.ts:165-168)",
@@ -242,6 +244,135 @@ describe("modelClientRequest", () => {
       [
         '${missing} (number | undefined) is sent as number | "undefined" (the template literal applies String)',
       ],
+    ]);
+  });
+
+  it("should read inline query spans after String, encoding and query string parsing", () => {
+    const { request, checker } = model(`
+      const endpoint = { query: ({ flag, id }: { flag: boolean; id: number }) => ({ url: \`/api/x?a=\${flag}&b=\${encodeURIComponent(flag)}&c=\${id}\` }) };
+    `);
+    expect(objects(checker, request.query.variants)).toEqual([
+      'fields { a: "false" | "true"; b: "false" | "true"; c: number; }',
+    ]);
+    expect(request.query.notes).toEqual([
+      '${flag} (boolean) is sent as "false" | "true" (the template literal applies String)',
+      '${encodeURIComponent(flag)} (boolean) is sent as "false" | "true" (encodeURIComponent applies String)',
+      "the URL template's inline query string is kept by new URL (client.ts:38)",
+    ]);
+  });
+
+  it("should parse known inline query text the way URLSearchParams does", () => {
+    const { request, checker } = model(`
+      const endpoint = { query: (value: "x&y=1") => ({ url: \`/api/x?q=a+b%21&v=\${value}#ignored=1\` }) };
+    `);
+    expect(objects(checker, request.query.variants)).toEqual([
+      'fields { q: "a b!"; v: "x"; y: "1"; }',
+    ]);
+    expect(request.query.notes).toContain(
+      "the URL template's query string ends at #, and fetch does not send the fragment after it (client.ts:38)",
+    );
+  });
+
+  it("should note an unencoded string span in the query whose text is unknown", () => {
+    const { request } = model(`
+      const endpoint = { query: (name: string) => ({ url: \`/api/x?name=\${name}\` }) };
+    `);
+    expect(request.query.notes).toContain(
+      '${name} is put into the query string without encoding, so an "&", "#", "+" or "%" in its text would change what is sent, which the checker does not model (client.ts:38)',
+    );
+  });
+
+  it("should only treat the global encodeURIComponent as encoding a span", () => {
+    const { request, checker } = model(`
+      export {};
+      const encodeURIComponent = (value: number): "fixed" => "fixed";
+      const endpoint = { query: (id: number) => ({ url: \`/api/x/\${encodeURIComponent(id)}\` }) };
+    `);
+    expect(values(checker, request.pathParameters[0]?.values ?? [])).toEqual([
+      '"fixed"',
+    ]);
+  });
+
+  it("should leave a path span unverified when its known text is not one path segment", () => {
+    const { request } = model(`
+      const endpoint = { query: (value: "a/b" | "c") => ({ url: \`/api/x/\${value}\` }) };
+    `);
+    expect(request.pathParameters[0]?.unverified).toBe(
+      '${value} may be "a/b", which new URL does not keep as one path segment (client.ts:38)',
+    );
+  });
+
+  it("should report that a template span of a symbol throws", () => {
+    const { request } = model(`
+      const endpoint = { query: (value: symbol) => ({ url: \`/api/x/\${String(value).length}/\${value as unknown as string & symbol}\` }) };
+    `);
+    expect(request.failure).toBe(
+      "the template literal throws a TypeError for a symbol (the template literal applies String)",
+    );
+  });
+
+  it("should model the spread copy the client makes of params and body", () => {
+    const { request, checker } = model(`
+      class Point { x = 1; get sum() { return 2; } toText() { return "p"; } }
+      const endpoint = { query: ({ point, when }: { point: Point; when: Date }) => ({ method: "POST", url: "/api/x", params: when, body: point }) };
+    `);
+    expect(objects(checker, request.query.variants)).toEqual(["nothing"]);
+    expect(objects(checker, request.body.variants)).toEqual([
+      "fields Point sent as { x: number; }",
+    ]);
+    expect(request.query.notes).toContain(
+      "the params Date is copied with { ...value } as {}, because a Date keeps its data behind prototype accessors (client.ts:74-75)",
+    );
+    expect(request.body.notes).toEqual([
+      "sum is a method or accessor, which { ...value } and JSON.stringify both leave out (client.ts:74-75)",
+      "toText is a method or accessor, which { ...value } and JSON.stringify both leave out (client.ts:74-75)",
+    ]);
+  });
+
+  it("should copy a tuple of params into numbered keys and leave an array unverified", () => {
+    const { request, checker } = model(`
+      const endpoint = { query: (params: [number, "a"]) => ({ url: "/api/x", params }) };
+    `);
+    expect(objects(checker, request.query.variants)).toEqual([
+      'fields { 0: number; 1: "a"; }',
+    ]);
+    const { request: unknownKeys } = model(`
+      const endpoint = { query: (params: number[]) => ({ url: "/api/x", params }) };
+    `);
+    expect(unknownKeys.query.unverified).toBe(
+      "the params is copied with { ...value } before it is sent, and an array is copied one numbered key at a time (client.ts:74-75)",
+    );
+  });
+
+  it("should send a primitive body as {} and leave a string body unverified", () => {
+    const { request, checker } = model(`
+      const endpoint = { query: (body: number) => ({ method: "POST", url: "/api/x", body }) };
+    `);
+    expect(objects(checker, request.body.variants)).toEqual(["fields {}"]);
+    expect(request.body.notes).toEqual([
+      "the body number is copied with { ...value } as {}, because a number has no own properties (client.ts:74-75)",
+    ]);
+    const { request: text } = model(`
+      const endpoint = { query: (body: string) => ({ method: "POST", url: "/api/x", body }) };
+    `);
+    expect(text.body.unverified).toBe(
+      "the body is copied with { ...value } before it is sent, and a string is copied one character key at a time (client.ts:74-75)",
+    );
+  });
+
+  it("should model what JSON.stringify writes for a body", () => {
+    const { request, checker } = model(`
+      type Args = { when: Date; run: () => void; ids: (number | undefined)[]; tags: Map<string, string>; big: bigint; name: string };
+      const endpoint = { query: (body: Args) => ({ method: "POST", url: "/api/x", body }) };
+    `);
+    expect(objects(checker, request.body.variants)).toEqual([
+      "fields Args sent as { when: string; ids: (number | null)[]; tags: {}; big: bigint; name: string; }",
+    ]);
+    expect(request.body.notes).toEqual([
+      "run is a method or accessor, which { ...value } and JSON.stringify both leave out (client.ts:74-75)",
+      "JSON.stringify writes 1 value differently at $.when: Date is written as string by its toJSON (client.ts:250)",
+      "JSON.stringify writes 1 value differently at $.ids[]: undefined is written as null, because JSON.stringify writes undefined in an array as null (client.ts:250)",
+      "JSON.stringify writes 1 value differently at $.tags: Map<string, string> is written as {}, because a Map<string, string> has no own properties to serialise (client.ts:250)",
     ]);
   });
 

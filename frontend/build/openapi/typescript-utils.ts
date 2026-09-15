@@ -142,6 +142,8 @@ function compareDeclarations(
 }
 
 /** A union's members sorted by `typeText`, or the type itself. */
+const sortedUnions = new WeakMap<ts.Type, readonly ts.Type[]>();
+
 export function unionMembers(
   checker: ts.TypeChecker,
   type: ts.Type,
@@ -149,24 +151,67 @@ export function unionMembers(
   if (!type.isUnion()) {
     return [type];
   }
+  const cached = sortedUnions.get(type);
+  if (cached) {
+    return cached;
+  }
   const declaration = (member: ts.Type) =>
     (member.aliasSymbol ?? member.getSymbol())?.declarations?.[0];
-  return [...type.types].sort(
+  const members = [...type.types].sort(
     (left, right) =>
       compareUnionTexts(typeText(checker, left), typeText(checker, right)) ||
       compareDeclarations(declaration(left), declaration(right)),
   );
+  sortedUnions.set(type, members);
+  return members;
 }
 
 /**
  * A type's properties in declaration order, then by name for properties without a declaration.
  * `getProperties` lists a mapped type's properties in the order their key types were created.
  */
+const sortedProperties = new WeakMap<ts.Type, ts.Symbol[]>();
+
 export function properties(type: ts.Type): ts.Symbol[] {
-  return [...type.getProperties()].sort(
+  const cached = sortedProperties.get(type);
+  if (cached) {
+    return cached;
+  }
+  const sorted = [...type.getProperties()].sort(
     (left, right) =>
       compareDeclarations(left.declarations?.[0], right.declarations?.[0]) ||
       compareStrings(left.name, right.name),
+  );
+  sortedProperties.set(type, sorted);
+  return sorted;
+}
+
+/**
+ * Whether an index signature with `indexKeyType` accepts a key of type `key`.
+ * Object keys in JSON and in a query string are text, so a number key is sent as its text
+ * and a string index signature accepts it.
+ */
+export function indexAccepts(
+  checker: ts.TypeChecker,
+  key: ts.Type,
+  indexKeyType: ts.Type,
+): boolean {
+  if (checker.isTypeAssignableTo(key, indexKeyType)) {
+    return true;
+  }
+  const numericText =
+    key.isNumberLiteral() ||
+    (key.isStringLiteral() && String(Number(key.value)) === key.value);
+  if (key.flags & ts.TypeFlags.NumberLike) {
+    return checker.isTypeAssignableTo(checker.getStringType(), indexKeyType);
+  }
+  return (
+    numericText &&
+    key.isStringLiteral() &&
+    checker.isTypeAssignableTo(
+      checker.getNumberLiteralType(Number(key.value)),
+      indexKeyType,
+    )
   );
 }
 

@@ -24,6 +24,7 @@ import {
 } from "./type-comparison";
 import {
   hasComputedName,
+  indexAccepts,
   isObjectLike,
   member,
   properties,
@@ -33,6 +34,7 @@ import {
   unionMembers,
   unwrap,
 } from "./typescript-utils";
+import { type JsonView, describeJsonView } from "./value-conversion";
 
 export type ContractStatus =
   | "compatible"
@@ -616,10 +618,7 @@ function compareFieldsWithTarget(
   const verdicts: Verdict[] = [];
   const indexFor = (name: string) =>
     sent.indexes.find((index) =>
-      checker.isTypeAssignableTo(
-        checker.getStringLiteralType(name),
-        index.keyType,
-      ),
+      indexAccepts(checker, checker.getStringLiteralType(name), index.keyType),
     );
   const names = new Set<string>();
   for (const property of properties(target)) {
@@ -666,7 +665,8 @@ function compareFieldsWithTarget(
   const targetIndexes = checker.getIndexInfosOfType(target);
   for (const field of sent.fields.filter(({ name }) => !names.has(name))) {
     const index = targetIndexes.find((candidate) =>
-      checker.isTypeAssignableTo(
+      indexAccepts(
+        checker,
         checker.getStringLiteralType(field.name),
         candidate.keyType,
       ),
@@ -687,26 +687,26 @@ function compareFieldsWithTarget(
       );
     }
   }
-  // TypeScript rejects an object that shares no property with a type whose properties are all optional.
-  const isWeakTarget =
-    names.size > 0 &&
-    !targetIndexes.length &&
-    target.getCallSignatures().length === 0 &&
-    target.getConstructSignatures().length === 0 &&
-    properties(target).every(
-      (property) => property.flags & ts.SymbolFlags.Optional,
-    );
-  if (
-    isWeakTarget &&
-    sent.fields.length > 0 &&
-    !sent.indexes.length &&
-    !sent.fields.some((field) => names.has(field.name))
-  ) {
-    verdicts.push({
-      status: "mismatch",
-      message: `$: none of the frontend fields ${sent.fields.map((field) => field.name).join(", ")} is declared in the backend type ${typeText(checker, target)}, whose properties are all optional`,
-    });
-  }
+  verdicts.push(
+    ...sent.fields
+      .filter(
+        (field) =>
+          !names.has(field.name) &&
+          !targetIndexes.some((index) =>
+            indexAccepts(
+              checker,
+              checker.getStringLiteralType(field.name),
+              index.keyType,
+            ),
+          ),
+      )
+      .map(
+        (field): Verdict => ({
+          status: "mismatch",
+          message: `${fieldLabel(`$.${field.name}`, field.declaration, root)}: frontend sends a field the backend type does not declare`,
+        }),
+      ),
+  );
   return combineVerdicts(verdicts, []);
 }
 
@@ -720,6 +720,17 @@ function compareValue(
   declaration: ts.Declaration | undefined,
 ): Verdict {
   const { checker, root } = context;
+  if (value.kind === "json") {
+    return compareJson(
+      context,
+      location,
+      label,
+      value,
+      expected,
+      at,
+      declaration,
+    );
+  }
   if (value.kind !== "empty" && value.itemOf) {
     return compareItem(
       context,
@@ -759,6 +770,248 @@ function compareValue(
     status: "mismatch",
     message: `${label}: frontend value "" is not assignable to backend type ${typeText(checker, expected)}`,
   };
+}
+
+function objectTargets(
+  checker: ts.TypeChecker,
+  expected: ts.Type,
+  arrays: boolean,
+): ts.Type[] {
+  return unionMembers(checker, checker.getNonNullableType(expected)).filter(
+    (member) =>
+      isObjectLike(member) &&
+      (arrays ? checker.isArrayType(member) : !checker.isArrayType(member)),
+  );
+}
+
+/** Whether a backend type accepts an object with no properties. */
+function acceptsEmptyObject(
+  checker: ts.TypeChecker,
+  expected: ts.Type,
+): boolean {
+  return objectTargets(checker, expected, false).some((target) =>
+    properties(target).every(
+      (property) => (property.flags & ts.SymbolFlags.Optional) !== 0,
+    ),
+  );
+}
+
+/** Compares what `JSON.stringify` writes for a value with the backend type for that position. */
+function compareJson(
+  context: CheckContext,
+  location: string,
+  label: string,
+  value: Extract<SentValue, { kind: "json" }>,
+  expected: ts.Type,
+  at: ts.Node,
+  declaration: ts.Declaration | undefined,
+): Verdict {
+  return compareJsonView(
+    context,
+    location,
+    label,
+    value.view,
+    expected,
+    at,
+    declaration,
+  );
+}
+
+function compareJsonView(
+  context: CheckContext,
+  location: string,
+  label: string,
+  view: JsonView,
+  expected: ts.Type,
+  at: ts.Node,
+  declaration: ts.Declaration | undefined,
+): Verdict {
+  const { checker, root } = context;
+  const mismatch = (message: string): Verdict => ({
+    status: "mismatch",
+    message: `${fieldLabel(label, declaration, root)}: ${message}`,
+  });
+  switch (view.kind) {
+    case "type":
+      return compareTypes(
+        context,
+        "request",
+        location,
+        view.type,
+        expected,
+        at,
+        {
+          path: label,
+          declaration,
+        },
+      );
+    case "throws":
+      return mismatch(`${view.reason}, so the request is never sent`);
+    case "unmodelled":
+      return {
+        status: "unverified",
+        message: `${fieldLabel(label, declaration, root)}: ${view.reason}`,
+      };
+    case "null":
+      return checker.isTypeAssignableTo(checker.getNullType(), expected)
+        ? COMPATIBLE
+        : mismatch(
+            `frontend value null, from ${typeText(checker, view.from)}, is not assignable to backend type ${typeText(checker, expected)}`,
+          );
+    case "empty":
+      return acceptsEmptyObject(checker, expected)
+        ? COMPATIBLE
+        : mismatch(
+            `frontend value {}, from ${typeText(checker, view.from)}, is not assignable to backend type ${typeText(checker, expected)}`,
+          );
+    case "union":
+      return combineVerdicts(
+        view.members.map((member) =>
+          compareJsonView(
+            context,
+            location,
+            label,
+            member,
+            expected,
+            at,
+            declaration,
+          ),
+        ),
+        [],
+      );
+    case "array": {
+      const [only, ...more] = objectTargets(checker, expected, true);
+      if (!only) {
+        return mismatch(
+          `frontend value ${describeJsonView(checker, view)} is not assignable to backend type ${typeText(checker, expected)}`,
+        );
+      }
+      if (more.length) {
+        // Several backend array types: compare the type from before JSON.stringify, and say so.
+        const verdict = compareTypes(
+          context,
+          "request",
+          location,
+          view.from,
+          expected,
+          at,
+          { path: label, declaration },
+        );
+        return verdict.status === "compatible"
+          ? verdict
+          : {
+              ...verdict,
+              message: `${verdict.message}${LINE_BREAK}${fieldLabel(label, declaration, root)}: compared before JSON.stringify, because the backend has several array types here`,
+            };
+      }
+      const element = checker.getIndexTypeOfType(only, ts.IndexKind.Number);
+      return element
+        ? compareJsonView(
+            context,
+            location,
+            `${label}[]`,
+            view.element,
+            element,
+            at,
+            undefined,
+          )
+        : mismatch(
+            `frontend value ${describeJsonView(checker, view)} is not assignable to backend type ${typeText(checker, expected)}`,
+          );
+    }
+    case "object": {
+      const [only, ...more] = objectTargets(checker, expected, false);
+      if (!only) {
+        return mismatch(
+          `frontend value ${describeJsonView(checker, view)} is not assignable to backend type ${typeText(checker, expected)}`,
+        );
+      }
+      if (more.length) {
+        // Several backend object types: compare the type from before JSON.stringify, and say so.
+        const verdict = compareTypes(
+          context,
+          "request",
+          location,
+          view.from,
+          expected,
+          at,
+          { path: label, declaration },
+        );
+        return verdict.status === "compatible"
+          ? verdict
+          : {
+              ...verdict,
+              message: `${verdict.message}${LINE_BREAK}${fieldLabel(label, declaration, root)}: compared before JSON.stringify, because the backend has several object types here`,
+            };
+      }
+      const indexes = checker.getIndexInfosOfType(only);
+      const verdicts = properties(only).map((property): Verdict => {
+        const field = view.fields.find(
+          (candidate) => candidate.name === property.name,
+        );
+        const required = !(property.flags & ts.SymbolFlags.Optional);
+        const propertyLabel = `${label}.${property.name}`;
+        if (!field) {
+          return required
+            ? {
+                status: "mismatch",
+                message: `${propertyLabel}: property required by the backend type is missing from the frontend type`,
+              }
+            : COMPATIBLE;
+        }
+        const presence: Verdict[] =
+          required && field.optional
+            ? [
+                {
+                  status: "mismatch",
+                  message: `${fieldLabel(propertyLabel, field.declaration, root)}: property is optional in the frontend type but required by the backend type`,
+                },
+              ]
+            : [];
+        return combineVerdicts(
+          [
+            ...presence,
+            compareJsonView(
+              context,
+              location,
+              propertyLabel,
+              field.view,
+              checker.getTypeOfSymbolAtLocation(property, at),
+              at,
+              field.declaration,
+            ),
+          ],
+          [],
+        );
+      });
+      const extras = view.fields
+        .filter((field) => !properties(only).some((p) => p.name === field.name))
+        .map((field): Verdict => {
+          const index = indexes.find((candidate) =>
+            indexAccepts(
+              checker,
+              checker.getStringLiteralType(field.name),
+              candidate.keyType,
+            ),
+          );
+          return index
+            ? compareJsonView(
+                context,
+                location,
+                `${label}.${field.name}`,
+                field.view,
+                index.type,
+                at,
+                field.declaration,
+              )
+            : {
+                status: "mismatch",
+                message: `${fieldLabel(`${label}.${field.name}`, field.declaration, root)}: frontend sends a field the backend type does not declare`,
+              };
+        });
+      return combineVerdicts([...verdicts, ...extras], []);
+    }
+  }
 }
 
 // Each item is sent as its own query value, so it is compared with the backend's array element type.

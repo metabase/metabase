@@ -15,6 +15,7 @@ import {
   modelClientRequest,
 } from "./client-request";
 import { resolveRtkRequest } from "./rtk-request";
+import type { JsonView } from "./value-conversion";
 
 type SentBody =
   | { kind: "none" }
@@ -201,6 +202,16 @@ function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+/** The text a value is known to have: its own text, or a string literal type's value. */
+function knownText(value: SentValue): string | undefined {
+  if (value.kind === "text") {
+    return value.text;
+  }
+  return value.kind === "type" && value.type.isStringLiteral()
+    ? value.type.value
+    : undefined;
+}
+
 function valueViolation(
   values: SentValue[],
   text: string,
@@ -211,10 +222,11 @@ function valueViolation(
       ? undefined
       : `${label}: an empty value is not modelled`;
   }
-  const texts = values.flatMap((value) =>
-    value.kind === "text" ? [value.text] : [],
-  );
-  if (values.every((value) => value.kind === "text") && !texts.includes(text)) {
+  const texts = values.map(knownText);
+  if (
+    texts.every((candidate) => candidate !== undefined) &&
+    !texts.includes(text)
+  ) {
     return `${label}: ${JSON.stringify(text)} is not one of ${JSON.stringify(texts)}`;
   }
   return undefined;
@@ -336,6 +348,76 @@ function queryVariantViolations(
   return violations;
 }
 
+/** Whether the JSON value the client sent is one the view describes. */
+function viewAccepts(
+  checker: ts.TypeChecker,
+  view: JsonView,
+  value: unknown,
+): boolean {
+  switch (view.kind) {
+    case "null":
+      return value === null;
+    case "empty":
+      return isRecord(value) && Object.keys(value).length === 0;
+    case "union":
+      return view.members.some((member) => viewAccepts(checker, member, value));
+    case "array":
+      return (
+        Array.isArray(value) &&
+        value.every((item) => viewAccepts(checker, view.element, item))
+      );
+    case "object":
+      return (
+        isRecord(value) &&
+        Object.keys(value).every((key) =>
+          view.fields.some((field) => field.name === key),
+        ) &&
+        view.fields.every(
+          (field) =>
+            (field.optional && !(field.name in value)) ||
+            (field.name in value &&
+              viewAccepts(checker, field.view, value[field.name])),
+        )
+      );
+    case "type": {
+      const { type } = view;
+      if (type.isStringLiteral()) {
+        return value === type.value;
+      }
+      if (type.flags & ts.TypeFlags.StringLike) {
+        return typeof value === "string";
+      }
+      if (type.flags & ts.TypeFlags.NumberLike) {
+        return typeof value === "number";
+      }
+      if (type.flags & ts.TypeFlags.BooleanLike) {
+        return typeof value === "boolean";
+      }
+      return true;
+    }
+    default:
+      return true;
+  }
+}
+
+function jsonValueViolations(
+  checker: ts.TypeChecker,
+  fields: ModelledField[],
+  body: Record<string, unknown>,
+): string[] {
+  return fields.flatMap((field) => {
+    const views = field.values.flatMap((value) =>
+      value.kind === "json" ? [value.view] : [],
+    );
+    if (!views.length || !(field.name in body)) {
+      return [];
+    }
+    return views.some((view) => viewAccepts(checker, view, body[field.name]))
+      ? []
+      : [`body key ${field.name} is not the value the model describes`];
+  });
+}
+
 function bodyVariantViolations(
   checker: ts.TypeChecker,
   variant: SentPayload,
@@ -358,6 +440,7 @@ function bodyVariantViolations(
   }
   const sentKeys = Object.keys(body.value);
   return [
+    ...jsonValueViolations(checker, modelled.fields, body.value),
     ...sentKeys
       .filter(
         (key) =>
@@ -804,6 +887,73 @@ describe("modelClientRequest against the real API client", () => {
     );
   });
 
+  it("should send an inline query span as the text String gives", async () => {
+    await expectConformance(
+      {
+        endpoint:
+          "{ query: (flag: boolean) => ({ url: `/api/x?a=${flag}&b=${encodeURIComponent(flag)}` }) }",
+        argument: "true",
+      },
+      sentRequest({
+        query: [
+          ["a", "true"],
+          ["b", "true"],
+        ],
+      }),
+      sentRequest({
+        query: [
+          ["a", "1"],
+          ["b", "true"],
+        ],
+      }),
+    );
+  });
+
+  it("should read an unencoded inline query span that carries its own query separator", async () => {
+    await expectConformance(
+      {
+        endpoint:
+          '{ query: (value: "x&y=1") => ({ url: `/api/x?v=${value}` }) }',
+        argument: '"x&y=1"',
+      },
+      sentRequest({
+        query: [
+          ["v", "x"],
+          ["y", "1"],
+        ],
+      }),
+      sentRequest({ query: [["v", "x&y=1"]] }),
+    );
+  });
+
+  it("should read inline query text after URLSearchParams decoding", async () => {
+    await expectConformance(
+      {
+        endpoint: "{ query: (_: void) => ({ url: `/api/x?q=a+b%21#skip=1` }) }",
+        argument: "undefined",
+      },
+      sentRequest({ query: [["q", "a b!"]] }),
+      sentRequest({
+        query: [
+          ["q", "a+b%21"],
+          ["skip", "1"],
+        ],
+      }),
+    );
+  });
+
+  it("should not treat a local encodeURIComponent as the global one", async () => {
+    await expectConformance(
+      {
+        endpoint:
+          '{ query: (id: number) => { const encodeURIComponent = (value: number): "fixed" => "fixed"; return { url: `/api/x/${encodeURIComponent(id)}` }; } }',
+        argument: "7",
+      },
+      sentRequest({ path: "/api/x/fixed" }),
+      sentRequest({ path: "/api/x/7" }),
+    );
+  });
+
   it("should encode a template span passed through encodeURIComponent", async () => {
     await expectConformance(
       {
@@ -877,6 +1027,139 @@ describe("modelClientRequest against the real API client", () => {
       expect(request.body.unverified).toMatch(/sent as-is/);
     },
   );
+
+  it("should send a class instance body without its methods and accessors", async () => {
+    await expectConformance(
+      {
+        declarations:
+          'class Point { x = 1; get sum() { return 2; } toText() { return "p"; } }',
+        endpoint:
+          '{ query: (body: Point) => ({ method: "POST", url: "/api/x", body }) }',
+        argument: "new Point()",
+      },
+      sentRequest({
+        method: "POST",
+        body: { kind: "json", value: { x: 1 } },
+      }),
+      sentRequest({
+        method: "POST",
+        body: { kind: "json", value: { x: 1, sum: 2 } },
+      }),
+    );
+  });
+
+  it("should send a Date body as an empty JSON object", async () => {
+    await expectConformance(
+      {
+        endpoint:
+          '{ query: (body: Date) => ({ method: "POST", url: "/api/x", body }) }',
+        argument: "new Date(0)",
+      },
+      sentRequest({ method: "POST", body: { kind: "json", value: {} } }),
+      sentRequest({
+        method: "POST",
+        body: { kind: "json", value: "1970-01-01T00:00:00.000Z" },
+      }),
+    );
+  });
+
+  it("should send a number body as an empty JSON object", async () => {
+    await expectConformance(
+      {
+        endpoint:
+          '{ query: (body: number) => ({ method: "POST", url: "/api/x", body }) }',
+        argument: "7",
+      },
+      sentRequest({ method: "POST", body: { kind: "json", value: {} } }),
+      sentRequest({ method: "POST", body: { kind: "json", value: 7 } }),
+    );
+  });
+
+  it("should copy tuple params into numbered query keys", async () => {
+    await expectConformance(
+      {
+        endpoint:
+          '{ query: (params: [number, "a"]) => ({ url: "/api/x", params }) }',
+        argument: '[7, "a"]',
+      },
+      sentRequest({
+        query: [
+          ["0", "7"],
+          ["1", "a"],
+        ],
+      }),
+      sentRequest({ query: [["0", "7"]] }),
+    );
+  });
+
+  it("should send a Date body field as the text its toJSON gives", async () => {
+    await expectConformance(
+      {
+        endpoint:
+          '{ query: (body: { when: Date }) => ({ method: "POST", url: "/api/x", body }) }',
+        argument: "{ when: new Date(0) }",
+      },
+      sentRequest({
+        method: "POST",
+        body: { kind: "json", value: { when: "1970-01-01T00:00:00.000Z" } },
+      }),
+      sentRequest({
+        method: "POST",
+        body: { kind: "json", value: { when: 0 } },
+      }),
+    );
+  });
+
+  it("should send an undefined array item in a body as null", async () => {
+    await expectConformance(
+      {
+        endpoint:
+          '{ query: (body: { ids: (number | undefined)[] }) => ({ method: "POST", url: "/api/x", body }) }',
+        argument: "{ ids: [1, undefined] }",
+      },
+      sentRequest({
+        method: "POST",
+        body: { kind: "json", value: { ids: [1, null] } },
+      }),
+      sentRequest({
+        method: "POST",
+        body: { kind: "json", value: { ids: [1, "null"] } },
+      }),
+    );
+  });
+
+  it("should send a Map body field and a function body field as JSON.stringify writes them", async () => {
+    await expectConformance(
+      {
+        endpoint:
+          '{ query: (body: { tags: Map<string, string>; run: () => void; name: string }) => ({ method: "POST", url: "/api/x", body }) }',
+        argument:
+          '{ tags: new Map([["a", "b"]]), run: () => undefined, name: "n" }',
+      },
+      sentRequest({
+        method: "POST",
+        body: { kind: "json", value: { tags: {}, name: "n" } },
+      }),
+      sentRequest({
+        method: "POST",
+        body: { kind: "json", value: { tags: { a: "b" }, name: "n" } },
+      }),
+    );
+  });
+
+  it("should send a numeric object key as text", async () => {
+    await expectConformance(
+      {
+        endpoint:
+          '{ query: (body: { collections: Record<number, boolean> }) => ({ method: "POST", url: "/api/x", body }) }',
+        argument: "{ collections: { 1: true } }",
+      },
+      sentRequest({
+        method: "POST",
+        body: { kind: "json", value: { collections: { "1": true } } },
+      }),
+    );
+  });
 
   it("should send a null non-GET body as an empty JSON object", async () => {
     await expectConformance(

@@ -1198,7 +1198,7 @@ describe("request values sent by the API client", () => {
     );
   });
 
-  it("should reject stringified query fields that share no property with an all-optional backend type", () => {
+  it("should reject a query key the backend type does not declare", () => {
     const results = check({
       frontend,
       backend: operation({ query: "query?: { other?: boolean }" }),
@@ -1210,9 +1210,74 @@ describe("request values sent by the API client", () => {
     expect(resultFor(results, "request.query")).toMatchObject({
       status: "mismatch",
       message: expect.stringContaining(
-        "$: none of the frontend fields ignore_view is declared in the backend type { other?: boolean | undefined; }, whose properties are all optional",
+        "$.ignore_view (endpoint.ts:11): frontend sends a field the backend type does not declare",
       ),
     });
+  });
+
+  it("should reject a body key the backend type does not declare, at any depth", () => {
+    const results = check({
+      frontend,
+      backend: operation({
+        method: "Post",
+        body: "body: { user: { name: string } }",
+      }),
+      endpoint: request(
+        "{ user: { name: string; nickname: string } }",
+        '(body) => ({ method: "POST", url: "/api/user", body })',
+      ),
+    });
+    expect(resultFor(results, "request.body")).toMatchObject({
+      status: "mismatch",
+      message: expect.stringContaining(
+        "$.user.nickname (endpoint.ts:11): frontend sends a field the backend type does not declare",
+      ),
+    });
+  });
+
+  it("should accept a sent key the backend takes through an index signature", () => {
+    const results = check({
+      frontend,
+      backend: operation({
+        method: "Post",
+        body: "body: { user: { [key: string]: string } }",
+      }),
+      endpoint: request(
+        "{ user: { name: string } }",
+        '(body) => ({ method: "POST", url: "/api/user", body })',
+      ),
+    });
+    expect(resultFor(results, "request.body")?.status).toBe("compatible");
+  });
+
+  it("should accept numeric keys through a string index signature, since JSON keys are text", () => {
+    const results = check({
+      frontend,
+      backend: operation({
+        method: "Post",
+        body: "body: { collections: { [key: string]: boolean } | null }",
+      }),
+      endpoint: request(
+        "{ collections: Record<number, boolean> }",
+        '(body) => ({ method: "POST", url: "/api/user", body })',
+      ),
+    });
+    expect(resultFor(results, "request.body")?.status).toBe("compatible");
+  });
+
+  it("should accept an optional backend field the frontend does not send", () => {
+    const results = check({
+      frontend,
+      backend: operation({
+        method: "Post",
+        body: "body: { name: string; nickname?: string }",
+      }),
+      endpoint: request(
+        "{ name: string }",
+        '(body) => ({ method: "POST", url: "/api/user", body })',
+      ),
+    });
+    expect(resultFor(results, "request.body")?.status).toBe("compatible");
   });
 
   it("should compare the text String gives for a URL tag with the backend path parameter", () => {
@@ -1232,7 +1297,7 @@ describe("request values sent by the API client", () => {
         '$: frontend value "false" is not assignable to backend type number',
         '$: frontend value "true" is not assignable to backend type number',
         "note: :id is filled from params.id (utils.ts:165-168)",
-        'note: :id (false | true) is sent as "false" | "true" (utils.ts:180)',
+        'note: :id (boolean) is sent as "false" | "true" (utils.ts:180)',
       ],
     );
   });

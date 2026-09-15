@@ -1,6 +1,7 @@
 import ts from "typescript";
 
 import {
+  indexAccepts,
   isObjectLike,
   isTypeReference,
   properties,
@@ -341,11 +342,16 @@ function mismatchDetail(
   return uniqueLines(messages);
 }
 
-function responseFieldProblems(
+/**
+ * Every field of `sent` that `declaredBy` does not declare, and in a response also every backend value
+ * the frontend type does not accept.
+ */
+function fieldCoverageProblems(
   context: CompareContext,
-  backend: ts.Type,
-  frontend: ts.Type,
+  declaredBy: ts.Type,
+  sent: ts.Type,
   at: ts.Node,
+  kind: "request" | "response",
 ): Problem[] {
   const { checker, root } = context;
   const walk = new TypeWalk(context, "field coverage walk");
@@ -375,9 +381,12 @@ function responseFieldProblems(
   ) => {
     walk.step(frontend, { path, declaration }, depth);
     const label = fieldLabel(path, declaration, root);
-    const unassignable = backendTypes.filter(
-      (type) => !checker.isTypeAssignableTo(type, frontend),
-    );
+    const unassignable =
+      kind === "response"
+        ? backendTypes.filter(
+            (type) => !checker.isTypeAssignableTo(type, frontend),
+          )
+        : [];
     if (unassignable.length) {
       problems.push(
         ...unassignable.map(
@@ -395,7 +404,11 @@ function responseFieldProblems(
       }
       const candidates = [
         ...new Set(backendTypes.flatMap((type) => unionMembers(checker, type))),
-      ].filter((type) => checker.isTypeAssignableTo(type, variant));
+      ].filter((type) =>
+        kind === "response"
+          ? checker.isTypeAssignableTo(type, variant)
+          : checker.isTypeAssignableTo(variant, type),
+      );
       const previous = seen.get(variant) ?? [];
       const repeated = previous.find(
         ({ group }) =>
@@ -430,6 +443,10 @@ function responseFieldProblems(
     depth: number,
   ) => {
     if (!candidates.length) {
+      if (kind === "request") {
+        // The request direction only reports fields the backend does not declare.
+        return;
+      }
       problems.push({
         status: "unverified",
         message: `${label}: cannot establish frontend field coverage for frontend union variant ${typeText(checker, variant)}, which no backend type at this position is assignable to.`,
@@ -452,6 +469,14 @@ function responseFieldProblems(
       if (tuple && !/^\d+$/.test(property.name)) {
         continue;
       }
+      // A symbol-keyed or function-valued property is never part of what is sent or received.
+      if (
+        property.name.startsWith("__@") ||
+        (kind === "request" &&
+          checker.getTypeOfSymbol(property).getCallSignatures().length > 0)
+      ) {
+        continue;
+      }
       const field = tuple
         ? `${path}[${property.name}]`
         : `${path}.${property.name}`;
@@ -461,25 +486,19 @@ function responseFieldProblems(
           return [declared];
         }
         const key = checker.getStringLiteralType(property.name);
-        const numeric = String(Number(property.name)) === property.name;
         return checker
           .getIndexInfosOfType(type)
-          .filter(
-            (index) =>
-              checker.isTypeAssignableTo(key, index.keyType) ||
-              (numeric &&
-                checker.isTypeAssignableTo(
-                  checker.getNumberLiteralType(Number(property.name)),
-                  index.keyType,
-                )),
-          )
+          .filter((index) => indexAccepts(checker, key, index.keyType))
           .map((index) => index.type);
       });
       const propertyDeclaration = symbolDeclaration(property);
       if (!values.length) {
         problems.push({
           status: "mismatch",
-          message: `${fieldLabel(field, propertyDeclaration, root)}: frontend field is not declared in the backend schema.`,
+          message:
+            kind === "response"
+              ? `${fieldLabel(field, propertyDeclaration, root)}: frontend field is not declared in the backend schema.`
+              : `${fieldLabel(field, propertyDeclaration, root)}: frontend sends a field the backend type does not declare`,
         });
         continue;
       }
@@ -496,7 +515,7 @@ function responseFieldProblems(
         checker
           .getIndexInfosOfType(type)
           .filter((backendIndex) =>
-            checker.isTypeAssignableTo(index.keyType, backendIndex.keyType),
+            indexAccepts(checker, index.keyType, backendIndex.keyType),
           )
           .map((backendIndex) => backendIndex.type),
       );
@@ -504,14 +523,17 @@ function responseFieldProblems(
       if (!values.length) {
         problems.push({
           status: "mismatch",
-          message: `${fieldLabel(field, index.declaration, root)}: frontend index signature is not declared in the backend schema.`,
+          message:
+            kind === "response"
+              ? `${fieldLabel(field, index.declaration, root)}: frontend index signature is not declared in the backend schema.`
+              : `${fieldLabel(field, index.declaration, root)}: frontend sends keys the backend type does not declare`,
         });
         continue;
       }
       visit(values, index.type, field, index.declaration, depth + 1);
     }
   };
-  walk.run(() => visit([backend], frontend, "$", undefined, 0));
+  walk.run(() => visit([declaredBy], sent, "$", undefined, 0));
   return problems;
 }
 
@@ -571,7 +593,7 @@ function unconstrainedPositions(
   const walk = new TypeWalk(context, "unconstrained type walk");
   const found: UnconstrainedPosition[] = [];
   // For each object type and path, the object types that any route to it went through.
-  type Level = Map<ts.Type, Map<string, Set<ts.Type>>>;
+  type Level = Map<ts.Type, Map<string, ReadonlySet<ts.Type>>>;
   const reach = (
     level: Level,
     reached: ts.Type,
@@ -602,9 +624,16 @@ function unconstrainedPositions(
     if (!(reached.flags & ts.TypeFlags.Object)) {
       return;
     }
-    const byPath = level.get(reached) ?? new Map<string, Set<ts.Type>>();
+    const byPath =
+      level.get(reached) ?? new Map<string, ReadonlySet<ts.Type>>();
     const previous = byPath.get(path);
-    byPath.set(path, new Set([...(previous ?? []), ...through]));
+    if (previous) {
+      const merged = new Set(previous);
+      through.forEach((ancestor) => merged.add(ancestor));
+      byPath.set(path, merged);
+    } else {
+      byPath.set(path, through);
+    }
     level.set(reached, byPath);
   };
   let level: Level = new Map();
@@ -754,8 +783,13 @@ export function compareTypes(
       message: mismatchDetail(context, direction, from, to, at, position),
     };
   }
-  const problems =
-    kind === "response" ? responseFieldProblems(context, from, to, at) : [];
+  const problems = fieldCoverageProblems(
+    context,
+    kind === "response" ? from : to,
+    kind === "response" ? to : from,
+    at,
+    kind,
+  );
   if (!problems.length) {
     return COMPATIBLE;
   }
