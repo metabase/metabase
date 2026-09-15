@@ -140,14 +140,16 @@
    [:routing       {:optional true} [:map-of ms/PositiveInt :string]]])
 
 (mr/def ::permissions-group
-  "A PermissionsGroup as selected from the app DB: every column of `:permissions_group`."
+  "A PermissionsGroup as selected from the app DB: every column of `:permissions_group`, plus `:members` some
+  callers hydrate onto it."
   [:map {:closed true}
    [:id                ms/PositiveInt]
    [:name              :string]
    [:entity_id         :string]
    [:magic_group_type  [:maybe [:or :keyword :string]]]
    [:is_tenant_group   :boolean]
-   [:is_data_app_group :boolean]])
+   [:is_data_app_group :boolean]
+   [:members           {:optional true} [:sequential [:map {:closed true} [:email :string] [:entity_id :string]]]]])
 
 (mr/def ::permissions-group.member
   "A member of a PermissionsGroup as `metabase.permissions.db/group-members` selects it: the User columns the group

@@ -278,7 +278,7 @@
   "Keep only the `:parameters` of `dashboard-or-card` whose slug is listed as `enabled` in the `embedding-params`
   whitelist, so the frontend doesn't display widgets for params (`disabled`, `locked`, or unlisted) the user can't
   set."
-  [dashboard-or-card :- [:or ::dashboards.schema/dashboard (ms/InstanceOf :model/Card)]
+  [dashboard-or-card :- [:or ::dashboards.schema/dashboard :metabase.queries.schema/card]
    embedding-params  :- ms/EmbeddingParams]
   (let [param-slugs-to-keep (enabled-param-slugs (:parameters dashboard-or-card) embedding-params)]
     (update dashboard-or-card :parameters (partial filter #(contains? param-slugs-to-keep (keyword (:slug %)))))))

@@ -12,14 +12,6 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(def ^:private user-columns
-  "Required columns when fetching users for SCIM."
-  [:model/User :id :first_name :last_name :email :locale :is_active :entity_id])
-
-(def ^:private group-columns
-  "Required columns when fetching groups for SCIM."
-  [:model/PermissionsGroup :id :name :entity_id])
-
 (mu/defn scim-api-key
   "The SCIM ApiKey, or nil."
   []
@@ -41,22 +33,22 @@
    (when email [:= :%lower.email (u/lower-case-en email)])])
 
 (mu/defn scim-user-by-entity-id
-  "The SCIM columns of the personal User with `entity-id`, or nil."
+  "The User with `entity-id`, or nil."
   [entity-id :- :string]
-  (t2/select-one user-columns :entity_id entity-id {:where [:= :type "personal"]}))
+  (t2/select-one :model/User :entity_id entity-id {:where [:= :type "personal"]}))
 
 (mu/defn scim-user-by-email
-  "The SCIM columns of the User with `email`, or nil."
+  "The User with `email`, or nil."
   [email :- :string]
-  (t2/select-one user-columns :email (u/lower-case-en email)))
+  (t2/select-one :model/User :email (u/lower-case-en email)))
 
 (mu/defn scim-users
-  "The SCIM columns of the personal Users, narrowed to the optional `email` (case-insensitive), paged by `limit`
-  and `offset` in ID order."
+  "The personal Users, narrowed to the optional `email` (case-insensitive), paged by `limit` and `offset` in ID
+  order."
   [email  :- [:maybe :string]
    limit  :- [:maybe ms/PositiveInt]
    offset :- [:maybe ms/IntGreaterThanOrEqualToZero]]
-  (t2/select user-columns
+  (t2/select :model/User
              {:where    (personal-user-expr email)
               :limit    limit
               :offset   offset
@@ -107,19 +99,19 @@
         excluded-group-ids))
 
 (mu/defn scim-group-by-entity-id
-  "The SCIM columns of the PermissionsGroup with `entity-id` other than `excluded-group-ids`, or nil."
+  "The PermissionsGroup with `entity-id` other than `excluded-group-ids`, or nil."
   [entity-id          :- :string
    excluded-group-ids :- [:sequential ms/PositiveInt]]
-  (t2/select-one group-columns :entity_id entity-id {:where (manageable-group-expr excluded-group-ids nil)}))
+  (t2/select-one :model/PermissionsGroup :entity_id entity-id {:where (manageable-group-expr excluded-group-ids nil)}))
 
 (mu/defn scim-groups
-  "The SCIM columns of the PermissionsGroups other than `excluded-group-ids`, narrowed to the optional `group-name`,
-  paged by `limit` and `offset` in ID order."
+  "The PermissionsGroups other than `excluded-group-ids`, narrowed to the optional `group-name`, paged by `limit`
+  and `offset` in ID order."
   [excluded-group-ids :- [:sequential ms/PositiveInt]
    group-name         :- [:maybe :string]
    limit              :- [:maybe ms/PositiveInt]
    offset             :- [:maybe ms/IntGreaterThanOrEqualToZero]]
-  (t2/select group-columns
+  (t2/select :model/PermissionsGroup
              {:where    (manageable-group-expr excluded-group-ids group-name)
               :limit    limit
               :offset   offset

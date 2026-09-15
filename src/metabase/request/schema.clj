@@ -61,11 +61,11 @@
    [:protocol                {:optional true} :string]
    [:ssl-client-cert         {:optional true} [:maybe (ms/InstanceOfClass java.security.cert.X509Certificate)]]
    [:headers                 {:optional true} [:map-of :string [:maybe :string]]]
-   [:body                    {:optional true} [:maybe [:or (ms/InstanceOfClass java.io.InputStream) ms/RawJSON]]]
+   [:body                    {:optional true} [:maybe [:or (ms/InstanceOfClass java.io.InputStream) ms/RingRequestBody]]]
    [:query-params            {:optional true} [:map-of :string [:or :string [:sequential :string]]]]
    [:form-params             {:optional true} [:map-of :string [:or :string [:sequential :string]]]]
    [:multipart-params        {:optional true} [:map-of :string [:or :string ::multipart-file]]]
-   [:route-params            {:optional true} ms/RawJSON]
+   [:route-params            {:optional true} ms/RingRequestParams]
    [:cookies                 {:optional true} [:map-of :string ::cookie-attrs]]
    [:route-metadata          {:optional true} [:maybe :metabase.api.macros/route-metadata]]
    [:compojure/path          {:optional true} :string]
@@ -74,7 +74,7 @@
    [:character-encoding      {:optional true} [:maybe :string]]
    [:content-type            {:optional true} [:maybe :string]]
    [:content-length          {:optional true} [:maybe :int]]
-   [:params                  {:optional true} ms/RawJSON]
+   [:params                  {:optional true} ms/RingRequestParams]
    [:metabase-session-key    {:optional true} [:maybe :string]]
    [:metabase-session-type   {:optional true} [:maybe :keyword]]
    [:anti-csrf-token         {:optional true} [:maybe :string]]
@@ -98,14 +98,14 @@
 (mr/def ::response
   "What an endpoint handler can return: JSON-shaped data, a full Ring response map, or a file/stream for downloads."
   [:or
-   ms/RawJSON
+   ms/RingResponseBody
    [:map {:closed true} [:id :string]]
    [:map {:closed true} [:success :boolean] [:session_id :string]]
    [:map {:closed true}
     [:status  {:optional true} :int]
     [:headers {:optional true} [:map-of :string :string]]
     [:cookies {:optional true} [:map-of :string ::cookie-attrs]]
-    [:body    {:optional true} [:maybe [:or ms/RawJSON
+    [:body    {:optional true} [:maybe [:or ms/RingResponseBody
                                         (ms/InstanceOfClass java.io.File)
                                         (ms/InstanceOfClass java.io.InputStream)]]]]
    (ms/InstanceOfClass java.io.File)

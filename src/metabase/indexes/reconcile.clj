@@ -8,8 +8,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -141,7 +140,7 @@
   "Physical indexes on `table-name` (`schema`) in `database` via `driver/fetch-table-indexes`.
   Returns `nil` if the driver can't introspect indexes or the warehouse is unreachable, so callers can distinguish
   fetch failure from a successful empty index list."
-  [database   :- (ms/InstanceOf :model/Database)
+  [database   :- :metabase.warehouses.schema/database
    schema     :- [:maybe :string]
    table-name :- :string]
   (try

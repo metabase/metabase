@@ -244,10 +244,10 @@
 
 (mu/defn execute-action!
   "Execute the given action with the given parameters of shape `{<parameter-id> <value>}."
-  ([action              :- (ms/InstanceOf :model/Action)
+  ([action              :- ::actions.schema/action
     request-parameters  :- RequestParameters]
    (execute-action! action request-parameters nil))
-  ([action              :- (ms/InstanceOf :model/Action)
+  ([action              :- ::actions.schema/action
     request-parameters  :- RequestParameters
     {:keys [allow-http-actions?] :or {allow-http-actions? true} :as opts} :- [:maybe ExecuteActionOpts]]
    (when (and (= (:type action) :http) (not allow-http-actions?))

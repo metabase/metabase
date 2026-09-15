@@ -11,10 +11,16 @@
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.metadata-queries :as schema.metadata-queries]
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
+
+(def ^:private FieldOrColumn
+  "A Field, as an app DB row or as Lib metadata."
+  [:multi {:dispatch (fn [x] (if (:lib/type x) :lib-metadata :row))}
+   [:lib-metadata ::lib.schema.metadata/column]
+   [:row          ::warehouse-schema.schema/field]])
 
 (mu/defn table-query
   "Runs the `mbql-query` where the source table is `table-id` and returns the result.
@@ -40,14 +46,10 @@
 
 (mu/defn field-distinct-count
   "Return the distinct count of `field`."
-  ([field :- [:or
-              ::lib.schema.metadata/column
-              (ms/InstanceOf :model/Field)]]
+  ([field :- FieldOrColumn]
    (field-distinct-count field nil))
 
-  ([field :- [:or
-              ::lib.schema.metadata/column
-              (ms/InstanceOf :model/Field)]
+  ([field :- FieldOrColumn
     limit :- [:maybe pos-int?]]
    (let [field (cond-> field
                  (t2/model field) (lib-be/instance->metadata :metadata/column))]
@@ -61,9 +63,7 @@
 
 (mu/defn field-count
   "Return the count of `field`."
-  [field :- [:or
-             ::lib.schema.metadata/column
-             (ms/InstanceOf :model/Field)]]
+  [field :- FieldOrColumn]
   (let [field (cond-> field
                 (t2/model field) (lib-be/instance->metadata :metadata/column))]
     (-> (table-query (:table-id field) #(lib/aggregate % (lib/count field)))

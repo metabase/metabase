@@ -2,7 +2,6 @@
   "Common utility functions and utilities for the bigquery-cloud-sdk driver and related namespaces."
   (:require
    [malli.core :as mc]
-   [metabase.driver-api.core :as driver-api]
    [metabase.driver.bigquery-cloud-sdk.db :as bigquery.db]
    [metabase.driver.connection :as driver.conn]
    [metabase.util :as u]
@@ -69,7 +68,7 @@
 
   Returns the calculated project-id (see [[database-details->credential-project-id]]) String from the credentials."
   {:added "0.42.0"}
-  ^String [database :- [:or driver-api/schema.metadata.database [:fn #(driver-api/instance-of? :model/Database %)]]]
+  ^String [database :- :metabase.warehouses.schema/database-or-metadata]
   ;; :project-id-from-credentials is a database-level cache managed by this driver. We store and read it from
   ;; `:details` regardless of connection type. This is valid so long as read and write service accounts share a
   ;; project ID. See also: [[metabase.driver.bigquery-cloud-sdk.query-processor/project-id-for-current-query]]

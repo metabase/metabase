@@ -13,6 +13,7 @@
    [metabase.parameters.schema :as parameters.schema]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.queries.models.query :as query]
+   [metabase.queries.schema :as queries.schema]
    [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -463,7 +464,7 @@
    model for implicit actions.
 
    Pass in known-models to save a second Card lookup."
-  [known-models :- [:maybe [:sequential (ms/InstanceOf :model/Card)]]
+  [known-models :- [:maybe [:sequential ::queries.schema/card]]
    & options    :- [:* [:or :keyword ms/PositiveInt :string :boolean]]]
   (enrich-actions-with-implicit-params known-models (apply select-actions-without-implicit-params options)))
 
@@ -471,7 +472,7 @@
   "Find the Actions whose `:id` is in `action-ids`, filling in implicit parameters as [[select-actions]] does.
 
    Pass in known-models to save a second Card lookup."
-  [known-models :- [:maybe [:sequential (ms/InstanceOf :model/Card)]]
+  [known-models :- [:maybe [:sequential ::queries.schema/card]]
    action-ids   :- [:sequential ::lib.schema.id/action]]
   (enrich-actions-with-implicit-params known-models (normalize-actions-by-type (actions.db/actions-with-ids action-ids))))
 
@@ -480,7 +481,7 @@
    [[select-actions]] does.
 
    Pass in known-models to save a second Card lookup."
-  [known-models :- [:maybe [:sequential (ms/InstanceOf :model/Card)]]
+  [known-models :- [:maybe [:sequential ::queries.schema/card]]
    model-ids    :- [:sequential ms/PositiveInt]]
   (enrich-actions-with-implicit-params known-models (normalize-actions-by-type (actions.db/unarchived-actions-for-models model-ids))))
 
@@ -489,7 +490,7 @@
    [[select-actions]] does.
 
    Pass in known-models to save a second Card lookup."
-  [known-models :- [:maybe [:sequential (ms/InstanceOf :model/Card)]]
+  [known-models :- [:maybe [:sequential ::queries.schema/card]]
    model-ids    :- [:set ms/PositiveInt]]
   (enrich-actions-with-implicit-params known-models (normalize-actions-by-type (actions.db/unarchived-non-http-actions-for-models model-ids))))
 

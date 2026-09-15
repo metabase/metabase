@@ -321,7 +321,7 @@
 (mu/defn retrieve-pulse :- [:maybe (ms/InstanceOf :model/Pulse)]
   "Fetch a single *Pulse*, and hydrate it with a set of 'standard' hydrations; remove Alert columns, since this is a
   *Pulse* and they will all be unset."
-  [pulse-or-id :- [:or ms/PositiveInt (ms/InstanceOf :model/Pulse)]]
+  [pulse-or-id :- [:or ms/PositiveInt ::pulse.schema/pulse]]
   (some-> (pulse.db/pulse (u/the-id pulse-or-id))
           hydrate-notification
           notification->pulse))
@@ -329,7 +329,7 @@
 (mu/defn retrieve-notification :- [:maybe (ms/InstanceOf :model/Pulse)]
   "Fetch an Alert or Pulse, and do the 'standard' hydrations, adding `:channels` with `:recipients`, `:creator`, and
   `:cards`."
-  [notification-or-id :- [:or ms/PositiveInt (ms/InstanceOf :model/Pulse)]
+  [notification-or-id :- [:or ms/PositiveInt ::pulse.schema/pulse]
    & additional-conditions :- [:* [:or :keyword :boolean :nil]]]
   {:pre [(even? (count additional-conditions))]}
   (let [id   (u/the-id notification-or-id)
@@ -353,7 +353,7 @@
 
 (mu/defn retrieve-alert :- [:maybe (ms/InstanceOf :model/Pulse)]
   "Fetch a single Alert by its `id` value, do the standard hydrations, and put it in the standard `Alert` format."
-  [alert-or-id :- [:or ms/PositiveInt (ms/InstanceOf :model/Pulse)]]
+  [alert-or-id :- [:or ms/PositiveInt ::pulse.schema/pulse]]
   (some-> (pulse.db/alert (u/the-id alert-or-id))
           hydrate-notification
           notification->alert))
@@ -531,7 +531,7 @@
   *  If a Card ID in `card-refs` has no corresponding existing `PulseCard` object, one will be created.
   *  If an existing `PulseCard` has no corresponding ID in CARD-IDs, it will be deleted.
   *  All cards will be updated with a `position` according to their place in the collection of `card-ids`"
-  [notification-or-id :- [:or ms/PositiveInt (ms/InstanceOf :model/Pulse)]
+  [notification-or-id :- [:or ms/PositiveInt ::pulse.schema/pulse]
    card-refs           :- [:maybe [:sequential CardRef]]]
   ;; first off, just delete any cards associated with this pulse (we add them again below)
   (pulse.db/delete-pulse-cards-for-pulse! (u/the-id notification-or-id))
@@ -558,7 +558,7 @@
     * If an existing `PulseChannel` has no corresponding entry in `channels`, it will be deleted.
 
     * All previously existing channels will be updated with their most recent information."
-  [notification-or-id :- [:or ms/PositiveInt (ms/InstanceOf :model/Pulse)]
+  [notification-or-id :- [:or ms/PositiveInt ::pulse.schema/pulse]
    channels           :- [:sequential PulseChannelInput]]
   (let [existing-channels   (pulse.db/pulse-channels-for-pulse (u/the-id notification-or-id))
         channels            (map-indexed
@@ -634,17 +634,17 @@
     (retrieve-alert id)))
 
 (mu/defn- notification-or-id->existing-card-refs :- [:sequential CardRef]
-  [notification-or-id :- [:or ms/PositiveInt (ms/InstanceOf :model/Pulse)]]
+  [notification-or-id :- [:or ms/PositiveInt ::pulse.schema/pulse]]
   (pulse.db/pulse-card-refs (u/the-id notification-or-id)))
 
 (mu/defn- card-refs-have-changed? :- :boolean
-  [notification-or-id :- [:or ms/PositiveInt (ms/InstanceOf :model/Pulse)]
+  [notification-or-id :- [:or ms/PositiveInt ::pulse.schema/pulse]
    new-card-refs      :- [:sequential CardRef]]
   (not= (notification-or-id->existing-card-refs notification-or-id)
         new-card-refs))
 
 (mu/defn- update-notification-cards-if-changed!
-  [notification-or-id :- [:or ms/PositiveInt (ms/InstanceOf :model/Pulse)]
+  [notification-or-id :- [:or ms/PositiveInt ::pulse.schema/pulse]
    new-card-refs      :- [:sequential CardRef]]
   (when (card-refs-have-changed? notification-or-id new-card-refs)
     (update-notification-cards! notification-or-id new-card-refs)))

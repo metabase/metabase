@@ -11,6 +11,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.schema :as permissions.schema]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -166,7 +167,7 @@
 
 (mu/defn ^:private mb-user->scim :- SCIMUser
   "Given a Metabase user, returns a SCIM user."
-  [user :- (ms/InstanceOf :model/User)]
+  [user :- ::users.schema/user]
   {:schemas  [user-schema-uri]
    :id       (:entity_id user)
    :userName (:email user)
@@ -385,7 +386,7 @@
 
 (mu/defn ^:private mb-group->scim :- SCIMGroup
   "Given a Metabase permissions group, returns a SCIM group."
-  [group :- (ms/InstanceOf :model/PermissionsGroup)]
+  [group :- ::permissions.schema/permissions-group]
   {:schemas     [group-schema-uri]
    :id          (:entity_id group)
    :members     (map

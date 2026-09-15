@@ -14,7 +14,8 @@
    [metabase.revisions.db :as revisions.db]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [steffan-westcott.clj-otel.api.trace.span :as span]))
+   [steffan-westcott.clj-otel.api.trace.span :as span]
+   [toucan2.core :as t2]))
 
 (def ^:private model->db-model {:card "Card" :dashboard "Dashboard"})
 
@@ -38,7 +39,9 @@
   "Add the last edited information to a card. Will add a key `:last-edit-info`. Model should be one of `:dashboard` or
   `:card`. Gets the last edited information from the revisions table. If you need this information from a put route,
   use `@api/*current-user*` and a current timestamp since revisions are events and asynchronous."
-  [items :- [:sequential (ms/InstanceOf [:model/Card :model/Dashboard])]
+  [items :- [:sequential [:multi {:dispatch t2/model}
+                          [:model/Card      :metabase.queries.schema/card]
+                          [:model/Dashboard :metabase.dashboards.schema/dashboard]]]
    model :- [:enum :dashboard :card]]
   (let [ids (into #{} (map :id) items)]
     (span/with-span!
@@ -61,7 +64,7 @@
   the revisions table. But this table is populated from events asynchronously so when editing and wanting
   last-edit-info, you must construct it from `@api/*current-user*` and the current timestamp rather than checking the
   revisions table as those revisions may not be present yet."
-  [user :- [:maybe (ms/InstanceOf :model/User)]]
+  [user :- [:maybe [:or :metabase.users.schema/user :metabase.users.schema/user.update]]]
   (merge {:timestamp (t/instant)}
          (select-keys user [:id :first_name :last_name :email])))
 

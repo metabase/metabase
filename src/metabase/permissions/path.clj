@@ -1,6 +1,8 @@
 (ns metabase.permissions.path
   (:require
    [clojure.string :as str]
+   [metabase.collections.schema :as collections.schema]
+   [metabase.permissions.schema :as permissions.schema]
    [metabase.permissions.util :as perms.u]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -29,7 +31,8 @@
   "Schema for a Collection or PermissionsGroup, its ID, or the `RootCollection` placeholder object."
   [:or
    ms/PositiveInt
-   (ms/InstanceOf [:model/Collection :model/PermissionsGroup])
+   ::collections.schema/collection
+   ::permissions.schema/permissions-group
    ::collection-or-root-map])
 
 (mu/defn collection-readwrite-path :- perms.u/PathSchema

@@ -248,7 +248,7 @@
     (.getTable client dataset-id table-id empty-table-options)))
 
 (mu/defn- get-table :- (driver-api/instance-of-class Table)
-  (^Table [database   :- [:or driver-api/schema.metadata.database [:fn #(driver-api/instance-of? :model/Database %)]]
+  (^Table [database   :- :metabase.warehouses.schema/database-or-metadata
            dataset-id :- driver-api/schema.common.non-blank-string
            table-id   :- driver-api/schema.common.non-blank-string]
    (let [details    (driver.conn/effective-details database)

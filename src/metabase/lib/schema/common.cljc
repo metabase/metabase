@@ -177,18 +177,17 @@
   "A Database's `:settings`; the `.cljc` equivalent of [[metabase.util.malli.schema/DatabaseSettings]]."
   [:map {:closed false, ::mr/deliberately-open true, :description "database settings"}])
 
-(mr/def ::raw-json
-  "A JSON value decoded off the wire, before a schema decodes and validates it; the `.cljc` equivalent
-  of [[metabase.util.malli.schema/RawJSON]]."
-  [:schema
-   {:registry {::raw-json.value [:or
-                                 :string
-                                 number?
-                                 :boolean
-                                 :nil
-                                 [:sequential [:ref ::raw-json.value]]
-                                 [:map {:closed false, ::mr/deliberately-open true, :description "raw JSON object"}]]}}
-   [:ref ::raw-json.value]])
+(mr/def ::exception-data
+  "The `ex-data` of an exception; the `.cljc` equivalent of [[metabase.util.malli.schema/ExceptionData]]."
+  [:map {:closed false, ::mr/deliberately-open true, :description "exception data"}])
+
+(mr/def ::parameter.unnormalized
+  "A parameter as read from JSON, before normalization."
+  [:map {:closed false, ::mr/deliberately-open true, :description "unnormalized parameter"}])
+
+(mr/def ::parameter-mapping.unnormalized
+  "A parameter mapping as read from JSON, before normalization."
+  [:map {:closed false, ::mr/deliberately-open true, :description "unnormalized parameter mapping"}])
 
 (mr/def ::field-value
   "One value of a Field; the `.cljc` equivalent of [[metabase.util.malli.schema/FieldValue]]."

@@ -383,9 +383,7 @@
    [:max-value        {:optional true} [:maybe number?]]
    [:max_value        {:optional true} [:maybe number?]]])
 
-(mr/def ::column.map
-  "The plain `:map` portion of [[::column]], without the `:and`-level constraints -- used for a whole column
-  snapshotted onto another column ([[::column.snapshot]]), where re-running those constraints would be redundant."
+(def ^:private column-map
   [:map
    {:closed           true
     :error/message    "Valid column metadata"
@@ -675,6 +673,10 @@
    [:metabase.lib.underlying/binning       {:optional true} [:maybe [:ref ::lib.schema.binning/binning]]]
    [:metabase.query-processor.pivot/idx {:optional true} [:int {:min 0}]]])
 
+(mr/def ::column.map
+  "The map portion of [[::column]], without its constraints."
+  column-map)
+
 (mr/def ::column
   "Malli schema for a valid map of column metadata, which can mean one of two things:
 
@@ -689,7 +691,7 @@
   that they are largely compatible. So they're the same for now. We can revisit this in the future if we actually want
   to differentiate between the two versions."
   [:and
-   [:ref ::column.map]
+   column-map
    ;;
    ;; Additional constraints
    ;;

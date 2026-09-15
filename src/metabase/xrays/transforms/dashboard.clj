@@ -32,7 +32,7 @@
 (mu/defn- cards->section
   "Build a section of cards and format them according to what the automagic dashboards code expects."
   [group :- :string
-   cards :- [:sequential [:or (ms/InstanceOf :model/Card) SourceTableCard]]]
+   cards :- [:sequential [:or :metabase.queries.schema/card SourceTableCard]]]
   (mapcat (fn [{:keys [name description display] :as card}]
             (cond-> [(assoc card
                             :group         group

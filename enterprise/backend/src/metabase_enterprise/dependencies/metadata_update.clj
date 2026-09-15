@@ -17,10 +17,11 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.premium-features.core :as premium-features]
    [metabase.queries.core :as queries]
+   [metabase.queries.schema :as queries.schema]
+   [metabase.transforms.schema :as transforms.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]))
 
 (defn- mbql-graph
@@ -130,8 +131,15 @@
   [original-mp     :- ::lib.schema.metadata/metadata-providerable
    start-type      :- ::deps.dependency-types/dependency-types
    start-id        :- ::deps.dependency-types/entity-id
-   previous-object :- (ms/InstanceOf [:model/Database :model/Table :model/Field :model/Card :model/Segment
-                                      :model/Measure :model/NativeQuerySnippet :model/Transform])
+   previous-object :- [:or
+                       :metabase.warehouses.schema/database
+                       :metabase.warehouse-schema.schema/table
+                       :metabase.warehouse-schema.schema/field
+                       ::queries.schema/card
+                       :metabase.segments.schema/segment
+                       :metabase.measures.schema/measure
+                       :metabase.native-query-snippets.schema/native-query-snippet
+                       ::transforms.schema/transform]
    metadata-type   :- :keyword]
   ;; Notes on metadata providers:
   ;;

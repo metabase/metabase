@@ -16,8 +16,10 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.validate :as lib.schema.validate]
+   [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
+   [metabase.transforms.schema :as transforms.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -148,9 +150,22 @@
    [:segment   [:ref ::segment-entity]]
    [:measure   [:ref ::measure-entity]]])
 
+(def ^:private Entity
+  "Any dependency-tracked entity `entity-value` accepts, hydrated the way `hydrate-entities` hydrates it."
+  [:or
+   ::queries.schema/card
+   :metabase.dashboards.schema/dashboard
+   ::documents.schema/document
+   :metabase.warehouse-schema.schema/table
+   ::transforms.schema/transform
+   :metabase.native-query-snippets.schema/native-query-snippet
+   :metabase-enterprise.sandbox.schema/sandbox
+   :metabase.segments.schema/segment
+   :metabase.measures.schema/measure])
+
 (mu/defn- entity-value :- ::entity
   [entity-type :- ::deps.dependency-types/dependency-types
-   {:keys [id] :as entity} :- (ms/InstanceOf (vec deps.dependency-types/models))
+   {:keys [id] :as entity} :- Entity
    usages :- [:maybe [:map-of
                       [:tuple ::deps.dependency-types/dependency-types ::deps.dependency-types/entity-id]
                       ::usages]]

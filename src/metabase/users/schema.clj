@@ -68,7 +68,9 @@
    [:is_qbnewb       :boolean]
    [:tenant_id       [:maybe ms/PositiveInt]]
    [:is_data_analyst :boolean]
-   [:common_name     {:optional true} [:maybe :string]]])
+   [:common_name     {:optional true} [:maybe :string]]
+   [:attributes      {:optional true} [:maybe LoginAttributes]]
+   [:user_group_memberships {:optional true} [:sequential [:map {:closed true} [:name :string] [:entity_id :string]]]]])
 
 (mr/def ::user.full
   "A User as selected from the app DB with every column of `:core_user`, not only the default ones, plus `:common_name` added by the model's after-select hook."
@@ -128,7 +130,10 @@
    [:tenant_id               {:optional true} [:maybe ms/PositiveInt]]
    [:jwt_attributes          {:optional true} [:maybe LoginAttributes]]
    [:deactivated_with_tenant {:optional true} [:maybe :boolean]]
-   [:is_data_analyst         {:optional true} [:maybe :boolean]]])
+   [:is_data_analyst         {:optional true} [:maybe :boolean]]
+   [:id                      {:optional true} [:maybe ::lib.schema.id/user]]
+   [:common_name             {:optional true} [:maybe :string]]
+   [:attributes              {:optional true} [:maybe LoginAttributes]]])
 
 (mr/def ::user-filters
   "Options accepted by `metabase.users.db/filter-clauses` (and, by extension, any db.clj function that filters

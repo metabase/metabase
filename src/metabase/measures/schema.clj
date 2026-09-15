@@ -33,7 +33,8 @@
   ::lib-metric.schema/dimension-mapping)
 
 (mr/def ::measure
-  "A Measure as selected from the app DB: every column of `:measure`."
+  "A Measure as selected from the app DB: every column of `:measure`, plus `:creator` and `:table` some callers
+  hydrate onto it."
   [:map {:closed true}
    [:id                 ms/PositiveInt]
    [:table_id           ::lib.schema.id/table]
@@ -46,7 +47,9 @@
    [:updated_at         ms/TemporalInstant]
    [:entity_id          :string]
    [:dimensions         [:maybe [:sequential ::measure.dimension]]]
-   [:dimension_mappings [:maybe [:sequential ::measure.dimension-mapping]]]])
+   [:dimension_mappings [:maybe [:sequential ::measure.dimension-mapping]]]
+   [:creator            {:optional true} [:maybe :metabase.users.schema/user]]
+   [:table              {:optional true} [:maybe :metabase.warehouse-schema.schema/table]]])
 
 (mr/def ::measure.update
   "What an update (or insert) of a Measure accepts: every column of `:measure` except `id`, all optional."

@@ -162,6 +162,7 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
+   [metabase.collections.schema :as collections.schema]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.db :as permissions.db]
@@ -445,7 +446,7 @@
 (mu/defn can-read-audit-helper
   "Audit instances should only be readable if audit app is enabled."
   [model    :- [:= :model/Collection]
-   instance :- (ms/InstanceOf :model/Collection)]
+   instance :- ::collections.schema/collection]
   (if (and (not (premium-features/enable-audit-app?))
            (case model
              :model/Collection (audit/is-collection-id-audit? (:id instance))

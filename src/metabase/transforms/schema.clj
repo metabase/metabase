@@ -103,8 +103,17 @@
    [:map {:closed true} [:table ::lib.schema.id/table]]
    [:map {:closed true} [:transform ::lib.schema.id/transform]]])
 
+(def ^:private user-summary-schema
+  "The id, email, and name of a User, as `transforms.db/user-summaries-by-id` selects it."
+  [:map {:closed true}
+   [:id         {:optional true} ::lib.schema.id/user]
+   [:email      {:optional true} :string]
+   [:first_name {:optional true} [:maybe :string]]
+   [:last_name  {:optional true} [:maybe :string]]])
+
 (mr/def ::transform
-  "A Transform as selected from the app DB: every column of `:transform`."
+  "A Transform as selected from the app DB: every column of `:transform`, plus `:creator`, `:table`, `:last_run`,
+  `:collection`, and `:owner` some callers hydrate onto it."
   [:map {:closed true}
    [:id                    ::lib.schema.id/transform]
    [:name                  :string]
@@ -123,7 +132,15 @@
    [:target_db_id          [:maybe ::lib.schema.id/database]]
    [:last_checkpoint_value [:maybe :string]]
    [:target_table_id       [:maybe ::lib.schema.id/table]]
-   [:table_dependencies    [:maybe [:sequential ::transform.table-dependency]]]])
+   [:table_dependencies    [:maybe [:sequential ::transform.table-dependency]]]
+   [:creator               {:optional true} [:maybe user-summary-schema]]
+   [:table                 {:optional true} [:maybe :metabase.warehouse-schema.schema/table]]
+   [:last_run              {:optional true} [:maybe ::transform-run]]
+   [:collection            {:optional true} [:maybe [:merge
+                                                      :metabase.collections.schema/collection
+                                                      [:map {:closed true}
+                                                       [:is_personal {:optional true} [:maybe :boolean]]]]]]
+   [:owner                 {:optional true} [:maybe user-summary-schema]]])
 
 (mr/def ::transform.update
   "What an update (or insert) of a Transform accepts: every column of `:transform` except `id`, all optional, plus `:run_trigger` consumed by the model's hooks."

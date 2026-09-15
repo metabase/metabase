@@ -145,7 +145,7 @@
     anti-csrf-token :anti_csrf_token
     session-expires-at :expires_at
     :as _session-instance} :- [:or
-                               (ms/InstanceOf :model/Session)
+                               :metabase.session.schema/session
                                [:map {:closed true}
                                 [:key             [:or uuid? [:re u/uuid-regex]]]
                                 [:type            {:optional true} [:enum :normal :full-app-embed]]

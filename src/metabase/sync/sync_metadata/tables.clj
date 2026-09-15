@@ -112,7 +112,7 @@
 (def ^:private TableMetadataOrInstance
   "Either a [[TableMetadata]] (a table map fresh from the driver), or an already-selected `:model/Table` instance --
   the two shapes [[cruft-dependent-cols]] and [[table-name+schema]] accept."
-  [:or TableMetadata (ms/InstanceOf :model/Table)])
+  [:or TableMetadata :metabase.warehouse-schema.schema/table])
 
 (mu/defn- update-database-metadata!
   "If there is a version in the db-metadata update the DB to have that in the DB model"

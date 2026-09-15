@@ -67,7 +67,7 @@
    [:stacktrace        {:optional true} [:maybe [:sequential :string]]]
    [:error_type        {:optional true} :keyword]
    [:error_is_curated  {:optional true} :boolean]
-   [:ex-data           {:optional true} :metabase.lib.schema.common/raw-json]
+   [:ex-data           {:optional true} :metabase.lib.schema.common/exception-data]
    [:state             {:optional true} [:maybe :string]]])
 
 ;; TODO -- some of this logic duplicates the functionality of `clojure.core/Throwable->map`, we should consider

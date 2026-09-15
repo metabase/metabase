@@ -301,8 +301,8 @@
    [:method                            (into [:enum] (keys method->request-fn))]
    [:expected-status  {:optional true} [:maybe ms/PositiveInt]]
    [:url                               ms/NonBlankString]
-   [:http-body        {:optional true} [:maybe ms/RawJSON]]
-   [:query-parameters {:optional true} [:maybe ms/RawJSON]]
+   [:http-body        {:optional true} [:maybe ms/HttpRequestBody]]
+   [:query-parameters {:optional true} [:maybe ms/HttpQueryParams]]
    [:request-options  {:optional true} [:maybe RequestOptions]]])
 
 (mu/defn- -client

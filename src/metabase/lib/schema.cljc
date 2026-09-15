@@ -733,7 +733,7 @@
    [:query  ::native-query-document-value]
    [:params {:optional true} [:maybe [:sequential [:ref ::literal/param-value]]]]])
 
-(mr/def ::query.map
+(def ^:private query-map
   [:map
    {:description        "Valid MBQL 5 query."
     :decode/normalize   #'normalize-query
@@ -816,9 +816,12 @@
    [:create-row {:optional true} [:ref ::actions/row]]
    [:update-row {:optional true} [:ref ::actions/row]]])
 
+(mr/def ::query.map
+  query-map)
+
 (mr/def ::query
   [:and
-   [:ref ::query.map]
+   query-map
    ;;
    ;; CONSTRAINTS
    [:ref ::lib.schema.util/unique-uuids]

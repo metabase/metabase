@@ -198,7 +198,7 @@
                           [:constraints    {:optional true} [:maybe ::lib.schema.constraints/constraints]]
                           [:context        {:optional true} [:maybe ::lib.schema.info/context]]
                           [:dashboard-id   {:optional true} [:maybe ::lib.schema.id/dashboard]]
-                          [:dashcard       {:optional true} [:maybe (ms/InstanceOf :model/DashboardCard)]]
+                          [:dashcard       {:optional true} [:maybe ::dashboards.schema/dashboard-card]]
                           [:middleware     {:optional true} [:maybe ::lib.schema.middleware-options/middleware-options]]
                           [:ignore-cache   {:optional true} [:maybe :boolean]]
                           [:card-transform {:optional true} [:maybe ifn?]]]]]

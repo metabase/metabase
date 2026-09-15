@@ -54,8 +54,8 @@
                                                       :metabase.collections.schema/collection
                                                       [:map {:closed true}
                                                        [:is_personal {:optional true} [:maybe :boolean]]]]]]
-    [:creator               {:optional true} [:maybe :metabase.users.schema/user]]
-    [:dashboard             {:optional true} [:maybe :metabase.dashboards.schema/dashboard]]
+    [:creator               {:optional true} [:maybe [:or :metabase.users.schema/user :metabase.users.schema/user.update]]]
+    [:dashboard             {:optional true} [:maybe [:ref :metabase.dashboards.schema/dashboard]]]
     [:moderation_reviews    {:optional true} [:sequential :metabase.content-verification.schema/moderation-review]]
     [:can_delete            {:optional true} :boolean]
     [:can_manage_db         {:optional true} :boolean]
@@ -64,17 +64,51 @@
     [:dashboard_count       {:optional true} :int]
     [:parameter_usage_count {:optional true} :int]
     [:average_query_time    {:optional true} [:maybe number?]]
-    [:last_query_start      {:optional true} [:maybe ms/TemporalInstant]]]])
+    [:last_query_start      {:optional true} [:maybe ms/TemporalInstant]]
+    [:based_on_upload       {:optional true} [:maybe ::lib.schema.id/table]]
+    [:param_fields          {:optional true} [:maybe [:map-of :string [:sequential ::param-field]]]]
+    [:is_remote_synced      {:optional true} :boolean]]])
+
+(mr/def ::param-field.name-field
+  "A Field trimmed to the columns a parameter widget needs, as the `:name_field` hydration attaches it."
+  [:map {:closed true}
+   [:id                 ::lib.schema.id/field]
+   [:table_id           [:maybe ::lib.schema.id/table]]
+   [:display_name       [:maybe :string]]
+   [:base_type          [:maybe [:or :keyword :string]]]
+   [:effective_type     [:maybe [:or :keyword :string]]]
+   [:name               :string]
+   [:semantic_type      [:maybe [:or :keyword :string]]]
+   [:has_field_values   [:maybe [:or :keyword :string]]]
+   [:fk_target_field_id [:maybe ::lib.schema.id/field]]
+   [:settings           [:maybe :metabase.warehouse-schema.schema/field.settings]]])
+
+(mr/def ::param-field.target
+  "A `::param-field.name-field` further hydrated with its own `:name_field`, as the `:target` hydration attaches it."
+  [:merge
+   ::param-field.name-field
+   [:map {:closed true}
+    [:name_field {:optional true} [:maybe ::param-field.name-field]]]])
+
+(mr/def ::param-field
+  "A Field trimmed down to the columns a parameter widget needs, as `:param_fields` hydrates it onto a Card or
+  Dashboard."
+  [:merge
+   ::param-field.target
+   [:map {:closed true}
+    [:target     {:optional true} [:maybe ::param-field.target]]
+    [:dimensions {:optional true} [:sequential [:merge
+                                                :metabase.warehouse-schema.schema/dimension
+                                                [:map {:closed true}
+                                                 [:human_readable_field {:optional true} [:maybe ::param-field.name-field]]]]]]]])
 
 (mu/defn normalize-card :- [:maybe ::card]
   "Normalize a `card` so it satisfies the `::card` schema."
   [card :- [:maybe
-            [:or
-             (ms/InstanceOf :model/Card)
-             [:merge
-              ::card
-              [:map {:closed true}
-               [:result_metadata {:optional true} [:maybe :metabase.request.schema/json-value]]]]]]]
+            [:merge
+             ::card
+             [:map {:closed true}
+              [:result_metadata {:optional true} [:maybe :metabase.request.schema/json-value]]]]]]
   (lib/normalize ::card card))
 
 (mr/def ::card.dataset-query

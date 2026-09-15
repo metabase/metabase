@@ -498,7 +498,8 @@
   decodes and validates them."
   [:maybe [:or
            ::request.schema/request
-           ms/RawJSON]])
+           ms/RingRequestParams
+           ms/RingRequestBody]])
 
 (mu/defn decode-and-validate-params
   "Impl for [[defendpoint]]."
@@ -701,7 +702,7 @@
   `(endpoint-core-fn-with-optimized-schemas
     (endpoint-core-fn* ~parsed-args)))
 
-(mu/defn- params :- [:maybe ms/RawJSON]
+(mu/defn- params :- [:maybe ms/RingRequestParams]
   "Fetch `:route` or `:query` parameters from a `request`."
   [request     :- ::request
    params-type :- [:enum :route :query]]
@@ -709,7 +710,7 @@
     :route (:route-params request)
     :query (some-> (:query-params request) (update-keys keyword))))
 
-(mu/defn- request-body :- [:maybe ms/RawJSON]
+(mu/defn- request-body :- [:maybe ms/RingRequestBody]
   "The body params of `request`: the parts of a multipart request, the form params of a form request, or the parsed
   JSON body. An unparsed body (an `InputStream`) is not a param map."
   [request :- ::request]

@@ -37,13 +37,14 @@
   ::attribute-remappings)
 
 (mr/def ::sandbox
-  "A Sandbox as selected from the app DB: every column of `:sandboxes`."
+  "A Sandbox as selected from the app DB: every column of `:sandboxes`, plus `:table` some callers hydrate onto it."
   [:map {:closed true}
    [:id                   ms/PositiveInt]
    [:group_id             ms/PositiveInt]
    [:table_id             ::lib.schema.id/table]
    [:card_id              [:maybe ::lib.schema.id/card]]
-   [:attribute_remappings [:maybe ::sandbox.attribute-remappings]]])
+   [:attribute_remappings [:maybe ::sandbox.attribute-remappings]]
+   [:table                {:optional true} [:maybe :metabase.warehouse-schema.schema/table]]])
 
 (mr/def ::sandbox.update
   "What an update (or insert) of a Sandbox accepts: every column of `:sandboxes` except `id`, all optional."

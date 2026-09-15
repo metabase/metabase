@@ -5,6 +5,7 @@
    [metabase.auth-identity.db :as auth-identity.db]
    [metabase.login-history.core :as login-history]
    [metabase.request.core :as request]
+   [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -14,21 +15,13 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private User
-  [:map
-   {:closed true, :description ":model/User"}
-   [:id pos-int?]
-   [:last_login {:optional true} [:maybe ms/TemporalInstant]]
-   [:is_active  {:optional true} :boolean]
-   [:tenant_id  {:optional true} [:maybe pos-int?]]])
-
 (mu/defn create-session-with-auth-tracking!
   "Create a new Session for a User and update the last_used_at timestamp on the corresponding AuthIdentity.
 
   The session row and its `login_history` row are written in one transaction: `login_history.session_id` has a foreign
   key to `core_session`, so a concurrent session delete (e.g. a password change, which invalidates the user's sessions)
   must not be able to remove the freshly-created session between the two inserts and break that reference."
-  ([user :- User
+  ([user :- ::users.schema/user
     device-info :- request/DeviceInfo
     provider :- :keyword
     mfa-auth-identity-id :- [:maybe ms/PositiveInt]]
@@ -49,5 +42,5 @@
      (assoc session
             :key session-key
             :type (if (some-> (request/current-request) request/embedded?) :full-app-embed :normal))))
-  ([user :- User device-info :- request/DeviceInfo provider :- :keyword]
+  ([user :- ::users.schema/user device-info :- request/DeviceInfo provider :- :keyword]
    (create-session-with-auth-tracking! user device-info provider nil)))

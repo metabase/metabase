@@ -25,8 +25,7 @@
    [metabase.util.format :as u.format]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli :as mu])
   (:import
    (java.io File)
    (java.nio.file Files)
@@ -264,7 +263,7 @@
    Options:
    - `with-stage-timing-fn` - optional, (fn [run-id stage thunk] result) for instrumentation"
   [{:keys [source] :as transform} :- ::transforms-base.schema/transform
-   db :- (ms/InstanceOf :model/Database)
+   db :- :metabase.warehouses.schema/database
    run-id :- pos-int?
    cancel-chan :- ::transforms-base.schema/chan
    message-log :- ::transforms-base.schema/atom

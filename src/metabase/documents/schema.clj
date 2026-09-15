@@ -14,7 +14,8 @@
   ::prose-mirror/ast)
 
 (mr/def ::document
-  "A Document as selected from the app DB: every column of `:document`."
+  "A Document as selected from the app DB: every column of `:document`, plus `:creator` and `:collection` some
+  callers hydrate onto it."
   [:map {:closed true}
    [:id                  ms/PositiveInt]
    [:name                :string]
@@ -34,6 +35,15 @@
    [:made_public_by_id   [:maybe ms/PositiveInt]]
    [:public_uuid_prefix  [:maybe :string]]
    [:exploration_id      [:maybe ms/PositiveInt]]
+   [:creator             {:optional true} [:maybe [:map {:closed true}
+                                                    [:id         {:optional true} ::lib.schema.id/user]
+                                                    [:email      {:optional true} :string]
+                                                    [:first_name {:optional true} [:maybe :string]]
+                                                    [:last_name  {:optional true} [:maybe :string]]]]]
+   [:collection          {:optional true} [:maybe [:merge
+                                                    :metabase.collections.schema/collection
+                                                    [:map {:closed true}
+                                                     [:is_personal {:optional true} [:maybe :boolean]]]]]]
    [:is_placeholder      :boolean]])
 
 (mr/def ::document.update

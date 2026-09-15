@@ -8,14 +8,11 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli :as mu]))
 
 (mu/defn- has-parent-collection-perms?
   [snippet       :- [:or
-                     [:merge
-                      ::snippets.schema/native-query-snippet
-                      [:map {:closed true} [:collection {:optional true} (ms/InstanceOf :model/Collection)]]]
+                     ::snippets.schema/native-query-snippet
                      ::snippets.schema/native-query-snippet.update]
    read-or-write :- [:enum :read :write]]
   (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection "snippets" (:collection_id snippet) read-or-write)))

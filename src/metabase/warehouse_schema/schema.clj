@@ -229,7 +229,15 @@
    [:collection_id           [:maybe ::lib.schema.id/collection]]
    [:is_published            :boolean]
    [:transform_id            [:maybe ::lib.schema.id/transform]]
-   [:transform_target        :boolean]])
+   [:transform_target        :boolean]
+   [:db                      {:optional true} [:maybe :metabase.warehouses.schema/database]]
+   [:fields                  {:optional true} [:maybe [:sequential ::field]]]
+   [:transform               {:optional true} [:maybe :metabase.transforms.schema/transform]]
+   [:owner                   {:optional true} [:maybe [:map {:closed true}
+                                                        [:id         {:optional true} ::lib.schema.id/user]
+                                                        [:email      {:optional true} :string]
+                                                        [:first_name {:optional true} [:maybe :string]]
+                                                        [:last_name  {:optional true} [:maybe :string]]]]]])
 
 (mr/def ::table.update
   "What an update (or insert) of a Table accepts: every column of `:metabase_table` except `id`, all optional."

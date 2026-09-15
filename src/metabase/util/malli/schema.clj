@@ -228,17 +228,63 @@
   are not knowable here."
   (open-map "database connection details"))
 
-(def RawJSON
-  "A JSON value decoded off the wire, before the schema of the endpoint that received it decodes and validates it."
+(defn- open-json
+  "A JSON value whose objects are deliberately open maps: a scalar, a sequence of such values, or an open map."
+  [registry-key description]
   [:schema
-   {:registry {::raw-json [:or
-                           :string
-                           number?
-                           :boolean
-                           :nil
-                           [:sequential [:ref ::raw-json]]
-                           (open-map "raw JSON object")]}}
-   [:ref ::raw-json]])
+   {:registry {registry-key [:or
+                             :string
+                             number?
+                             :boolean
+                             :nil
+                             :keyword
+                             [:sequential [:ref registry-key]]
+                             (open-map description)]}}
+   [:ref registry-key]])
+
+(def RingRequestBody
+  "The parsed body of a Ring request, before the schema of the endpoint that received it decodes and validates it."
+  (open-json ::ring-request-body "request body"))
+
+(def RingRequestParams
+  "The route, query or form params of a Ring request, before the endpoint's own schema decodes and validates them."
+  (open-map "request params"))
+
+(def RingResponseBody
+  "What an endpoint returns, before its response schema encodes it."
+  (open-json ::ring-response-body "response body"))
+
+(def HttpRequestBody
+  "The body the test HTTP client sends, as written by the test calling the endpoint."
+  (open-json ::http-request-body "HTTP request body"))
+
+(def HttpQueryParams
+  "The query parameters the test HTTP client sends, as written by the test calling the endpoint."
+  (open-map "HTTP query params"))
+
+(def JSONSchemaLiteral
+  "A literal value inside a JSON Schema document (`default`, `const`, `enum` or `examples`)."
+  (open-json ::json-schema-literal "JSON Schema literal"))
+
+(def ExceptionData
+  "The `ex-data` of an exception, whose keys belong to whatever code threw it."
+  (open-map "exception data"))
+
+(def AuditLogDetails
+  "The `:details` of an audit log event, whose keys depend on the event's topic."
+  (open-map "audit log details"))
+
+(def JWTClaims
+  "The claims of a decoded JWT, whose keys belong to the identity provider."
+  (open-map "JWT claims"))
+
+(def SAMLAttributes
+  "The attributes of a SAML assertion, whose keys belong to the identity provider."
+  (open-map "SAML attributes"))
+
+(def TenantAttributes
+  "The attributes of a tenant, whose keys are defined by the admin."
+  (open-map "tenant attributes"))
 
 (def DatabaseSettings
   "A Database's `:settings`: database-local settings, whose keys are owned by the settings registry rather than by this

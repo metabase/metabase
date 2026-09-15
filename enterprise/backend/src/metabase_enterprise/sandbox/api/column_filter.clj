@@ -49,7 +49,7 @@
     ::warehouse-schema.schema/field
     [:map {:closed true}
      [:target     {:optional true} [:maybe PartialField]]
-     [:dimensions {:optional true} [:sequential (ms/InstanceOf :model/Dimension)]]
+     [:dimensions {:optional true} [:sequential ::warehouse-schema.schema/dimension]]
      [:name_field {:optional true} [:maybe PartialField]]]]
    [:map {:closed true}
     [:id   {:optional true} ms/PositiveInt]

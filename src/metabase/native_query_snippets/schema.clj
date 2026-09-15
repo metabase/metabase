@@ -6,7 +6,8 @@
    [metabase.util.malli.schema :as ms]))
 
 (mr/def ::native-query-snippet
-  "A NativeQuerySnippet as selected from the app DB: every column of `:native_query_snippet`."
+  "A NativeQuerySnippet as selected from the app DB: every column of `:native_query_snippet`, plus `:creator` and
+  `:collection` some callers hydrate onto it."
   [:map {:closed true}
    [:id            ::lib.schema.id/native-query-snippet]
    [:name          :string]
@@ -18,7 +19,9 @@
    [:updated_at    ms/TemporalInstant]
    [:collection_id [:maybe ::lib.schema.id/collection]]
    [:entity_id     :string]
-   [:template_tags [:maybe ::lib.schema.template-tag/template-tag-map]]])
+   [:template_tags [:maybe ::lib.schema.template-tag/template-tag-map]]
+   [:creator       {:optional true} [:maybe :metabase.users.schema/user]]
+   [:collection    {:optional true} [:maybe :metabase.collections.schema/collection]]])
 
 (mr/def ::native-query-snippet.update
   "What an update (or insert) of a NativeQuerySnippet accepts: every column of `:native_query_snippet` except `id`, all optional."

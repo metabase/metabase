@@ -19,7 +19,6 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [metabase.util.memoize :as u.memo]
    [metabase.util.performance :as perf :refer [get-in]]
    [metabase.util.snake-hating-map :as u.snake-hating-map]
@@ -59,8 +58,15 @@
 (mu/defn instance->metadata
   "Convert a (presumably) Toucan 2 instance of an application database model with `snake_case` keys to a Lib style
   metadata instance with `:lib/type` and `kebab-case` keys."
-  [instance      :- (ms/InstanceOf [:model/Database :model/Table :model/Field :model/Card :model/Segment
-                                    :model/Measure :model/NativeQuerySnippet :model/Transform])
+  [instance      :- [:or
+                     :metabase.warehouses.schema/database
+                     :metabase.warehouse-schema.schema/table
+                     :metabase.warehouse-schema.schema/field
+                     :metabase.queries.schema/card
+                     :metabase.segments.schema/segment
+                     :metabase.measures.schema/measure
+                     :metabase.native-query-snippets.schema/native-query-snippet
+                     :metabase.transforms.schema/transform]
    metadata-type :- :keyword]
   (let [normalize (if-let [schema (get metadata-type->schema metadata-type)]
                     (fn [instance]

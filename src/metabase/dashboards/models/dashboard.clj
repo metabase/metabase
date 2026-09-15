@@ -387,11 +387,11 @@
   below for an example). Callers that only need the mappings (e.g. the QP) can pass slim dashcards instead of paying
   for the full hydration."
   [dashboard :- [:or
-                 (ms/InstanceOf :model/Dashboard)
+                 ::dashboards.schema/dashboard
                  [:map {:closed true}
                   [:parameters [:maybe [:sequential ::parameters.schema/parameter]]]
                   [:dashcards [:maybe [:sequential [:or
-                                                    (ms/InstanceOf :model/DashboardCard)
+                                                    ::dashboards.schema/dashboard-card
                                                     [:map {:closed true}
                                                      [:parameter_mappings [:maybe [:sequential ::parameters.schema/parameter-mapping]]]]]]]]]]]
   (let [param-key->mappings (apply

@@ -10,7 +10,6 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]))
@@ -192,12 +191,23 @@
         (recur (conj acc (add-revision-details model r1 r2))
                (conj more r2))))))
 
+(def ^:private revisioned-model-row-select-schema
+  "The literal registry keyword of the row schema (as selected, not `.update`) of each model revisions are tracked
+  for (a literal keyword, not a `require`, to avoid a dependency cycle with the module that owns each model)."
+  {:model/Card        :metabase.queries.schema/card
+   :model/Dashboard   :metabase.dashboards.schema/dashboard
+   :model/Document    :metabase.documents.schema/document
+   :model/Exploration :metabase.explorations.schema/exploration
+   :model/Measure     :metabase.measures.schema/measure
+   :model/Segment     :metabase.segments.schema/segment
+   :model/Transform   :metabase.transforms.schema/transform})
+
 (def ^:private PushRevisionInput
   (into [:multi {:dispatch :entity}]
-        (for [model (keys revisions.db/revisioned-model-row-schema)]
+        (for [[model schema] revisioned-model-row-select-schema]
           [model [:map {:closed true}
                   [:id                            pos-int?]
-                  [:object                        (ms/InstanceOf model)]
+                  [:object                        schema]
                   [:entity                        [:= model]]
                   [:user-id                       [:maybe pos-int?]]
                   [:is-creation? {:optional true} [:maybe :boolean]]

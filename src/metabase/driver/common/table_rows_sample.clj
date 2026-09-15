@@ -13,11 +13,6 @@
    [metabase.query-processor.schema :as qp.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   ;; TODO -- for historical reasons this stuff uses the Toucan models instead of the QP Metadata Store and
-   ;; `:metadata/*` models -- at some point we should fix this. [[driver/table-rows-sample]] is called by sync however
-   ;; so we need to go in and update the sync code as well.
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.metadata-queries :as schema.metadata-queries]))
 
 (def max-sample-rows
@@ -88,13 +83,13 @@
   `:truncation-size`: [optional] size to truncate text fields if the driver supports expressions.
   `:rff`: [optional] a reducing function function (a function that given initial results metadata returns a reducing
   function) to reduce over the result set in the the query-processor rather than realizing the whole collection"
-  ([table  :- (ms/InstanceOf :model/Table)
-    fields :- [:sequential (ms/InstanceOf :model/Field)]
+  ([table  :- :metabase.warehouse-schema.schema/table
+    fields :- [:sequential :metabase.warehouse-schema.schema/field]
     rff    :- ::qp.schema/rff]
    (table-rows-sample table fields rff nil))
 
-  ([table  :- (ms/InstanceOf :model/Table)
-    fields :- [:sequential (ms/InstanceOf :model/Field)]
+  ([table  :- :metabase.warehouse-schema.schema/table
+    fields :- [:sequential :metabase.warehouse-schema.schema/field]
     rff    :- ::qp.schema/rff
     opts   :- ::table-rows-sample.options]
    (let [database-id (:db_id table)

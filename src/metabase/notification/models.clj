@@ -11,6 +11,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.util.spec-update :as models.u.spec-update]
    [metabase.notification.db :as notification.db]
+   [metabase.notification.schema :as notification.schema]
    [metabase.permissions.core :as perms]
    [metabase.permissions.schema :as permissions.schema]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
@@ -674,7 +675,12 @@
   `create-and-invite-user!` stamps on it. `:object` is typed by instance, not by shape, since the extra keys are
   `assoc`ed onto the real Toucan row rather than replacing it."
   [:map {:closed true}
-   [:object  (ms/InstanceOf :model/User)]
+   [:object  [:merge
+             ::users.schema/user.full
+             [:map {:closed true}
+              [:is_from_setup {:optional true} [:maybe :boolean]]
+              [:invite_method {:optional true} [:maybe :string]]
+              [:invite_target {:optional true} [:maybe users.schema/InviteTarget]]]]]
    [:details {:optional true}
     [:map {:closed true}
      [:invitor [:map {:closed true}
@@ -699,7 +705,7 @@
 (mr/def ::event-info.notification-create
   "The `:event_info` of an `:event/notification-create` system event."
   [:map {:closed true}
-   [:object  (ms/InstanceOf :model/Notification)]
+   [:object  [:ref ::FullyHydratedNotification]]
    [:user-id [:maybe ms/PositiveInt]]])
 
 (mr/def ::event-info.comment-created
@@ -829,8 +835,8 @@
 
 (mu/defn hydrate-notification :- [:or ::FullyHydratedNotification [:sequential ::FullyHydratedNotification]]
   "Fully hydrate notifictitons."
-  [notification-or-notifications :- [:or (ms/InstanceOf :model/Notification)
-                                     [:sequential (ms/InstanceOf :model/Notification)]]]
+  [notification-or-notifications :- [:or ::notification.schema/notification
+                                     [:sequential ::notification.schema/notification]]]
   (t2/hydrate notification-or-notifications :creator :payload :subscriptions [:handlers :channel :template [:recipients :recipients-detail]]))
 
 (mu/defn notifications-for-card :- [:sequential ::FullyHydratedNotification]

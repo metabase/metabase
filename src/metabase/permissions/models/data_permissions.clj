@@ -999,14 +999,17 @@
 
 (def ^:private TheIdable
   "An ID, or something with an ID."
-  [:or pos-int? (ms/InstanceOf [:model/PermissionsGroup :model/Database :model/Table])])
+  [:or pos-int?
+   ::permissions.schema/permissions-group
+   :metabase.warehouses.schema/database
+   :metabase.warehouse-schema.schema/table])
 
 (def ^:private PermsIndex
   "An in-memory index of DataPermissions rows, as built by [[index-database-permissions]]: `{[group-id db-id
   perm-type] [DataPermissions-row ...]}`."
   [:map-of
    [:tuple pos-int? pos-int? ::permissions.schema/data-permission-type]
-   [:sequential (ms/InstanceOf :model/DataPermissions)]])
+   [:sequential ::permissions.schema/data-permissions]])
 
 (defn- merge-perm-changes
   "Merges `{:to-delete [...] :to-insert [...]}` maps, deduping as it concatenates: several implication

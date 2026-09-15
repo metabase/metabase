@@ -20,15 +20,44 @@
     [:map
      [:type {:optional true} [:ref ::lib.schema.parameter/type]]]]])
 
-(mr/def ::dashboard
-  [:map {:closed true}
-   [:id         {:optional true} ::lib.schema.id/dashboard]
-   [:parameters {:optional true} [:maybe ::parameters]]
-   [:dashcards  {:optional true} [:maybe [:sequential ::dashcard]]]])
-
 (mr/def ::dashboard.parameter
   "One entry of the `:parameters` column of a Dashboard, decoded."
   ::parameters.schema/parameter)
+
+(mr/def ::dashboard
+  "A Dashboard as selected from the app DB: every column of `:report_dashboard` (see `::dashboard.update`) plus
+  `:id` and the keys some callers hydrate onto it."
+  [:merge
+   ::dashboard.update
+   [:map {:closed true}
+    [:id                         {:optional true} [:maybe ::lib.schema.id/dashboard]]
+    [:parameters                 {:optional true} [:maybe ::parameters]]
+    [:moderation_status          {:optional true} [:maybe [:or :keyword :string]]]
+    [:resolved-params            {:optional true} [:maybe [:map-of ms/NonBlankString ::parameters.schema/resolved-parameter]]]
+    [:dashcards                  {:optional true} [:maybe [:sequential [:or ::dashcard [:ref ::dashboard-card]]]]]
+    [:tabs                       {:optional true} [:maybe [:sequential ::dashboard-tab]]]
+    [:collection_authority_level {:optional true} [:maybe [:or :keyword :string]]]
+    [:can_write                  {:optional true} :boolean]
+    [:can_restore                {:optional true} :boolean]
+    [:can_delete                 {:optional true} :boolean]
+    [:can_set_cache_policy       {:optional true} :boolean]
+    [:param_fields               {:optional true} [:maybe [:map-of :string [:sequential ::queries.schema/param-field]]]]
+    [:is_remote_synced           {:optional true} :boolean]
+    [:moderation_reviews         {:optional true} [:sequential :metabase.content-verification.schema/moderation-review]]
+    [:collection                 {:optional true} [:maybe [:merge
+                                                            :metabase.collections.schema/collection
+                                                            [:map {:closed true}
+                                                             [:is_personal        {:optional true} [:maybe :boolean]]
+                                                             [:effective_location {:optional true} [:maybe :string]]]]]]
+    [:last_used_param_values     {:optional true} [:maybe [:map-of :string :metabase.users.schema/user-parameter-value.value]]]
+    [:creator                    {:optional true} [:maybe :metabase.users.schema/user]]
+    [:last-edit-info             {:optional true} [:maybe
+                                                    [:map {:closed true}
+                                                     [:timestamp  [:maybe ms/TemporalInstant]]
+                                                     [:id         [:maybe ms/PositiveInt]]
+                                                     [:first_name [:maybe :string]]
+                                                     [:last_name  [:maybe :string]]
+                                                     [:email      [:maybe :string]]]]]]])
 
 (mr/def ::dashboard.update
   "What an update (or insert) of a Dashboard accepts: every column of `:report_dashboard` except `id`, all optional."
@@ -70,7 +99,8 @@
   ms/VisualizationSettings)
 
 (mr/def ::dashboard-card
-  "A DashboardCard as selected from the app DB: every column of `:report_dashboardcard`."
+  "A DashboardCard as selected from the app DB: every column of `:report_dashboardcard`, plus the keys some callers
+  hydrate onto it."
   [:map {:closed true}
    [:id                     ::lib.schema.id/dashcard]
    [:created_at             ms/TemporalInstant]
@@ -86,7 +116,13 @@
    [:entity_id              :string]
    [:action_id              [:maybe ::lib.schema.id/action]]
    [:dashboard_tab_id       [:maybe ms/PositiveInt]]
-   [:inline_parameters      [:maybe [:sequential :string]]]])
+   [:inline_parameters      [:maybe [:sequential :string]]]
+   [:card                   {:optional true} [:maybe [:ref ::queries.schema/card]]]
+   [:series                 {:optional true} [:maybe [:sequential [:ref ::queries.schema/card]]]]
+   [:action                 {:optional true} [:maybe [:merge
+                                                       :metabase.actions.schema/action
+                                                       [:map {:closed true}
+                                                        [:database_enabled_actions {:optional true} :boolean]]]]]])
 
 (mr/def ::dashboard-card.update
   "What an update (or insert) of a DashboardCard accepts: every column of `:report_dashboardcard` except `id`, all optional."

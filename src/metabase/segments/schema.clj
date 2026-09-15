@@ -31,7 +31,8 @@
   ::lib-be.schema/maybe-legacy-query)
 
 (mr/def ::segment
-  "A Segment as selected from the app DB: every column of `:segment`."
+  "A Segment as selected from the app DB: every column of `:segment`, plus `:creator` and `:table` some callers
+  hydrate onto it."
   [:map {:closed true}
    [:id                      ms/PositiveInt]
    [:table_id                ::lib.schema.id/table]
@@ -45,7 +46,9 @@
    [:points_of_interest      [:maybe :string]]
    [:caveats                 [:maybe :string]]
    [:show_in_getting_started :boolean]
-   [:entity_id               :string]])
+   [:entity_id               :string]
+   [:creator                 {:optional true} [:maybe :metabase.users.schema/user]]
+   [:table                   {:optional true} [:maybe :metabase.warehouse-schema.schema/table]]])
 
 (mr/def ::segment.update
   "What an update (or insert) of a Segment accepts: every column of `:segment` except `id`, all optional."

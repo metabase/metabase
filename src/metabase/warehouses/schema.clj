@@ -103,12 +103,8 @@
    [:admin_details               {:optional true} [:maybe ::database.admin-details]]
    [:is_stub                     {:optional true} [:maybe :boolean]]])
 
-(mr/def ::database.partial
-  "A Database row that may have been selected with only some of its columns."
-  [:merge ::database.update [:map {:closed true} [:id {:optional true} ::lib.schema.id/database]]])
-
 (mr/def ::database-or-metadata
-  "A Database as a (possibly partial) app DB row or as Lib metadata."
+  "A Database as an app DB row or as Lib metadata."
   [:multi {:dispatch (fn [x] (if (:lib/type x) :lib-metadata :row))}
    [:lib-metadata :metabase.lib.schema.metadata/database]
-   [:row          ::database.partial]])
+   [:row          ::database]])

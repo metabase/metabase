@@ -110,7 +110,7 @@
    [:exception     {:optional true} [:or :string (ms/InstanceOfClass Class)]]
    [:message       {:optional true} [:maybe :string]]
    [:stacktrace    {:optional true} [:maybe [:sequential :string]]]
-   [:ex-data       {:optional true} [:maybe ms/RawJSON]]
+   [:ex-data       {:optional true} [:maybe ms/ExceptionData]]
    [:original-info {:optional true} [:maybe [:ref ::task-history.task-details]]]
    [:reason              {:optional true} :string]
    [:attempted_retries   {:optional true} :int]

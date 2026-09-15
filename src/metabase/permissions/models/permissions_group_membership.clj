@@ -5,10 +5,11 @@
    [metabase.events.core :as events]
    [metabase.permissions.db :as permissions.db]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.schema :as permissions.schema]
+   [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -123,10 +124,10 @@
             [:map {:closed true}
              [:group [:or
                       pos-int?
-                      (ms/InstanceOf :model/PermissionsGroup)]]
+                      ::permissions.schema/permissions-group]]
              [:user [:or
                      pos-int?
-                     (ms/InstanceOf :model/User)]]
+                     ::users.schema/user]]
              [:is-group-manager? {:optional true}
               :boolean]]]]
   (when (seq pgms)

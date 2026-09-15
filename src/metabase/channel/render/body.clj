@@ -247,11 +247,18 @@
 
 (mr/def ::card
   "A card as `render`ed for a Pulse/Dashboard Subscription: either a real Card, or an ad-hoc (unsaved) card."
-  [:or (ms/InstanceOf :model/Card) ::adhoc-card])
+  [:or :metabase.queries.schema/card ::adhoc-card])
 
 (mr/def ::dashcard
-  "A DashboardCard as `render`ed for a Dashboard Subscription."
-  (ms/InstanceOf :model/DashboardCard))
+  "A DashboardCard as `render`ed for a Dashboard Subscription, plus the `:series-results` key
+  `notification.payload.execute` attaches for multi-series cards."
+  [:merge
+   :metabase.dashboards.schema/dashboard-card
+   [:map {:closed true}
+    [:series-results {:optional true} [:maybe [:sequential
+                                               [:map {:closed true}
+                                                [:card   {:optional true} [:maybe [:ref :metabase.queries.schema/card]]]
+                                                [:result {:optional true} [:maybe [:map {:closed false, ::mr/deliberately-open true}]]]]]]]]])
 
 (mr/def ::render-type
   [:enum :inline :attachment])

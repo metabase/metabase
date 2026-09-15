@@ -26,7 +26,12 @@
 
 (def ^:private ComparisonEntityInstance
   "An instance `->root` can turn into a `left`/`right` side of a comparison."
-  (ms/InstanceOf [:model/Table :model/Segment :model/Card :model/Field :model/Query]))
+  [:or
+   :metabase.warehouse-schema.schema/table
+   :metabase.segments.schema/segment
+   ::queries.schema/card
+   :metabase.warehouse-schema.schema/field
+   ::queries.schema/query])
 
 (mu/defn- dashboard->cards :- [:sequential ::ads/card]
   [dashboard :- ::ads/dashboard]
