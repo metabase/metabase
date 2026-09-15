@@ -172,9 +172,9 @@
   "The `scope` of the 401 challenge: the least-privilege baseline an uninstructed client requests on first connect.
 
   Every tool is listed whatever the token holds. A call needing a scope the token lacks is answered with a 403
-  `insufficient_scope` naming held ∪ required, and each tool declares its scope in `securitySchemes`, so a client
-  steps up to the rest of the surface rather than being granted it up front. The surface still accepts all of
-  [[metabase.mcp.paths/v2-surface-scopes]].
+  `insufficient_scope` naming the union of held and required scopes, and each tool declares its scope in
+  `securitySchemes`, so a client steps up to the rest of the surface rather than being granted it up front. The
+  surface still accepts all of [[metabase.mcp.paths/v2-surface-scopes]].
 
   Every scope here must be inside the OAuth server's default grant ceiling, or a client that follows the challenge
   is answered \"Invalid scope\"."
