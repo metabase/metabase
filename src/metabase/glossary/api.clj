@@ -29,7 +29,7 @@
    {:keys [term definition]} :- [:map {:closed true}
                                  [:term ms/NonBlankString]
                                  [:definition ms/NonBlankString]]]
-  (api/check-data-analyst)
+  (api/check-data-studio-access)
   (let [glossary (glossary.db/insert-glossary-entry!
                   {:term       term
                    :definition definition
@@ -50,7 +50,7 @@
    {:keys [term definition]} :- [:map {:closed true}
                                  [:term ms/NonBlankString]
                                  [:definition ms/NonBlankString]]]
-  (api/check-data-analyst)
+  (api/check-data-studio-access)
   (let [previous-glossary (api/check-404 (glossary.db/glossary-entry id))]
     (glossary.db/update-glossary-entry! id term definition)
     (let [glossary (glossary.db/glossary-entry id)]
@@ -67,7 +67,7 @@
 (api.macros/defendpoint :delete "/:id"
   "Delete a glossary entry."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
-  (api/check-data-analyst)
+  (api/check-data-studio-access)
   (let [glossary (api/check-404 (glossary.db/glossary-entry id))]
     (glossary.db/delete-glossary-entry! id)
     (events/publish-event! :event/glossary-delete

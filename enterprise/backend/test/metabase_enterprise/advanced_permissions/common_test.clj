@@ -76,6 +76,25 @@
           (is (partial= {:can_access_transforms true}
                         (user-permissions :crowberto))))))))
 
+(deftest can-access-transforms-follows-the-advanced-permissions-feature-test
+  (testing "can_access_transforms pauses for a data analyst once advanced-permissions is gone"
+    (perms.test-util/with-data-analyst-role! (mt/user->id :rasta)
+      (mt/with-restored-data-perms!
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/transforms :yes)
+        (mt/with-current-user (mt/user->id :rasta)
+          (mt/with-premium-features #{:advanced-permissions}
+            (is (true? (get-in (advanced-permissions.common/with-advanced-permissions {})
+                               [:permissions :can_access_transforms]))))
+          (mt/with-premium-features #{}
+            (is (false? (get-in (advanced-permissions.common/with-advanced-permissions {})
+                                [:permissions :can_access_transforms])))))))
+    (testing "a superuser is unaffected"
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-premium-features #{}
+          (is (true? (get-in (advanced-permissions.common/with-advanced-permissions {})
+                             [:permissions :can_access_transforms]))))))))
+
 (deftest current-user-query-permissions-published-table-test
   (testing "GET /api/user/current can_create_queries respects published tables"
     (mt/with-premium-features #{:library}

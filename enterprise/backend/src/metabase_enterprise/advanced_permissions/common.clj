@@ -75,7 +75,7 @@
             :can_access_monitoring   (perms/set-has-application-permission-of-type? permissions-set :monitoring)
             :can_access_data_model   can-access-data-model
             :can_access_db_details   (perms/user-has-any-perms-of-type? user-id :perms/manage-database)
-            :can_access_transforms   (or api/*is-superuser?* (and api/*is-data-analyst?*
+            :can_access_transforms   (or api/*is-superuser?* (and (api/entitled-data-analyst?)
                                                                   (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/transforms
                                                                                                      :exclude-db-ids [audit/audit-db-id])))
             :is_data_analyst         api/*is-data-analyst?*

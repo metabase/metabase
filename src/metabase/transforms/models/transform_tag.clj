@@ -19,14 +19,14 @@
 
 (defmethod mi/can-read? :model/TransformTag
   ([_instance]
-   (api/is-data-analyst?))
+   (api/entitled-data-analyst?))
   ([_model _pk]
-   (api/is-data-analyst?)))
+   (api/entitled-data-analyst?)))
 
 (defmethod mi/can-write? :model/TransformTag
   ([instance]
    (or api/*is-superuser?*
-       (and api/*is-data-analyst?*
+       (and (api/entitled-data-analyst?)
             (let [transforms (transform/transforms-with-tags [(:id instance)])]
               (every? mi/can-write? transforms)))))
   ([_model pk]
@@ -35,7 +35,7 @@
 
 (defmethod mi/can-create? :model/TransformTag
   [_model _instance]
-  (api/is-data-analyst?))
+  (api/entitled-data-analyst?))
 
 (defn schedules-for-transforms
   "Map each id in `transform-ids` to the cron schedules of the active jobs that run it via shared tags.

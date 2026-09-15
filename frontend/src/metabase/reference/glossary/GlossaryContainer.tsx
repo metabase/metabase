@@ -9,6 +9,7 @@ import {
 } from "metabase/api";
 import S from "metabase/common/components/Glossary/Glossary.module.css";
 import { GlossaryTable } from "metabase/common/components/Glossary/GlossaryTable";
+import { useHasTokenFeature } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { getUserIsAdmin, getUserIsAnalyst } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
@@ -23,7 +24,9 @@ export function GlossaryContainer() {
   const [deleteGlossary] = useDeleteGlossaryMutation();
   const isAdmin = useSelector(getUserIsAdmin);
   const isAnalyst = useSelector(getUserIsAnalyst);
-  const canManage = isAdmin || isAnalyst;
+  // Mirrors api/check-data-studio-access, which gates the glossary write endpoints
+  const hasAdvancedPermissions = useHasTokenFeature("advanced_permissions");
+  const canManage = isAdmin || (isAnalyst && hasAdvancedPermissions);
 
   return (
     <SidebarLayout
