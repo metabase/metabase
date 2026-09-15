@@ -4,6 +4,7 @@
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.middleware.process-userland-query-test]}}}}}}
   (:require
    [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
    [clojure.core.async :as a]
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -121,8 +122,9 @@
   (testing "a row the app DB rejects (here: an oversized embedding_client) does not take the rest of the batch with it"
     (mt/with-model-cleanup [:model/QueryExecution]
       (let [marker (str "oversized-row-batch-test-" (random-uuid))
+            ;; hash must be a real 32-byte digest: the column is BINARY(32) on H2/MySQL (only Postgres' bytea is unbounded)
             row    (fn [i client]
-                     {:hash             (.getBytes (str marker "-" i) "UTF-8")
+                     {:hash             (buddy-hash/sha256 (str marker "-" i))
                       :started_at       (t/offset-date-time)
                       :running_time     1
                       :result_rows      0
@@ -144,10 +146,10 @@
       (let [marker (str "oversized-row-batch-test-" (random-uuid))]
         (t2/with-transaction [_conn nil {:rollback-only true}]
           (#'process-userland-query/save-execution-metadata!*
-           [{:hash (.getBytes (str marker "-1") "UTF-8") :started_at (t/offset-date-time) :running_time 1
+           [{:hash (buddy-hash/sha256 (str marker "-1")) :started_at (t/offset-date-time) :running_time 1
              :result_rows 0 :native false :context :ad-hoc :cache_hit true :error (str marker "-1")
              :embedding_client (apply str (repeat 255 "c"))}
-            {:hash (.getBytes (str marker "-2") "UTF-8") :started_at (t/offset-date-time) :running_time 1
+            {:hash (buddy-hash/sha256 (str marker "-2")) :started_at (t/offset-date-time) :running_time 1
              :result_rows 0 :native false :context :ad-hoc :cache_hit true :error (str marker "-2")
              :embedding_client "embedding-sdk-react"}])
           (is (= [(str marker "-2")]
