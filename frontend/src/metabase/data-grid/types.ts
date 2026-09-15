@@ -83,6 +83,9 @@ export interface ColumnOptions<TRow extends RowData, TValue = unknown> {
   /** Custom header render template */
   header?: ColumnDefTemplate<HeaderContext<TRow, TValue>>;
 
+  /** Custom footer render template */
+  footer?: ColumnDefTemplate<HeaderContext<TRow, TValue>>;
+
   /** Visual style of the body cells */
   cellVariant?: BodyCellVariant;
 

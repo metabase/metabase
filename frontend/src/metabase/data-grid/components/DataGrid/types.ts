@@ -11,7 +11,11 @@ export type DataGridStylesNames =
   | "headerCell"
   | "bodyContainer"
   | "bodyCell"
-  | "footer";
+  | "footer"
+  | "footerContainer"
+  | "footerCell";
+
+export type DataGridClassNames = DataGridStylesNames;
 
 export type DataGridStylesProps = {
   classNames?: { [key in DataGridStylesNames]?: string };

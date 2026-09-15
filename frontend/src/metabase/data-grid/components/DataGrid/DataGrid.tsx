@@ -3,7 +3,7 @@ import {
   SortableContext,
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import type { HeaderGroup } from "@tanstack/react-table";
+import { type HeaderGroup, flexRender } from "@tanstack/react-table";
 import cx from "classnames";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
@@ -26,6 +26,7 @@ import type {
   DataGridRowType,
   DataGridTheme,
 } from "../../types";
+import { getColumnPositionStyles } from "../../utils/stylings";
 import { AddColumnButton } from "../AddColumnButton/AddColumnButton";
 import { DataGridHeader } from "../DataGridHeader/DataGridHeader";
 import { DataGridRow } from "../DataGridRow/DataGridRow";
@@ -166,6 +167,49 @@ export const DataGrid = function DataGrid<TData>({
     />
   );
 
+  const renderFooter = (
+    footerGroup: HeaderGroup<TData>,
+    columns: DataGridColumnType<TData>[],
+  ) => {
+    const paddingLeft = columns[0]?.virtualItem?.start ?? 0;
+    return (
+      <div
+        className={cx(S.row, classNames?.row)}
+        role="row"
+        style={{
+          backgroundColor: stickyElementsBackgroundColor,
+          paddingLeft,
+          ...styles?.row,
+        }}
+      >
+        {columns.map((column) => {
+          const header = footerGroup.headers[column.origin.getIndex()];
+          if (!header) {
+            return null;
+          }
+          const footerCell = flexRender(
+            header.column.columnDef.footer,
+            header.getContext(),
+          );
+          const columnPositionStyles = getColumnPositionStyles(column);
+          return (
+            <div
+              key={header.id}
+              role="gridcell"
+              className={cx(S.footerCell, classNames?.footerCell)}
+              style={{
+                ...columnPositionStyles,
+                ...styles?.footerCell,
+              }}
+            >
+              {footerCell}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   const renderGridPanels = ({
     pinnedContent,
     centerContent,
@@ -174,7 +218,7 @@ export const DataGrid = function DataGrid<TData>({
   }: {
     pinnedContent: React.ReactNode;
     centerContent: React.ReactNode;
-    rowsSection: "pinned" | "center" | "header";
+    rowsSection: "pinned" | "center" | "header" | "footer";
     minHeight?: string;
   }) => (
     <>
@@ -316,6 +360,32 @@ export const DataGrid = function DataGrid<TData>({
                 </div>
               </div>
             )}
+            {table.getFooterGroups().map((footerGroup) => {
+              const hasFooter = footerGroup.headers.some(
+                (header) => header.column.columnDef.footer != null,
+              );
+              if (!hasFooter) {
+                return null;
+              }
+              return (
+                <div
+                  key={footerGroup.id}
+                  data-testid="table-footer-container"
+                  role="rowgroup"
+                  className={cx(S.footerContainer, classNames?.footerContainer)}
+                  style={{
+                    backgroundColor: stickyElementsBackgroundColor,
+                    ...styles?.footerContainer,
+                  }}
+                >
+                  {renderGridPanels({
+                    pinnedContent: renderFooter(footerGroup, pinnedColumns),
+                    centerContent: renderFooter(footerGroup, centerColumns),
+                    rowsSection: "footer",
+                  })}
+                </div>
+              );
+            })}
           </div>
           {isAddColumnButtonSticky && (
             <AddColumnButton
