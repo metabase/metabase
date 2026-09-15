@@ -9,8 +9,8 @@ import {
   unionShape,
 } from "./shape";
 import {
+  elementTypes,
   isObjectLike,
-  isTypeReference,
   properties,
   symbolDeclaration,
   typeText,
@@ -22,6 +22,7 @@ import {
   isLibDeclaration,
   isLibType,
   isPrototypeMember,
+  jsonOmissionReason,
   jsonView,
   stringShapes,
 } from "./value-conversion";
@@ -119,14 +120,14 @@ export function modelClientRequest(
   const sources = [
     [inlinePayload],
     paramsVariants.map((payload) =>
-      sendAsQuery(context, payload, queryNotes, onUnverified),
+      sendAsQuery(checker, payload, queryNotes, onUnverified),
     ),
   ];
   let sentBody: Shape[];
   if (foldsBody) {
     sources.push(
       bodyVariants.map((payload) =>
-        sendAsQuery(context, payload, queryNotes, onUnverified),
+        sendAsQuery(checker, payload, queryNotes, onUnverified),
       ),
     );
     sentBody = [typeShape(checker.getUndefinedType())];
@@ -139,7 +140,7 @@ export function modelClientRequest(
     );
   } else {
     sentBody = bodyVariants.map((payload) =>
-      sendAsJson(context, payload, bodyNotes),
+      sendAsJson(checker, payload, bodyNotes),
     );
   }
   const queryVariants = queryPayloads(sources, onUnverified);
@@ -484,17 +485,6 @@ function mayBeEmptyArray(checker: ts.TypeChecker, type: ts.Type): boolean {
   return "minLength" in type.target && type.target.minLength === 0;
 }
 
-function elementTypes(
-  checker: ts.TypeChecker,
-  array: ts.Type,
-): readonly ts.Type[] {
-  if (checker.isTupleType(array)) {
-    return isTypeReference(array) ? checker.getTypeArguments(array) : [];
-  }
-  const element = checker.getIndexTypeOfType(array, ts.IndexKind.Number);
-  return element ? [element] : [];
-}
-
 /**
  * The string conversion named by `reason` applied to each value named by `source`,
  * with a note keeping the value from before it.
@@ -554,7 +544,7 @@ function stringifiedValues(
 function mapFields(
   payload: Payload,
   mapField: (field: ShapeField) => ShapeField | undefined,
-  mapIndexValues: (values: Shape[]) => Shape[],
+  mapIndex: (shape: Shape) => Shape,
 ): Payload {
   if (payload.kind !== "object") {
     return payload;
@@ -565,7 +555,7 @@ function mapFields(
   });
   const indexes = payload.indexes.map((index) => ({
     ...index,
-    shape: unionShape(mapIndexValues([index.shape])),
+    shape: mapIndex(index.shape),
   }));
   return { ...payload, fields, indexes };
 }
@@ -573,7 +563,7 @@ function mapFields(
 // `appendQueryParameters` skips a null or undefined value and appends an array item by item,
 // so neither kind of value is guaranteed to put its key in the query string (appendQueryParameters).
 function sendAsQuery(
-  { checker }: ModelContext,
+  checker: ts.TypeChecker,
   payload: Payload,
   notes: string[],
   onUnverified: (reason: string) => void,
@@ -622,15 +612,13 @@ function sendAsQuery(
       }
       return { ...field, shape: unionShape(sent.values), optional };
     },
-    (values) => {
-      const present = values.flatMap((value) => {
-        const type = plainType(value);
-        return type
-          ? unionMembers(checker, type)
-              .filter((member) => !(member.flags & NULLISH))
-              .map((member) => typeShape(member))
-          : [value];
-      });
+    (value) => {
+      const type = plainType(value);
+      const present = type
+        ? unionMembers(checker, type)
+            .filter((member) => !(member.flags & NULLISH))
+            .map(typeShape)
+        : [value];
       const sent = stringifiedValues(
         checker,
         "[key]",
@@ -642,39 +630,35 @@ function sendAsQuery(
       if (sent.unverified) {
         onUnverified(sent.unverified);
       }
-      return sent.values;
+      return unionShape(sent.values);
     },
   );
 }
 
-function jsonValues(
-  { checker }: ModelContext,
-  values: Shape[],
+function jsonValue(
+  checker: ts.TypeChecker,
+  value: Shape,
   notes: string[],
-): Shape[] {
-  return values.map((value) => {
-    const type = plainType(value);
-    if (!type) {
-      return value;
-    }
-    const view = jsonView(checker, type);
-    if (view.kind === "type" && view.type === type) {
-      return value;
-    }
+): Shape {
+  const type = plainType(value);
+  if (!type) {
+    return value;
+  }
+  const view = jsonView(checker, type);
+  if (view.kind !== "type" || view.type !== type) {
     notes.push(
       "body fields are compared after JSON.stringify conversion (JSON.stringify)",
     );
-    return view;
-  });
+  }
+  return view;
 }
 
 // `JSON.stringify` leaves out a property whose value is undefined (JSON.stringify).
 function sendAsJson(
-  context: ModelContext,
+  checker: ts.TypeChecker,
   payload: Payload,
   notes: string[],
 ): Payload {
-  const { checker } = context;
   return mapFields(
     payload,
     (field) => {
@@ -684,11 +668,7 @@ function sendAsJson(
         return field;
       }
       const types = unionMembers(checker, type);
-      const kept = types.filter(
-        (type) =>
-          !(type.flags & (UNDEFINED | ts.TypeFlags.ESSymbolLike)) &&
-          !type.getCallSignatures().length,
-      );
+      const kept = types.filter((type) => !jsonOmissionReason(type));
       if (!kept.length) {
         notes.push(
           `${described} has no JSON value, so JSON.stringify leaves it out of the body (JSON.stringify)`,
@@ -698,7 +678,7 @@ function sendAsJson(
       if (kept.length === types.length) {
         return {
           ...field,
-          shape: unionShape(jsonValues(context, [field.shape], notes)),
+          shape: jsonValue(checker, field.shape, notes),
         };
       }
       notes.push(
@@ -706,11 +686,13 @@ function sendAsJson(
       );
       return {
         ...field,
-        shape: unionShape(jsonValues(context, kept.map(typeShape), notes)),
+        shape: unionShape(
+          kept.map((type) => jsonValue(checker, typeShape(type), notes)),
+        ),
         optional: true,
       };
     },
-    (values) => jsonValues(context, values, notes),
+    (value) => jsonValue(checker, value, notes),
   );
 }
 

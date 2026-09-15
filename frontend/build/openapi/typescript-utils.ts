@@ -227,6 +227,17 @@ export function isTypeReference(type: ts.Type): type is ts.TypeReference {
   );
 }
 
+export function elementTypes(
+  checker: ts.TypeChecker,
+  array: ts.Type,
+): readonly ts.Type[] {
+  if (checker.isTupleType(array)) {
+    return isTypeReference(array) ? checker.getTypeArguments(array) : [];
+  }
+  const element = checker.getIndexTypeOfType(array, ts.IndexKind.Number);
+  return element ? [element] : [];
+}
+
 export function propertyType(
   checker: ts.TypeChecker,
   type: ts.Type,

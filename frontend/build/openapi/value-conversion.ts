@@ -2,7 +2,7 @@ import ts from "typescript";
 
 import type { Shape, ShapeField } from "./shape";
 import {
-  isTypeReference,
+  elementTypes,
   properties,
   typeText,
   unionMembers,
@@ -55,10 +55,6 @@ export function isLibDeclaration(
   return (
     declaration?.getSourceFile().fileName.startsWith(LIB_DIRECTORY) ?? false
   );
-}
-
-function isSymbolType(type: ts.Type): boolean {
-  return (type.flags & ts.TypeFlags.ESSymbolLike) !== 0;
 }
 
 function singleText(
@@ -127,11 +123,11 @@ export function stringShapes(checker: ts.TypeChecker, type: ts.Type): Shape[] {
   });
 }
 
-function dropReason(type: ts.Type): string | undefined {
+export function jsonOmissionReason(type: ts.Type): string | undefined {
   if (type.flags & (ts.TypeFlags.Undefined | ts.TypeFlags.Void)) {
     return "undefined";
   }
-  if (isSymbolType(type)) {
+  if (type.flags & ts.TypeFlags.ESSymbolLike) {
     return "a symbol";
   }
   return type.getCallSignatures().length > 0 ? "a function" : undefined;
@@ -238,20 +234,15 @@ function buildShape(checker: ts.TypeChecker, type: ts.Type): Shape {
     }
     return jsonView(checker, checker.getReturnTypeOfSignature(signature));
   }
-  if (type.getCallSignatures().length > 0 || isSymbolType(type)) {
+  if (jsonOmissionReason(type)) {
     return { kind: "type", type };
   }
   if (checker.isArrayType(type) || checker.isTupleType(type)) {
-    const elements = checker.isTupleType(type)
-      ? isTypeReference(type)
-        ? checker.getTypeArguments(type)
-        : []
-      : [checker.getIndexTypeOfType(type, ts.IndexKind.Number)].filter(
-          (element) => element !== undefined,
-        );
-    const parts = elements.flatMap((element) => unionMembers(checker, element));
+    const parts = elementTypes(checker, type).flatMap((element) =>
+      unionMembers(checker, element),
+    );
     const views = parts.map((part): Shape => {
-      const dropped = dropReason(part);
+      const dropped = jsonOmissionReason(part);
       return dropped
         ? { kind: "null", from: part, reason: `${dropped} in an array` }
         : jsonView(checker, part);
@@ -304,7 +295,7 @@ function buildShape(checker: ts.TypeChecker, type: ts.Type): Shape {
         return [];
       }
       const parts = unionMembers(checker, checker.getTypeOfSymbol(property));
-      const kept = parts.filter((part) => !dropReason(part));
+      const kept = parts.filter((part) => !jsonOmissionReason(part));
       if (!kept.length) {
         return [];
       }
