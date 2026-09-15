@@ -328,7 +328,7 @@ export const VariantFilled = {
     <VariantMatrix
       title="Button · filled"
       variant="filled"
-      colors={["brand", "filter", "negative", "positive", "warning"]}
+      colors={["brand", "negative", "filter", "warning", "positive"]}
       groups={["brand"]}
     />
   ),
@@ -354,7 +354,7 @@ export const VariantLight = {
     <VariantMatrix
       title="Button · light"
       variant="light"
-      colors={["brand", "filter", "negative", "neutral", "positive"]}
+      colors={["brand", "negative", "neutral", "filter", "positive"]}
       groups={["neutral"]}
     />
   ),
