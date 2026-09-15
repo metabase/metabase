@@ -1,7 +1,3 @@
-import fs from "fs";
-import os from "os";
-import path from "path";
-
 import ts from "typescript";
 
 import {
@@ -10,23 +6,17 @@ import {
   baselineProblems,
   checkContracts,
 } from "./contracts";
+import {
+  COMPILER_OPTIONS,
+  ENDPOINT_BUILDER,
+  cleanupFixtures,
+  programFrom,
+} from "./test-fixtures";
 import { TypeWalkError } from "./type-comparison";
 
 const ENDPOINT_ID = "endpoints:example";
 
-const directories: string[] = [];
-
-afterEach(() => {
-  for (const directory of directories.splice(0)) {
-    fs.rmSync(directory, { recursive: true, force: true });
-  }
-});
-
-function createTempDir(prefix: string): string {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
-  directories.push(directory);
-  return directory;
-}
+afterEach(cleanupFixtures);
 
 function replaceOnce(source: string, target: string, replacement: string) {
   const index = source.indexOf(target);
@@ -51,71 +41,34 @@ function check({
   endpoint: string;
   options?: ts.CompilerOptions;
 }) {
-  const root = createTempDir("api-contracts-");
-  const file = path.join(root, "endpoint.ts");
-  const generated = path.join(root, "types.gen.d.ts");
-  // `BaseQueryArgs` is the request shape RTK hands to baseQuery (frontend/src/metabase/api/api.ts:59-65),
-  // so a fixture cannot build a request a real endpoint cannot. It shares the template's first line,
-  // so the line numbers the specs quote stay put.
-  fs.writeFileSync(
-    file,
-    `type BaseQueryArgs = string | { method?: "GET" | "POST" | "PUT" | "DELETE"; url: string | null; params?: Record<string, unknown> | null | void; body?: unknown };
-    type EndpointBuilder = {
-      query<Response, Request>(config: {
-        query?: (request: Request) => BaseQueryArgs;
-        queryFn?: () => unknown;
-        transformResponse?: (response: unknown) => Response;
-      }): unknown;
-    };
-    declare const builder: EndpointBuilder;
+  // The builder shares the template's first line, so the line numbers the specs quote stay put.
+  const { root, files, program } = programFrom(
+    {
+      "endpoint.ts": `${ENDPOINT_BUILDER}
     ${frontend}
     const endpoints = { example: ${endpoint} };
   `,
+      "types.gen.d.ts": backend,
+    },
+    { options, checked: ["endpoint.ts"] },
   );
-  fs.writeFileSync(generated, backend);
-  const program = ts.createProgram([file, generated], {
-    strict: true,
-    noEmit: true,
-    skipLibCheck: true,
-    target: ts.ScriptTarget.ESNext,
-    ...options,
-  });
-  // Only the endpoint definition has to type-check: the surrounding declarations may leave a type unresolved on purpose.
-  const source = program.getSourceFile(file);
-  const endpoints = source?.statements.find(
-    (statement) =>
-      ts.isVariableStatement(statement) &&
-      statement.declarationList.declarations.some(
-        (declaration) =>
-          ts.isIdentifier(declaration.name) &&
-          declaration.name.text === "endpoints",
-      ),
+  return checkContracts(
+    program,
+    [files["endpoint.ts"] ?? ""],
+    files["types.gen.d.ts"] ?? "",
+    root,
   );
-  const diagnostics =
-    source && endpoints
-      ? program.getSemanticDiagnostics(source).filter(
-          (diagnostic) =>
-            diagnostic.start !== undefined &&
-            diagnostic.start >= endpoints.getStart() &&
-            diagnostic.start < endpoints.getEnd() &&
-            // An unresolved name is a fixture's own business.
-            diagnostic.code !== 2304,
-        )
-      : [];
-  if (diagnostics.length) {
-    throw new Error(
-      diagnostics
-        .map((diagnostic) =>
-          ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"),
-        )
-        .join("\n"),
-    );
-  }
-  return checkContracts(program, [file], generated, root);
 }
 
 function resultFor(results: ContractResult[], part: string) {
   return results.find((result) => result.id === `${ENDPOINT_ID}:${part}`);
+}
+
+/** The message lines of a check, without the notes that record the client rules applied. */
+function messageFor(results: ContractResult[], part: string) {
+  return resultFor(results, part)
+    ?.message.split("\n  ")
+    .filter((line) => !line.startsWith("note: "));
 }
 
 function statuses(results: ContractResult[]): Record<string, ContractStatus> {
@@ -566,10 +519,6 @@ describe("API contract checks", () => {
 describe("diagnostic messages", () => {
   const route = "GET /api/erd/{database-id}";
 
-  function messageFor(results: ContractResult[], part: string) {
-    return resultFor(results, part)?.message.split("\n  ");
-  }
-
   it("should name the backend and frontend types in a response mismatch", () => {
     const results = check({
       frontend: "interface ErdResponse { label: string }",
@@ -712,7 +661,7 @@ describe("diagnostic messages", () => {
     ]);
   });
 
-  it("should stop counting paths where a recursive type repeats", () => {
+  it("should stop where a recursive type repeats", () => {
     const results = check({
       frontend,
       backend: withResponse(
@@ -721,14 +670,10 @@ describe("diagnostic messages", () => {
       ),
       endpoint,
     });
-    expect(resultFor(results, "response.2XX")?.unconstrained).toEqual([
-      {
-        side: "backend",
-        type: "unknown",
-        declaration: "Tree.value (types.gen.d.ts:10)",
-        paths: ["$.value"],
-      },
-      { side: "backend", type: "unknown", paths: ["$.meta[key]"] },
+    expect(messageFor(results, "response.2XX")).toEqual([
+      `Unconstrained or unresolved types in ${route} response 2XX:`,
+      "Tree.value (types.gen.d.ts:10): backend type unknown at $.value",
+      "$.meta[key]: backend type unknown",
     ]);
   });
 
@@ -915,8 +860,11 @@ describe("diagnostic messages", () => {
       ),
       endpoint,
     });
+    expect(messageFor(results, "response.2XX")).toEqual([
+      '$.first (endpoint.ts:10 ErdResponse.first): cannot establish frontend field coverage for frontend union variant { kind: "error"; }, which no backend type at this position is assignable to.',
+      '$.second (endpoint.ts:10 ErdResponse.second): cannot establish frontend field coverage for frontend union variant { kind: "error"; }, which no backend type at this position is assignable to.',
+    ]);
     expect(resultFor(results, "response.2XX")?.status).toBe("unverified");
-    expect(messageFor(results, "response.2XX")).toHaveLength(2);
   });
 });
 
@@ -929,31 +877,26 @@ describe("walks that do not finish", () => {
     options: Parameters<typeof checkContracts>[4],
     wrapChecker?: (checker: ts.TypeChecker) => ts.TypeChecker,
   ) {
-    const root = createTempDir("api-contracts-walk-");
-    const file = path.join(root, "endpoint.ts");
-    const generated = path.join(root, "types.gen.d.ts");
-    fs.writeFileSync(
-      file,
-      `
-      type EndpointBuilder = { query<Response, Request>(config: { query?: (request: Request) => unknown }): unknown };
-      declare const builder: EndpointBuilder;
+    const { root, files, program } = programFrom({
+      "endpoint.ts": `${ENDPOINT_BUILDER}
       ${frontendTypes}
       const endpoints = { example: ${endpoint} };
     `,
-    );
-    fs.writeFileSync(generated, backendTypes);
-    const program = ts.createProgram([file, generated], {
-      strict: true,
-      noEmit: true,
-      skipLibCheck: true,
-      target: ts.ScriptTarget.ESNext,
+      "types.gen.d.ts": backendTypes,
     });
     const checked = wrapChecker
       ? Object.assign(Object.create(program), {
           getTypeChecker: () => wrapChecker(program.getTypeChecker()),
         })
       : program;
-    return () => checkContracts(checked, [file], generated, root, options);
+    return () =>
+      checkContracts(
+        checked,
+        [files["endpoint.ts"] ?? ""],
+        files["types.gen.d.ts"] ?? "",
+        root,
+        options,
+      );
   }
 
   it("should stop the run with the check, type and path when a walk goes past its step budget", () => {
@@ -964,7 +907,7 @@ describe("walks that do not finish", () => {
     );
     expect(run).toThrow(TypeWalkError);
     expect(run).toThrow(
-      "API contract check endpoints:example:response.2XX stopped: the unconstrained type walk went past its budget of 3 steps at $.second in type { value: unknown; } (ErdResponse.second (endpoint.ts:4))",
+      "API contract check endpoints:example:response.2XX stopped: the unconstrained type walk went past its budget of 3 steps at $.second in type { value: unknown; } (ErdResponse.second (endpoint.ts:10))",
     );
   });
 
@@ -1057,40 +1000,41 @@ describe("type printing order", () => {
     backendDeclarations: string,
     endpoints: Record<string, { declarations: string; endpoint: string }>,
   ) {
-    const root = createTempDir("api-contracts-order-");
-    const generated = path.join(root, "types.gen.d.ts");
-    fs.writeFileSync(generated, backendDeclarations);
-    const files = Object.entries(endpoints).map(
-      ([name, { declarations, endpoint }]) => {
-        const file = path.join(root, `${name}.ts`);
-        fs.writeFileSync(
-          file,
-          `
+    const { root, files } = programFrom(
+      {
+        "types.gen.d.ts": backendDeclarations,
+        ...Object.fromEntries(
+          Object.entries(endpoints).map(
+            ([name, { declarations, endpoint }]) => [
+              `${name}.ts`,
+              `
           export {};
-          type EndpointBuilder = {
-            query<Response, Request>(config: { query?: (request: Request) => unknown }): unknown;
-          };
-          declare const builder: EndpointBuilder;
+          ${ENDPOINT_BUILDER}
           ${declarations}
           const ${name}Endpoints = { example: ${endpoint} };
         `,
-        );
-        return file;
+            ],
+          ),
+        ),
       },
+      { checked: [] },
     );
-    const run = (endpointFiles: string[]) =>
+    const generated = files["types.gen.d.ts"] ?? "";
+    const endpointFiles = Object.values(files).filter(
+      (file) => file !== generated,
+    );
+    // The program is built twice, so the order the endpoint files are read in is what changes.
+    const run = (ordered: string[]) =>
       checkContracts(
-        ts.createProgram([...endpointFiles, generated], {
-          strict: true,
-          noEmit: true,
-          skipLibCheck: true,
-          target: ts.ScriptTarget.ESNext,
-        }),
-        endpointFiles,
+        ts.createProgram([...ordered, generated], COMPILER_OPTIONS),
+        ordered,
         generated,
         root,
       );
-    return { inOrder: run(files), reversed: run([...files].reverse()) };
+    return {
+      inOrder: run(endpointFiles),
+      reversed: run([...endpointFiles].reverse()),
+    };
   }
 
   it("should give the same results whichever endpoint file is checked first", () => {
@@ -1131,13 +1075,13 @@ describe("type printing order", () => {
         .find((result) => result.id === "pickedEndpoints:example:response.2XX")
         ?.message.split("\n  "),
     ).toEqual([
-      "$.a (picked.ts:7 Card.a): backend type number is not assignable to frontend type string",
-      "$.b (picked.ts:7 Card.b): backend type number is not assignable to frontend type string",
+      "$.a (picked.ts:12 Card.a): backend type number is not assignable to frontend type string",
+      "$.b (picked.ts:12 Card.b): backend type number is not assignable to frontend type string",
     ]);
   });
 });
 
-describe("request values sent by the API client", () => {
+describe("request comparison rules", () => {
   const frontend = "type ErdResponse = { id: number };";
 
   function operation({
@@ -1176,23 +1120,6 @@ describe("request values sent by the API client", () => {
         '$.ids[] (endpoint.ts:11): frontend value "null" is not assignable to backend type number',
       ]),
     );
-  });
-
-  it("should leave an object query value unverified instead of reading it as a string", () => {
-    const results = check({
-      frontend,
-      backend: operation({ query: "query: { options: string }" }),
-      endpoint: request(
-        "{ options: { a: number } }",
-        '(params) => ({ url: "/api/user", params })',
-      ),
-    });
-    expect(resultFor(results, "request.query")).toMatchObject({
-      status: "unverified",
-      message: expect.stringContaining(
-        "options ({ a: number; }) is sent as text, and its text is known only at runtime",
-      ),
-    });
   });
 
   it("should compare a recursive JSON body from the declared type at the point it recurs", () => {
@@ -1313,13 +1240,13 @@ describe("request values sent by the API client", () => {
         '(params) => ({ url: "/api/user/:id", params })',
       ),
     });
-    expect(resultFor(results, "request.path.0")?.message.split("\n  ")).toEqual(
-      [
-        '$: frontend value "false" is not assignable to backend type number',
-        '$: frontend value "true" is not assignable to backend type number',
-        "note: :id is filled from params.id (utils.ts:165-168)",
-        'note: :id (boolean) is sent as "false" | "true" (utils.ts:180)',
-      ],
+    expect(messageFor(results, "request.path.0")).toEqual([
+      '$: frontend value "false" is not assignable to backend type number',
+      '$: frontend value "true" is not assignable to backend type number',
+    ]);
+    // The notes name the client rules that produced the texts.
+    expect(resultFor(results, "request.path.0")?.message).toMatch(
+      /\n {2}note: .*substituteUrlTags/,
     );
   });
 
@@ -1332,13 +1259,10 @@ describe("request values sent by the API client", () => {
       }),
       endpoint: request("boolean", "(flag) => ({ url: `/api/user/${flag}` })"),
     });
-    expect(resultFor(results, "request.path.0")?.message.split("\n  ")).toEqual(
-      [
-        '$: frontend value "false" is not assignable to backend type number',
-        '$: frontend value "true" is not assignable to backend type number',
-        'note: ${flag} (boolean) is sent as "false" | "true" (the template literal applies String)',
-      ],
-    );
+    expect(messageFor(results, "request.path.0")).toEqual([
+      '$: frontend value "false" is not assignable to backend type number',
+      '$: frontend value "true" is not assignable to backend type number',
+    ]);
   });
 
   it("should send no query parameters for a void params argument", () => {
@@ -1347,11 +1271,7 @@ describe("request values sent by the API client", () => {
       backend: operation(),
       endpoint: request("void", '(params) => ({ url: "/api/user", params })'),
     });
-    expect(resultFor(results, "request.query")).toMatchObject({
-      status: "compatible",
-      message:
-        "Compatible\n  note: void in the frontend params sends no query parameters (api.ts:89)",
-    });
+    expect(resultFor(results, "request.query")?.status).toBe("compatible");
   });
 
   it("should still check the object part of a params argument that may be void", () => {
@@ -1363,13 +1283,10 @@ describe("request values sent by the API client", () => {
         '(params) => ({ url: "/api/user", params })',
       ),
     });
-    expect(resultFor(results, "request.query")).toMatchObject({
-      status: "mismatch",
-      message: [
-        "$: frontend type { limit: number; } is not assignable to backend type undefined",
-        "note: void in the frontend params sends no query parameters (api.ts:89)",
-      ].join("\n  "),
-    });
+    expect(resultFor(results, "request.query")?.status).toBe("mismatch");
+    expect(messageFor(results, "request.query")).toEqual([
+      "$: frontend type { limit: number; } is not assignable to backend type undefined",
+    ]);
   });
 
   it("should require the backend to accept no query when params may be void", () => {
@@ -1382,15 +1299,6 @@ describe("request values sent by the API client", () => {
       ),
     });
     expect(resultFor(results, "request.query")?.status).toBe("mismatch");
-  });
-
-  it("should send no query parameters for a null params value", () => {
-    const results = check({
-      frontend,
-      backend: operation(),
-      endpoint: request("void", '() => ({ url: "/api/user", params: null })'),
-    });
-    expect(resultFor(results, "request.query")?.status).toBe("compatible");
   });
 
   it("should reject a body built from an empty object rest when the backend declares no body", () => {
@@ -1425,23 +1333,6 @@ describe("request values sent by the API client", () => {
     expect(resultFor(results, "request.body")?.status).toBe("unverified");
   });
 
-  it("should leave the query unverified for an object rest with no declared properties", () => {
-    const results = check({
-      frontend,
-      backend: operation(),
-      endpoint: request(
-        "{ id: number }",
-        '({ id, ...params }) => ({ url: "/api/user", params })',
-      ),
-    });
-    expect(resultFor(results, "request.query")).toMatchObject({
-      status: "unverified",
-      message: expect.stringContaining(
-        "the query parameters come from the object rest params, which has no declared properties and carries whatever keys the caller passed beyond the destructured ones",
-      ),
-    });
-  });
-
   it("should still check an empty object type that is not an object rest", () => {
     const results = check({
       frontend: `${frontend} declare const empty: {};`,
@@ -1449,148 +1340,6 @@ describe("request values sent by the API client", () => {
       endpoint: request("void", '() => ({ url: "/api/user", params: empty })'),
     });
     expect(resultFor(results, "request.query")?.status).toBe("mismatch");
-  });
-
-  it("should compare GET body fields with the backend query", () => {
-    const results = check({
-      frontend,
-      backend: operation({ query: "query: { token: string }" }),
-      endpoint: request(
-        "string",
-        '(token) => ({ method: "GET", url: "/api/user", body: { token } })',
-      ),
-    });
-    expect(resultFor(results, "request.query")).toMatchObject({
-      status: "compatible",
-      message:
-        "Compatible\n  note: a GET body is sent as query parameters, so it is compared with the backend query (client.ts:236-241)",
-    });
-    expect(resultFor(results, "request.body")).toMatchObject({
-      status: "compatible",
-      message:
-        "Compatible\n  note: a GET body is sent as query parameters, so no request body is sent (client.ts:236-241)",
-    });
-  });
-
-  it("should reject GET body fields the backend query does not declare", () => {
-    const results = check({
-      frontend,
-      backend: operation(),
-      endpoint: request(
-        "string",
-        '(token) => ({ url: "/api/user", body: { token } })',
-      ),
-    });
-    expect(resultFor(results, "request.query")?.message).toBe(
-      [
-        "$: frontend type { token: string; } is not assignable to backend type undefined",
-        "note: a GET body is sent as query parameters, so it is compared with the backend query (client.ts:236-241)",
-      ].join("\n  "),
-    );
-    expect(resultFor(results, "request.body")?.status).toBe("compatible");
-  });
-
-  it("should combine GET params and body fields into one query", () => {
-    const results = check({
-      frontend,
-      backend: operation({ query: "query: { a: string; b: string }" }),
-      endpoint: request(
-        "{ a: string; b: string }",
-        '({ a, b }) => ({ url: "/api/user", params: { a }, body: { b } })',
-      ),
-    });
-    expect(resultFor(results, "request.query")?.status).toBe("compatible");
-  });
-
-  it("should keep a POST body in the request body", () => {
-    const results = check({
-      frontend,
-      backend: operation({ method: "Post" }),
-      endpoint: request(
-        "string",
-        '(token) => ({ method: "POST", url: "/api/user", body: { token } })',
-      ),
-    });
-    expect(resultFor(results, "request.body")?.status).toBe("mismatch");
-    expect(resultFor(results, "request.query")?.status).toBe("compatible");
-  });
-
-  it("should not send a null query value", () => {
-    const results = check({
-      frontend,
-      backend: operation({ query: "query?: { a?: string }" }),
-      endpoint: request(
-        "{ a: string | null }",
-        '(params) => ({ url: "/api/user", params })',
-      ),
-    });
-    expect(resultFor(results, "request.query")?.status).toBe("compatible");
-  });
-
-  it("should treat an array query value as possibly absent because an empty array sends no key", () => {
-    const results = check({
-      frontend,
-      backend: operation({ query: "query: { ids: number[] }" }),
-      endpoint: request(
-        "{ ids: number[] }",
-        '(params) => ({ url: "/api/user", params })',
-      ),
-    });
-    expect(resultFor(results, "request.query")).toMatchObject({
-      status: "mismatch",
-      message: [
-        "$.ids (endpoint.ts:11): property is optional in the frontend type but required by the backend type",
-        "note: ids (number[]) is not sent when its array is empty (utils.ts:50-53)",
-      ].join("\n  "),
-    });
-  });
-
-  it("should not send the RTK cache key", () => {
-    const results = check({
-      frontend,
-      backend: operation({ method: "Post", body: "body: { q: string }" }),
-      endpoint: request(
-        "{ q: string; __rtkCacheKey?: unknown }",
-        '(body) => ({ method: "POST", url: "/api/user", body })',
-      ),
-    });
-    expect(resultFor(results, "request.body")?.status).toBe("compatible");
-  });
-
-  it("should fill a URL tag from params and check the remaining params as the query", () => {
-    const results = check({
-      frontend,
-      backend: operation({
-        url: "/api/user/{user-id}",
-        path: 'path: { "user-id": number }',
-        query: "query?: { extra?: string }",
-      }),
-      endpoint: request(
-        "{ id: number; extra?: string }",
-        '(params) => ({ url: "/api/user/:id", params })',
-      ),
-    });
-    expect(resultFor(results, "request.path.0")?.status).toBe("compatible");
-    expect(resultFor(results, "request.query")?.status).toBe("compatible");
-    expect(resultFor(results, "request")).toBeUndefined();
-  });
-
-  it("should fill a URL tag from the body when params has no value for it", () => {
-    const results = check({
-      frontend,
-      backend: operation({
-        method: "Post",
-        url: "/api/user/{token}",
-        path: "path: { token: string }",
-        body: "body: { name: string }",
-      }),
-      endpoint: request(
-        "{ token: string; name: string }",
-        '(body) => ({ method: "POST", url: "/api/user/:token", body })',
-      ),
-    });
-    expect(resultFor(results, "request.path.0")?.status).toBe("compatible");
-    expect(resultFor(results, "request.body")?.status).toBe("compatible");
   });
 
   it("should reject a URL tag that can become an empty path segment", () => {
@@ -1609,31 +1358,6 @@ describe("request values sent by the API client", () => {
     expect(resultFor(results, "request.path.0")?.message).toMatch(
       /:id may be replaced with an empty string/,
     );
-  });
-
-  it("should check a literal inline query string against the backend query", () => {
-    const results = check({
-      frontend,
-      backend: operation({ query: "query?: { skip?: boolean }" }),
-      endpoint: request("void", '() => ({ url: "/api/user?skip=true" })'),
-    });
-    expect(resultFor(results, "request.query")?.status).toBe("compatible");
-    expect(resultFor(results, "request.body")?.status).toBe("compatible");
-  });
-
-  it("should leave only the query unverified when its keys are built at runtime", () => {
-    const results = check({
-      frontend: `${frontend} declare const search: string;`,
-      backend: operation(),
-      endpoint: request("void", "() => ({ url: `/api/user?${search}` })"),
-    });
-    expect(resultFor(results, "request.query")).toMatchObject({
-      status: "unverified",
-      message: expect.stringContaining(
-        "the checker only reads a query string whose every value is one known text",
-      ),
-    });
-    expect(resultFor(results, "request.body")?.status).toBe("compatible");
   });
 
   it("should send a null POST body as an empty JSON object", () => {
@@ -1656,65 +1380,6 @@ describe("request values sent by the API client", () => {
     });
     expect(resultFor(required, "request.body")?.message).toMatch(
       /^\$\.a: property required by the backend type is missing from the frontend type/,
-    );
-  });
-
-  it("should send no body for an undefined POST body", () => {
-    const results = check({
-      frontend,
-      backend: operation({ method: "Post" }),
-      endpoint: request(
-        "void",
-        '() => ({ method: "POST", url: "/api/user", body: undefined })',
-      ),
-    });
-    expect(resultFor(results, "request.body")?.status).toBe("compatible");
-  });
-
-  it("should report that the client throws for an array body", () => {
-    const results = check({
-      frontend,
-      backend: operation({ method: "Post" }),
-      endpoint: request(
-        "number[]",
-        '(ids) => ({ method: "POST", url: "/api/user", body: ids })',
-      ),
-    });
-    expect(resultFor(results, "request")).toMatchObject({
-      status: "mismatch",
-      message:
-        "the client throws before sending an array body (client.ts:200-202)",
-    });
-  });
-
-  it("should leave a FormData POST body unverified", () => {
-    const results = check({
-      frontend,
-      backend: operation({ method: "Post", body: "body: { file: Blob }" }),
-      endpoint: request(
-        "FormData",
-        '(body) => ({ method: "POST", url: "/api/user", body })',
-      ),
-      options: { lib: ["lib.esnext.d.ts", "lib.dom.d.ts"] },
-    });
-    expect(resultFor(results, "request.body")).toMatchObject({
-      status: "unverified",
-      message:
-        "a FormData body is sent as-is (client.ts:242-248), and its fields are appended at runtime",
-    });
-  });
-
-  it("should treat an undefined JSON body field as left out", () => {
-    const results = check({
-      frontend,
-      backend: operation({ method: "Post", body: "body: { a: string }" }),
-      endpoint: request(
-        "{ a: string | undefined }",
-        '(body) => ({ method: "POST", url: "/api/user", body })',
-      ),
-    });
-    expect(resultFor(results, "request.body")?.message).toMatch(
-      /^\$\.a \(endpoint\.ts:11\): property is optional in the frontend type but required by the backend type/,
     );
   });
 });
@@ -1794,21 +1459,22 @@ describe("endpoint identities", () => {
     declare const builder: EndpointBuilder;
     const tableApi = { example: builder.query<{}, void>({ query: () => ({ url: "/api/user" }) }) };
   `;
-  const checkFiles = (files: Record<string, string>) => {
-    const root = createTempDir("contract-identities-");
-    const paths = Object.entries(files).map(([name, contents]) => {
-      const file = path.join(root, name);
-      fs.mkdirSync(path.dirname(file), { recursive: true });
-      fs.writeFileSync(file, `${contents}\nexport {};`);
-      return file;
-    });
-    const generated = path.join(root, "types.gen.d.ts");
-    fs.writeFileSync(
-      generated,
-      `export type GetApiUserData = { url: "/api/user"; body?: never; query?: never; path?: never };
+  const checkFiles = (sources: Record<string, string>) => {
+    const { root, files, program } = programFrom(
+      {
+        ...Object.fromEntries(
+          Object.entries(sources).map(([name, contents]) => [
+            name,
+            `${contents}\nexport {};`,
+          ]),
+        ),
+        "types.gen.d.ts": `export type GetApiUserData = { url: "/api/user"; body?: never; query?: never; path?: never };
        export type GetApiUserResponses = { "2XX": {} };`,
+      },
+      { checked: [] },
     );
-    const program = ts.createProgram([...paths, generated], { strict: true });
+    const generated = files["types.gen.d.ts"] ?? "";
+    const paths = Object.values(files).filter((file) => file !== generated);
     return checkContracts(program, paths, generated, root);
   };
 

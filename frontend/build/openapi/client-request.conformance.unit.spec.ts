@@ -1,7 +1,3 @@
-import fs from "fs";
-import os from "os";
-import path from "path";
-
 import type { BaseQueryApi } from "@reduxjs/toolkit/query/react";
 import fetchMock from "fetch-mock";
 import ts from "typescript";
@@ -15,6 +11,12 @@ import {
   modelClientRequest,
 } from "./client-request";
 import { resolveRtkRequest } from "./rtk-request";
+import {
+  ENDPOINT_PRELUDE,
+  cleanupFixtures,
+  endpointObject,
+  programFrom,
+} from "./test-fixtures";
 import type { JsonView } from "./value-conversion";
 
 type SentBody =
@@ -42,35 +44,12 @@ interface Modelled {
   checker: ts.TypeChecker;
 }
 
-const directories: string[] = [];
+afterEach(cleanupFixtures);
 
-afterEach(() => {
-  for (const directory of directories.splice(0)) {
-    fs.rmSync(directory, { recursive: true, force: true });
-  }
-});
-
-// The request shape RTK hands to baseQuery (frontend/src/metabase/api/api.ts:59-65).
-// `defineEndpoint` types the fixture's query function the way RTK's builder does,
-// so a fixture cannot build a request a real endpoint cannot.
-const BASE_QUERY_ARGS = `
-  type BaseQueryArgs = string | {
-    method?: "GET" | "POST" | "PUT" | "DELETE";
-    url: string | null;
-    params?: Record<string, unknown> | null | void;
-    body?: unknown;
-  };
-  function defineEndpoint<Argument>(endpoint: {
-    query: (argument: Argument) => BaseQueryArgs;
-    extraOptions?: unknown;
-  }) {
-    return endpoint;
-  }
-`;
-
+// The same source is compiled for the model and run for the client, so the argument has the type the model reads.
 function fixtureSource({ declarations = "", endpoint, argument }: Fixture) {
   return `
-    ${BASE_QUERY_ARGS}
+    ${ENDPOINT_PRELUDE}
     ${declarations}
     const endpoint = defineEndpoint(${endpoint});
     const argument: Parameters<typeof endpoint.query>[0] = ${argument};
@@ -78,53 +57,14 @@ function fixtureSource({ declarations = "", endpoint, argument }: Fixture) {
 }
 
 function model(fixture: Fixture): Modelled {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "client-conformance-"));
-  directories.push(root);
-  const file = path.join(root, "request.ts");
-  fs.writeFileSync(file, fixtureSource(fixture));
-  const program = ts.createProgram([file], {
-    strict: true,
-    noEmit: true,
-    skipLibCheck: true,
-    target: ts.ScriptTarget.ESNext,
-    lib: ["lib.esnext.d.ts", "lib.dom.d.ts"],
+  const { program, files, checker } = programFrom({
+    "request.ts": fixtureSource(fixture),
   });
-  const sourceFile = program.getSourceFile(file);
-  if (!sourceFile) {
-    throw new Error("The fixture was not compiled.");
-  }
-  // The runtime argument must have the type the model reads.
-  const diagnostics = program.getSemanticDiagnostics(sourceFile);
-  if (diagnostics.length) {
-    throw new Error(
-      diagnostics
-        .map((diagnostic) =>
-          ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"),
-        )
-        .join("\n"),
-    );
-  }
-  let config: ts.ObjectLiteralExpression | undefined;
-  const visit = (node: ts.Node) => {
-    if (
-      ts.isVariableDeclaration(node) &&
-      ts.isIdentifier(node.name) &&
-      node.name.text === "endpoint" &&
-      node.initializer &&
-      ts.isCallExpression(node.initializer) &&
-      node.initializer.arguments[0] &&
-      ts.isObjectLiteralExpression(node.initializer.arguments[0])
-    ) {
-      config = node.initializer.arguments[0];
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(sourceFile);
-  const rtk = config && resolveRtkRequest(config);
-  if (!config || !rtk) {
+  const config = endpointObject(program, files["request.ts"] ?? "");
+  const rtk = resolveRtkRequest(config);
+  if (!rtk) {
     throw new Error("The fixture's query function is not a static request.");
   }
-  const checker = program.getTypeChecker();
   return { request: modelClientRequest(checker, rtk, config), checker };
 }
 
@@ -283,151 +223,6 @@ function valueAcceptsText(
   }
 }
 
-function valueViolation(
-  checker: ts.TypeChecker,
-  values: SentValue[],
-  text: string,
-  label: string,
-): string | undefined {
-  return values.some((value) => valueAcceptsText(checker, value, text))
-    ? undefined
-    : `${label}: ${JSON.stringify(text)} is not a text the model allows`;
-}
-
-function pathViolations(
-  { request, checker }: Modelled,
-  sent: SentRequest,
-): string[] {
-  const pattern = new RegExp(
-    `^${escapeRegExp(request.path).replaceAll(escapeRegExp("{param}"), "([^/]*)")}$`,
-  );
-  const match = pattern.exec(sent.path);
-  if (!match) {
-    return [`path ${sent.path} does not match ${request.path}`];
-  }
-  return request.pathParameters.flatMap((parameter, index) => {
-    if (parameter.unverified) {
-      return [];
-    }
-    const segment = decodeURIComponent(match[index + 1] ?? "");
-    const violation = valueViolation(
-      checker,
-      parameter.values,
-      segment,
-      `path parameter ${index}`,
-    );
-    return violation ? [violation] : [];
-  });
-}
-
-function isArrayValue(checker: ts.TypeChecker, value: SentValue): boolean {
-  if (value.kind === "empty") {
-    return false;
-  }
-  if (value.itemOf !== undefined) {
-    return true;
-  }
-  return (
-    value.kind === "json" &&
-    value.view.kind === "type" &&
-    (checker.isArrayType(value.view.type) ||
-      checker.isTupleType(value.view.type))
-  );
-}
-
-interface ModelledField {
-  name: string;
-  values: SentValue[];
-  optional: boolean;
-}
-
-interface ModelledFields {
-  fields: ModelledField[];
-  anyKey: boolean;
-}
-
-// A variant that keeps its declared type claims that type's properties are sent unchanged.
-function modelledFields(
-  checker: ts.TypeChecker,
-  variant: Exclude<SentPayload, { kind: "nothing" }>,
-): ModelledFields | undefined {
-  if (variant.kind === "fields") {
-    return { fields: variant.fields, anyKey: variant.indexes.length > 0 };
-  }
-  const { type } = variant;
-  const isObject =
-    (type.flags & ts.TypeFlags.Object) !== 0 &&
-    !checker.isArrayType(type) &&
-    !checker.isTupleType(type);
-  if (!isObject) {
-    return undefined;
-  }
-  return {
-    fields: type.getProperties().map((property) => ({
-      name: property.name,
-      values: [
-        {
-          kind: "json",
-          view: { kind: "type", type: checker.getTypeOfSymbol(property) },
-        },
-      ],
-      optional: (property.flags & ts.SymbolFlags.Optional) !== 0,
-    })),
-    anyKey: checker.getIndexInfosOfType(type).length > 0,
-  };
-}
-
-function queryVariantViolations(
-  checker: ts.TypeChecker,
-  variant: SentPayload,
-  entries: [string, string][],
-): string[] {
-  if (variant.kind === "nothing") {
-    return entries.map(
-      ([key]) => `query key ${key} is sent but nothing is modelled`,
-    );
-  }
-  const modelled = modelledFields(checker, variant);
-  if (!modelled) {
-    return [];
-  }
-  const violations: string[] = [];
-  const names = new Set(entries.map(([key]) => key));
-  for (const name of names) {
-    const field = modelled.fields.find((candidate) => candidate.name === name);
-    const sentValues = entries.filter(([key]) => key === name);
-    if (!field) {
-      if (!modelled.anyKey) {
-        violations.push(`query key ${name} is not a modelled field`);
-      }
-      continue;
-    }
-    if (
-      sentValues.length > 1 &&
-      !field.values.some((value) => isArrayValue(checker, value))
-    ) {
-      violations.push(`query key ${name} is sent ${sentValues.length} times`);
-    }
-    for (const [, text] of sentValues) {
-      const violation = valueViolation(
-        checker,
-        field.values,
-        text,
-        `query key ${name}`,
-      );
-      if (violation) {
-        violations.push(violation);
-      }
-    }
-  }
-  for (const field of modelled.fields) {
-    if (!field.optional && !names.has(field.name)) {
-      violations.push(`required query key ${field.name} is not sent`);
-    }
-  }
-  return violations;
-}
-
 /** Whether the JSON value the client sent is one the view describes. */
 function viewAccepts(
   checker: ts.TypeChecker,
@@ -475,99 +270,182 @@ function viewAccepts(
       }
       return true;
     }
-    default:
+    case "throws":
       return true;
   }
 }
 
-function jsonValueViolations(
+function valueAcceptsJson(
   checker: ts.TypeChecker,
-  fields: ModelledField[],
-  body: Record<string, unknown>,
-): string[] {
-  return fields.flatMap((field) => {
-    const views = field.values.flatMap((value) =>
-      value.kind === "json" ? [value.view] : [],
-    );
-    if (!views.length || !(field.name in body)) {
-      return [];
-    }
-    return views.some((view) => viewAccepts(checker, view, body[field.name]))
-      ? []
-      : [`body key ${field.name} is not the value the model describes`];
-  });
+  value: SentValue,
+  sent: unknown,
+): boolean {
+  return value.kind === "json" ? viewAccepts(checker, value.view, sent) : true;
 }
 
-function bodyVariantViolations(
+function isArrayValue(checker: ts.TypeChecker, value: SentValue): boolean {
+  if (value.kind === "empty") {
+    return false;
+  }
+  if (value.itemOf !== undefined) {
+    return true;
+  }
+  return (
+    value.kind === "json" &&
+    value.view.kind === "type" &&
+    (checker.isArrayType(value.view.type) ||
+      checker.isTupleType(value.view.type))
+  );
+}
+
+/**
+ * Why one modelled payload does not describe the entries the client sent: a key the model has no field for,
+ * a required field that was not sent, a value the field does not allow, or a key repeated without an array.
+ */
+function entryMismatches<Sent>(
   checker: ts.TypeChecker,
   variant: SentPayload,
-  body: SentBody,
+  entries: [string, Sent][],
+  accepts: (value: SentValue, sent: Sent) => boolean,
+  label: string,
 ): string[] {
   if (variant.kind === "nothing") {
-    return body.kind === "none"
-      ? []
-      : ["a body is sent but nothing is modelled"];
+    return entries.map(
+      ([key]) => `${label} ${key} is sent but nothing is modelled`,
+    );
   }
-  if (body.kind === "none") {
-    return ["no body is sent but one is modelled"];
-  }
-  const modelled = modelledFields(checker, variant);
-  if (!modelled) {
+  if (variant.kind === "type") {
+    // Keys known only at runtime make no claim.
     return [];
   }
-  if (body.kind !== "json" || !isRecord(body.value)) {
-    return ["the body is not a JSON object"];
+  const anyKey = variant.indexes.length > 0;
+  const names = new Set(entries.map(([key]) => key));
+  const mismatches: string[] = [];
+  for (const name of names) {
+    const field = variant.fields.find((candidate) => candidate.name === name);
+    const sentValues = entries.filter(([key]) => key === name);
+    if (!field) {
+      if (!anyKey) {
+        mismatches.push(`${label} ${name} is not a modelled field`);
+      }
+      continue;
+    }
+    if (
+      sentValues.length > 1 &&
+      !field.values.some((value) => isArrayValue(checker, value))
+    ) {
+      mismatches.push(`${label} ${name} is sent ${sentValues.length} times`);
+    }
+    for (const [, sent] of sentValues) {
+      if (!field.values.some((value) => accepts(value, sent))) {
+        mismatches.push(
+          `${label} ${name}: ${JSON.stringify(sent)} is not a value the model allows`,
+        );
+      }
+    }
   }
-  const sentKeys = Object.keys(body.value);
-  return [
-    ...jsonValueViolations(checker, modelled.fields, body.value),
-    ...sentKeys
-      .filter(
-        (key) =>
-          !modelled.anyKey &&
-          !modelled.fields.some((field) => field.name === key),
-      )
-      .map((key) => `body key ${key} is not a modelled field`),
-    ...modelled.fields
-      .filter((field) => !field.optional && !sentKeys.includes(field.name))
-      .map((field) => `required body key ${field.name} is not sent`),
-  ];
+  for (const field of variant.fields) {
+    if (!field.optional && !names.has(field.name)) {
+      mismatches.push(`required ${label} ${field.name} is not sent`);
+    }
+  }
+  return mismatches;
 }
 
-/** Why the model does not allow this outcome; empty when it does. */
-function violations(modelled: Modelled, outcome: Outcome): string[] {
+function bodyEntries(
+  variant: SentPayload,
+  body: SentBody,
+): [string, unknown][] | string {
+  if (variant.kind === "nothing") {
+    return body.kind === "none" ? [] : "a body is sent but nothing is modelled";
+  }
+  if (body.kind === "none") {
+    return "no body is sent but one is modelled";
+  }
+  if (body.kind !== "json" || !isRecord(body.value)) {
+    return variant.kind === "type" ? [] : "the body is not a JSON object";
+  }
+  return Object.entries(body.value);
+}
+
+/** Why the model does not describe this outcome; empty when it does. */
+function mismatches(modelled: Modelled, outcome: Outcome): string[] {
   const { request, checker } = modelled;
   if (request.unverified) {
     return [];
   }
-  if (request.failure || outcome.kind === "thrown") {
-    return request.failure && outcome.kind === "thrown"
+  // The model predicts a throw as a request failure, or as a body value JSON.stringify throws for.
+  const predictsThrow =
+    request.failure !== undefined ||
+    request.body.variants.some(
+      (variant) =>
+        variant.kind === "fields" &&
+        variant.fields.some((field) =>
+          field.values.some(
+            (value) => value.kind === "json" && value.view.kind === "throws",
+          ),
+        ),
+    );
+  if (predictsThrow || outcome.kind === "thrown") {
+    return predictsThrow && outcome.kind === "thrown"
       ? []
-      : [`failure ${request.failure ?? "is not modelled"} vs ${outcome.kind}`];
+      : [
+          `the model ${predictsThrow ? "predicts" : "does not predict"} a throw, and the client ${outcome.kind === "thrown" ? "threw" : "sent the request"}`,
+        ];
   }
   const sent = outcome.request;
-  const matchingVariant = (variantViolations: string[][]) =>
-    variantViolations.some((list) => !list.length)
-      ? []
-      : variantViolations.flat();
+  // A part fits when any one of its variants describes what was sent.
+  const anyVariant = (lists: string[][]) =>
+    lists.some((list) => !list.length) ? [] : lists.flat();
+  const pattern = new RegExp(
+    `^${escapeRegExp(request.path).replaceAll(escapeRegExp("{param}"), "([^/]*)")}$`,
+  );
+  const match = pattern.exec(sent.path);
   return [
     ...(sent.method === request.method
       ? []
       : [`method ${sent.method} is not ${request.method}`]),
-    ...pathViolations(modelled, sent),
+    ...(match
+      ? request.pathParameters.flatMap((parameter, index) => {
+          const segment = decodeURIComponent(match[index + 1] ?? "");
+          return parameter.unverified ||
+            parameter.values.some((value) =>
+              valueAcceptsText(checker, value, segment),
+            )
+            ? []
+            : [
+                `path parameter ${index}: ${JSON.stringify(segment)} is not a text the model allows`,
+              ];
+        })
+      : [`path ${sent.path} does not match ${request.path}`]),
     ...(request.query.unverified
       ? []
-      : matchingVariant(
+      : anyVariant(
           request.query.variants.map((variant) =>
-            queryVariantViolations(checker, variant, sent.query),
+            entryMismatches(
+              checker,
+              variant,
+              sent.query,
+              (value, text) => valueAcceptsText(checker, value, text),
+              "query key",
+            ),
           ),
         )),
     ...(request.body.unverified
       ? []
-      : matchingVariant(
-          request.body.variants.map((variant) =>
-            bodyVariantViolations(checker, variant, sent.body),
-          ),
+      : anyVariant(
+          request.body.variants.map((variant) => {
+            const entries = bodyEntries(variant, sent.body);
+            return typeof entries === "string"
+              ? [entries]
+              : entryMismatches(
+                  checker,
+                  variant,
+                  entries,
+                  (value, json) => valueAcceptsJson(checker, value, json),
+                  "body key",
+                );
+          }),
         )),
   ];
 }
@@ -585,6 +463,10 @@ function sentRequest(request: Partial<SentRequest>): Outcome {
   };
 }
 
+/**
+ * Sends the fixture through the real client and checks the model describes what arrived.
+ * `ruleNotApplied` is what the client would send without the rule under test; the model must reject it.
+ */
 async function expectConformance(
   fixture: Fixture,
   expected: Outcome,
@@ -593,9 +475,9 @@ async function expectConformance(
   const modelled = model(fixture);
   const outcome = await send(fixture);
   expect(outcome).toEqual(expected);
-  expect(violations(modelled, outcome)).toEqual([]);
+  expect(mismatches(modelled, outcome)).toEqual([]);
   if (ruleNotApplied) {
-    expect(violations(modelled, ruleNotApplied)).not.toEqual([]);
+    expect(mismatches(modelled, ruleNotApplied)).not.toEqual([]);
   }
   return modelled;
 }
@@ -720,8 +602,8 @@ describe("modelClientRequest against the real API client", () => {
       },
       sentRequest({ query: [["options", "[object Object]"]] }),
     );
-    expect(request.query.unverified).toBe(
-      "options ({ a: number; }) is sent as text, and its text is known only at runtime (utils.ts:50-56)",
+    expect(request.query.unverified).toMatch(
+      /^options \({ a: number; }\) is sent as text, and its text is known only at runtime/,
     );
   });
 
@@ -816,8 +698,8 @@ describe("modelClientRequest against the real API client", () => {
       },
       sentRequest({ path: "/api/x/%5Bobject%20Object%5D" }),
     );
-    expect(request.pathParameters[0]?.unverified).toBe(
-      ":options ({ a: number; }) is sent as text, and its text is known only at runtime (utils.ts:180)",
+    expect(request.pathParameters[0]?.unverified).toMatch(
+      /^:options \({ a: number; }\) is sent as text, and its text is known only at runtime/,
     );
   });
 
@@ -1389,5 +1271,77 @@ describe("modelClientRequest against the real API client", () => {
     );
     expect(request.unverified).toMatch(/extraOptions/);
     expect(request.path).toBe("/api/x");
+  });
+
+  it("should leave a body that is an unknown value unverified", async () => {
+    const { request } = await expectConformance(
+      {
+        endpoint:
+          '{ query: (body: unknown) => ({ method: "POST", url: "/api/x", body }) }',
+        argument: '{ any: "thing" }',
+      },
+      sentRequest({
+        method: "POST",
+        body: { kind: "json", value: { any: "thing" } },
+      }),
+    );
+    expect(request.body.unverified).toMatch(/known only at runtime/);
+  });
+
+  it("should keep a nested field that drops undefined as optional in the JSON body", async () => {
+    const { request } = await expectConformance(
+      {
+        declarations:
+          "type Args = { inner: { a: string | undefined; b: number } };",
+        endpoint:
+          '{ query: (body: Args) => ({ method: "POST", url: "/api/x", body }) }',
+        argument: "{ inner: { a: undefined, b: 1 } }",
+      },
+      sentRequest({
+        method: "POST",
+        body: { kind: "json", value: { inner: { b: 1 } } },
+      }),
+      sentRequest({
+        method: "POST",
+        body: { kind: "json", value: { inner: { a: null, b: 1 } } },
+      }),
+    );
+    expect(request.body.variants.map((variant) => variant.kind)).toEqual([
+      "fields",
+    ]);
+  });
+
+  it("should leave the query unverified when an inline query key is built at runtime", async () => {
+    const { request } = await expectConformance(
+      {
+        declarations: 'const search: string = "built=later";',
+        endpoint: "{ query: (_: void) => ({ url: `/api/x?${search}` }) }",
+        argument: "undefined",
+      },
+      sentRequest({ query: [["built", "later"]] }),
+    );
+    expect(request.query.unverified).toMatch(/query string/);
+  });
+
+  // `JSON.stringify` throws for a bigint, so the client never sends this body.
+  it("should mark a bigint body field as a request the client never sends", async () => {
+    const { request } = await expectConformance(
+      {
+        endpoint:
+          '{ query: (body: { big: bigint }) => ({ method: "POST", url: "/api/x", body }) }',
+        argument: "{ big: 1n }",
+      },
+      { kind: "thrown" },
+    );
+    const [variant] = request.body.variants;
+    const big =
+      variant?.kind === "fields"
+        ? variant.fields.find((field) => field.name === "big")
+        : undefined;
+    expect(
+      big?.values.map((value) =>
+        value.kind === "json" ? value.view.kind : value.kind,
+      ),
+    ).toEqual(["throws"]);
   });
 });

@@ -143,7 +143,7 @@ export function keepsType(parts: StringPart[]): boolean {
   return parts.every((part) => part.kind === "type" && !part.unmodelled);
 }
 
-/** What `JSON.stringify` writes for a value (client.ts:250). */
+/** What `JSON.stringify` writes for a value (JSON.stringify). */
 export type JsonView =
   | { kind: "type"; type: ts.Type }
   | { kind: "null"; from: ts.Type; reason: string }
@@ -409,7 +409,7 @@ export function jsonConversionNotes(
     const [first] = found;
     const shown = found.slice(0, examples).map(({ path }) => path);
     const rest = found.length - shown.length;
-    return `JSON.stringify writes ${found.length} ${found.length === 1 ? "value" : "values"} differently at ${shown.join(", ")}${rest > 0 ? ` and ${rest} more` : ""}: ${first?.detail ?? ""} (client.ts:250)`;
+    return `JSON.stringify writes ${found.length} ${found.length === 1 ? "value" : "values"} differently at ${shown.join(", ")}${rest > 0 ? ` and ${rest} more` : ""}: ${first?.detail ?? ""} (JSON.stringify)`;
   });
 }
 

@@ -135,7 +135,7 @@ export function modelClientRequest(
   at: ts.Node,
 ): ClientRequest {
   const context: ModelContext = { checker, at };
-  // `baseQuery` sends GET unless the request names a method (api.ts:86-87).
+  // `baseQuery` sends GET unless the request names a method (baseQuery).
   const method = rtk.method ?? "GET";
   const foldsBody = method === "GET" && rtk.body !== undefined;
 
@@ -165,7 +165,7 @@ export function modelClientRequest(
   queryNotes.push(...inline.notes);
   if (inline.fields.length) {
     queryNotes.push(
-      "the URL template's inline query string is kept by new URL (client.ts:38)",
+      "the URL template's inline query string is kept by new URL (ApiClient.buildUrl)",
     );
   }
   // A GET body is sent as query parameters, so what stops the body being compared stops the query instead.
@@ -215,10 +215,10 @@ export function modelClientRequest(
   if (foldsBody) {
     queryNotes.push(
       ...bodyNotes.splice(0),
-      "a GET body is sent as query parameters, so it is compared with the backend query (client.ts:236-241)",
+      "a GET body is sent as query parameters, so it is compared with the backend query (ApiClient._prepareRequest)",
     );
     bodyNotes.push(
-      "a GET body is sent as query parameters, so no request body is sent (client.ts:236-241)",
+      "a GET body is sent as query parameters, so no request body is sent (ApiClient._prepareRequest)",
     );
   }
 
@@ -356,7 +356,7 @@ interface CopiedPayload {
 }
 
 /**
- * The fields the client's spread copy of `type` has (client.ts:74-75).
+ * The fields the client's spread copy of `type` has (ApiClient._resolveOptions).
  * An object literal has no keys beyond its fields, so a literal with no fields still yields a payload.
  * An object rest carries whatever keys the caller passed beyond the destructured ones,
  * so a rest with no declared properties cannot be compared.
@@ -371,7 +371,7 @@ function typePayload(
   const unverified = (reason: string): CopiedPayload => ({
     payload: { kind: "type", type },
     notes: [],
-    unverified: `the ${channel} is copied with { ...value } before it is sent, and ${reason} (client.ts:74-75)`,
+    unverified: `the ${channel} is copied with { ...value } before it is sent, and ${reason} (ApiClient._resolveOptions)`,
   });
   if (
     type.flags &
@@ -384,7 +384,7 @@ function typePayload(
       `its own keys are known only at runtime, because it is ${typeText(checker, type)}`,
     );
   }
-  // RTK types params as an object, null or void (api.ts:63), so only a body reaches these.
+  // BaseQueryArgs types params as an object, null or void, so only a body reaches these.
   if (
     !isObjectLike(type) ||
     checker.isArrayType(type) ||
@@ -411,7 +411,7 @@ function typePayload(
       payload: { kind: "type", type },
       notes: [],
       unverified: isObjectRest(checker, expression)
-        ? `${channel === "params" ? "the query parameters come" : "the body comes"} from the object rest ${expression.getText()}, which has no declared properties and carries whatever keys the caller passed beyond the destructured ones (${channel === "params" ? "utils.ts:43-57" : "client.ts:250"})`
+        ? `${channel === "params" ? "the query parameters come" : "the body comes"} from the object rest ${expression.getText()}, which has no declared properties and carries whatever keys the caller passed beyond the destructured ones (${channel === "params" ? "appendQueryParameters" : "JSON.stringify"})`
         : undefined,
     };
   }
@@ -433,7 +433,7 @@ function typePayload(
     },
     notes: dropped.map(
       (property) =>
-        `${property.name} is a method or accessor, which { ...value } and JSON.stringify both leave out (client.ts:74-75)`,
+        `${property.name} is a method or accessor, which { ...value } and JSON.stringify both leave out (ApiClient._resolveOptions)`,
     ),
     unverified: undefined,
   };
@@ -467,7 +467,7 @@ function paramsPayloads(
   const notes = [
     ...dropped.map(
       (member) =>
-        `${typeText(checker, member)} in the frontend params sends no query parameters (api.ts:89)`,
+        `${typeText(checker, member)} in the frontend params sends no query parameters (baseQuery)`,
     ),
     ...copied.flatMap((entry) => entry.notes),
   ];
@@ -507,7 +507,7 @@ function bodyPayloads(
   const notes: string[] = [];
   let unverified: string | undefined;
   let failure: string | undefined;
-  // A non-GET body that is not undefined is always sent, as JSON or as-is (client.ts:242-250).
+  // A non-GET body that is not undefined is always sent, as JSON or as-is (ApiClient._prepareRequest).
   let alwaysSent = method !== "GET";
   if (!expression) {
     return {
@@ -541,21 +541,21 @@ function bodyPayloads(
           declared: undefined,
         });
         notes.push(
-          "a null body is sent as the JSON object {} (client.ts:75, client.ts:249-250)",
+          "a null body is sent as the JSON object {} (ApiClient._resolveOptions and _prepareRequest)",
         );
       }
     } else if (raw) {
       if (method === "GET") {
         payloads.push(NOTHING);
         notes.push(
-          `a ${raw.name} body is not sent with a GET request (client.ts:204-206, client.ts:225, client.ts:239)`,
+          `a ${raw.name} body is not sent with a GET request (ApiClient._prepareRequest)`,
         );
       } else {
-        unverified = `a ${raw.name} body is sent as-is (client.ts:242-248), and its fields are appended at runtime`;
+        unverified = `a ${raw.name} body is sent as-is (ApiClient._prepareRequest), and its fields are appended at runtime`;
       }
     } else if (checker.isArrayType(member) || checker.isTupleType(member)) {
       failure =
-        "the client throws before sending an array body (client.ts:200-202)";
+        "the client throws before sending an array body (ApiClient._prepareRequest)";
     } else {
       const copied = typePayload(context, member, expression, "body");
       payloads.push(copied.payload);
@@ -578,7 +578,7 @@ function withoutCacheKey(
     return payload;
   }
   notes.push(
-    `${RTK_CACHE_KEY} is removed from the ${channel} before sending (api.ts:43-56)`,
+    `${RTK_CACHE_KEY} is removed from the ${channel} before sending (stripRtkCacheKey)`,
   );
   return {
     ...payload,
@@ -738,7 +738,7 @@ function mapFields(
 }
 
 // `appendQueryParameters` skips a null or undefined value and appends an array item by item,
-// so neither kind of value is guaranteed to put its key in the query string (utils.ts:43-57).
+// so neither kind of value is guaranteed to put its key in the query string (appendQueryParameters).
 function sendAsQuery(
   { checker }: ModelContext,
   payload: Payload,
@@ -756,7 +756,7 @@ function sendAsQuery(
       const described = `${field.name} (${describeValues(checker, field.values)})`;
       if (!kept.length && !other.length) {
         notes.push(
-          `${described} is null or undefined, so it is not sent (utils.ts:47)`,
+          `${described} is null or undefined, so it is not sent (appendQueryParameters)`,
         );
         return undefined;
       }
@@ -765,12 +765,12 @@ function sendAsQuery(
       const emptyArray = kept.some((type) => mayBeEmptyArray(checker, type));
       if (hasNull || (nullish && !field.optional)) {
         notes.push(
-          `${described} is not sent when it is null or undefined (utils.ts:47)`,
+          `${described} is not sent when it is null or undefined (appendQueryParameters)`,
         );
       }
       if (emptyArray && !field.optional) {
         notes.push(
-          `${described} is not sent when its array is empty (utils.ts:50-53)`,
+          `${described} is not sent when its array is empty (appendQueryParameters)`,
         );
       }
       const optional = field.optional || nullish || emptyArray;
@@ -779,7 +779,7 @@ function sendAsQuery(
         checker,
         field.name,
         present,
-        "utils.ts:50-56",
+        "appendQueryParameters",
         true,
       );
       notes.push(...sent.notes);
@@ -801,7 +801,7 @@ function sendAsQuery(
         checker,
         "[key]",
         present,
-        "utils.ts:50-56",
+        "appendQueryParameters",
         true,
       );
       notes.push(...sent.notes);
@@ -838,7 +838,7 @@ function jsonValues(
   });
 }
 
-// `JSON.stringify` leaves out a property whose value is undefined (client.ts:250).
+// `JSON.stringify` leaves out a property whose value is undefined (JSON.stringify).
 function sendAsJson(
   context: ModelContext,
   payload: Payload,
@@ -867,7 +867,7 @@ function sendAsJsonFields(
       const kept = types.filter((type) => !(type.flags & UNDEFINED));
       if (!kept.length) {
         notes.push(
-          `${described} is undefined, so JSON.stringify leaves it out of the body (client.ts:250)`,
+          `${described} is undefined, so JSON.stringify leaves it out of the body (JSON.stringify)`,
         );
         return undefined;
       }
@@ -883,7 +883,7 @@ function sendAsJsonFields(
         };
       }
       notes.push(
-        `${described} is left out of the body when it is undefined (client.ts:250)`,
+        `${described} is left out of the body when it is undefined (JSON.stringify)`,
       );
       return {
         ...field,
@@ -926,7 +926,7 @@ function mergeQueryPayloads(
   const repeated = second.fields.find((field) => names.has(field.name));
   if (repeated) {
     onUnverified(
-      `${repeated.name} is appended to the query string twice (client.ts:234, client.ts:240), and the checker does not model a repeated key`,
+      `${repeated.name} is appended to the query string twice (ApiClient._prepareRequest), and the checker does not model a repeated key`,
     );
   }
   return {
@@ -984,7 +984,7 @@ function extraOptionsUnverified(rtk: RtkRequest): string | undefined {
           REQUEST_FIELDS.includes(property.name.text),
       ));
   return replacesRequest
-    ? "extraOptions is spread over the request after url, method, params and body (api.ts:92)"
+    ? "extraOptions is spread over the request after url, method, params and body (baseQuery)"
     : undefined;
 }
 
@@ -1076,7 +1076,7 @@ function knownTexts(
   return texts.every((text) => text !== undefined) ? texts : undefined;
 }
 
-// `new URL` resolves "." and ".." segments, and an unencoded "/", "\\", "?", "#" or "%" changes the URL itself (client.ts:38).
+// `new URL` resolves "." and ".." segments, and an unencoded "/", "\\", "?", "#" or "%" changes the URL itself (ApiClient.buildUrl).
 function pathTextUnverified(
   checker: ts.TypeChecker,
   source: string,
@@ -1091,7 +1091,7 @@ function pathTextUnverified(
   );
   return text === undefined
     ? undefined
-    : `${source} may be ${JSON.stringify(text)}, which new URL does not keep as one path segment (client.ts:38)`;
+    : `${source} may be ${JSON.stringify(text)}, which new URL does not keep as one path segment (ApiClient.buildUrl)`;
 }
 
 /** A template span's value after the template literal, or after `encodeURIComponent` when the span calls it. */
@@ -1130,7 +1130,7 @@ function tagLookup(
   if (payload.kind === "type") {
     return {
       kind: "unknown",
-      reason: `whether the ${channel} has a ${name} key depends on a ${typeText(checker, payload.type)} value known only at runtime (utils.ts:166)`,
+      reason: `whether the ${channel} has a ${name} key depends on a ${typeText(checker, payload.type)} value known only at runtime (substituteUrlTags)`,
     };
   }
   const field = payload.fields.find((candidate) => candidate.name === name);
@@ -1145,7 +1145,7 @@ function tagLookup(
   ) {
     return {
       kind: "unknown",
-      reason: `whether the ${channel} has a ${name} key depends on an index signature whose keys are known only at runtime (utils.ts:166)`,
+      reason: `whether the ${channel} has a ${name} key depends on an index signature whose keys are known only at runtime (substituteUrlTags)`,
     };
   }
   return { kind: "absent" };
@@ -1187,7 +1187,7 @@ function definedValues(
 }
 
 // `substituteUrlTags` takes each `:tag` from params, or from the body when params has no defined value for it,
-// and deletes the key from every bag it read (utils.ts:165-173).
+// and deletes the key from every bag it read (substituteUrlTags).
 function substituteTag(
   checker: ts.TypeChecker,
   name: string,
@@ -1235,17 +1235,17 @@ function substituteTag(
     nextBody = withoutField(body, name, paramsMaySupply);
     notes.push(
       paramsMaySupply
-        ? `:${name} is filled from params.${name} when it is defined, otherwise from body.${name}, which is then removed from the body (utils.ts:165-173)`
+        ? `:${name} is filled from params.${name} when it is defined, otherwise from body.${name}, which is then removed from the body (substituteUrlTags)`
         : fromParams.kind === "field"
-          ? `:${name} is filled from body.${name}, because params.${name} is undefined (utils.ts:165-173)`
-          : `:${name} is filled from body.${name} (utils.ts:165-168)`,
+          ? `:${name} is filled from body.${name}, because params.${name} is undefined (substituteUrlTags)`
+          : `:${name} is filled from body.${name} (substituteUrlTags)`,
     );
     if (mayBeUndefined) {
       values.push({ kind: "empty" });
     }
   } else {
     if (paramsMaySupply) {
-      notes.push(`:${name} is filled from params.${name} (utils.ts:165-168)`);
+      notes.push(`:${name} is filled from params.${name} (substituteUrlTags)`);
     }
     if (reachesBody) {
       values.push({ kind: "empty" });
@@ -1253,7 +1253,7 @@ function substituteTag(
   }
   if (values.some((value) => value.kind === "empty")) {
     notes.push(
-      `:${name} becomes an empty string when no defined value is found (utils.ts:176-179)`,
+      `:${name} becomes an empty string when no defined value is found (substituteUrlTags)`,
     );
   }
   return {
@@ -1287,7 +1287,7 @@ function substituteTags(
       checker,
       `:${slot.name}`,
       unique(values, (value) => valueKey(checker, value)),
-      "utils.ts:180",
+      "substituteUrlTags",
       false,
     );
     return {
@@ -1387,11 +1387,11 @@ function queryPiece(
   return only !== undefined && !more.length
     ? { piece: { text: only, encoded: found.encoded } }
     : {
-        unverified: `${found.source} is put into the URL template's query string, and the checker only reads a query string whose every value is one known text (client.ts:38)`,
+        unverified: `${found.source} is put into the URL template's query string, and the checker only reads a query string whose every value is one known text (ApiClient.buildUrl)`,
       };
 }
 
-// `new URL` keeps the template's query string and parses it the way `URLSearchParams` does (client.ts:38).
+// `new URL` keeps the template's query string and parses it the way `URLSearchParams` does (ApiClient.buildUrl).
 function inlineQuery(
   context: ModelContext,
   query: UrlSlot[],
@@ -1414,7 +1414,7 @@ function inlineQuery(
   const [search, fragment] = [text.split("#")[0] ?? "", text.includes("#")];
   if (fragment) {
     notes.push(
-      "the URL template's query string ends at #, and fetch does not send the fragment after it (client.ts:38)",
+      "the URL template's query string ends at #, and fetch does not send the fragment after it (ApiClient.buildUrl)",
     );
   }
   return {
