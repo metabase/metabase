@@ -81,6 +81,7 @@
                               :test/time-type                   false
                               :transforms/python                true
                               :transforms/table                 true
+                              :transforms/testing               true
                               :upload-with-auto-pk              false
                               :window-functions/cumulative      (not driver-api/is-test?)
                               :window-functions/offset          true}]
@@ -524,6 +525,33 @@
                  :always  (conj ["AS"] [sql-query sql-params]))
         sql (str/join " " (map first pieces))]
     (into [sql] (mapcat rest) pieces)))
+
+(defmethod driver/do-with-test-connection :clickhouse
+  [driver database f]
+  ((get-method driver/do-with-test-connection :sql-jdbc)
+   driver
+   database
+   (fn [^java.sql.Connection conn]
+     (let [^com.clickhouse.jdbc.ConnectionImpl clickhouse-conn (.unwrap conn com.clickhouse.jdbc.ConnectionImpl)
+           ^QuerySettings query-settings                     (.getDefaultQuerySettings clickhouse-conn)]
+       (.setDefaultQuerySettings clickhouse-conn (doto (QuerySettings. (.getAllSettings query-settings))
+                                                   (.serverSetting "session_id" (str (random-uuid)))))
+       (try
+         (f conn)
+         (finally
+           (.setDefaultQuerySettings clickhouse-conn query-settings)))))))
+
+(defmethod driver/compile-create-temp-table :clickhouse
+  [driver {:keys [table query]}]
+  (let [{sql-query :query sql-params :params} query]
+    [(first (sql.qp/format-honeysql driver [:raw ["CREATE TEMPORARY TABLE " [:inline (keyword table)]
+                                                  " ENGINE = Memory AS " sql-query]]))
+     sql-params]))
+
+(defmethod driver/compile-drop-temp-table :clickhouse
+  [driver table]
+  [(first (sql.qp/format-honeysql driver [:raw ["DROP TEMPORARY TABLE IF EXISTS " [:inline (keyword table)]]]))
+   []])
 
 (defmethod driver/compile-insert :clickhouse
   [driver {:keys [query output-table]}]
