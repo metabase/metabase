@@ -226,11 +226,6 @@ const configs = [
       "import/no-default-export": "error",
       "import/no-named-as-default": "off",
       "import/no-commonjs": "warn",
-      // oxfmt owns import ordering through its `sortImports` config, which runs
-      // in the format pass. The import-x order rule is the slowest lint rule, so
-      // delegating to the Rust formatter removes it from the lint run. Files whose
-      // import order is runtime-significant keep it with `// oxfmt-ignore` comments.
-      "import/order": "off",
       "sort-imports": [
         "error",
         {
@@ -1073,7 +1068,6 @@ const configs = [
       "@typescript-eslint/no-var-requires": "off",
       "import/no-commonjs": "off",
       "import/no-default-export": "off",
-      "import/order": "off",
       "import/no-unresolved": "off",
       "metabase/no-color-literals": "off",
     },

@@ -89,6 +89,4 @@ editor/watch invalidation are not implemented.
 
 `bun run test-oxlint` checks policy mapping, real-engine violations and
 suppressions, boundary parity, resolver behavior and build integration. Custom
-rules use oxlint's RuleTester through the `lint-rules` Jest project. Timings and
-migration experiments are recorded in the draft PR descriptions rather than
-maintained as configuration documentation.
+rules use oxlint's RuleTester through the `lint-rules` Jest project.
