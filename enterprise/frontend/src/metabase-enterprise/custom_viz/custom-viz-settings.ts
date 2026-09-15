@@ -2,6 +2,7 @@ import type {
   CreateDefineSetting,
   CustomVisualization,
   CustomVisualizationMount,
+  CustomVisualizationSettingDefinition,
   ReservedVisualizationSettingId,
   Widgets,
 } from "custom-viz";
@@ -40,6 +41,24 @@ export type HostContext = {
   mount: CustomVisualizationMount;
   plugin: CustomVizPluginRuntime;
 };
+
+/**
+ * Mint the opaque `CustomVisualizationSettingDefinition` brand.
+ *
+ * The brand is a type-level-only unique symbol (`SettingDefinitionSymbol` in
+ * the custom-viz package) that forces plugin authors to go through
+ * `defineSetting` instead of hand-crafting setting definitions. No runtime
+ * value can satisfy it, so the host mints the brand with this one deliberate
+ * cast; keep every brand-minting site going through this helper.
+ */
+export function brandSettingDefinition(
+  definition: unknown,
+): CustomVisualizationSettingDefinition<Record<string, unknown>> {
+  // The brand symbol exists only at the type level — see the doc comment.
+  return definition as CustomVisualizationSettingDefinition<
+    Record<string, unknown>
+  >;
+}
 
 /**
  * Turns plugin's `vizDef.settings` into host definitions. Setting ids and

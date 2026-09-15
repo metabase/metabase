@@ -15,6 +15,53 @@ const defineGlobal = (name: PropertyKey, value: unknown): void => {
 
 defineGlobal("ResizeObserver", ResizeObserver);
 
+/**
+ * GraalJS ships no `structuredClone`. The custom viz plugin view helpers use it
+ * to hand plugins copies of the host's series and settings and rely on it
+ * rejecting functions, so the copy mirrors that: plain data is copied and
+ * anything else throws.
+ */
+function structuredClonePolyfill<T>(value: T): T {
+  // Same shape as the input, like structuredClone.
+  return copyStructured(value) as T;
+}
+
+function copyStructured(value: unknown): unknown {
+  if (typeof value === "function" || typeof value === "symbol") {
+    throw new TypeError(`${typeof value} could not be cloned.`);
+  }
+  if (value === null || typeof value !== "object") {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value.map(copyStructured);
+  }
+  if (value instanceof Date) {
+    return new Date(value.getTime());
+  }
+  if (value instanceof Map) {
+    return new Map(
+      [...value].map(([key, entry]): [unknown, unknown] => [
+        copyStructured(key),
+        copyStructured(entry),
+      ]),
+    );
+  }
+  if (value instanceof Set) {
+    return new Set([...value].map(copyStructured));
+  }
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) {
+    throw new TypeError(
+      `${Object.prototype.toString.call(value)} could not be cloned.`,
+    );
+  }
+  return Object.fromEntries(
+    Object.entries(value).map(([key, entry]) => [key, copyStructured(entry)]),
+  );
+}
+defineGlobal("structuredClone", structuredClonePolyfill);
+
 class MockEventTarget {
   listeners: Record<string, unknown[]> = {};
   addEventListener(): void {}

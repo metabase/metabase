@@ -12,14 +12,17 @@
    [metabase.channel.render.js.renderer :as renderer]
    [metabase.channel.render.style :as style]
    [metabase.lib-be.core :as lib-be]
-   [metabase.premium-features.core :as premium-features])
+   [metabase.premium-features.core :as premium-features]
+   [metabase.util.i18n :as i18n])
   (:import
    (java.io ByteArrayInputStream ByteArrayOutputStream)
    (java.nio.charset StandardCharsets)
+   (java.util Base64)
+   (javax.imageio ImageIO ImageReader)
    (org.apache.batik.anim.dom SAXSVGDocumentFactory SVGOMDocument)
    (org.apache.batik.transcoder TranscoderInput TranscoderOutput)
    (org.apache.batik.transcoder.image PNGTranscoder)
-   (org.w3c.dom Element Node)))
+   (org.w3c.dom Element Node NodeList)))
 
 (set! *warn-on-reflection* true)
 
@@ -78,8 +81,16 @@
                                        "]"))]
     (str/replace svg-string allowed-chars "")))
 
+(defn- refuse-doctype!
+  "Fail the render if the svg declares a DOCTYPE or entity."
+  [^String s]
+  (when (re-find #"(?i)<!(?:DOCTYPE|ENTITY)" s)
+    (throw (ex-info (i18n/tru "SVG documents must not declare a DOCTYPE or entities")
+                    {:type ::doctype-refused}))))
+
 (defn- parse-svg-string [^String s]
   (let [s (sanitize-svg s)
+        _ (refuse-doctype! s)
         factory (SAXSVGDocumentFactory. "org.apache.xerces.parsers.SAXParser")]
     (with-open [is (ByteArrayInputStream. (.getBytes ^String s StandardCharsets/UTF_8))]
       ;; The document deliberately gets no base URI so that Batik will not fetch any external references or local files
@@ -94,6 +105,12 @@
 (def ^:dynamic ^:private *svg-render-height*
   "Height to render svg images. If not bound, will preserve aspect ratio of original image."
   nil)
+
+(def ^:private max-aspect-render-height
+  "Ceiling on the raster height when no explicit height is given and it follows the svg's aspect ratio (email/Slack).
+  The svg may come from an untrusted custom-viz plugin, and a 1:1000 svg at [[*svg-render-width*]] would otherwise
+  allocate a ~5 GB raster on the host heap. Batik scales the image down to fit rather than failing."
+  (float 6000))
 
 (def ^:dynamic *chart-size*
   "When bound to a map `{:width <px> :height <px>}`, isomorphic (ECharts) charts rendered via
@@ -129,9 +146,97 @@
         (reset! acquired img)
         img))))
 
+(def ^:private max-embedded-image-pixels
+  "Budget for the decoded size of the raster images an svg embeds as `data:` URIs, summed across the document."
+  25000000)
+
+(defn- data-uri-bytes
+  "The decoded payload of a `data:<mime>;base64,<data>` URI, or nil when `href` is not one."
+  ^bytes [^String href]
+  (when (str/starts-with? href "data:")
+    (let [[header data] (str/split href #"," 2)]
+      (when (and data (str/ends-with? header ";base64"))
+        (.decode (Base64/getMimeDecoder) ^String data)))))
+
+(defn- image-dimensions
+  "`[width height]` of the raster image encoded in `bytes`, read from its header without decoding pixels, or nil
+  when no ImageIO reader recognizes the format."
+  [^bytes bytes]
+  (with-open [iis (ImageIO/createImageInputStream (ByteArrayInputStream. bytes))]
+    (let [readers (ImageIO/getImageReaders iis)]
+      (when (.hasNext readers)
+        (let [^ImageReader reader (.next readers)]
+          (try
+            (.setInput reader iis)
+            [(.getWidth reader 0) (.getHeight reader 0)]
+            (finally
+              (.dispose reader))))))))
+
+(defn- element-href
+  ^String [^Element el]
+  (let [xlink (.getAttributeNS el "http://www.w3.org/1999/xlink" "href")]
+    (if (str/blank? xlink) (.getAttribute el "href") xlink)))
+
+(def ^:private css-attributes
+  "Attributes Batik interprets as CSS: `style`, and the presentation attributes whose values may carry a `url()`
+  reference."
+  #{"style" "fill" "stroke" "filter" "mask" "clip-path" "marker" "marker-start" "marker-mid" "marker-end" "cursor"})
+
+(defn- check-attribute-references!
+  "Refuse a `url()` reference in any non-href attribute of `el` unless it is a local `#fragment` (Batik resolves
+  `fill=\"url(data:...)\"`, `style`, `filter`, `mask`, `clip-path` etc. through its document loader too), and refuse
+  CSS escapes in [[css-attributes]], which could spell `url(` or `data:` in a way a plain scan would miss."
+  [refuse! ^Element el]
+  (let [attrs (.getAttributes el)]
+    (doseq [i (range (.getLength attrs))
+            :let [^Node attr (.item attrs i)
+                  attr-name  (or (.getLocalName attr) (.getNodeName attr))
+                  value      (.getNodeValue attr)]
+            :when (not= "href" attr-name)]
+      (doseq [[_ target] (re-seq #"(?i)url\s*\(([^)]*)\)" value)
+              :let [target (str/trim (str/replace target #"[\"']" ""))]
+              :when (not (str/starts-with? target "#"))]
+        (refuse! (i18n/tru "url() references must be local (#id), in attribute {0}" attr-name)
+                 {:attribute attr-name}))
+      (when (and (contains? css-attributes attr-name) (str/includes? value "\\"))
+        (refuse! (i18n/tru "CSS escapes are not allowed, in attribute {0}" attr-name)
+                 {:attribute attr-name})))))
+
+(defn- check-embedded-resources!
+  "Fail the render if any element references a `data:` URI other than as a raster image on `<image>`/`<feImage>` — via
+  href or a CSS `url()` (see [[check-attribute-references!]]) — since Batik would load a nested svg, and its DOCTYPE,
+  through its own parser, bypassing [[refuse-doctype!]]; if an embedded image isn't a base64 raster ImageIO can size
+  from its header; or if the embedded images exceed [[max-embedded-image-pixels]]."
+  [^SVGOMDocument svg-document]
+  (let [^NodeList nodes (.getElementsByTagNameNS svg-document "*" "*")
+        elements        (for [i (range (.getLength nodes))] (.item nodes i))
+        refuse!         (fn [message data]
+                          (throw (ex-info message (assoc data :type ::embedded-resource-refused))))
+        total           (reduce (fn [total ^Element el]
+                                  (check-attribute-references! refuse! el)
+                                  (let [href (element-href el)]
+                                    (if-not (str/starts-with? href "data:")
+                                      total
+                                      (let [tag (.getLocalName el)]
+                                        (when-not (contains? #{"image" "feImage"} tag)
+                                          (refuse! (i18n/tru "Only image elements may embed data: URIs, not <{0}>" tag)
+                                                   {:element tag}))
+                                        (let [[w h] (some-> (data-uri-bytes href) image-dimensions)]
+                                          (when-not w
+                                            (refuse! (i18n/tru "Embedded image is not a base64 raster in a supported format")
+                                                     {}))
+                                          (+ total (* (long w) (long h))))))))
+                                0
+                                elements)]
+    (when (> total (long max-embedded-image-pixels))
+      (refuse! (i18n/tru "Embedded images would decode to {0} pixels, more than the {1} allowed"
+                         total max-embedded-image-pixels)
+               {:pixels total}))))
+
 (defn- render-svg
   ^bytes [^SVGOMDocument svg-document]
   (style/register-fonts-if-needed!)
+  (check-embedded-resources! svg-document)
   (with-open [os (ByteArrayOutputStream.)]
     (let [^SVGOMDocument fixed-svg-doc (post-process svg-document fix-fill clear-style-node)
           in                           (TranscoderInput. fixed-svg-doc)
@@ -144,8 +249,9 @@
           render-width                 (float (or (some-> (:width *chart-size*) (* scale)) *svg-render-width*))
           render-height                (some-> (or (some-> (:height *chart-size*) (* scale)) *svg-render-height*) float)]
       (.addTranscodingHint transcoder PNGTranscoder/KEY_WIDTH render-width)
-      (when render-height
-        (.addTranscodingHint transcoder PNGTranscoder/KEY_HEIGHT render-height))
+      (if render-height
+        (.addTranscodingHint transcoder PNGTranscoder/KEY_HEIGHT render-height)
+        (.addTranscodingHint transcoder PNGTranscoder/KEY_MAX_HEIGHT max-aspect-render-height))
       (when *svg-background-color*
         (.addTranscodingHint transcoder PNGTranscoder/KEY_BACKGROUND_COLOR *svg-background-color*))
       (try
@@ -178,20 +284,26 @@
       svg-string->bytes))
 
 (defn ^:dynamic *javascript-visualization*
-  "Clojure entrypoint to render javascript visualizations. This functions is dynanic only for testing purposes."
-  [cards-with-data dashcard-viz-settings]
-  (-> (js.protocol/chart
-       (renderer/renderer)
-       {:rawSeries        cards-with-data
-        :dashcardSettings dashcard-viz-settings
-        :options          (cond-> {:applicationColors (appearance/application-colors)
-                                   :startOfWeek (lib-be/start-of-week)
-                                   :customFormatting (appearance/custom-formatting)
-                                   :tokenFeatures (premium-features/token-features)}
-                            *chart-size*
-                            (assoc :width (:width *chart-size*)
-                                   :height (:height *chart-size*)
-                                   :fitWithinBounds (boolean (:fit-within? *chart-size*))))})      (update :type (fnil keyword "unknown"))))
+  "Clojure entrypoint to render javascript visualizations. This functions is dynanic only for testing purposes.
+   `custom-viz-bundles` is an optional seq of `{:identifier str :plugin-id int :source str}` maps for custom
+   visualization plugins; when present, rendering happens on an isolated context with the plugin bundles
+   evaluated and registered first."
+  [cards-with-data dashcard-viz-settings custom-viz-bundles]
+  (let [input {:rawSeries        cards-with-data
+               :dashcardSettings dashcard-viz-settings
+               :options          (cond-> {:applicationColors (appearance/application-colors)
+                                          :startOfWeek (lib-be/start-of-week)
+                                          :customFormatting (appearance/custom-formatting)
+                                          :tokenFeatures (premium-features/token-features)
+                                          :locale (i18n/user-locale-string)}
+                                   *chart-size*
+                                   (assoc :width (:width *chart-size*)
+                                          :height (:height *chart-size*)
+                                          :fitWithinBounds (boolean (:fit-within? *chart-size*))))}]
+    (-> (if (seq custom-viz-bundles)
+          (js.protocol/chart-with-custom-viz (renderer/renderer) input custom-viz-bundles)
+          (js.protocol/chart (renderer/renderer) input))
+        (update :type (fnil keyword "unknown")))))
 
 (defn gauge
   "Clojure entrypoint to render a gauge chart. Returns a byte array of a png file"

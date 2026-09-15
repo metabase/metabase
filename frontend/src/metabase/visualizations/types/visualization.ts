@@ -1,3 +1,4 @@
+import type { CustomStaticVisualizationProps } from "custom-viz";
 import type { ComponentType, ReactNode } from "react";
 
 import type { Dispatch, QueryBuilderMode } from "metabase/redux/store";
@@ -221,3 +222,7 @@ export type VisualizationComponent = ComponentType<
 
 // TODO: add component property for the react component instead of the intersection
 export type Visualization = VisualizationComponent & VisualizationDefinition;
+
+export type StaticCustomVisualization = ComponentType<
+  CustomStaticVisualizationProps<Record<string, unknown>>
+>;

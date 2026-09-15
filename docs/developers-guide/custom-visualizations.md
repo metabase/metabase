@@ -443,9 +443,11 @@ Metabase runs plugin code in an isolated sandbox, so a visualization works only 
 
 In [guest embeds](../embedding/introduction.md) and [public links](../embedding/public-links.md), any question that uses a custom visualization falls back to the default visualization for the query's results.
 
-### Custom visualizations don't render in exports and subscriptions
+### Exports and subscriptions need a static component
 
-Static renders (like charts in alerts or dashboard subscriptions) fall back to a default visualization for the query's data shape.
+Dashboard subscriptions, alerts, and PDF exports render server-side, so they only show a custom visualization when the plugin exports a `StaticVisualizationComponent` alongside `VisualizationComponent`. A plugin without one falls back to a table of the query's results.
+
+The static component runs in a server-side JavaScript engine (GraalJS) with no browser globals, network access, timers, or dynamic imports, and it renders once with no interaction. It receives the same `series`, `settings`, and `renderingContext` as the interactive component, plus a `width` and `height` when the host controls the layout (a dashboard grid cell in a PDF export). Return an `<svg>` root element where you can: other markup is treated as raw HTML and rasterized with a limited renderer in Slack and PDF exports. The scaffolded project's `README.md` walks through writing one.
 
 ## Example plugins
 

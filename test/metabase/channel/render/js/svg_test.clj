@@ -8,6 +8,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
+   [metabase.channel.render.js.graal :as js.graal]
    [metabase.channel.render.js.svg :as js.svg])
   (:import
    (java.awt Color)
@@ -17,6 +18,7 @@
    (javax.imageio ImageIO)
    (org.apache.batik.anim.dom SVGOMDocument)
    (org.apache.batik.transcoder TranscoderException)
+   (org.graalvm.polyglot Context)
    (org.w3c.dom Element Node)))
 
 (set! *warn-on-reflection* true)
@@ -107,6 +109,130 @@
     (let [data-uri (str "data:image/png;base64,"
                         (.encodeToString (Base64/getEncoder) (solid-png-bytes Color/GREEN)))]
       (is (= [0 255 0] (render-center-pixel (image-svg data-uri)))))))
+
+(defn- data-uri-svg
+  "An svg embedding `data-uri` as a 10x10 `<image>`, via the `xlink:href` or plain `href` attribute."
+  [data-uri attr]
+  (str "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" width=\"10\" height=\"10\">"
+       "<image " attr "=\"" data-uri "\" x=\"0\" y=\"0\" width=\"10\" height=\"10\"/></svg>"))
+
+(defn- png-data-uri
+  "A `data:` URI for a `side` x `side` all-black 1-bit PNG: tiny compressed, `side`^2 pixels decoded."
+  [side]
+  (let [image (BufferedImage. side side BufferedImage/TYPE_BYTE_BINARY)]
+    (with-open [os (ByteArrayOutputStream.)]
+      (ImageIO/write image "png" os)
+      (str "data:image/png;base64," (.encodeToString (Base64/getEncoder) (.toByteArray os))))))
+
+(deftest svg-string->bytes-bounds-embedded-image-size-test
+  (binding [js.svg/*chart-size* {:width 20 :height 20}]
+    (testing "an embedded image that would decode past the pixel budget is refused before Batik decodes it (a
+              compressed image inside the result-string cap can otherwise demand hundreds of MB of host heap)"
+      (doseq [attr ["xlink:href" "href"]]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Embedded images would decode to"
+                              (js.svg/svg-string->bytes (data-uri-svg (png-data-uri 8000) attr)))
+            attr)))
+    (let [nested (str "data:image/svg+xml;base64,"
+                      (.encodeToString (Base64/getEncoder)
+                                       (.getBytes (str "<!DOCTYPE svg [<!ENTITY c \"green\">]>"
+                                                       "<svg xmlns=\"http://www.w3.org/2000/svg\">"
+                                                       "<rect id=\"r\" width=\"10\" height=\"10\" fill=\"&c;\"/>"
+                                                       "<linearGradient id=\"g\"/></svg>")
+                                                  "UTF-8")))]
+      (testing "an embedded data: URI that isn't a sizeable raster (e.g. a nested svg) is refused as an image"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not a base64 raster"
+                              (js.svg/svg-string->bytes (data-uri-svg nested "xlink:href")))))
+      (testing "a data: URI on any other element is refused — Batik would load a nested svg document (and its
+                DOCTYPE) through its own loader, bypassing the outer DOCTYPE check"
+        (doseq [inner [(str "<use xlink:href=\"" nested "#r\"/>")
+                       (str "<linearGradient id=\"lg\" xlink:href=\"" nested "#g\"/>"
+                            "<rect width=\"10\" height=\"10\" fill=\"url(#lg)\"/>")]]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Only image elements may embed data: URIs"
+                                (js.svg/svg-string->bytes
+                                 (str "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" width=\"10\" height=\"10\">"
+                                      inner "</svg>"))))))
+      (testing "a CSS url() reference to a data: URI is refused too — Batik resolves fill/style/filter/mask/clip-path
+                references through the same loader"
+        (doseq [attr ["fill" "filter" "mask" "clip-path"]]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"url\(\) references must be local"
+                                (js.svg/svg-string->bytes
+                                 (str "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"10\" height=\"10\">"
+                                      "<rect width=\"10\" height=\"10\" " attr "=\"url(" nested "#g)\"/></svg>")))
+              attr))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"url\(\) references must be local"
+                              (js.svg/svg-string->bytes
+                               (str "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"10\" height=\"10\">"
+                                    "<rect width=\"10\" height=\"10\" style=\"fill: url( '" nested "#g' )\"/></svg>")))
+            "inline style, with the quoting and spacing CSS allows")
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"CSS escapes are not allowed"
+                              (js.svg/svg-string->bytes
+                               (str "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"10\" height=\"10\">"
+                                    "<rect width=\"10\" height=\"10\" fill=\"\\75 rl(#x)\"/></svg>")))
+            "a CSS escape that could spell url( past the scan"))
+      (testing "a local url(#id) reference — how charts use gradients and clip paths — still renders"
+        (is (bytes? (js.svg/svg-string->bytes
+                     (str "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"10\" height=\"10\">"
+                          "<linearGradient id=\"lg\"><stop offset=\"0\" stop-color=\"red\"/></linearGradient>"
+                          "<rect width=\"10\" height=\"10\" fill=\"url(#lg)\" style=\"stroke: url( #lg )\"/></svg>"))))))
+    (testing "a small embedded image within the budget still renders"
+      (is (bytes? (js.svg/svg-string->bytes (data-uri-svg (png-data-uri 64) "xlink:href")))))))
+
+(deftest svg-string->bytes-clamps-aspect-ratio-height-test
+  (testing "when the raster height follows the svg's aspect ratio (email/Slack: no explicit chart size), it is
+            capped — an untrusted custom-viz svg with an extreme aspect ratio must not size a host-heap raster"
+    (let [svg   (str "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"10\" height=\"1000\">"
+                     "<rect width=\"10\" height=\"1000\" fill=\"red\"/></svg>")
+          image (ImageIO/read (ByteArrayInputStream. (js.svg/svg-string->bytes svg)))]
+      (is (<= (.getHeight image) 6000)
+          "a 1:100 svg at the default 1200px width would otherwise rasterize 120,000px tall")
+      (is (pos? (.getWidth image))
+          "the image is scaled down to fit, not refused"))))
+
+(deftest svg-string->bytes-refuses-doctype-test
+  (testing "an svg declaring a DOCTYPE or entities is refused before parsing"
+    (doseq [svg [(str "<?xml version=\"1.0\"?><!DOCTYPE svg [<!ENTITY a \"aaaa\">]>"
+                      "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"10\" height=\"10\"><text>&a;</text></svg>")
+                 (str "<!doctype svg><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"10\" height=\"10\"/>")]]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must not declare a DOCTYPE"
+                            (js.svg/svg-string->bytes svg))))))
+
+(deftest untrusted-plugin-context-loads-slim-bundle-test
+  (testing "the plugin isolate pool loads the slim custom-viz bundle, exposing the interface surface it needs"
+    (js.graal/do-with-untrusted-plugin-context
+     (fn [^Context ctx]
+       (doseq [fn-name ["renderChartJSON" "initializeContextJSON" "registerCustomVizPlugin"]]
+         (is (= "function" (.asString (.eval ctx "js" (str "typeof MetabaseStaticViz." fn-name))))
+             (str "slim bundle should expose MetabaseStaticViz." fn-name)))
+       ;; getCellBackgroundColorsJSON is only exported by the full bundle (only the builtin pool's table
+       ;; rendering calls it), so its absence proves the slim bundle is what got loaded here.
+       (is (= "undefined" (.asString (.eval ctx "js" "typeof MetabaseStaticViz.getCellBackgroundColorsJSON")))
+           "the full static-viz bundle (getCellBackgroundColorsJSON present) leaked into the plugin pool")))))
+
+(deftest untrusted-builtin-context-loads-full-bundle-test
+  (testing "the builtin isolate pool loads the full static-viz bundle, including the table-rendering surface"
+    (js.graal/do-with-untrusted-builtin-context
+     (fn [^Context ctx]
+       (doseq [fn-name ["renderChartJSON" "getCellBackgroundColorsJSON"]]
+         (is (= "function" (.asString (.eval ctx "js" (str "typeof MetabaseStaticViz." fn-name))))
+             (str "full bundle should expose MetabaseStaticViz." fn-name)))))))
+
+(deftest builtin-and-plugin-pools-are-taint-separated-test
+  (testing "globals set in a plugin context are invisible to builtin contexts (isolated realms on the shared engine)"
+    (js.graal/do-with-untrusted-plugin-context
+     (fn [^Context ctx]
+       (.eval ctx "js" "globalThis.__taint_marker = 'tainted'")))
+    (js.graal/do-with-untrusted-builtin-context
+     (fn [^Context ctx]
+       (is (= "undefined" (.asString (.eval ctx "js" "typeof globalThis.__taint_marker")))
+           "plugin-context globals must not leak into builtin contexts")))))
+
+(deftest untrusted-plugin-context-is-pooled-test
+  (testing "pooled untrusted isolate contexts are reused across renders (bundle parsed once, not per render)"
+    (let [context-identity (fn []
+                             (js.graal/do-with-untrusted-plugin-context
+                              (fn [^Context ctx] (System/identityHashCode ctx))))]
+      (is (= (context-identity) (context-identity))
+          "the same pooled isolate context should serve every render"))))
 
 (deftest ^:parallel parse-svg-sanitizes-characters-test
   (testing "Characters discouraged or not permitted by the xml 1.0 specification are removed. (#"
