@@ -53,6 +53,7 @@
       400 (tru "Ollama rejected the request — usually a model that cannot produce the requested tool call or JSON schema")
       401 (tru "Ollama rejected the API key")
       404 (tru "Ollama API endpoint was not found — the base URL should end in /v1, and the model must already be available")
+      429 (tru "Ollama is rate limiting this instance — wait and retry, or reduce concurrent Metabot use")
       500 (tru "Ollama returned an internal server error")
       (tru "Ollama API error (HTTP {0})" status))))
 

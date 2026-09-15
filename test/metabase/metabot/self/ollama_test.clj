@@ -559,6 +559,7 @@
                                                                   :credentials credentials})))
       401 #"Ollama rejected the API key"
       404 #"base URL should end in /v1"
+      429 #"Ollama is rate limiting this instance"
       500 #"internal server error")))
 
 (defn- chunk-with
