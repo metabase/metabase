@@ -16,6 +16,7 @@
    [metabase.oauth-server.test-util :as oauth-server.tu]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
+   [metabase.test.http-client :as client]
    [oidc-provider.store :as oidc.store]
    [toucan2.core :as t2]))
 
@@ -108,6 +109,87 @@
             (testing "resolves the user but only carries the narrow granted scopes"
               (is (= user-id (:metabase-user-id req)))
               (is (= #{"agent:query:execute"} (:token-scopes req))))))))))
+
+(deftest bearer-bridge-marks-oauth-authentication-test
+  (testing "GHY-4542: a request the bearer bridge authenticated is marked as OAuth-authenticated, which is what the
+            scope middleware and the MCP transport key their fail-closed checks on"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (oauth-server.tu/with-oauth-client [client-id]
+          (let [token (str (random-uuid))]
+            (save-access-token! token (mt/user->id :rasta) client-id ["agent:query:execute"] (in-one-hour))
+            (is (true? (:authenticated-via-oauth? (merge-current-user-info (bearer-request token)))))))))))
+
+(defn- passes-scope-middleware?
+  "Whether `request` gets through both [[scope/enforce-scope]] and [[scope/ensure-scopes-checked]]."
+  [request]
+  (let [status (fn [wrapped]
+                 (let [p (promise)]
+                   (wrapped request #(deliver p (:status %)) #(deliver p %))
+                   (deref p 10000 ::timeout)))
+        ok     (fn [_ respond _] (respond {:status 200}))]
+    (= [200 200] [(status ((scope/enforce-scope "agent:query:execute") ok))
+                  (status (scope/ensure-scopes-checked ok))])))
+
+(deftest bearer-bridge-refuses-token-without-scopes-test
+  (testing "GHY-4542: an access token with no scopes must not authenticate. Downstream, nil `:token-scopes` means
+            scope-unaware auth and passes as unrestricted, so the only thing keeping such a token from becoming
+            unrestricted would otherwise be an empty set surviving every hop. /oauth/authorize no longer issues
+            one, so these are minted straight into the store."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (oauth-server.tu/with-oauth-client [client-id]
+        (mt/with-model-cleanup [:model/OAuthAccessToken]
+          (doseq [scopes [nil []]]
+            (testing (str "scopes " (pr-str scopes))
+              (let [token (str (random-uuid))]
+                (oidc.store/save-access-token (:token-store (oauth-server/get-provider))
+                                              token (str (mt/user->id :rasta)) client-id scopes (in-one-hour) nil)
+                (testing "the bearer bridge does not authenticate the request"
+                  (let [req (merge-current-user-info (bearer-request token))]
+                    (is (nil? (:metabase-user-id req)))
+                    (is (nil? (:token-scopes req)))
+                    (is (nil? (:authenticated-via-oauth? req)))))
+                (testing "a general API endpoint answers 401"
+                  (client/client :get 401 "user/current"
+                                 {:request-options {:headers {"authorization" (str "Bearer " token)}}}))
+                (testing "an agent API endpoint that declares a scope does not serve it"
+                  (client/client :post 401 "agent/v1/search"
+                                 {:request-options {:headers {"authorization" (str "Bearer " token)}}}
+                                 {:term_queries ["orders"]}))))))))))
+
+(deftest non-oauth-auth-is-unaffected-by-oauth-fail-closed-test
+  (testing "GHY-4542: session and API-key requests carry nil `:token-scopes` and must keep passing the scope
+            middleware. A stray bearer header does not make a session request OAuth-authenticated: the session
+            takes precedence and the bearer is never resolved."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (let [user-info {:metabase-user-id (mt/user->id :rasta) :is-superuser? false}]
+        (testing "a session request"
+          (mt/with-dynamic-fn-redefs [mw.session/current-user-info-for-session (fn [_ _] user-info)]
+            (let [req (merge-current-user-info {:metabase-session-key "session-key"})]
+              (is (= "session" (:embedding/auth-method req)))
+              (is (nil? (:authenticated-via-oauth? req)))
+              (is (passes-scope-middleware? req)))))
+        (testing "an API-key request"
+          (mt/with-dynamic-fn-redefs [mw.session/current-user-info-for-api-key (fn [_] user-info)]
+            (let [req (merge-current-user-info {:headers {"x-api-key" "mb_whatever"}})]
+              (is (= "api-key" (:embedding/auth-method req)))
+              (is (nil? (:authenticated-via-oauth? req)))
+              (is (passes-scope-middleware? req)))))
+        (testing "a session request carrying a stray bearer header"
+          (oauth-server.tu/with-oauth-client [client-id]
+            (mt/with-model-cleanup [:model/OAuthAccessToken]
+              (let [token (str (random-uuid))]
+                (save-access-token! token (mt/user->id :rasta) client-id [] (in-one-hour))
+                (mt/with-dynamic-fn-redefs [mw.session/current-user-info-for-session (fn [_ _] user-info)]
+                  (let [req (merge-current-user-info (assoc (bearer-request token) :metabase-session-key "session-key"))]
+                    (is (= (mt/user->id :rasta) (:metabase-user-id req)))
+                    (is (= "session" (:embedding/auth-method req)))
+                    (is (nil? (:authenticated-via-oauth? req)))
+                    (is (passes-scope-middleware? req))))
+                (testing "and over HTTP"
+                  (is (= (mt/user->id :rasta)
+                         (:id (mt/user-http-request :rasta :get 200 "user/current"
+                                                    {:request-options {:headers {"authorization" (str "Bearer " token)}}})))))))))))))
 
 (deftest bearer-bridge-expired-token-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]

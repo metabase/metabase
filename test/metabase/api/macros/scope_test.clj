@@ -102,6 +102,35 @@
       (is (= 403 (:status (invoke {:token-scopes #{"agent:queries"} :token-scopes-checked true}))))
       (is (= 403 (:status (invoke {:token-scopes #{} :token-scopes-checked true})))))))
 
+(deftest ^:parallel oauth-request-without-token-scopes-fails-closed-test
+  (testing "GHY-4542: nil `:token-scopes` means scope-unaware auth (a session or API key), so both middlewares
+            let it through. An OAuth-authenticated request always carries its granted scopes; one that arrives
+            without any must be refused, not treated as unrestricted. The auth method the session middleware
+            records decides which case it is, not the presence of a bearer header."
+    (let [ok-handler (fn [_request respond _raise]
+                       (respond {:status 200 :body "ok"}))
+          middleware (scope/enforce-scope "agent:reports")]
+      (doseq [[label wrapped] {"enforce-scope"         (middleware ok-handler)
+                               "ensure-scopes-checked" (scope/ensure-scopes-checked ok-handler)}]
+        (testing label
+          (doseq [token-scopes [nil #{}]]
+            (testing (str "OAuth-authenticated with token-scopes " (pr-str token-scopes) " is refused")
+              (let [response (invoke-handler wrapped {:authenticated-via-oauth? true
+                                                      :token-scopes             token-scopes})]
+                (is (= 403 (:status response)))
+                (is (contains? #{"unsupported_scope" "scope_not_permitted"} (get-in response [:body :error])))))
+            (testing (str "even when already stamped :token-scopes-checked, with token-scopes " (pr-str token-scopes))
+              (is (= 403 (:status (invoke-handler wrapped {:authenticated-via-oauth? true
+                                                           :token-scopes             token-scopes
+                                                           :token-scopes-checked     true}))))))
+          (testing "the same request without the OAuth marker is session or API-key auth and passes"
+            (is (= {:status 200 :body "ok"}
+                   (invoke-handler wrapped {:token-scopes nil}))))
+          (testing "an OAuth request carrying a full-access grant still passes"
+            (is (= {:status 200 :body "ok"}
+                   (invoke-handler wrapped {:authenticated-via-oauth? true
+                                            :token-scopes             #{::scope/unrestricted}})))))))))
+
 (deftest ^:parallel ensure-scopes-checked-test
   (let [ok-handler (fn [_request respond _raise]
                      (respond {:status 200 :body "ok"}))]

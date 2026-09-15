@@ -670,6 +670,14 @@
            (some? origin-error)
            (respond origin-error)
 
+           ;; The session middleware never authenticates an OAuth token without scopes. Should one arrive, the
+           ;; `session-auth` branch below would dispatch nil scopes as unrestricted, so refuse it as an invalid token.
+           (and (:authenticated-via-oauth? request) (empty? token-scopes))
+           (respond (json-response 401 (jsonrpc-error nil -32603 "Invalid bearer token")
+                                   {"WWW-Authenticate" (str (www-authenticate-discovery endpoint-paths default-path
+                                                                                        default-ask-scopes request)
+                                                            ", error=\"invalid_token\"")}))
+
            ;; Respect the scope set attached to an authenticated request. Sessions without one
            ;; retain unrestricted access.
            session-auth

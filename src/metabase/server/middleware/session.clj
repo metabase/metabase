@@ -186,15 +186,19 @@
 (mu/defn- current-user-info-for-oauth-token :- [:maybe ::request.schema/current-user-info]
   "Return current-user-info for a valid OAuth bearer access token on `request`, or nil. Mirrors the
    shape returned by the session/api-key resolvers and additionally attaches `:token-scopes`, so the
-   merged request carries both the user identity and the access the token was granted. This is the
-   only place an OAuth access token authenticates a request to the general (`/api/*`) API."
+   merged request carries both the user identity and the access the token was granted, and marks it
+   `:authenticated-via-oauth?`. A token with no scopes does not authenticate. This is the only place an
+   OAuth access token authenticates a request to the general (`/api/*`) API."
   [request]
   (when (init-status/complete?)
     (when-let [token (oauth-server/extract-bearer-token request)]
       (when-let [{:keys [user-id scopes]} (oauth-server/resolve-access-token token)]
-        (some-> (server.db/oauth-user-info user-id (premium-features/enable-advanced-permissions?))
-                (m/update-existing :is-group-manager? boolean)
-                (assoc :token-scopes (oauth-token->token-scopes scopes)))))))
+        ;; Downstream, nil `:token-scopes` passes as scope-unaware auth, so a scope-less token is refused here.
+        (when (seq scopes)
+          (some-> (server.db/oauth-user-info user-id (premium-features/enable-advanced-permissions?))
+                  (m/update-existing :is-group-manager? boolean)
+                  (assoc :token-scopes             (oauth-token->token-scopes scopes)
+                         :authenticated-via-oauth? true)))))))
 
 (defn- current-user-info-for-mcp-ui-credential
   "Resolve the short-lived credential from an MCP App tool result.

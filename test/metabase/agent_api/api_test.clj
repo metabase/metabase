@@ -10,6 +10,7 @@
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.ai-tracing.log :as ait.log]
    [metabase.ai-tracing.settings :as ai-tracing.settings]
+   [metabase.api.macros.scope :as api.scope]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -81,6 +82,22 @@
                     :message "Authentication required. Use X-Metabase-Session header or Authorization: Bearer <jwt>."}
                    (client/client :get 401 "agent/v1/ping"
                                   {:request-options {:headers {"x-metabase-session" session-key}}})))))))))
+
+(deftest enforce-authentication-does-not-widen-oauth-request-without-scopes-test
+  (testing "GHY-4542: the agent API defaults nil `:token-scopes` on an authenticated request to unrestricted, which
+            is right for a session but would hand an OAuth-authenticated request with no scopes full access and
+            defeat the scope middleware's own fail-closed check. That request keeps nil and is refused by the
+            endpoint's scope check."
+    (let [enforce-authentication #'agent-api.api/enforce-authentication
+          handler                (enforce-authentication
+                                  ((api.scope/enforce-scope "agent:search") (fn [_ respond _] (respond {:status 200}))))
+          status                 (fn [request]
+                                   (let [p (promise)]
+                                     (handler request #(deliver p (:status %)) #(deliver p %))
+                                     (deref p 10000 ::timeout)))]
+      (is (= 403 (status {:metabase-user-id (mt/user->id :rasta) :authenticated-via-oauth? true})))
+      (testing "a session request with nil token-scopes is still unrestricted"
+        (is (= 200 (status {:metabase-user-id (mt/user->id :rasta)})))))))
 
 (deftest agent-api-enabled-setting-test
   (testing "External Agent API routes return 403 when disabled"

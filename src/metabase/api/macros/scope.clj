@@ -38,10 +38,18 @@
   [token-scopes required-scope]
   (api-scope/scope-matches? token-scopes required-scope))
 
+(defn- oauth-without-token-scopes?
+  "True for a request the session middleware authenticated with an OAuth access token that carries no
+   `:token-scopes`. Nil scopes mean scope-unaware auth only for sessions and API keys; for OAuth they must fail
+   closed."
+  [request]
+  (and (:authenticated-via-oauth? request)
+       (empty? (:token-scopes request))))
+
 (defn enforce-scope
   "Returns a Ring middleware that checks `:token-scopes` on the request against `required-scope` (a string).
    Passes through when `:token-scopes` is nil (normal session auth) or contains `::unrestricted`
-   (session auth or unscoped JWT).
+   (session auth or unscoped JWT). Rejects an OAuth-authenticated request with no `:token-scopes`.
 
    On success, sets `:token-scopes-checked` on the request so that downstream [[ensure-scopes-checked]]
    middleware knows scope enforcement already happened. This allows `enforce-scope` to be applied at the
@@ -66,11 +74,12 @@
   (fn [handler]
     (fn [request respond raise]
       (let [token-scopes (:token-scopes request)]
-        (if (or (nil? token-scopes)
-                (contains? token-scopes ::unrestricted)
-                (and (contains? token-scopes ::mcp-ui)
-                     (:token-scopes-checked request))
-                (scope-satisfied? token-scopes required-scope))
+        (if (and (not (oauth-without-token-scopes? request))
+                 (or (nil? token-scopes)
+                     (contains? token-scopes ::unrestricted)
+                     (and (contains? token-scopes ::mcp-ui)
+                          (:token-scopes-checked request))
+                     (scope-satisfied? token-scopes required-scope)))
           (handler (cond-> request
                      token-scopes (assoc :token-scopes-checked true))
                    respond raise)
@@ -90,13 +99,16 @@
    Passes through when:
    - `:token-scopes` is nil (request did not go through scope-aware auth)
    - `:token-scopes` contains `::unrestricted` (session auth or unscoped JWT)
-   - `:token-scopes-checked` is true ([[enforce-scope]] already ran, e.g. at the namespace level)"
+   - `:token-scopes-checked` is true ([[enforce-scope]] already ran, e.g. at the namespace level)
+
+   None of these apply to an OAuth-authenticated request with no `:token-scopes`, which is always rejected."
   [handler]
   (fn [request respond raise]
     (let [token-scopes (:token-scopes request)]
-      (if (or (nil? token-scopes)
-              (contains? token-scopes ::unrestricted)
-              (:token-scopes-checked request))
+      (if (and (not (oauth-without-token-scopes? request))
+               (or (nil? token-scopes)
+                   (contains? token-scopes ::unrestricted)
+                   (:token-scopes-checked request)))
         (handler request respond raise)
         (respond {:status  403
                   :headers {"Content-Type" "application/json"}

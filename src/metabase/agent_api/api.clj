@@ -1700,7 +1700,8 @@
 
    - For **session-authenticated** requests (where `:metabase-user-id` is already set by
      upstream middleware), preserves any pre-existing `:token-scopes` value if present,
-     otherwise defaults to `#{::scope/unrestricted}` for unrestricted access.
+     otherwise defaults to `#{::scope/unrestricted}` for unrestricted access. An OAuth-authenticated
+     request without `:token-scopes` is not defaulted, so scope enforcement rejects it.
    - For **JWT-authenticated** requests, derives `:token-scopes` from the JWT when a
      `\"scope\"` claim is present, falls back to any pre-existing `:token-scopes` on the
      request, and finally defaults to `#{::scope/unrestricted}` for unscoped JWTs.
@@ -1712,9 +1713,11 @@
     (cond
       ;; Already authenticated via X-Metabase-Session or synthetic request (e.g. MCP dispatch).
       ;; Preserve existing :token-scopes when present (MCP sets them on the synthetic request).
+      ;; An OAuth request without scopes keeps nil so the scope middleware refuses it.
       metabase-user-id
       (handler (cond-> request
-                 (not token-scopes) (assoc :token-scopes #{::scope/unrestricted}))
+                 (and (not token-scopes) (not (:authenticated-via-oauth? request)))
+                 (assoc :token-scopes #{::scope/unrestricted}))
                respond raise)
 
       ;; Not authenticated via session - check for Bearer JWT
