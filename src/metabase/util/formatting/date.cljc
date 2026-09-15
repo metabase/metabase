@@ -17,10 +17,18 @@
    :quarter (builder/->formatter ["Q" :quarter "-" :year])
    :day     formatters/big-endian-day})
 
+(defn- prepare-time-config [time-config]
+  (-> #?(:clj  time-config
+         :cljs (if (map? time-config)
+                 time-config
+                 (js->clj time-config :keywordize-keys true)))
+      (update :start-of-week keyword)))
+
 (defn ^:export format-for-parameter
   "Returns a formatting date string for a datetime used as a parameter to a Card."
   [time-config value options]
-  (let [options      (options/prepare-options options)
+  (let [time-config  (prepare-time-config time-config)
+        options      (options/prepare-options options)
         time-options (merge options time-config)
         t            (u.time/coerce-to-timestamp value time-options)]
     (if (not (u.time/valid? t))
@@ -58,7 +66,8 @@
 (defn ^:export format-range-with-unit
   "Returns a string with this datetime formatted as a range, rounded to the given `:unit`."
   [time-config value options]
-  (let [options      (options/prepare-options options)
+  (let [time-config  (prepare-time-config time-config)
+        options      (options/prepare-options options)
         time-options (merge options time-config)
         t            (u.time/coerce-to-timestamp value time-options)]
     (if (u.time/valid? t)
@@ -80,7 +89,8 @@
 (defn ^:export format-datetime-with-unit
   "Returns a string with this datetime formatted as a single value, rounded to the given `:unit`."
   [time-config value options]
-  (let [{:keys [is-exclude no-range type unit]
+  (let [time-config (prepare-time-config time-config)
+        {:keys [is-exclude no-range type unit]
          :as options} (options/prepare-options options)
         time-options  (merge options time-config)
         t             (u.time/coerce-to-timestamp value time-options)]
