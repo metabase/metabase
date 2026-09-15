@@ -24,7 +24,7 @@
    [throttle.core :as throttle])
   (:import
    (clojure.lang ExceptionInfo)
-   (java.net URI URLEncoder)))
+   (java.net URI URISyntaxException URLEncoder)))
 
 (set! *warn-on-reflection* true)
 
@@ -115,6 +115,21 @@
                   ;; Flag the broad first-party grant so the consent page can warn about it without
                   ;; hardcoding the scope string in the view.
                   :full-access? (= s oauth-server/full-access-scope)})))))
+
+(def ^:private invalid-target-description
+  "The resource parameter must be an absolute URI without a fragment.")
+
+(defn- unparseable-resource?
+  "True when any `resource` indicator (a string, or a sequence of strings) is not syntactically a URI."
+  [resource]
+  (boolean
+   (some (fn [r]
+           (try
+             (URI. (str r))
+             false
+             (catch URISyntaxException _
+               true)))
+         (if (string? resource) [resource] resource))))
 
 (defn- redirect-authorization-decision
   "Issue a 302 redirect for an approved or denied authorization decision, clearing the CSRF cookie."
@@ -310,7 +325,12 @@
    the CSRF cookie. Throws `ex-info` when the request is invalid; its data may carry `:oauth-error` and
    `:error-description`."
   [provider client query-params request]
-  (let [;; A blank scope is dropped so the provider validates the rest of the request first; the missing scope is
+  (let [;; oidc-provider's own resource check throws a URISyntaxException, not an ex-info, for these.
+        _            (when (unparseable-resource? (:resource query-params))
+                       (throw (ex-info "resource is not a URI"
+                                       {:oauth-error       "invalid_target"
+                                        :error-description invalid-target-description})))
+        ;; A blank scope is dropped so the provider validates the rest of the request first; the missing scope is
         ;; then reported as `invalid_scope` below.
         parsed       (oidc/parse-authorization-request provider
                                                        (cond-> query-params
@@ -439,6 +459,9 @@
                  :body    {:error "csrf_validation_failed"}}
                 (let [approved (= "true" (str (:approved body)))]
                   (try
+                    ;; oidc-provider's own resource check throws a URISyntaxException, not an ex-info, for these.
+                    (when (unparseable-resource? (:resource auth-params))
+                      (throw (ex-info "resource is not a URI" {})))
                     (let [parsed        (oidc/parse-authorization-request provider auth-params)
                           ;; Verify the HMAC against the *parsed* params (same normalized form as the consent page).
                           ;; This must happen after parsing to ensure form-encoding round-trips don't cause mismatches.
@@ -484,6 +507,11 @@
       (or (when-let [provider (oauth-server/get-provider)]
             (let [authorization-header (get-in request [:headers "authorization"])]
               (try
+                ;; oidc-provider's own resource check throws a URISyntaxException, not an ex-info, for these.
+                (when (unparseable-resource? (:resource body))
+                  (throw (ex-info "resource is not a URI"
+                                  {:error             "invalid_target"
+                                   :error_description invalid-target-description})))
                 (let [response (oidc/token-request provider body authorization-header)]
                   {:status  200
                    :headers {"Content-Type"  "application/json"

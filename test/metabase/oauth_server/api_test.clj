@@ -1543,3 +1543,91 @@
                                       :response_type "code"
                                       :scope         oauth-server/full-access-scope
                                       :state         "test-state"))))))))
+
+;;; ------------------------------------- Malformed resource indicators -------------------------------------
+
+(def ^:private malformed-resources
+  "`resource` values containing an entry that is not a parseable URI at all, as opposed to one that parses but is
+   relative or has a fragment."
+  ["http://bad uri"
+   ["http://localhost:3000/api/mcp" "http://bad uri"]])
+
+(def ^:private invalid-target-description
+  "The resource parameter must be an absolute URI without a fragment.")
+
+(deftest authorize-malformed-resource-redirects-invalid-target-test
+  (testing "GHY-4542: an unparseable `resource` indicator made oidc-provider throw a URISyntaxException that nothing
+            caught, answering a client input error with a 500. Once the client and redirect URI are valid, it is an
+            RFC 8707 section 2 `invalid_target` error redirect like any other invalid resource indicator."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client-id (:client_id (create-test-client!))]
+          (doseq [resource malformed-resources]
+            (testing (pr-str resource)
+              (is (= {:target "https://example.com/callback"
+                      :params {"error"             "invalid_target"
+                               "error_description" invalid-target-description
+                               "state"             "test-state"
+                               "iss"               "http://localhost:3000"}}
+                     (error-redirect (authorize-request! 302
+                                                         :client_id     client-id
+                                                         :redirect_uri  "https://example.com/callback"
+                                                         :response_type "code"
+                                                         :scope         "agent:content:read"
+                                                         :state         "test-state"
+                                                         :resource      resource))))
+              (testing "but not when the redirect URI is unregistered: that stays a 400 with no redirect"
+                (let [response (authorize-request! 400
+                                                   :client_id     client-id
+                                                   :redirect_uri  "https://evil.com/callback"
+                                                   :response_type "code"
+                                                   :scope         "agent:content:read"
+                                                   :state         "test-state"
+                                                   :resource      resource)]
+                  (is (= "invalid_request" (get-in response [:body :error])))
+                  (is (nil? (get-in response [:headers "Location"]))))))))))))
+
+(deftest authorize-decision-malformed-resource-is-invalid-request-test
+  (testing "GHY-4542: the decision endpoint's parameters are untrusted until their signature verifies, so an
+            unparseable `resource` there is a 400 `invalid_request` rather than a 500, and never a redirect"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client-id    (:client_id (create-test-client!))
+              consent-resp (get-consent-page! :crowberto client-id)
+              consent-body (:body consent-resp)]
+          (doseq [resource malformed-resources]
+            (testing (pr-str resource)
+              (let [response (form-post-decision!
+                              :crowberto
+                              {:approved      "true"
+                               :csrf_token    (extract-csrf-token-from-consent consent-body)
+                               :params_sig    (extract-params-sig-from-consent consent-body)
+                               :client_id     client-id
+                               :redirect_uri  "https://example.com/callback"
+                               :response_type "code"
+                               :scope         "agent:content:read"
+                               :state         "test-state"
+                               :resource      resource}
+                              400
+                              :csrf-cookie (extract-csrf-cookie consent-resp))]
+                (is (= {:error             "invalid_request"
+                        :error_description "The authorization request is invalid."}
+                       (:body response)))
+                (is (nil? (get-in response [:headers "Location"])))))))))))
+
+(deftest token-malformed-resource-is-invalid-target-test
+  (testing "GHY-4542: an unparseable `resource` indicator at the token endpoint is an RFC 8707 `invalid_target` 400
+            in the RFC 6749 section 5.2 error shape, not a 500"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [{:keys [client_id client_secret]} (create-test-client!)]
+          (doseq [resource malformed-resources]
+            (testing (pr-str resource)
+              (is (= {:error             "invalid_target"
+                      :error_description invalid-target-description}
+                     (token-request! {:grant_type   "authorization_code"
+                                      :code         "some-code"
+                                      :redirect_uri "https://example.com/callback"
+                                      :resource     resource}
+                                     :expected-status 400
+                                     :authorization (basic-auth-header client_id client_secret)))))))))))
