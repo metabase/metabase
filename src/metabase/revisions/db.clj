@@ -217,7 +217,7 @@
                 [:map {:closed true}
                  [:model        [:= (name model)]]
                  [:model_id     ms/PositiveInt]
-                 [:user_id      [:maybe ::lib.schema.id/user]]
+                 [:user_id      ::lib.schema.id/user]
                  [:object       [:merge schema
                                  (into [:map {:closed true} [:id {:optional true} ms/PositiveInt]]
                                        (get revision-object-extra-keys model))]]
@@ -234,7 +234,7 @@
         [::mc/default [:map {:closed true}
                        [:model        :string]
                        [:model_id     ms/PositiveInt]
-                       [:user_id      [:maybe ::lib.schema.id/user]]
+                       [:user_id      ::lib.schema.id/user]
                        [:object       ::unregistered-model-object]
                        [:is_creation  :boolean]
                        [:is_reversion :boolean]
@@ -245,7 +245,7 @@
   [:map {:closed true}
    [:model        :string]
    [:model_id     ms/PositiveInt]
-   [:user_id      [:maybe ::lib.schema.id/user]]
+   [:user_id      ::lib.schema.id/user]
    [:object       ::stored-revision-object]
    [:is_creation  :boolean]
    [:is_reversion :boolean]

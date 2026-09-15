@@ -488,7 +488,7 @@
                                                                         [:=
                                                                          {}
                                                                          t
-                                                                         [:relative-datetime {} -1 :year]])]
+                                                                         [:relative-datetime {:lib/uuid (str (random-uuid))} -1 :year]])]
               (testing (format "\nclause = %s" (pr-str clause))
                 (is (= expected-type
                        (#'bigquery.qp/temporal-type relative-datetime)))))))))))
@@ -853,7 +853,7 @@
                                            [:field {:lib/uuid          (str (random-uuid))
                                                     :temporal-unit     unit
                                                     ::add/source-table "ABC"} 1]
-                                           [:relative-datetime {} -1 unit]])}
+                                           [:relative-datetime {:lib/uuid (str (random-uuid))} -1 unit]])}
                                  {:dialect ::h2x/unquoted-dialect}))))))))))
 
 (deftest filter-by-relative-date-ranges-test-2
@@ -879,7 +879,7 @@
                                                         [:field {:lib/uuid          (str (random-uuid))
                                                                  :temporal-unit     unit
                                                                  ::add/source-table "ABC"} 1]
-                                                        [:relative-datetime {} -1 unit]])}
+                                                        [:relative-datetime {:lib/uuid (str (random-uuid))} -1 unit]])}
                                               {:dialect ::h2x/unquoted-dialect})]
                         (str/split-lines (driver/prettify-native-form :bigquery-cloud-sdk sql)))))]
             (are [field-type unit expected-sql] (= (for [line expected-sql]

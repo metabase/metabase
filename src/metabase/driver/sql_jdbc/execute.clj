@@ -398,8 +398,11 @@
   Connection."
   {:added "0.47.0"}
   [driver                                                 :- :keyword
-   db-or-id-or-spec                                       :- DbOrIdOrSpec
-   ^Connection conn                                       :- (driver-api/instance-of-class Connection)
+   db-or-id-or-spec                                       :- [:or
+                                                              ::lib.schema.id/database
+                                                              driver-api/schema.metadata.database
+                                                              :metabase.lib.schema.common/database-details]
+   ^Connection conn                                      :- (driver-api/instance-of-class Connection)
    {:keys [^String session-timezone write?], :as options} :- ConnectionOptions]
   (when-let [db (cond
                   ;; id?

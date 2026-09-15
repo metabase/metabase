@@ -742,7 +742,9 @@
    [:failures      [:sequential [:map {:closed true}
                                  [:transform_name [:maybe :string]]
                                  [:transform_href :string]
-                                 [:message        [:maybe :string]]]]]])
+                                 [:message        [:map {:closed true}
+                                                   [:first_line :string]
+                                                   [:details    [:sequential :string]]]]]]]])
 
 (mr/def ::event-info.transform-failure-digest
   "The `:event_info` of an `:event/transform-failure-digest` system event."

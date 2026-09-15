@@ -82,7 +82,20 @@
    [:create-index {:optional true} [:sequential [:ref ::native-ddl-value]]]
    [:drop-index   {:optional true} [:sequential [:ref ::native-ddl-value]]]
    [:alter-table  {:optional true} [:ref ::native-ddl-value]]
-   [:add-column   {:optional true} [:sequential [:ref ::native-ddl-value]]]])
+   [:add-column   {:optional true} [:sequential [:ref ::native-ddl-value]]]
+   [:add-constraint {:optional true} [:sequential [:ref ::native-ddl-value]]]
+   [:create-view {:optional true} [:ref ::native-ddl-value]]
+   [:create-materialized-view {:optional true} [:ref ::native-ddl-value]]
+   [:insert-into  {:optional true} [:ref ::native-ddl-value]]
+   [:columns      {:optional true} [:sequential [:ref ::native-ddl-value]]]
+   [:values       {:optional true} [:sequential [:ref ::native-ddl-value]]]
+   [:select       {:optional true} [:sequential [:ref ::native-ddl-value]]]
+   [:from         {:optional true} [:sequential [:ref ::native-ddl-value]]]
+   [:join         {:optional true} [:sequential [:ref ::native-ddl-value]]]
+   [:where        {:optional true} [:ref ::native-ddl-value]]
+   [:order-by     {:optional true} [:sequential [:ref ::native-ddl-value]]]
+   [:limit        {:optional true} [:ref ::native-ddl-value]]
+   [:raw          {:optional true} [:ref ::native-ddl-value]]])
 
 (mr/def ::native-ddl-form
   "A single native DDL statement: raw SQL, or a Honey SQL clause map."

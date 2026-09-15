@@ -103,7 +103,10 @@
    [:probed                 {:optional true} :int]
    [:queries                {:optional true} :int]
    [:flavor                 {:optional true} [:maybe :string]]
-   [:semantic-version       {:optional true} [:sequential :int]]])
+   [:semantic-version       {:optional true} [:or
+                                              [:sequential :int]
+                                              [:map {:closed true} [:major :int] [:minor :int]]]]
+   [:cloud                  {:optional true} :boolean]])
 
 (mr/def ::task-details.empty
   [:map {:closed true}])

@@ -967,18 +967,22 @@
   (testing "SQL Server default database role handling"
     (testing "returns role when explicitly configured"
       (let [database {:lib/type :metadata/database
+                      :id       1
                       :details {:user "login_user" :role "db_user"}}]
         (is (= "db_user" (driver.sql/default-database-role :sqlserver database)))))
     (testing "returns nil when no role is configured"
       (let [database {:lib/type :metadata/database
+                      :id       1
                       :details {:user "login_user"}}]
         (is (nil? (driver.sql/default-database-role :sqlserver database)))))
     (testing "returns nil even when user is 'sa'"
       (let [database {:lib/type :metadata/database
+                      :id       1
                       :details {:user "sa"}}]
         (is (nil? (driver.sql/default-database-role :sqlserver database)))))
     (testing "ignores user field and only uses role field"
       (let [database {:lib/type :metadata/database
+                      :id       1
                       :details {:user "login_user" :role "impersonation_user"}}]
         (is (= "impersonation_user" (driver.sql/default-database-role :sqlserver database)))))))
 

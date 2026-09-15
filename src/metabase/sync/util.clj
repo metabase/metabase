@@ -539,6 +539,7 @@
   "Step-specific stats a `sync-fn` may add to its `StepRunMetadata`, across all of the sync/analyze steps."
   [:map {:closed true}
    [:added-indexes          {:optional true} :int]
+   [:cloud                  {:optional true} :boolean]
    [:created                {:optional true} :int]
    [:deleted                {:optional true} :int]
    [:errors                 {:optional true} :int]
@@ -554,7 +555,9 @@
    [:probed                 {:optional true} :int]
    [:queries                {:optional true} :int]
    [:removed-indexes        {:optional true} :int]
-   [:semantic-version       {:optional true} [:sequential :int]]
+   [:semantic-version       {:optional true} [:or
+                                              [:sequential :int]
+                                              [:map {:closed true} [:major :int] [:minor :int]]]]
    [:tables-classified      {:optional true} :int]
    [:throwable              {:optional true} [:maybe (ms/InstanceOfClass Throwable)]]
    [:timezone-id            {:optional true} [:maybe :string]]

@@ -124,7 +124,7 @@
   stage' to the equivalent keys that mean 'this happened at some stage in the past' e.g.
   `:lib/join-alias` and `:lib/expression-name` become `:lib/original-join-alias` and
   `:lib/original-expression-name` respectively."
-  [col :- ::lib.schema.metadata/column]
+  [col :- ::lib.schema.metadata/column.map]
   (-> col
       (set/rename-keys {:fk-field-id                      :lib/original-fk-field-id
                         :fk-field-name                    :lib/original-fk-field-name

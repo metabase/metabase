@@ -1048,7 +1048,7 @@
                            [{(:id table-b) :query-builder} false "Data permissions only on another table in the same schema should fail"]]]
                     (testing test-string
                       (mt/with-all-users-data-perms-graph! {db-id {:view-data :unrestricted
-                                                                   :create-queries {schema-name schema-perms}}}
+                                                                   :create-queries {(or schema-name "") schema-perms}}}
                         (if can-append?
                           (is (some? (append-csv!)))
                           (is (thrown-with-msg?

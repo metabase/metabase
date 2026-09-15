@@ -203,14 +203,14 @@
                              [:id                            pos-int?]
                              [:object                        schema]
                              [:entity                        [:= model]]
-                             [:user-id                       [:maybe pos-int?]]
+                             [:user-id                       pos-int?]
                              [:is-creation? {:optional true} [:maybe :boolean]]
                              [:message      {:optional true} [:maybe :string]]]]))
               [::mc/default [:map {:closed true}
                              [:id                            pos-int?]
                              [:object                        ::revisions.db/unregistered-model-object]
                              [:entity                        [:fn toucan-model?]]
-                             [:user-id                       [:maybe pos-int?]]
+                             [:user-id                       pos-int?]
                              [:is-creation? {:optional true} [:maybe :boolean]]
                              [:message      {:optional true} [:maybe :string]]]])))
 

@@ -67,19 +67,10 @@
 
 (def ^:private to-cleanup (atom #{}))
 
-(def ^:private DatabaseDefinitionOptions
-  [:map {:closed true}
-   [:native-ddl        {:optional true} [:sequential ::tx/native-ddl-form]]
-   [:disable-fk-checks {:optional true} :boolean]
-   [:static            {:optional true} :boolean]])
-
 (mu/defn test-dataset-id :- ::dataset-id
   "Prepend `database-name` with the hash of the db-def so we don't stomp on any other jobs running at the same
   time."
-  [{:keys [database-name options] :as db-def} :- [:map {:closed true}
-                                                  [:database-name     :string]
-                                                  [:table-definitions [:sequential (ms/InstanceOfClass metabase.test.data.interface.TableDefinition)]]
-                                                  [:options           DatabaseDefinitionOptions]]]
+  [{:keys [database-name options] :as db-def} :- tx/DatabaseDefinitionSchema]
   (cond (already-qualified? database-name) database-name
         (:static options) (str "sha_" (tx/hash-dataset (update db-def :options
                                                                dissoc :static))

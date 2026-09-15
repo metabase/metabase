@@ -1771,6 +1771,7 @@
   [:or
    :metabase.lib.schema.expression/expression
    uuid?
+   [:tuple [:= ::compiled] ::h2x/honeysql-expr]
    [:and
     vector?
     [:cat

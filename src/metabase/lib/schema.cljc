@@ -652,6 +652,7 @@
     [:lib/original-name         {:optional true} [:maybe :string]]
     [:lib/deduplicated-name     {:optional true} [:maybe :string]]
     [:lib/original-display-name {:optional true} [:maybe :string]]
+    [:lib/simple-display-name   {:optional true} [:maybe :string]]
     [:lib/transformation-added-base-type {:optional true} [:maybe :boolean]]
     [:database_partitioned      {:optional true} [:maybe :boolean]]
     [:lib/expression-name       {:optional true} [:maybe :string]]

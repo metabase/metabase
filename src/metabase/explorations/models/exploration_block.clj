@@ -70,8 +70,9 @@
               (update :dimension_mappings
                       (fn [mappings]
                         (mapv (fn [mapping]
-                                (cond-> (update mapping :target metrics/normalize-target-ref)
-                                  (:type mapping) (update :type keyword)))
+                                (cond-> mapping
+                                  (:target mapping) (update :target metrics/normalize-target-ref)
+                                  (:type mapping)   (update :type keyword)))
                               mappings)))))
           metrics)))
 

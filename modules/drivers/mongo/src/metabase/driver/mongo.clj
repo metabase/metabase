@@ -486,15 +486,15 @@
 
   Each row represents leaf in sampled documents, its type and indices of keys present in the path of mongo of nested
   object."
-  [database :- :metabase.warehouses.schema/database
-   table    :- :metabase.warehouse-schema.schema/table]
-  (let [pipeline (describe-table-pipeline {:collection-name       (:name table)
+  [database        :- :metabase.warehouses.schema/database
+   collection-name :- :string]
+  (let [pipeline (describe-table-pipeline {:collection-name       collection-name
                                            :sample-size           (* table-rows-sample/nested-field-sample-limit 2)
                                            :document-sample-depth describe-table-query-depth
                                            :leaf-limit            (driver.settings/sync-leaf-fields-limit)})
         query    {:database (:id database)
                   :type     "native"
-                  :native   {:collection (:name table)
+                  :native   {:collection collection-name
                              :query      (json/encode pipeline)}}]
     (driver-api/process-query query fetch-dbfields-rff)))
 
@@ -502,7 +502,7 @@
   [_driver database table]
   {:schema nil
    :name (:name table)
-   :fields (-> (fetch-dbfields database table)
+   :fields (-> (fetch-dbfields database (:name table))
                (dbfields->ftree (driver.settings/sync-max-fields-per-table))
                ftree->nested-fields)})
 

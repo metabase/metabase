@@ -102,7 +102,7 @@
    {:identity          identity
     :absolute-datetime (fn [filter-value]
                          (when (instance? java.time.temporal.Temporal filter-value)
-                           [:absolute-datetime {} filter-value :default]))}
+                           [:absolute-datetime {:lib/uuid (str (random-uuid))} filter-value :default]))}
 
    :fields mock-temporal-fields
 
