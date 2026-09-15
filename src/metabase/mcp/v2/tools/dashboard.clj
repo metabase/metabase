@@ -17,6 +17,7 @@
   (:require
    [malli.error :as me]
    [metabase.dashboards.write :as dashboards.write]
+   [metabase.lib.core :as lib]
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.dashboard-ops :as dashboard-ops]
@@ -27,7 +28,6 @@
    [metabase.mcp.v2.write :as v2.write]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.models.interface :as mi]
-   [metabase.parameters.core :as parameters]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -113,7 +113,7 @@
   [payload]
   (cond-> payload
     (seq (:parameters payload))
-    (update :parameters #(try (parameters/normalize-parameters %) (catch Exception _ %)))))
+    (update :parameters #(try (lib/normalize :metabase.parameters.schema/parameters %) (catch Exception _ %)))))
 
 (defn- validate-payload!
   "Reject a payload the real save would reject, so a dry run is worth trusting."

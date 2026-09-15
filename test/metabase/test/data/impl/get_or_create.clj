@@ -88,9 +88,8 @@
 
 (mu/defn- add-extra-metadata!
   "Add extra metadata like Field base-type, etc."
-  [{:keys [table-definitions], :as _database-definition} :- [:map
-                                                             [:table-definitions {:optional true} [:maybe [:sequential :map]]]]
-   db                                                    :- :map]
+  [{:keys [table-definitions], :as _database-definition} :- tx/DatabaseDefinitionSchema
+   db                                                    :- :metabase.warehouses.schema/database]
   (doseq [{:keys [table-name], :as table-definition} table-definitions]
     (let [table (delay (or (tx/metabase-instance table-definition db)
                            (throw (Exception. (format "Table '%s' not loaded from definition:\n%s\nFound:\n%s"
@@ -158,7 +157,7 @@
                            (:native base-type)
 
                            (and (map? base-type) (contains? base-type :natives))
-                           (get-in base-type [:natives driver])
+                           (get-in base-type [:natives (u/qualified-name driver)])
 
                            :else
                            ;; Use fake-sync-database-type to get the type the database reports
@@ -423,7 +422,7 @@
 (mu/defn- create-and-sync-Database!
   "Add DB object to Metabase DB. Return an instance of `:model/Database`."
   [driver                                           :- :keyword
-   {:keys [database-name], :as database-definition} :- [:map [:database-name :string]]]
+   {:keys [database-name], :as database-definition} :- tx/DatabaseDefinitionSchema]
   (let [connection-details (tx/dbdef->connection-details driver :db database-definition)
         db                 (first (t2/insert-returning-instances! :model/Database
                                                                   (merge

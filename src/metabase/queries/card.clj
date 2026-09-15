@@ -40,7 +40,7 @@
   Note this only reaches parameters whose values come from a Field -- one drawing values from a static list or from
   another card is returned in full, as it is on a dashboard."
   [card        :- ::queries.schema/card
-   slug->value :- [:maybe [:map-of :any :any]]]
+   slug->value :- [:maybe [:map-of :string [:or ms/FieldValue [:sequential ms/FieldValue]]]]]
   (let [;; the same source [[get-param-or-throw]] uses: a native card may carry no `:parameters` at all and be
         ;; described entirely by its template tags
         slug->param (into {}
@@ -68,7 +68,7 @@
   "Get param values for the \"old style\" parameters. This mimic's the api/dashboard version except we don't have
   dashcards to worry about. With `constraints`, values are chain-filtered to the rows those constraints match, the
   same way the dashboard version filters on its other parameter values."
-  [card         :- ::queries.schema/card
+  [card         :- [:maybe ::queries.schema/card]
    param        :- ::parameters.schema/parameter
    query-string :- [:maybe :string]
    constraints  :- [:maybe ::chain-filter/constraints]]
@@ -84,10 +84,13 @@
   The source of values could be:
   - static-list: user defined values list
   - card: values is result of running a card"
-  ([card param-key]
+  ([card      :- ::queries.schema/card
+    param-key :- ::lib.schema.parameter/id]
    (card-param-values card param-key nil nil))
 
-  ([card param-key query-string]
+  ([card         :- ::queries.schema/card
+    param-key    :- ::lib.schema.parameter/id
+    query-string :- [:maybe ms/NonBlankString]]
    (card-param-values card param-key query-string nil))
 
   ([card         :- ::queries.schema/card
@@ -101,12 +104,14 @@
 (mu/defn card-param-remapped-value
   "Fetch the remapped value for the given `value` of parameter with ID `:param-key` of `card`. `constraints` limits
   the rows the remapping is read from."
-  ([card param-key value]
+  ([card      :- ::queries.schema/card
+    param-key :- ::lib.schema.parameter/id
+    value     :- [:or ms/FieldValue [:sequential ms/FieldValue]]]
    (card-param-remapped-value card param-key value nil))
 
   ([card        :- ::queries.schema/card
     param-key   :- ::lib.schema.parameter/id
-    value
+    value       :- [:or ms/FieldValue [:sequential ms/FieldValue]]
     constraints :- [:maybe ::chain-filter/constraints]]
    (or (let [param (get-param-or-throw card param-key)]
          (custom-values/parameter-remapped-value

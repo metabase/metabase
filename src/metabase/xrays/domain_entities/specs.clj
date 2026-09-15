@@ -82,10 +82,10 @@
 (def ^:private Description :string)
 
 (mr/def ::attribute
-  [:map
+  [:map {:closed true}
    [:field         {:optional true} BrokenFieldNameTypeKeyword]
    [:domain_entity {:optional true} DomainEntityReference]
-   [:has_many      {:optional true} [:map
+   [:has_many      {:optional true} [:map {:closed true}
                                      [:domain_entity DomainEntityReference]]]])
 
 (mr/def ::attributes
@@ -111,7 +111,7 @@
   [:map-of
    {:decode/domain-entity-spec add-name-from-key}
    Identifier
-   [:map
+   [:map {:closed true}
     [:aggregation MBQL]
     [:name        Identifier]
     [:breakout    {:optional true} BreakoutDimensions]
@@ -122,14 +122,14 @@
   [:map-of
    {:decode/domain-entity-spec add-name-from-key}
    Identifier
-   [:map
+   [:map {:closed true}
     [:filter MBQL]
     [:name   Identifier]
     [:description {:optional true} Description]]])
 
 (def DomainEntitySpec
   "Domain entity spec"
-  [:map
+  [:map {:closed true}
    [:name                DomainEntityReference]
    [:type                DomainEntityType]
    [:required_attributes ::attributes]

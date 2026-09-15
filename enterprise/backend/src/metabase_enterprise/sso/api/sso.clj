@@ -51,7 +51,7 @@
       (throw e))))
 
 (mu/defn- sso-error-page
-  [^Throwable e log-direction :- [:enum :in :out]]
+  [^Throwable e :- (ms/InstanceOfClass Throwable) log-direction :- [:enum :in :out]]
   {:status  (get (ex-data e) :status-code 500)
    :headers {"Content-Type" "text/html"}
    :body    (stencil/render-file "metabase_enterprise/sandbox/api/error_page"

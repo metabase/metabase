@@ -504,8 +504,8 @@
   "Insert `revision` into CollectionPermissionGraphRevision."
   [revision :- [:map {:closed true}
                 [:id      {:optional true} ms/PositiveInt]
-                [:before  {:optional true} [:maybe [:or :map :string]]]
-                [:after   {:optional true} [:maybe [:or :map :string]]]
+                [:before  {:optional true} ::permissions.schema/collection-permission-graph-revision.before]
+                [:after   {:optional true} ::permissions.schema/collection-permission-graph-revision.after]
                 [:user_id {:optional true} [:maybe ::lib.schema.id/user]]
                 [:remark  {:optional true} [:maybe :string]]]]
   (t2/insert! :model/CollectionPermissionGraphRevision revision))
@@ -514,8 +514,8 @@
   "Insert `revision` into CollectionPermissionGraphRevision and return the new instance."
   [revision :- [:map {:closed true}
                 [:id      {:optional true} ms/PositiveInt]
-                [:before  {:optional true} [:maybe [:or :map :string]]]
-                [:after   {:optional true} [:maybe [:or :map :string]]]
+                [:before  {:optional true} ::permissions.schema/collection-permission-graph-revision.before]
+                [:after   {:optional true} ::permissions.schema/collection-permission-graph-revision.after]
                 [:user_id {:optional true} [:maybe ::lib.schema.id/user]]
                 [:remark  {:optional true} [:maybe :string]]]]
   (first (t2/insert-returning-instances! :model/CollectionPermissionGraphRevision revision)))
@@ -524,8 +524,8 @@
   "Insert `revision` into PermissionsRevision and return the new instance."
   [revision :- [:map {:closed true}
                 [:id      {:optional true} ms/PositiveInt]
-                [:before  {:optional true} [:maybe [:or :map :string]]]
-                [:after   {:optional true} [:maybe [:or :map :string]]]
+                [:before  {:optional true} [:maybe ::permissions.schema/permissions-revision.before]]
+                [:after   {:optional true} [:maybe ::permissions.schema/permissions-revision.after]]
                 [:user_id {:optional true} [:maybe ::lib.schema.id/user]]
                 [:remark  {:optional true} [:maybe :string]]]]
   (first (t2/insert-returning-instances! :model/PermissionsRevision revision)))
@@ -534,8 +534,8 @@
   "Insert `revision` into ApplicationPermissionsRevision and return the new instance."
   [revision :- [:map {:closed true}
                 [:id      {:optional true} ms/PositiveInt]
-                [:before  {:optional true} [:maybe [:or :map :string]]]
-                [:after   {:optional true} [:maybe [:or :map :string]]]
+                [:before  {:optional true} [:maybe ::permissions.schema/application-permissions-revision.before]]
+                [:after   {:optional true} [:maybe ::permissions.schema/application-permissions-revision.after]]
                 [:user_id {:optional true} [:maybe ::lib.schema.id/user]]
                 [:remark  {:optional true} [:maybe :string]]]]
   (first (t2/insert-returning-instances! :model/ApplicationPermissionsRevision revision)))

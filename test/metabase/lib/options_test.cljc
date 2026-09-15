@@ -6,21 +6,22 @@
 (deftest ^:parallel default-mbql-options-test
   (testing `lib.options/options
     (is (= nil
-           (lib.options/options [:mbql-clause 1])))
-    (is (= {:x 1}
-           (lib.options/options [:mbql-clause {:x 1} 1]))))
+           (lib.options/options [:expression "x"])))
+    (is (= {:lib/expression-name "x"}
+           (lib.options/options [:expression {:lib/expression-name "x"} "x"]))))
   (testing `lib.options/with-options
-    (is (= [:mbql-clause {:x 2} 1]
-           (lib.options/with-options [:mbql-clause 1] {:x 2})
-           (lib.options/with-options [:mbql-clause {:x 1, :y 2} 1] {:x 2})))))
+    (is (= [:expression {:name "y"} "x"]
+           (lib.options/with-options [:expression {:lib/expression-name "x"} "x"] {:name "y"})))))
 
 (deftest ^:parallel default-map-options-test
   (testing `lib.options/options
     (is (= nil
-           (lib.options/options {:lib/type :map})))
-    (is (= {:x 1}
-           (lib.options/options {:lib/type :map, :lib/options {:x 1}}))))
+           (lib.options/options {:lib/type :metadata/column, :name "x", :base-type :type/Text})))
+    (is (= {:lib/expression-name "x"}
+           (lib.options/options {:lib/type :metadata/column, :name "x", :base-type :type/Text
+                                 :lib/options {:lib/expression-name "x"}}))))
   (testing `lib.options/with-options
-    (is (= {:lib/type :map, :lib/options {:x 2}}
-           (lib.options/with-options {:lib/type :map, :lib/options {:x 1}} {:x 2})
-           (lib.options/with-options {:lib/type :map, :lib/options {:x 1, :y 2}} {:x 2})))))
+    (is (= {:lib/type :metadata/column, :name "x", :base-type :type/Text, :lib/options {:lib/expression-name "y"}}
+           (lib.options/with-options {:lib/type :metadata/column, :name "x", :base-type :type/Text
+                                      :lib/options {:lib/expression-name "x"}}
+             {:lib/expression-name "y"})))))

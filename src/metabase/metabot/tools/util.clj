@@ -93,7 +93,7 @@
     (-> {:field_id field-id
          :name (or (:lib/desired-column-alias column)
                    (:lib/source-column-alias column))
-         :display_name (lib/display-name query column)
+         :display_name (lib/display-name query (dissoc column :table-reference))
          :type (convert-field-type column)}
         (m/assoc-some :description (:description column)
                       :base_type base-type

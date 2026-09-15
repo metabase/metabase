@@ -2,6 +2,7 @@
   "Diagnostics for the search debug API: explain why a given entity does *not* appear in a search query's results.
   See [[diagnose]]."
   (:require
+   [metabase.search.config :refer [SearchContext]]
    [metabase.search.engine :as search.engine]
    [metabase.search.impl :as search.impl]
    [metabase.search.ingestion :as search.ingestion]
@@ -70,7 +71,7 @@
   `:filtered`/`:not-permitted`, `:not-matching`, `:candidate`) come from [[metabase.search.engine/diagnose]]; the
   engine-independent stages are decided here. `:details` always carries the resolved engine. `:not-searchable`
   reflects current spec/DB truth, so it wins even if a stale index row lingers."
-  [search-ctx        :- :map
+  [search-ctx        :- SearchContext
    expected-model    :- ms/NonBlankString
    expected-id       :- pos-int?]
   (let [engine-details {:resolved-engine (:search-engine search-ctx)

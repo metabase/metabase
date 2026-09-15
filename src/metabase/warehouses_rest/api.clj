@@ -15,7 +15,6 @@
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -46,6 +45,7 @@
    [metabase.warehouses-rest.db :as warehouses-rest.db]
    [metabase.warehouses.core :as warehouses]
    [metabase.warehouses.models.database :as database]
+   [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -114,7 +114,7 @@
   permissions; there was a specific option where you could give a Perms Group permissions to run existing Cards with
   native queries, but not to create new ones. With the advent of what is currently being called 'Space-Age
   Permissions', all Cards' permissions are based on their parent Collection, removing the need for native read perms."
-  [dbs :- [:maybe [:sequential :map]]]
+  [dbs :- [:maybe [:sequential ::warehouses.schema/database]]]
   (for [db dbs]
     (assoc db
            :native_permissions
@@ -132,7 +132,7 @@
                                           [:transforms_permissions [:enum :write :none]]]]]
   "For each database in DBS add a `:transforms_permissions` field describing the current user's permissions for
   creating/running Transforms. Will be either `:write` or `:none`."
-  [dbs :- [:maybe [:sequential :map]]]
+  [dbs :- [:maybe [:sequential ::warehouses.schema/database]]]
   (for [db dbs]
     (assoc db
            :transforms_permissions
@@ -174,8 +174,7 @@
   "Since cumulative count and cumulative sum aggregations are done in Clojure-land we can't use Cards that use queries
   with those aggregations as source queries. This function determines whether `card` is using one of those queries so
   we can filter it out in Clojure-land."
-  [{query :dataset_query, :as _card} :- [:map
-                                         [:dataset_query ::lib-be.schema/maybe-legacy-or-empty-query]]]
+  [{query :dataset_query, :as _card} :- ::queries.schema/card]
   (match/match-one (lib/aggregations query) [#{:cum-count :cum-sum} & _] true))
 
 (defn card-can-be-used-as-source-query?
@@ -187,10 +186,10 @@
 
 (defn- ids-of-dbs-that-support-source-queries []
   ;; the nested-queries check only reads the engine — don't realize full rows (decrypted :details etc.) for it
-  (set (keep (fn [db]
+  (set (keep (fn [{:keys [id engine]}]
                (try
-                 (when (driver.u/supports? (driver.u/database->driver db) :nested-queries db)
-                   (:id db))
+                 (when (driver.u/supports? (keyword engine) :nested-queries nil)
+                   id)
                  (catch Throwable e
                    (log/errorf "Error determining whether Database supports nested queries: %s" (ex-message e)))))
              (warehouses-rest.db/database-engines))))
@@ -198,7 +197,11 @@
 (mu/defn- source-query-cards
   "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables)."
   [card-type :- ::queries.schema/card.type
-   & {:keys [collection-scope xform], :or {xform identity}}]
+   & {:keys [collection-scope xform], :or {xform identity}}
+   :- [:maybe [:map {:closed true}
+               [:collection-scope {:optional true}
+                [:maybe [:or [:= :root] [:set ::lib.schema.id/collection] [:sequential ::lib.schema.id/collection]]]]
+               [:xform {:optional true} [:maybe [:fn ifn?]]]]]]
   (when-let [ids-of-dbs-that-support-source-queries (not-empty (ids-of-dbs-that-support-source-queries))]
     (transduce
      (comp (map (partial mi/do-after-select :model/Card))
@@ -219,13 +222,17 @@
    (This takes the Cards from `source-query-cards` and returns them in a format suitable for consumption by the Query
    Builder.)"
   [card-type :- ::queries.schema/card.type
-   & {:keys [include-fields?]}]
+   & {:keys [include-fields?]}
+   :- [:maybe [:map {:closed true} [:include-fields? {:optional true} [:maybe :boolean]]]]]
   (schema.table/cards->virtual-tables (source-query-cards card-type)
                                       :include-fields? include-fields?))
 
 (mu/defn- saved-cards-virtual-db-metadata
   [card-type :- ::queries.schema/card.type
-   & {:keys [include-tables? include-fields?]}]
+   & {:keys [include-tables? include-fields?]}
+   :- [:maybe [:map {:closed true}
+               [:include-tables? {:optional true} [:maybe :boolean]]
+               [:include-fields? {:optional true} [:maybe :boolean]]]]]
   (when (lib-be/enable-nested-queries)
     (cond-> {:name               (trs "Saved Questions")
              :id                 lib.schema.id/saved-questions-virtual-database-id
@@ -436,10 +443,10 @@
                             (= include "tables.fields") apply-sandbox-column-filter))))))
 
 (mu/defn- check-database-exists
-  ([id] (check-database-exists id {}))
+  ([id :- ms/PositiveInt] (check-database-exists id {}))
   ([id :- ms/PositiveInt
     {:keys [include-destination-databases?]}
-    :- [:map
+    :- [:map {:closed true}
         [:include-destination-databases? {:optional true :default false} ms/MaybeBooleanValue]]]
    (api/check-404 (if (and include-destination-databases? api/*is-superuser?*)
                     (warehouses-rest.db/database-exists? id)
@@ -488,8 +495,7 @@
        [:include_editable_data_model {:optional true} ms/MaybeBooleanValue]
        [:exclude_uneditable_details {:optional true} ms/MaybeBooleanValue]]]
   (present-database
-   (warehouses/get-database id {:include include
-                                :include-editable-data-model? include_editable_data_model
+   (warehouses/get-database id {:include-editable-data-model? include_editable_data_model
                                 :exclude-uneditable-details? exclude_uneditable_details
                                 :include-destination-databases? true})
    {:include include

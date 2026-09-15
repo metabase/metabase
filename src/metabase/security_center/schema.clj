@@ -1,6 +1,7 @@
 (ns metabase.security-center.schema
   "Malli schemas for the Security Center module."
   (:require
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -18,7 +19,7 @@
 
 (mr/def ::version-range
   "A single affected version range with inclusive min and exclusive fixed."
-  [:map
+  [:map {:closed true}
    [:min   ::semver]
    [:fixed ::semver]])
 
@@ -27,7 +28,7 @@
 
 (mr/def ::download-jar-url
   "A downloadable JAR for a given fixed version."
-  [:map
+  [:map {:closed true}
    [:version ::semver]
    [:url     :string]])
 
@@ -39,36 +40,40 @@
   for the app DB in use."
   [:enum :default :h2 :mysql :postgres])
 
+(mr/def ::honeysql-query
+  "A HoneySQL 2 query map, as EDN keyed by its top-level clause keywords."
+  [:map {:closed true}
+   [:with        {:optional true} [:sequential [:tuple :keyword [:ref ::honeysql-query]]]]
+   [:select      {:optional true} [:sequential ::h2x/expr]]
+   [:delete-from {:optional true} ::h2x/expr]
+   [:from     {:optional true} [:sequential [:or ::h2x/expr [:ref ::honeysql-query]]]]
+   [:join     {:optional true} [:sequential [:or ::h2x/expr [:ref ::honeysql-query]]]]
+   [:where    {:optional true} ::h2x/expr]
+   [:group-by {:optional true} [:sequential ::h2x/expr]]
+   [:having   {:optional true} ::h2x/expr]
+   [:order-by {:optional true} [:sequential ::h2x/expr]]
+   [:limit    {:optional true} ::h2x/expr]
+   [:offset   {:optional true} ::h2x/expr]])
+
 (mr/def ::matching-query
   "HoneySQL query keyed by dialect. nil means affects all instances.
    Stored as EDN to preserve keywords that HoneySQL requires for identifiers/operators."
-  [:maybe [:map-of ::driver ms/OpaqueJSONObject]])
+  [:maybe [:map {:closed true}
+           [:default  {:optional true} ::honeysql-query]
+           [:h2       {:optional true} ::honeysql-query]
+           [:mysql    {:optional true} ::honeysql-query]
+           [:postgres {:optional true} ::honeysql-query]]])
 
 (mr/def ::security-advisory.matching-query
   "The `:matching_query` column of a SecurityAdvisory, decoded."
-  :map)
+  ::matching-query)
 
 (mr/def ::security-advisory
   "A SecurityAdvisory as selected from the app DB: every column of `:security_advisory`."
-  [:map {:closed true}
-   [:id                ms/PositiveInt]
-   [:advisory_id       :string]
-   [:severity          [:or :keyword :string]]
-   [:title             :string]
-   [:description       :string]
-   [:advisory_url      [:maybe :string]]
-   [:remediation       :string]
-   [:affected_versions ::affected-versions]
-   [:matching_query    [:maybe ::security-advisory.matching-query]]
-   [:published_at      ms/TemporalInstant]
-   [:fetched_at        ms/TemporalInstant]
-   [:match_status      [:or :keyword :string]]
-   [:last_evaluated_at [:maybe ms/TemporalInstant]]
-   [:acknowledged_by   [:maybe :int]]
-   [:acknowledged_at   [:maybe ms/TemporalInstant]]
-   [:last_notified_at  [:maybe ms/TemporalInstant]]
-   [:updated_at        ms/TemporalInstant]
-   [:download_jar_urls [:maybe ::download-jar-urls]]])
+  [:merge
+   ::security-advisory.update
+   [:map {:closed true}
+    [:id                ms/PositiveInt]]])
 
 (mr/def ::security-advisory.update
   "What an update (or insert) of a SecurityAdvisory accepts: every column of `:security_advisory` except `id`, all optional."

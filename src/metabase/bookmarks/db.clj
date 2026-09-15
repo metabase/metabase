@@ -9,6 +9,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -210,7 +211,32 @@
     ;; the listing. The `exploration_id` column stays so the joins in [[bookmark-rows-for-user]] resolve.
     {:union-all base-queries}))
 
-(mu/defn bookmark-rows-for-user
+(mr/def ::bookmark-row
+  "A bookmark row left joined against the Card, Dashboard, Collection, Document, and Exploration tables."
+  [:map {:closed true}
+   [:created_at                (ms/InstanceOfClass java.time.temporal.Temporal)]
+   [:type                      [:enum "card" "collection" "dashboard" "document" "exploration"]]
+   [:item_id                   ms/PositiveInt]
+   [:report_card.name          [:maybe :string]]
+   [:report_card.card_type     [:maybe :string]]
+   [:report_card.display       [:maybe :string]]
+   [:report_card.description   [:maybe :string]]
+   [:report_card.archived      [:maybe :boolean]]
+   [:report_dashboard.name        [:maybe :string]]
+   [:report_dashboard.description [:maybe :string]]
+   [:report_dashboard.archived    [:maybe :boolean]]
+   [:collection.name              [:maybe :string]]
+   [:collection.authority_level   [:maybe :string]]
+   [:collection.is_remote_synced  [:maybe :boolean]]
+   [:collection.description       [:maybe :string]]
+   [:collection.archived          [:maybe :boolean]]
+   [:document.name     [:maybe :string]]
+   [:document.archived [:maybe :boolean]]
+   [:exploration.name        [:maybe :string]]
+   [:exploration.description [:maybe :string]]
+   [:exploration.archived    [:maybe :boolean]]])
+
+(mu/defn bookmark-rows-for-user :- [:sequential ::bookmark-row]
   "The bookmarks of the User with `user-id`, joined against the Card, Dashboard, Collection, Document, and Exploration
   tables, excluding archived items, and filtered to items the target `user-scope` (a map of `:current-user-id` and
   `:is-superuser?`) can still read (re-checked at read time rather than trusted from when the bookmark was created,

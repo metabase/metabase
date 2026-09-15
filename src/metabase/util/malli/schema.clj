@@ -228,10 +228,85 @@
   are not knowable here."
   (open-map "database connection details"))
 
+(defn- open-json
+  "A JSON value whose objects are deliberately open maps: a scalar, a sequence of such values, or an open map."
+  [registry-key description]
+  [:schema
+   {:registry {registry-key [:or
+                             :string
+                             number?
+                             :boolean
+                             :nil
+                             :keyword
+                             [:sequential [:ref registry-key]]
+                             (open-map description)]}}
+   [:ref registry-key]])
+
+(def RingRequestBody
+  "The parsed body of a Ring request, before the schema of the endpoint that received it decodes and validates it."
+  (open-json ::ring-request-body "request body"))
+
+(def RingRequestParams
+  "The route, query or form params of a Ring request, before the endpoint's own schema decodes and validates them."
+  (open-map "request params"))
+
+(def RingResponseBody
+  "What an endpoint returns, before its response schema encodes it."
+  (open-json ::ring-response-body "response body"))
+
+(def VisualizationSettingsValue
+  "A value nested inside [[VisualizationSettings]], whose shape the frontend owns."
+  (open-json ::visualization-settings-value "visualization settings value"))
+
+(def HttpRequestBody
+  "The body the test HTTP client sends, as written by the test calling the endpoint: a JSON-shaped value, or (for a
+  multipart upload, where a key can repeat) a sequence of `[key value]` pairs whose value may be a byte array,
+  `File`, or `InputStream` for a file part."
+  [:or
+   (open-json ::http-request-body "HTTP request body")
+   [:sequential [:tuple [:or :string :keyword]
+                 [:or :string number? :boolean :nil :keyword
+                  bytes?
+                  (InstanceOfClass java.io.File)
+                  (InstanceOfClass java.io.InputStream)]]]])
+
+(def HttpQueryParams
+  "The query parameters the test HTTP client sends, as written by the test calling the endpoint."
+  (open-map "HTTP query params"))
+
+(def JSONSchemaLiteral
+  "A literal value inside a JSON Schema document (`default`, `const`, `enum` or `examples`)."
+  (open-json ::json-schema-literal "JSON Schema literal"))
+
+(def ExceptionData
+  "The `ex-data` of an exception, whose keys belong to whatever code threw it."
+  (open-map "exception data"))
+
+(def AuditLogDetails
+  "The `:details` of an audit log event, whose keys depend on the event's topic."
+  (open-map "audit log details"))
+
+(def JWTClaims
+  "The claims of a decoded JWT, whose keys belong to the identity provider."
+  (open-map "JWT claims"))
+
+(def SAMLAttributes
+  "The attributes of a SAML assertion, whose keys belong to the identity provider."
+  (open-map "SAML attributes"))
+
+(def TenantAttributes
+  "The attributes of a tenant, whose keys are defined by the admin."
+  (open-map "tenant attributes"))
+
 (def DatabaseSettings
   "A Database's `:settings`: database-local settings, whose keys are owned by the settings registry rather than by this
   schema. Not for any other bag of settings."
   (open-map "database settings"))
+
+(def UserSettings
+  "A User's `:settings`: user-local settings, whose keys are owned by the settings registry rather than by this
+  schema. Not for any other bag of settings."
+  (open-map "user settings"))
 
 (defn string-keyed-map
   "Schema for a JSON object whose keys are not ours to declare, as a `:map-of` string keys to `value-schema`.
@@ -338,8 +413,11 @@
 
 (def FieldValue
   "One value of a Field: a JSON scalar as kept in the `field_values.values` and `human_readable_values` columns, or, on
-  the way there, a UUID or `java.time` object as the query returned it."
-  [:maybe [:or :string number? :boolean uuid? (InstanceOfClass java.time.temporal.Temporal)]])
+  the way there, a UUID, a `java.time` object, or a legacy `java.util.Date` (`java.sql.Date`/`Timestamp`) as the
+  query returned it."
+  [:maybe [:or :string number? :boolean uuid?
+           (InstanceOfClass java.time.temporal.Temporal)
+           (InstanceOfClass java.util.Date)]])
 
 (def RemappedFieldValue
   "Has two components:
@@ -371,7 +449,7 @@
   embed author's, so the map is string-keyed on its way in; it is stored as JSON and read back keywordized like every
   other JSON column."
   (mu/with-api-error-message
-   [:maybe (string-keyed-map [:enum "disabled" "enabled" "locked"])]
+   [:maybe (string-keyed-map [:enum "disabled" "enabled" "locked" :disabled :enabled :locked])]
    (deferred-tru "value must be a valid embedding params map.")))
 
 (def ValidLocale

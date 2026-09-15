@@ -165,7 +165,7 @@
         true))]])
 
 (mr/def ::strategy.option
-  [:map
+  [:map {:closed true}
    [:lib/type [:= :option/join.strategy]]
    [:strategy [:ref ::strategy]]
    [:default {:optional true} :boolean]])

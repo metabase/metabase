@@ -1,11 +1,14 @@
 (ns metabase.measures.schema
   (:require
    [metabase.lib-be.schema :as lib-be.schema]
+   [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.users.schema]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.schema]))
 
 (set! *warn-on-reflection* true)
 
@@ -21,31 +24,25 @@
 
 (mr/def ::measure.definition
   "The `:definition` column of a Measure, decoded."
-  :map)
+  ::lib-be.schema/maybe-legacy-query)
 
 (mr/def ::measure.dimension
   "One entry of the `:dimensions` column of a Measure, decoded."
-  :map)
+  ::lib-metric.schema/persisted-dimension)
 
 (mr/def ::measure.dimension-mapping
   "One entry of the `:dimension_mappings` column of a Measure, decoded."
-  :map)
+  ::lib-metric.schema/dimension-mapping)
 
 (mr/def ::measure
-  "A Measure as selected from the app DB: every column of `:measure`."
-  [:map {:closed true}
-   [:id                 ms/PositiveInt]
-   [:table_id           ::lib.schema.id/table]
-   [:creator_id         ::lib.schema.id/user]
-   [:name               :string]
-   [:description        [:maybe :string]]
-   [:archived           :boolean]
-   [:definition         ::measure.definition]
-   [:created_at         ms/TemporalInstant]
-   [:updated_at         ms/TemporalInstant]
-   [:entity_id          :string]
-   [:dimensions         [:maybe [:sequential ::measure.dimension]]]
-   [:dimension_mappings [:maybe [:sequential ::measure.dimension-mapping]]]])
+  "A Measure as selected from the app DB: every column of `:measure`, plus `:creator` and `:table` some callers
+  hydrate onto it."
+  [:merge
+   ::measure.update
+   [:map {:closed true}
+    [:id                 ms/PositiveInt]
+    [:creator            {:optional true} [:maybe :metabase.users.schema/user]]
+    [:table              {:optional true} [:maybe :metabase.warehouse-schema.schema/table]]]])
 
 (mr/def ::measure.update
   "What an update (or insert) of a Measure accepts: every column of `:measure` except `id`, all optional."
