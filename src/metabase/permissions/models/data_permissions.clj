@@ -586,7 +586,7 @@
   has multiple permissions for the given type in different groups, they are coalesced into a single value."
   [user-id     :- [:maybe ::lib.schema.id/user]
    perm-type   :- ::permissions.schema/data-permission-type
-   database-id :- [:maybe ::lib.schema.id/database]
+   database-id :- ::lib.schema.id/database
    table-id    :- ms/IntGreaterThanOrEqualToZero]
   (when (not= :model/Table (model-by-perm-type perm-type))
     (throw (ex-info (tru "Permission type {0} is a database-level permission." perm-type)
@@ -623,7 +623,7 @@
   [user-id     :- [:maybe ::lib.schema.id/user]
    perm-type   :- ::permissions.schema/data-permission-type
    perm-value  :- ::permissions.schema/data-permission-value
-   database-id :- [:maybe ::lib.schema.id/database]
+   database-id :- ::lib.schema.id/database
    table-id    :- ms/IntGreaterThanOrEqualToZero]
   (at-least-as-permissive? perm-type
                            (table-permission-for-user user-id perm-type database-id table-id)
