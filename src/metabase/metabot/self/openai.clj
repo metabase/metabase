@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
+   [metabase.metabot.self.output-limits :as output-limits]
    [metabase.metabot.self.schema :as schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -312,6 +313,15 @@
   [model]
   (str/replace-first (u/lower-case-en (str model)) #"^openai\." ""))
 
+(defn- output-limits-key
+  "The [[output-limits/max-output-tokens]] key for `model`: the vendor's own undated model id.
+
+      openai.gpt-5.5-2026-04-23 → gpt-5.5"
+  [model]
+  ;; kept out of strip-vendor-prefix, which the temperature and reasoning predicates share: those are prefix
+  ;; tests that must keep matching a dated id
+  (str/replace (strip-vendor-prefix model) #"-\d{4}-\d{2}-\d{2}$" ""))
+
 (defn- model-supports-temperature?
   "Whether `model` accepts an explicit `temperature` parameter.
 
@@ -328,18 +338,22 @@
   (not (model-supports-temperature? model)))
 
 (mu/defn openai-request-body
-  "Build the OpenAI Responses API request body for an LLM request."
+  "Build the OpenAI Responses API request body for an LLM request.
+
+  `max_output_tokens` is the caller's `:max-tokens`, else the model's [[output-limits/max-output-tokens]] row, and
+  is omitted when neither supplies one."
   [{:keys [model system input tools schema tool_choice temperature max-tokens reasoning?]
     :or   {model "gpt-5.4" reasoning? true}} :- core/LLMRequestOpts]
-  (let [input     (cond->> input
-                    (not reasoning?) (remove #(= :reasoning (:type %))))
-        all-tools (or (when schema
-                        ;; Structured output: force a tool call with the given JSON schema
-                        [{:type        "function"
-                          :name        "structured_output"
-                          :description "Output structured data"
-                          :parameters  schema}])
-                      (when (seq tools) (mapv tool->openai tools)))]
+  (let [input      (cond->> input
+                     (not reasoning?) (remove #(= :reasoning (:type %))))
+        all-tools  (or (when schema
+                         ;; Structured output: force a tool call with the given JSON schema
+                         [{:type        "function"
+                           :name        "structured_output"
+                           :description "Output structured data"
+                           :parameters  schema}])
+                       (when (seq tools) (mapv tool->openai tools)))
+        max-tokens (or max-tokens (output-limits/max-output-tokens (output-limits-key model)))]
     (cond-> {:model        model
              :stream       true
              :store        false

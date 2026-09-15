@@ -646,8 +646,8 @@
                              :tool_choice "required"})))))))
 
 (deftest ^:parallel every-supported-model-has-a-ceiling-test
-  (doseq [[id {:keys [display-name max-tokens]}] @#'claude/supported-models]
-    (is (pos-int? max-tokens) id)
+  (doseq [[id {:keys [display-name]}] @#'claude/supported-models]
+    (is (pos-int? (#'claude/model-max-tokens id)) id)
     (is (seq display-name) id)))
 
 (deftest claude-max-tokens-test
@@ -658,8 +658,11 @@
         {:model "claude-opus-4-8"}                             128000
         {:model "claude-haiku-4-5-20251001"}                    64000
         {:model "claude-opus-4-8" :max-tokens 32000}            32000
+        ;; a dateless id resolves like its dated spelling
+        {:model "claude-opus-4-1"}                              32000
         ;; Bedrock ids reach us vendor-prefixed
         {:model "anthropic.claude-opus-4-8"}                   128000
+        {:model "anthropic.claude-opus-4-1"}                    32000
         {:model "my-deployment-3"} @#'claude/default-max-tokens))))
 
 (deftest claude-auto-cache-breakpoint-test

@@ -193,6 +193,13 @@
   `claude-request-body`."
   16384)
 
+(def ^:private default-max-tokens
+  "The `max_tokens` a request is sent with when its caller supplies none.
+
+  A fixed number because served model names are chosen by the operator, so there is no documented
+  per-model maximum to look up."
+  4096)
+
 (def ^:private default-temperature
   "Sampling temperature for a caller that supplies none. vLLM's own default is 1.0, which is wrong for
   the tool-calling and SQL-generation work the agent loop does. The hosted providers pick a sane
@@ -404,9 +411,10 @@
 (mu/defn vllm-request-body
   "Build the Chat Completions request body for an LLM request.
 
-  Matches what [[chat-completions/request-body]] emits, except that `max_tokens` is always sent —
-  without a ceiling vLLM falls back to the remaining context window, so one looping small model
-  consumes the whole budget in a single call — and is raised to
+  Matches what [[chat-completions/request-body]] emits, except that `max_tokens` is always sent,
+  defaulting to [[default-max-tokens]] — without a ceiling vLLM generates up to the remaining context
+  window (https://github.com/vllm-project/vllm/blob/main/vllm/entrypoints/serve/utils/api_utils.py),
+  so one looping small model consumes the whole budget in a single call — and is raised to
   [[forced-tool-call-token-floor]] or [[reasoning-model-token-floor]] where either applies, and
   `temperature` falls back to [[default-temperature]]. All three stay adapter-local rather than
   moving into the shared builder, which would also change Z.AI, Mistral, and OpenRouter."
@@ -414,7 +422,7 @@
   (let [forced? (or (some? schema) (= "required" (some-> tool_choice name)))]
     (assoc (chat-completions/request-body (cond-> opts
                                             (nil? temperature) (assoc :temperature default-temperature)))
-           :max_tokens (cond-> (or max-tokens (llm/llm-max-tokens))
+           :max_tokens (cond-> (or max-tokens default-max-tokens)
                          forced?                             (max forced-tool-call-token-floor)
                          (reasoning-connection? credentials) (max reasoning-model-token-floor)))))
 

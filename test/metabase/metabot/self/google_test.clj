@@ -159,7 +159,8 @@
                    :headers {"Content-Type" "application/json"}}
                   req))
           (is (= {:contents         [{:role "user" :parts [{:text "hi"}]}]
-                  :generationConfig {:thinkingConfig {:includeThoughts true}}}
+                  :generationConfig {:maxOutputTokens 65536
+                                     :thinkingConfig  {:includeThoughts true}}}
                  (json/decode+kw (:body req)))))))))
 
 (deftest google-raw-regional-location-host-test
@@ -399,8 +400,8 @@
               "the URL names the model; a model in the body is rejected by the platform"))))))
 
 (deftest google-raw-anthropic-max-tokens-test
-  (testing "the Anthropic model whitelist supplies max_tokens for a bare current-generation ID, and the @-versioned
-           spelling of a dated ID resolves to the same entry the direct Anthropic adapter uses"
+  (testing "the per-model output-limits table supplies max_tokens for a bare current-generation ID, and the
+           @-versioned spelling of a dated ID resolves to the same entry the direct Anthropic adapter uses"
     (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  "ya29.pasted-access-token"
                                        llm.settings/llm-google-service-account-key nil
                                        llm.settings/llm-google-project-id          "my-project"
