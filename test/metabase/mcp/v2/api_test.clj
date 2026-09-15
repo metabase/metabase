@@ -985,7 +985,7 @@
                            "scope=\"agent:content:read agent:resource:read\", "
                            "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
                            "error_description=\"catalog://metabase/fields requires agent:resource:read "
-                           "(View resources)" unticked-note "\"")
+                           "(Read MCP resources)" unticked-note "\"")
                       (get-in response [:headers "WWW-Authenticate"])))
                (testing "the body is the JSON-RPC error, with no transport-internal marker"
                  (is (= #{:jsonrpc :id :error} (set (keys (:body response)))))
@@ -1153,7 +1153,7 @@
 (def ^:private baseline-connection-sentence
   (str "This connection has: \"See your Metabase content and data structure\" (agent:content:read); "
        "\"Run queries against your connected databases and see the results\" (agent:query:run); "
-       "\"View resources\" (agent:resource:read). "
+       "\"Read MCP resources\" (agent:resource:read). "
        "It does not have: \"Create, edit and trash Metabase content\" (agent:content:write); "
        "\"Write and run its own raw SQL on your connected databases\" (agent:sql:run); "
        "\"Set up scheduled delivery of your data to email addresses and Slack channels it chooses\" "
@@ -1178,7 +1178,7 @@
           (is (str/includes? all-six "This connection has: \"See your Metabase content and data structure\""))
           (doseq [scope mcp.paths/v2-surface-scopes]
             (is (str/includes? all-six (str "(" scope ")")) scope))
-          (is (str/ends-with? all-six "\"View resources\" (agent:resource:read)."))
+          (is (str/ends-with? all-six "\"Read MCP resources\" (agent:resource:read)."))
           (is (not (str/includes? all-six "does not have")))
           (is (not (str/includes? all-six "don't assume which")))
           (testing "and one token's list is never served to another"
