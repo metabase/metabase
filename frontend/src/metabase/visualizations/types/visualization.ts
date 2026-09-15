@@ -48,6 +48,7 @@ export type OnBrush = (options: {
 }) => void;
 
 export interface VisualizationProps {
+  isStandaloneQuestion?: boolean;
   series: Series;
   dashboard?: Dashboard;
   dashcard?: DashboardCard;
@@ -68,6 +69,7 @@ export interface VisualizationProps {
   isEmbeddingSdk: boolean;
   showTitle: boolean;
   isDashboard: boolean;
+  isCompact?: boolean;
   isDocument: boolean;
   // Is this the visualization *inside* the visualizer
   isVisualizer: boolean;
@@ -133,6 +135,7 @@ export interface VisualizationProps {
 }
 
 export type VisualizationPassThroughProps = {
+  isCompact?: boolean;
   // frontend/src/metabase/query_builder/components/VisualizationResult.jsx
   canToggleSeriesVisibility?: boolean;
   isObjectDetail?: boolean;

@@ -9,8 +9,8 @@ import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "../../../types";
-import { X_AXIS_DATA_KEY } from "../../cartesian/constants/dataset";
 import { CHART_STYLE, Z_INDEXES } from "../../cartesian/constants/style";
+import { getXAxisDataKey } from "../../cartesian/option/dashboard-x-axis";
 import {
   BLUR_OPACITY,
   BOXPLOT_DATA_LABEL_STYLE,
@@ -67,7 +67,7 @@ export const buildEChartsBoxPlotSeries = (
         name: seriesModel.name ?? BOXPLOT_SERIES_NAME,
         datasetIndex: 0,
         encode: {
-          x: X_AXIS_DATA_KEY,
+          x: getXAxisDataKey(chartModel.xAxisModel, layoutModel),
           y: [
             getBoxPlotStatKey(dataKey, "min"),
             getBoxPlotStatKey(dataKey, "q1"),
@@ -141,7 +141,7 @@ export const buildEChartsMeanSeries = (
         name: getMeanSeriesName(seriesModel.dataKey),
         datasetIndex: 0,
         encode: {
-          x: X_AXIS_DATA_KEY,
+          x: getXAxisDataKey(chartModel.xAxisModel, layoutModel),
           y: meanKey,
         },
         z: Z_INDEXES.series + 1,
@@ -254,7 +254,7 @@ export const buildEChartsPointsSeries = (
         name: getOutliersSeriesName(dataKey),
         datasetIndex,
         encode: {
-          x: X_AXIS_DATA_KEY,
+          x: getXAxisDataKey(chartModel.xAxisModel, layoutModel),
           y: dataKey,
         },
         z: Z_INDEXES.series + 1,
@@ -285,7 +285,7 @@ export const buildEChartsPointsSeries = (
           name: getDataPointsSeriesName(dataKey),
           datasetIndex: datasetIndices.nonOutlier,
           encode: {
-            x: X_AXIS_DATA_KEY,
+            x: getXAxisDataKey(chartModel.xAxisModel, layoutModel),
             y: dataKey,
           },
           z: Z_INDEXES.series,
@@ -381,7 +381,7 @@ export const buildEChartsBoxPlotLabelsSeries = (
           name: `BoxPlot ${position} labels_${dataKey}`,
           datasetIndex: 0,
           encode: {
-            x: X_AXIS_DATA_KEY,
+            x: getXAxisDataKey(chartModel.xAxisModel, layoutModel),
             y: statKey,
           },
           z: Z_INDEXES.dataLabels,

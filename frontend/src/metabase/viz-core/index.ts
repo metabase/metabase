@@ -458,6 +458,7 @@ export {
 export {
   DEFAULT_VISUALIZATION_THEME,
   getVisualizationTheme,
+  isLargeCartesianCard,
 } from "./shared/utils/theme";
 export type {
   PivotedDatasetColumn,

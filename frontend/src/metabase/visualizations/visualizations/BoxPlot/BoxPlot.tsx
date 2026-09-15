@@ -40,6 +40,9 @@ function BoxPlotInner({
   width,
   height,
   isDashboard,
+  isCompact,
+  gridSize,
+  isStandaloneQuestion,
   isEditing,
   isQueryBuilder,
   isFullscreen,
@@ -59,6 +62,7 @@ function BoxPlotInner({
 }: VisualizationProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<EChartsType>();
+  const isDashboardCard = gridSize != null && !isStandaloneQuestion;
   const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
   const [hiddenSeries, { toggle: toggleSeriesVisibility }] = useSet<string>();
 
@@ -79,7 +83,12 @@ function BoxPlotInner({
     [originalSettings, height, width, autoAdjustSettings],
   );
 
-  const renderingContext = useBrowserRenderingContext({ fontFamily });
+  const renderingContext = useBrowserRenderingContext({
+    fontFamily,
+    isDashboard,
+    isCompact,
+    dashboardCardSize: { width, height },
+  });
 
   const showWarning = useCallback(
     (warning: string) => onRender?.({ warnings: [warning] }),
@@ -93,8 +102,15 @@ function BoxPlotInner({
         settings,
         Array.from(hiddenSeries),
         showWarning,
+        isDashboardCard,
       ),
-    [rawSeriesWithRemappings, settings, hiddenSeries, showWarning],
+    [
+      rawSeriesWithRemappings,
+      settings,
+      hiddenSeries,
+      showWarning,
+      isDashboardCard,
+    ],
   );
 
   const description = settings["card.description"];

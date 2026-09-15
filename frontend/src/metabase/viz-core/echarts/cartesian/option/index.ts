@@ -18,6 +18,7 @@ import {
   OTHER_DATA_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
+  X_AXIS_POSITION_KEY,
 } from "../constants/dataset";
 import { CHART_STYLE, Z_INDEXES } from "../constants/style";
 import type { ChartLayout } from "../layout/types";
@@ -33,6 +34,7 @@ import { getTimelineEventsSelectionSeries } from "../timeline-events/option";
 import type { TimelineEventsModel } from "../timeline-events/types";
 
 import { buildAxes, buildDimensionAxis, buildMetricAxis } from "./axis";
+import { applyDashboardYAxisTicks } from "./dashboard-axis";
 import { getGoalLineParams, getGoalLineSeriesOption } from "./goal-line";
 import { buildEChartsSeries } from "./series";
 import { getTrendLinesOption } from "./trend-line";
@@ -73,6 +75,10 @@ export const buildEChartsDataset = (
 ): Array<{ source: OptionSourceData; dimensions: string[] }> => {
   const dimensions = [
     X_AXIS_DATA_KEY,
+    ...(chartModel.xAxisModel.axisType === "category" &&
+    chartModel.xAxisModel.positions
+      ? [X_AXIS_POSITION_KEY]
+      : []),
     OTHER_DATA_KEY,
     POSITIVE_STACK_TOTAL_DATA_KEY,
     NEGATIVE_STACK_TOTAL_DATA_KEY,
@@ -97,6 +103,10 @@ export const buildEChartsDataset = (
       source: chartModel.trendLinesModel.dataset as OptionSourceData,
       dimensions: [
         X_AXIS_DATA_KEY,
+        ...(chartModel.xAxisModel.axisType === "category" &&
+        chartModel.xAxisModel.positions
+          ? [X_AXIS_POSITION_KEY]
+          : []),
         ...(chartModel.trendLinesModel.seriesModels?.map(
           (series) => series.dataKey,
         ) ?? []),
@@ -176,8 +186,8 @@ export function buildGridAndSeriesOption(
     : baseGoalSeriesOption;
 
   const trendSeriesOption = isSplitPanels
-    ? remapTrendLinesToPanels(chartModel, visibleSeries)
-    : getTrendLinesOption(chartModel);
+    ? remapTrendLinesToPanels(chartModel, visibleSeries, chartLayout)
+    : getTrendLinesOption(chartModel, chartLayout);
 
   const timelineEventsSeries = getTimelineSelectionSeries(
     timelineEventsModel,
@@ -195,7 +205,11 @@ export function buildGridAndSeriesOption(
   ].flatMap((option) => option ?? []);
 
   const grid: GridOption | GridOption[] = isSplitPanels
-    ? buildSplitPanelGrid(chartLayout, panelCount)
+    ? buildSplitPanelGrid(chartLayout, panelCount).map((panel) =>
+        chartLayout.dashboardXAxis
+          ? { ...panel, outerBoundsMode: "none" }
+          : panel,
+      )
     : { ...chartLayout.padding, outerBoundsMode: "none" };
 
   const splitPanelOverrides = isSplitPanels
@@ -270,7 +284,7 @@ export const getCartesianChartOption = (
     const hasAnyBarSeries = visibleSeries.some(
       (series) => seriesSettingsByDataKey[series.dataKey]?.display === "bar",
     );
-    if (hasAnyBarSeries) {
+    if (hasAnyBarSeries && !chartLayout.dashboardXAxis) {
       // Unjustified type cast. FIXME
       (baseXAxis as Record<string, unknown>).boundaryGap = true;
     }
@@ -304,7 +318,7 @@ export const getCartesianChartOption = (
     ...splitPanelOverrides,
     grid,
     xAxis,
-    yAxis,
+    yAxis: applyDashboardYAxisTicks(yAxis, chartModel, chartLayout, settings),
     dataset: buildEChartsDataset(chartModel),
     series: seriesOption,
   };
@@ -516,7 +530,10 @@ export function buildPerPanelYAxes(
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): YAXisOption[] {
-  const yTicksWidth = chartLayout.ticksDimensions.yTicksWidthLeft;
+  const yTicksWidth = settings["graph.y_axis.axis_enabled"]
+    ? chartLayout.ticksDimensions.yTicksWidthLeft -
+      renderingContext.theme.cartesian.ticks.marginY
+    : 0;
   const panelAxisModels = chartModel.splitPanelYAxisModels ?? [];
 
   return panelAxisModels.map((axisModel, index) => {
@@ -524,7 +541,7 @@ export function buildPerPanelYAxes(
       ...buildMetricAxis(
         axisModel,
         chartModel.yAxisScaleTransforms,
-        yTicksWidth - CHART_STYLE.axisTicksMarginY,
+        yTicksWidth,
         settings,
         "left",
         true,
@@ -565,8 +582,9 @@ export function buildPerPanelXAxes(
 export function remapTrendLinesToPanels(
   chartModel: BaseCartesianChartModel,
   visibleSeries: SeriesModel[],
+  chartLayout?: ChartLayout,
 ): EChartsSeriesOption[] {
-  const trendSeriesOptions = getTrendLinesOption(chartModel);
+  const trendSeriesOptions = getTrendLinesOption(chartModel, chartLayout);
 
   return trendSeriesOptions.map((trendSeries, index) => {
     const sourceDataKey =

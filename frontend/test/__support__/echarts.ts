@@ -9,6 +9,11 @@ import type {
 } from "metabase/viz-core";
 import { createMockCard, createMockColumn } from "metabase-types/api/mocks";
 
+export {
+  measureTextEChartsAdapter,
+  measureTextWidth,
+} from "metabase/static-viz/lib/text";
+
 type MockChartLayoutOpts = Partial<
   Omit<ChartLayout, "ticksDimensions" | "padding" | "bounds">
 > & {

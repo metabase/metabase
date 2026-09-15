@@ -1,15 +1,17 @@
 import type { LineSeriesOption } from "echarts/charts";
 
-import { X_AXIS_DATA_KEY } from "../constants/dataset";
 import { Z_INDEXES } from "../constants/style";
+import type { ChartLayout } from "../layout/types";
 import type { BaseCartesianChartModel } from "../model/types";
 
+import { getXAxisDataKey } from "./dashboard-x-axis";
 import { getSeriesYAxisIndex } from "./utils";
 
 export const TREND_LINE_DASH = [5, 5];
 
 export function getTrendLinesOption(
   chartModel: BaseCartesianChartModel,
+  chartLayout?: ChartLayout,
 ): LineSeriesOption[] {
   return (
     chartModel.trendLinesModel?.seriesModels.map((trendSeries) => ({
@@ -17,11 +19,14 @@ export function getTrendLinesOption(
       datasetIndex: 1,
       yAxisIndex: getSeriesYAxisIndex(trendSeries.sourceDataKey, chartModel),
       encode: {
-        x: X_AXIS_DATA_KEY,
+        x: getXAxisDataKey(chartModel.xAxisModel, chartLayout),
         y: trendSeries.dataKey,
       },
       smooth: true,
-      dimensions: [X_AXIS_DATA_KEY, trendSeries.dataKey],
+      dimensions: [
+        getXAxisDataKey(chartModel.xAxisModel, chartLayout),
+        trendSeries.dataKey,
+      ],
       showSymbol: false,
       lineStyle: {
         color: trendSeries.color,

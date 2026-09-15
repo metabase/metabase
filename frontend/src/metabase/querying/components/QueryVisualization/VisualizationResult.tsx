@@ -13,6 +13,7 @@ import { defaultClickActionMode } from "../../click-actions/lib/modes";
 import type { QueryVisualizationProps } from "./types";
 
 const ALLOWED_VISUALIZATION_PROPS = [
+  "isCompact",
   // Table
   "isShowingDetailsOnlyColumns",
   // Table Interactive

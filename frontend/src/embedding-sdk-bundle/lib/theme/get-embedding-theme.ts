@@ -60,6 +60,9 @@ export function getEmbeddingThemeOverride(
     other: {
       ...components,
       fontSize: theme.fontSize ?? SDK_BASE_FONT_SIZE,
+      hasCustomChartFontSize:
+        theme.fontSize !== undefined ||
+        theme.components?.cartesian?.label?.fontSize !== undefined,
     },
 
     components: getEmbeddingComponentOverrides(),

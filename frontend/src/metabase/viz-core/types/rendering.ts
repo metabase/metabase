@@ -39,6 +39,11 @@ export interface VisualizationTheme {
     label: {
       fontSize: number;
     };
+    ticks: {
+      fontSize: number;
+      marginX: number;
+      marginY: number;
+    };
     goalLine: {
       label: {
         fontSize: number;

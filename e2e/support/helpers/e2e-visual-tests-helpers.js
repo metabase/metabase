@@ -75,12 +75,12 @@ export function timelineEventMarkerLine() {
 
 export function chartGridLines() {
   return echartsContainer().find(
-    "path[stroke='var(--mb-color-cartesian-grid-line)'][fill='none']",
+    "path[stroke='var(--mb-color-chart-axis)'][fill='none']:not([stroke-linecap='round'])",
   );
 }
 
-export function splitPanelAxisLines() {
-  const borderStrong = getColor("border-strong");
+export function splitPanelSeparators() {
+  const borderStrong = getColor("border-neutral-strong");
   return echartsContainer().find(`path[stroke="${borderStrong}"]`);
 }
 
@@ -302,4 +302,36 @@ export function applyBrush(left, right) {
     .trigger("mousedown", left, 100)
     .trigger("mousemove", right, 100)
     .trigger("mouseup", right, 100);
+}
+
+/**
+ * Select an inclusive range of distinct x positions, independent of chart padding.
+ * @param {number} startIndex
+ * @param {number} endIndex
+ * @param {Cypress.Chainable<JQuery<HTMLElement>>} elements
+ */
+export function applyBrushToPoints(
+  startIndex,
+  endIndex,
+  elements = cartesianChartCircles(),
+) {
+  elements.should("have.length.greaterThan", endIndex).then(($elements) => {
+    const positions = [
+      ...new Set(
+        $elements.toArray().map((element) => {
+          const { left, width } = element.getBoundingClientRect();
+          return Math.round((left + width / 2) * 100) / 100;
+        }),
+      ),
+    ].sort((left, right) => left - right);
+    expect(positions).to.have.length.greaterThan(endIndex);
+
+    echartsContainer().then(($container) => {
+      const { left } = $container[0].getBoundingClientRect();
+      applyBrush(
+        positions[startIndex] - left - 1,
+        positions[endIndex] - left + 1,
+      );
+    });
+  });
 }

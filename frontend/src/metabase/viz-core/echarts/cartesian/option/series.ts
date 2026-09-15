@@ -57,9 +57,11 @@ import type {
 } from "../model/types";
 import { getBarSeriesDataLabelKey } from "../model/util";
 
+import { getXAxisDataKey } from "./dashboard-x-axis";
 import { getPadding } from "./ticks";
 import type { EChartsSeriesOption } from "./types";
 import { getSeriesYAxisIndex } from "./utils";
+import { getContinuousAxisPadding } from "./x-axis-padding";
 
 const MIN_LABEL_SPACING_PX = 40;
 const STACK_PERCENTAGE_DECIMALS = 2;
@@ -325,6 +327,7 @@ export const computeContinuousScaleBarWidth = (
   barSeriesCount: number,
   stackedOrSingleSeries: boolean,
   xAxisScale?: XAxisScale,
+  chartLayout?: ChartLayout,
 ) => {
   const isBarWidthSensibleToXAxisScale =
     xAxisScale !== "log" && xAxisScale !== "pow";
@@ -332,9 +335,21 @@ export const computeContinuousScaleBarWidth = (
     return 1;
   }
 
-  const padding = isTimeSeriesAxis(xAxisModel)
+  if (chartLayout?.dashboardXAxis) {
+    const width = chartLayout.dashboardXAxis.step * CHART_STYLE.series.barWidth;
+    return stackedOrSingleSeries ? width : width / barSeriesCount;
+  }
+
+  const intervalPadding = isTimeSeriesAxis(xAxisModel)
     ? getPadding(xAxisModel.intervalsCount)
     : 0.5;
+  const padding = chartLayout
+    ? getContinuousAxisPadding(
+        intervalPadding,
+        xAxisModel.intervalsCount,
+        chartLayout,
+      )
+    : intervalPadding;
 
   let barWidth =
     (boundaryWidth / (xAxisModel.intervalsCount + 1 + 2 * padding)) *
@@ -353,6 +368,7 @@ export const computeBarWidth = (
   barSeriesCount: number,
   isStacked: boolean,
   xAxisScale?: XAxisScale,
+  chartLayout?: ChartLayout,
 ) => {
   const stackedOrSingleSeries = isStacked || barSeriesCount === 1;
   const isNumericOrTimeSeries =
@@ -365,7 +381,16 @@ export const computeBarWidth = (
       barSeriesCount,
       stackedOrSingleSeries,
       xAxisScale,
+      chartLayout,
     );
+  }
+
+  if (chartLayout?.dashboardXAxis) {
+    const ratio = xAxisModel.isHistogram
+      ? CHART_STYLE.series.histogramBarWidth
+      : CHART_STYLE.series.barWidth;
+    const width = chartLayout.dashboardXAxis.step * ratio;
+    return stackedOrSingleSeries ? width : width / barSeriesCount;
   }
 
   let barWidth: string | number | undefined = undefined;
@@ -611,6 +636,7 @@ const buildEChartsBarSeries = (
       barSeriesCount,
       isStacked,
       settings["graph.x_axis.scale"],
+      chartLayout,
     ),
     encode: {
       y: seriesModel.dataKey,
@@ -1141,7 +1167,7 @@ export const buildEChartsSeries = (
   // ECharts extends time/value axis min/max when bar series are present
   // (adjustScaleForOverflow). Panels with only line/area series don't get this,
   // causing x-position misalignment. Hidden bar series force the same adjustment.
-  if (isSplitPanels && hasAnyBarSeries) {
+  if (isSplitPanels && hasAnyBarSeries && !chartLayout.dashboardXAxis) {
     visibleSeries.forEach((seriesModel, panelIndex) => {
       if (seriesSettingsByDataKey[seriesModel.dataKey]?.display !== "bar") {
         series.push({
@@ -1176,5 +1202,12 @@ export const buildEChartsSeries = (
     );
   }
 
-  return series;
+  const xDataKey = getXAxisDataKey(chartModel.xAxisModel, chartLayout);
+  if (xDataKey === X_AXIS_DATA_KEY) {
+    return series;
+  }
+  return series.map((option) => ({
+    ...option,
+    encode: { ...option.encode, x: xDataKey },
+  }));
 };

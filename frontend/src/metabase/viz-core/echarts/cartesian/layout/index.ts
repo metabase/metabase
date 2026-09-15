@@ -6,7 +6,11 @@ import type {
   RenderingContext,
 } from "../../../types";
 import { X_AXIS_DATA_KEY } from "../constants/dataset";
-import { CHART_STYLE, getSplitPanelGap } from "../constants/style";
+import {
+  CHART_STYLE,
+  HORIZONTAL_TICKS_GAP,
+  getSplitPanelGap,
+} from "../constants/style";
 import {
   isCategoryAxis,
   isNumericAxis,
@@ -15,6 +19,7 @@ import {
 import type {
   AxisFormatter,
   ChartDataset,
+  DimensionModel,
   NumericAxisScaleTransforms,
   SeriesFormatters,
   SeriesModel,
@@ -22,11 +27,13 @@ import type {
   XAxisModel,
   YAxisModel,
 } from "../model/types";
+import { getDashboardXAxis } from "../option/dashboard-x-axis";
 import { getPaddedAxisLabel } from "../option/utils";
 
 import type { ChartBoundsCoords, ChartLayout, TicksDimensions } from "./types";
 
 export interface ChartLayoutInput {
+  dimensionModel?: DimensionModel;
   xAxisModel: XAxisModel;
   leftAxisModel: YAxisModel | null;
   rightAxisModel: YAxisModel | null;
@@ -44,6 +51,31 @@ export interface ChartLayoutInput {
 const getDataset = (input: ChartLayoutInput): ChartDataset => {
   return input.transformedDataset ?? input.dataset ?? [];
 };
+
+function getXAxisMarkWidthRatio(
+  input: ChartLayoutInput,
+  settings: ComputedVisualizationSettings,
+) {
+  const hasBars = input.seriesModels?.some((series) => {
+    const display = settings.series?.(
+      series.legacySeriesSettingsObjectKey,
+    )?.display;
+    return (
+      series.visible &&
+      (display === "bar" || display === "waterfall" || display === "boxplot")
+    );
+  });
+  if (!hasBars) {
+    return undefined;
+  }
+  if (
+    settings["graph.x_axis.scale"] === "log" ||
+    settings["graph.x_axis.scale"] === "pow"
+  ) {
+    return 0;
+  }
+  return CHART_STYLE.series.barWidth;
+}
 
 const getEvenlySpacedIndices = (
   length: number,
@@ -138,20 +170,20 @@ const getLogScaleTickValues = (
   return tickValues;
 };
 
-const getYAxisTicksWidth = (
+const getYAxisWidth = (
   axisModel: YAxisModel,
   yAxisScaleTransforms: NumericAxisScaleTransforms,
   settings: ComputedVisualizationSettings,
   { measureText, fontFamily, theme }: RenderingContext,
 ): number => {
   if (!settings["graph.y_axis.axis_enabled"]) {
-    return 0;
+    return CHART_STYLE.hiddenYAxisWidth;
   }
 
   const fontStyle = {
     ...CHART_STYLE.axisTicks,
     family: fontFamily,
-    size: theme.cartesian.label.fontSize,
+    size: theme.cartesian.ticks.fontSize,
   };
 
   const [min, max] = getYAxisExtentToMeasure(
@@ -211,7 +243,7 @@ const getYAxisTicksWidth = (
     return measureText(formattedValue, fontStyle);
   });
 
-  return Math.max(...measuredValues);
+  return Math.max(...measuredValues) + theme.cartesian.ticks.marginY;
 };
 
 const getXAxisTicksWidth = (
@@ -221,7 +253,7 @@ const getXAxisTicksWidth = (
   { theme, measureText, fontFamily }: RenderingContext,
   xTickWidthCap: number,
 ) => {
-  const { fontSize } = theme.cartesian.label;
+  const { fontSize } = theme.cartesian.ticks;
 
   if (!axisEnabledSetting || dataset.length === 0) {
     return { firstXTickWidth: 0, lastXTickWidth: 0 };
@@ -272,7 +304,7 @@ const getXAxisTicksHeight = (
   axisEnabledSetting: ComputedVisualizationSettings["graph.x_axis.axis_enabled"],
   { theme }: RenderingContext,
 ) => {
-  const { fontSize } = theme.cartesian.label;
+  const { fontSize } = theme.cartesian.ticks;
 
   if (!axisEnabledSetting) {
     return 0;
@@ -309,7 +341,7 @@ const getAutoAxisEnabledSetting = (
   renderingContext: RenderingContext,
 ): ComputedVisualizationSettings["graph.x_axis.axis_enabled"] => {
   const { xAxisModel } = input;
-  const { fontSize } = renderingContext.theme.cartesian.label;
+  const { fontSize } = renderingContext.theme.cartesian.ticks;
 
   const shouldAutoSelectSetting =
     settings["graph.x_axis.axis_enabled"] === true &&
@@ -373,7 +405,7 @@ const getXTicksToMeasure = (
   renderingContext: RenderingContext,
 ) => {
   const { xAxisModel } = input;
-  const { fontSize } = renderingContext.theme.cartesian.label;
+  const { fontSize } = renderingContext.theme.cartesian.ticks;
   const dataset = getDataset(input);
 
   if (isNumericAxis(xAxisModel) || isTimeSeriesAxis(xAxisModel)) {
@@ -408,7 +440,7 @@ const getMaxXTickWidth = (
     renderingContext,
   );
 
-  const { fontSize } = renderingContext.theme.cartesian.label;
+  const { fontSize } = renderingContext.theme.cartesian.ticks;
   const fontStyle = {
     ...CHART_STYLE.axisTicks,
     size: fontSize,
@@ -444,23 +476,21 @@ const getTicksDimensions = (
   };
 
   if (leftAxisModel) {
-    ticksDimensions.yTicksWidthLeft =
-      getYAxisTicksWidth(
-        leftAxisModel,
-        yAxisScaleTransforms,
-        settings,
-        renderingContext,
-      ) + CHART_STYLE.axisTicksMarginY;
+    ticksDimensions.yTicksWidthLeft = getYAxisWidth(
+      leftAxisModel,
+      yAxisScaleTransforms,
+      settings,
+      renderingContext,
+    );
   }
 
   if (rightAxisModel) {
-    ticksDimensions.yTicksWidthRight =
-      getYAxisTicksWidth(
-        rightAxisModel,
-        yAxisScaleTransforms,
-        settings,
-        renderingContext,
-      ) + CHART_STYLE.axisTicksMarginY;
+    ticksDimensions.yTicksWidthRight = getYAxisWidth(
+      rightAxisModel,
+      yAxisScaleTransforms,
+      settings,
+      renderingContext,
+    );
   }
 
   const currentBoundaryWidth =
@@ -511,15 +541,15 @@ const getTicksDimensions = (
       getXAxisTicksHeight(maxXTickWidth, axisEnabledSetting, renderingContext) +
       (isTimeSeries && hasTimelineEvents
         ? CHART_STYLE.timelineEvents.height
-        : CHART_STYLE.axisTicksMarginX);
+        : renderingContext.theme.cartesian.ticks.marginX);
 
     ticksDimensions.getXTickWidth = (text: string) => {
       if (axisEnabledSetting === "rotate-90") {
-        return renderingContext.theme.cartesian.label.fontSize;
+        return renderingContext.theme.cartesian.ticks.fontSize;
       }
       const width = renderingContext.measureText(text, {
         ...CHART_STYLE.axisTicks,
-        size: renderingContext.theme.cartesian.label.fontSize,
+        size: renderingContext.theme.cartesian.ticks.fontSize,
         family: renderingContext.fontFamily,
       });
       if (axisEnabledSetting === "rotate-45") {
@@ -653,6 +683,7 @@ export const getCartesianChartPadding = (
   axisEnabledSetting: ComputedVisualizationSettings["graph.x_axis.axis_enabled"],
   chartWidth: number,
   renderingContext: RenderingContext,
+  includeTickOverflow = true,
 ): Padding => {
   const { leftAxisModel, rightAxisModel } = input;
   const { fontSize } = renderingContext.theme.cartesian.label;
@@ -700,6 +731,10 @@ export const getCartesianChartPadding = (
     padding.right += yAxisNameTotalWidth;
   }
 
+  if (!includeTickOverflow) {
+    return padding;
+  }
+
   const { firstTickOverflow, lastTickOverflow } = getTicksOverflow(
     input,
     settings,
@@ -741,15 +776,13 @@ const getDimensionWidth = (
   return boundaryWidth / xValuesCount;
 };
 
-const HORIZONTAL_TICKS_GAP = 6;
-
 const areHorizontalXAxisTicksOverlapping = (
   dataset: ChartDataset,
   dimensionWidth: number,
   formatter: AxisFormatter,
   { theme, measureText, fontFamily }: RenderingContext,
 ) => {
-  const { fontSize } = theme.cartesian.label;
+  const { fontSize } = theme.cartesian.ticks;
 
   const fontStyle = {
     ...CHART_STYLE.axisTicks,
@@ -877,6 +910,65 @@ const getStackedBarTicksRotation = (
     : "vertical";
 };
 
+function getBaseChartLayout(
+  input: ChartLayoutInput,
+  settings: ComputedVisualizationSettings,
+  ticksDimensions: TicksDimensions,
+  axisEnabledSetting: ChartLayout["axisEnabledSetting"],
+  width: number,
+  height: number,
+  renderingContext: RenderingContext,
+): ChartLayout {
+  const padding = getCartesianChartPadding(
+    input,
+    settings,
+    ticksDimensions,
+    axisEnabledSetting,
+    width,
+    renderingContext,
+    false,
+  );
+  const getBoundaryWidth = () =>
+    width -
+    padding.left -
+    padding.right -
+    ticksDimensions.yTicksWidthLeft -
+    ticksDimensions.yTicksWidthRight;
+  const layout: ChartLayout = {
+    ticksDimensions,
+    padding,
+    bounds: getChartBounds(width, height, padding, ticksDimensions),
+    boundaryWidth: getBoundaryWidth(),
+    outerHeight: height,
+    outerWidth: width,
+    axisEnabledSetting,
+    panelGap: 0,
+    xAxisMarkWidthRatio: getXAxisMarkWidthRatio(input, settings),
+  };
+  layout.dashboardXAxis = getDashboardXAxis(
+    input.xAxisModel,
+    layout,
+    input.dimensionModel?.column,
+  );
+  if (!layout.dashboardXAxis) {
+    const { firstTickOverflow, lastTickOverflow } = getTicksOverflow(
+      input,
+      settings,
+      ticksDimensions,
+      axisEnabledSetting,
+      width,
+      padding,
+    );
+    if (firstTickOverflow !== 0 || lastTickOverflow !== 0) {
+      padding.left += firstTickOverflow;
+      padding.right += lastTickOverflow;
+      layout.bounds = getChartBounds(width, height, padding, ticksDimensions);
+      layout.boundaryWidth = getBoundaryWidth();
+    }
+  }
+  return layout;
+}
+
 export const getChartLayout = (
   input: ChartLayoutInput,
   settings: ComputedVisualizationSettings,
@@ -889,7 +981,6 @@ export const getChartLayout = (
     input.seriesModels?.filter((series) => series.visible) ?? [];
   const isSplitPanels =
     settings["graph.split_panels"] === true && visibleSeries.length > 1;
-
   if (isSplitPanels) {
     return computeSplitPanelLayout(
       input,
@@ -900,7 +991,6 @@ export const getChartLayout = (
       renderingContext,
     );
   }
-
   const { ticksDimensions, axisEnabledSetting } = getTicksDimensions(
     input,
     width,
@@ -909,39 +999,22 @@ export const getChartLayout = (
     hasTimelineEvents,
     renderingContext,
   );
-  const padding = getCartesianChartPadding(
+  const layout = getBaseChartLayout(
     input,
     settings,
     ticksDimensions,
     axisEnabledSetting,
     width,
+    height,
     renderingContext,
   );
-  const bounds = getChartBounds(width, height, padding, ticksDimensions);
-
-  const boundaryWidth =
-    width -
-    padding.left -
-    padding.right -
-    ticksDimensions.yTicksWidthLeft -
-    ticksDimensions.yTicksWidthRight;
-
-  const stackedBarTicksRotation = getStackedBarTicksRotation(
-    input,
-    boundaryWidth,
-    renderingContext,
-  );
-
   return {
-    ticksDimensions,
-    padding,
-    bounds,
-    boundaryWidth,
-    outerHeight: height,
-    outerWidth: width,
-    axisEnabledSetting,
-    stackedBarTicksRotation,
-    panelGap: 0,
+    ...layout,
+    stackedBarTicksRotation: getStackedBarTicksRotation(
+      input,
+      layout.boundaryWidth,
+      renderingContext,
+    ),
   };
 };
 
@@ -956,7 +1029,7 @@ const computeSplitPanelLayout = (
   const panelAxisModels = input.splitPanelYAxisModels ?? [];
   const panelCount = panelAxisModels.length;
   const yAxisTickWidths: number[] = panelAxisModels.map((axisModel) =>
-    getYAxisTicksWidth(
+    getYAxisWidth(
       axisModel,
       input.yAxisScaleTransforms,
       settings,
@@ -965,9 +1038,7 @@ const computeSplitPanelLayout = (
   );
 
   const maxYTicksWidth =
-    yAxisTickWidths.length > 0
-      ? Math.max(...yAxisTickWidths) + CHART_STYLE.axisTicksMarginY
-      : 0;
+    yAxisTickWidths.length > 0 ? Math.max(...yAxisTickWidths) : 0;
 
   const singleAxisInput: ChartLayoutInput = {
     ...input,
@@ -994,23 +1065,16 @@ const computeSplitPanelLayout = (
     getXTickWidth: computedTicks.getXTickWidth,
   };
 
-  const padding = getCartesianChartPadding(
+  const layout = getBaseChartLayout(
     singleAxisInput,
     settings,
     ticksDimensions,
     axisEnabledSetting,
     width,
+    height,
     renderingContext,
   );
-
-  const bounds = getChartBounds(width, height, padding, ticksDimensions);
-
-  const boundaryWidth =
-    width -
-    padding.left -
-    padding.right -
-    ticksDimensions.yTicksWidthLeft -
-    ticksDimensions.yTicksWidthRight;
+  const { padding } = layout;
 
   const { gapRatio, maxGap } = CHART_STYLE.splitPanel;
   const availableHeight = height - padding.top - padding.bottom;
@@ -1025,13 +1089,7 @@ const computeSplitPanelLayout = (
   }
 
   return {
-    ticksDimensions,
-    padding,
-    bounds,
-    boundaryWidth,
-    outerHeight: height,
-    outerWidth: width,
-    axisEnabledSetting,
+    ...layout,
     panelHeight,
     panelGap,
   };

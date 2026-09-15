@@ -5,6 +5,7 @@ import { getNumberOr } from "../../../../lib/settings/row-values";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
+  VisualizationGridSize,
 } from "../../../../types";
 import type { ShowWarning } from "../../../types";
 import { getYAxisModel } from "../../model/axis";
@@ -23,6 +24,11 @@ import {
 } from "../../model/series";
 import { getAxisTransforms } from "../../model/transforms";
 import type { WaterfallChartModel } from "../../model/types";
+import { getLabelValueFormatting } from "../../model/util";
+import {
+  appendXAxisPositions,
+  getXAxisPositions,
+} from "../../model/x-axis-position";
 import { WATERFALL_END_KEY, WATERFALL_TOTAL_KEY } from "../constants";
 
 import { getWaterfallXAxisModel } from "./axis";
@@ -37,6 +43,8 @@ export const getWaterfallChartModel = (
   hiddenSeries: string[],
   renderingContext: RenderingContext,
   showWarning?: ShowWarning,
+  gridSize?: VisualizationGridSize,
+  isDashboardCard = gridSize != null,
 ): WaterfallChartModel => {
   // Waterfall chart support one card only
   const [singleRawSeries] = rawSeries;
@@ -66,13 +74,16 @@ export const getWaterfallChartModel = (
   );
   let scaledDataset = scaleDataset(dataset, [seriesModel], settings);
 
-  const xAxisModel = getWaterfallXAxisModel(
-    dimensionModel,
-    rawSeries,
-    scaledDataset,
-    settings,
-    showWarning,
-  );
+  const xAxisModel = {
+    ...getWaterfallXAxisModel(
+      dimensionModel,
+      rawSeries,
+      scaledDataset,
+      settings,
+      showWarning,
+    ),
+    isDashboard: isDashboardCard,
+  };
   if (
     xAxisModel.axisType === "value" ||
     xAxisModel.axisType === "time" ||
@@ -93,8 +104,15 @@ export const getWaterfallChartModel = (
     xAxisModel,
   );
 
+  const labelValueFormatting = getLabelValueFormatting(
+    settings["graph.label_value_formatting"],
+    gridSize != null,
+  );
   const { formatter: waterfallLabelFormatter, isCompact } =
-    getWaterfallLabelFormatter(seriesModel, transformedDataset, settings);
+    getWaterfallLabelFormatter(seriesModel, transformedDataset, {
+      ...settings,
+      "graph.label_value_formatting": labelValueFormatting,
+    });
 
   const dataDensity = getWaterfallChartDataDensity(
     transformedDataset,
@@ -112,9 +130,9 @@ export const getWaterfallChartModel = (
     { [WATERFALL_END_KEY]: seriesModel.column },
     {
       formattingOptions: {
-        compact:
-          settings["graph.label_value_formatting"] === "compact" || isCompact,
+        compact: labelValueFormatting === "compact" || isCompact,
       },
+      gridSize,
     },
   );
 
@@ -132,16 +150,21 @@ export const getWaterfallChartModel = (
     settings,
   );
 
+  const positions = getXAxisPositions(transformedDataset, xAxisModel);
+
   return {
     stackModels: [],
     dataset: originalDatasetWithTotal,
-    transformedDataset,
+    transformedDataset: appendXAxisPositions(transformedDataset, positions),
     seriesModels: [seriesModel],
     yAxisScaleTransforms,
     cardsColumns,
     columnByDataKey,
     dimensionModel,
-    xAxisModel,
+    xAxisModel:
+      xAxisModel.axisType === "category"
+        ? { ...xAxisModel, positions }
+        : xAxisModel,
     leftAxisModel,
     rightAxisModel: null,
     seriesIdToDataKey: {

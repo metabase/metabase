@@ -42,6 +42,10 @@ import type {
   SeriesFormatters,
   YAxisModel,
 } from "../../cartesian/model/types";
+import {
+  appendXAxisPositions,
+  getXAxisPositions,
+} from "../../cartesian/model/x-axis-position";
 import type { ShowWarning } from "../../types";
 
 import { computeMultiSeriesBoxPlotData } from "./dataset";
@@ -252,6 +256,7 @@ const createXAxisModel = (
   dimensionColumn: DatasetColumn | undefined,
   xValuesCount: number,
   settings: ComputedVisualizationSettings,
+  isDashboard: boolean,
 ): CategoryXAxisModel => ({
   axisType: "category",
   label: dimensionColumn?.display_name,
@@ -259,6 +264,7 @@ const createXAxisModel = (
   formatter: createXAxisFormatter(dimensionColumn, settings),
   valuesCount: xValuesCount,
   canBrush: false,
+  isDashboard,
 });
 
 const getYAxisSplit = (
@@ -393,6 +399,7 @@ export const getBoxPlotModel = (
   settings: ComputedVisualizationSettings,
   hiddenSeries: string[] = [],
   showWarning?: ShowWarning,
+  isDashboard = false,
 ): BoxPlotChartModel => {
   const [singleRawSeries] = rawSeries;
   const { data } = singleRawSeries;
@@ -463,11 +470,28 @@ export const getBoxPlotModel = (
   const breakoutColumn =
     "breakout" in chartColumns ? chartColumns.breakout.column : undefined;
 
+  const xAxisModel = createXAxisModel(
+    dimensionModel.column,
+    xValues.length,
+    settings,
+    isDashboard,
+  );
+  const positions = getXAxisPositions(boxDataset, xAxisModel);
+
   return {
-    boxDataset,
-    outlierAbovePointsDataset,
-    outlierBelowPointsDataset,
-    nonOutlierPointsDataset,
+    boxDataset: appendXAxisPositions(boxDataset, positions),
+    outlierAbovePointsDataset: appendXAxisPositions(
+      outlierAbovePointsDataset,
+      positions,
+    ),
+    outlierBelowPointsDataset: appendXAxisPositions(
+      outlierBelowPointsDataset,
+      positions,
+    ),
+    nonOutlierPointsDataset: appendXAxisPositions(
+      nonOutlierPointsDataset,
+      positions,
+    ),
     dataBySeriesAndXValue,
     xValues,
     seriesModels,
@@ -475,11 +499,7 @@ export const getBoxPlotModel = (
     columnByDataKey,
     dimensionModel,
     breakoutColumn,
-    xAxisModel: createXAxisModel(
-      dimensionModel.column,
-      xValues.length,
-      settings,
-    ),
+    xAxisModel: { ...xAxisModel, positions },
     leftAxisModel,
     rightAxisModel,
     leftAxisSeriesKeys,

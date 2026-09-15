@@ -92,12 +92,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         cy.findByLabelText("Legend").findByText("Gadget").should("exist");
         H.echartsContainer().findByText(/Count/).should("exist");
       });
-      cy.wait(100); // wait to avoid grabbing the svg before the chart redraws
-
-      cy.findByTestId("query-visualization-root")
-        .trigger("mousedown", 240, 200)
-        .trigger("mousemove", 420, 200)
-        .trigger("mouseup", 420, 200);
+      H.applyBrushToPoints(5, 10);
 
       cy.wait("@dataset");
 

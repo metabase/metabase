@@ -1665,11 +1665,11 @@ describe("scenarios > metrics > explorer", () => {
       });
 
       cy.log("should split the chart into separate panels");
-      H.splitPanelAxisLines().should("have.length", 2);
+      H.splitPanelSeparators().should("have.length", 1);
 
       cy.log("toggling off should return to unified view");
       cy.findByLabelText("Default layout").click();
-      H.splitPanelAxisLines().should("have.length", 0);
+      H.splitPanelSeparators().should("have.length", 0);
 
       cy.log("button should not be visible for non-line/area/bar charts");
       selectDimensionBreakout("State", { seeAll: true });
@@ -2134,7 +2134,7 @@ describe("scenarios > metrics > explorer", () => {
 
     it("should allow me to do brush style time range filtering", () => {
       H.ensureChartIsActive();
-      H.applyBrush(100, 250);
+      H.applyBrushToPoints(2, 7);
       H.MetricsViewer.getMetricVisualization().within(() => {
         cy.findByText(/June/).should("be.visible");
         cy.findByText(/July/).should("be.visible");

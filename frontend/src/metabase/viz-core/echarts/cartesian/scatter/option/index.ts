@@ -18,6 +18,7 @@ import {
   getSharedEChartsOptions,
 } from "../../option";
 import { buildAxes, buildDimensionAxis } from "../../option/axis";
+import { applyDashboardYAxisTicks } from "../../option/dashboard-axis";
 import type { EChartsSeriesOption } from "../../option/types";
 import { getSeriesYAxisIndex } from "../../option/utils";
 import type { TimelineEventsModel } from "../../timeline-events/types";
@@ -41,7 +42,6 @@ export function getScatterPlotOption(
     (series) => series.visible,
   );
   const panelCount = visibleSeries.length;
-
   const dataSeriesOptions: EChartsSeriesOption[] = visibleSeries.map(
     (seriesModel, index) =>
       buildEChartsScatterSeries(
@@ -130,7 +130,7 @@ export function getScatterPlotOption(
     ...splitPanelOverrides,
     grid,
     xAxis,
-    yAxis,
+    yAxis: applyDashboardYAxisTicks(yAxis, chartModel, chartLayout, settings),
     dataset: echartsDataset,
     series: seriesOption,
   };

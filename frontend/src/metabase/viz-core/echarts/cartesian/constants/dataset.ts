@@ -17,6 +17,8 @@ export const IS_WATERFALL_TOTAL_DATA_KEY = `${NULL_CHAR}_is_total` as const;
 // Key of x-axis values
 export const X_AXIS_DATA_KEY = `${NULL_CHAR}_x` as const;
 
+export const X_AXIS_POSITION_KEY = `${NULL_CHAR}_x_position` as const;
+
 // Key used to store original x-axis values in the transformed dataset
 // When working with time series or numeric scales, we process x-axis values for ECharts
 // to handle timezone adjustments or apply transformations (log, pow). Since this processing

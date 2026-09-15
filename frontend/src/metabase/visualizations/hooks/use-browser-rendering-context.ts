@@ -11,18 +11,23 @@ import {
 import {
   type RenderingContext,
   getVisualizationTheme,
+  isLargeCartesianCard,
 } from "metabase/viz-core";
 
 interface RenderingOptions {
   fontFamily: string;
   isDashboard?: boolean;
+  isCompact?: boolean;
   isFullscreen?: boolean;
+  dashboardCardSize?: { width: number; height: number };
 }
 
 export const useBrowserRenderingContext = (
   options: RenderingOptions,
 ): RenderingContext => {
-  const { fontFamily, isDashboard } = options;
+  const { fontFamily, isDashboard, isCompact, dashboardCardSize } = options;
+  const isLargeCard =
+    isDashboard || isCompact ? isLargeCartesianCard(dashboardCardSize) : false;
 
   const palette = usePalette();
   const theme = useMantineTheme();
@@ -31,6 +36,8 @@ export const useBrowserRenderingContext = (
     const style = getVisualizationTheme({
       theme: theme.other,
       isDashboard,
+      isCompact,
+      isLargeCard,
     });
 
     return {
@@ -41,5 +48,5 @@ export const useBrowserRenderingContext = (
       colorScheme: theme.other?.colorScheme ?? "light",
       theme: style,
     };
-  }, [fontFamily, palette, theme, isDashboard]);
+  }, [fontFamily, palette, theme, isDashboard, isCompact, isLargeCard]);
 };
