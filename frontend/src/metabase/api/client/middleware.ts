@@ -1,7 +1,8 @@
-import {
-  type OnBeforeRequestHandler,
-  type OnBeforeRequestHandlerConfig,
-  PLUGIN_API,
+import { PLUGIN_API } from "../plugins";
+
+import type {
+  OnBeforeRequestHandler,
+  OnBeforeRequestHandlerConfig,
 } from "./request-handlers";
 
 export type {

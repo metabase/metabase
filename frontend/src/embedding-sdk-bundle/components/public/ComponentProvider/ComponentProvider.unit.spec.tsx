@@ -1,3 +1,12 @@
+import { act } from "@testing-library/react";
+
+import { useInitSdkTracker } from "embedding-sdk-bundle/analytics/tracker";
+import { PLUGIN_EMBEDDING_SDK_AUTH } from "embedding-sdk-bundle/plugins/auth";
+import { refreshTokenAsync } from "embedding-sdk-bundle/store/auth";
+import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
+import { reinitialize } from "metabase/plugins";
+import { initializePlugins } from "sdk-ee-plugins";
+
 jest.mock("embedding-sdk-bundle/analytics/tracker", () => ({
   useInitSdkTracker: jest.fn(),
 }));
@@ -6,9 +15,6 @@ jest.mock("embedding-sdk-bundle/analytics/tracker", () => ({
 jest.mock("embedding-sdk-bundle/hooks/private/use-init-data", () => ({
   useInitDataInternal: jest.fn(),
 }));
-
-import { useInitSdkTracker } from "embedding-sdk-bundle/analytics/tracker";
-import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 
 const mockUseInitSdkTracker = jest.mocked(useInitSdkTracker);
 
@@ -45,5 +51,49 @@ describe("ComponentProvider — tracker wiring", () => {
       expect.anything(),
       false,
     );
+  });
+});
+
+jest.mock("sdk-ee-plugins", () => ({ initializePlugins: jest.fn() }));
+
+describe("ComponentProvider plugin reset lifecycle", () => {
+  beforeEach(() => {
+    reinitialize();
+    jest.mocked(initializePlugins).mockImplementation(() => {
+      PLUGIN_EMBEDDING_SDK_AUTH.refreshTokenAsync = async () => ({
+        id: "sdk-session",
+      });
+    });
+  });
+
+  afterEach(reinitialize);
+
+  it("can refresh the SDK session after resetting and mounting a new provider", async () => {
+    const config = { metabaseInstanceUrl: "https://metabase.example.com" };
+    const { store: firstStore, unmount: unmountFirst } = renderWithSDKProviders(
+      <div />,
+      {
+        componentProviderProps: { authConfig: config },
+      },
+    );
+    await act(async () => {
+      await expect(
+        firstStore.dispatch(refreshTokenAsync(config)).unwrap(),
+      ).resolves.toEqual({ id: "sdk-session" });
+    });
+    unmountFirst();
+
+    reinitialize();
+
+    const { store: secondStore, unmount: unmountSecond } =
+      renderWithSDKProviders(<div />, {
+        componentProviderProps: { authConfig: config },
+      });
+    await act(async () => {
+      await expect(
+        secondStore.dispatch(refreshTokenAsync(config)).unwrap(),
+      ).resolves.toEqual({ id: "sdk-session" });
+    });
+    unmountSecond();
   });
 });
