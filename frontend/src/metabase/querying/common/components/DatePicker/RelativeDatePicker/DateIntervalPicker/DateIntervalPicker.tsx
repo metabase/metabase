@@ -5,7 +5,6 @@ import type {
   DatePickerUnit,
   RelativeDatePickerValue,
 } from "metabase/querying/common/types";
-import { useSetting } from "metabase/settings";
 import {
   Button,
   Divider,
@@ -21,6 +20,7 @@ import { NumberInputWithFallbackValue } from "../../NumberInputWithFallbackValue
 import type { DatePickerSubmitButtonProps } from "../../types";
 import { renderDefaultSubmitButton } from "../../utils";
 import { IncludeCurrentSwitch } from "../IncludeCurrentSwitch";
+import { useTimeConfig } from "../use-time-config";
 import {
   formatDateRange,
   getInterval,
@@ -50,13 +50,10 @@ export function DateIntervalPicker({
   onChange,
   onSubmit,
 }: DateIntervalPickerProps) {
-  const startOfWeek = useSetting("start-of-week");
+  const timeConfig = useTimeConfig();
   const interval = getInterval(value);
   const unitOptions = getUnitOptions(value, availableUnits);
-  const dateRangeText = formatDateRange(
-    { "start-of-week": startOfWeek },
-    value,
-  );
+  const dateRangeText = formatDateRange(timeConfig, value);
   const outOfBounds = isOutOfBounds(value, minDate, maxDate);
 
   const handleIntervalChange = (inputValue: number | string) => {

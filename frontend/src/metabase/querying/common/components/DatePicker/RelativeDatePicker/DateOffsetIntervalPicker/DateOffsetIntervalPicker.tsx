@@ -5,12 +5,12 @@ import type {
   DatePickerUnit,
   RelativeDatePickerValue,
 } from "metabase/querying/common/types";
-import { useSetting } from "metabase/settings";
 import { Box, Button, Divider, Group, Icon, Select, Text } from "metabase/ui";
 
 import { NumberInputWithFallbackValue } from "../../NumberInputWithFallbackValue";
 import type { DatePickerSubmitButtonProps } from "../../types";
 import { renderDefaultSubmitButton } from "../../utils";
+import { useTimeConfig } from "../use-time-config";
 import {
   formatDateRange,
   getInterval,
@@ -49,16 +49,13 @@ export function DateOffsetIntervalPicker({
   onChange,
   onSubmit,
 }: DateOffsetIntervalPickerProps) {
-  const startOfWeek = useSetting("start-of-week");
+  const timeConfig = useTimeConfig();
   const interval = getInterval(value);
   const unitOptions = getUnitOptions(value, availableUnits);
   const offsetInterval = getOffsetInterval(value);
   const offsetUnitOptions = getOffsetUnitOptions(value, availableUnits);
   const directionText = getDirectionText(value);
-  const dateRangeText = formatDateRange(
-    { "start-of-week": startOfWeek },
-    value,
-  );
+  const dateRangeText = formatDateRange(timeConfig, value);
   const outOfBounds = isOutOfBounds(value, minDate, maxDate);
 
   const handleIntervalChange = (inputValue: number | string) => {
