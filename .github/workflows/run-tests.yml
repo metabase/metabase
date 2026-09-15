@@ -1,428 +1,84 @@
-name: Run tests
+name: PR 82050 Loki narrowing demo
+run-name: 'PR 82050 Loki narrowing: ${{ inputs.scenario }}'
 
 on:
-  push:
-    branches:
-      - "master"
-      - "release-**"
-  pull_request:
-    types: [opened, synchronize, reopened]
   workflow_dispatch:
+    inputs:
+      scenario:
+        description: Frontend change to simulate against the exact PR source
+        type: choice
+        required: true
+        options:
+          - admin-deprecation-notice
+          - downloads-status
+          - full-plan
+          - no-plan
 
 permissions:
-  id-token: write
   contents: read
   actions: read
   checks: write
-  pull-requests: write
-  security-events: write
 
 jobs:
-  # `force-run` and `force-skip` are global overrides; `defer` means this
-  # job has no opinion and every downstream gate behaves as it always has.
-  #
-  # Only the lowest unmerged PR of a stack runs CI: it is the one whose base
-  # ref is the stack base. Every PR above it is force-skipped and gets tested
-  # once it reaches the bottom of the stack.
-  should-run:
-    name: Decide which jobs should run
-    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
-    timeout-minutes: 5
-    outputs:
-      verdict: ${{ steps.decide.outputs.verdict }}
-    steps:
-      - name: Decide
-        id: decide
-        # Precedence matters for the conditions below.
-        env:
-          VERDICT: >-
-            ${{ (github.ref_name == 'master' || startsWith(github.ref_name, 'release-x.')) && 'force-run'
-            || contains(github.event.pull_request.labels.*.name, 'ci:run-all') && 'force-run'
-            || contains(github.event.pull_request.labels.*.name, 'ci:skip') && 'force-skip'
-            || (github.event.pull_request.stack != null && github.event.pull_request.stack.base.ref != github.event.pull_request.base.ref) && 'force-skip'
-            || 'defer' }}
-        run: echo "verdict=$VERDICT" | tee -a "$GITHUB_OUTPUT"
-
-  files-changed:
-    needs: should-run
-    name: Detect changed files
-    if: ${{ needs.should-run.outputs.verdict == 'defer' }}
-    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
-    timeout-minutes: 5
-    outputs:
-      e2e_all: ${{ steps.changes.outputs.e2e_all }}
-      e2e_specs: ${{ steps.changes.outputs.e2e_specs }}
-      e2e_infra: ${{ steps.changes.outputs.e2e_infra }}
-      backend_all: ${{ steps.changes.outputs.backend_all }}
-      build_scripts: ${{ steps.changes.outputs.build_scripts }}
-      embedder_plugin: ${{ steps.changes.outputs.embedder_plugin }}
-      frontend_all: ${{ steps.changes.outputs.frontend_all }}
-      frontend_sources: ${{ steps.changes.outputs.frontend_sources }}
-      frontend_unit_infra: ${{ steps.changes.outputs.frontend_unit_infra }}
-      frontend_loki_infra: ${{ steps.changes.outputs.frontend_loki_infra }}
-      frontend_loki_all: ${{ steps.changes.outputs.frontend_loki_all }}
-      shared_sources: ${{ steps.changes.outputs.shared_sources }}
-      documentation: ${{ steps.changes.outputs.documentation }}
-      embedding_documentation: ${{ steps.changes.outputs.embedding_documentation }}
-      embedding_sdk_components: ${{ steps.changes.outputs.embedding_sdk_components }}
-      embedding_sdk_host_sample_apps: ${{ steps.changes.outputs.embedding_sdk_host_sample_apps }}
-      embedding_sdk_ci: ${{ steps.changes.outputs.embedding_sdk_ci }}
-      custom_viz_all: ${{ steps.changes.outputs.custom_viz_all }}
-      ci_scripts: ${{ steps.changes.outputs.ci_scripts }}
-      project_backend_checks: ${{ steps.changes.outputs.project_backend_checks }}
-      project_migration_checks: ${{ steps.changes.outputs.project_migration_checks }}
-      project_ratchet_checks: ${{ steps.changes.outputs.project_ratchet_checks }}
-      # A ratchets-only change (the shrink automation PR) needs the ratchet check, not an uberjar.
-      no_source_code_changes: >-
-        ${{ (steps.changes.outputs.documentation == 'true'
-        || steps.changes.outputs.project_ratchet_checks == 'true')
-        && steps.changes.outputs.backend_all == 'false'
-        && steps.changes.outputs.frontend_all == 'false'
-        && steps.changes.outputs.e2e_all == 'false' }}
-
-      all_changed_files: ${{ steps.changes.outputs.all_changed_files }}
-      e2e_all_files: ${{ steps.changes.outputs.e2e_all_files }}
-      e2e_specs_files: ${{ steps.changes.outputs.e2e_specs_files }}
-      frontend_sources_files: ${{ steps.changes.outputs.frontend_sources_files }}
-      backend_sources_files: ${{ steps.changes.outputs.backend_sources_files }}
-    steps:
-      - uses: actions/checkout@v6
-      - name: Test which files changed
-        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
-        id: changes
-        with:
-          token: ${{ github.token }}
-          # comma separated list of files
-          list-files: csv
-          filters: .github/file-paths.yaml
-
-  create-test-plan:
-    needs: [should-run, files-changed]
-    name: Create test plan
-    if: ${{ github.event_name == 'pull_request' && needs.should-run.outputs.verdict == 'defer' }}
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 10
-    outputs:
-      stats: ${{ steps.compute.outputs.stats }}
-      artifact-id: ${{ steps.compute.outputs.artifact-id }}
-    steps:
-      - uses: actions/checkout@v6
-      - name: Create test plan
-        id: compute
-        uses: ./.github/actions/create-test-plan
-        with:
-          changed-files: ${{ needs.files-changed.outputs.all_changed_files }}
-          fe-changed-files: ${{ needs.files-changed.outputs.frontend_sources_files }}
-          be-changed-files: ${{ needs.files-changed.outputs.backend_sources_files }}
-          unit-infra-touched: ${{ needs.files-changed.outputs.frontend_unit_infra }}
-          loki-infra-touched: ${{ needs.files-changed.outputs.frontend_loki_infra }}
-          e2e-infra-touched: ${{ needs.files-changed.outputs.e2e_infra }}
-          shared-sources-touched: ${{ needs.files-changed.outputs.shared_sources }}
-
-  upload-affected-tests-stats:
-    needs: create-test-plan
-    # Only land rows for PRs from the upstream repo so forks don't pollute the table.
-    if: |
-      !cancelled() &&
-      needs.create-test-plan.result == 'success' &&
-      github.event.pull_request.head.repo.full_name == 'metabase/metabase'
-    # Stats upload is best-effort — a failure here shouldn't fail the PR run.
-    continue-on-error: true
-    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
-    timeout-minutes: 3
-    steps:
-      - uses: actions/checkout@v6
-      - uses: ./.github/actions/prepare-node-bun
-      - name: Upload affected tests stats
-        env:
-          STATS_JSON: ${{ needs.create-test-plan.outputs.stats }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          ENG_STATS_URL: ${{ secrets.ENG_STATS_URL }}
-          API_KEY: ${{ secrets.ENG_STATS_API_KEY }}
-        run: bun .github/scripts/upload-affected-tests-stats.ts
-
-  uberjar:
-    needs: [should-run, files-changed]
-    if: |
-      !cancelled() && needs.should-run.outputs.verdict != 'force-skip' &&
-      (needs.should-run.outputs.verdict == 'force-run' ||
-      needs.files-changed.outputs.no_source_code_changes != 'true')
-    uses: ./.github/workflows/uberjar.yml
-    secrets: inherit
-
-  containerize:
-    needs: [uberjar]
-    if: >-
-      !cancelled() &&
-      needs.uberjar.result == 'success' &&
-      (
-        (github.event_name == 'push' && github.ref_name == 'master') ||
-        (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'build-docker-uberjar'))
-      )
-    name: containerize (${{ matrix.edition }})
-    strategy:
-      matrix:
-        edition: ['ee', 'oss']
-    uses: ./.github/workflows/containerize-jar.yml
-    secrets: inherit
-    with:
-      build-args: |
-        GIT_COMMIT_SHA=${{ github.event.pull_request.head.sha || github.sha }}
-      commit: ${{ github.event.pull_request.head.sha || github.sha }}
-      edition: ${{ matrix.edition }}
-      release: false
-
-  # Compile CLJS in parallel with the uberjar and pass it to each e2e group.
-  # The compile is doesn't depend on MB_EDITION
-  e2e-cljs:
-    name: Compile CLJS for e2e
-    needs: [should-run, files-changed]
-    if: |
-      !cancelled() &&
-      (needs.should-run.outputs.verdict == 'force-run' ||
-      (needs.files-changed.result == 'success' &&
-       needs.files-changed.outputs.e2e_all == 'true'))
+  plan:
+    name: Plan simulated ${{ inputs.scenario }} change
+    if: ${{ inputs.scenario != 'no-plan' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v6
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-      - name: Compile CLJS
-        run: bun run build-pure:cljs
-      - name: Upload compiled CLJS
-        uses: actions/upload-artifact@v7
-        with:
-          name: e2e-cljs-${{ github.event.pull_request.head.sha || github.sha }}
-          path: target/cljs_dev
-          if-no-files-found: error
-          # Uploads fail when an artifact of this name already exists in the run
-          # replace it rather than fail on a re-run.
-          overwrite: true
-
-  static-viz-files-changed:
-    name: Check whether static-viz files changed
-    needs: should-run
-    # Its only consumer is the backend skip gate, which a force-run overrides.
-    if: ${{ needs.should-run.outputs.verdict == 'defer' }}
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 10
     outputs:
-      static_viz: ${{ steps.static_viz.outputs.static_viz }}
+      artifact-id: ${{ steps.plan.outputs.artifact-id }}
     steps:
       - uses: actions/checkout@v6
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-      - name: Build static-viz frontend
-        run: bun run build-static-viz
+      - name: Choose changed source file
+        id: change
         env:
-          MB_EDITION: ee
-      - name: Check for static viz changes
-        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
-        id: static_viz
+          SCENARIO: ${{ inputs.scenario }}
+        run: |
+          loki_infra=false
+          case "$SCENARIO" in
+            admin-deprecation-notice) file=frontend/src/metabase/admin/app/components/DeprecationNotice/DeprecationNotice.tsx ;;
+            downloads-status) file=frontend/src/metabase/status/components/DownloadsStatusLarge/DownloadsStatusLarge.tsx ;;
+            full-plan) file=frontend/src/metabase/admin/app/components/DeprecationNotice/DeprecationNotice.tsx; loki_infra=true ;;
+            *) exit 1 ;;
+          esac
+          git ls-files --error-unmatch "$file"
+          echo "file=$file" >> "$GITHUB_OUTPUT"
+          echo "loki-infra=$loki_infra" >> "$GITHUB_OUTPUT"
+          {
+            echo "Controlled CI demonstration for PR #82050 at bc2d747ede8."
+            echo
+            echo "Simulated changed source: \`$file\` (loki-infra-touched: $loki_infra)."
+            echo 'The planner, the test plan artifact handoff, Storybook story selection, and the called Loki workflow are unchanged from that commit.'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: ./.github/actions/create-test-plan
+        id: plan
         with:
-          token: ${{ github.token }}
-          filters: .github/static-viz-sources.yaml
-
-  backend-tests:
-    if: |
-      !cancelled() &&
-      (needs.should-run.outputs.verdict == 'force-run' ||
-      needs.files-changed.result == 'success')
-    needs: [should-run, files-changed, static-viz-files-changed]
-    uses: ./.github/workflows/backend.yml
-    secrets: inherit
-    with:
-      skip: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.backend_all != 'true' &&
-        needs.static-viz-files-changed.outputs.static_viz != 'true' }}
-      force-run: ${{ needs.should-run.outputs.verdict == 'force-run' }}
-      run-project-backend-checks: ${{ needs.files-changed.outputs.project_backend_checks == 'true' }}
-      run-project-migration-checks: ${{ needs.files-changed.outputs.project_migration_checks == 'true' }}
-      run-project-ratchet-checks: ${{ needs.files-changed.outputs.project_ratchet_checks == 'true' }}
-
-  semantic-search-tests:
-    if: |
-      !cancelled() &&
-      (needs.should-run.outputs.verdict == 'force-run' ||
-      needs.files-changed.result == 'success')
-    needs: [should-run, files-changed]
-    uses: ./.github/workflows/semantic-search.yml
-    secrets: inherit
-    with:
-      skip: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.backend_all != 'true' }}
-
-  app-db-tests:
-    if: |
-      !cancelled() &&
-      (needs.should-run.outputs.verdict == 'force-run' ||
-      needs.files-changed.result == 'success')
-    needs: [should-run, files-changed]
-    uses: ./.github/workflows/app-db.yml
-    secrets: inherit
-    with:
-      skip: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.backend_all != 'true' }}
-      force-run: ${{ needs.should-run.outputs.verdict == 'force-run' }}
-
-  driver-tests:
-    if: |
-      !cancelled() &&
-      (needs.should-run.outputs.verdict == 'force-run' ||
-      needs.files-changed.result == 'success')
-    needs: [should-run, files-changed]
-    uses: ./.github/workflows/drivers.yml
-    secrets: inherit
-    with:
-      skip: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.backend_all != 'true' }}
-      force-run: ${{ needs.should-run.outputs.verdict == 'force-run' }}
-
-  frontend-tests:
-    needs: [should-run, files-changed, create-test-plan]
-    if: |
-      !cancelled() &&
-      (needs.should-run.outputs.verdict == 'force-run' ||
-      needs.files-changed.result == 'success')
-    uses: ./.github/workflows/frontend.yml
-    secrets: inherit
-    with:
-      skip: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.frontend_all != 'true' }}
-      # A skipped/failed planner supplies no artifact, so the suite runs in full.
-      test-plan-artifact-id: ${{ needs.create-test-plan.result == 'success' && needs.create-test-plan.outputs.artifact-id || '' }}
-      skip-lint: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.frontend_all != 'true' &&
-        needs.files-changed.outputs.e2e_all != 'true' }}
-      skip-custom-viz: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.custom_viz_all != 'true' }}
-      skip-ci-scripts: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.ci_scripts != 'true' }}
+          changed-files: ${{ steps.change.outputs.file }}
+          fe-changed-files: ${{ steps.change.outputs.file }}
+          be-changed-files: ''
+          unit-infra-touched: 'false'
+          loki-infra-touched: ${{ steps.change.outputs.loki-infra }}
+          e2e-infra-touched: 'false'
+          shared-sources-touched: 'false'
+      - name: Assert Loki narrowing
+        env:
+          SCENARIO: ${{ inputs.scenario }}
+        run: |
+          if [ "$SCENARIO" = full-plan ]; then
+            jq -e '.stats.loki_stories_to_run_usage == .stats.loki_stories_all' test-plan.json
+            echo "Planner selected all $(jq '.stats.loki_stories_all' test-plan.json) story files." | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            jq -e '.stats.loki_stories_to_run_usage > 0 and .stats.loki_stories_to_run_usage < .stats.loki_stories_all' test-plan.json
+            {
+              echo
+              echo "Planner selected $(jq '.stats.loki_stories_to_run_usage' test-plan.json) of $(jq '.stats.loki_stories_all' test-plan.json) story files:"
+              jq -r '.loki_stories_to_run[] | "- `" + . + "`"' test-plan.json
+            } | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
 
   loki-tests:
-    needs: [should-run, files-changed, create-test-plan]
-    if: |
-      !cancelled() &&
-      (needs.should-run.outputs.verdict == 'force-run' ||
-      needs.files-changed.result == 'success')
+    needs: plan
+    if: ${{ !cancelled() && (needs.plan.result == 'success' || inputs.scenario == 'no-plan') }}
     uses: ./.github/workflows/loki.yml
     with:
-      skip: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.frontend_loki_all != 'true' }}
-      # A skipped/failed planner supplies no artifact, so the suite runs in full.
-      test-plan-artifact-id: ${{ needs.create-test-plan.result == 'success' && needs.create-test-plan.outputs.artifact-id || '' }}
-
-  e2e-tests:
-    needs: [should-run, files-changed, uberjar]
-    # Skip e2e tests when the uberjar build failed or was cancelled — the
-    # downstream tests can't fetch a missing artifact, and we don't want to
-    # mask the uberjar failure with a wave of misleading e2e errors. We still
-    # enter the workflow when uberjar is `skipped` (docs-only PRs), because
-    # the inner `skip` input handles that path and reports the required
-    # `e2e-tests-result` check as success. When the uberjar genuinely failed,
-    # this whole job is skipped, the inner required checks never report, and
-    # branch protection blocks the merge as pending.
-    if: |
-      always() && !cancelled() &&
-      (needs.should-run.outputs.verdict == 'force-run' || needs.files-changed.result == 'success') &&
-      needs.uberjar.result != 'failure' &&
-      needs.uberjar.result != 'cancelled'
-    uses: ./.github/workflows/e2e-tests.yml
-    secrets: inherit
-    with:
-      skip: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.e2e_all != 'true' }}
-      # here we pass the list of changed files
-      # e.g. e2e/test/scenarios/onboarding/command-palette.cy.spec.js,e2e/test/scenarios/question/document-title.cy.spec.js
-      # e2e_all_files includes all changes which trigger all e2e tests, if the list of changes files is included in the
-      # list of changed specs files, then only specs are changed and we can run only those specs.
-      # Only narrow to changed specs on pull requests that haven't been forced to run everything.
-      # On push to master/release branches (and the merge queue) the paths-filter still computes
-      # these file lists, so without this guard a run that touched only specs would silently run a
-      # narrowed suite — we always want the full suite there.
-      specs: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        github.event_name == 'pull_request' &&
-        needs.files-changed.outputs.e2e_all_files == needs.files-changed.outputs.e2e_specs_files &&
-        needs.files-changed.outputs.e2e_specs_files || '' }}
-
-  embedding-sdk-package:
-    needs: [should-run, files-changed]
-    if: |
-      !cancelled() &&
-      (needs.should-run.outputs.verdict == 'force-run' ||
-      needs.files-changed.outputs.embedding_sdk_components == 'true' ||
-      needs.files-changed.outputs.frontend_sources == 'true' ||
-      needs.files-changed.outputs.embedding_documentation == 'true' ||
-      needs.files-changed.outputs.embedding_sdk_ci == 'true' ||
-      needs.files-changed.outputs.embedding_sdk_host_sample_apps == 'true')
-    uses: ./.github/workflows/embedding-sdk-package-build.yml
-    secrets: inherit
-
-  sdk-tests:
-    needs: [should-run, uberjar, embedding-sdk-package, files-changed]
-    if: always() && !cancelled()
-    uses: ./.github/workflows/embedding-sdk.yml
-    secrets: inherit
-    with:
-      cli-snippets-type-check: >-
-        ${{ needs.should-run.outputs.verdict == 'force-run' ||
-        needs.files-changed.outputs.frontend_sources == 'true' }}
-      docs-snippets-type-check: >-
-        ${{ needs.should-run.outputs.verdict == 'force-run' ||
-        needs.files-changed.outputs.embedding_documentation == 'true' }}
-      documentation-validation: >-
-        ${{ needs.should-run.outputs.verdict == 'force-run' ||
-        needs.files-changed.outputs.frontend_sources == 'true' }}
-      component-tests: >-
-        ${{ needs.should-run.outputs.verdict == 'force-run' ||
-        needs.files-changed.outputs.embedding_sdk_components == 'true' }}
-      host-sample-apps-tests: >-
-        ${{ needs.should-run.outputs.verdict == 'force-run' ||
-        needs.files-changed.outputs.embedding_sdk_host_sample_apps == 'true' }}
-      skip: >-
-        ${{ needs.embedding-sdk-package.result != 'success' ||
-        needs.uberjar.result != 'success' }}
-
-  build-scripts-tests:
-    needs: [should-run, files-changed]
-    if: |
-      !cancelled() &&
-      (needs.should-run.outputs.verdict == 'force-run' ||
-      needs.files-changed.result == 'success')
-    uses: ./.github/workflows/build-scripts.yml
-    secrets: inherit
-    with:
-      skip-build-scripts: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.build_scripts != 'true' }}
-      skip-embedder-plugin: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.embedder_plugin != 'true' }}
-
-  bundle-size:
-    needs: [uberjar, files-changed]
-    if: |
-      !cancelled() &&
-      github.event_name == 'pull_request' &&
-      needs.uberjar.result == 'success' &&
-      needs.files-changed.outputs.frontend_sources == 'true'
-    uses: ./.github/workflows/bundle-size.yml
-    secrets: inherit
+      test-plan-artifact-id: ${{ inputs.scenario != 'no-plan' && needs.plan.outputs.artifact-id || '' }}
