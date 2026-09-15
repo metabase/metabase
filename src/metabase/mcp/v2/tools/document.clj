@@ -273,8 +273,10 @@
 (defn- snippet
   "`s` cut to at most 80 characters, for a message to quote."
   [s]
-  (let [s (str s)]
-    (if (> (count s) 80) (str (subs s 0 77) "…") s)))
+  (let [^String s (str s)]
+    (if (> (count s) 80)
+      (str (subs s 0 (if (Character/isHighSurrogate (.charAt s 76)) 76 77)) "…")
+      s)))
 
 (def ^:private max-edit-work
   "Ceiling on `splices × document-KB` for one `document_write` call, the product that sets its cost:

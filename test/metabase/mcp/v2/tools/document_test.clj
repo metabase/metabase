@@ -253,6 +253,14 @@
                                  :edits [{:old_str "gamma" :new_str "gamma gamma" :replace_all true}]})]
               (is (= "gamma gamma one\n\ngamma gamma two" (:content_markdown updated))))))))))
 
+(deftest ^:parallel snippet-keeps-surrogate-pairs-whole-test
+  (testing "GHY-4544: cutting an old_str for an error message never splits a surrogate pair"
+    (let [prefix (apply str (repeat 76 "a"))]
+      (is (= (str prefix "…")
+             (#'v2.document/snippet (str prefix "😀" (apply str (repeat 10 "b"))))))
+      (is (= (str prefix "b…")
+             (#'v2.document/snippet (str prefix "b" (apply str (repeat 10 "b")))))))))
+
 (deftest edit-replacement-parses-markdown-test
   (testing "replacement text is parsed as Markdown"
     (mt/with-current-user (mt/user->id :crowberto)
