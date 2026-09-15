@@ -1,8 +1,8 @@
 (ns metabase.transform-testing.expectations
   "Checks the expectations of a test suite against the output of the transform under test."
   (:require
-   [metabase.driver :as driver]
    [metabase.transform-testing.compile :as transform-testing.compile]
+   [metabase.transform-testing.executor :as transform-testing.executor]
    [metabase.transform-testing.schema :as transform-testing.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -30,6 +30,6 @@
   [{:keys [driver conn replacements]} :- ::context
    {:keys [sql]}                      :- ::transform-testing.schema/expectation.empty]
   (let [query (transform-testing.compile/replace-tables driver sql replacements)]
-    (if (empty? (driver/query-on-connection driver conn [query []] {:max-rows 1}))
+    (if (empty? (transform-testing.executor/run-query driver conn [query []] 1))
       :passed
       :failed)))
