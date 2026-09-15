@@ -3,11 +3,15 @@ import { join } from "node:path";
 
 import type { TestPlan, TestPlanStats } from "./affected-tests";
 
+type NumberStat = {
+  [K in keyof TestPlanStats]: TestPlanStats[K] extends number ? K : never;
+}[keyof TestPlanStats];
+
 type Suite = {
   name: string;
   filesKey: Exclude<keyof TestPlan, "stats">;
-  totalKey: keyof TestPlanStats;
-  selectedKey: keyof TestPlanStats;
+  totalKey: NumberStat;
+  selectedKey: NumberStat;
   pathsFile: string;
 };
 
@@ -39,17 +43,31 @@ function isSuiteName(name: string): name is keyof typeof SUITES {
   return Object.hasOwn(SUITES, name);
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return (
+    Array.isArray(value) && value.every((item) => typeof item === "string")
+  );
+}
+
+function isCount(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0;
+}
+
 // null means a full run, and [] is an explicit selection of no tests.
 function readSelection(planFile: string, suite: Suite): string[] | null {
-  const plan = JSON.parse(readFileSync(planFile, "utf8"));
-  const files = plan?.[suite.filesKey];
-  const total = plan?.stats?.[suite.totalKey];
+  const plan: unknown = JSON.parse(readFileSync(planFile, "utf8"));
+  const files = isRecord(plan) ? plan[suite.filesKey] : undefined;
+  const stats = isRecord(plan) && isRecord(plan.stats) ? plan.stats : {};
+  const total = stats[suite.totalKey];
   if (
-    !Array.isArray(files) ||
-    !files.every((file) => typeof file === "string" && file.length > 0) ||
-    !Number.isInteger(total) ||
-    total < 0 ||
-    files.length !== plan.stats[suite.selectedKey] ||
+    !isStringArray(files) ||
+    files.some((file) => file.length === 0) ||
+    !isCount(total) ||
+    files.length !== stats[suite.selectedKey] ||
     files.length > total
   ) {
     throw new Error(`Invalid ${suite.name} test selection`);
@@ -58,14 +76,9 @@ function readSelection(planFile: string, suite: Suite): string[] | null {
 }
 
 export function prepareTestSelection(
-  suiteName: string,
+  suiteName: keyof typeof SUITES,
   env: NodeJS.ProcessEnv = process.env,
 ) {
-  if (!isSuiteName(suiteName)) {
-    throw new Error(
-      `Unknown test suite "${suiteName}", expected one of: ${Object.keys(SUITES).join(", ")}`,
-    );
-  }
   const suite: Suite = SUITES[suiteName];
   const { RUNNER_TEMP, GITHUB_OUTPUT, PLAN_DOWNLOADED } = env;
   if (!RUNNER_TEMP || !GITHUB_OUTPUT) {
@@ -78,14 +91,13 @@ export function prepareTestSelection(
       throw new Error("Test plan download failed");
     }
     files = readSelection(join(RUNNER_TEMP, "test-plan/test-plan.json"), suite);
-  } catch {
+  } catch (error) {
     console.warn(
-      `::warning::Test plan unavailable or invalid; running the full ${suite.name} suite.`,
+      `::warning::Test plan unavailable or invalid, running the full ${suite.name} suite: ${error}`,
     );
     return;
   }
 
-  // Full selections use each runner's normal discovery, without a paths file.
   if (files === null) {
     appendFileSync(GITHUB_OUTPUT, "selection=full\n");
     return;
@@ -100,5 +112,11 @@ export function prepareTestSelection(
 }
 
 if (require.main === module) {
-  prepareTestSelection(process.argv[2]);
+  const suiteName = process.argv[2] ?? "";
+  if (!isSuiteName(suiteName)) {
+    throw new Error(
+      `Unknown test suite "${suiteName}", expected one of: ${Object.keys(SUITES).join(", ")}`,
+    );
+  }
+  prepareTestSelection(suiteName);
 }

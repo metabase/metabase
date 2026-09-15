@@ -25,6 +25,7 @@ type Step = {
 };
 
 const SCRIPT = resolve(__dirname, "prepare-test-selection.ts");
+const SUITE_NAMES = ["unit", "loki", "e2e"] satisfies (keyof typeof SUITES)[];
 
 function loadWorkflow(file: string) {
   // js-yaml returns an untyped value, and these repository workflows define jobs with steps.
@@ -167,9 +168,10 @@ describe("prepareTestSelection", () => {
     expect(output()).toBe("");
   });
 
-  it.each(Object.entries(SUITES))(
+  it.each(SUITE_NAMES)(
     "reads the %s selection from its own plan keys",
-    (suiteName, suite) => {
+    (suiteName) => {
+      const suite = SUITES[suiteName];
       writePlan(plan(["one.spec.cjs"], 2, suite));
       prepareTestSelection(suiteName, env);
       expect(output()).toBe(
