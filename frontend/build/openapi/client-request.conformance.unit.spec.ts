@@ -42,18 +42,21 @@ interface Modelled {
 afterEach(cleanupFixtures);
 
 // The same source is compiled for the model and run for the client, so the argument has the type the model reads.
-function fixtureSource({ declarations = "", endpoint, argument }: Fixture) {
+function fixtureSource(
+  { declarations = "", endpoint }: Omit<Fixture, "argument">,
+  arguments_: string[],
+) {
   return `
     ${ENDPOINT_PRELUDE}
     ${declarations}
     const endpoint = defineEndpoint(${endpoint});
-    const argument: Parameters<typeof endpoint.query>[0] = ${argument};
+    const arguments_: Parameters<typeof endpoint.query>[0][] = [${arguments_.join(",")}];
   `;
 }
 
-function model(fixture: Fixture): Modelled {
+function model(source: string): Modelled {
   const { program, files, checker } = programFrom({
-    "request.ts": fixtureSource(fixture),
+    "request.ts": source,
   });
   const config = endpointObject(program, files["request.ts"] ?? "");
   const rtk = resolveRtkRequest(config);
@@ -67,21 +70,22 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function loadFixture(fixture: Fixture): {
+function loadFixture(source: string): {
   query: (argument: unknown) => unknown;
   extraOptions: unknown;
-  argument: unknown;
+  arguments_: unknown[];
 } {
-  const { outputText } = ts.transpileModule(fixtureSource(fixture), {
+  const { outputText } = ts.transpileModule(source, {
     compilerOptions: { target: ts.ScriptTarget.ES2022 },
   });
   const loaded: unknown = new Function(
-    `${outputText}\nreturn { endpoint, argument };`,
+    `${outputText}\nreturn { endpoint, arguments_ };`,
   )();
   if (
     !isRecord(loaded) ||
     !isRecord(loaded.endpoint) ||
-    typeof loaded.endpoint.query !== "function"
+    typeof loaded.endpoint.query !== "function" ||
+    !Array.isArray(loaded.arguments_)
   ) {
     throw new Error("The fixture did not define an endpoint query.");
   }
@@ -89,7 +93,7 @@ function loadFixture(fixture: Fixture): {
   return {
     query: (argument) => query(argument),
     extraOptions: loaded.endpoint.extraOptions,
-    argument: loaded.argument,
+    arguments_: loaded.arguments_,
   };
 }
 
@@ -117,9 +121,13 @@ function sentBody(body: RequestInit["body"]): SentBody {
   throw new Error("The client sent a body kind this spec does not read.");
 }
 
-async function send(fixture: Fixture): Promise<Outcome> {
+async function send(
+  { query, extraOptions }: ReturnType<typeof loadFixture>,
+  argument: unknown,
+): Promise<Outcome> {
+  fetchMock.clearHistory();
+  requestInits.splice(0);
   fetchMock.route("begin:http", {});
-  const { query, extraOptions, argument } = loadFixture(fixture);
   const controller = new AbortController();
   const api: BaseQueryApi = {
     signal: controller.signal,
@@ -260,12 +268,22 @@ function sentRequest(request: Partial<SentRequest>): Outcome {
 }
 
 async function expectConformance(
-  fixture: Fixture,
-  expected: Outcome,
+  fixture: Omit<Fixture, "argument">,
   expectedModel: Projection | "unverified",
+  examples: [
+    { argument: string; expected: Outcome },
+    ...{ argument: string; expected: Outcome }[],
+  ],
 ) {
-  expect(projection(model(fixture))).toEqual(expectedModel);
-  expect(await send(fixture)).toEqual(expected);
+  const source = fixtureSource(
+    fixture,
+    examples.map(({ argument }) => argument),
+  );
+  expect(projection(model(source))).toEqual(expectedModel);
+  const loaded = loadFixture(source);
+  for (const [index, { expected }] of examples.entries()) {
+    expect(await send(loaded, loaded.arguments_[index])).toEqual(expected);
+  }
 }
 
 describe("modelClientRequest against the real API client", () => {
@@ -288,10 +306,9 @@ describe("modelClientRequest against the real API client", () => {
     await expectConformance(
       {
         endpoint: `{ query: (params: ${type}) => ({ url: "/api/x", params }) }`,
-        argument: value,
       },
-      sentRequest({}),
       projected({}),
+      [{ argument: value, expected: sentRequest({}) }],
     );
   });
 
@@ -302,10 +319,14 @@ describe("modelClientRequest against the real API client", () => {
     await expectConformance(
       {
         endpoint: `{ query: (params: { skipped: ${type}; kept: string }) => ({ url: "/api/x", params }) }`,
-        argument: `{ skipped: ${value}, kept: "k" }`,
       },
-      sentRequest({ query: [["kept", "k"]] }),
       projected({ query: [{ kept: ["string"] }] }),
+      [
+        {
+          argument: `{ skipped: ${value}, kept: "k" }`,
+          expected: sentRequest({ query: [["kept", "k"]] }),
+        },
+      ],
     );
   });
 
@@ -313,19 +334,20 @@ describe("modelClientRequest against the real API client", () => {
     const endpoint =
       '{ query: (params: { ids: number[] }) => ({ url: "/api/x", params }) }';
     await expectConformance(
-      { endpoint, argument: "{ ids: [] }" },
-      sentRequest({}),
+      { endpoint },
       projected({ query: [{ "ids?": ["number[]"] }] }),
-    );
-    await expectConformance(
-      { endpoint, argument: "{ ids: [1, 2] }" },
-      sentRequest({
-        query: [
-          ["ids", "1"],
-          ["ids", "2"],
-        ],
-      }),
-      projected({ query: [{ "ids?": ["number[]"] }] }),
+      [
+        { argument: "{ ids: [] }", expected: sentRequest({}) },
+        {
+          argument: "{ ids: [1, 2] }",
+          expected: sentRequest({
+            query: [
+              ["ids", "1"],
+              ["ids", "2"],
+            ],
+          }),
+        },
+      ],
     );
   });
 
@@ -334,12 +356,6 @@ describe("modelClientRequest against the real API client", () => {
       "params",
       '{ query: (params: { __rtkCacheKey: string; q: string }) => ({ url: "/api/x", params }) }',
       sentRequest({ query: [["q", "text"]] }),
-      sentRequest({
-        query: [
-          ["__rtkCacheKey", "key"],
-          ["q", "text"],
-        ],
-      }),
     ],
     [
       "body",
@@ -348,22 +364,18 @@ describe("modelClientRequest against the real API client", () => {
         method: "POST",
         body: { kind: "json", value: { q: "text" } },
       }),
-      sentRequest({
-        method: "POST",
-        body: { kind: "json", value: { __rtkCacheKey: "key", q: "text" } },
-      }),
     ],
   ])(
     "should remove __rtkCacheKey from the %s",
     async (_channel, endpoint, expected) => {
       await expectConformance(
-        { endpoint, argument: '{ __rtkCacheKey: "key", q: "text" }' },
-        expected,
+        { endpoint },
         projected(
           _channel === "body"
             ? { method: "POST", body: [{ q: ["string"] }] }
             : { query: [{ q: ["string"] }] },
         ),
+        [{ argument: '{ __rtkCacheKey: "key", q: "text" }', expected }],
       );
     },
   );
@@ -372,12 +384,9 @@ describe("modelClientRequest against the real API client", () => {
     "should send nothing for a GET %s body",
     async (type) => {
       await expectConformance(
-        {
-          endpoint: `{ query: (body: ${type}) => ({ url: "/api/x", body }) }`,
-          argument: `new ${type}()`,
-        },
-        sentRequest({}),
+        { endpoint: `{ query: (body: ${type}) => ({ url: "/api/x", body }) }` },
         projected({}),
+        [{ argument: `new ${type}()`, expected: sentRequest({}) }],
       );
     },
   );
@@ -388,10 +397,17 @@ describe("modelClientRequest against the real API client", () => {
       await expectConformance(
         {
           endpoint: `{ query: (body: ${type}) => ({ method: "POST", url: "/api/x", body }) }`,
-          argument: `new ${type}()`,
         },
-        sentRequest({ method: "POST", body: { kind: "raw", type } }),
         projected({ method: "POST", body: "unverified" }),
+        [
+          {
+            argument: `new ${type}()`,
+            expected: sentRequest({
+              method: "POST",
+              body: { kind: "raw", type },
+            }),
+          },
+        ],
       );
     },
   );
@@ -405,10 +421,17 @@ describe("modelClientRequest against the real API client", () => {
       await expectConformance(
         {
           endpoint: `{ query: (body: ${type}) => ({ method: "POST", url: "/api/x", body }) }`,
-          argument,
         },
-        sentRequest({ method: "POST", body: { kind: "json", value: {} } }),
         projected({ method: "POST", body: "unverified" }),
+        [
+          {
+            argument,
+            expected: sentRequest({
+              method: "POST",
+              body: { kind: "json", value: {} },
+            }),
+          },
+        ],
       );
     },
   );
@@ -420,10 +443,9 @@ describe("modelClientRequest against the real API client", () => {
       {
         endpoint:
           '{ query: (body: { limit: number } | null) => ({ url: "/api/x", params: {}, body }) }',
-        argument: "null",
       },
-      sentRequest({}),
       projected({ query: [{ limit: ["number"] }, "nothing"] }),
+      [{ argument: "null", expected: sentRequest({}) }],
     );
   });
 
@@ -1040,6 +1062,8 @@ describe("modelClientRequest against the real API client", () => {
     ],
   ];
   it.each(cases)("%s", async (_name, fixture, expected, expectedModel) => {
-    await expectConformance(fixture, expected, expectedModel);
+    await expectConformance(fixture, expectedModel, [
+      { argument: fixture.argument, expected },
+    ]);
   });
 });

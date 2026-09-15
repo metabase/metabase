@@ -1,6 +1,6 @@
 import ts from "typescript";
 
-import type { Shape, ShapeField } from "./shape";
+import { type Shape, type ShapeField, unionShape } from "./shape";
 import {
   elementTypes,
   properties,
@@ -123,7 +123,7 @@ export function stringShapes(checker: ts.TypeChecker, type: ts.Type): Shape[] {
   });
 }
 
-export function jsonOmissionReason(type: ts.Type): string | undefined {
+function jsonOmissionReason(type: ts.Type): string | undefined {
   if (type.flags & (ts.TypeFlags.Undefined | ts.TypeFlags.Void)) {
     return "undefined";
   }
@@ -131,6 +131,59 @@ export function jsonOmissionReason(type: ts.Type): string | undefined {
     return "a symbol";
   }
   return type.getCallSignatures().length > 0 ? "a function" : undefined;
+}
+
+export function jsonField(
+  checker: ts.TypeChecker,
+  field: ShapeField,
+):
+  | {
+      field: ShapeField;
+      preservesType: boolean;
+      omitsValues: boolean;
+      convertsValues: boolean;
+    }
+  | undefined {
+  if (field.shape.kind !== "type") {
+    return {
+      field,
+      preservesType: true,
+      omitsValues: false,
+      convertsValues: false,
+    };
+  }
+  const { type } = field.shape;
+  const parts = unionMembers(checker, type);
+  const kept = parts.filter((part) => !jsonOmissionReason(part));
+  if (!kept.length) {
+    return undefined;
+  }
+  const omitsValues = kept.length < parts.length;
+  const values = omitsValues ? kept : [type];
+  const views = values.map((value) => jsonView(checker, value));
+  const convertsValues = views.some(
+    (view, index) => view.kind !== "type" || view.type !== values[index],
+  );
+  // Dropping undefined preserves a property's declared type only when it was optional already.
+  const preservesType =
+    !convertsValues &&
+    (!omitsValues ||
+      (field.optional &&
+        parts.every(
+          (part) =>
+            !jsonOmissionReason(part) ||
+            (part.flags & (ts.TypeFlags.Undefined | ts.TypeFlags.Void)) !== 0,
+        )));
+  return {
+    field: {
+      ...field,
+      shape: unionShape(views),
+      optional: field.optional || omitsValues,
+    },
+    preservesType,
+    omitsValues,
+    convertsValues,
+  };
 }
 
 const jsonViews = new WeakMap<ts.Type, Shape>();
@@ -289,56 +342,22 @@ function buildShape(checker: ts.TypeChecker, type: ts.Type): Shape {
     };
   }
   const declared = properties(type);
-  const fields = declared.flatMap(
-    (property): { field: ShapeField; unchanged: boolean }[] => {
-      if (isPrototypeMember(property)) {
-        return [];
-      }
-      const parts = unionMembers(checker, checker.getTypeOfSymbol(property));
-      const kept = parts.filter((part) => !jsonOmissionReason(part));
-      if (!kept.length) {
-        return [];
-      }
-      const views = kept.map((part) => jsonView(checker, part));
-      const [only, ...more] = views;
-      const declaredOptional = (property.flags & ts.SymbolFlags.Optional) !== 0;
-      return [
-        {
-          field: {
-            name: property.name,
-            shape:
-              only && !more.length
-                ? only
-                : {
-                    kind: "union",
-                    from: checker.getTypeOfSymbol(property),
-                    members: views,
-                  },
-            optional: declaredOptional || kept.length < parts.length,
-            declaration: property.declarations?.[0],
-          },
-          // A value that dropped undefined stays as declared only when the property was optional already.
-          unchanged:
-            views.every(
-              (view, index) =>
-                view.kind === "type" && view.type === kept[index],
-            ) &&
-            (kept.length === parts.length ||
-              (declaredOptional &&
-                parts.every(
-                  (part) =>
-                    kept.includes(part) ||
-                    (part.flags &
-                      (ts.TypeFlags.Undefined | ts.TypeFlags.Void)) !==
-                      0,
-                ))),
-        },
-      ];
-    },
-  );
+  const fields = declared.flatMap((property) => {
+    if (isPrototypeMember(property)) {
+      return [];
+    }
+    return (
+      jsonField(checker, {
+        name: property.name,
+        shape: { kind: "type", type: checker.getTypeOfSymbol(property) },
+        optional: (property.flags & ts.SymbolFlags.Optional) !== 0,
+        declaration: property.declarations?.[0],
+      }) ?? []
+    );
+  });
   const unchanged =
     fields.length === declared.length &&
-    fields.every((entry) => entry.unchanged);
+    fields.every((entry) => entry.preservesType);
   if (!unchanged && indexes.length) {
     return {
       kind: "unverified",

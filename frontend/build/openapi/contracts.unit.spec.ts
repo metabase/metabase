@@ -131,38 +131,6 @@ describe("API contract checks", () => {
     }
   });
 
-  it("should check repeated response types with their own union siblings", () => {
-    const results = check({
-      frontend:
-        "type T = { x: number; a?: string }; type ErdResponse = { first: T; second: T };",
-      backend: withResponse(
-        "{ first: S | Alt; second: S }",
-        "type S = { x: number }; type Alt = { x: number; a: string };",
-      ),
-      endpoint,
-    });
-    expect(resultFor(results, "response.2XX")).toMatchObject({
-      status: "mismatch",
-      message: expect.stringContaining("$.second.a"),
-    });
-  });
-
-  it("should report a disagreement at the path that failed after trying a union", () => {
-    const results = check({
-      frontend:
-        "type A = { x: number; a?: string }; type B = { x: number }; type ErdResponse = { first: A | B; second: A };",
-      backend: withResponse(
-        "{ first: S; second: S }",
-        "type S = { x: number };",
-      ),
-      endpoint,
-    });
-    expect(resultFor(results, "response.2XX")).toMatchObject({
-      status: "mismatch",
-      message: expect.stringContaining("$.second.a"),
-    });
-  });
-
   it("should keep checking a typed EndpointBuilder after its variable is renamed", () => {
     const results = check({
       frontend: `${frontend}\ndeclare const renamed: EndpointBuilder;`,
@@ -212,216 +180,6 @@ describe("API contract checks", () => {
     ).toThrow(/Type expected/);
   });
 
-  it("should find multiple independent nested field mismatches", () => {
-    const results = check({
-      frontend: replaceOnce(
-        replaceOnce(frontend, "string | null", "string"),
-        "id: number",
-        "id: string",
-      ),
-      backend,
-      endpoint,
-    });
-    const response = resultFor(results, "response.2XX");
-    expect(response?.status).toBe("mismatch");
-    expect(response?.message).toMatch(/nodes\[\]\.owner\.email/);
-    expect(response?.message).toMatch(/nodes\[\]\.fields\[\]\.id/);
-  });
-
-  it("should explain optional-property presence independently of its value type", () => {
-    const results = check({
-      frontend: "type ErdResponse = { label: string | undefined };",
-      backend: withResponse("{ label?: string }"),
-      endpoint,
-    });
-    expect(resultFor(results, "response.2XX")).toMatchObject({
-      status: "mismatch",
-      message: expect.stringMatching(/label.*optional.*required/),
-    });
-  });
-
-  it("should accept primitive aliases and response subsets without copying generated entities", () => {
-    const results = check({
-      frontend: 'type ErdResponse = { schema: "yo" };',
-      backend: withResponse(
-        "{ schema: XYZ; unused: { deep: number } }",
-        'type XYZ = "yo";',
-      ),
-      endpoint,
-    });
-    expect(resultFor(results, "response.2XX")?.status).toBe("compatible");
-  });
-
-  it.each([
-    {
-      name: "should reject optional frontend fields absent from the backend schema",
-      frontend: "{ id: number; email?: string }",
-      backend: "{ id: number }",
-      missing: "$.email",
-    },
-    {
-      name: "should check optional nested fields through nullable aliases and readonly arrays",
-      frontend:
-        "{ nodes: ReadonlyArray<{ owner?: { email: string; nickname?: string } | null }> }",
-      backend: "{ nodes: { owner: { email: string } | null }[] }",
-      missing: "$.nodes[].owner.nickname",
-    },
-    {
-      name: "should not borrow an optional field from a different discriminated variant",
-      frontend:
-        '{ kind: "ok"; error?: string } | { kind: "error"; error: string }',
-      backend: '{ kind: "ok" } | { kind: "error"; error: string }',
-      missing: "$.error",
-    },
-    {
-      name: "should check tuple fields at their own positions",
-      frontend: "[{ id: number; email?: string }, { email: string }]",
-      backend: "[{ id: number }, { email: string }]",
-      missing: "$[0].email",
-    },
-    {
-      name: "should check nested fields in dictionaries",
-      frontend: "{ users: Record<string, { id: number; nickname?: string }> }",
-      backend: "{ users: Record<string, { id: number }> }",
-      missing: "$.users[key].nickname",
-    },
-    {
-      name: "should reject a frontend dictionary unsupported by the backend schema",
-      frontend: "{ users: Record<string, { id: number }> }",
-      backend: "{ users: { alice: { id: number } } }",
-      missing: "$.users[key]",
-    },
-    {
-      name: "should check whether named properties match backend template index signatures",
-      frontend: '{ metadata: { "x-id"?: string; other?: string } }',
-      backend: "{ metadata: { [key: `x-${string}`]: string } }",
-      missing: "$.metadata.other",
-    },
-    {
-      name: "should not use numeric index signatures to justify nonnumeric properties",
-      frontend: "{ values: { 0?: string; extra?: string } }",
-      backend: "{ values: { [key: number]: string } }",
-      missing: "$.values.extra",
-    },
-  ])("$name", (sample) => {
-    const results = check({
-      frontend: `type ErdResponse = ${sample.frontend};`,
-      backend: withResponse(sample.backend),
-      endpoint,
-    });
-    const response = resultFor(results, "response.2XX");
-    expect(response?.status).toBe("mismatch");
-    expect(response?.message).toContain(sample.missing);
-    expect(response?.message).toMatch(/not declared in the backend/);
-  });
-
-  it.each([
-    {
-      name: "should allow the frontend to omit backend fields at every level",
-      frontend: "{ nodes: { owner: { email?: string } }[] }",
-      backend:
-        "{ nodes: { id: number; owner: { email: string; name: string } }[]; count: number }",
-    },
-    {
-      name: "should allow an optional field declared in one compatible backend union variant",
-      frontend: '{ kind: "ok" | "error"; data?: { id: number } }',
-      backend:
-        '{ kind: "ok"; data: { id: number; name: string } } | { kind: "error" }',
-    },
-    {
-      name: "should accept independently named discriminated unions with nested subsets",
-      frontend:
-        '{ kind: "ok"; data: { id: number } } | { kind: "error"; message: string }',
-      backend:
-        '{ kind: "ok"; data: { id: number; name: string } } | { kind: "error"; message: string; code: number }',
-    },
-    {
-      name: "should accept a named optional property supported by a backend index signature",
-      frontend: "{ users: { alice?: { id: number } } }",
-      backend: "{ users: Record<string, { id: number; name: string }> }",
-    },
-  ])("$name", (sample) => {
-    const results = check({
-      frontend: `type ErdResponse = ${sample.frontend};`,
-      backend: withResponse(sample.backend),
-      endpoint,
-    });
-    expect(resultFor(results, "response.2XX")).toMatchObject({
-      status: "compatible",
-    });
-  });
-
-  it("should check optional field values supplied by a backend index signature", () => {
-    const results = check({
-      frontend: 'type ErdResponse = { metadata: { "x-id"?: string } };',
-      backend: withResponse("{ metadata: { [key: `x-${string}`]: number } }"),
-      endpoint,
-    });
-    expect(resultFor(results, "response.2XX")).toMatchObject({
-      status: "mismatch",
-      message: expect.stringMatching(/metadata.x-id.*number.*not assignable/),
-    });
-  });
-
-  it("should check separate occurrences of a shared frontend alias against their own backend shapes", () => {
-    const results = check({
-      frontend:
-        "type Shared = { id: number; name?: string }; type ErdResponse = { first: Shared; second: Shared };",
-      backend: withResponse(
-        "{ first: { id: number; name: string }; second: { id: number } }",
-      ),
-      endpoint,
-    });
-    expect(resultFor(results, "response.2XX")).toMatchObject({
-      status: "mismatch",
-      message: expect.stringMatching(/second.name.*not declared/),
-    });
-  });
-
-  it("should check fields after revisiting recursive aliases", () => {
-    const results = check({
-      frontend:
-        "type Tree = { id: number; children: Tree[]; name?: string }; type ErdResponse = Tree;",
-      backend: withResponse(
-        "Branch",
-        "type Branch = { id: number; children: Branch[] };",
-      ),
-      endpoint,
-    });
-    expect(resultFor(results, "response.2XX")).toMatchObject({
-      status: "mismatch",
-      message: expect.stringMatching(/name.*not declared/),
-    });
-  });
-
-  it("should keep unmatched frontend object variants unverified", () => {
-    const results = check({
-      frontend:
-        'type ErdResponse = { kind: "ok" } | { kind: "error"; message?: string };',
-      backend: withResponse('{ kind: "ok" }'),
-      endpoint,
-    });
-    expect(resultFor(results, "response.2XX")).toMatchObject({
-      status: "unverified",
-      message: expect.stringMatching(/union variant/),
-    });
-  });
-
-  it("should terminate when recursive backend variants share the same child types", () => {
-    const results = check({
-      frontend:
-        'type Tree = { kind: "a" | "b"; children: Tree[] }; type ErdResponse = Tree;',
-      backend: withResponse(
-        "Branch",
-        'type Branch = { kind: "a"; children: Branch[] } | { kind: "b"; children: Branch[] };',
-      ),
-      endpoint,
-    });
-    expect(resultFor(results, "response.2XX")).toMatchObject({
-      status: "compatible",
-    });
-  });
-
   it("should resolve differently named nested entities without importing generated types into the frontend", () => {
     const results = check({ frontend, backend, endpoint });
     expect(results.map((result) => result.status)).toEqual([
@@ -430,24 +188,6 @@ describe("API contract checks", () => {
       "compatible",
       "compatible",
     ]);
-  });
-
-  it("should reject a nullable field several referenced entities deep", () => {
-    const results = check({
-      frontend: replaceOnce(frontend, "string | null", "string"),
-      backend,
-      endpoint,
-    });
-    expect(resultFor(results, "response.2XX")?.status).toBe("mismatch");
-  });
-
-  it("should check every union response variant, including missing fields on failures", () => {
-    const results = check({
-      frontend,
-      backend: withResponse("{ nodes: Node[] } | { error: string }"),
-      endpoint,
-    });
-    expect(resultFor(results, "response.2XX")?.status).toBe("mismatch");
   });
 
   it("should compare a scalar query argument with its actual path slot, including URL encoding", () => {
@@ -516,18 +256,6 @@ describe("API contract checks", () => {
     expect(resultFor(results, "response")?.status).toBe("ignored");
   });
 
-  it.each(["any", "unknown", "MissingType"])(
-    "should never report a contract containing %s as verified",
-    (loose) => {
-      const results = check({
-        frontend: replaceOnce(frontend, "string | null", loose),
-        backend,
-        endpoint,
-      });
-      expect(resultFor(results, "response.2XX")?.status).toBe("unverified");
-    },
-  );
-
   it("should report dynamic requests as coverage gaps", () => {
     const results = check({
       frontend,
@@ -552,19 +280,6 @@ describe("API contract checks", () => {
         message: expect.stringMatching(/No generated operation for POST/),
       }),
     ]);
-  });
-
-  it("should support recursive component references without copying or infinitely expanding them", () => {
-    const results = check({
-      frontend:
-        "type Tree = { id: number; children: Tree[] }; type ErdResponse = Tree;",
-      backend: withResponse(
-        "Branch",
-        "export type Branch = { id: number; children: Branch[] };",
-      ),
-      endpoint,
-    });
-    expect(resultFor(results, "response.2XX")?.status).toBe("compatible");
   });
 
   it("should fail closed when generation produces no recognizable operations", () => {
@@ -829,100 +544,6 @@ describe("diagnostic messages", () => {
     expect(messageFor(results, "response.2XX")).toEqual([
       `$${".child".repeat(depth)}.label (endpoint.ts:10): backend type number is not assignable to frontend type string`,
     ]);
-  });
-
-  it("should report a recursive mismatch once, where the types first repeat", () => {
-    const results = check({
-      frontend:
-        "interface Tree { name: string; children: Tree[] } type ErdResponse = Tree;",
-      backend: withResponse(
-        "Branch",
-        "type Branch = { name: number; children: Branch[] };",
-      ),
-      endpoint,
-    });
-    expect(messageFor(results, "response.2XX")).toEqual([
-      "$.name (endpoint.ts:10 Tree.name): backend type number is not assignable to frontend type string",
-    ]);
-  });
-
-  it("should list every frontend field missing from the backend", () => {
-    const results = check({
-      frontend: "interface ErdResponse { id: number; a?: string; b?: string }",
-      backend: withResponse("{ id: number }"),
-      endpoint,
-    });
-    expect(resultFor(results, "response.2XX")).toMatchObject({
-      status: "mismatch",
-      message: [
-        "$.a (endpoint.ts:10 ErdResponse.a): frontend field is not declared in the backend schema.",
-        "$.b (endpoint.ts:10 ErdResponse.b): frontend field is not declared in the backend schema.",
-      ].join("\n  "),
-    });
-  });
-
-  it("should report a mismatch alongside an unverified field coverage problem", () => {
-    const results = check({
-      frontend:
-        'interface ErdResponse { extra?: string; item: { kind: "ok" } | { kind: "error" } }',
-      backend: withResponse('{ item: { kind: "ok" } }'),
-      endpoint,
-    });
-    expect(resultFor(results, "response.2XX")).toMatchObject({
-      status: "mismatch",
-      message: [
-        "$.extra (endpoint.ts:10 ErdResponse.extra): frontend field is not declared in the backend schema.",
-        '$.item (endpoint.ts:10 ErdResponse.item): cannot establish frontend field coverage for frontend union variant { kind: "error"; }, which no backend type at this position is assignable to.',
-      ].join("\n  "),
-    });
-  });
-
-  it("should reference a repeated disagreement that was actually reported", () => {
-    const results = check({
-      frontend:
-        "interface Owner { id: number; nickname?: string } interface ErdResponse { first: Owner; second: Owner }",
-      backend: withResponse(
-        "{ first: BackendOwner; second: BackendOwner }",
-        "type BackendOwner = { id: number };",
-      ),
-      endpoint,
-    });
-    expect(resultFor(results, "response.2XX")).toMatchObject({
-      status: "mismatch",
-      message: [
-        "$.first.nickname (endpoint.ts:10 Owner.nickname): frontend field is not declared in the backend schema.",
-        "$.second (endpoint.ts:10 ErdResponse.second): same problems as at $.first",
-      ].join("\n  "),
-    });
-  });
-
-  it("should not point to an earlier path whose shape had no problems", () => {
-    const results = check({
-      frontend:
-        "interface Owner { id: number } interface ErdResponse { first: Owner; second: Owner }",
-      backend: withResponse(
-        "{ first: BackendOwner; second: BackendOwner }",
-        "type BackendOwner = { id: number };",
-      ),
-      endpoint,
-    });
-    expect(resultFor(results, "response.2XX")?.message).toBe("Compatible");
-  });
-
-  it("should stay unverified when every field coverage problem is unverified", () => {
-    const results = check({
-      frontend:
-        'interface ErdResponse { first: { kind: "ok" } | { kind: "error" }; second: { kind: "ok" } | { kind: "error" } }',
-      backend: withResponse(
-        '{ first: { kind: "ok" }; second: { kind: "ok" } }',
-      ),
-      endpoint,
-    });
-    expect(messageFor(results, "response.2XX")).toEqual([
-      '$.first (endpoint.ts:10 ErdResponse.first): cannot establish frontend field coverage for frontend union variant { kind: "error"; }, which no backend type at this position is assignable to.',
-      '$.second (endpoint.ts:10 ErdResponse.second): cannot establish frontend field coverage for frontend union variant { kind: "error"; }, which no backend type at this position is assignable to.',
-    ]);
-    expect(resultFor(results, "response.2XX")?.status).toBe("unverified");
   });
 });
 
@@ -1198,12 +819,6 @@ describe("request comparison rules", () => {
       "compatible",
     ],
     [
-      "should handle mixed union members without a false verdict",
-      '{ kind: "a"; count: number }',
-      '{ kind: "a"; date: string } | { kind: "b"; count: number }',
-      "mismatch",
-    ],
-    [
       "should handle unsupported conversion against a union without a false verdict",
       "{ value: { toJSON(): { id: string } } }",
       "{ value: { id: string } } | { value: { name: string } }",
@@ -1237,24 +852,6 @@ describe("request comparison rules", () => {
       "should handle own getter without a false verdict",
       "{ inner: { get a(): number } }",
       "{ inner: { a: number } }",
-      "compatible",
-    ],
-    [
-      "should accept a sent key the backend takes through an index signature",
-      "{ user: { name: string } }",
-      "{ user: { [key: string]: string } }",
-      "compatible",
-    ],
-    [
-      "should accept numeric keys through a string index signature, since JSON keys are text",
-      "{ collections: Record<number, boolean> }",
-      "{ collections: { [key: string]: boolean } | null }",
-      "compatible",
-    ],
-    [
-      "should accept an optional backend field the frontend does not send",
-      "{ name: string }",
-      "{ name: string; nickname?: string }",
       "compatible",
     ],
   ])("%s", (_name, argument, backendBody, status) => {

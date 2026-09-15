@@ -22,7 +22,7 @@ import {
   isLibDeclaration,
   isLibType,
   isPrototypeMember,
-  jsonOmissionReason,
+  jsonField,
   jsonView,
   stringShapes,
 } from "./value-conversion";
@@ -663,34 +663,24 @@ function sendAsJson(
     payload,
     (field) => {
       const described = `${field.name} (${describeShape(checker, field.shape)})`;
-      const type = plainType(field.shape);
-      if (!type) {
-        return field;
-      }
-      const types = unionMembers(checker, type);
-      const kept = types.filter((type) => !jsonOmissionReason(type));
-      if (!kept.length) {
+      const result = jsonField(checker, field);
+      if (!result) {
         notes.push(
           `${described} has no JSON value, so JSON.stringify leaves it out of the body (JSON.stringify)`,
         );
         return undefined;
       }
-      if (kept.length === types.length) {
-        return {
-          ...field,
-          shape: jsonValue(checker, field.shape, notes),
-        };
+      if (result.omitsValues) {
+        notes.push(
+          `${described} is left out of the body when its value cannot be serialised (JSON.stringify)`,
+        );
       }
-      notes.push(
-        `${described} is left out of the body when its value cannot be serialised (JSON.stringify)`,
-      );
-      return {
-        ...field,
-        shape: unionShape(
-          kept.map((type) => jsonValue(checker, typeShape(type), notes)),
-        ),
-        optional: true,
-      };
+      if (result.convertsValues) {
+        notes.push(
+          "body fields are compared after JSON.stringify conversion (JSON.stringify)",
+        );
+      }
+      return result.field;
     },
     (value) => jsonValue(checker, value, notes),
   );
