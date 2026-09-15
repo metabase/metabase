@@ -27,13 +27,14 @@ Before writing any action-invoking code, look at the schema and enumerate what's
 ## The hook
 
 ```ts
-import { useAction } from "@metabase/embedding-sdk-react";
+import { useAction } from "@metabase/embedding-sdk-react/data-app";
 
 const { execute, isExecuting, result, error, reset } = useAction(MyAction);
 ```
 
-- **The argument** is the `defineAction(...)` export itself — pass `MyAction`, not `MyAction.copiedActionId`. A production build then runs the synchronized copy, whose model sits in the app's own collection; the dev preview keeps running the authored action, so an app works before it has ever been synchronized. Do **not** pass `schema.models.<model>.actions.<action>` or its `.id`: the entry is a compile error, and the raw id belongs to the original model, which the app's users cannot read, so the call fails on permissions in production. Outside a data app the hook also accepts a raw numeric id or an `entity_id` string.
-- **Don't write the generics.** The definition carries its schema entry, so the hook infers both the parameters object and the discriminated `result` from it: `parameters[]` becomes a keyed object (`required: true` entries are required keys, each value typed from its `jsType`), and `implicitKind` / `type` become the kind (`"row/create"` → `"create"`, `"row/update"` → `"update"`, `"row/delete"` → `"delete"`, any `"bulk/*"` → `"bulk"`, `type === "query"` → `"sql"`). Only the raw-id form still needs them spelled out — `useAction<TParameters, TKind>(42)` — since an id describes nothing.
+- **Import it from `@metabase/embedding-sdk-react/data-app`.** That entry's `useAction` is the data-app form: it accepts a `defineAction(...)` export or `null` and nothing else. The main entry's `useAction` is the general SDK hook, which also takes plain objects and raw ids, so it cannot enforce the definition; a data app that imports it from the main entry compiles with an unsynchronized action and fails in production.
+- **The argument** is the `defineAction(...)` export itself, declared in the app's root-level `actions/` directory (one `<topic>.action.ts` file per topic, beside `package.json`, never under `src/`) — pass `MyAction`, not `MyAction.copiedActionId`. The hook accepts nothing else in a data app: an inline `{ action: ... }` object, the schema entry, or a spread copy of a definition fails to compile with `Property 'definedWithDefineAction' is missing`. Fix that by adding the export to `actions/`, not with a cast and not by calling `defineAction(...)` at the hook, which compiles but is never synchronized. A production build then runs the synchronized copy, whose model sits in the app's own collection; the dev preview keeps running the authored action, so an app works before it has ever been synchronized. Do **not** pass `schema.models.<model>.actions.<action>` or its `.id`: the entry is a compile error, and the raw id belongs to the original model, which the app's users cannot read, so the call fails on permissions in production.
+- **Don't write the generics.** The definition carries its schema entry, so the hook infers both the parameters object and the discriminated `result` from it: `parameters[]` becomes a keyed object (`required: true` entries are required keys, each value typed from its `jsType`), and `implicitKind` / `type` become the kind (`"row/create"` → `"create"`, `"row/update"` → `"update"`, `"row/delete"` → `"delete"`, any `"bulk/*"` → `"bulk"`, `type === "query"` → `"sql"`). The raw-id form exists only on the SDK's `useAction` from the main entry, where `useAction<TParameters, TKind>(42)` needs them spelled out since an id describes nothing; a data app never names an action by id.
 - **`execute(parameters)`** — triggers the action. Parameters object is keyed by parameter `slug`; parameters declared `required: true` are required keys, everything else optional. Returns the response body on success AND throws on failure (the error is also written to `error` state for render-time consumers). Resolves to `null` (without making a request) when `actionId` is `null` or the SDK is not yet initialized — guard the call site if those cases are reachable.
 - **No `enabled` / `options` argument.** The hook only ever runs when `execute(...)` is called, so a gate option would be redundant. Skip the action by branching in the event handler:
   ```ts
@@ -52,7 +53,7 @@ const { execute, isExecuting, result, error, reset } = useAction(MyAction);
 ## Canonical usage — a form that creates a row
 
 ```tsx
-import { useAction } from "@metabase/embedding-sdk-react";
+import { useAction } from "@metabase/embedding-sdk-react/data-app";
 
 import { CreatePerson } from "../../actions/people.action";
 
@@ -186,7 +187,7 @@ No hand-rolled `!name || !email` checks.
 When an action appears to succeed but the screen doesn't update, or a call fails with a 400:
 
 1. Log `result`, `error`, and `isExecuting` after `await execute(...)` to confirm the request actually went through and succeeded.
-2. Confirm `useAction` was called with the `defineAction(...)` export. Passing the schema entry is a compile error; passing its `.id` compiles but leaves `execute` untyped and 403s in production, since the authored action is not the one an app's users can run.
+2. Confirm `useAction` was called with the `defineAction(...)` export imported from `actions/`. Passing the schema entry, an inline object, or a spread copy is a compile error; passing its `.id` compiles but leaves `execute` untyped and 403s in production, since the authored action is not the one an app's users can run. Calling `defineAction(...)` inside the component compiles too, but `sync-resources` scans only `actions/`, so that action is never copied and also 403s.
 3. Log the object passed to `execute({ ... })`. Every key must match a parameter `slug` from `schema.models.<model>.actions.<action>.parameters`; every value must match its declared `jsType`.
 4. List every data view on the screen that reads from the mutated model. Confirm each one's data hook is mounted ABOVE the action trigger so its refresh callback can be passed down.
 5. Confirm the refresh callback is called AFTER `await execute(...)` AND that the refresh itself is awaited. When multiple refreshes apply, confirm they're awaited together (`Promise.all`).
@@ -195,6 +196,8 @@ When an action appears to succeed but the screen doesn't update, or a call fails
 
 ## Common Mistakes
 
+- Importing `useAction` from `@metabase/embedding-sdk-react` instead of `@metabase/embedding-sdk-react/data-app`. The main entry's hook is the general SDK one and accepts anything, so the definition check never runs.
+- Declaring the action anywhere but root-level `actions/`: inline at the hook, wrapped in `defineAction(...)` inside a component, or under `src/actions/`. Only `actions/` is synchronized.
 - Passing `schema.models.<model>.actions.<action>.id` to `useAction` instead of the `defineAction(...)` export. `execute` then accepts any `Record<string, unknown>`, typos like `{ wrongKey: 1 }` slip through, and production 403s because the authored action is not the one an app's users can run.
 - Forgetting to refresh after a successful action. The UI keeps rendering stale data with no error or warning.
 - Rendering `"Failed"` / `"Something went wrong"` / `String(error)` instead of the real backend message. Always extract `error.data.message` / `error.data.errors` (the diagnostic the user needs is in there) and render it verbatim — see *Showing the error message*.

@@ -12,6 +12,7 @@ Keep the semantic layer and presentation layer separate.
 - All Metabase context must come from the generated schema file, usually `src/metabase.data.ts` or `src/*.metabase.data.ts`.
 - Do not discover data through MCP tools, create Metabase content, create tables, or edit the semantic layer while building the React UI.
 - Import data app query helpers from `@metabase/embedding-sdk-react/data-app`.
+- Every query is a `defineQuery(...)` named export in the root-level `queries/` directory, and every action a `defineAction(...)` named export in the root-level `actions/` directory, both beside `package.json`. Create both directories before writing the first hook call; the template ships them, each with a README. The hooks enforce this at compile time: `useMetabaseQuery`, `useMetabaseQueryObject`, and `useAction` reject an inline object, a `satisfies MetabaseQueryOptions` object, and a spread copy of a definition. The error reads `Property 'definedWithDefineQuery' is missing` (or `'definedWithDefineAction'`); the fix is always to move the object into `queries/` or `actions/` as a definition and import it, never a cast.
 - Never remove, edit, or copy a generated `savedQuestionSourceId` or `copiedActionId`, even if it appears unused. Preserve it during refactors; use `npm run sync-resources` to repair or replace generated IDs.
 - Prefer generated schema objects over raw IDs or strings. Extract local constants for top-level table objects.
 - Never hand-write `DatasetQuery`/MBQL objects in app code. Do not pass inline query objects like `{ type: "query", query: { "source-table": table.id } }`, raw `source-table` clauses, raw field IDs, bare table IDs, or metric IDs to SDK components, `useMetabaseQuery`, or `useMetabaseQueryObject`. Prefer generated table and metric schema objects; for simple table-source queries, an explicit source reference like `{ type: "table", id: table.id }` is also valid.
@@ -33,7 +34,7 @@ Keep the semantic layer and presentation layer separate.
 - Render charts with `InteractiveQuestion`/`StaticQuestion`. When a custom visualization is allowed instead, and which of the two to use, is decided by the setup skill's *Rendering a chart: Metabase first*.
 - `useMetabaseQueryObject(...)` returns `{ query, error, isLoading }`. Pass only the `query` property as `card={{ query }}` to `InteractiveQuestion` or `StaticQuestion`; never pass the whole hook result as `card.query`.
 - `useMetabaseQuery().rows` are keyed objects, not tuple arrays. Never read `row[0]` / `row[1]`, and never silence this with `as unknown as [string, number][]`, `DisplayRow`, or another tuple cast. If TypeScript says property `0` does not exist, it is catching a real bug. For typed `data.rows`, use literal keys such as `row.count` or generated field names such as `row[ordersTable.fields.createdAt.name]`. Use `data.columns` with `rawRows` or after explicitly narrowing a key; do not index typed rows with arbitrary `string` values from `data.columns`.
-- Do not cast query objects to `Parameters<typeof useMetabaseQuery>[0]`. That erases the generated table/metric validation. Use `useMetabaseQuery<typeof table>(...)`, or type a reusable query object with `satisfies MetabaseQueryOptions<typeof table>`.
+- Do not cast query objects to `Parameters<typeof useMetabaseQuery>[0]` or to `DefinedQuery`. That erases the generated table/metric validation and the definition contract. Validate table ownership at the definition with `defineQuery<typeof table>(...)`; the hooks take the export with no generics.
 - Do not build shared filter arrays with `ReturnType<typeof filter>[]` or `push(...)`; this can collapse overload inference. Pass raw filter state between components and build each query's `filters: [...]` inline with spreads.
 - Keep runtime state out of the base query in `queries/`. A clause whose value comes from a control — a selected plan, a date range, a search box — belongs in the second argument to `useMetabaseQuery`/`useMetabaseQueryObject`, not in the query. See "Static and dynamic query parts".
 - Do not include `fields` in queries with `aggregations` and `breakouts`; breakouts determine grouped result columns. Use `fields` only for row-selection queries.
@@ -138,7 +139,7 @@ const { data } = useMetabaseQuery(RevenueQuery, {
 const { execute, isExecuting, error } = useAction(CreateOrder);
 ```
 
-Never pass an inline table-source query (not even a read-only, filter-option, or helper query), a raw action id, `savedQuestionSourceId`, `copiedActionId`, or a hand-built `{ source: { type: "card", id } }`, and never spread a definition into a new object. Each defeats the swap; the authored ids also bypass the permission boundary, and `schema.models.<model>.actions.<action>` is a type error. Keep fixed permission-boundary filters, aggregations, and breakouts inside `defineQuery` — synchronization bakes them into the saved question, so don't apply them again outside it, and put runtime clauses in the hook's second argument (see *Static and dynamic query parts*). `useAction` needs no generics: the definition types `execute`'s parameters and `result`.
+Never pass an inline table-source query (not even a read-only, filter-option, or helper query), a raw action id, `savedQuestionSourceId`, `copiedActionId`, or a hand-built `{ source: { type: "card", id } }`, and never spread a definition into a new object. Each defeats the swap; the authored ids also bypass the permission boundary. TypeScript rejects most of these: the hooks accept only what `defineQuery`/`defineAction` returned, so an inline object, a `satisfies`-typed object, a spread copy, and `schema.models.<model>.actions.<action>` all fail to compile. When `tsc` reports `Property 'definedWithDefineQuery' is missing` or `Property 'definedWithDefineAction' is missing`, the argument is not a definition: move it into `queries/` or `actions/` and import the export. Do not silence it with a cast or by wrapping the inline object in `defineQuery(...)` at the call site, which compiles but leaves the query unsynchronized. Keep fixed permission-boundary filters, aggregations, and breakouts inside `defineQuery` — synchronization bakes them into the saved question, so don't apply them again outside it, and put runtime clauses in the hook's second argument (see *Static and dynamic query parts*). `useAction` needs no generics: the definition types `execute`'s parameters and `result`.
 
 Wire `package.json` with `"sync-resources": "embedding-sdk-react data-apps sync-resources"` and `"build": "npm run sync-resources && vite build"`, then run `npm run build` after adding, changing, renaming, or removing any definition; run `sync-resources` directly only to inspect generated state before a build. It reads `DATA_APP_MB_URL` and `DATA_APP_MB_API_KEY` from the repo-root `.env.local`.
 
@@ -148,20 +149,22 @@ If synchronization fails, surface the exact error and stop. Fix local shape, ser
 
 ## Standard pattern
 
+Two files per query: the definition in `queries/`, the hook call in the component.
+
 ```ts
+// queries/orders.query.ts
 import {
   aggregations,
   breakout,
+  defineQuery,
   filter,
   orderBy,
-  useMetabaseQuery,
-  useMetabaseQueryObject,
 } from "@metabase/embedding-sdk-react/data-app";
-import schema from "../metabase.data";
+import schema from "../src/metabase.data";
 
 const ordersTable = schema.tables.orders;
 
-const { data, isLoading, error } = useMetabaseQuery({
+export const PaidRevenueByMonth = defineQuery({
   source: ordersTable,
   filters: [
     ordersTable.segments.completed,
@@ -174,7 +177,15 @@ const { data, isLoading, error } = useMetabaseQuery({
 });
 ```
 
-For direct row access, prefer letting `useMetabaseQuery(...)` infer the query shape from the inline query object. If you need a reusable query object and table ownership checks, type the object with `satisfies MetabaseQueryOptions<OrdersTable>`, then pass it to `useMetabaseQuery(query)`. Avoid forcing the hook generic on selected-field queries when you need precise row keys from `data.rows`.
+```tsx
+// src/pages/Overview.tsx
+import { useMetabaseQuery } from "@metabase/embedding-sdk-react/data-app";
+import { PaidRevenueByMonth } from "../../queries/orders.query";
+
+const { data, isLoading, error } = useMetabaseQuery(PaidRevenueByMonth);
+```
+
+`useMetabaseQuery(...)` infers typed row data from the definition, so write no generics on the hook. To check table ownership of fields, segments, and measures, put the generic on the definition: `defineQuery<typeof ordersTable>({ ... })`. Leave it off selected-field queries when you need precise row keys from `data.rows`. The recipes below show the object passed to `defineQuery`; each one is an export in `queries/`, never an argument written at the hook.
 
 **Call each schema entry at most once per render tree.** Multiple `useMetabaseQuery` calls on the same `questionId` (or same `tableId` + identical filters/measures/breakouts) mount independent subscriptions, fire duplicate queries, and let consumers disagree mid-load. Lift the call to the highest component that needs the data; pass `data` / `isLoading` / `error` down as props. Different ids — or the same id with different filters / breakouts — are different data sources; call them separately.
 
@@ -243,9 +254,10 @@ Do not remove or hand-edit `savedQuestionSourceId` if you find it on a query obj
 For a table query, pass the generated table object as `source`:
 
 ```ts
+// queries/records.query.ts
 const recordsTable = schema.tables.records;
 
-const { data } = useMetabaseQuery({
+export const RecordStatuses = defineQuery({
   source: recordsTable,
   fields: [recordsTable.fields.id, recordsTable.fields.status],
 });
@@ -254,7 +266,7 @@ const { data } = useMetabaseQuery({
 For grouped table summaries, include at least one aggregation:
 
 ```ts
-useMetabaseQuery({
+export const ActiveAmountByMonth = defineQuery({
   source: recordsTable,
   filters: [
     recordsTable.segments.activeRecords,
@@ -269,7 +281,7 @@ useMetabaseQuery({
 For basic aggregations without a curated measure, use the `aggregations` helpers:
 
 ```ts
-useMetabaseQuery({
+export const AmountByCategory = defineQuery({
   source: recordsTable,
   aggregations: [
     aggregations.count(),
@@ -281,17 +293,18 @@ useMetabaseQuery({
 
 When using the same helper more than once, Metabase may return numbered runtime keys such as `sum`, `sum_2`, and `sum_3`. TypeScript only models the base helper key today. For custom KPI code that intentionally uses repeated same-kind aggregations, read through `data.columns` or cast the row to `Record<string, unknown>` before accessing numbered keys. Prefer curated measures or separate queries when that is clearer.
 
-Table fields, segments, measures, filters, breakouts, and orderBys must come from the queried table. For reusable query objects, use `satisfies MetabaseQueryOptions<RecordsTable>` so TypeScript can validate the query while preserving precise row keys.
+Table fields, segments, measures, filters, breakouts, and orderBys must come from the queried table. Use `defineQuery<RecordsTable>({ ... })` when you want TypeScript to validate that ownership at the definition.
 
 ## metric aggregation recipes
 
 For a metric-backed query, pass the generated table object as `source` and the generated metric object in `aggregations`:
 
 ```ts
+// queries/revenue.query.ts
 const ordersTable = schema.tables.orders;
 const revenueMetric = schema.metrics.revenue;
 
-const { data } = useMetabaseQuery({
+export const Revenue = defineQuery({
   source: ordersTable,
   aggregations: [revenueMetric],
 });
@@ -300,7 +313,7 @@ const { data } = useMetabaseQuery({
 Use generated metric dimensions for filters and breakouts in queries that aggregate the owning metric. Dimensions from the metric's source table work directly. Dimensions from related tables also work when the generated field includes `sourceFieldId`; prefer those related-table dimensions for readable labels instead of grouping by raw foreign key IDs:
 
 ```ts
-useMetabaseQuery({
+export const PaidRevenueByMonthAndFranchise = defineQuery({
   source: ordersTable,
   aggregations: [revenueMetric],
   filters: [filter(revenueMetric.dimensions.orders.status, "=", "paid")],
@@ -325,7 +338,7 @@ breakout(revenueMetric.dimensions.orders.franchiseId);
 Queries backed by metrics can include helper aggregations over generated metric dimensions. They can also use compatible saved Segments and Measures from the table source when the generated schema exposes them:
 
 ```ts
-useMetabaseQuery({
+export const CompletedRevenueByStatus = defineQuery({
   source: ordersTable,
   filters: [schema.tables.orders.segments.completed],
   aggregations: [
@@ -337,16 +350,16 @@ useMetabaseQuery({
 });
 ```
 
-A metric aggregation must belong to the table source. Do not use source-card metrics in table-source queries. Generated metric dimensions are scoped to their owning metric: if a query uses `revenueMetric.dimensions.*` in filters, helper aggregations, breakouts, or orderBys, it must also include `revenueMetric` in `aggregations`. Do not use metric dimensions as standalone table fields for unrelated `count()` or table-measure queries. Generated metric dimensions must also resolve to the table source. For reusable query objects, use `satisfies MetabaseQueryOptions<typeof ordersTable>` so TypeScript can validate the query while preserving precise row keys.
+A metric aggregation must belong to the table source. Do not use source-card metrics in table-source queries. Generated metric dimensions are scoped to their owning metric: if a query uses `revenueMetric.dimensions.*` in filters, helper aggregations, breakouts, or orderBys, it must also include `revenueMetric` in `aggregations`. Do not use metric dimensions as standalone table fields for unrelated `count()` or table-measure queries. Generated metric dimensions must also resolve to the table source. Use `defineQuery<typeof ordersTable>({ ... })` when you want TypeScript to validate that at the definition.
 
 ## SDK-rendered views
 
 Table fields, segments, measure aggregations, and metric aggregations must come from the queried table. Generated metric dimensions used in filters, helper aggregations, breakouts, and orderBys must resolve to the queried table and belong to a metric included in the same query's `aggregations`.
-When table queries use `fields`, `segments`, `aggregations`, `breakouts`, or `orderBys`, prefer inline inference or a reusable query object with `satisfies MetabaseQueryOptions<typeof recordsTable>` so TypeScript can validate the query without losing precise result-row keys.
+When table queries use `fields`, `segments`, `aggregations`, `breakouts`, or `orderBys`, let `defineQuery` infer the shape, or write `defineQuery<typeof recordsTable>` when ownership validation matters more than precise result-row keys.
 
 ## Interactive Metabase Views
 
-Whether an element is an SDK question at all — and whether it is `StaticQuestion` or `InteractiveQuestion` — is decided in the data-app setup skill (*Rendering a chart: Metabase first*). Once it is: build a semantic query with `useMetabaseQueryObject`, then pass it through the SDK question component's `card` prop.
+Whether an element is an SDK question at all — and whether it is `StaticQuestion` or `InteractiveQuestion` — is decided in the data-app setup skill (*Rendering a chart: Metabase first*). Once it is: declare the query in `queries/`, resolve it with `useMetabaseQueryObject(TheQuery)`, then pass the result through the SDK question component's `card` prop.
 
 `useMetabaseQueryObject` supports generated table queries, including metric aggregations. Use `useMetabaseQuery` when custom React needs direct row data; use `useMetabaseQueryObject` when Metabase should render or manage the visualization. Do not pass generics to `useMetabaseQueryObject`; it returns `{ query, error, isLoading }`, not query result rows.
 
@@ -357,18 +370,19 @@ When wrapping `useMetabaseQueryObject` in a reusable chart/card component, destr
 Wrong/right pattern:
 
 ```tsx
-const trendQuery = useMetabaseQueryObject(querySpec);
+const trendQuery = useMetabaseQueryObject(TrendQuery);
 <InteractiveQuestion card={{ query: trendQuery }} />; // wrong
 
-const { query: trendQuery } = useMetabaseQueryObject(querySpec);
+const { query: trendQuery } = useMetabaseQueryObject(TrendQuery);
 <InteractiveQuestion card={{ query: trendQuery }} />; // right
 ```
 
 Hook typing:
 
-- `useMetabaseQuery(...)` infers typed row data from the generated `source` and query object. For reusable query objects, use `satisfies MetabaseQueryOptions<...>` on the object instead of forcing the hook generic.
-- `useMetabaseQueryObject(...)` accepts no generic and returns `{ query, error, isLoading }`. Pass the `query` property to `card={{ query }}`.
-- Do not use `as Parameters<typeof useMetabaseQuery>[0]` to quiet query typing errors. It hides invalid table fields, metric aggregations, and breakouts. Prefer `useMetabaseQuery<typeof table>(query)` or `const query = { ... } satisfies MetabaseQueryOptions<typeof table>`.
+- Both hooks take a `defineQuery` export imported from `queries/` and nothing else; an inline object is a compile error. Write no generics on the hooks.
+- `useMetabaseQuery(...)` infers typed row data from the definition. Put `defineQuery<typeof table>` on the definition when ownership validation matters.
+- `useMetabaseQueryObject(...)` returns `{ query, error, isLoading }`. Pass the `query` property to `card={{ query }}`.
+- Do not use `as Parameters<typeof useMetabaseQuery>[0]` or `as DefinedQuery` to quiet query typing errors. The first hides invalid table fields, metric aggregations, and breakouts; the second hides an unsynchronized query that fails in production.
 
 The basic prop contract is:
 
@@ -409,19 +423,11 @@ import {
   type MetabaseCard,
 } from "@metabase/embedding-sdk-react";
 
-import {
-  aggregations,
-  breakout,
-  useMetabaseQueryObject,
-} from "@metabase/embedding-sdk-react/data-app";
+import { useMetabaseQueryObject } from "@metabase/embedding-sdk-react/data-app";
 
-const eventsTable = schema.tables.events;
+import { AmountByMonth } from "../../queries/events.query";
 
-const { query, isLoading, error } = useMetabaseQueryObject({
-  source: eventsTable,
-  aggregations: [aggregations.sum(eventsTable.fields.amount)],
-  breakouts: [breakout(eventsTable.fields.occurredAt, { unit: "month" })],
-});
+const { query, isLoading, error } = useMetabaseQueryObject(AmountByMonth);
 
 if (error) {
   return null;
@@ -441,11 +447,15 @@ return (
 Configured SDK visualization:
 
 ```tsx
-const { query, isLoading, error } = useMetabaseQueryObject({
+// queries/events.query.ts
+export const TotalAmountByMonth = defineQuery({
   source: eventsTable,
   aggregations: [eventsTable.measures.totalAmount],
   breakouts: [breakout(eventsTable.fields.occurredAt, { unit: "month" })],
 });
+
+// the component
+const { query, isLoading, error } = useMetabaseQueryObject(TotalAmountByMonth);
 
 if (error) {
   return null;
@@ -495,9 +505,10 @@ Do not hand-write `orderBys` object literals such as `{ field, direction }` or `
 For top-N grouped summaries, order by the aggregation result, not the raw source field. Store the aggregation helper in a local constant and pass that same constant to both `aggregations` and `orderBy(...)`:
 
 ```ts
+// queries/inventory.query.ts
 const avgQuantity = aggregations.avg(inventoryTable.fields.quantityOnHand);
 
-const { query, error, isLoading } = useMetabaseQueryObject({
+export const TopIngredientsByQuantity = defineQuery({
   source: inventoryTable,
   aggregations: [avgQuantity],
   breakouts: [breakout(inventoryTable.fields.ingredient)],
@@ -506,11 +517,9 @@ const { query, error, isLoading } = useMetabaseQueryObject({
 });
 ```
 
-For user-selectable sorting, build a typed map of allowed generated fields instead of indexing the whole `fields` object:
+For user-selectable sorting, the sort is runtime state, so it belongs in the hook's second argument. Build a typed map of allowed generated fields instead of indexing the whole `fields` object:
 
 ```ts
-import type { MetabaseQueryOptions } from "@metabase/embedding-sdk-react/data-app";
-
 type SortKey = "revenue" | "orders";
 type ScorecardTable = typeof scorecardTable;
 
@@ -521,11 +530,12 @@ const sortFields = {
   orders: scorecardTable.fields.orders,
 } satisfies Record<SortKey, ScorecardField>;
 
-const query = {
-  source: scorecardTable,
+const { data } = useMetabaseQuery(Scorecard, {
   orderBys: [orderBy(sortFields[sortKey], "desc")],
-} satisfies MetabaseQueryOptions<ScorecardTable>;
+});
 ```
+
+`Scorecard` is the unaggregated `defineQuery({ source: scorecardTable })` export in `queries/`; its source fields survive into the result, so the dynamic stage can order by them.
 
 For metric queries, pass generated metric dimensions to `filter(...)` and `breakout(...)`:
 
@@ -656,7 +666,9 @@ If no curated schema entry supports the intended UI, leave the section out or as
 
 ## Final Checks
 
-- Run `npm run typecheck`.
+- Run `npm run typecheck`. `Property 'definedWithDefineQuery' is missing` or `Property 'definedWithDefineAction' is missing` means a hook received something other than a `queries/` or `actions/` export; move the object there and import it.
+- Search touched files for `useMetabaseQuery(`, `useMetabaseQueryObject(`, and `useAction(`. Every argument must be an identifier imported from `queries/` or `actions/`; a `{`, a `defineQuery(`, a `defineAction(`, or a spread at the call site is wrong even when it compiles.
+- Confirm `queries/` and `actions/` sit beside `package.json`, not under `src/`, and that every definition the app renders lives there.
 - Run `npm run build`; it synchronizes queries before producing the bundle.
 - Keep TypeScript diagnostics compact in the chat or handoff. Use the full output locally to fix the app, but report grouped root causes and only a few representative diagnostics instead of pasting the entire `tsc` output.
 - Verify every rendered value can be traced to a returned row property, schema field, measure, or deterministic transform.
@@ -668,6 +680,9 @@ If no curated schema entry supports the intended UI, leave the section out or as
 ## Common Mistakes
 
 - Creating or searching for Metabase content during app building.
+- Writing the query object at the hook call instead of exporting it from `queries/` with `defineQuery`, or the action at `useAction` instead of from `actions/` with `defineAction`. Both are compile errors now; the fix is the directory, not a cast.
+- Wrapping the inline object in `defineQuery(...)` or `defineAction(...)` at the call site. It compiles, but `sync-resources` never sees it, so it is refused in production.
+- Putting definitions under `src/queries/` or `src/actions/`, where `sync-resources` never looks.
 - Importing older hooks instead of `useMetabaseQuery`.
 - Copying raw numeric IDs into constants instead of using generated schema objects.
 - Inventing ad hoc measure objects such as `{ name: "count" }` or `{ name: "sum", field: fieldId }`.

@@ -6,7 +6,7 @@ import type { RowValue } from "../../data-schema";
 
 import type { MetabaseCard } from "metabase/embedding-sdk/types/question";
 
-import type { MetabaseQueryOptions, UseMetabaseQueryObjectResult } from "..";
+import type { UseMetabaseQueryObjectResult } from "..";
 import {
   breakout,
   count,
@@ -16,7 +16,7 @@ import {
   useMetabaseQuery,
   useMetabaseQueryObject,
 } from "..";
-import { useAction } from "../../use-action";
+import { useAction, useDataAppAction } from "../../use-action";
 import { defineAction, defineQuery } from "../../../../data-app";
 
 type OrdersTable = (typeof TEST_SCHEMA)["tables"]["orders"];
@@ -69,7 +69,7 @@ const _validHookResultCard = {
 
 function ValidTypeFixtures() {
   // A definition types `execute` and `result` on its own, no generics written.
-  const createOrder = useAction(CreateOrder);
+  const createOrder = useDataAppAction(CreateOrder);
 
   void createOrder.execute({ status: "shipped" });
 
@@ -78,9 +78,17 @@ function ValidTypeFixtures() {
 
   void createdRow;
 
-  const updateOrder = useAction(UpdateOrder);
+  const updateOrder = useDataAppAction(UpdateOrder);
 
   void updateOrder.execute({ id: 1 });
+
+  // The SDK hook takes a plain definition object, and a `defineAction` export too.
+  const sdkCreateOrder = useAction({
+    action: TEST_SCHEMA.models.orders.actions.create,
+  });
+
+  void sdkCreateOrder.execute({ status: "shipped" });
+  void useAction(CreateOrder).execute({ status: "shipped" });
 
   const updatedRows: readonly RowValue[] | undefined =
     updateOrder.result?.["rows-updated"];
@@ -92,23 +100,25 @@ function ValidTypeFixtures() {
 
   void rawAction.execute({ status: "shipped" });
 
-  const selectedFieldsResult = useMetabaseQuery({
-    source: TEST_SCHEMA.tables.orders,
-    fields: [TEST_SCHEMA.tables.orders.fields.id],
-  });
+  const selectedFieldsResult = useMetabaseQuery(
+    defineQuery({
+      source: TEST_SCHEMA.tables.orders,
+      fields: [TEST_SCHEMA.tables.orders.fields.id],
+    }),
+  );
 
   const selectedFieldValue: number | null | undefined =
     selectedFieldsResult.data?.rows[0]?.ID;
 
   void selectedFieldValue;
 
-  const selectedFieldsQuery = {
+  const selectedFieldsQuery = defineQuery({
     source: TEST_SCHEMA.tables.orders,
     fields: [
       TEST_SCHEMA.tables.orders.fields.id,
       TEST_SCHEMA.tables.orders.fields.status,
     ],
-  } satisfies MetabaseQueryOptions<OrdersTable>;
+  });
 
   const selectedFieldsQueryResult = useMetabaseQuery(selectedFieldsQuery);
 
@@ -117,25 +127,29 @@ function ValidTypeFixtures() {
 
   void selectedQueryFieldValue;
 
-  const scalarAggregationResult = useMetabaseQuery({
-    source: TEST_SCHEMA.tables.orders,
-    aggregations: [sum(TEST_SCHEMA.tables.orders.fields.amount)],
-  });
+  const scalarAggregationResult = useMetabaseQuery(
+    defineQuery({
+      source: TEST_SCHEMA.tables.orders,
+      aggregations: [sum(TEST_SCHEMA.tables.orders.fields.amount)],
+    }),
+  );
 
   const scalarAggregationValue: RowValue | undefined =
     scalarAggregationResult.data?.rows[0]?.sum;
 
   void scalarAggregationValue;
 
-  const groupedMetricResult = useMetabaseQuery<OrdersTable>({
-    source: TEST_SCHEMA.tables.orders,
-    aggregations: [TEST_SCHEMA.metrics.revenue],
-    breakouts: [
-      breakout(TEST_SCHEMA.metrics.revenue.dimensions.orders.createdAt, {
-        unit: "month",
-      }),
-    ],
-  });
+  const groupedMetricResult = useMetabaseQuery(
+    defineQuery<OrdersTable>({
+      source: TEST_SCHEMA.tables.orders,
+      aggregations: [TEST_SCHEMA.metrics.revenue],
+      breakouts: [
+        breakout(TEST_SCHEMA.metrics.revenue.dimensions.orders.createdAt, {
+          unit: "month",
+        }),
+      ],
+    }),
+  );
 
   const groupedMetricBreakoutValue: string | Date | null | undefined =
     groupedMetricResult.data?.rows[0]?.CREATED_AT;
@@ -152,16 +166,18 @@ function ValidTypeFixtures() {
     createdAt: TEST_SCHEMA.tables.orders.fields.createdAt,
   } satisfies Record<string, OrdersField>;
 
-  useMetabaseQuery({
-    source: TEST_SCHEMA.tables.orders,
-    orderBys: [orderBy(sortFields[sortKey], "desc")],
-  });
+  useMetabaseQuery(
+    defineQuery({
+      source: TEST_SCHEMA.tables.orders,
+      orderBys: [orderBy(sortFields[sortKey], "desc")],
+    }),
+  );
 
   // A static query published as a card, with dynamic clauses layered on top.
-  const staticQuery = {
+  const staticQuery = defineQuery({
     source: TEST_SCHEMA.tables.orders,
     savedQuestionSourceId: 41,
-  } satisfies MetabaseQueryOptions<OrdersTable>;
+  });
 
   const dynamicResult = useMetabaseQuery(staticQuery, {
     filters: [filter(TEST_SCHEMA.tables.orders.fields.status, "=", "paid")],

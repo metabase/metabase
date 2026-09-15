@@ -5,8 +5,14 @@ import { TEST_SCHEMA } from "./fixtures";
 import type { MetabaseCard } from "metabase/embedding-sdk/types/question";
 
 import type { MetabaseQueryOptions, UseMetabaseQueryObjectResult } from "..";
-import { breakout, count, sum, useMetabaseQuery } from "..";
-import { useAction } from "../../use-action";
+import {
+  breakout,
+  count,
+  sum,
+  useMetabaseQuery,
+  useMetabaseQueryObject,
+} from "..";
+import { useAction, useDataAppAction } from "../../use-action";
 import { defineAction, defineQuery } from "../../../../data-app";
 
 type OrdersTable = (typeof TEST_SCHEMA)["tables"]["orders"];
@@ -115,10 +121,49 @@ const _invalidMetricSourceQuery = {
 breakout(TEST_SCHEMA.tables.orders.fields.status, { unit: "month" });
 
 function InvalidTypeFixtures() {
+  const staticQuery = defineQuery({
+    source: TEST_SCHEMA.tables.orders,
+    savedQuestionSourceId: 41,
+  });
+
+  // @ts-expect-error a query is a `defineQuery` export from `queries/`, never an inline object
+  useMetabaseQuery({ source: TEST_SCHEMA.tables.orders });
+
+  // @ts-expect-error a query is a `defineQuery` export from `queries/`, never an inline object
+  useMetabaseQueryObject({ source: TEST_SCHEMA.tables.orders });
+
+  const plainQuery = {
+    source: TEST_SCHEMA.tables.orders,
+  } satisfies MetabaseQueryOptions<OrdersTable>;
+
+  // @ts-expect-error a typed query object is still not a `defineQuery` export
+  useMetabaseQuery(plainQuery);
+
+  // @ts-expect-error a typed query object is still not a `defineQuery` export
+  useMetabaseQueryObject(plainQuery);
+
   // @ts-expect-error saved-question metadata cannot be passed to querying hooks
-  useMetabaseQuery({ source: TEST_SCHEMA.questions.ordersQuestion });
+  defineQuery({ source: TEST_SCHEMA.questions.ordersQuestion });
+
+  // @ts-expect-error a copy of a definition is not the definition
+  useMetabaseQuery({ ...staticQuery, limit: 10 });
+
+  // @ts-expect-error a copy of a definition is not the definition
+  useMetabaseQueryObject({ ...staticQuery, limit: 10 });
+
+  // @ts-expect-error a data app's action is a `defineAction` export from `actions/`, never an inline object
+  useDataAppAction({ action: TEST_SCHEMA.models.orders.actions.create });
+
+  // @ts-expect-error a copy of a definition is not the definition
+  useDataAppAction({ ...CreateOrder });
+
+  // @ts-expect-error a data app never names an action by id
+  useDataAppAction(51);
 
   // @ts-expect-error pass the `defineAction` export, not the schema entry
+  useDataAppAction(TEST_SCHEMA.models.orders.actions.create);
+
+  // @ts-expect-error the SDK hook takes a definition object or an id, not the schema entry
   useAction(TEST_SCHEMA.models.orders.actions.create);
 
   // @ts-expect-error the definition's parameter slugs are the only keys
@@ -133,47 +178,40 @@ function InvalidTypeFixtures() {
   // @ts-expect-error `result` is discriminated by the action's kind
   void useAction(CreateOrder).result?.["rows-updated"];
 
-  const scalarAggregationResult = useMetabaseQuery({
-    source: TEST_SCHEMA.tables.orders,
-    aggregations: [sum(TEST_SCHEMA.tables.orders.fields.amount)],
-  });
+  const scalarAggregationResult = useMetabaseQuery(
+    defineQuery({
+      source: TEST_SCHEMA.tables.orders,
+      aggregations: [sum(TEST_SCHEMA.tables.orders.fields.amount)],
+    }),
+  );
 
   // @ts-expect-error aggregation result rows should not include source fields
   void scalarAggregationResult.data?.rows[0]?.amount;
 
-  const metricResult = useMetabaseQuery({
-    source: TEST_SCHEMA.tables.orders,
-    aggregations: [TEST_SCHEMA.metrics.revenue],
-  });
+  const metricResult = useMetabaseQuery(
+    defineQuery({
+      source: TEST_SCHEMA.tables.orders,
+      aggregations: [TEST_SCHEMA.metrics.revenue],
+    }),
+  );
 
   // @ts-expect-error aggregation result rows should not include source fields
   void metricResult.data?.rows[0]?.status;
 
-  const groupedMetricResult = useMetabaseQuery<OrdersTable>({
-    source: TEST_SCHEMA.tables.orders,
-    aggregations: [TEST_SCHEMA.metrics.revenue],
-    breakouts: [
-      breakout(TEST_SCHEMA.metrics.revenue.dimensions.orders.createdAt, {
-        unit: "month",
-      }),
-    ],
-  });
+  const groupedMetricResult = useMetabaseQuery(
+    defineQuery<OrdersTable>({
+      source: TEST_SCHEMA.tables.orders,
+      aggregations: [TEST_SCHEMA.metrics.revenue],
+      breakouts: [
+        breakout(TEST_SCHEMA.metrics.revenue.dimensions.orders.createdAt, {
+          unit: "month",
+        }),
+      ],
+    }),
+  );
 
   // @ts-expect-error result row keys use returned column names, not schema object keys
   void groupedMetricResult.data?.rows[0]?.createdAt;
-
-  // @ts-expect-error grouped queries must include an explicit aggregation
-  useMetabaseQuery<OrdersTable>({
-    source: TEST_SCHEMA.tables.orders,
-    breakouts: [
-      breakout(TEST_SCHEMA.tables.orders.fields.createdAt, { unit: "month" }),
-    ],
-  });
-
-  const staticQuery = {
-    source: TEST_SCHEMA.tables.orders,
-    savedQuestionSourceId: 41,
-  } satisfies MetabaseQueryOptions<OrdersTable>;
 
   useMetabaseQuery(staticQuery, {
     // @ts-expect-error Segments belong to a table source, so the dynamic stage

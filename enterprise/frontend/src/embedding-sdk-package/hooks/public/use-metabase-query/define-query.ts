@@ -1,6 +1,7 @@
 import type { TableSchema } from "../data-schema";
 
 import type {
+  DefinedQuery,
   MetabaseQueryOptions,
   RequireAggregationsForBreakouts,
 } from "./types";
@@ -25,6 +26,8 @@ export function defineQuery<
         ? RequireAggregationsForBreakouts<TQuery>
         : unknown
       : MetabaseQueryOptions<TEntity, TSchema>),
-): TQuery {
-  return query;
+): TQuery & DefinedQuery {
+  // `DefinedQuery` has no runtime member, so the object is returned as is; the
+  // cast only adds the mark that the query hooks require.
+  return query as TQuery & DefinedQuery;
 }

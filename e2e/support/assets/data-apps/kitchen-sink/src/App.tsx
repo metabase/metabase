@@ -1,12 +1,14 @@
 import {
   InteractiveQuestion,
   StaticQuestion,
-  useAction,
 } from "@metabase/embedding-sdk-react";
 import {
   copy,
   DataAppLink,
   DataAppRouter,
+  defineAction,
+  defineQuery,
+  useAction,
   useDataAppLocation,
   useMetabaseQuery,
   useMetabaseQueryObject,
@@ -24,9 +26,9 @@ const PROBE_COLOR = "rgb(0, 128, 0)";
 
 function Overview() {
   const { scalarQuery, questionQuery } = getTestEnv();
-  const ordersCount = useMetabaseQuery(scalarQuery);
+  const ordersCount = useMetabaseQuery(defineQuery(scalarQuery));
   const totalOrders = ordersCount.data?.rawRows?.[0]?.[0];
-  const ordersQuery = useMetabaseQueryObject(questionQuery);
+  const ordersQuery = useMetabaseQueryObject(defineQuery(questionQuery));
 
   return (
     <div data-testid="data-app-content" style={{ padding: 24 }}>
@@ -82,8 +84,8 @@ function Details() {
 
 function QueryStates() {
   const { scalarQuery, errorQuery } = getTestEnv();
-  const broken = useMetabaseQuery(errorQuery!);
-  const working = useMetabaseQuery(scalarQuery);
+  const broken = useMetabaseQuery(defineQuery(errorQuery!));
+  const working = useMetabaseQuery(defineQuery(scalarQuery));
   const count = working.data?.rawRows?.[0]?.[0];
 
   return (
@@ -130,7 +132,7 @@ function DownloadQuestionPage() {
 // to a custom viz — the example `demo-viz` requires exactly one result column.
 function CustomVizPage() {
   const { scalarQuery } = getTestEnv();
-  const q = useMetabaseQueryObject(scalarQuery);
+  const q = useMetabaseQueryObject(defineQuery(scalarQuery));
 
   return (
     <div data-testid="data-app-custom-viz" style={{ padding: 24 }}>
@@ -148,7 +150,7 @@ function CustomVizPage() {
 
 function StaticQuestionPage() {
   const { questionQuery } = getTestEnv();
-  const q = useMetabaseQueryObject(questionQuery);
+  const q = useMetabaseQueryObject(defineQuery(questionQuery));
 
   return (
     <div data-testid="data-app-static-question" style={{ padding: 24 }}>
@@ -198,7 +200,10 @@ function Actions() {
   // the copy the definition points at is the authored action itself.
   const action = useAction(
     actionId
-      ? { action: { id: actionId, parameters: [] }, copiedActionId: actionId }
+      ? defineAction({
+          action: { id: actionId, parameters: [] },
+          copiedActionId: actionId,
+        })
       : null,
   );
   const [output, setOutput] = useState("idle");
