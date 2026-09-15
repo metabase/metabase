@@ -9,9 +9,19 @@ import { normalizeStories } from "storybook/internal/common";
 import {
   MAIN_APP_STORY_GLOBS,
   getStories,
+  hasExplicitTitle,
 } from "../../.storybook/story-files.cjs";
 
 const ROOT = resolve(__dirname, "../..");
+
+const tracked = execFileSync(
+  "git",
+  ["ls-files", "-z", "--", "frontend", "enterprise/frontend"],
+  { cwd: ROOT, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 },
+)
+  .split("\0")
+  .filter(Boolean);
+const planned = micromatch(tracked, MAIN_APP_STORY_GLOBS, { dot: true }).sort();
 
 describe("getStories", () => {
   let tempDir: string;
@@ -44,18 +54,31 @@ describe("getStories", () => {
   });
 
   it("builds only the files in the JSON plan", () => {
-    writeFileSync(
-      pathsFile,
-      JSON.stringify([
-        "frontend/src/metabase/ui/Button.stories.tsx",
-        "enterprise/frontend/src/metabase-enterprise/Upsell.stories.tsx",
-      ]),
-    );
+    const files = planned.slice(0, 2);
+    writeFileSync(pathsFile, JSON.stringify(files));
 
-    expect(getStories({ pathsFile })).toEqual([
-      "../frontend/src/metabase/ui/Button.stories.tsx",
-      "../enterprise/frontend/src/metabase-enterprise/Upsell.stories.tsx",
-    ]);
+    expect(getStories({ pathsFile })).toEqual(
+      files.map((file) => `../${file}`),
+    );
+  });
+
+  it("builds a planned story with an explicit title", () => {
+    const story = join(tempDir, "Titled.stories.tsx");
+    writeFileSync(
+      story,
+      'const meta = { title: "Components/Titled" };\nexport default meta;\n',
+    );
+    writeFileSync(pathsFile, JSON.stringify([story]));
+
+    expect(getStories({ pathsFile })).toEqual([`../${story}`]);
+  });
+
+  it("rejects a planned story without an explicit title", () => {
+    const story = join(tempDir, "Untitled.stories.tsx");
+    writeFileSync(story, "export default { component: Untitled };\n");
+    writeFileSync(pathsFile, JSON.stringify([story]));
+
+    expect(() => getStories({ pathsFile })).toThrow(story);
   });
 
   it("rejects an empty plan even when the CSV filter is set", () => {
@@ -84,18 +107,50 @@ describe("getStories", () => {
   );
 });
 
-describe("MAIN_APP_STORY_GLOBS", () => {
-  const tracked = execFileSync(
-    "git",
-    ["ls-files", "-z", "--", "frontend", "enterprise/frontend"],
-    { cwd: ROOT, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 },
-  )
-    .split("\0")
-    .filter(Boolean);
-  const planned = micromatch(tracked, MAIN_APP_STORY_GLOBS, {
-    dot: true,
-  }).sort();
+describe("hasExplicitTitle", () => {
+  it.each([
+    {
+      form: "double quotes",
+      source: 'export default {\n  title: "Components/Button",\n};\n',
+    },
+    {
+      form: "single quotes",
+      source: "export default {\n  title: 'Components/Button',\n};\n",
+    },
+    {
+      form: "a template literal",
+      source: "export default {\n  title: `Components/Button`,\n};\n",
+    },
+    {
+      form: "a meta constant",
+      source:
+        'const meta: Meta<typeof Button> = {\n  title: "Components/Button",\n};\n\nexport default meta;\n',
+    },
+  ])("accepts a title in $form", ({ source }) => {
+    expect(hasExplicitTitle(source)).toBe(true);
+  });
 
+  it.each([
+    {
+      form: "no title",
+      source: "export default {\n  component: Button,\n};\n",
+    },
+    {
+      form: "only a title control",
+      source:
+        'const argTypes = {\n  title: {\n    control: { type: "text" },\n  },\n};\n\nexport default { component: Button, argTypes };\n',
+    },
+    {
+      form: "only a title variable",
+      source:
+        "export default {\n  component: Button,\n  args: {\n    title: defaultTitle,\n  },\n};\n",
+    },
+  ])("rejects $form", ({ source }) => {
+    expect(hasExplicitTitle(source)).toBe(false);
+  });
+});
+
+describe("MAIN_APP_STORY_GLOBS", () => {
   it("matches the same tracked files as Storybook's own story matcher", () => {
     const specifiers = normalizeStories(getStories(), {
       configDir: join(ROOT, ".storybook"),
@@ -115,11 +170,13 @@ describe("MAIN_APP_STORY_GLOBS", () => {
     expect(planned).toEqual(built);
   });
 
-  // Storybook autotitles a story from its path relative to the entry's directory,
-  // so an untitled story gets a different title in a narrowed build and Loki writes a fresh reference for it.
+  it("matches no docs entries", () => {
+    expect(planned.filter((file) => file.endsWith(".mdx"))).toEqual([]);
+  });
+
   it("matches only stories with an explicit title", () => {
     const untitled = planned.filter(
-      (file) => !/^\s*title:/m.test(readFileSync(join(ROOT, file), "utf8")),
+      (file) => !hasExplicitTitle(readFileSync(join(ROOT, file), "utf8")),
     );
 
     expect(untitled).toEqual([]);
