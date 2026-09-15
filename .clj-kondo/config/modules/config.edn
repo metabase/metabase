@@ -345,8 +345,9 @@
 
   app-db
   {:team "UX West"
-   :api  #{metabase.app-db.cluster-lock ; TODO FIXME
+   :api  #{metabase.app-db.cluster-lock
            metabase.app-db.core
+           metabase.app-db.dml-capture
            metabase.app-db.init
            metabase.app-db.setting
            metabase.app-db.setup
