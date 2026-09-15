@@ -32,6 +32,7 @@ import {
   CanAccessMonitor,
   CanAccessMonitorDiagnostics,
   CanAccessMonitoringTools,
+  CanAccessSessionManagement,
 } from "./route-guards";
 
 /** Lands on the first Monitor section the user can access. */
@@ -83,6 +84,13 @@ const modelPersistenceLogPage = () =>
     /* webpackChunkName: "monitor" */ "metabase/monitor/tools/components/ModelPersistenceLogJobs/ModelPersistenceLogJobs"
   ).then(({ ModelPersistenceLogPage }) => ({
     Component: ModelPersistenceLogPage,
+  }));
+
+const sessionManagementUpsellPage = () =>
+  import(
+    /* webpackChunkName: "monitor" */ "metabase/monitor/session-management/SessionManagementUpsellPage"
+  ).then(({ SessionManagementUpsellPage }) => ({
+    Component: SessionManagementUpsellPage,
   }));
 
 // The log levels modal renders a code editor, which nothing else on the logs
@@ -140,6 +148,19 @@ export function getMonitorRoutes() {
 
         <Route element={<CanAccessAlertsManagement />}>
           <Route path="notifications">{getNotificationsRoutes()}</Route>
+        </Route>
+
+        <Route element={<CanAccessSessionManagement />}>
+          {PLUGIN_MONITOR.isSessionManagementEnabled ? (
+            <Route path="sessions">
+              {PLUGIN_MONITOR.getSessionManagementRoutes()}
+            </Route>
+          ) : (
+            <Route path="sessions">
+              <Route index lazy={sessionManagementUpsellPage} />
+              <Route path="*" lazy={sessionManagementUpsellPage} />
+            </Route>
+          )}
         </Route>
 
         <Route element={<CanAccessAiAuditing />}>
