@@ -2,6 +2,7 @@ import { DashboardClickAction } from "metabase/dashboard/click-behavior/Dashboar
 import {
   getClickBehavior,
   getClickBehaviorData,
+  getDashboardDrillQuestionUrl,
   getParameterIdValuePairs,
   getParameterValuesBySlug,
 } from "metabase/dashboard/click-behavior/dashboard-click-drill";
@@ -13,6 +14,8 @@ import { NativeQueryClickFallback } from "metabase/querying/click-actions/action
 import type { QueryClickActionsMode } from "metabase/querying/click-actions/types";
 import { HideColumnAction } from "metabase/visualizations/click-actions/actions/HideColumnAction";
 import type { ClickObject, LegacyDrill } from "metabase/visualizations/types";
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
 import type { CardId, DashboardId, DashboardTabId } from "metabase-types/api";
 
 export type ClickBehaviorTarget = {
@@ -26,11 +29,17 @@ export type ClickBehaviorTarget = {
   parameterIdValuePairs: ParameterIdValuePair[];
 } & (
   | { type: "dashboard"; id: DashboardId; tabId?: DashboardTabId }
-  | { type: "question"; id: CardId }
+  | {
+      type: "question";
+      id: CardId;
+      /** Ad-hoc filtered path for a non-native target; open this instead of the saved question. */
+      adHocQuestionPath?: string;
+    }
 );
 
-const getClickBehaviorTarget = (
+export const getClickBehaviorTarget = (
   clicked: ClickObject,
+  question: Question,
 ): ClickBehaviorTarget | null => {
   const clickBehavior = getClickBehavior(clicked);
   if (!clickBehavior) {
@@ -83,21 +92,29 @@ const getClickBehaviorTarget = (
     };
   }
 
-  const question = extraData?.questions?.[targetId];
+  const targetCard = extraData?.questions?.[targetId];
 
-  if (!question) {
+  if (!targetCard) {
     console.warn(
       `[SDK Navigation] Could not find question with id ${targetId}`,
     );
     return null;
   }
 
+  const targetQuestion = new Question(targetCard, question.metadata());
+  const isTargetQuestionNative = Lib.queryDisplayInfo(
+    targetQuestion.query(),
+  ).isNative;
+
   return {
     type: "question",
-    id: question.id,
-    name: question.name,
+    id: targetCard.id,
+    name: targetCard.name,
     parameters,
     parameterIdValuePairs,
+    adHocQuestionPath: isTargetQuestionNative
+      ? undefined
+      : getDashboardDrillQuestionUrl(question, clicked),
   };
 };
 
@@ -111,7 +128,7 @@ export const createEmbeddingSdkMode = (
   const { pushNavigation } = options;
 
   const SDKDashboardClickAction: LegacyDrill = ({ question, clicked = {} }) => {
-    const target = getClickBehaviorTarget(clicked);
+    const target = getClickBehaviorTarget(clicked, question);
 
     if (target && pushNavigation) {
       return [

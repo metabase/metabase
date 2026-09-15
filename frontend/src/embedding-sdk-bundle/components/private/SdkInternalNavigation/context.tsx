@@ -31,6 +31,8 @@ export type SdkInternalNavigationEntry =
       name: string;
       virtual?: true;
       parameters?: ParameterValues;
+      /** Set for a GUI target; render this ad-hoc path instead of loading `id` directly. */
+      adHocQuestionPath?: string;
       onPop?: () => void;
     })
   | (BaseEntry & {
