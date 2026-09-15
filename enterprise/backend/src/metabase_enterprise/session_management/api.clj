@@ -200,7 +200,7 @@
   All of them have to hold, so a revoke removes exactly the sessions the same filters would have listed. An empty
   body matches every live session: that is how an admin logs everybody out.
 
-  `exclude-current` (default true) holds back the session this request was made with. Pass false to log the caller
+  `exclude-current` (default true) excludes the session this request was made with. Pass false to log the caller
   out too, in which case the response also clears their session cookie.
 
   Sessions that are no longer live are left for the nightly cleanup task rather than revoked, and sessions belonging
