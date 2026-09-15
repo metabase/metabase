@@ -33,14 +33,21 @@
    :model/Segment     :metabase.segments.schema/segment.update
    :model/Transform   :metabase.transforms.schema/transform.update})
 
+(defn- revision-schema-key [prefix model]
+  (keyword "metabase.revisions.db" (str prefix "." (name model))))
+
+(doseq [[model schema] revisioned-model-row-schema]
+  (mr/register! (revision-schema-key "revisioned-row" model)
+                [:map {:closed true}
+                 [:model [:= model]]
+                 [:row [:merge schema [:map {:closed true} [:id {:optional true} ms/PositiveInt]]]]]))
+
 (def ^:private RevisionedRow
   "A `{:model ..., :row ...}` pair naming one of the models revisions are tracked for, the row typed by that
   model's own row schema plus `:id` (a revisioned row is always a real, previously-selected row)."
-  (into [:multi {:dispatch :model}]
-        (for [[model schema] revisioned-model-row-schema]
-          [model [:map {:closed true}
-                  [:model [:= model]]
-                  [:row [:merge schema [:map {:closed true} [:id {:optional true} ms/PositiveInt]]]]]])))
+  (into [:multi {:dispatch :model, :lazy-refs true}]
+        (for [model (keys revisioned-model-row-schema)]
+          [model (revision-schema-key "revisioned-row" model)])))
 
 (mu/defn update-entity!
   "Apply `entity`'s `:row` (a column diff) to `entity`'s `:model` row with `id`, returning the number updated."
@@ -206,32 +213,35 @@
   "A revision `:object` as stored, whose keys the Metabase version that recorded it owns (fields may since have been dropped)."
   [:map {:closed false, ::mr/deliberately-open true}])
 
+(doseq [[model schema] revisioned-model-row-schema
+        :let [[row-schema hydrated-keys] (get revision-object-hydrated-keys model)]]
+  (mr/register! (revision-schema-key "revision-row" model)
+                [:map {:closed true}
+                 [:model        [:= (name model)]]
+                 [:model_id     ms/PositiveInt]
+                 [:user_id      [:maybe ::lib.schema.id/user]]
+                 [:object       (cond-> [:merge (get revision-object-row-schema model schema)
+                                         (into [:map {:closed true} [:id {:optional true} ms/PositiveInt]]
+                                               (get revision-object-extra-keys model))]
+                                  row-schema (conj [:select-keys row-schema hydrated-keys]))]
+                 [:is_creation  :boolean]
+                 [:is_reversion :boolean]
+                 [:message      {:optional true} [:maybe :string]]]))
+
 (def ^:private RevisionRow
   "A Revision row, `:object` typed by the row schema of the model named `:model` (a string, e.g. \"Card\"), plus
   `:id` (a revisioned object is always a real, previously-selected row)."
-  (into [:multi {:dispatch :model}]
-        (conj (vec (for [[model schema] revisioned-model-row-schema
-                         :let [[row-schema hydrated-keys] (get revision-object-hydrated-keys model)]]
-                     [(name model)
-                      [:map {:closed true}
-                       [:model        [:= (name model)]]
+  (conj (into [:multi {:dispatch :model, :lazy-refs true}]
+              (map (fn [model] [(name model) (revision-schema-key "revision-row" model)]))
+              (keys revisioned-model-row-schema))
+        [::mc/default [:map {:closed true}
+                       [:model        :string]
                        [:model_id     ms/PositiveInt]
                        [:user_id      [:maybe ::lib.schema.id/user]]
-                       [:object       (cond-> [:merge (get revision-object-row-schema model schema)
-                                               (into [:map {:closed true} [:id {:optional true} ms/PositiveInt]]
-                                                     (get revision-object-extra-keys model))]
-                                        row-schema (conj [:select-keys row-schema hydrated-keys]))]
+                       [:object       ::unregistered-model-object]
                        [:is_creation  :boolean]
                        [:is_reversion :boolean]
                        [:message      {:optional true} [:maybe :string]]]]))
-              [::mc/default [:map {:closed true}
-                             [:model        :string]
-                             [:model_id     ms/PositiveInt]
-                             [:user_id      [:maybe ::lib.schema.id/user]]
-                             [:object       ::unregistered-model-object]
-                             [:is_creation  :boolean]
-                             [:is_reversion :boolean]
-                             [:message      {:optional true} [:maybe :string]]]])))
 
 (def ^:private RevertedRevisionRow
   "A Revision row recording a revert to the stored `:object` of an earlier Revision."

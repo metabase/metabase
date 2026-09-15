@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself (the model machinery still uses
   `toucan2.core`)."
   (:require
+   [malli.core :as mc]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -93,18 +94,34 @@
    :model/TransformTag             :metabase.transforms.schema/transform-tag.update
    :model/TransformTransformTag    :metabase.transforms.schema/transform-transform-tag.update})
 
+(defn- model-schema-key [prefix model]
+  (keyword "metabase.models.db" (str prefix "." (name model))))
+
+(doseq [[model schema] model-row-schema]
+  (mr/register! (model-schema-key "model-row" model)
+                [:map {:closed true} [:model [:= model]] [:row schema]])
+  (mr/register! (model-schema-key "model-rows" model)
+                [:map {:closed true} [:model [:= model]] [:rows [:sequential schema]]]))
+
+(mr/def ::unregistered-model-row
+  "A row of a model not listed in [[model-row-schema]], such as the test-double models `metabase.models.util.spec-update`
+  specs are tested with; its keys are that model's."
+  [:map {:closed false, ::mr/deliberately-open true, :description "row of an unregistered model"}])
+
 (def ^:private ModelRow
   "A `{:model ..., :row ...}` pair naming one of the models the generic entity helpers below are called with, the
   row typed by that model's own update schema."
-  (into [:multi {:dispatch :model}]
-        (for [[model schema] model-row-schema]
-          [model [:map {:closed true} [:model [:= model]] [:row schema]]])))
+  (conj (into [:multi {:dispatch :model, :lazy-refs true}]
+              (for [model (keys model-row-schema)]
+                [model (model-schema-key "model-row" model)]))
+        [::mc/default [:map {:closed true} [:model :keyword] [:row ::unregistered-model-row]]]))
 
 (def ^:private ModelRows
   "Like [[ModelRow]], but for a batch of rows of the same model."
-  (into [:multi {:dispatch :model}]
-        (for [[model schema] model-row-schema]
-          [model [:map {:closed true} [:model [:= model]] [:rows [:sequential schema]]]])))
+  (conj (into [:multi {:dispatch :model, :lazy-refs true}]
+              (for [model (keys model-row-schema)]
+                [model (model-schema-key "model-rows" model)]))
+        [::mc/default [:map {:closed true} [:model :keyword] [:rows [:sequential ::unregistered-model-row]]]]))
 
 (mr/def ::after-select-row
   "A row not yet run through its model's after-select, e.g. a stored revision snapshot whose keys older Metabase versions own."

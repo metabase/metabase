@@ -26,7 +26,7 @@
     '(bar
       [x :- [:map {:closed true} [:x int?] [:y int?]]]
       (str x))
-    (str "Inputs: [x :- [:map [:x int?] [:y int?]]]\n"
+    (str "Inputs: [x :- [:map {:closed true} [:x int?] [:y int?]]]\n"
          "  Return: :any")
 
     '(bar
@@ -41,7 +41,7 @@
 
 (mu/defn bar [x :- [:map {:closed true} [:x int?] [:y int?]]] (str x))
 
-(mu/defn baz :- [:map {:closed true} [:x int?] [:y int?]] [] {:x "3"})
+(mu/defn baz :- [:map [:x int?] [:y int?]] [] {:x "3"})
 
 (deftest ^:parallel mu-defn-test
   (testing "invalid input"
@@ -121,7 +121,7 @@
                      ["Inputs: ([]"
                       "           [a :- :int]"
                       "           [a :- :int b :- :int]"
-                      "           [a b & c :- [:* :int]])"
+                      "           [a :- :int b :- :int & c :- [:* :int]])"
                       "  Return: [:multi"
                       "           {:dispatch :type}"
                       "           [:sized [:map [:type [:= :sized]] [:size int?]]]"
@@ -148,7 +148,7 @@
        [:=> :cat out]
        [:=> [:cat :int] out]
        [:=> [:cat :int :int] out]
-       [:=> [:cat :any :any [:* :int]] out]])))
+       [:=> [:cat :int :int [:* :int]] out]])))
 
 (mu/defn- add-ints :- :int
   ^Integer [x :- :int y :- :int]
@@ -174,15 +174,16 @@
     (testing "returns an instrumented fn"
       (mt/with-dynamic-fn-redefs [mu.fn/instrument-ns? (constantly true)]
         (let [expansion (macroexpand `(mu/defn ~'f :- :int [] "foo"))]
-          (is (= '(def f
+          (is (= `(~'def ~'f
                     (clojure.core/let
-                     [&f (clojure.core/fn f_AMPERSAND_ [] "foo")]
+                     [~'&f (clojure.core/fn ~'f_AMPERSAND_ [] "foo")]
+                      (~(symbol "metabase.util.malli.closed-schemas" "check-args!") '~(symbol (str *ns*) "f") [:cat])
                       (clojure.core/fn
-                        mufn
+                        ~'mufn
                         ([]
-                         (try
-                           (clojure.core/->> (&f) (metabase.util.malli.fn/validate-output {:fn-name 'f} :int))
-                           (catch java.lang.Exception error (throw (metabase.util.malli.fn/fixup-stacktrace error))))))))
+                         (~'try
+                           (clojure.core/->> (~'&f) (mu.fn/validate-output {:fn-name '~'f} :int))
+                           (~'catch java.lang.Exception ~'error (throw (mu.fn/fixup-stacktrace ~'error))))))))
                  (deanon-fn-names expansion))))))))
 
 (mu/defn- ^:extra-metadata private-foo :- :int
