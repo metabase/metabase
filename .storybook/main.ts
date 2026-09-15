@@ -11,6 +11,7 @@ const {
   SIDE_EFFECT_FREE_RULE,
 } = require("../frontend/build/shared/rspack/side-effect-free-modules");
 const appConfig = require("../rspack.main.config.js");
+
 const { getStories } = require("./story-files.cjs");
 
 const config: StorybookConfig = {
