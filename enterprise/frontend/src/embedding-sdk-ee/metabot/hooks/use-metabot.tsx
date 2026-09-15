@@ -109,13 +109,16 @@ export const useMetabot = (): UseMetabotResult => {
     () =>
       agent.messages
         .filter((m) => m.status.type === "errored")
-        .map(
-          (m) =>
-            (m.status.type === "errored" && m.status.display) || {
-              type: "message",
-              message: t`Something went wrong`,
-            },
-        ),
+        .map((m) => {
+          const display = m.status.type === "errored" && m.status.display;
+          if (!display) {
+            return { type: "message", message: t`Something went wrong` };
+          }
+          return {
+            type: display.type === "aborted" ? "message" : display.type,
+            message: display.message,
+          };
+        }),
     [agent.messages],
   );
 

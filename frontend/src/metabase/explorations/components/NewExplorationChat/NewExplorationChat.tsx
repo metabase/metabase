@@ -288,6 +288,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
           >
             <Messages
               messages={messages}
+              size="md"
               onRetryMessage={(id) =>
                 retryMessage(id, { profile: "explorations" })
               }

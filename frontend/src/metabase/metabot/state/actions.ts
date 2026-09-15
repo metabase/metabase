@@ -424,14 +424,28 @@ export const submitInput = createAsyncThunk<
       const result = await sendMessageRequestPromise;
 
       if (isRejected(result)) {
+        const metabotName = getSetting(getState(), "metabot-name");
         return {
           prompt: rawPrompt,
           success: false,
           shouldRetry: result.payload?.shouldRetry ?? true,
-          error:
-            result.payload?.type === "error"
-              ? result.payload.display
-              : undefined,
+          error: match(result)
+            .returnType<MetabotAgentTurnDisplayError | undefined>()
+            .with(
+              P.union(
+                { payload: { type: "abort" } },
+                { meta: { aborted: true } },
+              ),
+              () => ({
+                type: "aborted",
+                message: t`Response from ${metabotName} was interrupted`,
+              }),
+            )
+            .with(
+              { payload: { type: "error" } },
+              ({ payload }) => payload.display,
+            )
+            .otherwise(() => undefined),
         };
       }
 

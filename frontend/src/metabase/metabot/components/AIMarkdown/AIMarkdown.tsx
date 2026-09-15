@@ -20,6 +20,7 @@ import { MarkdownSmartLink } from "./components/MarkdownSmartLink";
 type AIMarkdownProps = {
   children: string;
   className?: string;
+  size?: "md" | "lg";
   isStreaming?: boolean;
   onInternalLinkClick?: (link: string) => void;
   singleNewlinesAreParagraphs?: boolean;
@@ -127,6 +128,7 @@ const getComponents = ({
 export const AIMarkdown = memo(
   ({
     className,
+    size = "md",
     onInternalLinkClick,
     children,
     isStreaming = false,
@@ -142,7 +144,9 @@ export const AIMarkdown = memo(
       : children;
 
     return (
-      <div className={cx(S.aiMarkdownRoot, className)}>
+      <div
+        className={cx(S.aiMarkdownRoot, size === "lg" && S.large, className)}
+      >
         <StreamingMarkdown
           blockClassName={S.aiMarkdown}
           components={components}
