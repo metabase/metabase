@@ -50,7 +50,6 @@ export function setDataApp(
 ) {
   const sdkPackageVersion = getSdkPackageVersion();
 
-  EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
   EMBEDDING_SDK_CONFIG.isDataApp = true;
   EMBEDDING_SDK_CONFIG.isDataAppDev = isDev;
   EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader = "data-app";
