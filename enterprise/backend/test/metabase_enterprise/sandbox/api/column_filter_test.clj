@@ -4,6 +4,8 @@
    [metabase-enterprise.sandbox.api.column-filter :as col-filter]
    [metabase-enterprise.sandbox.test-util :as mt.tu]
    [metabase-enterprise.test :as met]
+   [metabase.lib.core :as lib]
+   [metabase.lib.test-metadata :as meta]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -17,7 +19,7 @@
   (testing "filter-fields-by-card returns fields unchanged when card has no dataset_query"
     (let [fields [{:id 1 :name "A"}]]
       (is (= fields (col-filter/filter-fields-by-card
-                     {:dataset_query nil :result_metadata []}
+                     {:id 1 :dataset_query nil :result_metadata []}
                      fields))))))
 
 (deftest empty-result-metadata-fails-closed-test
@@ -33,22 +35,12 @@
 
            See the namespace docstring of metabase-enterprise.sandbox.api.column-filter
            for the full rationale."
-    (let [mbql-card-empty-md  {:dataset_query {:type :query
-                                               :query {:source-table 1}
-                                               :database 1}
-                               :result_metadata []}
-          mbql-card-nil-md    {:dataset_query {:type :query
-                                               :query {:source-table 1}
-                                               :database 1}
-                               :result_metadata nil}
-          native-card-empty   {:dataset_query {:type :native
-                                               :native {:query "SELECT 1"}
-                                               :database 1}
-                               :result_metadata []}
-          native-card-nil     {:dataset_query {:type :native
-                                               :native {:query "SELECT 1"}
-                                               :database 1}
-                               :result_metadata nil}
+    (let [mbql-query          (lib/query meta/metadata-provider (meta/table-metadata :venues))
+          native-query        (lib/native-query meta/metadata-provider "SELECT 1")
+          mbql-card-empty-md  {:id 1 :dataset_query mbql-query :result_metadata []}
+          mbql-card-nil-md    {:id 2 :dataset_query mbql-query :result_metadata nil}
+          native-card-empty   {:id 3 :dataset_query native-query :result_metadata []}
+          native-card-nil     {:id 4 :dataset_query native-query :result_metadata nil}
           fields              [{:id 1 :name "A"} {:id 2 :name "B"} {:id 3 :name "C"}]]
       (testing "MBQL card with empty result_metadata filters everything out"
         (is (= [] (col-filter/filter-fields-by-card mbql-card-empty-md fields))))

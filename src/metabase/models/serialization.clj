@@ -74,6 +74,7 @@
    [metabase.models.serialization.resolve :as resolve]
    [metabase.models.serialization.resolve.default :as resolve.default]
    [metabase.models.visualization-settings :as mb.viz]
+   [metabase.parameters.schema]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.json :as json]
@@ -81,6 +82,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]
    [potemkin :as p]
    [toucan2.core :as t2]
@@ -648,7 +650,7 @@
         pk       (first (t2/primary-keys model))
         id       (get local pk)]
     (log/tracef "Upserting %s %d" model-name id)
-    (models.db/update-entity! model id ingested)
+    (models.db/update-entity! id (lib/normalize :metabase.models.db/model-row {:model model :row ingested}))
     (models.db/entity-by-pk model pk id)))
 
 (defmulti load-insert!
@@ -670,7 +672,7 @@
 
 (defmethod load-insert! :default [model-name ingested]
   (log/tracef "Inserting %s" model-name)
-  (models.db/insert-entity! (t2.model/resolve-model (symbol model-name)) ingested))
+  (models.db/insert-entity! (lib/normalize :metabase.models.db/model-row {:model (t2.model/resolve-model (symbol model-name)) :row ingested})))
 
 (defmulti load-one!
   "Black box for integrating a deserialized entity into this appdb.
@@ -849,7 +851,7 @@
   Throws if the corresponding entity cannot be found.
 
   Unusual parameter order means this can be used as `(update x :some_id import-fk 'SomeModel)`."
-  [eid
+  [eid   :- [:maybe [:or :string [:sequential :string]]]
    model :- :metabase.models.serialization.path/model-keyword-or-symbol]
   (resolve/import-fk (import-resolver) eid model))
 
@@ -860,9 +862,9 @@
   Unusual parameter order lets this be called as, for example, `(update x :db_id *export-fk-keyed* :model/Database :name)`.
 
   Note: This assumes the primary key is called `:id`."
-  [id
+  [id    :- [:maybe ms/PositiveInt]
    model :- :metabase.models.serialization.path/model-keyword-or-symbol
-   field]
+   field :- :keyword]
   (resolve/export-fk-keyed (export-resolver) id model field))
 
 (defn ^:dynamic *import-fk-keyed*
@@ -993,9 +995,16 @@
 
 ;;; ## MBQL Fields
 
+(mr/def ::mbql-node
+  "Any node reached while walking an MBQL form being exported or imported, which may or may not be an MBQL clause."
+  [:schema {::mr/deliberately-open true, :description "an MBQL form node"} :any])
+
+(def ^:private MBQLNode
+  [:ref ::mbql-node])
+
 (mu/defn- mbql-ref? :- [:maybe [:enum :field :field-id :dimension :metric :segment :measure]]
   "Is given form an MBQL entity reference?"
-  [form]
+  [form :- MBQLNode]
   (when (and (vector? form)
              (#{:field :field-id :dimension :metric :segment :measure} (keyword (first form))))
     (keyword (first form))))
@@ -1027,7 +1036,7 @@
 (def ^:private ^:dynamic *required-lib-uuids-for-export* nil)
 
 (mu/defn- collect-required-lib-uuids :- [:set ::lib.schema.common/uuid]
-  [x]
+  [x :- MBQLNode]
   (set
    (match/match-many x
      [:aggregation (_opts :guard map?) (uuid :guard string?)]
@@ -1429,9 +1438,11 @@
 (mu/defn export-parameters
   "Given the :parameter field of a `Card` or `Dashboard`, as a vector of maps, converts
   it to a portable form with the CardIds/FieldIds replaced with `[db schema table field]` references.
-  Parameters are sorted by `:id` for stable serialization output. A `:position` field is added
-  to preserve display order through the sort."
-  [parameters :- [:maybe [:sequential :map]]]
+  Parameters are sorted by `:id` for stable serialization output (a nil `:id` sorts first). A `:position` field
+  is added to preserve display order through the sort."
+  [parameters :- [:maybe [:sequential
+                          [:merge :metabase.parameters.schema/parameter-with-optional-type
+                           [:map [:id {:optional true} [:maybe :metabase.lib.schema.parameter/id]]]]]]]
   (->> parameters
        (map-indexed (fn [i p] (assoc p :position i)))
        (sort-by :id)

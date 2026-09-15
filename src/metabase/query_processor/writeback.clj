@@ -77,7 +77,7 @@
                          :string
                          [:cat
                           :string
-                          [:* :any]]]]
+                          [:* :metabase.lib.schema.common/field-value]]]]
   (let [mp             (lib-be/application-database-metadata-provider db-id)
         [sql & params] (if (string? sql-or-sql+params)
                          (cons sql-or-sql+params nil)

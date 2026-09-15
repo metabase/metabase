@@ -75,7 +75,7 @@
 
 (defmethod driver/dbms-version ::test-driver
   [_ _]
-  "1.0")
+  {:version "1.0"})
 
 (defmethod driver/describe-database* ::test-driver
   [_ _]
@@ -579,14 +579,14 @@
             (with-redefs [driver/can-connect? (constantly true)]
               (is (= nil
                      (:valid (update! 200))))
-              (let [curr-db (t2/select-one [:model/Database :name :engine :details :is_full_sync], :id db-id)]
+              (let [curr-db (t2/select-one [:model/Database :id :name :engine :details :is_full_sync], :id db-id)]
                 (is (=
                      {:details      {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}
                       :engine       :h2
                       :name         "Cam's Awesome Toucan Database"
                       :is_full_sync false
                       :features     (driver.u/features :h2 curr-db)}
-                     (into {} curr-db)))))))))))
+                     (dissoc (into {} curr-db) :id)))))))))))
 
 (deftest update-database-test-2
   (testing "PUT /api/database/:id"

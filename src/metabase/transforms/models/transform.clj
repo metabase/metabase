@@ -18,6 +18,7 @@
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.models.transform-run :as transform-run]
+   [metabase.transforms.schema]
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -282,7 +283,7 @@
           last-runs (m/index-by :transform_id (transform-run/latest-runs transform-ids))]
       (for [{transform-id :id :as transform} transforms]
         (let [{:keys [status checkpoint_hi_value] :as last-run} (get last-runs transform-id)
-              transform (assoc transform :last_run (dissoc last-run :last_heartbeat))]
+              transform (assoc transform :last_run last-run)]
           (if (and (= status :succeeded) checkpoint_hi_value)
             ;; ensure consistency of last_checkpoint_value with last_run
             (if (:last_checkpoint_value transform)
@@ -497,11 +498,12 @@
                                             (m/update-existing :source-database import-maybe-int-database-fk)
                                             (m/update-existing :source-tables
                                                                (fn [entries]
-                                                                 (->> (cond-> entries (map? entries) transforms-base.u/source-tables-map->vec)
-                                                                      (mapv (fn [entry]
-                                                                              (-> entry
-                                                                                  (m/update-existing :table_id import-maybe-int-table-fk)
-                                                                                  (m/update-existing :database_id import-maybe-int-database-fk)))))))
+                                                                 (let [entries (cond-> entries (map? entries) (update-keys name))]
+                                                                   (->> (cond-> entries (map? entries) transforms-base.u/source-tables-map->vec)
+                                                                        (mapv (fn [entry]
+                                                                                (-> entry
+                                                                                    (m/update-existing :table_id import-maybe-int-table-fk)
+                                                                                    (m/update-existing :database_id import-maybe-int-database-fk))))))))
                                             (update-checkpoint-field import-maybe-int-field-fk))))}
                :target             {:export #(serdes/export-mbql (dissoc % :table_id))
                                     :import serdes/import-mbql}

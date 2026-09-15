@@ -19,9 +19,13 @@
            (not-any? #(str/starts-with? (name %) "@") (keys attributes)))]
     (deferred-tru "login attribute keys must not start with `@`"))])
 
+(def UserAttributes
+  "The combined attributes of a User: its login and JWT attributes plus the system (`@`-prefixed) attributes like its tenant's."
+  (ms/string-keyed-map [:ref ::lib.schema.parameter/parameter.value]))
+
 (def NewUser
   "Required/optionals parameters needed to create a new user (for any backend)"
-  [:map
+  [:map {:closed true}
    [:first_name       {:optional true} [:maybe ms/NonBlankString]]
    [:last_name        {:optional true} [:maybe ms/NonBlankString]]
    [:email                             ms/Email]
@@ -31,7 +35,8 @@
    [:sso_source       {:optional true} [:maybe ms/NonBlankString]]
    [:locale           {:optional true} [:maybe ms/KeywordOrString]]
    [:type             {:optional true} [:maybe ms/KeywordOrString]]
-   [:tenant_id        {:optional true} [:maybe ms/PositiveInt]]])
+   [:tenant_id        {:optional true} [:maybe ms/PositiveInt]]
+   [:is_active        {:optional true} [:maybe :boolean]]])
 
 (mr/def ::user-group-membership
   "Group Membership info of a User.
@@ -52,22 +57,17 @@
 
 (mr/def ::user.settings
   "The `:settings` column of a User, decoded."
-  :map)
+  ms/UserSettings)
 
 (mr/def ::user
   "A User as selected from the app DB: every column of `:core_user` that the model selects by default, plus `:common_name` added by the model's after-select hook."
-  [:map {:closed true}
-   [:id              ::lib.schema.id/user]
-   [:email           :string]
-   [:first_name      [:maybe :string]]
-   [:last_name       [:maybe :string]]
-   [:date_joined     ms/TemporalInstant]
-   [:last_login      [:maybe ms/TemporalInstant]]
-   [:is_superuser    :boolean]
-   [:is_qbnewb       :boolean]
-   [:tenant_id       [:maybe ms/PositiveInt]]
-   [:is_data_analyst :boolean]
-   [:common_name     {:optional true} [:maybe :string]]])
+  [:merge
+   ::user.update
+   [:map {:closed true}
+    [:id              ::lib.schema.id/user]
+    [:common_name     {:optional true} [:maybe :string]]
+    [:attributes      {:optional true} [:maybe UserAttributes]]
+    [:user_group_memberships {:optional true} [:sequential [:map {:closed true} [:name :string] [:entity_id :string]]]]]])
 
 (mr/def ::user.full
   "A User as selected from the app DB with every column of `:core_user`, not only the default ones, plus `:common_name` added by the model's after-select hook."
@@ -165,12 +165,10 @@
 
 (mr/def ::user-parameter-value
   "A UserParameterValue as selected from the app DB: every column of `:user_parameter_value`."
-  [:map {:closed true}
-   [:id           ms/PositiveInt]
-   [:user_id      ::lib.schema.id/user]
-   [:parameter_id :string]
-   [:value        [:maybe ::user-parameter-value.value]]
-   [:dashboard_id [:maybe ::lib.schema.id/dashboard]]])
+  [:merge
+   ::user-parameter-value.update
+   [:map {:closed true}
+    [:id           ms/PositiveInt]]])
 
 (mr/def ::user-parameter-value.update
   "What an update (or insert) of a UserParameterValue accepts: every column of `:user_parameter_value` except `id`, all optional."

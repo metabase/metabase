@@ -261,8 +261,8 @@
 
 (deftest ^:parallel dimensions-changed?-ignores-extra-keys-test
   (is (not (lib-metric.dimension/dimensions-changed?
-            [{:id uuid-1 :name "col1" :status :status/active :lib/source :source/table}]
-            [{:id uuid-1 :name "col1" :status :status/active :lib/source :source/other}]))))
+            [{:id uuid-1 :name "col1" :status :status/active :lib/source :source/table-defaults}]
+            [{:id uuid-1 :name "col1" :status :status/active :lib/source :source/card}]))))
 
 (deftest ^:parallel dimensions-changed?-handles-nil-old-dimensions-test
   (is (lib-metric.dimension/dimensions-changed?
@@ -317,79 +317,79 @@
 
 (deftest ^:parallel get-dimension-or-throw-test
   (testing "finds dimension by id"
-    (let [dimensions [{:id "dim-1" :name "Dimension 1"}
-                      {:id "dim-2" :name "Dimension 2"}]]
-      (is (= {:id "dim-1" :name "Dimension 1"}
-             (lib-metric.dimension/get-dimension-or-throw dimensions "dim-1")))
-      (is (= {:id "dim-2" :name "Dimension 2"}
-             (lib-metric.dimension/get-dimension-or-throw dimensions "dim-2")))))
+    (let [dimensions [{:id uuid-1 :name "Dimension 1"}
+                      {:id uuid-2 :name "Dimension 2"}]]
+      (is (= {:id uuid-1 :name "Dimension 1"}
+             (lib-metric.dimension/get-dimension-or-throw dimensions uuid-1)))
+      (is (= {:id uuid-2 :name "Dimension 2"}
+             (lib-metric.dimension/get-dimension-or-throw dimensions uuid-2)))))
   (testing "throws for missing dimension"
-    (let [dimensions [{:id "dim-1" :name "Dimension 1"}]]
+    (let [dimensions [{:id uuid-1 :name "Dimension 1"}]]
       (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error)
                             #"Dimension not found"
                             (lib-metric.dimension/get-dimension-or-throw dimensions "nonexistent"))))))
 
 (deftest ^:parallel get-dimension-mapping-or-throw-test
   (testing "finds mapping by dimension id"
-    (let [mappings [{:dimension-id "dim-1" :target [:field {} 123]}
-                    {:dimension-id "dim-2" :target [:field {} 456]}]]
-      (is (= {:dimension-id "dim-1" :target [:field {} 123]}
-             (lib-metric.dimension/get-dimension-mapping-or-throw mappings "dim-1")))
-      (is (= {:dimension-id "dim-2" :target [:field {} 456]}
-             (lib-metric.dimension/get-dimension-mapping-or-throw mappings "dim-2")))))
+    (let [mappings [{:type :table :dimension-id uuid-1 :target [:field {:lib/uuid "dddddddd-dddd-dddd-dddd-dddddddddddd"} 123]}
+                    {:type :table :dimension-id uuid-2 :target [:field {:lib/uuid "dddddddd-dddd-dddd-dddd-dddddddddddd"} 456]}]]
+      (is (= {:type :table :dimension-id uuid-1 :target [:field {:lib/uuid "dddddddd-dddd-dddd-dddd-dddddddddddd"} 123]}
+             (lib-metric.dimension/get-dimension-mapping-or-throw mappings uuid-1)))
+      (is (= {:type :table :dimension-id uuid-2 :target [:field {:lib/uuid "dddddddd-dddd-dddd-dddd-dddddddddddd"} 456]}
+             (lib-metric.dimension/get-dimension-mapping-or-throw mappings uuid-2)))))
   (testing "throws for missing mapping"
-    (let [mappings [{:dimension-id "dim-1" :target [:field {} 123]}]]
+    (let [mappings [{:type :table :dimension-id uuid-1 :target [:field {:lib/uuid "dddddddd-dddd-dddd-dddd-dddddddddddd"} 123]}]]
       (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error)
                             #"Dimension mapping not found"
                             (lib-metric.dimension/get-dimension-mapping-or-throw mappings "nonexistent"))))))
 
 (deftest ^:parallel dimension-target->field-id-test
   (testing "extracts field ID from field ref"
-    (is (= 123 (lib-metric.dimension/dimension-target->field-id [:field {} 123])))
+    (is (= 123 (lib-metric.dimension/dimension-target->field-id [:field {:lib/uuid "dddddddd-dddd-dddd-dddd-dddddddddddd"} 123])))
     (is (= 456 (lib-metric.dimension/dimension-target->field-id [:field {:source-field 789} 456]))))
   (testing "returns nil for non-field refs"
     (is (nil? (lib-metric.dimension/dimension-target->field-id nil)))
     (is (nil? (lib-metric.dimension/dimension-target->field-id [:expression {} "foo"]))))
   (testing "returns nil for field refs with string names instead of IDs"
-    (is (nil? (lib-metric.dimension/dimension-target->field-id [:field {} "field_name"])))))
+    (is (nil? (lib-metric.dimension/dimension-target->field-id [:field {:lib/uuid "dddddddd-dddd-dddd-dddd-dddddddddddd"} "field_name"])))))
 
 (deftest ^:parallel resolve-dimension-to-field-id-test
   (testing "resolves active dimension to field ID"
-    (let [dimensions [{:id "dim-1" :name "Dimension 1" :status "status/active"}]
-          mappings   [{:dimension-id "dim-1" :target [:field {} 123]}]]
-      (is (= 123 (lib-metric.dimension/resolve-dimension-to-field-id dimensions mappings "dim-1"))))))
+    (let [dimensions [{:id uuid-1 :name "Dimension 1" :status "status/active"}]
+          mappings   [{:type :table :dimension-id uuid-1 :target [:field {:lib/uuid "dddddddd-dddd-dddd-dddd-dddddddddddd"} 123]}]]
+      (is (= 123 (lib-metric.dimension/resolve-dimension-to-field-id dimensions mappings uuid-1))))))
 
 (deftest ^:parallel resolve-dimension-to-field-id-throws-for-orphaned-test
   (testing "throws for orphaned dimension"
-    (let [dimensions [{:id "dim-1" :name "Dimension 1" :status :status/orphaned}]
-          mappings   [{:dimension-id "dim-1" :target [:field {} 123]}]]
+    (let [dimensions [{:id uuid-1 :name "Dimension 1" :status :status/orphaned}]
+          mappings   [{:type :table :dimension-id uuid-1 :target [:field {:lib/uuid "dddddddd-dddd-dddd-dddd-dddddddddddd"} 123]}]]
       (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error)
                             #"Cannot use orphaned dimension"
-                            (lib-metric.dimension/resolve-dimension-to-field-id dimensions mappings "dim-1"))))))
+                            (lib-metric.dimension/resolve-dimension-to-field-id dimensions mappings uuid-1))))))
 
 (deftest ^:parallel resolve-dimension-to-field-id-throws-for-missing-dimension-test
   (testing "throws for missing dimension"
     (let [dimensions []
-          mappings   [{:dimension-id "dim-1" :target [:field {} 123]}]]
+          mappings   [{:type :table :dimension-id uuid-1 :target [:field {:lib/uuid "dddddddd-dddd-dddd-dddd-dddddddddddd"} 123]}]]
       (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error)
                             #"Dimension not found"
-                            (lib-metric.dimension/resolve-dimension-to-field-id dimensions mappings "dim-1"))))))
+                            (lib-metric.dimension/resolve-dimension-to-field-id dimensions mappings uuid-1))))))
 
 (deftest ^:parallel resolve-dimension-to-field-id-throws-for-missing-mapping-test
   (testing "throws for missing mapping"
-    (let [dimensions [{:id "dim-1" :name "Dimension 1" :status "status/active"}]
+    (let [dimensions [{:id uuid-1 :name "Dimension 1" :status "status/active"}]
           mappings   []]
       (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error)
                             #"Dimension mapping not found"
-                            (lib-metric.dimension/resolve-dimension-to-field-id dimensions mappings "dim-1"))))))
+                            (lib-metric.dimension/resolve-dimension-to-field-id dimensions mappings uuid-1))))))
 
 (deftest ^:parallel resolve-dimension-to-field-id-throws-for-unresolvable-target-test
   (testing "throws when target cannot be resolved to field ID"
-    (let [dimensions [{:id "dim-1" :name "Dimension 1" :status "status/active"}]
-          mappings   [{:dimension-id "dim-1" :target [:field {} "field_name"]}]]
+    (let [dimensions [{:id uuid-1 :name "Dimension 1" :status "status/active"}]
+          mappings   [{:type :table :dimension-id uuid-1 :target [:field {:lib/uuid "dddddddd-dddd-dddd-dddd-dddddddddddd", :base-type :type/Text} "field_name"]}]]
       (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error)
                             #"Cannot resolve dimension target to field ID"
-                            (lib-metric.dimension/resolve-dimension-to-field-id dimensions mappings "dim-1"))))))
+                            (lib-metric.dimension/resolve-dimension-to-field-id dimensions mappings uuid-1))))))
 
 ;;; ----------------------------------------- effective-type / base-type fallback -----------------------------------------
 

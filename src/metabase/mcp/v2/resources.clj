@@ -46,7 +46,7 @@
 (mu/defn register-ui-resource!
   "Register a v2 MCP Apps UI resource, returning its URI. Overwrites any existing entry with the
    same `:uri`."
-  [resource :- [:map
+  [resource :- [:map {:closed true}
                 [:uri :string]
                 [:name :string]
                 [:description :string]

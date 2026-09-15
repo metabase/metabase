@@ -14,6 +14,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.view-log.db :as view-log.db]
+   [metabase.view-log.schema :as view-log.schema]
    [methodical.core :as m]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
@@ -101,7 +102,9 @@
   and inserted asynchronously, so they may not be visible in the view log for up
   to [[record-view-interval-seconds]] (plus they are lost on non-graceful shutdown); we consider that an acceptable
   trade for not paying for a synchronous INSERT on every read/query request."
-  [view-or-views :- [:or :map [:sequential :map]]]
+  [view-or-views :- [:or
+                     ::view-log.schema/view-log.update
+                     [:sequential ::view-log.schema/view-log.update]]]
   (span/with-span!
     {:name "record-view!"}
     (when (premium-features/log-enabled?)

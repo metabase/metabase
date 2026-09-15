@@ -1015,18 +1015,18 @@
           ;; An rff that injects a sentinel `:fresh` into metadata, the same shape
           ;; `update-viz-settings` uses to inject fresh viz-settings on cache hit.
           fresh-injecting-rff (fn [metadata]
-                                (qp.reducible/default-rff (assoc metadata :fresh "fresh-value")))
+                                (qp.reducible/default-rff (assoc metadata :viz-settings {:fresh "fresh-value"})))
           rf ((cached-results-rff fresh-injecting-rff (byte-array 1))
-              {:last-ran (t/zoned-date-time) :cache-version "v1" :cols [{:name "x"}]})
+              {:last-ran (t/zoned-date-time) :cache-version 1 :cols [{:name "x"}]})
           ;; Simulate a cached replay: two actual row vectors, then the final cached
           ;; result map (which used to stomp acc).
           acc (reduce rf (rf)
                       [[1] [2]
-                       {:data {:cols [{:name "x"}] :stale "stale-value"}}])
+                       {:data {:cols [{:name "x"}] :results_timezone "stale-value"}}])
           result (rf acc)]
-      (is (= "fresh-value" (get-in result [:data :fresh]))
+      (is (= "fresh-value" (get-in result [:data :viz-settings :fresh]))
           "Fresh value injected by the rff chain must survive the cached-final-metadata replay")
-      (is (= "stale-value" (get-in result [:data :stale]))
+      (is (= "stale-value" (get-in result [:data :results_timezone]))
           "Stale-only keys from @final-metadata are still deep-merged in")
       (is (= [[1] [2]] (get-in result [:data :rows]))
           "Replayed cached rows are preserved"))))

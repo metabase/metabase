@@ -203,11 +203,12 @@
   "Create a connection pool [[javax.sql.DataSource]] from an unpooled [[javax.sql.DataSource]] `data-source`. If
   `data-source` is already pooled, this will return `data-source` as-is, ignoring `props-overrides`.
   `props-overrides` (if provided) are merged over [[application-db-connection-pool-props]]."
-  (^PoolBackedDataSource [db-type data-source]
+  (^PoolBackedDataSource [db-type :- :keyword
+                          data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
    (connection-pool-data-source db-type data-source nil))
   (^PoolBackedDataSource [db-type :- :keyword
                           ^javax.sql.DataSource data-source :- (ms/InstanceOfClass javax.sql.DataSource)
-                          props-overrides :- [:maybe [:map-of :string :any]]]
+                          props-overrides :- [:maybe [:map-of :string [:or :string number? :boolean]]]]
    (if (instance? PoolBackedDataSource data-source)
      data-source
      (let [ds-name    (format "metabase-%s-app-db" (name db-type))

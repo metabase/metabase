@@ -72,7 +72,7 @@
 
 (def ^:private Joins
   [:sequential
-   [:map
+   [:map {:closed true}
     [:source    Source]
     [:condition MBQL]
     [:strategy {:optional true} JoinStrategy]]])
@@ -81,7 +81,7 @@
 
 (def Step
   "Transform step"
-  [:map
+  [:map {:closed true}
    [:source    Source]
    [:name      Source]
    [:transform TransformName]
@@ -117,7 +117,7 @@
 
 (def TransformSpec
   "Transform spec"
-  [:map
+  [:map {:closed true}
    [:name     TransformName]
    [:requires Requires]
    [:provides Provides]

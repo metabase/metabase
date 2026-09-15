@@ -128,7 +128,7 @@
                                       normalize-transform-query))]
     (when (query-guards/native-query? query)
       (check-native-source-gates! token-scopes))
-    {:type "query" :query query}))
+    {:type :query :query query}))
 
 ;;; ----------------------------------------------- Target handling ------------------------------------------------
 
