@@ -120,7 +120,7 @@
                            :message "Failed to build action schemas for model \"Broken\" (card 7): boom"}]}
              (build/fetch-items {:include-models? true} source))))))
 
-(deftest fetch-items-includes-models-only-when-requested-test
+(deftest ^:parallel fetch-items-includes-models-only-when-requested-test
   (let [model-calls (atom [])
         source      (reify source/SchemaSource
                       (database-ids [_ _] #{26})
