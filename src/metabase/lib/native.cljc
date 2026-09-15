@@ -34,9 +34,13 @@
 
 (mr/def ::incomplete-template-tag
   "An unfinished template tag; must be completed by [[finish-tag]]."
-  [:map {:closed true}
-   [:type ::lib.schema.template-tag/type]
-   [:name ::lib.schema.template-tag/name]])
+  [:or
+   [:ref ::lib.schema.template-tag/template-tag]
+   [:map {:closed true}
+    [:type         ::lib.schema.template-tag/type]
+    [:name         ::lib.schema.template-tag/name]
+    [:id           {:optional true} [:ref ::lib.schema.template-tag/id]]
+    [:display-name {:optional true} ::common/non-blank-string]]])
 
 (mr/def ::incomplete-template-tags
   [:sequential ::incomplete-template-tag])

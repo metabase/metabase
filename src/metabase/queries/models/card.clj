@@ -1210,7 +1210,7 @@
   [{:keys [card-before-update card-updates actor delete-old-dashcards?]}]
   ;; don't block our precious core.async thread, run the actual DB updates on a separate thread
   (t2/with-transaction [_conn]
-    (api/maybe-reconcile-collection-position! card-before-update card-updates)
+    (api/maybe-reconcile-collection-position! (select-keys card-before-update [:collection_id :collection_position]) (select-keys card-updates [:collection_id :collection_position]))
     (autoplace-or-remove-dashcards-for-card! card-before-update card-updates delete-old-dashcards?)
     (let [updated-fields (u/select-keys-when card-updates
                                              ;; `collection_id` and `description` can be `nil` (in order to unset them).

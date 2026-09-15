@@ -517,7 +517,7 @@
   impact to the collection position of that model instance. If so, executes updates to fix the collection position
   that goes with the change. The 2-arg version of this function is used for a new card/dashboard/pulse (i.e. not
   updating an existing instance, but creating a new one)."
-  ([new-model-data :- ModelWithPosition]
+  ([new-model-data :- ModelWithOptionalPosition]
    (maybe-reconcile-collection-position! nil new-model-data))
   ([{old-collection-id :collection_id, old-position :collection_position, :as _before-update} :- [:maybe ModelWithPosition]
     {new-collection-id :collection_id, new-position :collection_position, :as model-updates} :- ModelWithOptionalPosition]

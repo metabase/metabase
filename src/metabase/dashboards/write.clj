@@ -98,7 +98,7 @@
         dash           (t2/with-transaction [_conn]
                          ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
                          ;; collection to change position, check that and fix up if needed
-                         (api/maybe-reconcile-collection-position! dashboard-data)
+                         (api/maybe-reconcile-collection-position! (select-keys dashboard-data [:collection_id :collection_position]))
                          ;; Ok, now save the Dashboard
                          (dashboards.db/insert-dashboard! dashboard-data))]
     (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
@@ -319,7 +319,7 @@
          (t2/with-transaction [_conn]
            ;; If the dashboard has an updated position, or if the dashboard is moving to a new collection, we might need to
            ;; adjust the collection position of other dashboards in the collection
-           (api/maybe-reconcile-collection-position! current-dash dash-updates)
+           (api/maybe-reconcile-collection-position! (select-keys current-dash [:collection_id :collection_position]) (select-keys dash-updates [:collection_id :collection_position]))
            (when-let [updates (not-empty
                                (u/select-keys-when
                                 dash-updates
@@ -591,7 +591,7 @@
         dashboard      (t2/with-transaction [_conn]
                          ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
                          ;; collection to change position, check that and fix up if needed
-                         (api/maybe-reconcile-collection-position! dashboard-data)
+                         (api/maybe-reconcile-collection-position! (select-keys dashboard-data [:collection_id :collection_position]))
                          ;; Ok, now save the Dashboard
                          (let [dash (dashboards.db/insert-dashboard! dashboard-data)
                                {id->new-card :copied

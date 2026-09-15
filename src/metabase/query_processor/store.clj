@@ -237,8 +237,7 @@
   (Note: it is preferable to use [[metabase.lib.core/lib-metadata-column->legacy-metadata-column]] instead of this
   function if you REALLY need to do this sort of conversion.)"
   {:deprecated "0.48.0"}
-  [lib-metadata-col :- [:map {:closed true}
-                        [:lib/type [:= :metadata/column]]]]
+  [lib-metadata-col :- :metabase.lib.schema.metadata/column]
   (-> lib-metadata-col
       lib/lib-metadata-column->legacy-metadata-column
       (vary-meta assoc :type :metadata/column)))

@@ -206,7 +206,7 @@
                        :collection_position collection_position}
         new-document (t2/with-transaction [_conn]
                        (when collection_position
-                         (api/maybe-reconcile-collection-position! document-data))
+                         (api/maybe-reconcile-collection-position! (select-keys document-data [:collection_id :collection_position])))
                        (let [new-document-id (documents.db/insert-document! document-data)
                              card-id-map (copy-cards-for-document! from-document-id new-document-id collection_id)]
                          (when (seq card-id-map)

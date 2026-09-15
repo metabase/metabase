@@ -287,8 +287,7 @@
 (mu/defn join-last-stage-path :- ::path
   "Given a `join-path`, return the path to the last stage within the join."
   [join-path :- ::path
-   join      :- [:map {:closed true}
-                 [:lib/type [:= :mbql/join]]]]
+   join      :- [:ref ::lib.schema.join/join]]
   (into (vec join-path) [:stages (dec (count (:stages join)))]))
 
 (declare walk-clause* walk-clauses*)

@@ -387,10 +387,10 @@
         document-updates (dissoc (api/updates-with-archived-directly existing-document body) :cards)]
     (t2/with-transaction [_conn]
       (when collection_position
-        (api/maybe-reconcile-collection-position! existing-document {:collection_id (if (contains? body :collection_id)
-                                                                                      collection_id
-                                                                                      (:collection_id existing-document))
-                                                                     :collection_position collection_position}))
+        (api/maybe-reconcile-collection-position! (select-keys existing-document [:collection_id :collection_position]) {:collection_id (if (contains? body :collection_id)
+                                                                                                                                          collection_id
+                                                                                                                                          (:collection_id existing-document))
+                                                                                                                         :collection_position collection_position}))
       (let [card-id-map (when document
                           (merge
                            (clone-cards-in-document! (assoc existing-document :document document))
