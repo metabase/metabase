@@ -982,17 +982,21 @@
       (testing (str "\n" (pr-str (cons 'with-model-cleanup (map (comp name first) models))) "\n")
         (f))
       (finally
-        (doseq [[model pk] models
-                ;; might not have an old max ID if this is the first time the macro is used in this test run.
-                :let [old-max-id (get model->old-max-id model)
-                      max-id-condition (if old-max-id [:> pk old-max-id] true)
-                      additional-conditions (with-model-cleanup-additional-conditions model)
-                      where-clause [:and max-id-condition additional-conditions]]]
-          (t2/query-one
-           {:delete-from (t2/table-name model)
-            :where where-clause}))
-        ;; TODO we don't (currently) have index update hooks on deletes, so we need this to ensure rollback happens.
-        (reindex-search-index!)))))
+        (let [deleted (reduce (fn [total [model pk]]
+                                ;; The first use in a test run may have no previous maximum ID.
+                                (let [old-max-id            (get model->old-max-id model)
+                                      max-id-condition      (if old-max-id [:> pk old-max-id] true)
+                                      additional-conditions (with-model-cleanup-additional-conditions model)]
+                                  (+ total (t2/query-one
+                                            {:delete-from (t2/table-name model)
+                                             :where       [:and max-id-condition additional-conditions]}))))
+                              0
+                              models)]
+          ;; Raw deletes skip Toucan hooks, so a reindex purges whatever the deleted rows contributed to the
+          ;; search index. Cascades count too: deleting a user removes their personal collection, whose index
+          ;; row would otherwise linger. Only an empty cleanup skips the rebuild.
+          (when (pos? deleted)
+            (reindex-search-index!)))))))
 
 (defmacro with-model-cleanup
   "Execute `body`, then delete any *new* rows created for each model in `models`.

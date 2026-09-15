@@ -17,6 +17,21 @@
    :h2       #{40001    ; DEADLOCK_1
                50200}}) ; LOCK_TIMEOUT_1
 
+(def ^:private table-not-found-sql-states
+  ;; `undefined_table` (42P01) is PostgreSQL-specific; the rest are X/Open. H2 uses three missing-table states,
+  ;; corresponding to `TABLE_OR_VIEW_NOT_FOUND_1`, `..._WITH_CANDIDATES_2`, and `..._DATABASE_EMPTY_1` in
+  ;; `org.h2.api.ErrorCode`.
+  #{"42P01" "42S02" "42S03" "42S04"})
+
+(defn table-not-found?
+  "Whether exception `e` was caused by querying a table that does not exist.
+  SQLSTATE distinguishes a missing table from other errors raised by the same driver.
+  Walks the full exception cause chain."
+  [e]
+  (boolean (some #(and (instance? SQLException %)
+                       (contains? table-not-found-sql-states (.getSQLState ^SQLException %)))
+                 (take-while some? (iterate ex-cause e)))))
+
 (defn- transient-sql-exception?
   [codes ^SQLException e]
   (or (contains? codes (.getSQLState e))

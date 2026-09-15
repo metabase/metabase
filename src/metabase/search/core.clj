@@ -203,10 +203,10 @@
             (throw e)))))))
 
 (defn reindex!
-  "Populate a new index, and make it active. Simultaneously updates the current index.
-  Returns a future that will complete when the reindexing is done.
-  Respects `search.ingestion/*force-sync*` and waits for the future if it's true.
-  Alternately, if `:async?` is false, it will also run synchronously."
+  "Build and activate a new index while continuing to update the current one.
+  By default, runs asynchronously and returns a future.
+  Runs synchronously and returns a delivered promise when `search.ingestion/*force-sync*` is true or
+  `:async?` is false."
   [& {:keys [async?] :or {async? true} :as opts}]
   (let [f (fn []
             (try
