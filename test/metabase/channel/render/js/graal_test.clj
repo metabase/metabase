@@ -59,16 +59,25 @@
        (graal/load-resource context "metabase/channel/render/js/engine_test_resource.js")
        (is (= 3 (.asLong (graal/execute-fn-name context "engine_test_plus" 1 2))))))))
 
-(deftest result-string-caps-length-test
-  (testing "a render result larger than the cap is refused before it is JSON-decoded or parsed on the host"
-    (do-with-untrusted-context
-     (fn [^Context context]
-       (is (= (* 1024 1024)
-              (count (#'graal/result-string (graal/load-js-string context "'x'.repeat(1024 * 1024)" "ok.js"))))
-           "a result within the cap passes through")
-       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"more than the .* allowed"
-                             (#'graal/result-string
-                              (graal/load-js-string context "'x'.repeat(17 * 1024 * 1024)" "big.js"))))))))
+(defn- thread-allocated-bytes []
+  (let [^com.sun.management.ThreadMXBean mx (java.lang.management.ManagementFactory/getThreadMXBean)]
+    (.getThreadAllocatedBytes mx (.getId (Thread/currentThread)))))
+
+(deftest call-bounded-caps-result-length-test
+  (do-with-untrusted-context
+   (fn [^Context context]
+     (graal/load-js-string context "function big(n) { return 'x'.repeat(n) }; function obj() { return {length: 1} }" "fns.js")
+     (testing "a string result within the cap passes through"
+       (is (= (* 1024 1024) (count (#'graal/call-bounded context "big" (* 1024 1024))))))
+     (testing "an oversized result is refused in the guest, before it is copied to the host"
+       (let [before (thread-allocated-bytes)]
+         (is (thrown-with-msg? PolyglotException #"more than the .* allowed"
+                               (#'graal/call-bounded context "big" (* 17 1024 1024))))
+         (is (< (- (thread-allocated-bytes) before) (* 4 1024 1024))
+             "refusing a 17M-char string must not allocate it (~34 MB, more with marshalling) on the host heap")))
+     (testing "a non-string result is refused"
+       (is (thrown-with-msg? PolyglotException #"did not return a string"
+                             (#'graal/call-bounded context "obj")))))))
 
 (deftest untrusted-context-enforces-heap-limit-test
   (testing "sandbox.MaxHeapMemory terminates a plugin that exhausts the isolate heap"

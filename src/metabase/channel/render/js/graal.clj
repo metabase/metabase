@@ -61,20 +61,31 @@
 
 (def ^:private max-result-chars
   "Ceiling on the length of a string a render returns from the isolate. The isolate's heap cap bounds what the guest
-  can build, but the string is then copied to the host heap, JSON-decoded and (for svg) parsed into a Batik DOM —
-  each a further copy the isolate's caps don't cover."
+  can build, but a string `Value` is copied to the host heap the moment the guest returns it, then JSON-decoded and
+  (for svg) parsed into a Batik DOM — copies the isolate's caps don't cover. Chart svg is well under 1 MB; the
+  headroom is for plugins that inline `data:` images."
   (* 16 1024 1024))
 
-(defn- result-string
-  "The string `value` a render returned, or throw if it exceeds [[max-result-chars]] (before anything downstream
-  copies it again)."
-  ^String [^Value value]
-  (let [s (.asString value)]
-    (when (> (.length s) (long max-result-chars))
-      (throw (ex-info (trs "Static-viz render returned {0} characters, more than the {1} allowed"
-                           (.length s) max-result-chars)
-                      {:type ::result-too-large, :length (.length s)})))
-    s))
+(def ^:private ^String bounded-call-js
+  "Guest-side wrapper that calls `fn` and returns its result only if it is a string of at most `max` characters,
+  so an oversized result is refused *before* it crosses to the host. `typeof` and a string primitive's own `length`
+  don't consult anything guest code — a plugin's included — can patch."
+  (str "(fn, max, ...args) => {"
+       "  const s = fn(...args);"
+       "  if (typeof s !== 'string') throw new Error('Static-viz render did not return a string');"
+       "  if (s.length > max) throw new Error(`Static-viz render returned ${s.length} characters, more than the ${max} allowed`);"
+       "  return s;"
+       "}"))
+
+(defn- call-bounded
+  "Call the global js function `fn-name` in `context` with `args` and return its string result, refusing results
+  that aren't strings or exceed [[max-result-chars]] before they are copied to the host (see [[bounded-call-js]]).
+  A refused result surfaces as a `PolyglotException` carrying the wrapper's message."
+  ^String [^Context context ^String fn-name & args]
+  (let [fn-ref  (.eval context "js" fn-name)
+        wrapper (.eval context "js" bounded-call-js)]
+    (assert (.canExecute fn-ref) (str "cannot execute " fn-name))
+    (.asString ^Value (.execute wrapper (into-array Object (list* fn-ref max-result-chars args))))))
 
 (defn execute-fn
   "fn-ref should be an executable org.graalvm.polyglot.Value returned from a js engine. Invoke it with args."
@@ -357,7 +368,7 @@
    args    :- [:sequential :string]]
   (do-with-untrusted-builtin-context
    (fn [^Context context]
-     (result-string (apply execute-fn-name context (str "MetabaseStaticViz." fn-name) args)))))
+     (apply call-bounded context (str "MetabaseStaticViz." fn-name) args))))
 
 (defn- chart-with-custom-viz*
   "Render `input` on a pooled plugin isolate context (slim custom-viz bundle already loaded by the pool)
@@ -377,7 +388,7 @@
                         (doseq [{:keys [identifier plugin-id source]} bundles]
                           (load-js-string context source (str "custom-viz-" identifier ".js"))
                           (execute-fn-name context "MetabaseStaticViz.registerCustomVizPlugin" identifier plugin-id))
-                        (result-string (execute-fn-name context "MetabaseStaticViz.renderChartJSON" input-json))))]
+                        (call-bounded context "MetabaseStaticViz.renderChartJSON" input-json)))]
     (log/infof "custom-viz: static-rendered %s in %.0fms (incl. context acquire/generation)"
                (mapv :identifier bundles) (u/since-ms timer))
     result))
