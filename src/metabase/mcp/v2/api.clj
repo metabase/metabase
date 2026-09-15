@@ -168,36 +168,30 @@
        "When visualize_query is available, use it for any request to show, chart, plot, or visualize data (pass a "
        "query_handle from execute_query or execute_sql when you have one); don't draw the chart yourself.\n"
        "Teaching errors embed the relevant contract, so a failed call always names its fix.\n"
-       ;; Must match what the consent screen shows: a permission the connection lacks starts unticked. Told nothing, a
-       ;; user clicks Authorize without ticking it and the step-up grants nothing.
-       "Your client may hide that error: a failure mentioning re-authorization, an expired token, "
-       "\"insufficient scope\", \"Unauthorized\", or \"tool execution failed\" usually means a missing permission on "
-       "this connection, not an expired login. Tell the user which tool failed and which permission it needs (from the "
-       "\"Requires the … permission\" sentence that starts the tool's description, which is how the consent screen "
-       "names it), and ask whether they want to grant it. To grant it they reconnect: in Claude Code, /mcp, select "
-       "this server, Re-authenticate; in Codex, `codex mcp login <server>`, then a new session. That permission is "
-       "unticked on the consent screen, so tell them to tick it. Don't retry until they say they have reconnected."))
-
-(defn- permission-list
-  "`scopes` as the model should name them: each scope's consent-screen label, quoted, then the scope in parentheses,
-   separated by semicolons (labels may contain commas)."
-  [scopes]
-  (str/join "; " (for [scope scopes]
-                   (if-let [label (registry/english-scope-label scope)]
-                     (str "\"" label "\" (" scope ")")
-                     scope))))
+       ;; The refused call is what makes a client save the step-up scope: a model that refuses up front leaves the
+       ;; user's re-authentication asking for the baseline again. The consent screen starts that permission unticked,
+       ;; so a user told nothing clicks Authorize and the step-up grants nothing.
+       "An auth error (\"re-authorization\", \"expired token\", \"insufficient scope\", \"Unauthorized\", \"tool "
+       "execution failed\") usually means a missing permission, not an expired login. When a tool needs a permission "
+       "this connection lacks (a call failed, or the list below says so), tell the user which one (each tool's "
+       "description starts with the permission it requires) and why, and ask whether to grant it. If they agree, make "
+       "the call anyway: the refusal is what makes their client request it. Some clients then open the consent screen "
+       "themselves; otherwise the user reconnects (Claude Code: /mcp, select this server, Re-authenticate; Codex: "
+       "`codex mcp login <server>`, then a new session). The permission is unticked on the consent screen; tell them to "
+       "tick it. Retry once they have reconnected."))
 
 (defn- connection-permissions
-  "Sentences telling the model which of `surface-scopes` `token-scopes` grants and which it lacks, or nil when
-   `token-scopes` is unrestricted (nil or holding the unrestricted sentinel)."
+  "Sentences telling the model which of `surface-scopes`, by scope ID in their order, `token-scopes` grants and which
+   it lacks, or nil when `token-scopes` is unrestricted (nil or holding the unrestricted sentinel)."
   [surface-scopes token-scopes]
   (when-not (or (nil? token-scopes) (contains? token-scopes ::api.scope/unrestricted))
     (let [{granted true missing false} (group-by #(mcp.scope/matches? token-scopes %) surface-scopes)]
-      (str "This connection has: " (if (seq granted) (permission-list granted) "none") "."
-           (when (seq missing)
-             (str " It does not have: " (permission-list missing) ". A missing permission was either not requested yet "
-                  "or left unticked by the user; don't assume which. This list reflects the connection when it started; "
-                  "if a call succeeds, trust that over this list."))))))
+      (str/join " " (cond-> []
+                      (seq granted) (conj (str "This connection has: " (str/join ", " granted) "."))
+                      (seq missing) (conj (str (if (seq granted) "It lacks: " "This connection lacks: ")
+                                               (str/join ", " missing) ". Missing means not requested yet or left "
+                                               "unticked; don't assume which. If a call succeeds, trust that over this "
+                                               "list.")))))))
 
 (defn- server-instructions
   "The `initialize` result's `instructions` for a caller holding `token-scopes` — the only channel that reaches the

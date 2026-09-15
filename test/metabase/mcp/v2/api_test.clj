@@ -125,25 +125,30 @@
       (testing "the cause is a missing permission, not an expired login"
         (is (re-find #"(?i)missing permission" instructions))
         (is (re-find #"(?i)not an expired login" instructions)))
-      (testing "the model names the tool and the permission, as the consent screen names it"
-        (is (re-find #"(?i)which tool" instructions))
-        (is (re-find #"(?i)which permission" instructions))
+      (testing "the model names the permission and why it is needed"
+        (is (re-find #"(?i)tell the user which one" instructions))
+        (is (re-find #"(?i)and why" instructions))
         (is (re-find #"(?i)consent screen" instructions))
         (testing "and finds that name where the description puts it: first, ahead of any client truncation"
-          (is (re-find #"(?i)sentence that starts the tool's description" instructions))
+          (is (re-find #"(?i)each tool's description starts with the permission it requires" instructions))
           (is (not (re-find #"(?i)ends the tool's description" instructions)))))
       (testing "the user reconnects, with steps for common clients"
         (is (re-find #"(?i)re-?authenticate|reconnect" instructions))
         (is (str/includes? instructions "/mcp"))
         (is (str/includes? instructions "codex mcp login")))
-      (testing "no retry until the user has reconnected"
-        (is (re-find #"(?i)(don't|do not) retry" instructions)))
+      (testing "GHY-4555: once the user agrees, the model makes the call anyway — without the refusal a client saves no
+                step-up scope, and re-authenticating asks for the baseline again"
+        (is (re-find #"(?i)if they agree, make the call anyway" instructions))
+        (is (re-find #"(?i)the refusal is what makes their client request it" instructions))
+        (is (not (re-find #"(?i)(don't|do not) retry" instructions))))
+      (testing "the retry waits until the user has reconnected"
+        (is (re-find #"(?i)retry once they have reconnected" instructions)))
       (testing "GHY-4555: the consent screen shows a newly requested permission unticked, so the model tells the user
                 to tick it, and asks rather than sending them through consent unprompted"
         (is (not (re-find #"(?i)no per-permission" instructions)))
         (is (re-find #"(?i)unticked" instructions))
         (is (re-find #"(?i)tell them to tick it" instructions))
-        (is (re-find #"(?i)ask whether they want to grant it" instructions)))
+        (is (re-find #"(?i)ask whether to grant it" instructions)))
       (testing "the skills guidance is kept"
         (is (re-find #"learn\(\)" instructions))))))
 
@@ -1150,70 +1155,76 @@
     @instructions))
 
 (def ^:private baseline-connection-sentence
-  (str "This connection has: \"See your Metabase content and data structure\" (agent:content:read); "
-       "\"Run queries against your connected databases and see the results\" (agent:query:run); "
-       "\"Read MCP resources\" (agent:resource:read). "
-       "It does not have: \"Create, edit and trash Metabase content\" (agent:content:write); "
-       "\"Write and run its own raw SQL on your connected databases\" (agent:sql:run); "
-       "\"Set up scheduled delivery of your data to email addresses and Slack channels it chooses\" "
-       "(agent:delivery:write)."))
+  (str "This connection has: agent:content:read, agent:query:run, agent:resource:read. "
+       "It lacks: agent:content:write, agent:sql:run, agent:delivery:write."))
+
+(def ^:private missing-permission-caveat
+  "Missing means not requested yet or left unticked; don't assume which. If a call succeeds, trust that over this list.")
 
 (def ^:private scope-failure-paragraph
-  (str "Your client may hide that error: a failure mentioning re-authorization, an expired token, "
-       "\"insufficient scope\", \"Unauthorized\", or \"tool execution failed\" usually means a missing permission on "
-       "this connection, not an expired login. Tell the user which tool failed and which permission it needs (from the "
-       "\"Requires the … permission\" sentence that starts the tool's description, which is how the consent screen "
-       "names it), and ask whether they want to grant it. To grant it they reconnect: in Claude Code, /mcp, select "
-       "this server, Re-authenticate; in Codex, `codex mcp login <server>`, then a new session. That permission is "
-       "unticked on the consent screen, so tell them to tick it. Don't retry until they say they have reconnected."))
+  (str "An auth error (\"re-authorization\", \"expired token\", \"insufficient scope\", \"Unauthorized\", \"tool "
+       "execution failed\") usually means a missing permission, not an expired login. When a tool needs a permission "
+       "this connection lacks (a call failed, or the list below says so), tell the user which one (each tool's "
+       "description starts with the permission it requires) and why, and ask whether to grant it. If they agree, make "
+       "the call anyway: the refusal is what makes their client request it. Some clients then open the consent screen "
+       "themselves; otherwise the user reconnects (Claude Code: /mcp, select this server, Re-authenticate; Codex: "
+       "`codex mcp login <server>`, then a new session). The permission is unticked on the consent screen; tell them to "
+       "tick it. Retry once they have reconnected."))
 
 (deftest initialize-instructions-say-each-thing-once-test
   (testing "GHY-4555: every connection pays for the instructions in tokens, so the scope-failure guidance is stated once
             and the per-connection paragraph carries only the facts the general one lacks"
     (let [baseline (bearer-instructions! (set mcp.paths/v2-baseline-scopes))]
       (is (str/ends-with? baseline
-                          (str "\n" scope-failure-paragraph "\n" baseline-connection-sentence
-                               " A missing permission was either not requested yet or left unticked by the user; "
-                               "don't assume which. This list reflects the connection when it started; if a call "
-                               "succeeds, trust that over this list."))
+                          (str "\n" scope-failure-paragraph "\n" baseline-connection-sentence " "
+                               missing-permission-caveat))
           baseline)
-      (doseq [[phrase most] [["ask whether they want to grant it" 1] ["retry" 1] ["the usual cause is" 0] ["e.g." 0]]]
+      (doseq [[phrase most] [["ask whether to grant it" 1] ["make the call anyway" 1] ["retry" 1]
+                             ["the usual cause is" 0] ["e.g." 0]]]
         (testing phrase
-          (is (>= most (count (re-seq (re-pattern (java.util.regex.Pattern/quote phrase)) baseline)))))))))
+          (is (>= most (count (re-seq (re-pattern (str "(?i)" (java.util.regex.Pattern/quote phrase))) baseline)))))))))
+
+(deftest initialize-instructions-fit-claude-code-truncation-test
+  (testing "GHY-4555: Claude Code truncates server instructions at 2048 characters, which cut off the end of the
+            per-connection permission paragraph, so the whole string fits for every kind of caller"
+    (let [[_ response] (initialize!)]
+      (doseq [[caller instructions] {"no surface scope" (bearer-instructions! #{"agent:question:create"})
+                                     "baseline"         (bearer-instructions! (set mcp.paths/v2-baseline-scopes))
+                                     "all six"          (bearer-instructions! (set mcp.paths/v2-surface-scopes))
+                                     "unrestricted"     (get-in response [:body :result :instructions])}]
+        (testing caller
+          (is (<= (count instructions) 2048) (str (count instructions) " characters")))))))
 
 (deftest initialize-instructions-list-the-connection-permissions-test
   (testing "GHY-4555: the consent screen lets the user leave a requested permission unticked, and Claude Code and Codex
             drop the 403's error_description, so the instructions tell the model which of the surface's permissions
-            this connection holds, named as the consent screen names them"
+            this connection holds, by scope ID (the tool descriptions carry the consent-screen names)"
     (let [baseline (bearer-instructions! (set mcp.paths/v2-baseline-scopes))]
       (testing "a baseline token lists what it has and what it lacks, in surface order"
-        (is (str/includes? baseline baseline-connection-sentence) baseline))
-      (testing "a missing permission is not assumed to be declined, and a successful call outranks the list"
-        (is (re-find #"(?i)not requested yet or left unticked by the user" baseline))
-        (is (re-find #"(?i)don't assume which" baseline))
-        (is (re-find #"(?i)if a call succeeds, trust that over this list" baseline)))
+        (is (str/ends-with? baseline (str "\n" baseline-connection-sentence " " missing-permission-caveat)) baseline))
       (testing "the general guidance is kept"
         (is (re-find #"learn\(\)" baseline))
         (is (re-find #"(?i)not an expired login" baseline)))
       (testing "a token holding every surface scope lists nothing missing"
         (let [all-six (bearer-instructions! (set mcp.paths/v2-surface-scopes))]
-          (is (str/includes? all-six "This connection has: \"See your Metabase content and data structure\""))
-          (doseq [scope mcp.paths/v2-surface-scopes]
-            (is (str/includes? all-six (str "(" scope ")")) scope))
-          (is (str/ends-with? all-six "\"Read MCP resources\" (agent:resource:read)."))
-          (is (not (str/includes? all-six "does not have")))
+          (is (str/ends-with? all-six (str "\nThis connection has: " (str/join ", " mcp.paths/v2-surface-scopes) "."))
+              all-six)
+          (is (not (str/includes? all-six "lacks:")))
           (is (not (str/includes? all-six "don't assume which")))
           (testing "and one token's list is never served to another"
             (is (not= baseline all-six))
             (is (= baseline (bearer-instructions! (set mcp.paths/v2-baseline-scopes)))))))
-      (testing "a token holding none of the surface scopes says so"
+      (testing "a token holding none of the surface scopes lists only what it lacks"
         (let [none (bearer-instructions! #{"agent:question:create"})]
-          (is (str/includes? none "This connection has: none. It does not have: \"See your Metabase content"))))
+          (is (str/ends-with? none (str "\nThis connection lacks: " (str/join ", " mcp.paths/v2-surface-scopes) ". "
+                                        missing-permission-caveat))
+              none)
+          (is (not (str/includes? none "This connection has")))))
       (testing "an unrestricted cookie session gets no list"
         (let [[_ response] (initialize!)
               cookie       (get-in response [:body :result :instructions])]
           (is (re-find #"learn\(\)" cookie))
           (is (not (str/includes? cookie "This connection has")))
-          (is (not (str/includes? cookie "does not have")))
+          (is (not (str/includes? cookie "lacks:")))
           (testing "and a cookie session after a scoped token still gets none"
             (is (not= baseline cookie))))))))
