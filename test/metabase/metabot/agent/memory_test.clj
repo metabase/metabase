@@ -17,7 +17,7 @@
       (is (= [] (:steps-taken mem)))))
   (testing "defaults the working state when nil"
     (let [mem (memory/initialize [{:role :user :content "Hello"}] nil)]
-      (is (= {:queries {} :charts {} :todos [] :transforms {} :link-registry {}}
+      (is (= {:queries {} :charts {} :dashboards {} :todos [] :transforms {} :link-registry {}}
              (memory/get-state mem))))))
 
 (deftest ^:parallel initialize-normalizes-state-registry-keys-test

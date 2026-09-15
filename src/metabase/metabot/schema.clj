@@ -142,10 +142,29 @@
    [:target {:optional true} [:maybe ::transform.target]]
    [:source {:optional true} [:maybe ::transform.source]]])
 
+(mr/def ::dashboard.tile
+  [:map {:closed true}
+   [:title :string]
+   [:row :int]
+   [:col :int]
+   [:size_x :int]
+   [:size_y :int]
+   [:chart_id {:optional true} :string]
+   [:query_id {:optional true} :string]
+   [:card_id {:optional true} :int]])
+
+(mr/def ::dashboard
+  [:map {:closed true}
+   [:dashboard_id :string]
+   [:name :string]
+   [:description {:optional true} [:maybe :string]]
+   [:tiles [:sequential ::dashboard.tile]]])
+
 (mr/def ::state
   [:map {:closed true}
    [:queries {:optional true} [:map-of ::state-map-key ::query]]
    [:charts {:optional true} [:map-of ::state-map-key ::chart]]
+   [:dashboards {:optional true} [:map-of ::state-map-key ::dashboard]]
    [:chart-configs {:optional true} [:map-of ::state-map-key ::chart-config]]
    [:todos {:optional true} [:sequential ::todo]]
    [:transforms {:optional true} [:map-of ::state-map-key ::transform]]

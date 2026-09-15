@@ -1,10 +1,12 @@
 import { serializeCardForUrl } from "metabase/common/utils/card";
 import type {
+  AdhocDashboardTile,
   CardDisplayType,
   DatasetQuery,
   UnsavedCard,
 } from "metabase-types/api";
 
+import { adhocDashboard } from "./dashboards";
 import { serializedQuestion } from "./questions";
 
 export function newMetabotConversation({ prompt }: { prompt: string }) {
@@ -17,10 +19,22 @@ type GeneratedCardLink = {
   display?: CardDisplayType;
 };
 
-type GeneratedDashboardLink = {
+type GeneratedXrayDashboardLink = {
   type: "dashboard";
   url: string;
 };
+
+type GeneratedAdhocDashboardLink = {
+  type: "dashboard";
+  id: string;
+  title: string;
+  description?: string;
+  tiles: AdhocDashboardTile[];
+};
+
+type GeneratedDashboardLink =
+  | GeneratedXrayDashboardLink
+  | GeneratedAdhocDashboardLink;
 
 type GeneratedEntityLink = GeneratedCardLink | GeneratedDashboardLink;
 
@@ -34,12 +48,33 @@ export function generatedCard(card: GeneratedCardLink) {
   return serializedQuestion(unsavedCard, { includeDisplayIsLocked: true });
 }
 
-export function generatedEntity(entity: GeneratedEntityLink) {
+export function generatedDashboard(
+  dashboard: GeneratedDashboardLink,
+  conversationId?: string,
+) {
+  if ("url" in dashboard) {
+    return dashboard.url;
+  }
+  return adhocDashboard({
+    name: dashboard.title,
+    description: dashboard.description,
+    tiles: dashboard.tiles,
+    metabot:
+      conversationId != null
+        ? { conversation_id: conversationId, dashboard_id: dashboard.id }
+        : undefined,
+  });
+}
+
+export function generatedEntity(
+  entity: GeneratedEntityLink,
+  { conversationId }: { conversationId?: string } = {},
+) {
   switch (entity.type) {
     case "card":
       return generatedCard(entity);
     case "dashboard":
-      return entity.url;
+      return generatedDashboard(entity, conversationId);
   }
 }
 

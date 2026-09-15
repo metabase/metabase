@@ -2,6 +2,7 @@ import * as Yup from "yup";
 
 import type {
   AddResearchGroupsResponse,
+  AdhocDashboardTile,
   CardDisplayType,
   DatasetQuery,
   MetabotCodeEdit,
@@ -95,12 +96,26 @@ export type GeneratedCard = {
   display?: CardDisplayType;
 };
 
-export type GeneratedDashboard = {
+export type GeneratedDashboardTile = AdhocDashboardTile;
+
+export type GeneratedXrayDashboard = {
   type: "dashboard";
-  id?: number;
+  id?: string;
   title: string;
   url: string;
 };
+
+export type GeneratedAdhocDashboard = {
+  type: "dashboard";
+  id: string;
+  title: string;
+  description?: string;
+  tiles: GeneratedDashboardTile[];
+};
+
+export type GeneratedDashboard =
+  | GeneratedXrayDashboard
+  | GeneratedAdhocDashboard;
 
 export type GeneratedEntity = GeneratedCard | GeneratedDashboard;
 
@@ -109,13 +124,19 @@ export type SavedEntityDestination =
   | { type: "dashboard"; id: number }
   | { type: "document"; id: number };
 
-export type EntitySavedValue = {
-  chart_id: string;
-  card_id: number;
+type EntitySavedBase = {
   destination: SavedEntityDestination;
   tool_call_id?: string;
   title?: string;
 };
+
+export type EntitySavedValue =
+  | (EntitySavedBase & { type: "card"; chart_id: string; card_id: number })
+  | (EntitySavedBase & {
+      type: "dashboard";
+      generated_dashboard_id: string;
+      dashboard_id: number;
+    });
 
 export type ToolTitleData = {
   tool_call_id: string;

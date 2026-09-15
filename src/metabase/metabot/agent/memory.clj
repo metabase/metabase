@@ -27,7 +27,7 @@
     :steps-taken    []
     :context        context
     :state          (metabot.schema/normalize-state
-                     (or state {:queries {} :charts {} :todos [] :transforms {} :link-registry {}}))
+                     (or state {:queries {} :charts {} :dashboards {} :todos [] :transforms {} :link-registry {}}))
     :turn-state     {}}))
 
 (defn add-step
@@ -110,6 +110,13 @@
                       {:agent-error? true
                        :chart-id chart-id
                        :available-charts (keys charts)})))))
+
+;;; Dashboard Management
+
+(defn set-dashboard
+  "Store a generated dashboard definition in state by its dashboard-id."
+  [memory dashboard-id dashboard]
+  (record memory [:dashboards dashboard-id] dashboard))
 
 ;;; Transform Management
 
