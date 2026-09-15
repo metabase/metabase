@@ -23,6 +23,7 @@
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.sql-parsing.core :as sql-parsing]
    [metabase.transform-testing.compile :as transform-testing.compile]
    [metabase.transform-testing.db :as transform-testing.db]
    [metabase.transform-testing.executor :as transform-testing.executor]
@@ -46,7 +47,19 @@
         _         (api/check-400 (driver.u/supports? driver :transforms/testing database)
                                  (tru "The database of this transform does not support transform testing."))
         ;; --- compile source once (pure): SQL + the tables it reads, before any replacement ---
-        compiled-source (transform-testing.compile/compile-source driver transform)
+        compiled-source (try
+                          (transform-testing.compile/compile-source driver transform)
+                          (catch Exception e
+                            (if (sql-parsing/parse-error? e)
+                              ;; Surface the parser's own diagnostic (error type + Line/Col + caret) —
+                              ;; it names the offending token, the one thing that lets an author fix
+                              ;; their SQL. It is a syntax diagnostic about their own query: no data,
+                              ;; no schema — safe to return. Prefer the cause's bare message over the
+                              ;; "sqlglot call failed: " wrapper.
+                              (api/check-400 false
+                                             (tru "The transform source SQL could not be parsed for test input validation: {0}"
+                                                  (or (some-> (ex-cause e) ex-message) (ex-message e))))
+                              (throw e))))
         ;; --- validate (pure): the declared inputs must be exactly the tables the transform reads.
         ;;     Both directions are 400s; checks the same referenced-tables the rewrite will remap. ---
         refs      (:referenced-tables compiled-source)

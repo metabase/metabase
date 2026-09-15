@@ -1,5 +1,20 @@
 (ns metabase.transform-testing.compile
-  "Compiles the inputs and the transform of a transform test to queries over temp tables."
+  "Pure SQL: turn a transform test's inputs and transform into queries over temp tables. No I/O — same
+  arguments, same SQL, so everything here is testable with string/data assertions and no warehouse.
+
+  The transform's source is compiled ONCE (`compile-source`, before any replacement) and that one
+  result feeds two consumers, so they can never disagree about what the transform reads:
+  - the validator checks its `:referenced-tables` are all faked (Guard A);
+  - `compile-transform` rewrites that same source's references to the temp tables.
+
+  Three things get compiled:
+  - inputs      → `compile-input`      : a query producing each input's fake data (rows or sql);
+  - the source  → `compile-source`     : the transform's SQL + the tables it reads (no replacement);
+  - the rewrite → `compile-transform`  : that source, references remapped to temp tables.
+
+  Remapping is `sql-tools/replace-names` (pure, AST-level) over a `table-replacements` map; the
+  runner supplies the temp-table names. Everything the executor later runs is produced here as
+  plain SQL strings + params."
   (:require
    [metabase.driver :as driver]
    [metabase.driver.sql.normalize :as sql.normalize]
@@ -107,7 +122,7 @@
      :params            params
      :referenced-tables (into #{}
                               (map (fn [{:keys [schema table]}] {:schema schema :name table}))
-                              (sql-tools/referenced-tables-raw driver query))}))
+                              (sql-tools/referenced-tables-raw driver query {:fail-on-parse-error? true}))}))
 
 (mu/defn compile-transform :- ::compiled-query
   "The query transform's `compiled-source` rewritten to read from the temp tables of `replacements`

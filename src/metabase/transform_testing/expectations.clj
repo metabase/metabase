@@ -1,5 +1,12 @@
 (ns metabase.transform-testing.expectations
-  "Checks the expectations of a transform test against the output of the transform under test."
+  "Check each expectation against the transform's output temp table, returning `:passed`/`:failed`.
+  A multimethod on expectation `:type`:
+  - `:empty`  — a SQL query over the output that passes iff it returns no rows;
+  - `:equals` — the output equals declared data (rows/sql), comparing set columns, ignoring others.
+
+  Compiles each check's SQL (remapping references to the run's temp tables, via `compile`) and runs
+  it through the `executor` — never a connection directly, so the module's warehouse I/O stays in
+  one place. Returns statuses as data; the runner folds them into the run result and owns any HTTP."
   (:require
    [metabase.transform-testing.compile :as transform-testing.compile]
    [metabase.transform-testing.executor :as transform-testing.executor]
