@@ -31,14 +31,16 @@
   "Register a v2 MCP data resource, returning its URI. Overwrites any existing entry with the
    same `:uri`. `:render-fn` produces the resource text at read time, so the content is always
    current rather than a snapshot from registration."
-  [resource :- [:map
+  ;; Closed, and `:ui?` stripped even where schemas are not checked: a data resource carrying it would be served to
+  ;; every token without its scope.
+  [resource :- [:map {:closed true}
                 [:uri :string]
                 [:name :string]
                 [:description :string]
                 [:mimeType :string]
                 [:scope :string]
                 [:render-fn fn?]]]
-  (swap! resources* assoc (:uri resource) resource)
+  (swap! resources* assoc (:uri resource) (dissoc resource :ui?))
   (:uri resource))
 
 (mu/defn register-ui-resource!

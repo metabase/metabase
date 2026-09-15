@@ -1229,7 +1229,10 @@
                 "answered a 400 `invalid_request` JSON body rendered raw in their browser tab - the manual recovery "
                 "path was broken too. `WidenDynamicOAuthClientScopesForMcpV2` unions the six v2 scopes into every "
                 "dynamically registered client's snapshot so the request validates and reaches consent.")
-    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    ;; GHY-4543: while dynamic registration is enabled, reading a dynamic client widens it to the default grant
+    ;; ceiling, which would mask the snapshot. Registration disabled is where the stored snapshot alone decides.
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled false]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [legacy-scopes   ["agent:question:create" "agent:sql:construct" "agent:viz:mcp-ui:query"]
               v2-scopes       ["agent:content:read" "agent:content:write" "agent:query:run"
@@ -1246,9 +1249,8 @@
                                  :response_type "code"
                                  :scope         requested
                                  :state         "test-state"))]
-          (testing (str "GHY-4543: even before the migration widens the stored snapshot, the request reaches consent, "
-                        "because a dynamic client's ceiling always includes the default grant scopes")
-            (is (str/includes? (get-in (authorize! 200) [:headers "Content-Type"]) "text/html")))
+          (testing "before widening, the six v2 scopes are refused against the legacy snapshot"
+            (is (= "invalid_request" (:error (:body (authorize! 400))))))
           ;; Apply what the migration applies. The change class itself is exercised against the changelog in
           ;; `metabase.app-db.custom-migrations-test`; what this test owns is the authorize consequence.
           (t2/update! :model/OAuthClient {:client_id client-id}
@@ -1260,6 +1262,40 @@
                   "the user sees a consent page, not a JSON error body rendered in their browser tab")
               (is (str/includes? body "agent:content:read")
                   "and the six v2 scopes are what they are consenting to"))))))))
+
+(deftest grant-ceiling-widens-only-dynamic-clients-while-registration-is-enabled-test
+  (testing (str "GHY-4543: only a dynamically registered client is widened to the default grant ceiling, and only while "
+                "dynamic registration is enabled. A static client, or any client once an admin turns registration off, "
+                "may request exactly what it was registered for.")
+    (let [authorize (fn [registration-type registration-enabled? scope]
+                      (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                                         oauth-server-dynamic-registration-enabled registration-enabled?]
+                        (t2/with-transaction [_conn nil {:rollback-only true}]
+                          ;; see [[register-then-authorize-mcp!]] for why the session is revalidated first
+                          (mt/user-http-request :crowberto :get 200 "api/user/current")
+                          (let [client-id (:client_id (create-test-client! {:scopes            ["agent:content:read"]
+                                                                            :registration_type registration-type}))]
+                            (mt/user-http-request-full-response
+                             :crowberto :get "oauth/authorize"
+                             :client_id     client-id
+                             :redirect_uri  "https://example.com/callback"
+                             :response_type "code"
+                             :scope         scope
+                             :state         "test-state")))))]
+      (testing "control: a dynamic client reaches consent for a ceiling scope it never registered for"
+        (let [response (authorize "dynamic" true "agent:content:write")]
+          (is (= 200 (:status response)) (pr-str (:body response)))))
+      (testing "control: a static client reaches consent for the scope it registered for"
+        (let [response (authorize "static" true "agent:content:read")]
+          (is (= 200 (:status response)) (pr-str (:body response)))))
+      (testing "a static client is not widened"
+        (let [response (authorize "static" true "agent:content:write")]
+          (is (= 400 (:status response)))
+          (is (= "invalid_request" (get-in response [:body :error])))))
+      (testing "a dynamic client is not widened while dynamic registration is disabled"
+        (let [response (authorize "dynamic" false "agent:content:write")]
+          (is (= 400 (:status response)))
+          (is (= "invalid_request" (get-in response [:body :error]))))))))
 
 (deftest authorize-rejects-fully-narrowed-scope-test
   (testing "when every requested scope is one the named resource does not accept, answer RFC 6749

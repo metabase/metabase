@@ -120,6 +120,21 @@
       (is (= 1 (count (set (map (comp set oauth-server/mcp-resource-scopes)
                                 (mcp/mcp-endpoint-paths)))))))))
 
+(deftest widen-to-grant-ceiling-test
+  (let [widen   #'oauth-server/widen-to-grant-ceiling
+        ceiling ["agent:content:read" "agent:content:write"]]
+    (testing "GHY-4543: a dynamic client gains every ceiling scope it lacks, after the scopes it registered with"
+      (is (= ["mb:full" "agent:content:read" "agent:content:write"]
+             (:scopes (widen {:registration-type "dynamic" :scopes ["mb:full" "agent:content:read"]} true ceiling)))))
+    (testing "a static client is unchanged"
+      (let [client {:registration-type "static" :scopes ["profile"]}]
+        (is (= client (widen client true ceiling)))))
+    (testing "a missing client stays missing"
+      (is (nil? (widen nil true ceiling))))
+    (testing "while dynamic registration is disabled, a dynamic client keeps exactly what it registered for"
+      (let [client {:registration-type "dynamic" :scopes ["agent:content:read"]}]
+        (is (= client (widen client false ceiling)))))))
+
 (deftest get-provider-test
   (testing "get-provider returns a Provider instance"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]

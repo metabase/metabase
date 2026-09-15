@@ -74,19 +74,30 @@
   ;; sorted so the `scope` echoed back in the registration response is stable across restarts
   (into (sorted-set) (supported-scopes)))
 
-(defn- with-default-grant-ceiling
-  "Wrap `client-store` so a dynamically-registered client's `:scopes` always include [[default-grant-scopes]].
+(defn- widen-to-grant-ceiling
+  "`client` with every scope in `ceiling` appended to its `:scopes`, when it is dynamically registered and
+   `registration-enabled?`. Any other `client`, nil included, is returned unchanged."
+  [client registration-enabled? ceiling]
+  (cond-> client
+    (and registration-enabled? (= "dynamic" (:registration-type client)))
+    (update :scopes #(into (vec %) (remove (set %)) ceiling))))
 
-  A registration `scope` can only widen what the client may later request, never narrow it: MCP clients register with
-  the narrow scope they start from and then step up on the same `client_id`, which a per-client snapshot would refuse.
-  Computed on read, so a client registered before a scope existed can still request it. Static clients are unchanged."
+(defn- with-default-grant-ceiling
+  "Wrap `client-store` so that reading a client applies [[widen-to-grant-ceiling]] with [[default-grant-scopes]] and
+   the dynamic-registration setting. Writes pass through unchanged."
   [client-store]
+  ;; A registration `scope` can only widen what a client may later request, never narrow it: MCP clients register with
+  ;; the narrow scope they start from and then step up on the same `client_id`, which a per-client snapshot would
+  ;; refuse. Applied on read, so a client registered before a scope existed can still request it. Every read sees the
+  ;; widened `:scopes`, including the RFC 7592 client read (`GET /oauth/register/:client-id`).
+  ;;
+  ;; Only while dynamic registration is enabled, which also requires MCP to be enabled: an admin who turned it off
+  ;; leaves existing dynamic clients with exactly what they registered for.
   (reify oidc.proto/ClientStore
     (get-client [_ client-id]
-      (let [client (oidc.proto/get-client client-store client-id)]
-        (cond-> client
-          (= "dynamic" (:registration-type client))
-          (update :scopes #(into (vec %) (remove (set %)) (default-grant-scopes))))))
+      (widen-to-grant-ceiling (oidc.proto/get-client client-store client-id)
+                              (oauth-settings/oauth-server-dynamic-registration-enabled)
+                              (default-grant-scopes)))
     (register-client [_ client-config]
       (oidc.proto/register-client client-store client-config))
     (update-client [_ client-id updated-config]

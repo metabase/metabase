@@ -781,16 +781,24 @@
         surface        ["s:a" "s:b" "s:c" "s:d"]]
     (testing "GHY-4543: the challenge asks for the surface scopes the token holds plus the required one, in surface
               order, so a client that replaces its scope with the challenged one keeps what it had"
-      (is (= ["s:a" "s:c" "s:d"] (step-up-scopes surface #{"s:d" "s:a"} ["s:c"]))))
+      (is (= ["s:a" "s:c" "s:d"] (step-up-scopes surface #{"s:d" "s:a"} "s:c"))))
     (testing "held scopes outside the surface, and the unrestricted sentinel, are not echoed back"
       (is (= ["s:b"] (step-up-scopes surface #{"agent:question:create" :metabase.api.macros.scope/unrestricted}
-                                     ["s:b"]))))
+                                     "s:b"))))
     (testing "a required scope the token already holds is not repeated"
-      (is (= ["s:a" "s:b"] (step-up-scopes surface #{"s:a" "s:b"} ["s:b" "s:b"]))))
-    (testing "a required scope outside the surface still reaches the challenge, after the surface scopes, sorted"
-      (is (= ["s:a" "x:y" "x:z"] (step-up-scopes surface #{"s:a"} ["x:z" "x:y"]))))
-    (testing "no token scopes at all yields just the required ones"
-      (is (= ["s:c"] (step-up-scopes surface nil ["s:c"]))))))
+      (is (= ["s:a" "s:b"] (step-up-scopes surface #{"s:a" "s:b"} "s:b"))))
+    (testing "a required scope outside the surface still reaches the challenge, after the surface scopes"
+      (is (= ["s:a" "x:y"] (step-up-scopes surface #{"s:a"} "x:y"))))
+    (testing "no token scopes at all yields just the required one"
+      (is (= ["s:c"] (step-up-scopes surface nil "s:c"))))
+    (testing "GHY-4543: a held wildcard keeps every surface scope it covers, though none is held literally, so a client
+              that replaces its grant with the challenged scope loses no coverage"
+      (is (= ["agent:content:read" "agent:content:write" "agent:sql:run"]
+             (step-up-scopes ["agent:content:read" "agent:content:write" "agent:query:run" "agent:sql:run"]
+                             #{"agent:content:*"}
+                             "agent:sql:run")))
+      (testing "and a bare `*` covers the whole surface"
+        (is (= surface (step-up-scopes surface #{"*"} "s:b")))))))
 
 (defn- bearer-session-post!
   "Handshake with bearer `headers` and return a fn `(post! expected-status body & {:keys [path headers]})` that POSTs

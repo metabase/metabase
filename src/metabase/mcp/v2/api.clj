@@ -8,6 +8,7 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.mcp.paths :as mcp.paths]
+   [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.transport :as transport]
    [metabase.mcp.v2.registry :as registry]
@@ -44,13 +45,15 @@
     (transport/jsonrpc-response id {:tools (registry/list-tools {:supports-mcp-ui? supports-mcp-ui?})})))
 
 (defn- step-up-scopes
-  "The `scope` an `insufficient_scope` challenge asks for: the `surface-scopes` that `token-scopes` holds or `required`
-   names, in `surface-scopes` order, then any `required` scope outside the surface, sorted. No scope repeats."
+  "The `scope` an `insufficient_scope` challenge asks for: the `surface-scopes` that are `required` or that
+   `token-scopes` matches, in `surface-scopes` order, then `required` when it is outside the surface."
   [surface-scopes token-scopes required]
-  ;; The held scopes ride along because a client may replace its grant with the challenged scope.
-  (let [wanted (into (set (filter string? token-scopes)) required)]
-    (into (filterv wanted surface-scopes)
-          (sort (distinct (remove (set surface-scopes) required))))))
+  ;; Held scopes ride along because a client may replace its grant with the challenged scope. They are matched, not
+  ;; looked up, so a wildcard grant such as `agent:content:*` keeps the surface scopes it covers. Only scope strings
+  ;; count: nil and the unrestricted sentinel match everything but are never challenged.
+  (let [held (set (filter string? token-scopes))]
+    (cond-> (filterv #(or (= required %) (mcp.scope/matches? held %)) surface-scopes)
+      (not (some #{required} surface-scopes)) (conj required))))
 
 (defn- handle-tools-call [id params session-id token-scopes request-context]
   (let [tool-name        (:name params)
@@ -72,7 +75,7 @@
         insufficient-scope (transport/insufficient-scope
                             (step-up-scopes mcp.paths/v2-surface-scopes
                                             token-scopes
-                                            [(:required-scope insufficient-scope)])
+                                            (:required-scope insufficient-scope))
                             (:description insufficient-scope)))
       (transport/jsonrpc-response id result))))
 
@@ -89,7 +92,7 @@
                                              (if (seq held)
                                                (str "your token holds " (str/join ", " held) ".")
                                                "your token holds no scopes.")))
-     (step-up-scopes mcp.paths/v2-surface-scopes token-scopes [required-scope])
+     (step-up-scopes mcp.paths/v2-surface-scopes token-scopes required-scope)
      (str uri " requires " required-scope
           (when-let [label (registry/english-scope-label required-scope)]
             (str " (" label ")"))))))
