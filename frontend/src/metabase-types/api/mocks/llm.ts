@@ -44,6 +44,7 @@ export const createMockLlmProviderConnection = (
   env_vars: [],
   env_fields: [],
   config: {},
+  in_use_message: null,
   ...opts,
 });
 

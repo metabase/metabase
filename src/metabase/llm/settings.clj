@@ -58,8 +58,6 @@
                         {:status-code 400
                          :llm-url     url}))))))
 
-;; TODO (Chris 2026-08-17) -- BOT-2005: semantic search reads these settings directly, so deleting the
-;; connection it keys off turns it off. It should name a connection instead.
 (defn- connection-field-getter
   "Getter for a per-provider credential setting whose value lives on the `llm-providers` connection list."
   [setting-kw]

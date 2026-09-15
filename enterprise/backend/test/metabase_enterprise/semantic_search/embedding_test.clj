@@ -16,7 +16,9 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.embeddings.provider :as embeddings.provider]
+   [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
+   [metabase.llm.test-util :as llm.tu]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
@@ -112,19 +114,26 @@
                  (prefix-all model-names))))))))
 
 (deftest test-openai-provider-validation
-  (testing "OpenAIProvider throws when API key not configured"
+  (testing "OpenAIProvider throws when the connection it names is not a usable OpenAI connection"
     (let [embedding-model {:provider "openai"
                            :model-name "text-embedding-3-small"
                            :vector-dimensions 1536}]
-      (mt/with-temporary-setting-values [llm-openai-api-key nil]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"OpenAI API key not configured"
-             (embedding/get-embedding embedding-model "test text")))
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"OpenAI API key not configured"
-             (embedding/get-embeddings-batch embedding-model ["test text"])))))))
+      (doseq [[description connections] {"no such connection"   []
+                                         "no API key"           [(llm.tu/connection "openai" {:api-key nil})]
+                                         "not an OpenAI type"   [{:key    "openai"
+                                                                  :type   "anthropic"
+                                                                  :name   "openai"
+                                                                  :config {:api-key "sk-ant-test"}}]}]
+        (testing description
+          (llm.tu/with-connections connections
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"not an OpenAI connection with an API key"
+                 (embedding/get-embedding embedding-model "test text")))
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"not an OpenAI connection with an API key"
+                 (embedding/get-embeddings-batch embedding-model ["test text"])))))))))
 
 (deftest test-token-counting
   (testing "count-tokens returns reasonable counts for text"
@@ -404,12 +413,13 @@
                         (try (embed provider)
                              nil
                              (catch clojure.lang.ExceptionInfo e (ex-data e))))
-        loopback      (constantly "http://127.0.0.1:9")]
+        loopback      (constantly "http://127.0.0.1:9")
+        openai-at     (fn [base-url]
+                        (constantly {:key "openai" :type "openai" :config {:api-key "sk-test" :base-url base-url}}))]
     (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
       (testing "the OpenAI base URL is admin input and is refused on an internal network"
-        (mt/with-dynamic-fn-redefs [llm.settings/llm-openai-api-key      (constantly "sk-test")
-                                    llm.settings/llm-openai-api-base-url loopback
-                                    http/post                            capture]
+        (mt/with-dynamic-fn-redefs [llm.provider/connection (openai-at "http://127.0.0.1:9")
+                                    http/post               capture]
           (is (=? {:status-code 400 :status 400 :error-code :llm-host-not-allowed :llm-host "127.0.0.1"}
                   (rejected "openai")))))
       (testing "so is the embedding service URL"
@@ -418,19 +428,17 @@
                                     http/post                                       capture]
           (is (=? {:status-code 400 :error-code :llm-host-not-allowed} (rejected "ai-service")))))
       (testing "a permitted OpenAI base URL goes out with the policy-enforcing DNS resolver on the connection"
-        (mt/with-dynamic-fn-redefs [llm.settings/llm-openai-api-key      (constantly "sk-test")
-                                    llm.settings/llm-openai-api-base-url (constantly "https://8.8.8.8")
-                                    http/post                            capture]
+        (mt/with-dynamic-fn-redefs [llm.provider/connection (openai-at "https://8.8.8.8")
+                                    http/post               capture]
           (embed "openai")
           (is (= "https://8.8.8.8/v1/embeddings" (:url @captured)))
           (is (= :none (:redirect-strategy @captured)))
           (is (instance? org.apache.http.conn.DnsResolver (:dns-resolver @captured)))))
       (testing "a connection-time DNS policy rejection has the same 400 shape as the upfront check"
-        (mt/with-dynamic-fn-redefs [llm.settings/llm-openai-api-key      (constantly "sk-test")
-                                    llm.settings/llm-openai-api-base-url (constantly "https://8.8.8.8")
-                                    http/post                            (fn [& _]
-                                                                           (throw (ex-info "blocked"
-                                                                                           {:ssrf true})))]
+        (mt/with-dynamic-fn-redefs [llm.provider/connection (openai-at "https://8.8.8.8")
+                                    http/post               (fn [& _]
+                                                              (throw (ex-info "blocked"
+                                                                              {:ssrf true})))]
           (is (=? {:status-code 400 :api-error true :error-code :llm-host-not-allowed}
                   (rejected "openai")))))
       (testing "a stored AI service URL gets the default policy: private is refused"
@@ -471,9 +479,8 @@
                (semantic.settings/ee-embedding-service-base-url! "http://127.0.0.1:9"))))))
     (testing "under :allow-all an internal OpenAI base URL goes out on clj-http's default resolver"
       (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
-        (mt/with-dynamic-fn-redefs [llm.settings/llm-openai-api-key      (constantly "sk-test")
-                                    llm.settings/llm-openai-api-base-url loopback
-                                    http/post                            capture]
+        (mt/with-dynamic-fn-redefs [llm.provider/connection (openai-at "http://127.0.0.1:9")
+                                    http/post               capture]
           (embed "openai")
           (is (= "http://127.0.0.1:9/v1/embeddings" (:url @captured)))
           (is (not (contains? @captured :dns-resolver))))))))
@@ -644,8 +651,10 @@
           (let [encoded-embedding (encode-floats-to-base64 (repeat 1024 1.0))]
             (with-redefs [semantic.settings/ee-embedding-provider           (constantly provider)
                           semantic.settings/ee-embedding-model              (constantly "mock-model")
-                          semantic.settings/openai-api-key                  (constantly "xyz")
-                          semantic.settings/openai-api-base-url             (constantly "https://mock-openai")
+                          llm.provider/connection                           (constantly {:key    "openai"
+                                                                                         :type   "openai"
+                                                                                         :config {:api-key  "xyz"
+                                                                                                  :base-url "https://mock-openai"}})
                           semantic.settings/ee-embedding-service-base-url   (constantly "http://mock-embedding-service")
                           semantic.settings/ee-embedding-service-api-key    (constantly "mock-key")
                           http/post (fn post-mock [_url {:keys [body]}]
@@ -699,11 +708,18 @@
         (is (true? (embedding/embedding-supported? {:provider "ai-service"})))))
     (mt/with-temporary-setting-values [ee-embedding-service-base-url nil]
       (is (false? (embedding/embedding-supported? {:provider "ai-service"})))))
-  (testing "openai: supported iff the API key is set"
-    (mt/with-temporary-setting-values [llm-openai-api-key "sk-test"]
+  (testing "openai: supported iff ee-embedding-openai-connection names an OpenAI connection with an API key"
+    (llm.tu/with-connections [(llm.tu/connection "openai" {:api-key "sk-test"})]
       (is (true? (embedding/embedding-supported? {:provider "openai"}))))
-    (mt/with-temporary-setting-values [llm-openai-api-key nil]
-      (is (false? (embedding/embedding-supported? {:provider "openai"})))))
+    (llm.tu/with-connections [(llm.tu/connection "openai" {:api-key nil})]
+      (is (false? (embedding/embedding-supported? {:provider "openai"}))))
+    (testing "the connection is the one the setting names, not whichever is keyed openai"
+      (llm.tu/with-connections [(llm.tu/connection "openai" {:api-key "sk-test"})
+                                {:key "embeddings" :type "openai" :name "Embeddings" :config {:api-key "sk-embed"}}]
+        (mt/with-temporary-setting-values [ee-embedding-openai-connection "embeddings"]
+          (is (true? (embedding/embedding-supported? {:provider "openai"}))))
+        (mt/with-temporary-setting-values [ee-embedding-openai-connection "missing"]
+          (is (false? (embedding/embedding-supported? {:provider "openai"})))))))
   (testing "ollama is always supported; an unrecognized provider is not (:default)"
     (is (true?  (embedding/embedding-supported? {:provider "ollama"})))
     (is (false? (embedding/embedding-supported? {:provider "no-embedder"}))))
