@@ -38,7 +38,8 @@
 ;;; ------------------------------------------ evaluation helpers -----------------------------------------
 
 (defn load-js-string
-  "Load a string literal source into the js context."
+  "Load a string literal source into the js context. The script's completion value (and a thrown value) cross to
+  the host unchecked, so untrusted plugin bundles go through [[eval-untrusted!]] instead; this is for trusted js."
   [^Context context ^String string-src ^String src-name]
   (.eval context (.buildLiteral (Source/newBuilder "js" string-src src-name))))
 
@@ -115,6 +116,30 @@
   host (see [[guest-call-js]])."
   [^Context context ^String fn-name & args]
   (apply guest-call context fn-name -1 args)
+  nil)
+
+(def ^:private ^String guest-eval-js
+  "Source of a guest-side wrapper `(source) => ...` that evaluates `source` as a classic script (indirect `eval`,
+  so top-level declarations land on the global object as they would for a script) and discards its completion
+  value; a thrown value is rethrown with its message truncated, as in [[guest-call-js]]. Untrusted plugin bundles
+  go through this rather than a host `Context.eval`, whose completion value and thrown message would cross to the
+  host unchecked."
+  (str "(source) => {"
+       "  try {"
+       "    (0, eval)(source);"
+       "  } catch (e) {"
+       "    let message = 'guest error';"
+       "    try { message = String(e?.message ?? e); } catch (_) {}"
+       "    throw new Error(message.slice(0, " max-error-chars "));"
+       "  }"
+       "}"))
+
+(defn- eval-untrusted!
+  "Evaluate untrusted `source` in `context` for its side effects, with nothing but a bounded error ever crossing to
+  the host (see [[guest-eval-js]]). `src-name` names the code in guest stack traces via a `sourceURL` comment."
+  [^Context context ^String source ^String src-name]
+  (.execute (.eval context "js" guest-eval-js)
+            (object-array [(str source "\n//# sourceURL=" src-name)]))
   nil)
 
 (defn execute-fn
@@ -416,7 +441,7 @@
                       (^:once fn* [^Context context]
                         (call-void context "initializeContextJSON" options-json)
                         (doseq [{:keys [identifier plugin-id source]} bundles]
-                          (load-js-string context source (str "custom-viz-" identifier ".js"))
+                          (eval-untrusted! context source (str "custom-viz-" identifier ".js"))
                           (call-void context "registerCustomVizPlugin" identifier plugin-id))
                         (call-string context "renderChartJSON" input-json)))]
     (log/infof "custom-viz: static-rendered %s in %.0fms (incl. context acquire/generation)"

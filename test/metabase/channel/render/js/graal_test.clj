@@ -102,6 +102,27 @@
            (is (<= (count (ex-message e)) 2100) fn-name)
            (is (< (- (thread-allocated-bytes) before) (* 4 1024 1024)) fn-name)))))))
 
+(deftest eval-untrusted!-bounds-transfers-test
+  (do-with-untrusted-context
+   (fn [^Context context]
+     (testing "the script runs for its side effects, with top-level declarations global as for a classic script"
+       (is (nil? (#'graal/eval-untrusted! context "var fromPlugin = 41; globalThis.plus1 = (x) => x + 1" "plugin.js")))
+       (is (= 42 (.asLong (graal/execute-fn-name context "plus1" (.asLong (.eval context "js" "fromPlugin")))))))
+     (testing "the completion value never crosses to the host"
+       (let [before (thread-allocated-bytes)]
+         (is (nil? (#'graal/eval-untrusted! context "'x'.repeat(17 * 1024 * 1024)" "big.js")))
+         (is (< (- (thread-allocated-bytes) before) (* 4 1024 1024)))))
+     (testing "a thrown value's message is truncated before it crosses to the host"
+       (let [before (thread-allocated-bytes)
+             e      (is (thrown? PolyglotException
+                                 (#'graal/eval-untrusted! context "throw new Error('e'.repeat(17 * 1024 * 1024))" "boom.js")))]
+         (is (<= (count (ex-message e)) 2100))
+         (is (< (- (thread-allocated-bytes) before) (* 4 1024 1024)))))
+     (testing "the source name reaches guest stack traces"
+       (let [e (is (thrown? PolyglotException
+                            (#'graal/eval-untrusted! context "(function inner() { throw new Error(new Error('x').stack) })()" "custom-viz-demo.js")))]
+         (is (re-find #"custom-viz-demo\.js" (ex-message e))))))))
+
 (deftest untrusted-context-enforces-heap-limit-test
   (testing "sandbox.MaxHeapMemory terminates a plugin that exhausts the isolate heap"
     (do-with-untrusted-context
