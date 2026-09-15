@@ -493,9 +493,9 @@
                                                 :collection_id coll-id
                                                 :dataset_query (venues-query)}
                      :model/Dashboard {dash-id :id} {:collection_id coll-id}]
-        (is (= (format "\"Card\" %d not found — it may not exist, or you may not have access to it." card-id)
+        (is (= (format "Card %d not found — it may not exist, or you may not have access to it." card-id)
                (tool-error (call-tool! :rasta {:type "question" :id card-id}))))
-        (is (= (format "\"Dashboard\" %d not found — it may not exist, or you may not have access to it." dash-id)
+        (is (= (format "Dashboard %d not found — it may not exist, or you may not have access to it." dash-id)
                (tool-error (call-tool! :rasta {:type "dashboard" :id dash-id}))))))))
 
 (deftest destination-write-permission-test

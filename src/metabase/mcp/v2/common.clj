@@ -123,7 +123,7 @@
   "`x` shortened to fit `limit`, with `…` marking each cut. A message stays a message, rendering within `limit`
    characters, or `limit` + 2 when a quoted value is cut; anything else becomes its string, cut to `limit` characters
    plus `…`."
-  [x     :- :any
+  [x     :- ::message/value
    limit :- nat-int?]
   (cond
     (not (message/message? x)) (shortened-string (str x) limit)
@@ -145,12 +145,12 @@
 
 (mu/defn list-message :- ::message/message
   "A message of `items` separated by commas, each cleaned unless it is raw or a message."
-  [items :- [:sequential :any]]
+  [items :- [:sequential ::message/value]]
   (joined-message #(message/msg ["%s, %s"] %1 %2) items))
 
 (mu/defn lines-message :- ::message/message
   "A message of `items`, one per line, each cleaned unless it is raw or a message."
-  [items :- [:sequential :any]]
+  [items :- [:sequential ::message/value]]
   (joined-message #(message/msg ["%s" "%s"] %1 %2) items))
 
 (defn- semicolon-list-message
@@ -187,9 +187,11 @@
 (mu/defn message-ex-info :- (ms/InstanceOfClass clojure.lang.ExceptionInfo)
   "An `ex-info` whose exception message is the rendering of `msg`, with `data` plus `msg` under `::message` as its
    `ex-data`, and optional `cause`."
-  ([msg data] (message-ex-info msg data nil))
+  ([msg  :- ::message/message
+    data :- [:maybe ms/ExceptionData]]
+   (message-ex-info msg data nil))
   ([msg   :- ::message/message
-    data  :- [:maybe :map]
+    data  :- [:maybe ms/ExceptionData]
     cause :- [:maybe (ms/InstanceOfClass Throwable)]]
    (ex-info (message/render msg) (assoc data ::message msg) cause)))
 
@@ -203,13 +205,33 @@
      (throw (message-ex-info msg (merge {:status-code 400} data)))
      (throw (ex-info msg (merge {:status-code 400} data))))))
 
+(def ^:private not-found-nouns
+  "The server text naming each model keyword's entity type in a not-found error."
+  {:model/Card               (message/raw "Card")
+   :model/Collection         (message/raw "Collection")
+   :model/Dashboard          (message/raw "Dashboard")
+   :model/Database           (message/raw "Database")
+   :model/Document           (message/raw "Document")
+   :model/Field              (message/raw "Field")
+   :model/Measure            (message/raw "Measure")
+   :model/NativeQuerySnippet (message/raw "NativeQuerySnippet")
+   :model/Pulse              (message/raw "Pulse")
+   :model/Segment            (message/raw "Segment")
+   :model/Table              (message/raw "Table")
+   :model/Transform          (message/raw "Transform")
+   :alert                    (message/raw "alert")
+   :collection               (message/raw "collection")
+   :subscription             (message/raw "subscription")})
+
 (defn throw-not-found
   "Throw the collapsed not-found teaching error for `model`, a server-declared model keyword, and the caller's `id`.
    Deliberately identical for \"doesn't exist\" and \"exists but not readable\", so responses never form an
    existence oracle across the permission boundary."
   [model id]
   (throw-teaching-error (message/msg ["%s %s not found — it may not exist, or you may not have access to it."]
-                                     (name model) id)
+                                     ;; A keyword missing from the map is quoted, like any value not known to be ours.
+                                     (get not-found-nouns model (name model))
+                                     id)
                         {:status-code 404}))
 
 (defn- status-code->error-code

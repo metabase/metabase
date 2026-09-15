@@ -114,7 +114,7 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection {coll-id :id} {}
                      :model/Card {card-id :id} {:type :question :collection_id coll-id}]
-        (is (= (format "\"Card\" %d not found — it may not exist, or you may not have access to it." card-id)
+        (is (= (format "Card %d not found — it may not exist, or you may not have access to it." card-id)
                (tool-error (call-tool! :rasta {:type "question" :id card-id :bookmarked true}))))
         (is (not (t2/exists? :model/CardBookmark :card_id card-id))))))
   (testing "GHY-4152: the read check covers un-bookmarking too, where REST only checks the create —
@@ -124,11 +124,11 @@
       (mt/with-temp [:model/Collection {coll-id :id} {}
                      :model/Card {card-id :id} {:type :question :collection_id coll-id}]
         (t2/insert! :model/CardBookmark {:card_id card-id :user_id (mt/user->id :rasta)})
-        (is (= (format "\"Card\" %d not found — it may not exist, or you may not have access to it." card-id)
+        (is (= (format "Card %d not found — it may not exist, or you may not have access to it." card-id)
                (tool-error (call-tool! :rasta {:type "question" :id card-id :bookmarked false}))))
         (is (t2/exists? :model/CardBookmark :card_id card-id :user_id (mt/user->id :rasta))))))
   (testing "GHY-4152: a nonexistent id gets the same message"
-    (is (= "\"Card\" 999999999 not found — it may not exist, or you may not have access to it."
+    (is (= "Card 999999999 not found — it may not exist, or you may not have access to it."
            (tool-error (call-tool! :rasta {:type "question" :id 999999999 :bookmarked true}))))))
 
 (deftest per-user-test

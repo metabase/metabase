@@ -99,7 +99,7 @@
 (deftest dangling-card-embed-test
   (mt/with-current-user (mt/user->id :crowberto)
     (testing "a card token referencing a nonexistent card is a collapsed not-found, not a silent dangling embed"
-      (is (thrown-with-msg? Exception #"\"Card\" 992342344 not found"
+      (is (thrown-with-msg? Exception #"Card 992342344 not found"
                             (call {:method           "create"
                                    :name             "Dangling"
                                    :content_markdown "{% card id=992342344 %}"}))))))

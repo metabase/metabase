@@ -16,9 +16,13 @@
 
 (defrecord Raw [value])
 
+(mr/def ::value
+  "Anything a message can interpolate or [[render]]: a message, raw text, or any other value, which renders cleaned."
+  [:schema {::mr/deliberately-open true, :description "any value a message renders"} :any])
+
 (mu/defn message? :- :boolean
   "Whether `x` is a message built by [[msg]]."
-  [x :- :any]
+  [x :- ::value]
   (instance? Message x))
 
 (mr/def ::message
@@ -31,12 +35,13 @@
 
 (mu/defn msg :- ::message
   "A message of `lines`, format strings joined with newlines, with `args` interpolated by [[render]]."
-  [lines :- :any & args]
+  [lines  :- [:sequential :string]
+   & args :- [:* ::value]]
   (->Message lines (vec args)))
 
 (mu/defn raw :- ::raw
   "Mark `x` as server-controlled text that [[render]] interpolates into a message without cleaning."
-  [x :- :any]
+  [x :- ::value]
   (->Raw x))
 
 (def ^:private escaped-categories
@@ -106,7 +111,7 @@
    escaped: `pr-str`'s escapes, then `\\uXXXX` for invisible, line-breaking, and double-quote-like characters. A
    keyword is cleaned as its name, with any namespace; anything else is printed with `pr-str` and then cleaned as that
    string. Independent of the caller's print bindings."
-  [x :- :any]
+  [x :- ::value]
   (if (unquoted? x)
     x
     (escape-code-points (printed (quoted-text x)))))
@@ -178,7 +183,7 @@
    raw arguments and nested messages as they are, everything else [[clean]]ed. Anything else, or a message that fails
    to format, renders with every part cleaned. Something that can't be printed at all renders as a fixed server
    sentence, logged. Never throws an `Exception`."
-  [x :- :any]
+  [x :- ::value]
   (try
     (cond
       (message? x)      (or (formatted x (map #(unwrap-arg % clean) (:args x)))
@@ -331,7 +336,7 @@
   "A message rendering as the start of `x`'s [[render]]ing, at most `limit` characters followed by `…` where it's cut.
    A quoted value cut short keeps its closing quote after the `…`, so the rendering is at most `limit` + 2 characters.
    Truncating the result again keeps every quoted value's closing quote the same way."
-  [x     :- :any
+  [x     :- ::value
    limit :- :int]
   (let [[args] (try
                  (truncated-pieces (pieces x) limit)

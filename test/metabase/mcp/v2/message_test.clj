@@ -115,8 +115,8 @@
       "first\nsecond"
       (str "first" (char 0x2028) "second")
       "first%nsecond"))
-  (testing "a message whose lines aren't all strings is cleaned whole instead of formatted"
-    (let [rendered (message/render (message/msg ["ok" 42] "x\ny"))]
+  (testing "a message whose lines aren't all strings, built past `msg`'s schema, is cleaned whole instead of formatted"
+    (let [rendered (message/render (message/->Message ["ok" 42] ["x\ny"]))]
       (is (string? rendered))
       (is (not (str/includes? rendered "\n"))))))
 
@@ -173,7 +173,7 @@
       (message/msg ["Values: %s, %s, %b, %s"] nil {:a "“b”"} "x" 1.5)
       (message/msg ["Count: %d"] "x\ny")
       (message/msg ["Name: %.3s"] "abcdef")
-      (message/msg "not a vector %s" "x")
+      (message/->Message "not a vector %s" ["x"])
       "plain\nstring"
       (message/raw "raw\nstring")))
   (testing "GHY-4544: a quoted value cut short keeps one level of quoting and its closing quote"

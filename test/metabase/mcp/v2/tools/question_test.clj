@@ -485,7 +485,7 @@
                     :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}}
             result (call-tool #{"agent:content:write"} (str (random-uuid)) "question_write" args)]
         (is (:isError result))
-        (is (re-find #"\"Dashboard\" 999999999 not found"
+        (is (re-find #"Dashboard 999999999 not found"
                      (-> result :content first :text)))))))
 
 (deftest create-dashboard-question-existence-does-not-leak-test
@@ -862,7 +862,7 @@
         (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
                                 {:method "update" :id (:id card) :dashboard_id 999999999})]
           (is (:isError result))
-          (is (re-find #"\"Dashboard\" 999999999 not found"
+          (is (re-find #"Dashboard 999999999 not found"
                        (-> result :content first :text)))
           (testing "the card is untouched"
             (is (nil? (t2/select-one-fn :dashboard_id :model/Card :id (:id card))))))))))

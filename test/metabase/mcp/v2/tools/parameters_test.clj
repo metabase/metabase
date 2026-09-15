@@ -629,9 +629,9 @@
                                                     :dataset_query (table-query (mt/id :venues))}]
       (mt/with-non-admin-groups-no-collection-perms collection
         (mt/with-test-user :rasta
-          (is (re-find #"\"Dashboard\" .* not found"
+          (is (re-find #"Dashboard .* not found"
                        (params-error {:target "dashboard" :id dash-id :parameter_id "_S_"})))
-          (is (re-find #"\"Card\" .* not found"
+          (is (re-find #"Card .* not found"
                        (params-error {:target "question" :id card-id :parameter_id "_S_"}))))))))
 
 (deftest constraint-not-join-reachable-test
