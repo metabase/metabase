@@ -130,6 +130,29 @@
                                                    :modelName "Broken", :message "boom"}])
                        test-info)))))))
 
+(deftest build-semantic-schema-includes-library-metrics-test
+  (mt/dataset test-data
+    (mt/with-temp-copy-of-db
+      (let [mp           (mt/metadata-provider)
+            orders-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
+        (mt/with-temp [:model/Collection collection {:name "Library metrics"
+                                                     :type "library-metrics"}
+                       :model/Card _metric          {:name          "Library revenue"
+                                                     :type          :metric
+                                                     :database_id   (mt/id)
+                                                     :table_id      (mt/id :orders)
+                                                     :collection_id (:id collection)
+                                                     :display       :scalar
+                                                     :dataset_query orders-query}]
+          (mt/with-test-user :crowberto
+            (is (= ["libraryRevenue"]
+                   (-> (typed-schemas/build-semantic-schema
+                        {:library-collection-refs [{:id (:id collection)}]}
+                        test-info)
+                       :metrics
+                       keys
+                       vec)))))))))
+
 ;; One end-to-end test over the real test-data dataset: cards for every entity
 ;; kind on real synced tables, run through the whole pipeline to TypeScript.
 ;; Everything above tests the stages with cheap literal data; this proves the
