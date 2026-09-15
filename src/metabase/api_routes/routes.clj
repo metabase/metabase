@@ -58,6 +58,7 @@
    [metabase.revisions.api]
    [metabase.search.api]
    [metabase.segments.api]
+   [metabase.server.streaming-response :as streaming-response]
    [metabase.session.api]
    [metabase.settings-rest.api]
    [metabase.setup-rest.api]
@@ -154,9 +155,25 @@
   (cond-> x
     (simple-symbol? x) api.macros/ns-handler))
 
+(defn- sanitize-streaming-errors
+  "Middleware that reduces any error written by a streaming response body to
+  [[metabase.public-sharing-rest.api/error-response]]. The public and embedding route wrappers catch and genericize
+  exceptions thrown by the handler, but a streaming body runs after the handler has returned, so a query failure --
+  or an exception attaching the Card's query as `ex-data` -- would otherwise reach an unauthenticated client as-is.
+
+  This lives here rather than next to those wrappers in [[metabase.api.routes.common]] because the `api` module can't
+  depend on `server` (which depends on the query processor, which depends on `api`)."
+  [handler]
+  (fn [request respond raise]
+    (binding [streaming-response/*error-response-fn* metabase.public-sharing-rest.api/error-response]
+      (handler request respond raise))))
+
+(def ^:private ^{:arglists '([handler])} +sanitize-streaming-errors
+  (routes.common/wrap-middleware-for-open-api-spec-generation sanitize-streaming-errors))
+
 (defn- +auth                    [handler] (routes.common/+auth                    (->handler handler)))
-(defn- +message-only-exceptions [handler] (routes.common/+message-only-exceptions (->handler handler)))
-(defn- +public-exceptions       [handler] (routes.common/+public-exceptions       (->handler handler)))
+(defn- +message-only-exceptions [handler] (routes.common/+message-only-exceptions (+sanitize-streaming-errors (->handler handler))))
+(defn- +public-exceptions       [handler] (routes.common/+public-exceptions       (+sanitize-streaming-errors (->handler handler))))
 
 (declare routes)
 

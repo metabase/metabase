@@ -42,7 +42,19 @@
 
 (defn- format-exception [e]
   (cond-> (Throwable->map e)
-    (server.settings/hide-stacktraces) (dissoc :via :trace)))
+    ;; `:data` is the ex-data, which for QP exceptions routinely carries the whole query; drop it along with the
+    ;; stacktrace and cause chain, as the (non-streaming) exception middleware does.
+    (server.settings/hide-stacktraces) (dissoc :via :trace :data)))
+
+(def ^:dynamic *error-response-fn*
+  "When bound, a function applied to any error body -- a formatted error map, or the `Throwable->map` of an exception --
+  right before [[write-error!]] writes it to the client; whatever it returns is what gets written.
+
+  Route middleware binds this to sanitize errors for public and embedded endpoints: their own `try`/`catch` around the
+  handler cannot see these errors, because a streaming response body runs after the handler has returned. The binding
+  in effect when the [[StreamingResponse]] is created is captured and re-established on the thread that writes the
+  body."
+  nil)
 
 (def ^:dynamic *response*
   "The `HttpServletResponse` for the current streaming response.
@@ -119,15 +131,17 @@
                 (if (map? obj) (or (:message obj) (:error obj) (:status obj)) obj))))
 
 (defn- sanitize-error-obj [obj export-format]
-  (-> (if (not= :api export-format)
-        (walk/prewalk (fn [x]
-                        (if (map? x)
-                          (apply dissoc x [:json_query :preprocessed])
-                          x))
-                      obj)
-        obj)
-      (dissoc :export-format)
-      (cond-> (server.settings/hide-stacktraces) (dissoc :stacktrace :trace :via))))
+  (let [obj (cond-> obj
+              *error-response-fn* *error-response-fn*)]
+    (-> (if (not= :api export-format)
+          (walk/prewalk (fn [x]
+                          (if (map? x)
+                            (apply dissoc x [:json_query :preprocessed])
+                            x))
+                        obj)
+          obj)
+        (dissoc :export-format)
+        (cond-> (server.settings/hide-stacktraces) (dissoc :stacktrace :trace :via)))))
 
 (defn- abort-connection!
   "Abort the underlying Jetty connection for an *already-committed* streaming response, so it
@@ -231,15 +245,17 @@
             (.cancel fut true)))))))
 
 (defn- do-f-async
-  "Runs `f` asynchronously on `executor` (the shared streaming response `thread-pool` when nil), returning
-  immediately. When `f` finishes, completes (i.e., closes) Jetty `async-context`. `completed?` is an `AtomicBoolean`
+  "Runs `f` asynchronously on the `:executor` in `options` (the shared streaming response `thread-pool` when nil),
+  returning immediately. When `f` finishes, completes (i.e., closes) Jetty `async-context`. `completed?` is an `AtomicBoolean`
   used to coordinate with Jetty's timeout/error callbacks so that only one path calls `.complete`."
-  [^AsyncContext async-context response ^Request request f ^OutputStream os finished-chan canceled-chan ^AtomicBoolean completed? executor]
+  [^AsyncContext async-context response ^Request request f ^OutputStream os finished-chan canceled-chan ^AtomicBoolean completed?
+   {:keys [executor error-response-fn], :as _options}]
   {:pre [(some? os)]}
   (let [task (^:once fn* []
-               (binding [*response*   response
-                         *request*    request
-                         *completed?* completed?]
+               (binding [*response*          response
+                         *request*           request
+                         *completed?*        completed?
+                         *error-response-fn* error-response-fn]
                  (try
                    (do-f* f os finished-chan canceled-chan)
                    (catch Throwable e
@@ -376,7 +392,7 @@
 
 (defn- respond
   [{:keys [^HttpServletResponse response ^AsyncContext async-context request-map response-map request]}
-   f {:keys [content-type status headers executor], :as _options} finished-chan]
+   f {:keys [content-type status headers], :as options} finished-chan]
   (let [canceled-chan (a/promise-chan)
         completed?   (AtomicBoolean. false)]
     (.addListener async-context
@@ -415,7 +431,7 @@
         (let [output-stream-delay (output-stream-delay gzip? response)
               delay-os            (delay-output-stream output-stream-delay)]
           (start-async-cancel-loop! request finished-chan canceled-chan)
-          (do-f-async async-context response request f delay-os finished-chan canceled-chan completed? executor)))
+          (do-f-async async-context response request f delay-os finished-chan canceled-chan completed? options)))
       (catch Throwable e
         (log/errorf "Unexpected exception in do-f-async: %s" (ex-message e))
         (try
@@ -473,7 +489,10 @@
 (defn -streaming-response
   "Impl for [[streaming-response]] macro."
   [f options]
-  (->StreamingResponse f options (a/promise-chan)))
+  (->StreamingResponse f
+                       (cond-> options
+                         *error-response-fn* (assoc :error-response-fn *error-response-fn*))
+                       (a/promise-chan)))
 
 (defmacro streaming-response
   "Create an API response that streams results to an `OutputStream`.
@@ -497,7 +516,9 @@
      which is a small fixed pool: responses that block for the life of a client connection (rather than for the life
      of a query) must supply their own executor so they cannot exhaust it. The supplied executor's futures must
      support real interruption (`Future.cancel(true)`) — the hung-request escalation interrupts the worker, and a
-     ForkJoinPool-backed executor silently ignores it."
+     ForkJoinPool-backed executor silently ignores it.
+  *  `:error-response-fn` -- set automatically from [[*error-response-fn*]] when it is bound at creation time; see its
+     docstring."
   {:style/indent 2, :arglists '([options [os-binding canceled-chan-binding] & body])}
   [options [os-binding canceled-chan-binding :as bindings] & body]
   {:pre [(= (count bindings) 2)]}
