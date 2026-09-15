@@ -396,7 +396,13 @@
             (is (= [true true false false]
                    (map #(str/ends-with? (:name %) " lib") results)))
             (is (= [true true false false]
-                   (map :curated results)))))))))
+                   (map :curated results)))
+            (testing "the ingestion-only table collection columns stay out of the response"
+              (is (not-any? #(contains? % :table_collection_id) results)))
+            (testing "the curated filter keeps the library ones"
+              (is (= [true true]
+                     (map #(str/ends-with? (:name %) " lib")
+                          (search-results** "foo" {:context :metabot :models #{"measure" "segment"} :curated true})))))))))))
 
 (deftest ^:parallel data-layer-test
   (testing ":data-layer scorer reads the active per-tier weight via :data-layer/* params"
