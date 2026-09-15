@@ -163,11 +163,12 @@
        "Teaching errors embed the relevant contract, so a failed call always names its fix.\n"
        ;; Must match what the consent screen shows: one Authorize button, no per-permission choices. Given less, the
        ;; model invents a step asking the user to tick the permission.
-       "Your client may hide that error. If a Metabase tool call fails with a message about re-authorization, an "
-       "expired token, \"insufficient scope\", \"Unauthorized\", or just \"tool execution failed\", the usual cause is a "
-       "missing permission on this connection, not an expired login. Tell the user which tool failed and which "
-       "permission it needs, using the name in the \"Requires the … permission\" sentence that starts the tool's "
-       "description, which is how Metabase's consent screen names it. To grant it, the user reconnects Metabase in "
+       "A permission failure may reach you rewritten by your client. If a Metabase tool call or resource read fails "
+       "with a message about re-authorization, an expired token, \"insufficient scope\", \"Unauthorized\", or just "
+       "\"tool execution failed\", the usual cause is a missing permission on this connection, not an expired login. "
+       "Tell the user which tool or resource failed and which permission it needs: for a tool, use the name in the "
+       "\"Requires the ... permission\" sentence that starts the tool's description, which is how Metabase's consent "
+       "screen names it; for a resource, the scope the error names. To grant it, the user reconnects Metabase in "
        "their client and clicks Authorize on the consent screen, e.g. in Claude Code: /mcp, select this server, "
        "Re-authenticate; in Codex: "
        "`codex mcp login <server>`, then start a new session. The consent screen has no per-permission choices, so "

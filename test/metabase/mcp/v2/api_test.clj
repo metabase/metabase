@@ -125,6 +125,8 @@
       (testing "the cause is a missing permission, not an expired login"
         (is (re-find #"(?i)missing permission" instructions))
         (is (re-find #"(?i)not an expired login" instructions)))
+      (testing "a resource read is refused the same way as a tool call, so the guidance covers both"
+        (is (re-find #"(?i)tool call or resource read" instructions)))
       (testing "the model names the tool and the permission, as the consent screen names it"
         (is (re-find #"(?i)which tool" instructions))
         (is (re-find #"(?i)which permission" instructions))
