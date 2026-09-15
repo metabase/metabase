@@ -48,19 +48,19 @@
    [:sql  [:merge
            [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
             [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :equals]]
-            [:name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]]
+            [:name ::lib.schema.common/non-blank-string]]
            ::sql-data]]
    [:rows [:merge
            [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
             [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :equals]]
-            [:name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]]
+            [:name ::lib.schema.common/non-blank-string]]
            ::rows-data]]])
 
 (mr/def ::expectation.empty
   "An expectation that a SQL query over the transform output returns no rows."
   [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
    [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :empty]]
-   [:name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:name ::lib.schema.common/non-blank-string]
    [:sql  ::lib.schema.common/non-blank-string]])
 
 (mr/def ::expectation

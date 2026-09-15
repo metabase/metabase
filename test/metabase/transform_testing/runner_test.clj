@@ -33,6 +33,7 @@
                                             :format :sql
                                             :sql    "SELECT 1 AS id, 'abc' AS name"}]
                             :expectations [{:type :empty
+                                            :name desc
                                             :sql  (str "SELECT * FROM " schema ".people_summary WHERE " where)}]}]
               (is (= {:status expected}
                      (transform-testing.runner/run-transform-test! transform-test))))))))))
