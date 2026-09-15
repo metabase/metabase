@@ -8,10 +8,10 @@
 
 (deftest ^:parallel clean-quotes-strings-test
   (testing "GHY-4544: a string is quoted, with pr-str's escapes for newlines, quotes, and backslashes"
-    (is (= "\"orders\"" (message/clean "orders")))
-    (is (= "\"a\\nb\\\"c\\\\d\"" (message/clean "a\nb\"c\\d"))))
+    (is (= "\"orders\"" (#'message/clean "orders")))
+    (is (= "\"a\\nb\\\"c\\\\d\"" (#'message/clean "a\nb\"c\\d"))))
   (testing "ordinary non-ASCII text is kept as is"
-    (is (= "\"Straße 東京 café\"" (message/clean "Straße 東京 café")))))
+    (is (= "\"Straße 東京 café\"" (#'message/clean "Straße 東京 café")))))
 
 (defn- around
   "`a<code point>b`, so a test can name an invisible character by its code point."
@@ -20,7 +20,7 @@
 
 (deftest ^:parallel clean-escapes-invisible-and-line-breaking-characters-test
   (testing "GHY-4544: characters pr-str leaves raw are escaped as backslash-u escapes"
-    (are [code-point escaped] (= (str "\"a" escaped "b\"") (message/clean (around code-point)))
+    (are [code-point escaped] (= (str "\"a" escaped "b\"") (#'message/clean (around code-point)))
       0x2028  "\\u2028"          ; line separator
       0x2029  "\\u2029"          ; paragraph separator
       0x0085  "\\u0085"          ; next line (C1)
@@ -31,7 +31,7 @@
       0xfeff  "\\ufeff"          ; byte order mark
       0xe0041 "\\udb40\\udc41")) ; tag character, used to smuggle invisible ASCII
   (testing "double-quote look-alikes are escaped so a value can't appear to close its own quotes"
-    (are [code-point escaped] (= (str "\"a" escaped "b\"") (message/clean (around code-point)))
+    (are [code-point escaped] (= (str "\"a" escaped "b\"") (#'message/clean (around code-point)))
       0x201c "\\u201c"    ; left double quotation mark
       0x201d "\\u201d"    ; right double quotation mark
       0x201e "\\u201e"    ; double low-9 quotation mark
@@ -43,12 +43,28 @@
       0x301d "\\u301d"    ; reversed double prime quotation mark
       0x301e "\\u301e"    ; double prime quotation mark
       0x301f "\\u301f"    ; low double prime quotation mark
-      0xff02 "\\uff02"))) ; fullwidth quotation mark
+      0xff02 "\\uff02"    ; fullwidth quotation mark
+      0x02ba "\\u02ba"    ; modifier letter double prime
+      0x05f4 "\\u05f4"    ; Hebrew punctuation gershayim
+      0x275d "\\u275d"    ; heavy double turned comma quotation mark ornament
+      0x275e "\\u275e"    ; heavy double comma quotation mark ornament
+      0x2e42 "\\u2e42"))) ; double low-reversed-9 quotation mark
+
+(deftest ^:parallel clean-ignores-print-bindings-test
+  (testing "GHY-4544: quoting and escaping don't depend on the caller's print bindings"
+    (binding [*print-readably* false]
+      (is (= "\"a\\\"b\\nc\"" (#'message/clean "a\"b\nc")))
+      (is (= "Found \"a\\\"b\\nc\"." (message/render (message/msg ["Found %s."] "a\"b\nc"))))
+      (is (= "Found \"a\\\"…\"" (message/render (message/truncate (message/msg ["Found %s."] "a\"b\nc") 10)))))
+    (binding [*print-length* 1, *print-level* 1, *print-meta* true]
+      (is (= "\"[[1] 2 3]\"" (#'message/clean [[1] 2 3])))
+      (is (= "\"[[1] 2…\"" (message/render (message/truncate (message/msg ["%s"] [[1] 2 3]) 7))))
+      (is (= "\"sym\"" (#'message/clean (with-meta 'sym {:tag "x"})))))))
 
 (deftest ^:parallel clean-keeps-single-quotes-test
   (testing "GHY-4544: single quotes can't close a double-quoted value, so names keep them for agents to copy back"
-    (is (= "\"Men’s Apparel\"" (message/clean "Men’s Apparel")))
-    (are [code-point] (= (str "\"" (around code-point) "\"") (message/clean (around code-point)))
+    (is (= "\"Men’s Apparel\"" (#'message/clean "Men’s Apparel")))
+    (are [code-point] (= (str "\"" (around code-point) "\"") (#'message/clean (around code-point)))
       0x2018   ; left single quotation mark
       0x2019   ; right single quotation mark
       0x201a   ; single low-9 quotation mark
@@ -57,15 +73,15 @@
 
 (deftest ^:parallel clean-non-strings-test
   (testing "numbers, booleans, and nil are returned unchanged so numeric format conversions still apply"
-    (is (= 42 (message/clean 42)))
-    (is (= 1.5 (message/clean 1.5)))
-    (is (true? (message/clean true)))
-    (is (nil? (message/clean nil))))
+    (is (= 42 (#'message/clean 42)))
+    (is (= 1.5 (#'message/clean 1.5)))
+    (is (true? (#'message/clean true)))
+    (is (nil? (#'message/clean nil))))
   (testing "anything else is printed and then quoted like a string"
-    (is (= "\":foo\"" (message/clean :foo)))
-    (is (= "\"{:a \\\"b\\\"}\"" (message/clean {:a "b"}))))
+    (is (= "\":foo\"" (#'message/clean :foo)))
+    (is (= "\"{:a \\\"b\\\"}\"" (#'message/clean {:a "b"}))))
   (testing "GHY-4544: a keyword built from untrusted text can't smuggle a raw newline"
-    (is (not (str/includes? (message/clean (keyword "a\nb")) "\n")))))
+    (is (not (str/includes? (#'message/clean (keyword "a\nb")) "\n")))))
 
 (deftest ^:parallel render-message-test
   (testing "GHY-4544: lines are joined with newlines and arguments are cleaned"
@@ -92,7 +108,7 @@
   (testing "raw is ignored outside a message"
     (is (= "\"a\\nb\"" (message/render (message/raw "a\nb")))))
   (testing "a message with a line break inside a line is cleaned whole: each line is its own string"
-    (are [line] (= (message/clean line) (message/render (message/msg [line])))
+    (are [line] (= (#'message/clean line) (message/render (message/msg [line])))
       "first\nsecond"
       (str "first" (char 0x2028) "second")
       "first%nsecond"))
@@ -134,7 +150,7 @@
 (deftest ^:parallel render-cutting-or-casing-string-specifier-test
   (testing "GHY-4544: a %s with width, precision, or flags, or any %S, would cut or case an already-quoted value,
             so the message renders fully cleaned"
-    (are [line] (= (str (message/clean line) " \"ab\\ncdef\"")
+    (are [line] (= (str (#'message/clean line) " \"ab\\ncdef\"")
                    (message/render (message/msg [line] "ab\ncdef")))
       "Name: %.3s"
       "Name: %10s"

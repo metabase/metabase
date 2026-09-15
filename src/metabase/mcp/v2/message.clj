@@ -41,10 +41,12 @@
                         Character/UNASSIGNED]))
 
 (def ^:private double-quote-look-alikes
-  "Code points escaped by [[clean]] because they could read as the `\"` closing a quoted value."
+  "Code points escaped by [[clean]] because they could read as the `\"` closing a quoted value. Best-effort: a
+   list of known look-alikes, not every character that might pass for a double quote."
   ;; Single quotes are kept: they can't close a double-quoted value, and names carrying them must survive being copied
   ;; back.
-  #{0x201C 0x201D 0x201E 0x201F 0x00AB 0x00BB 0x2033 0x2036 0x301D 0x301E 0x301F 0xFF02})
+  #{0x00AB 0x00BB 0x02BA 0x05F4 0x201C 0x201D 0x201E 0x201F 0x2033 0x2036 0x275D 0x275E 0x2E42 0x301D 0x301E 0x301F
+    0xFF02})
 
 (defn- escaped-code-point?
   [code-point]
@@ -71,14 +73,24 @@
   [x]
   (or (nil? x) (number? x) (boolean? x)))
 
-(mu/defn clean :- [:maybe [:or :string number? :boolean]]
+(defn- printed
+  "`x` printed readably with `pr-str`, whatever the caller's print bindings."
+  [x]
+  (binding [*print-readably* true
+            *print-dup*      false
+            *print-meta*     false
+            *print-length*   nil
+            *print-level*    nil]
+    (pr-str x)))
+
+(mu/defn- clean :- [:maybe [:or :string number? :boolean]]
   "`x` made safe to interpolate into prose. Numbers, booleans, and nil are returned unchanged. A string is quoted and
    escaped: `pr-str`'s escapes, then `\\uXXXX` for invisible, line-breaking, and double-quote-like characters. Anything
-   else is printed with `pr-str` and then cleaned as that string."
+   else is printed with `pr-str` and then cleaned as that string. Independent of the caller's print bindings."
   [x :- :any]
   (if (unquoted? x)
     x
-    (escape-code-points (pr-str (if (string? x) x (pr-str x))))))
+    (escape-code-points (printed (if (string? x) x (printed x))))))
 
 (declare render)
 
@@ -127,10 +139,21 @@
   (concat (if (sequential? lines) lines [lines])
           (map unwrap-arg args)))
 
-(defn- render-cleaned
+(defn- cleaned-rendering
   "Every line and argument of `message` cleaned and joined with spaces, trusting none of them."
   [message]
   (str/join " " (map (comp str clean) (cleaned-parts message))))
+
+(defn- formatted
+  "The lines of `message` joined with newlines and formatted with `format-args`, or nil when `message` isn't
+   well-formed or fails to format."
+  [message format-args]
+  (when (well-formed? message)
+    (try
+      (String/format Locale/ROOT (str/join "\n" (:lines message)) (object-array format-args))
+      (catch Exception e
+        (log/warn e "Agent message failed to format; rendering every part quoted")
+        nil))))
 
 (def ^:private render-failure
   "The text of something that can't be rendered at all."
@@ -144,23 +167,10 @@
   [x :- :any]
   (try
     (cond
-      (and (message? x) (well-formed? x))
-      (try
-        (String/format Locale/ROOT
-                       (str/join "\n" (:lines x))
-                       (object-array (map format-arg (:args x))))
-        (catch Exception e
-          (log/warn e "Agent message failed to format; rendering every part quoted")
-          (render-cleaned x)))
-
-      (message? x)
-      (render-cleaned x)
-
-      (instance? Raw x)
-      (str (clean (:value x)))
-
-      :else
-      (str (clean x)))
+      (message? x)      (or (formatted x (map format-arg (:args x)))
+                            (cleaned-rendering x))
+      (instance? Raw x) (str (clean (:value x)))
+      :else             (str (clean x)))
     (catch Exception e
       (log/error e "Agent message failed to render")
       render-failure)))
@@ -170,9 +180,14 @@
 ;; A rendering is modelled as pieces that concatenate to it, so it can be cut without cutting through a quoted value:
 ;; `[:text s]` is server text, `[:clean v]` renders as `v` cleaned, and `[:message m]` as nested message `m`.
 
-(def ^:private arg-marker
+(defn- arg-marker
   "The stand-in formatted in place of argument `i`, private-use delimiters around its index, to find where it lands."
-  (re-pattern (str (char 0xE000) "(\\d+)" (char 0xE001))))
+  [i]
+  (str (char 0xE000) i (char 0xE001)))
+
+(def ^:private arg-marker-pattern
+  "Matches an [[arg-marker]], capturing its index."
+  (re-pattern (arg-marker "(\\d+)")))
 
 (defn- arg-piece
   "The piece argument `arg` renders as, or nil when it formats as a non-string and so stays in the formatted text."
@@ -186,7 +201,7 @@
 (defn- template-pieces
   "The pieces of formatted `template`: its text, split at each argument marker, around `arg-pieces`."
   [^String template arg-pieces]
-  (let [^Matcher matcher (re-matcher arg-marker template)]
+  (let [^Matcher matcher (re-matcher arg-marker-pattern template)]
     (loop [start 0, acc []]
       (if (.find matcher)
         (recur (.end matcher)
@@ -196,35 +211,27 @@
                          [:text (.group matcher)])))
         (conj acc [:text (subs template start)])))))
 
+(defn- cleaned-pieces
+  "The pieces of `message`'s [[cleaned-rendering]]."
+  [message]
+  (interpose [:text " "] (map #(vector :clean %) (cleaned-parts message))))
+
+(defn- message-pieces
+  "The pieces of `message`'s [[render]]ing."
+  [{:keys [args] :as message}]
+  (let [arg-pieces (mapv arg-piece args)
+        marked     (map-indexed (fn [i arg] (if (arg-pieces i) (arg-marker i) (format-arg arg))) args)]
+    (if-let [template (formatted message marked)]
+      (template-pieces template arg-pieces)
+      (cleaned-pieces message))))
+
 (defn- pieces
   "The pieces of `x`'s [[render]]ing."
   [x]
   (cond
-    (and (message? x) (well-formed? x))
-    (let [{:keys [lines args]} x
-          arg-pieces           (mapv arg-piece args)
-          template             (try
-                                 (String/format Locale/ROOT
-                                                (str/join "\n" lines)
-                                                (object-array (map-indexed (fn [i arg]
-                                                                             (if (arg-pieces i)
-                                                                               (str (char 0xE000) i (char 0xE001))
-                                                                               (format-arg arg)))
-                                                                           args)))
-                                 (catch Exception _
-                                   nil))]
-      (if template
-        (template-pieces template arg-pieces)
-        (interpose [:text " "] (map #(vector :clean %) (cleaned-parts x)))))
-
-    (message? x)
-    (interpose [:text " "] (map #(vector :clean %) (cleaned-parts x)))
-
-    (instance? Raw x)
-    [[:clean (:value x)]]
-
-    :else
-    [[:clean x]]))
+    (message? x)      (message-pieces x)
+    (instance? Raw x) [[:clean (:value x)]]
+    :else             [[:clean x]]))
 
 (defn- string-prefix
   "The first `n` characters of `s`, or one fewer when the `n`th begins a surrogate pair."
@@ -248,7 +255,7 @@
   "`[text cut?]`: `v` [[clean]]ed whole when it fits in `budget` characters, else the [[quoted-excerpt]] keeping the
    most of its text that fits, or just `…` when not even an empty excerpt fits."
   [v budget]
-  (let [s     (if (string? v) v (pr-str v))
+  (let [s     (if (string? v) v (printed v))
         fits? #(<= (quoted-excerpt-width s %) budget)]
     (cond
       (fits? (count s)) [(quoted-excerpt s (count s)) false]
