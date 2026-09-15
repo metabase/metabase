@@ -1919,7 +1919,10 @@ describe("documents", () => {
         .click();
       cy.wait("@failedRevert");
 
-      H.undoToast().should("contain.text", "Cannot revert: missing document");
+      cy.contains(
+        '[data-testid="toast-undo"]',
+        "Cannot revert: missing document",
+      ).should("be.visible");
     });
   });
 
