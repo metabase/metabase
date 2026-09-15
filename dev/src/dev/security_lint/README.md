@@ -161,20 +161,44 @@ write's row checked as the model written (or one that owns it, `vocabulary/model
 other; does an endpoint return rows of a model nothing checked.
 
 The shape of a map is a fact about the argument as written, not about its values, and it is kept apart from the
-taint: `taint/shape` says whether the keys of what a parameter received were chosen by the code -- a map literal
-with keyword keys, a `(select-keys m [:a :b])`, a threaded literal until a step merges another map in
-(`vocabulary/merging-heads`) -- or by the data: a local, a call, `{k v}`. `:shape/keyed` and `:shape/opaque` are
-computed per parameter over every call that feeds it, a bare parameter handed on passing its own shape along, and
-they do not move with the values: a map built from a parameter's fields is keyed however the parameter was shaped.
+taint: `taint/shape` says whether the keys of what a parameter received were chosen by the code or by the data.
+`cg/arg-shape` reads an argument into a small term: a map literal with keyword keys or a `(select-keys m [:a
+:b])` is keyed; `{k v}` is opaque; `assoc`/`dissoc`/`update` and a threading form keep their input's shape until
+a step merges another map in (`vocabulary/merging-heads`); `merge`, `concat`, `or` and the branches of an `if` are
+keyed only when every part is; a collection of maps -- a `for` body, the function `map` applies, a named
+row-builder -- has its element's shape; a local or a call is a reference, resolved once the graph is known to
+the local's shape or the callee's return shape (its tails, keyed when every one is). `param-shapes` resolves the
+terms to `:shape/keyed` / `:shape/opaque` per parameter over every call that feeds it, a bare parameter or `let`
+local handed on passing its own shape along. The labels do not move with the values: a map built from a
+parameter's fields is keyed however the parameter was shaped. A request map under a `defendpoint` map or registry schema is keyed at the boundary:
+`closed-schemas` fails the endpoint at load unless every map it can reach is closed, and the decoder strips the keys
+a closed map does not declare, so the schema is the allow-list -- except the handful Metabase marks deliberately
+open (`vocabulary/open-schema-names`), a bare `:map`, `:any` or a `:map-of`. Only `defendpoint` schemas count: a
+`mu/defn` schema is compiled out in production and never checked closed. What the closed schema *declares* is a
+separate question -- one that admits `is_superuser` clears this rule and wants a rule of its own.
 `mass-assignment` stands down on a map every caller keyed, whatever crossed a boundary inside it -- `{:name n
 :collection_id (:id coll)}` handed to a `db.clj` insert is a Collection's column in a map the code wrote, not a
-Collection row written wholesale. One caller handing the map through is enough to keep the finding.
+Collection row written wholesale. One caller handing the map through is enough to keep the finding, and that
+caller is where the finding is *reported*: `taint/opaque-feeders` names the calls that handed the parameter a map
+of unknown keys, and the rule answers with one finding at each. The write is the same however it is called; the
+call is what makes it a finding and what a fix changes, so fixing one call closes one alert and dismissing one
+covers that call alone. A map built where it is written has no call to blame and is reported at the write, as
+before.
+
+A call that only forwards its own parameter is no better a place than the write, so the feeders are walked out
+past those to the calls that build the map -- the argument's shape term says which is which: a term that bottoms
+out in a reference to a parameter is a pass-through, anything else decides the keys where it stands. Three bounds
+keep that honest on a real tree: the parameters already visited (a call forwarding one of those is the recursion,
+not a build site), a depth, and a fan-out past which the forwarding call is the better report, since twenty alerts
+from one line help nobody.
 
 Rules that need to know *which* boundary, or that two values from different boundaries met at one sink, live in
 `rules/origins.clj`: a credential sent to a host a setting chose, a stored query run under another identity, a
 setting written from a synced document, a model chosen by a document. `mass-assignment` grades by origin too --
 warehouse metadata or a revision's object written wholesale into a model is a finding in the data-access layer,
-where a request map is that layer's job.
+where a request map is that layer's job. A row written wholesale is a row of exactly *one* model, so values drawn
+from several -- a group id, a database id and a table id -- say the map was assembled, and whoever assembled it
+chose its columns.
 
 It propagates through `let`s,
 threading, and calls into other functions, across files. A map literal handed to a parameter that destructures
@@ -229,6 +253,10 @@ execute a check" question, where a referenced-but-never-run check must not clear
    `taint/origins` says which boundaries it crossed, `taint/checks` which authorization checks it passed, and
    `taint/tainted-leaves` names the locals that carry it, for the message. Name lists belong in `vocabulary.clj`,
    with a sentence on why each entry is there, not inline in the rule.
+   A rule usually answers with one map. It may answer with a sequence of them -- one finding per call that makes
+   the site a problem -- and each may carry `:at {:filename :row :col}` to be reported somewhere else entirely,
+   with its reachability, its call paths and its snippet taken from there. See Reporting for how that is
+   fingerprinted.
 4. **Add a case to the example tree** in `dev/resources/security_lint/corpus/` (the files are `.clj.txt`, so no
    source walker picks them up -- its README says why) and its expected row in `corpus_test.clj`. A test there fails for any registered rule with no example.
 5. **Run it over the real tree** with `./bin/mage security-lint --warn-only` and read every finding. A rule that
@@ -244,7 +272,9 @@ Text output goes to the terminal: findings grouped by rule, then by severity, ea
 reaches it, and one shortest call path per kind of entry point that does. A finding nothing reaches shows the
 chain from its outermost caller instead -- `called from apply-transform! -> transform-step! -> insert-card!;
 nothing calls apply-transform!` -- so a reader can tell the linter saw the callers and where the chain ends from
-a chain it never followed (`cg/callers-of`).
+a chain it never followed (`cg/callers-of`). A function's own self-call is not what calls it, so one arity
+delegating to another is still an outermost caller; when every caller loops back the farthest one is named
+instead, and the line says so.
 
 SARIF output is what GitHub code scanning ingests, written compact (`jq` reads it). Every rule is described
 whether or not it fired, so a clean run closes resolved alerts; each links to its source on master as the alert's
@@ -253,8 +283,10 @@ result's level, so a rule that grades by taint grades its alerts one by one. The
 (`sarif/version` -- bump it when the output changes meaning) and when the scan ran. Each result carries a fingerprint over the rule, the file, the whole flagged form with its
 formatting removed, and which occurrence of that form it is in the file, so an alert survives edits above it and a
 reformat, and two identical forms in one file stay two alerts; an edit to the flagged form itself is a new alert,
-dismissed or not -- what was reviewed is no longer what is there. `sarif/fingerprint` says exactly what is hashed
-and why. Each result also carries one code flow per entry
+dismissed or not -- what was reviewed is no longer what is there. What the finding *reaches* is deliberately not
+hashed: the call text already names its own callee, and the entry points that reach it are the most volatile thing
+the scan computes, so hashing those would close and re-open alerts, losing their dismissals, whenever an unrelated
+call edge appeared anywhere in the tree. `sarif/fingerprint` says exactly what is hashed and why. Each result also carries one code flow per entry
 kind, the entry, each function on the shortest path, and the finding, which GitHub renders as "Show paths" on the
 alert; an unreachable finding carries the outermost-caller chain as its one flow. The message ends with what
 reaches the finding, or with which uncalled function the chain ends at. Suppressing a finding is done by dismissing the alert in

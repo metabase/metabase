@@ -76,37 +76,60 @@
             request (filter #(= :request (taint/label-kind %)) os)
             ;; the any-local policy has no origins to tell apart; every local counts there, outside the DAL
             local   (when (and (contains? os :local) (not (dal-file? filename))) [:local])
-            ;; In the data-access layer a document or warehouse map is the feature working -- sync, an import, a
-            ;; conversation -- unless the model written decides permissions or holds a secret. A row of one model
-            ;; written wholesale into another is reported there too, since revert is a DAL function: the map
-            ;; is a row of exactly one other model, `(:object revision)`, not a `changes` parameter whose
-            ;; values trace back to five.
             dal?       (dal-file? filename)
-            wholesale? (and (= 1 (count (distinct other))) (= (count other) (count os)))
+            ;; A row written wholesale is a row of exactly one other model -- `(:object revision)`, what revert
+            ;; and copy pass along. Values drawn from several -- a group id, a database id and a table id -- are a
+            ;; map somebody assembled, and whoever assembled it chose its columns.
+            one-model? (= 1 (count (distinct other)))
+            ;; In the data-access layer a document or warehouse map is the feature working -- sync, an import, a
+            ;; conversation -- unless the model written decides permissions or holds a secret. A wholesale row is
+            ;; reported there too, since revert is a DAL function; but only when the row is *all* the map is, not
+            ;; a `changes` parameter whose values trace back to five boundaries.
+            wholesale? (and one-model? (= (count other) (count os)))
             ;; what every caller handed this parameter: a map literal or a `select-keys` -- keys the code chose
             ;; -- or something opaque. `{k value}` counts as opaque: its one key is a value.
             shape      (taint/shape ctx changes)]
-        (cond
-          ;; the labels say a value in the map came off a Collection row; the callers say the map's keys were
-          ;; all chosen in code -- `{:name n :collection_id (get-collection t)}` -- which is not mass assignment
-          (and (contains? shape :shape/keyed) (not (contains? shape :shape/opaque)))
-          nil
+        (when-let [{:keys [tainted? message phrase]}
+                   (cond
+                     ;; the labels say a value in the map came off a Collection row; the callers say the map's keys
+                     ;; were all chosen in code -- `{:name n :collection_id (get-collection t)}` -- not mass assignment
+                     (and (contains? shape :shape/keyed) (not (contains? shape :shape/opaque)))
+                     nil
 
-          (and dal? (not (contains? vocab/privileged-models target)) (not wholesale?))
-          nil
+                     (and dal? (not (contains? vocab/privileged-models target)) (not wholesale?))
+                     nil
 
-          (and (seq foreign) (taint/raw-value? ctx changes))
-          {:tainted? true
-           :message  (str "Model write takes its columns from data that came from outside the instance ("
-                          (str/join ", " (sort (map name foreign))) "): " (ast/->str changes))}
+                     (and (seq foreign) (taint/raw-value? ctx changes))
+                     {:tainted? true
+                      :phrase   (str "a map from outside the instance ("
+                                     (str/join ", " (sort (map name foreign))) ")")
+                      :message  (str "Model write takes its columns from data that came from outside the instance ("
+                                     (str/join ", " (sort (map name foreign))) "): " (ast/->str changes))}
 
-          ;; only a map passed as it is, or read straight out of something: a map the code assembled --
-          ;; `(assoc base ...)`, `(merge defaults m)` -- names its columns in the assembling
-          (and (seq other) (taint/raw-value? ctx changes))
-          {:tainted? false
-           :message  (str "Model write into " target " takes its columns from a row of "
-                          (str/join ", " (sort (map name other))) ": " (ast/->str changes))}
+                     ;; only a map passed as it is, or read straight out of something: a map the code assembled --
+                     ;; `(assoc base ...)`, `(merge defaults m)`, what `(build-table-permissions ...)` returns --
+                     ;; names its columns in the assembling
+                     (and one-model? (taint/raw-value? ctx changes))
+                     {:tainted? false
+                      :phrase   (str "a row of " (str/join ", " (sort (map name other))))
+                      :message  (str "Model write into " target " takes its columns from a row of "
+                                     (str/join ", " (sort (map name other))) ": " (ast/->str changes))}
 
-          (and (or (seq request) (seq local)) (not (dal-file? filename)))
-          {:tainted? true
-           :message  (str "Model write takes its columns from a caller-supplied value: " (ast/->str changes))})))))
+                     (and (or (seq request) (seq local)) (not (dal-file? filename)))
+                     {:tainted? true
+                      :phrase   "a caller-supplied map"
+                      :message  (str "Model write takes its columns from a caller-supplied value: "
+                                     (ast/->str changes))})]
+          ;; The write is the same however it is called; what makes it a finding is the call that hands it the map,
+          ;; and that call is what a fix changes. When the graph knows those calls, report one finding at each
+          ;; rather than one at the write: fixing one closes one, and dismissing one covers that call alone. A call
+          ;; that only forwards its own parameter is no better a place than the write, so `opaque-feeders` has
+          ;; already walked out past those to the calls that build the map.
+          (if-let [feeders (seq (taint/opaque-feeders ctx changes))]
+            (for [{:keys [pos fq]} feeders]
+              {:tainted? tainted?
+               :at       pos
+               :origins  (into #{} (remove #{:local}) os)
+               :message  (str "Hands " fq " " phrase "; it is written into " (or target "the application database")
+                              ", setting every column the map names")})
+            {:tainted? tainted? :message message}))))))

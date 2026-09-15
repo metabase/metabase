@@ -92,58 +92,6 @@
 
 (declare binding-ids-in-region)
 
-(defn- arg-shape
-  "Whether an argument's *keys* were chosen by the code or by the data: `:keyed` for a map literal whose keys
-  are all keyword literals, and for `(select-keys x [:a :b])`; `:opaque` for anything else that could be a map
-  -- a local, a call, a `(merge defaults m)`, and `{k value}`, whose one key is a value; nil for a scalar literal,
-  which is no map at all. What a parameter received from every caller, as labels `:shape/keyed` and
-  `:shape/opaque`, is what a rule about a map's keys asks."
-  [a]
-  (let [a (ast/unmeta a)]
-    (cond
-      (ast/literal? a)
-      nil
-
-      (ast/map-node? a)
-      (if (every? (fn [[k _]] (ast/keyword-node? (ast/unmeta k))) (ast/map-entries a)) :keyed :opaque)
-
-      (and (ast/call? a) (= "select-keys" (some-> (ast/head-sym a) name)))
-      (let [ks (some-> (ast/arg a 1) ast/unmeta)]
-        (if (and ks (ast/vector-node? ks) (every? #(ast/keyword-node? (ast/unmeta %)) (ast/children ks)))
-          :keyed
-          :opaque))
-
-      :else :opaque)))
-
-(defn- arg-records
-  "The `:calls` records for one argument: the argument itself, and for a map literal one more per keyword entry,
-  keyed, so `(f {:table-id id :file file})` hands `id` to the `table-id` of a callee that destructures the map and
-  `file` to its `file`, rather than both to both. See `slot-binding-ids`."
-  [filename head index pos a]
-  (let [a (ast/unmeta a)]
-    (cons {:head head :index index :pos pos :region (assoc (meta a) :filename filename) :map? (ast/map-node? a)
-           :shape (arg-shape a)
-           ;; a bare local handed on: its shape is whatever it received, when it is a parameter
-           :sym?  (ast/symbol-node? a)}
-          (for [[k v] (ast/map-entries a)
-                :let  [k (ast/unmeta k)]
-                :when (ast/keyword-node? k)]
-            {:head head :index index :pos pos :region (assoc (meta (ast/unmeta v)) :filename filename)
-             :key  (n/sexpr k)}))))
-
-(defn- slot-binding-ids
-  "The binding ids a call record feeds in a parameter `slot`: every id in the slot for a plain argument to a plain
-  parameter; for a map literal into a destructuring parameter, the whole map reaches only the `:as` binding
-  and each keyed entry reaches the binding for its key."
-  [local-idx slot {:keys [key map?]}]
-  (let [keys (:keys slot)]
-    (cond
-      (nil? keys)   (if key [] (binding-ids-in-region local-idx (:region slot)))
-      key           (concat (some->> (get keys key) (binding-ids-in-region local-idx))
-                            (some->> (get keys :as) (binding-ids-in-region local-idx)))
-      map?          (some->> (get keys :as) (binding-ids-in-region local-idx))
-      :else         (binding-ids-in-region local-idx (:region slot)))))
-
 (defn- arglists
   "Every parameter vector of a `defn` form.
 
@@ -243,15 +191,160 @@
       (ast/call? step)        (ast/head-sym step)
       :else                   nil)))
 
+(def ^:private shape-keeping-heads
+  "Calls whose value has the keys of their first argument: `(assoc m :x 1)` sets a key the code named."
+  #{"assoc" "dissoc" "update" "assoc-in" "update-in" "with-meta" "vary-meta"})
+
+(def ^:private collection-keeping-heads
+  "Calls whose value is a collection of the same elements as their last argument, so a sequence of rows keeps
+  its rows' shape through them."
+  #{"vec" "seq" "doall" "set" "distinct" "reverse" "sort" "sort-by" "take" "drop" "filter" "filterv" "remove"
+    "partition-all" "partition" "take-while" "drop-while" "shuffle" "not-empty"})
+
+(def ^:private element-mapping-heads
+  "Calls whose value is a collection of what their first argument, a function, returns."
+  #{"map" "mapv" "keep" "mapcat" "pmap"})
+
+(defn- arg-shape
+  "How the *keys* of an argument were chosen, as a term [[param-shapes]] resolves once the graph is known:
+
+    :keyed              a map literal with keyword keys; `(select-keys x [:a :b])`
+    :opaque             `{k v}`, whose key is a value; anything not understood
+    nil                 a scalar literal: no map at all
+    {:ref {...}}        a local, or a call to a function -- the local's shape, or the function's return shape
+    {:all [term ...]}   keyed when every term is: `(merge a b)`, the branches of an `if`, a `concat`
+
+  A form that keeps a map's keys -- `assoc`, a threading form, a `let` -- has its input's term; a collection of
+  maps has its element's: the body of a `for`, the function `map` applies, what a named row-builder returns.
+  What a parameter received from every caller, as labels `:shape/keyed` and `:shape/opaque`, is what a rule
+  about a map's keys asks."
+  [filename a]
+  (let [a    (ast/unmeta a)
+        term (partial arg-shape filename)
+        ref  (fn [node head] {:ref {:filename filename :row (:row (meta node)) :col (:col (meta node)) :head head}})
+        all  (fn [nodes]
+               (let [ts (remove nil? (map term nodes))]
+                 (cond (empty? ts)        nil
+                       (= 1 (count ts))   (first ts)
+                       :else              {:all (vec ts)})))]
+    (cond
+      (ast/literal? a)
+      nil
+
+      (ast/map-node? a)
+      (if (every? (fn [[k _]] (ast/keyword-node? (ast/unmeta k))) (ast/map-entries a)) :keyed :opaque)
+
+      (ast/symbol-node? a)
+      (ref a (n/sexpr a))
+
+      (ast/call? a)
+      (let [head (ast/head-sym a)
+            nm   (some-> head name)
+            args (ast/args a)]
+        (cond
+          (nil? head)
+          :opaque
+
+          (= nm "select-keys")
+          (let [ks (some-> (ast/arg a 1) ast/unmeta)]
+            (if (and ks (ast/vector-node? ks) (every? #(ast/keyword-node? (ast/unmeta %)) (ast/children ks)))
+              :keyed
+              :opaque))
+
+          ;; `(-> {...} (assoc :x 1) f)`: the seed's term, until a step merges another map in
+          (contains? threading-heads head)
+          (when-let [t (term (first args))]
+            (if (some #(contains? vocab/merging-heads (some-> (thread-target %) name)) (rest args)) :opaque t))
+
+          (contains? shape-keeping-heads nm)
+          (term (first args))
+
+          (= nm "merge")
+          (all args)
+
+          (= nm "merge-with")
+          (all (rest args))
+
+          ;; `(let [...] body)`, `(if a b c)`, `(when x m)`: the value is one of the tails; nil branches are no map
+          (or (contains? tail-through (symbol nm)) (str/starts-with? nm "with-"))
+          (all (tail-forms a))
+
+          (= nm "or")
+          (all args)
+
+          (= nm "for")
+          (term (last args))
+
+          (contains? element-mapping-heads nm)
+          (let [f (some-> (first args) ast/unmeta)]
+            (cond
+              ;; `(fn [x] {...})`: its body's tails
+              (and (ast/call? f) (= "fn" (some-> (ast/head-sym f) name)))
+              (all (some-> (last (ast/args f)) tail-forms))
+              ;; `#(row %)`: the fn literal reads as a call to `row`, which is the element
+              (and f (= :fn (n/tag f)))
+              (term f)
+              ;; `row`: the function by name -- its return shape; a local holding a function is opaque
+              (and f (ast/symbol-node? f))
+              (ref f (n/sexpr f))
+              :else :opaque))
+
+          (= nm "concat")
+          (all args)
+
+          ;; `(into [] rows)` keeps the rows; `(into {} pairs)` builds a map from data
+          (= nm "into")
+          (let [to (some-> (first args) ast/unmeta)]
+            (if (and to (ast/map-node? to)) :opaque (term (last args))))
+
+          (contains? collection-keeping-heads nm)
+          (term (last args))
+
+          ;; a call to something else: the function's return shape, once the graph knows it. clj-kondo keys a
+          ;; call by its open paren, which for `#(row %)` is one column past the `#` the node starts at; the `#`
+          ;; itself it reports as `clojure.core/fn*`.
+          :else
+          (if (= :fn (n/tag a))
+            (update-in (ref a head) [:ref :col] inc)
+            (ref a head))))
+
+      :else :opaque)))
+
 (defn- thread-shape
-  "The shape (see [[arg-shape]]) of what a threading step receives: the seed's, when every step before it is one
-  that keeps the keys the code chose -- `assoc`, `update`, `dissoc`, a helper that fills in fields -- and
-  `:opaque` once a step merges another map in. The same approximation the taint takes: a thread's steps are
-  recorded as receiving the seed."
-  [seed earlier-steps]
+  "The shape term of what a threading step receives: the seed's, when every step before it keeps the keys the
+  code chose -- `assoc`, `update`, `dissoc`, a helper that fills in fields -- and `:opaque` once a step merges
+  another map in. The same approximation the taint takes: a thread's steps are recorded as receiving the seed."
+  [filename seed earlier-steps]
   (let [merges? (fn [step] (contains? vocab/merging-heads (some-> (thread-target step) name)))]
-    (when-let [shape (arg-shape seed)]
-      (if (some merges? earlier-steps) :opaque shape))))
+    (when-let [term (arg-shape filename seed)]
+      (if (some merges? earlier-steps) :opaque term))))
+
+(defn- arg-records
+  "The `:calls` records for one argument: the argument itself, and for a map literal one more per keyword entry,
+  keyed, so `(f {:table-id id :file file})` hands `id` to the `table-id` of a callee that destructures the map and
+  `file` to its `file`, rather than both to both. See `slot-binding-ids`."
+  [filename head index pos a]
+  (let [a (ast/unmeta a)]
+    (cons {:head head :index index :pos pos :region (assoc (meta a) :filename filename) :map? (ast/map-node? a)
+           :shape (arg-shape filename a)}
+          (for [[k v] (ast/map-entries a)
+                :let  [k (ast/unmeta k)]
+                :when (ast/keyword-node? k)]
+            {:head head :index index :pos pos :region (assoc (meta (ast/unmeta v)) :filename filename)
+             :key  (n/sexpr k)}))))
+
+(defn- slot-binding-ids
+  "The binding ids a call record feeds in a parameter `slot`: every id in the slot for a plain argument to a plain
+  parameter; for a map literal into a destructuring parameter, the whole map reaches only the `:as` binding
+  and each keyed entry reaches the binding for its key."
+  [local-idx slot {:keys [key map?]}]
+  (let [keys (:keys slot)]
+    (cond
+      (nil? keys)   (if key [] (binding-ids-in-region local-idx (:region slot)))
+      key           (concat (some->> (get keys key) (binding-ids-in-region local-idx))
+                            (some->> (get keys :as) (binding-ids-in-region local-idx)))
+      map?          (some->> (get keys :as) (binding-ids-in-region local-idx))
+      :else         (binding-ids-in-region local-idx (:region slot)))))
 
 (defn- meta-value
   "The value written for keyword `k` in `^{k v}` metadata on `raw`, an un-unmeta'd node, or nil."
@@ -394,7 +487,7 @@
   (let [params (volatile! []) inits (volatile! []) calls (volatile! []) sources (volatile! [])
         fns (volatile! []) entries (volatile! []) guards (volatile! []) sites (volatile! [])
         ns-middleware (volatile! #{}) wraps (volatile! []) handler-defs (volatile! [])
-        numeric (volatile! []) strings (volatile! []) registry (volatile! []) sanitized (volatile! [])
+        numeric (volatile! []) strings (volatile! []) registry (volatile! []) keyed (volatile! []) sanitized (volatile! [])
         origin-fns (volatile! []) model-args (volatile! {}) tails (volatile! []) checks (volatile! [])
         thread-tails (volatile! [])
         ;; `(ns ^:instrument/always foo)`: the one way a `mu/defn` schema is enforced in production, where they
@@ -539,7 +632,9 @@
                                  name-pos (assoc :name-pos name-pos)))
               ;; what the function returns: the regions of its tail forms, so a call to it can carry their taint
               (doseq [body (bodies args), t (some-> (last body) tail-forms)]
-                (vswap! tails conj (cond-> {:fn fq :region (assoc (meta t) :filename filename)}
+                (vswap! tails conj (cond-> {:fn fq :region (assoc (meta t) :filename filename)
+                                            ;; the shape of what it returns, for [[param-shapes]]
+                                            :shape (arg-shape filename t)}
                                      ;; the call the value comes from, for [[sanitizing-fns]]
                                      (tail-head t) (assoc :head (tail-head t)))))
               ;; `(defenterprise f "doc" ee.ns [x] ...)` dispatches to `ee.ns/f` when EE is enabled -- by name, at
@@ -634,7 +729,10 @@
                                     ;; `[cid (:card_id body)]`: a check on `cid` later vouches for `body`'s
                                     ;; `:card_id`, not for `body`
                                     :key    (second (ast/accessor (ast/unmeta init)))
-                                    :region (assoc (meta init) :filename filename)}))))
+                                    :region (assoc (meta init) :filename filename)
+                                    ;; `[m {:a 1}]`: the local has the literal's shape; `[m other]` its
+                                    ;; init's. Only a plain symbol binds the whole value.
+                                    :shape  (when (ast/symbol-node? (ast/unmeta b)) (arg-shape filename init))}))))
 
           :else nil)
         ;; a defendpoint parameter vector is the other trust boundary
@@ -645,7 +743,10 @@
           (let [typed (taint/typed-param-regions dp filename)]
             (vswap! numeric into (:numeric typed))
             (vswap! strings into (:string typed))
-            (vswap! registry into (:registry typed)))
+            (vswap! registry into (:registry typed))
+            ;; the keys of a request map under a closed schema are the schema's: `closed-schemas` holds for
+            ;; every `defendpoint`, and only there -- a `mu/defn` schema is neither enforced nor checked closed
+            (vswap! keyed into (:keyed typed)))
           (vswap! entries conj (assoc (meta node) :filename filename :kind :http :name (entry-name node))))
         ;; A threading macro passes its seed into each step, which the plain call extraction below cannot see:
         ;; `(-> request :url h)` looks like a three-argument call to `->`. Record a synthetic call per step so the
@@ -665,8 +766,7 @@
                                     :pos    spos
                                     :region seed-region
                                     ;; the seed's shape, as far as the steps before this one keep it
-                                    :shape  (thread-shape seed (take i (rest args)))
-                                    :sym?   (and (zero? i) (ast/symbol-node? (ast/unmeta seed)))})))))
+                                    :shape  (thread-shape filename seed (take i (rest args)))})))))
         ;; `(apply f a b coll)` calls f with a and b in its first positions and the collection spread over the
         ;; rest; `(m/mapply f m)` calls f with the map as its trailing keyword arguments, so the map lands in the
         ;; last parameter -- `[& {:keys [dashboard card]}]`, or a plain trailing map. Recorded as calls to `f` at
@@ -759,7 +859,8 @@
       {:ns ns-sym :params @params :inits @inits :calls @calls :sources @sources
        :fns @fns :entries @entries :guards @guards :call-sites @sites :ns-middleware @ns-middleware
        :wraps @wraps :handler-defs @handler-defs
-       :numeric-regions @numeric :string-regions @strings :registry-regions @registry :sanitized @sanitized
+       :numeric-regions @numeric :string-regions @strings :registry-regions @registry :keyed-regions @keyed
+       :sanitized @sanitized
        :origin-fns @origin-fns :model-args @model-args :tails @tails :checks @checks :thread-tails @thread-tails
        ;; so value references inside the ns form (:refer) are not mistaken for uses
        :ns-region (some-> ns-form meta (assoc :filename filename))})))
@@ -1098,19 +1199,25 @@
   "For a position no entry point reaches, how the code is used anyway:
 
       {:count 2                             ; functions that reach it and that nothing calls -- the roots
+       :cyclic? false                        ; true when the chain ends in a loop rather than at a root
        :path [step ...]}                    ; from the farthest root down to the function holding `pos`
 
-  The same backwards walk as [[flows-to]]; a root is a visited function with no reference to it. A function
-  nothing calls is its own root, with a one-step path. nil for a position outside every function.
+  The same backwards walk as [[flows-to]]; a root is a visited function nothing but itself calls -- one arity of
+  a `defn` delegating to another is not what calls it. A function nothing calls is its own root, with a one-step
+  path. When every caller loops back, there is no root and the farthest visited function is named instead, with
+  `:cyclic?`. nil for a position outside every function.
 
   This is what a finding shows in place of a flow when it is unreachable: the linter did see the callers, and a
   reader wants to know that `apply-transform!` is the end of the line, not that the chain was never looked at."
   [{:keys [reverse-edges] :as reach} pos]
   (let [{:keys [hops depth from]} (walk-back reach pos)
-        roots (when hops (filter #(empty? (get @reverse-edges %)) (keys hops)))]
-    (when (seq roots)
-      {:count (count roots)
-       :path  (from (first (sort-by (juxt (comp - depth) str) roots)))})))
+        roots (when hops (filter #(empty? (disj (set (get @reverse-edges %)) %)) (keys hops)))
+        ;; the farthest caller, which is a root unless the chain loops
+        pick  (first (sort-by (juxt (comp - depth) str) (or (seq roots) (keys hops))))]
+    (when pick
+      {:count   (count roots)
+       :cyclic? (not (contains? (set roots) pick))
+       :path    (from pick)})))
 
 (defn sanitized-positions
   "Usage positions that a validating guard has already vouched for.
@@ -1283,33 +1390,140 @@
 
 (declare propagate*)
 
+(def ^:private max-chase-fanout
+  "How many build sites [[param-shapes]] will report in place of one forwarding call. Past this the forwarding call
+  is the more useful finding: a reviewer can read one line and follow it, where twenty alerts are a wall."
+  10)
+
+(def ^:private max-chase-depth
+  "How many forwarding calls [[param-shapes]] walks out through before reporting where it stands. Chains this long
+  are already unusual; the cap is a backstop for graphs the visited set does not cut."
+  8)
+
 (defn- param-shapes
   "`{param-id #{:shape/keyed}}`: the shape (see [[arg-shape]]) of what each parameter receives, over every call
   that feeds it. A bare parameter handed on -- `(defn create! [m] (insert! m))` -- passes its own shape along;
-  one nothing feeds, or that a request bound, is opaque when handed on. A parameter no call feeds gets nothing.
+  one nothing feeds, or that a request bound, is opaque when handed on -- unless a closed `defendpoint` schema
+  declared its keys, which makes it keyed at the boundary. A bare `let` local handed on has its init's shape --
+  `(let [revision {:before b :after a}] (insert! revision))` is keyed -- followed back through locals bound to
+  locals; a call has the shape of the callee's tails. A parameter no call feeds gets nothing.
 
   Not a taint label: a shape is a fact about the argument as written at the call, and moving it with the values
   would say a map built from a parameter's fields has that parameter's shape. A destructured parameter's `name`
-  inside `{:name name}` is not what makes the map keyed or not."
-  [{:keys [calls static slot-ids resolve-call params-by-fn param-ids]}]
-  (let [feeds (for [{:keys [i shape sym? key] :as call} calls
-                    :when (and (not key) (or shape sym?) (contains? params-by-fn (resolve-call call)))
-                    :let  [to   (slot-ids i)
-                           from (when sym? (first (:ids (static i))))]
-                    :when (seq to)]
-                {:to to :from (when (contains? param-ids from) from) :label (keyword "shape" (name (or shape :opaque)))})
-        fed   (into #{} (mapcat :to) feeds)]
+  inside `{:name name}` is not what makes the map keyed or not.
+
+  Its `:feeders` are the calls that handed a parameter a map of unknown keys, by the parameter they feed, each
+  walked out past the calls that only forward what they were given, to the call that built the map."
+  [{:keys [calls slot-ids resolve-call params-by-fn param-ids inits bind-ids keyed-ids tails usage-at resolve
+           ns-of]}]
+  (let [;; request bindings under a closed schema: keyed at the boundary, before any call
+        boundary (into {} (for [id keyed-ids] [id #{:shape/keyed}]))
+        ;; a local bound by `let`: its init's term
+        bound    (into {} (for [{:keys [i shape]} inits
+                                :when shape
+                                :let  [ids (bind-ids i)]
+                                :when (= 1 (count ids))]
+                            [(first ids) shape]))
+        ;; what a function returns: its tails' terms, keyed when every one is
+        returns  (into {} (for [[fq ts] (group-by :fn tails)]
+                            [fq {:all (vec (keep :shape ts))}]))
+        feeds    (for [{:keys [i shape pos] :as call} calls
+                       :when (and shape (not (:key call)) (contains? params-by-fn (resolve-call call)))
+                       :let  [to (slot-ids i)]
+                       :when (seq to)]
+                   ;; `:pos` is the call itself and `:fq` what it calls: a rule that reports where a map is handed
+                   ;; over, rather than where it is written, needs both
+                   {:to to :term shape :pos pos :fq (resolve-call call)})
+        fed      (into #{} (mapcat :to) feeds)
+        ;; `#{}` is not yet known -- a fed parameter whose callers are still being resolved, a cycle -- and a
+        ;; round that meets it waits; nil is no map. Anything opaque in a union makes it opaque: `(merge {:a 1}
+        ;; body)` has body's keys too.
+        combine  (fn [ls]
+                   (cond (empty? ls)                              nil
+                         (some empty? ls)                         #{}
+                         (some #(contains? % :shape/opaque) ls)   #{:shape/opaque}
+                         :else                                    #{:shape/keyed}))
+        resolve-fq (fn [{:keys [filename row col head]}]
+                     (or (get resolve {:filename filename :row row :col col})
+                         (when-not (qualified-symbol? head)
+                           (when-let [nsym (get ns-of filename)]
+                             (symbol (str nsym) (str head))))
+                         head))]
     (loop [m {}]
-      (let [m' (reduce (fn [m {:keys [to from label]}]
-                         (let [ls (cond
-                                    (nil? from)                  #{label}
-                                    (not (contains? fed from))   #{:shape/opaque}
-                                    ;; fed, but not yet known: wait for a later round (a cycle stays unknown)
-                                    :else                        (get m from #{}))]
-                           (reduce #(update %1 %2 (fnil into #{}) ls) m to)))
+      (let [eval-term (fn eval-term [term seen]
+                        (cond
+                          (nil? term)      nil
+                          (keyword? term)  #{(keyword "shape" (name term))}
+                          (:all term)      (combine (keep #(eval-term % seen) (:all term)))
+                          :else
+                          (let [{:keys [filename row col] :as r} (:ref term)]
+                            (if-let [id (get usage-at [filename row col])]
+                              ;; a local
+                              (cond
+                                (contains? seen [:id id])   #{}
+                                (contains? boundary id)     (get boundary id)
+                                (contains? param-ids id)    (if (contains? fed id) (get m id #{}) #{:shape/opaque})
+                                (contains? bound id)        (eval-term (get bound id) (conj seen [:id id]))
+                                :else                       #{:shape/opaque})
+                              ;; a function: what it returns, when the graph holds it
+                              (let [fq (resolve-fq r)]
+                                (cond
+                                  (contains? seen [:fn fq]) #{}
+                                  (contains? returns fq)    (eval-term (get returns fq) (conj seen [:fn fq]))
+                                  :else                     #{:shape/opaque}))))))
+            m' (reduce (fn [m {:keys [to term]}]
+                         (let [ls (eval-term term #{})]
+                           (if (seq ls)
+                             (reduce #(update %1 %2 (fnil into #{}) ls) m to)
+                             m)))
                        m
                        feeds)]
-        (if (= m m') m (recur m'))))))
+        (if (= m m')
+          (let [;; which calls contributed the opaque half, by the parameter they feed
+                direct  (reduce (fn [acc {:keys [to term pos fq]}]
+                                  (if (contains? (eval-term term #{}) :shape/opaque)
+                                    (reduce #(update %1 %2 (fnil conj []) {:pos pos :fq fq :term term}) acc to)
+                                    acc))
+                                {}
+                                feeds)
+                ;; the parameter an argument merely passes through, when it does: `(batch! rows)` in a function
+                ;; whose own `rows` parameter that is, or `(batch! (partition-all n rows))`, which keeps its
+                ;; elements. `(batch! (build-rows x))` passes nothing through -- the keys are chosen right there.
+                through (fn through [term]
+                          (when-let [{:keys [filename row col]} (:ref term)]
+                            (when-let [id (get usage-at [filename row col])]
+                              (cond
+                                (contains? param-ids id) id
+                                (contains? bound id)     (through (get bound id))
+                                :else                    nil))))
+                ;; A call that only forwards is not where a fix goes. Walk out to the calls that feed *its*
+                ;; parameter, and stop at the first that builds the map. Bounded three ways, and each bound is
+                ;; load-bearing on a real tree: the parameters already visited, a depth, and a fan-out past which
+                ;; the forwarding call is the better report -- twenty alerts from one line help nobody. Results are
+                ;; cached per parameter; a parameter reached along two different paths keeps the first path's
+                ;; loop-cutting, which can only move where a finding in a cycle is reported.
+                cache   (atom {})
+                drop-t  (fn [f] (dissoc f :term))]
+            (letfn [(expand [f seen depth]
+                      (let [q (when (< depth max-chase-depth) (through (:term f)))]
+                        (if (and q (not (contains? seen q)) (seq (get direct q)))
+                          (let [out (feeders-of q (conj seen q) (inc depth))]
+                            (if (and (seq out) (<= (count out) max-chase-fanout)) out [(drop-t f)]))
+                          [(drop-t f)])))
+                    (feeders-of [q seen depth]
+                      (if (contains? @cache q)
+                        (get @cache q)
+                        ;; a call forwarding a parameter already being chased is the recursion, not a place a map
+                        ;; is built; unless it is the only one, and then it is all there is
+                        (let [fs  (remove #(contains? seen (through (:term %))) (get direct q))
+                              out (when (seq fs)
+                                    (into [] (comp (mapcat #(expand % seen depth)) (distinct)) fs))]
+                          (swap! cache assoc q out)
+                          out)))]
+              {:shapes  (merge m boundary)
+               :feeders (into {} (for [[id fs] direct]
+                                   [id (into [] (comp (mapcat #(expand % #{id} 0)) (distinct)) fs)]))}))
+          (recur m'))))))
 
 (defn propagate
   "Grow `:sources` to a fixpoint over the call graph, carrying labels. See [[propagate*]], of which this returns
@@ -1524,12 +1738,20 @@
               check-sources (into {} (for [[id ls] check-sources]
                                        [id (if (contains? ls :checked)
                                              (into ls (filter #(= :checked (taint/label-kind %))) (get tainted id))
-                                             ls)]))]
-          {:tainted      (merge-with into tainted
-                                     (param-shapes {:calls all-calls :static (:static calls*) :slot-ids slot-ids
-                                                    :resolve-call resolve-call :params-by-fn params-by-fn
-                                                    :param-ids (into #{} (mapcat #(binding-ids-in-region local-idx (:region %)))
-                                                                     all-params)})
+                                             ls)]))
+              shapes*       (param-shapes {:calls all-calls :slot-ids slot-ids
+                                           :inits all-inits :bind-ids bind-ids :tails all-tails
+                                           :keyed-ids (into #{} (mapcat #(binding-ids-in-region local-idx %))
+                                                            (mapcat :keyed-regions (vals tables)))
+                                           :usage-at (into {} (for [{:keys [id filename row col]} local-usages]
+                                                                [[filename row col] id]))
+                                           :resolve resolve :ns-of ns-of
+                                           :resolve-call resolve-call :params-by-fn params-by-fn
+                                           :param-ids (into #{} (mapcat #(binding-ids-in-region local-idx (:region %)))
+                                                            all-params)})]
+          {:shape-feeders (:feeders shapes*)
+           :tainted      (merge-with into tainted
+                                     (:shapes shapes*)
                                      (checks-backward check-sources
                                                       {:local-idx local-idx :usage-idx usage-idx :calls all-calls
                                                        :slots-for slots-for :resolve-call resolve-call :locals locals

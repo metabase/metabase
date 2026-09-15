@@ -91,7 +91,7 @@
 
     (seq (:path callers))
     (str "Not reachable from any known entry point; the outermost caller is " (:name (first (:path callers)))
-         ", which nothing calls.")
+         (if (:cyclic? callers) ", whose own callers are all on this path." ", which nothing calls."))
 
     :else
     "Not reachable from any known entry point."))
@@ -137,7 +137,8 @@
                  ;; nothing reaches it: the chain from the outermost caller, so 'Show paths' still says how the
                  ;; code is used and where the chain ends
                  (when-let [steps (seq (filter :row (:path callers)))]
-                   [(flow (str "No entry point reaches this; called from " (:name (first steps)) ", which nothing calls")
+                   [(flow (str "No entry point reaches this; called from " (:name (first steps))
+                               (if (:cyclic? callers) ", whose own callers are all on this path" ", which nothing calls"))
                           steps)])))))
 
 (defn- fingerprint
@@ -296,8 +297,11 @@
     (into ["    not reachable from any known entry point"]
           (when-let [path (seq (:path callers))]
             (wrap "      " "        " 110
-                  (str "called from " (str/join " -> " (map :name path)) "; nothing calls " (:name (first path))
-                       (when (> (:count callers) 1) (str " (one of " (:count callers) " uncalled roots)"))))))))
+                  (str "called from " (str/join " -> " (map :name path))
+                       (if (:cyclic? callers)
+                         (str "; every caller of " (:name (first path)) " is on this path")
+                         (str "; nothing calls " (:name (first path))
+                              (when (> (:count callers) 1) (str " (one of " (:count callers) " uncalled roots)"))))))))))
 
 (defn- finding-lines [root show-message? {:keys [file row col message snippet] :as finding}]
   (concat

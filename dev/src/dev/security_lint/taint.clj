@@ -152,6 +152,34 @@
 
       :else nil)))
 
+(defn- keyed-schema?
+  "Whether a `defendpoint` schema pins the *keys* of the map it accepts: a `[:map ...]` written in place, or a
+  registry keyword -- `closed-schemas` fails the endpoint at load unless every map it can reach is closed, and the
+  decoder strips the keys a closed map does not declare, so what arrives has the keys the code wrote in the schema.
+  Not for the schemas Metabase marks deliberately open ([[dev.security-lint.vocabulary/open-schema-names]]), a
+  bare `:map`, `:any`, or a `:map-of`, whose keys are the client's."
+  [node]
+  (let [node (ast/unmeta node)]
+    (cond
+      (ast/keyword-node? node)
+      (let [k (n/sexpr node)]
+        (and (some? (namespace k)) (not (contains? vocab/open-schema-names (name k)))))
+
+      (ast/symbol-node? node)
+      false
+
+      (ast/vector-node? node)
+      (let [[h & more] (ast/children node)
+            kw         (when (ast/keyword-node? h) (n/sexpr h))
+            more       (remove ast/map-node? more)]
+        (case kw
+          :map          true
+          (:maybe :and) (boolean (some keyed-schema? more))
+          :or           (boolean (and (seq more) (every? keyed-schema? more)))
+          false))
+
+      :else false)))
+
 (defn- map-schema-entries
   "`{:id <schema> ...}` from a `[:map [:id S] ...]` schema node, looking through `[:maybe ...]`. Empty for any
   other shape."
@@ -176,12 +204,15 @@
 
 (defn typed-param-regions
   "Regions of the bindings in a `defendpoint` parameter vector whose schema pins them, by what it pins them to:
-  `{:numeric [region ...] :string [region ...] :registry [region ...]}`.
+  `{:numeric [region ...] :string [region ...] :registry [region ...] :keyed [region ...]}`.
 
   `[{:keys [id name]} :- [:map [:id ms/PositiveInt] [:name :string]] body :- [:map [:x :any]] n :- pos-int?]`
   yields `id` and `n` under `:numeric` and `name` under `:string`. Everything else in the vector -- a key with an
   open schema, a whole map, a binding with no schema -- appears in neither, and a rule about a value's shape treats
-  it as untyped."
+  it as untyped.
+
+  `:keyed` is about a map's keys rather than a value's type: `body` above, an `:as` binding, and a destructured
+  key whose entry is itself a map schema (see [[keyed-schema?]]). A rule about which columns a map sets reads it."
   [dp filename]
   (let [slots (vec (ast/children dp))
         pairs (loop [i 0, acc []]
@@ -199,16 +230,22 @@
                   :let  [slot (ast/unmeta slot)]
                   [node kind] (cond
                                 (ast/symbol-node? slot)
-                                [[slot (schema-kind schema)]]
+                                (cond-> [[slot (schema-kind schema)]]
+                                  (keyed-schema? schema) (conj [slot :keyed]))
 
                                 (ast/map-node? slot)
-                                (let [entries (map-schema-entries schema)]
-                                  (for [k     (some-> (ast/map-get slot :keys) ast/children)
-                                        :let  [k (ast/unmeta k)]
-                                        :when (ast/symbol-node? k)]
-                                    [k (if (= ::registry entries)
-                                         :registry
-                                         (schema-kind (get entries (keyword (name (n/sexpr k))))))]))
+                                (let [entries (map-schema-entries schema)
+                                      as      (some-> (ast/map-get slot :as) ast/unmeta)]
+                                  (concat
+                                   (when (and as (ast/symbol-node? as) (keyed-schema? schema))
+                                     [[as :keyed]])
+                                   (for [k     (some-> (ast/map-get slot :keys) ast/children)
+                                         :let  [k (ast/unmeta k)]
+                                         :when (ast/symbol-node? k)
+                                         :let  [entry (when (map? entries) (get entries (keyword (name (n/sexpr k)))))]
+                                         kind  [(if (= ::registry entries) :registry (schema-kind entry))
+                                                (when (and entry (keyed-schema? entry)) :keyed)]]
+                                     [k kind])))
 
                                 :else nil)
                   :when kind]
@@ -500,6 +537,19 @@
   (let [labels (:labels ctx)]
     (into #{} (comp (mapcat (fn [nd] (get labels ((juxt :row :col) (meta nd)))))
                     (filter shape-label?))
+          (ast/find-nodes ast/symbol-node? node))))
+
+(defn opaque-feeders
+  "The calls that handed the value in `node` to the function holding it, with a map whose keys are not the code's:
+  `[{:pos {:filename :row :col} :fq metabase.sync.db/update-database!} ...]`, the call site and what it calls.
+  Empty when the value is not a parameter, or when every call that feeds it passes a map it keyed itself.
+
+  A rule about which columns a write sets can report at these rather than at the write: the write is the same
+  either time, and the call is what makes it a problem and what a fix changes."
+  [ctx node]
+  (let [feeders (:shape-feeders ctx)]
+    (into [] (comp (mapcat (fn [nd] (get feeders ((juxt :row :col) (meta nd)))))
+                   (distinct))
           (ast/find-nodes ast/symbol-node? node))))
 
 (def pass-through-heads

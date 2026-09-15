@@ -225,9 +225,11 @@
 (defn update-user! [id changes] (t2/update! :model/User id changes))
 (defn update-table! [id changes] (t2/update! :model/Table id changes))
 (api.macros/defendpoint :put \"/:id\" \"doc\" [{:keys [id]} _q body] (update-user! id (yaml/parse-string body)) (update-table! id (yaml/parse-string body)))")
-      (is (= [2] (map :row (engine/analyze {:paths [(.getAbsolutePath f)]
-                                            :rules [(rule/by-id :metabase-security-lint/mass-assignment)]
-                                            :taint-sources :call-graph})))))))
+      (let [fs (engine/analyze {:paths [(.getAbsolutePath f)]
+                                :rules [(rule/by-id :metabase-security-lint/mass-assignment)]
+                                :taint-sources :call-graph})]
+        (is (= [4] (map :row fs)) "at the endpoint that forwards the document, not at the write")
+        (is (str/includes? (:message (first fs)) "update-user!") "naming what it hands the map to")))))
 
 (deftest mass-assignment-by-shape-test
   (let [id :metabase-security-lint/mass-assignment]
@@ -239,15 +241,38 @@
 (defn- save! [id changes] (t2/update! :model/Card id changes))
 (api.macros/defendpoint :put \"/:id\" \"doc\" [{:keys [id]} _q body] (save! id (select-keys body [:name])))"))
         "the rule's own remediation, one call away")
-    (is (= [2] (map :row (check-cg id "(ns t (:require [toucan2.core :as t2] [metabase.api.macros :as api.macros]))
+    (is (= [4] (map :row (check-cg id "(ns t (:require [toucan2.core :as t2] [metabase.api.macros :as api.macros]))
 (defn- save! [id changes] (t2/update! :model/Card id changes))
 (api.macros/defendpoint :put \"/:id\" \"doc\" [{:keys [id]} _q body] (save! id {:name (:name body)}))
 (api.macros/defendpoint :put \"/:id/all\" \"doc\" [{:keys [id]} _q body] (save! id body))")))
-        "one caller forwarding the request map is enough")
-    (is (= [2] (map :row (check-cg id "(ns t (:require [toucan2.core :as t2] [metabase.api.macros :as api.macros]))
+        "one caller forwarding the request map is enough -- and it, not the one passing a literal, is the finding")
+    (is (empty? (check-cg id "(ns t (:require [toucan2.core :as t2] [metabase.api.macros :as api.macros]))
+(defn- save! [id changes] (t2/update! :model/Card id changes))
+(api.macros/defendpoint :put \"/:id\" \"doc\" [{:keys [id]} _q body :- [:map {:closed true} [:name :string] [:archived :boolean]]] (save! id body))
+(api.macros/defendpoint :put \"/:id/direct\" \"doc\" [{:keys [id]} _q body :- ::t/card.update] (t2/update! :model/Card id body))"))
+        "a request map under a closed schema names its columns in the schema -- the remediation the rule recommends")
+    (is (= [3] (map :row (check-cg id "(ns t (:require [toucan2.core :as t2] [metabase.api.macros :as api.macros] [metabase.util.malli.schema :as ms]))
+(defn- save! [id changes] (t2/update! :model/Database id changes))
+(api.macros/defendpoint :put \"/:id\" \"doc\" [{:keys [id]} _q details :- ms/DatabaseDetails] (save! id details))")))
+        "a deliberately open schema pins nothing")
+    (is (= [3] (map :row (check-cg id "(ns t (:require [toucan2.core :as t2] [metabase.api.macros :as api.macros]))
 (defn- save! [id changes] (t2/update! :model/Card id changes))
 (api.macros/defendpoint :put \"/:id\" \"doc\" [{:keys [id]} _q {:keys [k v]}] (save! id {k v}))")))
         "a map whose key is a request value names whatever column the request likes")
+    (is (empty? (check-cg id "(ns t (:require [toucan2.core :as t2] [metabase.api.macros :as api.macros]))
+(defn- save! [id changes] (t2/update! :model/Card id changes))
+(api.macros/defendpoint :put \"/:id\" \"doc\" [{:keys [id]} _q body] (let [changes {:name (:name body)}] (save! id changes)))"))
+        "the literal bound to a local first -- what a revision-saving helper does")
+    (testing "rows built one literal at a time from rows of another model are not that model's rows written wholesale"
+      (let [dir (doto (java.io.File. (System/getProperty "java.io.tmpdir") (str "seclint" (System/nanoTime)))
+                  .mkdirs .deleteOnExit)
+            f   (doto (java.io.File. dir "db.clj") .deleteOnExit)]
+        (spit f "(ns t (:require [toucan2.core :as t2]))
+(defn insert-permissions! [rows] (t2/insert! :model/Permissions rows))
+(defn- perm-row [group-id coll] {:group_id group-id :object (str \"/collection/\" (:id coll) \"/\")})
+(defn grant! [group-id] (let [colls (t2/select :model/Collection :archived false)] (insert-permissions! (map #(perm-row group-id %) colls))))
+(defn grant-all! [group-id] (insert-permissions! (for [coll (t2/select :model/Collection)] {:group_id group-id :object (:location coll)})))")
+        (is (empty? (engine/analyze {:paths [(.getAbsolutePath f)] :rules [(rule/by-id id)] :taint-sources :call-graph})))))
     (testing "in the data-access layer, a Collection-derived value in a map the caller built with literal keys is
               not a row written wholesale"
       (let [dir (doto (java.io.File. (System/getProperty "java.io.tmpdir") (str "seclint" (System/nanoTime)))
@@ -709,11 +734,87 @@
 (defn revert! [card-id revision-id] (let [rev (t2/select-one :model/Revision revision-id)] (t2/update! :model/Card card-id (:object rev))))")))
         "a row of one model written wholesale into another -- what revert does")
     (is (empty? (dal "(ns t (:require [toucan2.core :as t2]))
+(defn insert-perms! [rows] (t2/insert! :model/DataPermissions rows))
+(defn- build [g d tbl] (merge g d tbl))
+(defn grant! [gid did tid]
+  (let [g (t2/select-one :model/PermissionsGroup gid)
+        d (t2/select-one :model/Database did)
+        tbl (t2/select-one :model/Table tid)]
+    (insert-perms! (build g d tbl))))"))
+        "values from three models are a map somebody assembled: a row written wholesale is a row of one model")
+    (is (empty? (dal "(ns t (:require [toucan2.core :as t2]))
 (defn save! [card] (t2/update! :model/Card (:id card) card))"))
         "an internal helper's parameter is nothing the graph sees")
     (is (empty? (dal "(ns t (:require [toucan2.core :as t2] [metabase.api.macros :as api.macros]))
 (api.macros/defendpoint :put \"/:id\" \"doc\" [{:keys [id]} _q body] (t2/update! :model/Card id body))"))
         "a request map in the data-access layer is what the layer is for; the API rule catches it elsewhere")))
+
+(deftest mass-assignment-reports-at-the-caller-test
+  (let [id  :metabase-security-lint/mass-assignment
+        dal (fn [src]
+              (let [dir (doto (java.io.File. (System/getProperty "java.io.tmpdir") (str "seclint" (System/nanoTime)))
+                          .mkdirs .deleteOnExit)
+                    f   (doto (java.io.File. dir "db.clj") .deleteOnExit)]
+                (spit f src)
+                (engine/analyze {:paths [(.getAbsolutePath f)] :rules [(rule/by-id id)] :taint-sources :call-graph})))]
+    (testing "what makes the write unsafe is the call that hands it the map, and that is where the fix goes: one
+              finding per such call, at the call, naming the write it reaches"
+      (let [fs (dal "(ns t (:require [toucan2.core :as t2] [metabase.driver :as driver]))
+(defn update-database! [id changes] (t2/update! :model/Database id changes))
+(defn sync! [driver db id] (let [described (driver/describe-table driver db id)] (update-database! id described)))
+(defn rename! [id nm] (update-database! id {:name nm}))")]
+        (is (= [3] (map :row fs)) "the call that forwards warehouse metadata, not the one passing a literal")
+        (is (str/includes? (:message (first fs)) "update-database!") "the call names what it hands the map to")
+        (is (str/includes? (:message (first fs)) "Database") "and the model it is written into")
+        (is (= #{:warehouse} (:origins (first fs))) "the boundaries the values crossed, carried from the write")
+        (is (str/includes? (:snippet (first fs)) "(update-database! id described)"))))
+    (testing "two calls that each hand it a map are two findings, so fixing one closes one"
+      (let [fs (dal "(ns t (:require [toucan2.core :as t2] [metabase.driver :as driver]))
+(defn update-database! [id changes] (t2/update! :model/Database id changes))
+(defn sync! [driver db id] (update-database! id (driver/describe-table driver db id)))
+(defn resync! [driver db id] (update-database! id (driver/describe-table driver db id)))")]
+        (is (= [3 4] (map :row fs)))))
+    (testing "a map built where it is written has no call to blame, and is reported at the write"
+      (let [fs (dal "(ns t (:require [toucan2.core :as t2] [metabase.driver :as driver]))
+(defn sync! [driver db id] (let [described (driver/describe-table driver db id)] (t2/update! :model/Database id described)))")]
+        (is (= [2] (map :row fs)))
+        (is (nil? (:sink (first fs))))))
+    (testing "the call is usually in another file than the write, and the finding goes with the call"
+      (let [dir (doto (java.io.File. (System/getProperty "java.io.tmpdir") (str "seclint" (System/nanoTime)))
+                  .mkdirs .deleteOnExit)
+            db  (doto (java.io.File. dir "db.clj") .deleteOnExit)
+            svc (doto (java.io.File. dir "sync.clj") .deleteOnExit)]
+        (spit db "(ns t.db (:require [toucan2.core :as t2]))
+(defn update-database! [id changes] (t2/update! :model/Database id changes))")
+        (spit svc "(ns t.sync (:require [metabase.driver :as driver] [t.db :as db]))
+(defn sync! [driver d id] (db/update-database! id (driver/describe-table driver d id)))")
+        (let [fs (engine/analyze {:paths [(.getAbsolutePath db) (.getAbsolutePath svc)]
+                                  :rules [(rule/by-id id)] :taint-sources :call-graph})]
+          (is (= [2] (map :row fs)))
+          (is (= ["sync.clj"] (map #(.getName (java.io.File. ^String (:file %))) fs))))))
+    (testing "a call that only forwards its own parameter is not where a fix goes: the chase walks out to the
+              calls that build the map, and stops there rather than at whatever calls those"
+      (let [fs (dal "(ns t (:require [toucan2.core :as t2] [metabase.driver :as driver]))
+(defn insert-databases! [rows] (t2/insert! :model/Database rows))
+(defn batch! [rows] (doseq [b (partition-all 100 rows)] (insert-databases! b)))
+(defn from-warehouse! [driver db id] (batch! (driver/describe-table driver db id)))
+(defn sync-all! [driver db ids] (doseq [id ids] (from-warehouse! driver db id)))")]
+        (is (= [4] (map :row fs)) "at the call that builds it, past the forwarding helper and short of its caller")
+        (is (str/includes? (:message (first fs)) "batch!") "naming what it hands the map to")))
+    (testing "a helper that forwards to itself terminates the chase"
+      (let [fs (dal "(ns t (:require [toucan2.core :as t2] [metabase.driver :as driver]))
+(defn insert-databases! [rows] (t2/insert! :model/Database rows))
+(defn batch! [rows n] (if (pos? n) (batch! rows (dec n)) (insert-databases! rows)))
+(defn from-warehouse! [driver db id] (batch! (driver/describe-table driver db id) 2))")]
+        (is (= [4] (map :row fs)))))
+    (testing "a builder several forwarding hops down is still found"
+      (let [fs (dal "(ns t (:require [toucan2.core :as t2] [metabase.driver :as driver]))
+(defn insert-databases! [rows] (t2/insert! :model/Database rows))
+(defn a! [rows] (insert-databases! rows))
+(defn b! [rows] (a! rows))
+(defn c! [rows] (b! rows))
+(defn from-warehouse! [driver db id] (c! (driver/describe-table driver db id)))")]
+        (is (= [6] (map :row fs)))))))
 
 (deftest setting-written-from-boundary-test
   (let [id :metabase-security-lint/setting-written-from-boundary]
