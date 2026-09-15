@@ -41,6 +41,19 @@
            (validator/missing-inputs
             :h2 [(sql-input "PUBLIC" "PEOPLE")] #{{:schema "ANALYTICS" :name "PEOPLE"}})))))
 
+(deftest unused-inputs-test
+  (testing "no unused inputs when every declared input is read"
+    (is (= [] (validator/unused-inputs
+               :h2 [(sql-input "PUBLIC" "PEOPLE")] #{{:schema nil :name "PEOPLE"}}))))
+  (testing "a declared input the transform does not read is reported (stale/typo'd fake)"
+    (is (= [{:schema "PUBLIC" :name "ORDERZ"}]
+           (validator/unused-inputs
+            :h2 [(sql-input "PUBLIC" "PEOPLE") (sql-input "PUBLIC" "ORDERZ")]
+            #{{:schema nil :name "PEOPLE"}}))))
+  (testing "matching is one rule shared with missing-inputs: bare read ⇔ default-schema input"
+    (is (= [] (validator/unused-inputs
+               :h2 [(sql-input "PUBLIC" "PEOPLE")] #{{:schema nil :name "PEOPLE"}})))))
+
 (deftest table-label-test
   (testing "table-label renders schema.name, or bare name when schema unknown — never a raw map"
     (is (= "PEOPLE" (validator/table-label {:schema nil :name "PEOPLE"})))

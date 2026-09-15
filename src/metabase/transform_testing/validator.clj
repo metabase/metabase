@@ -15,20 +15,18 @@
    [metabase.transform-testing.schema :as transform-testing.schema]
    [metabase.util.malli :as mu]))
 
-(mu/defn- covered? :- :boolean
-  "Is the referenced table `ref` satisfied by some `declared` input table? Matches by name, with
-  schema equal, or the reference bare (nil schema) against a declared table in the driver's default
-  schema — the same defaulting `table-replacements` uses when it rewrites."
-  [driver   :- :keyword
-   declared :- [:set [:map [:schema [:maybe :string]] [:name :string]]]
-   {ref-schema :schema ref-name :name} :- [:map [:schema [:maybe :string]] [:name :string]]]
-  (let [default-schema (sql.normalize/default-schema driver)]
-    (boolean
-     (some (fn [{d-schema :schema d-name :name}]
-             (and (= d-name ref-name)
-                  (or (= d-schema ref-schema)
-                      (and (nil? ref-schema) (= d-schema default-schema)))))
-           declared))))
+(mu/defn- table-match? :- :boolean
+  "Do a query's referenced table `ref` and a declared input `decl` name the same table? Matches by
+  name, with schema equal, or the reference bare (nil schema) against a declared table in the
+  driver's `default-schema` — the one-directional defaulting `table-replacements` uses when it
+  rewrites (a bare read resolves to the default schema; a bare declaration does not cover a
+  qualified read). The single matching rule for both completeness directions."
+  [driver :- :keyword
+   {ref-schema :schema ref-name :name}   :- [:map [:schema [:maybe :string]] [:name :string]]
+   {d-schema :schema d-name :name}       :- [:map [:schema [:maybe :string]] [:name :string]]]
+  (and (= d-name ref-name)
+       (or (= d-schema ref-schema)
+           (and (nil? ref-schema) (= d-schema (sql.normalize/default-schema driver))))))
 
 (mu/defn table-label :- :string
   "A human/agent-facing name for a table ref: `schema.name`, or just `name` when the schema is
@@ -37,11 +35,22 @@
   (if schema (str schema \. name) name))
 
 (mu/defn missing-inputs :- [:sequential [:map [:schema [:maybe :string]] [:name :string]]]
-  "The tables in `referenced-tables` with no covering declared input in `inputs` — the run's
-  uncovered reads. Empty means the transform test is complete. `::unused-input` (a declared input the
-  transform does not read) is a separate, non-blocking concern handled elsewhere."
+  "The tables in `referenced-tables` with no matching declared input — reads that would fall
+  through to a real table. Empty means every read is faked (the safety-critical direction)."
   [driver            :- :keyword
    inputs            :- ::transform-testing.schema/inputs
    referenced-tables :- [:set [:map [:schema [:maybe :string]] [:name :string]]]]
   (let [declared (into #{} (map :table) inputs)]
-    (into [] (remove #(covered? driver declared %)) referenced-tables)))
+    (into [] (remove (fn [ref] (some #(table-match? driver ref %) declared))) referenced-tables)))
+
+(mu/defn unused-inputs :- [:sequential [:map [:schema [:maybe :string]] [:name :string]]]
+  "The declared inputs the transform does not read — a fake for a table the query never touches
+  (usually a stale or mistyped input). Empty means the suite declares nothing extraneous. Together
+  with `missing-inputs`, this makes the declared set exactly the referenced set: every read faked,
+  no fake unused."
+  [driver            :- :keyword
+   inputs            :- ::transform-testing.schema/inputs
+   referenced-tables :- [:set [:map [:schema [:maybe :string]] [:name :string]]]]
+  (into [] (comp (map :table)
+                 (remove (fn [decl] (some #(table-match? driver % decl) referenced-tables))))
+        inputs))

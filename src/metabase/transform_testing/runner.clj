@@ -47,13 +47,17 @@
                                  (tru "The database of this transform does not support transform testing."))
         ;; --- compile source once (pure): SQL + the tables it reads, before any replacement ---
         compiled-source (transform-testing.compile/compile-source driver transform)
-        ;; --- validate (pure): every read table is faked; runner turns a gap into a 400.
-        ;;     Checks the same referenced-tables the replacement below will remap. ---
-        missing   (transform-testing.validator/missing-inputs
-                   driver inputs (:referenced-tables compiled-source))
+        ;; --- validate (pure): the declared inputs must be exactly the tables the transform reads.
+        ;;     Both directions are 400s; checks the same referenced-tables the rewrite will remap. ---
+        refs      (:referenced-tables compiled-source)
+        missing   (transform-testing.validator/missing-inputs driver inputs refs)
         _         (api/check-400 (empty? missing)
                                  (tru "The transform reads table(s) with no declared test input: {0}. Add an input for each."
                                       (str/join ", " (map transform-testing.validator/table-label missing))))
+        unused    (transform-testing.validator/unused-inputs driver inputs refs)
+        _         (api/check-400 (empty? unused)
+                                 (tru "Test input(s) declared for table(s) the transform does not read: {0}. Remove them."
+                                      (str/join ", " (map transform-testing.validator/table-label unused))))
         ;; --- compile (pure): temp names + queries over them ---
         input-tables (mapv (fn [_] (driver/temp-table-name driver)) inputs)
         output-table (driver/temp-table-name driver)
