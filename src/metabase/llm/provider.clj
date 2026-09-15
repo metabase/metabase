@@ -347,6 +347,9 @@
                      :help     (deferred-tru "Only needed if you started your server with --api-key.")}]}
    {:type          "ollama"
     :label         (deferred-tru "Ollama")
+    ;; Cloud ignores the stored URL and calls ollama.com, so switching deployment moves the connection
+    ;; as surely as editing the URL. See [[destination-fields]].
+    :destination-fields [:base-url :hosting]
     ;; serves whatever the operator pulled, so a new connection takes its model from the catalog
     ;; that connecting fetches (see [[metabase.metabot.self.ollama/list-models]])
     :default-model nil
@@ -748,7 +751,7 @@
   "Drop `conn`'s stored base URL when layering `env-config` over it would send an environment-supplied secret to a
   URL that came from the app DB, leaving the type's default to stand in.
 
-  [[assert-base-url-change-authorized!]] refuses to point a connection somewhere new while carrying a secret the API
+  [[assert-destination-change-authorized!]] refuses to point a connection somewhere new while carrying a secret the API
   caller did not freshly supply, and a secret the environment supplies can never be re-supplied through the API at
   all. That check runs when the base URL is written, so it cannot account for a variable set afterwards.
   Deciding it again here makes the rule hold whichever order the two arrived in.
@@ -981,16 +984,31 @@
       (or (u/trimmed-string (setting/env-var-value setting-kw))
           (get (with-field-defaults group-type {}) field)))))
 
-(defn assert-base-url-change-authorized!
+(defn- destination-fields
+  "The `:config` fields that decide where a connection's requests are sent — `:base-url` unless the registry says
+  otherwise, as Ollama does: its `:hosting` picks between the stored URL and Cloud's fixed one, so the connection
+  can be moved without `:base-url` changing at all. The registry has to carry this because the adapters that
+  resolve addresses live downstream of this namespace and cannot be asked.
+
+  Compared, never interpreted: this namespace does not resolve addresses, it only needs to know when one moved."
+  [type-name]
+  (:destination-fields (provider-type type-name) [:base-url]))
+
+(defn- destination-field?
+  "Whether writing `field` on a connection of `type-name` can move where its requests are sent."
+  [type-name field]
+  (boolean (some #{field} (destination-fields type-name))))
+
+(defn assert-destination-change-authorized!
   "Reject moving a connection while carrying a secret that the API caller did not freshly supply.
 
   `old-config` and `new-config` are the effective configs before and after the edit, including environment overlays;
-  registry defaults and normalization are applied here before comparing their base URLs. `submitted-config` is the
+  registry defaults and normalization are applied here before comparing their [[destination-fields]]. `submitted-config` is the
   unmerged client input, so an omitted secret or one echoed back masked does not count as fresh. `env-fields` names
   values the client cannot re-supply and gets a more actionable error. `legacy-setting?` says the caller is a
   one-setting-at-a-time API that cannot submit the URL and credentials together."
   ([type-name old-config new-config submitted-config env-fields]
-   (assert-base-url-change-authorized! type-name old-config new-config submitted-config env-fields nil))
+   (assert-destination-change-authorized! type-name old-config new-config submitted-config env-fields nil))
   ([type-name old-config new-config submitted-config env-fields {:keys [legacy-setting?]}]
    (let [old-config      (with-field-defaults type-name old-config)
          new-config      (with-field-defaults type-name new-config)
@@ -1002,29 +1020,30 @@
                              (and (not (contains? env-fields field))
                                   value
                                   (not (setting/obfuscated-value? value)))))
-         missing-secrets (remove fresh-secret? carried-secrets)]
-     (when (and (not= (:base-url old-config) (:base-url new-config))
-                (seq missing-secrets))
+         missing-secrets (remove fresh-secret? carried-secrets)
+         moved-fields    (filter #(not= (get old-config %) (get new-config %))
+                                 (destination-fields type-name))]
+     (when (and (seq moved-fields) (seq missing-secrets))
        (let [env-secret? (some env-fields missing-secrets)]
          (throw (ex-info (cond
                            env-secret?
-                           (tru "This connection''s credentials come from environment variables. Change its base URL there too.")
+                           (tru "This connection''s credentials come from environment variables. Point it at a different server there too.")
 
                            legacy-setting?
-                           (tru "Use the provider connection settings to change the base URL and enter the credentials again.")
+                           (tru "Use the provider connection settings to move this connection and enter the credentials again.")
 
                            :else
-                           (tru "Enter this connection''s credentials again to point it at a different base URL."))
+                           (tru "Enter this connection''s credentials again to point it at a different server."))
                          {:status-code 400
                           :api-error   true
-                          :error-code  :llm-base-url-change-requires-credentials
-                          :field       :base-url
+                          :error-code  :llm-destination-change-requires-credentials
+                          :field       (first moved-fields)
                           :secrets     (mapv name missing-secrets)})))))))
 
 (defn- assert-credential-write-authorized!
   "Reject adding a secret to a connection sitting on a base URL this API cannot show the caller.
 
-  [[assert-base-url-change-authorized!]] binds the two together from the base URL's side. This is the other side:
+  [[assert-destination-change-authorized!]] binds the two together from the destination's side. This is the other side:
   the per-provider settings write one field at a time, so a credential entered here arrives with no sight of where
   it will be sent. The connection settings submit the whole connection, base URL included, so they are where a
   connection on a custom URL takes its credentials.
@@ -1065,23 +1084,23 @@
       (log/infof "Attempted to set %s to an obfuscated value. Ignoring change." (name setting-kw))
       (do
         (when (request.current/current-request)
-          (if (= field :base-url)
+          (if (destination-field? group-type field)
             (do
               (when (contains? (:env-fields live) field)
                 ;; Persisting an inert value underneath the environment overlay would make it live if the operator
                 ;; later removed that variable, carrying any stored credentials to a URL the API caller planted
                 ;; earlier.
-                (throw (ex-info (tru "This connection''s base URL comes from an environment variable. Change it there.")
+                (throw (ex-info (tru "This value comes from an environment variable. Change it there.")
                                 {:status-code 400
                                  :api-error   true
-                                 :error-code  :llm-base-url-is-env-managed
-                                 :field       :base-url})))
+                                 :error-code  :llm-destination-field-is-env-managed
+                                 :field       field})))
               (let [current-config (or (:config live) {})
                     new-config     (if value
                                      (assoc current-config field value)
                                      (dissoc current-config field))]
-                (assert-base-url-change-authorized! group-type current-config new-config {field value}
-                                                    (:env-fields live) {:legacy-setting? true})))
+                (assert-destination-change-authorized! group-type current-config new-config {field value}
+                                                       (:env-fields live) {:legacy-setting? true})))
             (when value
               (assert-credential-write-authorized! group-type field live))))
         (when value

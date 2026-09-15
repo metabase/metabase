@@ -484,8 +484,8 @@
     ;; Before validation probes the new URL with the effective credentials, require proof that the caller holds every
     ;; secret that would travel there. Omitted and masked secrets were merged from storage; env-owned ones cannot be
     ;; re-supplied through this API at all.
-    (llm.provider/assert-base-url-change-authorized! (:type merged) (:config live) effective config
-                                                     (:env-fields live))
+    (llm.provider/assert-destination-change-authorized! (:type merged) (:config live) effective config
+                                                        (:env-fields live))
     (llm.provider/validate-config! (:type merged) effective)
     (let [{:keys [learned-config] :as listed}
           (verify-credentials! merged effective (or model (selected-model conn-key)))

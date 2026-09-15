@@ -722,3 +722,32 @@
   (testing "every type other than the managed one is always available"
     (is (true? (llm.provider/type-available? "anthropic")))
     (is (false? (llm.provider/type-available? "evilai")))))
+
+(deftest destination-fields-are-declared-for-every-type-test
+  (testing (str "Which config fields decide where a connection's requests go. The registry has to carry this "
+                "because the adapters that resolve addresses live downstream of it, so nothing can derive the "
+                "truth — this table is the only thing that makes an omission loud. A type whose adapter builds "
+                "its host from anything but `:base-url` has to say so, or "
+                "`assert-destination-change-authorized!` cannot tell that the connection moved and will let a "
+                "stored credential follow it to the new address.")
+    (is (= {"anthropic"  [:base-url]
+            "openai"     [:base-url]
+            "openrouter" [:base-url]
+            "mistral"    [:base-url]
+            "zai"        [:base-url]
+            "moonshot"   [:base-url]
+            "deepseek"   [:base-url]
+            ;; NOTE: google's adapter derives the host from :location whenever :base-url is left at the global
+            ;; default (metabase.metabot.self.google/api-base-url), and bedrock has no :base-url field at all —
+            ;; its host is built from :region (metabase.metabot.self.bedrock). Both are the same bug class as
+            ;; Ollama's :hosting and are deliberately left undeclared here: fixing them changes what existing
+            ;; edits are allowed, which is its own change with its own review. Declaring them is the fix.
+            "google"     [:base-url]
+            "azure"      [:base-url]
+            "bedrock"    [:base-url]
+            "vllm"       [:base-url]
+            "ollama"     [:base-url :hosting]
+            "metabase"   [:base-url]}
+           (into {}
+                 (map (juxt :type #(#'llm.provider/destination-fields (:type %))))
+                 (llm.provider/provider-types))))))

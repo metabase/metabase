@@ -676,7 +676,7 @@
                                       {:models []})]
           (doseq [config [{:base-url "https://new.example.com"}
                           {:api-key "**********ed" :base-url "https://new.example.com"}]]
-            (is (=? {:message "Enter this connection's credentials again to point it at a different base URL."}
+            (is (=? {:message "Enter this connection's credentials again to point it at a different server."}
                     (mt/user-http-request :crowberto :put 400 "llm/providers/anthropic" {:config config}))))
           (is (empty? @probes) "the old key was rejected before credential verification made a request")
           (is (= {:api-key "sk-ant-stored" :base-url "https://api.anthropic.com"}
@@ -698,7 +698,7 @@
       (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _]
                                                              (is false "the stored service-account key must not leave")
                                                              {:models []})]
-        (is (=? {:message "Enter this connection's credentials again to point it at a different base URL."}
+        (is (=? {:message "Enter this connection's credentials again to point it at a different server."}
                 (mt/user-http-request :crowberto :put 400 "llm/providers/google"
                                       {:config {:base-url "https://new.example.com"}})))))))
 
@@ -710,7 +710,7 @@
       (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _]
                                                              (is false "the environment key must not leave")
                                                              {:models []})]
-        (is (=? {:message "This connection's credentials come from environment variables. Change its base URL there too."}
+        (is (=? {:message "This connection's credentials come from environment variables. Point it at a different server there too."}
                 (mt/user-http-request :crowberto :put 400 "llm/providers/anthropic"
                                       {:config {:api-key  "sk-ant-attempted-override"
                                                 :base-url "https://new.example.com"}})))))))
@@ -730,14 +730,14 @@
   (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
                                                                 {:api-key  "sk-ant-stored"
                                                                  :base-url "https://api.anthropic.com"})]]
-    (is (=? {:message "Use the provider connection settings to change the base URL and enter the credentials again."}
+    (is (=? {:message "Use the provider connection settings to move this connection and enter the credentials again."}
             (mt/user-http-request :crowberto :put 400 "setting/llm-anthropic-api-base-url"
                                   {:value "https://new.example.com"})))
     (is (= {:api-key "sk-ant-stored" :base-url "https://api.anthropic.com"}
            (stored-config "anthropic")))
     (testing "and explains when the credential must be moved through deployment configuration"
       (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key "sk-ant-env"]
-        (is (=? {:message "This connection's credentials come from environment variables. Change its base URL there too."}
+        (is (=? {:message "This connection's credentials come from environment variables. Point it at a different server there too."}
                 (mt/user-http-request :crowberto :put 400 "setting/llm-anthropic-api-base-url"
                                       {:value "https://new.example.com"}))))))
   (testing "and never plants a dormant value underneath an environment-owned base URL"
@@ -745,7 +745,7 @@
                                                                   {:api-key  "sk-ant-stored"
                                                                    :base-url "https://api.anthropic.com"})]]
       (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://env.example.com"]
-        (is (=? {:message "This connection's base URL comes from an environment variable. Change it there."}
+        (is (=? {:message "This value comes from an environment variable. Change it there."}
                 (mt/user-http-request :crowberto :put 400 "setting/llm-anthropic-api-base-url"
                                       {:value "https://attacker.example.com"}))))
       (is (= "https://api.anthropic.com" (:base-url (stored-config "anthropic")))
@@ -1408,3 +1408,50 @@
                             (setting/set! :llm-providers
                                           [(assoc-in grandfathered [:config :base-url] "http://10.0.0.1/v1")])
                             (catch clojure.lang.ExceptionInfo e (ex-data e))))))))))))))
+
+(deftest update-requires-fresh-secrets-to-change-ollama-deployment-test
+  (testing (str "Ollama's address comes from `:hosting` as much as from `:base-url` — Cloud ignores the stored "
+                "URL and calls ollama.com — so flipping a self-hosted connection to Cloud moves it just as surely "
+                "as editing its URL, and must not carry a stored key the caller never supplied there")
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+      (mt/with-temporary-setting-values
+        [llm-providers [(connection "ollama" "ollama"
+                                    {:hosting  "self-hosted"
+                                     :base-url "http://internal.example.com:11434/v1"
+                                     :api-key  "ollama-stored"})]]
+        (let [probes (atom [])]
+          (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                      (fn [_provider {:keys [credentials]}]
+                                        (swap! probes conj credentials)
+                                        {:models []})]
+            (testing "supplying nothing but the deployment is refused"
+              (is (=? {:message "Enter this connection's credentials again to point it at a different server."}
+                      (mt/user-http-request :crowberto :put 400 "llm/providers/ollama"
+                                            {:config {:hosting "cloud"}}))))
+            (testing "and so is echoing the stored key back masked"
+              (is (=? {:message "Enter this connection's credentials again to point it at a different server."}
+                      (mt/user-http-request :crowberto :put 400 "llm/providers/ollama"
+                                            {:config {:hosting "cloud" :api-key "**********ed"}}))))
+            (is (empty? @probes)
+                "the stored key was rejected before credential verification could send it to ollama.com")
+            (is (= {:hosting  "self-hosted"
+                    :base-url "http://internal.example.com:11434/v1"
+                    :api-key  "ollama-stored"}
+                   (stored-config "ollama")))
+            (testing "a caller who holds a Cloud key may move it"
+              (mt/user-http-request :crowberto :put 200 "llm/providers/ollama"
+                                    {:config {:hosting "cloud" :api-key "ollama-fresh"}})
+              (is (= ["ollama-fresh"] (map :api-key @probes))
+                  "and only the freshly supplied key ever reaches Cloud"))))))))
+
+(deftest ollama-deployment-setting-cannot-move-a-connection-holding-a-stored-key-test
+  (testing "the per-provider settings write one field at a time, which is the other way to flip the deployment"
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+      (mt/with-temporary-setting-values
+        [llm-providers [(connection "ollama" "ollama"
+                                    {:hosting  "self-hosted"
+                                     :base-url "http://internal.example.com:11434/v1"
+                                     :api-key  "ollama-stored"})]]
+        (is (=? {:message "Use the provider connection settings to move this connection and enter the credentials again."}
+                (mt/user-http-request :crowberto :put 400 "setting/llm-ollama-hosting" {:value "cloud"})))
+        (is (= "self-hosted" (:hosting (stored-config "ollama"))))))))
