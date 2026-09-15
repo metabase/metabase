@@ -895,7 +895,62 @@
    :name    app-db-namespaces}]
 
  :config-in-ns
- {test-namespaces
+ {;; direct-jdbc-access-forbidden (from the HugSQL PoC): a converted module runs app-db SQL only
+  ;; through its `queries` ns -> metabase.app-db.hugsql, never a direct execution sink. This bans
+  ;; the sink *name*, not the query *value*, so `(str ...)` / `(let [q (str ...)] ...)` laundering
+  ;; has nowhere to land -- kondo enforces it with certainty, no dataflow analysis needed. Toucan
+  ;; model-definition macros (table-name, deftransforms, define-before-insert, hydrate) are not
+  ;; sinks and stay.
+  ;;
+  ;; Two directions, because a `queries` ns and its consumers have different rules. The design doc
+  ;; puts "SQL-in-Files internals" in the same row as custom migrations: `t2/*` allowed. So inside
+  ;; `<module>.queries` the Toucan sinks stay legal (a partially ported module needs them for
+  ;; writes whose model has before-insert/before-update hooks), but raw JDBC and the app-db query
+  ;; helpers never are -- nothing in a queries ns should be assembling SQL text.
+  ;;
+  ;; INVERSION (end state, per the PoC's note): this is per-ns because each namespace opts in as it
+  ;; converts. The target is the reverse -- ban these sinks globally and allow them in a small named
+  ;; set (the `*.queries` nses, metabase.app-db.hugsql, migrations, audit-db, QP). Then "where can
+  ;; app-db SQL run?" is that list rather than a per-ns opt-in.
+  metabase.sso.queries
+  ;; The module's writes still have value slots (the two hooked AuthIdentity writes), so this ns
+  ;; stays on the marker lint even though its HugSQL reads have nothing to mark.
+  {:linters {:metabase/unmarked-sql-value {:level :warning}
+             :discouraged-var
+             {next.jdbc/execute!            {:message "no dropping to raw JDBC; app-db SQL is a statement in sso.sql"}
+              next.jdbc/execute-one!        {:message "no dropping to raw JDBC; app-db SQL is a statement in sso.sql"}
+              next.jdbc/plan                {:message "no dropping to raw JDBC; app-db SQL is a statement in sso.sql"}
+              toucan2.core/query            {:message "raw SQL does not belong in a queries ns; add a statement to sso.sql"}
+              toucan2.core/query-one        {:message "raw SQL does not belong in a queries ns; add a statement to sso.sql"}
+              metabase.app-db.query/query   {:message "app-db SQL is a statement in sso.sql"}
+              metabase.app-db.query/compile {:message "app-db SQL is a statement in sso.sql"}}}}
+
+  ;; The module's consumers: every app-db read now has a named statement, so no sink belongs here.
+  ;; `t2/insert!`/`update!` are absent deliberately -- the two hooked AuthIdentity writes still run
+  ;; through sso.queries, which is the only place they are allowed.
+  metabase.sso.common
+  {:linters {:discouraged-var
+             {toucan2.core/select           {:message "app-db SQL goes through sso.queries (HugSQL)"}
+              toucan2.core/select-one       {:message "app-db SQL goes through sso.queries (HugSQL)"}
+              toucan2.core/select-fn-set    {:message "app-db SQL goes through sso.queries (HugSQL)"}
+              toucan2.core/exists?          {:message "app-db SQL goes through sso.queries (HugSQL)"}
+              toucan2.core/query            {:message "app-db SQL goes through sso.queries (HugSQL)"}
+              toucan2.core/query-one        {:message "app-db SQL goes through sso.queries (HugSQL)"}
+              next.jdbc/execute!            {:message "no dropping to raw JDBC; go through sso.queries (HugSQL)"}
+              next.jdbc/execute-one!        {:message "no dropping to raw JDBC; go through sso.queries (HugSQL)"}
+              metabase.app-db.query/query   {:message "app-db SQL goes through sso.queries (HugSQL)"}
+              metabase.app-db.query/compile {:message "app-db SQL goes through sso.queries (HugSQL)"}}}}
+  metabase.sso.providers.slack-connect
+  {:linters {:discouraged-var
+             {toucan2.core/select           {:message "app-db SQL goes through sso.queries (HugSQL)"}
+              toucan2.core/select-one       {:message "app-db SQL goes through sso.queries (HugSQL)"}
+              toucan2.core/exists?          {:message "app-db SQL goes through sso.queries (HugSQL)"}
+              toucan2.core/query            {:message "app-db SQL goes through sso.queries (HugSQL)"}
+              next.jdbc/execute!            {:message "no dropping to raw JDBC; go through sso.queries (HugSQL)"}
+              next.jdbc/execute-one!        {:message "no dropping to raw JDBC; go through sso.queries (HugSQL)"}
+              metabase.app-db.query/query   {:message "app-db SQL goes through sso.queries (HugSQL)"}}}}
+
+  test-namespaces
   {:linters
    {:inline-def                                          {:level :off}
     :missing-docstring                                   {:level :off}
@@ -916,11 +971,6 @@
   ;; Namespaces whose values are marked. Adding one here is what keeps it that way; see
   ;; `metabase.app-db.value-guard`.
   metabase.content-translation.db
-  {:linters {:metabase/unmarked-sql-value {:level :warning}}}
-
-  ;; A partially ported module: its HugSQL reads have no value slots, but the Toucan writes it
-  ;; keeps (for models with before-insert/before-update hooks) still do.
-  metabase.sso.queries
   {:linters {:metabase/unmarked-sql-value {:level :warning}}}
 
   ;; .cljc tests run in both Clojure and ClojureScript — `with-dynamic-fn-redefs` is JVM-only,
