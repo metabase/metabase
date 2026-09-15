@@ -1,6 +1,5 @@
 import fetchMock from "fetch-mock";
 
-import { mockDynamicGoalSettingKeys } from "__support__/dynamic-goals";
 import { setupCardDataset } from "__support__/server-mocks";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
 import type { ComputedVisualizationSettings } from "metabase/viz-core";
@@ -58,10 +57,8 @@ describe("useResolvedGoalSettings", () => {
     expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
   });
 
-  describe("for a display that resolves graph goals", () => {
+  describe("for a line chart", () => {
     const card = createMockCard({ display: "line" });
-
-    mockDynamicGoalSettingKeys(["graph.goal_value"]);
 
     it("leaves a hidden goal line alone", () => {
       const settings = { ...REFERENCED_SETTINGS, "graph.show_goal": false };
@@ -140,6 +137,23 @@ describe("useResolvedGoalSettings", () => {
           settings: { ...REFERENCED_SETTINGS, "graph.goal_value": null },
         }),
       );
+    });
+
+    it("fails for a reference the dataset reports as failed", () => {
+      const data = createMockDatasetData({
+        ...DATA,
+        referenced_entities: {
+          card: { 9: { status: "failed", error: "boom" } },
+        },
+      });
+
+      const { result } = setup(card, REFERENCED_SETTINGS, data);
+
+      expect(result.current).toEqual({
+        status: "failed",
+        settings: { ...REFERENCED_SETTINGS, "graph.goal_value": null },
+      });
+      expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
     });
   });
 });
